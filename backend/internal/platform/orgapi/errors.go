@@ -52,6 +52,25 @@ type permissionFailure struct{ key string }
 
 type setupFailure struct{ fields []string }
 
+type fieldFailure struct{ field, reason string }
+
+func (fieldFailure) Error() string { return string(ValidationFailed) }
+func (fieldFailure) Unwrap() error { return ValidationFailed }
+
+// IdentifierValidation exposes only registered source fields and reason codes.
+// Raw identifiers and provider/SQL text are never accepted as details.
+func IdentifierValidation(field, reason string) error {
+	if field != "identifier" && field != "cnpj" {
+		return Unavailable
+	}
+	switch reason {
+	case "INVALID_CPF", "INVALID_CNPJ", "DUPLICATE":
+	default:
+		return Unavailable
+	}
+	return fieldFailure{field, reason}
+}
+
 func (setupFailure) Error() string { return string(OrgSetupIncomplete) }
 func (setupFailure) Unwrap() error { return OrgSetupIncomplete }
 
@@ -126,6 +145,10 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 		for _, field := range setup.fields {
 			details = append(details, httpapi.Detail{Field: field, Code: "REQUIRED"})
 		}
+	}
+	var field fieldFailure
+	if code == ValidationFailed && errors.As(err, &field) {
+		details = []httpapi.Detail{{Field: field.field, Code: field.reason}}
 	}
 	httpapi.WriteError(w, r, statuses[code], string(code), "Organization request unavailable or refused", details)
 }

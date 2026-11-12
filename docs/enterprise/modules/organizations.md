@@ -183,7 +183,7 @@ Keys are those of [07-permissions](../07-permissions.md) §7.2. All `org.*` perm
 | `org.settings.read` | Read settings, policies and the structure lists in the panel | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `FINANCE`, `APPROVER`, `AUDITOR` (proposed; no row in §7.3) |
 | `org.settings.manage` | UC-ORG-02, UC-ORG-06, UC-ORG-07 | `OWNER`, `ADMIN` (§7.3) |
 | `org.structure.manage` | UC-ORG-03 | `OWNER`, `ADMIN` (§7.3) |
-| `org.legal_entity.manage` | UC-ORG-04, UC-ORG-05 | `OWNER`, `ADMIN` (proposed; no row in §7.3) |
+| `org.legal_entity.manage` | UC-ORG-04, UC-ORG-05 | `OWNER`, `ADMIN` (§7.3, org-permissions-v2; EDR-037) |
 | `org.ownership.transfer` | UC-ORG-09 | `OWNER` (§7.3) |
 | `org.lifecycle.manage` | UC-ORG-11, UC-ORG-12 | `OWNER` (proposed; no row in §7.3) |
 | `org.group.manage` | UC-ORG-10 | `OWNER` (proposed; no row in §7.3) |

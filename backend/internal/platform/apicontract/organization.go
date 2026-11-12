@@ -81,17 +81,24 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 			!operation.RequestBody.Value.Required || operation.RequestBody.Value.Content.Get("application/json") == nil {
 			return fmt.Errorf("missing organization body contract for %s", path)
 		}
-		if strings.HasPrefix(path, "/v1/orgs/") {
+		// Every target selector belongs to the contract, including nested parent
+		// and establishment identities. Checking only org_id misses route drift.
+		for _, segment := range strings.Split(path, "/") {
+			if !strings.HasPrefix(segment, "{") || !strings.HasSuffix(segment, "}") {
+				continue
+			}
+			key := strings.TrimSuffix(strings.TrimPrefix(segment, "{"), "}")
 			found := false
 			for _, parameter := range append(append(openapi3.Parameters{}, item.Parameters...), operation.Parameters...) {
-				if parameter.Value != nil && parameter.Value.Name == "org_id" && parameter.Value.In == "path" && parameter.Value.Required {
+				if parameter.Value != nil && parameter.Value.Name == key && parameter.Value.In == "path" && parameter.Value.Required {
 					found = true
 				}
 			}
 			if !found {
-				return fmt.Errorf("missing organization path scope for %s", path)
+				return fmt.Errorf("missing organization path selector %s for %s", key, path)
 			}
 		}
+
 		if operation.Responses == nil || operation.Responses.Value(strconv.Itoa(declared.Success)) == nil {
 			return fmt.Errorf("organization success status differs for %s", path)
 		}

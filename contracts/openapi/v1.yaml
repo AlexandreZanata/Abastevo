@@ -51,6 +51,634 @@ tags:
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
 paths:
+  /v1/orgs/{org_id}/legal-entities/create:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseLegalEntityCreate
+      summary: Declare a synthetic legal party
+      description: Declare COMPANY from a full CNPJ or NATURAL_PERSON from CPF. CPF requires purpose VERIFICATION_AND_AGREEMENTS
+        and prohibits establishment metadata. COMPANY prohibits nonempty purpose. Runtime validates both checksum
+        algorithms; only DECLARED is created. No verification or access is granted. Requires the dedicated
+        PANEL company cookie, exact Origin/Host and CSRF, current org.legal_entity.manage and organization
+        membership. Writes additionally require fresh proof and current organizations pilot capability.
+        Explicit identifier reads require fresh proof and a committed access audit. Only source-pinned synthetic
+        setup is enabled; real CPF purpose and terms approval remain external. All responses are no-store
+        without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.legal_entity.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Declare COMPANY from a full CNPJ or NATURAL_PERSON from CPF. CPF requires purpose VERIFICATION_AND_AGREEMENTS
+          and prohibits establishment metadata. COMPANY prohibits nonempty purpose. Runtime validates both checksum
+          algorithms; only DECLARED is created. No verification or access is granted.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseLegalCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001004
+              kind: COMPANY
+              legal_name: Synthetic legal party
+              identifier: EXEMPL01000170
+              establishment:
+                declared_role: NOT_INFORMED
+      responses:
+        '201':
+          description: Private committed command acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseLegalAcknowledgement'
+              example:
+                legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+                establishment_id: 7b0e2a54-0000-4000-8000-000000000402
+                state: DECLARED
+                revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/legal-entities/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseLegalEntityList
+      summary: List masked legal declarations
+      description: Private keyset page. CPF is always masked; cursor reuse with another scope or filter
+        is refused. Requires the dedicated PANEL company cookie, exact Origin/Host and CSRF, current org.legal_entity.manage
+        and organization membership. Writes additionally require fresh proof and current organizations pilot
+        capability. Explicit identifier reads require fresh proof and a committed access audit. Only source-pinned
+        synthetic setup is enabled; real CPF purpose and terms approval remain external. All responses are
+        no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.legal_entity.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Private keyset page. CPF is always masked; cursor reuse with another scope or filter
+          is refused.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseLegalListRequest'
+            example:
+              limit: 20
+              state: DECLARED
+      responses:
+        '200':
+          description: Private authorized read after all current gates.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseLegalPage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000000401
+                  kind: COMPANY
+                  legal_name: Synthetic legal party
+                  identifier: EXEMPL01
+                  purpose: ''
+                  state: DECLARED
+                  status_label: Declarado pela empresa
+                  revision: 1
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseLegalEntityRead
+      summary: Read a masked legal declaration
+      description: Cookie-authorized read with no client-supplied identity, authority or reveal flag. Requires
+        the dedicated PANEL company cookie, exact Origin/Host and CSRF, current org.legal_entity.manage
+        and organization membership. Writes additionally require fresh proof and current organizations pilot
+        capability. Explicit identifier reads require fresh proof and a committed access audit. Only source-pinned
+        synthetic setup is enabled; real CPF purpose and terms approval remain external. All responses are
+        no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.legal_entity.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - in: path
+        name: legal_entity_id
+        required: true
+        description: Exact current organization-owned declaration identity; foreign and unknown values share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000401
+      requestBody:
+        description: Cookie-authorized read with no client-supplied identity, authority or reveal flag.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseLegalReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private authorized read after all current gates.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseLegalEntityView'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000000401
+                kind: COMPANY
+                legal_name: Synthetic legal party
+                identifier: EXEMPL01
+                purpose: ''
+                state: DECLARED
+                status_label: Declarado pela empresa
+                revision: 1
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/identifier/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseLegalIdentifierRead
+      summary: Audit and read a private identifier
+      description: Cookie-authorized read with no client-supplied identity, authority or reveal flag. Requires
+        the dedicated PANEL company cookie, exact Origin/Host and CSRF, current org.legal_entity.manage
+        and organization membership. Writes additionally require fresh proof and current organizations pilot
+        capability. Explicit identifier reads require fresh proof and a committed access audit. Only source-pinned
+        synthetic setup is enabled; real CPF purpose and terms approval remain external. All responses are
+        no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.legal_entity.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - in: path
+        name: legal_entity_id
+        required: true
+        description: Exact current organization-owned declaration identity; foreign and unknown values share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000401
+      requestBody:
+        description: Cookie-authorized read with no client-supplied identity, authority or reveal flag.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseLegalReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private authorized read after all current gates.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseLegalIdentifierResult'
+              example:
+                legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+                kind: COMPANY
+                identifier: EXEMPL01
+                audit_operation_id: 7b0e2a54-0000-4000-8000-000000001004
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/withdraw:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseLegalEntityWithdraw
+      summary: Withdraw a declared legal party
+      description: Revision-bound withdrawal. Unreferenced content without verification history is removed;
+        actual database references retain a revoked declaration. IDs and acknowledgement remain for exact
+        retry. Requires the dedicated PANEL company cookie, exact Origin/Host and CSRF, current org.legal_entity.manage
+        and organization membership. Writes additionally require fresh proof and current organizations pilot
+        capability. Explicit identifier reads require fresh proof and a committed access audit. Only source-pinned
+        synthetic setup is enabled; real CPF purpose and terms approval remain external. All responses are
+        no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.legal_entity.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - in: path
+        name: legal_entity_id
+        required: true
+        description: Exact current organization-owned declaration identity; foreign and unknown values share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000401
+      requestBody:
+        description: Revision-bound withdrawal. Unreferenced content without verification history is removed;
+          actual database references retain a revoked declaration. IDs and acknowledgement remain for exact
+          retry.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseLegalWithdrawRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001004
+              revision: 1
+      responses:
+        '200':
+          description: Private committed command acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseLegalAcknowledgement'
+              example:
+                legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+                establishment_id: 7b0e2a54-0000-4000-8000-000000000402
+                state: DECLARED
+                revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/establishments/create:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseEstablishmentCreate
+      summary: Declare a company establishment
+      description: Add a declared establishment under an existing DECLARED COMPANY with the same CNPJ root.
+        Revision refers to the parent declaration. Requires the dedicated PANEL company cookie, exact Origin/Host
+        and CSRF, current org.legal_entity.manage and organization membership. Writes additionally require
+        fresh proof and current organizations pilot capability. Explicit identifier reads require fresh
+        proof and a committed access audit. Only source-pinned synthetic setup is enabled; real CPF purpose
+        and terms approval remain external. All responses are no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.legal_entity.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - in: path
+        name: legal_entity_id
+        required: true
+        description: Exact current organization-owned declaration identity; foreign and unknown values share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000401
+      requestBody:
+        description: Add a declared establishment under an existing DECLARED COMPANY with the same CNPJ
+          root. Revision refers to the parent declaration.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEstablishmentCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001004
+              revision: 1
+              cnpj: EXEMPL01000170
+              declared_role: NOT_INFORMED
+      responses:
+        '201':
+          description: Private committed command acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseLegalAcknowledgement'
+              example:
+                legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+                establishment_id: 7b0e2a54-0000-4000-8000-000000000402
+                state: DECLARED
+                revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/establishments/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseEstablishmentList
+      summary: List declared company establishments
+      description: Keyset page bound to the exact parent declaration, scope and limit. Requires the dedicated
+        PANEL company cookie, exact Origin/Host and CSRF, current org.legal_entity.manage and organization
+        membership. Writes additionally require fresh proof and current organizations pilot capability.
+        Explicit identifier reads require fresh proof and a committed access audit. Only source-pinned synthetic
+        setup is enabled; real CPF purpose and terms approval remain external. All responses are no-store
+        without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.legal_entity.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - in: path
+        name: legal_entity_id
+        required: true
+        description: Exact current organization-owned declaration identity; foreign and unknown values share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000401
+      requestBody:
+        description: Keyset page bound to the exact parent declaration, scope and limit.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEstablishmentListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private authorized read after all current gates.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseEstablishmentPage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000000402
+                  legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+                  cnpj: EXEMPL01000170
+                  declared_role: NOT_INFORMED
+                  trade_name: Synthetic trade
+                  municipality_code: '5103403'
+                  revision: 1
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/establishments/{establishment_id}/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseEstablishmentChange
+      summary: Change declared establishment metadata
+      description: Replace mutable establishment metadata at its current revision. CNPJ, parent and identity
+        remain immutable; omitted optional fields become empty or NOT_INFORMED. Requires the dedicated PANEL
+        company cookie, exact Origin/Host and CSRF, current org.legal_entity.manage and organization membership.
+        Writes additionally require fresh proof and current organizations pilot capability. Explicit identifier
+        reads require fresh proof and a committed access audit. Only source-pinned synthetic setup is enabled;
+        real CPF purpose and terms approval remain external. All responses are no-store without ETag.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.legal_entity.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - in: path
+        name: legal_entity_id
+        required: true
+        description: Exact current organization-owned declaration identity; foreign and unknown values share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000401
+      - in: path
+        name: establishment_id
+        required: true
+        description: Exact current organization-owned declaration identity; foreign and unknown values share
+          a bounded 404.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        example: 7b0e2a54-0000-4000-8000-000000000402
+      requestBody:
+        description: Replace mutable establishment metadata at its current revision. CNPJ, parent and identity
+          remain immutable; omitted optional fields become empty or NOT_INFORMED.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEstablishmentChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001004
+              revision: 1
+              declared_role: BRANCH
+              trade_name: Synthetic trade
+              municipality_code: '5103403'
+      responses:
+        '200':
+          description: Private committed command acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseLegalAcknowledgement'
+              example:
+                legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+                establishment_id: 7b0e2a54-0000-4000-8000-000000000402
+                state: DECLARED
+                revision: 1
+                data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/org-access/organizations/create:
     post:
       tags: [enterprise-organizations]
@@ -8321,7 +8949,7 @@ x-abastevo-organization-api:
   etag: false
   pagination: {default_limit: 20, max_limit: 100, cursor_ttl_seconds: 900}
   cursor_binding: [origin, organization, account, membership, route, canonical_filters]
-  status: company_sessions_and_synthetic_organization_onboarding_implemented
+  status: company_sessions_synthetic_onboarding_and_legal_declarations_implemented
 components:
   securitySchemes:
     CompanySessionCookie:
@@ -8377,6 +9005,583 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseEstablishmentInput:
+      type: object
+      description: Optional first establishment metadata. Its full CNPJ defaults to the COMPANY declaration
+        identifier and must match it.
+      additionalProperties: false
+      required: []
+      properties:
+        cnpj:
+          type: string
+          description: Full numeric or alphanumeric CNPJ with validated Receita check digits, canonicalized
+            by the server.
+          example: EXEMPL01000170
+          maxLength: 32
+        declared_role:
+          type: string
+          description: Explicit company declaration; identifier order never implies a head office.
+          example: NOT_INFORMED
+          enum:
+          - HEAD_OFFICE
+          - BRANCH
+          - NOT_INFORMED
+        trade_name:
+          type: string
+          description: Optional declared trade name, trimmed and bounded; no control or directional characters.
+          example: Synthetic trade
+          maxLength: 120
+        municipality_code:
+          type: string
+          description: Optional seven-digit declared IBGE municipality reference, without external address
+            verification.
+          example: '5103403'
+          pattern: ^([1-9][0-9]{6})?$
+          maxLength: 7
+      example:
+        declared_role: NOT_INFORMED
+    EnterpriseLegalCreateRequest:
+      type: object
+      description: Declare COMPANY from a full CNPJ or NATURAL_PERSON from CPF. CPF requires purpose VERIFICATION_AND_AGREEMENTS
+        and prohibits establishment metadata. COMPANY prohibits nonempty purpose. Runtime validates both checksum algorithms;
+        only DECLARED is created. No verification or access is granted.
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - kind
+      - legal_name
+      - identifier
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command schema version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          description: Declared party kind.
+          example: COMPANY
+          enum:
+          - COMPANY
+          - NATURAL_PERSON
+        legal_name:
+          type: string
+          description: Declared private party name; trimmed, nonempty and without control or directional characters.
+          example: Synthetic legal party
+          minLength: 1
+          maxLength: 120
+        identifier:
+          type: string
+          description: Full CNPJ for COMPANY or CPF for NATURAL_PERSON; never logged or included in errors.
+          example: EXEMPL01000170
+          maxLength: 32
+        purpose:
+          type: string
+          description: Required only for NATURAL_PERSON; real-data purpose approval remains external.
+          example: VERIFICATION_AND_AGREEMENTS
+          enum:
+          - VERIFICATION_AND_AGREEMENTS
+          - ''
+        establishment:
+          $ref: '#/components/schemas/EnterpriseEstablishmentInput'
+      oneOf:
+      - properties:
+          kind: {type: string, enum: [COMPANY], description: Company declaration branch., example: COMPANY}
+          purpose: {type: string, enum: [''], description: Company declarations have no CPF purpose., example: ''}
+      - required: [purpose]
+        properties:
+          kind: {type: string, enum: [NATURAL_PERSON], description: Natural-person declaration branch., example: NATURAL_PERSON}
+          purpose: {type: string, enum: [VERIFICATION_AND_AGREEMENTS], description: Explicit natural-person purpose branch., example: VERIFICATION_AND_AGREEMENTS}
+        not:
+          required: [establishment]
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001004
+        kind: COMPANY
+        legal_name: Synthetic legal party
+        identifier: EXEMPL01000170
+        establishment:
+          declared_role: NOT_INFORMED
+    EnterpriseLegalWithdrawRequest:
+      type: object
+      description: Revision-bound withdrawal. Unreferenced content without verification history is removed;
+        actual database references retain a revoked declaration. IDs and acknowledgement remain for exact
+        retry.
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command schema version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          description: Expected current revision; the original operation replays its committed acknowledgement.
+          minimum: 1
+          maximum: 9223372036854775806
+          example: 1
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001004
+        revision: 1
+    EnterpriseEstablishmentCreateRequest:
+      type: object
+      description: Add a declared establishment under an existing DECLARED COMPANY with the same CNPJ root.
+        Revision refers to the parent declaration.
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - cnpj
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command schema version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          description: Expected current revision; the original operation replays its committed acknowledgement.
+          minimum: 1
+          maximum: 9223372036854775806
+          example: 1
+        cnpj:
+          type: string
+          description: Full numeric or alphanumeric CNPJ with validated Receita check digits, canonicalized
+            by the server.
+          example: EXEMPL01000170
+          maxLength: 32
+        declared_role:
+          type: string
+          description: Explicit company declaration; identifier order never implies a head office.
+          example: NOT_INFORMED
+          enum:
+          - HEAD_OFFICE
+          - BRANCH
+          - NOT_INFORMED
+        trade_name:
+          type: string
+          description: Optional declared trade name, trimmed and bounded; no control or directional characters.
+          example: Synthetic trade
+          maxLength: 120
+        municipality_code:
+          type: string
+          description: Optional seven-digit declared IBGE municipality reference, without external address
+            verification.
+          example: '5103403'
+          pattern: ^([1-9][0-9]{6})?$
+          maxLength: 7
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001004
+        revision: 1
+        cnpj: EXEMPL01000170
+        declared_role: NOT_INFORMED
+    EnterpriseEstablishmentChangeRequest:
+      type: object
+      description: Replace mutable establishment metadata at its current revision. CNPJ, parent and identity
+        remain immutable; omitted optional fields become empty or NOT_INFORMED.
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+          description: Source command schema version.
+          example: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          description: Expected current revision; the original operation replays its committed acknowledgement.
+          minimum: 1
+          maximum: 9223372036854775806
+          example: 1
+        declared_role:
+          type: string
+          description: Explicit company declaration; identifier order never implies a head office.
+          example: NOT_INFORMED
+          enum:
+          - HEAD_OFFICE
+          - BRANCH
+          - NOT_INFORMED
+        trade_name:
+          type: string
+          description: Optional declared trade name, trimmed and bounded; no control or directional characters.
+          example: Synthetic trade
+          maxLength: 120
+        municipality_code:
+          type: string
+          description: Optional seven-digit declared IBGE municipality reference, without external address
+            verification.
+          example: '5103403'
+          pattern: ^([1-9][0-9]{6})?$
+          maxLength: 7
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001004
+        revision: 1
+        declared_role: BRANCH
+        trade_name: Synthetic trade
+        municipality_code: '5103403'
+    EnterpriseLegalReadRequest:
+      type: object
+      description: Cookie-authorized read with no client-supplied identity, authority or reveal flag.
+      additionalProperties: false
+      required: []
+      properties: {}
+      example: {}
+    EnterpriseLegalListRequest:
+      type: object
+      description: Private keyset page. CPF is always masked; cursor reuse with another scope or filter is
+        refused.
+      additionalProperties: false
+      required: []
+      properties:
+        limit:
+          type: integer
+          description: Page size, default 20; maximum 100.
+          minimum: 1
+          maximum: 100
+          example: 20
+        cursor:
+          type: string
+          description: Opaque 15-minute cursor bound to account, organization, membership, route and canonical
+            filters.
+          example: ''
+          maxLength: 8192
+        state:
+          type: string
+          description: Optional declaration-state filter.
+          example: DECLARED
+          enum:
+          - DECLARED
+          - REVOKED
+      example:
+        limit: 20
+        state: DECLARED
+    EnterpriseEstablishmentListRequest:
+      type: object
+      description: Keyset page bound to the exact parent declaration, scope and limit.
+      additionalProperties: false
+      required: []
+      properties:
+        limit:
+          type: integer
+          description: Page size, default 20; maximum 100.
+          minimum: 1
+          maximum: 100
+          example: 20
+        cursor:
+          type: string
+          description: Opaque 15-minute cursor bound to account, organization, membership, route and canonical
+            filters.
+          example: ''
+          maxLength: 8192
+      example:
+        limit: 20
+    EnterpriseLegalAcknowledgement:
+      type: object
+      description: Committed acknowledgement. Optional establishment identity appears only for COMPANY creation
+        or establishment commands. Exact retry returns the original result without resurrecting removed content.
+      additionalProperties: false
+      required:
+      - legal_entity_id
+      - state
+      - revision
+      - data_mode
+      - replayed
+      properties:
+        legal_entity_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        establishment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          description: Original committed command outcome.
+          example: DECLARED
+          enum:
+          - DECLARED
+          - REVOKED
+          - REMOVED
+        revision:
+          type: integer
+          description: Expected current revision; the original operation replays its committed acknowledgement.
+          minimum: 1
+          maximum: 9223372036854775806
+          example: 1
+        data_mode:
+          type: string
+          description: Source-pinned synthetic setup only.
+          example: SYNTHETIC
+          enum:
+          - SYNTHETIC
+        replayed:
+          type: boolean
+          description: Whether this is the original committed acknowledgement returned for the same operation.
+          example: false
+      example:
+        legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+        establishment_id: 7b0e2a54-0000-4000-8000-000000000402
+        state: DECLARED
+        revision: 1
+        data_mode: SYNTHETIC
+        replayed: false
+    EnterpriseLegalEntityView:
+      type: object
+      description: Privacy-preserving default view. COMPANY exposes its eight-character root; NATURAL_PERSON
+        exposes only ***.***.***-DD, including to managers. Never implies verification.
+      additionalProperties: false
+      required:
+      - id
+      - kind
+      - legal_name
+      - identifier
+      - purpose
+      - state
+      - status_label
+      - revision
+      - data_mode
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          description: Declared party kind.
+          example: COMPANY
+          enum:
+          - COMPANY
+          - NATURAL_PERSON
+        legal_name:
+          type: string
+          description: Private declared name.
+          example: Synthetic legal party
+          maxLength: 120
+        identifier:
+          type: string
+          description: Company root or masked CPF, never the full CPF.
+          example: EXEMPL01
+          maxLength: 14
+        purpose:
+          type: string
+          description: Empty for COMPANY; pinned verification/agreement purpose for NATURAL_PERSON.
+          example: ''
+          enum:
+          - ''
+          - VERIFICATION_AND_AGREEMENTS
+        state:
+          type: string
+          description: Current declaration status.
+          example: DECLARED
+          enum:
+          - DECLARED
+          - REVOKED
+        status_label:
+          type: string
+          description: Explicit declaration or revocation label without verified language.
+          example: Declarado pela empresa
+          enum:
+          - Declarado pela empresa
+          - Revogada
+        revision:
+          type: integer
+          description: Expected current revision; the original operation replays its committed acknowledgement.
+          minimum: 1
+          maximum: 9223372036854775806
+          example: 1
+        data_mode:
+          type: string
+          description: Source-pinned synthetic setup only.
+          example: SYNTHETIC
+          enum:
+          - SYNTHETIC
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000000401
+        kind: COMPANY
+        legal_name: Synthetic legal party
+        identifier: EXEMPL01
+        purpose: ''
+        state: DECLARED
+        status_label: Declarado pela empresa
+        revision: 1
+        data_mode: SYNTHETIC
+    EnterpriseLegalIdentifierResult:
+      type: object
+      description: Explicit fresh management read. Full CPF is released only after the access audit transaction
+        commits. COMPANY returns its root. No response on audit failure.
+      additionalProperties: false
+      required:
+      - legal_entity_id
+      - kind
+      - identifier
+      - audit_operation_id
+      - data_mode
+      properties:
+        legal_entity_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          description: Declared party kind.
+          example: COMPANY
+          enum:
+          - COMPANY
+          - NATURAL_PERSON
+        identifier:
+          type: string
+          description: Authorized identifier, private and excluded from logs and default views.
+          example: EXEMPL01
+          maxLength: 11
+        audit_operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        data_mode:
+          type: string
+          description: Source-pinned synthetic setup only.
+          example: SYNTHETIC
+          enum:
+          - SYNTHETIC
+      example:
+        legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+        kind: COMPANY
+        identifier: EXEMPL01
+        audit_operation_id: 7b0e2a54-0000-4000-8000-000000001004
+        data_mode: SYNTHETIC
+    EnterpriseEstablishmentView:
+      type: object
+      description: Company-declared establishment metadata. No provider verification, inferred head office
+        or station right.
+      additionalProperties: false
+      required:
+      - id
+      - legal_entity_id
+      - cnpj
+      - declared_role
+      - trade_name
+      - municipality_code
+      - revision
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        legal_entity_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        cnpj:
+          type: string
+          description: Full numeric or alphanumeric CNPJ with validated Receita check digits, canonicalized
+            by the server.
+          example: EXEMPL01000170
+          maxLength: 32
+        declared_role:
+          type: string
+          description: Explicit company declaration; identifier order never implies a head office.
+          example: NOT_INFORMED
+          enum:
+          - HEAD_OFFICE
+          - BRANCH
+          - NOT_INFORMED
+        trade_name:
+          type: string
+          description: Optional declared trade name, trimmed and bounded; no control or directional characters.
+          example: Synthetic trade
+          maxLength: 120
+        municipality_code:
+          type: string
+          description: Optional seven-digit declared IBGE municipality reference, without external address
+            verification.
+          example: '5103403'
+          pattern: ^([1-9][0-9]{6})?$
+          maxLength: 7
+        revision:
+          type: integer
+          description: Expected current revision; the original operation replays its committed acknowledgement.
+          minimum: 1
+          maximum: 9223372036854775806
+          example: 1
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000000402
+        legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+        cnpj: EXEMPL01000170
+        declared_role: NOT_INFORMED
+        trade_name: Synthetic trade
+        municipality_code: '5103403'
+        revision: 1
+    EnterpriseLegalPage:
+      type: object
+      description: Private UUID keyset page; an empty cursor marks the final page.
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          description: Authorized declarations in stable identity order.
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseLegalEntityView'
+        next_cursor:
+          type: string
+          description: Opaque next cursor, empty on the final page.
+          example: ''
+          maxLength: 8192
+      example:
+        items:
+        - id: 7b0e2a54-0000-4000-8000-000000000401
+          kind: COMPANY
+          legal_name: Synthetic legal party
+          identifier: EXEMPL01
+          purpose: ''
+          state: DECLARED
+          status_label: Declarado pela empresa
+          revision: 1
+          data_mode: SYNTHETIC
+        next_cursor: ''
+    EnterpriseEstablishmentPage:
+      type: object
+      description: Private UUID keyset page; an empty cursor marks the final page.
+      additionalProperties: false
+      required:
+      - items
+      - next_cursor
+      properties:
+        items:
+          type: array
+          description: Authorized declarations in stable identity order.
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseEstablishmentView'
+        next_cursor:
+          type: string
+          description: Opaque next cursor, empty on the final page.
+          example: ''
+          maxLength: 8192
+      example:
+        items:
+        - id: 7b0e2a54-0000-4000-8000-000000000402
+          legal_entity_id: 7b0e2a54-0000-4000-8000-000000000401
+          cnpj: EXEMPL01000170
+          declared_role: NOT_INFORMED
+          trade_name: Synthetic trade
+          municipality_code: '5103403'
+          revision: 1
+        next_cursor: ''
     EnterpriseOrganizationCreationRequest:
       example: {"schema_version":1,"operation_id":"7b0e2a54-0000-4000-8000-000000001001","name":"Synthetic company","time_zone":"America/Cuiaba","kinds":["OTHER"],"unit_name":"Main synthetic unit","terms":{"version":"enterprise-synthetic-dpa-v1","digest":"590cc4cf31e1909ac9baacb76092897f3dba07b95719953b0f4588b51348f8b3","accepted":true}}
       type: object

@@ -28,8 +28,8 @@ var (
 	ErrUnavailable = errors.New("orgevent: unavailable")
 	ErrDenied      = errors.New("orgevent: intent denied")
 	ErrDisabled    = errors.New("orgevent: producer disabled")
-	code           = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*$`)
-	eventName      = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*){2,}$`)
+	code           = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`)
+	eventName      = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*){2,}$`)
 	hash           = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 

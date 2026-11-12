@@ -94,7 +94,7 @@ Role assignment:
 
 `STATION_ADMIN` and `STATION_MANAGER` map to the existing representation roles `administrator` and `manager` (STATION_PROFILE_CONTRACT_FREEZE). No generic account role `OWNER` is created outside an organization; the existing freeze ("No `OWNER` role exists anywhere in this scope") keeps applying to station representation.
 
-### 7.2 Permission registry (`org-permissions-v1`)
+### 7.2 Permission registry (`org-permissions-v2`)
 
 Every permission used by any module is listed here. A module that needs a new key adds it here first.
 
@@ -187,6 +187,7 @@ Cell values: `O` allowed in the whole assigned scope; `S` allowed on own records
 | Delegate own role (`auth.delegation.manage`) | O | O | O | O | O | O | — | — | — |
 | Change settings (`org.settings.manage`) | O | O | — | — | — | — | — | — | — |
 | Manage structure (`org.structure.manage`) | O | O | — | — | — | — | — | — | — |
+| Declare legal entities (`org.legal_entity.manage`) | O | O | — | — | — | — | — | — | — |
 | Transfer ownership (`org.ownership.transfer`) | O | — | — | — | — | — | — | — | — |
 | Manage assets (`fleet.asset.manage`) | O | O | O | — | — | — | — | — | — |
 | Read assets (`fleet.asset.read`) | O | O | O | O | O | O | S | S | O |
@@ -252,10 +253,17 @@ An organization `OWNER` or `ADMIN` does not represent a station by being owner o
 ### 7.4 Initial source-catalog interpretation
 
 EMP-AUTH-001 freezes the 13 canonical roles and 84 registry keys above.
-The current matrix covers 61 keys; the other 23 remain registered but
+The initial v1 matrix covers 61 keys; the other 23 remain registered but
 unassigned, with denied coverage even for OWNER. Proposed role rows in
 owning module documents do not silently extend this matrix. A later grant
 needs an explicit matrix revision and catalog version change.
+EMP-ORG-004 explicitly adopts the module's recommended legal-management row
+for OWNER and ADMIN under the maintainer's autonomous decision authorization
+(EDR-037). Version org-permissions-v2 covers 62 keys, leaving 22 unassigned.
+These are exactly two new positive cells; all other 1,090 cells and the four
+independent current-authority conditions remain unchanged. This row grants no
+verification, station representation or external-registry authority.
+
 The literal stock.reconcile key is retained as the registry's sole
 two-segment compatibility exception; it stays unassigned. Other keys use
 the documented three-segment format; no new alias is inferred.

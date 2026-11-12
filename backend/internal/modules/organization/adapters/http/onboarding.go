@@ -70,9 +70,6 @@ func (v activationRequest) CommandFields() orgapi.Command {
 	return orgapi.Command{SchemaVersion: v.SchemaVersion, OperationID: v.OperationID, Revision: v.Revision}
 }
 
-type activationProofKey struct{}
-type activationProof struct{ actor app.CreationActor }
-
 type creationEndpoint struct {
 	service app.Onboarding
 	company company.Handler
@@ -213,33 +210,16 @@ func Register(router chi.Router, service app.Onboarding, cookies company.Handler
 	if service.Repository == nil || service.NewID == nil || cookies.Service == nil || !cookies.Service.Enabled || roots == nil {
 		return app.ErrUnavailable
 	}
-	if gateway.Sessions != nil || gateway.SignedOwner != nil || gateway.WebSession != nil || gateway.WebSessionConfirm != nil {
-		return app.ErrUnavailable
+	owned, gateway, err := companyEntry(router, cookies, gateway)
+	if err != nil {
+		return err
 	}
-	gateway.WebSession = cookies.WebSession
-	gateway.WebSessionConfirm = func(r *http.Request, fresh bool) (string, error) {
-		proof, _ := r.Context().Value(activationProofKey{}).(*activationProof)
-		if proof == nil {
-			return "", orgapi.Unavailable
-		}
-		row, err := cookies.ConfirmSession(r, fresh)
+	if err := guarded.Register(owned, ActivationPath, gateway, ActivationRule(), authorization, ActivationPolicy(), RootFacts{roots}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input activationRequest) (any, error) {
+		actor, err := companyActor(ctx)
 		if err != nil {
-			return "", err
+			return nil, err
 		}
-		proof.actor = app.CreationActor{AccountID: row.AccountID, SessionID: row.ID}
-		return row.AccountID, nil
-	}
-	requestProof := func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), activationProofKey{}, &activationProof{})))
-		})
-	}
-	if err := guarded.Register(router.With(requestProof), ActivationPath, gateway, ActivationRule(), authorization, ActivationPolicy(), RootFacts{roots}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input activationRequest) (any, error) {
-		proof, _ := ctx.Value(activationProofKey{}).(*activationProof)
-		if proof == nil {
-			return nil, orgapi.Unavailable
-		}
-		result, replay, err := service.Activate(ctx, p.Scope, proof.actor, decision, input.OperationID, *input.Revision)
+		result, replay, err := service.Activate(ctx, p.Scope, actor, decision, input.OperationID, *input.Revision)
 		if err != nil {
 			return nil, mapped(err)
 		}

@@ -24,3 +24,16 @@ func TestIncompleteSetupOnlyCarriesCopiedChecklistKeys(t *testing.T) {
 		}
 	}
 }
+
+func TestIdentifierDetailsNeverAcceptContentOrUnknownVocabulary(t *testing.T) {
+	w := httptest.NewRecorder()
+	orgapi.WriteError(w, httptest.NewRequest(http.MethodPost, "/", nil), orgapi.IdentifierValidation("identifier", "INVALID_CPF"))
+	if w.Code != 422 || !strings.Contains(w.Body.String(), `"field":"identifier"`) || !strings.Contains(w.Body.String(), `"code":"INVALID_CPF"`) {
+		t.Fatal("identifier detail missing")
+	}
+	for _, pair := range [][2]string{{"private_value", "INVALID_CPF"}, {"identifier", "private value"}, {"cnpj", strings.Repeat("1", 11)}} {
+		if orgapi.IdentifierValidation(pair[0], pair[1]) != orgapi.Unavailable {
+			t.Fatal("unregistered identifier detail accepted")
+		}
+	}
+}

@@ -1,4 +1,22 @@
 # Current execution state
+- Enterprise EMP-ORG-004, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING
+  above ORG-003 8a95c07f in the owned enterprise worktree, targeting PR202.
+  [Declaration evidence](../enterprise/evidence/f1-org004-legal-declarations.md)
+  records eight company-cookie routes, current legal-management authority,
+  CPF masking/fresh audited reveal, declared CNPJ establishments and immutable
+  identities. Explicit permissions v2 changes only OWNER/ADMIN legal.manage;
+  EDR-037/038 record the choices and bounded audit/event vocabulary correction.
+  Real PostGIS/race suites pass: duplicate/retry concurrency, foreign isolation,
+  current proof/flag refusal, CAS/keyset pages, deferred commit rollback,
+  actual-FK removal/revocation and HTTP retry after physical removal. Populated
+  ordinary-owner upgrade/recovery, full router/OpenAPI drift, affected modules,
+  static/build/sqlc, plan/format/added-link/secret checks pass. Domain coverage
+  95.17%; application 80.92%, adapter 76.36%, HTTP 78.39% in composed coverage.
+  The reproduced empty establishment on NATURAL_PERSON now returns 422.
+  Next: ORG-005 operating units, using actual scoped establishment declarations.
+  F1/M1, completed-phase publication/final CI and actual provider/runtime/
+  native/vault/staging/legal/Kotlin coverage gates remain open.
+
 - Enterprise EMP-ORG-003, 2026-11-11: LOCAL_DONE / INTEGRATION_PENDING
   above AUTH-004 49048734 in the owned enterprise worktree, targeting PR202.
   [Atomic onboarding evidence](../enterprise/evidence/f1-org003-atomic-onboarding.md)

@@ -422,6 +422,48 @@ go test -race ./internal/modules/orgaccess/domain ./internal/modules/membership/
 See [1,092 descriptor cells](../contracts/testdata/enterprise/README.md#authorization-catalog-v1)
 and [catalog acceptance](../docs/enterprise/evidence/f1-auth001-role-permission-catalog.md).
 
+### Private declared legal parties (EMP-ORG-004)
+
+Apply additive migration `000173` before the new API/worker. With the
+enterprise surface enabled, the actual enterprise factory mounts eight
+cookie-only POST operations under `/v1/orgs/{org_id}/legal-entities`:
+create/list, `{legal_entity_id}/read`, `identifier/read`, `withdraw`, and
+`establishments/create`, `list`, `{establishment_id}/change` beneath the
+parent. Use the canonical OpenAPI for exact paths and strict JSON schemas.
+The normal company-cookie Origin/Host/CSRF checks and current
+org.legal_entity.manage apply. Configuration writes and explicit identifier
+reads require fresh proof; writes also require the current organizations
+pilot flag and the separately bounded org.legal admission class.
+
+Only organizations initialized with the source synthetic terms fixture
+accept these operations. COMPANY validation reuses the numeric/alphanumeric
+CNPJ kernel and creates an explicit first establishment; NATURAL_PERSON
+requires the pinned verification/agreement purpose and valid CPF. Neither
+creates verification, representation, membership or station rights. Default
+views always mask CPF, including for managers. Explicit fresh identifier
+reads commit an access audit before releasing content. No raw identifier
+or name enters receipts, audit, logs or validation details.
+
+The three new tables use forced RLS. The deployment operator must review
+ordinary-role grants for SELECT/INSERT/UPDATE/DELETE on org_legal_entities
+and org_establishments and SELECT/INSERT on immutable org_legal_commands,
+in addition to the existing proof/authority/audit/quota ports. The schema
+owner also needs ownership of the existing audit/event tables for the
+bounded snake_case vocabulary constraints. No production grant, flag or
+legal approval is installed here. The synthetic org.legal budget inherits
+identity v1's 200/hour on each axis; measured live budgets and cleanup
+activation remain due.
+
+Withdrawal removes unreferenced content without verification history;
+actual immediate/deferred foreign keys instead retain a REVOKED record.
+Stable metadata-only receipts allow exact retry after removal, without
+restoring private content or reusing its identity. Keep the additive schema
+and history on recovery, disable the entry, and use the compatible previous
+image; no destructive down migration is supplied. Run the affected
+organization/auth/audit/event/company modules with `-race -tags=integration`
+and a disposable ANPFUEL_TEST_DATABASE_URL. See
+[local declaration evidence](../docs/enterprise/evidence/f1-org004-legal-declarations.md).
+
 ### Scoped role-period persistence (EMP-AUTH-002)
 
 `orgaccess/application` and its sqlc/pgx adapter store fixed-role periods

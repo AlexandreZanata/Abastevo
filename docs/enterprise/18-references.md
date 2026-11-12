@@ -73,6 +73,25 @@ Sampling practice: Google's driver SDK reports every 10 seconds by default with 
 | The only licence statement found on the ANP site is a site-wide Creative Commons Attribution-NoDerivatives 3.0 notice; no dataset-specific licence was found. | Same page |
 | ANP requires pump and panel prices with two decimals (three were used until May 2022). | ANP price FAQ citing Resolução ANP 948/2023 art. 22 |
 
+
+### EMP-ORG-004 identifier verification, 2026-11-11
+
+The [Receita Federal technical CNPJ page](https://www.gov.br/receitafederal/pt-br/centrais-de-conteudo/publicacoes/documentos-tecnicos/cnpj)
+and its calculation manual confirm ASCII minus 48 and the two modulo-11
+weight sequences already implemented by the kernel. No rule derives
+head-office status from the establishment order.
+
+For CPF, [Tesouro Nacional's GRU protocol, section IV(a), printed page 8](https://cdn.tesouro.gov.br/sistemas-internos/apex/producao/sistemas/thot/arquivos/publicacoes/31906_1049829/Protocolo_arrecadacao_GRU.pdf?v=7014)
+specifies nine base digits plus two check digits. Apply weights 10 down to 2
+to the base, then 11 down to 2 to the base plus first check digit; a remainder
+of zero or one gives zero, otherwise subtract the remainder from 11.
+[ANS's official loading-algorithm documentation](https://www.gov.br/ans/pt-br/centrais-de-conteudo/manuais-do-portal-operadoras/sib-manual-de-instalacao-historico-de-versao-e-outros-arquivos/manual/algoritmos-do-aplicativo-de-carga)
+also rejects constant-digit sequences. These are format checks, not evidence
+of registry existence, active tax status, ownership, representation or consent.
+Source CPF examples are not copied into the repository; tests generate values.
+Actual CPF collection for verification/agreements remains subject to the
+separate purpose/legal review before real-data use.
+
 ## 5. Labour and privacy
 
 | Fact | Source (read 2026-11-10) |

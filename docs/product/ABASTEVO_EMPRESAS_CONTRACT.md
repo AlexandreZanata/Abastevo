@@ -580,6 +580,49 @@ boundaries.
   receipt. Missing terms, invalid zones, stale proof or forged counts cannot
   activate. Last-unit and permanent history safeguards protect the new unit.
 
+
+- **B-BR-EMP-55 — Declare parties without claiming verification.**
+  Under current `org.legal_entity.manage` authority and the `organizations`
+  capability, accept a scoped COMPANY declaration from a valid full CNPJ or
+  NATURAL_PERSON declaration from a valid CPF for the stated verification/
+  agreement purpose. The company stores its CNPJ root and at least one
+  explicitly declared establishment. Head-office status is never inferred
+  from order digits. New declarations are DECLARED only; they grant no access,
+  station representation, agreement eligibility or registry verification.
+  No automatic external lookup or real-data legal approval is introduced.
+
+- **B-BR-EMP-56 — Keep legal identifiers private and local.**
+  Identifier format/check digits are validated from recorded primary sources.
+  A declaration is unique only within its organization; the same identifier
+  elsewhere has no effect on its response. CPFs are masked on default views
+  and excluded from logs/events/default exports. Only an explicit current
+  legal-management read with fresh proof and access audit can reveal one.
+  Domain/request formatting and encoding redact names and identifiers.
+  A CPF is optional for fleet use and never collected to grant access.
+
+- **B-BR-EMP-57 — Preserve declaration identity and corrections.**
+  The identifier, kind and owning organization are immutable. Every
+  establishment belongs to a COMPANY with the same CNPJ root; its role is
+  HEAD_OFFICE, BRANCH or NOT_INFORMED by explicit declaration. Optional
+  municipality references are seven-digit IBGE reference text, not a claim
+  that an external registry confirmed the address. A foreign or unknown
+  entity/establishment yields the same scoped not-found. A mistaken
+  declaration without verification history or references may be removed,
+  retaining only bounded audit/acknowledgement metadata; otherwise withdrawal
+  revokes it without removing references or verification history.
+
+- **B-BR-EMP-58 — Serialize audited declaration commands.**
+  Server-generated identities, legal/establishment rows, revisioned changes
+  and command acknowledgement commit with the audit. Same-operation matching
+  intent returns the original result; changed intent, stale revisions,
+  concurrent same-organization duplicate or failed commit returns no mutation.
+  New work rechecks current proof/member/role/capability inside its scoped
+  transaction. Source-registered audit/event vocabulary accepts bounded
+  lower-case snake_case segments, including the specified legal_entity action;
+  unknown actions/targets/consumers still require exact source registration.
+  Declarations remain synthetic/default-off until the independent
+  legal/runtime/pilot gates are satisfied.
+
 ## Use cases
 
 - **BUC-EMP-01 — Act in an organization.** A verified member selects one
@@ -804,6 +847,18 @@ boundaries.
   at most three pending organizations. A fourth refuses and rolls back its
   entire unit/member/role/audit/receipt group. A matching earlier retry still
   returns its acknowledgement. Another account has its own independent limit.
+
+
+- **BUC-EMP-29 — Declare and correct a party privately.**
+  Declare a synthetic company and explicitly label its first establishment
+  without interpreting its order digits; add another matching-root
+  establishment. Declare a generated natural-person identifier for the
+  stated purpose and read its masked default view. Only current fresh
+  legal-management authority can reveal it, with an access audit. An
+  organization may independently declare the same identifier. Foreign
+  references, malformed identifiers, changed retries or a failed transaction
+  expose no foreign information and leave no partial rows. Withdraw an
+  unreferenced declaration or retain a revoked referenced declaration.
 
 Implementation requires the [F0 decision gates](../enterprise/16-decisions.md#5-what-is-actually-blocking).
 Real-data use requires separate legal review and the existing production

@@ -230,6 +230,7 @@ auth.role.assign O O1 - - - - - - -
 auth.delegation.manage O O O O O O - - -
 org.settings.manage O O - - - - - - -
 org.structure.manage O O - - - - - - -
+org.legal_entity.manage O O - - - - - - -
 org.ownership.transfer O - - - - - - - -
 fleet.asset.manage O O O - - - - - -
 fleet.asset.read O O O O O O S S O

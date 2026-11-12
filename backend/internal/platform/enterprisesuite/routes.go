@@ -48,6 +48,7 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	definitions := append(orgpg.OnboardingAuditDefinitions(), cappg.AuditDefinitions()...)
+	definitions = append(definitions, orgpg.LegalAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -65,13 +66,21 @@ func Register(router chi.Router, o Options) error {
 	if err != nil {
 		return err
 	}
-	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{{Class: "org.setup", Permissions: []string{"org.settings.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic setup only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."}})
+	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{
+		{Class: "org.setup", Permissions: []string{"org.settings.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic setup only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+	})
 	if err != nil {
 		return err
 	}
 	gateway := orgapi.Gateway{Enabled: true, Origin: o.Origin, CursorSecret: o.CursorSecret, Now: time.Now, WriteAdmission: admission}
 	authorization := access.Authorization{Source: roles, Capabilities: accesspg.PilotEntitlements{Enabled: true, Catalog: capabilities, States: flags}, Records: orgweb.SetupRecords{}, Now: time.Now}
 	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots); err != nil {
+		return err
+	}
+	legal := &orgpg.LegalStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
+	legalAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: orgweb.LegalRecords{}, Now: time.Now}
+	if err := orgweb.RegisterLegal(router, org.LegalService{Enabled: true, Repository: legal, NewID: jobs.NewUUIDv4}, cookies, gateway, legalAuthorization, roots, legal); err != nil {
 		return err
 	}
 	cookies.RegisterRoutes(router)

@@ -31,6 +31,19 @@ database/provider activation, native or cross-client acceptance is claimed.
 (cd backend && go test -race ./internal/modules/orgaccess/domain -count=1)
 ```
 
+## Authorization catalog v2
+
+EMP-ORG-004 preserves v1 as historical evidence and pins the explicit
+[version 2 oracle](authorization-catalog-v2.psv). Only OWNER and ADMIN gain
+ORG coverage for org.legal_entity.manage, following EDR-037 and the
+module's recommended mapping. The other 1,090 cells are unchanged. The
+registry still contains 84 keys; 62 have matrix coverage and 22 remain
+unassigned. Roles and additional restrictions retain their version 1 values.
+The regression compares both independent files and requires exactly those
+two amendments; this declaration permission conveys no verification or
+station authority. Current membership, proof, capability and record checks
+remain mandatory at runtime.
+
 ## Identity lifecycle v1
 
 EMP-IDN-001 executes all 29 rows of identity-lifecycle-v1.psv in Go. The

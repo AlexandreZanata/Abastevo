@@ -44,6 +44,16 @@ Status: **M0 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-11. [ADR-025](../adr/02
 | EDR-034 | Synthetic organization creation and setup activation use PANEL's dedicated fresh cookie/CSRF plane and the source-pinned synthetic terms version/hash. All new IDs are server-selected and returned in a durable acknowledgement. | UC-ORG-01/02 are PANEL flows; no new login/provider or actual legal approval is available. | Account IDs/credentials in the business DTO; silently accept unreviewed real terms. | EMP-ORG-003, same authorization; real-data/legal gates retained |
 | EDR-035 | Serialize pending ownership on the account and reserve slots for every non-ended potentially effective OWNER period, including future/invited/suspended reservations. | Counting current authority alone would let scheduled grants bypass the three-pending cap. | Active-only count; unlocked per-request count (both race or postpone the bypass). | EMP-ORG-003, same authorization; concurrent PostGIS evidence |
 | EDR-036 | Synthetic org.setup admission explicitly inherits identity v1's 200/hour on each organization/account/web-or-device axis. Live use still requires measured source budgets and quota-cleanup activation. | Bounds the first synthetic configuration command using an existing versioned allowance without claiming production capacity. | Unbounded activation; invent a measured production default. | EMP-ORG-003, same authorization; source decision only |
+| EDR-037 | Adopt only the proposed OWNER/ADMIN `org.legal_entity.manage` row as explicit ORG-scoped coverage in org-permissions-v2. All other matrix cells, roles, scopes and restrictions retain their previous values. | The declaration task needs a real guarded entry; the v1 catalog deliberately denied this unassigned key. This is the module's recommended row, adopted under the unattended decision authorization. | Implicit OWNER inheritance; ship an unusable always-denied declaration route; grant verification or station powers. | EMP-ORG-004; B-BR-EMP-55..58; autonomous construction authorization |
+| EDR-038 | Permit lower-case snake_case segments in the bounded, source-registered audit/event vocabulary so specified names such as org.legal_entity.declared are representable. Keep exact source registration, immutable events and all scope/proof checks. Retained revoked declarations may coexist with a new explicit current declaration of the same identifier, as §6 requires. | The first legal producer exposed an existing grammar mismatch; historical references need stable identities while correction can create a new record. | Invent an action alias; silently weaken registration; forbid the specified correction flow. | EMP-ORG-004; B-BR-EMP-58; autonomous construction authorization |
+
+ORG-004 is executed before ORG-005 to supply actual scoped establishment
+references for the optional unit link. This changes construction order only;
+legal declarations remain optional for fleet operation. CPF/CNPJ validation
+checks format, never tax status, representation or legal consent. The default
+legal list masks CPF even for managers; explicit fresh management reveal is
+separately access-audited. Synthetic-only construction does not satisfy the
+legal-purpose gate for actual CPF collection.
 
 ## 2. Conflicts with existing rules
 

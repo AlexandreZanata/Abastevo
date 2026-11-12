@@ -47,6 +47,7 @@ sql:
       - db/migrations/000170_membership_periods.sql
       - db/migrations/000171_role_assignments.sql
       - db/migrations/000172_organization_onboarding.sql
+      - db/migrations/000173_legal_declarations.sql
     gen:
       go:
         package: organization

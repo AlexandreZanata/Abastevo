@@ -63,7 +63,7 @@ integration of the current ADR-019 construction batch. See the
 [Atomic onboarding, current-proof, isolation and upgrade evidence](../evidence/f1-org003-atomic-onboarding.md).
 
 ### EMP-ORG-004 — Legal entities with CNPJ and CPF validation, declared versus verified
-- **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module ORG · phase F1 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Record declared legal entities without implying verification or granting access.
 - **Rules and use cases:** BR-ORG-013, BR-ORG-014, BR-ORG-015, BR-ORG-016, BR-ORG-017, BR-ORG-020, UC-ORG-04
 - **Depends on:** EMP-ORG-003
@@ -77,6 +77,8 @@ integration of the current ADR-019 construction batch. See the
 - **Validation:** V-API, V-DOM, V-SQL, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
 - **Risks and assumptions:** Use synthetic generated identifiers in tests. Review the permitted CPF purpose before real data.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
+
+[Declared legal parties, private HTTP and upgrade evidence](../evidence/f1-org004-legal-declarations.md).
 
 ### EMP-ORG-005 — Operating units
 - **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type API · size S · state TODO

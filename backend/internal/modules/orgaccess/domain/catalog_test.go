@@ -63,14 +63,14 @@ func TestUnknownKeysAndZeroCatalogFailClosed(t *testing.T) {
 	if (d.Rule{}).Coverage() != d.Denied {
 		t.Fatal("zero rule grants")
 	}
-	if r, p := catalog.Versions(); r != "org-roles-v1" || p != "org-permissions-v1" {
+	if r, p := catalog.Versions(); r != "org-roles-v1" || p != "org-permissions-v2" {
 		t.Fatal("unversioned catalog")
 	}
 }
 
 func TestRegisteredMatrixGapsRemainDeniedWithoutInheritance(t *testing.T) {
 	catalog := d.SystemCatalog()
-	expected := []d.Permission{"appr.policy.manage", "auth.role.read", "budg.budget.read", "check.incident.manage", "check.template.manage", "doc.document.allocate", "doc.document.read", "exp.category.manage", "fin.payable.read", "find.finding.read", "fleet.reservation.manage", "fleet.supplier.manage", "gps.geofence.manage", "maint.plan.manage", "maint.workorder.review", "notif.rule.manage", "org.group.manage", "org.legal_entity.manage", "org.lifecycle.manage", "org.settings.read", "route.plan.manage", "stock.reconcile", "stock.tank.manage"}
+	expected := []d.Permission{"appr.policy.manage", "auth.role.read", "budg.budget.read", "check.incident.manage", "check.template.manage", "doc.document.allocate", "doc.document.read", "exp.category.manage", "fin.payable.read", "find.finding.read", "fleet.reservation.manage", "fleet.supplier.manage", "gps.geofence.manage", "maint.plan.manage", "maint.workorder.review", "notif.rule.manage", "org.group.manage", "org.lifecycle.manage", "org.settings.read", "route.plan.manage", "stock.reconcile", "stock.tank.manage"}
 	if !slices.Equal(catalog.UnassignedPermissions(), expected) {
 		t.Fatal("unapproved matrix grants changed")
 	}

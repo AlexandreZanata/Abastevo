@@ -16,7 +16,7 @@ var (
 	ErrReused      = errors.New("orgaudit: operation ID reused")
 	ErrDenied      = errors.New("orgaudit: audit read denied")
 	ErrUnavailable = errors.New("orgaudit: unavailable")
-	codePattern    = regexp.MustCompile(`^[a-z][a-z0-9]*(\.[a-z][a-z0-9]*)*$`)
+	codePattern    = regexp.MustCompile(`^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)*$`)
 	hashPattern    = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
