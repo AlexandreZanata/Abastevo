@@ -108,8 +108,11 @@ func (p Policy) Validate() error {
 	if p.Effect < Read || p.Effect > RestoreOrganization || len(p.Capability) > 64 || !capabilityPattern.MatchString(p.Capability) {
 		return ErrUnavailable
 	}
+	// BR-AUTH-010 and organizations.md: role/ownership/credential/key changes,
+	// full exports, archive/closure and grant acceptance need fresh proof.
 	switch p.Permission {
-	case "auth.role.assign", "auth.delegation.manage", "org.ownership.transfer", "idn.credential.manage", "data.key.manage":
+	case "auth.role.assign", "auth.delegation.manage", "org.ownership.transfer", "idn.credential.manage", "data.key.manage",
+		"rpt.export.run", "org.lifecycle.manage", "org.group.manage":
 		if !p.Fresh {
 			return ErrUnavailable
 		}
