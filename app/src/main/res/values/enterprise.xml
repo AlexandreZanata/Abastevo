@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-IDN-017: existing-account invitation consent and server acknowledgements. -->
+    <string name="enterprise_invitation_entry">Entrar em uma empresa</string>
+    <string name="enterprise_invitation_entry_hint">Use um convite na sua conta Abastevo.</string>
+    <string name="enterprise_invitation_title">Convite da empresa</string>
+    <string name="enterprise_invitation_intro">Digite o código que o responsável da empresa enviou para você.</string>
+    <string name="enterprise_invitation_account_required">Entre na sua conta pessoal do Abastevo para consultar e decidir sobre o convite.</string>
+    <string name="enterprise_invitation_code_label">Código do convite</string>
+    <string name="enterprise_invitation_preview">Consultar convite</string>
+    <string name="enterprise_invitation_verified">Dados jurídicos verificados</string>
+    <string name="enterprise_invitation_unverified">Dados jurídicos não verificados</string>
+    <string name="enterprise_invitation_roles">Acesso oferecido</string>
+    <string name="enterprise_invitation_role_scope">%1$s · %2$s</string>
+    <string name="enterprise_invitation_privacy">A empresa verá seu cadastro de funcionário, o apelido da conta que aceitou o convite e suas ações nesta empresa. Ela não verá suas credenciais pessoais, veículos pessoais, histórico privado ou outras empresas às quais você tem acesso.</string>
+    <string name="enterprise_invitation_confirmation_required">Este acesso só será ativado depois da confirmação de um responsável da empresa.</string>
+    <string name="enterprise_invitation_consent">Aceito participar desta empresa e compartilhar os dados descritos acima.</string>
+    <string name="enterprise_invitation_accept">Aceitar convite</string>
+    <string name="enterprise_invitation_decline">Recusar convite</string>
+    <string name="enterprise_invitation_retry">Tentar a mesma decisão novamente</string>
+    <string name="enterprise_invitation_pending">Convite aceito. Seu acesso ainda depende da confirmação de um responsável da empresa.</string>
+    <string name="enterprise_invitation_active">O servidor confirmou seu acesso à empresa.</string>
+    <string name="enterprise_invitation_declined">Convite recusado. Nenhum acesso foi concedido.</string>
+    <string name="enterprise_invitation_done">Concluir</string>
+    <string name="enterprise_invitation_busy">Aguardando a confirmação do servidor…</string>
+    <string name="enterprise_invitation_sign_in">Entrar na minha conta</string>
+    <string name="enterprise_invitation_restart">Usar outro código</string>
+    <string name="enterprise_invitation_offline">Conecte-se à internet para consultar ou responder a um convite. Nenhuma decisão será confirmada sem conexão.</string>
+    <string name="enterprise_invitation_fresh_required">Confirme seu acesso entrando novamente na sua conta.</string>
+    <string name="enterprise_invitation_invalid">Código inválido ou expirado. Peça um novo ao responsável.</string>
+    <string name="enterprise_invitation_limited">Muitas tentativas. Aguarde antes de tentar novamente.</string>
+    <string name="enterprise_invitation_already_member">Sua conta já tem um vínculo com esta empresa. Consulte seu acesso.</string>
+    <string name="enterprise_invitation_stale">Esta consulta deixou de ser válida. Consulte o convite novamente antes de decidir.</string>
+    <string name="enterprise_invitation_unavailable">Não foi possível confirmar a operação. Confira sua conexão e tente novamente.</string>
+    <string name="enterprise_test_environment">Ambiente de teste com dados sintéticos</string>
+    <string name="enterprise_scope_organization">Empresa</string>
+    <string name="enterprise_scope_self">Próprios registros</string>
+    <string name="enterprise_role_owner">Proprietário</string>
+    <string name="enterprise_role_admin">Administrador</string>
+    <string name="enterprise_role_fleet_manager">Gestor de frota</string>
+    <string name="enterprise_role_supervisor">Supervisor</string>
+    <string name="enterprise_role_finance">Financeiro</string>
+    <string name="enterprise_role_approver">Aprovador</string>
+    <string name="enterprise_role_driver">Motorista</string>
+    <string name="enterprise_role_operations_staff">Equipe de operação</string>
+    <string name="enterprise_role_auditor">Auditor</string>
+    <string name="enterprise_role_data_manager">Gestor de dados</string>
+    <string name="enterprise_role_unknown">Papel não identificado</string>
+</resources>

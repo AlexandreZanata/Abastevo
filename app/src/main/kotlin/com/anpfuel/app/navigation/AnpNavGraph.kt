@@ -606,6 +606,18 @@ fun AnpNavGraph(
                 },
             )
         }
+        composable(Routes.ENTERPRISE_INVITATION) {
+            com.anpfuel.app.ui.enterprise.EnterpriseInvitationScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.ENTERPRISE_REAUTH) },
+            )
+        }
+        composable(Routes.ENTERPRISE_REAUTH) {
+            AuthRoute(
+                onNavigateBack = { navController.popBackStack() },
+                requireFreshProof = true,
+            )
+        }
         composable(Routes.PREMIUM) {
             PremiumScreen(
                 onBack = { navController.popBackStack() },

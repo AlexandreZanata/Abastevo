@@ -1434,3 +1434,32 @@ proof and the transactionally enforced three-pending-organization account cap.
   and confirm/reject an acceptance through exact guarded revisions. Test keyboard
   access, empty/error states, unauthorized roles, wrong/changed accounts and
   organizations, stale responses, lost acknowledgements and source revocation.
+
+- **B-BR-EMP-92 — Native invitation proof is ephemeral and identity-bound.**
+  The normal Android entry uses its existing personal account and configured
+  canonical HTTPS origin to open the current company-cookie plane. Bind every
+  preview and decision to account, family, origin and session-fence epoch;
+  recheck before and after network waits. Account/family changes, logout,
+  background invalidation and definitive refusal clear private state, and late
+  responses cannot restore it. Code, cookie, CSRF and consent digest stay in
+  private memory, outside navigation, SavedState, persistence, backups and logs.
+  The dedicated client refuses redirects, alternate authority headers, foreign
+  cookies, oversized/unreadable responses and unsupported notice versions.
+- **B-BR-EMP-93 — Native consent never predicts membership.** Preview the actual
+  organization, verification status, literal role/scope grants and the supported
+  localized privacy notice. Consent is never preselected. Accept or decline
+  explicitly online; only a valid server acknowledgement may display ACTIVE,
+  awaiting confirmation or declined. ACCEPTED with an INVITED membership remains
+  awaiting confirmation and grants no access. A lost decision acknowledgement
+  retries the same operation and decision, without contradictory new intent.
+  Invalid invitation outcomes use generic copy. Fresh authentication uses an
+  explicit existing-account key entry; no personal-family revocation, managed
+  activation, device enrolment or offline grant is implied by acceptance.
+- **BUC-EMP-47 — Review and answer an invitation from Android.** From Perfil,
+  enter an invitation with an existing account, sign in or reconfirm when needed,
+  request the current preview, review privacy and grants, then explicitly accept
+  with consent or decline. Keep pending confirmation distinct from active access.
+  Test offline and invalid inputs, unknown notices, missing consent, uncertain
+  delivery retries, wrong accounts/origins/families, backgrounding and stale
+  replies. Validate the actual navigation on the connected physical ADB phone
+  using an isolated package, preserving existing apps and their data.

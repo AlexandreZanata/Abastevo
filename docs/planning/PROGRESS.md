@@ -8,7 +8,17 @@
   employee regression6.849s, final contract15.069s, real HTTPS Chromium two-org
   invitation/confirmation/rejection/fresh/revocation/keyboard/layout flow pass.
   Membership domain91.3%; affected static/generation/compat/SQL/protection checks
-  pass. Next bounded task017 Android invitation acceptance, then018 context shell.
+  pass. Task017 LOCAL_DONE / INTEGRATION_PENDING from tested016 `ae5defcd`,
+  [task213](https://github.com/AlexandreZanata/Abastevo/issues/213),
+  [native invitation evidence](../enterprise/evidence/f1-idn017-android-invitation.md).
+  B-BR-EMP-92/93, BUC-EMP-47 and EDR-058 precede017 behavior. Domain enterprise228,
+  application15, data49 and app33 tests, app compilation/full lint and actual
+  TLS/PostGIS rotation1.937s pass. Earlier80/81 data counts mistakenly included
+  stale release XML;49 current debug tests are accepted. Six final actual
+  physical Android16 journeys pass with zero failures/errors/skips after
+  correcting rendered-epoch capture and strict keyboard readiness in the test.
+  Existing phone applications/data are preserved. Next bounded task018 starts
+  from this tested017 checkpoint; no018 behavior exists at this checkpoint.
   Final batch publication targets dev → main [PR203](https://github.com/AlexandreZanata/Abastevo/pull/203).
   Physical authorized ADB phone only; preserve existing apps/data; no emulator.
   Parent CI was pending at opening; no new remote acceptance claim. Full Quick

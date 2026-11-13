@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-IDN-017: existing-account invitation consent and server acknowledgements. -->
+    <string name="enterprise_invitation_entry">企業に参加</string>
+    <string name="enterprise_invitation_entry_hint">Abastevoアカウントで招待を利用します。</string>
+    <string name="enterprise_invitation_title">企業からの招待</string>
+    <string name="enterprise_invitation_intro">企業の担当者から受け取ったコードを入力してください。</string>
+    <string name="enterprise_invitation_account_required">招待を確認して回答するには、個人のAbastevoアカウントにログインしてください。</string>
+    <string name="enterprise_invitation_code_label">招待コード</string>
+    <string name="enterprise_invitation_preview">招待を確認</string>
+    <string name="enterprise_invitation_verified">法人情報は確認済みです</string>
+    <string name="enterprise_invitation_unverified">法人情報は未確認です</string>
+    <string name="enterprise_invitation_roles">付与されるアクセス権</string>
+    <string name="enterprise_invitation_role_scope">%1$s · %2$s</string>
+    <string name="enterprise_invitation_privacy">企業は、あなたの従業員情報、招待を承諾したアカウントの別名、この企業内での操作を閲覧できます。個人の認証情報、個人の車両、非公開の履歴、アクセス権を持つ他の企業は閲覧できません。</string>
+    <string name="enterprise_invitation_confirmation_required">このアクセス権は、企業の担当者が確認するまで有効になりません。</string>
+    <string name="enterprise_invitation_consent">この企業に参加し、上記のデータを共有することに同意します。</string>
+    <string name="enterprise_invitation_accept">招待を承諾</string>
+    <string name="enterprise_invitation_decline">招待を辞退</string>
+    <string name="enterprise_invitation_retry">同じ回答を再送信</string>
+    <string name="enterprise_invitation_pending">招待を承諾しました。アクセス権を有効にするには、企業の担当者による確認が必要です。</string>
+    <string name="enterprise_invitation_active">サーバーが企業へのアクセス権を確認しました。</string>
+    <string name="enterprise_invitation_declined">招待を辞退しました。アクセス権は付与されていません。</string>
+    <string name="enterprise_invitation_done">完了</string>
+    <string name="enterprise_invitation_busy">サーバーの確認を待っています…</string>
+    <string name="enterprise_invitation_sign_in">自分のアカウントにログイン</string>
+    <string name="enterprise_invitation_restart">別のコードを使用</string>
+    <string name="enterprise_invitation_offline">招待を確認または回答するには、インターネットに接続してください。オフラインでは回答は確定しません。</string>
+    <string name="enterprise_invitation_fresh_required">アカウントに再度ログインして、アクセスを確認してください。</string>
+    <string name="enterprise_invitation_invalid">コードが無効か、有効期限が切れています。担当者に新しいコードを依頼してください。</string>
+    <string name="enterprise_invitation_limited">試行回数が多すぎます。しばらく待ってから再度お試しください。</string>
+    <string name="enterprise_invitation_already_member">このアカウントは、すでにこの企業に関連付けられています。アクセス権を確認してください。</string>
+    <string name="enterprise_invitation_stale">この確認内容は無効になりました。回答する前に、もう一度招待を確認してください。</string>
+    <string name="enterprise_invitation_unavailable">操作を確認できませんでした。接続を確認して、再度お試しください。</string>
+    <string name="enterprise_test_environment">合成データを使用したテスト環境</string>
+    <string name="enterprise_scope_organization">企業全体</string>
+    <string name="enterprise_scope_self">自分の記録</string>
+    <string name="enterprise_role_owner">オーナー</string>
+    <string name="enterprise_role_admin">管理者</string>
+    <string name="enterprise_role_fleet_manager">車両管理者</string>
+    <string name="enterprise_role_supervisor">監督者</string>
+    <string name="enterprise_role_finance">経理担当者</string>
+    <string name="enterprise_role_approver">承認者</string>
+    <string name="enterprise_role_driver">ドライバー</string>
+    <string name="enterprise_role_operations_staff">運用担当者</string>
+    <string name="enterprise_role_auditor">監査担当者</string>
+    <string name="enterprise_role_data_manager">データ管理担当者</string>
+    <string name="enterprise_role_unknown">不明な役割</string>
+</resources>

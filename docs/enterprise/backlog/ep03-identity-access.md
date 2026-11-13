@@ -286,7 +286,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task212](https://github.com/AlexandreZanata/Abastevo/issues/212), cumulative PR203. Current account context discovery/selection, actual employee access-state reads and the C1 employee/invitation panel pass ordinary PostGIS/race/upgrade/HTTP/contract checks and real HTTPS Chromium flows. Thirty web unit tests, keyboard, two-organization isolation, one-time delivery, confirmation/rejection, fresh/revoked access and responsive layouts pass. [Evidence](../evidence/f1-idn016-company-identity-panel.md). Unit selection/team management and managed activation keep their owning scope. Full local Quick runs once at the end of tasks016..018; no merge, deployment or F1/M1 completion is claimed.
 
 ### EMP-IDN-017 — App: invitation acceptance and managed activation
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Accept an existing-account invitation from Android.
 - **Rules and use cases:** BR-IDN-005, BR-IDN-012, BR-IDN-017, BR-IDN-033, BR-PRIV-015, UC-IDN-03, SCR-IDN-09, SCR-IDN-10
 - **Depends on:** EMP-IDN-005, EMP-PLAT-011
@@ -300,6 +300,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-APP, V-API, V-AUTHZ, V-ISO, V-PRIV · migration: preserve personal storage · rollback: hide the new entry and retain acknowledged membership
 - **Risks and assumptions:** The indexed title retains managed activation. That part follows its own approval and API evidence outside C1.
 - **Done when:** Existing-account acceptance and negative outcomes pass in the affected Android flow.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task213](https://github.com/AlexandreZanata/Abastevo/issues/213), cumulative PR203. Actual current-account company-cookie transport, informed consent, explicit decline and server-confirmed ACTIVE versus pending confirmation pass scoped identity/cancellation/retry/privacy tests and six actual physical Android journeys, with zero failures/errors/skips. Compiled callbacks capture the rendered primitive epoch; stale input cannot adopt a new session. Domain enterprise228/application15/data49/app33 tests, app build/lint, actual TLS/PostGIS session rotation and secret/plan checks pass. [Evidence](../evidence/f1-idn017-android-invitation.md). Managed activation, protected persistence, F1/M1 and production retain their own gates. Next bounded task: EMP-IDN-018.
 
 ### EMP-IDN-018 — App: personal and enterprise context switch with the enterprise home shell
 - **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO

@@ -33,6 +33,10 @@ fun hasReleaseSigningConfig(): Boolean {
 
 val automatedVersionName = providers.gradleProperty("androidReleaseVersionName").orNull
 val automatedVersionCode = providers.gradleProperty("androidReleaseVersionCode").orNull
+// Opt-in physical enterprise validation never installs over an existing app.
+// Its Hilt runner and sources are absent from ordinary instrumentation builds.
+val enterpriseDeviceValidation = providers.gradleProperty("enterpriseDeviceValidation")
+    .orElse("false").get().toBooleanStrict()
 require((automatedVersionName == null) == (automatedVersionCode == null)) {
     "Release version name and code must be supplied together"
 }
@@ -64,7 +68,12 @@ android {
             providers.gradleProperty("qualityUiEnabled").orElse("true").get().toBooleanStrict().toString())
         buildConfigField("boolean", "OCCURRENCE_UI_ENABLED",
             providers.gradleProperty("occurrenceUiEnabled").orElse("true").get().toBooleanStrict().toString())
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        testInstrumentationRunner = if (enterpriseDeviceValidation) {
+            "com.anpfuel.app.ui.enterprise.EnterpriseDeviceTestRunner"
+        } else {
+            "androidx.test.runner.AndroidJUnitRunner"
+        }
+        if (enterpriseDeviceValidation) testApplicationId = "com.anpfuel.app.enterprisevalidation.test"
         testInstrumentationRunnerArguments["clearPackageData"] = "true"
     }
 
@@ -89,7 +98,7 @@ android {
             // Sideloaded release builds signed with the release keystore cannot be
             // upgraded in place by a debug APK (INSTALL_FAILED_UPDATE_INCOMPATIBLE).
             // The suffixed application id lets the debug build coexist with them.
-            applicationIdSuffix = ".debug"
+            applicationIdSuffix = if (enterpriseDeviceValidation) ".enterprisevalidation" else ".debug"
             versionNameSuffix = "-debug"
         }
         create("mapProbe") {
@@ -146,6 +155,13 @@ android {
         kotlin.srcDir("src/comapsProbe/kotlin")
         manifest.srcFile("src/mapProbe/AndroidManifest.xml")
     }
+    if (enterpriseDeviceValidation) {
+        sourceSets.getByName("androidTest") {
+            java.setSrcDirs(listOf("src/enterpriseDeviceTest/kotlin"))
+            kotlin.setSrcDirs(listOf("src/enterpriseDeviceTest/kotlin"))
+            manifest.srcFile("src/enterpriseDeviceTest/AndroidManifest.xml")
+        }
+    }
 
     androidResources {
         noCompress += listOf("txt", "bin", "html", "png", "json", "mwm", "ttf", "sdf", "ui", "config", "csv", "spv", "obj")
@@ -159,6 +175,12 @@ android {
             )
         }
     }
+}
+
+if (enterpriseDeviceValidation) {
+    // Kotlin keeps its own default Android test root in addition to AGP's.
+    // Replace both roots so legacy instrumentation is absent from this APK.
+    kotlin.sourceSets.getByName("androidTest").kotlin.setSrcDirs(listOf("src/enterpriseDeviceTest/kotlin"))
 }
 
 dependencies {
@@ -206,6 +228,11 @@ dependencies {
     androidTestImplementation(libs.kotlinx.coroutines.android)
     androidTestImplementation(libs.room.runtime)
     androidTestImplementation(libs.room.ktx)
+    if (enterpriseDeviceValidation) {
+        // Same pinned Apache-2.0 Hilt family, confined to isolated device tests.
+        androidTestImplementation(libs.hilt.testing)
+        add("kspAndroidTest", libs.hilt.compiler)
+    }
 
     androidTestUtil("androidx.test:orchestrator:1.5.1")
 
