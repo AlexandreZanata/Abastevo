@@ -47,3 +47,28 @@ type SelfMembershipRule struct {
 	Success int    `json:"success"`
 }
 type SelfMembershipDescriptor interface{ SelfMembershipRule() SelfMembershipRule }
+
+// SignedDeviceRule is confined to the two actual device proof entry points.
+// Only first enrolment may bootstrap without an existing scoped enrolment.
+type SignedDeviceRule struct {
+	Action       string `json:"action"`
+	AccountProof bool   `json:"account_proof"`
+	Signed       bool   `json:"signed"`
+	Fresh        bool   `json:"fresh"`
+	Enrollment   bool   `json:"enrollment"`
+	Bootstrap    bool   `json:"bootstrap"`
+	Success      int    `json:"success"`
+}
+type SignedDeviceDescriptor interface{ SignedDeviceRule() SignedDeviceRule }
+
+// SelfDeviceRule authorizes only account-bound scoped enrolment management;
+// it neither grants an organization permission nor exposes personal sessions.
+type SelfDeviceRule struct {
+	Action  string `json:"action"`
+	Cookie  bool   `json:"cookie"`
+	CSRF    bool   `json:"csrf"`
+	Fresh   bool   `json:"fresh"`
+	Binding bool   `json:"binding"`
+	Success int    `json:"success"`
+}
+type SelfDeviceDescriptor interface{ SelfDeviceRule() SelfDeviceRule }

@@ -704,6 +704,50 @@ removed on rollback; the prior API remains schema-compatible. Test with
 an explicit disposable `ANPFUEL_TEST_DATABASE_URL`.
 [Architecture and evidence](../docs/enterprise/09-architecture.md#31-implemented-company-account-session).
 
+### Organization device enrolments (EMP-IDN-015)
+
+The default-off enterprise composition now has a distinct signed existing-account
+plane: `POST /v1/orgs/{org_id}/devices/enroll` and `/devices/check`. Both require
+the actual personal family/access proof and registered bound P256 signing key;
+only enrolment is a bootstrap exception to the current-enrolment check. It does
+not bypass current membership, employee, capability, proof or source locks.
+The existing identity-v1 signature clock envelope is preserved and expiry is
+rechecked against database time after waits. Client-selected proof flags, keys,
+account IDs, counts and limits are not authority.
+
+`ANPFUEL_ENTERPRISE_DEVICE_LIMIT` is server-owned deployment configuration,
+default3, range1–5. Slot counts and insertion serialize under the source root;
+an operator lowering the limit does not erase existing periods. Managed
+activation/recovery remains uninstalled behind GOV-013/IDN-006..008.
+
+Fresh cookie self list/revoke and fresh `idn.credential.manage` manager list/revoke
+operate under `/v1/orgs/{org_id}/memberships/{membership_id}/devices/`. Managers
+can reduce access while the organization is suspended/archived or its pilot flag
+is disabled. Responses contain scoped enrolment metadata, never personal session
+families, contributor/key inventory or other organizations. Last-sync remains
+null until a real sync producer exists.
+
+Append-only migration194 installs FORCE-RLS periods, immutable audited command
+receipts and membership-ending revocation. LOST_OR_COMPROMISED bars that key
+throughout this organization. ACCESS_ENDED remains terminal for the old period;
+an explicitly invited distinct ACTIVE membership can create a new enrolment for
+the still-valid personal key. Neither class grants normal access or an intake
+window. Personal families/keys/cloud devices and other organizations survive.
+Native erase/acceptance, future intake, production grants/providers and release
+certification remain separate gates; no immediate remote wipe is promised.
+
+Runtime needs the reviewed scoped device table/receipt and source row-lock/nonce
+privileges; migration194 creates no production grants. Its migration owner must
+own `org_memberships` to install the ending trigger. The ordinary disposable
+upgrade test proves missing grants fail rather than silently provisioning them.
+Run the real source/protocol/upgrade suite with an explicit disposable PostGIS:
+
+```sh
+go test -race -tags=integration -timeout=20m ./internal/modules/organization/adapters -run TestOrganizationDevice -count=1
+```
+
+[Device acceptance evidence](../docs/enterprise/evidence/f1-idn015-device-registry.md).
+
 ### Private original transfers (EMP-PLAT-006)
 
 `orgmedia` supplies bounded organization storage and audited member-bound

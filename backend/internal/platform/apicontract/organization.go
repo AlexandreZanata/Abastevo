@@ -29,8 +29,10 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		creation, creationGuarded := handler.(orgapi.OrganizationCreationDescriptor)
 		personal, personalGuarded := handler.(orgapi.PersonalInvitationDescriptor)
 		self, selfGuarded := handler.(orgapi.SelfMembershipDescriptor)
+		signedDevice, signedDeviceGuarded := handler.(orgapi.SignedDeviceDescriptor)
+		selfDevice, selfDeviceGuarded := handler.(orgapi.SelfDeviceDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
@@ -43,8 +45,45 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		if !personalGuarded && operation.Extensions["x-abastevo-personal-invitation"] != nil {
 			return fmt.Errorf("unexpected personal invitation metadata for %s", path)
 		}
+		if !signedDeviceGuarded && operation.Extensions["x-abastevo-signed-device"] != nil || !selfDeviceGuarded && operation.Extensions["x-abastevo-self-device"] != nil {
+			return fmt.Errorf("unexpected device authority metadata for %s", path)
+		}
 		var declared orgapi.Rule
-		if selfGuarded {
+		if signedDeviceGuarded {
+			rule := signedDevice.SignedDeviceRule()
+			expected := orgapi.SignedDeviceRule{Action: rule.Action, AccountProof: true, Signed: true, Fresh: rule.Action == "enroll", Enrollment: rule.Action == "check", Bootstrap: rule.Action == "enroll", Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || selfDeviceGuarded || (rule.Action != "enroll" && rule.Action != "check") || path != "/v1/orgs/{org_id}/devices/"+rule.Action || rule != expected || operation.Extensions["x-abastevo-organization"] != nil || operation.Extensions["x-abastevo-company-session"] != nil || operation.Extensions["x-abastevo-organization-creation"] != nil || operation.Extensions["x-abastevo-self-membership"] != nil || operation.Extensions["x-abastevo-personal-invitation"] != nil {
+				return fmt.Errorf("invalid signed device guard for %s", path)
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-signed-device"])
+			var recorded orgapi.SignedDeviceRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("signed device metadata differs for %s", path)
+			}
+			if e := validateSignedDeviceSecurity(operation, path); e != nil {
+				return e
+			}
+			declared.Success = 200
+		} else if selfDeviceGuarded {
+			rule := selfDevice.SelfDeviceRule()
+			expected := orgapi.SelfDeviceRule{Action: rule.Action, Cookie: true, CSRF: true, Fresh: true, Binding: true, Success: 200}
+			expectedPath := "/v1/orgs/{org_id}/memberships/{membership_id}/devices/self/list"
+			if rule.Action == "revoke" {
+				expectedPath = "/v1/orgs/{org_id}/memberships/{membership_id}/devices/self/{device_id}/revoke"
+			}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || (rule.Action != "list" && rule.Action != "revoke") || path != expectedPath || rule != expected || operation.Extensions["x-abastevo-organization"] != nil || operation.Extensions["x-abastevo-company-session"] != nil || operation.Extensions["x-abastevo-organization-creation"] != nil || operation.Extensions["x-abastevo-self-membership"] != nil || operation.Extensions["x-abastevo-personal-invitation"] != nil {
+				return fmt.Errorf("invalid self device guard for %s", path)
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-self-device"])
+			var recorded orgapi.SelfDeviceRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("self device metadata differs for %s", path)
+			}
+			if e := validateCompanySecurity(document, operation, path, orgapi.CompanySessionRule{Cookie: true, CSRF: true, Fresh: true, Success: 200}); e != nil {
+				return e
+			}
+			declared.Success = 200
+		} else if selfGuarded {
 			rule := self.SelfMembershipRule()
 			expected := orgapi.SelfMembershipRule{Action: rule.Action, Cookie: true, CSRF: true, Fresh: true, Binding: true, Success: 200}
 			expectedPath := "/v1/orgs/{org_id}/memberships/{membership_id}/leave"
@@ -184,6 +223,42 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 			if !registered[method+" "+path] {
 				return fmt.Errorf("unregistered organization contract operation %s %s", method, path)
 			}
+		}
+	}
+	return nil
+}
+
+func validateSignedDeviceSecurity(operation *openapi3.Operation, path string) error {
+	if operation.Security == nil || len(*operation.Security) != 0 {
+		return fmt.Errorf("unexpected cookie authority for signed device %s", path)
+	}
+	for _, header := range []string{"Signature", "Signature-Created", "Signature-Expires", "Signature-Keyid", "Signature-Nonce"} {
+		found := false
+		for _, p := range operation.Parameters {
+			if p.Value != nil && p.Value.In == "header" && p.Value.Name == header && p.Value.Required {
+				found = true
+			}
+		}
+		if !found {
+			return fmt.Errorf("missing signed device proof header %s for %s", header, path)
+		}
+	}
+	if operation.RequestBody == nil || operation.RequestBody.Value == nil || operation.RequestBody.Value.Content.Get("application/json") == nil {
+		return fmt.Errorf("missing signed device body for %s", path)
+	}
+	ref := operation.RequestBody.Value.Content.Get("application/json").Schema
+	if ref == nil || ref.Value == nil {
+		return fmt.Errorf("unresolved signed device body for %s", path)
+	}
+	for _, name := range []string{"family_id", "access_token"} {
+		found := false
+		for _, required := range ref.Value.Required {
+			if required == name {
+				found = true
+			}
+		}
+		if !found || ref.Value.Properties[name] == nil {
+			return fmt.Errorf("missing signed device account proof field %s for %s", name, path)
 		}
 	}
 	return nil

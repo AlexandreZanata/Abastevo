@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"net"
+	"net/url"
 	"time"
 
 	account "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
@@ -17,6 +18,7 @@ import (
 	companyweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/application"
 	identitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
+	proofauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	member "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
@@ -45,6 +47,7 @@ type Options struct {
 	CursorSecret []byte
 	Pool         *pgxpool.Pool
 	Accounts     *account.Service
+	DeviceLimit  int64
 }
 
 // Register performs no I/O or provisioning. The default mounts no private
@@ -52,6 +55,13 @@ type Options struct {
 func Register(router chi.Router, o Options) error {
 	if !o.Enabled {
 		return nil
+	}
+	deviceLimit := o.DeviceLimit
+	if deviceLimit == 0 {
+		deviceLimit = 3
+	}
+	if deviceLimit < 1 || deviceLimit > 5 {
+		return memberapp.ErrRegisterUnavailable
 	}
 	companyService := &company.Service{Enabled: true, Store: &companypg.Store{Pool: o.Pool}, Hasher: accountdomain.SHA256Hasher{}, Prove: companypg.AccountProof(o.Accounts), Now: time.Now, NewID: jobs.NewUUIDv4, NewSecret: accountdomain.GenerateToken}
 	cookies, err := companyweb.New(companyService, o.Origin)
@@ -71,6 +81,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, member.OffboardingAuditDefinitions()...)
 	definitions = append(definitions, member.RehireAuditDefinitions()...)
 	definitions = append(definitions, member.EmployeeMergeAuditDefinitions()...)
+	definitions = append(definitions, member.DeviceAuditDefinitions()...)
 	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
@@ -98,6 +109,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "idn.invitation", Permissions: []string{"idn.invitation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic invitation writes use the existing identity v1 write allowance on every axis; production measurement remains required."},
 		{Class: "idn.membership", Permissions: []string{"idn.membership.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic membership lifecycle uses identity v1 write200/hour on every axis; production measurement remains required."},
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "idn.device", Permissions: []string{"idn.credential.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic scoped device enrollment and revocation inherit identity v1 write200/hour on every axis; current source membership precedes admission and production measurement remains required."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 	})
@@ -175,6 +187,15 @@ func Register(router chi.Router, o Options) error {
 	employeeMerge := &member.EmployeeMergeStore{Pool: o.Pool, Authority: &orgpg.EmployeeMergeAuthority{MembershipAccessAuthority: orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}, Teams: orgpg.EmployeeMergeTeamProjector{NewID: jobs.NewUUIDv4}, Audit: auditStore}
 	mergeAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: memberweb.EmployeeMergeRecords{}, Now: time.Now}
 	if e := memberweb.RegisterEmployeeMerge(router, memberapp.EmployeeMergeService{Enabled: true, Repository: employeeMerge}, cookies, gateway, mergeAuthorization, roots); e != nil {
+		return e
+	}
+	deviceStore := &member.DeviceStore{Pool: o.Pool, Authority: &orgpg.DeviceAuthority{OffboardingAuthority: orgpg.OffboardingAuthority{MembershipAccessAuthority: orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}}, Audit: auditStore, Capabilities: flags, Limit: deviceLimit, NewID: jobs.NewUUIDv4}
+	deviceAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: memberweb.DeviceRecords{}, Now: time.Now}
+	origin, e := url.Parse(o.Origin)
+	if e != nil {
+		return memberapp.ErrRegisterUnavailable
+	}
+	if e := memberweb.RegisterDevices(router, true, deviceStore, cookies, gateway, deviceAuthorization, roots, o.Accounts, proofauth.Verifier{Pool: o.Pool, Authority: origin.Host, Now: time.Now}); e != nil {
 		return e
 	}
 

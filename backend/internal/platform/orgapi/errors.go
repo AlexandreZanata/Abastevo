@@ -32,6 +32,7 @@ const (
 	PeriodLocked             Code = "PERIOD_LOCKED"
 	LastOwner                Code = "LAST_OWNER"
 	MergeConflict            Code = "MERGE_CONFLICT"
+	DeviceRevoked            Code = "DEVICE_REVOKED"
 	OpenResponsibilities     Code = "OPEN_RESPONSIBILITIES"
 	LastUnit                 Code = "LAST_UNIT"
 	StructureInUse           Code = "STRUCTURE_IN_USE"
@@ -52,7 +53,8 @@ var statuses = map[Code]int{
 	Malformed: 400, Unauthenticated: 401, NotFound: 404,
 	Forbidden: 403, MembershipSuspended: 403, MembershipEnded: 403, OrgSuspended: 403, OrgArchived: 403,
 	FreshAuthRequired: 401, EntitlementRequired: 403, LimitReached: 403,
-	Conflict: 409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409, MergeConflict: 409, OpenResponsibilities: 409,
+	DeviceRevoked: 403,
+	Conflict:      409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409, MergeConflict: 409, OpenResponsibilities: 409,
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
 	LastUnit: 409, StructureInUse: 409, DuplicateReviewRequired: 409,
 	OrgSetupIncomplete:    409,

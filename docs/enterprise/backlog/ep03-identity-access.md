@@ -252,7 +252,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** Expiry, optional fields and negative access pass using synthetic fixtures.
 
 ### EMP-IDN-015 — Device registry, session list and revocation
-- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** List and revoke scoped device enrolments without exposing personal sessions.
 - **Rules and use cases:** BR-IDN-025, BR-IDN-037, BR-IDN-038, BR-IDN-039, BR-PRIV-018, UC-IDN-16
 - **Depends on:** EMP-IDN-005
@@ -266,6 +266,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive enrolment registry · rollback: preserve revocations and recorded scope
 - **Risks and assumptions:** Later intake and on-contact cleanup depend on the revocation class.
 - **Done when:** Registry, revocation and scoped denial pass on real PostGIS.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task211](https://github.com/AlexandreZanata/Abastevo/issues/211), cumulative PR203. Six actual signed/self/manager routes enrol/check/list/revoke existing-account device periods, with fresh source proof, scoped metadata, server-owned default3/range1–5 and terminal class/revision/audit/receipts. Membership ending revokes ACCESS_ENDED; LOST remains barred throughout the organization, while a distinct freshly invited ACTIVE period can enrol a still-valid personal key. Personal/other-organization access stays independent. Ordinary populated193→194 recovery/RLS/retention, real signatures/nonces/HTTP, twelve-way contention, current proof after waits, revoke/ending races, deferred faults and two-scope ordinary erasure pass. Full local Quick246s passes; affected regression completes with scoped recovery of two legacy erasure-role grants. [Evidence](../evidence/f1-idn015-device-registry.md). Last-sync, native wipe, intake-only delivery and managed activation retain their own producers/gates. No personal session inventory, deployment or F1/M1 completion is claimed.
 
 ### EMP-IDN-016 — Panel: employees, invitations and activation codes
 - **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type WEB · size M · state TODO

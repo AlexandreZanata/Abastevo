@@ -1,6 +1,19 @@
 # Identity, employees and access
 
-Status: **EMP-IDN-001/002/003/004/005/009/010/011/012/013 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+Status: **EMP-IDN-001/002/003/004/005/009/010/011/012/013/015 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-13; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+
+EMP-IDN-015 adds actual existing-account signed key enrolment/current checks and
+fresh account-bound self/manager scoped list/revoke. Server-owned deployment
+configuration defaults to3 devices, range1–5; source locks serialize slots.
+Migration194 keeps FORCE-RLS periods, immutable audit/receipts and actual
+membership-ending ACCESS_ENDED causes. LOST keys stay barred in the organization;
+a distinct freshly invited ACTIVE membership may create a new ACCESS_ENDED-key
+period without reopening the old one. No personal families, keys, cloud devices
+or other organizations are revoked or exposed. Last-sync remains null until
+its producer exists. [Device evidence](../evidence/f1-idn015-device-registry.md)
+records real signed/cookie HTTP, contention, proof waits, fault/upgrade recovery
+and ordinary two-scope account erasure. Managed activation, native wipe and
+future intake-only handling retain their own implementation/approval gates.
 
 EMP-IDN-013 completes the existing guarded contact/profile replacement and
 invitation/admission source projection. Canonical contact changes atomically

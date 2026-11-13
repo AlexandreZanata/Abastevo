@@ -1,4 +1,26 @@
 # Current execution state
+- Enterprise EMP-IDN-015, 2026-11-13: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn015 from published dev f1ad43ac; publish to dev/PR203,
+  [task211](https://github.com/AlexandreZanata/Abastevo/issues/211).
+  [Device evidence](../enterprise/evidence/f1-idn015-device-registry.md) records
+  six actual signed/self/manager routes, source-bound slots/current key proof,
+  scoped metadata and terminal revocation with actual membership-ending causes.
+  B-BR-EMP-87..89, BUC-EMP-45 and EDR-056 precede behavior. Ordinary populated
+  migration194 recovery/RLS, signatures/nonces/HTTP, twelve-way retry/slot races,
+  ending/revoke/check contention, proof waits, late faults and independent
+  personal/other-org access pass. Device/schema suite76.389s; ordinary two-scope
+  populated erasure2.083s. Affected regression completes after scoped3.881s
+  recovery of two legacy erasure-role grant lists; API62.565s. Prior CI audit
+  CASCADE fixture/deadline failures repaired separately in57bec09c. Full local
+  Quick246s, no vulnerabilities, domain91.3%; static/generation/contract/compat/
+  plan/format/secret checks pass. Tested backend tree
+  783ee2c2250d6c924426c6648d49d9e706ffd7b3; contract Git blob
+  e03535c45986af9f5b898921f30970ebfc3b0ad0.
+  Required remote check awaits the new head. Next: protected review/integration;
+  this request stops at this task. Managed/GOV-013/native/sync/intake/runtime/
+  legal/staging/production and full F1/M1 remain open. No merge/wiki/deployment;
+  issue stays open until integration.
+
 - Enterprise EMP-IDN-013, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
   codex/enterprise-idn013 from published dev cce39312; publish to dev/PR203,
   [task210](https://github.com/AlexandreZanata/Abastevo/issues/210).

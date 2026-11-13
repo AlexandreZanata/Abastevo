@@ -106,12 +106,13 @@ const (
 	// Contributor surface (ADR-023). The GitHub repository is owner/repo;
 	// the token is optional and read-only. Public web origins are the only
 	// origins allowed to read GET /v1/contributors with CORS.
-	keyGitHubRepo        = "ANPFUEL_GITHUB_REPO"
-	keyGitHubToken       = "ANPFUEL_GITHUB_TOKEN"
-	keyPublicWebOrigins  = "ANPFUEL_PUBLIC_WEB_ORIGINS"
-	keyDriverEnabled     = "ANPFUEL_DRIVER_ENABLED"
-	keyForumEnabled      = "ANPFUEL_FORUM_ENABLED"
-	keyEnterpriseEnabled = "ANPFUEL_ENTERPRISE_ENABLED"
+	keyGitHubRepo            = "ANPFUEL_GITHUB_REPO"
+	keyGitHubToken           = "ANPFUEL_GITHUB_TOKEN"
+	keyPublicWebOrigins      = "ANPFUEL_PUBLIC_WEB_ORIGINS"
+	keyDriverEnabled         = "ANPFUEL_DRIVER_ENABLED"
+	keyForumEnabled          = "ANPFUEL_FORUM_ENABLED"
+	keyEnterpriseEnabled     = "ANPFUEL_ENTERPRISE_ENABLED"
+	keyEnterpriseDeviceLimit = "ANPFUEL_ENTERPRISE_DEVICE_LIMIT"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -167,6 +168,9 @@ type Config struct {
 	ForumEnabled bool
 	// EnterpriseEnabled gates private organization surfaces; default off.
 	EnterpriseEnabled bool
+	// EnterpriseDeviceLimit is the server-owned existing-account enrollment
+	// ceiling per membership; clients never supply a limit. Default3, range1..5.
+	EnterpriseDeviceLimit int64
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
 	QualityReadsEnabled        bool
 	QualityCompanyReadsEnabled bool
@@ -425,6 +429,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("ANPFUEL_ENTERPRISE_ENABLED must be boolean")
 		}
 		cfg.EnterpriseEnabled = enabled
+	}
+	cfg.EnterpriseDeviceLimit = 3
+	if raw, present := getenv(keyEnterpriseDeviceLimit); present {
+		limit, err := strconv.ParseInt(raw, 10, 64)
+		if err != nil || limit < 1 || limit > 5 {
+			return Config{}, fmt.Errorf("%s: expected integer from1 to5", keyEnterpriseDeviceLimit)
+		}
+		cfg.EnterpriseDeviceLimit = limit
 	}
 
 	cfg.PriceRankingEnabled = true

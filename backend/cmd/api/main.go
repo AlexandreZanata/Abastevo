@@ -523,7 +523,7 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	// leaves this closure.
 	payments.Billing.Proof = accountOwnerProof{validate: accountService.ValidateAccess}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
-	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Origin: "https://" + cfg.CanonicalHost, CursorSecret: cfg.CursorSecret, Pool: pool.Underlying(), Accounts: accountService}); err != nil {
+	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Origin: "https://" + cfg.CanonicalHost, CursorSecret: cfg.CursorSecret, Pool: pool.Underlying(), Accounts: accountService, DeviceLimit: cfg.EnterpriseDeviceLimit}); err != nil {
 		return err
 	}
 	// Station/fuel feedback (P14-T03). Same closure rule: session

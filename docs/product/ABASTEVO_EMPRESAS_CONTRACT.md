@@ -1363,3 +1363,43 @@ proof and the transactionally enforced three-pending-organization account cap.
   phone, clearing/equivalent contacts, waiting/active/no admission, source races,
   exact retries/CAS, stale proof after waits, foreign/merged/non-manager/disabled
   refusals and late rollback/recovery without affecting personal access.
+
+- **B-BR-EMP-87 — Enrol actual signed keys per active membership.** An existing
+  personal account proves its current family and actual bound signing key through
+  the normal signature verifier; client IDs/flags never confirm possession.
+  Enrol only for its current ACTIVE membership and ACTIVE employee under retained
+  account/family/key/capability/root locks. Default to3 current devices, with a
+  server-owned deployment limit1..5; callers cannot choose counts or limits.
+  Count and insert atomically. Keep organization/membership periods independent
+  of personal cloud devices and never reactivate a revoked enrolment. A lost or
+  compromised key cannot enrol again in this organization. ACCESS_ENDED remains
+  terminal in the old membership; a distinct newly ACTIVE membership after an
+  explicit fresh invitation may enrol its still-valid personal key as a new period.
+  Managed activation/recovery remains gated by GOV-013 and IDN-006..008.
+- **B-BR-EMP-88 — Device revocation is scoped and terminal.** Fresh account-bound
+  self-management and current fresh idn.credential.manage may list/revoke only
+  the selected membership's organization enrolments. Manager reduction remains
+  available in suspended/archived organizations. Require exact device revision,
+  canonical operation UUID, reason and LOST_OR_COMPROMISED or ACCESS_ENDED.
+  Retain original receipts, actual audit and server timestamps. Every installed
+  signed enterprise device request except first-enrolment bootstrap checks the
+  current exact enrolment and membership; recheck after waits before success.
+  Revoked keys cannot use bootstrap to restore the same period. ACCESS_ENDED carries no normal
+  authority; future intake-only delivery must implement its own approved window.
+- **B-BR-EMP-89 — Preserve personal access and honest device metadata.** Membership
+  ending revokes its remaining enrolments ACCESS_ENDED atomically with source
+  membership revision; an earlier lost/compromised classification stays intact.
+  Suspension denies use without inventing a membership ending. List only scoped
+  label, enrolment/revocation state, timestamps and revision; never expose personal
+  families, account sessions, key inventory or other organizations. Last-sync is
+  null until a real sync producer records one. No remote/offline wipe is promised
+  by server revocation. Device/audit/receipt/source failure commits no partial state.
+- **BUC-EMP-45 — Enrol, inspect and revoke an organization device.** Sign enrolment
+  with current account/key proof, supply a private label and exact operation ID,
+  and count slots under source locks. A current signed check proves enrolment on
+  the next request. From fresh personal self-management or authorized manager
+  entry, list this membership's devices and revoke at the exact revision/class
+  with a reason. Preserve original retries and unrelated/personal access. Exercise
+  forged or unbound keys, expired/revoked proof after waits, last-slot and
+  enrol/revoke/offboard contention, foreign selectors, missing permission,
+  immutable history, late faults and populated ordinary migration recovery.

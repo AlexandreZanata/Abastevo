@@ -14200,6 +14200,572 @@ paths:
                 period_id: 7b0e2a54-0000-4000-8000-000000000901
                 effective_at: '2026-11-12T15:00:00Z'
                 notice_state: PENDING_NOTIFICATION_CORE
+  /v1/orgs/{org_id}/devices/enroll:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseDeviceEnroll
+      summary: Enroll an actual signed organization device
+      description: Existing-account organization device runtime. Private no-store response without ETag. Current source
+        proof and retained transaction checks apply; managed activation/recovery, sync delivery and native erasure
+        retain separate owning gates. Requires current personal family/access token and actual owner-bound signed
+        key. Cookie/Authorization fallback is refused. Enrollment is the one bootstrap; revoked scoped keys cannot
+        re-enroll. Canonical configured HTTPS authority is signed; forwarded hosts are never trusted.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: Signature
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      - name: Signature-Created
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Expires
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Keyid
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Nonce
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDeviceEnrollRequest'
+            example:
+              family_id: 7b0e2a54-0000-4000-8000-000000001504
+              access_token: synthetic-device-access
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001503
+              label: Synthetic work phone
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current scoped metadata or original committed acknowledgement; never personal session inventory.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDeviceResult'
+              example:
+                device:
+                  id: 7b0e2a54-0000-4000-8000-000000001501
+                  membership_id: 7b0e2a54-0000-4000-8000-000000001502
+                  label: Synthetic work phone
+                  state: ENROLLED
+                  revision: 1
+                  revocation_class: ''
+                  enrolled_at: '2026-11-13T12:00:00Z'
+                  last_sync_at: null
+                  revoked_at: null
+                  data_mode: SYNTHETIC
+                operation_id: 7b0e2a54-0000-4000-8000-000000001503
+                reason: ''
+                replayed: false
+                data_mode: SYNTHETIC
+      x-abastevo-signed-device:
+        action: enroll
+        account_proof: true
+        signed: true
+        fresh: true
+        enrollment: false
+        bootstrap: true
+        success: 200
+  /v1/orgs/{org_id}/devices/check:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseDeviceCheck
+      summary: Check current signed device authority
+      description: Existing-account organization device runtime. Private no-store response without ETag. Current source
+        proof and retained transaction checks apply; managed activation/recovery, sync delivery and native erasure
+        retain separate owning gates. Requires current personal family/access token and actual owner-bound signed
+        key. Cookie/Authorization fallback is refused. Enrollment is the one bootstrap; revoked scoped keys cannot
+        re-enroll. Canonical configured HTTPS authority is signed; forwarded hosts are never trusted.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: Signature
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      - name: Signature-Created
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Expires
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Keyid
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Nonce
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDeviceCheckRequest'
+            example:
+              family_id: 7b0e2a54-0000-4000-8000-000000001504
+              access_token: synthetic-device-access
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current scoped metadata or original committed acknowledgement; never personal session inventory.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDeviceView'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000001501
+                membership_id: 7b0e2a54-0000-4000-8000-000000001502
+                label: Synthetic work phone
+                state: ENROLLED
+                revision: 1
+                revocation_class: ''
+                enrolled_at: '2026-11-13T12:00:00Z'
+                last_sync_at: null
+                revoked_at: null
+                data_mode: SYNTHETIC
+      x-abastevo-signed-device:
+        action: check
+        account_proof: true
+        signed: true
+        fresh: false
+        enrollment: true
+        bootstrap: false
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/devices/list:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseDeviceList
+      summary: List organization enrollment metadata
+      description: Existing-account organization device runtime. Private no-store response without ETag. Current source
+        proof and retained transaction checks apply; managed activation/recovery, sync delivery and native erasure
+        retain separate owning gates. Fresh dedicated company cookie, exact Origin/Host and CSRF are mandatory. Fresh
+        current idn.credential.manage is required; manager reduction remains available in suspended/archived organizations.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDeviceListRequest'
+            example:
+              limit: 20
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current scoped metadata or original committed acknowledgement; never personal session inventory.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDevicePage'
+              example:
+                devices:
+                - id: 7b0e2a54-0000-4000-8000-000000001501
+                  membership_id: 7b0e2a54-0000-4000-8000-000000001502
+                  label: Synthetic work phone
+                  state: ENROLLED
+                  revision: 1
+                  revocation_class: ''
+                  enrolled_at: '2026-11-13T12:00:00Z'
+                  last_sync_at: null
+                  revoked_at: null
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+                data_mode: SYNTHETIC
+      x-abastevo-organization:
+        permission: idn.credential.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/devices/{device_id}/revoke:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseDeviceRevoke
+      summary: Revoke one organization enrollment
+      description: Existing-account organization device runtime. Private no-store response without ETag. Current source
+        proof and retained transaction checks apply; managed activation/recovery, sync delivery and native erasure
+        retain separate owning gates. Fresh dedicated company cookie, exact Origin/Host and CSRF are mandatory. Fresh
+        current idn.credential.manage is required; manager reduction remains available in suspended/archived organizations.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      - name: device_id
+        in: path
+        required: true
+        description: Scoped enrollment identity, never a personal key or session ID.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDeviceRevokeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001503
+              revision: 1
+              revocation_class: LOST_OR_COMPROMISED
+              reason: Synthetic lost phone
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current scoped metadata or original committed acknowledgement; never personal session inventory.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDeviceResult'
+              example:
+                device:
+                  id: 7b0e2a54-0000-4000-8000-000000001501
+                  membership_id: 7b0e2a54-0000-4000-8000-000000001502
+                  label: Synthetic work phone
+                  state: REVOKED
+                  revision: 2
+                  revocation_class: LOST_OR_COMPROMISED
+                  enrolled_at: '2026-11-13T12:00:00Z'
+                  last_sync_at: null
+                  revoked_at: '2026-11-13T12:01:00Z'
+                  data_mode: SYNTHETIC
+                operation_id: 7b0e2a54-0000-4000-8000-000000001503
+                reason: Synthetic lost phone
+                replayed: false
+                data_mode: SYNTHETIC
+      x-abastevo-organization:
+        permission: idn.credential.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/devices/self/list:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseSelfDeviceList
+      summary: List own scoped enrollment metadata
+      description: Existing-account organization device runtime. Private no-store response without ETag. Current source
+        proof and retained transaction checks apply; managed activation/recovery, sync delivery and native erasure
+        retain separate owning gates. Fresh dedicated company cookie, exact Origin/Host and CSRF are mandatory. Only
+        the actual account-bound membership may be selected; this is not an organization permission grant.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDeviceListRequest'
+            example:
+              limit: 20
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current scoped metadata or original committed acknowledgement; never personal session inventory.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDevicePage'
+              example:
+                devices:
+                - id: 7b0e2a54-0000-4000-8000-000000001501
+                  membership_id: 7b0e2a54-0000-4000-8000-000000001502
+                  label: Synthetic work phone
+                  state: ENROLLED
+                  revision: 1
+                  revocation_class: ''
+                  enrolled_at: '2026-11-13T12:00:00Z'
+                  last_sync_at: null
+                  revoked_at: null
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+                data_mode: SYNTHETIC
+      x-abastevo-self-device:
+        action: list
+        cookie: true
+        csrf: true
+        fresh: true
+        binding: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/devices/self/{device_id}/revoke:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseSelfDeviceRevoke
+      summary: Revoke one own scoped enrollment
+      description: Existing-account organization device runtime. Private no-store response without ETag. Current source
+        proof and retained transaction checks apply; managed activation/recovery, sync delivery and native erasure
+        retain separate owning gates. Fresh dedicated company cookie, exact Origin/Host and CSRF are mandatory. Only
+        the actual account-bound membership may be selected; this is not an organization permission grant.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: Scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      - name: device_id
+        in: path
+        required: true
+        description: Scoped enrollment identity, never a personal key or session ID.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDeviceRevokeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000001503
+              revision: 1
+              revocation_class: LOST_OR_COMPROMISED
+              reason: Synthetic lost phone
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current scoped metadata or original committed acknowledgement; never personal session inventory.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDeviceResult'
+              example:
+                device:
+                  id: 7b0e2a54-0000-4000-8000-000000001501
+                  membership_id: 7b0e2a54-0000-4000-8000-000000001502
+                  label: Synthetic work phone
+                  state: REVOKED
+                  revision: 2
+                  revocation_class: LOST_OR_COMPROMISED
+                  enrolled_at: '2026-11-13T12:00:00Z'
+                  last_sync_at: null
+                  revoked_at: '2026-11-13T12:01:00Z'
+                  data_mode: SYNTHETIC
+                operation_id: 7b0e2a54-0000-4000-8000-000000001503
+                reason: Synthetic lost phone
+                replayed: false
+                data_mode: SYNTHETIC
+      x-abastevo-self-device:
+        action: revoke
+        cookie: true
+        csrf: true
+        fresh: true
+        binding: true
+        success: 200
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -18218,7 +18784,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false
@@ -25724,6 +26290,256 @@ components:
           data_mode: SYNTHETIC
           operation_id: 7b0e2a54-0000-4000-8000-000000002001
         replayed: false
+    EnterpriseDeviceView:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Private user-selected label; canonical trimmed UTF-8, at most80 bytes; no control or format characters.
+        state:
+          type: string
+          enum:
+          - ENROLLED
+          - REVOKED
+        revision:
+          type: integer
+          minimum: 1
+        revocation_class:
+          type: string
+          enum:
+          - ''
+          - LOST_OR_COMPROMISED
+          - ACCESS_ENDED
+        enrolled_at:
+          type: string
+          format: date-time
+        last_sync_at:
+          type: 'null'
+          description: No installed sync producer; registration/check time is never represented as successful sync.
+        revoked_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - id
+      - membership_id
+      - label
+      - state
+      - revision
+      - revocation_class
+      - enrolled_at
+      - last_sync_at
+      - revoked_at
+      - data_mode
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000001501
+        membership_id: 7b0e2a54-0000-4000-8000-000000001502
+        label: Synthetic work phone
+        state: ENROLLED
+        revision: 1
+        revocation_class: ''
+        enrolled_at: '2026-11-13T12:00:00Z'
+        last_sync_at: null
+        revoked_at: null
+        data_mode: SYNTHETIC
+      description: One organization/membership enrolment only. No account, family, contributor, key or fingerprint inventory
+        is disclosed. Revocation is scoped and terminal; no immediate offline erase or intake authority is promised.
+    EnterpriseDeviceResult:
+      type: object
+      additionalProperties: false
+      properties:
+        device:
+          $ref: '#/components/schemas/EnterpriseDeviceView'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          maxLength: 280
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - device
+      - operation_id
+      - reason
+      - replayed
+      - data_mode
+      example:
+        device:
+          id: 7b0e2a54-0000-4000-8000-000000001501
+          membership_id: 7b0e2a54-0000-4000-8000-000000001502
+          label: Synthetic work phone
+          state: ENROLLED
+          revision: 1
+          revocation_class: ''
+          enrolled_at: '2026-11-13T12:00:00Z'
+          last_sync_at: null
+          revoked_at: null
+          data_mode: SYNTHETIC
+        operation_id: 7b0e2a54-0000-4000-8000-000000001503
+        reason: ''
+        replayed: false
+        data_mode: SYNTHETIC
+      description: Original immutable command acknowledgement. Current authority still governs retries; enrollment retries
+        from a revoked key are refused.
+    EnterpriseDevicePage:
+      type: object
+      additionalProperties: false
+      properties:
+        devices:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseDeviceView'
+        next_cursor:
+          type: string
+          maxLength: 2048
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - devices
+      - next_cursor
+      - data_mode
+      example:
+        devices:
+        - id: 7b0e2a54-0000-4000-8000-000000001501
+          membership_id: 7b0e2a54-0000-4000-8000-000000001502
+          label: Synthetic work phone
+          state: ENROLLED
+          revision: 1
+          revocation_class: ''
+          enrolled_at: '2026-11-13T12:00:00Z'
+          last_sync_at: null
+          revoked_at: null
+          data_mode: SYNTHETIC
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseDeviceEnrollRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Current personal access token; must belong to the actual signed key owner. Never returned or
+            persisted in organization history.
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        label:
+          type: string
+          minLength: 1
+          maxLength: 80
+          description: Private user-selected label; canonical trimmed UTF-8, at most80 bytes; no control or format characters.
+      required:
+      - family_id
+      - access_token
+      - schema_version
+      - operation_id
+      - label
+      example:
+        family_id: 7b0e2a54-0000-4000-8000-000000001504
+        access_token: synthetic-device-access
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001503
+        label: Synthetic work phone
+      description: Narrow initial enrollment bootstrap. Actual signed proof and current active membership are mandatory;
+        no body supplies account/key identity, possession, count or limit. Server deployment limit defaults3 and supports1..5.
+    EnterpriseDeviceCheckRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Current personal access token; must belong to the actual signed key owner. Never returned or
+            persisted in organization history.
+      required:
+      - family_id
+      - access_token
+      example:
+        family_id: 7b0e2a54-0000-4000-8000-000000001504
+        access_token: synthetic-device-access
+      description: Current account and signature proof plus actual exact-key enrollment/membership check on every request;
+        no cached authority.
+    EnterpriseDeviceRevokeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        revocation_class:
+          type: string
+          enum:
+          - LOST_OR_COMPROMISED
+          - ACCESS_ENDED
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - revocation_class
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000001503
+        revision: 1
+        revocation_class: LOST_OR_COMPROMISED
+        reason: Synthetic lost phone
+      description: Exact-revision scoped revocation with an explicit class/reason. Personal sessions and other organizations
+        stay unchanged.
+    EnterpriseDeviceListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+      description: Organization/account/member/route-bound pagination; omitted limit defaults20.
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

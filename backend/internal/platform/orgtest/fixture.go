@@ -132,6 +132,18 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 	f.runtimeConfig.ConnConfig.Password = password
 	f.runtimeConfig.MinConns = 0
 	f.Runtime = f.RuntimePool(t, 1)
+	// Installed device projections run in every existing membership-ending
+	// transaction. The ordinary fixture role needs the exact source effect
+	// privileges even when the selected membership has no enrolled device.
+	var devices bool
+	if err := f.Admin.QueryRow(ctx, `SELECT to_regclass('public.org_device_enrollments') IS NOT NULL`).Scan(&devices); err != nil {
+		t.Fatal(err)
+	}
+	if devices {
+		if _, err := f.Admin.Exec(ctx, "GRANT SELECT,UPDATE ON org_device_enrollments TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -328,6 +340,25 @@ func (f *Fixture) GrantEmployeeMergeCommands(t *testing.T) {
 	if installed {
 		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_employee_merge_commands TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
 			t.Fatal(e)
+		}
+	}
+}
+
+// GrantDeviceCommands provisions only the disposable ordinary test role. Source
+// rows retain real locks/proof checks; no privileged verifier replaces them.
+func (f *Fixture) GrantDeviceCommands(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_device_commands') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_device_commands TO "+role+
+			";GRANT SELECT,INSERT,UPDATE ON org_device_enrollments TO "+role+
+			";GRANT SELECT,UPDATE ON accounts,account_session_families,identity_keys,identity_contributors,identity_challenges,account_contributor_bindings TO "+role+
+			";GRANT SELECT ON payment_billing_exits TO "+role); err != nil {
+			t.Fatal(err)
 		}
 	}
 }
