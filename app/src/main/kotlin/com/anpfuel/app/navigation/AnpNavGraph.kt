@@ -124,7 +124,7 @@ fun AnpNavGraph(
         modifier = modifier,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            if (!isMapRoute || !guidance.active) {
+            if (currentRoute != Routes.ENTERPRISE_CONTEXT && (!isMapRoute || !guidance.active)) {
                 AbastevoBottomBar(
                     currentRoute = currentRoute,
                     onNavigateToTab = navController::navigateToTabBase,
@@ -610,6 +610,24 @@ fun AnpNavGraph(
             com.anpfuel.app.ui.enterprise.EnterpriseInvitationScreen(
                 onNavigateBack = { navController.popBackStack() },
                 onSignIn = { navController.navigate(Routes.ENTERPRISE_REAUTH) },
+                onContexts = {
+                    navController.navigate(Routes.ENTERPRISE_CONTEXT) {
+                        popUpTo(Routes.ENTERPRISE_INVITATION) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+            )
+        }
+        composable(Routes.ENTERPRISE_CONTEXT) {
+            com.anpfuel.app.ui.enterprise.EnterpriseContextScreen(
+                onPersonal = {
+                    navController.navigate(Routes.PROFILE) {
+                        popUpTo(Routes.ENTERPRISE_CONTEXT) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                },
+                onSignIn = { navController.navigate(Routes.ENTERPRISE_REAUTH) },
+                onInvitation = { navController.navigate(Routes.ENTERPRISE_INVITATION) },
             )
         }
         composable(Routes.ENTERPRISE_REAUTH) {

@@ -46,4 +46,29 @@
     <string name="enterprise_role_auditor">Auditor</string>
     <string name="enterprise_role_data_manager">Gestor de datos</string>
     <string name="enterprise_role_unknown">Rol no identificado</string>
+    <!-- EMP-IDN-018: explicit personal/company context and confirmed access. -->
+    <string name="enterprise_context_entry">Modo empresa</string>
+    <string name="enterprise_context_title">Elegir espacio</string>
+    <string name="enterprise_context_intro">Elige una empresa o continúa en modo personal.</string>
+    <string name="enterprise_context_personal">Usar modo personal</string>
+    <string name="enterprise_context_switch">Cambiar espacio</string>
+    <string name="enterprise_context_refresh">Actualizar empresas</string>
+    <string name="enterprise_context_next">Página siguiente</string>
+    <string name="enterprise_context_select">Entrar en %1$s</string>
+    <string name="enterprise_context_empty">No hay empresas disponibles en esta consulta.</string>
+    <string name="enterprise_context_unconfirmed">Información sin confirmar. Conéctate y confirma el acceso antes de continuar.</string>
+    <string name="enterprise_context_confirmed">Acceso confirmado en esta consulta.</string>
+    <string name="enterprise_context_offline">Sin conexión. La selección de empresa requiere confirmación en línea.</string>
+    <string name="enterprise_context_sign_in">Inicia sesión con tu cuenta para consultar tus empresas.</string>
+    <string name="enterprise_context_busy">Consultando tus empresas…</string>
+    <string name="enterprise_context_unavailable">No se pudo confirmar el acceso. Inténtalo de nuevo.</string>
+    <string name="enterprise_context_denied">Este acceso no está disponible. Actualiza tus empresas.</string>
+    <string name="enterprise_context_home">Modo empresa</string>
+    <string name="enterprise_context_current">Estás en %1$s</string>
+    <string name="enterprise_context_empty_home">Las actividades de esta empresa aparecerán aquí cuando estén disponibles.</string>
+    <string name="enterprise_context_ownership">Al cambiar de espacio, los registros permanecen en la empresa donde se crearon.</string>
+    <string name="enterprise_context_invitation">Aceptar una invitación</string>
+    <string name="enterprise_context_my_companies">Ver mis empresas</string>
+    <string name="enterprise_context_close">Cerrar selección</string>
+    <string name="enterprise_context_reconfirm">Confirmar acceso</string>
 </resources>

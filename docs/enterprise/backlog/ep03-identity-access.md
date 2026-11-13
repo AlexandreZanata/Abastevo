@@ -303,7 +303,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task213](https://github.com/AlexandreZanata/Abastevo/issues/213), cumulative PR203. Actual current-account company-cookie transport, informed consent, explicit decline and server-confirmed ACTIVE versus pending confirmation pass scoped identity/cancellation/retry/privacy tests and six actual physical Android journeys, with zero failures/errors/skips. Compiled callbacks capture the rendered primitive epoch; stale input cannot adopt a new session. Domain enterprise228/application15/data49/app33 tests, app build/lint, actual TLS/PostGIS session rotation and secret/plan checks pass. [Evidence](../evidence/f1-idn017-android-invitation.md). Managed activation, protected persistence, F1/M1 and production retain their own gates. Next bounded task: EMP-IDN-018.
 
 ### EMP-IDN-018 — App: personal and enterprise context switch with the enterprise home shell
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Switch personal and organization context without changing stored operation ownership.
 - **Rules and use cases:** BR-AUTH-012, BR-AUTH-014, BR-IDN-033, BR-TEN-004, BR-PRIV-016, UC-AUTH-04, SCR-IDN-12
 - **Depends on:** EMP-AUTH-003, EMP-PLAT-011, EMP-IDN-017
@@ -317,6 +317,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-APP, V-SYNC, V-AUTHZ, V-ISO, V-PRIV · migration: preserve personal mode and held data · rollback: hide enterprise entry without discarding queues
 - **Risks and assumptions:** The follow-up sync task owns logout and pending-queue semantics.
 - **Done when:** The same account can switch between its authorized contexts without leaking private state.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task214](https://github.com/AlexandreZanata/Abastevo/issues/214), cumulative PR203. Source-backed bounded selector, exact membership read and named enterprise home pass two-company, unconfirmed/offline/background, definitive denial, late reply, personal return and fresh-process acceptance. Per-adapter transport ownership and per-attempt local leases prevent old cleanup/selection from replacing a new context, including same-flow races. Pending ownership remains unchanged; protected persistence/contact stay unavailable. Domain231/application31/data-debug56/app36 tests, normal/isolated builds/full lint, actual12-test physical Android run, scoped PostGIS/race/570 API cases and full local Quick228s pass. [Evidence](../evidence/f1-idn018-android-contexts.md). No emulator, merge, deployment or F1/M1 closure is claimed.
 
 ### EMP-IDN-019 — Personal account erasure versus organization-owned history
 - **Meta:** module IDN · phase F6 · cut - · priority P1 · type API · size M · state TODO

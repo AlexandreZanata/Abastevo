@@ -1,29 +1,31 @@
 # Current execution state
-- Enterprise EMP-IDN-016..018 batch, 2026-11-13: task016 LOCAL_DONE /
+- Enterprise EMP-IDN-016..018 batch, 2026-11-13: LOCAL_DONE /
   INTEGRATION_PENDING on owned `codex/enterprise-idn016-018` from published dev
-  `6b0921ce`; main `6a19bcc7` is an ancestor. [Task212](https://github.com/AlexandreZanata/Abastevo/issues/212),
-  [panel evidence](../enterprise/evidence/f1-idn016-company-identity-panel.md).
-  Current-account source/migration195, actual employee access-state projection,
-  guarded panel and30 web tests pass. Ordinary PostGIS/race context6.676s,
-  employee regression6.849s, final contract15.069s, real HTTPS Chromium two-org
-  invitation/confirmation/rejection/fresh/revocation/keyboard/layout flow pass.
-  Membership domain91.3%; affected static/generation/compat/SQL/protection checks
-  pass. Task017 LOCAL_DONE / INTEGRATION_PENDING from tested016 `ae5defcd`,
-  [task213](https://github.com/AlexandreZanata/Abastevo/issues/213),
-  [native invitation evidence](../enterprise/evidence/f1-idn017-android-invitation.md).
-  B-BR-EMP-92/93, BUC-EMP-47 and EDR-058 precede017 behavior. Domain enterprise228,
-  application15, data49 and app33 tests, app compilation/full lint and actual
-  TLS/PostGIS rotation1.937s pass. Earlier80/81 data counts mistakenly included
-  stale release XML;49 current debug tests are accepted. Six final actual
-  physical Android16 journeys pass with zero failures/errors/skips after
-  correcting rendered-epoch capture and strict keyboard readiness in the test.
-  Existing phone applications/data are preserved. Next bounded task018 starts
-  from this tested017 checkpoint; no018 behavior exists at this checkpoint.
-  Final batch publication targets dev → main [PR203](https://github.com/AlexandreZanata/Abastevo/pull/203).
-  Physical authorized ADB phone only; preserve existing apps/data; no emulator.
-  Parent CI was pending at opening; no new remote acceptance claim. Full Quick
-  and union regression run once after018. Managed/vault-contact/runtime/legal/
-  staging and F1/M1 gates remain open. No merge, wiki or deployment requested.
+  `6b0921ce`; fetched main `6a19bcc7` remains an ancestor. Publication targets
+  protected dev → main [PR203](https://github.com/AlexandreZanata/Abastevo/pull/203).
+  [Panel016](../enterprise/evidence/f1-idn016-company-identity-panel.md),
+  [native invitation017](../enterprise/evidence/f1-idn017-android-invitation.md)
+  and [context018](../enterprise/evidence/f1-idn018-android-contexts.md) pin tested
+  behavior/artifacts and [tasks212](https://github.com/AlexandreZanata/Abastevo/issues/212),
+  [213](https://github.com/AlexandreZanata/Abastevo/issues/213),
+  [214](https://github.com/AlexandreZanata/Abastevo/issues/214).
+  Task016 commit `ae5defcd`,017 `8728dff6`;018 follows that tested checkpoint.
+  Current-account source/migration195, actual employee access-state reads and
+  guarded company panel pass real HTTPS/two-org/keyboard/responsive acceptance.
+  Android invitations/context shell pass domain231/application31/data-debug56/
+  app36 tests, normal/isolated builds and full lint. All12 final physical
+  Android16 tests pass, including real warm→cold entry without logout/data clear
+  between those two methods. Existing phone apps/data remain unchanged; no emulator.
+  Rendered primitive epochs, per-adapter transport owners and per-attempt local
+  leases cover stale intent/cleanup, same-flow replacement and in-flight I/O;
+  queued work is never retagged. Scoped real PostGIS/race14 organization/47
+  session cases,570 API cases, vet/static, protection/SQL/Android-script/plan
+  checks pass. Full local Quick228s passes with pinned Go1.27.4; no vulnerabilities.
+  Exact tested source trees and retained diagnostic failures/fixes are in018
+  evidence. Required remote checks apply to the published head; no remote PASS
+  is inferred. Next: protected review/integration of the published batch.
+  F1/M1, managed/vault-contact/runtime/offline/legal/staging/release gates remain
+  open. No merge, wiki or deployment requested; issues stay open until integration.
 
 - Enterprise EMP-IDN-015, 2026-11-13: LOCAL_DONE / INTEGRATION_PENDING on owned
   codex/enterprise-idn015 from published dev f1ad43ac; publish to dev/PR203,

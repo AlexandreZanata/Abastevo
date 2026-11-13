@@ -7,6 +7,7 @@ object Routes {
     const val AUTH = "auth"
     const val ACCOUNT = "account"
     const val ENTERPRISE_INVITATION = "enterprise/invitation"
+    const val ENTERPRISE_CONTEXT = "enterprise/context"
     const val ENTERPRISE_REAUTH = "enterprise/reauth"
     const val PREMIUM = "premium"
     const val PREMIUM_MANAGEMENT = "premium-management"

@@ -46,4 +46,29 @@
     <string name="enterprise_role_auditor">Prüfer</string>
     <string name="enterprise_role_data_manager">Datenverwalter</string>
     <string name="enterprise_role_unknown">Unbekannte Rolle</string>
+    <!-- EMP-IDN-018: explicit personal/company context and confirmed access. -->
+    <string name="enterprise_context_entry">Unternehmensmodus</string>
+    <string name="enterprise_context_title">Bereich auswählen</string>
+    <string name="enterprise_context_intro">Wählen Sie ein Unternehmen oder bleiben Sie im persönlichen Modus.</string>
+    <string name="enterprise_context_personal">Persönlichen Modus verwenden</string>
+    <string name="enterprise_context_switch">Bereich wechseln</string>
+    <string name="enterprise_context_refresh">Unternehmen aktualisieren</string>
+    <string name="enterprise_context_next">Nächste Seite</string>
+    <string name="enterprise_context_select">%1$s öffnen</string>
+    <string name="enterprise_context_empty">Bei dieser Abfrage sind keine Unternehmen verfügbar.</string>
+    <string name="enterprise_context_unconfirmed">Nicht bestätigte Informationen. Verbinden Sie sich mit dem Internet und bestätigen Sie den Zugriff, bevor Sie fortfahren.</string>
+    <string name="enterprise_context_confirmed">Zugriff bei dieser Abfrage bestätigt.</string>
+    <string name="enterprise_context_offline">Keine Verbindung. Die Unternehmensauswahl erfordert eine Online-Bestätigung.</string>
+    <string name="enterprise_context_sign_in">Melden Sie sich mit Ihrem Konto an, um Ihre Unternehmen anzuzeigen.</string>
+    <string name="enterprise_context_busy">Ihre Unternehmen werden abgefragt…</string>
+    <string name="enterprise_context_unavailable">Der Zugriff konnte nicht bestätigt werden. Versuchen Sie es erneut.</string>
+    <string name="enterprise_context_denied">Dieser Zugriff ist nicht verfügbar. Aktualisieren Sie Ihre Unternehmen.</string>
+    <string name="enterprise_context_home">Unternehmensmodus</string>
+    <string name="enterprise_context_current">Sie befinden sich in %1$s</string>
+    <string name="enterprise_context_empty_home">Die Aktivitäten dieses Unternehmens erscheinen hier, sobald sie verfügbar sind.</string>
+    <string name="enterprise_context_ownership">Beim Bereichswechsel bleiben Einträge in dem Unternehmen, in dem sie erstellt wurden.</string>
+    <string name="enterprise_context_invitation">Eine Einladung annehmen</string>
+    <string name="enterprise_context_my_companies">Meine Unternehmen anzeigen</string>
+    <string name="enterprise_context_close">Auswahl schließen</string>
+    <string name="enterprise_context_reconfirm">Zugriff bestätigen</string>
 </resources>

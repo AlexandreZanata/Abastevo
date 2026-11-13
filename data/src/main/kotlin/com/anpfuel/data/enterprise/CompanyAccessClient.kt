@@ -41,6 +41,8 @@ class CompanyAccessClient(
         .authenticator(Authenticator.NONE).proxyAuthenticator(Authenticator.NONE)
         .callTimeout(20, TimeUnit.SECONDS).build()
     private val monitor = Any()
+    internal class Owner
+    private var owner: Owner? = null
     private var generation = 0L
     private var channel: Channel? = null
     private var retirement: Retirement? = null
@@ -65,27 +67,34 @@ class CompanyAccessClient(
 
     private class Reset(val token: Long, val cookie: String?, val calls: List<Call>)
 
-    private fun resetLocked(current: EnterpriseAccessBinding?): Reset {
+    private fun resetLocked(current: EnterpriseAccessBinding?, nextOwner: Owner?): Reset {
         channel?.takeIf { current != null && it.binding.accountId == current.accountId && it.binding.origin == current.origin }?.let {
             retirement = Retirement(it.binding.accountId, it.binding.origin, it.cookie)
         }
         if (retirement?.matches(current) != true) retirement = null
         generation++
         channel = null
+        owner = nextOwner
         return Reset(generation, retirement?.cookie, calls.toList().also { calls.clear() })
     }
 
-    fun invalidate() {
+    internal fun invalidate(requestOwner: Owner) {
         val current = currentBinding()
-        val reset = synchronized(monitor) { resetLocked(current) }
-        reset.calls.forEach(Call::cancel)
+        val reset = synchronized(monitor) {
+            if (owner === requestOwner) resetLocked(current, null)
+            else {
+                if (retirement?.matches(current) != true) retirement = null
+                null
+            }
+        }
+        reset?.calls?.forEach(Call::cancel)
     }
 
-    suspend fun open(): EnterpriseAccessResult<EnterpriseAccessBinding> {
-        val before = currentBinding() ?: run { invalidate(); return EnterpriseAccessResult.Err(EnterpriseAccessError.SIGN_IN_REQUIRED) }
+    internal suspend fun open(requestOwner: Owner): EnterpriseAccessResult<EnterpriseAccessBinding> {
+        val before = currentBinding() ?: run { invalidate(requestOwner); return EnterpriseAccessResult.Err(EnterpriseAccessError.SIGN_IN_REQUIRED) }
         val background = fence.backgroundEpoch
         // Reset and capture one unique lease atomically; concurrent opens cannot adopt each other's generation.
-        val reset = synchronized(monitor) { resetLocked(before) }
+        val reset = synchronized(monitor) { resetLocked(before, requestOwner) }
         reset.calls.forEach(Call::cancel)
         val token = reset.token
         val oldCookie = reset.cookie
@@ -107,7 +116,7 @@ class CompanyAccessClient(
             synchronized(monitor) { token != generation }
         ) return EnterpriseAccessResult.Err(EnterpriseAccessError.STALE)
         val response = exchange("/v1/org-access/session/login", JSONObject().put("family_id", session.familyId).put("access_token", session.accessToken),
-            null, token, selected, oldCookie)
+            null, token, selected, requestOwner, oldCookie)
         return synchronized(monitor) {
             if (token != generation || currentBinding() != selected || background != fence.backgroundEpoch || sessions.load() != session) {
                 return@synchronized EnterpriseAccessResult.Err(EnterpriseAccessError.STALE)
@@ -141,20 +150,20 @@ class CompanyAccessClient(
     }
 
     /** JSON remains inside data adapters. Future read-only context transport can reuse this channel. */
-    internal suspend fun post(binding: EnterpriseAccessBinding, path: String, body: JSONObject): EnterpriseAccessResult<JSONObject> {
+    internal suspend fun post(requestOwner: Owner, binding: EnterpriseAccessBinding, path: String, body: JSONObject): EnterpriseAccessResult<JSONObject> {
         val (selected, token) = synchronized(monitor) {
-            channel?.takeIf { it.binding == binding && currentBinding() == binding }?.let { it to generation }
+            channel?.takeIf { owner === requestOwner && it.binding == binding && currentBinding() == binding }?.let { it to generation }
         } ?: return EnterpriseAccessResult.Err(EnterpriseAccessError.STALE)
-        val response = exchange(path, body, selected, token, binding)
+        val response = exchange(path, body, selected, token, binding, requestOwner)
         return synchronized(monitor) {
             if (channel !== selected || currentBinding() != binding) {
-                if (channel === selected) { generation++; channel = null }
+                if (channel === selected) { generation++; channel = null; owner = null }
                 EnterpriseAccessResult.Err(EnterpriseAccessError.STALE)
             } else when (response) {
                 is EnterpriseAccessResult.Err -> {
                     if (response.error in setOf(EnterpriseAccessError.SIGN_IN_REQUIRED, EnterpriseAccessError.FRESH_AUTH_REQUIRED)) {
                         retirement = Retirement(selected.binding.accountId, selected.binding.origin, selected.cookie)
-                        generation++; channel = null
+                        generation++; channel = null; owner = null
                     }
                     response
                 }
@@ -171,12 +180,12 @@ class CompanyAccessClient(
     }
 
     private suspend fun exchange(path: String, body: JSONObject, selected: Channel?, token: Long,
-        binding: EnterpriseAccessBinding, oldCookie: String? = null): EnterpriseAccessResult<Reply> = withContext(Dispatchers.IO) {
-        exchangeIo(path, body, selected, token, binding, oldCookie)
+        binding: EnterpriseAccessBinding, requestOwner: Owner, oldCookie: String? = null): EnterpriseAccessResult<Reply> = withContext(Dispatchers.IO) {
+        exchangeIo(path, body, selected, token, binding, requestOwner, oldCookie)
     }
 
     private suspend fun exchangeIo(path: String, body: JSONObject, selected: Channel?, token: Long,
-        binding: EnterpriseAccessBinding, oldCookie: String?): EnterpriseAccessResult<Reply> {
+        binding: EnterpriseAccessBinding, requestOwner: Owner, oldCookie: String?): EnterpriseAccessResult<Reply> {
         if (!path.startsWith("/v1/") || path.any { it == '?' || it == '#' } || path.contains("..") || body.toString().toByteArray().size > 16 * 1024) {
             return EnterpriseAccessResult.Err(EnterpriseAccessError.UNAVAILABLE)
         }
@@ -191,12 +200,15 @@ class CompanyAccessClient(
                 }.build()
             val call = http.newCall(request)
             val allowed = synchronized(monitor) {
-                if (token != generation || currentBinding() != binding || (selected != null && channel !== selected)) false
+                if (owner !== requestOwner || token != generation || currentBinding() != binding || (selected != null && channel !== selected)) false
                 else { calls.add(call); true }
             }
             if (!allowed) return EnterpriseAccessResult.Err(EnterpriseAccessError.STALE)
             owned = call
             awaitCompanyResponse(call).use { response ->
+                // The account-context surface deliberately uses generic denial. It must clear cached
+                // membership hints even if a proxy/server supplies no readable private error body.
+                if (path in CONTEXT_PATHS && response.code in setOf(403, 404)) return EnterpriseAccessResult.Err(EnterpriseAccessError.ACCESS_DENIED)
                 val content = response.body ?: return EnterpriseAccessResult.Err(EnterpriseAccessError.UNAVAILABLE)
                 if (content.contentType()?.let { it.type == "application" && it.subtype == "json" } != true ||
                     !response.headers.values("Cache-Control").any { it.split(',').any { directive -> directive.trim().equals("no-store", true) } }
@@ -228,6 +240,7 @@ class CompanyAccessClient(
         private const val COOKIE = "__Host-empresas-session"
         private const val BODY_LIMIT = 64L * 1024
         private val JSON = "application/json; charset=utf-8".toMediaType()
+        private val CONTEXT_PATHS = setOf("/v1/org-access/contexts/list", "/v1/org-access/contexts/read")
     }
 }
 

@@ -21,7 +21,7 @@ data class EnterpriseAccessBinding(val accountId: String, val origin: String, va
 
 enum class EnterpriseAccessError {
     SIGN_IN_REQUIRED, FRESH_AUTH_REQUIRED, INVALID_CODE, UNAVAILABLE, CONFLICT,
-    ALREADY_MEMBER, MANAGED_RESTRICTED, RATE_LIMITED, STALE,
+    ALREADY_MEMBER, MANAGED_RESTRICTED, RATE_LIMITED, STALE, ACCESS_DENIED,
 }
 
 sealed interface EnterpriseAccessResult<out T> {

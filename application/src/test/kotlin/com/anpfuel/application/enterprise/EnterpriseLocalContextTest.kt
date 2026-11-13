@@ -178,4 +178,106 @@ class EnterpriseLocalContextTest {
         assertThrows(EnterpriseVaultUnrecoverable::class.java) { kotlinx.coroutines.runBlocking { store.pending() } }
         assertFalse(EnterpriseUnlockRequired().toString().contains(a))
     }
+
+    @Test
+    fun `nonblocking invalidation withholds an old read already in progress`(): Unit = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val db = object : Memory() {
+            override suspend fun record(partition: EnterprisePartition, id: String): EnterpriseLocalRecord {
+                entered.complete(Unit); release.await()
+                return EnterpriseLocalRecord(partition, id, byteArrayOf(7))
+            }
+        }
+        val context = EnterpriseLocalContext({ a }, { origin }, db)
+        val old = context.select(partition())
+        val read = async { runCatching { old.record(a) } }
+        entered.await()
+        context.invalidate()
+        // The synchronous invalidation returned while the storage call remains blocked.
+        assertFalse(read.isCompleted)
+        release.complete(Unit)
+        assertTrue(read.await().exceptionOrNull() is EnterpriseLocalDenied)
+        assertThrows(EnterpriseLocalDenied::class.java) { kotlinx.coroutines.runBlocking { old.record(a) } }
+    }
+
+    @Test
+    fun `invalidation never rolls back or retags a write that already reached its original partition`(): Unit = runTest {
+        val entered = CompletableDeferred<Unit>()
+        val release = CompletableDeferred<Unit>()
+        val db = object : Memory() {
+            override suspend fun enqueue(operation: EnterprisePendingOperation): Boolean {
+                entered.complete(Unit); release.await()
+                return super.enqueue(operation)
+            }
+        }
+        val context = EnterpriseLocalContext({ a }, { origin }, db)
+        val old = context.select(partition())
+        val operation = EnterprisePendingOperation(partition(), a, b, byteArrayOf(4))
+        val write = async { runCatching { old.enqueue(operation) } }
+        entered.await()
+        context.invalidate()
+        release.complete(Unit)
+        assertTrue(write.await().exceptionOrNull() is EnterpriseLocalDenied)
+        assertTrue(context.select(partition(org = b)).pending().isEmpty())
+        val preserved = context.select(partition()).pending().single()
+        assertEquals(operation.partition, preserved.partition)
+        assertEquals(operation.id, preserved.id)
+        assertEquals(operation.targetId, preserved.targetId)
+        assertArrayEquals(operation.envelope, preserved.envelope)
+    }
+
+    @Test
+    fun `outgoing owner cleanup cannot invalidate a newer owner including its legacy feature handle`(): Unit = runTest {
+        val context = EnterpriseLocalContext({ a }, { origin }, Memory())
+        val ownerA = EnterpriseLocalContext.Owner()
+        val ownerB = EnterpriseLocalContext.Owner()
+        context.select(context.acquire(ownerA), partition())
+        context.invalidate(ownerA)
+        context.select(context.acquire(ownerB), partition(org = b))
+        val featureB = context.select(partition(org = b))
+        assertNull(context.invalidate(ownerA))
+        assertTrue(featureB.isCurrent())
+        assertTrue(featureB.pending().isEmpty())
+        assertNotNull(context.invalidate(ownerB))
+        assertThrows(EnterpriseLocalDenied::class.java) { kotlinx.coroutines.runBlocking { featureB.pending() } }
+    }
+
+    @Test
+    fun `stale select and personal lock after a mutex wait never mutate a newer reserved lease`(): Unit = runTest {
+        for (personal in listOf(false, true)) {
+            val entered = CompletableDeferred<Unit>()
+            val release = CompletableDeferred<Unit>()
+            val db = object : Memory() {
+                override suspend fun record(partition: EnterprisePartition, id: String): EnterpriseLocalRecord {
+                    entered.complete(Unit); release.await()
+                    return EnterpriseLocalRecord(partition, id, byteArrayOf(1))
+                }
+            }
+            val context = EnterpriseLocalContext({ a }, { origin }, db)
+            val original = context.select(partition())
+            val read = async { runCatching { original.record(a) } }
+            entered.await()
+            val ownerA = EnterpriseLocalContext.Owner()
+            val ownerB = EnterpriseLocalContext.Owner()
+            val leaseA = context.acquire(ownerA)
+            val stale = async { runCatching { if (personal) context.lock(leaseA) else context.select(leaseA, partition()) } }
+            runCurrent()
+            context.invalidate(ownerA)
+            val leaseB = context.acquire(ownerB)
+            val newest = async { context.select(leaseB, partition(org = b)) }
+            release.complete(Unit)
+            assertTrue(read.await().exceptionOrNull() is EnterpriseLocalDenied)
+            val result = stale.await()
+            if (personal) assertEquals(false, result.getOrThrow()) else assertTrue(result.exceptionOrNull() is EnterpriseLocalDenied)
+            val boundB = newest.await()
+            assertNull(context.invalidate(ownerA))
+            assertTrue(boundB.isCurrent())
+            assertTrue(boundB.pending().isEmpty())
+            assertFalse(context.lock(leaseB)) // The immutable selection lease was consumed exactly once.
+            assertTrue(boundB.isCurrent())
+            context.invalidate()
+            assertFalse(boundB.isCurrent())
+        }
+    }
 }

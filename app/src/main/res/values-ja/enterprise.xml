@@ -46,4 +46,29 @@
     <string name="enterprise_role_auditor">監査担当者</string>
     <string name="enterprise_role_data_manager">データ管理担当者</string>
     <string name="enterprise_role_unknown">不明な役割</string>
+    <!-- EMP-IDN-018: explicit personal/company context and confirmed access. -->
+    <string name="enterprise_context_entry">企業モード</string>
+    <string name="enterprise_context_title">スペースを選択</string>
+    <string name="enterprise_context_intro">企業を選択するか、個人モードを続けてください。</string>
+    <string name="enterprise_context_personal">個人モードを使う</string>
+    <string name="enterprise_context_switch">スペースを切り替え</string>
+    <string name="enterprise_context_refresh">企業を更新</string>
+    <string name="enterprise_context_next">次のページ</string>
+    <string name="enterprise_context_select">%1$s を開く</string>
+    <string name="enterprise_context_empty">今回の照会で利用できる企業はありません。</string>
+    <string name="enterprise_context_unconfirmed">未確認の情報です。インターネットに接続し、アクセスを確認してから続けてください。</string>
+    <string name="enterprise_context_confirmed">今回の照会でアクセスを確認しました。</string>
+    <string name="enterprise_context_offline">オフラインです。企業の選択にはオンラインでの確認が必要です。</string>
+    <string name="enterprise_context_sign_in">アカウントにログインして、所属する企業を照会してください。</string>
+    <string name="enterprise_context_busy">所属する企業を照会中…</string>
+    <string name="enterprise_context_unavailable">アクセスを確認できませんでした。もう一度お試しください。</string>
+    <string name="enterprise_context_denied">このアクセスは利用できません。企業を更新してください。</string>
+    <string name="enterprise_context_home">企業モード</string>
+    <string name="enterprise_context_current">%1$s を利用中です</string>
+    <string name="enterprise_context_empty_home">この企業の活動は、利用可能になり次第ここに表示されます。</string>
+    <string name="enterprise_context_ownership">スペースを切り替えても、記録は作成元の企業に残ります。</string>
+    <string name="enterprise_context_invitation">招待を承諾</string>
+    <string name="enterprise_context_my_companies">所属する企業を表示</string>
+    <string name="enterprise_context_close">選択画面を閉じる</string>
+    <string name="enterprise_context_reconfirm">アクセスを確認</string>
 </resources>

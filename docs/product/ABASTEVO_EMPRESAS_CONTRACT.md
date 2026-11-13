@@ -1463,3 +1463,32 @@ proof and the transactionally enforced three-pending-organization account cap.
   delivery retries, wrong accounts/origins/families, backgrounding and stale
   replies. Validate the actual navigation on the connected physical ADB phone
   using an isolated package, preserving existing apps and their data.
+
+- **B-BR-EMP-94 — Context selection follows current source proof.** Discover
+  only the existing account's bounded current organization page through the
+  installed company-cookie context API. Bind metadata and selection to account,
+  canonical origin, personal family and fence epoch. Read the exact organization/
+  membership from the source before selecting it; a list entry or invitation
+  receipt never grants access. Keep names only in memory. Backgrounding or
+  transport loss withdraws confirmation and all local handles; retained names
+  are visibly unconfirmed and cannot enable commands. Account/origin/family
+  changes and definitive authority refusals clear metadata and selection.
+  A fresh process starts in personal mode, requiring explicit reselection.
+- **B-BR-EMP-95 — Switching cannot move previously created private work.**
+  Invalidate the old local selection synchronously before waiting for a source
+  read or entering personal mode. Local generation and current identity checks
+  apply before and after I/O, including a read already in flight. A write that
+  already committed may remain only in its original immutable partition; do
+  not claim rollback, retag it, erase it or enumerate another queue. Selection
+  does not enable the unavailable protected persistence/contact authority.
+  The enterprise shell always names its company, offers explicit context
+  selection and never fabricates operational modules, pending counts or offline
+  authority. System back does not silently switch a selected company to personal.
+- **BUC-EMP-48 — Choose a personal or company workspace.** From Perfil, open
+  the company selector, fetch current eligible memberships, explicitly select a
+  company and show its confirmed home shell. Use the selector to choose another
+  company or return to personal mode. After background/offline, mark retained
+  metadata unconfirmed and revalidate before selection. Exercise two companies,
+  held original-partition operations, revoked membership, late replies, changed
+  account/origin/family, empty paginated results and fresh-process restoration.
+  Validate normal navigation and privacy on the connected physical ADB phone.

@@ -60,6 +60,7 @@ import com.anpfuel.application.enterprise.EnterpriseInvitationStage
 fun EnterpriseInvitationScreen(
     onNavigateBack: () -> Unit,
     onSignIn: () -> Unit,
+    onContexts: () -> Unit = {},
     viewModel: EnterpriseInvitationViewModel = hiltViewModel(),
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
@@ -171,6 +172,10 @@ fun EnterpriseInvitationScreen(
                                 modifier = Modifier.testTag("enterprise-invitation-result").semantics { liveRegion = LiveRegionMode.Polite },
                                 style = MaterialTheme.typography.titleMedium,
                             )
+                            if (acknowledgement.active) Button(
+                                onClick = { viewModel.restart(); onContexts() },
+                                modifier = Modifier.fillMaxWidth().testTag("enterprise-invitation-contexts"),
+                            ) { Text(stringResource(R.string.enterprise_context_my_companies)) }
                             Button(onClick = back, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.enterprise_invitation_done)) }
                         }
                     }
@@ -204,7 +209,7 @@ private fun invitationError(error: EnterpriseAccessError): Int = when (error) {
     EnterpriseAccessError.ALREADY_MEMBER -> R.string.enterprise_invitation_already_member
     EnterpriseAccessError.STALE -> R.string.enterprise_invitation_stale
     EnterpriseAccessError.MANAGED_RESTRICTED -> R.string.enterprise_invitation_unavailable
-    EnterpriseAccessError.CONFLICT, EnterpriseAccessError.UNAVAILABLE -> R.string.enterprise_invitation_unavailable
+    EnterpriseAccessError.CONFLICT, EnterpriseAccessError.UNAVAILABLE, EnterpriseAccessError.ACCESS_DENIED -> R.string.enterprise_invitation_unavailable
 }
 
 @Composable

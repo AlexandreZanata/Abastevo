@@ -46,4 +46,29 @@
     <string name="enterprise_role_auditor">Auditor</string>
     <string name="enterprise_role_data_manager">Gestor de dados</string>
     <string name="enterprise_role_unknown">Papel não identificado</string>
+    <!-- EMP-IDN-018: explicit personal/company context and confirmed access. -->
+    <string name="enterprise_context_entry">Modo empresa</string>
+    <string name="enterprise_context_title">Escolher espaço</string>
+    <string name="enterprise_context_intro">Escolha uma empresa ou continue no modo pessoal.</string>
+    <string name="enterprise_context_personal">Usar modo pessoal</string>
+    <string name="enterprise_context_switch">Trocar espaço</string>
+    <string name="enterprise_context_refresh">Atualizar empresas</string>
+    <string name="enterprise_context_next">Próxima página</string>
+    <string name="enterprise_context_select">Entrar em %1$s</string>
+    <string name="enterprise_context_empty">Nenhuma empresa disponível nesta consulta.</string>
+    <string name="enterprise_context_unconfirmed">Informações não confirmadas. Conecte-se e confirme o acesso antes de continuar.</string>
+    <string name="enterprise_context_confirmed">Acesso confirmado nesta consulta.</string>
+    <string name="enterprise_context_offline">Sem conexão. A seleção de empresa exige confirmação online.</string>
+    <string name="enterprise_context_sign_in">Entre com sua conta para consultar suas empresas.</string>
+    <string name="enterprise_context_busy">Consultando suas empresas…</string>
+    <string name="enterprise_context_unavailable">Não foi possível confirmar o acesso. Tente novamente.</string>
+    <string name="enterprise_context_denied">Este acesso não está disponível. Atualize suas empresas.</string>
+    <string name="enterprise_context_home">Modo empresa</string>
+    <string name="enterprise_context_current">Você está em %1$s</string>
+    <string name="enterprise_context_empty_home">As atividades desta empresa aparecerão aqui quando estiverem disponíveis.</string>
+    <string name="enterprise_context_ownership">Os registros continuam na empresa em que foram criados ao trocar de espaço.</string>
+    <string name="enterprise_context_invitation">Aceitar um convite</string>
+    <string name="enterprise_context_my_companies">Ver minhas empresas</string>
+    <string name="enterprise_context_close">Fechar seleção</string>
+    <string name="enterprise_context_reconfirm">Confirmar acesso</string>
 </resources>

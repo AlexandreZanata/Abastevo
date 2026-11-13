@@ -46,4 +46,29 @@
     <string name="enterprise_role_auditor">Аудитор</string>
     <string name="enterprise_role_data_manager">Менеджер данных</string>
     <string name="enterprise_role_unknown">Неизвестная роль</string>
+    <!-- EMP-IDN-018: explicit personal/company context and confirmed access. -->
+    <string name="enterprise_context_entry">Режим компании</string>
+    <string name="enterprise_context_title">Выбрать пространство</string>
+    <string name="enterprise_context_intro">Выберите компанию или продолжите в личном режиме.</string>
+    <string name="enterprise_context_personal">Использовать личный режим</string>
+    <string name="enterprise_context_switch">Сменить пространство</string>
+    <string name="enterprise_context_refresh">Обновить компании</string>
+    <string name="enterprise_context_next">Следующая страница</string>
+    <string name="enterprise_context_select">Войти в %1$s</string>
+    <string name="enterprise_context_empty">В этом запросе нет доступных компаний.</string>
+    <string name="enterprise_context_unconfirmed">Информация не подтверждена. Подключитесь к интернету и подтвердите доступ, прежде чем продолжить.</string>
+    <string name="enterprise_context_confirmed">Доступ подтверждён в этом запросе.</string>
+    <string name="enterprise_context_offline">Нет подключения. Для выбора компании требуется подтверждение онлайн.</string>
+    <string name="enterprise_context_sign_in">Войдите в аккаунт, чтобы просмотреть свои компании.</string>
+    <string name="enterprise_context_busy">Загрузка ваших компаний…</string>
+    <string name="enterprise_context_unavailable">Не удалось подтвердить доступ. Попробуйте ещё раз.</string>
+    <string name="enterprise_context_denied">Этот доступ недоступен. Обновите свои компании.</string>
+    <string name="enterprise_context_home">Режим компании</string>
+    <string name="enterprise_context_current">Вы в компании %1$s</string>
+    <string name="enterprise_context_empty_home">Действия этой компании появятся здесь, когда станут доступны.</string>
+    <string name="enterprise_context_ownership">При смене пространства записи остаются в той компании, где они были созданы.</string>
+    <string name="enterprise_context_invitation">Принять приглашение</string>
+    <string name="enterprise_context_my_companies">Мои компании</string>
+    <string name="enterprise_context_close">Закрыть выбор</string>
+    <string name="enterprise_context_reconfirm">Подтвердить доступ</string>
 </resources>

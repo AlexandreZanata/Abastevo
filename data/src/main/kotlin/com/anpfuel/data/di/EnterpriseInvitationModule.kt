@@ -27,7 +27,7 @@ object EnterpriseInvitationModule {
         CompanyAccessClient(OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build(),
             environment.origin, sessions, auth, fence)
 
-    @Provides @Singleton
+    @Provides
     fun invitations(client: CompanyAccessClient): EnterpriseInvitationGateway = EnterpriseInvitationHttpGateway(client)
 
     @Provides

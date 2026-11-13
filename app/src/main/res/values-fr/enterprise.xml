@@ -46,4 +46,29 @@
     <string name="enterprise_role_auditor">Auditeur</string>
     <string name="enterprise_role_data_manager">Gestionnaire des données</string>
     <string name="enterprise_role_unknown">Rôle non identifié</string>
+    <!-- EMP-IDN-018: explicit personal/company context and confirmed access. -->
+    <string name="enterprise_context_entry">Espace entreprise</string>
+    <string name="enterprise_context_title">Choisir un espace</string>
+    <string name="enterprise_context_intro">Choisissez une entreprise ou continuez dans votre espace personnel.</string>
+    <string name="enterprise_context_personal">Utiliser mon espace personnel</string>
+    <string name="enterprise_context_switch">Changer d’espace</string>
+    <string name="enterprise_context_refresh">Actualiser les entreprises</string>
+    <string name="enterprise_context_next">Page suivante</string>
+    <string name="enterprise_context_select">Entrer dans %1$s</string>
+    <string name="enterprise_context_empty">Aucune entreprise disponible pour cette consultation.</string>
+    <string name="enterprise_context_unconfirmed">Informations non confirmées. Connectez-vous et confirmez l’accès avant de continuer.</string>
+    <string name="enterprise_context_confirmed">Accès confirmé pour cette consultation.</string>
+    <string name="enterprise_context_offline">Hors connexion. Le choix d’une entreprise nécessite une confirmation en ligne.</string>
+    <string name="enterprise_context_sign_in">Connectez-vous à votre compte pour consulter vos entreprises.</string>
+    <string name="enterprise_context_busy">Consultation de vos entreprises…</string>
+    <string name="enterprise_context_unavailable">Impossible de confirmer l’accès. Réessayez.</string>
+    <string name="enterprise_context_denied">Cet accès n’est pas disponible. Actualisez vos entreprises.</string>
+    <string name="enterprise_context_home">Espace entreprise</string>
+    <string name="enterprise_context_current">Vous êtes dans %1$s</string>
+    <string name="enterprise_context_empty_home">Les activités de cette entreprise apparaîtront ici lorsqu’elles seront disponibles.</string>
+    <string name="enterprise_context_ownership">Lors d’un changement d’espace, les enregistrements restent dans l’entreprise où ils ont été créés.</string>
+    <string name="enterprise_context_invitation">Accepter une invitation</string>
+    <string name="enterprise_context_my_companies">Voir mes entreprises</string>
+    <string name="enterprise_context_close">Fermer la sélection</string>
+    <string name="enterprise_context_reconfirm">Confirmer l’accès</string>
 </resources>

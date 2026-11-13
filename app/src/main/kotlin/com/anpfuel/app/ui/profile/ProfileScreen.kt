@@ -277,6 +277,14 @@ fun ProfileScreen(
                     }
                     ProfileToolItem(
                         icon = Icons.Default.Business,
+                        title = stringResource(R.string.enterprise_context_entry),
+                        subtitle = stringResource(R.string.enterprise_context_intro),
+                        onClick = { onNavigate(Routes.ENTERPRISE_CONTEXT) },
+                        modifier = Modifier.testTag("enterprise-context-entry"),
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Business,
                         title = stringResource(R.string.enterprise_invitation_entry),
                         subtitle = stringResource(R.string.enterprise_invitation_entry_hint),
                         onClick = { onNavigate(Routes.ENTERPRISE_INVITATION) },

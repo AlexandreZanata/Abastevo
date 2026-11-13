@@ -6,12 +6,13 @@ import java.time.Instant
 import org.json.JSONObject
 
 class EnterpriseInvitationHttpGateway(private val client: CompanyAccessClient) : EnterpriseInvitationGateway {
+    private val owner = CompanyAccessClient.Owner()
     override fun currentBinding(): EnterpriseAccessBinding? = client.currentBinding()
-    override suspend fun open(): EnterpriseAccessResult<EnterpriseAccessBinding> = client.open()
-    override fun invalidate() = client.invalidate()
+    override suspend fun open(): EnterpriseAccessResult<EnterpriseAccessBinding> = client.open(owner)
+    override fun invalidate() = client.invalidate(owner)
 
     override suspend fun preview(binding: EnterpriseAccessBinding, code: String): EnterpriseAccessResult<EnterpriseInvitationPreview> =
-        decode(client.post(binding, PREFIX + "preview", JSONObject().put("code", code))) { root ->
+        decode(client.post(owner, binding, PREFIX + "preview", JSONObject().put("code", code))) { root ->
             val notice = root.getJSONObject("notice")
             require(EnterpriseInvitationContract.knownNotice(notice.strictString("version"), notice.strictString("text")))
             val organization = root.getJSONObject("organization")
@@ -33,7 +34,7 @@ class EnterpriseInvitationHttpGateway(private val client: CompanyAccessClient) :
         acknowledgement(binding, "decline", JSONObject().put("schema_version", 1).put("operation_id", operationId).put("code", code))
 
     private suspend fun acknowledgement(binding: EnterpriseAccessBinding, action: String, body: JSONObject): EnterpriseAccessResult<EnterpriseInvitationAcknowledgement> =
-        decode(client.post(binding, PREFIX + action, body)) { root ->
+        decode(client.post(owner, binding, PREFIX + action, body)) { root ->
             val ack = EnterpriseInvitationAcknowledgement(root.strictString("organization_id"), root.strictString("invitation_id"),
                 root.strictString("membership_id"), root.strictString("state"), root.strictString("membership_state"), root.strictBoolean("replayed"))
             val locator = EnterpriseInvitationContract.normalizeCode(body.strictString("code")).split('.')

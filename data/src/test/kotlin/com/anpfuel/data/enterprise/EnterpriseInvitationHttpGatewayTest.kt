@@ -207,7 +207,7 @@ class EnterpriseInvitationHttpGatewayTest {
         }
         val fixture = Fixture { request, _ -> response(request, login().toString(), setCookie = listOf(cookie)) }
         val selected = fixture.open()
-        assertError(EnterpriseAccessError.UNAVAILABLE, fixture.client.post(selected, "/v1/org-access/invitations/preview", JSONObject().put("code", "x".repeat(16385))))
+        assertError(EnterpriseAccessError.UNAVAILABLE, fixture.gateway.preview(selected, "x".repeat(16385)))
         assertEquals(1, fixture.requests.size)
     }
 

@@ -46,4 +46,29 @@
     <string name="enterprise_role_auditor">审计员</string>
     <string name="enterprise_role_data_manager">数据管理员</string>
     <string name="enterprise_role_unknown">未识别的角色</string>
+    <!-- EMP-IDN-018: explicit personal/company context and confirmed access. -->
+    <string name="enterprise_context_entry">企业模式</string>
+    <string name="enterprise_context_title">选择空间</string>
+    <string name="enterprise_context_intro">选择一家企业，或继续使用个人模式。</string>
+    <string name="enterprise_context_personal">使用个人模式</string>
+    <string name="enterprise_context_switch">切换空间</string>
+    <string name="enterprise_context_refresh">刷新企业</string>
+    <string name="enterprise_context_next">下一页</string>
+    <string name="enterprise_context_select">进入 %1$s</string>
+    <string name="enterprise_context_empty">本次查询没有可用的企业。</string>
+    <string name="enterprise_context_unconfirmed">信息尚未确认。请联网并确认访问权限后再继续。</string>
+    <string name="enterprise_context_confirmed">本次查询已确认访问权限。</string>
+    <string name="enterprise_context_offline">当前离线。选择企业需要在线确认。</string>
+    <string name="enterprise_context_sign_in">请登录您的账户以查看所属企业。</string>
+    <string name="enterprise_context_busy">正在查询您的企业…</string>
+    <string name="enterprise_context_unavailable">无法确认访问权限。请重试。</string>
+    <string name="enterprise_context_denied">此访问权限不可用。请刷新您的企业。</string>
+    <string name="enterprise_context_home">企业模式</string>
+    <string name="enterprise_context_current">您当前位于 %1$s</string>
+    <string name="enterprise_context_empty_home">此企业的活动可用后将显示在这里。</string>
+    <string name="enterprise_context_ownership">切换空间时，记录仍保留在创建它们的企业中。</string>
+    <string name="enterprise_context_invitation">接受邀请</string>
+    <string name="enterprise_context_my_companies">查看我的企业</string>
+    <string name="enterprise_context_close">关闭选择</string>
+    <string name="enterprise_context_reconfirm">确认访问权限</string>
 </resources>
