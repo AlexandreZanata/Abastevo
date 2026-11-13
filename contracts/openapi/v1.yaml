@@ -26809,6 +26809,362 @@ components:
       example:
         limit: 20
       description: Organization/account/member/route-bound pagination; omitted limit defaults20.
+    EnterpriseSyncDigest:
+      type: string
+      pattern: ^sha256:[0-9a-f]{64}$
+    EnterpriseSyncInstant:
+      type: string
+      format: date-time
+      pattern: ^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{1,9})?Z$
+      description: Canonical UTC OrgTime instant, including the minimum declaration instant 0001-01-01T00:00:00Z.
+        The strict codec rejects invalid calendar values, redundant fractional zeros and year zero; JSON Schema
+        alone does not establish canonicality.
+    EnterpriseSyncOrigin:
+      type: string
+      pattern: ^https://[^/?#@]+$
+      description: Exact canonical HTTPS API origin; no path, user information, query or fragment. The portable
+        protocol codec additionally checks ASCII DNS/IP syntax, lowercase spelling and ports 1..65535 without
+        zero padding, with 443 omitted. DNS trailing dots and valid lowercase IPv6 spellings are preserved
+        as distinct origins. No network lookup.
+    EnterpriseSyncJSONValue:
+      description: 'Enterprise canonical JSON profile: exact arbitrary-precision integer lexemes, no fractions/exponents/negative
+        zero, well-formed Unicode, lowercase snake_case object keys, no duplicate decoded keys. Object keys
+        sort by ASCII; ordinary arrays keep order. Schema validation alone cannot verify lexical numeric identity,
+        duplicate keys, UTF-8 validity, byte/depth budgets or a digest. The shared strict codec is required.'
+      oneOf:
+      - type: 'null'
+      - type: boolean
+      - type: integer
+      - type: string
+      - type: array
+        items:
+          $ref: '#/components/schemas/EnterpriseSyncJSONValue'
+      - type: object
+        propertyNames:
+          type: string
+          pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
+        additionalProperties:
+          $ref: '#/components/schemas/EnterpriseSyncJSONValue'
+    EnterpriseSyncPayload:
+      type: object
+      propertyNames:
+        type: string
+        pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
+      additionalProperties:
+        $ref: '#/components/schemas/EnterpriseSyncJSONValue'
+    EnterpriseSyncEntity:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - id
+      - expected_revision
+      properties:
+        type:
+          type: string
+          pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        expected_revision:
+          oneOf:
+          - type: 'null'
+          - type: integer
+            format: int64
+            minimum: 1
+            maximum: 9223372036854775807
+    EnterpriseSyncSoftReference:
+      type: object
+      additionalProperties: false
+      required:
+      - type
+      - id
+      properties:
+        type:
+          type: string
+          pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*$
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+    EnterpriseSyncAttachment:
+      type: object
+      additionalProperties: false
+      required:
+      - id
+      - sha256
+      - bytes
+      - mime
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        sha256:
+          type: string
+          pattern: ^[0-9a-f]{64}$
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+        mime:
+          type: string
+          pattern: ^[a-z0-9][a-z0-9!#$&^_.+\-]*/[a-z0-9][a-z0-9!#$&^_.+\-]*$
+          description: Canonical lowercase MIME declaration without parameters or wildcards. Document ingress
+            owns content validation.
+    EnterpriseSyncOperation:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - owner_account_id
+      - api_origin
+      - org_id
+      - membership_id
+      - enrollment_id
+      - type
+      - operation_schema
+      - entity
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      - depends_on
+      - soft_references
+      - attachments
+      - payload
+      - payload_digest
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        owner_account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        api_origin:
+          $ref: '#/components/schemas/EnterpriseSyncOrigin'
+        org_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        type:
+          type: string
+          pattern: ^[a-z][a-z0-9]*(_[a-z0-9]+)*(\.[a-z][a-z0-9]*(_[a-z0-9]+)*)+$
+        operation_schema:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 9223372036854775807
+        entity:
+          $ref: '#/components/schemas/EnterpriseSyncEntity'
+        occurred_at:
+          $ref: '#/components/schemas/EnterpriseSyncInstant'
+        entry_zone:
+          type: string
+          minLength: 1
+          description: Existing PLAT-015 UTC/IANA zone profile, checked by the strict codec.
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        depends_on:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+        soft_references:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseSyncSoftReference'
+        attachments:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseSyncAttachment'
+        payload:
+          $ref: '#/components/schemas/EnterpriseSyncPayload'
+        payload_digest:
+          $ref: '#/components/schemas/EnterpriseSyncDigest'
+      description: Immutable intent, not proof of current authority. The complete canonical object excluding
+        only payload_digest is hashed with SHA256. Every context, entity, time, dependency, attachment and
+        payload field is covered. Sets are sorted and duplicate identities are refused. Enrollment identifies
+        an organization enrollment row, not a signing key. operation_schema is structurally positive int64;
+        only version 1 is currently supported. Each raw and complete canonical operation is at most 8192 UTF-8
+        bytes and 62 container levels by default. OFFL-001 defines components only; no intake route is activated.
+      x-abastevo-max-raw-bytes: 8192
+      x-abastevo-max-canonical-bytes: 8192
+      x-abastevo-max-container-depth: 62
+    EnterpriseSyncBatch:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - family_id
+      - access_token
+      - operations
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[!-~]+$
+          description: Current untrimmed delivery credential; not part of immutable operation identity.
+        operations:
+          type: array
+          maxItems: 50
+          items: {}
+          description: Raw candidates, not admitted operations. Strict wrapper parsing preserves exact spans
+            and checks the JSON profile and duplicate valid operation IDs. OFFL-002 must preflight all correlation
+            identities and source bindings before any effect, then parse each candidate against EnterpriseSyncOperation.
+            An uncorrelatable malformed candidate refuses the entire HTTP body before prefix effects.
+      description: Transport only, not an atomic business transaction or source authorization. Maximum 65536
+        raw UTF-8 bytes and 64 container levels including credentials. Trusted immutable configuration may
+        reduce these and per-operation limits but cannot widen them. Signing must cover the exact transmitted
+        body; OFFL-001 installs no batch route.
+      x-abastevo-max-raw-bytes: 65536
+      x-abastevo-max-container-depth: 64
+    EnterpriseSyncAcknowledgement:
+      type: object
+      additionalProperties: false
+      required:
+      - schema_version
+      - operation_id
+      - payload_digest
+      - result
+      - code
+      - entity_revision
+      - received_at
+      - review_item_id
+      - warnings
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        payload_digest:
+          $ref: '#/components/schemas/EnterpriseSyncDigest'
+        result:
+          type: string
+          enum:
+          - ACCEPTED
+          - ACCEPTED_FOR_REVIEW
+          - REJECTED
+          - RETRY
+        code:
+          type:
+          - string
+          - 'null'
+        entity_revision:
+          oneOf:
+          - type: 'null'
+          - type: integer
+            format: int64
+            minimum: 1
+            maximum: 9223372036854775807
+        received_at:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/EnterpriseSyncInstant'
+        review_item_id:
+          oneOf:
+          - type: 'null'
+          - $ref: '#/components/schemas/EnterpriseUUID'
+        warnings:
+          type: array
+          maxItems: 1
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - CLOCK_SKEW
+      description: 'All fields including nulls are required. Finality is derived: ACCEPTED, ACCEPTED_FOR_REVIEW
+        and REJECTED are final with a nonzero server receipt; RETRY is not final and has no receipt/revision/review.
+        The public decoder requires the original immutable operation and checks both operation_id and payload_digest
+        before exposing a result. OPERATION_ID_REUSED correlates the attempted digest without replacing the
+        first stored acknowledgement. CLOCK_SKEW is independent evidence; future codes do not activate future
+        policy.'
+      oneOf:
+      - properties:
+          result:
+            const: ACCEPTED
+          code:
+            type: 'null'
+          entity_revision:
+            type: integer
+            format: int64
+            minimum: 1
+            maximum: 9223372036854775807
+          received_at:
+            $ref: '#/components/schemas/EnterpriseSyncReceiptInstant'
+          review_item_id:
+            type: 'null'
+      - properties:
+          result:
+            const: ACCEPTED_FOR_REVIEW
+          code:
+            type: string
+            enum:
+            - ORPHAN_REFERENCE
+            - ACCESS_ENDED_BEFORE_RECEIPT
+            - PERMISSION_CHANGED
+            - ASSET_UNAVAILABLE
+            - ASSET_BUSY
+            - TRIP_ALREADY_CLOSED
+            - PERIOD_LOCKED
+            - STALE_REVISION
+            - ORG_SUSPENDED_GRACE
+            - PLAN_CHANGED
+          received_at:
+            $ref: '#/components/schemas/EnterpriseSyncReceiptInstant'
+          review_item_id:
+            $ref: '#/components/schemas/EnterpriseUUID'
+      - properties:
+          result:
+            const: REJECTED
+          code:
+            type: string
+            enum:
+            - OPERATION_ID_REUSED
+            - MALFORMED
+            - DEVICE_REVOKED
+            - MEMBERSHIP_ENDED
+            - INTAKE_WINDOW_CLOSED
+            - FORBIDDEN
+            - ORG_SUSPENDED
+          entity_revision:
+            type: 'null'
+          received_at:
+            $ref: '#/components/schemas/EnterpriseSyncReceiptInstant'
+          review_item_id:
+            type: 'null'
+      - properties:
+          result:
+            const: RETRY
+          code:
+            type: string
+            enum:
+            - DEPENDENCY_PENDING
+            - UNAVAILABLE
+          entity_revision:
+            type: 'null'
+          received_at:
+            type: 'null'
+          review_item_id:
+            type: 'null'
+    EnterpriseSyncReceiptInstant:
+      allOf:
+      - $ref: '#/components/schemas/EnterpriseSyncInstant'
+      - not:
+          enum:
+          - '0001-01-01T00:00:00Z'
+      description: Nonzero server receipt instant; the minimum declaration sentinel is not a receipt.
+
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

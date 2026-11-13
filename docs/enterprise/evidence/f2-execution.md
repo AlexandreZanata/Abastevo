@@ -10,7 +10,7 @@ on owned `codex/enterprise-f2` from tested/published dev
 `fac002e7d507a230d4947a3ed563269ad48f8c8e`. Main `6a19bcc7` is an ancestor;
 cumulative dev → main PR203 remains open. Other occupied checkouts are preserved.
 [Phase tracker215](https://github.com/AlexandreZanata/Abastevo/issues/215) retains
-the whole requested scope; [current task216](https://github.com/AlexandreZanata/Abastevo/issues/216)
+the whole requested scope; [first task216](https://github.com/AlexandreZanata/Abastevo/issues/216)
 tracks the first domain checkpoint.
 At opening the parent's required Quick passed; backend/Android CI was still
 running. No construction polling or merge/deployment is authorized by this phase.
@@ -48,11 +48,13 @@ exist. All operations retain their creation snapshots and immutable ownership.
 
 ## Current bounded task
 
-EMP-FLEET-001 is LOCAL_DONE / INTEGRATION_PENDING:
-[domain acceptance](f2-fleet001-asset-domain.md). Both consumers pass133 shared
-vectors and independent boundary tests. Next bounded task is EMP-OFFL-001,
-the operation envelope/result contract. No persistence, route, personal-vehicle
-read or runtime activation is introduced by the first domain checkpoint.
+EMP-FLEET-001 is LOCAL_DONE / INTEGRATION_PENDING at2daea515:
+[domain acceptance](f2-fleet001-asset-domain.md),133 shared vectors.
+EMP-OFFL-001 is LOCAL_DONE / INTEGRATION_PENDING:
+[protocol acceptance](f2-offl001-sync-protocol.md),260 shared vectors and matching
+component-only OpenAPI. Current bounded dependency is EMP-AUTH-009 authorization
+conformance. No asset persistence, intake route, queue or runtime activation is
+introduced by these two pure checkpoints. The full F2 scope remains in progress.
 
 ## Acceptance and retained gates
 

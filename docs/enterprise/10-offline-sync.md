@@ -108,28 +108,88 @@ Produced: `offl.operation.accepted`, `offl.operation.needs_review`, `offl.operat
 
 ## 10. Data, formulas and examples
 
-### 10.1 Operation envelope (documentation example, not a frozen contract)
+### 10.1 Frozen operation profile (EMP-OFFL-001)
 
-```json
-{
-  "op_id": "0f6c1c3e-6d0a-4f0e-9a43-3f2d7b1e5a10",
-  "org_id": "7b0e2a54-0000-4000-8000-000000000001",
-  "membership_id": "2f4b7c10-0000-4000-8000-000000000002",
-  "device_id": "9a1d3e77-0000-4000-8000-000000000003",
-  "type": "fueling.submit",
-  "schema": 1,
-  "entity": {"type": "fueling", "id": "c5d2a0b1-0000-4000-8000-000000000004", "expected_revision": null},
-  "occurred_at": "2026-11-10T13:42:05Z",
-  "zone": "America/Cuiaba",
-  "utc_offset_minutes": -240,
-  "depends_on": ["3a9e0c22-0000-4000-8000-000000000005"],
-  "attachments": [{"id": "e1f0a9c8-0000-4000-8000-000000000006", "sha256": "…", "bytes": 412338, "mime": "image/jpeg"}],
-  "payload_digest": "sha256:…",
-  "payload": {"asset_id": "…", "product": "DIESEL_S10", "quantity_ml": 150000, "paid_cents": 97350, "unit_price_milli": 6490, "fill": "FULL", "odometer_m": 184532000}
-}
-```
+The components `EnterpriseSyncOperation`, `EnterpriseSyncBatch` and
+`EnterpriseSyncAcknowledgement` in [OpenAPI](../../contracts/openapi/v1.yaml)
+freeze the wire structure. The pure Go `orgsync/protocol` and Kotlin
+`domain.enterprise.sync` codecs enforce the lexical and semantic constraints
+which JSON Schema cannot express. This source checkpoint installs no route,
+intake ledger, delivery worker or business effect. Current source authority is
+still mandatory when OFFL-002 admits an operation.
 
-Acknowledgement: `{"op_id": "…", "result": "ACCEPTED_FOR_REVIEW", "code": "ASSET_UNAVAILABLE", "entity_revision": 1, "received_at": "2026-11-10T18:03:11Z", "review_item_id": "…"}`.
+All fields are required, including explicit null revisions and result fields.
+An operation carries schema_version, operation_id, owner_account_id, api_origin,
+org_id, membership_id, enrollment_id, type, operation_schema, entity,
+occurred_at, entry_zone, device_offset_seconds, depends_on, soft_references,
+attachments, payload and payload_digest. `enrollment_id` names the organization
+registration row; it is not a key ID or proof that a device is active. A type
+has at least two lower snake_case segments, such as `example.record`. The
+positive int64 operation_schema is structural; only version1 is supported now.
+Payload business fields belong to the owning feature, not this transport.
+
+Hash the complete immutable operation except payload_digest. Owner, exact API
+origin, organization, member, enrollment, entity/revision, declared time/zone/
+offset, dependencies, references, attachment metadata and payload are covered.
+The digest is `sha256:` plus64 lowercase hexadecimal digits. Attachment hashes
+are bare64-digit lowercase hexadecimal strings. Transient family/token,
+signatures, batch attempts, clock samples and server receipt time are excluded.
+Renewing delivery credentials preserves the captured operation bytes and digest.
+A reused ID with changed immutable intent cannot become an identical replay.
+
+The canonical JSON profile accepts null, booleans, well-formed Unicode strings,
+arrays, objects and arbitrary-precision integer lexemes. It refuses fractions,
+exponents, leading zeros, negative zero, duplicate decoded keys and invalid UTF-8
+or surrogate escapes. Object keys must match
+`^[a-z][a-z0-9]*(_[a-z0-9]+)*$` and sort by ASCII. Ordinary arrays retain their
+order. Dependency, soft-reference and attachment sets sort canonically and
+refuse duplicate identities. Quote and backslash use two-character JSON escapes;
+C0 controls use lowercase six-character Unicode escapes; other valid Unicode
+is emitted without normalization or HTML escapes. This is not RFC8785/JCS.
+
+Operation origins are exact canonical lowercase HTTPS origins, with ASCII DNS
+LDH labels or valid IP literals, no userinfo/path/query/fragment/IPv6 zone IDs.
+Ambiguous all-numeric hosts must be valid IPv4; DNS trailing dots and valid
+lowercase IPv6 spelling are preserved. Ports are1..65535 without zero padding;
+default443 is omitted. Configuration normalization happens before creation and
+cannot rewrite a queued operation. Neither codec performs a DNS lookup.
+
+The transport wrapper has schema_version, family_id, access_token and operations.
+Credentials are untrimmed ASCII graphic strings of1..512 bytes. It may contain
+0..50 raw operation candidates. Parsing the wrapper is not admission: preserve
+exact raw spans, then parse each operation against independently captured source
+binding. OFFL-002 must preflight trustworthy correlation identities and source
+bindings for the whole body before any receipt or effect. Uncorrelatable malformed
+items refuse the body before prefix effects; well-formed per-operation version
+or business failures can be independent. Duplicate valid operation IDs are refused.
+Signing must cover the exact transmitted body.
+
+Default limits are65536 raw UTF-8 batch bytes (including credentials),8192 raw
+and complete canonical bytes per operation and64 transport container levels
+(62 per operation, reserving the two wrappers). Trusted immutable limits may
+reduce these maxima, never widen them or be selected by a request; the operation
+byte limit cannot exceed the batch limit. Tests share literal byte-boundary
+fixtures across both languages.
+
+Results echo operation_id and the attempted payload_digest. The public decoder
+requires the original immutable operation and checks both before exposing an
+outcome. ACCEPTED requires a positive revision and null code/review item.
+ACCEPTED_FOR_REVIEW requires a supported review code and review_item_id;
+its revision may be null. REJECTED requires a refusal code and null revision/
+review item. All three are final and require a nonzero canonical server
+received_at. RETRY only permits DEPENDENCY_PENDING or UNAVAILABLE and has null
+revision, received_at and review_item_id. Finality is derived, never a wire flag.
+Warnings are a unique set, initially only CLOCK_SKEW; they do not rewrite device
+time. An OPERATION_ID_REUSED response correlates the attempted digest without
+replacing the first stored acknowledgement. Future reserved codes do not activate
+future membership/grace/plan policies. Hard dependencies wait for an actual
+accepted source effect or completed review, without rewriting the original ACK.
+
+Shared literal vectors live in
+[contracts/testdata/enterprise/sync](../../contracts/testdata/enterprise/sync/).
+The [task evidence](evidence/f2-offl001-sync-protocol.md) records hashes, tests and
+remaining runtime work. The minimum OrgTime instant is valid declared evidence;
+it is forbidden as a final server receipt.
 
 ### 10.2 Intake decision table
 

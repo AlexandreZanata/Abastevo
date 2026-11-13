@@ -8,11 +8,17 @@
   B-BR-EMP-96/97, BUC-EMP-49 and EDR-060/061 precede behavior. All133 shared
   vectors pass both consumers; Go race98.0% statements, Kotlin143 tests100%
   scoped lines/99.48% instructions, format/vet/static/secret review pass.
-  Next bounded dependency EMP-OFFL-001. Pure-domain entry
-  is permitted by roadmap §5; M1/M2/C1, protected store/contact and actual sync
-  remain open. Parent required Quick passed at opening; other CI was running.
-  No polling between tasks. Physical ADB only; preserve other work/apps/data.
-  Final batch publication uses protected dev → main PR203; no merge/deploy/wiki.
+  EMP-OFFL-001 LOCAL_DONE, [protocol evidence](../enterprise/evidence/f2-offl001-sync-protocol.md):
+  full immutable digest, strict JSON, independent binding, trusted limits and
+  intent-bound ACKs pass260 shared vectors; Go race93.9% statements, Kotlin273
+  tests94.30% scoped instructions/95.74% lines, API/format/vet/static/plan/review
+  pass. B-BR-EMP-98/99, BUC-EMP-50 and EDR-062 precede behavior.
+  Current bounded dependency: EMP-AUTH-009 authorization conformance.
+  No active intake route/ledger/queue yet. Pure-domain entry is permitted by
+  roadmap §5; M1/M2/C1, protected store/contact and actual sync remain open.
+  Parent required Quick passed at opening; other CI was running. No polling
+  between tasks. Physical ADB only; preserve other work/apps/data. Final phase
+  publication uses protected dev → main PR203; no merge/deploy/wiki.
 
 - Enterprise EMP-IDN-016..018 batch, 2026-11-13: LOCAL_DONE /
   INTEGRATION_PENDING on owned `codex/enterprise-idn016-018` from published dev

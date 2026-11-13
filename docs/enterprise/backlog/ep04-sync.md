@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 The enterprise queue preserves the approved account, server origin and organization partition. C1 attachment validation uses synthetic receipts. The F4 late-intake and device-cleanup tasks retain their separate gates.
 
 ### EMP-OFFL-001 — Sync protocol contract: operation envelope, results, error codes, golden vectors
-- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Freeze an operation envelope and per-operation results for enterprise sync.
 - **Rules and use cases:** BR-OFFL-001, BR-OFFL-003, BR-OFFL-004, BR-OFFL-007, BR-OFFL-008, BR-OFFL-018, UC-OFFL-02
 - **Depends on:** EMP-PLAT-004
@@ -27,6 +27,7 @@ The enterprise queue preserves the approved account, server origin and organizat
 - **Validation:** V-API, V-SYNC, V-ISO · migration: none · rollback: keep the endpoint disabled until matching consumers exist
 - **Risks and assumptions:** Reuse compatible conventions from personal sync. Enterprise batches carry independent per-operation transactions.
 - **Done when:** The OpenAPI section, result catalog and shared vectors agree on the supported cases.
+- **Local evidence:** [EMP-OFFL-001](../evidence/f2-offl001-sync-protocol.md), task217: both consumers pass260 shared vectors; no route/ledger/queue is activated. Protected integration remains pending.
 
 ### EMP-OFFL-002 — Server operation intake: receipt ledger, idempotency and dependency ordering
 - **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type DB · size L · state TODO

@@ -1531,3 +1531,65 @@ proof and the transactionally enforced three-pending-organization account cap.
   real in-service meter and tank; an implement does not. Preserve personal data
   untouched and return redacted diagnostics. Persistence, actual meter evidence,
   assignments and lifecycle commands follow their owning tasks.
+
+- **B-BR-EMP-98 — Sync identity seals the whole immutable operation.** Version1
+  binds operation UUID, owner account, canonical HTTPS API origin, organization,
+  membership, organization enrollment UUID, type/schema, entity/revision,
+  declared time/zone/offset, hard dependencies, soft references, attachment
+  declarations and payload. Resolve the enrollment to the actual signed key and
+  current source facts later; none of those IDs establishes authority. Hash all
+  immutable fields except the digest itself. Delivery family/access token,
+  signature, attempt/clock sample and server receipt time stay outside that hash.
+  Preserve creation ownership on retries and after login refresh.
+- **B-BR-EMP-99 — Sync serialization and outcomes are unambiguous.** The
+  enterprise canonical JSON profile permits null, booleans, well-formed Unicode
+  strings, arrays, objects with ASCII lower_snake_case keys and canonical exact
+  integer tokens. Reject floats, exponents, leading zeroes, negative zero,
+  duplicate/aliased keys, invalid UTF-8 and unpaired surrogates before decoder
+  replacement. Sort object keys; emit UTF-8 without HTML/Unicode normalization.
+  Quote and backslash use two-character JSON escapes; JSON C0 controls use fixed
+  lowercase six-character Unicode escapes rather than short control escapes.
+  This is a small enterprise profile, not a claim of RFC8785 compliance.
+  Derive SHA256 from canonical complete intent, preserving arbitrarily precise
+  integer lexemes until the owning feature applies its numeric bounds.
+  Canonical UTC declaration/receipt strings and zone/offset validation inherit
+  PLAT-015; preserve a device offset even when it disagrees with its entry zone.
+  Enforce50 operations,65536 raw UTF-8 batch bytes and8192 raw/canonical bytes per
+  complete operation. Limit full transport JSON to64 container levels and
+  operations to62, reserving its two transport wrappers. Limits are trusted
+  configuration, never a request-selected bypass.
+  ACCEPTED/ACCEPTED_FOR_REVIEW/REJECTED are final; RETRY is not. Caller-supplied
+  final flags are invalid. Review requires a review ID; retry has no entity
+  revision/review ID/final receipt. CLOCK_SKEW is a separate warning.
+  Every result echoes operation ID and the original payload_digest so the
+  client can correlate it with the immutable queued intent. Operation/result
+  digests use the literal sha256: prefix and64 lowercase hexadecimal digits;
+  attachment SHA256 declarations use the existing bare64-digit format. Pending
+  hard dependencies retry without becoming final; a held predecessor requires
+  actual source resolution before its effect is available, without rewriting
+  the original acknowledgement. Missing/refused soft links are review facts,
+  not a silent conversion of hard dependencies.
+- **BUC-EMP-50 — Build and verify a retryable enterprise operation.** Capture
+  immutable creation context, typed entity/time/dependency/file facts and exact
+  payload; encode/hash the canonical intent and verify matching owner/origin/
+  organization against an independently supplied source binding. Reject changed
+  metadata with a reused digest and preserve stable IDs/bytes across delivery
+  credential refresh. Validate supported result/code/finality combinations and
+  bounded batches through shared Go/Kotlin vectors and OpenAPI components.
+  This protocol task installs no route, intake ledger, queue or feature effect;
+  actual current authority and independent transactions belong to OFFL-002.
+
+  The batch wrapper may carry0..50 raw operation candidates. Parsing that wrapper
+  does not certify its candidates: OFFL-002 must preflight trustworthy correlation
+  identity and source binding before any effect/receipt, then handle well-formed
+  per-operation version/feature failures independently. Uncorrelatable malformed
+  items cause a body refusal before prefix effects. Operation schemas are
+  positive signed64-bit values, with only1 supported initially. Credentials are
+  untrimmed ASCII graphic strings of1..512 bytes, matching the existing signed
+  gateway bound. Canonical operation/binding origins use exact lowercase HTTPS,
+  ASCII DNS LDH labels or IP literals, no userinfo/path/query/fragment/zone IDs,
+  and explicit1..65535 non-zero-padded ports except omitted default443. Preserve
+  valid lowercase IPv6 spelling and a DNS trailing dot; neither is rewritten.
+  Numeric-only ambiguous hosts must be valid IPv4, never resolved through DNS.
+  MIME declarations use the frozen lowercase type/subtype token profile, with
+  no parameters or wildcards; matching syntax is not content inspection.
