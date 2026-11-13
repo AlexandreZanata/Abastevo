@@ -9,7 +9,7 @@ test('build is deterministic, self-contained under /empresas, content-hashed and
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'empresas-artifact-'));
  try{
   const {outDir,assets}=build({outDir:path.join(tmp,'dist')});
-  assert.equal(checkDist(outDir),19);
+  assert.equal(checkDist(outDir),22);
   assert.equal(fs.existsSync(path.join(outDir,'_headers')),false);
   const original=fs.readFileSync(path.join(outDir,'assets',assets['main.js']),'utf8');
   fs.writeFileSync(path.join(outDir,'stale.js'),'stale');
@@ -34,7 +34,7 @@ test('build is deterministic, self-contained under /empresas, content-hashed and
    assert.ok(served.includes(from),from);fs.writeFileSync(drifted,served.replace(from,to));
    assert.throws(()=>checkDist(outDir,drifted),/Served company policy/,from);
   }
-  assert.equal(checkDist(outDir),19);
+  assert.equal(checkDist(outDir),22);
   assert.throws(()=>build({outDir:root}),/Unsafe output/);
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });

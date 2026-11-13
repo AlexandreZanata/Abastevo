@@ -1,6 +1,6 @@
 import { isUuid, record } from './model.js';
 
-export type Failure = 'unauthenticated' | 'fresh' | 'denied' | 'unavailable' | 'cancelled' | 'limited';
+export type Failure = 'unauthenticated' | 'fresh' | 'denied' | 'unavailable' | 'cancelled' | 'limited' | 'conflict' | 'review' | 'invalid';
 export class ApiError extends Error {
   constructor(readonly kind: Failure) { super('Company request refused'); }
 }
@@ -12,6 +12,9 @@ export interface SessionPort {
   read(signal?: AbortSignal): Promise<SessionView>;
   signOut(signal?: AbortSignal): Promise<void>;
   forget(): void;
+}
+export interface CompanyTransport {
+  privatePost(path: string, body: unknown, signal?: AbortSignal): Promise<Record<string, unknown>>;
 }
 type Fetch = (path: string, init: RequestInit) => Promise<Response>;
 const PREFIX = '/v1/org-access/session/';
@@ -93,8 +96,13 @@ export class CompanyApi implements SessionPort {
       const response = await this.#request(path, body, csrf, signal, keepalive);
       if (!response.ok) {
         if (response.status === 401) throw new ApiError(await this.#refusal(response));
-        if (response.status === 403) throw new ApiError('denied');
+        if (response.status === 403 || response.status === 404) throw new ApiError('denied');
         if (response.status === 429) throw new ApiError('limited');
+        if (response.status === 409) {
+          const raw = await this.#json(response);
+          throw new ApiError(record(raw.error).code === 'DUPLICATE_REVIEW_REQUIRED' ? 'review' : 'conflict');
+        }
+        if (response.status === 422 || response.status === 400) throw new ApiError('invalid');
         throw new ApiError('unavailable');
       }
       if (!response.headers.get('Cache-Control')?.split(',').map(v => v.trim().toLowerCase()).includes('no-store')) throw new ApiError('unavailable');
@@ -146,6 +154,22 @@ export class CompanyApi implements SessionPort {
       return view;
     } catch (error) {
       if (epoch === this.#epoch && error instanceof ApiError && ['unauthenticated', 'fresh', 'denied'].includes(error.kind)) this.forget();
+      throw error;
+    }
+  }
+  async privatePost(path: string, body: unknown, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    if (!/^\/v1\/org-access\/contexts\/(?:list|read)$/.test(path) &&
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:employees\/(?:list|create|matches|[0-9a-f-]{36}\/read)|invitations\/(?:list|issue|[0-9a-f-]{36}\/(?:read|resend|revoke|confirm|reject|acceptance\/read)))$/.test(path)) throw new ApiError('denied');
+    if (!this.authenticated) { this.forget(); throw new ApiError('unauthenticated'); }
+    const epoch = this.#epoch;
+    try {
+      const raw = await this.#post(path, body, this.#csrf, signal);
+      this.#current(epoch);
+      if (!this.authenticated) { this.forget(); throw new ApiError('unauthenticated'); }
+      this.#seen = this.now();
+      return raw;
+    } catch (error) {
+      if (epoch === this.#epoch && error instanceof ApiError && ['unauthenticated', 'fresh'].includes(error.kind)) this.forget();
       throw error;
     }
   }

@@ -142,6 +142,10 @@ func Register(router chi.Router, o Options) error {
 	}
 
 	settings := &orgpg.SettingsStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
+	contexts := &orgpg.AccountContextStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Capabilities: flags, Settings: settings}
+	if err := orgweb.RegisterAccountContexts(router, true, contexts, cookies); err != nil {
+		return err
+	}
 	settingsAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: orgweb.SettingsRecords{}, Now: time.Now}
 	if err := orgweb.RegisterSettings(router, org.SettingsService{Enabled: true, Repository: settings}, cookies, gateway, settingsAuthorization, roots); err != nil {
 		return err

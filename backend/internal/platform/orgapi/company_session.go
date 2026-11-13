@@ -72,3 +72,14 @@ type SelfDeviceRule struct {
 	Success int    `json:"success"`
 }
 type SelfDeviceDescriptor interface{ SelfDeviceRule() SelfDeviceRule }
+
+// AccountContextRule admits only current own-account discovery/selection;
+// metadata is not a permission grant and grants no organization commands.
+type AccountContextRule struct {
+	Action  string `json:"action"`
+	Cookie  bool   `json:"cookie"`
+	CSRF    bool   `json:"csrf"`
+	Binding bool   `json:"binding"`
+	Success int    `json:"success"`
+}
+type AccountContextDescriptor interface{ AccountContextRule() AccountContextRule }

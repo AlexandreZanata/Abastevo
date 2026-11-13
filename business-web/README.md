@@ -1,6 +1,7 @@
 # Abastevo Empresas web shell
 
-EMP-PLAT-008: LOCAL_DONE / INTEGRATION_PENDING. This is a separate,
+EMP-IDN-016 extends EMP-PLAT-008 with the C1 employee and invitation panel.
+This is a separate,
 framework-free static TypeScript build under /empresas/, using the approved
 [company surface](../docs/enterprise/evidence/f0-m0-decisions.md#company-web-surface)
 and [EMP-PLAT-007 session](../docs/enterprise/evidence/f1-plat007-company-web-session.md).
@@ -23,7 +24,7 @@ checks font provenance, preserves OFL notices and fingerprints the complete
 ES-module graph after rewriting imports. Fonts and brand assets are read-only
 inputs from landing/static/assets. No runtime dependency, remote font,
 inline script, service worker, persisted account proof or client data cache
-is supplied. Dist contains only 19 allowlisted static files. Credentials,
+is supplied. Dist contains only 22 allowlisted static files. Credentials,
 source maps, TypeScript and package metadata are excluded. No `_headers`
 file ships: Caddy ignored it and served it as a public file. The artifact
 check reads the served company policy from the staging web Caddyfile.
@@ -74,24 +75,56 @@ used, because arrow keys on a closed select fire change on every step.
 
 ## Membership integration
 
-MembershipSource in src/controller.ts is an explicit current-authority port,
-not an implemented membership API. Its list snapshot must match the
-authenticated account, contain canonical nonduplicate organization/member
-references and bounded display names. authorize must confirm that same
-account, organization and membership at each selection.
+MembershipSource in src/controller.ts is the current-authority port. The shipped
+main.ts now uses CurrentMemberships and the actual POST
+/v1/org-access/contexts/list and /contexts/read routes. Every page is bound to
+the signed-in account; canonical organization/membership references, pagination
+progress and selected membership are checked. Empty eligible pages advance by
+the server's last scanned reference. Failed or mixed-account responses never
+become a partial organization list. Reset, logout and current refusals clear
+the in-memory directory.
 
-Production main.ts composes unavailableMemberships until the owning AUTH/IDN
-tasks provide the real server-backed adapter. It shows an unavailable state
-after a successful real login. It makes no guessed organization request,
-seeds no organization and never treats missing integration as an empty list.
-The picker, empty/loading/denied/ready states and race isolation are tested
-through injected synthetic membership ports. There is no production demo
-mode or browser injection hook.
+The selected context response supplies current UI permission/grant hints and
+the configured invitation validity. These hints do not authorize a command.
+Every actual employee, invitation and acceptance endpoint repeats its source
+permission, fresh-proof, capability, target and revision checks. The UI lists
+all supported C1 role/scope templates with plain descriptions, disabling any
+combination absent from the current server hint; OWNER is not treated as a
+hierarchy that can grant every other role. Managed credentials have no controls.
 
-Every navigation/switch clears the prior scope immediately, aborts prior
-work and advances a generation guard. Late responses cannot repopulate it.
-Even a listed organization is not rendered until current authorize succeeds.
-Future module requests still need server-side permission checks.
+Employees can be filtered by the server's actual lifecycle states, opened and
+created. Current access state is separate descriptive source metadata: an
+ACTIVE employee record does not imply ACTIVE access. Likely duplicate contacts
+are shown alongside the draft and require explicit review before overriding.
+The panel never creates an account while creating an employee record. The basic C1 form leaves the optional home unit unset. Existing unit links are
+shown as linked, without inventing a unit name or exposing an editable UUID.
+Named unit/team selection and import remain with their scoped structure/import
+UI; no unit/team names or relationships are inferred.
+
+Invitation history contains state, grants, issuer membership, expiry and failed
+attempts, without credentials. Issue/resend show the response's one-time code
+and fragment-only link in a temporary delivery section. Copy needs a user
+clipboard gesture; printing uses the current document's restricted print view.
+Closing, refreshing, switching, session loss or logout clears delivery. A lost
+write acknowledgement retries the immutable operation and body: metadata-only
+replays cannot restore or derive delivery. Resend acknowledgement immediately
+shows new delivery and removes the old pending entry while refreshing its
+SUPERSEDED source metadata. A failed history refresh preserves already
+acknowledged delivery and does not replay that write. Expired/revoked tokens
+use a new issue; only usable pending invitations offer resend/revoke.
+
+Accepted invitations expose the account alias and manager-confirmation state
+through the actual acceptance read route. Confirm/reject require explicit
+review and the server's exact revision. A conflict clears the pending decision
+and requires a new read; it never automatically approves a later revision.
+
+Every navigation/switch clears the prior scope immediately, aborts prior work
+and advances a generation guard. Late responses cannot repopulate it. Business
+requests share the memory-only CSRF transport, no-store/redirect policy and
+bounded JSON handling. A business-plane 401/fresh refusal resets the outer
+shell immediately; a permission refusal clears its private records. Successful
+business requests move the idle deadline and the shell timer rechecks that
+current deadline before expiring an active panel. No heartbeat extends proof.
 
 ## Caddy and delivery
 
@@ -117,7 +150,7 @@ After building, from the repository root:
 
 ```sh
 # Requires an explicit disposable loopback ANPFUEL_TEST_DATABASE_URL,
-# Python Playwright/Chromium, Go and openssl; caddy.py needs Docker and PyYAML.
+# Python Playwright/Chromium, psycopg, Go and openssl; caddy.py needs Docker and PyYAML.
 GOCACHE=/tmp/enterprise-go-build python3 business-web/tests/browser.py
 python3 business-web/tests/caddy.py
 ```
@@ -125,11 +158,21 @@ python3 business-web/tests/caddy.py
 The browser script starts its own loopback HTTPS proxy and actual Go API,
 clears inherited ANPFUEL configuration, applies migrations only to the
 explicit disposable database, disables external discovery and creates a
-synthetic account. Local certificates/credentials and process logs are
+synthetic accounts. Migration setup uses the explicitly supplied disposable
+owner connection; the API uses a generated NOSUPERUSER/NOBYPASSRLS/NOINHERIT
+login with explicit per-table C1 grants and no table ownership. An exact
+operator capability fixture is seeded only for the organization created by
+this test; business commands still run through the actual HTTP/source gates.
+The runtime role and its grants are removed after the API stops.
+Local certificates/credentials and process logs are
 temporary and never committed. It verifies real company issuance/logout,
 cookie reuse refusal, reload/restored-page guards, real keyboard selection,
-scope isolation and desktop/mobile layouts. Organization-ready UI tests
-inject synthetic authority only in that local test browser.
+scope isolation and desktop/mobile layouts. Separate shell-race tests inject authority only in that local test browser.
+The employee/invitation flow uses the actual account/context/employee APIs,
+resend/revoke, privileged WAITING acceptance, manager confirmation/rejection,
+keyboard actions, responsive layout and memory cleanup. The clock regression
+checks that continued business activity preserves the session past its original
+idle deadline; it does not claim fresh authentication was renewed.
 
 The Caddy test uses the reviewed digest-pinned Caddy 2.10.2 image of the
 staging/production edge, starts and removes only its uniquely named

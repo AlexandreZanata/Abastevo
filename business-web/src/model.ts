@@ -1,7 +1,8 @@
 // Company UI values carry account and membership identity explicitly.
 export interface Organization { id: string; name: string; membershipId: string }
 export interface MembershipSnapshot { accountId: string; organizations: Organization[] }
-export interface Authority { accountId: string; organization: Organization }
+export interface InvitationGrant { role: string; scope: 'ORG' | 'SELF' }
+export interface Authority { accountId: string; organization: Organization; permissions?: string[]; invitationGrants?: InvitationGrant[]; invitationValidityDays?: number }
 export type Route = { kind: 'login' | 'overview' | 'not-found' } | { kind: 'organization'; id: string };
 export const HOME = '/empresas/';
 export const LOGIN = '/empresas/entrar/';
@@ -29,5 +30,6 @@ export function validOrganization(value: unknown): value is Organization {
 export function validSnapshot(value: unknown, accountId: string): value is MembershipSnapshot {
   const v = record(value);
   return v.accountId === accountId && isUuid(accountId) && Array.isArray(v.organizations) &&
-    v.organizations.every(validOrganization) && new Set(v.organizations.map(o => o.id)).size === v.organizations.length;
+    v.organizations.every(validOrganization) && new Set(v.organizations.map(o => o.id)).size === v.organizations.length &&
+    new Set(v.organizations.map(o => o.membershipId)).size === v.organizations.length;
 }

@@ -1,6 +1,9 @@
 import { CompanyApi, type SessionPort } from './api.js';
 import { CompanyController, unavailableMemberships, type MembershipSource, type Phase, type State } from './controller.js';
 import { HOME, LOGIN, organizationPath, route } from './model.js';
+import { CurrentMemberships } from './company.js';
+import { EmployeeAccessApi } from './employees.js';
+import { mountEmployeeAccess } from './panel.js';
 
 const COPY: Partial<Record<Phase, [string, string]>> = {
   loading: ['Carregando seu espaço', 'Verificando seu acesso. Aguarde um instante.'],
@@ -12,7 +15,7 @@ const COPY: Partial<Record<Phase, [string, string]>> = {
   'signing-out': ['Encerrando sua sessão', 'Aguarde um instante.'],
   'not-found': ['Página não encontrada', 'Use o início do painel para continuar.'],
 };
-export function mountCompany(doc: Document, browser: Window, session: SessionPort = new CompanyApi((path, init) => browser.fetch(path, init)), source: MembershipSource = unavailableMemberships): CompanyController {
+export function mountCompany(doc: Document, browser: Window, session: SessionPort = new CompanyApi((path, init) => browser.fetch(path, init)), source?: MembershipSource): CompanyController {
   const el = <T extends HTMLElement>(id: string): T => {
     const node = doc.getElementById(id);
     if (!node) throw new Error('Company shell is incomplete');
@@ -25,19 +28,28 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
   let target = route(browser.location.pathname, browser.location.search);
   let lastPhase: Phase | null = null;
   let expiryTimer = 0;
-  const controller = new CompanyController(session, source, render);
-  function render(state: State, unchanged = false): void {
+  const api = session instanceof CompanyApi ? session : null;
+  const panel = api ? mountEmployeeAccess(doc, browser, new EmployeeAccessApi(api), message => controller.reset(message)) : null;
+  const controller = new CompanyController(session, source ?? (api ? new CurrentMemberships(api) : unavailableMemberships), render);
+  function scheduleExpiry(): void {
     browser.clearTimeout(expiryTimer);
-    if (session.authenticated) {
-      expiryTimer = browser.setTimeout(() => {
-        browser.history.replaceState({}, '', LOGIN);
-        target = { kind: 'overview' };
-        controller.reset('Sua sessão expirou. Entre novamente.');
-      }, Math.max(0, session.deadline - Date.now()));
-    }
+    if (!session.authenticated) return;
+    expiryTimer = browser.setTimeout(() => {
+      // Successful business requests may have moved the idle deadline without
+      // rendering the shell. Recheck it before clearing an active panel.
+      if (session.authenticated && session.deadline > Date.now()) { scheduleExpiry(); return; }
+      browser.history.replaceState({}, '', LOGIN);
+      target = { kind: 'overview' };
+      controller.reset('Sua sessão expirou. Entre novamente.');
+    }, Math.max(0, session.deadline - Date.now()));
+  }
+  function render(state: State, unchanged = false): void {
+    scheduleExpiry();
     // An unchanged tab-return recheck keeps focus, the pending choice and the
     // live region as they are; only the refreshed expiry deadline applies.
     if (unchanged) return;
+    if (state.phase === 'ready') panel?.select(state.authority);
+    else panel?.clear();
     const busy = state.phase === 'loading' || state.phase === 'signing-out';
     const guest = !session.authenticated && state.phase !== 'not-found' && state.phase !== 'signing-out';
     el('login-view').hidden = !guest;

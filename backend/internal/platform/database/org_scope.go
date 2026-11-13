@@ -31,7 +31,7 @@ func WithOrgTx(ctx context.Context, pool *pgxpool.Pool, scope kernel.OrgScope, w
 		if err := requireSafeOrgRole(ctx, tx); err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `SELECT pg_catalog.set_config('anpfuel.org_id', $1, true)`, scope.OrgID().String()); err != nil {
+		if _, err := tx.Exec(ctx, `SELECT pg_catalog.set_config('anpfuel.org_id', $1, true),pg_catalog.set_config('anpfuel.account_context','',true)`, scope.OrgID().String()); err != nil {
 			return fmt.Errorf("database: set organization scope: %w", err)
 		}
 		return work(tx)
@@ -92,7 +92,7 @@ func WithOrgBootstrapTx(ctx context.Context, pool *pgxpool.Pool, work func(pgx.T
 		if e := requireSafeOrgRole(ctx, tx); e != nil {
 			return e
 		}
-		if _, e := tx.Exec(ctx, `SELECT set_config('anpfuel.org_id','',true),set_config('anpfuel.invitation_locator','',true)`); e != nil {
+		if _, e := tx.Exec(ctx, `SELECT set_config('anpfuel.org_id','',true),set_config('anpfuel.invitation_locator','',true),set_config('anpfuel.account_context','',true)`); e != nil {
 			return e
 		}
 		return work(tx)

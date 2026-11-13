@@ -87,7 +87,7 @@ func employeeRow(scope kernel.OrgScope, row q.GetEmployeeRecordRow) (d.EmployeeR
 	if err != nil {
 		return d.EmployeeRecord{}, app.ErrRegisterUnavailable
 	}
-	result, err := d.RehydrateEmployeeRecord(scope, d.EmployeeRecordSnapshot{Employee: e, ProfileRevision: row.ProfileRevision, Profile: d.EmployeeProfile{DisplayName: row.DisplayName, RegistrationNumber: row.RegistrationNumber, WorkEmail: row.WorkEmail, WorkPhone: row.WorkPhone, JobTitle: row.JobTitle, HomeUnitID: row.HomeUnitID}})
+	result, err := d.RehydrateEmployeeRecord(scope, d.EmployeeRecordSnapshot{Employee: e, ProfileRevision: row.ProfileRevision, AccessState: d.EmployeeAccessState(row.AccessState), Profile: d.EmployeeProfile{DisplayName: row.DisplayName, RegistrationNumber: row.RegistrationNumber, WorkEmail: row.WorkEmail, WorkPhone: row.WorkPhone, JobTitle: row.JobTitle, HomeUnitID: row.HomeUnitID}})
 	if err != nil {
 		return d.EmployeeRecord{}, app.ErrRegisterUnavailable
 	}

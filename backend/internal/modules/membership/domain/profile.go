@@ -71,11 +71,16 @@ func CanonicalEmployeeProfile(v EmployeeProfile) (EmployeeProfile, error) {
 	return v, nil
 }
 
+// EmployeeAccessState is descriptive read metadata, never membership authority.
+// The zero value is unhydrated; employee lifecycle alone cannot imply access.
+type EmployeeAccessState string
+
 type EmployeeRecordSnapshot struct {
 	privateValue
 	Employee        Employee
 	Profile         EmployeeProfile
 	ProfileRevision int64
+	AccessState     EmployeeAccessState
 }
 type EmployeeRecord struct {
 	privateValue
@@ -85,6 +90,11 @@ type EmployeeRecord struct {
 func RehydrateEmployeeRecord(scope kernel.OrgScope, v EmployeeRecordSnapshot) (EmployeeRecord, error) {
 	if _, err := v.Employee.Snapshot(scope); err != nil {
 		return EmployeeRecord{}, err
+	}
+	switch v.AccessState {
+	case "", "NONE", "INVITED", "ACTIVE", "SUSPENDED":
+	default:
+		return EmployeeRecord{}, ErrInvalid
 	}
 	if v.ProfileRevision == 0 {
 		if v.Profile != (EmployeeProfile{}) {

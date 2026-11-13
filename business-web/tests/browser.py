@@ -18,7 +18,9 @@ import subprocess
 import tempfile
 import threading
 import time
-from urllib.parse import urlparse
+from urllib.parse import urlparse, quote
+import psycopg
+from psycopg import sql
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from playwright.sync_api import sync_playwright, expect
 
@@ -36,6 +38,39 @@ def free_port():
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
         return sock.getsockname()[1]
+
+
+@contextlib.contextmanager
+def ordinary_runtime():
+    """Exact local C1 test grants; runtime cannot own/bypass private tables."""
+    role = "emp_web_runtime_" + secrets.token_hex(8)
+    password = secrets.token_hex(24)
+    connection = psycopg.connect(DSN, autocommit=True)
+    try:
+        connection.execute(sql.SQL("CREATE ROLE {} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD {}").format(sql.Identifier(role), sql.Literal(password)))
+        grants = [
+            "GRANT USAGE ON SCHEMA public TO {}",
+            "GRANT SELECT,INSERT,UPDATE ON accounts,account_session_families,identity_rate_windows,organizations,org_units,org_employee_identities,org_employee_profiles,org_memberships,org_role_assignments,org_capabilities,org_settings_heads,org_invitations,org_invitation_acceptances TO {}",
+            "GRANT SELECT,INSERT ON account_key_credentials,org_onboarding_commands,org_audit_events,org_employee_commands,org_settings_versions,org_settings_designations,org_settings_notices,org_invitation_commands,org_invitation_notices,org_invitation_locators,org_invitation_person_commands,org_invitation_acceptance_notices,org_role_commands TO {}",
+            "GRANT SELECT,UPDATE ON org_teams,org_team_links,org_ownership_transfers,org_device_enrollments TO {}",
+            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,org_settings_commands TO {}",
+            "GRANT SELECT,INSERT,UPDATE,DELETE ON account_key_admission_events,company_web_sessions TO {}",
+            "GRANT USAGE ON SEQUENCE account_key_admission_events_id_seq TO {}",
+        ]
+        for statement in grants:
+            connection.execute(sql.SQL(statement).format(sql.Identifier(role)))
+        runtime = parsed._replace(netloc=quote(role) + ":" + quote(password) + "@" + parsed.hostname + ":" + str(parsed.port or 5432)).geturl()
+        yield runtime
+    finally:
+        connection.execute(sql.SQL("DROP OWNED BY {}").format(sql.Identifier(role)))
+        connection.execute(sql.SQL("DROP ROLE IF EXISTS {}").format(sql.Identifier(role)))
+        connection.close()
+
+
+def enable_test_operator_capability(org_id):
+    # Explicit operator fixture in this disposable DB, never a runtime provider.
+    with psycopg.connect(DSN, autocommit=True) as connection:
+        connection.execute("INSERT INTO org_capabilities(org_id,capability,enabled) VALUES (%s,'organizations',true)", (org_id,))
 
 
 def run():
@@ -99,7 +134,8 @@ def run():
         subprocess.run(["go", "run", "./cmd/migrate"], cwd=ROOT / "backend", env=env,
                        check=True, stdout=subprocess.DEVNULL)
         subprocess.run(["go", "build", "-o", str(temp / "api"), "./cmd/api"], cwd=ROOT / "backend", env=env, check=True)
-        with (temp / "api.log").open("w") as log:
+        with ordinary_runtime() as runtime_dsn, (temp / "api.log").open("w") as log:
+            env["ANPFUEL_DATABASE_URL"] = runtime_dsn
             api = subprocess.Popen([str(temp / "api")], env=env, stdout=log, stderr=log)
             try:
                 deadline = time.monotonic() + 30
@@ -112,7 +148,9 @@ def run():
                     except OSError:
                         pass
                     if api.poll() is not None or time.monotonic() > deadline:
-                        raise AssertionError("Local disposable API did not become ready")
+                        log.flush()
+                        details = re.findall(r"permission denied for (?:table|sequence) [a-z0-9_]+", (temp / "api.log").read_text())
+                        raise AssertionError("Local disposable API did not become ready" + (": " + ", ".join(sorted(set(details))) if details else ""))
                     time.sleep(.1)
                 browser_checks(origin)
             finally:
@@ -131,7 +169,7 @@ def browser_checks(origin):
         errors = []
         page.on("pageerror", lambda error: errors.append(str(error)))
         created = context.request.post(origin + "/v1/accounts/keys", data={"username": "emp" + secrets.token_hex(6)})
-        assert created.status == 201, "Synthetic account creation failed"
+        assert created.status == 201, "Synthetic account creation failed: " + str(created.status) + " " + str(created.json().get("error", {}).get("code", "unknown"))
         account_key = created.json()["account_key"]
         # Without the module, the form must not submit the key natively.
         blocked = context.new_page()
@@ -155,7 +193,9 @@ def browser_checks(origin):
             page.locator("#account-key").press("Enter")
         assert issued.value.status == 200, "Actual company issuance failed"
         csrf = issued.value.json()["csrf_token"]
-        expect(page.locator("#page-title")).to_have_text("Suas empresas estão indisponíveis")
+        directory = context.request.post(origin + "/v1/org-access/contexts/list", data={"limit": 100}, headers={"Origin": origin, "X-CSRF": csrf})
+        assert directory.status == 200, "Current context discovery failed: " + str(directory.status) + " " + str(directory.json().get("error", {}).get("code", "unknown"))
+        expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
         expect(page.locator("#account-key")).to_have_value("")
         cookies = context.cookies()
         company = next(c for c in cookies if c["name"] == "__Host-empresas-session")
@@ -170,7 +210,7 @@ def browser_checks(origin):
         assert refused.headers.get("cache-control") == "no-store"
         page.locator("#account-key").fill(account_key)
         page.locator("#login-button").click()
-        expect(page.locator("#page-title")).to_have_text("Suas empresas estão indisponíveis")
+        expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
         page.reload()
         expect(page.locator("#login-view")).to_be_visible()
         assert page.locator("#workspace").is_hidden(), "Reload restored private UI without in-memory CSRF"
@@ -180,8 +220,8 @@ def browser_checks(origin):
         page.screenshot(path="/tmp/enterprise-plat008-login-mobile.png", full_page=True)
         print("PASS: no native key submission, refused-login focus, actual TLS/PostGIS account login, company cookie, logout/reuse, reload guard and responsive login")
 
-        # Only this test server/browser receives a synthetic membership port.
-        # The shipped main.ts always composes unavailableMemberships.
+        # Shell-only injected ports isolate keyboard and stale-response behavior.
+        # The shipped main.ts composes the real account-bound context API.
         shell = re.sub(r'<script type="module"[^>]+></script>', "", (DIST / "index.html").read_text())
         page.route("**/empresas/", lambda request: request.fulfill(status=200, body=shell, content_type="text/html"))
         page.goto(origin + "/empresas/")
@@ -266,7 +306,200 @@ def browser_checks(origin):
         assert not errors, "Browser JavaScript errors occurred"
         print("PASS: keyboard selection, A/B isolation, quiet tab-return recheck, mobile overview link, authority denial, empty state, focus, responsive shell and restored-page guard")
         context.close()
+        employee_checks(browser, origin)
         browser.close()
+
+def employee_checks(browser, origin):
+    import json
+    import uuid
+    context = browser.new_context(ignore_https_errors=True, viewport={"width": 1440, "height": 1000})
+    page = context.new_page()
+    errors = []
+    page.on("pageerror", lambda error: errors.append(str(error)))
+    page.on("dialog", lambda dialog: dialog.accept())
+    owner = context.request.post(origin + "/v1/accounts/keys", data={"username": "own" + secrets.token_hex(6)})
+    assert owner.status == 201, "Synthetic manager creation failed"
+    page.clock.install()
+    page.goto(origin + "/empresas/")
+    page.locator("#account-key").fill(owner.json()["account_key"])
+    with page.expect_response(lambda response: response.url.endswith("/org-access/session/login")) as logged_in:
+        page.locator("#login-button").click()
+    csrf = logged_in.value.json()["csrf_token"]
+    headers = {"Origin": origin, "X-CSRF": csrf}
+    terms_source = (ROOT / "backend/internal/modules/organization/domain/onboarding.go").read_text()
+    terms_version = re.search(r'SyntheticTermsVersion = "([^"]+)"', terms_source)[1]
+    terms_digest = re.search(r'SyntheticTermsDigest = "([^"]+)"', terms_source)[1]
+    organization = context.request.post(origin + "/v1/org-access/organizations/create", headers=headers, data={
+        "schema_version": 1, "operation_id": str(uuid.uuid4()), "name": "Empresa de teste IDN016 " + secrets.token_hex(3),
+        "time_zone": "America/Cuiaba", "kinds": ["OTHER"], "unit_name": "Unidade sintética",
+        "terms": {"version": terms_version, "digest": terms_digest, "accepted": True}})
+    assert organization.status == 201, "Synthetic organization setup failed"
+    org_id = organization.json()["organization_id"]
+    enable_test_operator_capability(org_id)
+    activated = context.request.post(origin + "/v1/orgs/" + org_id + "/organization/activate", headers=headers,
+        data={"schema_version": 1, "operation_id": str(uuid.uuid4()), "revision": organization.json()["revision"]})
+    assert activated.status == 200, "Synthetic organization activation failed"
+    other = context.request.post(origin + "/v1/org-access/organizations/create", headers=headers, data={
+        "schema_version": 1, "operation_id": str(uuid.uuid4()), "name": "Empresa B sintética IDN016 " + secrets.token_hex(3),
+        "time_zone": "America/Cuiaba", "kinds": ["OTHER"], "unit_name": "Unidade B sintética",
+        "terms": {"version": terms_version, "digest": terms_digest, "accepted": True}})
+    assert other.status == 201, "Second synthetic organization setup failed"
+    other_org = other.json()["organization_id"]
+    enable_test_operator_capability(other_org)
+    other_active = context.request.post(origin + "/v1/orgs/" + other_org + "/organization/activate", headers=headers,
+        data={"schema_version": 1, "operation_id": str(uuid.uuid4()), "revision": other.json()["revision"]})
+    assert other_active.status == 200, "Second synthetic organization activation failed"
+    page.locator("#retry-button").click()
+    expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
+    page.locator("#organization-select").select_option(org_id)
+    page.locator("#organization-open").click()
+    expect(page.locator("#employee-access")).to_be_visible()
+    expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+    created_employees = []
+
+    def add_employee(suffix):
+        name = "Pessoa sintética IDN016 " + suffix + secrets.token_hex(3)
+        page.locator("#employee-create").evaluate("element => element.open = true")
+        page.locator("#employee-name").fill(name)
+        page.locator("#employee-registration").fill("SYN-" + secrets.token_hex(4))
+        page.locator("#employee-email").fill("")
+        page.locator("#employee-phone").fill("")
+        page.locator("#employee-job").fill("Motorista sintético")
+        page.locator("#employee-review").click()
+        expect(page.locator("#employee-status")).to_have_text("Nenhum possível duplicado encontrado. Confirme para salvar.")
+        with page.expect_response(lambda response: response.url.endswith("/employees/create")) as saved:
+            page.locator("#employee-save").click()
+        assert saved.value.status == 201, "Panel employee creation failed"
+        created_employees.append(saved.value.json()["employee_id"])
+        expect(page.locator("#employee-detail-name")).to_have_text(name)
+        expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+        return name
+
+    def issue(role):
+        page.locator("#invitation-role").select_option(role)
+        with page.expect_response(lambda response: response.url.endswith("/invitations/issue")) as issued:
+            page.locator("#invitation-issue").click()
+        assert issued.value.status == 200, "Panel invitation issue failed"
+        value = issued.value.json()
+        expect(page.locator("#invitation-delivery")).to_be_visible()
+        expect(page.locator("#delivery-code")).to_have_value(value["delivery"]["code"])
+        assert value["delivery"]["code"] not in page.url, "Invitation code reached navigation"
+        assert page.evaluate("localStorage.length + sessionStorage.length") == 0
+        assert page.evaluate("document.activeElement.id") == "delivery-title"
+        expect(page.locator("#employee-fields")).to_contain_text("Convidado")
+        return value
+
+    def close_delivery():
+        page.locator("#delivery-close").click()
+        expect(page.locator("#delivery-code")).to_have_value("")
+        expect(page.locator("#delivery-link")).to_have_value("")
+
+    first_name = add_employee("A")
+    first = issue("DRIVER:SELF")
+    first_code = first["delivery"]["code"]
+    close_delivery()
+    with page.expect_response(lambda response: response.url.endswith("/resend")) as resent:
+        page.get_by_role("button", name="Reemitir convite", exact=True).click()
+    assert resent.value.status == 200, "Panel invitation resend failed"
+    second_code = resent.value.json()["delivery"]["code"]
+    assert second_code != first_code, "Resend reused the old secret"
+    expect(page.locator("#delivery-code")).to_have_value(second_code)
+    page.locator("#organization-select").select_option(other_org)
+    page.locator("#organization-open").click()
+    expect(page.locator("#employee-access")).to_be_visible()
+    expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+    expect(page.locator("#delivery-code")).to_have_value("")
+    assert first_name not in page.locator("#workspace").inner_text(), "Prior organization employee survived the switch"
+    page.locator("#organization-select").select_option(org_id)
+    page.locator("#organization-open").click()
+    expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+    page.get_by_role("button", name="Abrir " + first_name, exact=True).click()
+    expect(page.locator("#employee-detail-name")).to_have_text(first_name)
+    expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+    with page.expect_response(lambda response: response.url.endswith("/revoke")) as revoked:
+        page.get_by_role("button", name="Revogar convite", exact=True).click()
+    assert revoked.value.status == 200, "Panel invitation revocation failed"
+    expect(page.locator("#employee-status")).to_have_text("Revogação confirmada no servidor.")
+    expect(page.locator("#employee-fields")).to_contain_text("Sem acesso")
+    assert first_code not in page.locator("body").inner_text() and second_code not in page.locator("body").inner_text()
+
+    def redeem(value):
+        recipient = browser.new_context(ignore_https_errors=True)
+        created = recipient.request.post(origin + "/v1/accounts/keys", data={"username": "rec" + secrets.token_hex(6)})
+        assert created.status == 201, "Synthetic recipient creation failed"
+        personal = recipient.request.post(origin + "/v1/accounts/keys/login", data={"account_key": created.json()["account_key"]})
+        assert personal.status == 200
+        proof = personal.json()["session"]
+        signed_in = recipient.request.post(origin + "/v1/org-access/session/login", headers={"Origin": origin}, data={"family_id": proof["family_id"], "access_token": proof["access_token"]})
+        assert signed_in.status == 200
+        recipient_headers = {"Origin": origin, "X-CSRF": signed_in.json()["csrf_token"]}
+        code = value["delivery"]["code"]
+        preview = recipient.request.post(origin + "/v1/org-access/invitations/preview", headers=recipient_headers, data={"code": code})
+        assert preview.status == 200
+        accepted = recipient.request.post(origin + "/v1/org-access/invitations/accept", headers=recipient_headers, data={"schema_version": 1, "operation_id": str(uuid.uuid4()), "code": code, "consent": True, "consent_digest": preview.json()["consent_digest"]})
+        assert accepted.status == 200 and accepted.json()["membership_state"] == "INVITED", "Privileged invitation skipped manager confirmation"
+        recipient.close()
+
+    def open_employee(name):
+        page.locator("#employees-refresh").click()
+        expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+        page.get_by_role("button", name="Abrir " + name, exact=True).click()
+        expect(page.locator("#employee-detail-name")).to_have_text(name)
+        expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+
+    for action, result in [("confirm", "Confirmação registrada pelo servidor."), ("reject", "Recusa registrada pelo servidor.")]:
+        name = add_employee(action)
+        value = issue("ADMIN:ORG")
+        close_delivery()
+        redeem(value)
+        open_employee(name)
+        page.get_by_role("button", name="Consultar aceite", exact=True).click()
+        expect(page.locator("#invitation-admission")).to_be_visible()
+        expect(page.locator("#admission-description")).to_contain_text("Aguardando confirmação")
+        with page.expect_response(lambda response: response.url.endswith("/" + action)) as managed:
+            page.locator("#admission-" + action).click()
+        assert managed.value.status == 200, "Manager admission action failed"
+        expect(page.locator("#employee-status")).to_have_text(result)
+        expect(page.locator("#employee-fields")).to_contain_text("Sem acesso" if action == "reject" else "Ativo")
+
+    page.set_viewport_size({"width": 390, "height": 844})
+    assert page.evaluate("document.documentElement.scrollWidth <= innerWidth"), "Employee panel mobile overflow"
+    page.screenshot(path="/tmp/enterprise-idn016-employees-mobile.png", full_page=True)
+    page.set_viewport_size({"width": 1440, "height": 1000})
+    page.screenshot(path="/tmp/enterprise-idn016-employees-desktop.png", full_page=True)
+    # Keyboard reaches the selected employee and native actions remain operable.
+    page.locator("#employees-refresh").focus()
+    page.keyboard.press("Enter")
+    expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+    assert page.locator("#employee-detail").is_hidden()
+    page.clock.fast_forward(20 * 60 * 1000)
+    page.locator("#employees-refresh").click()
+    expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+    page.clock.fast_forward(11 * 60 * 1000)
+    expect(page.locator("#employee-access")).to_be_visible()
+    expect(page.locator("#login-view")).to_be_hidden()
+    page.locator("#logout-button").click()
+    expect(page.locator("#employee-access")).to_be_hidden()
+    assert first_name not in page.locator("body").inner_text()
+    assert page.locator("#delivery-code").input_value() == ""
+    page.locator("#account-key").fill(owner.json()["account_key"])
+    page.locator("#login-button").click()
+    expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
+    page.locator("#organization-select").select_option(org_id)
+    page.locator("#organization-open").click()
+    expect(page.locator("#employee-access")).to_be_visible()
+    expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+    add_employee("fresh-refusal")
+    issue("DRIVER:SELF")
+    page.route("**/v1/orgs/" + org_id + "/employees/list", lambda route: route.fulfill(status=401, content_type="application/json", headers={"Cache-Control": "no-store"}, body='{"error":{"code":"FRESH_AUTH_REQUIRED"}}'))
+    page.locator("#employees-refresh").click()
+    expect(page.locator("#login-view")).to_be_visible()
+    expect(page.locator("#employee-access")).to_be_hidden()
+    expect(page.locator("#selected-company")).to_be_hidden()
+    expect(page.locator("#delivery-code")).to_have_value("")
+    assert not errors, "Employee panel JavaScript errors occurred"
+    print("PASS: actual account/context/employee APIs, employee create, current grant options, first-only delivery, resend/revoke, WAITING confirmation/rejection, keyboard actions, responsive panel, active idle deadline, logout and immediate fresh-refusal clearing")
+    context.close()
 
 
 if __name__ == "__main__":

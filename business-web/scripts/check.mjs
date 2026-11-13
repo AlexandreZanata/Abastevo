@@ -24,7 +24,7 @@ export function checkDist(dir=path.join(root,'dist'),served=caddyfile){
  walk(dir);
  for(const required of ['index.html','entrar/index.html','404.html','robots.txt'])if(!files.includes(required))errors.push('Missing '+required);
  if(files.includes('_headers'))errors.push('Unserved policy file _headers');
- for(const module of ['main','app','api','controller','model'])if(!files.some(n=>new RegExp(`^assets/${module}\\.[a-f0-9]{8}\\.js$`).test(n)))errors.push('Missing module '+module);
+ for(const module of ['main','app','api','controller','model','company','employees','panel'])if(!files.some(n=>new RegExp(`^assets/${module}\\.[a-f0-9]{8}\\.js$`).test(n)))errors.push('Missing module '+module);
  function mounted(ref,owner){
   if(ref.startsWith('#'))return;
   if(!ref.startsWith('/empresas/')||ref.includes('..')){errors.push('Unmounted resource in '+owner);return;}

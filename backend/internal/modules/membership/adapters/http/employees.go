@@ -255,7 +255,11 @@ func employeeView(scope kernel.OrgScope, r d.EmployeeRecord) (map[string]any, er
 	if e != nil {
 		return nil, orgapi.Unavailable
 	}
-	return map[string]any{"id": identity.ID, "state": identity.State, "identity_revision": identity.Revision, "profile_revision": v.ProfileRevision, "profile_pending": v.ProfileRevision == 0, "display_name": v.Profile.DisplayName, "registration_number": v.Profile.RegistrationNumber, "work_email": v.Profile.WorkEmail, "work_phone": v.Profile.WorkPhone, "job_title": v.Profile.JobTitle, "home_unit_id": v.Profile.HomeUnitID, "merged_into": identity.MergedInto, "data_mode": "SYNTHETIC"}, nil
+	accessState := string(v.AccessState)
+	if accessState == "" {
+		accessState = "UNKNOWN"
+	}
+	return map[string]any{"id": identity.ID, "access_state": accessState, "state": identity.State, "identity_revision": identity.Revision, "profile_revision": v.ProfileRevision, "profile_pending": v.ProfileRevision == 0, "display_name": v.Profile.DisplayName, "registration_number": v.Profile.RegistrationNumber, "work_email": v.Profile.WorkEmail, "work_phone": v.Profile.WorkPhone, "job_title": v.Profile.JobTitle, "home_unit_id": v.Profile.HomeUnitID, "merged_into": identity.MergedInto, "data_mode": "SYNTHETIC"}, nil
 }
 func employeeRule(action app.EmployeeAction, revision bool, status int) orgapi.Rule {
 	p := app.EmployeePolicy(action)

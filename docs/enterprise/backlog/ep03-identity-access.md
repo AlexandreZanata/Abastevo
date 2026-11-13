@@ -269,7 +269,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task211](https://github.com/AlexandreZanata/Abastevo/issues/211), cumulative PR203. Six actual signed/self/manager routes enrol/check/list/revoke existing-account device periods, with fresh source proof, scoped metadata, server-owned default3/range1–5 and terminal class/revision/audit/receipts. Membership ending revokes ACCESS_ENDED; LOST remains barred throughout the organization, while a distinct freshly invited ACTIVE period can enrol a still-valid personal key. Personal/other-organization access stays independent. Ordinary populated193→194 recovery/RLS/retention, real signatures/nonces/HTTP, twelve-way contention, current proof after waits, revoke/ending races, deferred faults and two-scope ordinary erasure pass. Full local Quick246s passes; affected regression completes with scoped recovery of two legacy erasure-role grants. [Evidence](../evidence/f1-idn015-device-registry.md). Last-sync, native wipe, intake-only delivery and managed activation retain their own producers/gates. No personal session inventory, deployment or F1/M1 completion is claimed.
 
 ### EMP-IDN-016 — Panel: employees, invitations and activation codes
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type WEB · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type WEB · size M · state LOCAL_DONE
 - **Objective:** Expose employee and invitation management in the company panel.
 - **Rules and use cases:** BR-IDN-003, BR-IDN-008, BR-IDN-013, BR-IDN-016, BR-IDN-039, UC-IDN-01, UC-IDN-02, SCR-IDN-01, SCR-IDN-03, SCR-IDN-04
 - **Depends on:** EMP-IDN-002, EMP-IDN-004, EMP-PLAT-008
@@ -280,9 +280,10 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Deliverable:** A scoped employee and invitation UI in the approved panel.
 - **Acceptance:** A manager sees the selected organization's permitted records. Invitation secrets appear only during issuance.
 - **Negative cases:** Foreign results after switching, missing fresh authentication, secret in navigation or premature managed-code controls.
-- **Validation:** V-WEB, V-AUTHZ, V-ISO, V-PRIV · migration: none · rollback: remove the new routes and preserve issued invitations
+- **Validation:** V-WEB, V-AUTHZ, V-ISO, V-PRIV · migration: additive current-account SELECT policy195 · rollback: remove the new UI/routes and preserve issued invitations
 - **Risks and assumptions:** The indexed title retains managed codes. C1 closes on the existing-account invitation path.
 - **Done when:** The C1 screen flow passes with keyboard access and server-confirmed state.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task212](https://github.com/AlexandreZanata/Abastevo/issues/212), cumulative PR203. Current account context discovery/selection, actual employee access-state reads and the C1 employee/invitation panel pass ordinary PostGIS/race/upgrade/HTTP/contract checks and real HTTPS Chromium flows. Thirty web unit tests, keyboard, two-organization isolation, one-time delivery, confirmation/rejection, fresh/revoked access and responsive layouts pass. [Evidence](../evidence/f1-idn016-company-identity-panel.md). Unit selection/team management and managed activation keep their owning scope. Full local Quick runs once at the end of tasks016..018; no merge, deployment or F1/M1 completion is claimed.
 
 ### EMP-IDN-017 — App: invitation acceptance and managed activation
 - **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO

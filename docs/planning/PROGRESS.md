@@ -1,4 +1,20 @@
 # Current execution state
+- Enterprise EMP-IDN-016..018 batch, 2026-11-13: task016 LOCAL_DONE /
+  INTEGRATION_PENDING on owned `codex/enterprise-idn016-018` from published dev
+  `6b0921ce`; main `6a19bcc7` is an ancestor. [Task212](https://github.com/AlexandreZanata/Abastevo/issues/212),
+  [panel evidence](../enterprise/evidence/f1-idn016-company-identity-panel.md).
+  Current-account source/migration195, actual employee access-state projection,
+  guarded panel and30 web tests pass. Ordinary PostGIS/race context6.676s,
+  employee regression6.849s, final contract15.069s, real HTTPS Chromium two-org
+  invitation/confirmation/rejection/fresh/revocation/keyboard/layout flow pass.
+  Membership domain91.3%; affected static/generation/compat/SQL/protection checks
+  pass. Next bounded task017 Android invitation acceptance, then018 context shell.
+  Final batch publication targets dev → main [PR203](https://github.com/AlexandreZanata/Abastevo/pull/203).
+  Physical authorized ADB phone only; preserve existing apps/data; no emulator.
+  Parent CI was pending at opening; no new remote acceptance claim. Full Quick
+  and union regression run once after018. Managed/vault-contact/runtime/legal/
+  staging and F1/M1 gates remain open. No merge, wiki or deployment requested.
+
 - Enterprise EMP-IDN-015, 2026-11-13: LOCAL_DONE / INTEGRATION_PENDING on owned
   codex/enterprise-idn015 from published dev f1ad43ac; publish to dev/PR203,
   [task211](https://github.com/AlexandreZanata/Abastevo/issues/211).

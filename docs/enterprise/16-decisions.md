@@ -66,6 +66,20 @@ Status: **M0 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-11. [ADR-025](../adr/02
 | EDR-056 | IDN-015 installs an existing-account signed enrollment/check plane separately from unchanged company-only routes, plus fresh account-bound self and manager list/revoke. Default3 and server-owned deployment configuration1..5 supply the current limit; no unowned settings key is introduced. Use scoped immutable periods, original receipts and source-ending revocation. Lost/compromised keys remain barred throughout the organization; ACCESS_ENDED is terminal for the old membership but permits a new enrolment after a distinct explicit invitation/ACTIVE membership. | BR-IDN-025/037..039, UC-IDN-16, the terminal-device transition table and BR-PRIV-018 require actual key possession, current membership, slot serialization, new periods and personal independence. Managed producers remain behind GOV-013. Last-sync has no installed producer and stays null; offline erasure/intake retain their owning gates. | Reusing personal cloud device/session tables as corporate inventory; manager access to personal families; client-chosen proof/count/limit; metadata-only revocation; silently granting intake or promising remote wipe; re-enrolling a lost key with a surviving personal session; permanently banning a valid personal key merely because an earlier membership ended. | EMP-IDN-015; B-BR-EMP-87..89; BUC-EMP-45; recommended-decision authorization; source f1ad43ac. |
 
 
+| EDR-057 | Supply the C1 panel with narrowly account-bound context discovery under ordinary forced RLS, per-organization current source revalidation and literal grantable options. Use existing guarded employee/invitation commands, ephemeral code/link delivery and scope-fenced UI state. | PLAT-008 deliberately has no production membership provider. Current account/organization authority and BR-IDN-003/008/013/016/039 require a real source before business UI. An additive source policy replaces the original no-migration estimate. | Global organization enumeration; cached UI authority; guessed endpoints; secret persistence/history; managed activation; a new QR dependency. | EMP-IDN-016; B-BR-EMP-90/91; BUC-EMP-46; standing recommended-decision authorization; source6b0921ce. |
+
+EMP-IDN-016 uses the existing-account C1 panel and a source-backed account-only
+context bootstrap, because the PLAT-008 production membership provider was
+deliberately unavailable. EDR-057 adopts narrow current-account discovery under
+ordinary forced RLS, per-organization current authority revalidation and literal
+current grantable options; it rejects global organization enumeration, cached UI
+authority and guessed endpoints. B-BR-EMP-90/91 and BUC-EMP-46 precede behavior.
+Employee/invitation commands retain their owning authorization and exact retry
+contracts. Delivery is ephemeral code/link; no QR dependency or managed-code UI
+is introduced. This recommended decision uses the maintainer's standing decision
+authorization. The additive source migration is a necessary dependency discovered
+in actual composition despite the task's original no-migration estimate.
+
 ORG-004 is executed before ORG-005 to supply actual scoped establishment
 references for the optional unit link. This changes construction order only;
 legal declarations remain optional for fleet operation. CPF/CNPJ validation

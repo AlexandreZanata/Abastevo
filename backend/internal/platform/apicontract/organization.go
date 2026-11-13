@@ -31,13 +31,17 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		self, selfGuarded := handler.(orgapi.SelfMembershipDescriptor)
 		signedDevice, signedDeviceGuarded := handler.(orgapi.SignedDeviceDescriptor)
 		selfDevice, selfDeviceGuarded := handler.(orgapi.SelfDeviceDescriptor)
+		accountContext, contextGuarded := handler.(orgapi.AccountContextDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
 		if operation == nil {
 			return fmt.Errorf("missing organization operation %s %s", method, path)
+		}
+		if !contextGuarded && operation.Extensions["x-abastevo-account-context"] != nil {
+			return fmt.Errorf("unexpected account context metadata for %s", path)
 		}
 		if !selfGuarded && operation.Extensions["x-abastevo-self-membership"] != nil {
 			return fmt.Errorf("unexpected self membership metadata for %s", path)
@@ -49,7 +53,27 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 			return fmt.Errorf("unexpected device authority metadata for %s", path)
 		}
 		var declared orgapi.Rule
-		if signedDeviceGuarded {
+		if contextGuarded {
+			rule := accountContext.AccountContextRule()
+			expected := orgapi.AccountContextRule{Action: rule.Action, Cookie: true, CSRF: true, Binding: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || (rule.Action != "list" && rule.Action != "read") || path != "/v1/org-access/contexts/"+rule.Action || rule != expected {
+				return fmt.Errorf("invalid account context guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for context %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-account-context"])
+			var recorded orgapi.AccountContextRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("account context metadata differs for %s", path)
+			}
+			if e := validateCompanySecurity(document, operation, path, orgapi.CompanySessionRule{Cookie: true, CSRF: true, Success: 200}); e != nil {
+				return e
+			}
+			declared.Success = 200
+		} else if signedDeviceGuarded {
 			rule := signedDevice.SignedDeviceRule()
 			expected := orgapi.SignedDeviceRule{Action: rule.Action, AccountProof: true, Signed: true, Fresh: rule.Action == "enroll", Enrollment: rule.Action == "check", Bootstrap: rule.Action == "enroll", Success: 200}
 			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || selfDeviceGuarded || (rule.Action != "enroll" && rule.Action != "check") || path != "/v1/orgs/{org_id}/devices/"+rule.Action || rule != expected || operation.Extensions["x-abastevo-organization"] != nil || operation.Extensions["x-abastevo-company-session"] != nil || operation.Extensions["x-abastevo-organization-creation"] != nil || operation.Extensions["x-abastevo-self-membership"] != nil || operation.Extensions["x-abastevo-personal-invitation"] != nil {

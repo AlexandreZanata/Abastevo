@@ -4419,6 +4419,116 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/org-access/contexts/list:
+    post:
+      tags:
+      - company-session
+      operationId: enterpriseAccountContextList
+      summary: List current own account company contexts
+      description: Account-bound current existing-account membership metadata only. The server selects the account
+        from the dedicated company session and checks current family, account, employee, membership, organization
+        and capability under ordinary forced-RLS scope. Display hints are not authorization; owning commands recheck
+        proof, freshness and authority. Exact configured HTTPS Origin/Host and X-CSRF are required. All success and
+        failure responses are no-store without ETag; JSON is limited to 16 KiB.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-account-context:
+        action: list
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      requestBody:
+        description: No caller-selected account or authority.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseAccountContextListRequest'
+      responses:
+        '200':
+          description: Current own-account context metadata, never a reusable grant.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseAccountContextListResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/org-access/contexts/read:
+    post:
+      tags:
+      - company-session
+      operationId: enterpriseAccountContextRead
+      summary: Revalidate a selected own account company context
+      description: Account-bound current existing-account membership metadata only. The server selects the account
+        from the dedicated company session and checks current family, account, employee, membership, organization
+        and capability under ordinary forced-RLS scope. Display hints are not authorization; owning commands recheck
+        proof, freshness and authority. Exact configured HTTPS Origin/Host and X-CSRF are required. All success and
+        failure responses are no-store without ETag; JSON is limited to 16 KiB.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-account-context:
+        action: read
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      requestBody:
+        description: No caller-selected account or authority.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseAccountContextReadRequest'
+      responses:
+        '200':
+          description: Current own-account context metadata, never a reusable grant.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseAccountContextView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/org-access/session/login:
     post:
       tags: [company-session]
@@ -17288,6 +17398,10 @@ components:
           - INACTIVE
           - TERMINATED
           description: Original committed identity state.
+        access_state:
+          type: string
+          enum: [NONE, INVITED, ACTIVE, SUSPENDED, UNKNOWN]
+          description: Current scoped live membership state, separate from employee lifecycle. NONE means no live period; UNKNOWN means the read was not hydrated. This metadata grants no authority.
         identity_revision:
           type: integer
           minimum: 1
@@ -18729,6 +18843,161 @@ components:
           enum: [true]
           description: Company logout completed.
           example: true
+    EnterpriseAccountContextListRequest:
+      type: object
+      additionalProperties: false
+      description: Bounded scan of current own-account references ordered by organization UUID.
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        after_org_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      example:
+        limit: 50
+    EnterpriseAccountContextReadRequest:
+      type: object
+      additionalProperties: false
+      description: References must belong to this proven account and its current membership period.
+      required:
+      - organization_id
+      - membership_id
+      properties:
+        organization_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      example:
+        organization_id: 7b0e2a54-0000-4000-8000-000000000001
+        membership_id: 7b0e2a54-0000-4000-8000-000000000601
+    EnterpriseAccountContext:
+      type: object
+      additionalProperties: false
+      description: Minimum current selector metadata; no employee contacts or other account identity.
+      required:
+      - id
+      - name
+      - membership_id
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        name:
+          type: string
+          maxLength: 120
+          example: Synthetic company
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000000001
+        name: Synthetic company
+        membership_id: 7b0e2a54-0000-4000-8000-000000000601
+    EnterpriseAccountContextListResult:
+      type: object
+      additionalProperties: false
+      description: Eligible current contexts for this reference page. Continue on nonempty next_after_org_id even when
+        organizations is empty; the cursor is the last scanned reference.
+      required:
+      - account_id
+      - organizations
+      - next_after_org_id
+      properties:
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        organizations:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseAccountContext'
+        next_after_org_id:
+          type: string
+          maxLength: 36
+          description: Last scanned reference when more exist; empty at the end.
+          example: ''
+          anyOf:
+          - enum:
+            - ''
+          - $ref: '#/components/schemas/EnterpriseUUID'
+      example:
+        account_id: 7b0e2a54-0000-4000-8000-000000000101
+        organizations: []
+        next_after_org_id: ''
+    EnterpriseAccountContextGrant:
+      type: object
+      additionalProperties: false
+      description: Current grantable invitation option from the owning role containment predicate; issue still rechecks
+        it.
+      required:
+      - role
+      - scope
+      properties:
+        role:
+          type: string
+          enum:
+          - OWNER
+          - ADMIN
+          - FLEET_MANAGER
+          - SUPERVISOR
+          - FINANCE
+          - APPROVER
+          - DRIVER
+          - OPERATIONS_STAFF
+          - AUDITOR
+          - DATA_MANAGER
+          example: DRIVER
+        scope:
+          type: string
+          enum:
+          - ORG
+          - SELF
+          example: SELF
+      example:
+        role: DRIVER
+        scope: SELF
+    EnterpriseAccountContextView:
+      type: object
+      additionalProperties: false
+      description: Current installed C1 display hints; never reusable authority. Stale freshness removes sensitive controls.
+      required:
+      - account_id
+      - organization
+      - permissions
+      - invitation_grants
+      - invitation_validity_days
+      properties:
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        organization:
+          $ref: '#/components/schemas/EnterpriseAccountContext'
+        permissions:
+          type: array
+          uniqueItems: true
+          maxItems: 3
+          items:
+            type: string
+            enum:
+            - idn.employee.read
+            - idn.employee.manage
+            - idn.invitation.manage
+        invitation_grants:
+          type: array
+          uniqueItems: true
+          maxItems: 19
+          items:
+            $ref: '#/components/schemas/EnterpriseAccountContextGrant'
+        invitation_validity_days:
+          type: integer
+          minimum: 1
+          maximum: 30
+          example: 7
+      example:
+        account_id: 7b0e2a54-0000-4000-8000-000000000101
+        organization: {id: 7b0e2a54-0000-4000-8000-000000000001, name: Synthetic company, membership_id: 7b0e2a54-0000-4000-8000-000000000601}
+        permissions:
+        - idn.employee.read
+        invitation_grants: []
+        invitation_validity_days: 7
     EnterpriseUUID:
       description: Canonical non-nil identifier used for organization API references.
       type: string

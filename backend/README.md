@@ -704,6 +704,40 @@ removed on rollback; the prior API remains schema-compatible. Test with
 an explicit disposable `ANPFUEL_TEST_DATABASE_URL`.
 [Architecture and evidence](../docs/enterprise/09-architecture.md#31-implemented-company-account-session).
 
+### Current account company contexts (EMP-IDN-016)
+
+The same default-off company composition provides `POST
+/v1/org-access/contexts/list` and `/contexts/read`. Both require the dedicated
+company cookie, `X-CSRF`, exact configured Origin/Host and a current personal
+existing-account source family. No bearer/signed authority or client account
+selector is accepted. List scans at most100 own-account membership references
+in UUID order; continue on `next_after_org_id` even for an empty eligible page.
+Read requires the exact organization/membership period and rechecks current
+account, employee, membership, root, capability and assignments. Returned C1
+permissions/grant options describe controls only; commands recheck authority.
+Freshness expiry removes employee/invitation management options. Nothing is
+stored as cached authority or added to the public/community/personal plane.
+
+Apply additive migration195 before the API. Its SELECT-only membership policy
+is confined to the unselected, account-bound bootstrap; repositories clear that
+transaction-local context before installing a private organization scope. The
+migration owner must own `org_memberships`; it creates no runtime grants or
+source data. Runtime remains an ordinary login without ownership, role change,
+superuser or BYPASSRLS. Review existing table-specific source grants: SELECT
+on memberships/employee identities/role assignments/roots/account deletion
+reservations; SELECT and required row-lock UPDATE grants on accounts/source
+families/company sessions/roots/capabilities; and existing settings bootstrap
+function plus its heads/versions grants. API enablement, runtime credential
+provisioning and staging validation remain independent operator work.
+
+```sh
+go test -race ./internal/modules/orgaccess/domain -run TestContextHints -count=1
+go test -race -tags=integration ./internal/modules/organization/adapters -run '^TestAccountContext' -count=1
+go test ./internal/platform/apicontract -run TestAccountContext -count=1
+```
+
+These tests require an explicit disposable local `ANPFUEL_TEST_DATABASE_URL`.
+
 ### Organization device enrolments (EMP-IDN-015)
 
 The default-off enterprise composition now has a distinct signed existing-account

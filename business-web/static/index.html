@@ -66,6 +66,36 @@
             <a id="home-link" class="button-quiet" href="/empresas/" hidden>Voltar ao início</a>
           </div>
         </div>
+        <section id="employee-access" class="employee-access" aria-labelledby="employees-title" hidden>
+          <div class="section-heading"><div><p class="eyebrow">PESSOAS E ACESSOS</p><h2 id="employees-title" tabindex="-1">Funcionários e convites</h2></div><button id="employees-refresh" class="button-quiet" type="button">Atualizar registros</button></div>
+          <p id="employee-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <button id="employee-retry" class="button-quiet" type="button" hidden>Tentar a mesma operação novamente</button>
+          <form id="employee-filter-form" class="inline-form"><label for="employee-state">Situação do cadastro</label><select id="employee-state"><option value="">Todas</option><option value="ACTIVE">Ativo</option><option value="INACTIVE">Inativo</option><option value="TERMINATED">Desligado</option></select><button class="button-quiet" type="submit">Filtrar</button></form>
+          <ul id="employee-list" class="record-list" aria-label="Funcionários"></ul>
+          <button id="employees-next" class="button-quiet" type="button" hidden>Próxima página de funcionários</button>
+          <details id="employee-create"><summary>Adicionar funcionário</summary>
+            <p>O cadastro identifica a pessoa na empresa. Ele não cria conta ou acesso.</p>
+            <form id="employee-create-form" autocomplete="off">
+              <div class="field-grid"><div><label for="employee-name">Nome do funcionário</label><input id="employee-name" maxlength="200" required></div><div><label for="employee-registration">Matrícula</label><input id="employee-registration" maxlength="64"></div><div><label for="employee-email">E-mail profissional</label><input id="employee-email" type="email" maxlength="254"></div><div><label for="employee-phone">Telefone profissional</label><input id="employee-phone" maxlength="16" placeholder="+5511999999999"></div><div><label for="employee-job">Cargo</label><input id="employee-job" maxlength="120"></div></div>
+              <button id="employee-review" class="button-quiet" type="submit">Conferir possíveis duplicados</button>
+              <ul id="employee-duplicates" class="record-list" aria-label="Cadastros para comparação"></ul>
+              <label class="check-label"><input id="employee-duplicate-confirm" type="checkbox">Comparei os dados e confirmo que é outra pessoa.</label>
+              <button id="employee-save" class="button-primary" type="button">Salvar funcionário</button>
+            </form>
+          </details>
+          <section id="employee-detail" class="employee-detail" aria-labelledby="employee-detail-name" hidden>
+            <h3 id="employee-detail-name" tabindex="-1"></h3><dl id="employee-fields" class="record-fields"></dl>
+            <section id="invitation-section" aria-labelledby="invitations-title" hidden>
+              <h3 id="invitations-title">Convites deste funcionário</h3>
+              <p id="invitation-validity" class="field-help"></p>
+              <form id="invitation-issue-form"><label for="invitation-role">Papel e alcance do acesso</label><select id="invitation-role" aria-describedby="invitation-help"></select><p id="invitation-help" class="field-help">As opções indisponíveis excedem sua permissão atual. O servidor confirma o acesso antes de emitir. Papéis privilegiados exigem confirmação posterior.</p><button id="invitation-issue" class="button-primary" type="submit">Emitir convite</button></form>
+              <ul id="invitation-list" class="record-list" aria-label="Histórico de convites"></ul>
+              <button id="invitations-next" class="button-quiet" type="button" hidden>Próxima página de convites</button>
+              <section id="invitation-admission" aria-labelledby="admission-title" hidden><h4 id="admission-title">Aceite do convite</h4><p id="admission-description"></p><div class="state-actions"><button id="admission-confirm" class="button-primary" type="button">Confirmar este aceite</button><button id="admission-reject" class="button-quiet" type="button">Recusar este aceite</button></div></section>
+            </section>
+          </section>
+          <section id="invitation-delivery" class="delivery-card" aria-labelledby="delivery-title" hidden><h3 id="delivery-title" tabindex="-1">Guarde o convite agora</h3><p>O código é exibido apenas nesta emissão. Entregue-o somente à pessoa convidada. Ao fechar ou trocar de empresa, ele será removido desta tela.</p><label for="delivery-code">Código do convite</label><input id="delivery-code" readonly autocomplete="off"><button id="delivery-copy-code" class="button-quiet" type="button">Copiar código</button><label for="delivery-link">Link do convite</label><input id="delivery-link" readonly autocomplete="off"><div class="state-actions"><button id="delivery-copy-link" class="button-quiet" type="button">Copiar link</button><button id="delivery-print" class="button-quiet" type="button">Imprimir convite</button><button id="delivery-close" class="button-primary" type="button">Fechar convite</button></div><p id="delivery-status" role="status"></p></section>
+        </section>
       </section>
       <p id="live-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
       <noscript>Ative o JavaScript para entrar no painel com segurança.</noscript>

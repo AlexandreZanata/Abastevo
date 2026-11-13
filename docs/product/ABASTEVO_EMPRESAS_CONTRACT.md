@@ -1403,3 +1403,34 @@ proof and the transactionally enforced three-pending-organization account cap.
   forged or unbound keys, expired/revoked proof after waits, last-slot and
   enrol/revoke/offboard contention, foreign selectors, missing permission,
   immutable history, late faults and populated ordinary migration recovery.
+
+- **B-BR-EMP-90 — Discover only the proven account's current contexts.** The
+  existing-account company session may discover its own organization/membership
+  references through a narrowly scoped account source. Clients cannot select an
+  account or infer authority from a cached directory. Ordinary forced RLS and
+  current account/family proof remain mandatory; each returned context is checked
+  against current membership, employee, organization, capability and role source.
+  Selection revalidates that same binding. Expose only the current organization's
+  permitted UI capabilities and literal grantable role/scope options; every
+  business request still performs normal authorization. No public/global
+  organization listing, managed activation or personal-data tenant boundary is
+  introduced.
+- **B-BR-EMP-91 — Panel state follows the current confirmed organization.**
+  Employee and invitation screens use actual guarded APIs and explicit server
+  acknowledgements. Employee access state is a current scoped membership read,
+  separate from employee lifecycle and invitation state; an unhydrated view is
+  UNKNOWN and never grants access. Preserve operation IDs and exact revisions for retries;
+  report conflicts, fresh-authentication and unavailable outcomes truthfully.
+  Organization/account changes, logout, expiry and access refusal immediately
+  clear private records, in-flight commands and delivery secrets. Late responses
+  cannot repopulate a previous scope. Invitation code/link delivery is ephemeral
+  and appears only in an issuance/resend response, never in navigation, history,
+  local storage or logs. Confirmation and rejection require explicit review.
+- **BUC-EMP-46 — Manage employees and invitations in the selected company.**
+  Sign in with an existing account, load its current contexts, explicitly select
+  one and confirm current authority. List/filter/read or create employees, review
+  actual duplicate warnings, issue an explicitly scoped invitation, deliver its
+  one-time code/link and inspect metadata-only history. Resend/revoke or review
+  and confirm/reject an acceptance through exact guarded revisions. Test keyboard
+  access, empty/error states, unauthorized roles, wrong/changed accounts and
+  organizations, stale responses, lost acknowledgements and source revocation.

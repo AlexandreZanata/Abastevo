@@ -2,7 +2,8 @@
 SELECT e.id::text AS id,e.state,e.revision AS identity_revision,COALESCE(e.merged_into::text,'')::text AS merged_into,
  COALESCE(p.revision,0)::bigint AS profile_revision,COALESCE(p.display_name,'')::text AS display_name,
  COALESCE(p.registration_number,'')::text AS registration_number,COALESCE(p.work_email,'')::text AS work_email,
- COALESCE(p.work_phone,'')::text AS work_phone,COALESCE(p.job_title,'')::text AS job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id
+ COALESCE(p.work_phone,'')::text AS work_phone,COALESCE(p.job_title,'')::text AS job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id,
+ COALESCE((SELECT m.state FROM org_memberships m WHERE (m.org_id,m.employee_id)=(e.org_id,e.id) AND m.state<>'ENDED'),'NONE')::text AS access_state
 FROM org_employee_identities e LEFT JOIN org_employee_profiles p ON (p.org_id,p.employee_id)=(e.org_id,e.id)
 WHERE e.org_id=CAST(@org_id::text AS uuid) AND e.id=CAST(@id::text AS uuid);
 
@@ -23,7 +24,8 @@ SELECT EXISTS(SELECT 1 FROM org_employee_profiles WHERE org_id=CAST(@org_id::tex
 SELECT e.id::text AS id,e.state,e.revision AS identity_revision,COALESCE(e.merged_into::text,'')::text AS merged_into,
  COALESCE(p.revision,0)::bigint AS profile_revision,COALESCE(p.display_name,'')::text AS display_name,
  COALESCE(p.registration_number,'')::text AS registration_number,COALESCE(p.work_email,'')::text AS work_email,
- COALESCE(p.work_phone,'')::text AS work_phone,COALESCE(p.job_title,'')::text AS job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id
+ COALESCE(p.work_phone,'')::text AS work_phone,COALESCE(p.job_title,'')::text AS job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id,
+ COALESCE((SELECT m.state FROM org_memberships m WHERE (m.org_id,m.employee_id)=(e.org_id,e.id) AND m.state<>'ENDED'),'NONE')::text AS access_state
 FROM org_employee_identities e LEFT JOIN org_employee_profiles p ON (p.org_id,p.employee_id)=(e.org_id,e.id)
 WHERE e.org_id=CAST(@org_id::text AS uuid) AND (@state_filter::text='' OR e.state= @state_filter::text)
  AND (@after_id::text='' OR e.id>NULLIF(@after_id::text,'')::uuid)
@@ -31,7 +33,8 @@ ORDER BY e.id LIMIT @row_limit::int;
 
 -- name: MatchEmployeeRecords :many
 SELECT e.id::text AS id,e.state,e.revision AS identity_revision,COALESCE(e.merged_into::text,'')::text AS merged_into,
- p.revision AS profile_revision,p.display_name,p.registration_number,p.work_email,p.work_phone,p.job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id
+ p.revision AS profile_revision,p.display_name,p.registration_number,p.work_email,p.work_phone,p.job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id,
+ COALESCE((SELECT m.state FROM org_memberships m WHERE (m.org_id,m.employee_id)=(e.org_id,e.id) AND m.state<>'ENDED'),'NONE')::text AS access_state
 FROM org_employee_identities e JOIN org_employee_profiles p ON (p.org_id,p.employee_id)=(e.org_id,e.id)
 WHERE e.org_id=CAST(@org_id::text AS uuid) AND e.id<>CAST(@exclude_id::text AS uuid)
  AND lower(regexp_replace(p.display_name,' +',' ','g'))=lower(regexp_replace(@display_name::text,' +',' ','g'))
