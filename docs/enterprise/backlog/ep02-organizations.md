@@ -235,7 +235,7 @@ integration of the current ADR-019 construction batch. See the
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
 
 ### EMP-ORG-014 — Panel: onboarding wizard and organization settings
-- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type WEB · size M · state TODO
+- **Meta:** module ORG · phase F1 · cut C1 · priority P0 · type WEB · size M · state LOCAL_DONE
 - **Objective:** Expose organization onboarding and settings through the approved company panel.
 - **Rules and use cases:** BR-ORG-025, BR-ORG-026, BR-ORG-027, BR-ORG-038, UC-ORG-01, UC-ORG-02, UC-ORG-06
 - **Depends on:** EMP-ORG-003, EMP-ORG-005, EMP-ORG-008, EMP-PLAT-008
@@ -249,6 +249,10 @@ integration of the current ADR-019 construction batch. See the
 - **Validation:** V-WEB, V-AUTHZ, V-ISO · migration: rehearse additive changes when persistence is affected · rollback: preserve the existing state, remove only the new entry point and follow the scoped recovery evidence.
 - **Risks and assumptions:** The API is authoritative. Use synthetic onboarding data in local validation.
 - **Done when:** The stated behavior and negative cases pass the listed profiles on the affected entry points.
+
+[Opening rules, wire gaps and acceptance plan](../evidence/f2-org014-onboarding-settings-panel.md).
+
+- **Local acceptance:** [ORG-014](../evidence/f2-org014-onboarding-settings-panel.md): actual source/HTTP, HTTPS browser, restricted Caddy and full affected contracts pass; v2 settings intent retains verified immutable legacy retries. Protected integration pending.
 
 ### EMP-ORG-015 — Panel: units, cost centres and teams management
 - **Meta:** module ORG · phase F1 · cut - · priority P1 · type WEB · size M · state TODO

@@ -67,8 +67,9 @@ def run():
                 time.sleep(.1)
             code, headers, _ = request("/empresas")
             assert code == 308 and headers["Location"] == "/empresas/"
-            for path in ["/empresas/", "/empresas/entrar/",
-                         "/empresas/organizacoes/7b0e2a54-0000-4000-8000-000000000002/"]:
+            for path in ["/empresas/", "/empresas/entrar/", "/empresas/criar/",
+                         "/empresas/organizacoes/7b0e2a54-0000-4000-8000-000000000002/",
+                         "/empresas/organizacoes/7b0e2a54-0000-4000-8000-000000000002/configuracao/"]:
                 for condition in [{}, {"If-None-Match": "*"}, {"If-Modified-Since": "Tue, 01 Jan 2030 00:00:00 GMT"}]:
                     code, headers, raw = request(path, condition)
                     assert code == 200 and b'login-form' in raw, "Known company entry failed"
@@ -77,7 +78,11 @@ def run():
                     assert headers["Referrer-Policy"] == "no-referrer"
                     assert "noindex" in headers["X-Robots-Tag"]
                     assert "base-uri 'none'" in headers["Content-Security-Policy"]
-            for path in ["/empresas/unknown/", "/empresas/assets/missing.js", "/empresas/organizacoes/foreign/", "/empresas/_headers"]:
+            for path in ["/empresas/unknown/", "/empresas/assets/missing.js", "/empresas/organizacoes/foreign/", "/empresas/_headers",
+                         "/empresas/criar/unknown/", "/empresas/configuracao/", "/empresas/organizacoes/foreign/configuracao/",
+                         "/empresas/organizacoes/7b0e2a54-0000-4000-8000-000000000002/configuracao/unknown/",
+                         "/empresas/organizacoes/7b0e2a54-0000-4000-8000-000000000002/configuracao",
+                         "/empresas/organizacoes/7B0E2A54-0000-4000-8000-000000000002/configuracao/"]:
                 code, headers, raw = request(path)
                 assert code == 404 and b'gina n' in raw and headers["Cache-Control"] == "no-store" and not headers.get("ETag"), "Unknown company path became a cacheable success"
                 assert not headers.get("Last-Modified"), "No-store company 404 exposes Last-Modified"

@@ -17,3 +17,9 @@ test('membership snapshots reject mixed accounts, duplicate scopes and invalid m
   assert.equal(model.validSnapshot({accountId:a,organizations:[org]},a),true);
   for(const value of [{accountId:a,organizations:[org,org]},{accountId:'other',organizations:[org]},{accountId:a,organizations:[{...org,membershipId:''}]},{accountId:a,organizations:[{...org,name:''}]}]) assert.equal(model.validSnapshot(value,a),false);
 });
+test('setup and creation paths remain canonical selectors',()=>{
+ assert.deepEqual(model.route('/empresas/criar/'),{kind:'create'});
+ assert.deepEqual(model.route(`/empresas/organizacoes/${a}/configuracao/`),{kind:'setup',id:a});
+ assert.equal(model.setupPath(a),`/empresas/organizacoes/${a}/configuracao/`);
+ assert.equal(model.route(`/empresas/organizacoes/${a}/configuracao/anything`).kind,'not-found');
+});

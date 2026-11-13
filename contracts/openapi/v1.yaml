@@ -4419,6 +4419,114 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/settings/responsibility-members/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseSettingsResponsibilityMembers
+      summary: List named eligible responsibility members
+      description: Fresh company proof and current org.settings.manage. Bounded source-projected membership IDs/names
+        only; no account, employee, credential or contact details. A pending profile has empty display_name and profile_pending.
+        Capability-off/suspended reads do not enable writes. All responses no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.settings.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Read current organization settings
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseSettingsMembersRequest'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private authorized settings acknowledgement, version or bounded history.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseSettingsMembersPage'
+  /v1/org-access/organizations/setups/list:
+    post:
+      tags:
+      - company-session
+      operationId: enterpriseOwnedSetupsList
+      summary: Recover authorized own-created company setups
+      description: Current own-account company cookie plus exact Origin/X-CSRF. Scan only owned CREATED receipt refs,
+        then resolve current scoped settings-read authority and membership before names/state. Receipt/cursor UUIDs
+        grant no operational context. Capability remains operator-owned/default-off; saved setup reads stay available.
+        Native context selection unchanged; no-store.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      requestBody:
+        description: No caller-selected account or authority.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseOwnedSetupsRequest'
+      responses:
+        '200':
+          description: Current own-account context metadata, never a reusable grant.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOwnedSetupsPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+      x-abastevo-owned-setups:
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
   /v1/org-access/contexts/list:
     post:
       tags:
@@ -13455,6 +13563,37 @@ paths:
                 ownership_transfer_validity_days: 7
                 data_mode: SYNTHETIC
                 root_revision: 2
+                organization:
+                  id: 7b0e2a54-0000-4000-8000-000000000301
+                  name: Synthetic company
+                  time_zone: America/Cuiaba
+                  kinds:
+                  - OTHER
+                  state: PENDING_SETUP
+                  revision: 2
+                  suspension_reason: ''
+                setup:
+                  ready: true
+                  missing: []
+                  terms:
+                    version: enterprise-synthetic-dpa-v1
+                    digest: 590cc4cf31e1909ac9baacb76092897f3dba07b95719953b0f4588b51348f8b3
+                    kind: SYNTHETIC
+                    recorded: true
+                context:
+                  account_id: 7b0e2a54-0000-4000-8000-000000000201
+                  membership_id: 7b0e2a54-0000-4000-8000-000000000601
+                  permissions:
+                  - org.settings.read
+                  - org.settings.manage
+                  - org.structure.manage
+                  fresh: true
+                  capability_enabled: false
+                responsibility_members:
+                - membership_id: 7b0e2a54-0000-4000-8000-000000000601
+                  display_name: ''
+                  profile_pending: true
+                  eligible: true
   /v1/orgs/{org_id}/settings/revision/read:
     post:
       tags:
@@ -13553,6 +13692,37 @@ paths:
                 ownership_transfer_validity_days: 7
                 data_mode: SYNTHETIC
                 root_revision: 2
+                organization:
+                  id: 7b0e2a54-0000-4000-8000-000000000301
+                  name: Synthetic company
+                  time_zone: America/Cuiaba
+                  kinds:
+                  - OTHER
+                  state: PENDING_SETUP
+                  revision: 2
+                  suspension_reason: ''
+                setup:
+                  ready: true
+                  missing: []
+                  terms:
+                    version: enterprise-synthetic-dpa-v1
+                    digest: 590cc4cf31e1909ac9baacb76092897f3dba07b95719953b0f4588b51348f8b3
+                    kind: SYNTHETIC
+                    recorded: true
+                context:
+                  account_id: 7b0e2a54-0000-4000-8000-000000000201
+                  membership_id: 7b0e2a54-0000-4000-8000-000000000601
+                  permissions:
+                  - org.settings.read
+                  - org.settings.manage
+                  - org.structure.manage
+                  fresh: true
+                  capability_enabled: false
+                responsibility_members:
+                - membership_id: 7b0e2a54-0000-4000-8000-000000000601
+                  display_name: ''
+                  profile_pending: true
+                  eligible: true
   /v1/orgs/{org_id}/settings/history:
     post:
       tags:
@@ -26173,6 +26343,18 @@ components:
         root_revision:
           type: integer
           minimum: 1
+        organization:
+          $ref: '#/components/schemas/EnterpriseSettingsCurrentOrganization'
+        setup:
+          $ref: '#/components/schemas/EnterpriseSettingsSetup'
+        context:
+          $ref: '#/components/schemas/EnterpriseSettingsCurrentContext'
+        responsibility_members:
+          type: array
+          maxItems: 8
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseSettingsSelectedMember'
       required:
       - revision
       - effective_at
@@ -26182,6 +26364,10 @@ components:
       - ownership_transfer_validity_days
       - data_mode
       - root_revision
+      - organization
+      - setup
+      - context
+      - responsibility_members
       example:
         revision: 2
         effective_at: '2026-11-12T12:00:00Z'
@@ -26222,8 +26408,40 @@ components:
         ownership_transfer_validity_days: 7
         data_mode: SYNTHETIC
         root_revision: 2
-      description: Authorized version plus current organization revision for subsequent root commands; settings CAS
-        uses revision instead.
+        organization:
+          id: 7b0e2a54-0000-4000-8000-000000000301
+          name: Synthetic company
+          time_zone: America/Cuiaba
+          kinds:
+          - OTHER
+          state: PENDING_SETUP
+          revision: 2
+          suspension_reason: ''
+        setup:
+          ready: true
+          missing: []
+          terms:
+            version: enterprise-synthetic-dpa-v1
+            digest: 590cc4cf31e1909ac9baacb76092897f3dba07b95719953b0f4588b51348f8b3
+            kind: SYNTHETIC
+            recorded: true
+        context:
+          account_id: 7b0e2a54-0000-4000-8000-000000000201
+          membership_id: 7b0e2a54-0000-4000-8000-000000000601
+          permissions:
+          - org.settings.read
+          - org.settings.manage
+          - org.structure.manage
+          fresh: true
+          capability_enabled: false
+        responsibility_members:
+        - membership_id: 7b0e2a54-0000-4000-8000-000000000601
+          display_name: ''
+          profile_pending: true
+          eligible: true
+      description: Authorized settings version with separate current organization/root revision, checklist, settings
+        UI hints and selected membership names/availability. Historical settings keep their own revision; organization/setup/context/member
+        labels are current at read time. Commands independently recheck all source gates.
     EnterpriseSettingsAcknowledgement:
       type: object
       additionalProperties: false
@@ -27165,6 +27383,296 @@ components:
           - '0001-01-01T00:00:00Z'
       description: Nonzero server receipt instant; the minimum declaration sentinel is not a receipt.
 
+    EnterpriseSettingsCurrentOrganization:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        name:
+          type: string
+          maxLength: 120
+        time_zone:
+          type: string
+          maxLength: 128
+        kinds:
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - DELIVERY
+            - CARRIER
+            - SERVICES
+            - FARM
+            - OTHER
+        state:
+          type: string
+          enum:
+          - PENDING_SETUP
+          - ACTIVE
+          - SUSPENDED
+          - ARCHIVED
+        revision:
+          type: integer
+          minimum: 1
+        suspension_reason:
+          type: string
+          enum:
+          - ''
+          - BILLING
+          - TERMS
+          - SECURITY
+          - LEGAL
+          - OWNER_REQUEST
+      required:
+      - id
+      - name
+      - time_zone
+      - kinds
+      - state
+      - revision
+      - suspension_reason
+      description: Current persisted profile/state. Pending incomplete setup may have an empty name/timezone/kinds;
+        creation still validates its complete draft.
+    EnterpriseSettingsSetup:
+      type: object
+      additionalProperties: false
+      properties:
+        ready:
+          type: boolean
+        missing:
+          type: array
+          maxItems: 5
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - name
+            - time_zone
+            - active_unit
+            - active_owner
+            - terms
+        terms:
+          type: object
+          additionalProperties: false
+          properties:
+            version:
+              type: string
+              enum:
+              - enterprise-synthetic-dpa-v1
+            digest:
+              type: string
+              enum:
+              - 590cc4cf31e1909ac9baacb76092897f3dba07b95719953b0f4588b51348f8b3
+            kind:
+              type: string
+              enum:
+              - SYNTHETIC
+            recorded:
+              type: boolean
+          required:
+          - version
+          - digest
+          - kind
+          - recorded
+      required:
+      - ready
+      - missing
+      - terms
+      description: Current source activation facts, not an authorization or prediction of future activation.
+    EnterpriseSettingsCurrentContext:
+      type: object
+      additionalProperties: false
+      properties:
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        permissions:
+          type: array
+          maxItems: 3
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - org.settings.read
+            - org.settings.manage
+            - org.structure.manage
+        fresh:
+          type: boolean
+        capability_enabled:
+          type: boolean
+      required:
+      - account_id
+      - membership_id
+      - permissions
+      - fresh
+      - capability_enabled
+      description: Current exact account/member and ORG-covered settings role hints. Commands additionally recheck freshness,
+        capability, state and all source authority. Native context hints stay unchanged.
+    EnterpriseSettingsResponsibilityMember:
+      type: object
+      additionalProperties: false
+      properties:
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          maxLength: 120
+        profile_pending:
+          type: boolean
+      required:
+      - membership_id
+      - display_name
+      - profile_pending
+    EnterpriseSettingsSelectedMember:
+      type: object
+      additionalProperties: false
+      properties:
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          maxLength: 120
+        profile_pending:
+          type: boolean
+        eligible:
+          type: boolean
+      required:
+      - membership_id
+      - display_name
+      - profile_pending
+      - eligible
+    EnterpriseSettingsMembersRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        after_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required: []
+      example:
+        limit: 50
+    EnterpriseSettingsMembersPage:
+      type: object
+      additionalProperties: false
+      properties:
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        organization_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        members:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseSettingsResponsibilityMember'
+        next_after_membership_id:
+          type: string
+          anyOf:
+          - type: string
+            enum:
+            - ''
+          - $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - account_id
+      - organization_id
+      - membership_id
+      - members
+      - next_after_membership_id
+      example:
+        account_id: 7b0e2a54-0000-4000-8000-000000000201
+        organization_id: 7b0e2a54-0000-4000-8000-000000000301
+        membership_id: 7b0e2a54-0000-4000-8000-000000000601
+        members:
+        - membership_id: 7b0e2a54-0000-4000-8000-000000000601
+          display_name: ''
+          profile_pending: true
+        next_after_membership_id: ''
+    EnterpriseOwnedSetupsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 50
+        after_org_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required: []
+      example:
+        limit: 50
+    EnterpriseOwnedSetup:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        name:
+          type: string
+          maxLength: 120
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - PENDING_SETUP
+          - ACTIVE
+          - SUSPENDED
+          - ARCHIVED
+        root_revision:
+          type: integer
+          minimum: 1
+      required:
+      - id
+      - name
+      - membership_id
+      - state
+      - root_revision
+    EnterpriseOwnedSetupsPage:
+      type: object
+      additionalProperties: false
+      properties:
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        setups:
+          type: array
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseOwnedSetup'
+        next_after_org_id:
+          type: string
+          anyOf:
+          - type: string
+            enum:
+            - ''
+          - $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - account_id
+      - setups
+      - next_after_org_id
+      description: Own CREATED receipt references are filtered through current settings-read authority/current membership.
+        Capability-off reads remain visible; IDs grant no operational context. Filtered empty pages may retain an advancing
+        raw UUID keyset.
+      example:
+        account_id: 7b0e2a54-0000-4000-8000-000000000201
+        setups:
+        - id: 7b0e2a54-0000-4000-8000-000000000301
+          name: Synthetic company
+          membership_id: 7b0e2a54-0000-4000-8000-000000000601
+          state: PENDING_SETUP
+          root_revision: 2
+        next_after_org_id: ''
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

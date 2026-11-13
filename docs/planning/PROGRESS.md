@@ -19,11 +19,23 @@
   envelopes, next-request revocation, ADMIN→OWNER, scoped races/failure checks,
   full-router inventory and all1,105 descriptors pass. B-BR-EMP-100/BUC-EMP-51/
   EDR-063 precede tests.36 station cells and73 unrouted keys remain obligations.
-  Next bounded dependency: EMP-ORG-014 onboarding/settings panel.
+  EMP-ORG-014 LOCAL_DONE, [acceptance](../enterprise/evidence/f2-org014-onboarding-settings-panel.md):
+  source-bound create/recovery/checklist/settings/history and named members pass
+  actual ordinary PostGIS/HTTP, HTTPS browser and restricted Caddy. Complete
+  settings digest v2 fixes confirmation-policy collision while verifying genuine
+  immutable legacy retries. B-BR-EMP-101..103, BUC-EMP-52/53 and EDR-064..067
+  precede behavior/recovery. Backend9 unit/race packages,15 critical SQL cases,
+  full API582 cases and web51 tests pass; pinned/static/sqlc/review/visual checks
+  pass. Test-only exact-byte validation cache fixes600s timeout without weakening
+  checks; sandbox socket/cache failures recovered. Phase tracker215/PR203 retain
+  cumulative delivery; issue218 metadata reflects4743e0b9 and remains open.
+  Next bounded prerequisite: finish EMP-PRIV-003, recording source contact,
+  anti-rollback, maintenance and native acceptance decisions before behavior.
   No active intake route/ledger/queue yet. Pure-domain entry is permitted by
   roadmap §5; M1/M2/C1, protected store/contact and actual sync remain open.
   Parent required Quick passed at opening; other CI was running. No polling
-  between tasks. Physical ADB only; preserve other work/apps/data. Final phase
+  between tasks. User now authorizes the emulator while the phone is disconnected;
+  preserve other work/apps/data. Final phase
   publication uses protected dev → main PR203; no merge/deploy/wiki.
 
 - Enterprise EMP-IDN-016..018 batch, 2026-11-13: LOCAL_DONE /

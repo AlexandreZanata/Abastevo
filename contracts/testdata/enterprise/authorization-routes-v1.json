@@ -515,7 +515,8 @@
       "representative_route": "POST /v1/orgs/{org_id}/settings/change",
       "routes": [
         "POST /v1/orgs/{org_id}/organization/activate",
-        "POST /v1/orgs/{org_id}/settings/change"
+        "POST /v1/orgs/{org_id}/settings/change",
+        "POST /v1/orgs/{org_id}/settings/responsibility-members/list"
       ],
       "reason": ""
     },
@@ -704,6 +705,10 @@
     {
       "route": "POST /v1/org-access/organizations/create",
       "boundary": "ORGANIZATION_CREATION"
+    },
+    {
+      "route": "POST /v1/org-access/organizations/setups/list",
+      "boundary": "OWNED_SETUPS"
     },
     {
       "route": "POST /v1/org-access/session/login",

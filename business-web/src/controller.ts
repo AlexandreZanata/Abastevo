@@ -12,11 +12,11 @@ export const unavailableMemberships: MembershipSource = {
   async list() { throw new ApiError('unavailable'); },
   async authorize() { throw new ApiError('unavailable'); },
 };
-export type Phase = 'signed-out' | 'loading' | 'choose' | 'empty' | 'ready' | 'denied' | 'unavailable' | 'signing-out' | 'not-found';
-export interface State { phase: Phase; organizations: Organization[]; selected: Organization | null; message: string; authority?: Authority }
+export type Phase = 'signed-out' | 'loading' | 'choose' | 'empty' | 'ready' | 'denied' | 'unavailable' | 'signing-out' | 'not-found' | 'setup';
+export interface State { phase: Phase; organizations: Organization[]; selected: Organization | null; message: string; authority?: Authority; setupAccountId?: string }
 const sameOrganization = (a: Organization | null, b: Organization | null): boolean =>
   a === b || (a !== null && b !== null && a.id === b.id && a.name === b.name && a.membershipId === b.membershipId);
-const sameState = (a: State, b: State): boolean => a.phase === b.phase && a.message === b.message &&
+const sameState = (a: State, b: State): boolean => a.phase === b.phase && a.message === b.message && a.setupAccountId === b.setupAccountId &&
   JSON.stringify(a.authority) === JSON.stringify(b.authority) &&
   sameOrganization(a.selected, b.selected) && a.organizations.length === b.organizations.length &&
   a.organizations.every((o, i) => sameOrganization(o, b.organizations[i] ?? null));
@@ -26,8 +26,8 @@ export class CompanyController {
   #quiet = -1;
   state: State = { phase: 'signed-out', organizations: [], selected: null, message: '' };
   constructor(private readonly session: SessionPort, private readonly source: MembershipSource, private readonly render: (state: State, unchanged: boolean) => void) {}
-  #show(phase: Phase, organizations: Organization[] = [], selected: Organization | null = null, message = '', authority?: Authority): void {
-    const next = { phase, organizations, selected, message, ...(authority ? { authority } : {}) };
+  #show(phase: Phase, organizations: Organization[] = [], selected: Organization | null = null, message = '', authority?: Authority, setupAccountId?: string): void {
+    const next = { phase, organizations, selected, message, ...(authority ? { authority } : {}), ...(setupAccountId ? { setupAccountId } : {}) };
     // A background recheck that lands where it started changes nothing visible.
     const unchanged = this.#quiet === this.#epoch && sameState(this.state, next);
     this.state = next;
@@ -55,6 +55,11 @@ export class CompanyController {
     try {
       const session = await this.session.read(signal);
       if (epoch !== this.#epoch) return;
+      if (route.kind === 'create' || route.kind === 'setup') {
+        this.source.clear?.();
+        this.#show('setup', [], null, '', undefined, session.accountId);
+        return;
+      }
       const snapshot = await this.source.list(session.accountId, signal);
       if (epoch !== this.#epoch) return;
       if (!validSnapshot(snapshot, session.accountId)) throw new ApiError('denied');

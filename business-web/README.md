@@ -1,6 +1,7 @@
 # Abastevo Empresas web shell
 
 EMP-IDN-016 extends EMP-PLAT-008 with the C1 employee and invitation panel.
+EMP-ORG-014 adds persisted onboarding, activation and versioned settings.
 This is a separate,
 framework-free static TypeScript build under /empresas/, using the approved
 [company surface](../docs/enterprise/evidence/f0-m0-decisions.md#company-web-surface)
@@ -24,7 +25,7 @@ checks font provenance, preserves OFL notices and fingerprints the complete
 ES-module graph after rewriting imports. Fonts and brand assets are read-only
 inputs from landing/static/assets. No runtime dependency, remote font,
 inline script, service worker, persisted account proof or client data cache
-is supplied. Dist contains only 22 allowlisted static files. Credentials,
+is supplied. Dist contains only 25 allowlisted static files. Credentials,
 source maps, TypeScript and package metadata are excluded. No `_headers`
 file ships: Caddy ignored it and served it as a public file. The artifact
 check reads the served company policy from the staging web Caddyfile.
@@ -40,8 +41,9 @@ This is recorded as unavailable, not a successful vulnerability scan.
 
 ## Authentication and routing
 
-Entries are /empresas/, /empresas/entrar/ and
-/empresas/organizacoes/{canonical_org_uuid}/. A path never grants access.
+Entries are /empresas/, /empresas/entrar/, /empresas/criar/,
+/empresas/organizacoes/{canonical_org_uuid}/ and its /configuracao/ child.
+A path never grants access.
 Unknown routes/assets are real Caddy 404s. The shell accepts no query
 credentials. Full loads and restored pages require login because the
 company CSRF value is held only in memory.
@@ -182,3 +184,46 @@ Playwright/Chromium, Go and a disposable PostGIS, which CI does not
 provision. Neither script targets staging, production or an existing user
 browser.
 [Executed evidence](../docs/enterprise/evidence/f1-plat008-business-web-shell.md).
+
+
+## Onboarding and settings
+
+The isolated setup view confirms the current company session before using the
+organization ID as a selector for the protected settings read. It does not
+invent an operational context from a creation acknowledgement. The source read
+returns current profile/state/checklist, settings-specific hints and distinct
+root/settings revisions in one scoped transaction. Historical settings are
+shown separately; opening history also refreshes a complete current snapshot.
+Name/kinds are editable in the creation draft and read-only once persisted;
+timezone changes use the existing versioned settings command.
+
+Creation, activation and settings retries capture immutable operation IDs and
+bodies. A received write acknowledgement followed by a failed current read has
+a bound read-only retry, rather than a new write. Unknown write outcomes retain
+the original intent. Own-account CREATED-receipt discovery can resume a saved
+setup after a lost response/reload, filtering every candidate through current
+scoped read authority. No private browser persistence is introduced. The operator
+still controls default-off capability; the view truthfully distinguishes saved,
+pending, suspended and active states. Only source-pinned synthetic terms/data
+are enabled; this does not certify real-data/legal or production readiness.
+
+All current settings and history are exposed, including the confirmation policy,
+exact int64 clock-skew string and named primary/substitute memberships. The
+bounded picker uses current source eligibility and saves recheck it. Read-only
+members have no write controls. Stale revision conflicts require explicit
+reload/new decision; source revalidation preserves dirty values while marking
+newer revisions stale. Quiet tab return preserves focus on unchanged proof and
+clears private state on authority loss, including late-response races.
+
+The pre-existing settings digest omitted invitation-confirmation policy.
+EMP-ORG-014 corrects it with a complete v2 digest. Immutable legacy receipts
+replay only when their original settings revision proves the entire same intent;
+flipped confirmation flags are refused without rewriting history.
+
+The HTTPS browser harness creates and removes only its own fresh database and
+ordinary NOSUPERUSER/NOBYPASSRLS runtime role on an explicitly supplied disposable
+loopback PostGIS control connection. It exercises actual APIs and source data;
+operator capability changes are explicit synthetic fixture actions. Caddy tests
+verify the exact restricted deep links/security headers against both policy
+representations, leaving unknown suffixes as real404 responses. Task evidence:
+[EMP-ORG-014](../docs/enterprise/evidence/f2-org014-onboarding-settings-panel.md).

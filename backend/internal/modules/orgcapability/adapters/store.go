@@ -32,6 +32,7 @@ type Store struct {
 }
 
 var _ application.Repository = (*Store)(nil)
+var _ application.TransactionStateReader = (*Store)(nil)
 
 func NewStore(pool *pgxpool.Pool, catalog domain.Catalog, runner auditapp.Runner) *Store {
 	return &Store{pool: pool, catalog: catalog, audit: runner}
@@ -122,6 +123,28 @@ func (store *Store) State(ctx context.Context, scope kernel.OrgScope, code strin
 		return domain.State{}, domain.ErrUnavailable
 	}
 	return state, nil
+}
+
+// StateTx reads an advisory current state in the owning caller's already scoped
+// transaction. It takes no write lock and cannot grant an independent command.
+func (store *Store) StateTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, code string) (domain.State, error) {
+	if err := store.validate(scope, code); err != nil {
+		return domain.State{}, err
+	}
+	if tx == nil {
+		return domain.State{}, domain.ErrInvalid
+	}
+	if err := database.ValidateOrgTx(ctx, tx, scope); err != nil {
+		return domain.State{}, domain.ErrUnavailable
+	}
+	row, err := qcap.New(tx).GetState(ctx, qcap.GetStateParams{OrgID: scope.OrgID().String(), Capability: code})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.State{}, nil
+	}
+	if err != nil {
+		return domain.State{}, domain.ErrUnavailable
+	}
+	return domain.State{Enabled: row.Enabled, Revision: row.Revision}, nil
 }
 
 // GuardWrite composes inside an existing scoped audit/business transaction.

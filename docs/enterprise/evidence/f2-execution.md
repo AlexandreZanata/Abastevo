@@ -54,9 +54,14 @@ EMP-OFFL-001 is LOCAL_DONE / INTEGRATION_PENDING:
 [protocol acceptance](f2-offl001-sync-protocol.md),260 shared vectors and matching
 component-only OpenAPI. EMP-AUTH-009 is LOCAL_DONE / INTEGRATION_PENDING,
 [authorization conformance](f2-auth009-authorization-conformance.md):120 actual
-current-source HTTP cells and complete route inventory. Next bounded dependency
-is EMP-ORG-014 company onboarding/settings. No asset persistence, intake route, queue or runtime activation is
-introduced by these two pure checkpoints. The full F2 scope remains in progress.
+current-source HTTP cells and complete route inventory, tested commit4743e0b9.
+The current bounded dependency is EMP-ORG-014 IN_PROGRESS:
+[company onboarding/settings opening](f2-org014-onboarding-settings-panel.md).
+B-BR-EMP-101/102, BUC-EMP-52 and EDR-064/065 precede its product changes.
+Use phase tracker215 and cumulative PR203, without an intermediate publication
+or remote-check wait. No asset persistence, intake route, queue or runtime
+activation was introduced by the completed checkpoints. The full F2 scope
+remains in progress.
 
 ## Acceptance and retained gates
 
@@ -66,9 +71,10 @@ shared RED→GREEN vectors. Validate affected compilation/format/static checks,
 diff and secret surfaces per task. Run the final union/Quick once after the
 construction batch, then publish through the protected existing dev → main PR.
 
-Android uses only the connected physical ADB phone and isolated synthetic
-fixtures, preserving existing applications/data. This supersedes older emulator
-wording for this execution. Actual backup/transfer, secure-unlock, clock/key-loss
+The latest maintainer instruction permits the emulator because the phone is
+currently disconnected, superseding the earlier physical-only instruction for
+this execution. Use isolated synthetic fixtures and preserve other applications
+and data. Actual backup/transfer, secure-unlock, clock/key-loss
 and current-contact requirements must be proved, not inferred from host or UI
 tests. The protected-store/contact bindings remain closed until that acceptance.
 Legal retention of real receipts, real storage-provider behavior, production

@@ -8,10 +8,12 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	members "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/application"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
+	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
 	auditing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
+	capapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -19,12 +21,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type settingsCapability interface {
+	setupCapability
+	capapp.TransactionStateReader
+}
+
 type SettingsStore struct {
 	Pool         *pgxpool.Pool
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
 	Audit        auditing.TransactionRunner
-	Capabilities setupCapability
+	Capabilities settingsCapability
 }
 
 var _ app.SettingsRepository = (*SettingsStore)(nil)
@@ -112,8 +119,27 @@ func (s *SettingsStore) ChangeSettings(ctx context.Context, scope kernel.OrgScop
 		}
 		receipt, e := queries.SettingsCommandReceipt(ctx, q.SettingsCommandReceiptParams{OrgID: scope.OrgID().String(), OperationID: v.OperationID})
 		if e == nil {
-			if receipt.ActorID != actor.AccountID || receipt.RequestHash != digest {
+			if receipt.ActorID != actor.AccountID {
 				return app.ErrOperationReused
+			}
+			if receipt.RequestHash != digest {
+				if receipt.RequestHash != command.LegacyDigest(scope) {
+					return app.ErrOperationReused
+				}
+				original, e := loadSettings(ctx, tx, scope, receipt.SettingsRevision)
+				if e != nil {
+					return e
+				}
+				stored, e := original.Snapshot(scope)
+				if e != nil {
+					return app.ErrUnavailable
+				}
+				if stored.Source != d.SettingsCommand || stored.OperationID != v.OperationID || stored.Revision != receipt.SettingsRevision || stored.Revision != v.ExpectedRevision+1 || stored.Author.AccountID != receipt.ActorID || stored.Author.MembershipID == "" {
+					return app.ErrUnavailable
+				}
+				if stored.Values != v.Values || stored.Reason != v.Reason {
+					return app.ErrOperationReused
+				}
 			}
 			if receipt.SettingsRevision < 2 || receipt.ResultRootRevision < 1 || !settingsInstant(receipt.EffectiveAt) {
 				return app.ErrUnavailable
@@ -232,6 +258,9 @@ func (s *SettingsStore) ReadSettings(ctx context.Context, scope kernel.OrgScope,
 		if result.RootRevision < 1 {
 			return app.ErrUnavailable
 		}
+		if e := s.setupProjection(ctx, tx, scope, actor, member, &result); e != nil {
+			return e
+		}
 		readyToCommit = true
 		return nil
 	})
@@ -240,6 +269,117 @@ func (s *SettingsStore) ReadSettings(ctx context.Context, scope kernel.OrgScope,
 			return app.SettingsRead{}, app.ErrUnavailable
 		}
 		return app.SettingsRead{}, settingsError(ctx, e)
+	}
+	return result, nil
+}
+
+func (s *SettingsStore) setupProjection(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member string, result *app.SettingsRead) error {
+	root, e := read(ctx, tx, scope)
+	if e != nil {
+		return e
+	}
+	result.Organization, e = root.Snapshot(scope)
+	if e != nil || result.Organization.Revision != result.RootRevision {
+		return app.ErrUnavailable
+	}
+	facts, e := q.New(tx).SetupFacts(ctx, q.SetupFactsParams{OrgID: scope.OrgID().String(), TermsVersion: d.SyntheticTermsVersion, TermsDigest: d.SyntheticTermsDigest})
+	if e != nil {
+		return e
+	}
+	result.Checklist, e = root.SetupChecklist(scope, d.Conditions{ActiveUnits: facts.Units, ActiveOwners: facts.Owners, TermsRecorded: facts.Terms})
+	if e != nil {
+		return e
+	}
+	result.TermsRecorded = facts.Terms
+	state, e := s.Capabilities.StateTx(ctx, tx, scope, "organizations")
+	if e != nil || state.Revision < 0 || state.Enabled && state.Revision == 0 {
+		return app.ErrUnavailable
+	}
+	fresh, e := contextProof(ctx, tx, actor)
+	if e != nil {
+		return e
+	}
+	result.Context = app.SettingsContext{AccountID: actor.AccountID, MembershipID: member, Permissions: []permissions.Permission{}, Fresh: fresh, CapabilityEnabled: state.Enabled}
+	assignments, e := s.Roles.CandidatesTx(ctx, tx, scope, member)
+	if e != nil {
+		return e
+	}
+	now, e := q.New(tx).CurrentOnboardingTime(ctx)
+	if e != nil || !settingsInstant(now) {
+		return app.ErrUnavailable
+	}
+	for _, key := range []permissions.Permission{"org.settings.read", "org.settings.manage", "org.structure.manage"} {
+		_, e := permissions.CoveringRules(scope, member, assignments, key, permissions.ResourceFacts{OrgID: scope.OrgID(), ID: scope.OrgID().String()}, now.Time)
+		if e == nil {
+			result.Context.Permissions = append(result.Context.Permissions, key)
+		} else if !errors.Is(e, permissions.ErrPermissionDenied) {
+			return app.ErrUnavailable
+		}
+	}
+	settings, e := result.Settings.Snapshot(scope)
+	if e != nil {
+		return e
+	}
+	ids := []string{}
+	seen := map[string]bool{}
+	for _, kind := range []d.Responsibility{d.ReviewResponsibility, d.PlatformResponsibility, d.PrivacyResponsibility, d.BillingResponsibility} {
+		pair, e := settings.Values.Responsibilities.Pair(kind)
+		if e != nil {
+			return e
+		}
+		for _, id := range []string{pair.PrimaryID, pair.SubstituteID} {
+			if id != "" && !seen[id] {
+				ids = append(ids, id)
+				seen[id] = true
+			}
+		}
+	}
+	rows, e := q.New(tx).SettingsSelectedMemberLabels(ctx, q.SettingsSelectedMemberLabelsParams{OrgID: scope.OrgID().String(), MembershipIds: ids})
+	if e != nil || len(rows) != len(ids) {
+		return app.ErrUnavailable
+	}
+	result.ResponsibilityMembers = []app.SettingsMember{}
+	for _, row := range rows {
+		result.ResponsibilityMembers = append(result.ResponsibilityMembers, app.SettingsMember{MembershipID: row.MembershipID, DisplayName: row.DisplayName, ProfilePending: row.DisplayName == "", Eligible: row.Eligible})
+	}
+	result.Context.Fresh, e = contextProof(ctx, tx, actor)
+	return e
+}
+
+func (s *SettingsStore) ListResponsibilityMembers(ctx context.Context, scope kernel.OrgScope, actor app.CompanyActor, member string, filter app.SettingsMembersFilter) (app.SettingsMembersPage, error) {
+	if e := legalCall(scope, actor, member); e != nil {
+		return app.SettingsMembersPage{}, e
+	}
+	if e := filter.Validate(); e != nil {
+		return app.SettingsMembersPage{}, e
+	}
+	if !s.ready() {
+		return app.SettingsMembersPage{}, app.ErrUnavailable
+	}
+	result := app.SettingsMembersPage{AccountID: actor.AccountID, OrganizationID: scope.OrgID().String(), MembershipID: member, Members: []app.SettingsMember{}}
+	e := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
+		if e := (companyAuthority{Memberships: s.Memberships, Roles: s.Roles, Capabilities: s.Capabilities}).check(ctx, tx, scope, actor, member, scope.OrgID().String(), app.SettingsMembersPolicy()); e != nil {
+			return e
+		}
+		rows, e := q.New(tx).ListSettingsEligibleMembers(ctx, q.ListSettingsEligibleMembersParams{OrgID: scope.OrgID().String(), AfterMembershipID: filter.AfterMembershipID, RowLimit: int32(filter.Limit + 1)})
+		if e != nil {
+			return e
+		}
+		if len(rows) > filter.Limit {
+			result.NextMembershipID = rows[filter.Limit-1].MembershipID
+			rows = rows[:filter.Limit]
+		}
+		for _, row := range rows {
+			result.Members = append(result.Members, app.SettingsMember{MembershipID: row.MembershipID, DisplayName: row.DisplayName, ProfilePending: row.DisplayName == "", Eligible: true})
+		}
+		_, e = q.New(tx).LockLegalProof(ctx, q.LockLegalProofParams{AccountID: actor.AccountID, SessionID: actor.SessionID, RequireFresh: true})
+		if errors.Is(e, pgx.ErrNoRows) {
+			return app.ErrUnauthenticated
+		}
+		return e
+	})
+	if e != nil {
+		return app.SettingsMembersPage{}, settingsError(ctx, e)
 	}
 	return result, nil
 }

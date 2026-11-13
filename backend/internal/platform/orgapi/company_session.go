@@ -83,3 +83,13 @@ type AccountContextRule struct {
 	Success int    `json:"success"`
 }
 type AccountContextDescriptor interface{ AccountContextRule() AccountContextRule }
+
+// OwnedSetupsRule describes only the own-created recovery directory. Every
+// listed item still requires current scoped settings-read authority.
+type OwnedSetupsRule struct {
+	Cookie  bool `json:"cookie"`
+	CSRF    bool `json:"csrf"`
+	Binding bool `json:"binding"`
+	Success int  `json:"success"`
+}
+type OwnedSetupsDescriptor interface{ OwnedSetupsRule() OwnedSetupsRule }

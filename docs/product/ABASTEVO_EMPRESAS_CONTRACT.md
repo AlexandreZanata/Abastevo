@@ -1617,3 +1617,74 @@ proof and the transactionally enforced three-pending-organization account cap.
   ordinary database-role properties and keep future structural/delegation/
   station/feature checks assigned to their owning tasks. This test-only task
   changes no product permission, feature handler, source policy or runtime gate.
+
+
+### Persisted company setup and settings (EMP-ORG-014)
+
+- **B-BR-EMP-101 — Render current persisted setup through the owning server.**
+  Extend the existing organization/settings read model with explicit current
+  account, organization and membership binding, persisted profile/state and
+  activation-checklist facts, and source-derived settings UI permission hints.
+  Preserve separate settings revision and root revision: settings changes and
+  historical reads use the former; activation uses the latter. Checklist items
+  reuse the owning activation rules, not browser assumptions. Read-only members
+  see permitted values/history without write controls. Every write independently
+  repeats its current proof, role, scope, state, capability and freshness checks.
+  Named responsibility choices come from a bounded organization-scoped eligible
+  membership projection; employee IDs never become membership IDs, and editable
+  UUID inputs never substitute for a verified named choice. Expose all current
+  settings fields and revision history, with explicit conflict, validation and
+  incomplete-checklist feedback. Historical settings are labeled as historical,
+  separately from the current organization state.
+- **B-BR-EMP-102 — Resume saved setup without inventing browser authority.**
+  The isolated company setup/settings route first confirms the current server
+  session and reads the selected organization through normal settings-read
+  authority. A creation acknowledgement, URL or cached hint is only a selector;
+  it never establishes current membership, permission, activation or general
+  operational selection. Keep native context metadata and operational CanSelect
+  policy unchanged. The organizations capability remains operator-owned and
+  default-off; saved pending setup is shown truthfully while writes remain
+  refused when the capability is unavailable. A bounded own-account projection
+  in the existing onboarding module supports discovery of created setups and
+  recovery after reload or a lost creation acknowledgement, filtering every item
+  through freshly rechecked scoped settings-read authority. It grants no role,
+  capability or foreign-organization discovery. Within a live view, retries reuse
+  the exact immutable creation body and operation ID; changed intent is explicit.
+  Replayed acknowledgements describe their original result, so the panel rereads
+  current persisted state before presenting completion. Private drafts, receipts,
+  settings and credentials are not persisted in browser storage. Switching
+  account/organization, session loss, navigation or cancellation invalidates old
+  work; late responses cannot restore its private contents or submit a new scope.
+- **BUC-EMP-52 — Create, resume and configure a company through its panel.**
+  A signed-in personal account starts from an empty or populated company list,
+  reviews the source-pinned synthetic terms and submits one creation intent.
+  After the server saves it, the panel opens persisted setup through current
+  proof, including the truthful capability-pending case. It can rediscover only
+  the account's authorized created setups after reload or an uncertain reply.
+  The member reviews the text checklist, submits activation with the current
+  root revision, reads/edits permitted settings with a reason and the current
+  settings revision, chooses named eligible responsible members and substitutes,
+  and inspects previous revisions. Conflict requires a new read and an explicit
+  new decision; no automatic overwrite or early activation is claimed. Exercise
+  duplicate submission, lost acknowledgement, incomplete persisted setup,
+  unauthorized/read-only access, A/B isolation, stale replies and account/session
+  replacement through ordinary real PostGIS and the actual HTTPS browser entry.
+  Use accessible keyboard, focus and responsive states, narrowly allowlisted
+  company routes and existing dependencies. Only synthetic data/terms are in
+  scope; real-data, legal, provider, runtime and release gates remain separate.
+
+
+- **B-BR-EMP-103 — Settings retries include invitation confirmation policy.**
+  Every immutable settings field, including require_invitation_confirmation,
+  participates in command identity. Correct the omitted flag with a versioned
+  complete digest. Applied command receipts remain immutable. A legacy hash may
+  replay only when the original immutable settings revision proves the complete
+  submitted values, reason, operation/source and expected revision; matching a
+  legacy hash alone never proves that a changed confirmation flag is a retry.
+  Preserve original acknowledgement revision/time and current source authority.
+- **BUC-EMP-53 — Retry old and new complete settings intent safely.** Capture a
+  regression where flipping only confirmation policy reuses an old digest.
+  Assert new complete digests differ; replay genuine legacy false/true intents
+  from immutable stored revisions, refuse changed flag/other fields/reason and
+  fail closed on missing or inconsistent historical evidence. Do not rewrite
+  applied history or weaken receipts, revision checks or current authorization.

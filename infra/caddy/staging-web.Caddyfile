@@ -144,9 +144,12 @@ Disallow: /
 			-Last-Modified
 			defer
 		}
-		# Only canonical organization paths use the shell fallback. Unknown
-		# routes/assets retain a genuine 404, never a blanket SPA response.
-		@companyOrganization path_regexp companyOrganization ^/empresas/organizacoes/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/$
+		# Only creation and canonical organization/settings paths use the shell
+		# fallback. Unknown routes/assets retain a genuine 404, never a blanket
+		# SPA response.
+		@companyCreate path /empresas/criar/
+		rewrite @companyCreate /empresas/index.html
+		@companyOrganization path_regexp companyOrganization ^/empresas/organizacoes/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:configuracao/)?$
 		rewrite @companyOrganization /empresas/index.html
 		file_server
 	}
