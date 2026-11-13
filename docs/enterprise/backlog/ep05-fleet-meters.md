@@ -1,11 +1,11 @@
 # EP05 — Fleet, assets and meters
 
-Status: **PLANNED**, 2026-11-10.
+Status: **IN_PROGRESS**, 2026-11-13.
 
 This epic delivers the organization's asset register (vehicles, machines, implements, tanks, tenure, unit and cost-centre history), assignments, reservations, blocks, derived availability, the supplier registry and meter readings kept as append-only evidence with corrections, replacement, reset and rollover. The specification is [modules/fleet](../modules/fleet.md); rules are `BR-FLEET` and `BR-METER`. Tasks tagged cut C1 give the first operational cut an asset, an assignment and validated readings. Three panel screens of the specification have no task in [INDEX](INDEX.md) yet: SCR-FLEET-05 (lifecycle, tenure, transfer), SCR-FLEET-07 (suppliers) and the replacement dialog SCR-METER-04, which needs EMP-METER-005; they are named in the tasks that provide their commands.
 
 ### EMP-FLEET-001 — Asset domain: vehicles, machines, implements, tanks and compatible products
-- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Give the server and the app one pure model of an asset, so that kind, identifiers, tanks, accepted products and the activation check are decided the same way in Go and Kotlin instead of in each screen.
 - **Rules and use cases:** BR-FLEET-001, BR-FLEET-002, BR-FLEET-003, BR-FLEET-004, BR-FLEET-005, BR-FLEET-006, BR-FLEET-007, UC-FLEET-01
 - **Depends on:** EMP-PLAT-001, EMP-PLAT-009
@@ -19,6 +19,7 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Validation:** V-DOM, V-MONEY · migration: none · rollback: revert the change; no data is involved
 - **Risks and assumptions:** The fuel product catalog is defined later by the fueling epic; this task relies only on the port. The category list is a hypothesis to confirm in discovery (EMP-GOV-010).
 - **Done when:** Go and Kotlin pass the same asset vectors and the Go package imports nothing outside the standard library and the two kernels.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task216](https://github.com/AlexandreZanata/Abastevo/issues/216), [phase215](https://github.com/AlexandreZanata/Abastevo/issues/215), cumulative PR203. Both pure domains consume all133 shared vectors; Go race/boundary/format/vet/static checks pass with98.0% statements, Kotlin143 tests pass with100% scoped lines and99.48% instructions. Typed scope, catalog-unit consistency under changing descriptors, Unicode ordering, exact quantities, privacy/defensive copies and activation facts pass independent review. [Evidence](../evidence/f2-fleet001-asset-domain.md). Runtime category registration, real meter presence and all persistence/operations remain owning tasks; F2/M1/M2/C1 is not closed.
 
 ### EMP-FLEET-002 — Asset persistence and management with per-organization identifier uniqueness
 - **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state TODO

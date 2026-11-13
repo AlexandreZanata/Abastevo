@@ -1,4 +1,19 @@
 # Current execution state
+- Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2` from
+  tested/published dev `fac002e7`; main `6a19bcc7` remains an ancestor. User
+  requests the whole phase. [Execution/dependency audit](../enterprise/evidence/f2-execution.md)
+  records34 F2 tasks,25 unfinished transitive prerequisites and the additional
+  formal M1 chain. EMP-FLEET-001 LOCAL_DONE, pure shared Go/Kotlin
+  asset model; [evidence](../enterprise/evidence/f2-fleet001-asset-domain.md).
+  B-BR-EMP-96/97, BUC-EMP-49 and EDR-060/061 precede behavior. All133 shared
+  vectors pass both consumers; Go race98.0% statements, Kotlin143 tests100%
+  scoped lines/99.48% instructions, format/vet/static/secret review pass.
+  Next bounded dependency EMP-OFFL-001. Pure-domain entry
+  is permitted by roadmap §5; M1/M2/C1, protected store/contact and actual sync
+  remain open. Parent required Quick passed at opening; other CI was running.
+  No polling between tasks. Physical ADB only; preserve other work/apps/data.
+  Final batch publication uses protected dev → main PR203; no merge/deploy/wiki.
+
 - Enterprise EMP-IDN-016..018 batch, 2026-11-13: LOCAL_DONE /
   INTEGRATION_PENDING on owned `codex/enterprise-idn016-018` from published dev
   `6b0921ce`; fetched main `6a19bcc7` remains an ancestor. Publication targets

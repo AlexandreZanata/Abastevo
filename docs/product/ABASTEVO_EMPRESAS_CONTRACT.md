@@ -1492,3 +1492,42 @@ proof and the transactionally enforced three-pending-organization account cap.
   held original-partition operations, revoked membership, late replies, changed
   account/origin/family, empty paginated results and fresh-process restoration.
   Validate normal navigation and privacy on the connected physical ADB phone.
+
+- **B-BR-EMP-96 — Enterprise assets have their own scoped identity.** Build
+  the asset domain independently of personal vehicles, storage and their limits.
+  An asset reference explicitly contains its organization and a distinct asset
+  identifier type; personal DomainId/vehicle objects have no implicit conversion.
+  A raw UUID does not prove its source table: registered-asset existence remains
+  the owning persistence/application obligation. Category and fuel-product
+  descriptors come from explicit catalogs, never arbitrary labels or a copied
+  personal enum. Unknown codes fail closed. Catalog fixtures are synthetic;
+  record the actual initial category catalog before asset persistence activation.
+  Catalog codes remain opaque Unicode scalars; canonical product sets use
+  Unicode code-point order, avoiding JVM UTF-16 versus UTF-8 sorting differences.
+- **B-BR-EMP-97 — Asset normalization and quantities agree across clients.**
+  Plate identifiers accept ASCII letters/digits, ASCII spaces and hyphens;
+  comparison removes spaces/hyphens and uppercases ASCII letters, yielding
+  exactly seven alphanumeric characters. Fleet numbers accept at most twenty
+  printable ASCII characters, require a nonempty normalized key and use the
+  same comparison transformation while retaining other printable punctuation.
+  Non-ASCII/control identifier input is rejected explicitly, avoiding locale/
+  Unicode-version-dependent case expansion. Display names and optional serial/
+  chassis text remain bounded Unicode metadata with no control characters.
+  Capacity and expected-consumption values use the existing exact integer
+  kernels and catalog units, never floating-point arithmetic. Tank capacity is
+  1..10^9 milli-units or watt-hours as specified by the existing quantity bound.
+  An optional expected-consumption reference is a canonical positive signed
+  64-bit integer with basis/product, bounded nonblank source text (280 Unicode
+  characters) and an exact ISO civil date in years0001..9999. The integer bound
+  is representational, not an invented physical consumption ceiling. Activation checks
+  require same-organization unit/meter facts; pure fixture facts are not runtime
+  enrollment or proof that a vehicle is complete. Shared Go/Kotlin vectors cover
+  these boundaries before either implementation is accepted.
+- **BUC-EMP-49 — Validate a company asset before registration.** Given an
+  organization-scoped asset draft, resolve the declared category and products,
+  normalize identifiers and validate tanks, exact consumption references and
+  activation prerequisites. Refuse unknown codes, foreign references and an
+  attempted kind change after an accepted operation. A vehicle/machine needs a
+  real in-service meter and tank; an implement does not. Preserve personal data
+  untouched and return redacted diagnostics. Persistence, actual meter evidence,
+  assignments and lifecycle commands follow their owning tasks.
