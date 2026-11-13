@@ -17,16 +17,15 @@ object VaultProcessProbe {
     @JvmStatic fun main(args: Array<String>) = runBlocking {
         val directory = Path.of(args[0])
         val p = partition()
-        val keys = TestVaultKeys()
-        keys.values[EnterpriseVaultCodec.alias(EnterpriseVaultCodec.token(p))] =
-            EnterpriseVaultKey(SecretKeySpec(Files.readAllBytes(Path.of(args[1])), "AES"), null)
         val action = args[2]
+        val keys = FileTestVaultKeys(Path.of(args[1])) { alias ->
+            if (action == "crash-after" && alias.endsWith("_h")) Runtime.getRuntime().halt(DIED_AFTER_REPLACE)
+        }
         val f = VaultFixture(directory, keys, transform = { delegate ->
             object : EnterpriseVaultFiles by delegate {
-                override fun replace(token: String, ciphertext: ByteArray) {
-                    if (action == "crash-before") Runtime.getRuntime().halt(DIED_BEFORE_REPLACE)
-                    delegate.replace(token, ciphertext)
-                    if (action == "crash-after") Runtime.getRuntime().halt(DIED_AFTER_REPLACE)
+                override fun replaceGeneration(token: String, generation: Long, descriptor: Boolean, ciphertext: ByteArray) {
+                    if (action == "crash-before" && !descriptor) Runtime.getRuntime().halt(DIED_BEFORE_REPLACE)
+                    delegate.replaceGeneration(token, generation, descriptor, ciphertext)
                 }
             }
         })

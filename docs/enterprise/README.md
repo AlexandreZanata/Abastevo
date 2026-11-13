@@ -29,18 +29,18 @@ are LOCAL_DONE / INTEGRATION_PENDING, including six actual physical-device
 journeys. [IDN-018 context selection](evidence/f1-idn018-android-contexts.md) is
 also LOCAL_DONE / INTEGRATION_PENDING, including twelve final physical tests
 covering invitation regression, context switching and actual cold-process entry.
-Android real-data persistence remains unavailable
-until EMP-PRIV-003 supplies and proves the protected store. EMP-PLAT-012
-awaits the EMP-GOV-014 channel decision. EMP-PRIV-003 has its F1 source
-implementation, with acceptance IN_PROGRESS:
-[protected device store](evidence/f1-priv003-protected-device-store.md).
-Native device/backup/unlock proof and current-server composition remain
-owed, so protected persistence stays unavailable in the application graph.
+EMP-PRIV-003 now supplies the accepted [protected store and signed contact](evidence/f2-priv003-protection-completion.md),
+including actual API36 emulator Keystore/source, credential, backup/transfer,
+clock/reboot and worker proof. Its application ports bind the accepted real
+implementations; custody does not supply business permission or activate sync.
+The [V1 record](evidence/f1-priv003-protected-device-store.md) remains historical.
+EMP-PLAT-012 awaits EMP-GOV-014; managed source policy, legal retention and
+production/runtime activation keep their separate gates.
 The [organization aggregate](evidence/f1-org001-organization-domain.md) and
 [organization persistence](evidence/f1-org002-organization-persistence.md) have
 tested local checkpoints, followed by the structure/access tasks recorded in
-the current backlog and PROGRESS. EMP-PLAT-016 belongs to F3. Domain aggregate coverage,
-native protected-store proof and the existing activation gates remain owed.
+the current backlog and PROGRESS. EMP-PLAT-016 belongs to F3. Global Kotlin
+coverage and the remaining activation gates stay open.
 [Kernel evidence](evidence/f1-plat001-tenancy-kernel.md) and
 [database evidence](evidence/f1-plat002-database-isolation.md), with
 [audit evidence](evidence/f1-plat003-organization-audit.md) and

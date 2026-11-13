@@ -38,7 +38,7 @@ class EnterpriseVaultLifecycleTest {
         val f = VaultFixture(root.resolve("vault"))
         val raw = Sessions()
         val sessions = EnterpriseFencedSessionStore(raw, f.fence)
-        f.store.confirm(p)
+        f.confirm(p)
         f.store.enqueue(EnterprisePendingOperation(p, A, B, byteArrayOf(7)))
         val context = EnterpriseLocalContext({ sessions.load()?.accountId }, { ORIGIN }, f.store, { f.fence.epoch })
         val bound = context.select(p)
@@ -50,7 +50,7 @@ class EnterpriseVaultLifecycleTest {
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { bound.pending() } }
         f.identity = EnterpriseLocalIdentity(A, ORIGIN, B)
         f.server++
-        f.store.confirm(p)
+        f.confirm(p)
         assertEquals(1, context.select(p).pending().size)
         val latest = context.select(p)
         raw.fail = true
@@ -108,12 +108,12 @@ class EnterpriseVaultLifecycleTest {
         val release = CountDownLatch(1)
         var hold = false
         val f = VaultFixture(root.resolve("vault"), transform = { delegate -> object : EnterpriseVaultFiles by delegate {
-            override fun read(token: String): ByteArray? {
-                if (hold) { entered.countDown(); check(release.await(10, TimeUnit.SECONDS)) }
-                return delegate.read(token)
+            override fun readGeneration(token: String, generation: Long, descriptor: Boolean): ByteArray? {
+                if (hold && !descriptor) { entered.countDown(); check(release.await(10, TimeUnit.SECONDS)) }
+                return delegate.readGeneration(token, generation, descriptor)
             }
         } })
-        runBlocking { f.store.confirm(p); f.store.put(com.anpfuel.domain.enterprise.EnterpriseLocalRecord(p, A, byteArrayOf(7))) }
+        runBlocking { f.confirm(p); f.store.put(com.anpfuel.domain.enterprise.EnterpriseLocalRecord(p, A, byteArrayOf(7))) }
         hold = true
         val executor = Executors.newFixedThreadPool(2)
         try {
@@ -133,21 +133,21 @@ class EnterpriseVaultLifecycleTest {
         val store = ProtectedEnterprisePersistence(f.files, f.keys, f.fence, f.erasure, { f.identity }, { f.now },
             EnterpriseContactAuthority {
                 started.complete(Unit); finish.await()
-                EnterpriseContactGrant(p, A, 10000)
+                testGrant(p, A, 10000)
             })
         val confirmation = async {
-            runCatching { store.confirm(p) }.exceptionOrNull()
+            runCatching { f.confirm(p, store = store) }.exceptionOrNull()
         }
         started.await()
         f.fence.lock()
         finish.complete(Unit)
         assertTrue(confirmation.await() is EnterpriseLocalDenied)
-        assertTrue(f.keys.values.isEmpty())
+        assertTrue(f.contentKeys().isEmpty())
         val wrong = ProtectedEnterprisePersistence(f.files, f.keys, f.fence, f.erasure, { f.identity }, { f.now },
-            EnterpriseContactAuthority { EnterpriseContactGrant(partition(org = B), A, 10000) })
-        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { wrong.confirm(p) } }
+            EnterpriseContactAuthority { testGrant(partition(org = B), A, 10000) })
+        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { f.confirm(p, store = wrong) } }
         val noProvider = ProtectedEnterprisePersistence(f.files, f.keys, f.fence, f.erasure, { f.identity }, { f.now }, UnavailableEnterpriseContact)
-        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { noProvider.confirm(p) } }
+        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { f.confirm(p, store = noProvider) } }
     }
 
     @Test
@@ -159,7 +159,7 @@ class EnterpriseVaultLifecycleTest {
                 override fun deny(token: String) { if (fail && failure == "marker") error("private marker failure"); delegate.deny(token) }
                 override fun erase(token: String) { if (fail && failure == "files") error("private unlink failure"); delegate.erase(token) }
             } })
-            f.store.confirm(p)
+            f.confirm(p)
             f.store.enqueue(EnterprisePendingOperation(p, A, B, byteArrayOf(7)))
             fail = true
             f.keys.failDelete = failure == "key"
@@ -171,7 +171,7 @@ class EnterpriseVaultLifecycleTest {
             fail = false; f.keys.failDelete = false
             assertTrue(f.erasure.partitionRevoked(p))
             assertFalse(f.erasure.cleanupRequired)
-            assertTrue(f.keys.values.isEmpty())
+            assertTrue(f.contentKeys().isEmpty())
         }
     }
 
@@ -184,7 +184,7 @@ class EnterpriseVaultLifecycleTest {
                 return delegate.locked(accountTag, work)
             }
         } })
-        f.store.confirm(p)
+        f.confirm(p)
         f.keys.failDelete = true; fail = true
         val previous = f.fence.epoch
         assertFalse(f.erasure.partitionRevoked(p))
@@ -204,14 +204,14 @@ class EnterpriseVaultLifecycleTest {
         assertTrue(f.erasure.accountRevoked(A, "http://127.0.0.1"))
         assertTrue(f.erasure.accountRevoked("not-an-account", ORIGIN))
         assertFalse(f.erasure.cleanupRequired)
-        f.store.confirm(p)
+        f.confirm(p)
         f.keys.failDelete = true
         assertFalse(f.erasure.accountRevoked(A, ORIGIN))
         assertTrue(f.erasure.cleanupRequired)
         f.keys.failDelete = false
         assertTrue(f.erasure.accountRevoked(A, ORIGIN))
         assertFalse(f.erasure.cleanupRequired)
-        assertTrue(f.keys.values.isEmpty())
+        assertTrue(f.contentKeys().isEmpty())
     }
 
     @Test
@@ -228,7 +228,7 @@ class EnterpriseVaultLifecycleTest {
         assertTrue(f.erasure.accountRevoked(A, ORIGIN))
         assertFalse(java.nio.file.Files.exists(directory))
         assertFalse(f.erasure.cleanupRequired)
-        f.store.confirm(p)
+        f.confirm(p)
         f.store.put(EnterpriseLocalRecord(p, A, byteArrayOf(3)))
         assertArrayEquals(byteArrayOf(3), f.store.record(p, A)!!.envelope)
     }
@@ -242,23 +242,24 @@ class EnterpriseVaultLifecycleTest {
                 return delegate.locked(accountTag, work)
             }
         } })
-        f.store.confirm(p)
-        f.store.confirm(partition(org = B))
-        val first = f.keys.values.keys.first()
+        f.confirm(p)
+        f.confirm(partition(org = B))
+        val first = f.contentKeys().keys.first()
         f.keys.failAliases = setOf(first)
         fail = true
         assertFalse(f.erasure.accountRevoked(A, ORIGIN))
-        assertEquals(setOf(first), f.keys.values.keys)
+        assertEquals(setOf(first), f.contentKeys().keys.filterNot { it.endsWith("_h") }.toSet())
+        assertTrue(f.contentKeys().keys.any { it.endsWith("_h") }, "Trusted floors survive partial erasure")
         assertTrue(f.erasure.cleanupRequired)
     }
 
     @Test
     fun definitiveCurrentServerRevocationErasesOnlyThatAccountAndOrigin(): Unit = runBlocking {
         val f = VaultFixture(root.resolve("vault"))
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, byteArrayOf(1)))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, byteArrayOf(1)))
         val other = partition(owner = B)
         f.identity = EnterpriseLocalIdentity(B, ORIGIN, A)
-        f.store.confirm(other); f.store.put(EnterpriseLocalRecord(other, A, byteArrayOf(2)))
+        f.confirm(other); f.store.put(EnterpriseLocalRecord(other, A, byteArrayOf(2)))
         f.identity = EnterpriseLocalIdentity(A, ORIGIN, A)
         val raw = Sessions()
         val api = mockk<AuthAccountApi>()
@@ -279,35 +280,35 @@ class EnterpriseVaultLifecycleTest {
     @Test
     fun freshServerProofAndExplicitLossAcknowledgementCanStartEmptyAfterErasure(): Unit = runBlocking {
         val f = VaultFixture(root.resolve("vault"))
-        f.store.confirm(p)
+        f.confirm(p)
         f.store.enqueue(EnterprisePendingOperation(p, A, B, byteArrayOf(7)))
-        val oldKey = f.keys.values.values.single().secret.encoded
+        val oldKey = f.payloadKey().secret.encoded
         assertTrue(f.erasure.accountRevoked(A, ORIGIN))
-        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { f.store.confirm(p) } }
+        assertThrows(EnterpriseVaultUnrecoverable::class.java) { runBlocking { f.confirm(p) } }
         f.denyContact = true
-        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.confirm(p, acknowledgeErasedWork = true) } }
-        assertTrue(f.keys.values.isEmpty())
+        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.confirm(p, acknowledgeErasedWork = true) } }
+        assertTrue(f.contentKeys().isEmpty())
         f.denyContact = false
         f.identity = EnterpriseLocalIdentity(A, ORIGIN, B)
         f.server++
-        f.store.confirm(p, acknowledgeErasedWork = true)
+        f.confirm(p, acknowledgeErasedWork = true)
         assertTrue(f.store.pending(p, 50).isEmpty())
-        assertFalse(oldKey.contentEquals(f.keys.values.values.single().secret.encoded))
+        assertFalse(oldKey.contentEquals(f.payloadKey().secret.encoded))
         assertFalse(f.erasure.cleanupRequired)
     }
 
     @Test
     fun failedCleanupCannotBeBypassedByAcknowledgementOrFreshAuthority(): Unit = runBlocking {
         val f = VaultFixture(root.resolve("vault"))
-        f.store.confirm(p)
+        f.confirm(p)
         f.keys.failDelete = true
         assertFalse(f.erasure.partitionRevoked(p))
         val creates = f.keys.creates
-        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { f.store.confirm(p, acknowledgeErasedWork = true) } }
+        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { f.confirm(p, acknowledgeErasedWork = true) } }
         assertEquals(creates, f.keys.creates)
         assertTrue(f.erasure.cleanupRequired)
         f.keys.failDelete = false
-        f.store.confirm(p, acknowledgeErasedWork = true)
+        f.confirm(p, acknowledgeErasedWork = true)
         assertTrue(f.store.pending(p, 1).isEmpty())
         assertFalse(f.erasure.cleanupRequired)
     }
@@ -315,7 +316,7 @@ class EnterpriseVaultLifecycleTest {
     @Test
     fun foreignRefreshOrLateRejectionCannotEraseNewlyLoggedInSessionWork(): Unit = runBlocking {
         val f = VaultFixture(root.resolve("vault"))
-        f.store.confirm(p)
+        f.confirm(p)
         val raw = Sessions()
         val api = mockk<AuthAccountApi>()
         val wrapped = EnterpriseRevokingAccountApi(api, raw, ORIGIN, f.erasure)

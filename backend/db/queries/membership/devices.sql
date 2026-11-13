@@ -17,6 +17,18 @@ SELECT org_id::text AS org_id,id::text AS id,membership_id::text AS membership_i
  contributor_id::text AS contributor_id,fingerprint,label,state,revision,enrollment_limit,enrolled_at,last_sync_at,revoked_at,revocation_class,
  source_type,COALESCE(source_id::text,'')::text AS source_id,source_revision,created_operation_id::text AS created_operation_id
 FROM org_device_enrollments WHERE org_id=CAST(@org_id::text AS uuid) AND id=CAST(@id::text AS uuid);
+-- name: LockDeviceContactRoot :one
+SELECT org_id::text AS org_id FROM organizations WHERE org_id=CAST(@org_id::text AS uuid) FOR UPDATE;
+-- name: OwnedDeviceContact :one
+SELECT e.org_id::text AS org_id,e.id::text AS id,e.membership_id::text AS membership_id,e.key_id::text AS key_id,
+ e.contributor_id::text AS contributor_id,e.fingerprint,e.label,e.state,e.revision,e.enrollment_limit,e.enrolled_at,e.last_sync_at,e.revoked_at,e.revocation_class,
+ e.source_type,COALESCE(e.source_id::text,'')::text AS source_id,e.source_revision,e.created_operation_id::text AS created_operation_id
+FROM org_device_enrollments e JOIN org_memberships m ON(m.org_id,m.id)=(e.org_id,e.membership_id)
+WHERE e.org_id=CAST(@org_id::text AS uuid) AND e.id=CAST(@enrollment_id::text AS uuid)
+ AND e.membership_id=CAST(@membership_id::text AS uuid) AND m.account_id=CAST(@account_id::text AS uuid)
+ AND m.access_model='EXISTING_ACCOUNT' AND e.key_id=CAST(@key_id::text AS uuid)
+ AND e.contributor_id=CAST(@contributor_id::text AS uuid) AND e.fingerprint= @fingerprint::text
+FOR SHARE OF e,m;
 -- name: DeviceByKey :one
 SELECT org_id::text AS org_id,id::text AS id,membership_id::text AS membership_id,key_id::text AS key_id,
  contributor_id::text AS contributor_id,fingerprint,label,state,revision,enrollment_limit,enrolled_at,last_sync_at,revoked_at,revocation_class,

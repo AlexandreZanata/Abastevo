@@ -72,12 +72,23 @@ class AndroidEnterpriseVaultKeys : EnterpriseVaultKeys {
     }
 
     override fun aliases(prefix: String): List<String> {
-        require(Regex("abastevo_enterprise_v1_[0-9a-f]{64}-").matches(prefix))
-        return store().aliases().toList().filter { it.startsWith(prefix) && aliasPattern.matches(it) }
+        require(prefix == EnterpriseVaultGenerationNames.PREFIX || prefix == "abastevo_enterprise_v1_" ||
+            Regex("abastevo_enterprise_v[12]_[0-9a-f]{64}-").matches(prefix) ||
+            Regex("abastevo_enterprise_v2_[0-9a-f]{64}-[0-9a-f]{64}_").matches(prefix))
+        val result = mutableListOf<String>()
+        val aliases = store().aliases()
+        while (aliases.hasMoreElements()) {
+            val alias = aliases.nextElement()
+            if (alias.startsWith(prefix) && aliasPattern.matches(alias)) {
+                check(result.size < AtomicEnterpriseVaultFiles.MAX_DISCOVERY) { "Enterprise key discovery budget exceeded" }
+                result += alias
+            }
+        }
+        return result.sorted()
     }
 
     companion object {
-        private val aliasPattern = Regex("abastevo_enterprise_v1_[0-9a-f]{64}-[0-9a-f]{64}")
+        private val aliasPattern = Regex("abastevo_enterprise_v1_[0-9a-f]{64}-[0-9a-f]{64}|abastevo_enterprise_v2_[0-9a-f]{64}-[0-9a-f]{64}_[0-9]{19}_[dmh]|abastevo_enterprise_v2_(denied|lock)_[0-9a-f]{64}(-[0-9a-f]{64})?")
     }
 }
 

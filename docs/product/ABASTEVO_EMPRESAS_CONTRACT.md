@@ -1688,3 +1688,73 @@ proof and the transactionally enforced three-pending-organization account cap.
   from immutable stored revisions, refuse changed flag/other fields/reason and
   fail closed on missing or inconsistent historical evidence. Do not rewrite
   applied history or weaken receipts, revision checks or current authorization.
+
+
+### Device protection completion (EMP-PRIV-003, F2 prerequisite)
+
+- **B-BR-EMP-104 — Trust exact signed contact, never metadata or a generic denial.**
+  Add a narrowly owned signed device contact action. It proves the current
+  account/family/token, identity-v1 signature/nonce/key/contributor and exact
+  configured origin, then binds request, organization, membership and enrollment.
+  ACTIVE contact uses retained current-source locks and DB time and supplies the
+  approved30-day offline validity. The existing-account pilot has explicit null
+  managed-unlock policy; managed runtime remains unavailable until its owning
+  AUTH/GOV policy exists. Preserve current suspended/archived/managed denials.
+  Only an exact owned LOST_OR_COMPROMISED tombstone yields ERASE; ACCESS_ENDED
+  yields LOCK and preserves ciphertext/pending work. Terminal contact reads only
+  its owned enrollment tombstone, not ended-membership business data. Generic
+  401/403/404, outage, malformed/foreign/late responses never authorize deletion.
+  Contact is storage custody, not a business permission or F4 intake grant;
+  each owning feature still enforces current permission/scope/cache eligibility.
+- **B-BR-EMP-105 — Commit a nonrollbackable encrypted generation before local success.**
+  Retain the bounded sealed-snapshot adapter without a new storage dependency.
+  V2 binds partition, generation and exact membership/enrollment in authenticated
+  ciphertext. An opaque Keystore committed head outside restorable app files
+  selects the only accepted generation. Write and fsync ciphertext and encrypted
+  maintenance descriptor plus directory before publishing its trusted commit
+  marker; only then may local success be reported. Keep prior committed work
+  through preparation failures. Uncommitted or old files/keys never become a
+  fallback to an older lease/data snapshot; every new attempt uses a fresh key.
+  Verify the committed head on every open. Bound preparation/obsolete cleanup
+  and fail explicitly rather than evicting work or reusing an orphan key.
+  No legacy or changed membership/enrollment/unlock policy silently rebinds
+  existing ciphertext; preserve it locked until an explicitly reviewed fresh
+  empty recovery, with acknowledged lost work and new current source proof.
+- **B-BR-EMP-106 — Make maintenance discoverable, durable and scoped.**
+  Enumerate encrypted maintenance descriptors by opaque tokens, with no readable
+  account/organization/payload identifiers in filenames, aliases or worker input.
+  Bind each descriptor to the same trusted head. Its maintenance key may run
+  without managed unlock; payload keys retain the explicit managed policy.
+  Persist denial/cleanup intent before erasure, independently attempt key/file
+  cleanup, verify success before completion and retry failures after process
+  death. Schedule bounded startup/periodic expiry work; every access still
+  checks validity because background work can be delayed. Preserve other
+  accounts/origins/organizations. Existing approved security revocation/30-day
+  expiry key disposal remains distinct from ordinary retry/logout/access-ended
+  preservation; report erased work honestly and require explicit empty recovery.
+  Reboot or clock rollback alone locks/reconfirms unless existing expiry rules
+  prove that the validity already ended. No instant offline remote wipe promise.
+- **B-BR-EMP-107 — Handoff only the confirmed selection attempt.**
+  Confirmation retains the original local-owner lease, account/family/epoch and
+  background generation before durable I/O and before advancing the fence.
+  A one-use expected E→E+1 handoff consumes that exact owner lease; it cannot
+  adopt an arbitrary replacement epoch. Open the new metadata channel under
+  E+1, recheck the source selection and only then open protected local context.
+  New family/account/selection/background or late response cannot reopen data
+  or withdraw a newer flow. Same-family token rotation keeps its documented
+  identity semantics. Credential prompts never suppress lifecycle invalidation;
+  start a fresh proof attempt after unlock when needed.
+- **BUC-EMP-54 — Confirm or lock a device's exact protected context.**
+  Use actual signed source contact and normal non-bypass PostGIS to prove active
+  lease, exact identity/enrollment, terminal class, races, expired proof and
+  failed commits. Bind the native lease to membership/enrollment and validate
+  every response against the captured request/owner. Exercise account, origin,
+  organization, family, enrollment and rehire mismatches without retagging data.
+- **BUC-EMP-55 — Preserve committed private work through interruption and cleanup.**
+  Prove all generation preparation/commit/recovery boundaries, old-ciphertext
+  rollback refusal, missing/wrong keys, durable cleanup failures and independent
+  partitions on host and actual Android. Use a new isolated emulator as now
+  authorized, never reset unrelated AVD/app data. Prove actual Keystore,
+  process/reboot/unlock/expiry and available OS backup/restore channels, retaining
+  explicit owed evidence where the environment cannot prove a platform claim.
+  Synthetic managed-key tests do not certify the missing managed server policy.

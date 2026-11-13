@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-PRIV-003: explicit credential retry and acknowledged empty recovery. -->
+    <string name="enterprise_protection_unlock_required">Déverrouillez cet appareil puis sélectionnez à nouveau l’entreprise pour vérifier l’accès.</string>
+    <string name="enterprise_protection_unlock_action">Déverrouiller cet appareil</string>
+    <string name="enterprise_protection_unlock_title">Confirmer le verrouillage de cet appareil</string>
+    <string name="enterprise_protection_unlock_copy">Utilisez le verrouillage de l’écran. L’accès à l’entreprise sera vérifié à nouveau.</string>
+    <string name="enterprise_protection_unlock_done">Appareil confirmé. Sélectionnez à nouveau l’entreprise pour vérifier l’accès.</string>
+    <string name="enterprise_protection_device_lock_required">Configurez un verrouillage de l’écran pour continuer.</string>
+    <string name="enterprise_protection_recovery_required">Les anciennes données locales ne peuvent plus être ouvertes. Recommencer supprime le travail local qui n’a pas encore été envoyé.</string>
+    <string name="enterprise_protection_recovery_action">Réinitialiser les données locales de %1$s</string>
+    <string name="enterprise_protection_recovery_title">Supprimer le travail local précédent ?</string>
+    <string name="enterprise_protection_recovery_copy">Cette action supprime les données locales de cette entreprise, y compris les opérations non envoyées. Le serveur vérifiera l’accès avant de repartir avec des données locales vides.</string>
+    <string name="enterprise_protection_recovery_confirm">Supprimer et vérifier l’accès</string>
+</resources>

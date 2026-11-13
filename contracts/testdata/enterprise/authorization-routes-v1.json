@@ -727,6 +727,10 @@
       "boundary": "SIGNED_DEVICE"
     },
     {
+      "route": "POST /v1/orgs/{org_id}/devices/contact",
+      "boundary": "DEVICE_CONTACT"
+    },
+    {
       "route": "POST /v1/orgs/{org_id}/devices/enroll",
       "boundary": "SIGNED_DEVICE"
     },

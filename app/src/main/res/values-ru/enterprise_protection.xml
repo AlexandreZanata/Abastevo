@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-PRIV-003: explicit credential retry and acknowledged empty recovery. -->
+    <string name="enterprise_protection_unlock_required">Разблокируйте устройство и снова выберите компанию для проверки доступа.</string>
+    <string name="enterprise_protection_unlock_action">Разблокировать устройство</string>
+    <string name="enterprise_protection_unlock_title">Подтвердить блокировку устройства</string>
+    <string name="enterprise_protection_unlock_copy">Используйте блокировку экрана. Доступ к компании будет проверен заново.</string>
+    <string name="enterprise_protection_unlock_done">Устройство подтверждено. Снова выберите компанию для проверки доступа.</string>
+    <string name="enterprise_protection_device_lock_required">Настройте блокировку экрана устройства, чтобы продолжить.</string>
+    <string name="enterprise_protection_recovery_required">Прежние локальные данные нельзя открыть. Начало заново удалит ещё не отправленную локальную работу.</string>
+    <string name="enterprise_protection_recovery_action">Начать локальные данные %1$s заново</string>
+    <string name="enterprise_protection_recovery_title">Удалить прежнюю локальную работу?</string>
+    <string name="enterprise_protection_recovery_copy">Будут удалены локальные данные этой компании, включая неотправленные операции. Сервер проверит доступ перед началом с пустыми локальными данными.</string>
+    <string name="enterprise_protection_recovery_confirm">Удалить и проверить доступ</string>
+</resources>

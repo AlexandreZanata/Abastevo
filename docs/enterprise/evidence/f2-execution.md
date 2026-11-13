@@ -55,13 +55,24 @@ EMP-OFFL-001 is LOCAL_DONE / INTEGRATION_PENDING:
 component-only OpenAPI. EMP-AUTH-009 is LOCAL_DONE / INTEGRATION_PENDING,
 [authorization conformance](f2-auth009-authorization-conformance.md):120 actual
 current-source HTTP cells and complete route inventory, tested commit4743e0b9.
-The current bounded dependency is EMP-ORG-014 IN_PROGRESS:
-[company onboarding/settings opening](f2-org014-onboarding-settings-panel.md).
-B-BR-EMP-101/102, BUC-EMP-52 and EDR-064/065 precede its product changes.
-Use phase tracker215 and cumulative PR203, without an intermediate publication
-or remote-check wait. No asset persistence, intake route, queue or runtime
-activation was introduced by the completed checkpoints. The full F2 scope
-remains in progress.
+EMP-ORG-014 is LOCAL_DONE / INTEGRATION_PENDING at efd7e886:
+[company onboarding/settings acceptance](f2-org014-onboarding-settings-panel.md).
+Those four checkpoints are backed up at origin/codex/enterprise-f2; the current
+PR203 dev head still contains the earlier batch. EMP-PRIV-003 is now
+LOCAL_DONE / INTEGRATION_PENDING:
+[protected contact/generation completion](f2-priv003-protection-completion.md).
+B-BR-EMP-104..107, BUC-EMP-54/55 and EDR-068..070 precede those changes.
+Exact signed source, committed generation/floor and durable maintenance pass
+ordinary PostGIS/race/host and actual API36 emulator acceptance. Twenty-two
+native executions cover sixteen methods, including real source/keys, OS
+backup/transfer, credential, clock/reboot and worker boundaries. Actual product
+startup and normal/opt-in builds/lint pass; accepted ports now bind the real
+client/shared store. Five checkpoints are local;59 audited nodes remain open.
+Next: open the next dependency-ready task from this tested committed head.
+Use phase tracker215 and cumulative PR203, without an intermediate PR or
+remote-check wait. No asset persistence, intake route or queue was introduced
+by the completed checkpoints. The full F2 scope remains in progress;
+M1/M2/C1 is not accepted by these checkpoints.
 
 ## Acceptance and retained gates
 

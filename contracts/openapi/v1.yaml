@@ -14714,6 +14714,128 @@ paths:
         enrollment: true
         bootstrap: false
         success: 200
+  /v1/orgs/{org_id}/devices/contact:
+    post:
+      tags:
+      - enterprise-identity
+      operationId: enterpriseDeviceContact
+      summary: Observe exact owned device custody and offline policy
+      description: Current identity-v1 signed account proof observes one exact owned enrollment period. ACTIVE returns
+        the existing-account30-day custody policy, never a business permission. A source-confirmed exact
+        LOST_OR_COMPROMISED tombstone returns ERASE; ACCESS_ENDED returns LOCK and preserves pending work.
+        Terminal observations contain no lease or business data and remain available after membership ends.
+        Ordinary401/403/404, transport failure and unknown verdicts never authorize erasure. Request identifiers
+        only correlate this live observation; a fresh nonce is mandatory and no contact receipt is persisted.
+        Managed custody, business cache authority and F4 late intake retain their separate owning gates.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: Signature
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      - name: Signature-Created
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Expires
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Keyid
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Nonce
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDeviceContactRequest'
+            example:
+              schema_version: 1
+              request_id: 7b0e2a54-0000-4000-8000-000000001510
+              family_id: 7b0e2a54-0000-4000-8000-000000001504
+              access_token: synthetic-device-access
+              membership_id: 7b0e2a54-0000-4000-8000-000000001502
+              enrollment_id: 7b0e2a54-0000-4000-8000-000000001501
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current exact owned custody observation; terminal verdicts contain no lease or business data.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDeviceContactResponse'
+              example:
+                schema_version: 1
+                request_id: 7b0e2a54-0000-4000-8000-000000001510
+                account_id: 7b0e2a54-0000-4000-8000-000000001505
+                api_origin: https://company.example.invalid
+                org_id: 7b0e2a54-0000-4000-8000-000000001500
+                membership_id: 7b0e2a54-0000-4000-8000-000000001502
+                enrollment_id: 7b0e2a54-0000-4000-8000-000000001501
+                family_id: 7b0e2a54-0000-4000-8000-000000001504
+                enrollment_revision: '1'
+                server_time: '2026-11-13T12:00:00Z'
+                verdict: ACTIVE
+                access_model: EXISTING_ACCOUNT
+                offline_validity_seconds: 2592000
+                managed_unlock_seconds: null
+      x-abastevo-device-contact:
+        account_proof: true
+        signed: true
+        exact_enrollment: true
+        terminal_read: true
+        policy_lease: true
+        success: 200
   /v1/orgs/{org_id}/memberships/{membership_id}/devices/list:
     post:
       tags:
@@ -26975,6 +27097,187 @@ components:
         access_token: synthetic-device-access
       description: Current account and signature proof plus actual exact-key enrollment/membership check on every request;
         no cached authority.
+    EnterpriseDeviceContactRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[!-~]+$
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required: [schema_version, request_id, family_id, access_token, membership_id, enrollment_id]
+      example:
+        schema_version: 1
+        request_id: 7b0e2a54-0000-4000-8000-000000001510
+        family_id: 7b0e2a54-0000-4000-8000-000000001504
+        access_token: synthetic-device-access
+        membership_id: 7b0e2a54-0000-4000-8000-000000001502
+        enrollment_id: 7b0e2a54-0000-4000-8000-000000001501
+    EnterpriseDeviceContactResponse:
+      oneOf:
+      - $ref: '#/components/schemas/EnterpriseDeviceContactActive'
+      - $ref: '#/components/schemas/EnterpriseDeviceContactLock'
+      - $ref: '#/components/schemas/EnterpriseDeviceContactErase'
+    EnterpriseDeviceContactActive:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        api_origin:
+          $ref: '#/components/schemas/EnterpriseSyncOrigin'
+        org_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_revision:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+          description: Canonical positive decimal int64, bounded by9223372036854775807 by the owning codec.
+        server_time:
+          $ref: '#/components/schemas/EnterpriseSyncReceiptInstant'
+        verdict:
+          type: string
+          enum: [ACTIVE]
+        access_model:
+          type: string
+          enum: [EXISTING_ACCOUNT]
+        offline_validity_seconds:
+          type: integer
+          enum: [2592000]
+        managed_unlock_seconds:
+          type: 'null'
+      required: [schema_version, request_id, account_id, api_origin, org_id, membership_id, enrollment_id, family_id, enrollment_revision, server_time, verdict, access_model, offline_validity_seconds, managed_unlock_seconds]
+      example:
+        schema_version: 1
+        request_id: 7b0e2a54-0000-4000-8000-000000001510
+        account_id: 7b0e2a54-0000-4000-8000-000000001505
+        api_origin: https://company.example.invalid
+        org_id: 7b0e2a54-0000-4000-8000-000000001500
+        membership_id: 7b0e2a54-0000-4000-8000-000000001502
+        enrollment_id: 7b0e2a54-0000-4000-8000-000000001501
+        family_id: 7b0e2a54-0000-4000-8000-000000001504
+        enrollment_revision: '1'
+        server_time: '2026-11-13T12:00:00Z'
+        verdict: ACTIVE
+        access_model: EXISTING_ACCOUNT
+        offline_validity_seconds: 2592000
+        managed_unlock_seconds: null
+    EnterpriseDeviceContactLock:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        api_origin:
+          $ref: '#/components/schemas/EnterpriseSyncOrigin'
+        org_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_revision:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+          description: Canonical positive decimal int64, bounded by9223372036854775807 by the owning codec.
+        server_time:
+          $ref: '#/components/schemas/EnterpriseSyncReceiptInstant'
+        verdict:
+          type: string
+          enum: [LOCK]
+        revocation_class:
+          type: string
+          enum: [ACCESS_ENDED]
+      required: [schema_version, request_id, account_id, api_origin, org_id, membership_id, enrollment_id, family_id, enrollment_revision, server_time, verdict, revocation_class]
+      example:
+        schema_version: 1
+        request_id: 7b0e2a54-0000-4000-8000-000000001510
+        account_id: 7b0e2a54-0000-4000-8000-000000001505
+        api_origin: https://company.example.invalid
+        org_id: 7b0e2a54-0000-4000-8000-000000001500
+        membership_id: 7b0e2a54-0000-4000-8000-000000001502
+        enrollment_id: 7b0e2a54-0000-4000-8000-000000001501
+        family_id: 7b0e2a54-0000-4000-8000-000000001504
+        enrollment_revision: '1'
+        server_time: '2026-11-13T12:00:00Z'
+        verdict: LOCK
+        revocation_class: ACCESS_ENDED
+    EnterpriseDeviceContactErase:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        api_origin:
+          $ref: '#/components/schemas/EnterpriseSyncOrigin'
+        org_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_revision:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+          description: Canonical positive decimal int64, bounded by9223372036854775807 by the owning codec.
+        server_time:
+          $ref: '#/components/schemas/EnterpriseSyncReceiptInstant'
+        verdict:
+          type: string
+          enum: [ERASE]
+        revocation_class:
+          type: string
+          enum: [LOST_OR_COMPROMISED]
+      required: [schema_version, request_id, account_id, api_origin, org_id, membership_id, enrollment_id, family_id, enrollment_revision, server_time, verdict, revocation_class]
+      example:
+        schema_version: 1
+        request_id: 7b0e2a54-0000-4000-8000-000000001510
+        account_id: 7b0e2a54-0000-4000-8000-000000001505
+        api_origin: https://company.example.invalid
+        org_id: 7b0e2a54-0000-4000-8000-000000001500
+        membership_id: 7b0e2a54-0000-4000-8000-000000001502
+        enrollment_id: 7b0e2a54-0000-4000-8000-000000001501
+        family_id: 7b0e2a54-0000-4000-8000-000000001504
+        enrollment_revision: '1'
+        server_time: '2026-11-13T12:00:00Z'
+        verdict: ERASE
+        revocation_class: LOST_OR_COMPROMISED
     EnterpriseDeviceRevokeRequest:
       type: object
       additionalProperties: false

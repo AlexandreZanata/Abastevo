@@ -4,8 +4,7 @@ import android.app.KeyguardManager
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import com.anpfuel.application.enterprise.EnterpriseLocalDenied
-import com.anpfuel.application.enterprise.EnterpriseSessionFence
+import com.anpfuel.application.enterprise.*
 import com.anpfuel.domain.enterprise.*
 import java.io.File
 import java.util.UUID
@@ -30,22 +29,31 @@ class EnterpriseProtectedVaultDeviceTest {
         val erase = EnterpriseVaultErasure(files, keys, fence)
         val clock = AndroidEnterpriseDeviceClock(context)
         val owner = EnterpriseLocalIdentity(p.ownerAccount, p.origin, family)
-        val authority = EnterpriseContactAuthority { EnterpriseContactGrant(p, family, System.currentTimeMillis()) }
+        val target = EnterpriseDeviceTarget(p, UUID.randomUUID().toString())
+        val enrollment = EnterpriseEnrollmentBinding(target, UUID.randomUUID().toString(), 1)
+        val authority = EnterpriseContactAuthority { EnterpriseContactReply.Active(EnterpriseContactGrant(enrollment, family, System.currentTimeMillis())) }
         fun store() = ProtectedEnterprisePersistence(files, keys, fence, erase, { owner }, clock::read, authority)
-        val alias = EnterpriseVaultCodec.alias(EnterpriseVaultCodec.token(p))
+        val token = EnterpriseVaultCodec.token(p)
         val payload = ("PRIVATE-SYNTHETIC-DEVICE-" + id).toByteArray()
         try {
             assertTrue(root.canonicalPath.startsWith(context.noBackupFilesDir.canonicalPath + File.separator))
             val s = store()
-            s.confirm(p)
-            val key = keys.existing(alias)!!
-            assertNull(key.secret.encoded)
+            fun binding() = EnterpriseAccessBinding(p.ownerAccount, p.origin, family, fence.epoch)
+            val local = EnterpriseLocalContext({ owner.account }, { owner.origin }, s, { fence.epoch })
+            val before = binding()
+            s.confirm(target, before, local.reserveContact(local.acquireOwner(), before, fence, ::binding))
             s.put(EnterpriseLocalRecord(p, id, payload))
             s.enqueue(EnterprisePendingOperation(p, id, id, payload))
             s.putPrivateFile(p, id, payload)
-            val first = File(root, EnterpriseVaultCodec.token(p) + ".vault").readBytes()
+            fun generation() = EnterpriseVaultGenerations(files, keys).head(token)!!
+            fun ciphertext() = files.readGeneration(token, generation(), false)!!
+            val first = ciphertext()
             s.put(EnterpriseLocalRecord(p, id, payload))
-            val second = File(root, EnterpriseVaultCodec.token(p) + ".vault").readBytes()
+            val current = generation()
+            val alias = EnterpriseVaultGenerationNames.data(token, current)
+            val key = keys.existing(alias)!!
+            assertNull(key.secret.encoded)
+            val second = ciphertext()
             assertFalse(first.contentEquals(second))
             assertArrayEquals(payload, store().record(p, id)!!.envelope)
             assertArrayEquals(payload, store().privateFile(p, id))
@@ -59,10 +67,10 @@ class EnterpriseProtectedVaultDeviceTest {
             assertNull(keys.existing(alias))
             try { store().pending(p, 1); fail("Revoked partition reopened") }
             catch (_: EnterpriseLocalDenied) { /* expected */ }
-            try { EnterpriseVaultCodec.open(second, p, key.secret); fail("Deleted key decrypted") }
+            try { EnterpriseVaultCodec.open(second, p, key.secret, current); fail("Deleted key decrypted") }
             catch (_: Exception) { /* actual Keystore refuses old handle */ }
         } finally {
-            keys.delete(alias)
+            keys.aliases(EnterpriseVaultGenerationNames.PREFIX).filter { EnterpriseVaultGenerationNames.token(it) == token }.forEach(keys::delete)
             root.deleteRecursively()
         }
     }

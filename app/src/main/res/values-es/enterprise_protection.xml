@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-PRIV-003: explicit credential retry and acknowledged empty recovery. -->
+    <string name="enterprise_protection_unlock_required">Desbloquea el dispositivo y vuelve a seleccionar la empresa para verificar el acceso.</string>
+    <string name="enterprise_protection_unlock_action">Desbloquear dispositivo</string>
+    <string name="enterprise_protection_unlock_title">Confirmar el bloqueo del dispositivo</string>
+    <string name="enterprise_protection_unlock_copy">Usa el bloqueo de pantalla. El acceso de la empresa se verificará de nuevo.</string>
+    <string name="enterprise_protection_unlock_done">Dispositivo confirmado. Vuelve a seleccionar la empresa para verificar el acceso.</string>
+    <string name="enterprise_protection_device_lock_required">Configura un bloqueo de pantalla del dispositivo para continuar.</string>
+    <string name="enterprise_protection_recovery_required">No se pueden reabrir los datos locales anteriores. Empezar de nuevo descarta el trabajo local aún no enviado.</string>
+    <string name="enterprise_protection_recovery_action">Reiniciar datos locales de %1$s</string>
+    <string name="enterprise_protection_recovery_title">¿Descartar el trabajo local anterior?</string>
+    <string name="enterprise_protection_recovery_copy">Esta acción elimina los datos locales de esta empresa, incluidas las operaciones aún no enviadas. El servidor verificará el acceso antes de empezar con datos locales vacíos.</string>
+    <string name="enterprise_protection_recovery_confirm">Descartar y verificar acceso</string>
+</resources>

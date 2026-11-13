@@ -26,6 +26,9 @@ data class EnterpriseContextState(
     val selectionConfirmed: Boolean = false,
     val nextAfterOrganizationId: String? = null,
     val error: EnterpriseAccessError? = null,
+    val unlockRequired: Boolean = false,
+    val erasedWorkAcknowledgementRequired: Boolean = false,
+    val confirmationTarget: EnterpriseContextSummary? = null,
 ) {
     override fun toString(): String = "EnterpriseContextState(busy=$busy,confirmed=$selectionConfirmed,redacted)"
 }
@@ -34,6 +37,8 @@ data class EnterpriseContextState(
 class EnterpriseContextFlow(
     private val gateway: EnterpriseContextGateway,
     private val localContext: EnterpriseLocalContext,
+    private val protection: EnterpriseContextProtection? = null,
+    private val fence: EnterpriseSessionFence? = null,
 ) {
     private val monitor = Any()
     private var observed = current()
@@ -44,8 +49,10 @@ class EnterpriseContextFlow(
     private var cacheOwner: EnterpriseAccessBinding? = null
     private var closed = false
     private val localOwner = EnterpriseLocalContext.Owner()
+    private var pendingContact: EnterpriseFenceOwner? = null
 
-    private data class Attempt(val token: Long, val binding: EnterpriseAccessBinding, val desired: EnterpriseContextSummary?, val lease: EnterpriseLocalContext.Lease? = null)
+    private data class Attempt(val token: Long, val binding: EnterpriseAccessBinding, val desired: EnterpriseContextSummary?,
+        val lease: EnterpriseLocalContext.Lease? = null, val acknowledgeErasedWork: Boolean = false)
 
     private fun current(): EnterpriseAccessBinding? = try { gateway.currentBinding() } catch (_: Exception) { null }
     private fun sameIdentity(a: EnterpriseAccessBinding?, b: EnterpriseAccessBinding?): Boolean =
@@ -55,6 +62,7 @@ class EnterpriseContextFlow(
         val now = current()
         val keep = !clear && sameIdentity(cacheOwner, now)
         generation++
+        pendingContact = null
         source = null
         observed = now
         val localLease = localContext.invalidate(localOwner)
@@ -70,7 +78,7 @@ class EnterpriseContextFlow(
     }
 
     fun invalidateIfStale() {
-        synchronized(monitor) { if (!closed && observed != current()) withdrawLocked(EnterpriseAccessError.STALE) }
+        synchronized(monitor) { if (!closed && observed != current() && !pendingTransitionMatches(current())) withdrawLocked(EnterpriseAccessError.STALE) }
     }
 
     fun unconfirm() { synchronized(monitor) { if (!closed) withdrawLocked() } }
@@ -79,7 +87,7 @@ class EnterpriseContextFlow(
         synchronized(monitor) { if (!closed) { withdrawLocked(clear = true); closed = true } }
     }
 
-    private fun begin(desired: EnterpriseContextSummary?, refresh: Boolean): Attempt? = synchronized(monitor) {
+    private fun begin(desired: EnterpriseContextSummary?, refresh: Boolean, acknowledgeErasedWork: Boolean = false): Attempt? = synchronized(monitor) {
         if (closed || mutable.value.busy) return@synchronized null
         withdrawLocked()
         val initial = current()
@@ -94,41 +102,85 @@ class EnterpriseContextFlow(
         }
         observed = initial
         mutable.value = mutable.value.copy(busy = true)
-        Attempt(generation, initial, selected, localContext.acquire(localOwner))
+        Attempt(generation, initial, selected, localContext.acquire(localOwner), acknowledgeErasedWork)
+    }
+
+    private fun pendingTransitionMatches(binding: EnterpriseAccessBinding?): Boolean {
+        val owner = pendingContact ?: return false
+        val handoff = owner.handoff ?: return false
+        return fence?.handoffIsCurrent(owner, handoff, binding) == true
     }
 
     private fun retainedLocked(attempt: Attempt): Boolean {
         if (closed || generation != attempt.token) return false
-        if (current() != attempt.binding) { withdrawLocked(EnterpriseAccessError.STALE); return false }
+        if (current() != attempt.binding && !pendingTransitionMatches(current())) { withdrawLocked(EnterpriseAccessError.STALE); return false }
         return true
     }
 
-    private suspend fun prepare(attempt: Attempt): Boolean {
+    private suspend fun prepare(original: Attempt): Attempt? {
+        var attempt = original
         try {
-            if (!localContext.lock(attempt.lease ?: return false)) {
+            if (!localContext.lock(attempt.lease ?: return null)) {
                 synchronized(monitor) { if (retainedLocked(attempt)) failureLocked(EnterpriseAccessError.STALE) }
-                return false
+                return null
             }
         }
         catch (cancelled: CancellationException) { cancel(attempt); throw cancelled }
-        catch (_: Exception) { synchronized(monitor) { if (retainedLocked(attempt)) failureLocked(EnterpriseAccessError.UNAVAILABLE) }; return false }
-        if (!synchronized(monitor) { retainedLocked(attempt) }) return false
+        catch (_: Exception) { synchronized(monitor) { if (retainedLocked(attempt)) failureLocked(EnterpriseAccessError.UNAVAILABLE) }; return null }
+        if (!synchronized(monitor) { retainedLocked(attempt) }) return null
+        if (protection != null && attempt.desired != null) {
+            try {
+                val activeFence = fence ?: throw EnterprisePersistenceUnavailable()
+                val owner = localContext.reserveContact(attempt.lease!!, attempt.binding, activeFence, ::current)
+                synchronized(monitor) {
+                    if (!retainedLocked(attempt)) return null
+                    pendingContact = owner
+                }
+                val selected = attempt.desired!!
+                val handoff = protection.confirm(EnterpriseDeviceTarget(selected.partition, selected.membershipId), attempt.binding,
+                    owner, attempt.acknowledgeErasedWork)
+                attempt = synchronized(monitor) {
+                    if (!retainedLocked(attempt)) return null
+                    val next = attempt.binding.copy(epoch = handoff.nextEpoch)
+                    if (handoff.previousEpoch != attempt.binding.epoch || !activeFence.handoffIsCurrent(owner, handoff, current())) {
+                        failureLocked(EnterpriseAccessError.STALE); return null
+                    }
+                    val lease = localContext.consumeContact(owner, handoff, next)
+                    observed = next
+                    pendingContact = null
+                    attempt.copy(binding = next, lease = lease)
+                }
+            } catch (cancelled: CancellationException) { cancel(attempt); throw cancelled }
+            catch (failure: EnterpriseProtectionRefused) { protectionFailure(attempt, failure.error); return null }
+            catch (_: EnterpriseUnlockRequired) { protectionFailure(attempt, EnterpriseAccessError.UNAVAILABLE, unlock = true); return null }
+            catch (_: EnterpriseVaultUnrecoverable) { protectionFailure(attempt, EnterpriseAccessError.UNAVAILABLE, recovery = true); return null }
+            catch (_: EnterpriseLocalDenied) { protectionFailure(attempt, EnterpriseAccessError.STALE); return null }
+            catch (_: Exception) { protectionFailure(attempt, EnterpriseAccessError.UNAVAILABLE); return null }
+        }
         val result = request(attempt) { gateway.open() }
         return synchronized(monitor) {
-            if (!retainedLocked(attempt)) false
+            if (!retainedLocked(attempt)) null
             else when (result) {
-                is EnterpriseAccessResult.Err -> { failureLocked(result.error); false }
+                is EnterpriseAccessResult.Err -> { failureLocked(result.error); null }
                 is EnterpriseAccessResult.Ok -> {
-                    if (result.value != attempt.binding) { withdrawLocked(EnterpriseAccessError.STALE); false }
-                    else { source = result.value; true }
+                    if (result.value != attempt.binding) { withdrawLocked(EnterpriseAccessError.STALE); null }
+                    else { source = result.value; attempt }
                 }
             }
         }
     }
 
+    private fun protectionFailure(attempt: Attempt, error: EnterpriseAccessError, unlock: Boolean = false, recovery: Boolean = false) {
+        synchronized(monitor) {
+            if (!retainedLocked(attempt)) return
+            failureLocked(error)
+            if (unlock || recovery) mutable.value = mutable.value.copy(unlockRequired = unlock,
+                erasedWorkAcknowledgementRequired = recovery, confirmationTarget = attempt.desired)
+        }
+    }
+
     suspend fun refresh() {
-        val attempt = begin(null, refresh = true) ?: return
-        if (!prepare(attempt)) return
+        val attempt = prepare(begin(null, refresh = true) ?: return) ?: return
         val result = request(attempt) { gateway.list(attempt.binding) }
         val accepted = synchronized(monitor) {
             if (!retainedLocked(attempt)) false
@@ -180,9 +232,9 @@ class EnterpriseContextFlow(
         return true
     }
 
-    suspend fun select(context: EnterpriseContextSummary) {
-        val attempt = begin(context, refresh = false) ?: return
-        if (prepare(attempt)) selectCurrent(attempt, context)
+    suspend fun select(context: EnterpriseContextSummary, acknowledgeErasedWork: Boolean = false) {
+        val attempt = prepare(begin(context, refresh = false, acknowledgeErasedWork) ?: return) ?: return
+        selectCurrent(attempt, context)
     }
 
     private suspend fun selectCurrent(attempt: Attempt, expected: EnterpriseContextSummary) {

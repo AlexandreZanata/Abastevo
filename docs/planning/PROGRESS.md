@@ -29,10 +29,23 @@
   pass. Test-only exact-byte validation cache fixes600s timeout without weakening
   checks; sandbox socket/cache failures recovered. Phase tracker215/PR203 retain
   cumulative delivery; issue218 metadata reflects4743e0b9 and remains open.
-  Next bounded prerequisite: finish EMP-PRIV-003, recording source contact,
-  anti-rollback, maintenance and native acceptance decisions before behavior.
+  ORG-014 commit efd7e886 and prior tested F2 commits are backed up at
+  origin/codex/enterprise-f2; PR203 dev head remains the earlier published batch.
+  EMP-PRIV-003 LOCAL_DONE / INTEGRATION_PENDING, [evidence](../enterprise/evidence/f2-priv003-protection-completion.md):
+  B-BR-EMP-104..107, BUC-EMP-54/55 and EDR-068..070 record exact signed contact,
+  strong membership/enrollment binding, committed-head rollback defense, durable
+  maintenance and owned emulator acceptance before implementation. Backend exact
+  signed contact passes26 real PostGIS/race cases/54 named runs and six affected
+  unit/race packages plus vet/static/sqlc/contracts. Host122 cases and targeted
+  recovery reruns26/27 pass. Actual API36 emulator22 executions/16 methods pass:
+  real source/Keystore, OS backup/transfer, credential/expiry/live-auth deletion,
+  clock/reboot and real worker retry/cancellation. Normal/opt-in builds, app/data
+  lint,4 ViewModel tests and real product startup/jobs pass. The accepted real
+  client/store ports are bound; no test graph enters the product APK. Keep only
+  the owned isolated emulator/packages. Five local checkpoints;59 audited nodes
+  remain. Next: commit/back up this source, then open the next ready dependency.
   No active intake route/ledger/queue yet. Pure-domain entry is permitted by
-  roadmap §5; M1/M2/C1, protected store/contact and actual sync remain open.
+  roadmap §5; M1/M2/C1 and actual sync/business activation remain open.
   Parent required Quick passed at opening; other CI was running. No polling
   between tasks. User now authorizes the emulator while the phone is disconnected;
   preserve other work/apps/data. Final phase

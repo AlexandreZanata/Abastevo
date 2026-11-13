@@ -77,12 +77,17 @@ Devices:
 - **BR-PRIV-018 — Lost devices.** Revoking a device or session takes effect on the server immediately. The local partition is erased the next time the app reaches the server, or when its offline validity (default 30 days without contact) expires and the key is discarded. The product never promises immediate remote erasure of a disconnected device (BR-OFFL-014).
 - **BR-PRIV-019 — App lock for corporate access.** A managed account requires a local unlock (device credential or biometric) after inactivity. This protects the device session; it is not a server credential.
 
-EMP-PRIV-003 implements a source-gated sealed snapshot adapter and the
-session/background epoch fence. Host crypto, persistence and process tests
-are recorded separately from the deferred Android Keystore, unlock,
-backup/transfer and restore acceptance. The production persistence and
-current-contact provider remain unavailable pending that proof and AUTH/IDN
-composition. [Source and acceptance record](evidence/f1-priv003-protected-device-store.md).
+EMP-PRIV-003's [F2 continuation](evidence/f2-priv003-protection-completion.md)
+adds exact signed custody, head-bound encrypted generations and durable scoped
+maintenance. Security loss erases; ended access and observed clock/reboot
+reconfirmation preserve ciphertext. Generic errors cannot issue wipe commands.
+Host crypto/process and ordinary PostGIS/signed HTTP proof remain separate
+from actual Android Keystore, credential, backup/transfer, reboot and restore
+acceptance. Actual API36 emulator/source acceptance passes and the application
+binds the accepted protected store and signed client. Managed server policy,
+legal retention and production
+activation retain their own gates. The [earlier source record](evidence/f1-priv003-protected-device-store.md)
+is historical evidence, not a completed native-acceptance claim.
 
 Uploads and platform operators:
 

@@ -69,4 +69,21 @@ class EnterpriseContextViewModelTest {
         holder.clear()
         verify(exactly = 1) { flow.close() }
     }
+
+    @Test fun `explicit empty recovery is forwarded only from a current rendered attempt`() = runTest(dispatcher) {
+        online.value = true
+        val vm = model(); advanceUntilIdle()
+        clearMocks(flow, answers = false)
+        val context = EnterpriseContextSummary(EnterprisePartition.of(
+            "10000000-0000-4000-8000-000000000001", "https://example.invalid",
+            "10000000-0000-4000-8000-000000000002",
+        ), "10000000-0000-4000-8000-000000000003", "Synthetic company")
+        val rendered = fence.epoch
+        vm.select(context, rendered, acknowledgeErasedWork = true)
+        fence.markBackground(); advanceUntilIdle()
+        vm.select(context, rendered, acknowledgeErasedWork = true); advanceUntilIdle()
+        coVerify(exactly = 0) { flow.select(any(), true) }
+        vm.select(context, fence.epoch, acknowledgeErasedWork = true); advanceUntilIdle()
+        coVerify(exactly = 1) { flow.select(context, true) }
+    }
 }

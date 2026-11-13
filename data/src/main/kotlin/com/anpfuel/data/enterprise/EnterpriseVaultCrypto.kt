@@ -1,5 +1,6 @@
 package com.anpfuel.data.enterprise
 
+import com.anpfuel.domain.enterprise.EnterpriseBoundOfflineLease
 import com.anpfuel.domain.enterprise.EnterpriseDeviceClock
 import com.anpfuel.domain.enterprise.EnterpriseOfflineLease
 import com.anpfuel.domain.enterprise.EnterprisePartition
@@ -35,10 +36,11 @@ internal class VaultSnapshot(
     val partition: EnterprisePartition,
     var lease: EnterpriseOfflineLease,
     val entries: LinkedHashMap<String, VaultEntry> = linkedMapOf(),
+    var bound: EnterpriseBoundOfflineLease? = null,
 )
 
 /** Presized plaintext whose array is sealed in place and wiped, so no unwiped copy remains. */
-private class PlainBuffer(capacity: Int) : ByteArrayOutputStream(capacity) {
+internal class PlainBuffer(capacity: Int) : ByteArrayOutputStream(capacity) {
     val bytes: ByteArray get() = buf
     val length: Int get() = count
     fun wipe() = buf.fill(0)
@@ -68,17 +70,18 @@ internal object EnterpriseVaultCodec {
         digest(frame("Abastevo.enterprise.partition.v1", p.ownerAccount, p.origin, p.organizationId))
 
     fun alias(token: String): String = "abastevo_enterprise_v1_" + token
-    private fun aad(p: EnterprisePartition): ByteArray =
-        magic + frame("Abastevo.enterprise.vault.v1", p.ownerAccount, p.origin, p.organizationId)
+    private fun aad(p: EnterprisePartition, generation: Long?): ByteArray =
+        if (generation == null) magic + frame("Abastevo.enterprise.vault.v1", p.ownerAccount, p.origin, p.organizationId)
+        else magic + frame("Abastevo.enterprise.vault.v2", p.ownerAccount, p.origin, p.organizationId, generation.toString())
 
-    fun seal(snapshot: VaultSnapshot, key: SecretKey): ByteArray {
+    fun seal(snapshot: VaultSnapshot, key: SecretKey, generation: Long? = null): ByteArray {
         val plain = encode(snapshot)
         try {
             val cipher = Cipher.getInstance("AES/GCM/NoPadding")
             cipher.init(Cipher.ENCRYPT_MODE, key) // Provider IV; AndroidKeyStore forbids a caller IV.
             val iv = cipher.iv
             check(iv.size == 12)
-            cipher.updateAAD(aad(snapshot.partition))
+            cipher.updateAAD(aad(snapshot.partition, generation))
             val sealed = ByteArray(16 + cipher.getOutputSize(plain.length))
             magic.copyInto(sealed)
             iv.copyInto(sealed, 4)
@@ -87,11 +90,11 @@ internal object EnterpriseVaultCodec {
         } finally { plain.wipe() }
     }
 
-    fun open(bytes: ByteArray, p: EnterprisePartition, key: SecretKey): VaultSnapshot {
+    fun open(bytes: ByteArray, p: EnterprisePartition, key: SecretKey, generation: Long? = null): VaultSnapshot {
         require(bytes.size in 32..MAX_SEALED && bytes.copyOfRange(0, 4).contentEquals(magic))
         val cipher = Cipher.getInstance("AES/GCM/NoPadding")
         cipher.init(Cipher.DECRYPT_MODE, key, GCMParameterSpec(128, bytes.copyOfRange(4, 16)))
-        cipher.updateAAD(aad(p))
+        cipher.updateAAD(aad(p, generation))
         val plain = cipher.doFinal(bytes, 16, bytes.size - 16)
         try { return decode(plain, p) } finally { plain.fill(0) }
     }
@@ -103,7 +106,8 @@ internal object EnterpriseVaultCodec {
         val plain = PlainBuffer(bound.toInt())
         try {
             DataOutputStream(plain).use { out ->
-                out.writeInt(1)
+                out.writeInt(if (s.bound == null) 1 else 2)
+                s.bound?.let { out.writeUTF(it.membershipId); out.writeUTF(it.enrollmentId); out.writeLong(it.enrollmentRevision) }
                 out.writeUTF(s.partition.ownerAccount); out.writeUTF(s.partition.origin); out.writeUTF(s.partition.organizationId)
                 val l = s.lease
                 out.writeUTF(l.sessionFamily); out.writeLong(l.serverContactMillis)
@@ -126,14 +130,18 @@ internal object EnterpriseVaultCodec {
     private fun decode(bytes: ByteArray, p: EnterprisePartition): VaultSnapshot {
         require(bytes.size <= MAX_PLAIN)
         DataInputStream(ByteArrayInputStream(bytes)).use { input ->
-            require(input.readInt() == 1)
+            val version = input.readInt()
+            require(version == 1 || version == 2)
+            val member = if (version == 2) input.readUTF() else null
+            val enrollment = if (version == 2) input.readUTF() else null
+            val revision = if (version == 2) input.readLong() else 0
             require(input.readUTF() == p.ownerAccount && input.readUTF() == p.origin && input.readUTF() == p.organizationId)
             val family = input.readUTF(); val server = input.readLong()
             val clock = EnterpriseDeviceClock(input.readUTF(), input.readLong(), input.readLong())
             val validity = input.readLong(); val unlock = input.readInt()
             require(unlock >= 0)
             val lease = EnterpriseOfflineLease(family, server, clock, validity, unlock.takeUnless { it == 0 })
-            val snapshot = VaultSnapshot(p, lease)
+            val snapshot = VaultSnapshot(p, lease, bound = member?.let { EnterpriseBoundOfflineLease(it, requireNotNull(enrollment), revision, lease) })
             val count = input.readInt()
             require(count in 0..MAX_ENTRIES)
             repeat(count) {

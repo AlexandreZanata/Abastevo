@@ -33,7 +33,7 @@ class ProtectedEnterprisePersistenceTest {
         Files.write(personal, original)
         val directory = root.resolve("vault")
         val f = VaultFixture(directory)
-        f.store.confirm(p)
+        f.confirm(p)
         f.store.put(EnterpriseLocalRecord(p, A, payload))
         assertTrue(f.store.enqueue(EnterprisePendingOperation(p, B, A, payload)))
         f.store.putPrivateFile(p, A, payload)
@@ -41,6 +41,7 @@ class ProtectedEnterprisePersistenceTest {
         val ciphertext = Files.readAllBytes(f.file(directory))
         f.store.put(EnterpriseLocalRecord(p, A, payload))
         assertFalse(ciphertext.contentEquals(Files.readAllBytes(f.file(directory))))
+        val createsBeforeRead = f.keys.creates
         val reopened = VaultFixture(directory, f.keys)
         assertArrayEquals(payload, reopened.store.record(p, A)!!.envelope)
         assertArrayEquals(payload, reopened.store.pending(p, 50).single().envelope)
@@ -62,7 +63,8 @@ class ProtectedEnterprisePersistenceTest {
                 assertFalse(file.fileName.toString().endsWith(".new"))
             }
         }
-        assertEquals(1, f.keys.creates)
+        assertEquals(createsBeforeRead, f.keys.creates)
+        assertEquals(3, f.contentKeys().size)
     }
 
     @Test
@@ -71,7 +73,7 @@ class ProtectedEnterprisePersistenceTest {
         val partitions = listOf(p, partition(org = B), partition(owner = B), partition(origin = "https://other.example.invalid"))
         partitions.forEachIndexed { i, scope ->
             f.identity = EnterpriseLocalIdentity(scope.ownerAccount, scope.origin, A)
-            f.store.confirm(scope)
+            f.confirm(scope)
             f.store.put(EnterpriseLocalRecord(scope, A, byteArrayOf(i.toByte())))
             assertTrue(f.store.enqueue(EnterprisePendingOperation(scope, B, A, byteArrayOf(i.toByte()))))
             assertFalse(f.store.enqueue(EnterprisePendingOperation(scope, B, A, byteArrayOf(i.toByte()))))
@@ -89,7 +91,7 @@ class ProtectedEnterprisePersistenceTest {
         f.identity = EnterpriseLocalIdentity(A, ORIGIN, B)
         denied { f.store.pending(p, 1) }
         f.server++
-        f.store.confirm(p)
+        f.confirm(p)
         assertEquals(1, f.store.pending(p, 50).size)
         assertThrows(IllegalArgumentException::class.java) { runBlocking { f.store.pending(p, 0) } }
         assertThrows(IllegalArgumentException::class.java) { runBlocking { f.store.pending(p, 51) } }
@@ -99,10 +101,10 @@ class ProtectedEnterprisePersistenceTest {
     fun restoredBytesWithoutOriginalKeysCannotCreateReplacementKeysOrLeakContent(): Unit = runBlocking {
         val directory = root.resolve("vault")
         val f = VaultFixture(directory)
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
         val noKeys = VaultFixture(directory)
-        denied { noKeys.store.record(p, A) }
-        denied { noKeys.store.confirm(p) }
+        unrecoverable { noKeys.store.record(p, A) }
+        unrecoverable { noKeys.confirm(p) }
         assertEquals(0, noKeys.keys.creates)
         assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
     }
@@ -111,7 +113,7 @@ class ProtectedEnterprisePersistenceTest {
     fun modifiedWrongScopeWrongKeyAndUnsupportedEnvelopesFailWithStaticErrors(): Unit = runBlocking {
         val directory = root.resolve("vault")
         val f = VaultFixture(directory)
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
         val original = Files.readAllBytes(f.file(directory))
         for (index in listOf(0, 4, original.lastIndex)) {
             val changed = original.copyOf()
@@ -127,23 +129,23 @@ class ProtectedEnterprisePersistenceTest {
         }
         Files.write(f.file(directory), original)
         val foreign = partition(org = B)
-        f.store.confirm(foreign)
+        f.confirm(foreign)
         Files.write(f.file(directory, foreign), original)
         unrecoverable { f.store.record(foreign, A) }
-        val alias = EnterpriseVaultCodec.alias(EnterpriseVaultCodec.token(p))
+        val alias = f.payloadAlias(p)
         f.keys.values.remove(alias)
         f.keys.create(alias, null)
         unrecoverable { f.store.record(p, A) }
         // A different key under the alias can never reopen the work: only an
         // explicitly acknowledged fresh start, after fresh contact, recovers.
         f.server++
-        unrecoverable { f.store.confirm(p) }
+        unrecoverable { f.confirm(p) }
         assertTrue(Files.exists(f.file(directory)))
         val creates = f.keys.creates
-        f.store.confirm(p, acknowledgeErasedWork = true)
+        f.confirm(p, acknowledgeErasedWork = true)
         assertNull(f.store.record(p, A))
         assertTrue(f.store.pending(p, 50).isEmpty())
-        assertEquals(creates + 1, f.keys.creates)
+        assertEquals(creates + 4, f.keys.creates) // One durable denial marker and three fresh generation keys.
         assertFalse(f.erasure.cleanupRequired)
     }
 
@@ -151,30 +153,30 @@ class ProtectedEnterprisePersistenceTest {
     fun invalidatedKeyIsUnrecoverableUntilAcknowledgedFreshStart(): Unit = runBlocking {
         val directory = root.resolve("vault")
         val f = VaultFixture(directory)
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
         f.keys.invalidated = true // e.g. the device lock screen was removed.
         unrecoverable { f.store.record(p, A) }
         f.server++
-        unrecoverable { f.store.confirm(p) }
+        unrecoverable { f.confirm(p) }
         f.keys.invalidated = false
         assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
         f.keys.invalidated = true
-        f.store.confirm(p, acknowledgeErasedWork = true)
+        f.confirm(p, acknowledgeErasedWork = true)
         f.keys.invalidated = false
         assertNull(f.store.record(p, A))
-        assertEquals(2, f.keys.creates)
+        assertEquals(3, f.contentKeys().size)
     }
 
     @Test
     fun corruptedOrTruncatedCiphertextIsUnrecoverableUntilAcknowledgedFreshStart(): Unit = runBlocking {
         val directory = root.resolve("vault")
         val f = VaultFixture(directory)
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
         Files.write(f.file(directory), ByteArray(31))
         unrecoverable { f.store.record(p, A) }
         f.server++
-        unrecoverable { f.store.confirm(p) }
-        f.store.confirm(p, acknowledgeErasedWork = true)
+        unrecoverable { f.confirm(p) }
+        f.confirm(p, acknowledgeErasedWork = true)
         assertNull(f.store.record(p, A))
     }
 
@@ -182,89 +184,89 @@ class ProtectedEnterprisePersistenceTest {
     fun rebootAndRollbackLockWithoutDroppingWorkButElapsedExpiryShredsTheKey(): Unit = runBlocking {
         val directory = root.resolve("vault")
         val f = VaultFixture(directory)
-        f.store.confirm(p); f.store.enqueue(EnterprisePendingOperation(p, A, B, payload))
+        f.confirm(p); f.store.enqueue(EnterprisePendingOperation(p, A, B, payload))
         f.now = f.now.copy(boot = "boot-8", elapsedMillis = 0)
         denied { f.store.pending(p, 1) }
-        assertEquals(1, f.keys.values.size)
+        assertEquals(3, f.contentKeys().size)
         f.server += 1000
-        f.store.confirm(p)
+        f.confirm(p)
         assertArrayEquals(payload, f.store.pending(p, 1).single().envelope)
         f.now = f.now.copy(wallMillis = 9999)
         denied { f.store.pending(p, 1) }
-        assertEquals(1, f.keys.values.size)
+        assertEquals(3, f.contentKeys().size)
         f.now = f.now.copy(wallMillis = 10000, elapsedMillis = EnterpriseOfflineLease.DEFAULT_VALIDITY_MILLIS)
         denied { f.store.pending(p, 1) }
-        assertTrue(f.keys.values.isEmpty())
-        assertFalse(Files.exists(f.file(directory)))
+        assertTrue(f.contentKeys().isEmpty())
+        assertTrue(f.files.generations(EnterpriseVaultCodec.token(p)).isEmpty())
         assertFalse(f.erasure.cleanupRequired)
         val reopened = VaultFixture(directory, f.keys)
         denied { reopened.store.pending(p, 1) }
-        denied { reopened.store.confirm(p) }
+        unrecoverable { reopened.confirm(p) }
     }
 
     @Test
     fun trustedContactProvesExpiryAcrossBootChangesAndCannotDowngradeManagedKeys(): Unit = runBlocking {
         val f = VaultFixture(root.resolve("vault"))
         f.unlock = 60
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
         f.keys.locked = true // The platform requires device credential/strong biometric at key use.
         assertThrows(EnterpriseUnlockRequired::class.java) { runBlocking { f.store.record(p, A) } }
         // Unlock-required is never a reason to erase, even when loss is acknowledged.
-        assertThrows(EnterpriseUnlockRequired::class.java) { runBlocking { f.store.confirm(p, acknowledgeErasedWork = true) } }
+        assertThrows(EnterpriseUnlockRequired::class.java) { runBlocking { f.confirm(p, acknowledgeErasedWork = true) } }
         f.keys.locked = false
         assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
         f.unlock = null
-        unrecoverable { f.store.confirm(p) }
+        unrecoverable { f.confirm(p) }
         assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
         f.unlock = 60
         f.server--
-        denied { f.store.confirm(p) }
+        denied { f.confirm(p) }
         f.now = f.now.copy(boot = "boot-8")
         f.server = 10000 + EnterpriseOfflineLease.DEFAULT_VALIDITY_MILLIS
-        denied { f.store.confirm(p) }
-        assertTrue(f.keys.values.isEmpty())
+        unrecoverable { f.confirm(p) }
+        assertTrue(f.contentKeys().isEmpty())
     }
 
     @Test
     fun changedManagedUnlockPolicyStartsFreshOnlyAfterAcknowledgedLoss(): Unit = runBlocking {
         val f = VaultFixture(root.resolve("vault"))
         f.unlock = 60
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
         f.unlock = 300
         f.server++
-        unrecoverable { f.store.confirm(p) }
+        unrecoverable { f.confirm(p) }
         assertArrayEquals(payload, f.store.record(p, A)!!.envelope)
-        f.store.confirm(p, acknowledgeErasedWork = true)
+        f.confirm(p, acknowledgeErasedWork = true)
         assertNull(f.store.record(p, A))
-        assertEquals(300, f.keys.values.values.single().managedUnlockSeconds)
+        assertEquals(300, f.payloadKey().managedUnlockSeconds)
     }
 
     @Test
     fun rebootPastWallValidityShredsTheKeyWithoutServerContact(): Unit = runBlocking {
         val directory = root.resolve("vault")
         val f = VaultFixture(directory)
-        f.store.confirm(p); f.store.enqueue(EnterprisePendingOperation(p, A, B, payload))
+        f.confirm(p); f.store.enqueue(EnterprisePendingOperation(p, A, B, payload))
         f.now = EnterpriseDeviceClock("boot-8", 0, f.now.wallMillis + EnterpriseOfflineLease.DEFAULT_VALIDITY_MILLIS - 1)
         denied { f.store.pending(p, 1) }
-        assertEquals(1, f.keys.values.size)
+        assertEquals(3, f.contentKeys().size)
         f.now = f.now.copy(wallMillis = f.now.wallMillis + 1)
         val contacts = f.contacts
         denied { f.store.pending(p, 1) }
         assertEquals(contacts, f.contacts)
-        assertTrue(f.keys.values.isEmpty())
-        assertFalse(Files.exists(f.file(directory)))
+        assertTrue(f.contentKeys().isEmpty())
+        assertTrue(f.files.generations(EnterpriseVaultCodec.token(p)).isEmpty())
     }
 
     @Test
     fun allocationFailureIsAnOutageAndLeavesHeldWorkReadable(): Unit = runBlocking {
         var exhaust = false
         val f = VaultFixture(root.resolve("vault"), transform = { delegate -> object : EnterpriseVaultFiles by delegate {
-            override fun read(token: String): ByteArray? {
+            override fun readGeneration(token: String, generation: Long, descriptor: Boolean): ByteArray? {
                 if (exhaust) throw OutOfMemoryError("private allocation diagnostic")
-                return delegate.read(token)
+                return delegate.readGeneration(token, generation, descriptor)
             }
         } })
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
         exhaust = true
         assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.record(p, A) } }
         exhaust = false
@@ -277,13 +279,13 @@ class ProtectedEnterprisePersistenceTest {
             val directory = root.resolve("vault-" + after)
             var fail = false
             val f = VaultFixture(directory, transform = { delegate -> object : EnterpriseVaultFiles by delegate {
-                override fun replace(token: String, ciphertext: ByteArray) {
-                    if (fail && !after) error("private write failure")
-                    delegate.replace(token, ciphertext)
-                    if (fail && after) error("private acknowledgement failure")
+                override fun replaceGeneration(token: String, generation: Long, descriptor: Boolean, ciphertext: ByteArray) {
+                    if (fail && !after && !descriptor) error("private write failure")
+                    delegate.replaceGeneration(token, generation, descriptor, ciphertext)
                 }
             } })
-            f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+            f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+            f.keys.afterCreate = { alias -> if (fail && after && alias.endsWith("_h")) error("private acknowledgement failure") }
             fail = true
             assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking {
                 f.store.enqueue(EnterprisePendingOperation(p, B, A, payload))
@@ -299,7 +301,7 @@ class ProtectedEnterprisePersistenceTest {
     fun simultaneousWritersThroughIndependentAdaptersPreserveEveryOperation() {
         val directory = root.resolve("vault")
         val first = VaultFixture(directory)
-        runBlocking { first.store.confirm(p) }
+        runBlocking { first.confirm(p) }
         val second = VaultFixture(directory, first.keys)
         val start = CountDownLatch(1)
         val executor = Executors.newFixedThreadPool(8)
@@ -326,10 +328,10 @@ class ProtectedEnterprisePersistenceTest {
         val directory = root.resolve("vault")
         val f = VaultFixture(directory)
         f.denyContact = true
-        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.store.confirm(p) } }
+        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { f.confirm(p) } }
         assertEquals(0, f.keys.creates)
         f.denyContact = false
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, payload))
         assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking {
             f.store.putPrivateFile(p, B, ByteArray(EnterpriseVaultCodec.MAX_PLAIN))
         } }

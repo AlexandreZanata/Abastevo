@@ -33,8 +33,9 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		selfDevice, selfDeviceGuarded := handler.(orgapi.SelfDeviceDescriptor)
 		accountContext, contextGuarded := handler.(orgapi.AccountContextDescriptor)
 		ownedSetups, setupsGuarded := handler.(orgapi.OwnedSetupsDescriptor)
+		contact, contactGuarded := handler.(orgapi.DeviceContactDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
@@ -57,7 +58,41 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 			return fmt.Errorf("unexpected device authority metadata for %s", path)
 		}
 		var declared orgapi.Rule
-		if setupsGuarded {
+		if !contactGuarded && operation.Extensions["x-abastevo-device-contact"] != nil {
+			return fmt.Errorf("unexpected device contact metadata for %s", path)
+		}
+		if contactGuarded {
+			expected := orgapi.DeviceContactRule{AccountProof: true, Signed: true, ExactEnrollment: true, TerminalRead: true, PolicyLease: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || path != "/v1/orgs/{org_id}/devices/contact" || contact.DeviceContactRule() != expected {
+				return fmt.Errorf("invalid device contact guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context", "x-abastevo-owned-setups"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for device contact %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-device-contact"])
+			var recorded orgapi.DeviceContactRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("device contact metadata differs for %s", path)
+			}
+			if e := validateSignedDeviceSecurity(operation, path); e != nil {
+				return e
+			}
+			schema := operation.RequestBody.Value.Content.Get("application/json").Schema.Value
+			for _, name := range []string{"schema_version", "request_id", "membership_id", "enrollment_id"} {
+				found := false
+				for _, required := range schema.Required {
+					if required == name {
+						found = true
+					}
+				}
+				if !found || schema.Properties[name] == nil {
+					return fmt.Errorf("missing exact contact selector %s for %s", name, path)
+				}
+			}
+			declared.Success = 200
+		} else if setupsGuarded {
 			expected := orgapi.OwnedSetupsRule{Cookie: true, CSRF: true, Binding: true, Success: 200}
 			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || path != "/v1/org-access/organizations/setups/list" || ownedSetups.OwnedSetupsRule() != expected {
 				return fmt.Errorf("invalid owned setups guard for %s", path)

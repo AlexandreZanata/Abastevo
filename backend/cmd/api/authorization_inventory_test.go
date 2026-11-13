@@ -101,7 +101,7 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 	if !slices.Equal(keys, catalog.Permissions()) || routed != 12 || notRouted != 73 || len(normal) != 70 {
 		return nil, nil, fmt.Errorf("authorization inventory does not cover every catalog permission")
 	}
-	expectedBoundaries := map[string]int{"ACCOUNT_CONTEXT": 2, "OWNED_SETUPS": 1, "COMPANY_SESSION": 3, "ORGANIZATION_CREATION": 1, "PERSONAL_INVITATION": 3, "SELF_MEMBERSHIP": 2, "SIGNED_DEVICE": 2, "SELF_DEVICE": 2}
+	expectedBoundaries := map[string]int{"ACCOUNT_CONTEXT": 2, "OWNED_SETUPS": 1, "COMPANY_SESSION": 3, "ORGANIZATION_CREATION": 1, "PERSONAL_INVITATION": 3, "SELF_MEMBERSHIP": 2, "SIGNED_DEVICE": 2, "SELF_DEVICE": 2, "DEVICE_CONTACT": 1}
 	actualBoundaries := map[string]int{}
 	var specialOrder []string
 	for _, row := range inventory.SpecialRoutes {
@@ -112,7 +112,7 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 		specialOrder = append(specialOrder, row.Route)
 		actualBoundaries[row.Boundary]++
 	}
-	if len(special) != 16 || !slices.IsSorted(specialOrder) || len(actualBoundaries) != len(expectedBoundaries) {
+	if len(special) != 17 || !slices.IsSorted(specialOrder) || len(actualBoundaries) != len(expectedBoundaries) {
 		return nil, nil, fmt.Errorf("special authorization inventory coverage drift")
 	}
 	for boundary, count := range expectedBoundaries {
@@ -157,6 +157,8 @@ func authorizationSpecialBoundary(handler http.Handler) string {
 		return "SELF_MEMBERSHIP"
 	case orgapi.SignedDeviceDescriptor:
 		return "SIGNED_DEVICE"
+	case orgapi.DeviceContactDescriptor:
+		return "DEVICE_CONTACT"
 	case orgapi.SelfDeviceDescriptor:
 		return "SELF_DEVICE"
 	default:

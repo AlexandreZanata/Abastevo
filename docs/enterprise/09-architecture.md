@@ -155,79 +155,92 @@ the currently selected organization. Storage errors are static and cancellation
 propagates. This is a local ownership boundary, not membership authorization.
 
 Hilt reuses AuthFlow and the named apiOrigin configuration; Active and
-NeedsRefresh are local owner hints, never network permission. The production
-persistence binding is UnavailableEnterprisePersistence. No DB builder is
-registered: the plain Room adapter is for synthetic foundation validation.
-EMP-PRIV-003 adds the sealed adapter below. Native proof and current-server
-composition remain required before replacing that binding. Existing backup
-rules and host checks are not device protection proof.
+NeedsRefresh are local owner hints, never network permission. After actual
+PRIV-003 native/source acceptance, persistence and protection bind the same
+protectedStore singleton and contact binds the signed current-source client.
+No plaintext enterprise DB builder is registered: the Room adapter remains
+for synthetic foundation validation. The sealed adapter and its actual
+acceptance are described below; backup rules and host tests alone are not
+device protection proof.
 
 See [adapter contract and commands](../../data/src/main/kotlin/com/anpfuel/data/enterprise/README.md)
 and [local evidence](evidence/f1-plat011-android-foundation.md). Host SQLite
 persistence/SQL evidence is separate from deferred native Room/Keystore tests.
 
-### 2.2 Implemented protected-vault source; native acceptance pending
+### 2.2 Protected generations and signed custody
 
-EMP-PRIV-003 selects a separate AES-256-GCM encrypted snapshot per
-(account, origin, organization), using AndroidKeyStore non-exportable keys
-and provider-generated 96-bit IVs. Version and framed partition form AAD;
-the encrypted body also validates partition, schema and bounded entries.
-Records, pending intent, attachment/cache bytes and lease metadata share
-one snapshot. The adapter never opens plaintext Room, SQLite journals or
-temporary attachments. The prior Room v1 adapter remains synthetic and
-personal v37 storage is untouched. No new dependency is required.
+EMP-PRIV-003's F2 continuation replaces same-key snapshots with authenticated
+encrypted generations. Each immutable account/origin/organization partition
+retains exact membership/enrollment/revision and session-family provenance.
+Records, pending operations, attachments, caches and lease metadata remain
+encrypted together. AES-256-GCM uses provider IVs; partition and generation
+are AAD. Personal stores and the earlier synthetic Room foundation are not
+imported, migrated or retagged. No dependency is added.
 
-The bounded initial implementation allows 32 MiB and 10,000 entries per
-snapshot as allocation/decoding safety budgets, not commercial quotas.
-Capacity failure is explicit and evicts nothing. Owning feature tasks must
-measure size/write amplification before activation or extend the versioned
-storage model. This deliberately avoids selecting an unreviewed encrypted
-SQLite dependency before relational enterprise schemas exist.
+The allocation/decoder budgets remain32MiB and10,000 entries per snapshot;
+capacity failure preserves held work and evicts nothing. These are technical
+allocation bounds, not commercial quotas. Owning features still need actual
+capacity/write-amplification acceptance before activation.
 
-Only scope digests appear in filenames/key aliases; identifiers and payloads
-remain encrypted. Files are under noBackupFilesDir/enterprise-sealed-v1.
-AtomicEnterpriseVaultFiles writes ciphertext to the same directory, fsyncs,
-atomically renames and fsyncs the directory. Same-account OS file locking
-serializes independent processes; a JVM lock handles overlapping file locks.
-Host tests cover actual independent JVMs and abrupt death before/after
-replacement, not just reconstructed mocks. Cloud/transfer XML excludes
-future relocation paths; the actual noBackup root is excluded by Android.
+Opaque generation data and encrypted maintenance descriptors remain under
+noBackupFilesDir/enterprise-sealed-v1. Atomic replacement/fsync and account OS
+locks preserve independent process safety. Fresh keys seal both files before
+a Keystore head marker commits that generation. Restorable files cannot lower
+the trusted head or select a preparation. Partial cleanup retains the highest
+head floor until all decryption material/files are verified gone and durable
+denial retains the lost-work state; only then may head disposal complete.
+Missing/inconsistent committed data fails closed.
+Legacy unbound bytes or V2 artifacts without a head require fresh exact proof
+and explicitly acknowledged empty recovery; they cannot silently acquire a new
+member/enrollment. Failed preparation with a retained prior head preserves
+acknowledged work. Ordinary provider outages remain retryable.
 
-Fresh contact is an explicit trusted port: current partition, session family,
-server time, offline validity and managed unlock duration. It defaults to
-unavailable. Reads never create a key. Same-boot monotonic elapsed time
-enforces expiry (default 30 days); reboot, decreasing elapsed time or wall
-time below the contact anchor locks until fresh server contact without
-dropping held work. Trusted receipt can prove expiry across boots. Device
-wall-clock changes cannot extend validity. Managed keys require configured
-device credential/strong biometric authorization; no default inactivity
-duration is invented. The platform key timeout is stricter than a sliding
-idle window. Native prompt/idle acceptance remains owed.
+The separate signed POST /v1/orgs/{org_id}/devices/contact uses real current
+account/family and identity-v1 nonce/key/contributor proof. Only an exact owned
+enrollment can return ACTIVE custody, ERASE for LOST_OR_COMPROMISED, or LOCK for
+ACCESS_ENDED. Terminal observation reads no employee/business projections;
+ACTIVE repeats current membership/employee/organization checks. Proof/DB time
+is rechecked after waits and before commit. Contact changes no sync timestamp,
+command history or audit. Generic errors, foreign/malformed or late replies
+never authorize erasure.
 
-The session-store decorator fences logout, owner/family replacement and
-failed clear attempts. Token rotation within the same family preserves
-local context. MainActivity backgrounding fences handles. Context checks
-the shared epoch before and after I/O, preventing stale same-owner handles
-from reviving after logout/re-login. Definitive SESSION_REVOKED/SESSION_REUSE
-from refresh of the still-current family invokes account/origin erasure;
-ordinary outage/expiry, foreign proof and a late old-family reply do not.
-Future signed organization clients must invoke partitionRevoked only after
-their authoritative device-revocation verdict; no new sync client is implied.
+The existing-account lease remains30days, independent of15-minute access
+tokens. Request-start monotonic/wall/boot observations conservatively include
+network and durable-I/O latency. Proven expiry erases; observed reboot/clock
+rollback persists a non-destructive reconfirmation lock. Restoring the clock
+or restarting the process cannot lift it. Ordinary logout/session expiry
+retain ciphertext. Explicit managed unlock policy still depends on actual
+AUTH/GOV authority; no managed server timeout is invented.
 
-Revocation/expiry fences access, persists denial and discards keys, attempting
-independent cleanup steps and reporting cleanupRequired on failure. Marker
-or missing key prevents reopen. Starting empty after erasure requires
-explicit acknowledgement, fresh server proof and successful cleanup; old
-work is never resurrected or retagged. No claim of durable erasure is made
-when both durable marker and key disposal fail. Pending native failure
-acceptance is an activation gate, not an automatic retry success claim.
+A successful durable contact registers a one-use expected E→E+1 handoff for
+the original selection lease. The flow consumes that receipt, opens a new
+company channel and revalidates metadata. Account/family/background/replacement
+and late-response checks prevent adopting another flow's epoch. Same-family
+token rotation preserves identity. Epoch notification leaves ownership/fence
+locks before synchronous observers can run. System credential UI grants no
+server authority and replays no old request; explicit lost-work recovery stays
+bound to its rendered target/epoch.
 
-The real persistence binding remains UnavailableEnterprisePersistence.
-The protected implementation and Android adapters compile, but acceptance
-is IN_PROGRESS until actual Keystore/device lock, backup/transfer, reboot,
-restore and cleanup-failure scenarios run in the owner's deferred native
-batch, and current AUTH/IDN providers are composed. See the
-[implementation/evidence record](evidence/f1-priv003-protected-device-store.md).
+Encrypted maintenance descriptors bind the same trusted head while allowing
+expiry checks without a managed payload unlock. Independent opaque file and
+Keystore denial markers survive process/file restoration. Startup/periodic
+WorkManager maintenance uses per-invocation opaque sweep handles and cooperative
+slices; retries/concurrent workers do not share cursors. Each item verifies
+current committed descriptor/owned cleanup intent. No private IDs/credentials
+enter job input/logs. Read-time expiry remains mandatory if scheduling is delayed.
+Failure never becomes a false durable-success or instant remote-wipe claim.
+
+Actual ordinary PostGIS/signed HTTP and host failure/concurrency acceptance are
+recorded in the [continuation](evidence/f2-priv003-protection-completion.md).
+Actual API36 emulator Keystore/source, credential, backup/transfer, reboot,
+clock and worker acceptance passes. Authority binds the actual signed client;
+persistence/protection share the accepted singleton. Normal/opt-in compilation,
+app/data lint and real product Application startup with scheduled jobs pass.
+Emulator evidence names its image and cannot stand for physical/manufacturer or
+production certification. The
+[V1 source record](evidence/f1-priv003-protected-device-store.md) is preserved as
+historical evidence and its outstanding defects are superseded only by proved
+continuation acceptance.
 
 ### 2.3 Implemented organization aggregate
 
