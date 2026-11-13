@@ -94,7 +94,7 @@ Role assignment:
 
 `STATION_ADMIN` and `STATION_MANAGER` map to the existing representation roles `administrator` and `manager` (STATION_PROFILE_CONTRACT_FREEZE). No generic account role `OWNER` is created outside an organization; the existing freeze ("No `OWNER` role exists anywhere in this scope") keeps applying to station representation.
 
-### 7.2 Permission registry (`org-permissions-v2`)
+### 7.2 Permission registry (`org-permissions-v4`)
 
 Every permission used by any module is listed here. A module that needs a new key adds it here first.
 
@@ -387,3 +387,12 @@ permissions and while another valid owner remains. `auth.role.assign` owns the
 five POST management/read routes; there are no `auth.role.end`, `auth.role.read`
 or `auth.role.list` aliases. Archived reads and access reductions remain allowed
 under current proof; new grants/changes do not.
+
+
+Authorization-conformance checkpoint (EMP-AUTH-009, EDR-063): the current
+independent v4 fixture covers85 keys × 13 roles (1,105 descriptor cells). The
+[route inventory](../../contracts/testdata/enterprise/authorization-routes-v1.json)
+and [current acceptance profile](15-validation.md#5-authorization-sampling)
+distinguish current-source request coverage from future permissions/scopes.
+The complete production-router gate already exists in cmd/api; this checkpoint
+does not introduce a second runtime registry or expand the fixed policy.

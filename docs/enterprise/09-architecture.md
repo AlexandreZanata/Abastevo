@@ -473,8 +473,7 @@ permission and target; retained contexts cannot extend authority. Verified
 contributor/device-key attribution remains explicit. Resource facts come from
 the owning scoped server repository. Business modules still own their record
 rules, transactions and audit; AUTH-004 supplies the concrete default-off pilot capability
-adapter backed by the current scoped flag repository. The first business route must use this binding and prove the composed
-production-router gate. [Acceptance](evidence/f1-auth003-current-authorization.md).
+adapter backed by the current scoped flag repository. The first business routes now use this binding; the complete production-router gate runs in backend/cmd/api/enterprise_router_test.go and company_test.go. AUTH-009 adds the independent current route/permission coverage inventory and source-request conformance without replacing that gate. [Initial acceptance](evidence/f1-auth003-current-authorization.md).
 
 - **Paths:** `/v1/orgs/{org_id}/<module>/…`. Routes that are not inside an organization (create an organization, list my memberships, accept an invitation, activate managed access) live under `/v1/org-access/…`. Station portal routes are organization routes scoped by station: `/v1/orgs/{org_id}/stations/{station_id}/…`.
 - **Methods:** following the existing convention, commands and private reads are `POST` with a JSON body, because the app's session travels in the body. Responses are `no-store`.

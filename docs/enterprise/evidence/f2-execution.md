@@ -52,8 +52,10 @@ EMP-FLEET-001 is LOCAL_DONE / INTEGRATION_PENDING at2daea515:
 [domain acceptance](f2-fleet001-asset-domain.md),133 shared vectors.
 EMP-OFFL-001 is LOCAL_DONE / INTEGRATION_PENDING:
 [protocol acceptance](f2-offl001-sync-protocol.md),260 shared vectors and matching
-component-only OpenAPI. Current bounded dependency is EMP-AUTH-009 authorization
-conformance. No asset persistence, intake route, queue or runtime activation is
+component-only OpenAPI. EMP-AUTH-009 is LOCAL_DONE / INTEGRATION_PENDING,
+[authorization conformance](f2-auth009-authorization-conformance.md):120 actual
+current-source HTTP cells and complete route inventory. Next bounded dependency
+is EMP-ORG-014 company onboarding/settings. No asset persistence, intake route, queue or runtime activation is
 introduced by these two pure checkpoints. The full F2 scope remains in progress.
 
 ## Acceptance and retained gates

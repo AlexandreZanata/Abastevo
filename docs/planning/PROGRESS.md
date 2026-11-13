@@ -13,7 +13,13 @@
   intent-bound ACKs pass260 shared vectors; Go race93.9% statements, Kotlin273
   tests94.30% scoped instructions/95.74% lines, API/format/vet/static/plan/review
   pass. B-BR-EMP-98/99, BUC-EMP-50 and EDR-062 precede behavior.
-  Current bounded dependency: EMP-AUTH-009 authorization conformance.
+  EMP-AUTH-009 LOCAL_DONE, [evidence](../enterprise/evidence/f2-auth009-authorization-conformance.md):
+  ordinary real PostGIS/company HTTP covers120 current role/permission cells
+  (41 allow/79 deny),1,689 named requests plus10 nonparticipants; exact denial
+  envelopes, next-request revocation, ADMIN→OWNER, scoped races/failure checks,
+  full-router inventory and all1,105 descriptors pass. B-BR-EMP-100/BUC-EMP-51/
+  EDR-063 precede tests.36 station cells and73 unrouted keys remain obligations.
+  Next bounded dependency: EMP-ORG-014 onboarding/settings panel.
   No active intake route/ledger/queue yet. Pure-domain entry is permitted by
   roadmap §5; M1/M2/C1, protected store/contact and actual sync remain open.
   Parent required Quick passed at opening; other CI was running. No polling

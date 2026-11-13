@@ -1593,3 +1593,27 @@ proof and the transactionally enforced three-pending-organization account cap.
   Numeric-only ambiguous hosts must be valid IPv4, never resolved through DNS.
   MIME declarations use the frozen lowercase type/subtype token profile, with
   no parameters or wildcards; matching syntax is not content inspection.
+
+
+### Authorization conformance checkpoint (EMP-AUTH-009)
+
+- **B-BR-EMP-100 — Assert the fixed policy through current source authority.**
+  The org-permissions-v4 catalog has85 registered keys and13 fixed roles;
+  its1,105 independent descriptor cells are not authorization by themselves.
+  The conformance suite covers every applicable routed permission through the
+  current request pipeline and ordinary NOSUPERUSER/NOBYPASSRLS PostGIS source.
+  Include explicit allow/deny, missing/expired/ended/suspended assignment or
+  membership, exact organization, own versus other resource, capability,
+  freshness and record-rule cases. Denials reveal no private resource data.
+  Ending authority denies the next request without changing the session.
+  Route inventory and the complete-router gate refuse undeclared or unguarded
+  routes and unexplained coverage omissions. Future routes/scopes remain named
+  obligations; a missing route is never a passed business acceptance.
+- **BUC-EMP-51 — Reproduce organization authorization conformance.** Load the
+  independent versioned matrix; reconcile every fixed descriptor and each
+  current routed permission with an explicit representative route and normal
+  current-source request cases. Inspect actual request effects/denials and
+  next-request revocation using synthetic two-organization records. Assert
+  ordinary database-role properties and keep future structural/delegation/
+  station/feature checks assigned to their owning tasks. This test-only task
+  changes no product permission, feature handler, source policy or runtime gate.
