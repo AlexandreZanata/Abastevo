@@ -181,16 +181,18 @@ it does not start or accept the whole F3 early.
 Executed commands (from backend for Go, repository root for JVM):
 
 ```sh
-go test -race -count=1 -coverprofile=/tmp/enterprise-meter001-go-final-v2-coverage.out ./internal/modules/fleet/domain/meter
+go test -race -count=1 -coverprofile=/tmp/enterprise-meter001-go-final-v2-coverage.out -covermode=atomic -json ./internal/modules/fleet/domain/meter
 go vet ./internal/modules/fleet/domain/meter
-GOTOOLCHAIN=go1.27.1 XDG_CACHE_HOME=/tmp/enterprise-meter001-go-static-cache staticcheck ./internal/modules/fleet/domain/meter
+GOTOOLCHAIN=go1.27.1 STATICCHECK_CACHE=/tmp/enterprise-meter001-go-static-cache /home/iiii/go/bin/staticcheck ./internal/modules/fleet/domain/meter
 ./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.*' --offline --no-daemon --no-parallel --max-workers=2 --console=plain
 python3 docs/enterprise/tools/check_plan.py
 git diff --cached --check
 git diff --cached --binary | gitleaks stdin --redact --no-banner
 ```
 
-Use pinned Go1.27.4/GOCACHE=/tmp/enterprise-go-build and installed JDK17 as
+Staticcheck used the installed Go1.27.1 toolchain; its actual cache override
+is STATICCHECK_CACHE, not XDG_CACHE_HOME. Use pinned
+Go1.27.4/GOCACHE=/tmp/enterprise-go-build and installed JDK17 as
 in preceding phase records. Scoped-only meter RED/GREEN commands select
 `com.anpfuel.domain.enterprise.meter.*`. Logs and exact reviewed input manifests
 above preserve intermediate failures without another aggregate acceptance run

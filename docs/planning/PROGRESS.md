@@ -4,12 +4,12 @@
   [F3 sequence](../enterprise/evidence/f3-authorized-sequence.md) records the
   requested scope/M3 entry and exit. The maintainer reiterates overnight autonomy:
   choose recommended routine decisions, record them, and ask no questions.
-  F3 is queued; next bounded implementation task is EMP-FUEL-001.
+  F3 is queued; next bounded task is EMP-FLEET-002 actual persistence.
 - Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2`
   from published dev `fac002e7`; verified main `6a19bcc7` remains an ancestor.
   [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
   all34 F2 tasks,25 transitive prerequisites and the additional formal M1 chain.
-  Nine checkpoints are LOCAL_DONE / INTEGRATION_PENDING;55 audited nodes remain.
+  Ten checkpoints are LOCAL_DONE / INTEGRATION_PENDING;54 audited nodes remain.
   Completed: FLEET-001(2daea515), OFFL-001(1cc9a7b3), AUTH-009(4743e0b9),
   ORG-014(efd7e886), PRIV-003(51c25146), OFFL-002(d24b0d4f), and
   [OFFL-003 protected queue](../enterprise/evidence/f2-offl003-protected-operation-queue.md).
@@ -38,8 +38,17 @@
   EDR-087..090 precede behavior. Shared261 cases, Go race314 test nodes and
   Kotlin941 enterprise cases pass; scoped meter coverage95.89% instructions.
   Real time/list/API defects receive RED→GREEN; no remaining peer-review blocker.
-  Next: EMP-FUEL-001, actual owned catalog/pure fueling prerequisite for runtime
-  fleet persistence. Full F3 remains queued beyond C1/F2 dependency closure.
+  METER-001 05c83376 is backed up at origin/codex/enterprise-f2.
+  [EMP-FUEL-001 supply domain](../enterprise/evidence/f2-fuel001-supply-domain.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. B-BR-EMP-137..143, BUC-EMP-69..72 and
+  EDR-091..094 precede behavior. Owned nine-product catalog, exact immutable
+  candidates and compatible totals pass200 shared vectors, Go812 affected
+  race nodes and Kotlin1158 enterprise tests, with zero failures/skips. Time
+  declaration-only validation preserves original Capture reporting/receipt
+  behavior. Final peer/manifest/static/secret checks pass.
+  Next: EMP-FLEET-002 actual asset persistence, real categories/unit admission
+  and guarded commands; powered activation still requires real METER-002.
+  Full F3 remains queued beyond C1/F2 dependency closure.
   The user authorizes only the owned API36 emulator while the phone is
   disconnected; preserve other devices/apps/data.
   PR203 dev still contains the earlier batch. Final phase delivery uses protected

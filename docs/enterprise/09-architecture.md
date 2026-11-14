@@ -29,7 +29,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `fleet` (pure asset/meter domains LOCAL_DONE; runtime pending) | FLEET, METER | Scoped asset/tank values; exact meter/reading evidence under EMP-METER-001; persistence, assignments, reservations and suppliers remain their owning tasks | `kernel`, accepted time/value domains; future explicit `organization`/`membership` ports |
 | `trip` (proposed) | TRIP | Missions, trips, stops, logbook | `fleet`, `review` |
 | `tracking` (proposed) | GPS, ROUTE | Tracking sessions, track segments, live position, geofences, route plans | `trip` |
-| `fueling` (proposed) | FUEL | Fuelings, consumption intervals, price reference snapshots | `fleet`, `metrics` (existing engine), `directory`/`official`/`community` (read) |
+| `fueling` (pure domain LOCAL_DONE; runtime pending) | FUEL | Owned nine-product catalog, exact submit-ready candidates and purchased totals; intake/review/consumption remain their owning tasks | Pure `fleet` refs, accepted time/value kernels; future explicit `metrics`, `directory`/`official`/`community` read ports |
 | `document` (proposed) | DOC | Documents, extractions, fiscal documents, links, allocations | storage port; `kernel` CNPJ type (existing) |
 | `review` (proposed) | APPR | Review cases, approval policies, periods | `orgaccess` |
 | `expense` (proposed) | EXP, FIN | Expenses, allocations, payables, payments, advances | `review`, `fueling`, `document` |

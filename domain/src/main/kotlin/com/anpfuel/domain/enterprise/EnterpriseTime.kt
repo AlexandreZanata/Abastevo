@@ -73,12 +73,17 @@ object EnterpriseTime {
         return ZoneId.of(id)
     }
 
+    /** Declaration-only validation never manufactures server receipt or reporting facts. */
+    fun validateDeclaration(declared: TimeDeclaration): TimeDeclaration {
+        if (!validInstant(declared.occurredAt) || declared.deviceOffsetSeconds !in -64800L..64800L) throw EnterpriseTimeException()
+        zone(declared.entryZone)
+        return declared
+    }
+
     /** A trip caller supplies its start. A supplied invalid unit never falls back to organization. */
     fun capture(declared: TimeDeclaration, receivedAt: Instant, zones: ReportingZones): EnterpriseTimeRecord {
-        if (!validInstant(declared.occurredAt) || !validReceipt(receivedAt) ||
-            declared.deviceOffsetSeconds !in -64800L..64800L
-        ) throw EnterpriseTimeException()
-        zone(declared.entryZone)
+        validateDeclaration(declared)
+        if (!validReceipt(receivedAt)) throw EnterpriseTimeException()
         val organization = zone(zones.organization)
         val reportingZone = zones.unit?.let(::zone) ?: organization
         val day = declared.occurredAt.atZone(reportingZone).toLocalDate()

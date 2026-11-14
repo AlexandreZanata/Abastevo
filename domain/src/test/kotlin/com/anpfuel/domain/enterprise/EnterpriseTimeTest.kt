@@ -52,6 +52,42 @@ class EnterpriseTimeTest {
         }
     }
 
+    @Test
+    fun declarationValidationAcceptsMinimumWithoutReceiptOrAnInventedReportingCalendar() {
+        val declared = TimeDeclaration(Instant.parse("0001-01-01T00:00:00Z"), "America/Cuiaba", 64800)
+        assertEquals(declared, EnterpriseTime.validateDeclaration(declared))
+        assertThrows(EnterpriseTimeException::class.java) {
+            EnterpriseTime.capture(declared, Instant.parse("2026-11-14T00:00:00Z"), ReportingZones("America/Cuiaba"))
+        }
+    }
+
+    @Test
+    fun declarationValidationPreservesOffsetDisagreementAndCaptureReceiptAuthority() {
+        val occurred = EnterpriseTime.parseInstant("2026-11-14T03:00:00+03:00")
+        val declared = TimeDeclaration(occurred, "Asia/Tokyo", -64800)
+        val validated = EnterpriseTime.validateDeclaration(declared)
+        assertEquals("2026-11-14T00:00:00Z", EnterpriseTime.formatInstant(validated.occurredAt))
+        assertEquals(-64800L, validated.deviceOffsetSeconds)
+        val received = Instant.parse("2026-11-15T00:00:00Z")
+        val captured = EnterpriseTime.capture(validated, received, ReportingZones("UTC"))
+        assertEquals(received, captured.authorityAt())
+        assertEquals("2026-11-14", captured.reportingDay)
+        assertThrows(EnterpriseTimeException::class.java) {
+            EnterpriseTime.capture(validated, Instant.parse("0001-01-01T00:00:00Z"), ReportingZones("UTC"))
+        }
+    }
+
+    @Test
+    fun declarationValidationRejectsTheExistingInstantZoneAndOffsetFailures() {
+        val at = Instant.parse("2026-11-14T00:00:00Z")
+        val base = TimeDeclaration(at, "UTC", 0)
+        val invalid = listOf(base.copy(occurredAt = Instant.MIN), base.copy(occurredAt = Instant.MAX),
+            base.copy(occurredAt = Instant.parse("0000-01-01T00:00:00Z")), base.copy(entryZone = "UTC "),
+            base.copy(entryZone = "Not/A_Zone"), base.copy(entryZone = "posix/UTC"),
+            base.copy(deviceOffsetSeconds = 64801), base.copy(deviceOffsetSeconds = -64801))
+        for (declared in invalid) assertThrows(EnterpriseTimeException::class.java) { EnterpriseTime.validateDeclaration(declared) }
+    }
+
     private fun fields(raw: String): Map<String, String> {
         val pairs = raw.split(';').map {
             val pair = it.split('=', limit = 2)

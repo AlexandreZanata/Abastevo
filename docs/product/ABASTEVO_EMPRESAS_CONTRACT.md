@@ -2195,3 +2195,94 @@ the owning business producers and OFFL-004 pending screen remain separate work.
   cases and compare exact results in Go and Kotlin. Run focused domain race,
   static/format and JVM regressions. No native/SQL acceptance is inferred from
   this pure-domain checkpoint.
+
+
+## Enterprise pure fueling (EMP-FUEL-001)
+
+- **B-BR-EMP-137 — Own the exact enterprise product catalog.**
+  fuel-products-v1 contains exactly ETHANOL, GASOLINE_REGULAR,
+  GASOLINE_ADDITIVED, GASOLINE_PREMIUM_GRADE, DIESEL_S10, DIESEL_S500,
+  CNG, ELECTRICITY and ARLA_32 with the specification's fixed categories,
+  units, storage units and families. Units use existing L/M3/KWH tokens;
+  storage tokens are ML/MILLI_M3/WH and family tokens are ETHANOL, GASOLINE,
+  DIESEL, NATURAL_GAS, ELECTRIC and NONE (additive has no fuel family).
+  Cooking-cylinder LPG_P13 and unknown/normalized aliases are not products.
+  Immutable catalog descriptors may supply Fleet ProductCatalog without
+  duplicating the business list or changing public station/kernel vocabulary.
+- **B-BR-EMP-138 — Validate a submit-ready candidate without accepting it.**
+  Retain an immutable scoped fueling identity, asset, responsible EmployeeRef,
+  author MembershipRef, occurrence declaration, product, quantity, paid total,
+  explicit fill, payer and payment method. Private references belong to the
+  same organization; public station references keep public ownership. A meter
+  ReadingRef must match the exact org and asset, or an explicit Meter Missing
+  reason is required. Reference shape does not prove existence, reading state,
+  membership authority, approval, upload or server acceptance. Tank/tank-group,
+  trip and supplier links remain optional as specified, never guessed.
+- **B-BR-EMP-139 — Keep exact recorded amounts and unit semantics.**
+  Reuse accepted canonical integer parsers/bounds: quantity1..1000000000 in
+  the product's storage scale, paid/discount centavos0..1000000000000 and
+  optional unit price1..1000000 milli-BRL per product unit. A supplied unit
+  differing from the fixed product unit is PRODUCT_UNIT_MISMATCH. Preserve
+  original optional price text without interpreting or quantizing it, and
+  never recompute the entered paid total. Arithmetic warnings and derived
+  prices belong to FUEL-002; do not use the L/M3-only reconciliation profile
+  to reject KWH in this task.
+- **B-BR-EMP-140 — Validate offline declarations without fictitious receipt.**
+  A candidate has no received_at, clock acquisition, reporting-day snapshot
+  or workflow transition. Expose a validation-only declaration entry from
+  the existing time kernel, reusing exactly its instant/zone/offset checks
+  and UTC normalization. Capture reuses those checks and preserves all its
+  existing receipt/reporting behavior. Require declaration presence; preserve
+  explicit minimum instants and offset/zone disagreement. Never invent a
+  receipt or treat the entry zone as an organization reporting zone.
+- **B-BR-EMP-141 — Preserve declared fill and payer.**
+  FULL, PARTIAL and UNKNOWN are explicit; UNKNOWN remains recorded UNKNOWN
+  with partial semantics. Quantity never implies FULL. ARLA_32 remains an
+  additive with separate exact quantity/cost and no fuel-volume or consumption
+  eligibility. A pure full/fuel eligibility fact is not an approved consumption
+  anchor. Require COMPANY/EMPLOYEE and a documented payment method explicitly;
+  those declarations do not prove payment, payer identity or reimbursement.
+- **B-BR-EMP-142 — Preserve independent establishment and supplier roles.**
+  Establishment is independently optional: public catalog station, private
+  organization supplier, internal source tank or NOT_FOUND with a typed name.
+  Destination asset tank/group and an internal establishment source are
+  distinct references. Contracted supplier is a separate optional private
+  reference. Document issuer belongs to DOC: represent it only in a separate
+  read projection with its source document/revision, not as copied fueling
+  truth. No stable issuer identifier exists in this source: the transient
+  projection carries source DocumentRef, positive revision and DOC-provided
+  issuer label, without inventing an issuer or SupplierRef identity. Its value
+  validates declared ownership, not real document linkage or authority.
+  NOT_FOUND names and known issuer labels are well formed, nonblank and
+  control-free; add no numeric name cap absent from the specification.
+  None of the three roles fills, replaces or corrects another.
+  Missing public linkage is valid; no station, coordinate or fiscal status is
+  created. Same-reference or different-reference roles both remain explicit.
+- **B-BR-EMP-143 — Sum only explicitly compatible supplied quantities.**
+  Retain per-product totals. Cross-product purchased totals require the same
+  category and unit, never just a shared L token; additive and liquid fuel
+  stay separate. Use exact widened sums without an invented total/count cap.
+  This is purchased quantity, never consumption or a ratio. Snapshot mutable
+  inputs before validation, preserve copies and redact private diagnostics.
+  Keep this checkpoint pure, synthetic and dependency-free; runtime stores,
+  intake, warnings, review, expenses, reimbursement and intervals remain owned
+  by later tasks. Real-receipt legal gates remain closed.
+- **BUC-EMP-69 — Prove the owned catalog and exact units.**
+  Shared Go/Kotlin vectors cover all nine descriptors, every supported unit,
+  wrong/unknown units/products, cooking-gas exclusion, exact bounds/precision,
+  paid-total preservation and category-safe widened totals.
+- **BUC-EMP-70 — Prove required fields and scoped evidence.**
+  Cover missing declaration/employee/author/value/fill/payer/payment, foreign
+  asset/meter/employee/private roles, observed-reference versus explicit
+  missing reason, public station independence and immutable snapshots.
+- **BUC-EMP-71 — Prove fill, payer and role independence.**
+  UNKNOWN/large quantity never become FULL; additives never become fuel or
+  anchors; employee payment never creates reimbursement. Preserve independent
+  place, source document issuer/revision and contracted supplier, including
+  absent/different references without automatic repair.
+- **BUC-EMP-72 — Prove conformance and declaration-only validation.**
+  Strictly consume the entire frozen corpus in both languages, with complete
+  expected maps and exact counts/hash. Capture actual RED→GREEN before pure
+  behavior; test mutation, failures and exact widening. Regress the accepted
+  time kernel without altering receipt/reporting semantics. Run affected
+  domain race/static/JVM checks; no device/SQL/runtime acceptance is inferred.

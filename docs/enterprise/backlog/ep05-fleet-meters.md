@@ -25,7 +25,7 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
 - **Objective:** Let a manager register, edit, activate, list and read the organization's assets, so that trips, fuelings and readings refer to a real asset instead of free text.
 - **Rules and use cases:** BR-FLEET-001, BR-FLEET-003, BR-FLEET-004, BR-FLEET-008, BR-FLEET-011, BR-FLEET-015, BR-TEN-001, BR-TEN-006, UC-FLEET-01
-- **Depends on:** EMP-FLEET-001, EMP-PLAT-002, EMP-AUTH-003
+- **Depends on:** EMP-FLEET-001, EMP-PLAT-002, EMP-AUTH-003, EMP-FUEL-001
 - **Read first:** [modules/fleet](../modules/fleet.md) §3, §6.1, §7 and §10.5; [06-domain-model](../06-domain-model.md) §5; [09-architecture](../09-architecture.md) §2 to §5.
 - **Scope:** in: tables for assets and tanks; create, edit with expected revision, discard a draft, activate, list with keyset pagination, read; the unit stored as the first allocation period; uniqueness of plate and fleet number among assets that are not archived; audit events · out: deactivate, dispose, archive (EMP-FLEET-003), tenure changes (EMP-FLEET-004), allocation changes (EMP-FLEET-005), meters (EMP-METER-002).
 - **Areas:** existing: `backend/db/migrations/`, `backend/sqlc.yaml`, `backend/cmd/api/main.go`, `contracts/openapi/v1.yaml`, `scripts/check-manifest.txt` · new (proposed): `backend/internal/modules/fleet/application/`, `backend/internal/modules/fleet/adapters/`, `backend/db/queries/fleet/`, `contracts/testdata/enterprise/fleet/`

@@ -35,10 +35,11 @@ merge, deployment, real company pilots, real receipt retention or real money
 movement. Existing provider/legal/staging gates remain attached to their actual
 capabilities; use synthetic local fixtures without fabricating acceptance.
 
-Current source: F2 is IN_PROGRESS; nine completed local checkpoints through
-EMP-METER-001; the preceding eight are backed up at origin/codex/enterprise-f2.
-The new tested checkpoint is ready for its atomic backup push.
-Next bounded implementation task is EMP-FUEL-001 as an actual C1/F2
-prerequisite; its owned product catalog must precede runtime fleet persistence. The full F3 remains queued; its prerequisite tasks consumed by C1
+Current source: F2 is IN_PROGRESS; ten completed local checkpoints through
+EMP-FUEL-001; the preceding nine through METER-001 05c83376 are backed up
+at origin/codex/enterprise-f2. The new tested Fuel checkpoint awaits its atomic
+backup push.
+EMP-FUEL-001 is locally complete as an actual C1/F2 prerequisite; its owned
+product catalog now precedes next EMP-FLEET-002 runtime fleet persistence. The full F3 remains queued; its prerequisite tasks consumed by C1
 are not
 reimplemented or counted as whole-phase acceptance.
