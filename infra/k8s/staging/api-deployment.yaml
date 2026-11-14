@@ -193,7 +193,7 @@
               },
               {
                 "name": "ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE",
-                "value": "true"
+                "value": "false"
               },
               {
                 "name": "ANPFUEL_ENTERPRISE_PORTAL_SEARCH_JS",
