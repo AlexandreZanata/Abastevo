@@ -159,6 +159,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "fleet.asset", Permissions: []string{"fleet.asset.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic fleet configuration inherits identity v1 write 200/hour on each current organization/account/web-or-device axis; production measurement and cleanup remain required."},
+		{Class: "fleet.assignment", Permissions: []string{"fleet.asset.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic driver assignments inherit identity v1 write 200/hour on each current organization/account/web axis (a command names at most 100 employees); production measurement and cleanup remain required."},
 		{Class: "meter.review", Permissions: []string{"meter.reading.correct"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic held meter review decisions inherit identity v1 write200/hour on every current organization/account/web-or-device axis; production measurement and cleanup remain required."},
 		{Class: "idn.invitation", Permissions: []string{"idn.invitation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic invitation writes use the existing identity v1 write allowance on every axis; production measurement remains required."},
 		{Class: "idn.membership", Permissions: []string{"idn.membership.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic membership lifecycle uses identity v1 write200/hour on every axis; production measurement remains required."},
@@ -199,7 +200,11 @@ func Register(router chi.Router, o Options) error {
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}
 	fleetAuthority.Structure = assetStructure
-	assetAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.FleetRecords{}, Structure: assetStructure, Now: time.Now}
+	// EMP-FLEET-006: SELF grants cover the assets assigned to the member,
+	// through the same Fleet port in Prepare and in the transaction.
+	assetAssignee := &orgpg.ResourceAssignee{Pool: o.Pool, Assignments: assets}
+	fleetAuthority.Assignee = assetAssignee
+	assetAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.FleetRecords{}, Structure: assetStructure, Assignee: assetAssignee, Now: time.Now}
 	if err := fleetweb.RegisterAssets(router, fleetapp.AssetService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
@@ -209,6 +214,10 @@ func Register(router chi.Router, o Options) error {
 	// EMP-FLEET-005 history reads; the same store is the snapshot port that
 	// record-creating modules call (no producer is wired before them).
 	if err := fleetweb.RegisterAssetAllocations(router, fleetapp.AllocationHistoryService{Enabled: true, Repository: assets}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	// EMP-FLEET-006 assignment commands and reads on the same store.
+	if err := fleetweb.RegisterAssetAssignments(router, fleetapp.AssignmentService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
@@ -282,7 +291,7 @@ func Register(router chi.Router, o Options) error {
 	if e := memberweb.RegisterDevices(router, true, deviceStore, cookies, gateway, deviceAuthorization, roots, o.Accounts, proofauth.Verifier{Pool: o.Pool, Authority: origin.Host, Now: time.Now}); e != nil {
 		return e
 	}
-	meterAuthority := &orgpg.MeterAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Devices: deviceStore, Structure: assetStructure}
+	meterAuthority := &orgpg.MeterAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Devices: deviceStore, Structure: assetStructure, Assignee: assetAssignee}
 	// Held readings resolve their stored asset/unit snapshot (07-permissions example 3).
 	heldStructure := &orgpg.ResourceStructure{Kind: orgpg.HeldMeterReadingStructure, Pool: o.Pool}
 	reviews := &fleetpg.MeterReviewStore{Pool: o.Pool, Authority: &orgpg.MeterReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: heldStructure}, Audit: auditStore, NewID: jobs.NewUUIDv4,

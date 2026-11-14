@@ -108,7 +108,7 @@ scheduling/cancellation, the asset view's current allocation and the legacy
 `unit_id` retirement; AUTH-006 consumes the port for historical scope.
 
 ### EMP-FLEET-006 — Driver assignments: primary, temporary and multiple drivers
-- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Let supervisors say who is responsible for and who may use each asset, with periods, so that the app knows which assets a driver can choose and history shows who had the asset at any moment.
 - **Rules and use cases:** BR-FLEET-018, BR-FLEET-019, BR-FLEET-020, BR-FLEET-021, BR-FLEET-022, BR-FLEET-023, BR-FLEET-024, UC-FLEET-05
 - **Depends on:** EMP-FLEET-002, EMP-IDN-002
@@ -122,6 +122,14 @@ scheduling/cancellation, the asset view's current allocation and the legacy
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API, V-JOB · migration: additive table · rollback: capability flag off; table remains
 - **Risks and assumptions:** Fleets where everybody uses every vehicle need many rows; the bulk command is the answer in this cut and a pool is a later decision.
 - **Done when:** The concurrency test for primary periods and the event-driven ending tests pass.
+
+EMP-FLEET-006 LOCAL_DONE (pending integration): migration 000210 adds forced-RLS
+assignments (PRIMARY exclusion, half-open periods, derived state) and receipts,
+ends assignments in the same transaction as an employee termination or an asset
+disposal, and four routes (create/replace, end, asset list, my assigned assets);
+SELF on `fleet.asset.read` now covers assigned assets. Retained: notifications to
+assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
+(EMP-OFFL-006), the app picker (EMP-FLEET-013) and driver eligibility (EMP-IDN-014).
 
 ### EMP-FLEET-007 — Reservations, blocks and derived availability
 - **Meta:** module FLEET · phase F4 · cut - · priority P1 · type API · size M · state TODO
@@ -269,7 +277,7 @@ and meter replacement remain their owning tasks.
 - **Acceptance:** AC1 the same reading operation sent three times creates one row and three identical acknowledgements; AC2 an attempt to update or delete a reading as the application role fails in the database; AC3 the latest-valid query orders by `occurred_at`, not by arrival; AC4 two readings with the same value from different operations are both stored; AC5 a second meter of the same kind in service receives `METER_ALREADY_IN_SERVICE`.
 - **Negative cases:** a reading for a meter of another organization; a member without an assignment recording on an asset (`FORBIDDEN` when never allowed, held when the right changed); two devices recording at once on one meter; an embedded reading whose parent transaction rolls back leaves no row; a reading declared when the meter was not in service.
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-SYNC, V-API · migration: additive tables with insert-only protection, applied on a populated database · rollback: capability flag off; tables remain
-- **Risks and assumptions:** Insert-only protection must also hold for maintenance jobs; any repair runs through a documented operator role and is audited.
+- **Risks and assumptions:** Insert-only protection must also hold for maintenance jobs; any repair runs through a documented operator role and is audited. FLEET-006 delivers `AssignedAssetsPort` (`AssignedAtDBTX` on the borrowed intake transaction); the signed SELF adoption and historical HELD classification remain here.
 - **Done when:** The replay, insert-only and isolation tests pass on real PostGIS.
 
 [F2 meter persistence/intake construction](../evidence/f2-meter002-persistence-intake.md)

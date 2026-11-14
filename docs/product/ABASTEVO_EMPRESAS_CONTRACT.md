@@ -4129,3 +4129,99 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   file; data permission lost after `READY` → `FORBIDDEN` on access/content,
   nothing recorded. Result: an export never widens what its requester may
   read now.
+
+## EMP-FLEET-006 — Driver assignments: primary, temporary and multiple drivers (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-fleet006-driver-assignments.md).
+
+- **B-BR-EMP-243 — An assignment names one asset and one active employee
+  record for a half-open period with a derived state.** An assignment belongs
+  to one organization and names one of its assets, one of its employee
+  records and a kind: `PRIMARY` (the responsible), `ADDITIONAL` (another
+  allowed user) or `TEMPORARY` (a substitute; it requires an end). Its period
+  `[start, end)` has whole-microsecond bounds; the end is optional except for
+  `TEMPORARY`. A start omitted by the command is the server instant of the
+  command; a start given by the command must be later than that instant; an
+  end must be later than the start. The state is never stored: at a server
+  instant it is `SCHEDULED` before the start, `ACTIVE` inside the period and
+  `ENDED` from the end on; an assignment ended before it started keeps an
+  empty period (`end = start`) and is `ENDED`. Only an `ACTIVE` employee record
+  and an asset in `ACTIVE` or `INACTIVE` can be named when the assignment is
+  created; a `DRAFT`, `DISPOSED` or `ARCHIVED` asset or a non-`ACTIVE`
+  employee is refused with `VALIDATION_FAILED`, and an asset or employee of
+  another organization (or unknown) is not found. An optional reason has at
+  most 280 characters. Rows are private to the organization under forced
+  row-level security (a session without the organization setting sees and
+  writes none) and are never deleted; the only change is ending an assignment
+  that is not `ENDED`, which moves its end earlier (never later, and never
+  before the change except to an asset's disposal instant) and records the
+  cause of that ending. Driver-profile
+  eligibility (EMP-IDN-014), reservations and team pools are not part of an
+  assignment; an assignment reserves nothing and ending it does not end a trip.
+- **B-BR-EMP-244 — One primary at a time; a command creates all or nothing;
+  replacing and ending are atomic and idempotent.** Two `PRIMARY` periods of
+  one asset never overlap: the database enforces it with an exclusion
+  constraint, so of two concurrent overlapping primaries exactly one commits
+  and the other is refused with `ASSIGNMENT_OVERLAP` and leaves nothing. A
+  create command names one asset, one kind, one period and 1 to 100 distinct
+  employee records and creates one assignment per employee or none; a
+  `PRIMARY` command names exactly one employee. A `PRIMARY` command marked
+  "replace" ends, in the same transaction, the primary whose period contains
+  the new start, at the new start (cause `REPLACED`); a primary that starts
+  later still refuses with `ASSIGNMENT_OVERLAP`, and with nothing to replace
+  the command simply creates. An end command ends one assignment of the asset
+  that is not `ENDED` at the server instant at that instant (at its start when
+  it has not started), with cause `ENDED`; ending an `ENDED` assignment is
+  refused with `CONFLICT` and changes nothing. Every write records exactly one
+  audit event and one receipt bound to the operation identifier; the same
+  intent replayed returns the first result, another intent under the same
+  identifier is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-245 — Assignments end with the employee record or the asset, in
+  the same transaction.** When an employee record becomes `TERMINATED`
+  (offboarding with termination, the source record of an employee merge or any
+  later producer), every assignment of that employee that is not `ENDED` at
+  the database instant is ended at that instant (at its start when it has not
+  started) with cause `EMPLOYEE_TERMINATED` and the employee record revision.
+  When an asset becomes `DISPOSED`, every assignment of that asset that is not
+  `ENDED` at the database instant is ended at the disposal instant (its
+  microsecond floor; at the assignment's start when that is later) with cause
+  `ASSET_DISPOSED` and the asset revision. Both happen inside the source
+  change's transaction, so the source change and the endings commit or fail
+  together. An `INACTIVE` employee, a deactivated asset, a reverted disposal,
+  a rehire and a reactivation neither end nor restore assignments.
+- **B-BR-EMP-246 — The assets assigned to a member at an instant drive the
+  `SELF` scope on assets.** The assets assigned to membership M at instant T
+  are the assets of the assignments of M's employee record whose period
+  contains T, while M's membership period contains T (started at or before T
+  and not ended at T); an ended or not yet started membership lists nothing
+  even when its employee record keeps assignments. A current `SELF` grant
+  whose role has a positive `fleet.asset.read` rule covers an asset exactly
+  while that asset is assigned to the member at the server instant (asset
+  read, lifecycle, allocation and assignment history, meter reads); it never
+  covers the organization list nor any other permission (assignment commands,
+  asset management), and `ORG` and structural coverage are unchanged. The member's own assigned-asset read lists the assignments that
+  are `ACTIVE` at the server instant. Changing an assignment never changes a
+  stored record; the signed meter intake keeps its `ORG`-only rule until
+  EMP-METER-002 adopts this query.
+- **BUC-EMP-124 — Assign, replace and end assignments of an asset.** Actor:
+  member with fresh `fleet.asset.assign` covering the asset (`ORG`, or a
+  `UNIT`, `COST_CENTRE` or `ASSET` grant matching the asset's FLEET-005
+  allocation at the server instant). Main flow: choose the asset, the kind, one
+  or several employee records, the optional start, end and reason → the server
+  checks B-BR-EMP-243/244 under the organization root lock → assignments
+  created, one audit event and receipt → the asset enters each assignee's
+  `SELF` scope from the start. Alternatives: overlapping primary →
+  `ASSIGNMENT_OVERLAP`, or "replace" ends the previous primary at the new
+  start; employee not `ACTIVE` or asset not assignable → `VALIDATION_FAILED`;
+  `TEMPORARY` without end → `VALIDATION_FAILED`; end of an ended assignment →
+  `CONFLICT`; supervisor scoped to another unit → `FORBIDDEN`; replay → first
+  result. Result: assignments with periods; history kept.
+- **BUC-EMP-125 — Read the assignments of an asset and my assigned assets.**
+  Actor: member with current `fleet.asset.read` covering the asset (including
+  `SELF` on an asset assigned to the member), or any member for the own list
+  (`ORG` or `SELF` grant with `fleet.asset.read`). Main flow: the asset's
+  assignments in start order with kind, employee record, period, derived state
+  at the server instant, recording and end data; or the requesting member's
+  `ACTIVE` assignments with asset, kind and period. Alternatives: foreign or
+  unknown asset → `NOT_FOUND`; a member without a covering grant →
+  `FORBIDDEN`. Result: read only; no notification is sent in this task.

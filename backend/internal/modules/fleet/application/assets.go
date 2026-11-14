@@ -307,6 +307,12 @@ func unavailable(port any) bool {
 	return false
 }
 func current(ctx context.Context, scope kernel.OrgScope, actor FleetActor, decision access.Decision, target string, write bool) error {
+	return authorized(ctx, scope, actor, decision, target, Policy(write))
+}
+
+// authorized proves the live web decision of exactly this source policy and
+// target for the actor before and after every repository call.
+func authorized(ctx context.Context, scope kernel.OrgScope, actor FleetActor, decision access.Decision, target string, policy access.Policy) error {
 	if ctx == nil {
 		return ErrUnauthenticated
 	}
@@ -316,7 +322,6 @@ func current(ctx context.Context, scope kernel.OrgScope, actor FleetActor, decis
 	if scope.Validate() != nil {
 		return fleet.ErrScope
 	}
-	policy := Policy(write)
 	if actor.Validate() != nil || decision.Subject().Channel() != "web" || decision.Policy() != policy || decision.Check(ctx, scope, actor.AccountID, policy.Permission, target) != nil {
 		return ErrUnauthenticated
 	}

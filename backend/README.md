@@ -1173,6 +1173,28 @@ principal needs `SELECT (org_id, team_id, employee_id, started_at, ended_at) ON
 org_team_links`; the fleet principal reuses its FLEET-005 snapshot-port grants.
 Nothing here provisions live grants.
 
+### Driver assignments (EMP-FLEET-006)
+
+Migration210 adds the forced-RLS `org_asset_assignments` (PRIMARY periods never
+overlap: a `btree_gist` exclusion) and `org_asset_assignment_commands`, two
+`AFTER UPDATE OF state` consumers that end assignments when an employee record
+becomes `TERMINATED` or an asset `DISPOSED`, and recognises the new asset key in
+`org_asset_current_usage` (on top of the 208/209 bodies). The migration owner
+needs `TRIGGER` on `org_assets` and `org_employee_identities`, `REFERENCES` on
+`organizations`, `org_audit_events`, `org_assets` and `org_employee_identities`,
+and ownership of `org_asset_current_usage`. The Fleet principal needs `SELECT,
+INSERT, UPDATE ON org_asset_assignments`, `SELECT, INSERT ON
+org_asset_assignment_commands` and `SELECT (org_id, id, employee_id, started_at,
+ended_at) ON org_memberships` plus `SELECT (org_id, id, state, revision) ON
+org_employee_identities`. Every principal that terminates an employee record
+(offboarding, employee merge) or disposes an asset needs `SELECT (org_id,
+employee_id, asset_id, valid_from, valid_to), UPDATE (valid_to, end_cause,
+source_revision, end_operation_id, ended_by, end_reason) ON
+org_asset_assignments`. DELETE/TRUNCATE are refused by triggers regardless.
+Commands use fresh `fleet.asset.assign` (admission class `fleet.assignment`);
+reads use current `fleet.asset.read`, whose SELF grants now cover assigned
+assets. Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

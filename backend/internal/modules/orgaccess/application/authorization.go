@@ -147,6 +147,16 @@ type StructureSource interface {
 	ResolveStructure(context.Context, kernel.OrgScope, Policy, d.ResourceFacts, time.Time) (d.ResourceFacts, error)
 }
 
+// AssigneeSource answers whether the record a route protects is assigned
+// to the member at the evaluated instant (EMP-FLEET-006, B-BR-EMP-246). It
+// reads server state only. Prepare consults it only when the subject holds a
+// current SELF assignment with a positive rule for the policy and the
+// resolver supplied no own-record fact; a true answer sets AssignedTo to the
+// member and nothing else.
+type AssigneeSource interface {
+	ResolveAssignee(context.Context, kernel.OrgScope, Policy, d.ResourceFacts, string, time.Time) (bool, error)
+}
+
 type Authorization struct {
 	Source       AuthoritySource
 	Capabilities CapabilityGate
@@ -154,7 +164,10 @@ type Authorization struct {
 	// Structure is optional. Without it a structural assignment covers no
 	// record of the route (fail closed); ORG/SELF evaluation never uses it.
 	Structure StructureSource
-	Now       func() time.Time
+	// Assignee is optional. Without it a SELF assignment covers only records
+	// whose resolver states the member's own authorship or assignment.
+	Assignee AssigneeSource
+	Now      func() time.Time
 }
 
 type requestKey struct{}
@@ -375,6 +388,30 @@ func (s Authorization) Prepare(ctx context.Context, scope kernel.OrgScope, actor
 		}
 		if target, err = target.WithStructure(scope, resolved); err != nil {
 			return Prepared{}, ErrUnavailable
+		}
+	}
+	// A current SELF grant needs the assignee fact of a record whose resolver
+	// stated no own authorship or assignment (EDR-165); every other request
+	// keeps its exact prior steps. Without a source SELF covers nothing more.
+	if s.Assignee != nil && target.AssignedTo == "" && target.AuthoredBy != subject.member {
+		self, err := d.SelfCandidate(scope, subject.member, current.Assignments, policy.Permission, now)
+		if err != nil {
+			return Prepared{}, ErrUnavailable
+		}
+		if self {
+			if err := target.Validate(scope); err != nil {
+				if errors.Is(err, d.ErrResourceNotFound) {
+					return Prepared{}, d.ErrResourceNotFound
+				}
+				return Prepared{}, ErrUnavailable
+			}
+			assigned, err := s.Assignee.ResolveAssignee(ctx, scope, policy, target, subject.member, now)
+			if err != nil {
+				return Prepared{}, bounded(ctx, err)
+			}
+			if assigned {
+				target.AssignedTo = subject.member
+			}
 		}
 	}
 	rules, err := d.CoveringRules(scope, subject.member, current.Assignments, policy.Permission, target, now)

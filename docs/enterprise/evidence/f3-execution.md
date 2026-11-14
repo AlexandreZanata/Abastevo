@@ -496,6 +496,33 @@ branch. Retained: unrouted auditor reads (trips, tracks, fuelings, expenses,
 KPIs, audit trail) proven only at catalog level; a period read key; RPT-002
 formats, sensitive columns and UNIT/SELF row scoping.
 
+### EMP-FLEET-006 (F2 prerequisite) — driver assignments: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f2-fleet006-driver-assignments.md). Fourth link of the EDR-109
+chain. Migration 000210 adds forced-RLS, append-only `org_asset_assignments`
+(PRIMARY periods never overlap via a gist exclusion; TEMPORARY needs an end)
+and `org_asset_assignment_commands`; create (bulk ≤100, all or none, replace
+primary), end, asset list and own list routes under fresh `fleet.asset.assign`
+/ current `fleet.asset.read`; two `AFTER UPDATE OF state` triggers end
+assignments in the same transaction when an employee is TERMINATED or an
+asset DISPOSED; SELF `fleet.asset.read` covers assigned assets; the
+`AssignedAssetsPort` works on the borrowed intake transaction (EDR-164/165).
+000210's `org_asset_current_usage` keeps the 208 and 209 allow-list entries
+(the 209 line via `to_regclass`). RED unit 19, PostGIS 7/7 twice, router 3,
+contract failing → GREEN; agent union 19 packages 743/5914. Integration: the
+AUTH-011 auditor walk gained explicit positive cases for the two new
+`fleet.asset.read` list routes (110 routes, 24 positive, 86 FORBIDDEN) and the
+assignment grants in its fixture; route inventory 21 routed / 63 not routed /
+110 normal / 24 special; matrix 210 cells (81/129). Merged-tree verification:
+untagged 211 packages, 2658/7431, 0 failures (4 pre-existing skips);
+race/integration union over fleet, organization adapters (1221 s under load),
+orgsync, orgaccess, membership, document, orgexport and migrate: 28 packages,
+854/6592, 0 failures, 0 skips. Retained for METER-002 closure: adopt
+`AssignedAtDBTX` for SELF in the signed meter intake and classify historical
+readings HELD/PERMISSION_CHANGED from assignment and role periods. Also
+retained: assignee notifications, OFFL-006 feed, FLEET-013 picker, IDN-014
+eligibility, FLEET-007 reservations, panel, Android, production grants.
+
 ## Interruption — 2026-11-14 (resumed)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,

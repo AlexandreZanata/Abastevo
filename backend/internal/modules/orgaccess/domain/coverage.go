@@ -115,6 +115,47 @@ func StructuralCandidate(scope kernel.OrgScope, member string, assignments []Ass
 	return false, nil
 }
 
+// SelfCandidate reports whether the member holds, at now, a valid SELF
+// assignment whose role has a positive rule for permission. Only then must an
+// assignee source say whether the record is assigned to the member
+// (EMP-FLEET-006, B-BR-EMP-246).
+func SelfCandidate(scope kernel.OrgScope, member string, assignments []Assignment, permission Permission, now time.Time) (bool, error) {
+	if scope.Validate() != nil {
+		return false, ErrAssignmentScope
+	}
+	if !canonicalID(member) || now.IsZero() {
+		return false, ErrAssignmentInvalid
+	}
+	catalog := SystemCatalog()
+	if _, err := catalog.Lookup(Owner, permission); err != nil {
+		return false, err
+	}
+	for _, assignment := range assignments {
+		v, err := assignment.Snapshot(scope)
+		if err != nil {
+			return false, err
+		}
+		if v.MembershipID != member || v.Scope != SelfScope {
+			continue
+		}
+		valid, err := assignment.ValidAt(scope, now)
+		if err != nil {
+			return false, err
+		}
+		if !valid {
+			continue
+		}
+		rule, err := catalog.Lookup(v.Role, permission)
+		if err != nil {
+			return false, err
+		}
+		if rule.Coverage() != Denied {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
 // scopeCovers applies BR-AUTH-004 to server-resolved facts. A structural
 // scope never matches an empty snapshot value (B-BR-EMP-236/237).
 func scopeCovers(v AssignmentSnapshot, own bool, target ResourceFacts) bool {

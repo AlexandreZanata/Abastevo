@@ -35,7 +35,8 @@ var _ app.AssetRepository = (*AssetStore)(nil)
 var _ app.AssetLookup = (*AssetStore)(nil)
 
 func AssetAuditDefinitions() []audit.Definition {
-	return append([]audit.Definition{{Action: "fleet.asset.created", TargetType: "asset"}, {Action: "fleet.asset.changed", TargetType: "asset"}, {Action: "fleet.asset.discarded", TargetType: "asset"}, {Action: "fleet.asset.activated", TargetType: "asset"}}, lifecycleAuditDefinitions()...)
+	definitions := append([]audit.Definition{{Action: "fleet.asset.created", TargetType: "asset"}, {Action: "fleet.asset.changed", TargetType: "asset"}, {Action: "fleet.asset.discarded", TargetType: "asset"}, {Action: "fleet.asset.activated", TargetType: "asset"}}, lifecycleAuditDefinitions()...)
+	return append(definitions, assignmentAuditDefinitions()...)
 }
 func validID(raw string) bool { id, e := kernel.ParseOrgID(raw); return e == nil && id.String() == raw }
 func validCall(scope kernel.OrgScope, actor app.FleetActor, member string) error {
@@ -57,7 +58,7 @@ func storeError(ctx context.Context, err error) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrFreshAuthRequired, access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrConflict, app.ErrOperationReused, app.ErrIdentifierTaken, app.ErrNotFound, app.ErrOpenOperations, app.ErrUnallocated, app.ErrUnavailable, app.ErrUnauthenticated, fleet.ErrInvalid, fleet.ErrScope, fleet.ErrKindLocked, fleet.ErrIncomplete} {
+	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrFreshAuthRequired, access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrConflict, app.ErrOperationReused, app.ErrIdentifierTaken, app.ErrNotFound, app.ErrOpenOperations, app.ErrUnallocated, app.ErrAssignmentOverlap, app.ErrUnavailable, app.ErrUnauthenticated, fleet.ErrInvalid, fleet.ErrScope, fleet.ErrKindLocked, fleet.ErrIncomplete, fleet.ErrAssignmentEnded} {
 		if errors.Is(err, known) {
 			return err
 		}

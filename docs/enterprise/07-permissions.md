@@ -313,6 +313,11 @@ Organization-level resources carry no structure. A structural
 `auth.role.assign` manages no roles; an owner may only keep or narrow an own
 assignment's scope.
 
+EMP-FLEET-006 interpretation (2026-11-14, EDR-165): a current `SELF` grant with
+a positive `fleet.asset.read` rule covers an asset while it is assigned to the
+member at the evaluated instant (membership and assignment periods both contain
+it); no other permission gains SELF coverage from an assignment.
+
 The shared organization lock protects assignment overlap and continuous
 surviving-owner coverage through future expiry. The union of the surviving
 active owners' periods must cover the remaining time without gaps; adjacent

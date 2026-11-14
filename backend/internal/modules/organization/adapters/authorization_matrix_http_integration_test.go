@@ -45,6 +45,7 @@ var matrixRepresentatives = []matrixRoute{
 	{"org.settings.read", "/settings/read", false, false},
 	{"org.structure.manage", "/units/list", false, false},
 	{"fleet.asset.manage", "/fleet/assets/create", true, true},
+	{"fleet.asset.assign", "/fleet/assets/{asset_id}/assignments/create", true, true},
 	{"fleet.asset.read", "/fleet/assets/list", false, false},
 	{"meter.reading.correct", "/sync/reviews/meter-readings/list", false, false},
 	{"fin.period.close", "/finance/periods/list", false, false},
@@ -233,6 +234,8 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,position) FROM org_asset_expected x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,started_at) FROM org_asset_unit_allocations x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,revision) FROM org_asset_revisions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_asset_assignments x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_assignment_commands x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_commands x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meters x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meter_segments x),
@@ -323,7 +326,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	roles, oracle := matrixOracle(t)
 	fx := devicesFixture(t)
 	grantEmployeeTables(t, fx.legalFixtureState)
-	_ = fleetStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
+	_ = assignmentStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
 	fx.f.GrantMeterReviews(t)
 	periodGrant(t, fx.f)
 	exportGrant(t, fx)
@@ -356,6 +359,9 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	// The content representative targets one owner-authored stored document:
 	// SELF (S) content cells are refused on another member's document.
 	ownerDocument := matrixStoredDocument(t, fx, router, owner)
+	// The assignment representative targets one ACTIVE asset allocated to a
+	// second unit, so a grant scoped to the first unit never covers it.
+	matrixAsset := matrixAssignableAsset(t, fx, router, owner)
 	allowed, denied, exercised := 0, 0, 0
 	for roleIndex, role := range roles {
 		t.Run(role, func(t *testing.T) {
@@ -381,6 +387,8 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "kind": "IMPLEMENT", "name": "Synthetic matrix implement", "fleet_number": "MATRIX-" + strconv.Itoa(roleIndex), "usage_basis": "DISTANCE", "category": map[string]any{"new_label": "Synthetic matrix implements"}}
 				case "fin.period.reopen":
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 2, "reason": "Synthetic matrix reopening"}
+				case "fleet.asset.assign":
+					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "kind": "ADDITIONAL", "employee_ids": []string{target.employee}}
 				case "doc.document.attach":
 					return matrixDocumentDeclaration(t)
 				default:
@@ -390,7 +398,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			// Each role reopens its own synthetic month, locked by the owner first.
 			month := fmt.Sprintf("2019-%02d", roleIndex+1)
 			path := func(entry matrixRoute, organization string) string {
-				return "/v1/orgs/" + organization + strings.NewReplacer("{membership_id}", target.member, "{period}", month, "{document_id}", ownerDocument).Replace(entry.path)
+				return "/v1/orgs/" + organization + strings.NewReplacer("{membership_id}", target.member, "{period}", month, "{document_id}", ownerDocument, "{asset_id}", matrixAsset).Replace(entry.path)
 			}
 			for _, entry := range matrixRepresentatives {
 				if entry.permission == "org.ownership.respond" && proposalID == "" {
@@ -402,12 +410,13 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					matrixCall(t, fx, router, owner, base+"/finance/periods/"+month+"/close", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1}, 200, "", "", nil)
 				}
 				want, code, key := 200, "", ""
-				if entry.permission == "fleet.asset.manage" || entry.permission == "doc.document.attach" {
+				if entry.permission == "fleet.asset.manage" || entry.permission == "fleet.asset.assign" || entry.permission == "doc.document.attach" {
 					want = 201
 				}
-				// Fleet's S cells remain refused until the owning assignment source
-				// exists. No creator or other record fact substitutes for SELF. A
-				// SELF content cell is refused on another member's document.
+				// Fleet's S cells cover only assets assigned to the member, never
+				// the organization list representative. No creator or other record
+				// fact substitutes for SELF. A SELF content cell is refused on
+				// another member's document.
 				if cell == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(cell, "S") || entry.permission == "doc.document.view_content" && strings.HasPrefix(cell, "S") {
 					want, code, key = 403, "FORBIDDEN", entry.permission
 					denied++
@@ -527,8 +536,9 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 							}
 						case "unit-scope":
 							// A structural grant covers only records that carry its unit
-							// (EMP-AUTH-006); every representative is organization-level,
-							// so even the ownership response and own documents are refused.
+							// (EMP-AUTH-006); every representative is organization-level
+							// or, for assignments, an asset of another unit, so even the
+							// ownership response and own documents are refused.
 							want, code, key = 403, "FORBIDDEN", entry.permission
 						}
 						matrixCall(t, fx, router, actor, path(entry, organization), body(entry), want, code, key, edit)
@@ -604,8 +614,24 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 200 || allowed != 77 || denied != 123 {
+	if exercised != 210 || allowed != 81 || denied != 129 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 64 permissions not yet routed; one actual signed Meter producer; Fleet S cells remain denied pending actual assignment integration; document S cells cover only own documents; a UNIT-scoped grant covers no organization-level representative", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 63 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+}
+
+// matrixAssignableAsset creates, through the owner's actual requests, one
+// ACTIVE implement allocated to a second operating unit of the organization.
+func matrixAssignableAsset(t *testing.T, fx deviceFixtureState, router chi.Router, owner matrixPerson) string {
+	t.Helper()
+	org := fx.scope.OrgID().String()
+	unit := onboardingID(t)
+	if err := unitSchemaExec(t, fx.legalFixtureState, `INSERT INTO org_units(org_id,id,name,code,time_zone,state) VALUES($1,$2,'Synthetic matrix second unit','MATRIX2','UTC','ACTIVE')`, org, unit); err != nil {
+		t.Fatal(err)
+	}
+	base := "/v1/orgs/" + org + "/fleet/assets"
+	created := matrixCall(t, fx, router, owner, base+"/create", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "kind": "IMPLEMENT", "name": "Synthetic matrix assignable implement", "fleet_number": "MATRIX-ASSIGN", "usage_basis": "HOURS", "category": map[string]any{"new_label": "Synthetic matrix implements"}, "unit_id": unit}, 201, "", "", nil)
+	asset := created["asset_id"].(string)
+	matrixCall(t, fx, router, owner, base+"/"+asset+"/activate", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1}, 200, "", "", nil)
+	return asset
 }

@@ -15401,7 +15401,7 @@ paths:
       operationId: enterpriseFleetAssetList
       summary: List organization assets
       description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
-        fleet.asset.read and same-organization membership; SELF remains closed without the actual assignment source.
+        fleet.asset.read and same-organization membership; SELF never covers the organization list.
         Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
         carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
         a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
@@ -15492,7 +15492,7 @@ paths:
       operationId: enterpriseFleetAssetRead
       summary: Read an organization asset
       description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
-        fleet.asset.read and same-organization membership; SELF remains closed without the actual assignment source.
+        fleet.asset.read and same-organization membership; SELF covers the asset while it is assigned to the member.
         Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
         carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
         a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
@@ -16295,7 +16295,7 @@ paths:
       operationId: enterpriseFleetAssetLifecycleList
       summary: Read the immutable lifecycle history of an organization asset
       description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
-        fleet.asset.read and same-organization membership; SELF remains closed. Revision-ordered keyset page of every
+        fleet.asset.read and same-organization membership; SELF covers an asset assigned to the member. Revision-ordered keyset page of every
         deactivate, reactivate, dispose, revert-disposal and archive command, including disposals that were later
         reverted. Opaque 15-minute cursor bound to the account, organization, membership, route, asset and limit.
         Responses are private no-store.
@@ -16360,7 +16360,7 @@ paths:
       operationId: enterpriseFleetAssetUnitAllocationList
       summary: Read the unit allocation history of an organization asset
       description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
-        current fleet.asset.read and same-organization membership; SELF remains closed. Start-ordered keyset page of
+        current fleet.asset.read and same-organization membership; SELF covers an asset assigned to the member. Start-ordered keyset page of
         the half-open unit periods of the asset (EMP-FLEET-005), one gap-free chain from activation with exactly one
         open-ended period; a DRAFT asset has none. The instant of a change belongs to the new period. Opaque 15-minute
         cursor bound to the account, organization, membership, route, asset and limit. Responses are private no-store.
@@ -16425,7 +16425,7 @@ paths:
       operationId: enterpriseFleetAssetCostCentreAllocationList
       summary: Read the cost-centre allocation history of an organization asset
       description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
-        current fleet.asset.read and same-organization membership; SELF remains closed. Start-ordered keyset page of
+        current fleet.asset.read and same-organization membership; SELF covers an asset assigned to the member. Start-ordered keyset page of
         the half-open cost-centre periods of the asset (EMP-FLEET-005). A cost centre is optional, never derived from
         the unit, and at most one covers any instant; an empty page means no cost centre was ever allocated. Opaque
         15-minute cursor bound to the account, organization, membership, route, asset and limit. Responses are private
@@ -16468,6 +16468,297 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseFleetAssetCostCentreAllocationPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/create:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssignmentCreate
+      summary: Assign an organization asset to one or several employee records
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.assign with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; a UNIT, COST_CENTRE or ASSET grant covers the asset through its allocation at the server instant
+        (EMP-AUTH-006). One command names one kind (PRIMARY, ADDITIONAL or TEMPORARY with a required valid_to), 1 to
+        100 distinct ACTIVE employee records of the organization (exactly one for PRIMARY) and creates one assignment
+        per employee or none (EMP-FLEET-006). valid_from omitted is the server instant; a given valid_from must be later
+        than it. Periods are half-open whole-microsecond intervals. An overlapping PRIMARY refuses with
+        ASSIGNMENT_OVERLAP, also against a concurrent command; replace_primary ends the primary containing the new start
+        at that start in the same transaction. A non-ACTIVE employee or an asset that is DRAFT, DISPOSED or ARCHIVED is
+        VALIDATION_FAILED; a foreign employee or asset is NOT_FOUND. Exactly one audit event and receipt commit with the
+        effect; an identical retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are
+        private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.assign
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008121
+              kind: TEMPORARY
+              employee_ids:
+              - 7b0e2a54-0000-4000-8000-000000008601
+              valid_from: '2026-12-01T03:00:00Z'
+              valid_to: '2026-12-08T03:00:00Z'
+              reason: Synthetic holiday cover
+      responses:
+        '201':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssignmentAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                assignment_ids:
+                - 7b0e2a54-0000-4000-8000-000000008701
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/{assignment_id}/end:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssignmentEnd
+      summary: End an assignment of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.assign with fresh company proof, the existing organizations C1 capability and same-organization
+        membership, with structural scope through the asset's allocation. An assignment of the asset that is not ENDED
+        at the server instant ends at that instant (at its start when it has not started, leaving an empty period);
+        ending an ENDED assignment is CONFLICT with no effect, and an assignment of another asset is NOT_FOUND. Exactly
+        one audit event and receipt commit with the effect; an identical retry returns the first result. A trip in
+        progress is not ended. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.assign
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private assignment selector of the same asset.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentEndRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008122
+              reason: Synthetic return of the vehicle
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssignmentAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                assignment_ids:
+                - 7b0e2a54-0000-4000-8000-000000008701
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssignmentList
+      summary: Read the assignments of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
+        current fleet.asset.read and same-organization membership; a SELF grant covers an asset assigned to the member
+        at the server instant (EMP-FLEET-006). Start-ordered keyset page of every assignment of the asset with its
+        state (SCHEDULED, ACTIVE or ENDED) derived at evaluated_at, the server instant of the page; an employee
+        termination or an asset disposal shows its end_cause. Opaque 15-minute cursor bound to the account,
+        organization, membership, route, asset and limit. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized assignment page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssignmentPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assignments/mine/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetOwnAssignmentList
+      summary: Read my assigned assets
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
+        current fleet.asset.read (ORG, or SELF on the member's own list) and same-organization membership. Identifier
+        keyset page of the ACTIVE assignments of the requesting member's employee record at evaluated_at, the server
+        instant of the page, while the membership is current (EMP-FLEET-006); scheduled and ended assignments are not
+        listed and an ended membership lists nothing. No member, employee or instant is caller-chosen. Opaque 15-minute
+        cursor bound to the account, organization, membership, route and limit. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current own assignment page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssignmentPage'
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
         '401':
@@ -16574,7 +16865,7 @@ paths:
       summary: List private asset meters
       description: Dedicated current company cookie, exact Origin/CSRF and source-owned fleet asset permission. Fresh
         configuration proof is required for installation. Real forced-RLS assets/meters and immutable observation
-        order are used. SELF remains denied without actual assignments. Source-pinned synthetic construction does
+        order are used. SELF covers an asset assigned to the member. Source-pinned synthetic construction does
         not authorize production or real receipt retention.
       security:
       - CompanySessionCookie: []
@@ -16664,7 +16955,7 @@ paths:
       summary: Read the latest valid meter evidence
       description: Dedicated current company cookie, exact Origin/CSRF and source-owned fleet asset permission. Fresh
         configuration proof is required for installation. Real forced-RLS assets/meters and immutable observation
-        order are used. SELF remains denied without actual assignments. Source-pinned synthetic construction does
+        order are used. SELF covers an asset assigned to the member. Source-pinned synthetic construction does
         not authorize production or real receipt retention.
       security:
       - CompanySessionCookie: []
@@ -21445,6 +21736,240 @@ components:
           recorded_at: '2026-03-20T10:00:00.000005Z'
         next_cursor: ''
       description: Start-ordered page of the cost-centre history; next_cursor is empty on the last page.
+    EnterpriseFleetAssignmentCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - PRIMARY
+          - ADDITIONAL
+          - TEMPORARY
+        employee_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+          description: Employee records of the organization, one assignment each; exactly one for PRIMARY.
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond later than the server instant; omitted means the server
+            instant.
+        valid_to:
+          type: string
+          format: date-time
+          description: Exclusive end, a whole microsecond after the start; required for TEMPORARY.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+        replace_primary:
+          type: boolean
+          description: Only for PRIMARY; ends the primary containing the new start at that start in the same
+            transaction.
+      required:
+      - schema_version
+      - operation_id
+      - kind
+      - employee_ids
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008121
+        kind: PRIMARY
+        employee_ids:
+        - 7b0e2a54-0000-4000-8000-000000008601
+        replace_primary: true
+      description: One assignment command (EMP-FLEET-006). No state, recording instant, unit or authority is
+        caller-chosen.
+    EnterpriseFleetAssignmentEndRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - schema_version
+      - operation_id
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008122
+        reason: Synthetic return of the vehicle
+      description: Ends one assignment at the server instant; no end instant is caller-chosen.
+    EnterpriseFleetAssignmentAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        assignment_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+          description: Created assignments in command order, or the one ended assignment.
+        replaced_assignment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - asset_id
+      - assignment_ids
+      - replayed
+      - data_mode
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        assignment_ids:
+        - 7b0e2a54-0000-4000-8000-000000008702
+        replaced_assignment_id: 7b0e2a54-0000-4000-8000-000000008701
+        replayed: false
+        data_mode: SYNTHETIC
+      description: Original immutable committed result; replaced_assignment_id is present only when a replace ended
+        a previous primary.
+    EnterpriseFleetAssignmentListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+      description: Keyset page of assignments. No instant, state, employee or member is caller-chosen.
+    EnterpriseFleetAssignment:
+      type: object
+      additionalProperties: false
+      properties:
+        assignment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - PRIMARY
+          - ADDITIONAL
+          - TEMPORARY
+        state:
+          type: string
+          enum:
+          - SCHEDULED
+          - ACTIVE
+          - ENDED
+          description: Derived at the page's evaluated_at; never stored.
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond.
+        valid_to:
+          type: string
+          format: date-time
+          description: Exclusive end, a whole microsecond; absent while open-ended; equal to valid_from when ended
+            before its start.
+        reason:
+          type: string
+          maxLength: 280
+        recorded_at:
+          type: string
+          format: date-time
+          description: Database instant at which the assignment was recorded.
+        end_cause:
+          type: string
+          enum:
+          - ENDED
+          - REPLACED
+          - EMPLOYEE_TERMINATED
+          - ASSET_DISPOSED
+          description: Present when the assignment was ended before its planned end.
+        ended_at:
+          type: string
+          format: date-time
+          description: Database instant of that ending; present exactly with end_cause.
+      required:
+      - assignment_id
+      - asset_id
+      - employee_id
+      - kind
+      - state
+      - valid_from
+      - reason
+      - recorded_at
+      example:
+        assignment_id: 7b0e2a54-0000-4000-8000-000000008701
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        employee_id: 7b0e2a54-0000-4000-8000-000000008601
+        kind: PRIMARY
+        state: ENDED
+        valid_from: '2026-11-01T03:00:00Z'
+        valid_to: '2026-11-10T03:00:00.123456Z'
+        reason: Synthetic primary driver
+        recorded_at: '2026-11-01T03:00:00Z'
+        end_cause: EMPLOYEE_TERMINATED
+        ended_at: '2026-11-10T03:00:00.123456Z'
+      description: One half-open assignment period [valid_from, valid_to) of one employee record on one asset.
+        Same-organization references; rows are never deleted.
+    EnterpriseFleetAssignmentPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssignment'
+        next_cursor:
+          type: string
+        evaluated_at:
+          type: string
+          format: date-time
+          description: Server instant at which every state of the page was derived.
+      required:
+      - items
+      - next_cursor
+      - evaluated_at
+      example:
+        items:
+        - assignment_id: 7b0e2a54-0000-4000-8000-000000008702
+          asset_id: 7b0e2a54-0000-4000-8000-000000008201
+          employee_id: 7b0e2a54-0000-4000-8000-000000008602
+          kind: ADDITIONAL
+          state: ACTIVE
+          valid_from: '2026-11-14T12:00:00.000123Z'
+          reason: ''
+          recorded_at: '2026-11-14T12:00:00.000123Z'
+        next_cursor: ''
+        evaluated_at: '2026-11-14T12:30:00.5Z'
+      description: Keyset page of assignments; next_cursor is empty on the last page.
     EnterpriseFleetAssetPage:
       type: object
       additionalProperties: false
@@ -25621,7 +26146,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false

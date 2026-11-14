@@ -14,9 +14,9 @@ import (
 )
 
 // FleetAuthority supplies current company proof through the fleet-owned port.
-// The only admitted policies are the two fixed fleet actions. Resource facts
-// contain no invented assignment: SELF remains unproven until its real owner
-// integrates that source. The retained transaction owns every proof/root wait.
+// The only admitted policies are the fixed fleet actions. The only assignee
+// fact is the EMP-FLEET-006 one (Assignee, or the member's own assignment
+// list). The retained transaction owns every proof/root wait.
 type FleetAuthority struct {
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
@@ -24,6 +24,9 @@ type FleetAuthority struct {
 	// Structure resolves an asset's current allocation for structural grants
 	// (EMP-AUTH-006, AssetStructure); nil keeps them uncovered.
 	Structure *ResourceStructure
+	// Assignee resolves whether an asset is assigned to the member for SELF
+	// grants (EMP-FLEET-006); nil keeps SELF uncovered on assets.
+	Assignee *ResourceAssignee
 }
 
 var _ fleet.FleetAuthority = (*FleetAuthority)(nil)
@@ -32,14 +35,27 @@ func (g *FleetAuthority) CheckFleetTx(ctx context.Context, tx pgx.Tx, scope kern
 	if g == nil || tx == nil || g.Memberships == nil || g.Roles == nil || g.Capabilities == nil || actor.Validate() != nil || legalIdentity(scope, member) != nil || legalIdentity(scope, target) != nil {
 		return fleet.ErrUnavailable
 	}
-	if action != fleet.FleetRead && action != fleet.FleetManage {
+	guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities, Structure: g.Structure, Assignee: g.Assignee}
+	var policy access.Policy
+	switch action {
+	case fleet.FleetRead, fleet.FleetManage:
+		policy = fleet.Policy(action == fleet.FleetManage)
+	case fleet.FleetAssign:
+		policy = fleet.AssignPolicy()
+	case fleet.FleetReadOwnAssignments:
+		// The member's own assignment list: no structure or asset lookup.
+		if target != member {
+			return fleet.ErrUnavailable
+		}
+		policy = fleet.Policy(false)
+		guard.Structure, guard.Assignee, guard.OwnTarget = nil, nil, true
+	default:
 		return fleet.ErrUnavailable
 	}
-	policy := fleet.Policy(action == fleet.FleetManage)
 	if policy.Validate() != nil {
 		return fleet.ErrUnavailable
 	}
-	err := (companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities, Structure: g.Structure}).check(ctx, tx, scope, org.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, target, policy)
+	err := guard.check(ctx, tx, scope, org.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, target, policy)
 	switch {
 	case errors.Is(err, capability.ErrEntitlementRequired):
 		return access.ErrEntitlementRequired
