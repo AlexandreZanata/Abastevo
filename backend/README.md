@@ -1057,3 +1057,32 @@ Keep **delay + timeout + 5s < terminationGracePeriodSeconds**. The staging
 manifest pins both values and 60s grace. Workers stop new claims, join all
 loops and finalize held leases using a separate bounded 5s fenced operation;
 expiry remains recovery when the database cannot acknowledge shutdown.
+
+
+### Private asset source and rollout grants (EMP-FLEET-002)
+
+Migration197 adds the private fleet foundation and extends existing unit-use
+queries to count actual current asset allocations while retaining employee/team
+counts. Existing unit-source database principals also require these narrow
+column grants when the tables are installed:
+
+```sql
+GRANT SELECT (org_id, id, state) ON org_assets TO runtime_role;
+GRANT SELECT (org_id, asset_id, unit_id, ended_at)
+  ON org_asset_unit_allocations TO runtime_role;
+```
+
+Use the independently provisioned ordinary runtime principal; retain forced
+RLS and NOSUPERUSER/NOBYPASSRLS/non-owner access. Coordinate these grants with
+migration rollout before serving the affected source. They are an explicit
+old-image compatibility prerequisite, not automatically verified live state.
+Fleet's own principal additionally needs its reviewed per-table command/read/
+audit privileges. The versioned SQL product projection is read-only at runtime.
+The test fixture applies only the installed source's required columns and keeps
+prior migration chains unchanged.
+
+Fleet routes reuse the existing enterprise flag, organizations capability and
+fresh current company proof. They do not activate real companies or provision
+production credentials/grants. The [current source evidence](../docs/enterprise/evidence/f2-fleet002-asset-persistence.md)
+retains full task IN_PROGRESS until actual METER-002 powered activation is
+integrated. An unavailable provider is never an empty/positive meter fact.

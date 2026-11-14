@@ -15281,6 +15281,526 @@ paths:
         fresh: true
         binding: true
         success: 200
+  /v1/orgs/{org_id}/fleet/assets/create:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetCreate
+      summary: Create an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage and same-organization membership; SELF remains closed without the actual assignment source.
+        Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
+        carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
+        a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
+        stays unavailable until the real METER-002 provider is installed; IMPLEMENT activation proves only its own
+        path. Source-pinned synthetic construction does not authorize production or legal activation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008101
+              kind: VEHICLE
+              name: Synthetic service vehicle
+              fleet_number: SYN-01
+              plate: ABC1D23
+              serial_number: ''
+              usage_basis: DISTANCE
+              category:
+                new_label: Synthetic light fleet
+              unit_id: 7b0e2a54-0000-4000-8000-000000000801
+              tanks:
+              - role: MAIN
+                capacity_milli: '275000'
+                products:
+                - DIESEL_S10
+              expected_consumption:
+              - product: DIESEL_S10
+                basis: DISTANCE
+                value: '8500'
+                source: Synthetic manufacturer manual
+                date: '2026-11-14'
+      responses:
+        '201':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: DRAFT
+                revision: 1
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetList
+      summary: List organization assets
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.read and same-organization membership; SELF remains closed without the actual assignment source.
+        Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
+        carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
+        a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
+        stays unavailable until the real METER-002 provider is installed; IMPLEMENT activation proves only its own
+        path. Source-pinned synthetic construction does not authorize production or legal activation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetListRequest'
+            example:
+              limit: 20
+              state: DRAFT
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetPage'
+              example:
+                items:
+                - kind: VEHICLE
+                  name: Synthetic service vehicle
+                  fleet_number: SYN-01
+                  plate: ABC1D23
+                  serial_number: ''
+                  usage_basis: DISTANCE
+                  category:
+                    id: 7b0e2a54-0000-4000-8000-000000008301
+                    label: Synthetic light fleet
+                  unit_id: 7b0e2a54-0000-4000-8000-000000000801
+                  tanks:
+                  - role: MAIN
+                    capacity_milli: '275000'
+                    products:
+                    - DIESEL_S10
+                    unit: L
+                  expected_consumption:
+                  - product: DIESEL_S10
+                    basis: DISTANCE
+                    value: '8500'
+                    source: Synthetic manufacturer manual
+                    date: '2026-11-14'
+                    unit: L
+                  id: 7b0e2a54-0000-4000-8000-000000008201
+                  state: DRAFT
+                  revision: 1
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/read:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetRead
+      summary: Read an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.read and same-organization membership; SELF remains closed without the actual assignment source.
+        Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
+        carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
+        a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
+        stays unavailable until the real METER-002 provider is installed; IMPLEMENT activation proves only its own
+        path. Source-pinned synthetic construction does not authorize production or legal activation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetView'
+              example:
+                kind: VEHICLE
+                name: Synthetic service vehicle
+                fleet_number: SYN-01
+                plate: ABC1D23
+                serial_number: ''
+                usage_basis: DISTANCE
+                category:
+                  id: 7b0e2a54-0000-4000-8000-000000008301
+                  label: Synthetic light fleet
+                unit_id: 7b0e2a54-0000-4000-8000-000000000801
+                tanks:
+                - role: MAIN
+                  capacity_milli: '275000'
+                  products:
+                  - DIESEL_S10
+                  unit: L
+                expected_consumption:
+                - product: DIESEL_S10
+                  basis: DISTANCE
+                  value: '8500'
+                  source: Synthetic manufacturer manual
+                  date: '2026-11-14'
+                  unit: L
+                id: 7b0e2a54-0000-4000-8000-000000008201
+                state: DRAFT
+                revision: 1
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/change:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetChange
+      summary: Change an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage and same-organization membership; SELF remains closed without the actual assignment source.
+        Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
+        carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
+        a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
+        stays unavailable until the real METER-002 provider is installed; IMPLEMENT activation proves only its own
+        path. Source-pinned synthetic construction does not authorize production or legal activation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008101
+              kind: VEHICLE
+              name: Synthetic service vehicle
+              fleet_number: SYN-01
+              plate: ABC1D23
+              serial_number: ''
+              usage_basis: DISTANCE
+              category:
+                new_label: Synthetic light fleet
+              unit_id: 7b0e2a54-0000-4000-8000-000000000801
+              tanks:
+              - role: MAIN
+                capacity_milli: '275000'
+                products:
+                - DIESEL_S10
+              expected_consumption:
+              - product: DIESEL_S10
+                basis: DISTANCE
+                value: '8500'
+                source: Synthetic manufacturer manual
+                date: '2026-11-14'
+              revision: 1
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: DRAFT
+                revision: 1
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/discard:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetDiscard
+      summary: Discard an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage and same-organization membership; SELF remains closed without the actual assignment source.
+        Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
+        carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
+        a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
+        stays unavailable until the real METER-002 provider is installed; IMPLEMENT activation proves only its own
+        path. Source-pinned synthetic construction does not authorize production or legal activation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008101
+              revision: 1
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                revision: 2
+                discarded: true
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/activate:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetActivate
+      summary: Activate an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage and same-organization membership; SELF remains closed without the actual assignment source.
+        Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
+        carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
+        a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
+        stays unavailable until the real METER-002 provider is installed; IMPLEMENT activation proves only its own
+        path. Source-pinned synthetic construction does not authorize production or legal activation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008101
+              revision: 1
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: DRAFT
+                revision: 1
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -15355,6 +15875,736 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseFleetAssetCategoryChoice:
+      type: object
+      additionalProperties: false
+      properties:
+        existing_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        new_label:
+          type: string
+          minLength: 1
+          description: Explicit nonblank/control-free Unicode label, preserved literally. No category vocabulary, arbitrary
+            length cap, kind matrix or case-folded equivalence is inferred.
+      required: []
+      example:
+        new_label: Synthetic light fleet
+      description: Exactly one existing same-organization category or explicit new label. An exact literal existing
+        label is reused in the parent transaction; no normalization or second category command.
+      oneOf:
+      - required:
+        - existing_id
+        not:
+          required:
+          - new_label
+      - required:
+        - new_label
+        not:
+          required:
+          - existing_id
+    EnterpriseFleetAssetTankRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        role:
+          type: string
+          enum:
+          - MAIN
+          - AUXILIARY
+          - ADDITIVE
+          - BATTERY
+        capacity_milli:
+          type: string
+          pattern: ^([1-9][0-9]{0,8}|1000000000)$
+          maxLength: 10
+          description: 'Exact positive tank capacity in the product storage unit: mL, milli-m3 or Wh. At most 1000000000.
+            All accepted products use one physical unit.'
+        products:
+          type: array
+          minItems: 1
+          items:
+            type: string
+            enum:
+            - ETHANOL
+            - GASOLINE_REGULAR
+            - GASOLINE_ADDITIVED
+            - GASOLINE_PREMIUM_GRADE
+            - DIESEL_S10
+            - DIESEL_S500
+            - CNG
+            - ELECTRICITY
+            - ARLA_32
+      required:
+      - role
+      - capacity_milli
+      - products
+      example:
+        role: MAIN
+        capacity_milli: '275000'
+        products:
+        - DIESEL_S10
+      description: Accepted products are resolved from the owned fuel-products-v1 catalog. Duplicate product declarations
+        normalize to a set; mixed physical units are refused.
+    EnterpriseFleetAssetExpectedRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        product:
+          type: string
+          enum:
+          - ETHANOL
+          - GASOLINE_REGULAR
+          - GASOLINE_ADDITIVED
+          - GASOLINE_PREMIUM_GRADE
+          - DIESEL_S10
+          - DIESEL_S500
+          - CNG
+          - ELECTRICITY
+          - ARLA_32
+        basis:
+          type: string
+          enum:
+          - DISTANCE
+          - HOURS
+        value:
+          type: string
+          pattern: ^[1-9][0-9]{0,18}$
+          maxLength: 19
+          description: Canonical positive int64 decimal text, at most 9223372036854775807 enforced by the owning exact-value
+            constructor. Never a JSON floating-point number.
+        source:
+          type: string
+          minLength: 1
+          maxLength: 280
+        date:
+          type: string
+          format: date
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+      required:
+      - product
+      - basis
+      - value
+      - source
+      - date
+      example:
+        product: DIESEL_S10
+        basis: DISTANCE
+        value: '8500'
+        source: Synthetic manufacturer manual
+        date: '2026-11-14'
+      description: Declared exact comparison reference, not measured consumption. Its product must be accepted by a
+        tank; duplicate product references are refused.
+    EnterpriseFleetAssetCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - VEHICLE
+          - MACHINE
+          - IMPLEMENT
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        fleet_number:
+          type: string
+          maxLength: 20
+          pattern: ^[ -~]*$
+        plate:
+          type: string
+          pattern: ^[A-Za-z0-9 -]*$
+          description: Optional raw ASCII plate. Removing spaces/hyphens and uppercasing must yield exactly seven alphanumerics.
+        serial_number:
+          type: string
+          maxLength: 40
+        usage_basis:
+          type: string
+          enum:
+          - DISTANCE
+          - HOURS
+        category:
+          $ref: '#/components/schemas/EnterpriseFleetAssetCategoryChoice'
+        unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          description: DRAFT may omit the current active organization unit. ACTIVE profile edits preserve the current
+            unit when omitted/empty; a differing nonempty unit conflicts. Activation uses the stored unit.
+        tanks:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetTankRequest'
+        expected_consumption:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetExpectedRequest'
+      required:
+      - schema_version
+      - operation_id
+      - kind
+      - name
+      - usage_basis
+      - category
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008101
+        kind: VEHICLE
+        name: Synthetic service vehicle
+        fleet_number: SYN-01
+        plate: ABC1D23
+        serial_number: ''
+        usage_basis: DISTANCE
+        category:
+          new_label: Synthetic light fleet
+        unit_id: 7b0e2a54-0000-4000-8000-000000000801
+        tanks:
+        - role: MAIN
+          capacity_milli: '275000'
+          products:
+          - DIESEL_S10
+        expected_consumption:
+        - product: DIESEL_S10
+          basis: DISTANCE
+          value: '8500'
+          source: Synthetic manufacturer manual
+          date: '2026-11-14'
+      description: Create an organization-owned DRAFT. At least one normalized plate/fleet number or nonblank serial
+        is required. Actor, lifecycle, meter existence and accepted history are never body authority.
+    EnterpriseFleetAssetChangeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        kind:
+          type: string
+          enum:
+          - VEHICLE
+          - MACHINE
+          - IMPLEMENT
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        fleet_number:
+          type: string
+          maxLength: 20
+          pattern: ^[ -~]*$
+        plate:
+          type: string
+          pattern: ^[A-Za-z0-9 -]*$
+          description: Optional raw ASCII plate. Removing spaces/hyphens and uppercasing must yield exactly seven alphanumerics.
+        serial_number:
+          type: string
+          maxLength: 40
+        usage_basis:
+          type: string
+          enum:
+          - DISTANCE
+          - HOURS
+        category:
+          $ref: '#/components/schemas/EnterpriseFleetAssetCategoryChoice'
+        unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          description: DRAFT may omit the current active organization unit. ACTIVE profile edits preserve the current
+            unit when omitted/empty; a differing nonempty unit conflicts. Activation uses the stored unit.
+        tanks:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetTankRequest'
+        expected_consumption:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetExpectedRequest'
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - kind
+      - name
+      - usage_basis
+      - category
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008101
+        kind: VEHICLE
+        name: Synthetic service vehicle
+        fleet_number: SYN-01
+        plate: ABC1D23
+        serial_number: ''
+        usage_basis: DISTANCE
+        category:
+          new_label: Synthetic light fleet
+        unit_id: 7b0e2a54-0000-4000-8000-000000000801
+        tanks:
+        - role: MAIN
+          capacity_milli: '275000'
+          products:
+          - DIESEL_S10
+        expected_consumption:
+        - product: DIESEL_S10
+          basis: DISTANCE
+          value: '8500'
+          source: Synthetic manufacturer manual
+          date: '2026-11-14'
+        revision: 1
+      description: Replace mutable profile at the expected revision. Omitted identifiers, tanks and expected references
+        clear; a missing/empty unit preserves the ACTIVE allocation. Kind cannot change after actual accepted use.
+    EnterpriseFleetAssetTransitionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008101
+        revision: 1
+      description: Discard a proven unused DRAFT or activate from DRAFT using actual stored unit/tank/meter facts. No
+        client-supplied presence or lifecycle fields. A matching retry returns the original acknowledgement after draft
+        deletion.
+    EnterpriseFleetAssetReadRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      required: []
+      example: {}
+      description: Private current-source read. Foreign or discarded assets are not found; read permission does not
+        infer an assignment.
+    EnterpriseFleetAssetListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+        state:
+          type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - INACTIVE
+          - DISPOSED
+          - ARCHIVED
+        kind:
+          type: string
+          enum:
+          - VEHICLE
+          - MACHINE
+          - IMPLEMENT
+      required: []
+      example:
+        limit: 20
+        state: DRAFT
+      description: UUID keyset page excluding physically discarded drafts and, by default, ARCHIVED assets; an explicit
+        state filter may select archived history. Opaque 15-minute cursor is bound to current
+        account, organization, membership, route and state/kind/limit filters.
+    EnterpriseFleetAssetAcknowledgement:
+      description: Original immutable committed metadata; replay does not recreate a discarded draft or repeat category/allocation/audit
+        effects. A discard has discarded=true and no lifecycle state, with the last revision plus one. Current authority
+        is rechecked before receipt access.
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          asset_id:
+            $ref: '#/components/schemas/EnterpriseUUID'
+          state:
+            type: string
+            enum:
+            - DRAFT
+            - ACTIVE
+            - INACTIVE
+            - DISPOSED
+            - ARCHIVED
+          revision:
+            type: integer
+            minimum: 1
+            maximum: 9223372036854775807
+          discarded:
+            type: boolean
+            enum:
+            - false
+          replayed:
+            type: boolean
+          data_mode:
+            type: string
+            enum:
+            - SYNTHETIC
+        required:
+        - asset_id
+        - state
+        - revision
+        - discarded
+        - replayed
+        - data_mode
+        example:
+          asset_id: 7b0e2a54-0000-4000-8000-000000008201
+          state: DRAFT
+          revision: 1
+          discarded: false
+          replayed: false
+          data_mode: SYNTHETIC
+      - type: object
+        additionalProperties: false
+        properties:
+          asset_id:
+            $ref: '#/components/schemas/EnterpriseUUID'
+          revision:
+            type: integer
+            minimum: 1
+            maximum: 9223372036854775807
+          discarded:
+            type: boolean
+            enum:
+            - true
+          replayed:
+            type: boolean
+          data_mode:
+            type: string
+            enum:
+            - SYNTHETIC
+        required:
+        - asset_id
+        - revision
+        - discarded
+        - replayed
+        - data_mode
+        example:
+          asset_id: 7b0e2a54-0000-4000-8000-000000008201
+          revision: 2
+          discarded: true
+          replayed: false
+          data_mode: SYNTHETIC
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        state: DRAFT
+        revision: 1
+        discarded: false
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseFleetAssetView:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum:
+          - VEHICLE
+          - MACHINE
+          - IMPLEMENT
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        fleet_number:
+          type: string
+          maxLength: 20
+          pattern: ^[ -~]*$
+        plate:
+          type: string
+          pattern: ^[A-Za-z0-9 -]*$
+          description: Optional raw ASCII plate. Removing spaces/hyphens and uppercasing must yield exactly seven alphanumerics.
+        serial_number:
+          type: string
+          maxLength: 40
+        usage_basis:
+          type: string
+          enum:
+          - DISTANCE
+          - HOURS
+        category:
+          type: object
+          additionalProperties: false
+          properties:
+            id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            label:
+              type: string
+              minLength: 1
+          required:
+          - id
+          - label
+          example:
+            id: 7b0e2a54-0000-4000-8000-000000008301
+            label: Synthetic light fleet
+        unit_id:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: string
+            enum:
+            - ''
+          description: DRAFT may omit the current active organization unit. ACTIVE profile edits preserve the current
+            unit when omitted/empty; a differing nonempty unit conflicts. Activation uses the stored unit.
+        tanks:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              role:
+                type: string
+                enum:
+                - MAIN
+                - AUXILIARY
+                - ADDITIVE
+                - BATTERY
+              capacity_milli:
+                type: string
+                pattern: ^([1-9][0-9]{0,8}|1000000000)$
+                maxLength: 10
+                description: 'Exact positive tank capacity in the product storage unit: mL, milli-m3 or Wh. At most
+                  1000000000. All accepted products use one physical unit.'
+              products:
+                type: array
+                minItems: 1
+                items:
+                  type: string
+                  enum:
+                  - ETHANOL
+                  - GASOLINE_REGULAR
+                  - GASOLINE_ADDITIVED
+                  - GASOLINE_PREMIUM_GRADE
+                  - DIESEL_S10
+                  - DIESEL_S500
+                  - CNG
+                  - ELECTRICITY
+                  - ARLA_32
+              unit:
+                type: string
+                enum:
+                - L
+                - M3
+                - KWH
+            required:
+            - role
+            - capacity_milli
+            - products
+            - unit
+            example:
+              role: MAIN
+              capacity_milli: '275000'
+              products:
+              - DIESEL_S10
+              unit: L
+        expected_consumption:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              product:
+                type: string
+                enum:
+                - ETHANOL
+                - GASOLINE_REGULAR
+                - GASOLINE_ADDITIVED
+                - GASOLINE_PREMIUM_GRADE
+                - DIESEL_S10
+                - DIESEL_S500
+                - CNG
+                - ELECTRICITY
+                - ARLA_32
+              basis:
+                type: string
+                enum:
+                - DISTANCE
+                - HOURS
+              value:
+                type: string
+                pattern: ^[1-9][0-9]{0,18}$
+                maxLength: 19
+                description: Canonical positive int64 decimal text, at most 9223372036854775807 enforced by the owning
+                  exact-value constructor. Never a JSON floating-point number.
+              source:
+                type: string
+                minLength: 1
+                maxLength: 280
+              date:
+                type: string
+                format: date
+                pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}$
+              unit:
+                type: string
+                enum:
+                - L
+                - M3
+                - KWH
+            required:
+            - product
+            - basis
+            - value
+            - source
+            - date
+            - unit
+            example:
+              product: DIESEL_S10
+              basis: DISTANCE
+              value: '8500'
+              source: Synthetic manufacturer manual
+              date: '2026-11-14'
+              unit: L
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - INACTIVE
+          - DISPOSED
+          - ARCHIVED
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775807
+        initial_allocation:
+          type: object
+          additionalProperties: false
+          properties:
+            unit_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            started_at:
+              type: string
+              format: date-time
+          required:
+          - unit_id
+          - started_at
+          example:
+            unit_id: 7b0e2a54-0000-4000-8000-000000000801
+            started_at: '2026-11-14T12:00:00Z'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - id
+      - kind
+      - name
+      - fleet_number
+      - plate
+      - serial_number
+      - usage_basis
+      - category
+      - unit_id
+      - tanks
+      - expected_consumption
+      - state
+      - revision
+      - data_mode
+      example:
+        kind: VEHICLE
+        name: Synthetic service vehicle
+        fleet_number: SYN-01
+        plate: ABC1D23
+        serial_number: ''
+        usage_basis: DISTANCE
+        category:
+          id: 7b0e2a54-0000-4000-8000-000000008301
+          label: Synthetic light fleet
+        unit_id: 7b0e2a54-0000-4000-8000-000000000801
+        tanks:
+        - role: MAIN
+          capacity_milli: '275000'
+          products:
+          - DIESEL_S10
+          unit: L
+        expected_consumption:
+        - product: DIESEL_S10
+          basis: DISTANCE
+          value: '8500'
+          source: Synthetic manufacturer manual
+          date: '2026-11-14'
+          unit: L
+        id: 7b0e2a54-0000-4000-8000-000000008201
+        state: DRAFT
+        revision: 1
+        data_mode: SYNTHETIC
+      description: Stored private asset state and source-owned category/unit facts. Initial allocation is present only
+        when actually created. No assignment, availability, public vehicle identity or source authority is inferred.
+    EnterpriseFleetAssetPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetView'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - kind: VEHICLE
+          name: Synthetic service vehicle
+          fleet_number: SYN-01
+          plate: ABC1D23
+          serial_number: ''
+          usage_basis: DISTANCE
+          category:
+            id: 7b0e2a54-0000-4000-8000-000000008301
+            label: Synthetic light fleet
+          unit_id: 7b0e2a54-0000-4000-8000-000000000801
+          tanks:
+          - role: MAIN
+            capacity_milli: '275000'
+            products:
+            - DIESEL_S10
+            unit: L
+          expected_consumption:
+          - product: DIESEL_S10
+            basis: DISTANCE
+            value: '8500'
+            source: Synthetic manufacturer manual
+            date: '2026-11-14'
+            unit: L
+          id: 7b0e2a54-0000-4000-8000-000000008201
+          state: DRAFT
+          revision: 1
+          data_mode: SYNTHETIC
+        next_cursor: ''
     EnterpriseEmployeeMergePreviewRequest:
       type: object
       additionalProperties: false
@@ -19458,7 +20708,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false

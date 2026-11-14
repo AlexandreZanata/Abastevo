@@ -98,7 +98,7 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 			return nil, nil, fmt.Errorf("unknown authorization inventory status")
 		}
 	}
-	if !slices.Equal(keys, catalog.Permissions()) || routed != 12 || notRouted != 73 || len(normal) != 70 {
+	if !slices.Equal(keys, catalog.Permissions()) || routed != 14 || notRouted != 71 || len(normal) != 76 {
 		return nil, nil, fmt.Errorf("authorization inventory does not cover every catalog permission")
 	}
 	expectedBoundaries := map[string]int{"ACCOUNT_CONTEXT": 2, "OWNED_SETUPS": 1, "COMPANY_SESSION": 3, "ORGANIZATION_CREATION": 1, "PERSONAL_INVITATION": 3, "SELF_MEMBERSHIP": 2, "SIGNED_DEVICE": 2, "SELF_DEVICE": 2, "DEVICE_CONTACT": 1, "SIGNED_BATCH": 1}
@@ -290,7 +290,7 @@ func verifyAuthorizationRouteMutations(t *testing.T, actual chi.Routes, document
 				return false
 			}
 			rule := route.handler.(orgapi.Descriptor).OrganizationRule()
-			rule.Permission = "fleet.asset.read"
+			rule.Permission = "trip.trip.start"
 			router.Method(route.method, route.path, authorizationDescriptorMutation{route.handler, rule, true})
 			return true
 		}, false},

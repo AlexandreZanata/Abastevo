@@ -2286,3 +2286,121 @@ the owning business producers and OFFL-004 pending screen remain separate work.
   behavior; test mutation, failures and exact widening. Regress the accepted
   time kernel without altering receipt/reporting semantics. Run affected
   domain race/static/JVM checks; no device/SQL/runtime acceptance is inferred.
+
+
+## Enterprise asset persistence (EMP-FLEET-002)
+
+- **B-BR-EMP-144 — Persist an owned category source with assets.**
+  Use private categories with stable IDs and explicit labels. An authorized
+  asset create/change chooses an existing same-org category ID or explicitly
+  declares a new nonblank/control-free Unicode label in that same transaction.
+  Declare exactly one alternative. Unknown/foreign existing IDs are not found.
+  No canonical category enum exists: add no guessed vocabulary, case-folding
+  uniqueness or category-kind matrix. The persisted row supplies the accepted
+  Fleet CategoryCatalog; an explicit new-label declaration reuses only an
+  exact literal existing label in the same org. No trimming, case-folding or
+  Unicode normalization is introduced. Use nonunique hash lookup plus full
+  literal equality under the root lock if an uncapped label cannot fit a
+  PostgreSQL unique index; a hash never proves category identity.
+  Product descriptors come from real fuel-products-v1.
+  Keep personal vehicle storage, limits and public station data separate.
+- **B-BR-EMP-145 — Store actual private asset state.**
+  Add organization-scoped assets, tanks/products, expected references, initial
+  unit allocations and immutable command receipts with composite private keys,
+  parameterized SQL and forced RLS. Preserve the accepted pure field/unit/
+  Unicode/identifier rules. Partial unique indexes compare canonical plate and
+  fleet number among assets not ARCHIVED; absent identifiers do not collide,
+  serial is not newly unique and another organization has independent keys.
+  Create is DRAFT; profile edits cannot set lifecycle. Revisions use exact CAS.
+  Retain immutable full primitive profile/tank/expected/unit snapshots for
+  each committed revision, beyond audit hashes. A read-only versioned SQL
+  projection of the nine owned fuel-products-v1 descriptors supplies FK unit/
+  product integrity, with mandatory parity to the code owner; no runtime
+  edits or second fleet-owned product enum.
+- **B-BR-EMP-146 — Recheck real current authority on every boundary.**
+  Only source-owned fleet.asset.manage/read policies enable commands/reads.
+  Reuse the currently registered organizations C1 capability and enterprise
+  flag, with fresh company proof for configuration writes; do not invent a
+  fleet flag with no actual activation owner or treat a plan as runtime proof.
+  Use a narrow FleetAuthority transaction port. Preserve account/proof,
+  capability, root and current membership/role lock order and recheck proof
+  after waits and before receipt/state publication. Actor/delegation/session
+  inputs are server-bound. SELF read needs actual assignment facts; until
+  FLEET-006, no owner/creator fallback supplies them. Foreign records are hidden.
+- **B-BR-EMP-147 — Activate only from actual admission facts.**
+  DRAFT activation validates the existing pure minimum data, real current unit
+  admission and actual meter source when powered. Open the first unit period
+  atomically at server time; ACTIVE has one current unit. Draft creation/change
+  may omit or clear a provisional unit. Activation uses the stored actual unit;
+  ACTIVE profile change preserves it when omitted/empty and refuses a different
+  nonempty unit, because transfer has its own task. An IMPLEMENT may
+  activate without tanks/meters as specified. VEHICLE/MACHINE meter availability
+  remains unavailable until the actual METER-002 provider is integrated: no
+  synthetic MeterFact, guessed presence, fabricated opening reading or runtime
+  always-none provider. Implement-only acceptance does not close the full task.
+  Preserve real employee/team unit-use counts while adding actual asset use;
+  unit archive and asset activation serialize under the existing root lock.
+- **B-BR-EMP-148 — Preserve original command acknowledgement and audit.**
+  Bind operation digest, org and verified actor to immutable original metadata
+  acknowledgement. Recheck current authority before receipt access, including
+  after target deletion. Same-body replay returns the original outcome with
+  no second category/asset/allocation/audit; a changed command reusing its ID
+  conflicts. Store receipt target selectors independently of the live asset FK
+  so discarded-draft replay works; create replay never recreates that asset.
+  Structural org/asset facts authorize initial ORG command entry without live
+  target lookup; the Store proves current authority and owned receipt before
+  requiring a live row. Discard ACK has discarded=true, no invented lifecycle
+  state and last revision plus one as immutable receipt metadata.
+  One successful command creates one audit event in the same transaction;
+  category declaration is part of its parent asset command, not a second event.
+- **B-BR-EMP-149 — Discard only proven unused drafts.**
+  Discard only current DRAFT with no reading/accepted operation; retain receipt
+  and audit history. Keep accepted-use source checks real and scoped, and kind
+  immutable after actual use. A new unknown FK consumer makes that check
+  unavailable until its owning source integrates, as in current unit-use
+  guards. Only the owned lower-snake sync entity_type fleet_asset can count
+  a generic committed effect as asset use; another entity type sharing a UUID
+  is not provenance. The actual protocol is retained. Proven-unused draft
+  discard may remove its configuration/revision rows by guarded parent cascade;
+  immutable receipt/audit remain. Do not invent always-empty history ports.
+  Failed/stale/foreign/
+  dependency-denied commands change no profile, index, allocation or audit.
+- **B-BR-EMP-150 — Expose bounded private management routes.**
+  Add company-cookie/CSRF POST create/list/read/change/discard/activate under
+  /v1/orgs/{org_id}/fleet/assets using accepted orgapi envelopes, exact typed
+  quantities, expected revisions and bounded stable keyset pages. Scope cursors
+  and data to the current actor/org/filter; preserve private no-store behavior
+  and current proof/source guards. List/detail project stored actual state;
+  no client lifecycle/availability field grants authority. Diagnostics/audit
+  use IDs and allowed reasons, not labels, plates, source secrets or GPS.
+- **B-BR-EMP-151 — Keep source staging and acceptance truthful.**
+  Append migrations with populated recovery/ordinary-role tests and explicit
+  grants/retention/export consumer integration as affected. Preserve existing
+  applied migrations and source counters. Complete the tested fleet foundation,
+  then the actual METER-002 dependency from that head if needed, and return to
+  full powered-route acceptance before marking FLEET-002 LOCAL_DONE. During
+  that dependency work keep this parent IN_PROGRESS and one implementation
+  task active; a backed-up tested partial head is not whole-task/phase PASS.
+  No PR/CI wait or fake provider resolves this integration order. Whole
+  F2/M1/M2/C1, F3 and deployment/release gates stay separate.
+- **BUC-EMP-73 — Prove actual category and record validation.**
+  RED→GREEN create/change with explicit declared/existing categories and actual
+  product descriptors, exact identifiers/tanks/expected references, invalid
+  profile/lifecycle edits, foreign IDs and personal-data independence.
+- **BUC-EMP-74 — Prove real database boundaries and recovery.**
+  Ordinary PostGIS two-org RLS/grants, populated196→197 recovery and rollback,
+  retained command/audit history, new consumer registration and real unit
+  usage including unchanged employee/team counts; deny unscoped/foreign SQL.
+- **BUC-EMP-75 — Prove current proof and role boundaries.**
+  Cover anonymous/stale/ended/suspended/disabled actors and organizations,
+  absent capability, wrong member/target, after-wait proof expiry, foreign
+  receipts/data and SELF without actual assignment source. No token bypass.
+- **BUC-EMP-76 — Prove concurrent original effects.**
+  Exercise twelve-way duplicate identifiers, original replay/CAS, changed-ID
+  reuse, create replay after discard, late publication failures, commit rollback
+  and activation versus unit archive; exactly one allowed effect/audit wins.
+- **BUC-EMP-77 — Prove actual routes before full closure.**
+  Test company entry/CSRF/current source, all six contract paths and bounded
+  pages through actual HTTP/ordinary source. IMPLEMENT activation proves its
+  own path; powered positive acceptance uses actual METER-002 before closure.
+  Compile/static/sqlc/contract/secret checks must match the tested source head.

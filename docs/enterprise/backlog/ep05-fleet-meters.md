@@ -22,7 +22,7 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task216](https://github.com/AlexandreZanata/Abastevo/issues/216), [phase215](https://github.com/AlexandreZanata/Abastevo/issues/215), cumulative PR203. Both pure domains consume all133 shared vectors; Go race/boundary/format/vet/static checks pass with98.0% statements, Kotlin143 tests pass with100% scoped lines and99.48% instructions. Typed scope, catalog-unit consistency under changing descriptors, Unicode ordering, exact quantities, privacy/defensive copies and activation facts pass independent review. [Evidence](../evidence/f2-fleet001-asset-domain.md). Runtime category registration, real meter presence and all persistence/operations remain owning tasks; F2/M1/M2/C1 is not closed.
 
 ### EMP-FLEET-002 — Asset persistence and management with per-organization identifier uniqueness
-- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state IN_PROGRESS
 - **Objective:** Let a manager register, edit, activate, list and read the organization's assets, so that trips, fuelings and readings refer to a real asset instead of free text.
 - **Rules and use cases:** BR-FLEET-001, BR-FLEET-003, BR-FLEET-004, BR-FLEET-008, BR-FLEET-011, BR-FLEET-015, BR-TEN-001, BR-TEN-006, UC-FLEET-01
 - **Depends on:** EMP-FLEET-001, EMP-PLAT-002, EMP-AUTH-003, EMP-FUEL-001
@@ -36,6 +36,12 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: additive tables and indexes whose names are frozen here, applied forward on a populated database · rollback: capability flag off; tables remain and the previous image keeps running
 - **Risks and assumptions:** Assumes the operating-unit table of the organization epic exists; INDEX lists no direct dependency on it. The plan limit of active assets goes through the entitlement gate and is a no-op until plans exist.
 - **Done when:** The route-versus-contract test and the two-organization suite pass for every asset route.
+
+[F2 asset persistence construction](../evidence/f2-fleet002-asset-persistence.md)
+starts from tested/published FUEL-00121601ae8. B-BR-EMP-144..151,
+BUC-EMP-73..77 and EDR-095..099 precede behavior. Powered activation stays
+pending the real METER-002 integration; implement-only source tests do not
+close the full task. No runtime fake meter or assignment provider.
 
 ### EMP-FLEET-003 — Asset lifecycle: acquisition, active, sale, write-off, return, archive
 - **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state TODO

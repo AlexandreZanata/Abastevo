@@ -4,7 +4,8 @@
   [F3 sequence](../enterprise/evidence/f3-authorized-sequence.md) records the
   requested scope/M3 entry and exit. The maintainer reiterates overnight autonomy:
   choose recommended routine decisions, record them, and ask no questions.
-  F3 is queued; next bounded task is EMP-FLEET-002 actual persistence.
+  F3 is queued; the tested FLEET-002 source foundation now permits the sole
+  METER-002 dependency task; full powered FLEET-002 acceptance remains open.
 - Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2`
   from published dev `fac002e7`; verified main `6a19bcc7` remains an ancestor.
   [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
@@ -46,9 +47,19 @@
   race nodes and Kotlin1158 enterprise tests, with zero failures/skips. Time
   declaration-only validation preserves original Capture reporting/receipt
   behavior. Final peer/manifest/static/secret checks pass.
-  Next: EMP-FLEET-002 actual asset persistence, real categories/unit admission
-  and guarded commands; powered activation still requires real METER-002.
-  Full F3 remains queued beyond C1/F2 dependency closure.
+  FUEL-00121601ae8 is backed up at origin/codex/enterprise-f2.
+  [EMP-FLEET-002 actual persistence](../enterprise/evidence/f2-fleet002-asset-persistence.md)
+  is IN_PROGRESS. B-BR-EMP-144..151, BUC-EMP-73..77 and EDR-095..099 precede
+  actual categories/unit admission, scoped commands and ordinary DB acceptance.
+  The full parent stays open until real METER-002 powered activation; a tested
+  foundation may precede that sole dependency task without fake facts or CI wait.
+  Foundation PASS: ordinary PostGIS/race2024 nodes, HTTP52 assertions and
+  authorization140 cells, with zero failures/skips. Current unit/employee/team
+  regressions, populated recovery, full-router/OpenAPI/static/manifest checks
+  pass. Forty source inputs are pinned in its evidence; no fake meter source.
+  Next: commit/back up this foundation, implement actual METER-002, then return
+  to powered activation before full FLEET-002 closure. Full F3 remains queued
+  beyond C1/F2 dependency closure.
   The user authorizes only the owned API36 emulator while the phone is
   disconnected; preserve other devices/apps/data.
   PR203 dev still contains the earlier batch. Final phase delivery uses protected

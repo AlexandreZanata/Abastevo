@@ -116,7 +116,13 @@ EMP-FUEL-001 is LOCAL_DONE / INTEGRATION_PENDING:
 cases, Go812-node affected race union and Kotlin1158 enterprise tests pass;
 new fueling coverage91.3% Go/96.10% Kotlin instructions and final peer reviews
 pass. Source-backed FUEL-001→METER-001 and FLEET-002→FUEL-001 edges are canonical.
-Next: EMP-FLEET-002 actual scoped runtime asset persistence.
+FUEL-00121601ae8 is backed up. Current bounded task:
+[EMP-FLEET-002 actual persistence](f2-fleet002-asset-persistence.md), including
+truthful retained powered-meter dependency sequencing before full task closure.
+Its40-file tested foundation passes2024 ordinary PostGIS/race nodes,52 real
+HTTP assertions and140 authorization cells plus affected runtime/contract/static
+checks. Next sole task METER-002 consumes that actual source; full FLEET-002
+remains IN_PROGRESS until powered acceptance. No extra task is counted done.
 Missing real feature/history/review/admission producers remain closed;
 no production no-op handler or F4 exception substitutes for those integrations.
 Use phase tracker215 and cumulative PR203, without an intermediate PR or

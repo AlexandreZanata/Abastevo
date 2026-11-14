@@ -36,10 +36,9 @@ movement. Existing provider/legal/staging gates remain attached to their actual
 capabilities; use synthetic local fixtures without fabricating acceptance.
 
 Current source: F2 is IN_PROGRESS; ten completed local checkpoints through
-EMP-FUEL-001; the preceding nine through METER-001 05c83376 are backed up
-at origin/codex/enterprise-f2. The new tested Fuel checkpoint awaits its atomic
-backup push.
+EMP-FUEL-001 at21601ae8 are backed up at origin/codex/enterprise-f2.
 EMP-FUEL-001 is locally complete as an actual C1/F2 prerequisite; its owned
-product catalog now precedes next EMP-FLEET-002 runtime fleet persistence. The full F3 remains queued; its prerequisite tasks consumed by C1
-are not
-reimplemented or counted as whole-phase acceptance.
+product catalog precedes the tested EMP-FLEET-002 persistence foundation. Its
+full powered acceptance remains open while the sole METER-002 dependency task
+consumes that source. The full F3 remains queued; its prerequisite tasks
+consumed by C1 are not reimplemented or counted as whole-phase acceptance.

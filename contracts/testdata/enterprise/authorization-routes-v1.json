@@ -249,17 +249,25 @@
     },
     {
       "permission": "fleet.asset.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Fleet domain values exist; fleet storage and operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/create",
+      "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/create",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/activate",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/change",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/discard"
+      ],
+      "reason": ""
     },
     {
       "permission": "fleet.asset.read",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Fleet domain values exist; fleet storage and operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "fleet.reservation.manage",

@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -42,6 +43,8 @@ var matrixRepresentatives = []matrixRoute{
 	{"org.settings.manage", "/settings/change", true, true},
 	{"org.settings.read", "/settings/read", false, false},
 	{"org.structure.manage", "/units/list", false, false},
+	{"fleet.asset.manage", "/fleet/assets/create", true, true},
+	{"fleet.asset.read", "/fleet/assets/list", false, false},
 }
 
 func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
@@ -201,6 +204,14 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,employee_id) FROM org_employee_profiles x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,revision) FROM org_settings_versions x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,transfer_id) FROM org_ownership_transfers x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_asset_categories x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_assets x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,position) FROM org_asset_tanks x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,tank_position,product) FROM org_asset_tank_products x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,position) FROM org_asset_expected x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,started_at) FROM org_asset_unit_allocations x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,revision) FROM org_asset_revisions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_commands x),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),
 	 (SELECT count(*) FROM org_ownership_commands), (SELECT count(*) FROM org_role_commands))::text`).Scan(&value); err != nil {
 		t.Fatal(err)
@@ -274,6 +285,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	roles, oracle := matrixOracle(t)
 	fx := devicesFixture(t)
 	grantEmployeeTables(t, fx.legalFixtureState)
+	_ = fleetStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
 	roleSQL := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+roleSQL+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+roleSQL); err != nil {
 		t.Fatal(err)
@@ -301,7 +313,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	org, otherOrg := fx.scope.OrgID().String(), other.scope.OrgID().String()
 	base := "/v1/orgs/" + org
 	allowed, denied, exercised := 0, 0, 0
-	for _, role := range roles {
+	for roleIndex, role := range roles {
 		t.Run(role, func(t *testing.T) {
 			actor := matrixNewPerson(t, fx, router)
 			matrixAssign(t, fx, actor, role, "ORG", "ACTIVE")
@@ -321,6 +333,8 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 						t.Fatal(err)
 					}
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": revision, "values": json.RawMessage(values), "reason": "Synthetic authorization matrix change"}
+				case "fleet.asset.manage":
+					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "kind": "IMPLEMENT", "name": "Synthetic matrix implement", "fleet_number": "MATRIX-" + strconv.Itoa(roleIndex), "usage_basis": "DISTANCE", "category": map[string]any{"new_label": "Synthetic matrix implements"}}
 				default:
 					return map[string]any{}
 				}
@@ -335,7 +349,12 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 				}
 				cell := oracle[entry.permission][role]
 				want, code, key := 200, "", ""
-				if cell == "-" {
+				if entry.permission == "fleet.asset.manage" {
+					want = 201
+				}
+				// Fleet's S cells remain refused until the owning assignment source
+				// exists. No creator or other record fact substitutes for SELF.
+				if cell == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(cell, "S") {
 					want, code, key = 403, "FORBIDDEN", entry.permission
 					denied++
 				} else if strings.HasPrefix(cell, "O") {
@@ -401,7 +420,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 				for _, entry := range matrixRepresentatives {
 					t.Run(variant+"/"+entry.permission, func(t *testing.T) {
 						want, code, key := 200, "", ""
-						if oracle[entry.permission][role] == "-" {
+						if oracle[entry.permission][role] == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(oracle[entry.permission][role], "S") {
 							want, code, key = 403, "FORBIDDEN", entry.permission
 						}
 						organization := org
@@ -517,8 +536,8 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 120 || allowed != 41 || denied != 79 {
+	if exercised != 140 || allowed != 51 || denied != 89 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 36 station cells unavailable; 73 permissions not yet routed", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 71 permissions not yet routed; Fleet S cells remain denied pending actual assignment integration", exercised, allowed, denied)
 }
