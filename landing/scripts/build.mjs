@@ -4,6 +4,19 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { loadSite, renderSitemap, renderLlmsLinks } from './content/site.mjs';
+import {
+  renderGuide,
+  renderGuidesHub,
+  renderCategory,
+  renderToolsHub,
+  renderTool,
+  renderPage,
+  renderFooterColumns,
+  renderHomeStates,
+  renderHomeGuides,
+  renderHomeTools,
+} from './content/layouts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -109,7 +122,9 @@ export function build(options = {}) {
 
   const outDir = options.outDir || path.join(root, 'dist');
   const staticDir = path.join(root, 'static');
-  const srcDir = path.join(root, 'src');
+
+  // Validate the content manifest and Markdown sources before touching outDir.
+  const site = loadSite(root);
 
   // 1. Compile TypeScript to temp directory
   const tmpDir = path.join(root, '.build-tmp-' + crypto.randomBytes(4).toString('hex'));
@@ -149,6 +164,14 @@ export function build(options = {}) {
       fingerprintedContributorsName = `contributors.${computeHash(contributorsContent)}.js`;
     }
 
+    // Calculators (SEO-10): a separate module loaded only by tool pages.
+    const toolsSourcePath = path.join(tmpDir, 'tools.js');
+    if (!fs.existsSync(toolsSourcePath)) {
+      throw new Error('TypeScript compilation failed: compiled tools.js not found');
+    }
+    const toolsContent = fs.readFileSync(toolsSourcePath);
+    const fingerprintedToolsName = `tools.${computeHash(toolsContent)}.js`;
+
     // 2. Read and fingerprint CSS
     const cssPath = path.join(staticDir, 'assets', 'styles.css');
     if (!fs.existsSync(cssPath)) {
@@ -175,6 +198,7 @@ export function build(options = {}) {
     if (contributorsContent && fingerprintedContributorsName) {
       fs.writeFileSync(path.join(outDir, 'assets', fingerprintedContributorsName), contributorsContent);
     }
+    fs.writeFileSync(path.join(outDir, 'assets', fingerprintedToolsName), toolsContent);
     fs.writeFileSync(path.join(outDir, 'assets', fingerprintedCssName), cssContent);
 
     // 5. Copy brand assets
@@ -234,16 +258,23 @@ export function build(options = {}) {
     fs.copyFileSync(path.join(artDir, 'provenance.json'), path.join(artOut, 'provenance.json'));
 
     // 6. Copy and substitute static configuration files
-    const configFiles = ['robots.txt', 'sitemap.xml', 'site.webmanifest', '_headers', '_redirects', 'llms.txt'];
+    const configFiles = ['robots.txt', 'site.webmanifest', '_headers', '_redirects', 'llms.txt'];
     for (const file of configFiles) {
       const src = path.join(staticDir, file);
       if (fs.existsSync(src)) {
         let text = fs.readFileSync(src, 'utf8');
+        if (file === 'llms.txt') {
+          if (!text.includes('{{LLMS_CONTENT_LINKS}}')) throw new Error('llms.txt: missing {{LLMS_CONTENT_LINKS}} marker');
+          text = text.replace('{{LLMS_CONTENT_LINKS}}', renderLlmsLinks(site, origin));
+        }
         text = text.replaceAll('{{CANONICAL_ORIGIN}}', origin);
         text = text.replaceAll('{{API_CONNECT_EXTRA}}', apiConnectExtra);
         fs.writeFileSync(path.join(outDir, file), text, 'utf8');
       }
     }
+    // The sitemap is generated from the content manifest: indexable pages only,
+    // each with the date its content last changed (never the build time).
+    fs.writeFileSync(path.join(outDir, 'sitemap.xml'), renderSitemap(site, origin), 'utf8');
 
     // Copy root favicon.ico if present
     const rootFavicon = path.join(staticDir, 'favicon.ico');
@@ -264,40 +295,30 @@ export function build(options = {}) {
       }
     }
 
-    // 7. Process HTML files
-    const htmlFiles = [
-      { srcRel: 'index.html', destRel: 'index.html' },
-      { srcRel: 'privacidade/index.html', destRel: 'privacidade/index.html' },
-      { srcRel: 'excluir-conta/index.html', destRel: 'excluir-conta/index.html' },
-      { srcRel: 'termos/index.html', destRel: 'termos/index.html' },
-      { srcRel: 'guias/index.html', destRel: 'guias/index.html' },
-      { srcRel: 'guias/pesquisa-anp/index.html', destRel: 'guias/pesquisa-anp/index.html' },
-      { srcRel: 'guias/etanol-ou-gasolina/index.html', destRel: 'guias/etanol-ou-gasolina/index.html' },
-      { srcRel: 'guias/como-ler-precos/index.html', destRel: 'guias/como-ler-precos/index.html' },
-      { srcRel: 'como-usar/index.html', destRel: 'como-usar/index.html' },
-      { srcRel: 'como-usar/escolher-cidade/index.html', destRel: 'como-usar/escolher-cidade/index.html' },
-      { srcRel: 'como-usar/precos-do-posto/index.html', destRel: 'como-usar/precos-do-posto/index.html' },
-      { srcRel: 'como-usar/comunidade/index.html', destRel: 'como-usar/comunidade/index.html' },
-      { srcRel: 'como-usar/conta-e-privacidade/index.html', destRel: 'como-usar/conta-e-privacidade/index.html' },
-      { srcRel: 'como-usar/fotografar-preco/index.html', destRel: 'como-usar/fotografar-preco/index.html' },
-      { srcRel: 'como-usar/denunciar-abuso/index.html', destRel: 'como-usar/denunciar-abuso/index.html' },
-      { srcRel: 'como-usar/veiculos/index.html', destRel: 'como-usar/veiculos/index.html' },
-      { srcRel: 'como-usar/offline-e-recuperacao/index.html', destRel: 'como-usar/offline-e-recuperacao/index.html' },
-      { srcRel: 'como-usar/ajuda-e-regras/index.html', destRel: 'como-usar/ajuda-e-regras/index.html' },
-      { srcRel: 'como-usar/precos-anp/index.html', destRel: 'como-usar/precos-anp/index.html' },
-      { srcRel: 'como-usar/semanas-anp/index.html', destRel: 'como-usar/semanas-anp/index.html' },
-      { srcRel: 'como-usar/historico/index.html', destRel: 'como-usar/historico/index.html' },
-      { srcRel: 'como-usar/postos/index.html', destRel: 'como-usar/postos/index.html' },
-      { srcRel: 'como-usar/minhas-contribuicoes/index.html', destRel: 'como-usar/minhas-contribuicoes/index.html' },
-      { srcRel: 'como-usar/perfil-do-posto/index.html', destRel: 'como-usar/perfil-do-posto/index.html' },
-      { srcRel: 'como-usar/configuracoes/index.html', destRel: 'como-usar/configuracoes/index.html' },
-      { srcRel: 'contribuidores/index.html', destRel: 'contribuidores/index.html' },
-      { srcRel: '404.html', destRel: '404.html' },
-    ];
+    // 7. Process HTML files. The content manifest (content/manifest.json) lists
+    // every authored page; guides, hubs, tools and E-E-A-T pages are generated.
+    const readStatic = (rel) => {
+      const srcPath = path.join(staticDir, rel);
+      if (!fs.existsSync(srcPath)) {
+        throw new Error(`Required HTML file missing: ${rel}`);
+      }
+      return fs.readFileSync(srcPath, 'utf8');
+    };
 
-    // The home owns the navigation and footer for learning, legal and error pages.
+    // The home owns the navigation and footer for every landing page. Its
+    // footer columns and hub sections are generated from the manifest.
+    const homeMarkers = {
+      '<!-- FOOTER_COLUMNS -->': renderFooterColumns(site),
+      '<!-- HOME_STATES -->': renderHomeStates(),
+      '<!-- HOME_GUIDES -->': renderHomeGuides(site),
+      '<!-- HOME_TOOLS -->': renderHomeTools(site),
+    };
+    let homeHtml = readStatic('index.html');
+    for (const [marker, markup] of Object.entries(homeMarkers)) {
+      if (!homeHtml.includes(marker)) throw new Error(`index.html: missing ${marker}`);
+      homeHtml = homeHtml.replace(marker, markup);
+    }
     // Qualify home-section links for nested URLs.
-    const homeHtml = fs.readFileSync(path.join(staticDir, 'index.html'), 'utf8');
     const sharedChrome = (tag) => {
       const block = homeHtml.match(new RegExp(`<${tag}\\b[\\s\\S]*?</${tag}>`))?.[0];
       if (!block) throw new Error(`Canonical home ${tag} missing`);
@@ -305,23 +326,45 @@ export function build(options = {}) {
     };
     const sharedHeader = sharedChrome('header');
     const sharedFooter = sharedChrome('footer');
-    const siteRoutes = new Set(['privacidade/index.html', 'excluir-conta/index.html', 'termos/index.html', '404.html']);
     const isPreview = process.env.PREVIEW === '1';
 
-    for (const { srcRel, destRel } of htmlFiles) {
-      const srcPath = path.join(staticDir, srcRel);
-      if (!fs.existsSync(srcPath)) {
-        throw new Error(`Required HTML file missing: ${srcRel}`);
+    const pages = [];
+    for (const entry of site.registry.values()) {
+      let html;
+      if (entry.kind === 'static' || entry.kind === 'html-guide') {
+        html = entry.chrome === 'home' ? homeHtml : readStatic(entry.source);
+      } else if (entry.kind === 'guide') {
+        html = renderGuide(site, entry, origin);
+      } else if (entry.kind === 'category') {
+        html = renderCategory(site, site.categories.find((c) => c.route === entry.route), origin);
+      } else if (entry.kind === 'guides-hub') {
+        html = renderGuidesHub(site, origin);
+      } else if (entry.kind === 'tools-hub') {
+        html = renderToolsHub(site, origin);
+      } else if (entry.kind === 'tool') {
+        html = renderTool(site, entry, origin);
+      } else if (entry.kind === 'page') {
+        html = renderPage(site, entry, origin);
+      } else {
+        throw new Error(`Unknown page kind for ${entry.route}: ${entry.kind}`);
       }
-      let html = fs.readFileSync(srcPath, 'utf8');
-      if (siteRoutes.has(srcRel) || srcRel.startsWith('guias/') || srcRel.startsWith('como-usar/')) {
-        const prefix = siteRoutes.has(srcRel) ? 'SITE' : 'LEARNING';
-        for (const [part, markup] of [['HEADER', sharedHeader], ['FOOTER', sharedFooter]]) {
-          const marker = `<!-- ${prefix}_${part} -->`;
-          if (!html.includes(marker)) throw new Error(`${srcRel}: missing ${marker}`);
-          html = html.replace(marker, markup);
-        }
+      // Shared chrome markers: generated pages and "shared" pages take both,
+      // "footer" pages keep their own header and take the shared footer.
+      const chrome = entry.chrome || 'shared';
+      if (chrome !== 'home') {
+        const header = ['<!-- SITE_HEADER -->', '<!-- LEARNING_HEADER -->'].find((m) => html.includes(m));
+        const footer = ['<!-- SITE_FOOTER -->', '<!-- LEARNING_FOOTER -->'].find((m) => html.includes(m));
+        if (chrome === 'shared' && !header) throw new Error(`${entry.outputRel}: missing shared header marker`);
+        if (!footer) throw new Error(`${entry.outputRel}: missing shared footer marker`);
+        if (header) html = html.replace(header, sharedHeader);
+        html = html.replace(footer, sharedFooter);
       }
+      pages.push({ srcRel: entry.source || entry.outputRel, destRel: entry.outputRel, html });
+    }
+
+    for (const page of pages) {
+      const { srcRel, destRel } = page;
+      let html = page.html;
 
       // Asset reference rewrites
       html = html.replaceAll('/assets/styles.css', `/assets/${fingerprintedCssName}`);
@@ -329,6 +372,7 @@ export function build(options = {}) {
       if (fingerprintedContributorsName) {
         html = html.replaceAll('/assets/contributors.js', `/assets/${fingerprintedContributorsName}`);
       }
+      html = html.replaceAll('/assets/tools.js', `/assets/${fingerprintedToolsName}`);
       html = html.replaceAll('{{CANONICAL_ORIGIN}}', origin);
       html = html.replaceAll('{{ABASTEVO_API_ORIGIN}}', apiOrigin);
 
@@ -399,6 +443,9 @@ export function build(options = {}) {
       fingerprintedCss: fingerprintedCssName,
       fingerprintedJs: fingerprintedJsName,
       fingerprintedSearch: fingerprintedSearchName,
+      fingerprintedTools: fingerprintedToolsName,
+      pages: pages.length,
+      sitemapUrls: [...site.registry.values()].filter((entry) => entry.indexable).length,
       cssHash,
       jsHash,
       searchHash,
@@ -433,6 +480,8 @@ if (process.argv[1] === __filename) {
   if (result.fingerprintedSearch) {
     console.log(`  Portal search JS: /assets/${result.fingerprintedSearch} (hash ${result.searchHash})`);
   }
+  console.log(`  Tools JS: /assets/${result.fingerprintedTools}`);
+  console.log(`  Pages: ${result.pages} HTML files, ${result.sitemapUrls} sitemap URLs`);
   console.log(`  Store state: ${result.storeState}`);
 }
 

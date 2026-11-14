@@ -5,6 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from '../scripts/build.mjs';
+import { portalRouteLabel } from '../scripts/content/data.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -38,8 +39,13 @@ test('tutorial hub covers all 30 chapters with journeys and no dead links', () =
         assert.ok(hubHtml.includes(`id="${id}"`), `dead anchor ${href}`);
       } else if (href.startsWith('/')) {
         // Shared chrome also links the separately generated same-origin portal.
-        if (['/consultar/', '/fiscalizacao/', '/metodologia/'].includes(href)) {
+        if (['/consultar/', '/fiscalizacao/', '/metodologia/', '/precos/'].includes(href)) {
           assert.ok(fs.existsSync(path.join(root, 'prototype', href, 'index.html')), `missing portal route ${href}`);
+          continue;
+        }
+        // State hubs are portal routes too (SEO-15 footer): only known lowercase UFs.
+        if (/^\/precos\/[a-z]{2}\/$/.test(href)) {
+          assert.ok(portalRouteLabel(href), `unknown portal state route ${href}`);
           continue;
         }
         const [pathname, anchor] = href.split('#');

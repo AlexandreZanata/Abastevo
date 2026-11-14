@@ -2,14 +2,53 @@ import fs from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
+import { isPortalRoute } from './content/data.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
+const HTML_PAGE_BUDGET = 200 * 1024;
+// Bundles copied into dist by the release workflow after this check runs.
+const FOREIGN_BUNDLES = new Set(['admin', 'empresas']);
+
+export function listHtmlPages(distDir) {
+  const pages = [];
+  const walk = (rel) => {
+    const entries = fs.readdirSync(path.join(distDir, rel), { withFileTypes: true })
+      .sort((a, b) => a.name.localeCompare(b.name));
+    for (const entry of entries) {
+      const child = rel === '' ? entry.name : `${rel}/${entry.name}`;
+      if (entry.isDirectory()) {
+        if (rel === '' && (FOREIGN_BUNDLES.has(entry.name) || entry.name === 'assets')) continue;
+        walk(child);
+      } else if (entry.name.endsWith('.html')) {
+        pages.push(child);
+      }
+    }
+  };
+  walk('');
+  return pages;
+}
+
+export function routeForHtml(rel) {
+  if (rel === 'index.html') return '/';
+  if (rel.endsWith('/index.html')) return `/${rel.slice(0, -'index.html'.length)}`;
+  return `/${rel}`;
+}
+
+function directorySize(dir) {
+  let total = 0;
+  for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+    const full = path.join(dir, entry.name);
+    total += entry.isDirectory() ? directorySize(full) : fs.statSync(full).size;
+  }
+  return total;
+}
 
 export function checkDist(options = {}) {
   const root = options.projectRoot || DEFAULT_ROOT;
   const distDir = options.distDir || path.join(root, 'dist');
+  const origin = (options.origin || 'https://abastevo.com.br').replace(/\/$/, '');
   const errors = [];
 
   if (!fs.existsSync(distDir)) {
@@ -90,43 +129,72 @@ export function checkDist(options = {}) {
     errors.push('Missing fingerprinted JS (expected main.[hash].js in dist/assets/)');
   }
 
-  // 3. Inspect HTML files for link integrity, metadata bounds, and JSON-LD
-  const htmlPages = [
-    { rel: 'index.html', isIndexable: true },
-    { rel: 'contribuidores/index.html', isIndexable: true },
-    { rel: 'privacidade/index.html', isIndexable: true },
-    { rel: 'excluir-conta/index.html', isIndexable: true },
-    { rel: 'termos/index.html', isIndexable: true },
-    { rel: '404.html', isIndexable: false },
-  ];
+  // 3. Inspect every emitted landing page: metadata bounds, unique titles and
+  // descriptions, self-canonical on the configured origin, JSON-LD validity,
+  // asset references and internal links. Portal routes are owned by the
+  // separately generated portal artifact (backend portalgen) and merged at the
+  // static edge, so links into them are allowlisted as external to the landing.
+  const htmlPages = listHtmlPages(distDir);
+  const seenTitles = new Map();
+  const seenDescriptions = new Map();
+  const indexableRoutes = new Set();
+  const homeHtml = fs.existsSync(path.join(distDir, 'index.html')) ? fs.readFileSync(path.join(distDir, 'index.html'), 'utf8') : '';
+  let toolsFile = null;
 
-  for (const { rel, isIndexable } of htmlPages) {
+  for (const rel of htmlPages) {
     const full = path.join(distDir, rel);
-    if (!fs.existsSync(full)) continue;
     const content = fs.readFileSync(full, 'utf8');
+    const route = routeForHtml(rel);
+    const isIndexable = !/<meta\s+name="robots"\s+content="[^"]*noindex/i.test(content);
+    if (isIndexable) indexableRoutes.add(route);
 
-    // Title length check (30 - 65 chars)
+    if (content.length > HTML_PAGE_BUDGET) {
+      errors.push(`${rel} (${content.length} bytes) exceeds the ${HTML_PAGE_BUDGET}-byte HTML page budget`);
+    }
+
+    // Title length check (25 - 65 chars)
     const titleMatch = content.match(/<title>([^<]+)<\/title>/);
     if (!titleMatch) {
       errors.push(`${rel} is missing <title> tag`);
     } else {
-      const titleLen = titleMatch[1].trim().length;
-      if (titleLen < 25 || titleLen > 65) {
-        errors.push(`${rel} <title> length (${titleLen}) outside target bounds [25, 65]`);
+      const title = titleMatch[1].trim();
+      if (title.length < 25 || title.length > 65) {
+        errors.push(`${rel} <title> length (${title.length}) outside target bounds [25, 65]`);
+      }
+      if (isIndexable) {
+        if (seenTitles.has(title)) errors.push(`${rel} duplicates the <title> of ${seenTitles.get(title)}: "${title}"`);
+        seenTitles.set(title, rel);
       }
     }
 
-    // Description length check (110 - 165 chars for indexable pages)
     if (isIndexable) {
+      // Description length check (110 - 165 chars for indexable pages)
       const descMatch = content.match(/<meta\s+name="description"\s+content="([^"]+)"/);
       if (!descMatch) {
         errors.push(`${rel} is missing meta description`);
       } else {
-        const descLen = descMatch[1].trim().length;
-        if (descLen < 110 || descLen > 165) {
-          errors.push(`${rel} meta description length (${descLen}) outside target bounds [110, 165]`);
+        const desc = descMatch[1].trim();
+        if (desc.length < 110 || desc.length > 165) {
+          errors.push(`${rel} meta description length (${desc.length}) outside target bounds [110, 165]`);
         }
+        if (seenDescriptions.has(desc)) errors.push(`${rel} duplicates the meta description of ${seenDescriptions.get(desc)}`);
+        seenDescriptions.set(desc, rel);
       }
+
+      // Self-canonical on the configured origin, mirrored by og:url.
+      const canonicals = [...content.matchAll(/<link\s+rel="canonical"\s+href="([^"]+)"/g)].map((m) => m[1]);
+      const expected = `${origin}${route}`;
+      if (canonicals.length !== 1) {
+        errors.push(`${rel} must declare exactly one canonical link (found ${canonicals.length})`);
+      } else if (canonicals[0] !== expected) {
+        errors.push(`${rel} canonical ${canonicals[0]} is not the self URL ${expected}`);
+      }
+      const ogUrl = content.match(/<meta\s+property="og:url"\s+content="([^"]+)"/);
+      if (ogUrl && ogUrl[1] !== expected) {
+        errors.push(`${rel} og:url ${ogUrl[1]} does not match ${expected}`);
+      }
+    } else if (/rel="canonical"/.test(content)) {
+      errors.push(`${rel} is noindex and must not declare a canonical URL`);
     }
 
     // Check JSON-LD validity
@@ -142,6 +210,7 @@ export function checkDist(options = {}) {
         if (parsed['@graph'] && Array.isArray(parsed['@graph'])) {
           const ids = new Set();
           for (const node of parsed['@graph']) {
+            if (!node['@type']) errors.push(`${rel} JSON-LD graph node without @type`);
             if (node['@id']) {
               if (ids.has(node['@id'])) {
                 errors.push(`${rel} JSON-LD contains duplicate @id: ${node['@id']}`);
@@ -149,10 +218,24 @@ export function checkDist(options = {}) {
               ids.add(node['@id']);
             }
           }
+        } else if (!parsed['@type']) {
+          errors.push(`${rel} JSON-LD without @type`);
         }
       } catch (err) {
         errors.push(`${rel} has malformed JSON-LD: ${err.message}`);
       }
+    }
+
+    // No inline executable scripts (CSP script-src 'self'); JSON-LD is data.
+    for (const script of content.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
+      const attrs = script[1];
+      if (/type="application\/ld\+json"/.test(attrs)) continue;
+      if (!/\bsrc="\/assets\/[a-z-]+\.[a-f0-9]{8}\.js"/.test(attrs) || script[2].trim() !== '') {
+        errors.push(`${rel} has an inline or non-fingerprinted script`);
+      }
+    }
+    if (/\son[a-z]+\s*=\s*"/i.test(content)) {
+      errors.push(`${rel} has an inline event handler attribute`);
     }
 
     // Check CSS and JS references if applicable
@@ -164,15 +247,26 @@ export function checkDist(options = {}) {
         errors.push(`${rel} does not reference fingerprinted JS (/assets/${jsFile})`);
       }
     }
+    const toolsRef = content.match(/\/assets\/(tools\.[a-f0-9]{8}\.js)/);
+    if (toolsRef) toolsFile = toolsRef[1];
+    if (/data-tool="/.test(content) && !toolsRef) {
+      errors.push(`${rel} has a calculator form but does not load the fingerprinted tools module`);
+    }
 
-    // Check internal local links / resources
-    // Portal routes are owned by the separately generated portal artifact
-    // (backend/cmd/portalgen) and merged at the static edge; not built here.
-    const portalRoutes = ['/consultar/', '/fiscalizacao/', '/metodologia/'];
-    const srcMatches = Array.from(content.matchAll(/(?:src|href)="(\/[^"#?]+)"/g));
+    // In-page anchors resolve.
+    for (const anchor of content.matchAll(/href="#([^"]+)"/g)) {
+      if (!content.includes(`id="${anchor[1]}"`)) errors.push(`${rel} has a dead in-page anchor #${anchor[1]}`);
+    }
+
+    // Internal links and resources resolve to emitted files or portal routes.
+    const srcMatches = Array.from(content.matchAll(/(?:src|href)="(\/(?!\/)[^"]*)"/g));
     for (const match of srcMatches) {
-      const resourcePath = match[1];
-      if (portalRoutes.includes(resourcePath)) continue;
+      const [pathAndQuery, hash] = match[1].split('#');
+      const resourcePath = pathAndQuery.split('?')[0];
+      if (resourcePath === '/' && hash !== undefined && hash !== '') {
+        if (!homeHtml.includes(`id="${hash}"`)) errors.push(`${rel} links to a missing home anchor /#${hash}`);
+      }
+      if (isPortalRoute(resourcePath)) continue;
       let diskTarget;
       if (resourcePath === '/') {
         diskTarget = path.join(distDir, 'index.html');
@@ -187,35 +281,66 @@ export function checkDist(options = {}) {
     }
   }
 
+  if (!toolsFile) {
+    errors.push('Missing fingerprinted calculators module (expected tools.[hash].js referenced by tool pages)');
+  }
+
   // 4. Sitemap and Robots validation
   const sitemapPath = path.join(distDir, 'sitemap.xml');
+  let sitemapUrls = 0;
   if (fs.existsSync(sitemapPath)) {
     const sitemapContent = fs.readFileSync(sitemapPath, 'utf8');
-    if (!sitemapContent.startsWith('<?xml') || !sitemapContent.includes('<urlset')) {
-      errors.push('sitemap.xml is not valid XML');
+    if (!sitemapContent.startsWith('<?xml') || !sitemapContent.includes('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')) {
+      errors.push('sitemap.xml is not a valid urlset');
     }
     if (sitemapContent.includes('404.html')) {
       errors.push('sitemap.xml must not include 404 page');
     }
-    if (sitemapContent.includes('<lastmod>')) {
-      errors.push('sitemap.xml contains fabricated lastmod');
+    if (/<(priority|changefreq)>/.test(sitemapContent)) {
+      errors.push('sitemap.xml must not declare priority or changefreq');
     }
-    for (const p of ['/', '/privacidade/', '/excluir-conta/', '/termos/']) {
-      if (!sitemapContent.includes(`<loc>https://`)) {
-        errors.push('sitemap.xml loc entries must be absolute HTTPS URLs');
+    const entries = [...sitemapContent.matchAll(/<url>\s*<loc>([^<]+)<\/loc>\s*(?:<lastmod>([^<]+)<\/lastmod>\s*)?<\/url>/g)];
+    const blocks = (sitemapContent.match(/<url>/g) || []).length;
+    if (entries.length !== blocks) errors.push('sitemap.xml has malformed <url> entries');
+    sitemapUrls = entries.length;
+    const listed = new Set();
+    for (const [, loc, lastmod] of entries) {
+      if (!loc.startsWith(`${origin}/`)) {
+        errors.push(`sitemap.xml loc ${loc} is not on the configured origin ${origin}`);
+        continue;
       }
+      const route = loc.slice(origin.length);
+      if (listed.has(route)) errors.push(`sitemap.xml lists ${route} twice`);
+      listed.add(route);
+      if (!indexableRoutes.has(route)) errors.push(`sitemap.xml lists ${route}, which is not an emitted indexable landing page`);
+      if (!lastmod || !/^\d{4}-\d{2}-\d{2}$/.test(lastmod) || Number.isNaN(Date.parse(`${lastmod}T00:00:00Z`))) {
+        errors.push(`sitemap.xml entry ${route} needs a YYYY-MM-DD lastmod`);
+      }
+    }
+    for (const route of indexableRoutes) {
+      if (!listed.has(route)) errors.push(`indexable page ${route} is missing from sitemap.xml`);
     }
   }
 
   const robotsPath = path.join(distDir, 'robots.txt');
   if (fs.existsSync(robotsPath)) {
     const robotsContent = fs.readFileSync(robotsPath, 'utf8');
-    if (!robotsContent.includes('Sitemap:')) {
-      errors.push('robots.txt missing Sitemap directive');
+    if (!robotsContent.includes(`Sitemap: ${origin}/sitemap.xml`)) {
+      errors.push(`robots.txt missing Sitemap directive for ${origin}`);
     }
     if (!robotsContent.includes('User-agent:')) {
       errors.push('robots.txt missing User-agent directive');
     }
+  }
+
+  // llms.txt lists the content hubs and every generated page.
+  const llmsPath = path.join(distDir, 'llms.txt');
+  if (fs.existsSync(llmsPath)) {
+    const llms = fs.readFileSync(llmsPath, 'utf8');
+    for (const route of ['/guias/', '/ferramentas/', '/sobre/', '/politica-editorial/']) {
+      if (!llms.includes(`${origin}${route}`)) errors.push(`llms.txt does not list ${route}`);
+    }
+    if (llms.includes('{{')) errors.push('llms.txt has unresolved placeholders');
   }
 
   // 4. Check essential content in index.html (works without JS)
@@ -280,6 +405,14 @@ export function checkDist(options = {}) {
     }
   }
 
+  if (toolsFile && fs.existsSync(path.join(assetsDir, toolsFile))) {
+    const gzippedTools = zlib.gzipSync(fs.readFileSync(path.join(assetsDir, toolsFile)));
+    const toolsBudget = 10 * 1024; // 10 KiB, loaded only by calculator pages
+    if (gzippedTools.length > toolsBudget) {
+      errors.push(`Calculators JS gzipped size (${gzippedTools.length} bytes) exceeds budget of ${toolsBudget} bytes`);
+    }
+  }
+
   // Self-hosted font payload (LR29: measured 128,916 bytes on 2026-10-11).
   const fontsDir = path.join(assetsDir, 'fonts');
   if (fs.existsSync(fontsDir)) {
@@ -329,11 +462,18 @@ export function checkDist(options = {}) {
     throw new Error(`Landing check failed with ${errors.length} error(s):\n  - ${errors.join('\n  - ')}`);
   }
 
-  return { ok: true, cssFile, jsFile };
+  return { ok: true, cssFile, jsFile, toolsFile, pages: htmlPages.length, sitemapUrls, totalBytes: directorySize(distDir) };
 }
 
 // CLI execution
 if (process.argv[1] === __filename) {
-  const result = checkDist();
-  console.log(`Landing check PASSED: dist is valid (CSS: ${result.cssFile}, JS: ${result.jsFile})`);
+  const args = process.argv.slice(2);
+  const options = {};
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--origin' && args[i + 1]) options.origin = args[++i];
+    else if (args[i] === '--dist-dir' && args[i + 1]) options.distDir = path.resolve(args[++i]);
+  }
+  const result = checkDist(options);
+  console.log(`Landing check PASSED: dist is valid (CSS: ${result.cssFile}, JS: ${result.jsFile}, tools: ${result.toolsFile})`);
+  console.log(`  ${result.pages} HTML pages, ${result.sitemapUrls} sitemap URLs, ${result.totalBytes} bytes in dist`);
 }

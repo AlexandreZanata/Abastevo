@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "staticPages": [
+    { "route": "/", "label": "Página inicial do abastevo", "source": "index.html", "chrome": "home", "lastmod": "2026-11-14" },
+    { "route": "/privacidade/", "label": "Política de privacidade", "source": "privacidade/index.html", "chrome": "shared", "lastmod": "2026-11-05" },
+    { "route": "/excluir-conta/", "label": "Exclusão de conta e dados", "source": "excluir-conta/index.html", "chrome": "shared", "lastmod": "2026-11-05" },
+    { "route": "/termos/", "label": "Termos de uso e moderação", "source": "termos/index.html", "chrome": "shared", "lastmod": "2026-11-05" },
+    { "route": "/contribuidores/", "label": "Contribuidores do projeto", "source": "contribuidores/index.html", "chrome": "footer", "lastmod": "2026-11-05" },
+    {
+      "route": "/guias/pesquisa-anp/", "source": "guias/pesquisa-anp/index.html", "chrome": "shared", "lastmod": "2026-11-05",
+      "guide": {
+        "title": "Como funciona a pesquisa semanal de preços da ANP",
+        "summary": "Amostragem semanal, o que a referência oficial mede e como ela convive com as observações da comunidade.",
+        "category": "dados",
+        "tags": ["anp", "pesquisa-de-precos", "dados-abertos", "fonte-e-data"]
+      }
+    },
+    {
+      "route": "/guias/etanol-ou-gasolina/", "source": "guias/etanol-ou-gasolina/index.html", "chrome": "shared", "lastmod": "2026-10-26",
+      "guide": {
+        "title": "Etanol ou gasolina: a regra dos 70% e como calcular",
+        "summary": "A paridade de 70%, quando ela varia e como medir a relação real no seu carro flex.",
+        "category": "escolher-combustivel",
+        "tags": ["etanol", "gasolina", "carro-flex", "consumo", "economia"]
+      }
+    },
+    {
+      "route": "/guias/como-ler-precos/", "source": "guias/como-ler-precos/index.html", "chrome": "shared", "lastmod": "2026-10-26",
+      "guide": {
+        "title": "Como ler preços na bomba e na placa",
+        "summary": "Fonte, data, condição de pagamento e os selos que separam a referência da ANP das observações da comunidade.",
+        "category": "dados",
+        "tags": ["fonte-e-data", "direitos-do-consumidor", "preco-na-bomba", "anp"]
+      }
+    },
+    { "route": "/como-usar/", "label": "Como usar o aplicativo abastevo", "source": "como-usar/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/escolher-cidade/", "source": "como-usar/escolher-cidade/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/precos-do-posto/", "source": "como-usar/precos-do-posto/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/comunidade/", "source": "como-usar/comunidade/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/conta-e-privacidade/", "source": "como-usar/conta-e-privacidade/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/fotografar-preco/", "label": "Tutorial: fotografar o preço na bomba", "source": "como-usar/fotografar-preco/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/denunciar-abuso/", "source": "como-usar/denunciar-abuso/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/veiculos/", "label": "Tutorial: cadastrar seus veículos no app", "source": "como-usar/veiculos/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/offline-e-recuperacao/", "source": "como-usar/offline-e-recuperacao/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/ajuda-e-regras/", "source": "como-usar/ajuda-e-regras/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/precos-anp/", "label": "Tutorial: preços de referência da ANP no app", "source": "como-usar/precos-anp/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/semanas-anp/", "source": "como-usar/semanas-anp/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/historico/", "source": "como-usar/historico/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/postos/", "source": "como-usar/postos/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/minhas-contribuicoes/", "source": "como-usar/minhas-contribuicoes/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/perfil-do-posto/", "source": "como-usar/perfil-do-posto/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/como-usar/configuracoes/", "source": "como-usar/configuracoes/index.html", "chrome": "shared", "lastmod": "2026-10-26" },
+    { "route": "/404.html", "source": "404.html", "chrome": "shared", "indexable": false }
+  ],
+  "hubs": {
+    "guias": {
+      "title": "Guias sobre combustíveis: preços, escolha e direitos",
+      "description": "Guias com fonte e data sobre preço da gasolina, ICMS, etanol ou gasolina, diesel, GNV, economia de combustível, qualidade e seus direitos no posto.",
+      "intro": "Textos curtos e verificáveis sobre como o preço se forma, como escolher o combustível, como gastar menos e o que fazer quando algo dá errado no posto. Cada guia cita a fonte oficial e mostra a data da última revisão."
+    },
+    "ferramentas": {
+      "title": "Calculadoras de combustível gratuitas",
+      "description": "Calculadoras de etanol ou gasolina, custo de viagem, consumo médio, custo por km e quanto custa encher o tanque, com fórmula explicada e sem cadastro.",
+      "intro": "Cinco calculadoras simples, com a fórmula e um exemplo resolvido em cada página. A conta é feita no seu navegador: nada é enviado, salvo ou rastreado."
+    }
+  },
+  "categories": [
+    {
+      "slug": "escolher-combustivel",
+      "name": "Escolher o combustível",
+      "description": "Etanol ou gasolina, gasolina comum ou aditivada, diesel S10 ou S500 e GNV: como escolher o combustível certo para o seu veículo e para o seu bolso.",
+      "intro": "Comparações honestas entre combustíveis, com o que diz a especificação oficial e como fazer a conta para o seu próprio veículo."
+    },
+    {
+      "slug": "dados",
+      "name": "Dados e transparência",
+      "description": "Como funciona a pesquisa semanal de preços da ANP e como ler preços com fonte, data e condição de pagamento, separando dado oficial e comunidade.",
+      "intro": "De onde vêm os números que você vê no abastevo, o que eles comprovam e o que não comprovam."
+    }
+  ],
+  "popularGuides": [
+    "/guias/etanol-ou-gasolina/",
+    "/guias/pesquisa-anp/",
+    "/guias/como-ler-precos/"
+  ]
+}
