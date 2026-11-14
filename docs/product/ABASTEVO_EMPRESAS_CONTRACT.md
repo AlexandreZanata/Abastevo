@@ -3771,3 +3771,126 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   deleted. Two workers claim the same job concurrently: one produces, one
   object. An audit outage at access or content issues no capability and
   returns no byte.
+
+## EMP-DOC-006 — Fiscal structure: access key, NFC-e QR code and XML structural validation (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc006-fiscal-structure.md).
+
+- **B-BR-EMP-231 — A structure check says only what it checked.**
+  A fiscal structure check is pure and offline: it never contacts a provider
+  or tax authority, never fetches the QR URL, never verifies a signature,
+  authorization protocol, QR hash or CSC and never reads protNFe status codes.
+  Its result has exactly one outcome — STRUCTURE_OK, STRUCTURE_INVALID (a
+  pinned layout or bound is violated) or UNSUPPORTED (the input is not
+  identified as a handled layout, version, variant, host or model; never
+  reported as invalid) — one closed reason for a non-OK outcome, and the
+  ordered checks that ran, the last one deciding a non-OK outcome. A non-OK
+  result exposes no extracted value. The result has no authorization,
+  cancellation, consultation or "validated" field. It feeds only the document
+  Structure dimension, through the EMP-DOC-001 command
+  UNCHECKED→STRUCTURE_OK or UNCHECKED→STRUCTURE_INVALID; UNSUPPORTED commands
+  nothing (Structure stays UNCHECKED); fiscal consultation is never touched
+  (BR-TRUTH-001/002, EDR-014, EDR-134). Comparing two STRUCTURE_OK results
+  that carry keys gives STRUCTURE_OK on equal keys or STRUCTURE_INVALID
+  KEY_MISMATCH (check KEY_MATCH); any other operand is NOT_COMPARABLE.
+  String, log and JSON forms of keys and results are redacted.
+- **B-BR-EMP-232 — Access key profile.**
+  Exactly 44 ASCII characters: positions 1–6 digits, 7–18 digits or
+  uppercase A–Z, 19–44 digits (the NT 2025.001 alphanumeric-CNPJ layout of
+  18-references §3, AS-10). Check order (KEY_FORMAT): a character outside
+  0–9/A–Z → KEY_CHARACTER; length other than 44 → KEY_LENGTH; position
+  profile → KEY_CHARACTER. KEY_CHECK_DIGIT: modulo 11 over the first 43
+  characters, each valued as its ASCII code minus 48, weights 2..9 repeating
+  from the right; the digit is 11 − remainder, or 0 when the remainder is 0 or
+  1; a different 44th character → KEY_CHECK_DIGIT. KEY_FIELDS: UF code outside
+  the 27 IBGE state codes → KEY_STATE; month outside 01..12 → KEY_MONTH; model
+  other than 55 or 65 → UNSUPPORTED KEY_MODEL_UNSUPPORTED (another document
+  type sharing the layout). Nothing is trimmed, case-folded or reformatted. A
+  STRUCTURE_OK key exposes UF, year-month, issuer field, model, series,
+  number, emission type, numeric code and check digit as text. The issuer
+  field's own CNPJ/CPF check digits, the emission type and the series/number
+  ranges are not checked in a key. Because remainders 0 and 1 both give digit
+  0, a key whose digit is 0 can collide with a mistyped key; a structure
+  check is never identity or authenticity.
+- **B-BR-EMP-233 — NFC-e QR code reference.**
+  QR_SIZE: more than 2953 UTF-8 bytes (QR symbol capacity) → QR_TOO_LARGE.
+  QR_URL: not starting with `http://` or `https://` (scheme ASCII
+  case-insensitive) → UNSUPPORTED QR_NOT_URL; an authority (up to the first
+  `/` or `?`) that is not a plain DNS host name ending in `.gov.br` with at
+  least one label before it (ASCII case-insensitive; labels of 1–63 letters,
+  digits or inner hyphens; at most 253 characters; no user info, port, IP
+  literal or trailing dot) → UNSUPPORTED QR_HOST_UNSUPPORTED; then any
+  character outside visible ASCII, a `#` fragment or a `%` escape that is not
+  two hex digits decoding to visible ASCII → QR_MALFORMED. QR_PARAMETERS: no query parameter named exactly `p`
+  (including the legacy version-1 `chNFe` query) → UNSUPPORTED
+  QR_FORMAT_UNSUPPORTED; any other or repeated parameter →
+  QR_UNEXPECTED_PARAMETER. The `p` value is percent-decoded once and split at
+  `|`. QR_VERSION: fewer than two fields or a version other than `2` or `3` →
+  UNSUPPORTED QR_VERSION_UNSUPPORTED; version 3 with other than three fields
+  (its contingency variant) → UNSUPPORTED QR_VARIANT_UNSUPPORTED. QR_FIELDS
+  (→ QR_FIELDS): version 2 online is key|2|environment|CSC id|hash and
+  version 2 offline is key|2|environment|day|total|digest|CSC id|hash; any
+  other version-2 field count is invalid; version 3 online is
+  key|3|environment; environment is `1` (PRODUCTION) or `2` (HOMOLOGATION);
+  CSC id 1–6 digits; hash 40 hex digits; day 01–31; digest 1–128 hex digits;
+  total in the exact decimal profile of B-BR-EMP-234. Then the key rules of
+  B-BR-EMP-232 on the first field, then QR_MODEL: model other than 65 →
+  UNSUPPORTED QR_MODEL_UNSUPPORTED. A STRUCTURE_OK reference exposes key,
+  version, environment, layout (ONLINE/OFFLINE) and, offline, the exact total
+  text and its centavos. The hash, digest and day are never verified against
+  anything and the URL is never opened.
+- **B-BR-EMP-234 — Bounded NF-e/NFC-e XML envelope (server only).**
+  XML_SIZE: more than 1 MiB (BR-PRIV-020) → XML_TOO_LARGE before any parsing;
+  a leading UTF-8 byte-order mark is skipped. XML_PARSE is one strict
+  streaming pass with no entity map and no charset conversion that stops at
+  the first offending token: any `<!` declaration (DOCTYPE, ENTITY, external
+  or internal subset, anywhere) → XML_DOCTYPE, never expanded; a processing
+  instruction other than an XML declaration as the very first token →
+  XML_INSTRUCTION; nesting deeper than 32 → XML_DEPTH; more than 100 000
+  elements → XML_ELEMENTS; input not well formed, not UTF-8, with an
+  undefined entity reference, non-blank text outside the root, no root or a
+  second root → XML_MALFORMED. Then XML_ROOT: a root other than `NFe` or
+  `nfeProc` in namespace `http://www.portalfiscal.inf.br/nfe` → UNSUPPORTED
+  XML_ROOT_UNSUPPORTED. XML_ENVELOPE: `NFe` exactly once under `nfeProc`, and
+  `infNFe` exactly once with exactly one `Id` starting `NFe` and one `versao`
+  → XML_ENVELOPE. XML_VERSION: `versao` other than `4.00` → UNSUPPORTED
+  XML_VERSION_UNSUPPORTED. The rest of `Id` follows B-BR-EMP-232. XML_FIELDS:
+  exactly one leaf each of ide/cUF, cNF, mod, serie, nNF, dhEmi, tpEmis, cDV,
+  exactly one ide, emit, total, total/ICMSTot and total/ICMSTot/vNF, at most
+  one emit/CNPJ, emit/CPF and `protNFe`, and exactly one protNFe/infProt/chNFe when
+  `protNFe` exists; a watched leaf containing an element → XML_FIELDS.
+  XML_ISSUER: emit/CNPJ not exactly 14 characters accepted by the kernel CNPJ
+  type → XML_ISSUER; emit/CPF without emit/CNPJ → UNSUPPORTED
+  XML_ISSUER_UNSUPPORTED; neither → XML_ISSUER. XML_KEY_CONSISTENCY: the key
+  differs from cUF, the dhEmi year-month (`YYYY-MM-` prefix), emit/CNPJ, mod,
+  the canonical serie (`0|[1-9][0-9]{0,2}`) and nNF (`[1-9][0-9]{0,8}`)
+  zero-padded to 3 and 9, tpEmis, cNF, cDV or protNFe chNFe →
+  XML_KEY_MISMATCH. XML_ITEMS: `det` count outside 1..990 → XML_ITEMS.
+  XML_TOTAL: vNF not exactly matching `0|0\.[0-9]{2}|[1-9][0-9]{0,12}(\.[0-9]{2})?`
+  → XML_TOTAL. Values are compared as exact text, never trimmed. A
+  STRUCTURE_OK document exposes the key, the item count and the exact total
+  text; centavos come only from the existing exact parser within
+  0..1 000 000 000 000 and are otherwise absent, never rounded. Signatures,
+  protocol status, items, taxes and any other element are not checked.
+- **BUC-EMP-118 — Read a scanned NFC-e QR code during capture.**
+  Actor: the app capture flow (EMP-DOC-009) of an authorized field member.
+  Flow: the scanned payload is checked on the device → STRUCTURE_OK offers
+  the key, environment and, for an offline code, the exact total as
+  suggestions labelled as structure checked → the member confirms or types
+  the key, and a typed key is compared with the QR key. Alternatives:
+  UNSUPPORTED says the code is not a handled NFC-e reference and keeps manual
+  entry; STRUCTURE_INVALID names the failed check and keeps manual entry; a
+  HOMOLOGATION environment is shown as a test document. Nothing is fetched
+  and no fiscal status is shown. Result: a structure-checked suggestion or
+  manual entry; the document fiscal consultation stays NOT_CONSULTED.
+- **BUC-EMP-119 — Check a stored NF-e/NFC-e XML on the server.**
+  Actor: server-side document processing (EMP-DOC-014 job; consumers
+  EMP-DOC-007/008). Flow: a STORED XML original is moved
+  NOT_APPLICABLE→UNCHECKED, checked within its bounds, and the result
+  commands Structure → STRUCTURE_OK keeps the key (duplicate signal,
+  EMP-DOC-008), item count and exact total (EMP-DOC-007) and may be compared
+  with a captured QR or typed key. Alternatives: STRUCTURE_INVALID records
+  the reason while the original stays preserved; UNSUPPORTED leaves
+  Structure UNCHECKED; unsafe XML is refused without expansion. Result: the
+  Structure status states only what was checked; fiscal consultation remains
+  with its authorized port (EMP-INTEG-004).

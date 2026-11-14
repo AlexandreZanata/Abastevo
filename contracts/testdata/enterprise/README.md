@@ -291,3 +291,15 @@ client must consume the same file. See [payable/README.md](payable/README.md).
 ```sh
 (cd backend && go test -race ./internal/modules/expense/domain/payable -count=1)
 ```
+
+## Fiscal structure vectors v1
+
+EMP-DOC-006 executes all 307 rows of [fiscal/fiscal-v1.psv](fiscal/fiscal-v1.psv)
+(KEY 64, QR 110, XML 111, COMPARE 13, FEED 9) in Go; the 189 key, QR and
+comparison rows also run in Kotlin, while the XML rows are server-only
+(EDR-159). Results are STRUCTURE_OK, STRUCTURE_INVALID or UNSUPPORTED and never
+a fiscal authorization. See [fiscal/README.md](fiscal/README.md).
+
+```sh
+(cd backend && go test -race ./internal/modules/document/domain/fiscal -count=1)
+```

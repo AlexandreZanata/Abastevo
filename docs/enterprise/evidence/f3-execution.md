@@ -410,6 +410,25 @@ scoped readers (RPT-002), auditor/export matrix (AUTH-011), inline small CSV
 and cancel, notifications/events, configurable retention, streaming above
 16 MiB, operator replay of dead jobs, production grants and storage lifecycle.
 
+### EMP-DOC-006 — fiscal structure checks: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-doc006-fiscal-structure.md). Pure `document/domain/fiscal` (Go)
+and `enterprise.document.fiscal` (Kotlin) over the 307-case `fiscal-v1.psv`
+oracle: 44-character access key layout and modulo-11 digit (alphanumeric
+issuers per AS-10), NFC-e QR version 2 online/offline and version 3 online on
+`.gov.br` hosts (others UNSUPPORTED, never guessed INVALID), and a server-only
+bounded XML envelope check (1 MiB, depth 32, 100 000 elements; any DOCTYPE or
+entity refused unexpanded; totals stay exact text). Results are
+STRUCTURE_OK/STRUCTURE_INVALID/UNSUPPORTED with the checks that ran and never
+an authorization (EDR-158/159). RED Go 8/13 top-level and 302/302 vectors,
+Kotlin 190/192 failing → GREEN Go 13/307 under `-race` (100% statements),
+Kotlin enterprise suite 2285/0/0 on this branch; 14 hand mutations each caught.
+A digit-0 key collision is pinned as STRUCTURE_OK (structure is not identity).
+Retained: persisting results and the XML inspector (DOC-014), items and
+allocations (DOC-007), duplicates (DOC-008), app QR capture (DOC-009), fiscal
+consultation (INTEG-004), a reviewed per-state QR URL list, CPF issuers;
+version-2 QR field shapes are UNVERIFIED against the primary manual.
+
 ## Interruption — 2026-11-14 (resumed)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,

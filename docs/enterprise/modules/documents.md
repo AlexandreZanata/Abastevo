@@ -9,6 +9,10 @@ EMP-DOC-002 persists the document container (`org_documents`, migration
 000205), the creator-bound upload session with its capability-bound ingress and
 the audited content routes ([evidence](../evidence/f3-doc002-document-persistence.md));
 verification and lifecycle jobs retain EMP-DOC-014 ownership.
+EMP-DOC-006 adds pure structure checks for access keys, NFC-e QR codes and a
+bounded server-only XML envelope ([evidence](../evidence/f3-doc006-fiscal-structure.md));
+a STRUCTURE_OK result commands only the structure status and never fiscal
+consultation.
 The current synthetic inspector accepts JPEG; other format inspectors are
 not activated by a MIME declaration or a READY flag.
 

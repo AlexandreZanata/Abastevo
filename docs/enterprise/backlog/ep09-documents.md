@@ -109,7 +109,7 @@ Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DO
 - **Done when:** Authorized and denied reviews pass with one auditable outcome per accepted decision.
 
 ### EMP-DOC-006 — Fiscal structure: access key, NFC-e QR code and XML structural validation
-- **Meta:** module DOC · phase F3 · cut - · priority P1 · type DOM · size M · state TODO
+- **Meta:** module DOC · phase F3 · cut - · priority P1 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Distinguish locally checked fiscal structure from authorized fiscal status.
 - **Rules and use cases:** EDR-014, BR-TRUTH-001, BR-TRUTH-002, BR-PRIV-020, REQ-10.2, REQ-10.4
 - **Depends on:** EMP-DOC-002
@@ -123,6 +123,13 @@ Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DO
 - **Validation:** V-DOM, V-PRIV · migration: none · rollback: disable optional structure checks while preserving originals
 - **Risks and assumptions:** Review any new parser dependency and the applicable formats separately.
 - **Done when:** Synthetic structural and rejection vectors pass without provider contact.
+
+- **Result (2026-11-14, LOCAL_DONE):** pure Go `document/domain/fiscal` and Kotlin
+  `enterprise.document.fiscal` (key, QR, comparison; XML envelope server-only)
+  report STRUCTURE_OK/STRUCTURE_INVALID/UNSUPPORTED with closed reasons and the
+  checks run, feeding only Structure (EDR-158..159); oracle `fiscal-v1.psv`
+  (307 cases). No provider contact, persistence, route, job or app surface.
+  [Evidence](../evidence/f3-doc006-fiscal-structure.md).
 
 ### EMP-DOC-007 — Fiscal items and allocations without double counting
 - **Meta:** module DOC · phase F3 · cut - · priority P1 · type DB · size M · state TODO
