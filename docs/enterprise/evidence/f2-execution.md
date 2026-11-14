@@ -6,6 +6,11 @@ Validation: PENDING
 Integration: INTEGRATION_PENDING
 
 The maintainer requests the entire F2, not only an initial fleet task. Continue
+through its actual dependencies and acceptance. The maintainer subsequently
+authorizes [F3 after F2](f3-authorized-sequence.md), with unfinished cross-phase
+dependencies completed/validated first, and reiterates unattended recommended
+decisions without questions. This preserves the current bounded task and does
+not start dependent F3 work early. Continue
 on owned `codex/enterprise-f2` from tested/published dev
 `fac002e7d507a230d4947a3ed563269ad48f8c8e`. Main `6a19bcc7` is an ancestor;
 cumulative dev → main PR203 remains open. Other occupied checkouts are preserved.
@@ -80,13 +85,29 @@ API contract/cmd/api and source/protocol/generation/static/secret checks pass.
 This includes real signatures, original ACK recovery, weighted budgets,
 12-way contention, held facts, deferred commit rollback, populated two-org RLS,
 original enrollment/current read coverage and personal erasure/export privacy.
-Six checkpoints are local;58 audited nodes remain open. Next: commit/back up
-this checkpoint and begin EMP-OFFL-003 on the accepted protected store.
+Six checkpoints preceded the queue task. OFFL-002 commitd24b0d4f
+is backed up at origin/codex/enterprise-f2. EMP-OFFL-003 is LOCAL_DONE from
+that head: [protected queue](f2-offl003-protected-operation-queue.md).
+B-BR-EMP-115..122, BUC-EMP-58..60 and EDR-076..080 precede behavior. Extend
+the accepted protected store with typed atomic local operation/ACK projection,
+exact source-attempt leases, actual signed retry and opaque WorkManager jobs;
+retain legacy work unsent and keep missing real producers closed.
+Seven checkpoints are now local;57 audited nodes remain open. OFFL-003 passes
+consolidated182 host cases,15 final application cases after two new REDs and
+seven affected ViewModel tests. All four final API36 native methods pass:
+actual two-account key-prefix isolation, proof redaction, independent two-org
+save after real response loss and cold-process ACK recovery. Its ordinary
+PostGIS/race source verifies exactly two joined records/effects/ACKs/follow-ups
+and original receipt replay, without duplicate effects. A real provider-prefix
+mismatch found only on Android received its own native RED→GREEN. Normal
+Hilt/build/lint and actual OS startup Worker execution pass; producer registry
+stays empty. The source/test manifest and diagnostic failures/fixes remain in
+the queue evidence. Next bounded task: EMP-OFFL-004 truthful status/pending UI.
 Missing real feature/history/review/admission producers remain closed;
 no production no-op handler or F4 exception substitutes for those integrations.
 Use phase tracker215 and cumulative PR203, without an intermediate PR or
 remote-check wait. The signed intake boundary and ledger are implemented;
-asset persistence, durable operation queue and actual business registrations
+asset persistence, status/reference flows and actual business registrations
 remain next work. The full F2 scope remains in progress;
 M1/M2/C1 is not accepted by these checkpoints.
 

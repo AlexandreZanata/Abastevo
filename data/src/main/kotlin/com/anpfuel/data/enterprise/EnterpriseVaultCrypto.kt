@@ -30,7 +30,7 @@ interface EnterpriseVaultKeys {
     fun classify(failure: Exception): EnterpriseKeyUse = EnterpriseKeyUse.OTHER
 }
 
-internal enum class VaultKind { RECORD, OPERATION, ATTACHMENT, CACHE }
+internal enum class VaultKind { RECORD, OPERATION, ATTACHMENT, CACHE, QUEUE }
 internal class VaultEntry(val kind: VaultKind, val id: String, val target: String, val bytes: ByteArray)
 internal class VaultSnapshot(
     val partition: EnterprisePartition,
@@ -101,6 +101,7 @@ internal object EnterpriseVaultCodec {
 
     private fun encode(s: VaultSnapshot): PlainBuffer {
         require(s.entries.size <= MAX_ENTRIES)
+        require(s.bound != null || s.entries.values.none { it.kind == VaultKind.QUEUE })
         val bound = s.entries.values.sumOf { it.bytes.size.toLong() + 512 } + 2048
         require(bound <= MAX_PLAIN)
         val plain = PlainBuffer(bound.toInt())
@@ -148,6 +149,7 @@ internal object EnterpriseVaultCodec {
                 val ordinal = input.readInt()
                 require(ordinal in VaultKind.entries.indices)
                 val kind = VaultKind.entries[ordinal]
+                require(kind != VaultKind.QUEUE || version == 2)
                 val id = EnterprisePartition.requireId(input.readUTF())
                 val target = input.readUTF()
                 require(if (kind == VaultKind.OPERATION) runCatching { EnterprisePartition.requireId(target) }.isSuccess else target.isEmpty())

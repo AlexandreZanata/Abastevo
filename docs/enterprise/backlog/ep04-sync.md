@@ -56,7 +56,7 @@ Full affected API contract/cmd/api, protocol/application, generation/static/
 format/secret checks pass. Protected integration remains pending.
 
 ### EMP-OFFL-003 — Android persistent operation queue with immutable organization context
-- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size L · state TODO
+- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size L · state LOCAL_DONE
 - **Objective:** Persist each Android operation with its original organization and actor context.
 - **Rules and use cases:** BR-OFFL-001, BR-OFFL-002, BR-OFFL-003, BR-OFFL-005, BR-OFFL-013, BR-TEN-004, BR-PRIV-016, UC-OFFL-01
 - **Depends on:** EMP-OFFL-001, EMP-PLAT-011
@@ -70,6 +70,14 @@ format/secret checks pass. Protected integration remains pending.
 - **Validation:** V-APP, V-SYNC, V-IDEM, V-ISO, V-PRIV · migration: test upgrade and personal-storage preservation · rollback: pause sending without deleting queued data
 - **Risks and assumptions:** The approved device protection applies to private queue payloads and files. Context changes cannot retag records.
 - **Done when:** Queue durability and independent retry converge in process-death and two-organization tests.
+
+[F2 protected queue acceptance](../evidence/f2-offl003-protected-operation-queue.md),
+from tested/published OFFL-002 d24b0d4f. B-BR-EMP-115..122, BUC-EMP-58..60 and
+EDR-076..080 precede behavior. Runtime producer/permission and C1 readiness stay
+separate from typed queue/source acceptance. Use the owned API36 emulator.
+Host/race, real two-account Keystore isolation, signed lost-answer/process
+recovery and normal Hilt/OS Worker acceptance pass. The runtime producer
+registry remains empty. Protected integration is pending.
 
 ### EMP-OFFL-004 — App: sync status model and the pending-sync screen
 - **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO

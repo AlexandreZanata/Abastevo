@@ -1,6 +1,8 @@
 package com.anpfuel.data.enterprise
 
 import com.anpfuel.application.enterprise.*
+import com.anpfuel.application.enterprise.queue.EnterpriseQueueAccountLease
+import com.anpfuel.application.enterprise.queue.EnterpriseQueueAttempt
 import com.anpfuel.domain.enterprise.*
 import java.io.IOException
 import javax.crypto.AEADBadTagException
@@ -18,6 +20,111 @@ class ProtectedEnterprisePersistence(
     private val clock: () -> EnterpriseDeviceClock,
     private val authority: EnterpriseContactAuthority,
 ) : EnterprisePersistence, EnterpriseContextProtection {
+    /** The source obtains exact retained enrollment facts without opening a managed payload key. */
+    suspend fun protectedEnrollment(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): EnterpriseEnrollmentBinding = guarded {
+        fence.access {
+            checkedQueueAccount(account, partition)
+            files.locked(EnterpriseVaultCodec.accountTag(partition.ownerAccount, partition.origin)) {
+                checkedQueueAccount(account, partition)
+                val descriptor = queueDescriptor(account, EnterpriseVaultCodec.token(partition)) ?: throw EnterpriseLocalDenied()
+                if (descriptor.partition != partition) throw EnterpriseLocalDenied()
+                checkedQueueAccount(account, partition)
+                descriptor.enrollment()
+            }
+        }
+    }
+
+    /** A new invocation starts with null; only this current account's opaque candidates are inspected. */
+    suspend fun discover(account: EnterpriseQueueAccountLease, afterOpaque: String? = null,
+        limit: Int = 50): EnterpriseQueueDiscoveryPage {
+        require(limit in 1..50)
+        return guarded {
+            fence.access {
+                checkedQueueAccount(account)
+                val tag = EnterpriseVaultCodec.accountTag(account.identity.account, account.identity.origin)
+                if (afterOpaque != null && (!Regex("[0-9a-f]{64}-[0-9a-f]{64}").matches(afterOpaque) ||
+                    !afterOpaque.startsWith("$tag-"))) throw EnterpriseLocalDenied()
+                files.locked(tag) {
+                    checkedQueueAccount(account)
+                    val tokens = sortedSetOf<String>()
+                    tokens += files.tokens(tag)
+                    for (prefix in listOf(EnterpriseVaultGenerationNames.PREFIX + tag + "-",
+                        EnterpriseVaultGenerationNames.PREFIX + "denied_" + tag + "-",
+                        EnterpriseVaultGenerationNames.PREFIX + "lock_" + tag + "-")) {
+                        tokens += keys.aliases(prefix).mapNotNull(EnterpriseVaultGenerationNames::token)
+                    }
+                    check(tokens.size <= AtomicEnterpriseVaultFiles.MAX_DISCOVERY)
+                    val candidates = tokens.filter { it.startsWith("$tag-") && (afterOpaque == null || it > afterOpaque) }.take(limit)
+                    val bindings = mutableListOf<EnterpriseEnrollmentBinding>()
+                    var unavailable = 0
+                    for (token in candidates) {
+                        checkedQueueAccount(account)
+                        try {
+                            queueDescriptor(account, token)?.let { bindings += it.enrollment() }
+                        } catch (denied: EnterpriseLocalDenied) { throw denied }
+                        catch (_: Exception) { unavailable++ }
+                    }
+                    checkedQueueAccount(account)
+                    val last = candidates.lastOrNull()
+                    EnterpriseQueueDiscoveryPage(bindings, last?.takeIf { token -> tokens.any { it > token } }, unavailable)
+                }
+            }
+        }
+    }
+
+    /** Caller predicates are an additional fence, never a replacement for the actual store's source. */
+    private fun checkedQueueAccount(account: EnterpriseQueueAccountLease, partition: EnterprisePartition? = null) {
+        account.assertCurrent()
+        val current = try { identity() } catch (_: Exception) { null }
+        if (current != account.identity || fence.epoch != account.epoch || fence.backgroundEpoch != account.background ||
+            (partition != null && !account.identity.owns(partition))) throw EnterpriseLocalDenied()
+    }
+
+    private fun VaultMaintenance.enrollment() = EnterpriseEnrollmentBinding(
+        EnterpriseDeviceTarget(partition, lease.membershipId), lease.enrollmentId, lease.enrollmentRevision)
+
+    private fun queueDescriptor(account: EnterpriseQueueAccountLease, token: String): VaultMaintenance? {
+        if (erasure.deniedLocked(token)) return null
+        val descriptor = generations.descriptor(token) ?: return null
+        if (!account.identity.owns(descriptor.partition) || descriptor.lease.time.sessionFamily != account.identity.family) return null
+        when (EnterpriseOfflineProtection.evaluate(descriptor.lease.time, clock())) {
+            EnterpriseLeaseDecision.ERASE -> { erasure.eraseLocked(token); return null }
+            EnterpriseLeaseDecision.RECONFIRM -> { erasure.requireContactLocked(token); return null }
+            EnterpriseLeaseDecision.ALLOW -> Unit
+        }
+        if (keys.existing(EnterpriseVaultGenerationNames.retained(token)) != null) return null
+        return descriptor
+    }
+
+    internal suspend fun <T> queueAccess(attempt: EnterpriseQueueAttempt,
+        work: (VaultSnapshot) -> VaultQueueChange<T>): T {
+        attempt.assertCurrent()
+        val result = access(attempt.partition, true, commitWhen = { it.changed },
+            afterCommit = { checkedQueueAttempt(attempt, it) }) { snapshot ->
+            checkedQueueAttempt(attempt, snapshot)
+            val change = work(snapshot)
+            checkedQueueAttempt(attempt, snapshot)
+            change
+        }
+        checkedQueueAccount(attempt.account, attempt.partition)
+        return result.value
+    }
+
+    private fun checkedQueueAttempt(attempt: EnterpriseQueueAttempt, snapshot: VaultSnapshot) {
+        attempt.assertCurrent()
+        checkedQueueAccount(attempt.account, snapshot.partition)
+        val bound = snapshot.bound ?: throw EnterpriseVaultUnrecoverable()
+        val expected = EnterpriseEnrollmentBinding(EnterpriseDeviceTarget(snapshot.partition, bound.membershipId),
+            bound.enrollmentId, bound.enrollmentRevision)
+        if (snapshot.partition != attempt.partition || expected != attempt.enrollment ||
+            snapshot.lease.sessionFamily != attempt.account.identity.family) throw EnterpriseLocalDenied()
+        when (EnterpriseOfflineProtection.evaluate(snapshot.lease, clock())) {
+            EnterpriseLeaseDecision.ERASE -> { erasure.eraseLocked(EnterpriseVaultCodec.token(snapshot.partition)); throw EnterpriseLocalDenied() }
+            EnterpriseLeaseDecision.RECONFIRM -> { erasure.requireContactLocked(EnterpriseVaultCodec.token(snapshot.partition)); throw EnterpriseLocalDenied() }
+            EnterpriseLeaseDecision.ALLOW -> Unit
+        }
+    }
+
     private fun owner(p: EnterprisePartition): EnterpriseLocalIdentity {
         val current = try { identity() } catch (_: Exception) { null }
         return current?.takeIf { it.owns(p) } ?: throw EnterpriseLocalDenied()
@@ -133,7 +240,8 @@ class ProtectedEnterprisePersistence(
         catch (_: OutOfMemoryError) { throw EnterprisePersistenceUnavailable() }
     }
 
-    private suspend fun <T> access(p: EnterprisePartition, write: Boolean, work: (VaultSnapshot) -> T): T {
+    private suspend fun <T> access(p: EnterprisePartition, write: Boolean,
+        commitWhen: (T) -> Boolean = { write }, afterCommit: (VaultSnapshot) -> Unit = { }, work: (VaultSnapshot) -> T): T {
         val epoch = fence.epoch
         return guarded {
             fence.access {
@@ -153,7 +261,8 @@ class ProtectedEnterprisePersistence(
                     val s = generations.load(p) ?: throw EnterpriseLocalDenied()
                     if (s.bound == null) throw EnterpriseVaultUnrecoverable()
                     val result = work(s)
-                    if (write) generations.commit(s)
+                    if (write && commitWhen(result)) generations.commit(s)
+                    afterCommit(s)
                     if (before != owner(p) || epoch != fence.epoch || erasure.deniedLocked(token)) throw EnterpriseLocalDenied()
                     result
                 }
@@ -212,3 +321,5 @@ class ProtectedEnterprisePersistence(
         }
     }
 }
+
+internal class VaultQueueChange<T>(val value: T, val changed: Boolean = false)

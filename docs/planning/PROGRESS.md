@@ -1,40 +1,34 @@
 # Current execution state
-- Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2` from
-  tested/published dev `fac002e7`; main `6a19bcc7` remains an ancestor.
+- Authorized continuation, 2026-11-13: finish the whole in-progress F2, then
+  implement F3 after completing and validating unfinished cross-phase dependencies.
+  [F3 sequence](../enterprise/evidence/f3-authorized-sequence.md) records the
+  requested scope/M3 entry and exit. The maintainer reiterates overnight autonomy:
+  choose recommended routine decisions, record them, and ask no questions.
+  F3 is queued; EMP-OFFL-003 remains the sole bounded implementation task.
+- Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2`
+  from published dev `fac002e7`; verified main `6a19bcc7` remains an ancestor.
   [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
   all34 F2 tasks,25 transitive prerequisites and the additional formal M1 chain.
-  Six checkpoints are LOCAL_DONE / INTEGRATION_PENDING;58 audited nodes remain.
-  Completed: [FLEET-001](../enterprise/evidence/f2-fleet001-asset-domain.md)
-  (2daea515), [OFFL-001](../enterprise/evidence/f2-offl001-sync-protocol.md)
-  (1cc9a7b3), [AUTH-009](../enterprise/evidence/f2-auth009-authorization-conformance.md)
-  (4743e0b9), [ORG-014](../enterprise/evidence/f2-org014-onboarding-settings-panel.md)
-  (efd7e886), [PRIV-003](../enterprise/evidence/f2-priv003-protection-completion.md)
-  (51c25146), and now [OFFL-002](../enterprise/evidence/f2-offl002-intake-ledger.md).
-  Linked evidence retains the shared133/260 vectors, actual120-cell authorization
-  matrix, company web acceptance and22 real API36 native executions/16 methods.
-  Those five committed checkpoints are backed up at origin/codex/enterprise-f2.
-  OFFL-002 adds complete signed batch preflight, independent scoped transactions,
-  immutable claims/ACKs/effect proofs and current protected receipt/dependency
-  reads. B-BR-EMP-108..114, BUC-EMP-56/57 and EDR-071..075 precede behavior.
-  Final ordinary PostGIS/race union passes24 top-level/46 named cases/40 leaves
-  with zero failures/skips; three transport-only unit cases pass separately.
-  Scope includes actual signatures/nonces, replay/weighted quota, twelve-way
-  contention, late-source withholding, deferred commit failure/recovery,
-  populated two-org RLS, enrollment/creator/read coverage, migration195→196
-  recovery/previous-chain compatibility and personal erasure/export privacy.
-  Protocol/application race93.9%/93.5%, complete API contract327.733s and
-  cmd/api18.477s pass. The stale OFFL-001 no-route assertion was corrected with
-  isolated RED→GREEN while retaining every shared payload/hash/ACK check.
-  sqlc generation/vet, pinned vet/static/format, plan/diff/secret review pass.
-  Production business/history/review/follow-up registrations and measured intake
-  budget remain absent/closed; fixtures do not activate F4 or business readiness.
-  Next: commit/back up this checkpoint, then implement EMP-OFFL-003 durable
-  Android queue on the accepted protected store. The user authorizes the isolated
-  emulator while the phone is disconnected; it is parked after PRIV-003 acceptance.
-  Preserve other work/devices/data. M1/M2/C1 and the whole F2 remain unaccepted.
-  PR203 dev head still contains the earlier published batch; final phase delivery
-  uses protected dev → main. Parent Quick passed at opening; no construction CI
-  polling, merge, deployment or wiki publication.
+  Seven checkpoints are LOCAL_DONE / INTEGRATION_PENDING;57 audited nodes remain.
+  Completed: FLEET-001(2daea515), OFFL-001(1cc9a7b3), AUTH-009(4743e0b9),
+  ORG-014(efd7e886), PRIV-003(51c25146), OFFL-002(d24b0d4f), and
+  [OFFL-003 protected queue](../enterprise/evidence/f2-offl003-protected-operation-queue.md).
+  The first six are backed up at origin/codex/enterprise-f2; queue atomic commit
+  and backup are next. No other checkout is modified.
+  OFFL-003 passes182 consolidated host cases,15 final application cases and
+  seven affected ViewModel cases; all four final API36 native methods pass.
+  Native acceptance found/fixed an actual Android discovery-prefix mismatch;
+  real signed response loss, process death, original ACK and two independent
+  organizations converge without duplicate effects. Ordinary PostGIS/race
+  source107.147s, full affected lint/build and actual normal Hilt/OS Worker
+  execution pass. Runtime producers stay empty; legal/provider/release gates
+  remain separate. The29-file source manifest pins tested behavior.
+  Next: publish the atomic OFFL-003 checkpoint, then EMP-OFFL-004 status/pending
+  UI before dependent work. The user authorizes only the owned API36 emulator
+  while the phone is disconnected; preserve other devices/apps/data.
+  PR203 dev still contains the earlier batch. Final phase delivery uses protected
+  dev → main; no construction CI polling, merge, deployment or wiki publication.
+  Full F2/M1/M2/C1 remain unaccepted. F3 follows their actual dependency closure.
 
 - Enterprise EMP-IDN-016..018 batch, 2026-11-13: LOCAL_DONE /
   INTEGRATION_PENDING on owned `codex/enterprise-idn016-018` from published dev

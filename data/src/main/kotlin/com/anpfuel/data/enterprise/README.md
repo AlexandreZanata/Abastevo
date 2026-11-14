@@ -106,6 +106,23 @@ No durable-success claim is made if all independent persistent channels fail.
 
 ## Validation
 
+EMP-OFFL-003 adds a versioned QUEUE entry in the same sealed generation. Local
+save and its owning projection commit together; each final immutable ACK and
+its projection commit independently. Legacy opaque OPERATION bytes stay
+retained and unsent. Exact account/origin/organization/member/enrollment and
+current family/epoch/background leases surround storage, signing and transport.
+Network never holds a vault/fence lock. Retry metadata uses structural CAS,
+monotonic timing and retained server floors; no send attempt becomes acceptance.
+The production producer registry stays empty until real owning integrations.
+
+The separate operation WorkManager uses empty system input and discovers only
+the current account/origin through authenticated protected descriptors. The
+actual Android provider accepts exact scoped normal/denial/lock prefixes;
+broader marker prefixes remain invalid. Native two-account key isolation and
+real signed lost-answer/process-death recovery pass against ordinary PostGIS.
+[Queue evidence](../../../../../../../../docs/enterprise/evidence/f2-offl003-protected-operation-queue.md)
+keeps host, native, normal product composition and integration states distinct.
+
 Host crypto/files/process tests and actual ordinary PostGIS/signed HTTP source
 tests are separate from Android Keystore/OS proof. The current completion record
 pins actual commands, failure counterexamples, manifests and native acceptance

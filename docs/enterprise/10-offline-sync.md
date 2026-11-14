@@ -257,6 +257,22 @@ BUC-EMP-56/57 and [OFFL-002 evidence](evidence/f2-offl002-intake-ledger.md).
 
 ### 10.3 Offline matrix
 
+OFFL-003's construction contract extends the accepted generation-backed Android
+vault with a versioned typed queue, atomic operation/local projection and
+per-operation ACK/projection. Preserve legacy opaque entries unsent. Actual
+owning offline eligibility/projectors are mandatory; custody is not permission
+and the initial production registry is empty. A fresh exact account/origin/org/
+member/enrollment/family/fence attempt governs I/O, without adopting a replacement
+selection or holding local locks across network. Preflight the entire strict
+batch answer before independent atomic receipt application. Topological local
+ordering does not infer server effect readiness; children of external/review
+parents remain retryable, while retained cycles require attention. Technical
+retry defaults are30-second base/6-hour capped equal jitter without an attempt
+limit, honoring valid Retry-After; pressure warns at80% of the existing32MiB/
+10000-entry storage bounds, with no eviction. Retain final receipts until an
+explicit policy exists. See B-BR-EMP-115..122, EDR-076..080 and
+[queue evidence](evidence/f2-offl003-protected-operation-queue.md).
+
 "Offline" means the action works with no connection and is delivered later. "Online" means it needs the server at that moment.
 
 | Operation | Consult | Create | Change | Complete | Needs online validation for |

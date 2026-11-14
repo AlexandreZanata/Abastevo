@@ -37,6 +37,9 @@ class AnpFuelApplication : Application(), Configuration.Provider {
     lateinit var enterpriseVaultMaintenance: com.anpfuel.data.worker.EnterpriseVaultMaintenanceScheduler
 
     @Inject
+    lateinit var enterpriseOperationDelivery: com.anpfuel.data.worker.EnterpriseOperationScheduler
+
+    @Inject
     lateinit var chargingCommunity: com.anpfuel.application.usecase.charging.ChargingCommunityUseCase
 
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -65,6 +68,7 @@ class AnpFuelApplication : Application(), Configuration.Provider {
         }
         qualityReportScheduler.maintain()
         enterpriseVaultMaintenance.maintain()
+        enterpriseOperationDelivery.schedule()
         applicationScope.launch {
             try { chargingCommunity.recoverPendingSchedule() }
             catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }

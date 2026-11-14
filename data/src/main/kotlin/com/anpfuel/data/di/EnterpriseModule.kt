@@ -7,11 +7,18 @@ import com.anpfuel.application.enterprise.EnterpriseLocalIdentity
 import com.anpfuel.application.enterprise.EnterpriseContextProtection
 import com.anpfuel.application.enterprise.EnterprisePersistence
 import com.anpfuel.application.enterprise.EnterpriseSessionFence
+import com.anpfuel.application.enterprise.queue.EnterpriseOperationQueue
+import com.anpfuel.application.enterprise.queue.EnterpriseOperationTransport
+import com.anpfuel.application.enterprise.queue.EnterpriseQueueRegistry
+import com.anpfuel.application.enterprise.queue.EnterpriseQueueService
+import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.data.enterprise.*
+import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
+import com.anpfuel.domain.enterprise.sync.SyncLimits
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -21,6 +28,7 @@ import java.io.File
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
+import kotlin.random.Random
 import okhttp3.OkHttpClient
 
 /** Signed contact and protected custody share source-owned account and business authority boundaries. */
@@ -95,6 +103,64 @@ object EnterpriseModule {
     @Provides
     @Singleton
     fun persistence(store: ProtectedEnterprisePersistence): EnterprisePersistence = store
+
+    @Provides
+    @Singleton
+    fun operationQueue(store: ProtectedEnterprisePersistence): ProtectedEnterpriseQueue = ProtectedEnterpriseQueue(store)
+
+    @Provides
+    @Singleton
+    fun typedOperationQueue(queue: ProtectedEnterpriseQueue): EnterpriseOperationQueue = queue
+
+    @Provides
+    @Singleton
+    fun operationSource(
+        @Named("apiOrigin") environment: ApiEnvironment, sessions: AuthSessionStore, auth: AuthFlow,
+        fence: EnterpriseSessionFence, store: ProtectedEnterprisePersistence,
+    ): EnterpriseOperationSessionSource = EnterpriseOperationSessionSource(
+        environment.origin, sessions, auth, fence, store::protectedEnrollment,
+    )
+
+    @Provides
+    @Singleton
+    fun queueSource(source: EnterpriseOperationSessionSource): EnterpriseQueueSource = source
+
+    @Provides
+    @Singleton
+    fun queueLimits(): SyncLimits = SyncLimits.DEFAULT
+
+    @Provides
+    @Singleton
+    fun operationClient(source: EnterpriseOperationSessionSource, signer: EnterpriseDeviceSigner,
+        limits: SyncLimits): EnterpriseOperationHttpClient = EnterpriseOperationHttpClient(
+        OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build(),
+        source, signer, limits,
+    )
+
+    @Provides
+    @Singleton
+    fun operationTransport(client: EnterpriseOperationHttpClient): EnterpriseOperationTransport = client
+
+    /** Owning offline business producers must be accepted separately before registration. */
+    @Provides
+    @Singleton
+    fun queueRegistry(): EnterpriseQueueRegistry = EnterpriseQueueRegistry()
+
+    @Provides
+    @Singleton
+    fun queueService(@ApplicationContext context: Context, source: EnterpriseQueueSource,
+        queue: EnterpriseOperationQueue, transport: EnterpriseOperationTransport, registry: EnterpriseQueueRegistry,
+        limits: SyncLimits): EnterpriseQueueService = EnterpriseQueueService(
+        source, queue, transport, registry, AndroidEnterpriseDeviceClock(context)::read,
+        entropy = { bound -> Random.Default.nextLong(bound) }, limits = limits,
+    )
+
+    @Provides
+    @Singleton
+    fun operationRunner(source: EnterpriseQueueSource, store: ProtectedEnterprisePersistence,
+        service: EnterpriseQueueService): EnterpriseOperationWorkRunner = EnterpriseOperationWorkRunner(
+        source, store::discover, { account, partition -> service.dispatch(account, partition) },
+    )
 
     @Provides
     @Singleton

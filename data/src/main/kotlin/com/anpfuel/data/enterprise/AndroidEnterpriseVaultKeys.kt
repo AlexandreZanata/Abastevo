@@ -74,6 +74,7 @@ class AndroidEnterpriseVaultKeys : EnterpriseVaultKeys {
     override fun aliases(prefix: String): List<String> {
         require(prefix == EnterpriseVaultGenerationNames.PREFIX || prefix == "abastevo_enterprise_v1_" ||
             Regex("abastevo_enterprise_v[12]_[0-9a-f]{64}-").matches(prefix) ||
+            Regex("abastevo_enterprise_v2_(denied|lock)_[0-9a-f]{64}-").matches(prefix) ||
             Regex("abastevo_enterprise_v2_[0-9a-f]{64}-[0-9a-f]{64}_").matches(prefix))
         val result = mutableListOf<String>()
         val aliases = store().aliases()

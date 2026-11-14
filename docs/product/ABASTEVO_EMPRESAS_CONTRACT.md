@@ -1865,3 +1865,142 @@ exceptions remain explicit integrations, never fabricated defaults.
   personal deletion preserving company history. Rehearse populated migration
   195→196, injected failure/recovery/noop and previous-image compatibility.
   Runtime producer absence, C1 feature readiness and release are distinct states.
+
+### EMP-OFFL-003 — Protected Android operation queue
+
+Recorded before behavior, 2026-11-13, from tested/published OFFL-002 d24b0d4f.
+This task supplies durable local unit-of-work, delivery/retry and receipt ports;
+the owning business producers and OFFL-004 pending screen remain separate work.
+
+- **B-BR-EMP-115 — Seal one typed queue without reinterpreting legacy work.**
+  Extend the accepted protected generation store, not a second plaintext Room
+  outbox. Preserve the existing four entry ordinals and V1/V2 read contracts;
+  append an explicitly versioned typed queue kind and framing. Existing opaque
+  OPERATION entries remain retained and non-dispatchable, even if their bytes
+  resemble the new format. A typed save cannot reuse a legacy operation ID:
+  unknown complete intent/member/enrollment cannot prove replay or safe adoption.
+  Refuse before projection/write and retain the legacy bytes; distinct genuinely
+  new IDs may coexist. This restriction is on operation identity, not entity IDs.
+  Queue reads/writes bind the complete frozen operation
+  to the actual protected account/origin/organization/member/enrollment before
+  use. A newer payload format cannot silently become an older generation or
+  a different owner. Rollback pauses dispatch while retaining a reader for the
+  accepted format; no APK downgrade compatibility or automatic data conversion
+  is inferred. Preserve personal records, attachments and other partitions.
+- **B-BR-EMP-116 — Commit queue and local projection together.**
+  A local save commits its immutable sealed operation and owning local projection
+  in one protected generation before success. A final ACK, owning projection
+  and queue/retry status likewise commit together per operation. The producer
+  uses only a borrowed, scoped local unit-of-work with no transaction lifecycle,
+  network or unrelated storage; framework code owns commit. Same ID/intent
+  replays without reapplying the projection; changed immutable intent is refused.
+  Actual owning projection rules must preserve a newer local edit when an older
+  operation's ACK arrives. A projection/write/key/capacity/commit failure keeps
+  the previous generation when publication has not committed and reports
+  uncertainty, never early success. After trusted-head publication, withhold a
+  stale result honestly instead of claiming rollback; only the accepted security
+  owner may erase a now-expired context. Recheck custody clock after commit I/O.
+  Process death after one ACK leaves other operations recoverable independently.
+- **B-BR-EMP-117 — A source attempt cannot adopt replacement ownership.**
+  Capture an immutable attempt lease for the protected tuple, current account/
+  family, fence epoch/background generation and unique attempt before local I/O
+  or transport. Derive it from actual protected/current source, never selected
+  context strings or caller-supplied authority.
+  Local account capture/save must work offline with retained current identity,
+  valid protected custody and actual owning offline eligibility; it never
+  requires a network refresh merely because the access token expired. Delivery
+  alone refreshes the same family before capturing its new attempt lease.
+  Revalidate around signing, network and each local projection; release storage/
+  fence locks before network.
+  New account/family/origin/selection/background invalidates an in-flight attempt;
+  never adopt a later epoch. Same-family token refresh may occur before a fresh
+  capture; queued intent never includes or replaces delivery credentials.
+  A worker starts its own new exact lease and never takes over a UI selection
+  owner or retags work to the currently selected organization. Already committed
+  original-scope work stays retained; stale results are not exposed under a new
+  flow and no rollback of a committed generation is claimed.
+- **B-BR-EMP-118 — Preflight the entire server answer before local writes.**
+  Use the existing identity-v1 signer and exact configured HTTPS origin/path
+  /v1/orgs/{org_id}/sync/operations, without cookies, redirects or cache.
+  Decode the strict versioned response wrapper, count/order and every complete
+  ACK against the captured original operation/digest before any receipt write.
+  A malformed/foreign/duplicate/missing/trailing answer changes no local receipt.
+  Store original canonical final bytes immutably; a changed final ACK is an
+  unavailable inconsistency, not a repair. RETRY or transport success alone never
+  becomes company acceptance. SENT is attempt-local; no durable SENDING flag
+  can strand work after process death. Generic denials never authorize erasure;
+  only the accepted signed custody/expiry owner can perform security cleanup.
+- **B-BR-EMP-119 — Order local work without inventing server readiness.**
+  Sort pending local parents before children while allowing unrelated work to
+  progress. The server remains the authority for applied-effect dependencies;
+  a missing, external or review-accepted parent does not become applied merely
+  because an ACK exists. Keep such children retryable so a later actual server
+  effect can release them without rewriting either original intent or ACK.
+  Detect local dependency cycles, retain them with explicit attention and exclude
+  them from automatic selection; never delete or rewrite them to break the cycle.
+  Keep frozen50-operation/64KiB-batch/8KiB-operation limits and captured trusted
+  reductions; select a bounded batch that really fits its delivery wrapper.
+  The actual source may supply an opaque exact encoded-proof byte budget after
+  capture/refresh, retaining no token in that value. Do not strand a valid
+  reduced-limit operation by reserving an unnecessary512-byte worst-case token;
+  actual signing still rechecks the private captured proof and complete bytes.
+- **B-BR-EMP-120 — Retry without silent loss or an attempt ceiling.**
+  Use source-owned operational defaults:30-second exponential base,6-hour cap,
+  equal jitter within half..full calculated delay and saturating counters, with
+  no transient attempt cap. Honor a valid server Retry-After without shortening
+  it. Delta-seconds remains the actual API's primary form. An HTTP-date hint is
+  usable only with a unique valid Date header from the same authenticated HTTPS
+  response: wait the full target-minus-Date interval, ignoring transit
+  conservatively. Missing/invalid/duplicate Date makes that optional hint unusable
+  and retains ordinary retry backoff; device wall time is never its authority.
+  Clock/reboot uncertainty follows the existing protected lease/reconfirmation
+  policy, not a guessed delivery deadline. Only after that actual custody guard
+  permits access may an older-boot/backward-elapsed retry be rebased once onto
+  the fresh clock, preserving its attempt count and restarting its full stored
+  delay. This conservative restart never shortens Retry-After or strands work
+  forever on an obsolete boot identifier. Locked, expired, wrong-family or
+  unavailable source pauses/defers delivery while preserving work; managed
+  locked keys require their accepted unlock flow. Retry status is protected
+  data and cannot be updated by a replaced attempt. Competing valid attempts
+  update retry state only by compare-and-swap against the captured complete
+  attempts/clock/delay tuple. A changed/final row is a no-op; preserve the newer
+  floor and re-read actual retained state for scheduling. Neither UUID nor wall
+  time invents attempt ordering. Pressure warns at80% of the
+  existing32MiB/10000-entry vault safety budgets; full storage refuses new work
+  without eviction. Final ACKs and refused/review facts remain retained until
+  an explicit owning dismissal/retention policy exists; no new TTL is invented.
+- **B-BR-EMP-121 — Real producers own offline eligibility and projection.**
+  Only explicitly registered owning offline-capable types/schemas with actual
+  local eligibility, save and ACK projectors may enter/send through the typed
+  queue. Custody/contact/context selection alone grants no business permission.
+  Missing producer/policy/history/reference/attachment authority stays unavailable;
+  retain older unknown work unsent. Production registry starts empty until a
+  real owning feature is accepted. No probe/no-op producer or fictitious cached
+  permission is installed. Online-only people/settings/approval commands are
+  excluded; F4, managed-provider, real-receipt and release gates remain distinct.
+- **B-BR-EMP-122 — Schedule scoped work with opaque system input.**
+  Reuse WorkManager and existing private source/maintenance discovery. Jobs carry
+  no readable account/org/member/enrollment, payload, token or queue cursor.
+  Discover only the current account/origin's protected partitions; verify each
+  partition and current source before opening its payload. Coalesce duplicate
+  workers without relying on one process surviving; preserve at-least-once
+  retry and independent organization progress. Use bounded cooperative work,
+  cancellation and per-invocation ownership; no shared mutable janitor cursor,
+  global selected-context dispatcher or new scheduling service is introduced.
+- **BUC-EMP-58 — Recover durable local saves and partial ACK application.**
+  Prove RED→GREEN atomic save/replay, every write/commit/projection failure,
+  process interruption/restart and partial per-operation ACK recovery, original
+  bytes/binding and two-organization/account/origin isolation. Prove legacy
+  upgrade and personal/attachment preservation on host and the owned API36
+  emulator, including actual Keystore and process death without clearing data.
+- **BUC-EMP-59 — Deliver through the actual signed source without duplicate effects.**
+  Use a named test-only real local producer and the actual ordinary PostGIS/
+  signed intake plus SQL follow-up; lose an answer, restart and converge on the
+  original ACK/effect. Validate full bad-answer preflight, independent retries,
+  dependency/review/cycle ordering, actual worker duplication/cancellation and
+  all ownership changes before/after I/O. Product APK contains no test producer.
+- **BUC-EMP-60 — Preserve work while permission or storage is unavailable.**
+  Prove protected32MiB/10000-entry refusal and80% warnings, locked/expired/key/
+  clock/source failures, no retry exhaustion or automatic eviction, backoff and
+  Retry-After bounds. A late account/family/context response changes no new
+  source and never erases preserved work. Pause rollback retains the queue.

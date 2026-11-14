@@ -14,6 +14,26 @@ class SyncBatch private constructor(val familyId: String, val accessToken: Strin
     val operations: List<SyncOperationCandidate> get() = candidates.toList()
     override fun toString(): String = "SyncBatch(redacted)"
     companion object {
+        fun encode(familyId: String, accessToken: String, operations: List<EnterpriseOperation>, limits: SyncLimits = SyncLimits.DEFAULT): ByteArray {
+            uuid(familyId)
+            if (accessToken.length !in 1..512 || accessToken.any { it !in '!'..'~' } || operations.size > limits.maxOperations) throw invalid()
+            val first = operations.firstOrNull()
+            if (operations.map { it.operationId }.toSet().size != operations.size) throw invalid()
+            val values = operations.map { operation ->
+                if (first != null && (operation.binding.ownerAccountId != first.binding.ownerAccountId ||
+                    operation.binding.apiOrigin != first.binding.apiOrigin || operation.binding.organizationId != first.binding.organizationId ||
+                    operation.membershipId != first.membershipId || operation.enrollmentId != first.enrollmentId)) throw invalid(SyncFailure.BINDING)
+                val root = CanonicalJson.parse(operation.canonicalBytes, limits.maxOperationBytes, limits.maxOperationDepth)
+                // Retain validation under these trusted bounds even for an operation sealed under wider limits.
+                EnterpriseOperation.parse(operation.canonicalBytes, operation.binding, limits)
+                root
+            }
+            val encoded = CanonicalJson.encode(SyncJson.Object(mapOf("schema_version" to SyncJson.Integer("1"),
+                "family_id" to SyncJson.Text(familyId), "access_token" to SyncJson.Text(accessToken),
+                "operations" to SyncJson.Array(values))), limits.maxTransportDepth)
+            if (encoded.size > limits.maxBatchBytes) throw invalid(SyncFailure.LIMIT)
+            return encoded
+        }
         fun parse(raw: ByteArray, limits: SyncLimits = SyncLimits.DEFAULT): SyncBatch {
             val node = CanonicalJson.parseSpanned(raw, limits.maxBatchBytes, limits.maxTransportDepth)
             val root = objectValue(node.value)
