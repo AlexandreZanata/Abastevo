@@ -1,4 +1,12 @@
 # Current execution state
+- Enterprise F3, 2026-11-14: IN_PROGRESS on owned `codex/enterprise-f3` from
+  merged main/dev `43b21389` (Claude Code). [F3 ledger](../enterprise/evidence/f3-execution.md)
+  reconciles 67 tasks: FUEL-001 consumed, 10 ready, 56 blocked mostly behind
+  the open F2 chain FLEET-003/005, AUTH-006, FLEET-006, METER-002 closure →
+  FUEL-002. EDR-127: ready pure domains first (APPR-001, EXP-001, DOC-001,
+  PLAT-016, then FIN-001/BUDG-001); no persistence before METER-002 closes.
+  No M3/F3 acceptance is claimed; cumulative dev → main PR at batch end.
+
 - Enterprise EMP-OFFL-008, 2026-11-14: LOCAL_DONE / INTEGRATION_PENDING
   (Claude Code takeover). Backend handoff items, union regressions and SQL
   reviewer findings closed with RED→GREEN; Android protected V3/resolution/

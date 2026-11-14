@@ -1,7 +1,7 @@
 # F3 — Authorized follow-on scope and dependency order
 
 Date: 2026-11-13.
-Status: PLANNED
+Status: IN_PROGRESS
 Validation: PENDING
 Integration: INTEGRATION_PENDING
 
@@ -46,3 +46,14 @@ assignment/history/review remains open. Full Meter history/review stays open whi
 OFFL-008, FLEET-003/005, AUTH-006 and FLEET-006 provide their real dependencies;
 review precedes lifecycle because post-disposal operations must actually be held. The full F3 remains queued; its prerequisite tasks
 consumed by C1 are not reimplemented or counted as whole-phase acceptance.
+
+## Opening — 2026-11-14
+
+PR203 merged `dev → main` at `43b21389`; F2/M1/M2/C1 remain unaccepted with
+their obligations retained in tracker #215. F3 opens on owned
+`codex/enterprise-f3` from that head. The [F3 execution ledger](f3-execution.md)
+reconciles all 67 tasks against source: FUEL-001 is consumed (LOCAL_DONE), ten
+tasks are dependency-ready and 56 are blocked, mostly behind the open F2 chain
+FLEET-003 → FLEET-005 → AUTH-006 → FLEET-006 → METER-002 closure → FUEL-002.
+EDR-127 starts with the ready pure domains and keeps that chain as the gate of
+every F3 persistence task.
