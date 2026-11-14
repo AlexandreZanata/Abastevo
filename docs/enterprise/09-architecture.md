@@ -31,7 +31,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `trip` (proposed) | TRIP | Missions, trips, stops, logbook | `fleet`, `review` |
 | `tracking` (proposed) | GPS, ROUTE | Tracking sessions, track segments, live position, geofences, route plans | `trip` |
 | `fueling` (pure domain LOCAL_DONE; runtime pending) | FUEL | Owned nine-product catalog, exact submit-ready candidates and purchased totals; intake/review/consumption remain their owning tasks | Pure `fleet` refs, accepted time/value kernels; future explicit `metrics`, `directory`/`official`/`community` read ports |
-| `document` (proposed) | DOC | Documents, extractions, fiscal documents, links, allocations | storage port; `kernel` CNPJ type (existing) |
+| `document` (pure domain LOCAL_DONE; persistence, routes and storage port proposed) | DOC | Documents, extractions, fiscal documents, links, allocations | storage port; `kernel` CNPJ type (existing); shared Go/Kotlin document-v1 vectors |
 | `review` (pure C1 lifecycle LOCAL_DONE; persistence, policies and periods proposed) | APPR | Review cases, approval policies, periods | `orgaccess`; shared Go/Kotlin review-v1 vectors |
 | `expense` (pure expense domain LOCAL_DONE; runtime pending) | EXP, FIN | One cost per origin, exact paid/company amounts, competence reporting day and review-basis totals; payables, payments, advances, allocations and persistence remain their owning tasks | `fueling` refs, accepted time/value kernels; future `review`, `document` |
 | `budget` (proposed) | BUDG | Budgets, lines, holds | `expense` |

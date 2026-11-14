@@ -2936,3 +2936,95 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   sums above the single-record ceiling, an empty selection, a foreign
   organization, entries at and beyond both period bounds and duplicate origin
   keys or identities across states.
+
+## EMP-DOC-001 — Document domain: container, independent statuses, links and allocations (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc001-document-domain.md).
+
+## Enterprise pure document domain (EMP-DOC-001)
+
+- **B-BR-EMP-185 — Keep the original identity immutable.**
+  A document is one organization's container identified by its scoped
+  canonical document UUID and the original content digest, exactly 64
+  lowercase hexadecimal characters (the EMP-PLAT-006 private object SHA-256
+  format). No command changes the organization, identifier or digest. A
+  replacement is a new document: it must belong to the same organization,
+  have a different identifier and already be STORED; the replaced document
+  must be STORED or QUARANTINED. The old document becomes REPLACED and records
+  its successor, the successor records what it replaces, and both originals,
+  links and allocations are retained. A digest match answers only whether a
+  supplied digest equals the original. Content bytes, file names, MIME/size,
+  storage keys and personal data never enter the domain; storage, limits and
+  integrity stay with EMP-PLAT-006/EMP-DOC-002.
+- **B-BR-EMP-186 — Six independent closed status dimensions.**
+  Storage (UPLOADING, RECEIVED, STORED, QUARANTINED, FAILED, REPLACED,
+  DELETED), extraction (NONE, PENDING, DONE, FAILED), structure
+  (NOT_APPLICABLE, UNCHECKED, STRUCTURE_OK, STRUCTURE_INVALID), conference
+  (UNCONFERRED, CONFERRED_OK, DIVERGENT, ILLEGIBLE), reconciliation
+  (UNALLOCATED, PARTIALLY_ALLOCATED, RECONCILED, OVER_ALLOCATED) and fiscal
+  consultation (NOT_CONSULTED, AUTHORIZED_AS_OF, CANCELLED_AS_OF, UNAVAILABLE)
+  are closed exact token sets; a new document starts at UPLOADING, NONE,
+  NOT_APPLICABLE, UNCONFERRED, UNALLOCATED and NOT_CONSULTED. Unknown,
+  lowercase, padded, cross-dimension or "VALIDATED" tokens are INVALID.
+  A command changes at most one dimension. No dimension is derived from
+  another: a digest match, extraction, structure check, storage outcome,
+  allocation or conference never sets conference or fiscal consultation
+  (BR-TRUTH-001/002). Reconciliation alone is derived, from exact amounts.
+- **B-BR-EMP-187 — Explicit transition commands with the expected state.**
+  Each command names its dimension, expected current state and target state;
+  a different current state is CONFLICT and changes nothing; a pair outside
+  the table is INVALID_TRANSITION. Storage: UPLOADING→RECEIVED|FAILED,
+  RECEIVED→STORED|QUARANTINED|FAILED, STORED→DELETED, QUARANTINED→DELETED,
+  REPLACED→DELETED; REPLACED is entered only through replacement; FAILED and
+  DELETED are terminal. Extraction: NONE→PENDING, PENDING→DONE|FAILED,
+  FAILED→PENDING. Structure: NOT_APPLICABLE→UNCHECKED,
+  UNCHECKED→STRUCTURE_OK|STRUCTURE_INVALID, STRUCTURE_INVALID→UNCHECKED.
+  Conference: any state to any different state (decisions and explicit
+  reversal to UNCONFERRED). Fiscal: any state to AUTHORIZED_AS_OF,
+  CANCELLED_AS_OF or UNAVAILABLE, never back to NOT_CONSULTED; each fiscal
+  result requires its consultation instant (shared bounded time profile),
+  strictly later than the previous one (otherwise CONFLICT); other dimensions
+  refuse an instant. A direct reconciliation transition is DERIVED.
+  Self-transitions are refused except a later fiscal re-consultation.
+- **B-BR-EMP-188 — Owned same-organization links.**
+  A link targets one closed kind: FUELING, EXPENSE, WORK_ORDER, TRIP, ASSET,
+  EMPLOYEE or METER_READING, with a canonical identifier of the document's
+  own organization (BR-TEN-001); a foreign target is SCOPE, an unknown kind or
+  malformed identifier INVALID, and the same kind and identifier twice
+  DUPLICATE. Links keep insertion order. A link grants no content access,
+  recognizes no cost and changes no status (BR-DOC-002/003).
+- **B-BR-EMP-189 — Exact allocations bounded by the document amount.**
+  The document amount is integer centavos 0..1 000 000 000 000 (financial-v1)
+  and may be recorded or corrected without touching allocations. An
+  allocation set replaces the previous one; it needs a recorded amount
+  (AMOUNT_MISSING), at most 1 000 lines, and lines in order whose target is
+  same-organization (SCOPE), allocatable (only EXPENSE, NOT_ALLOCATABLE
+  otherwise), linked (NOT_LINKED), distinct (DUPLICATE) and 1..1 000 000 000 000
+  centavos (INVALID). A set whose exact sum exceeds the amount is
+  EXCEEDS_AMOUNT and changes nothing. Reconciliation derives from exact sums
+  with zero tolerance: 0 → UNALLOCATED, below → PARTIALLY_ALLOCATED, equal →
+  RECONCILED, above → OVER_ALLOCATED, which is reachable only when a later
+  amount correction falls below recorded allocations. An even split uses the
+  BR-MONEY-007 largest-remainder allocator with equal weights in target order
+  and omits zero shares, so parts always sum to the amount.
+- **BUC-EMP-96 — Track an original through independent checks.**
+  Actor: the owning document workflow (intake, extraction, structure,
+  conference, consultation). Flow: create the container from a scoped
+  identifier and original digest → apply one named transition at a time with
+  its expected state (and consultation instant for fiscal results) → read six
+  separate statuses. Alternatives: stale expected state → CONFLICT, nothing
+  changes; pair outside the table or terminal storage → INVALID_TRANSITION;
+  digest match → only a boolean; a corrected file → a new stored successor
+  replaces the old document, both retained. Result: each status says only
+  what its own check established.
+- **BUC-EMP-97 — Allocate a document amount to linked expenses.**
+  Actor: the owning allocation workflow (reviewer authority and locking stay
+  with EMP-DOC-007). Flow: record the exact amount → link same-organization
+  targets → submit an explicit allocation set or an even split over linked
+  expenses → read the derived reconciliation and remaining centavos.
+  Alternatives: foreign, unlinked, non-expense, duplicate, zero, negative or
+  overflowing line → refused; sum above the amount → EXCEEDS_AMOUNT with the
+  previous set intact; amount corrected below allocations → OVER_ALLOCATED
+  until a fitting set is recorded. Result: allocations never exceed their
+  source when recorded, and the document example 97 350 = 60 000 + 30 000 +
+  7 350 reconciles while an extra 8 000 is refused.

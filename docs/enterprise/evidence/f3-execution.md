@@ -193,3 +193,22 @@ Kotlin enterprise suite 1829/0/0 on this branch. B-BR-EMP-180..184,
 BUC-EMP-94..95, EDR-131..133 moved to canonical docs. Retained: persistence,
 uniqueness and fueling projection (EXP-002, VAL-13), binding `ReviewState` to
 the integrated `review` vocabulary, categories (EXP-003), allocation (EXP-006).
+
+### EMP-DOC-001 — document domain: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-doc001-document-domain.md). Pure Go `document/domain` and
+Kotlin `enterprise.document` share the 251-case `document-v1.psv` oracle: six
+independent status dimensions with fixed transition tables (no dimension
+derives another; a digest never makes a document conferred or fiscal-
+authorized), original identity with replacement by a stored successor,
+same-organization links over closed target kinds where only EXPENSE is
+allocatable (EDR-135, so a fueling and its expense cannot both be charged),
+and exact allocations with derived reconciliation (zero tolerance,
+OVER_ALLOCATED only after a downward correction, even split via
+`orgvalue.Allocate`). RED: Go 13/14 top-level and 249/251 subtests, Kotlin
+259/260 failing → GREEN: Go 14/256 under `-race` (99.5% statements; the miss
+is an unreachable defensive branch), Kotlin enterprise suite 2089/0/0 on this
+branch. B-BR-EMP-185..189, BUC-EMP-96..97, EDR-134..136 moved to canonical
+docs; glossary "Reconciled" states zero tolerance. Retained: DOC-002..014
+persistence/upload/links/conference/fiscal/DB no-double-counting/jobs; real
+receipts stay legally gated (GOV-002).

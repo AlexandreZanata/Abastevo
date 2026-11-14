@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 The [document specification](../modules/documents.md) now records the recovered design. This backlog uses the surviving shared rules and approved synthetic C1 scope. Real-receipt intake, retention and fiscal consultation retain their separate gates.
 
 ### EMP-DOC-001 — Document domain: container, independent statuses, links and allocations
-- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Represent a private document independently of its links, review and fiscal outcomes.
 - **Rules and use cases:** EDR-014, BR-TRUTH-001, BR-TRUTH-002, BR-TEN-001, BR-MONEY-007
 - **Depends on:** EMP-PLAT-001
@@ -27,6 +27,14 @@ The [document specification](../modules/documents.md) now records the recovered 
 - **Validation:** V-DOM, V-MONEY · migration: none · rollback: remove unused registration before consumers ship
 - **Risks and assumptions:** The [document specification](../modules/documents.md) supplies the detailed boundary and states.
 - **Done when:** Independent status and allocation vectors pass with synthetic data.
+
+[F3 pure document domain](../evidence/f3-doc001-document-domain.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Go and Kotlin consume all 251
+shared document-v1 vectors (Go race 99.5% statements; Kotlin 260 tests, 98.57%
+instructions). Six independent closed status dimensions, expected-state
+transitions, original-preserving replacement, same-organization links and
+exact expense-only allocations with derived reconciliation (EDR-134..136).
+Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DOC-002..014.
 
 ### EMP-DOC-002 — Document persistence, upload session and audited private access
 - **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size M · state TODO

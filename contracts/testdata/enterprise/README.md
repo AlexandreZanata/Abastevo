@@ -244,3 +244,17 @@ No persistence, review, settlement or runtime acceptance is claimed.
 ```sh
 (cd backend && go test -race ./internal/modules/expense/domain -count=1)
 ```
+
+## Document vectors v1
+
+EMP-DOC-001 executes all 251 rows of
+[document/document-v1.psv](document/document-v1.psv) in Go and Kotlin (ENUM 64,
+ALLOWED 29, SCENARIO 146, REPLACE 12): six independent status dimensions,
+original identity and replacement, same-organization links and exact
+allocations with derived reconciliation. See
+[document/README.md](document/README.md). No persistence, upload, fiscal
+consultation or runtime acceptance is claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/document/domain -count=1)
+```
