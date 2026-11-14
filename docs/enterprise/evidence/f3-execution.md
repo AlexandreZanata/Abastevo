@@ -212,3 +212,20 @@ branch. B-BR-EMP-185..189, BUC-EMP-96..97, EDR-134..136 moved to canonical
 docs; glossary "Reconciled" states zero tolerance. Retained: DOC-002..014
 persistence/upload/links/conference/fiscal/DB no-double-counting/jobs; real
 receipts stay legally gated (GOV-002).
+
+### EMP-BUDG-001 — budget domain: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-budg001-budget-domain.md). Server-only Go `budget/domain` with
+the 261-case `budget-v1.psv` oracle (EDR-141: no Kotlin mirror): one-dimension
+lines (ORGANIZATION, UNIT, COST_CENTRE, ASSET, EMPLOYEE, optional category)
+over explicit half-open reporting periods with a required exact limit (no
+default, no unlimited); capacity = limit − approved company amounts − active
+holds in exact big integers, pending reported but never deducted, a claimed
+"available" only compared (STALE_AVAILABLE), reservation ACTIVATE/EXCEEDS and
+posting decisions, holds ACTIVE → CONSUMED/RELEASED/EXPIRED once (EDR-142),
+including the serialized VAL-14 sequence. RED 11/13 top-level and 261/261
+subtests failing → GREEN 14/261 under `-race`, 100% statements; re-run on this
+branch. B-BR-EMP-198..201, BUC-EMP-102..103, EDR-141/142 moved to canonical
+docs. Retained: persistence, fixed-order line locks and the real PostGIS
+VAL-14 race (BUDG-002), reservation API/expiry (BUDG-003), overrun policy
+(BUDG-004), panel (BUDG-005), driver/asset limits (BUDG-006).

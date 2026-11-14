@@ -363,7 +363,7 @@ with 100% Go statements. Persistence, projection, review binding and F3 remain o
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-BUDG-001 — Budget domain: lines, periods, dimensions and amounts
-- **Meta:** module BUDG · phase F3 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module BUDG · phase F3 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Define exact budgets over scoped dimensions and reporting periods.
 - **Rules and use cases:** BR-MONEY-001, BR-TIME-004, BR-AUTH-001, REQ-11.3, VAL-14
 - **Depends on:** EMP-EXP-001
@@ -377,6 +377,14 @@ with 100% Go statements. Persistence, projection, review binding and F3 remain o
 - **Validation:** V-DOM, V-MONEY · migration: none in this task · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+- **Status (2026-11-14):** LOCAL_DONE / INTEGRATION_PENDING — pure Go
+  `budget/domain` with the 261-case `budget-v1` oracle (no Kotlin mirror,
+  EDR-141): exact one-dimension lines, capacity = limit − approved
+  consumption − active holds (pending identified, never deducted), compared
+  claims, ACTIVATE/EXCEEDS and POST/EXCEEDS decisions and holds that close
+  once. Persistence, locks and the VAL-14 race proof remain EMP-BUDG-002;
+  reservation API/expiry EMP-BUDG-003; overrun policy EMP-BUDG-004.
 
 ### EMP-BUDG-002 — Budget persistence and concurrent consumption posting
 - **Meta:** module BUDG · phase F3 · cut - · priority P1 · type DB · size M · state TODO

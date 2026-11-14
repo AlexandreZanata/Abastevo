@@ -258,3 +258,21 @@ consultation or runtime acceptance is claimed.
 ```sh
 (cd backend && go test -race ./internal/modules/document/domain -count=1)
 ```
+
+## Budget vectors v1
+
+EMP-BUDG-001 executes all 261 rows of
+[budget/budget-v1.psv](budget/budget-v1.psv) in Go (ENUM 24, LINE 44,
+CAPACITY 94, RESERVE 40, POST 35, SEQUENCE 24). The oracle pins closed
+dimensions and hold states, required exact limits, exact dimension and
+period matching, capacity derived from approved consumption and active
+holds, claimed-available comparison, reservation and posting decisions and
+serialized hold sequences including VAL-14. See
+[budget/README.md](budget/README.md). It is server-side only: no client
+mirror exists; any future client must consume the same file. No
+persistence, concurrency proof, overrun policy or runtime acceptance is
+claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/budget/domain -count=1)
+```

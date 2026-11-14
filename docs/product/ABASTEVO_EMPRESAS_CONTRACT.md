@@ -3028,3 +3028,100 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   until a fitting set is recorded. Result: allocations never exceed their
   source when recorded, and the document example 97 350 = 60 000 + 30 000 +
   7 350 reconciles while an extra 8 000 is refused.
+
+## EMP-BUDG-001 — Budget domain: lines, periods, dimensions and capacity (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-budg001-budget-domain.md).
+
+- **B-BR-EMP-198 — One line: organization, half-open period, one dimension and a required exact limit.**
+  A budget line is a scoped line identity in one organization with an
+  explicit half-open reporting-day period [start, end) built by the
+  EMP-EXP-001 reporting period (any whole-day span; VAL-14's November 2026 is
+  2026-11-01 to 2026-12-01), exactly one dimension and a limit. The limit is a
+  required canonical integer number of centavos parsed by the accepted
+  exact-value kernel (0..1000000000000). An absent, empty, signed, decimal,
+  grouped, padded, "unlimited" or above-ceiling limit is INVALID. A present 0
+  is a known zero limit under which no positive amount fits. There is no
+  implicit unlimited budget and no default limit: without a constructed line
+  there is no capacity and no decision, never ACTIVATE or POST. Overlapping
+  lines of one dimension, line versions and limit changes are persistence and
+  configuration concerns (EMP-BUDG-002/005).
+- **B-BR-EMP-199 — Closed dimensions matched exactly against recorded tags.**
+  Dimension kinds are exactly ORGANIZATION, UNIT, COST_CENTRE, ASSET and
+  EMPLOYEE (the driver); unknown, empty, padded or differently cased tokens
+  are INVALID. A line has exactly one kind: ORGANIZATION carries no target;
+  every other kind requires one scoped target of the same kind in the line's
+  organization; any kind may add one optional category filter (the EMP-EXP-001
+  category code). Multi-target intersections are not representable in v1. A
+  fact carries tags: the unit, cost centre, asset and employee stored on its
+  record when it was created (BR-AUTH-005), at most one per kind, supplied by
+  the caller; an expense's category is its own and a hold names one required
+  category. A fact matches a line when it belongs to the line's organization
+  (SCOPE otherwise, including any foreign tag or target), its reporting day is
+  inside the period (OUT_OF_PERIOD otherwise) and, unless the line is
+  ORGANIZATION, its tag of the line's kind equals the target exactly, while
+  with a filter its category equals the filter (DIMENSION_MISMATCH otherwise;
+  an absent tag or a same identifier under another kind never matches). A
+  hold must also name the line itself (DIMENSION_MISMATCH otherwise). One fact
+  may match several lines, such as the organization line and its cost-centre
+  line; each line is computed on its own.
+- **B-BR-EMP-200 — Available capacity derived only from authoritative facts.**
+  Capacity is computed for one organization scope and one line from the
+  caller's facts: consumption entries (an EMP-EXP-001 expense, its review
+  state and its tags) and stored holds. Committed consumption is the sum of
+  APPROVED company amounts (BR-BUDG-001, BR-EXP-002, BR-REV-009). SUBMITTED and
+  IN_REVIEW company amounts form a separately identified pending part that is
+  never deducted; DRAFT, RETURNED, REJECTED, CANCELLED and VOIDED are only
+  counted. Held is the sum of ACTIVE hold amounts; CONSUMED, RELEASED and
+  EXPIRED holds contribute nothing. Available equals limit minus consumed
+  minus held in exact widened integers; a negative result is reported as
+  over-commitment and is never wrapped or clamped. Consumption entries and
+  then holds are checked in input order: INVALID (unconstructed value or
+  unknown state), SCOPE, OUT_OF_PERIOD, DIMENSION_MISMATCH, then DUPLICATE (a
+  repeated expense identity or origin key, or a repeated hold identity); the
+  first failure decides and no partial capacity is returned. No operation
+  takes an available, held or consumed number as input. A claimed (stored,
+  cached or displayed) available is only compared: an equal canonical signed
+  integer is current, a different one is STALE_AVAILABLE and a malformed one
+  is INVALID.
+- **B-BR-EMP-201 — Reservation and posting decisions; each hold closes once.**
+  A reservation request (hold identity, named line, amount
+  1..1000000000000, a nonzero reservation instant attributed to its reporting
+  day by the accepted time kernel, category and tags) is checked against a
+  computed capacity like a stored hold, plus DUPLICATE when its identity is
+  already among the line's holds whatever their state, and is then decided:
+  ACTIVATE with one new ACTIVE hold when amount ≤ available, otherwise EXCEEDS
+  with shortfall = amount − available and no hold. A consumption posting
+  takes one APPROVED expense entry of the line (NOT_APPROVED otherwise) that is
+  not already among the facts (DUPLICATE) and optionally one ACTIVE hold of
+  the capacity to convert (HOLD_NOT_ACTIVE when unknown or not ACTIVE).
+  Headroom is available plus that hold's amount; the result is POST when the
+  company amount is zero or at most the headroom, converting the hold to
+  CONSUMED linked to that expense, otherwise EXCEEDS with the shortfall and no
+  change. Neither decision applies an overrun policy or exception
+  (EMP-BUDG-004): EXCEEDS never approves. Hold states are exactly ACTIVE,
+  CONSUMED, RELEASED and EXPIRED. Only ACTIVE → CONSUMED (through a posting),
+  ACTIVE → RELEASED and ACTIVE → EXPIRED exist; any transition from another
+  state is HOLD_NOT_ACTIVE, so a double release or expiry, consuming a
+  released, expired or consumed hold and reviving a hold are impossible. A
+  stored CONSUMED hold requires its consuming expense and other states refuse
+  one. The caller runs these pure decisions under the line's row lock
+  (EMP-BUDG-002), so concurrent requests serialize against one capacity.
+- **BUC-EMP-102 — Prove derived budget capacity.**
+  Shared vectors cover line construction (period, every dimension kind and
+  target, the category filter, the limit bounds, absent, empty, unlimited,
+  negative, decimal and overflowing limits and the known zero), exact matching
+  over every kind with absent, wrong, other-kind and foreign tags and
+  categories, reporting-day bounds in organization and unit zones, all eight
+  review states, every hold state and its consuming expense, duplicate facts,
+  over-commitment above the single-record ceiling, VAL-14's
+  500 000 − 450 000 = 50 000 and current, stale and malformed claimed
+  available numbers.
+- **BUC-EMP-103 — Prove serialized reservations and the hold lifecycle.**
+  Shared vectors replay serialized sequences: VAL-14's two 30 000 holds (one
+  ACTIVATE leaving 20 000, one EXCEEDS by 10 000), release and expiry restoring
+  50 000 once, a retry after release, holds that do not fit, postings with and
+  without a converted hold, zero postings on an over-committed line,
+  non-approved and repeated postings, double release or expiry, consuming
+  released, expired or consumed holds and a late retry that cannot revive a
+  released hold.
