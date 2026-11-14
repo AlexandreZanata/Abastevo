@@ -7,13 +7,14 @@
   0 native findings/tasks and US$ 0.12783331 recorded model consumption.
   The independent static candidate and ten-case patch remain unexecuted;
   source follow-up does not rewrite native verdicts or certify a correction.
-  Final artifact identities, JSON projection/privacy checks and patch-format
-  checks are recorded in the bundle. [Delivery comparison](https://github.com/AlexandreZanata/Abastevo/compare/main...dev):
-  `dev` -> protected `main`; publication PR not open at this documentation
-  checkpoint, required current-head `Quick verification` not yet assessed.
-  Next: review the scoped publication diff and required PR checks. Existing
-  implementation-stage, integration, release and operational obligations remain
-  unchanged. Engine implementation review is separate in [OpenTatu PR #1](https://github.com/AlexandreZanata/OpenTatu/pull/1).
+  Final artifact identities, JSON projection/privacy and patch-format checks
+  are recorded in the bundle; the complete OpenTatu check passed 410 tests.
+  [Publication PR #220](https://github.com/AlexandreZanata/Abastevo/pull/220) follows maintained `dev` -> protected `main`;
+  required current-head `Quick verification` is reported by the PR checks.
+  Next: owner review of the evidence/handoff and required checks before integration.
+  Existing implementation-stage, integration, release and operational obligations
+  remain unchanged. Engine implementation review is separate in
+  [OpenTatu PR #1](https://github.com/AlexandreZanata/OpenTatu/pull/1).
 
 - Registry daily sync restored, 2026-11-14: PR #219 merged at `018f2df1`
   (source-owned locality corrections, B-BR-SYNC05 amended; race integration
