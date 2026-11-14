@@ -47,6 +47,7 @@ sql:
       - db/migrations/000192_employee_rehire_commands.sql
       - db/migrations/000193_employee_merge.sql
       - db/migrations/000194_organization_devices.sql
+      - db/migrations/000200_invitation_erasure_corrections.sql
     gen:
       go:
         package: membership

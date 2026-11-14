@@ -325,3 +325,28 @@ lenient SQL JSON check on stored canonical resolutions (Go re-validates);
 client confirmation of SELF-only 503 (EDR-118); no per-run cap on review
 lookups and the runner ignores `retryAfterMillis` for reviews (EDR-120);
 full rehire-with-new-account end-to-end test not run.
+
+## Cumulative PR203 review — 2026-11-14
+
+An independent read-only review of `origin/main..71b995ae` (28 commits, 650
+files) found no CRITICAL/HIGH defect; tenant isolation, RLS, append-only
+migrations and the signed sync protocol held end to end. Fixed with RED→GREEN:
+M1 acceptance erasure (000200, B-BR-EMP-170/EDR-123), M2 SUSPENDED/ARCHIVED
+contexts with non-locking capability read (B-BR-EMP-171/EDR-124), M3 Android
+epoch bump/retry loop, L1 deferred reservation scope (B-BR-EMP-172/EDR-125),
+L3 scheduled-owner transfer and 409 mapping (B-BR-EMP-173/EDR-126), L4
+admission expiry on issue/list (B-BR-EMP-174), L7 discovery lock footprint,
+L8 signed-out idle/continuation draining and L9 Retry-After clamp (EDR-122).
+Backend union with race: 37 packages ok after two test-only seeding fixes;
+Android host suites, build, lint and a new native fence/continuation test on
+`emulator-5588` pass.
+
+Retained (latent or design, recorded as obligations): L2 per-operation
+authority denial becomes a whole-batch denial before producers activate
+(docs/enterprise/10-offline-sync.md §10.2); L5 managed-account managers on
+acceptance read/confirm/reject; L6 DB defense for ACTIVE↔SUSPENDED without a
+proven period; L10 per-reading time-zone scan under the org lock; L11 shared
+synthetic intake budget must be measured before activation; Android notice for
+SUSPENDED/ARCHIVED contexts (SCR-ORG-12) not yet rendered; no sign-in trigger
+for delivery (resumes on app start/periodic run). Enterprise routes need a
+non-superuser runtime role and grants before `ANPFUEL_ENTERPRISE_ENABLED`.

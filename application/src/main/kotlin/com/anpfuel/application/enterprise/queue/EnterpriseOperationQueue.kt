@@ -45,6 +45,11 @@ interface EnterpriseQueueSource {
     /** Delivery may refresh before capture; offline local saves never require network. */
     suspend fun deliveryAccount(): EnterpriseQueueAccountLease = account()
     suspend fun attempt(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): EnterpriseQueueAttempt
+    /**
+     * False only when no personal account session exists at all, so background delivery can go
+     * idle instead of retrying while signed out (EDR-122). It is never authority for any access.
+     */
+    fun hasSession(): Boolean = true
 }
 
 /** Borrowed for one synchronous protected snapshot callback; never retain it. */

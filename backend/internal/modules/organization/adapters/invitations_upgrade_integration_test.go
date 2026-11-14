@@ -6,6 +6,7 @@ import (
 	"context"
 	migrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	memberpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
+	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/domain"
 	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
@@ -120,7 +121,8 @@ func TestInvitationOrdinaryPopulatedUpgradeRollbackRecovery(t *testing.T) {
 		t.Fatal(e)
 	}
 	invfx := invitationFixtureState{legalFixtureState: fx, invites: &memberpg.InvitationStore{Pool: f.Runtime, Memberships: fx.store.Memberships, Authority: &orgpg.InvitationAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles, Capabilities: flags, Settings: &orgpg.SettingsStore{Pool: f.Runtime}}, Audit: auditpg.NewStore(f.Runtime, catalog)}}
-	v := invitationIssue(t, invfx, employee)
+	var v d.Invitation
+	beforeAdmissions(t, f, func() { v = invitationIssue(t, invfx, employee) })
 	value, _ := v.Snapshot(fx.scope)
 	// Owner remains subject to FORCE RLS; no selected organization sees no rows.
 	tx, e := f.Admin.Begin(t.Context())

@@ -148,7 +148,7 @@ func ownershipTransferMapped(err error) error {
 	if errors.Is(err, d.ErrSelfTransferForbidden) {
 		return orgapi.Conflict
 	}
-	if errors.Is(err, d.ErrTargetAlreadyOwner) {
+	if errors.Is(err, d.ErrTargetAlreadyOwner) || errors.Is(err, permissions.ErrAssignmentConflict) {
 		return orgapi.Conflict
 	}
 	if errors.Is(err, d.ErrTargetNotActive) || errors.Is(err, d.ErrTargetEmployeeNotActive) {

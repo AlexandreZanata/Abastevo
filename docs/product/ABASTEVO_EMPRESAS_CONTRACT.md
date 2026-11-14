@@ -1948,7 +1948,8 @@ the owning business producers and OFFL-004 pending screen remain separate work.
   Use source-owned operational defaults:30-second exponential base,6-hour cap,
   equal jitter within half..full calculated delay and saturating counters, with
   no transient attempt cap. Honor a valid server Retry-After without shortening
-  it. Delta-seconds remains the actual API's primary form. An HTTP-date hint is
+  it below the same 6-hour cap; longer or overflowing hints clamp to that cap
+  (EDR-122). Delta-seconds remains the actual API's primary form. An HTTP-date hint is
   usable only with a unique valid Date header from the same authenticated HTTPS
   response: wait the full target-minus-Date interval, ignoring transit
   conservatively. Missing/invalid/duplicate Date makes that optional hint unusable
@@ -2655,3 +2656,61 @@ the owning business producers and OFFL-004 pending screen remain separate work.
 - **BUC-EMP-88 — Prove visible outcome and delivery.** Accepted/refused status,
   reason/history, localized counts and unchanged attachment truth on the owned
   emulator; final code/static/SQL/format/secret checks match the committed inputs.
+
+## Enterprise backend review corrections (2026-11-14)
+
+Code review of the F1/F2 backend found five defects. These rules precede the
+corrections; migration 000200 is append-only after the committed 184–199 chain.
+
+- **B-BR-EMP-170 — Account erasure unlinks invitation acceptances.** In the
+  existing erasure transaction, under each affected organization's own scope
+  and after its membership tombstone, every invitation acceptance linked to the
+  deleted account loses that account reference and its copied alias (empty).
+  State, revision, deadlines, decisions and notices stay; no notice is invented.
+  Only the migrator-owned erasure path for an actually deleted account may make
+  exactly this change; every other update, a live account, a foreign scope or
+  deletion is refused. Manager acceptance reads and replays of the manager's own
+  original receipts return an empty alias with `account_erased=true`. Migration
+  000200 applies the same unlink to accounts deleted before the upgrade. Actor
+  attribution in immutable command receipts and organization audit events stays
+  as the organization's accountability record (EDR-123); no manager read exposes
+  it (BR-IDN-042, BR-PRIV-014, BR-TEN-009).
+- **B-BR-EMP-171 — Readable lifecycle states stay visible as contexts.**
+  SUSPENDED and ARCHIVED organizations remain listed and revalidated for their
+  current members, with additive `state` and `suspension_reason` for the
+  SCR-ORG-12 notice. Employee/invitation management hints and grantable options
+  are omitted while the organization does not accept writes; reading hints stay.
+  CLOSED or unknown states are not contexts. The capability is read without a
+  lock only after the current membership is bound, so a non-member always gets
+  NOT_FOUND; a current member keeps ENTITLEMENT_REQUIRED when it is disabled
+  (BR-ORG-030, BR-ORG-033).
+- **B-BR-EMP-172 — Deferred reservation cleanup uses the event's own scope.**
+  The deferred cleanup that ends an unused INVITED reservation reinstalls the
+  scope of the invitation row that queued it and restores the caller's scope,
+  like the existing settings and owner-coverage checks. A caller that restores
+  an empty or different scope before COMMIT, including account erasure, can no
+  longer leave the reservation live. No definer or RLS bypass is added.
+- **B-BR-EMP-173 — A scheduled owner is already an owner for a transfer.**
+  Propose and accept refuse a recipient that has any unended OWNER period not yet
+  expired, current or scheduled, with the existing target-already-owner conflict
+  (409), and persist nothing. A role-period conflict found during the handover
+  is a 409 conflict, never a retryable 503. Scheduled plans are not rewritten.
+- **B-BR-EMP-174 — Expired admissions are materialized where they block.**
+  Invitation issue, the invitation list and personal redemption first mark every
+  WAITING admission of that organization whose confirmation deadline passed by
+  the database clock as EXPIRED (CONFIRMATION_EXPIRED), ending its INVITED
+  reservation (ADMISSION_ENDED) with its notice under the root lock. Admissions
+  before their deadline do not change; no scheduler is introduced.
+- **BUC-EMP-89 — Prove erasure privacy.** The real deletion service on ordinary
+  roles and an ordinary definer, two organizations, WAITING/ACTIVE/confirmed
+  admissions, unrelated acceptances untouched, receipt replay masking, every
+  forbidden guard mutation, history deletion, and populated199→200 failure,
+  recovery, pre-upgrade deleted-account unlink and previous-image compatibility.
+- **BUC-EMP-90 — Prove context lifecycle.** Suspended/archived discovery and
+  revalidation with state and reduced hints, closed exclusion, non-member
+  indistinguishability with enabled/disabled capability, no wait on a held
+  capability row, and the additive OpenAPI shape checked against real HTTP.
+- **BUC-EMP-91 — Prove cleanup, transfer and expiry corrections.** Issuer erasure
+  ends the invitee's reservation after scope restore; scheduled-owner propose and
+  repeated accept return 409 without changes; expired admissions unblock reissue,
+  list and acceptance while an admission before its deadline stays intact.

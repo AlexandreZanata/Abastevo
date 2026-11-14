@@ -227,6 +227,11 @@ func (s *RedemptionStore) Redeem(ctx context.Context, actor app.EmployeeActor, c
 		if _, e := tx.Exec(ctx, `UPDATE org_invitations SET state='EXPIRED',revision=revision+1,cause='EXPIRED' WHERE org_id=$1 AND id=$2 AND state='PENDING' AND expires_at<=clock_timestamp()`, org, id); e != nil {
 			return e
 		}
+		// An admission past its deadline must not keep this account's INVITED
+		// reservation as an existing membership (B-BR-EMP-174).
+		if e := queries.ExpireInvitationAcceptances(ctx, org); e != nil {
+			return e
+		}
 		value, e := loadInvitation(ctx, tx, scope, id)
 		if e != nil {
 			return e
@@ -399,6 +404,16 @@ func (s *RedemptionStore) activate(ctx context.Context, tx pgx.Tx, scope kernel.
 	_, e = s.Memberships.SaveTx(ctx, tx, scope, m.Revision, active)
 	return e
 }
+
+// admissionErased reports the B-BR-EMP-170 tombstone: account erasure clears
+// the account reference and the copied alias together, never only one.
+func admissionErased(row q.InvitationAcceptanceRow) (bool, error) {
+	erased := row.AccountID == ""
+	if erased != (row.AccountAlias == "") {
+		return false, app.ErrRegisterUnavailable
+	}
+	return erased, nil
+}
 func admissionView(row q.InvitationAcceptanceRow) (app.AdmissionView, error) {
 	if !row.AcceptedAt.Valid || !row.Deadline.Valid || !row.Deadline.Time.Equal(row.AcceptedAt.Time.Add(168*time.Hour)) || row.Revision < 1 {
 		return app.AdmissionView{}, app.ErrRegisterUnavailable
@@ -406,7 +421,11 @@ func admissionView(row q.InvitationAcceptanceRow) (app.AdmissionView, error) {
 	if _, e := d.NewAdmission(d.AdmissionState(row.State), row.AcceptedAt.Time); e != nil {
 		return app.AdmissionView{}, app.ErrRegisterUnavailable
 	}
-	return app.AdmissionView{InvitationID: row.InvitationID, MembershipID: row.MembershipID, Alias: row.AccountAlias, State: d.AdmissionState(row.State), Revision: row.Revision, AcceptedAt: row.AcceptedAt.Time.UTC(), Deadline: row.Deadline.Time.UTC()}, nil
+	erased, e := admissionErased(row)
+	if e != nil {
+		return app.AdmissionView{}, e
+	}
+	return app.AdmissionView{InvitationID: row.InvitationID, MembershipID: row.MembershipID, Alias: row.AccountAlias, AccountErased: erased, State: d.AdmissionState(row.State), Revision: row.Revision, AcceptedAt: row.AcceptedAt.Time.UTC(), Deadline: row.Deadline.Time.UTC()}, nil
 }
 func (s *RedemptionStore) ManageAdmission(ctx context.Context, scope kernel.OrgScope, actor app.EmployeeActor, member, id, action string, revision int64, operation string) (app.AdmissionView, bool, error) {
 	if !s.ready() {
@@ -473,6 +492,15 @@ func (s *RedemptionStore) ManageAdmission(ctx context.Context, scope kernel.OrgS
 				out = app.AdmissionView{InvitationID: r.InvitationID, MembershipID: r.MembershipID, Alias: r.Alias, State: d.AdmissionState(r.State), Revision: r.Revision}
 				if r.AcceptedAt == nil || r.Deadline == nil {
 					return app.ErrRegisterUnavailable
+				}
+				// The immutable receipt keeps its original bytes; once the
+				// person's account is erased the replay projects the tombstone.
+				erased, e := admissionErased(row)
+				if e != nil {
+					return e
+				}
+				if erased {
+					out.Alias, out.AccountErased = "", true
 				}
 				out.AcceptedAt = *r.AcceptedAt
 				out.Deadline = *r.Deadline

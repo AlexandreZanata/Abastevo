@@ -73,9 +73,13 @@ type RedemptionResult struct {
 	MembershipState                                                    d.MembershipState
 	AcceptedAt, ConfirmationDeadline                                   time.Time
 }
+
+// AdmissionView is manager-visible admission history. After the person's
+// account deletion the alias is empty and AccountErased marks the tombstone.
 type AdmissionView struct {
 	privateRegister
 	InvitationID, MembershipID, Alias string
+	AccountErased                     bool
 	State                             d.AdmissionState
 	Revision                          int64
 	AcceptedAt, Deadline              time.Time

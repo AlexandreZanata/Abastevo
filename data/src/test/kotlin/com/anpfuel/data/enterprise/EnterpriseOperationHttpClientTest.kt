@@ -202,9 +202,11 @@ class EnterpriseOperationHttpClientTest {
         }
     }
 
-    @Test fun `retry after is honored without overflow or shortening and invalid values are ignored`(): Unit = runBlocking {
+    @Test fun `retry after is honored up to its documented bound without overflow and invalid values are ignored`(): Unit = runBlocking {
         val op = operation()
-        for ((header, expected) in listOf("120" to 120000L, "9223372036854775807" to Long.MAX_VALUE,
+        // EDR-122: an unbounded server hint could park retained work permanently; 6 h is the queue backoff cap.
+        for ((header, expected) in listOf("120" to 120000L, "21600" to 21_600_000L, "9223372036854775807" to 21_600_000L,
+            "99999999999999999999" to 21_600_000L, "Fri, 31 Dec 9999 23:59:59 GMT" to 21_600_000L,
             "Thu, 1 Jan 1970 00:02:00 GMT" to 120000L, "-1" to null, "invalid" to null)) {
             val fixture = Fixture { response(it, "{}", 429, mapOf("Retry-After" to header,
                 "Date" to "Thu, 1 Jan 1970 00:00:00 GMT")) }

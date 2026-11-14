@@ -25,7 +25,10 @@ interface EnterpriseVaultFiles {
     fun allowFresh(token: String)
     fun erase(token: String)
     fun tokens(accountTag: String): List<String>
-    /** Whether anything (including a lock file) was ever created for the account; creates nothing. */
+    /**
+     * Whether protected material or a durable denial exists for the account; creates nothing.
+     * A bare account lock file is coordination only and never prior data (EDR-122).
+     */
     fun present(accountTag: String): Boolean
     fun readGeneration(token: String, generation: Long, descriptor: Boolean): ByteArray?
     fun replaceGeneration(token: String, generation: Long, descriptor: Boolean, ciphertext: ByteArray)
@@ -169,8 +172,9 @@ class AtomicEnterpriseVaultFiles(directory: File) : EnterpriseVaultFiles {
         require(accountTag.length == 64 && tokenPattern.matches(accountTag))
         if (!Files.exists(root, NOFOLLOW_LINKS)) return false
         require(!Files.isSymbolicLink(root) && Files.isDirectory(root, NOFOLLOW_LINKS))
+        val lock = "$accountTag.lck"
         return Files.newDirectoryStream(root).use { entries ->
-            entries.any { it.fileName.toString().startsWith(accountTag) }
+            entries.any { entry -> entry.fileName.toString().let { it.startsWith(accountTag) && it != lock } }
         }
     }
 

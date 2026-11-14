@@ -19568,8 +19568,13 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         account_alias:
           type: string
-          minLength: 1
+          minLength: 0
           maxLength: 120
+          description: Alias copied at acceptance. Empty only when account_erased is true.
+        account_erased:
+          type: boolean
+          description: Additive B-BR-EMP-170 tombstone marker. True after the person deleted the account; the
+            alias and account reference were unlinked and are never returned again.
         state:
           type: string
           enum:
@@ -19598,6 +19603,7 @@ components:
         invitation_id: 7b0e2a54-0000-4000-8000-000000001010
         membership_id: 7b0e2a54-0000-4000-8000-000000001011
         account_alias: synthetic_alias
+        account_erased: false
         state: WAITING
         revision: 1
         accepted_at: '2026-11-12T10:00:00Z'
@@ -22277,10 +22283,31 @@ components:
           example: Synthetic company
         membership_id:
           $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          description: Additive SCR-ORG-12 notice state. SUSPENDED and ARCHIVED remain readable contexts without
+            management hints; CLOSED is never returned.
+          enum:
+          - PENDING_SETUP
+          - ACTIVE
+          - SUSPENDED
+          - ARCHIVED
+        suspension_reason:
+          type: string
+          description: Additive suspension reason category for the notice; empty when none is open.
+          enum:
+          - ''
+          - BILLING
+          - TERMS
+          - SECURITY
+          - LEGAL
+          - OWNER_REQUEST
       example:
         id: 7b0e2a54-0000-4000-8000-000000000001
         name: Synthetic company
         membership_id: 7b0e2a54-0000-4000-8000-000000000601
+        state: ACTIVE
+        suspension_reason: ''
     EnterpriseAccountContextListResult:
       type: object
       additionalProperties: false
