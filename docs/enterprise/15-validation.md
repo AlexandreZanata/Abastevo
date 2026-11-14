@@ -390,9 +390,9 @@ The matrix of [07-permissions](07-permissions.md) §7.3 is not sampled when it i
 
 **From the matrix to tests.**
 
-1. The role catalog `org-roles-v1` and the permission registry `org-permissions-v1` are data in the code (EMP-AUTH-001). EMP-AUTH-009 exports them as a vector, a proposed `contracts/testdata/enterprise/authz-matrix-v1.json`, with one entry per cell: permission key, role, cell value (`O`, `S` or `—`) and the footnote condition when there is one.
-2. The main table has 52 rows and 9 roles: 468 cells, of which 172 are `O`, 54 are `S` and 242 are `—`. The station and data table has 9 rows and 5 columns: 45 cells. A test fails when the vector and the code catalog differ. A difference between the vector and the table in 07-permissions is a defect in one of them and blocks the gate until one is corrected.
-3. Every organization route declares the permission it requires. The suite takes that declaration from the route registry, so a route with no declared permission, or registered outside the authorization pipeline, fails before any cell runs ([09-architecture](09-architecture.md) §13, items 2 and 3).
+1. The role catalog `org-roles-v1` and permission registry `org-permissions-v4` are frozen source data. The independent [authorization-catalog-v4.psv](../../contracts/testdata/enterprise/authorization-catalog-v4.psv) records each permission/role cell, coverage (`O`, `S` or `-`) and footnote conditions. Tests consume the literal fixture; expected decisions are never exported from the catalog being tested.
+2. Current v4 has 85 registered keys × 13 roles = 1,105 descriptor cells: 215 `O`, 54 `S` and 836 denied. This includes explicit catalog amendments in 07-permissions and registered-but-unassigned keys; the two human presentation tables are not the complete cross-product. A fixture/catalog/documentation mismatch blocks the gate. Historical catalog versions retain their original evidence.
+3. Every ordinary organization route declares its permission and complete current-authority descriptor. The full production-router gate checks registrations and OpenAPI in both directions; scoped session/bootstrap/self/device entries have their separate explicit boundaries. The independent [authorization-routes-v1.json](../../contracts/testdata/enterprise/authorization-routes-v1.json) inventories every current route, one real representative per routed permission and every not-yet-routed obligation. Adding a route even under an existing permission requires an explicit fixture/test update. Unguarded, undocumented or incomplete-authority registrations fail before matrix execution ([09-architecture](09-architecture.md) §13).
 4. For each cell the generator builds a member of organization A with exactly that role and runs these cases against a route of that permission:
 
 | Case | Setup | Expected |
@@ -402,14 +402,14 @@ The matrix of [07-permissions](07-permissions.md) §7.3 is not sampled when it i
 | Wrong scope | Role assigned on another unit, cost centre, team or asset | `FORBIDDEN` naming the key |
 | Suspended membership | Membership `SUSPENDED` | `MEMBERSHIP_SUSPENDED` |
 | Ended membership | Membership `ENDED` | Denied, no data |
-| Suspended organization | Organization `SUSPENDED`, write action | `ORG_SUSPENDED` |
-| Capability off | Capability flag off for A | `ENTITLEMENT_REQUIRED` |
+| Suspended organization | Organization `SUSPENDED` | Operational/configuration writes denied; authorized reads, access reduction and plan regularization retain the existing source-policy exceptions |
+| Capability off | Scoped pilot capability flag off for A | Operational/configuration writes require entitlement; authorized reads, access reduction, plan regularization and restoration retain AUTH-004 exceptions. Global disable denies every operation |
 | Other organization | Same role held in B, target in A | `NOT_FOUND`, nothing beyond the envelope |
-| Stale session | Sensitive action without fresh authentication | `FRESH_AUTH_REQUIRED` |
+| Stale session | Otherwise authorized sensitive action without fresh authentication | `FRESH_AUTH_REQUIRED`; an already-denied permission cell remains denied in the existing source gate order |
 
 5. The four footnotes of the matrix are explicit generated cases: an `ADMIN` cannot assign `OWNER`; a driver sees the position and track of own trips only; an auditor reads recorded tracks and never live positions; a fleet manager acts on the fleet side of an agreement only.
 6. Separation of duties is tested per record, not per cell: for every review permission one case has the reviewer as the author or the beneficiary and expects `SELF_APPROVAL`.
-7. The suite grows with the product. At M1 and at cut C1 it covers the `ORG` and `SELF` scopes and the permissions whose routes exist. Unit, cost-centre, team and asset scopes join with EMP-AUTH-006, delegation with EMP-AUTH-007, station roles in F7. A permission whose route does not exist yet is reported as "not yet routed", never as passed.
+7. The suite grows with the product. At M1/C1, exercise ORG/SELF only where actual source/feature routes exist. At AUTH-009 opening, 69 ordinary routes use 12 permissions; 15 additional entries use explicit account/session/bootstrap/self/device boundaries. The routed permission matrix has 156 descriptor cells. Three station roles have no persistable F1 authority and remain 36 unavailable-scope cells, leaving 120 current-source cells (41 positive, 79 denied) over10 persistable roles. No routed permission has an `S` descriptor yet. The remaining 73 keys are not yet routed; they are never labeled business acceptance. Unit/cost-centre/team/asset scopes enter with AUTH-006, delegation with AUTH-007, station roles with F7, and each SELF/review business rule with its real producer. The independent inventory and complete-router gate must be updated as the phase adds routes; these opening counts are not future acceptance.
 
 **The two sampling choices.** First, a permission that guards several routes is exercised cell by cell on one representative route; the other routes are covered by the route-to-permission declaration of step 3 and by the isolation harness (VAL-02). Second, ten rows are also written by hand as readable regression tests, so that a mistake in the generator cannot hide a mistake in the matrix:
 
@@ -426,7 +426,7 @@ The matrix of [07-permissions](07-permissions.md) §7.3 is not sampled when it i
 | 9 | Gil (`AUDITOR`, `ORG`) | `gps.track.read` | The recorded track of a finished trip | Allowed; one access-log entry |
 | 10 | Rui (`OWNER` of organization B) | `fleet.asset.read` | FR-001 of A, by identifier, through A's path | `NOT_FOUND`, nothing beyond the envelope |
 
-Rows 1 to 3 are examples 1 and 2 of 07-permissions §10 and need unit scopes; they are active from the M3 gate. Rows 8 and 9 need tracking and are active from the M4 gate. The others are active from the first gate that has their route.
+Rows 1–3 are examples 1–2 of 07-permissions §10 and need actual unit scopes/trip routes; their owners remain AUTH-006/TRIP until those sources exist. Rows 4–6 require the real fueling/review/payment routes. Row 7 is exercised through actual role assignment and its last-owner/current-manager constraints. Rows 8–9 require tracking sources and access logging at M4. Row 10 enters with real fleet reads. Until each producer exists, the inventory reports that obligation explicitly; static descriptors or synthetic resources are not proof that its business route works.
 
 ## 6. Capacity checks
 
@@ -486,9 +486,9 @@ A milestone is reached when its gate task records every listed scenario as passe
 The block below is generated by [tools/check_plan.py](tools/check_plan.py) and is never edited by hand ([00-conventions](00-conventions.md) §7).
 
 <!-- CHECK-RESULT:BEGIN -->
-Last run: 2026-11-13 with `python3 docs/enterprise/tools/check_plan.py --write`.
+Last run: 2026-11-14 with `python3 docs/enterprise/tools/check_plan.py --write`.
 
 - Tasks parsed: 348; cut C1: 80.
-- Identifiers defined: 545 BR, 167 UC, 145 SCR, 20 IND, 6 FT, 38 VAL, 59 EDR, 12 CX, 135 REQ.
+- Identifiers defined: 545 BR, 167 UC, 145 SCR, 20 IND, 6 FT, 38 VAL, 116 EDR, 12 CX, 135 REQ.
 - Problems found: 0.
 <!-- CHECK-RESULT:END -->

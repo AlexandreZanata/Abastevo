@@ -32,13 +32,20 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		signedDevice, signedDeviceGuarded := handler.(orgapi.SignedDeviceDescriptor)
 		selfDevice, selfDeviceGuarded := handler.(orgapi.SelfDeviceDescriptor)
 		accountContext, contextGuarded := handler.(orgapi.AccountContextDescriptor)
+		ownedSetups, setupsGuarded := handler.(orgapi.OwnedSetupsDescriptor)
+		contact, contactGuarded := handler.(orgapi.DeviceContactDescriptor)
+		batch, batchGuarded := handler.(orgapi.SignedBatchDescriptor)
+		reviewResults, reviewResultsGuarded := handler.(orgapi.SignedReviewResultsDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded && !reviewResultsGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
 		if operation == nil {
 			return fmt.Errorf("missing organization operation %s %s", method, path)
+		}
+		if !setupsGuarded && operation.Extensions["x-abastevo-owned-setups"] != nil {
+			return fmt.Errorf("unexpected owned setups metadata for %s", path)
 		}
 		if !contextGuarded && operation.Extensions["x-abastevo-account-context"] != nil {
 			return fmt.Errorf("unexpected account context metadata for %s", path)
@@ -53,7 +60,136 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 			return fmt.Errorf("unexpected device authority metadata for %s", path)
 		}
 		var declared orgapi.Rule
-		if contextGuarded {
+		if !contactGuarded && operation.Extensions["x-abastevo-device-contact"] != nil {
+			return fmt.Errorf("unexpected device contact metadata for %s", path)
+		}
+		if !batchGuarded && operation.Extensions["x-abastevo-signed-batch"] != nil {
+			return fmt.Errorf("unexpected batch authority metadata for %s", path)
+		}
+		if !reviewResultsGuarded && operation.Extensions["x-abastevo-signed-review-results"] != nil {
+			return fmt.Errorf("unexpected author result authority metadata for %s", path)
+		}
+		if reviewResultsGuarded {
+			expected := orgapi.SignedReviewResultsRule{AccountProof: true, Signed: true, ExactEnrollment: true, OriginalAuthor: true, WholeBodyPreflight: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || path != "/v1/orgs/{org_id}/sync/review-results" || reviewResults.SignedReviewResultsRule() != expected {
+				return fmt.Errorf("invalid signed original-author result guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context", "x-abastevo-owned-setups", "x-abastevo-device-contact", "x-abastevo-signed-batch"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for own review results %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-signed-review-results"])
+			var recorded orgapi.SignedReviewResultsRule
+			decoder := json.NewDecoder(strings.NewReader(string(raw)))
+			decoder.DisallowUnknownFields()
+			if e != nil || decoder.Decode(&recorded) != nil || recorded != expected {
+				return fmt.Errorf("signed author result metadata differs for %s", path)
+			}
+			if e := validateSignedDeviceSecurity(operation, path); e != nil {
+				return e
+			}
+			body := operation.RequestBody.Value.Content.Get("application/json").Schema
+			if body.Ref != "#/components/schemas/EnterpriseReviewResultsRequest" || !exactReviewObject(body.Value, "schema_version", "request_id", "family_id", "access_token", "membership_id", "enrollment_id", "selectors") {
+				return fmt.Errorf("invalid whole author result body for %s", path)
+			}
+			selectors := body.Value.Properties["selectors"]
+			if selectors == nil || selectors.Value == nil || !selectors.Value.Type.Is("array") || selectors.Value.MaxItems == nil || *selectors.Value.MaxItems != 50 || selectors.Value.Items == nil || !exactReviewObject(selectors.Value.Items.Value, "operation_id", "payload_digest") {
+				return fmt.Errorf("invalid bounded author selectors for %s", path)
+			}
+			if operation.Responses == nil || operation.Responses.Value("200") == nil || operation.Responses.Value("200").Value == nil {
+				return fmt.Errorf("missing author results response for %s", path)
+			}
+			media := operation.Responses.Value("200").Value.Content.Get("application/json")
+			if media == nil || media.Schema == nil || media.Schema.Ref != "#/components/schemas/EnterpriseReviewResultsResponse" {
+				return fmt.Errorf("invalid complete author results response for %s", path)
+			}
+			declared.Success = 200
+		} else if batchGuarded {
+			expected := orgapi.SignedBatchRule{AccountProof: true, Signed: true, CurrentEnrollment: true, WholeBodyPreflight: true, PerOperation: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || path != "/v1/orgs/{org_id}/sync/operations" || batch.SignedBatchRule() != expected {
+				return fmt.Errorf("invalid signed batch guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context", "x-abastevo-owned-setups", "x-abastevo-device-contact"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for signed batch %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-signed-batch"])
+			var recorded orgapi.SignedBatchRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("signed batch metadata differs for %s", path)
+			}
+			if e := validateSignedDeviceSecurity(operation, path); e != nil {
+				return e
+			}
+			body := operation.RequestBody.Value.Content.Get("application/json").Schema
+			if body.Ref != "#/components/schemas/EnterpriseSyncBatch" || len(body.Value.Required) != 4 || len(body.Value.Properties) != 4 {
+				return fmt.Errorf("invalid complete batch body for %s", path)
+			}
+			for _, name := range []string{"schema_version", "operations"} {
+				found := false
+				for _, required := range body.Value.Required {
+					if required == name {
+						found = true
+					}
+				}
+				if !found || body.Value.Properties[name] == nil {
+					return fmt.Errorf("missing batch wrapper field %s", name)
+				}
+			}
+			declared.Success = 200
+		} else if contactGuarded {
+			expected := orgapi.DeviceContactRule{AccountProof: true, Signed: true, ExactEnrollment: true, TerminalRead: true, PolicyLease: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || path != "/v1/orgs/{org_id}/devices/contact" || contact.DeviceContactRule() != expected {
+				return fmt.Errorf("invalid device contact guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context", "x-abastevo-owned-setups"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for device contact %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-device-contact"])
+			var recorded orgapi.DeviceContactRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("device contact metadata differs for %s", path)
+			}
+			if e := validateSignedDeviceSecurity(operation, path); e != nil {
+				return e
+			}
+			schema := operation.RequestBody.Value.Content.Get("application/json").Schema.Value
+			for _, name := range []string{"schema_version", "request_id", "membership_id", "enrollment_id"} {
+				found := false
+				for _, required := range schema.Required {
+					if required == name {
+						found = true
+					}
+				}
+				if !found || schema.Properties[name] == nil {
+					return fmt.Errorf("missing exact contact selector %s for %s", name, path)
+				}
+			}
+			declared.Success = 200
+		} else if setupsGuarded {
+			expected := orgapi.OwnedSetupsRule{Cookie: true, CSRF: true, Binding: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || path != "/v1/org-access/organizations/setups/list" || ownedSetups.OwnedSetupsRule() != expected {
+				return fmt.Errorf("invalid owned setups guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for owned setups %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-owned-setups"])
+			var recorded orgapi.OwnedSetupsRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("owned setups metadata differs for %s", path)
+			}
+			if e := validateCompanySecurity(document, operation, path, orgapi.CompanySessionRule{Cookie: true, CSRF: true, Success: 200}); e != nil {
+				return e
+			}
+			declared.Success = 200
+		} else if contextGuarded {
 			rule := accountContext.AccountContextRule()
 			expected := orgapi.AccountContextRule{Action: rule.Action, Cookie: true, CSRF: true, Binding: true, Success: 200}
 			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || (rule.Action != "list" && rule.Action != "read") || path != "/v1/org-access/contexts/"+rule.Action || rule != expected {
@@ -250,6 +386,25 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		}
 	}
 	return nil
+}
+
+func exactReviewObject(schema *openapi3.Schema, names ...string) bool {
+	if schema == nil || !schema.Type.Is("object") || len(schema.Properties) != len(names) || len(schema.Required) != len(names) || schema.AdditionalProperties.Has == nil || *schema.AdditionalProperties.Has {
+		return false
+	}
+	seen := make(map[string]bool, len(names))
+	for _, key := range schema.Required {
+		if seen[key] {
+			return false
+		}
+		seen[key] = true
+	}
+	for _, key := range names {
+		if !seen[key] || schema.Properties[key] == nil {
+			return false
+		}
+	}
+	return true
 }
 
 func validateSignedDeviceSecurity(operation *openapi3.Operation, path string) error {

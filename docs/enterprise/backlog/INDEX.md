@@ -183,7 +183,7 @@ Detail: [ep05-fleet-meters.md](ep05-fleet-meters.md).
 | ID | Title | Phase | Cut | Type | Size | Priority | Depends on |
 |---|---|---|---|---|---|---|---|
 | EMP-FLEET-001 | Asset domain: vehicles, machines, implements, tanks and compatible products | F2 | C1 | DOM | M | P0 | EMP-PLAT-001, EMP-PLAT-009 |
-| EMP-FLEET-002 | Asset persistence and management with per-organization identifier uniqueness | F2 | C1 | API | M | P0 | EMP-FLEET-001, EMP-PLAT-002, EMP-AUTH-003 |
+| EMP-FLEET-002 | Asset persistence and management with per-organization identifier uniqueness | F2 | C1 | API | M | P0 | EMP-FLEET-001, EMP-PLAT-002, EMP-AUTH-003, EMP-FUEL-001 |
 | EMP-FLEET-003 | Asset lifecycle: acquisition, active, sale, write-off, return, archive | F2 | - | API | S | P1 | EMP-FLEET-002 |
 | EMP-FLEET-004 | Tenure kinds: owned, leased, rented, third-party, loaned | F2 | - | API | S | P1 | EMP-FLEET-002 |
 | EMP-FLEET-005 | Unit and cost-centre allocation history | F2 | - | API | S | P1 | EMP-FLEET-002, EMP-ORG-005, EMP-ORG-006 |
@@ -271,7 +271,7 @@ Detail: [ep08-fuelings.md](ep08-fuelings.md).
 
 | ID | Title | Phase | Cut | Type | Size | Priority | Depends on |
 |---|---|---|---|---|---|---|---|
-| EMP-FUEL-001 | Fueling domain: products, units, payer and supplier roles | F3 | C1 | DOM | M | P0 | EMP-PLAT-009, EMP-FLEET-001 |
+| EMP-FUEL-001 | Fueling domain: products, units, payer and supplier roles | F3 | C1 | DOM | M | P0 | EMP-PLAT-009, EMP-FLEET-001, EMP-METER-001 |
 | EMP-FUEL-002 | Fueling persistence, sync handlers and arithmetic consistency | F3 | C1 | DB | L | P0 | EMP-FUEL-001, EMP-OFFL-002, EMP-METER-002 |
 | EMP-FUEL-003 | Fueling review: check, approve, reject, return, cancel | F3 | C1 | API | M | P0 | EMP-FUEL-002, EMP-APPR-001 |
 | EMP-FUEL-004 | Supplier linkage: canonical station, organization supplier or not found | F3 | - | API | M | P1 | EMP-FUEL-002, EMP-FLEET-009 |

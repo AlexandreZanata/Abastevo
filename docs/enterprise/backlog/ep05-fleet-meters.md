@@ -1,11 +1,11 @@
 # EP05 — Fleet, assets and meters
 
-Status: **PLANNED**, 2026-11-10.
+Status: **IN_PROGRESS**, 2026-11-13.
 
 This epic delivers the organization's asset register (vehicles, machines, implements, tanks, tenure, unit and cost-centre history), assignments, reservations, blocks, derived availability, the supplier registry and meter readings kept as append-only evidence with corrections, replacement, reset and rollover. The specification is [modules/fleet](../modules/fleet.md); rules are `BR-FLEET` and `BR-METER`. Tasks tagged cut C1 give the first operational cut an asset, an assignment and validated readings. Three panel screens of the specification have no task in [INDEX](INDEX.md) yet: SCR-FLEET-05 (lifecycle, tenure, transfer), SCR-FLEET-07 (suppliers) and the replacement dialog SCR-METER-04, which needs EMP-METER-005; they are named in the tasks that provide their commands.
 
 ### EMP-FLEET-001 — Asset domain: vehicles, machines, implements, tanks and compatible products
-- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Give the server and the app one pure model of an asset, so that kind, identifiers, tanks, accepted products and the activation check are decided the same way in Go and Kotlin instead of in each screen.
 - **Rules and use cases:** BR-FLEET-001, BR-FLEET-002, BR-FLEET-003, BR-FLEET-004, BR-FLEET-005, BR-FLEET-006, BR-FLEET-007, UC-FLEET-01
 - **Depends on:** EMP-PLAT-001, EMP-PLAT-009
@@ -19,12 +19,13 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Validation:** V-DOM, V-MONEY · migration: none · rollback: revert the change; no data is involved
 - **Risks and assumptions:** The fuel product catalog is defined later by the fueling epic; this task relies only on the port. The category list is a hypothesis to confirm in discovery (EMP-GOV-010).
 - **Done when:** Go and Kotlin pass the same asset vectors and the Go package imports nothing outside the standard library and the two kernels.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task216](https://github.com/AlexandreZanata/Abastevo/issues/216), [phase215](https://github.com/AlexandreZanata/Abastevo/issues/215), cumulative PR203. Both pure domains consume all133 shared vectors; Go race/boundary/format/vet/static checks pass with98.0% statements, Kotlin143 tests pass with100% scoped lines and99.48% instructions. Typed scope, catalog-unit consistency under changing descriptors, Unicode ordering, exact quantities, privacy/defensive copies and activation facts pass independent review. [Evidence](../evidence/f2-fleet001-asset-domain.md). Runtime category registration, real meter presence and all persistence/operations remain owning tasks; F2/M1/M2/C1 is not closed.
 
 ### EMP-FLEET-002 — Asset persistence and management with per-organization identifier uniqueness
-- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state DONE
 - **Objective:** Let a manager register, edit, activate, list and read the organization's assets, so that trips, fuelings and readings refer to a real asset instead of free text.
 - **Rules and use cases:** BR-FLEET-001, BR-FLEET-003, BR-FLEET-004, BR-FLEET-008, BR-FLEET-011, BR-FLEET-015, BR-TEN-001, BR-TEN-006, UC-FLEET-01
-- **Depends on:** EMP-FLEET-001, EMP-PLAT-002, EMP-AUTH-003
+- **Depends on:** EMP-FLEET-001, EMP-PLAT-002, EMP-AUTH-003, EMP-FUEL-001
 - **Read first:** [modules/fleet](../modules/fleet.md) §3, §6.1, §7 and §10.5; [06-domain-model](../06-domain-model.md) §5; [09-architecture](../09-architecture.md) §2 to §5.
 - **Scope:** in: tables for assets and tanks; create, edit with expected revision, discard a draft, activate, list with keyset pagination, read; the unit stored as the first allocation period; uniqueness of plate and fleet number among assets that are not archived; audit events · out: deactivate, dispose, archive (EMP-FLEET-003), tenure changes (EMP-FLEET-004), allocation changes (EMP-FLEET-005), meters (EMP-METER-002).
 - **Areas:** existing: `backend/db/migrations/`, `backend/sqlc.yaml`, `backend/cmd/api/main.go`, `contracts/openapi/v1.yaml`, `scripts/check-manifest.txt` · new (proposed): `backend/internal/modules/fleet/application/`, `backend/internal/modules/fleet/adapters/`, `backend/db/queries/fleet/`, `contracts/testdata/enterprise/fleet/`
@@ -35,6 +36,14 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: additive tables and indexes whose names are frozen here, applied forward on a populated database · rollback: capability flag off; tables remain and the previous image keeps running
 - **Risks and assumptions:** Assumes the operating-unit table of the organization epic exists; INDEX lists no direct dependency on it. The plan limit of active assets goes through the entitlement gate and is a no-op until plans exist.
 - **Done when:** The route-versus-contract test and the two-organization suite pass for every asset route.
+
+[F2 actual asset persistence](../evidence/f2-fleet002-asset-persistence.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Foundation6e3dde65 is backed up;
+actual Meter source integration now passes full powered/route/isolation and
+contract acceptance. Final ordinary PostGIS/race union2243 nodes and63 actual
+company HTTP assertions pass, with zero failures/skips and no fake meter.
+Full METER-002 history/assignment/review remains its own open task. EDR-109
+continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccepted.
 
 ### EMP-FLEET-003 — Asset lifecycle: acquisition, active, sale, write-off, return, archive
 - **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state TODO
@@ -213,7 +222,7 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Done when:** The state tests pass and the picker returns an asset to a calling screen with no network.
 
 ### EMP-METER-001 — Meter and reading domain: append-only evidence, sources and corrections
-- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Model a meter reading as evidence with origin, instant, author and a supersession chain, so that no part of the product can treat a meter value as one overwritable number.
 - **Rules and use cases:** BR-METER-001, BR-METER-002, BR-METER-003, BR-METER-004, BR-METER-005, BR-METER-006, BR-METER-007, BR-METER-008, BR-METER-013, BR-METER-014, BR-METER-021, BR-METER-022, BR-METER-023, BR-METER-024, UC-METER-01
 - **Depends on:** EMP-FLEET-001
@@ -228,8 +237,13 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Risks and assumptions:** Building segments into the first model costs little now and avoids a data migration when replacement arrives.
 - **Done when:** Both languages pass the shared meter vectors.
 
+[F2 meter domain construction](../evidence/f2-meter001-reading-domain.md)
+is LOCAL_DONE / INTEGRATION_PENDING from tested/published OFFL-004 ea42ef9d. B-BR-EMP-131..136,
+BUC-EMP-65..68 and EDR-087..090 precede behavior; persistence, plausibility
+and meter replacement remain their owning tasks.
+
 ### EMP-METER-002 — Meter persistence and reading intake
-- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DB · size M · state TODO
+- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DB · size M · state IN_PROGRESS
 - **Objective:** Store meters and readings as insert-only rows and accept readings from the field exactly once, so that trips and fuelings can attach readings that survive retries and corrections.
 - **Rules and use cases:** BR-METER-001, BR-METER-002, BR-METER-005, BR-METER-006, BR-METER-008, BR-METER-024, BR-OFFL-004, BR-TIME-002, UC-METER-01
 - **Depends on:** EMP-METER-001, EMP-FLEET-002, EMP-OFFL-002
@@ -243,6 +257,11 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-SYNC, V-API · migration: additive tables with insert-only protection, applied on a populated database · rollback: capability flag off; tables remain
 - **Risks and assumptions:** Insert-only protection must also hold for maintenance jobs; any repair runs through a documented operator role and is audited.
 - **Done when:** The replay, insert-only and isolation tests pass on real PostGIS.
+
+[F2 meter persistence/intake construction](../evidence/f2-meter002-persistence-intake.md)
+consumes the tested/pushed Fleet source foundation6e3dde65 while keeping full
+FLEET-002 powered acceptance open. B-BR-EMP-152..159, BUC-EMP-78..82 and
+EDR-100..104 precede behavior; no assignment/history/review producer is faked.
 
 ### EMP-METER-003 — Reading validation: monotonicity, retroactive inserts and suspect flags
 - **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size S · state TODO

@@ -61,6 +61,18 @@ type SignedDeviceRule struct {
 }
 type SignedDeviceDescriptor interface{ SignedDeviceRule() SignedDeviceRule }
 
+// DeviceContactRule permits only an exact owned custody observation. A terminal
+// enrollment may return its minimal verdict without granting organization reads.
+type DeviceContactRule struct {
+	AccountProof    bool `json:"account_proof"`
+	Signed          bool `json:"signed"`
+	ExactEnrollment bool `json:"exact_enrollment"`
+	TerminalRead    bool `json:"terminal_read"`
+	PolicyLease     bool `json:"policy_lease"`
+	Success         int  `json:"success"`
+}
+type DeviceContactDescriptor interface{ DeviceContactRule() DeviceContactRule }
+
 // SelfDeviceRule authorizes only account-bound scoped enrolment management;
 // it neither grants an organization permission nor exposes personal sessions.
 type SelfDeviceRule struct {
@@ -83,3 +95,13 @@ type AccountContextRule struct {
 	Success int    `json:"success"`
 }
 type AccountContextDescriptor interface{ AccountContextRule() AccountContextRule }
+
+// OwnedSetupsRule describes only the own-created recovery directory. Every
+// listed item still requires current scoped settings-read authority.
+type OwnedSetupsRule struct {
+	Cookie  bool `json:"cookie"`
+	CSRF    bool `json:"csrf"`
+	Binding bool `json:"binding"`
+	Success int  `json:"success"`
+}
+type OwnedSetupsDescriptor interface{ OwnedSetupsRule() OwnedSetupsRule }

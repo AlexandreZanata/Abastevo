@@ -64,6 +64,19 @@ type Declaration struct {
 	DeviceOffsetSeconds int64
 }
 
+// ValidateDeclaration validates an offline declaration without inventing a
+// server receipt or an organization's reporting zone.
+func ValidateDeclaration(d Declaration) (Declaration, error) {
+	if !validInstant(d.OccurredAt) || d.DeviceOffsetSeconds < -64800 || d.DeviceOffsetSeconds > 64800 {
+		return Declaration{}, ErrInvalid
+	}
+	if _, err := location(d.EntryZone); err != nil {
+		return Declaration{}, err
+	}
+	d.OccurredAt = d.OccurredAt.UTC()
+	return d, nil
+}
+
 // ReportingZones must come from the resolved operating context, not a device claim.
 // Nil Unit means no operating unit; an invalid supplied unit never falls back.
 type ReportingZones struct {
@@ -88,13 +101,14 @@ func (r Record) AuthorityAt() time.Time { return r.ReceivedAt }
 
 // Capture uses occurred_at for reporting. A trip's caller supplies its start instant.
 func Capture(d Declaration, receivedAt time.Time, zones ReportingZones) (Record, error) {
-	if !validInstant(d.OccurredAt) || !validReceipt(receivedAt) ||
-		d.DeviceOffsetSeconds < -64800 || d.DeviceOffsetSeconds > 64800 {
-		return Record{}, ErrInvalid
-	}
-	if _, err := location(d.EntryZone); err != nil {
+	validated, err := ValidateDeclaration(d)
+	if err != nil {
 		return Record{}, err
 	}
+	if !validReceipt(receivedAt) {
+		return Record{}, ErrInvalid
+	}
+	d = validated
 	loc, err := location(zones.Organization)
 	if err != nil {
 		return Record{}, err

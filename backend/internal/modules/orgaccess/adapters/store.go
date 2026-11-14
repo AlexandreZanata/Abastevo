@@ -76,8 +76,8 @@ func validateID(scope kernel.OrgScope, raw string) error {
 	}
 	return nil
 }
-func check(ctx context.Context, tx pgx.Tx, s kernel.OrgScope) error {
-	return safe(ctx, database.ValidateOrgTx(ctx, tx, s))
+func check(ctx context.Context, tx database.OrgDBTX, s kernel.OrgScope) error {
+	return safe(ctx, database.ValidateOrgDBTX(ctx, tx, s))
 }
 func run[T any](ctx context.Context, s *Store, scope kernel.OrgScope, work func(pgx.Tx) (T, error)) (T, error) {
 	var zero, result T
@@ -297,6 +297,10 @@ func (s *Store) Candidates(ctx context.Context, scope kernel.OrgScope, member st
 	return run(ctx, s, scope, func(tx pgx.Tx) ([]d.Assignment, error) { return s.CandidatesTx(ctx, tx, scope, member) })
 }
 func (s *Store) CandidatesTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string) ([]d.Assignment, error) {
+	return s.CandidatesDBTX(ctx, tx, scope, member)
+}
+
+func (s *Store) CandidatesDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, member string) ([]d.Assignment, error) {
 	if err := validateID(scope, member); err != nil {
 		return nil, err
 	}

@@ -84,8 +84,8 @@ func id(scope kernel.OrgScope, raw string) (string, error) {
 	}
 	return value.String(), nil
 }
-func check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope) error {
-	return safe(ctx, database.ValidateOrgTx(ctx, tx, scope))
+func check(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope) error {
+	return safe(ctx, database.ValidateOrgDBTX(ctx, tx, scope))
 }
 func employeeInitial(scope kernel.OrgScope, e d.Employee) (d.EmployeeSnapshot, error) {
 	v, err := e.Snapshot(scope)
@@ -136,6 +136,10 @@ func (s *Store) GetEmployee(ctx context.Context, scope kernel.OrgScope, raw stri
 	return inScope(ctx, s, scope, func(tx pgx.Tx) (d.Employee, error) { return s.GetEmployeeTx(ctx, tx, scope, key) })
 }
 func (s *Store) GetEmployeeTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, raw string) (d.Employee, error) {
+	return s.GetEmployeeDBTX(ctx, tx, scope, raw)
+}
+
+func (s *Store) GetEmployeeDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, raw string) (d.Employee, error) {
 	key, err := id(scope, raw)
 	if err != nil {
 		return d.Employee{}, err
@@ -201,7 +205,7 @@ func (s *Store) GetTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, raw
 	}
 	return read(ctx, tx, scope, key)
 }
-func read(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, key string) (d.Membership, error) {
+func read(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, key string) (d.Membership, error) {
 	row, err := q.New(tx).GetMembership(ctx, q.GetMembershipParams{OrgID: scope.OrgID().String(), ID: key})
 	if err != nil {
 		return d.Membership{}, safe(ctx, err)
@@ -234,6 +238,10 @@ func (s *Store) ActiveByAccount(ctx context.Context, scope kernel.OrgScope, raw 
 	return inScope(ctx, s, scope, func(tx pgx.Tx) (d.Membership, error) { return s.ActiveByAccountTx(ctx, tx, scope, key) })
 }
 func (s *Store) ActiveByAccountTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, raw string) (d.Membership, error) {
+	return s.ActiveByAccountDBTX(ctx, tx, scope, raw)
+}
+
+func (s *Store) ActiveByAccountDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, raw string) (d.Membership, error) {
 	key, err := id(scope, raw)
 	if err != nil {
 		return d.Membership{}, err

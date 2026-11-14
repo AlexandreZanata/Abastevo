@@ -2,8 +2,16 @@ import { isUuid, record } from './model.js';
 
 export type Failure = 'unauthenticated' | 'fresh' | 'denied' | 'unavailable' | 'cancelled' | 'limited' | 'conflict' | 'review' | 'invalid';
 export class ApiError extends Error {
-  constructor(readonly kind: Failure) { super('Company request refused'); }
+  readonly code: string;
+  readonly fields: readonly string[];
+  constructor(readonly kind: Failure, code = '', fields: string[] = []) {
+    super('Company request refused');
+    this.code = SAFE_CODES.has(code) ? code : '';
+    this.fields = Object.freeze(fields.filter(safeField));
+  }
 }
+const SAFE_CODES = new Set(['ORG_SETUP_INCOMPLETE','OWNER_REQUIRES_PERSONAL_ACCOUNT','OPERATION_ID_REUSED','CONFLICT','ENTITLEMENT_REQUIRED','ORG_SUSPENDED','ORG_ARCHIVED','VALIDATION_FAILED','FRESH_AUTH_REQUIRED','FORBIDDEN','NOT_FOUND','UNAUTHENTICATED','RATE_LIMITED','DUPLICATE_REVIEW_REQUIRED']);
+const safeField = (value: string): boolean => ['name','time_zone','active_unit','active_owner','terms','reason','consumption_display','approval_levels_default','closure_period_days','review_required.trips','review_required.fuelings','review_required.expenses','policies.intake_window_days','policies.clock_skew_limit_seconds','policies.delegation_maximum_days','policies.invitation_validity_days','policies.activation_validity_hours','policies.require_invitation_confirmation'].includes(value) || /^responsibilities\.(?:review_fallback|platform_notices|data_protection|billing)\.(?:primary|substitute)$/.test(value);
 export interface SessionView { accountId: string; authenticatedAt: string; expiresAt: string }
 export interface SessionPort {
   readonly authenticated: boolean;
@@ -83,7 +91,7 @@ export class CompanyApi implements SessionPort {
     const bytes = new Uint8Array(size);
     let offset = 0;
     for (const chunk of chunks) { bytes.set(chunk, offset); offset += chunk.length; }
-    return record(JSON.parse(new TextDecoder().decode(bytes)));
+    return record(JSON.parse(new TextDecoder('utf-8', { fatal: true }).decode(bytes)));
   }
   // A 401 is an invalid credential unless the registered company code says the
   // account proof is no longer fresh; an unreadable refusal stays a 401.
@@ -96,13 +104,14 @@ export class CompanyApi implements SessionPort {
       const response = await this.#request(path, body, csrf, signal, keepalive);
       if (!response.ok) {
         if (response.status === 401) throw new ApiError(await this.#refusal(response));
-        if (response.status === 403 || response.status === 404) throw new ApiError('denied');
+        if (response.status === 403 || response.status === 404) throw await this.#businessError(response, 'denied');
         if (response.status === 429) throw new ApiError('limited');
         if (response.status === 409) {
           const raw = await this.#json(response);
-          throw new ApiError(record(raw.error).code === 'DUPLICATE_REVIEW_REQUIRED' ? 'review' : 'conflict');
+          const refusal = record(raw.error);
+          throw this.#safeError(refusal, refusal.code === 'DUPLICATE_REVIEW_REQUIRED' ? 'review' : 'conflict');
         }
-        if (response.status === 422 || response.status === 400) throw new ApiError('invalid');
+        if (response.status === 422 || response.status === 400) throw await this.#businessError(response, 'invalid');
         throw new ApiError('unavailable');
       }
       if (!response.headers.get('Cache-Control')?.split(',').map(v => v.trim().toLowerCase()).includes('no-store')) throw new ApiError('unavailable');
@@ -112,6 +121,13 @@ export class CompanyApi implements SessionPort {
       if (error instanceof ApiError) throw error;
       throw new ApiError('unavailable');
     }
+  }
+  #safeError(raw: Record<string, unknown>, kind: Failure): ApiError {
+    const fields = Array.isArray(raw.details) ? raw.details.slice(0, 32).map(v => record(v).field).filter((v): v is string => typeof v === 'string' && safeField(v)) : [];
+    return new ApiError(kind, typeof raw.code === 'string' ? raw.code : '', fields);
+  }
+  async #businessError(response: Response, kind: Failure): Promise<ApiError> {
+    try { return this.#safeError(record((await this.#json(response)).error), kind); } catch { return new ApiError(kind); }
   }
   #view(raw: Record<string, unknown>): SessionView {
     if (!isUuid(raw.account_id) || typeof raw.authenticated_at !== 'string' || typeof raw.expires_at !== 'string' ||
@@ -158,7 +174,8 @@ export class CompanyApi implements SessionPort {
     }
   }
   async privatePost(path: string, body: unknown, signal?: AbortSignal): Promise<Record<string, unknown>> {
-    if (!/^\/v1\/org-access\/contexts\/(?:list|read)$/.test(path) &&
+    if (!/^\/v1\/org-access\/(?:contexts\/(?:list|read)|organizations\/(?:create|setups\/list))$/.test(path) &&
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:organization\/activate|settings\/(?:read|change|history|revision\/read|responsibility-members\/list))$/.test(path) &&
         !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:employees\/(?:list|create|matches|[0-9a-f-]{36}\/read)|invitations\/(?:list|issue|[0-9a-f-]{36}\/(?:read|resend|revoke|confirm|reject|acceptance\/read)))$/.test(path)) throw new ApiError('denied');
     if (!this.authenticated) { this.forget(); throw new ApiError('unauthenticated'); }
     const epoch = this.#epoch;

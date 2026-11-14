@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""EMP-PRIV-003 backup/layout guard; native OS transfer remains separate owed evidence."""
+"""EMP-PRIV-003 backup/layout guard; actual native acceptance is recorded separately."""
 from pathlib import Path
 import unittest
 import xml.etree.ElementTree as ET
@@ -21,11 +21,13 @@ class EnterpriseBackupBoundary(unittest.TestCase):
             self.assertIn(("sharedpref", "."), exclusions)
             self.assertIn(("database", "."), exclusions)
 
-    def test_actual_graph_uses_no_backup_and_retains_closed_production_binding(self):
+    def test_actual_graph_uses_no_backup_and_accepted_protected_ports(self):
         source = (DATA / "di/EnterpriseModule.kt").read_text()
         self.assertIn('File(context.noBackupFilesDir, "enterprise-sealed-v1")', source)
-        self.assertIn("fun persistence(): EnterprisePersistence = UnavailableEnterprisePersistence", source)
-        self.assertIn("UnavailableEnterpriseContact", source)
+        self.assertIn("fun persistence(store: ProtectedEnterprisePersistence): EnterprisePersistence = store", source)
+        self.assertIn("fun contextProtection(store: ProtectedEnterprisePersistence): EnterpriseContextProtection = store", source)
+        self.assertIn("fun contactAuthority(client: EnterpriseDeviceContactClient): EnterpriseContactAuthority = client", source)
+        self.assertNotIn("UnavailableEnterprise", source)
         self.assertNotIn("Room.databaseBuilder", source)
         manifest = ET.parse(ROOT / "app/src/main/AndroidManifest.xml").getroot()
         application = manifest.find("application")
@@ -40,6 +42,8 @@ class EnterpriseBackupBoundary(unittest.TestCase):
         activity = (ROOT / "app/src/main/kotlin/com/anpfuel/app/MainActivity.kt").read_text()
         self.assertIn("override fun onStop()", activity)
         self.assertIn("enterpriseFence.isInitialized && !isChangingConfigurations) enterpriseFence.markBackground()", activity)
+        application = (ROOT / "app/src/main/kotlin/com/anpfuel/app/AnpFuelApplication.kt").read_text()
+        self.assertIn("enterpriseVaultMaintenance.maintain()", application)
         module = (DATA / "di/EnterpriseModule.kt").read_text()
         self.assertNotIn("fence: EnterpriseSessionFence = EnterpriseSessionFence()", module)
 

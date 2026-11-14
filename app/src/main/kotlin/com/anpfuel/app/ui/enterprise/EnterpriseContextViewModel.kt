@@ -49,8 +49,8 @@ class EnterpriseContextViewModel @Inject constructor(
 
     fun refresh(renderedEpoch: Long = epochs.value) = sourceAction(renderedEpoch) { flow.refresh() }
     fun loadMore(renderedEpoch: Long = epochs.value) = sourceAction(renderedEpoch) { flow.loadMore() }
-    fun select(context: EnterpriseContextSummary, renderedEpoch: Long = epochs.value) =
-        sourceAction(renderedEpoch) { flow.select(context) }
+    fun select(context: EnterpriseContextSummary, renderedEpoch: Long = epochs.value, acknowledgeErasedWork: Boolean = false) =
+        sourceAction(renderedEpoch) { flow.select(context, acknowledgeErasedWork) }
 
     fun selectPersonal() {
         // Withdraw handles now, before a queued coroutine can wait on local I/O.

@@ -1,0 +1,798 @@
+{
+  "schema_version": 1,
+  "roles_version": "org-roles-v1",
+  "permissions_version": "org-permissions-v4",
+  "permissions": [
+    {
+      "permission": "agree.agreement.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Station-commerce agreements, authorizations and redemption routes have not been delivered."
+    },
+    {
+      "permission": "agree.authorization.issue",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Station-commerce agreements, authorizations and redemption routes have not been delivered."
+    },
+    {
+      "permission": "agree.redemption.confirm",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Station-commerce agreements, authorizations and redemption routes have not been delivered."
+    },
+    {
+      "permission": "appr.policy.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Approval-policy routes have not been delivered."
+    },
+    {
+      "permission": "audit.event.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Private audit-trail read routes have not been delivered."
+    },
+    {
+      "permission": "auth.delegation.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "This access-management permission has no production route; existing role reads explicitly retain auth.role.assign."
+    },
+    {
+      "permission": "auth.role.assign",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/roles/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/roles/assign",
+        "POST /v1/orgs/{org_id}/roles/list",
+        "POST /v1/orgs/{org_id}/roles/{assignment_id}/change",
+        "POST /v1/orgs/{org_id}/roles/{assignment_id}/end",
+        "POST /v1/orgs/{org_id}/roles/{assignment_id}/read"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "auth.role.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "This access-management permission has no production route; existing role reads explicitly retain auth.role.assign."
+    },
+    {
+      "permission": "back.support.approve",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Platform support-session approval routes have not been delivered."
+    },
+    {
+      "permission": "budg.budget.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Budget and hold routes have not been delivered."
+    },
+    {
+      "permission": "budg.budget.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Budget and hold routes have not been delivered."
+    },
+    {
+      "permission": "check.checklist.execute",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Checklist and incident routes have not been delivered."
+    },
+    {
+      "permission": "check.incident.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Checklist and incident routes have not been delivered."
+    },
+    {
+      "permission": "check.incident.report",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Checklist and incident routes have not been delivered."
+    },
+    {
+      "permission": "check.template.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Checklist and incident routes have not been delivered."
+    },
+    {
+      "permission": "claim.claim.submit",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Organization station-claim routes have not been delivered."
+    },
+    {
+      "permission": "data.key.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Organization Data API key and usage routes have not been delivered."
+    },
+    {
+      "permission": "data.usage.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Organization Data API key and usage routes have not been delivered."
+    },
+    {
+      "permission": "doc.document.allocate",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Private document metadata, content and processing routes have not been delivered."
+    },
+    {
+      "permission": "doc.document.attach",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Private document metadata, content and processing routes have not been delivered."
+    },
+    {
+      "permission": "doc.document.confer",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Private document metadata, content and processing routes have not been delivered."
+    },
+    {
+      "permission": "doc.document.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Private document metadata, content and processing routes have not been delivered."
+    },
+    {
+      "permission": "doc.document.view_content",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Private document metadata, content and processing routes have not been delivered."
+    },
+    {
+      "permission": "exp.category.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Expense and expense-category routes have not been delivered."
+    },
+    {
+      "permission": "exp.expense.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Expense and expense-category routes have not been delivered."
+    },
+    {
+      "permission": "exp.expense.record",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Expense and expense-category routes have not been delivered."
+    },
+    {
+      "permission": "exp.expense.review",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Expense and expense-category routes have not been delivered."
+    },
+    {
+      "permission": "fin.payable.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Payable, payment and financial-period routes have not been delivered."
+    },
+    {
+      "permission": "fin.payment.record",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Payable, payment and financial-period routes have not been delivered."
+    },
+    {
+      "permission": "fin.period.close",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Payable, payment and financial-period routes have not been delivered."
+    },
+    {
+      "permission": "fin.period.reopen",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Payable, payment and financial-period routes have not been delivered."
+    },
+    {
+      "permission": "find.finding.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Finding read and resolution routes have not been delivered."
+    },
+    {
+      "permission": "find.finding.resolve",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Finding read and resolution routes have not been delivered."
+    },
+    {
+      "permission": "fleet.asset.assign",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Fleet domain values exist; fleet storage and operation routes have not been delivered."
+    },
+    {
+      "permission": "fleet.asset.manage",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/create",
+      "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/create",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/activate",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/change",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/discard",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "fleet.asset.read",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/read"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "fleet.reservation.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Fleet domain values exist; fleet storage and operation routes have not been delivered."
+    },
+    {
+      "permission": "fleet.supplier.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Fleet domain values exist; fleet storage and operation routes have not been delivered."
+    },
+    {
+      "permission": "fuel.fueling.amend",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Fueling operation and review routes have not been delivered."
+    },
+    {
+      "permission": "fuel.fueling.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Fueling operation and review routes have not been delivered."
+    },
+    {
+      "permission": "fuel.fueling.record",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Fueling operation and review routes have not been delivered."
+    },
+    {
+      "permission": "fuel.fueling.review",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Fueling operation and review routes have not been delivered."
+    },
+    {
+      "permission": "gps.geofence.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Location, track and geofence routes have not been delivered."
+    },
+    {
+      "permission": "gps.location.read_live",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Location, track and geofence routes have not been delivered."
+    },
+    {
+      "permission": "gps.track.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Location, track and geofence routes have not been delivered."
+    },
+    {
+      "permission": "idn.credential.manage",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/devices/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/memberships/{membership_id}/devices/list",
+        "POST /v1/orgs/{org_id}/memberships/{membership_id}/devices/{device_id}/revoke"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "idn.employee.manage",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/employees/matches",
+      "routes": [
+        "POST /v1/orgs/{org_id}/employees/create",
+        "POST /v1/orgs/{org_id}/employees/matches",
+        "POST /v1/orgs/{org_id}/employees/{employee_id}/change",
+        "POST /v1/orgs/{org_id}/employees/{employee_id}/complete",
+        "POST /v1/orgs/{org_id}/employees/{employee_id}/merge/confirm",
+        "POST /v1/orgs/{org_id}/employees/{employee_id}/merge/preview",
+        "POST /v1/orgs/{org_id}/employees/{employee_id}/resolution/read"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "idn.employee.read",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/employees/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/employees/list",
+        "POST /v1/orgs/{org_id}/employees/{employee_id}/read"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "idn.invitation.manage",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/invitations/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/invitations/issue",
+        "POST /v1/orgs/{org_id}/invitations/list",
+        "POST /v1/orgs/{org_id}/invitations/{invitation_id}/acceptance/read",
+        "POST /v1/orgs/{org_id}/invitations/{invitation_id}/confirm",
+        "POST /v1/orgs/{org_id}/invitations/{invitation_id}/read",
+        "POST /v1/orgs/{org_id}/invitations/{invitation_id}/reject",
+        "POST /v1/orgs/{org_id}/invitations/{invitation_id}/resend",
+        "POST /v1/orgs/{org_id}/invitations/{invitation_id}/revoke"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "idn.membership.manage",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/read",
+      "routes": [
+        "POST /v1/orgs/{org_id}/employees/{employee_id}/rehire",
+        "POST /v1/orgs/{org_id}/memberships/{membership_id}/offboarding/complete",
+        "POST /v1/orgs/{org_id}/memberships/{membership_id}/offboarding/read",
+        "POST /v1/orgs/{org_id}/memberships/{membership_id}/reactivate",
+        "POST /v1/orgs/{org_id}/memberships/{membership_id}/read",
+        "POST /v1/orgs/{org_id}/memberships/{membership_id}/suspend"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "import.batch.run",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Organization import-batch routes have not been delivered."
+    },
+    {
+      "permission": "integ.connection.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Organization integration-management routes have not been delivered."
+    },
+    {
+      "permission": "kpi.dashboard.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Organization indicator routes have not been delivered."
+    },
+    {
+      "permission": "maint.plan.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Maintenance request, plan and work-order routes have not been delivered."
+    },
+    {
+      "permission": "maint.request.create",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Maintenance request, plan and work-order routes have not been delivered."
+    },
+    {
+      "permission": "maint.workorder.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Maintenance request, plan and work-order routes have not been delivered."
+    },
+    {
+      "permission": "maint.workorder.review",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Maintenance request, plan and work-order routes have not been delivered."
+    },
+    {
+      "permission": "meter.reading.correct",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
+        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/read",
+        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "meter.reading.record",
+      "status": "SIGNED_OPERATION",
+      "representative_route": "POST /v1/orgs/{org_id}/sync/operations",
+      "routes": [
+        "POST /v1/orgs/{org_id}/sync/operations"
+      ],
+      "reason": "",
+      "operation_type": "meter.reading.record",
+      "operation_schema": 1
+    },
+    {
+      "permission": "notif.rule.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Organization notification-rule routes have not been delivered."
+    },
+    {
+      "permission": "org.group.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "This organization group or archive/closure permission has no production member route; operator lifecycle routes use their separate boundary."
+    },
+    {
+      "permission": "org.legal_entity.manage",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/legal-entities/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/legal-entities/create",
+        "POST /v1/orgs/{org_id}/legal-entities/list",
+        "POST /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/establishments/create",
+        "POST /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/establishments/list",
+        "POST /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/establishments/{establishment_id}/change",
+        "POST /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/identifier/read",
+        "POST /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/read",
+        "POST /v1/orgs/{org_id}/legal-entities/{legal_entity_id}/withdraw"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "org.lifecycle.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "This organization group or archive/closure permission has no production member route; operator lifecycle routes use their separate boundary."
+    },
+    {
+      "permission": "org.ownership.respond",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/ownership-transfer/read",
+      "routes": [
+        "POST /v1/orgs/{org_id}/ownership-transfer/accept",
+        "POST /v1/orgs/{org_id}/ownership-transfer/cancel",
+        "POST /v1/orgs/{org_id}/ownership-transfer/read"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "org.ownership.transfer",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/ownership-transfer/propose",
+      "routes": [
+        "POST /v1/orgs/{org_id}/ownership-transfer/propose"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "org.settings.manage",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/settings/change",
+      "routes": [
+        "POST /v1/orgs/{org_id}/organization/activate",
+        "POST /v1/orgs/{org_id}/settings/change",
+        "POST /v1/orgs/{org_id}/settings/responsibility-members/list"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "org.settings.read",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/settings/read",
+      "routes": [
+        "POST /v1/orgs/{org_id}/settings/history",
+        "POST /v1/orgs/{org_id}/settings/read",
+        "POST /v1/orgs/{org_id}/settings/revision/read"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "org.structure.manage",
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/units/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/cost-centres/code/read",
+        "POST /v1/orgs/{org_id}/cost-centres/create",
+        "POST /v1/orgs/{org_id}/cost-centres/list",
+        "POST /v1/orgs/{org_id}/cost-centres/{cost_centre_id}/archive",
+        "POST /v1/orgs/{org_id}/cost-centres/{cost_centre_id}/change",
+        "POST /v1/orgs/{org_id}/cost-centres/{cost_centre_id}/read",
+        "POST /v1/orgs/{org_id}/cost-centres/{cost_centre_id}/restore",
+        "POST /v1/orgs/{org_id}/teams/create",
+        "POST /v1/orgs/{org_id}/teams/list",
+        "POST /v1/orgs/{org_id}/teams/{team_id}/archive",
+        "POST /v1/orgs/{org_id}/teams/{team_id}/change",
+        "POST /v1/orgs/{org_id}/teams/{team_id}/members/list",
+        "POST /v1/orgs/{org_id}/teams/{team_id}/members/{employee_id}/add",
+        "POST /v1/orgs/{org_id}/teams/{team_id}/members/{employee_id}/remove",
+        "POST /v1/orgs/{org_id}/teams/{team_id}/read",
+        "POST /v1/orgs/{org_id}/teams/{team_id}/restore",
+        "POST /v1/orgs/{org_id}/units/create",
+        "POST /v1/orgs/{org_id}/units/list",
+        "POST /v1/orgs/{org_id}/units/{unit_id}/archive",
+        "POST /v1/orgs/{org_id}/units/{unit_id}/change",
+        "POST /v1/orgs/{org_id}/units/{unit_id}/read",
+        "POST /v1/orgs/{org_id}/units/{unit_id}/restore"
+      ],
+      "reason": ""
+    },
+    {
+      "permission": "route.plan.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Route-plan routes have not been delivered."
+    },
+    {
+      "permission": "rpt.export.run",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Organization export and reporting routes have not been delivered."
+    },
+    {
+      "permission": "stn.metrics.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Station representation requires live station authority and STATION scope, which are not delivered."
+    },
+    {
+      "permission": "stn.price.publish",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Station representation requires live station authority and STATION scope, which are not delivered."
+    },
+    {
+      "permission": "stn.profile.edit",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Station representation requires live station authority and STATION scope, which are not delivered."
+    },
+    {
+      "permission": "stn.reply.official",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Station representation requires live station authority and STATION scope, which are not delivered."
+    },
+    {
+      "permission": "stn.team.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Station representation requires live station authority and STATION scope, which are not delivered."
+    },
+    {
+      "permission": "stock.movement.record",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Internal tank, movement and reconciliation routes have not been delivered."
+    },
+    {
+      "permission": "stock.reconcile",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Internal tank, movement and reconciliation routes have not been delivered."
+    },
+    {
+      "permission": "stock.tank.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Internal tank, movement and reconciliation routes have not been delivered."
+    },
+    {
+      "permission": "subs.plan.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Subscription plan and billing routes have not been delivered."
+    },
+    {
+      "permission": "subs.plan.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Subscription plan and billing routes have not been delivered."
+    },
+    {
+      "permission": "trip.mission.manage",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Mission and trip-operation routes have not been delivered."
+    },
+    {
+      "permission": "trip.trip.close_for_other",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Mission and trip-operation routes have not been delivered."
+    },
+    {
+      "permission": "trip.trip.read",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Mission and trip-operation routes have not been delivered."
+    },
+    {
+      "permission": "trip.trip.review",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Mission and trip-operation routes have not been delivered."
+    },
+    {
+      "permission": "trip.trip.start",
+      "status": "NOT_YET_ROUTED",
+      "representative_route": "",
+      "routes": [],
+      "reason": "Mission and trip-operation routes have not been delivered."
+    }
+  ],
+  "special_routes": [
+    {
+      "route": "POST /v1/org-access/contexts/list",
+      "boundary": "ACCOUNT_CONTEXT"
+    },
+    {
+      "route": "POST /v1/org-access/contexts/read",
+      "boundary": "ACCOUNT_CONTEXT"
+    },
+    {
+      "route": "POST /v1/org-access/invitations/accept",
+      "boundary": "PERSONAL_INVITATION"
+    },
+    {
+      "route": "POST /v1/org-access/invitations/decline",
+      "boundary": "PERSONAL_INVITATION"
+    },
+    {
+      "route": "POST /v1/org-access/invitations/preview",
+      "boundary": "PERSONAL_INVITATION"
+    },
+    {
+      "route": "POST /v1/org-access/organizations/create",
+      "boundary": "ORGANIZATION_CREATION"
+    },
+    {
+      "route": "POST /v1/org-access/organizations/setups/list",
+      "boundary": "OWNED_SETUPS"
+    },
+    {
+      "route": "POST /v1/org-access/session/login",
+      "boundary": "COMPANY_SESSION"
+    },
+    {
+      "route": "POST /v1/org-access/session/logout",
+      "boundary": "COMPANY_SESSION"
+    },
+    {
+      "route": "POST /v1/org-access/session/read",
+      "boundary": "COMPANY_SESSION"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/devices/check",
+      "boundary": "SIGNED_DEVICE"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/devices/contact",
+      "boundary": "DEVICE_CONTACT"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/devices/enroll",
+      "boundary": "SIGNED_DEVICE"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/devices/self/list",
+      "boundary": "SELF_DEVICE"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/devices/self/{device_id}/revoke",
+      "boundary": "SELF_DEVICE"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/leave",
+      "boundary": "SELF_MEMBERSHIP"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/leave/read",
+      "boundary": "SELF_MEMBERSHIP"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/sync/operations",
+      "boundary": "SIGNED_BATCH"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/sync/review-results",
+      "boundary": "SIGNED_REVIEW_RESULTS"
+    }
+  ],
+  "unavailable_station_roles": [
+    {
+      "role": "STATION_ADMIN",
+      "scope": "STATION",
+      "reason": "STATION assignment persistence and live station authority are not delivered; ORG or SELF cannot substitute for this scope."
+    },
+    {
+      "role": "STATION_ATTENDANT",
+      "scope": "STATION",
+      "reason": "STATION assignment persistence and live station authority are not delivered; ORG or SELF cannot substitute for this scope."
+    },
+    {
+      "role": "STATION_MANAGER",
+      "scope": "STATION",
+      "reason": "STATION assignment persistence and live station authority are not delivered; ORG or SELF cannot substitute for this scope."
+    }
+  ]
+}

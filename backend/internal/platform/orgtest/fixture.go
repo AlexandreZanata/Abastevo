@@ -145,6 +145,9 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 		}
 	}
 
+	f.GrantFleetUsage(t)
+	f.GrantMeterUsage(t)
+
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
 		t.Fatal("orgtest repository location unavailable")
@@ -358,6 +361,62 @@ func (f *Fixture) GrantDeviceCommands(t *testing.T) {
 			";GRANT SELECT,INSERT,UPDATE ON org_device_enrollments TO "+role+
 			";GRANT SELECT,UPDATE ON accounts,account_session_families,identity_keys,identity_contributors,identity_challenges,account_contributor_bindings TO "+role+
 			";GRANT SELECT ON payment_billing_exits TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantFleetUsage provisions only the columns read by the installed current
+// unit-usage projection. Earlier embedded migration images remain unchanged.
+func (f *Fixture) GrantFleetUsage(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_assets') IS NOT NULL AND to_regclass('public.org_asset_unit_allocations') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,state) ON org_assets TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+";GRANT SELECT(org_id,asset_id,unit_id,ended_at) ON org_asset_unit_allocations TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantMeterUsage adds only the actual columns read by installed asset-use and
+// meter-presence guards. It does not authorize reading observation evidence.
+func (f *Fixture) GrantMeterUsage(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_meters') IS NOT NULL AND to_regclass('public.org_meter_readings') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,asset_id,installed_at,installed_submicro,removed_at) ON org_meters TO "+role+";GRANT SELECT(org_id,meter_id) ON org_meter_readings TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_meter_held_readings') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// Asset usage counts held facts; the reading guard checks the reserved
+		// held identity. Neither exposes any held value or observation.
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,reading_id,operation_id) ON org_meter_held_readings TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantMeterReviews enables current read projections only. The owning command
+// fixture must explicitly grant inserts and the item-row lock for decisions.
+func (f *Fixture) GrantMeterReviews(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_sync_review_items') IS NOT NULL AND to_regclass('public.org_meter_held_readings') IS NOT NULL AND to_regclass('public.org_sync_review_resolutions') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT ON org_sync_review_items,org_meter_held_readings,org_sync_review_resolutions,org_sync_operations,org_sync_acknowledgements TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 			t.Fatal(err)
 		}
 	}

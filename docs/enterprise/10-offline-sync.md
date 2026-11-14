@@ -104,34 +104,132 @@ Sending operations needs the permission of the command itself (for example `fuel
 
 ## 9. Events, notifications and integrations
 
-Produced: `offl.operation.accepted`, `offl.operation.needs_review`, `offl.operation.refused`, `offl.review.resolved`, `offl.attachment.stored`. Consumed: `idn.membership.ended`, `idn.device.revoked`, `org.organization.suspended`, `subs.subscription.state_changed`. Notifications: the author is told when an item needs review, is resolved or is refused; reviewers are told when their queue has new items (digest, not one notification per item).
+Produced: `offl.operation.accepted`, `offl.operation.review`, `offl.operation.refused`, `offl.review.resolved`, `offl.attachment.stored`. The logical needs-review event originally named `offl.operation.needs_review` is persisted as `offl.operation.review` (EDR-074), conforming to the existing audit/outbox SQL identifier vocabulary; the frozen `ACCEPTED_FOR_REVIEW` result and codes are unchanged. Consumed: `idn.membership.ended`, `idn.device.revoked`, `org.organization.suspended`, `subs.subscription.state_changed`. Notifications: the author is told when an item needs review, is resolved or is refused; reviewers are told when their queue has new items (digest, not one notification per item).
 
 ## 10. Data, formulas and examples
 
-### 10.1 Operation envelope (documentation example, not a frozen contract)
+### 10.1 Frozen operation profile (EMP-OFFL-001)
 
-```json
-{
-  "op_id": "0f6c1c3e-6d0a-4f0e-9a43-3f2d7b1e5a10",
-  "org_id": "7b0e2a54-0000-4000-8000-000000000001",
-  "membership_id": "2f4b7c10-0000-4000-8000-000000000002",
-  "device_id": "9a1d3e77-0000-4000-8000-000000000003",
-  "type": "fueling.submit",
-  "schema": 1,
-  "entity": {"type": "fueling", "id": "c5d2a0b1-0000-4000-8000-000000000004", "expected_revision": null},
-  "occurred_at": "2026-11-10T13:42:05Z",
-  "zone": "America/Cuiaba",
-  "utc_offset_minutes": -240,
-  "depends_on": ["3a9e0c22-0000-4000-8000-000000000005"],
-  "attachments": [{"id": "e1f0a9c8-0000-4000-8000-000000000006", "sha256": "…", "bytes": 412338, "mime": "image/jpeg"}],
-  "payload_digest": "sha256:…",
-  "payload": {"asset_id": "…", "product": "DIESEL_S10", "quantity_ml": 150000, "paid_cents": 97350, "unit_price_milli": 6490, "fill": "FULL", "odometer_m": 184532000}
-}
-```
+The components `EnterpriseSyncOperation`, `EnterpriseSyncBatch` and
+`EnterpriseSyncAcknowledgement` in [OpenAPI](../../contracts/openapi/v1.yaml)
+freeze the wire structure. The pure Go `orgsync/protocol` and Kotlin
+`domain.enterprise.sync` codecs enforce the lexical and semantic constraints
+which JSON Schema cannot express. This source checkpoint installs no route,
+intake ledger, delivery worker or business effect. Current source authority is
+still mandatory when OFFL-002 admits an operation.
 
-Acknowledgement: `{"op_id": "…", "result": "ACCEPTED_FOR_REVIEW", "code": "ASSET_UNAVAILABLE", "entity_revision": 1, "received_at": "2026-11-10T18:03:11Z", "review_item_id": "…"}`.
+All fields are required, including explicit null revisions and result fields.
+An operation carries schema_version, operation_id, owner_account_id, api_origin,
+org_id, membership_id, enrollment_id, type, operation_schema, entity,
+occurred_at, entry_zone, device_offset_seconds, depends_on, soft_references,
+attachments, payload and payload_digest. `enrollment_id` names the organization
+registration row; it is not a key ID or proof that a device is active. A type
+has at least two lower snake_case segments, such as `example.record`. The
+positive int64 operation_schema is structural; only version1 is supported now.
+Payload business fields belong to the owning feature, not this transport.
+
+Hash the complete immutable operation except payload_digest. Owner, exact API
+origin, organization, member, enrollment, entity/revision, declared time/zone/
+offset, dependencies, references, attachment metadata and payload are covered.
+The digest is `sha256:` plus64 lowercase hexadecimal digits. Attachment hashes
+are bare64-digit lowercase hexadecimal strings. Transient family/token,
+signatures, batch attempts, clock samples and server receipt time are excluded.
+Renewing delivery credentials preserves the captured operation bytes and digest.
+A reused ID with changed immutable intent cannot become an identical replay.
+
+The canonical JSON profile accepts null, booleans, well-formed Unicode strings,
+arrays, objects and arbitrary-precision integer lexemes. It refuses fractions,
+exponents, leading zeros, negative zero, duplicate decoded keys and invalid UTF-8
+or surrogate escapes. Object keys must match
+`^[a-z][a-z0-9]*(_[a-z0-9]+)*$` and sort by ASCII. Ordinary arrays retain their
+order. Dependency, soft-reference and attachment sets sort canonically and
+refuse duplicate identities. Quote and backslash use two-character JSON escapes;
+C0 controls use lowercase six-character Unicode escapes; other valid Unicode
+is emitted without normalization or HTML escapes. This is not RFC8785/JCS.
+
+Operation origins are exact canonical lowercase HTTPS origins, with ASCII DNS
+LDH labels or valid IP literals, no userinfo/path/query/fragment/IPv6 zone IDs.
+Ambiguous all-numeric hosts must be valid IPv4; DNS trailing dots and valid
+lowercase IPv6 spelling are preserved. Ports are1..65535 without zero padding;
+default443 is omitted. Configuration normalization happens before creation and
+cannot rewrite a queued operation. Neither codec performs a DNS lookup.
+
+The transport wrapper has schema_version, family_id, access_token and operations.
+Credentials are untrimmed ASCII graphic strings of1..512 bytes. It may contain
+0..50 raw operation candidates. Parsing the wrapper is not admission: preserve
+exact raw spans, then parse each operation against independently captured source
+binding. OFFL-002 must preflight trustworthy correlation identities and source
+bindings for the whole body before any intake budget, claim, receipt or effect.
+Every candidate uses the complete frozen operation parser, not a partial
+correlation parser. Broken envelopes, digests and source bindings refuse the
+whole body before prefix effects. Structurally valid unsupported operation
+schemas or malformed business payloads can be independent only after a real
+owning handler establishes current command/resource authority. Duplicate valid
+operation IDs are refused. Identity nonce consumption retains its independent
+authentication semantics.
+Signing must cover the exact transmitted body.
+
+The signed intake response is EnterpriseSyncBatchResponse, an object with
+schema_version 1 and acknowledgements in request order (0..50). Each item is the
+complete canonical frozen EnterpriseSyncAcknowledgement; a replay retains its
+original bytes. This transport wrapper does not disclose account proof or add
+batch atomicity. Global source denial returns the safe error envelope instead
+of exposing buffered acknowledgement items.
+
+Default limits are65536 raw UTF-8 batch bytes (including credentials),8192 raw
+and complete canonical bytes per operation and64 transport container levels
+(62 per operation, reserving the two wrappers). Trusted immutable limits may
+reduce these maxima, never widen them or be selected by a request; the operation
+byte limit cannot exceed the batch limit. Tests share literal byte-boundary
+fixtures across both languages.
+
+Results echo operation_id and the attempted payload_digest. The public decoder
+requires the original immutable operation and checks both before exposing an
+outcome. ACCEPTED requires a positive revision and null code/review item.
+ACCEPTED_FOR_REVIEW requires a supported review code and review_item_id;
+its revision may be null. REJECTED requires a refusal code and null revision/
+review item. All three are final and require a nonzero canonical server
+received_at. RETRY only permits DEPENDENCY_PENDING or UNAVAILABLE and has null
+revision, received_at and review_item_id. Finality is derived, never a wire flag.
+Warnings are a unique set, initially only CLOCK_SKEW; they do not rewrite device
+time. An OPERATION_ID_REUSED response correlates the attempted digest without
+replacing the first stored acknowledgement. Future reserved codes do not activate
+future membership/grace/plan policies. Hard dependencies wait for an actual
+accepted source effect or completed review, without rewriting the original ACK.
+
+Shared literal vectors live in
+[contracts/testdata/enterprise/sync](../../contracts/testdata/enterprise/sync/).
+The [task evidence](evidence/f2-offl001-sync-protocol.md) records hashes, tests and
+remaining runtime work. The minimum OrgTime instant is valid declared evidence;
+it is forbidden as a final server receipt.
 
 ### 10.2 Intake decision table
+
+The table describes the owning integrations' target behavior, not blanket
+runtime authority. OFFL-002 requires a current signed account, source origin,
+membership and enrollment for the whole batch and inside every operation's
+transaction. Current unknown/revoked/ended/suspended proof remains a safe
+transport denial; F4 historical/grace outcomes require their actual historical
+authority and review producers. Missing type, history, held-fact/review,
+follow-up or explicitly configured transport budget returns UNAVAILABLE without
+a new claim. Unsupported operation schema is per-operation MALFORMED only
+after the owning installed type can authorize it. No generic FORBIDDEN result
+pretends to prove that a permission was never held.
+
+Claims, final ACKs and applied-effect readiness are distinct. An authorized
+DEPENDENCY_PENDING claim has no final receipt/audit/effect. Review acceptance
+alone is not dependency readiness. Owning current parent-record read coverage
+is also required; a same-organization receipt/effect does not prove visibility.
+After base command/target admission, a coverage refusal rolls back this operation
+and returns the same DEPENDENCY_PENDING as a missing parent without a new claim.
+Covered cross-device dependencies remain valid (EDR-075). Each operation commits its real effect or
+held facts, audit, required follow-up and immutable final receipt atomically;
+replay rechecks original ownership and current read coverage. Fresh DB time and
+current source/feature authority are confirmed after transactional waits and
+before commit. A later source denial withholds the response without claiming
+that earlier committed operations rolled back. Declared time is evidence only:
+normal offline delivery delay cannot establish CLOCK_SKEW. See B-BR-EMP-108..114,
+BUC-EMP-56/57 and [OFFL-002 evidence](evidence/f2-offl002-intake-ledger.md).
 
 | Condition at receipt | Result | Code |
 |---|---|---|
@@ -158,6 +256,22 @@ Acknowledgement: `{"op_id": "…", "result": "ACCEPTED_FOR_REVIEW", "code": "ASS
 | Server or database unavailable | `RETRY` | `UNAVAILABLE` |
 
 ### 10.3 Offline matrix
+
+OFFL-003's construction contract extends the accepted generation-backed Android
+vault with a versioned typed queue, atomic operation/local projection and
+per-operation ACK/projection. Preserve legacy opaque entries unsent. Actual
+owning offline eligibility/projectors are mandatory; custody is not permission
+and the initial production registry is empty. A fresh exact account/origin/org/
+member/enrollment/family/fence attempt governs I/O, without adopting a replacement
+selection or holding local locks across network. Preflight the entire strict
+batch answer before independent atomic receipt application. Topological local
+ordering does not infer server effect readiness; children of external/review
+parents remain retryable, while retained cycles require attention. Technical
+retry defaults are30-second base/6-hour capped equal jitter without an attempt
+limit, honoring valid Retry-After; pressure warns at80% of the existing32MiB/
+10000-entry storage bounds, with no eviction. Retain final receipts until an
+explicit policy exists. See B-BR-EMP-115..122, EDR-076..080 and
+[queue evidence](evidence/f2-offl003-protected-operation-queue.md).
 
 "Offline" means the action works with no connection and is delivered later. "Online" means it needs the server at that moment.
 
@@ -187,6 +301,35 @@ Acknowledgement: `{"op_id": "…", "result": "ACCEPTED_FOR_REVIEW", "code": "ASS
 | People, roles, assets, missions planning (panel) | Online | Online | Online | Online | Everything |
 | Exports, reports, indicators | Online | Online | — | Online | Everything |
 | Station portal, Data portal, plan and billing | Online | Online | Online | Online | Everything |
+
+### 10.4 Protected status presentation (EMP-OFFL-004, in construction)
+
+The pending screen reads sanitized pages and full-partition totals from one
+trusted protected generation, including final review/refusal receipts. It also
+keeps accepted records with unconfirmed attachment delivery visible. History
+is a separate retained local view, not a claim of a complete business audit.
+No payload, original wire bytes, token or file bytes enters presentation.
+
+The queue's inner V2 visibility flag may explicitly hide only a final refusal;
+V1 reads as visible. This local action preserves original operation/ACK bytes,
+projection, retry, files and history. It does not alter business state. Unknown
+or changed framing is unavailable, never repaired or deleted automatically.
+
+No final ACK means saved on device. Actual matching ACKs establish acceptance,
+review or refusal; connectivity and HTTP attempts do not. A bounded scoped
+memory-only activity hint may show sending for the actual selected batch until
+durable receipt/retry processing ends. Manual checking respects all retained
+delay, including server Retry-After. Missing real owning actions stay absent.
+Declared time is not local save time, retry timer observations are not a full
+send log, and server received_at is not complete device synchronization.
+Attachment metadata acceptance never confirms its upload.
+
+Keep list/detail in the existing selected-context owner, clear private state
+on withdrawal and recheck exact current source plus rendered epoch/generation
+around every operation. Offline protected reads require actual custody rather
+than a fresh online catalog selection. See B-BR-EMP-123..130, EDR-082..086 and
+[status evidence](evidence/f2-offl004-sync-status-presentation.md) for actual
+implementation/acceptance state; this contract is not a PASS claim.
 
 ## 11. Screens
 

@@ -1492,3 +1492,1166 @@ proof and the transactionally enforced three-pending-organization account cap.
   held original-partition operations, revoked membership, late replies, changed
   account/origin/family, empty paginated results and fresh-process restoration.
   Validate normal navigation and privacy on the connected physical ADB phone.
+
+- **B-BR-EMP-96 — Enterprise assets have their own scoped identity.** Build
+  the asset domain independently of personal vehicles, storage and their limits.
+  An asset reference explicitly contains its organization and a distinct asset
+  identifier type; personal DomainId/vehicle objects have no implicit conversion.
+  A raw UUID does not prove its source table: registered-asset existence remains
+  the owning persistence/application obligation. Category and fuel-product
+  descriptors come from explicit catalogs, never arbitrary labels or a copied
+  personal enum. Unknown codes fail closed. Catalog fixtures are synthetic;
+  record the actual initial category catalog before asset persistence activation.
+  Catalog codes remain opaque Unicode scalars; canonical product sets use
+  Unicode code-point order, avoiding JVM UTF-16 versus UTF-8 sorting differences.
+- **B-BR-EMP-97 — Asset normalization and quantities agree across clients.**
+  Plate identifiers accept ASCII letters/digits, ASCII spaces and hyphens;
+  comparison removes spaces/hyphens and uppercases ASCII letters, yielding
+  exactly seven alphanumeric characters. Fleet numbers accept at most twenty
+  printable ASCII characters, require a nonempty normalized key and use the
+  same comparison transformation while retaining other printable punctuation.
+  Non-ASCII/control identifier input is rejected explicitly, avoiding locale/
+  Unicode-version-dependent case expansion. Display names and optional serial/
+  chassis text remain bounded Unicode metadata with no control characters.
+  Capacity and expected-consumption values use the existing exact integer
+  kernels and catalog units, never floating-point arithmetic. Tank capacity is
+  1..10^9 milli-units or watt-hours as specified by the existing quantity bound.
+  An optional expected-consumption reference is a canonical positive signed
+  64-bit integer with basis/product, bounded nonblank source text (280 Unicode
+  characters) and an exact ISO civil date in years0001..9999. The integer bound
+  is representational, not an invented physical consumption ceiling. Activation checks
+  require same-organization unit/meter facts; pure fixture facts are not runtime
+  enrollment or proof that a vehicle is complete. Shared Go/Kotlin vectors cover
+  these boundaries before either implementation is accepted.
+- **BUC-EMP-49 — Validate a company asset before registration.** Given an
+  organization-scoped asset draft, resolve the declared category and products,
+  normalize identifiers and validate tanks, exact consumption references and
+  activation prerequisites. Refuse unknown codes, foreign references and an
+  attempted kind change after an accepted operation. A vehicle/machine needs a
+  real in-service meter and tank; an implement does not. Preserve personal data
+  untouched and return redacted diagnostics. Persistence, actual meter evidence,
+  assignments and lifecycle commands follow their owning tasks.
+
+- **B-BR-EMP-98 — Sync identity seals the whole immutable operation.** Version1
+  binds operation UUID, owner account, canonical HTTPS API origin, organization,
+  membership, organization enrollment UUID, type/schema, entity/revision,
+  declared time/zone/offset, hard dependencies, soft references, attachment
+  declarations and payload. Resolve the enrollment to the actual signed key and
+  current source facts later; none of those IDs establishes authority. Hash all
+  immutable fields except the digest itself. Delivery family/access token,
+  signature, attempt/clock sample and server receipt time stay outside that hash.
+  Preserve creation ownership on retries and after login refresh.
+- **B-BR-EMP-99 — Sync serialization and outcomes are unambiguous.** The
+  enterprise canonical JSON profile permits null, booleans, well-formed Unicode
+  strings, arrays, objects with ASCII lower_snake_case keys and canonical exact
+  integer tokens. Reject floats, exponents, leading zeroes, negative zero,
+  duplicate/aliased keys, invalid UTF-8 and unpaired surrogates before decoder
+  replacement. Sort object keys; emit UTF-8 without HTML/Unicode normalization.
+  Quote and backslash use two-character JSON escapes; JSON C0 controls use fixed
+  lowercase six-character Unicode escapes rather than short control escapes.
+  This is a small enterprise profile, not a claim of RFC8785 compliance.
+  Derive SHA256 from canonical complete intent, preserving arbitrarily precise
+  integer lexemes until the owning feature applies its numeric bounds.
+  Canonical UTC declaration/receipt strings and zone/offset validation inherit
+  PLAT-015; preserve a device offset even when it disagrees with its entry zone.
+  Enforce50 operations,65536 raw UTF-8 batch bytes and8192 raw/canonical bytes per
+  complete operation. Limit full transport JSON to64 container levels and
+  operations to62, reserving its two transport wrappers. Limits are trusted
+  configuration, never a request-selected bypass.
+  ACCEPTED/ACCEPTED_FOR_REVIEW/REJECTED are final; RETRY is not. Caller-supplied
+  final flags are invalid. Review requires a review ID; retry has no entity
+  revision/review ID/final receipt. CLOCK_SKEW is a separate warning.
+  Every result echoes operation ID and the original payload_digest so the
+  client can correlate it with the immutable queued intent. Operation/result
+  digests use the literal sha256: prefix and64 lowercase hexadecimal digits;
+  attachment SHA256 declarations use the existing bare64-digit format. Pending
+  hard dependencies retry without becoming final; a held predecessor requires
+  actual source resolution before its effect is available, without rewriting
+  the original acknowledgement. Missing/refused soft links are review facts,
+  not a silent conversion of hard dependencies.
+- **BUC-EMP-50 — Build and verify a retryable enterprise operation.** Capture
+  immutable creation context, typed entity/time/dependency/file facts and exact
+  payload; encode/hash the canonical intent and verify matching owner/origin/
+  organization against an independently supplied source binding. Reject changed
+  metadata with a reused digest and preserve stable IDs/bytes across delivery
+  credential refresh. Validate supported result/code/finality combinations and
+  bounded batches through shared Go/Kotlin vectors and OpenAPI components.
+  This protocol task installs no route, intake ledger, queue or feature effect;
+  actual current authority and independent transactions belong to OFFL-002.
+
+  The batch wrapper may carry0..50 raw operation candidates. Parsing that wrapper
+  does not certify its candidates: OFFL-002 must preflight trustworthy correlation
+  identity and source binding before any effect/receipt, then handle well-formed
+  per-operation version/feature failures independently. Uncorrelatable malformed
+  items cause a body refusal before prefix effects. Operation schemas are
+  positive signed64-bit values, with only1 supported initially. Credentials are
+  untrimmed ASCII graphic strings of1..512 bytes, matching the existing signed
+  gateway bound. Canonical operation/binding origins use exact lowercase HTTPS,
+  ASCII DNS LDH labels or IP literals, no userinfo/path/query/fragment/zone IDs,
+  and explicit1..65535 non-zero-padded ports except omitted default443. Preserve
+  valid lowercase IPv6 spelling and a DNS trailing dot; neither is rewritten.
+  Numeric-only ambiguous hosts must be valid IPv4, never resolved through DNS.
+  MIME declarations use the frozen lowercase type/subtype token profile, with
+  no parameters or wildcards; matching syntax is not content inspection.
+
+
+### Authorization conformance checkpoint (EMP-AUTH-009)
+
+- **B-BR-EMP-100 — Assert the fixed policy through current source authority.**
+  The org-permissions-v4 catalog has85 registered keys and13 fixed roles;
+  its1,105 independent descriptor cells are not authorization by themselves.
+  The conformance suite covers every applicable routed permission through the
+  current request pipeline and ordinary NOSUPERUSER/NOBYPASSRLS PostGIS source.
+  Include explicit allow/deny, missing/expired/ended/suspended assignment or
+  membership, exact organization, own versus other resource, capability,
+  freshness and record-rule cases. Denials reveal no private resource data.
+  Ending authority denies the next request without changing the session.
+  Route inventory and the complete-router gate refuse undeclared or unguarded
+  routes and unexplained coverage omissions. Future routes/scopes remain named
+  obligations; a missing route is never a passed business acceptance.
+- **BUC-EMP-51 — Reproduce organization authorization conformance.** Load the
+  independent versioned matrix; reconcile every fixed descriptor and each
+  current routed permission with an explicit representative route and normal
+  current-source request cases. Inspect actual request effects/denials and
+  next-request revocation using synthetic two-organization records. Assert
+  ordinary database-role properties and keep future structural/delegation/
+  station/feature checks assigned to their owning tasks. This test-only task
+  changes no product permission, feature handler, source policy or runtime gate.
+
+
+### Persisted company setup and settings (EMP-ORG-014)
+
+- **B-BR-EMP-101 — Render current persisted setup through the owning server.**
+  Extend the existing organization/settings read model with explicit current
+  account, organization and membership binding, persisted profile/state and
+  activation-checklist facts, and source-derived settings UI permission hints.
+  Preserve separate settings revision and root revision: settings changes and
+  historical reads use the former; activation uses the latter. Checklist items
+  reuse the owning activation rules, not browser assumptions. Read-only members
+  see permitted values/history without write controls. Every write independently
+  repeats its current proof, role, scope, state, capability and freshness checks.
+  Named responsibility choices come from a bounded organization-scoped eligible
+  membership projection; employee IDs never become membership IDs, and editable
+  UUID inputs never substitute for a verified named choice. Expose all current
+  settings fields and revision history, with explicit conflict, validation and
+  incomplete-checklist feedback. Historical settings are labeled as historical,
+  separately from the current organization state.
+- **B-BR-EMP-102 — Resume saved setup without inventing browser authority.**
+  The isolated company setup/settings route first confirms the current server
+  session and reads the selected organization through normal settings-read
+  authority. A creation acknowledgement, URL or cached hint is only a selector;
+  it never establishes current membership, permission, activation or general
+  operational selection. Keep native context metadata and operational CanSelect
+  policy unchanged. The organizations capability remains operator-owned and
+  default-off; saved pending setup is shown truthfully while writes remain
+  refused when the capability is unavailable. A bounded own-account projection
+  in the existing onboarding module supports discovery of created setups and
+  recovery after reload or a lost creation acknowledgement, filtering every item
+  through freshly rechecked scoped settings-read authority. It grants no role,
+  capability or foreign-organization discovery. Within a live view, retries reuse
+  the exact immutable creation body and operation ID; changed intent is explicit.
+  Replayed acknowledgements describe their original result, so the panel rereads
+  current persisted state before presenting completion. Private drafts, receipts,
+  settings and credentials are not persisted in browser storage. Switching
+  account/organization, session loss, navigation or cancellation invalidates old
+  work; late responses cannot restore its private contents or submit a new scope.
+- **BUC-EMP-52 — Create, resume and configure a company through its panel.**
+  A signed-in personal account starts from an empty or populated company list,
+  reviews the source-pinned synthetic terms and submits one creation intent.
+  After the server saves it, the panel opens persisted setup through current
+  proof, including the truthful capability-pending case. It can rediscover only
+  the account's authorized created setups after reload or an uncertain reply.
+  The member reviews the text checklist, submits activation with the current
+  root revision, reads/edits permitted settings with a reason and the current
+  settings revision, chooses named eligible responsible members and substitutes,
+  and inspects previous revisions. Conflict requires a new read and an explicit
+  new decision; no automatic overwrite or early activation is claimed. Exercise
+  duplicate submission, lost acknowledgement, incomplete persisted setup,
+  unauthorized/read-only access, A/B isolation, stale replies and account/session
+  replacement through ordinary real PostGIS and the actual HTTPS browser entry.
+  Use accessible keyboard, focus and responsive states, narrowly allowlisted
+  company routes and existing dependencies. Only synthetic data/terms are in
+  scope; real-data, legal, provider, runtime and release gates remain separate.
+
+
+- **B-BR-EMP-103 — Settings retries include invitation confirmation policy.**
+  Every immutable settings field, including require_invitation_confirmation,
+  participates in command identity. Correct the omitted flag with a versioned
+  complete digest. Applied command receipts remain immutable. A legacy hash may
+  replay only when the original immutable settings revision proves the complete
+  submitted values, reason, operation/source and expected revision; matching a
+  legacy hash alone never proves that a changed confirmation flag is a retry.
+  Preserve original acknowledgement revision/time and current source authority.
+- **BUC-EMP-53 — Retry old and new complete settings intent safely.** Capture a
+  regression where flipping only confirmation policy reuses an old digest.
+  Assert new complete digests differ; replay genuine legacy false/true intents
+  from immutable stored revisions, refuse changed flag/other fields/reason and
+  fail closed on missing or inconsistent historical evidence. Do not rewrite
+  applied history or weaken receipts, revision checks or current authorization.
+
+
+### Device protection completion (EMP-PRIV-003, F2 prerequisite)
+
+- **B-BR-EMP-104 — Trust exact signed contact, never metadata or a generic denial.**
+  Add a narrowly owned signed device contact action. It proves the current
+  account/family/token, identity-v1 signature/nonce/key/contributor and exact
+  configured origin, then binds request, organization, membership and enrollment.
+  ACTIVE contact uses retained current-source locks and DB time and supplies the
+  approved30-day offline validity. The existing-account pilot has explicit null
+  managed-unlock policy; managed runtime remains unavailable until its owning
+  AUTH/GOV policy exists. Preserve current suspended/archived/managed denials.
+  Only an exact owned LOST_OR_COMPROMISED tombstone yields ERASE; ACCESS_ENDED
+  yields LOCK and preserves ciphertext/pending work. Terminal contact reads only
+  its owned enrollment tombstone, not ended-membership business data. Generic
+  401/403/404, outage, malformed/foreign/late responses never authorize deletion.
+  Contact is storage custody, not a business permission or F4 intake grant;
+  each owning feature still enforces current permission/scope/cache eligibility.
+- **B-BR-EMP-105 — Commit a nonrollbackable encrypted generation before local success.**
+  Retain the bounded sealed-snapshot adapter without a new storage dependency.
+  V2 binds partition, generation and exact membership/enrollment in authenticated
+  ciphertext. An opaque Keystore committed head outside restorable app files
+  selects the only accepted generation. Write and fsync ciphertext and encrypted
+  maintenance descriptor plus directory before publishing its trusted commit
+  marker; only then may local success be reported. Keep prior committed work
+  through preparation failures. Uncommitted or old files/keys never become a
+  fallback to an older lease/data snapshot; every new attempt uses a fresh key.
+  Verify the committed head on every open. Bound preparation/obsolete cleanup
+  and fail explicitly rather than evicting work or reusing an orphan key.
+  No legacy or changed membership/enrollment/unlock policy silently rebinds
+  existing ciphertext; preserve it locked until an explicitly reviewed fresh
+  empty recovery, with acknowledged lost work and new current source proof.
+- **B-BR-EMP-106 — Make maintenance discoverable, durable and scoped.**
+  Enumerate encrypted maintenance descriptors by opaque tokens, with no readable
+  account/organization/payload identifiers in filenames, aliases or worker input.
+  Bind each descriptor to the same trusted head. Its maintenance key may run
+  without managed unlock; payload keys retain the explicit managed policy.
+  Persist denial/cleanup intent before erasure, independently attempt key/file
+  cleanup, verify success before completion and retry failures after process
+  death. Schedule bounded startup/periodic expiry work; every access still
+  checks validity because background work can be delayed. Preserve other
+  accounts/origins/organizations. Existing approved security revocation/30-day
+  expiry key disposal remains distinct from ordinary retry/logout/access-ended
+  preservation; report erased work honestly and require explicit empty recovery.
+  Reboot or clock rollback alone locks/reconfirms unless existing expiry rules
+  prove that the validity already ended. No instant offline remote wipe promise.
+- **B-BR-EMP-107 — Handoff only the confirmed selection attempt.**
+  Confirmation retains the original local-owner lease, account/family/epoch and
+  background generation before durable I/O and before advancing the fence.
+  A one-use expected E→E+1 handoff consumes that exact owner lease; it cannot
+  adopt an arbitrary replacement epoch. Open the new metadata channel under
+  E+1, recheck the source selection and only then open protected local context.
+  New family/account/selection/background or late response cannot reopen data
+  or withdraw a newer flow. Same-family token rotation keeps its documented
+  identity semantics. Credential prompts never suppress lifecycle invalidation;
+  start a fresh proof attempt after unlock when needed.
+- **BUC-EMP-54 — Confirm or lock a device's exact protected context.**
+  Use actual signed source contact and normal non-bypass PostGIS to prove active
+  lease, exact identity/enrollment, terminal class, races, expired proof and
+  failed commits. Bind the native lease to membership/enrollment and validate
+  every response against the captured request/owner. Exercise account, origin,
+  organization, family, enrollment and rehire mismatches without retagging data.
+- **BUC-EMP-55 — Preserve committed private work through interruption and cleanup.**
+  Prove all generation preparation/commit/recovery boundaries, old-ciphertext
+  rollback refusal, missing/wrong keys, durable cleanup failures and independent
+  partitions on host and actual Android. Use a new isolated emulator as now
+  authorized, never reset unrelated AVD/app data. Prove actual Keystore,
+  process/reboot/unlock/expiry and available OS backup/restore channels, retaining
+  explicit owed evidence where the environment cannot prove a platform claim.
+  Synthetic managed-key tests do not certify the missing managed server policy.
+
+### EMP-OFFL-002 — Scoped intake and durable receipts
+
+Recorded before behavior, 2026-11-13, from tested/published PRIV-003 51c25146.
+This construction task implements the receipt/transaction boundary. Owning
+feature handlers, historical authority, held-record/review producers and F4
+exceptions remain explicit integrations, never fabricated defaults.
+
+- **B-BR-EMP-108 — Validate the entire batch before intake writes.**
+  The signed path selects one organization. Resolve actual account, configured
+  origin, current membership, enrollment and signing key independently of the
+  operation fields. Parse every candidate with the existing frozen codec and
+  captured limits; compare every immutable owner/origin/organization/member/
+  enrollment before any claim, intake budget, receipt or business effect. A
+  broken envelope/digest/binding refuses the whole body without prefix effects.
+  Identity nonce consumption keeps its existing independent authentication
+  semantics. A structurally valid unsupported operation schema or malformed
+  business payload can be classified independently only by an available owning
+  type with actual current command/resource authority. No correlation-only
+  parser or client-selected limits/policy are introduced.
+- **B-BR-EMP-109 — Separate immutable claims, final ACKs and applied effects.**
+  Reserve (organization, operation ID) and its complete immutable digest only
+  after real owning policy/resource admission. An eligible DEPENDENCY_PENDING
+  retry may retain that claim, but has no final ACK, business effect, audit or
+  follow-up. Missing producer/history/review authority is UNAVAILABLE and cannot
+  create a new claim. Final effect or held facts, audit, required follow-up,
+  original ACK and effect-readiness proof commit in one ordinary scoped
+  transaction. Each operation has its own transaction; one refusal/failure
+  cannot roll back unrelated committed items. No success escapes before commit.
+  The final received_at comes from fresh DB time, never device or reservation
+  time. A failed commit returns uncertainty, not a provisional final result.
+- **B-BR-EMP-110 — Dependencies follow actual effects, not receipt labels.**
+  A hard dependency becomes ready only after its real committed effect or an
+  accepted completed review. ACCEPTED_FOR_REVIEW alone is not readiness; missing,
+  refused or foreign dependencies remain pending without revealing private
+  receipt data. Do not lock another pending claim while holding this one or
+  create placeholder claims for missing operations. The owning feature resolves
+  soft references and actually holds orphan facts; generic intake never edits
+  immutable intent/digest or pretends a missing review producer stored it.
+  After base command/target admission, the owning handler must cover the actual
+  parent records before a same-organization effect can release a dependency.
+  Missing, foreign and unreadable parents return the same DEPENDENCY_PENDING;
+  a coverage refusal rolls back this operation without a new claim or private
+  parent data. Current covered cross-device dependencies remain valid. Missing
+  historical/feature producers remain UNAVAILABLE. Confirm current authority
+  after waits; never commit partially failed admission (EDR-075).
+- **B-BR-EMP-111 — Replay is a current protected read.**
+  Original ACK bytes are immutable and revalidated against the attempted
+  operation before exposure. Reuse requires the same original owner/member/
+  enrollment plus actual current receipt-read coverage from the owning type.
+  A changed digest returns OPERATION_ID_REUSED for that attempt without replacing
+  the first claim/ACK/effect. Corrupt stored bytes or missing read authority are
+  unavailable/denied, never repaired into apparent success. Preserve minimal
+  provenance and company records through existing personal deletion/unlink;
+  do not add a live-account FK/cascade, personal export access or a personal
+  30-day TTL to organizational receipts. Never store tokens/signatures or raw
+  business payloads in the receipt ledger.
+- **B-BR-EMP-112 — Recheck source authority after waits.**
+  Current account/family/key/binding, membership/enrollment, record coverage,
+  role/capability and clock-bound proof remain required inside each transaction
+  and are confirmed with fresh DB time after target/audit/receipt waits before
+  commit. A previous Prepare/Decision or custody lease is not lasting authority.
+  Feature confirmation accounts for its own post-write state without applying
+  twice. If authority ends after earlier items commit, stop with a safe transport
+  refusal, retain those receipts and withhold private response data. No rollback
+  of already committed items is claimed. Inability to verify the current source
+  is equally fatal to private response exposure (bounded unavailable transport
+  refusal); ordinary feature/storage availability remains per-operation retry.
+  Current unknown/revoked/ended/suspended
+  device/member proof stays a transport denial; F4 final/grace codes are not
+  activated by the decision table. Declared time is evidence only; do not infer
+  CLOCK_SKEW from legitimate offline delay without an actual timing source.
+- **B-BR-EMP-113 — Meter intake without inventing a permission.**
+  Use an explicit trusted transport budget through the existing database limiter
+  and opaque organization/account/device axes. Charge max(1, operation count)
+  admission units, including replay attempts, atomically before prefix effects;
+  all axes roll back on budget failure. Prove source binding first so foreign or
+  malformed bodies cannot spend another scope's budget. Policy/caps/rationale
+  belong to source configuration, not the request. No unmeasured production
+  default, borrowed credential permission or commercial-plan quota is implied.
+  Missing configured admission stays unavailable; the first real feature
+  registration must supply its reviewed budget. Tests may use an explicitly
+  synthetic policy with real limiter storage and exhaustion races.
+- **B-BR-EMP-114 — Compose existing audit and follow-up once.**
+  Intake owns one generic offl.operation audit target per operation ID; feature
+  work uses only the borrowed query port and does not commit/rollback/open a
+  separate transaction or add a second same-ID audit. Event/consumer plans use
+  the existing registered catalog, writer and queue; the bound audit hash is
+  distinct from the immutable payload digest. Receipt event revision 1 does not
+  invent an entity revision. The logical needs-review event uses the persisted
+  name offl.operation.review, preserving the identifier vocabulary in applied
+  migrations165/168; ACCEPTED_FOR_REVIEW and its wire code remain unchanged.
+  Missing required real follow-up/held/effect
+  producers stays unavailable. No production probe/no-op handler or new queue
+  service is registered to manufacture acceptance.
+- **BUC-EMP-56 — Recover a lost batch answer without duplicate effects.**
+  Prove full-body preflight, ordinary PostGIS/signed normal intake, independent
+  outcomes, original-byte replay, changed-intent refusal, twelve-way contention,
+  target/proof/role expiry waits and rollback after every final projection stage.
+  A rejected/retryable item must not abort another eligible operation.
+- **BUC-EMP-57 — Preserve dependency and privacy boundaries.**
+  Prove pending dependency claims, review without readiness, later actual effect,
+  orphan holding through a real test consumer, current authorized receipt reads,
+  foreign scope/device/member denial, late revocation response withholding and
+  personal deletion preserving company history. Rehearse populated migration
+  195→196, injected failure/recovery/noop and previous-image compatibility.
+  Runtime producer absence, C1 feature readiness and release are distinct states.
+
+### EMP-OFFL-003 — Protected Android operation queue
+
+Recorded before behavior, 2026-11-13, from tested/published OFFL-002 d24b0d4f.
+This task supplies durable local unit-of-work, delivery/retry and receipt ports;
+the owning business producers and OFFL-004 pending screen remain separate work.
+
+- **B-BR-EMP-115 — Seal one typed queue without reinterpreting legacy work.**
+  Extend the accepted protected generation store, not a second plaintext Room
+  outbox. Preserve the existing four entry ordinals and V1/V2 read contracts;
+  append an explicitly versioned typed queue kind and framing. Existing opaque
+  OPERATION entries remain retained and non-dispatchable, even if their bytes
+  resemble the new format. A typed save cannot reuse a legacy operation ID:
+  unknown complete intent/member/enrollment cannot prove replay or safe adoption.
+  Refuse before projection/write and retain the legacy bytes; distinct genuinely
+  new IDs may coexist. This restriction is on operation identity, not entity IDs.
+  Queue reads/writes bind the complete frozen operation
+  to the actual protected account/origin/organization/member/enrollment before
+  use. A newer payload format cannot silently become an older generation or
+  a different owner. Rollback pauses dispatch while retaining a reader for the
+  accepted format; no APK downgrade compatibility or automatic data conversion
+  is inferred. Preserve personal records, attachments and other partitions.
+- **B-BR-EMP-116 — Commit queue and local projection together.**
+  A local save commits its immutable sealed operation and owning local projection
+  in one protected generation before success. A final ACK, owning projection
+  and queue/retry status likewise commit together per operation. The producer
+  uses only a borrowed, scoped local unit-of-work with no transaction lifecycle,
+  network or unrelated storage; framework code owns commit. Same ID/intent
+  replays without reapplying the projection; changed immutable intent is refused.
+  Actual owning projection rules must preserve a newer local edit when an older
+  operation's ACK arrives. A projection/write/key/capacity/commit failure keeps
+  the previous generation when publication has not committed and reports
+  uncertainty, never early success. After trusted-head publication, withhold a
+  stale result honestly instead of claiming rollback; only the accepted security
+  owner may erase a now-expired context. Recheck custody clock after commit I/O.
+  Process death after one ACK leaves other operations recoverable independently.
+- **B-BR-EMP-117 — A source attempt cannot adopt replacement ownership.**
+  Capture an immutable attempt lease for the protected tuple, current account/
+  family, fence epoch/background generation and unique attempt before local I/O
+  or transport. Derive it from actual protected/current source, never selected
+  context strings or caller-supplied authority.
+  Local account capture/save must work offline with retained current identity,
+  valid protected custody and actual owning offline eligibility; it never
+  requires a network refresh merely because the access token expired. Delivery
+  alone refreshes the same family before capturing its new attempt lease.
+  Revalidate around signing, network and each local projection; release storage/
+  fence locks before network.
+  New account/family/origin/selection/background invalidates an in-flight attempt;
+  never adopt a later epoch. Same-family token refresh may occur before a fresh
+  capture; queued intent never includes or replaces delivery credentials.
+  A worker starts its own new exact lease and never takes over a UI selection
+  owner or retags work to the currently selected organization. Already committed
+  original-scope work stays retained; stale results are not exposed under a new
+  flow and no rollback of a committed generation is claimed.
+- **B-BR-EMP-118 — Preflight the entire server answer before local writes.**
+  Use the existing identity-v1 signer and exact configured HTTPS origin/path
+  /v1/orgs/{org_id}/sync/operations, without cookies, redirects or cache.
+  Decode the strict versioned response wrapper, count/order and every complete
+  ACK against the captured original operation/digest before any receipt write.
+  A malformed/foreign/duplicate/missing/trailing answer changes no local receipt.
+  Store original canonical final bytes immutably; a changed final ACK is an
+  unavailable inconsistency, not a repair. RETRY or transport success alone never
+  becomes company acceptance. SENT is attempt-local; no durable SENDING flag
+  can strand work after process death. Generic denials never authorize erasure;
+  only the accepted signed custody/expiry owner can perform security cleanup.
+- **B-BR-EMP-119 — Order local work without inventing server readiness.**
+  Sort pending local parents before children while allowing unrelated work to
+  progress. The server remains the authority for applied-effect dependencies;
+  a missing, external or review-accepted parent does not become applied merely
+  because an ACK exists. Keep such children retryable so a later actual server
+  effect can release them without rewriting either original intent or ACK.
+  Detect local dependency cycles, retain them with explicit attention and exclude
+  them from automatic selection; never delete or rewrite them to break the cycle.
+  Keep frozen50-operation/64KiB-batch/8KiB-operation limits and captured trusted
+  reductions; select a bounded batch that really fits its delivery wrapper.
+  The actual source may supply an opaque exact encoded-proof byte budget after
+  capture/refresh, retaining no token in that value. Do not strand a valid
+  reduced-limit operation by reserving an unnecessary512-byte worst-case token;
+  actual signing still rechecks the private captured proof and complete bytes.
+- **B-BR-EMP-120 — Retry without silent loss or an attempt ceiling.**
+  Use source-owned operational defaults:30-second exponential base,6-hour cap,
+  equal jitter within half..full calculated delay and saturating counters, with
+  no transient attempt cap. Honor a valid server Retry-After without shortening
+  it. Delta-seconds remains the actual API's primary form. An HTTP-date hint is
+  usable only with a unique valid Date header from the same authenticated HTTPS
+  response: wait the full target-minus-Date interval, ignoring transit
+  conservatively. Missing/invalid/duplicate Date makes that optional hint unusable
+  and retains ordinary retry backoff; device wall time is never its authority.
+  Clock/reboot uncertainty follows the existing protected lease/reconfirmation
+  policy, not a guessed delivery deadline. Only after that actual custody guard
+  permits access may an older-boot/backward-elapsed retry be rebased once onto
+  the fresh clock, preserving its attempt count and restarting its full stored
+  delay. This conservative restart never shortens Retry-After or strands work
+  forever on an obsolete boot identifier. Locked, expired, wrong-family or
+  unavailable source pauses/defers delivery while preserving work; managed
+  locked keys require their accepted unlock flow. Retry status is protected
+  data and cannot be updated by a replaced attempt. Competing valid attempts
+  update retry state only by compare-and-swap against the captured complete
+  attempts/clock/delay tuple. A changed/final row is a no-op; preserve the newer
+  floor and re-read actual retained state for scheduling. Neither UUID nor wall
+  time invents attempt ordering. Pressure warns at80% of the
+  existing32MiB/10000-entry vault safety budgets; full storage refuses new work
+  without eviction. Final ACKs and refused/review facts remain retained until
+  an explicit owning dismissal/retention policy exists; no new TTL is invented.
+- **B-BR-EMP-121 — Real producers own offline eligibility and projection.**
+  Only explicitly registered owning offline-capable types/schemas with actual
+  local eligibility, save and ACK projectors may enter/send through the typed
+  queue. Custody/contact/context selection alone grants no business permission.
+  Missing producer/policy/history/reference/attachment authority stays unavailable;
+  retain older unknown work unsent. Production registry starts empty until a
+  real owning feature is accepted. No probe/no-op producer or fictitious cached
+  permission is installed. Online-only people/settings/approval commands are
+  excluded; F4, managed-provider, real-receipt and release gates remain distinct.
+- **B-BR-EMP-122 — Schedule scoped work with opaque system input.**
+  Reuse WorkManager and existing private source/maintenance discovery. Jobs carry
+  no readable account/org/member/enrollment, payload, token or queue cursor.
+  Discover only the current account/origin's protected partitions; verify each
+  partition and current source before opening its payload. Coalesce duplicate
+  workers without relying on one process surviving; preserve at-least-once
+  retry and independent organization progress. Use bounded cooperative work,
+  cancellation and per-invocation ownership; no shared mutable janitor cursor,
+  global selected-context dispatcher or new scheduling service is introduced.
+- **BUC-EMP-58 — Recover durable local saves and partial ACK application.**
+  Prove RED→GREEN atomic save/replay, every write/commit/projection failure,
+  process interruption/restart and partial per-operation ACK recovery, original
+  bytes/binding and two-organization/account/origin isolation. Prove legacy
+  upgrade and personal/attachment preservation on host and the owned API36
+  emulator, including actual Keystore and process death without clearing data.
+- **BUC-EMP-59 — Deliver through the actual signed source without duplicate effects.**
+  Use a named test-only real local producer and the actual ordinary PostGIS/
+  signed intake plus SQL follow-up; lose an answer, restart and converge on the
+  original ACK/effect. Validate full bad-answer preflight, independent retries,
+  dependency/review/cycle ordering, actual worker duplication/cancellation and
+  all ownership changes before/after I/O. Product APK contains no test producer.
+- **BUC-EMP-60 — Preserve work while permission or storage is unavailable.**
+  Prove protected32MiB/10000-entry refusal and80% warnings, locked/expired/key/
+  clock/source failures, no retry exhaustion or automatic eviction, backoff and
+  Retry-After bounds. A late account/family/context response changes no new
+  source and never erases preserved work. Pause rollback retains the queue.
+
+### EMP-OFFL-004 — Evidence-based local synchronization presentation
+
+- **B-BR-EMP-123 — Project synchronization from retained evidence.**
+  A durable operation without a final matching ACK stays SAVED_ON_DEVICE,
+  regardless of connectivity, retry count or a completed HTTP request.
+  Matching immutable ACCEPTED, ACCEPTED_FOR_REVIEW and REJECTED receipts map
+  to ACCEPTED, NEEDS_REVIEW and REJECTED respectively. Every review/refusal
+  retains its supported reason and exposes localized plain-language text.
+  Acceptance never means business approval or payment. Review resolution needs
+  its separate owning source; never rewrite a final review ACK to resolve it.
+  A business record badge must use its owning projection's exact current
+  operation ID/digest, never a UUID/declared-time guess or another older accepted
+  operation for that entity. Generic transport errors do not create refusal ACKs.
+  Unknown, corrupt or unavailable facts do not become successful empty state.
+- **B-BR-EMP-124 — Read bounded sanitized protected snapshots.**
+  Use an additive status port on the same accepted protected queue. A page has
+  at most50 sanitized summaries, full-partition totals/pressure/legacy count
+  and the latest confirmed server receipt from one trusted generation.
+  Include retained final receipts; pending delivery alone is not the pending
+  presentation. Support pending and retained-history views, and detail bound
+  to the exact operation ID and complete intent digest. Never send payload,
+  canonical operation/ACK bytes, delivery proof or private file bytes to UI.
+  Cursor handles are memory-only, source/view-bound and generation-bound;
+  a changed generation restarts the page rather than mixing snapshots.
+  Each call rechecks the actual account/origin/org/member/enrollment/family,
+  fence/background and custody before/after I/O. No plaintext Room fallback.
+- **B-BR-EMP-125 — History names only facts actually retained.**
+  The V1 queue proves durable save, latest retained retry observation and any
+  final server receipt; it has no actual saved timestamp or complete attempt
+  log. Label occurred_at as the author's declared time, never local save time.
+  Show unknown times honestly. A server receipt is not the last successful
+  device synchronization. Do not invent SENT timestamps or intermediate steps;
+  a final receipt can directly establish its actual outcome. The latest known
+  review result stays visible until a separate accepted resolution source exists.
+- **B-BR-EMP-126 — Keep attachment delivery separate.**
+  Show declared attachment count and unconfirmed delivery independently of
+  operation acceptance. Detail may inspect actual protected local bytes in
+  the same scope and distinguish missing bytes, matching size/hash, mismatch
+  or unavailable inspection. No metadata ACK proves STORED, a percentage or
+  successful upload. Upload retry, new capture, create-again and business-record
+  navigation require real owning adapters; absent adapters expose no fake action.
+- **B-BR-EMP-127 — Dismiss only a refused item's local visibility.**
+  An explicit current gesture may hide a stored final REJECTED item from the
+  pending view, conditional on its original ID/digest and retained final ACK.
+  Add only a local dismissedRejected Boolean in inner queue frameV2, reading
+  V1 as false. Refuse the flag without final REJECTED and reject unknown/trailing
+  framing. Retain the exact original operation/ACK bytes, record projection,
+  history and attachments. Do not alter retry or invoke a business projector.
+  Repeated dismissal is a no-op; wrong digest, pending/review/accepted state,
+  source changes and failed publication cannot silently hide another item.
+  History includes explicitly hidden refusals. No TTL, deletion or eviction.
+- **B-BR-EMP-128 — Scope the presentation owner and every gesture.**
+  Keep list/detail inside the existing context destination and its owner;
+  no selector IDs in routes or SavedState. Each visible flow owns a generation
+  and captured selected account/origin/org/member, current family/fence/background.
+  Clear private rows/detail/actions synchronously on replacement selection,
+  personal mode, source change, stop or disposal. Check the rendered primitive
+  epoch and exact flow generation before/after asynchronous work; late results
+  never attach to a replacement owner. Reads use fresh offline source.account()
+  and actual custody, without networking merely to refresh a personal token.
+  Cached unconfirmed catalog metadata selects a local view, never operational
+  permission. A status view never acquires or replaces LocalContext selection.
+- **B-BR-EMP-129 — Observe actual attempts and respect retry floors.**
+  A passive bounded memory-only delivery-activity port surrounds only the actual
+  selected batch's transport and durable ACK/retry projection, and is removed
+  in finally afterward, including cancellation. End-of-attempt refresh cannot
+  run before the receipt publication it is meant to observe.
+  Bound observation to64 concurrent tickets and the frozen50 IDs per batch;
+  saturation omits a progress hint without preventing real delivery or changing
+  durable state. This is an in-memory safety budget, not an attempt ceiling.
+  Keep at most64 scoped completion hints with a monotonic revision. Conflated
+  begin/end notifications and completion during a busy read cannot lose the
+  durable reread: anchor observation before I/O and reconcile pending completion
+  after publication, using bounded extra work. A history gap conservatively
+  rereads only the still-current scope; the counter is never receipt evidence.
+  Before awaiting renewed proof, withdraw old credential-bearing read handles
+  and private presentation. Retain only the exact expected identity/family/
+  epoch/background selector across failure; fresh proof must match it before
+  another read or dispatch. Same-family rotation cannot race an old attempt
+  handle into false invalidation, or permit adoption of a replacement family.
+  It may show SENDING for those exact IDs as a saved-on-device progress hint;
+  generic busy state/connectivity cannot create it. It does not persist SENDING
+  or supply receipt/business authority. Refresh retained status after activity.
+  A current manual synchronization check dispatches only its captured visible
+  organization using fresh delivery proof. Honor the entire existing stored
+  delay, which combines client backoff and server Retry-After; never reset it
+  or promise immediate send. Connectivity only gates that network gesture.
+  Missing producers stay unavailable and old/unknown work remains retained.
+- **B-BR-EMP-130 — Present local emptiness, pressure and access honestly.**
+  A pending badge counts each saved, review or visible refused record once,
+  and includes accepted records whose declared attachments still lack delivery
+  confirmation. Keep separate attachment totals; no double counting. Explicitly
+  hidden refusals stay in history rather than reappearing through attachment counts.
+  An empty
+  local page never claims global delivery; nonzero legacy/unsupported data or
+  unreadable source remains explicit. Show the existing80% pressure threshold
+  and capacity guidance persistently in enterprise mode, without blocking or
+  automatic cleanup. Oldest declared time is not measured unsent age.
+  Use all supported locale catalogs, textual status/reasons, organization
+  headings, accessible actions and polite state announcements. Protected
+  unlock, unavailable storage and irreversible loss keep their distinct outcomes.
+- **BUC-EMP-61 — Prove status projection and truthful history.**
+  RED→GREEN every receipt/status/reason combination, transient/cancelled/unknown
+  delivery, review finality, no fabricated times or attachment acceptance,
+  local empty versus retained legacy, pressure and bounded generation paging.
+- **BUC-EMP-62 — Prove privacy and stale-action boundaries.**
+  Exercise two organizations/accounts/origins/families and source, membership,
+  enrollment, epoch/background, selection and lifecycle changes while list,
+  next page, detail, dismissal and manual dispatch wait. Withhold old results,
+  clear private presentation synchronously and preserve other scope/data.
+- **BUC-EMP-63 — Prove protected visibility upgrade and recovery.**
+  Test V1 reads and frameV2 upgrade without canonical-byte changes, explicit
+  refused dismissal/replay, wrong digest/state/source and corruption, generation
+  changes, publication faults, process recovery and retained records/attachments.
+- **BUC-EMP-64 — Prove the actual accessible app flow.**
+  Exercise pending/detail/back/home in the existing context owner, truthful
+  offline/manual-wait/receipt states and storage warning with meaningful
+  Compose/ViewModel cases plus the owned API36 emulator. Validate normal DI,
+  complete affected lint/locales and that no test producer enters product.
+
+
+## Enterprise meter evidence (EMP-METER-001)
+
+- **B-BR-EMP-131 — Preserve exact typed meter values.**
+  ODOMETER uses metres in0..1000000000000 and HOUR_METER uses seconds in
+  0..3600000000. A supplied positive int64 modulus further requires a value
+  strictly below it. Canonical domain input uses ASCII digits and a dot,
+  no sign/exponent/grouping/whitespace or redundant leading integer zero.
+  Kilometres allow at most three fractional digits; hours at most two.
+  Convert exactly without rounding. Hours-and-minutes uses separate canonical
+  whole-hour and0..59 minute inputs, rather than an invented localized grammar.
+  Missing observation carries a nonblank reason and remains distinct from zero.
+- **B-BR-EMP-132 — Retain organization-bound evidence.**
+  A meter/segment/reading and its asset, author membership, device, operation
+  and optional photo references belong to the same supplied organization scope.
+  Retain strict nonzero canonical identifiers, known kind/origin/method and
+  validated declared instant, zone, offset and server receipt. These values
+  do not authenticate an author, grant access or confirm a document upload.
+  Reuse the accepted exact time kernel; no device clock acquisition. The
+  reading does not own reporting-day fields: validate its time snapshot using
+  UTC solely as the kernel validation calendar, without treating a device
+  entry zone as the organization reporting zone or persisting that choice.
+- **B-BR-EMP-133 — Derive deterministic current evidence.**
+  Order by occurred_at, received_at, then canonical reading identifier.
+  The latest reading is the latest VALID nonvoid/non-superseded observation
+  in its exact meter and segment at or before the requested instant.
+  Keep equal observations from different operation IDs. Reject duplicate
+  evidence IDs and same-meter operation replay as a new fact. One parent
+  operation may carry observations of different meter kinds. Supplied SUSPECT state is
+  excluded, without implementing the future plausibility/confirmation policy.
+- **B-BR-EMP-134 — Append corrections without rewriting observations.**
+  Preserve original immutable reading evidence; append reason-bearing void or
+  supersession facts. Void is terminal and each target is superseded at most
+  once. A replacement has a fresh identity and the same owning scope, asset,
+  meter, segment and kind; no cycle, duplicate ID, foreign link or second
+  correction of a voided target. One fresh logical correction operation owns
+  both its fresh replacement reading and its fresh supersession fact; those
+  two parts share that operation ID. Reusing it for a separate later action
+  is refused. A void similarly owns a fresh operation and fact. Reasons and
+  missing-observation text follow the existing nonblank280-character metadata
+  profile, without controls or invalid Unicode. Correction chains may continue through their
+  distinct current replacements. Pure transitions grant no correction authority.
+- **B-BR-EMP-135 — Keep usage within one real segment and kind.**
+  Usage retains both actual latest-valid anchors at the requested endpoints
+  and their exact difference, never interpolation. A missing anchor yields
+  INSUFFICIENT_DATA/NO_READING_BEFORE rather than zero. Reject foreign/mixed
+  meter, segment or kind subtraction and decreasing valid anchors. Odometer
+  and hour-meter results remain independent. Reset, replacement, rollover,
+  multiple segments and recalculation/persistence belong to later tasks.
+- **B-BR-EMP-136 — Keep this checkpoint pure and bounded.**
+  The first model includes one open segment per meter with observed opening
+  evidence. The caller's supplied VALID/SUSPECT classification is not an
+  automatic intake verdict. No route, database, runtime producer, fake meter
+  presence, new dependency or guessed origin-method policy is introduced.
+- **BUC-EMP-65 — Prove exact conversion and absence.**
+  Shared Go/Kotlin vectors cover both documented conversions, zero, boundaries,
+  modulus, excessive precision, malformed/overflow input and explicit missing.
+- **BUC-EMP-66 — Prove immutable evidence and transitions.**
+  Cover author/time/reference failures, all known origin/method values, duplicate
+  identities/operations, supplied suspect exclusion, reason requirements,
+  terminal void, one supersession, correction chains and original preservation.
+- **BUC-EMP-67 — Prove deterministic series and usage.**
+  Exercise all ordering ties/permutations, actual anchor selection, before-first
+  insufficient data, foreign/mixed kinds/segments and worked examples B/E.
+  Latest-valid must never return a voided or superseded observation.
+- **BUC-EMP-68 — Keep both implementations conformant.**
+  Strictly load one versioned shared corpus, detect unknown/missing/duplicate
+  cases and compare exact results in Go and Kotlin. Run focused domain race,
+  static/format and JVM regressions. No native/SQL acceptance is inferred from
+  this pure-domain checkpoint.
+
+
+## Enterprise pure fueling (EMP-FUEL-001)
+
+- **B-BR-EMP-137 — Own the exact enterprise product catalog.**
+  fuel-products-v1 contains exactly ETHANOL, GASOLINE_REGULAR,
+  GASOLINE_ADDITIVED, GASOLINE_PREMIUM_GRADE, DIESEL_S10, DIESEL_S500,
+  CNG, ELECTRICITY and ARLA_32 with the specification's fixed categories,
+  units, storage units and families. Units use existing L/M3/KWH tokens;
+  storage tokens are ML/MILLI_M3/WH and family tokens are ETHANOL, GASOLINE,
+  DIESEL, NATURAL_GAS, ELECTRIC and NONE (additive has no fuel family).
+  Cooking-cylinder LPG_P13 and unknown/normalized aliases are not products.
+  Immutable catalog descriptors may supply Fleet ProductCatalog without
+  duplicating the business list or changing public station/kernel vocabulary.
+- **B-BR-EMP-138 — Validate a submit-ready candidate without accepting it.**
+  Retain an immutable scoped fueling identity, asset, responsible EmployeeRef,
+  author MembershipRef, occurrence declaration, product, quantity, paid total,
+  explicit fill, payer and payment method. Private references belong to the
+  same organization; public station references keep public ownership. A meter
+  ReadingRef must match the exact org and asset, or an explicit Meter Missing
+  reason is required. Reference shape does not prove existence, reading state,
+  membership authority, approval, upload or server acceptance. Tank/tank-group,
+  trip and supplier links remain optional as specified, never guessed.
+- **B-BR-EMP-139 — Keep exact recorded amounts and unit semantics.**
+  Reuse accepted canonical integer parsers/bounds: quantity1..1000000000 in
+  the product's storage scale, paid/discount centavos0..1000000000000 and
+  optional unit price1..1000000 milli-BRL per product unit. A supplied unit
+  differing from the fixed product unit is PRODUCT_UNIT_MISMATCH. Preserve
+  original optional price text without interpreting or quantizing it, and
+  never recompute the entered paid total. Arithmetic warnings and derived
+  prices belong to FUEL-002; do not use the L/M3-only reconciliation profile
+  to reject KWH in this task.
+- **B-BR-EMP-140 — Validate offline declarations without fictitious receipt.**
+  A candidate has no received_at, clock acquisition, reporting-day snapshot
+  or workflow transition. Expose a validation-only declaration entry from
+  the existing time kernel, reusing exactly its instant/zone/offset checks
+  and UTC normalization. Capture reuses those checks and preserves all its
+  existing receipt/reporting behavior. Require declaration presence; preserve
+  explicit minimum instants and offset/zone disagreement. Never invent a
+  receipt or treat the entry zone as an organization reporting zone.
+- **B-BR-EMP-141 — Preserve declared fill and payer.**
+  FULL, PARTIAL and UNKNOWN are explicit; UNKNOWN remains recorded UNKNOWN
+  with partial semantics. Quantity never implies FULL. ARLA_32 remains an
+  additive with separate exact quantity/cost and no fuel-volume or consumption
+  eligibility. A pure full/fuel eligibility fact is not an approved consumption
+  anchor. Require COMPANY/EMPLOYEE and a documented payment method explicitly;
+  those declarations do not prove payment, payer identity or reimbursement.
+- **B-BR-EMP-142 — Preserve independent establishment and supplier roles.**
+  Establishment is independently optional: public catalog station, private
+  organization supplier, internal source tank or NOT_FOUND with a typed name.
+  Destination asset tank/group and an internal establishment source are
+  distinct references. Contracted supplier is a separate optional private
+  reference. Document issuer belongs to DOC: represent it only in a separate
+  read projection with its source document/revision, not as copied fueling
+  truth. No stable issuer identifier exists in this source: the transient
+  projection carries source DocumentRef, positive revision and DOC-provided
+  issuer label, without inventing an issuer or SupplierRef identity. Its value
+  validates declared ownership, not real document linkage or authority.
+  NOT_FOUND names and known issuer labels are well formed, nonblank and
+  control-free; add no numeric name cap absent from the specification.
+  None of the three roles fills, replaces or corrects another.
+  Missing public linkage is valid; no station, coordinate or fiscal status is
+  created. Same-reference or different-reference roles both remain explicit.
+- **B-BR-EMP-143 — Sum only explicitly compatible supplied quantities.**
+  Retain per-product totals. Cross-product purchased totals require the same
+  category and unit, never just a shared L token; additive and liquid fuel
+  stay separate. Use exact widened sums without an invented total/count cap.
+  This is purchased quantity, never consumption or a ratio. Snapshot mutable
+  inputs before validation, preserve copies and redact private diagnostics.
+  Keep this checkpoint pure, synthetic and dependency-free; runtime stores,
+  intake, warnings, review, expenses, reimbursement and intervals remain owned
+  by later tasks. Real-receipt legal gates remain closed.
+- **BUC-EMP-69 — Prove the owned catalog and exact units.**
+  Shared Go/Kotlin vectors cover all nine descriptors, every supported unit,
+  wrong/unknown units/products, cooking-gas exclusion, exact bounds/precision,
+  paid-total preservation and category-safe widened totals.
+- **BUC-EMP-70 — Prove required fields and scoped evidence.**
+  Cover missing declaration/employee/author/value/fill/payer/payment, foreign
+  asset/meter/employee/private roles, observed-reference versus explicit
+  missing reason, public station independence and immutable snapshots.
+- **BUC-EMP-71 — Prove fill, payer and role independence.**
+  UNKNOWN/large quantity never become FULL; additives never become fuel or
+  anchors; employee payment never creates reimbursement. Preserve independent
+  place, source document issuer/revision and contracted supplier, including
+  absent/different references without automatic repair.
+- **BUC-EMP-72 — Prove conformance and declaration-only validation.**
+  Strictly consume the entire frozen corpus in both languages, with complete
+  expected maps and exact counts/hash. Capture actual RED→GREEN before pure
+  behavior; test mutation, failures and exact widening. Regress the accepted
+  time kernel without altering receipt/reporting semantics. Run affected
+  domain race/static/JVM checks; no device/SQL/runtime acceptance is inferred.
+
+
+## Enterprise asset persistence (EMP-FLEET-002)
+
+- **B-BR-EMP-144 — Persist an owned category source with assets.**
+  Use private categories with stable IDs and explicit labels. An authorized
+  asset create/change chooses an existing same-org category ID or explicitly
+  declares a new nonblank/control-free Unicode label in that same transaction.
+  Declare exactly one alternative. Unknown/foreign existing IDs are not found.
+  No canonical category enum exists: add no guessed vocabulary, case-folding
+  uniqueness or category-kind matrix. The persisted row supplies the accepted
+  Fleet CategoryCatalog; an explicit new-label declaration reuses only an
+  exact literal existing label in the same org. No trimming, case-folding or
+  Unicode normalization is introduced. Use nonunique hash lookup plus full
+  literal equality under the root lock if an uncapped label cannot fit a
+  PostgreSQL unique index; a hash never proves category identity.
+  Product descriptors come from real fuel-products-v1.
+  Keep personal vehicle storage, limits and public station data separate.
+- **B-BR-EMP-145 — Store actual private asset state.**
+  Add organization-scoped assets, tanks/products, expected references, initial
+  unit allocations and immutable command receipts with composite private keys,
+  parameterized SQL and forced RLS. Preserve the accepted pure field/unit/
+  Unicode/identifier rules. Partial unique indexes compare canonical plate and
+  fleet number among assets not ARCHIVED; absent identifiers do not collide,
+  serial is not newly unique and another organization has independent keys.
+  Create is DRAFT; profile edits cannot set lifecycle. Revisions use exact CAS.
+  Retain immutable full primitive profile/tank/expected/unit snapshots for
+  each committed revision, beyond audit hashes. A read-only versioned SQL
+  projection of the nine owned fuel-products-v1 descriptors supplies FK unit/
+  product integrity, with mandatory parity to the code owner; no runtime
+  edits or second fleet-owned product enum.
+- **B-BR-EMP-146 — Recheck real current authority on every boundary.**
+  Only source-owned fleet.asset.manage/read policies enable commands/reads.
+  Reuse the currently registered organizations C1 capability and enterprise
+  flag, with fresh company proof for configuration writes; do not invent a
+  fleet flag with no actual activation owner or treat a plan as runtime proof.
+  Use a narrow FleetAuthority transaction port. Preserve account/proof,
+  capability, root and current membership/role lock order and recheck proof
+  after waits and before receipt/state publication. Actor/delegation/session
+  inputs are server-bound. SELF read needs actual assignment facts; until
+  FLEET-006, no owner/creator fallback supplies them. Foreign records are hidden.
+- **B-BR-EMP-147 — Activate only from actual admission facts.**
+  DRAFT activation validates the existing pure minimum data, real current unit
+  admission and actual meter source when powered. Open the first unit period
+  atomically at server time; ACTIVE has one current unit. Draft creation/change
+  may omit or clear a provisional unit. Activation uses the stored actual unit;
+  ACTIVE profile change preserves it when omitted/empty and refuses a different
+  nonempty unit, because transfer has its own task. An IMPLEMENT may
+  activate without tanks/meters as specified. VEHICLE/MACHINE meter availability
+  remains unavailable until the actual METER-002 provider is integrated: no
+  synthetic MeterFact, guessed presence, fabricated opening reading or runtime
+  always-none provider. Implement-only acceptance does not close the full task.
+  Preserve real employee/team unit-use counts while adding actual asset use;
+  unit archive and asset activation serialize under the existing root lock.
+- **B-BR-EMP-148 — Preserve original command acknowledgement and audit.**
+  Bind operation digest, org and verified actor to immutable original metadata
+  acknowledgement. Recheck current authority before receipt access, including
+  after target deletion. Same-body replay returns the original outcome with
+  no second category/asset/allocation/audit; a changed command reusing its ID
+  conflicts. Store receipt target selectors independently of the live asset FK
+  so discarded-draft replay works; create replay never recreates that asset.
+  Structural org/asset facts authorize initial ORG command entry without live
+  target lookup; the Store proves current authority and owned receipt before
+  requiring a live row. Discard ACK has discarded=true, no invented lifecycle
+  state and last revision plus one as immutable receipt metadata.
+  One successful command creates one audit event in the same transaction;
+  category declaration is part of its parent asset command, not a second event.
+- **B-BR-EMP-149 — Discard only proven unused drafts.**
+  Discard only current DRAFT with no reading/accepted operation; retain receipt
+  and audit history. Keep accepted-use source checks real and scoped, and kind
+  immutable after actual use. A new unknown FK consumer makes that check
+  unavailable until its owning source integrates, as in current unit-use
+  guards. Only the owned lower-snake sync entity_type fleet_asset can count
+  a generic committed effect as asset use; another entity type sharing a UUID
+  is not provenance. The actual protocol is retained. Proven-unused draft
+  discard may remove its configuration/revision rows by guarded parent cascade;
+  immutable receipt/audit remain. Do not invent always-empty history ports.
+  Failed/stale/foreign/
+  dependency-denied commands change no profile, index, allocation or audit.
+- **B-BR-EMP-150 — Expose bounded private management routes.**
+  Add company-cookie/CSRF POST create/list/read/change/discard/activate under
+  /v1/orgs/{org_id}/fleet/assets using accepted orgapi envelopes, exact typed
+  quantities, expected revisions and bounded stable keyset pages. Scope cursors
+  and data to the current actor/org/filter; preserve private no-store behavior
+  and current proof/source guards. List/detail project stored actual state;
+  no client lifecycle/availability field grants authority. Diagnostics/audit
+  use IDs and allowed reasons, not labels, plates, source secrets or GPS.
+- **B-BR-EMP-151 — Keep source staging and acceptance truthful.**
+  Append migrations with populated recovery/ordinary-role tests and explicit
+  grants/retention/export consumer integration as affected. Preserve existing
+  applied migrations and source counters. Complete the tested fleet foundation,
+  then the actual METER-002 dependency from that head if needed, and return to
+  full powered-route acceptance before marking FLEET-002 LOCAL_DONE. During
+  that dependency work keep this parent IN_PROGRESS and one implementation
+  task active; a backed-up tested partial head is not whole-task/phase PASS.
+  No PR/CI wait or fake provider resolves this integration order. Whole
+  F2/M1/M2/C1, F3 and deployment/release gates stay separate.
+- **BUC-EMP-73 — Prove actual category and record validation.**
+  RED→GREEN create/change with explicit declared/existing categories and actual
+  product descriptors, exact identifiers/tanks/expected references, invalid
+  profile/lifecycle edits, foreign IDs and personal-data independence.
+- **BUC-EMP-74 — Prove real database boundaries and recovery.**
+  Ordinary PostGIS two-org RLS/grants, populated196→197 recovery and rollback,
+  retained command/audit history, new consumer registration and real unit
+  usage including unchanged employee/team counts; deny unscoped/foreign SQL.
+- **BUC-EMP-75 — Prove current proof and role boundaries.**
+  Cover anonymous/stale/ended/suspended/disabled actors and organizations,
+  absent capability, wrong member/target, after-wait proof expiry, foreign
+  receipts/data and SELF without actual assignment source. No token bypass.
+- **BUC-EMP-76 — Prove concurrent original effects.**
+  Exercise twelve-way duplicate identifiers, original replay/CAS, changed-ID
+  reuse, create replay after discard, late publication failures, commit rollback
+  and activation versus unit archive; exactly one allowed effect/audit wins.
+- **BUC-EMP-77 — Prove actual routes before full closure.**
+  Test company entry/CSRF/current source, all six contract paths and bounded
+  pages through actual HTTP/ordinary source. IMPLEMENT activation proves its
+  own path; powered positive acceptance uses actual METER-002 before closure.
+  Compile/static/sqlc/contract/secret checks must match the tested source head.
+
+
+## EMP-METER-002 — Source-backed immutable meter intake (2026-11-14)
+
+- **B-BR-EMP-152 — Capture the actual observed source.** Readings retain an
+  explicit scoped ENROLLED_DEVICE or WEB_SESSION capture locator. The panel
+  installation uses its actual currently verified company session; it never
+  manufactures an Android enrollment. Historic locators are immutable and
+  contain no token/key/proof, and survive ephemeral session deletion. The
+  accepted pure Device input remains enrolled shorthand; an explicit capture
+  input is mutually exclusive with that shorthand. Canonical reading capture
+  is always explicit. Author membership and operation remain mandatory.
+- **B-BR-EMP-153 — Install real meters and opening evidence atomically.**
+  An authorized fresh fleet.asset.manage command installs a meter on a real
+  scoped asset with an explicitly observed opening value/instant/zone/offset,
+  stable opening-reading ID, kind, label and optional positive modulus.
+  Store one initial INSTALLATION segment and one actual opening reading in
+  the same transaction; enforce one in-service kind per asset. No invented
+  zero, missing opening value, GPS estimate or client authority/state/receipt
+  fields. Preserve original command acknowledgement on exact replay. Bounds
+  use the accepted pure domain; monotonic/plausibility flags stay METER-003.
+- **B-BR-EMP-154 — Preserve insert-only scoped evidence.** Append migration198
+  after published197, with forced RLS/composite organization references and
+  insert-only reading protection for ordinary application/maintenance roles.
+  No product UPDATE/DELETE or parent cascade may erase accepted readings.
+  A real opening reading makes a draft used and prevents physical discard or
+  kind change. Keep source-use guards and employee/team/current asset counts
+  correct; unknown consumers remain unavailable until explicitly integrated.
+- **B-BR-EMP-155 — Serialize and order actual observations.** Source/current
+  authority precedes asset/meter locks. The retained caller transaction owns
+  embedded readings; the embedded port cannot commit or begin its own work.
+  Use the real DB receipt time and occurred_at/received_at/ID order. Distinct
+  operations with equal values remain distinct; replay returns original
+  evidence. Reject an observation outside its meter/segment service interval.
+  Declared evidence retains all accepted nine fractional digits: persist the
+  microsecond-floored PostgreSQL instant plus an explicit0..999 nanosecond
+  remainder; reconstruct the exact instant and compare/order the tuple for
+  reading/service/segment boundaries. Do not let PostgreSQL rounding change
+  observations or silently narrow the accepted time profile. Server receipt
+  precision remains the actual database clock. Latest-valid is a reproducible
+  SQL query on the open segment, not a stored
+  current-value truth or the future METER-006 maintained projection.
+- **B-BR-EMP-156 — Keep operational source and scope truthful.** Standalone
+  meter.reading.record accepts only actual signed current enrolled-device
+  operations. Use its actual membership/enrollment and source binding, never
+  payload author/device/received_at. Current source/record coverage is checked
+  before claims, original receipt reads and final publication. SELF remains
+  denied without the real FLEET-006 assignment source; changed-history/held
+  review needs its actual producer and cannot be accepted using a dummy item.
+  Panel meter management/history uses fleet.asset.manage/read respectively.
+  Invalid-shape/unsupported-schema operations may obtain only an actual ORG
+  base permission to record a bounded MALFORMED rejection: the explicit root
+  target is org_id, never an invented asset. Valid payloads never downgrade
+  a foreign/missing target to that fallback. ASSET/UNIT/SELF cannot inherit ORG
+  coverage. Real target/reference and accepted-reading queries are read-only
+  before claims and cached ACK publication; no record attempt substitutes for
+  a lookup.
+- **B-BR-EMP-157 — Declare only actual asynchronous obligations.** An exact
+  source-owned operation/schema may explicitly declare terminal outcomes whose
+  complete business effect is already atomic and needs no async follow-up.
+  Default missing declaration/plans remain unavailable; required consumer
+  catalogs/plans and enqueue-failure rollback retain their existing behavior.
+  Never infer readiness from an empty catalog, install a no-op consumer or
+  duplicate audit delivery evidence. A handler's explicit outcome set is
+  validated and frozen by registry; undeclared outcomes cannot commit. The
+  first meter handler declares accepted/rejected only, with atomic audit,
+  immutable reading, effect and original ACK. Review remains unavailable until
+  real flags/history/review source integration; future maintained projections
+  and consumers require their owning acceptance before declaration changes.
+- **B-BR-EMP-158 — Expose real bounded meter management.** Company-cookie/CSRF
+  install and private list/latest reads under asset routes use exact integer
+  strings and current scoped proof. No labels, values, source locators or proof
+  secrets enter diagnostics/audit payloads. Optional document evidence remains
+  unavailable until actual DOC reference admission; no dangling photo fixture
+  is a production source. Extend actual route/permission contracts and tests.
+- **B-BR-EMP-159 — Close the real dependency chain.** Consume tested fleet
+  foundation6e3dde65. After real meters exist, update the powered SQL guard and
+  Fleet activation to query actual in-service facts, test missing-meter422 and
+  powered-positive200, then close FLEET-002 only when all required source cases
+  pass. Keep unfinished assignment/review dependencies explicit; no partial
+  evidence may impersonate full METER-002, F2/M1/M2/C1/F3 or release acceptance. After the tested meter source satisfies
+  powered activation, FLEET-002 can close on its own actual route acceptance;
+  METER-002 remains IN_PROGRESS until real FLEET-006 assignment/history and
+  OFFL-008 review cases pass. FLEET-005 supplies actual temporal structure and
+  AUTH-006 structural scope; OFFL-007 only captures clocks. Use the existing
+  AUTH-005 role periods rather than inventing authority history. Continue one
+  dependency-ready task at a time without a circular whole-task requirement.
+- **BUC-EMP-78 — Prove capture provenance across both pure domains.** Shared
+  Go/Kotlin RED→GREEN cases cover both true source kinds, zero/both/malformed/
+  cross-org inputs, snapshots and privacy while retaining all old meter vectors.
+- **BUC-EMP-79 — Prove ordinary database history and recovery.** Real PostGIS
+  RLS/two-org reads and writes, immutable readings including direct SQL and
+  parent deletion, populated197→198 recovery/previous-image compatibility and
+  exact actual usage/grants, with no source/test bypass.
+- **BUC-EMP-80 — Prove atomic exactly-once evidence.** Three identical ACKs/one
+  row, equal-valued distinct operations, two enrolled devices in contention,
+  embedded rollback, late commit/audit/outbox failure, actual opening receipt
+  replay and latest-by-observation independent of arrival all receive tests.
+- **BUC-EMP-81 — Prove real current permission and source denials.** Missing,
+  foreign, ended/suspended/revoked/expired-after-wait proof, absent capability,
+  unknown history/assignment and invalid service interval cannot leak evidence
+  or leave claims. Actual signed HTTP and company routes use ordinary roles.
+- **BUC-EMP-82 — Prove declaration and runtime closure.** Source-owned explicit
+  atomic outcomes do not weaken required-consumer failures or permit missing/
+  undeclared/review plans. Verify actual runtime routing/inventory/OpenAPI and
+  powered Fleet dependency. Static/format/sqlc/secret and targeted regressions
+  must match the final source before any whole-task checkpoint.
+
+
+## EMP-OFFL-008 — Actual held review and durable author outcomes (2026-11-14)
+
+- **B-BR-EMP-160 — Hold only source-proven field evidence.** Keep current signed
+  account, ACTIVE member/employee, exact enrolled device and enabled operational
+  capability mandatory. For the first actual Meter owner, a narrow disposition
+  port evaluates complete real ORG permission periods retained by AUTH-005,
+  with actual creation/effective/end times. Current candidates alone are not
+  historical proof. Continuous current coverage across declaration and receipt
+  may apply. A formerly effective grant with a gap/removal/regrant permits only
+  a held PERMISSION_CHANGED fact, including a client declaration after removal;
+  the client clock cannot prove historical absence. Complete server history
+  proving no ever-effective ORG grant by receipt is FORBIDDEN. Scheduled grants
+  never grant present authority; missing/unknown history is unavailable.
+  A declared clock never grants a write. SELF/structural and F4 late/grace
+  sources remain closed until their actual owners integrate.
+- **B-BR-EMP-161 — Store actual review before acknowledging it.** Persist an
+  immutable review item and typed Meter held fact in the original retained
+  transaction, with exact IDs/value/declaration/capture and actual server source
+  context. No reading/effect is applied while held. Bind operation/digest/reason
+  and review ID by deferred composite database references; a UUID alone is not
+  review provenance. Existing unsupported review ACKs retain NULL legacy proof
+  version and immutable bytes; they remain unproven/unready. A validated MATCH
+  SIMPLE composite FK plus a new-insert guard requires version1 and actual typed
+  held source for every new REVIEW. Never fabricate a backfill from ACK alone.
+  The production SQL source validator knows only delivered owners; a named
+  test-only extension must prove its actual held row without weakening Meter.
+  No raw transport credentials or arbitrary payload blob is retained. Review source failure rolls back claim/item/audit/ACK together.
+  Every REVIEW proof failure, including the owner's final post-receipt check,
+  is a review-source failure that withholds the whole signed response; it is
+  never downgraded to a per-operation RETRY that exposes buffered receipts.
+  A held fact reserves its exact reading identity and operation against
+  ordinary readings in both directions. Its unit snapshot is retained history,
+  not current unit usage, so it never blocks or bypasses unit archive checks.
+- **B-BR-EMP-162 — Preserve original immutable acknowledgements.** An operation
+  keeps exactly its original ACK/canonical bytes forever, including REVIEW.
+  Resolution is separate immutable evidence, with one terminal resolution per
+  item and expected item revision1→2. Add a source-owned atomic-review mode only
+  when a real review proof port and SQL source constraints verify that item;
+  existing NoAsync accepted/rejected behavior and mandatory-consumer plans stay
+  unchanged. REVIEW alone never becomes applied dependency readiness.
+- **B-BR-EMP-163 — Resolve once with current reviewer authority.** The first
+  Meter decision uses current meter.reading.correct under dedicated company
+  cookie/Origin/CSRF and fresh proof, an enabled capability and ACTIVE root.
+  Reviewer list/detail remain current private reads; a write-disabled capability
+  never authorizes a decision and does not invent loss of retained read rights.
+  Check authority under the same transaction after waits and before publication.
+  Refuse self-review by captured account/member/employee, following the actual
+  canonical employee merge chain so rehire/merge cannot evade it. Accept the
+  unchanged actual fact or refuse with a reason; editing fields is unavailable
+  until an owning command explicitly implements it. Reasons reuse the existing
+  private280-Unicode-scalar/control-free bound, preserved exactly; acceptance
+  may omit a reason. Same command/body returns its original result; changed-ID
+  reuse, stale revision, competing decision or source change leaves no effect.
+  The server decision instant lies between the original receipt and the
+  current database clock.
+- **B-BR-EMP-164 — Apply reviewed evidence without retagging.** Accepted Meter
+  resolution appends the actual reading with original author/enrollment,
+  declaration and initial server receipt. The current resolver is a separate
+  audit actor; never manufacture a session/device for the original author.
+  Append migration199's narrowly review-bound insertion branch to198's live
+  source guard, proven against exact held fact/accepted resolution. Ordinary
+  inserts retain current source and server receipt checks. Publish readiness
+  only with the matching accepted resolution and actual applied reading in
+  one transaction; refusal/review cannot create effects or costs. The database
+  refuses an accepted resolution committed without that readiness effect.
+- **B-BR-EMP-165 — Minimize the author's own result read.** Add a separate signed
+  own-operation result endpoint with request correlation/current exact source
+  tuple and at most50 operation/digest selectors. Return one ordered explicit
+  slot per selector, unresolved or an immutable resolution. Author ownership
+  permits only this minimal receipt/outcome, never restored fleet.read/record
+  or access to private record previews. Current member/device proof remains
+  mandatory; ended/revoked sources and foreign/mismatched selectors fail closed
+  with no buffered prefix exposed. Do not add fields to the frozen V1 batch or
+  replace its ACK. New endpoint request64KiB/response128KiB/resolution4KiB bounds
+  are explicit and tested for complete worst-case Unicode; no suffix omission.
+- **B-BR-EMP-166 — Persist resolution separately in the protected client.** Add
+  a versioned resolution value/projection and queue V3, preserving V1/V2 reads,
+  original operation/ACK bytes, source tuple, retry metadata and dismissal.
+  Parse/correlate the full response before local changes; CAS against the exact
+  original review receipt and intent/source lease. Equal replay changes nothing;
+  divergent terminal evidence is unavailable. Poll review-only retained work
+  even when pending delivery is empty, using the same verified session/signature
+  attempt and no lock across network. Never retag or auto-delete pending work,
+  fabricate SENDING for a result lookup or invent a business projector. Retain
+  separate review retry/Retry-After state; the existing15minute worker polls
+  unresolved reviews without altering operation-delivery retry counts. Bind
+  dismissal to the effective outcome so dismissing REVIEW cannot hide its
+  later resolution. Production DI must bind the real review polling service.
+  Chosen client semantics (EDR-120/121): a resolution is accepted only for a
+  retained final REVIEW whose ACK bytes, ReviewID, operation and digest match
+  and whose server decision time is not before the original receipt. A
+  successful unresolved answer ends only that entry's failure backoff, keeping
+  an authenticated Retry-After as an uncounted floor; a failed or uncorrelated
+  answer writes no resolution and advances the review retry with the stored
+  policy and Retry-After floor. A failed durable write or divergent stored
+  decision affects only its own entry. A review-only failure during a manual
+  check never hides committed delivery state. Old V1/V2 frames stay readable
+  and are rewritten only when their state actually changes.
+- **B-BR-EMP-167 — Show the actual decision.** Effective operation status/counts
+  can reflect verified accepted/refused resolution while details retain the
+  original REVIEW ACK and add decision/reason/server time. Do not change the
+  original received_at, imply attachments are stored or reveal reviewer proof.
+  Keep the eight locale catalogs consistent. Durable scoped completion triggers
+  a reread; context/account/server/enrollment changes fence late responses.
+  An unresolved REVIEW states that no company decision has been received; only
+  a refused effective outcome (original REJECTED or REFUSED resolution) offers
+  hiding, and accepted-after-review records with attachments stay pending.
+- **B-BR-EMP-168 — Derive expiration from the actual review rule.** No current
+  organization setting owns review expiry; intake-window settings do not apply.
+  Stamp source-owned review-expiry-v1/default60days (elapsed60×86400seconds,
+  independent of SQL session timezone/DST) at creation and derive
+  expired-unresolved visibility from original receipt and server time. Retain
+  evidence/listing and permit late resolution. This does not claim a digest,
+  notification or scheduled escalation worker that has no actual consumer.
+- **B-BR-EMP-169 — Complete real acceptance before dependent lifecycle.** Build
+  from tested/pushed71b995ae (full Fleet-002 local, Meter source foundation).
+  Ordinary PostGIS negative/replay/two-reviewer/rollback/upgrade/privacy tests
+  are immediate. Real Go HTTPS and owned API36 emulator must prove durable
+  review-only polling, process death/response loss, original ACK identity and
+  source isolation. Full OFFL-008 cannot claim author-next-sync behavior from
+  API-only tests. Preserve separate assignment/history, full F2/F3 and legal/
+  provider/live release gates. No no-op review consumer resolves this dependency.
+- **BUC-EMP-83 — Prove the shared immutable resolution protocol.** RED→GREEN
+  Go/Kotlin exact shapes, Unicode/bounds/correlation/order/id+digest/review ID,
+  invalid epochs/source and revision; retain all old operation/ACK vectors.
+- **BUC-EMP-84 — Prove actual historical hold admission.** Real current source,
+  complete role periods, continuous replacement versus gap/removal/regrant,
+  never allowed and missing source; declared clock does not authorize acceptance.
+- **BUC-EMP-85 — Prove real review persistence and decisions.** Two organizations,
+  forced RLS, actual held source references, two reviewers/one result, stale
+  revision, same-body replay/reuse, self-review/rehire/merge, source expiry,
+  orphan review IDs, audit/outbox/late COMMIT failure and reviewed readiness.
+- **BUC-EMP-86 — Prove provenance and recovery.** Retain original author/capture/
+  declaration/receipt after source cleanup; fresh resolver proof cannot retag
+  it. Populated198→199 failure/recovery/previous image and real personal export/
+  erasure preserve corporate history without private disclosure.
+- **BUC-EMP-87 — Prove durable client resolution.** V1/V2→V3, same/different CAS,
+  full response preflight, process crash, pressure/dismissal, stale source and
+  normal review-only Worker, with actual signature/nonce/HTTPS and two contexts.
+- **BUC-EMP-88 — Prove visible outcome and delivery.** Accepted/refused status,
+  reason/history, localized counts and unchanged attachment truth on the owned
+  emulator; final code/static/SQL/format/secret checks match the committed inputs.

@@ -31,6 +31,7 @@ import (
 
 const DeviceEnrollPath = "/v1/orgs/{org_id}/devices/enroll"
 const DeviceCheckPath = "/v1/orgs/{org_id}/devices/check"
+const DeviceContactPath = "/v1/orgs/{org_id}/devices/contact"
 const DeviceListPath = MembershipAccessPrefix + "/devices/list"
 const DeviceRevokePath = MembershipAccessPrefix + "/devices/{device_id}/revoke"
 const SelfDeviceListPath = MembershipAccessPrefix + "/devices/self/list"
@@ -42,6 +43,7 @@ type DeviceRepository interface {
 	PrepareDeviceEnrollment(context.Context, kernel.OrgScope, app.DeviceActor) (string, error)
 	EnrollDevice(context.Context, kernel.OrgScope, app.DeviceActor, app.DeviceCommand) (app.DeviceResult, error)
 	CheckDevice(context.Context, kernel.OrgScope, app.DeviceActor) (app.DeviceRecord, error)
+	ContactDevice(context.Context, kernel.OrgScope, app.DeviceActor, app.DeviceContactRequest) (app.DeviceContact, error)
 	ListDevices(context.Context, kernel.OrgScope, app.EmployeeActor, string, string, bool, string, int) (app.DevicePage, error)
 	RevokeDevice(context.Context, kernel.OrgScope, app.EmployeeActor, string, string, bool, app.DeviceCommand) (app.DeviceResult, error)
 }
@@ -276,6 +278,7 @@ func (e signedDeviceEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	}
 	var family, token string
 	var command app.DeviceCommand
+	var contact app.DeviceContactRequest
 	if e.action == "enroll" {
 		var input deviceEnrollRequest
 		if httpapi.DecodeJSON(raw, &input) != nil || input.SchemaVersion != 1 {
@@ -288,6 +291,19 @@ func (e signedDeviceEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 			deviceWrite(w, r, nil, deviceMapped(err))
 			return
 		}
+	} else if e.action == "contact" {
+		var input deviceContactRequest
+		if httpapi.DecodeJSON(raw, &input) != nil || input.SchemaVersion != 1 || input.selector().Validate() != nil {
+			deviceWrite(w, r, nil, orgapi.Malformed)
+			return
+		}
+		for _, b := range []byte(input.AccessToken) {
+			if b < 0x21 || b > 0x7e {
+				deviceWrite(w, r, nil, orgapi.Unauthenticated)
+				return
+			}
+		}
+		family, token, contact = input.FamilyID, input.AccessToken, input.selector()
 	} else {
 		var input deviceCheckRequest
 		if httpapi.DecodeJSON(raw, &input) != nil {
@@ -343,6 +359,16 @@ func (e signedDeviceEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 	a := app.DeviceActor{AccountID: accountID, FamilyID: family, AccessToken: token, ContributorID: proof.ContributorID, KeyID: proof.KeyID, Fingerprint: proof.Fingerprint, ProofExpires: time.Unix(expires, 0).UTC()}
 	if a.Validate() != nil {
 		deviceWrite(w, r, nil, orgapi.Unauthenticated)
+		return
+	}
+	if e.action == "contact" {
+		out, err := e.repository.ContactDevice(r.Context(), scope, a, contact)
+		if err != nil {
+			deviceWrite(w, r, nil, deviceMapped(err))
+			return
+		}
+		view, err := deviceContactView(e.gateway.Origin, scope.OrgID().String(), a, contact, out)
+		deviceWrite(w, r, view, err)
 		return
 	}
 	if e.action == "enroll" {
@@ -536,5 +562,6 @@ func RegisterDevices(router chi.Router, enabled bool, repository DeviceRepositor
 	router.Method(http.MethodPost, SelfDeviceRevokePath, selfDeviceEndpoint{repository, cookies, gateway, "revoke"})
 	router.Method(http.MethodPost, DeviceEnrollPath, signedDeviceEndpoint{repository, accounts, verifier, gateway, "enroll"})
 	router.Method(http.MethodPost, DeviceCheckPath, signedDeviceEndpoint{repository, accounts, verifier, gateway, "check"})
+	router.Method(http.MethodPost, DeviceContactPath, deviceContactEndpoint{signedDeviceEndpoint{repository, accounts, verifier, gateway, "contact"}})
 	return nil
 }

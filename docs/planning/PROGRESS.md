@@ -1,4 +1,99 @@
 # Current execution state
+- Enterprise EMP-OFFL-008, 2026-11-14: LOCAL_DONE / INTEGRATION_PENDING
+  (Claude Code takeover). Backend handoff items, union regressions and SQL
+  reviewer findings closed with RED→GREEN; Android protected V3/resolution/
+  polling/presentation pass host, Compose and native API36 acceptance.
+  [Closure evidence](../enterprise/evidence/f2-offl008-real-review.md#closure-by-claude-code--2026-11-14).
+  Full METER-002, the remaining audited F2 nodes, M1/M2/C1 and F3 stay open in
+  tracker #215; decision recorded: integrate the tested cumulative batch now
+  instead of continuing all of F2/F3 in this execution.
+
+- Handoff requested, 2026-11-14: implementation stopped at the maintainer's
+  request for Claude Code to finish/review the work, validate the cumulative
+  PR, reconcile issues, integrate main and deploy the new version to the VPS.
+  [Exact handoff and known failures](../enterprise/evidence/f2-offl008-real-review.md#handoff-to-claude-code--execution-stopped).
+  Owned worktree `.worktrees/enterprise-suite-execution`, branch
+  `codex/enterprise-f2`, HEAD/published backup `71b995ae`. Current OFFL-008
+  changes are uncommitted/unpushed; they include intentional Android RED stubs
+  and two known generic SQL fixture failures. Preserve all modified/untracked
+  files. No agent-owned Go/Gradle test process remains active.
+  GitHub PR203 was verified OPEN/ready, `dev`→`main`: head `6131d0a3`, base
+  `6a19bcc7`. Dev advanced independently:12 F2 commits are absent from dev,
+  and dev has4 commits absent from this worktree (merge-base `fac002e7`).
+  Normal integration must preserve both histories; no reset/force/cherry-pick
+  duplication. CI for the cumulative new head has not been run or certified.
+  Eleven tasks remain LOCAL_DONE / INTEGRATION_PENDING; full F2/Meter002/F3
+  are incomplete. New authorization is handoff scope, not a deployment already
+  performed here. No merge/issue closure/deployment was performed in this turn.
+- Authorized continuation, 2026-11-13: finish the whole in-progress F2, then
+  implement F3 after completing and validating unfinished cross-phase dependencies.
+  [F3 sequence](../enterprise/evidence/f3-authorized-sequence.md) records the
+  requested scope/M3 entry and exit. The maintainer reiterates overnight autonomy:
+  choose recommended routine decisions, record them, and ask no questions.
+  F3 is queued. FLEET-002 is locally complete; actual Meter foundation71b995ae
+  is backed up. OFFL-008 real review is now the sole bounded implementation;
+  full METER-002 remains open for its actual remaining dependency acceptance.
+- Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2`
+  from published dev `fac002e7`; verified main `6a19bcc7` remains an ancestor.
+  [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
+  all34 F2 tasks,25 transitive prerequisites and the additional formal M1 chain.
+  Eleven full tasks are LOCAL_DONE / INTEGRATION_PENDING;53 audited nodes remain.
+  Completed: FLEET-001(2daea515), OFFL-001(1cc9a7b3), AUTH-009(4743e0b9),
+  ORG-014(efd7e886), PRIV-003(51c25146), OFFL-002(d24b0d4f), and
+  [OFFL-003 protected queue](../enterprise/evidence/f2-offl003-protected-operation-queue.md).
+  All seven are backed up at origin/codex/enterprise-f2; OFFL-003 is49d3a122.
+  No other checkout is modified.
+  OFFL-003 passes182 consolidated host cases,15 final application cases and
+  seven affected ViewModel cases; all four final API36 native methods pass.
+  Native acceptance found/fixed an actual Android discovery-prefix mismatch;
+  real signed response loss, process death, original ACK and two independent
+  organizations converge without duplicate effects. Ordinary PostGIS/race
+  source107.147s, full affected lint/build and actual normal Hilt/OS Worker
+  execution pass. Runtime producers stay empty; legal/provider/release gates
+  remain separate. The29-file source manifest pins tested behavior.
+  [EMP-OFFL-004 status/pending UI](../enterprise/evidence/f2-offl004-sync-status-presentation.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. B-BR-EMP-123..130, BUC-EMP-61..64 and
+  EDR-082..086 precede behavior. Pure domain662+focused7, final application24,
+  DATA129 and ViewModel14 cases pass; genuine ten-thread visibility and source
+  fencing REDs are corrected. Native protected V1/V2 recovery2, current
+  presentation6/context1/regression4 and ordinary Hilt/OS Worker1 all pass.
+  Normal/isolated builds and full app/DATA lint pass with zero errors; eight
+  catalogs have75 identical keys. Final31-file manifest pins tested behavior.
+  Runtime feature/upload producers remain closed until their actual tasks.
+  OFFL-004 ea42ef9d is backed up at origin/codex/enterprise-f2.
+  [EMP-METER-001 pure reading domain](../enterprise/evidence/f2-meter001-reading-domain.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. B-BR-EMP-131..136, BUC-EMP-65..68 and
+  EDR-087..090 precede behavior. Shared261 cases, Go race314 test nodes and
+  Kotlin941 enterprise cases pass; scoped meter coverage95.89% instructions.
+  Real time/list/API defects receive RED→GREEN; no remaining peer-review blocker.
+  METER-001 05c83376 is backed up at origin/codex/enterprise-f2.
+  [EMP-FUEL-001 supply domain](../enterprise/evidence/f2-fuel001-supply-domain.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. B-BR-EMP-137..143, BUC-EMP-69..72 and
+  EDR-091..094 precede behavior. Owned nine-product catalog, exact immutable
+  candidates and compatible totals pass200 shared vectors, Go812 affected
+  race nodes and Kotlin1158 enterprise tests, with zero failures/skips. Time
+  declaration-only validation preserves original Capture reporting/receipt
+  behavior. Final peer/manifest/static/secret checks pass.
+  FUEL-00121601ae8 is backed up at origin/codex/enterprise-f2.
+  [EMP-FLEET-002 actual persistence](../enterprise/evidence/f2-fleet002-asset-persistence.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. Foundation6e3dde65 is backed up; actual
+  Meter integration now passes missing-meter422 and full powered200. Final
+  ordinary PostGIS/race2243 nodes/125 top-level tests,63 company HTTP assertions,
+  cookie matrix140 and signed TLS10-role matrix pass with zero failures/skips.
+  Full API614 contract nodes and affected host/static/sqlc/peer checks pass.
+  [METER-002 source foundation](../enterprise/evidence/f2-meter002-persistence-intake.md)
+  is committed/backed up at71b995ae; full METER-002 remains IN_PROGRESS
+  until actual assignment/history/held-review acceptance. Its66-file manifest
+  pins every tested source; legal/provider/live runtime/release gates remain.
+  Current bounded implementation: [OFFL-008 real review](../enterprise/evidence/f2-offl008-real-review.md) (also required for actual
+  post-disposal handling), then FLEET-003/005, AUTH-006, FLEET-006 and remaining
+  Meter closure. EDR-109 records this cycle-free sequence. Full F3 stays queued.
+  The user authorizes only the owned API36 emulator while the phone is
+  disconnected; preserve other devices/apps/data.
+  PR203 dev still contains the earlier batch. Final phase delivery uses protected
+  dev → main; no construction CI polling, merge, deployment or wiki publication.
+  Full F2/M1/M2/C1 remain unaccepted. F3 follows their actual dependency closure.
+
 - Enterprise EMP-IDN-016..018 batch, 2026-11-13: LOCAL_DONE /
   INTEGRATION_PENDING on owned `codex/enterprise-idn016-018` from published dev
   `6b0921ce`; fetched main `6a19bcc7` remains an ancestor. Publication targets

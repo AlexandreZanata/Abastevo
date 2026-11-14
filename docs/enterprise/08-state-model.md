@@ -54,6 +54,15 @@ stateDiagram-v2
 
 Server intake result per operation: `ACCEPTED`, `ACCEPTED_FOR_REVIEW`, `REJECTED` (permanent, with an error code), `RETRY` (transient; the device keeps `SAVED_ON_DEVICE`).
 
+EMP-OFFL-004 presents only observed facts: a stored final receipt can establish
+its outcome directly, without invented intermediate SENT timestamps. SENDING
+is an exact live-attempt progress hint, never durable state. An immutable
+ACCEPTED_FOR_REVIEW receipt does not change when a later owning review source
+resolves the business record; that separate resolution must be observed before
+showing its outcome. Attachment delivery is independent evidence, and none of
+these sync states means business approval or payment.
+
+
 ## 3. Catalog of state machines
 
 Every state name below is canonical. "Kind" is O (operational), S (sync), R (review), L (lifecycle of a configuration or right).

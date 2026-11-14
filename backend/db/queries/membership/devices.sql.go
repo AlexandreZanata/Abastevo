@@ -396,6 +396,94 @@ func (q *Queries) ListDeviceRows(ctx context.Context, arg ListDeviceRowsParams) 
 	return items, nil
 }
 
+const lockDeviceContactRoot = `-- name: LockDeviceContactRoot :one
+SELECT org_id::text AS org_id FROM organizations WHERE org_id=CAST($1::text AS uuid) FOR UPDATE
+`
+
+func (q *Queries) LockDeviceContactRoot(ctx context.Context, orgID string) (string, error) {
+	row := q.db.QueryRow(ctx, lockDeviceContactRoot, orgID)
+	var org_id string
+	err := row.Scan(&org_id)
+	return org_id, err
+}
+
+const ownedDeviceContact = `-- name: OwnedDeviceContact :one
+SELECT e.org_id::text AS org_id,e.id::text AS id,e.membership_id::text AS membership_id,e.key_id::text AS key_id,
+ e.contributor_id::text AS contributor_id,e.fingerprint,e.label,e.state,e.revision,e.enrollment_limit,e.enrolled_at,e.last_sync_at,e.revoked_at,e.revocation_class,
+ e.source_type,COALESCE(e.source_id::text,'')::text AS source_id,e.source_revision,e.created_operation_id::text AS created_operation_id
+FROM org_device_enrollments e JOIN org_memberships m ON(m.org_id,m.id)=(e.org_id,e.membership_id)
+WHERE e.org_id=CAST($1::text AS uuid) AND e.id=CAST($2::text AS uuid)
+ AND e.membership_id=CAST($3::text AS uuid) AND m.account_id=CAST($4::text AS uuid)
+ AND m.access_model='EXISTING_ACCOUNT' AND e.key_id=CAST($5::text AS uuid)
+ AND e.contributor_id=CAST($6::text AS uuid) AND e.fingerprint= $7::text
+FOR SHARE OF e,m
+`
+
+type OwnedDeviceContactParams struct {
+	OrgID         string `json:"org_id"`
+	EnrollmentID  string `json:"enrollment_id"`
+	MembershipID  string `json:"membership_id"`
+	AccountID     string `json:"account_id"`
+	KeyID         string `json:"key_id"`
+	ContributorID string `json:"contributor_id"`
+	Fingerprint   string `json:"fingerprint"`
+}
+
+type OwnedDeviceContactRow struct {
+	OrgID              string             `json:"org_id"`
+	ID                 string             `json:"id"`
+	MembershipID       string             `json:"membership_id"`
+	KeyID              string             `json:"key_id"`
+	ContributorID      string             `json:"contributor_id"`
+	Fingerprint        string             `json:"fingerprint"`
+	Label              string             `json:"label"`
+	State              string             `json:"state"`
+	Revision           int64              `json:"revision"`
+	EnrollmentLimit    int32              `json:"enrollment_limit"`
+	EnrolledAt         pgtype.Timestamptz `json:"enrolled_at"`
+	LastSyncAt         pgtype.Timestamptz `json:"last_sync_at"`
+	RevokedAt          pgtype.Timestamptz `json:"revoked_at"`
+	RevocationClass    string             `json:"revocation_class"`
+	SourceType         string             `json:"source_type"`
+	SourceID           string             `json:"source_id"`
+	SourceRevision     int64              `json:"source_revision"`
+	CreatedOperationID string             `json:"created_operation_id"`
+}
+
+func (q *Queries) OwnedDeviceContact(ctx context.Context, arg OwnedDeviceContactParams) (OwnedDeviceContactRow, error) {
+	row := q.db.QueryRow(ctx, ownedDeviceContact,
+		arg.OrgID,
+		arg.EnrollmentID,
+		arg.MembershipID,
+		arg.AccountID,
+		arg.KeyID,
+		arg.ContributorID,
+		arg.Fingerprint,
+	)
+	var i OwnedDeviceContactRow
+	err := row.Scan(
+		&i.OrgID,
+		&i.ID,
+		&i.MembershipID,
+		&i.KeyID,
+		&i.ContributorID,
+		&i.Fingerprint,
+		&i.Label,
+		&i.State,
+		&i.Revision,
+		&i.EnrollmentLimit,
+		&i.EnrolledAt,
+		&i.LastSyncAt,
+		&i.RevokedAt,
+		&i.RevocationClass,
+		&i.SourceType,
+		&i.SourceID,
+		&i.SourceRevision,
+		&i.CreatedOperationID,
+	)
+	return i, err
+}
+
 const revokeDevice = `-- name: RevokeDevice :execrows
 UPDATE org_device_enrollments SET state='REVOKED',revision=revision+1,revocation_class= $1::text,source_type='COMMAND',source_id=CAST($2::text AS uuid),source_revision=1
 WHERE org_id=CAST($3::text AS uuid) AND id=CAST($4::text AS uuid) AND revision= $5::bigint AND state='ENROLLED'

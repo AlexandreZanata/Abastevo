@@ -326,7 +326,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Done when:** Routing, scoped evidence and negative access pass before activation.
 
 ### EMP-PRIV-003 — Device-side protection: encrypted store, logout cleanup and shared-device rules
-- **Meta:** module PRIV · phase F1 · cut C1 · priority P0 · type APP · size M · state IN_PROGRESS
+- **Meta:** module PRIV · phase F1 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Protect Android organization data and handle session loss safely.
 - **Rules and use cases:** BR-PRIV-016, BR-PRIV-017, BR-PRIV-018, BR-PRIV-019, UC-PRIV-03
 - **Depends on:** EMP-PLAT-011
@@ -341,9 +341,13 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Risks and assumptions:** Any new storage dependency needs a separate recorded review.
 - **Done when:** Device and persistence tests prove isolation and revocation behavior.
 
-[Protected-store source and pending native acceptance](../evidence/f1-priv003-protected-device-store.md).
-Host source checks are separate from actual Keystore, unlock, backup/transfer,
-reboot and restore evidence. Production persistence remains unavailable.
+[Accepted signed contact, generations and maintenance](../evidence/f2-priv003-protection-completion.md),
+continued from efd7e886; LOCAL_DONE / INTEGRATION_PENDING. Actual API36 emulator
+Keystore/source, credential, backup/transfer, clock/reboot and worker acceptance
+passes; normal/opt-in builds, app/data lint and product startup pass. The
+application binds the accepted protected store/client. The [V1 source record](../evidence/f1-priv003-protected-device-store.md)
+is historical. Managed policy, global Kotlin gate, legal/runtime/staging and
+production acceptance remain separate obligations; no sync/business activation.
 
 ### EMP-PRIV-004 — Backup, restore and deletion-ledger replay for enterprise data
 - **Meta:** module PRIV · phase F6 · cut - · priority P1 · type OPS · size M · state TODO

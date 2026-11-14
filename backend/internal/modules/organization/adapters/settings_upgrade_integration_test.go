@@ -8,6 +8,7 @@ import (
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	"io/fs"
 	"net/url"
+	"reflect"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -116,7 +117,7 @@ func TestSettingsPopulatedOrdinaryUpgradeRecoveryAndAuthenticBootstrap(t *testin
 		t.Fatal(e)
 	}
 	failed, e := s.ReadSettings(t.Context(), fx.scope, fx.actor, fx.member, 0)
-	if !errors.Is(e, app.ErrUnavailable) || failed != (app.SettingsRead{}) {
+	if !errors.Is(e, app.ErrUnavailable) || !reflect.DeepEqual(failed, app.SettingsRead{}) {
 		t.Fatal("bootstrap commit failure exposed a provisional read or misleading absence", e)
 	}
 	page, e := s.ListSettings(t.Context(), fx.scope, fx.actor, fx.member, app.SettingsFilter{Limit: 10})

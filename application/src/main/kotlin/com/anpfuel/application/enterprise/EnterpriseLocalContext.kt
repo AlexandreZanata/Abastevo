@@ -60,12 +60,46 @@ class EnterpriseLocalContext(
         Lease(requestOwner, generation.incrementAndGet())
     }
 
+    /** Starts an independent custody ceremony without exposing an owner's constructor across modules. */
+    fun acquireOwner(): Lease = acquire(Owner())
+
     /** An outgoing flow can invalidate only its own selection, never a replacement flow's handles. */
     fun invalidate(requestOwner: Owner): Lease? = synchronized(ownership) {
         if (owner !== requestOwner) null else Lease(requestOwner, generation.incrementAndGet())
     }
 
     private fun owns(lease: Lease): Boolean = owner === lease.owner && generation.get() == lease.generation
+
+    fun reserveContact(lease: Lease, binding: EnterpriseAccessBinding, fence: EnterpriseSessionFence,
+        currentBinding: () -> EnterpriseAccessBinding?): EnterpriseFenceOwner = synchronized(ownership) {
+        if (!owns(lease) || !matchesIdentity(binding.accountId, binding.origin) || accessEpoch() != binding.epoch ||
+            fence.epoch != binding.epoch || runCatching(currentBinding).getOrNull() != binding
+        ) throw EnterpriseLocalDenied()
+        EnterpriseFenceOwner(this, lease, binding, fence.backgroundEpoch, fence, currentBinding)
+    }
+
+    internal fun retainsContact(contact: EnterpriseFenceOwner): Boolean = synchronized(ownership) {
+        contact.local === this && owns(contact.lease) && accessEpoch() == contact.binding.epoch &&
+            matchesIdentity(contact.binding.accountId, contact.binding.origin) && runCatching(contact.currentBinding).getOrNull() == contact.binding
+    }
+
+    internal fun publishContact(contact: EnterpriseFenceOwner, publish: (Lease) -> EnterpriseFenceHandoff): EnterpriseFenceHandoff = synchronized(ownership) {
+        if (!retainsContact(contact)) throw EnterpriseLocalDenied()
+        publish(Lease(contact.lease.owner, generation.incrementAndGet()))
+    }
+
+    internal fun retainsHandoff(contact: EnterpriseFenceOwner, handoff: EnterpriseFenceHandoff,
+        binding: EnterpriseAccessBinding?): Boolean = synchronized(ownership) {
+        contact.local === this && owns(handoff.lease) && !handoff.consumed.get() &&
+            binding == contact.binding.copy(epoch = handoff.nextEpoch) && accessEpoch() == handoff.nextEpoch &&
+            matchesIdentity(contact.binding.accountId, contact.binding.origin) && runCatching(contact.currentBinding).getOrNull() == binding
+    }
+
+    fun consumeContact(contact: EnterpriseFenceOwner, handoff: EnterpriseFenceHandoff,
+        binding: EnterpriseAccessBinding?): Lease = synchronized(ownership) {
+        if (!contact.fence.handoffIsCurrent(contact, handoff, binding) || !handoff.consumed.compareAndSet(false, true)) throw EnterpriseLocalDenied()
+        handoff.lease
+    }
 
     suspend fun select(partition: EnterprisePartition): BoundStore = mutex.withLock {
         synchronized(ownership) {
@@ -100,9 +134,10 @@ class EnterpriseLocalContext(
         }
     }
 
-    private fun matchesIdentity(partition: EnterprisePartition): Boolean = try {
-        ownerAccount() == partition.ownerAccount &&
-            EnterprisePartition.canonicalOrigin(serverOrigin()) == partition.origin
+    private fun matchesIdentity(partition: EnterprisePartition): Boolean = matchesIdentity(partition.ownerAccount, partition.origin)
+
+    private fun matchesIdentity(account: String, origin: String): Boolean = try {
+        ownerAccount() == account && EnterprisePartition.canonicalOrigin(serverOrigin()) == origin
     } catch (_: Exception) { false }
 
     private suspend fun <T> scoped(partition: EnterprisePartition, token: Long, epoch: Long, block: suspend () -> T): T = mutex.withLock {

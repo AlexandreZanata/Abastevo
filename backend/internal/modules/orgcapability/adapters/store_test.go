@@ -60,3 +60,23 @@ func TestCapabilityAdapterRejectsInvalidOrIncompleteBoundary(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestCapabilityTransactionStateRequiresExplicitValidBoundary(t *testing.T) {
+	catalog, _ := domain.NewCatalog([]string{"organizations"})
+	store := adapters.NewStore(nil, catalog, nil)
+	id, _ := kernel.ParseOrgID("7b0e2a54-0000-4000-8000-000000000301")
+	scope, _ := kernel.NewOrgScope(id)
+	if _, e := store.StateTx(t.Context(), nil, scope, "organizations"); !errors.Is(e, domain.ErrInvalid) {
+		t.Fatal("missing transaction accepted", e)
+	}
+	if _, e := store.StateTx(t.Context(), nil, scope, "unknown"); !errors.Is(e, domain.ErrInvalid) {
+		t.Fatal("unknown capability accepted", e)
+	}
+	if _, e := store.StateTx(t.Context(), nil, kernel.OrgScope{}, "organizations"); e == nil {
+		t.Fatal("unscoped advisory read accepted")
+	}
+	var absent *adapters.Store
+	if _, e := absent.StateTx(t.Context(), nil, scope, "organizations"); !errors.Is(e, domain.ErrUnavailable) {
+		t.Fatal("missing source accepted", e)
+	}
+}

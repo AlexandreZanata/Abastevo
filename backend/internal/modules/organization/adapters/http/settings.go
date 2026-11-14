@@ -23,6 +23,7 @@ const SettingsReadPath = SettingsPrefix + "/read"
 const SettingsRevisionPath = SettingsPrefix + "/revision/read"
 const SettingsHistoryPath = SettingsPrefix + "/history"
 const SettingsChangePath = SettingsPrefix + "/change"
+const SettingsMembersPath = SettingsPrefix + "/responsibility-members/list"
 
 type settingsReadRequest struct{ companyRequest }
 type settingsRevisionRequest struct {
@@ -37,6 +38,21 @@ type settingsChangeRequest struct {
 	unitRevisionCommand
 	Values json.RawMessage `json:"values"`
 	Reason string          `json:"reason"`
+}
+type settingsMembersRequest struct {
+	companyRequest
+	Limit             *int   `json:"limit"`
+	AfterMembershipID string `json:"after_membership_id"`
+}
+
+func (v *settingsMembersRequest) UnmarshalJSON(raw []byte) error {
+	type plain settingsMembersRequest
+	var value plain
+	if e := decodeLegal(raw, &value); e != nil {
+		return e
+	}
+	*v = settingsMembersRequest(value)
+	return nil
 }
 
 func (v *settingsReadRequest) UnmarshalJSON(raw []byte) error {
@@ -79,7 +95,7 @@ func (v *settingsChangeRequest) UnmarshalJSON(raw []byte) error {
 type SettingsRecords struct{}
 
 func (SettingsRecords) Check(_ context.Context, scope kernel.OrgScope, subject access.Subject, policy access.Policy, facts permissions.ResourceFacts, rules []permissions.Rule) error {
-	if scope.Validate() != nil || subject.Scope() != scope || facts.OrgID != scope.OrgID() || facts.ID != scope.OrgID().String() || len(rules) == 0 || policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) {
+	if scope.Validate() != nil || subject.Scope() != scope || facts.OrgID != scope.OrgID() || facts.ID != scope.OrgID().String() || len(rules) == 0 || policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.SettingsMembersPolicy() {
 		return access.ErrUnavailable
 	}
 	return nil
@@ -140,7 +156,54 @@ func RegisterSettings(router chi.Router, service app.SettingsService, cookies co
 			return nil, e
 		}
 		view["root_revision"] = v.RootRevision
+		kinds := make([]string, 0, len(v.Organization.Profile.Kinds))
+		for _, kind := range v.Organization.Profile.Kinds {
+			kinds = append(kinds, string(kind))
+		}
+		view["organization"] = map[string]any{"id": v.Organization.ID.String(), "name": v.Organization.Profile.Name, "time_zone": v.Organization.Profile.TimeZone, "kinds": kinds, "state": string(v.Organization.State), "revision": v.Organization.Revision, "suspension_reason": string(v.Organization.SuspensionReason)}
+		missing := make([]string, 0, len(v.Checklist))
+		keys := map[d.Missing]string{d.MissingName: "name", d.MissingTimeZone: "time_zone", d.MissingUnit: "active_unit", d.MissingOwner: "active_owner", d.MissingTerms: "terms"}
+		for _, item := range v.Checklist {
+			key, ok := keys[item]
+			if !ok {
+				return nil, orgapi.Unavailable
+			}
+			missing = append(missing, key)
+		}
+		view["setup"] = map[string]any{"ready": len(missing) == 0, "missing": missing, "terms": map[string]any{"version": d.SyntheticTermsVersion, "digest": d.SyntheticTermsDigest, "kind": "SYNTHETIC", "recorded": v.TermsRecorded}}
+		view["context"] = map[string]any{"account_id": v.Context.AccountID, "membership_id": v.Context.MembershipID, "permissions": v.Context.Permissions, "fresh": v.Context.Fresh, "capability_enabled": v.Context.CapabilityEnabled}
+		labels := make([]map[string]any, 0, len(v.ResponsibilityMembers))
+		for _, member := range v.ResponsibilityMembers {
+			labels = append(labels, map[string]any{"membership_id": member.MembershipID, "display_name": member.DisplayName, "profile_pending": member.ProfilePending, "eligible": member.Eligible})
+		}
+		view["responsibility_members"] = labels
 		return view, nil
+	}
+	memberPolicy := app.SettingsMembersPolicy()
+	if e := guarded.Register(owned, SettingsMembersPath, gateway, orgapi.Rule{Permission: string(memberPolicy.Permission), Fresh: true, CompanyOnly: true, Success: 200}, authorization, memberPolicy, RootFacts{roots}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input settingsMembersRequest) (any, error) {
+		limit := 50
+		if input.Limit != nil {
+			limit = *input.Limit
+		}
+		filter := app.SettingsMembersFilter{Limit: limit, AfterMembershipID: input.AfterMembershipID}
+		if filter.Validate() != nil {
+			return nil, orgapi.Malformed
+		}
+		actor, e := companyActor(ctx)
+		if e != nil {
+			return nil, e
+		}
+		result, e := service.Members(ctx, p.Scope, actor, decision, filter)
+		if e != nil {
+			return nil, settingsMapped(e)
+		}
+		members := make([]map[string]any, 0, len(result.Members))
+		for _, member := range result.Members {
+			members = append(members, map[string]any{"membership_id": member.MembershipID, "display_name": member.DisplayName, "profile_pending": member.ProfilePending})
+		}
+		return map[string]any{"account_id": result.AccountID, "organization_id": result.OrganizationID, "membership_id": result.MembershipID, "members": members, "next_after_membership_id": result.NextMembershipID}, nil
+	}); e != nil {
+		return e
 	}
 	if e := guarded.Register(owned, SettingsReadPath, gateway, settingsRule(false), authorization, app.SettingsPolicy(false), RootFacts{roots}, func(ctx context.Context, p orgapi.Principal, d access.Decision, _ settingsReadRequest) (any, error) {
 		return read(ctx, p, d, 0)

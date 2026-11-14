@@ -150,6 +150,7 @@ type DeviceRepository interface {
 	PrepareDeviceEnrollment(context.Context, kernel.OrgScope, DeviceActor) (string, error)
 	EnrollDevice(context.Context, kernel.OrgScope, DeviceActor, DeviceCommand) (DeviceResult, error)
 	CheckDevice(context.Context, kernel.OrgScope, DeviceActor) (DeviceRecord, error)
+	ContactDevice(context.Context, kernel.OrgScope, DeviceActor, DeviceContactRequest) (DeviceContact, error)
 	ListDevices(context.Context, kernel.OrgScope, EmployeeActor, string, string, bool, string, int) (DevicePage, error)
 	RevokeDevice(context.Context, kernel.OrgScope, EmployeeActor, string, string, bool, DeviceCommand) (DeviceResult, error)
 }

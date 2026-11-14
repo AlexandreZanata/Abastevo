@@ -474,7 +474,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** Authorized role management and negative states pass through the normal company routes.
 
 ### EMP-AUTH-009 — Authorization matrix conformance suite
-- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type TEST · size M · state TODO
+- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type TEST · size M · state LOCAL_DONE
 - **Objective:** Prove authorization matrix conformance across organization boundaries.
 - **Rules and use cases:** BR-AUTH-001, BR-AUTH-003, BR-AUTH-006, BR-AUTH-007, BR-AUTH-013, BR-AUTH-014, BR-PRIV-002
 - **Depends on:** EMP-AUTH-003
@@ -488,6 +488,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-AUTHZ, V-ISO, V-SQL, V-PRIV · migration: none · rollback: retain required regression coverage
 - **Risks and assumptions:** Use synthetic fixtures and normal entry points.
 - **Done when:** The fixed matrix is covered with no unexplained omissions.
+
+- **Local evidence:** [AUTH-009 acceptance](../evidence/f2-auth009-authorization-conformance.md), task218: independent inventory/full-router and ordinary actual HTTP matrix pass. Future station/scopes/routes remain explicit; integration pending.
 
 ### EMP-AUTH-010 — Custom roles as named permission bundles
 - **Meta:** module AUTH · phase F6 · cut - · priority P3 · type API · size M · state TODO

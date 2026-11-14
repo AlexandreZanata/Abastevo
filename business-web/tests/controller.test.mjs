@@ -78,3 +78,8 @@ test('an authentication refusal clears the current membership directory port',as
  const source={async list(){return {accountId,organizations:[organization]};},async authorize(){return {accountId,organization};},clear(){clears++;}};
  const controller=new CompanyController(session,source,()=>{});await controller.navigate({kind:'organization',id:organization.id});assert.equal(controller.state.phase,'ready');valid=false;await controller.revalidate({kind:'organization',id:organization.id});assert.equal(controller.state.phase,'signed-out');assert.equal(clears,1);
 });
+test('isolated setup confirms session before bypassing operational discovery without creating authority',async()=>{
+ const f=fixture({async list(){throw new Error('Operational discovery must not admit setup');},async authorize(){throw new Error('No fabricated operational authority');}});
+ await f.controller.navigate({kind:'setup',id:a.id});assert.equal(f.controller.state.phase,'setup');assert.equal(f.controller.state.setupAccountId,uuid(1));assert.equal(f.controller.state.authority,undefined);
+ f.session.forget();await f.controller.navigate({kind:'create'});assert.equal(f.controller.state.phase,'signed-out');
+});

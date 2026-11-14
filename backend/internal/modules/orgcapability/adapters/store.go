@@ -32,6 +32,7 @@ type Store struct {
 }
 
 var _ application.Repository = (*Store)(nil)
+var _ application.TransactionStateReader = (*Store)(nil)
 
 func NewStore(pool *pgxpool.Pool, catalog domain.Catalog, runner auditapp.Runner) *Store {
 	return &Store{pool: pool, catalog: catalog, audit: runner}
@@ -124,10 +125,36 @@ func (store *Store) State(ctx context.Context, scope kernel.OrgScope, code strin
 	return state, nil
 }
 
+// StateTx reads an advisory current state in the owning caller's already scoped
+// transaction. It takes no write lock and cannot grant an independent command.
+func (store *Store) StateTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, code string) (domain.State, error) {
+	if err := store.validate(scope, code); err != nil {
+		return domain.State{}, err
+	}
+	if tx == nil {
+		return domain.State{}, domain.ErrInvalid
+	}
+	if err := database.ValidateOrgTx(ctx, tx, scope); err != nil {
+		return domain.State{}, domain.ErrUnavailable
+	}
+	row, err := qcap.New(tx).GetState(ctx, qcap.GetStateParams{OrgID: scope.OrgID().String(), Capability: code})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.State{}, nil
+	}
+	if err != nil {
+		return domain.State{}, domain.ErrUnavailable
+	}
+	return domain.State{Enabled: row.Enabled, Revision: row.Revision}, nil
+}
+
 // GuardWrite composes inside an existing scoped audit/business transaction.
 // The caller checks current authority before entering its audit runner. It must
 // not open a nested transaction or use another connection for the business write.
 func (store *Store) GuardWrite(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, code string) error {
+	return store.GuardWriteDBTX(ctx, tx, scope, code)
+}
+
+func (store *Store) GuardWriteDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, code string) error {
 	if err := store.validate(scope, code); err != nil {
 		return err
 	}
@@ -142,6 +169,25 @@ func (store *Store) GuardWrite(ctx context.Context, tx pgx.Tx, scope kernel.OrgS
 		return domain.ErrUnavailable
 	}
 	return (domain.State{Enabled: row.Enabled, Revision: row.Revision}).CheckWrite()
+}
+
+// LockSnapshotDBTX is the normal intake source's capability-before-root lock.
+// A snapshot never grants a business write; each owning handler checks it.
+func (store *Store) LockSnapshotDBTX(ctx context.Context, queries database.OrgDBTX, scope kernel.OrgScope, code string) (domain.State, error) {
+	if err := store.validate(scope, code); err != nil {
+		return domain.State{}, err
+	}
+	if err := database.ValidateOrgDBTX(ctx, queries, scope); err != nil {
+		return domain.State{}, domain.ErrUnavailable
+	}
+	row, err := qcap.New(queries).LockStateForWrite(ctx, qcap.LockStateForWriteParams{OrgID: scope.OrgID().String(), Capability: code})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return domain.State{}, nil
+	}
+	if err != nil || row.Revision < 1 {
+		return domain.State{}, domain.ErrUnavailable
+	}
+	return domain.State{Enabled: row.Enabled, Revision: row.Revision}, nil
 }
 
 func (store *Store) Run(ctx context.Context, scope kernel.OrgScope, code string, intent domain.Intent, work func(context.Context, pgx.Tx) error) error {

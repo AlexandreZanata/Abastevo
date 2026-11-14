@@ -21,6 +21,12 @@ type Repository interface {
 	Run(context.Context, kernel.OrgScope, string, domain.Intent, func(context.Context, pgx.Tx) error) error
 	GuardWrite(context.Context, pgx.Tx, kernel.OrgScope, string) error
 }
+
+// TransactionStateReader composes a current advisory read without opening a
+// nested transaction or changing the write capability's independent gate.
+type TransactionStateReader interface {
+	StateTx(context.Context, pgx.Tx, kernel.OrgScope, string) (domain.State, error)
+}
 type Service struct {
 	Enabled    bool
 	Catalog    domain.Catalog

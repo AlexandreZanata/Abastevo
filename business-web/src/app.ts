@@ -1,19 +1,22 @@
 import { CompanyApi, type SessionPort } from './api.js';
 import { CompanyController, unavailableMemberships, type MembershipSource, type Phase, type State } from './controller.js';
-import { HOME, LOGIN, organizationPath, route } from './model.js';
+import { CREATE, HOME, LOGIN, organizationPath, setupPath, route } from './model.js';
 import { CurrentMemberships } from './company.js';
 import { EmployeeAccessApi } from './employees.js';
 import { mountEmployeeAccess } from './panel.js';
+import { OrganizationSetupApi } from './setup.js';
+import { mountOrganizationSetup } from './setuppanel.js';
 
 const COPY: Partial<Record<Phase, [string, string]>> = {
   loading: ['Carregando seu espaço', 'Verificando seu acesso. Aguarde um instante.'],
   choose: ['Escolha sua empresa', 'Use o seletor para abrir uma das empresas às quais você tem acesso.'],
-  empty: ['Nenhuma empresa por aqui ainda', 'Sua conta ainda não tem acesso a uma empresa. Se você recebeu um convite, confirme com quem o enviou.'],
+  empty: ['Nenhuma empresa por aqui ainda', 'Você pode cadastrar uma empresa ou retomar um cadastro salvo pelo menu. Se recebeu um convite, confirme com quem o enviou.'],
   ready: ['Seu espaço de trabalho', 'Você está no ambiente da empresa selecionada. Os recursos disponíveis seguem as permissões da sua conta.'],
   denied: ['Acesso não disponível', 'Não foi possível confirmar seu acesso a esta empresa. Volte ao início ou atualize seus acessos.'],
   unavailable: ['Suas empresas estão indisponíveis', 'Não foi possível carregar seus acessos agora. Tente novamente em instantes.'],
   'signing-out': ['Encerrando sua sessão', 'Aguarde um instante.'],
   'not-found': ['Página não encontrada', 'Use o início do painel para continuar.'],
+  setup: ['Cadastro e configurações', 'Consulte os dados salvos e conclua a preparação da empresa.'],
 };
 export function mountCompany(doc: Document, browser: Window, session: SessionPort = new CompanyApi((path, init) => browser.fetch(path, init)), source?: MembershipSource): CompanyController {
   const el = <T extends HTMLElement>(id: string): T => {
@@ -30,6 +33,12 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
   let expiryTimer = 0;
   const api = session instanceof CompanyApi ? session : null;
   const panel = api ? mountEmployeeAccess(doc, browser, new EmployeeAccessApi(api), message => controller.reset(message)) : null;
+  const setup = api ? mountOrganizationSetup(doc, browser, new OrganizationSetupApi(api), message => controller.reset(message), id => {
+    if (target.kind !== 'create' && target.kind !== 'setup') return;
+    const path = setupPath(id);
+    if (browser.location.pathname !== path) browser.history.replaceState({}, '', path);
+    target = { kind: 'setup', id };
+  }) : null;
   const controller = new CompanyController(session, source ?? (api ? new CurrentMemberships(api) : unavailableMemberships), render);
   function scheduleExpiry(): void {
     browser.clearTimeout(expiryTimer);
@@ -50,6 +59,8 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     if (unchanged) return;
     if (state.phase === 'ready') panel?.select(state.authority);
     else panel?.clear();
+    if (state.phase === 'setup' && state.setupAccountId && (target.kind === 'create' || target.kind === 'setup')) setup?.select(state.setupAccountId, target.kind === 'setup' ? target.id : undefined);
+    else setup?.clear();
     const busy = state.phase === 'loading' || state.phase === 'signing-out';
     const guest = !session.authenticated && state.phase !== 'not-found' && state.phase !== 'signing-out';
     el('login-view').hidden = !guest;
@@ -84,8 +95,14 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     el('retry-button').hidden = !['empty', 'denied', 'unavailable'].includes(state.phase);
     el('home-link').hidden = !['not-found', 'denied'].includes(state.phase);
     el('scope-note').hidden = state.phase !== 'ready';
+    el('workspace-state-card').hidden = state.phase === 'setup';
+    const settingsLink = el<HTMLAnchorElement>('company-settings-link');
+    settingsLink.hidden = state.selected === null;
+    settingsLink.href = state.selected ? setupPath(state.selected.id) : HOME;
+    el('overview-link').setAttribute('aria-current', target.kind === 'overview' || target.kind === 'organization' ? 'page' : 'false');
+    el('create-company-link').setAttribute('aria-current', target.kind === 'create' || target.kind === 'setup' ? 'page' : 'false');
     el('state-marker').textContent = state.phase === 'ready' ? 'Empresa selecionada' : busy ? 'Aguarde' : 'Seu acesso';
-    if (!guest && !busy && lastPhase !== state.phase) el('page-title').focus({ preventScroll: true });
+    if (!guest && !busy && lastPhase !== state.phase) el(state.phase === 'setup' ? 'setup-title' : 'page-title').focus({ preventScroll: true });
     // A refused sign-in returns focus to the field it disabled while busy.
     if (guest && lastPhase === 'loading' && state.message !== '') key.focus({ preventScroll: true });
     lastPhase = state.phase;
@@ -116,6 +133,8 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     void controller.signOut();
   });
   el('retry-button').addEventListener('click', () => { void controller.navigate(target); });
+  el('create-company-link').addEventListener('click', event => { event.preventDefault(); navigate(CREATE); });
+  el('company-settings-link').addEventListener('click', event => { event.preventDefault(); if (controller.state.selected) navigate(setupPath(controller.state.selected.id)); });
   for (const id of ['home-link', 'overview-link']) {
     el(id).addEventListener('click', event => { event.preventDefault(); navigate(HOME); });
   }
@@ -126,7 +145,7 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
   browser.addEventListener('pagehide', () => { key.value = ''; controller.reset(); });
   browser.addEventListener('pageshow', event => { if (event.persisted) { key.value = ''; controller.reset(); } });
   doc.addEventListener('visibilitychange', () => {
-    if (doc.visibilityState === 'visible' && session.authenticated) void controller.revalidate(target);
+    if (doc.visibilityState === 'visible' && session.authenticated) { void controller.revalidate(target); setup?.revalidate(); }
   });
   render(controller.state);
   void controller.navigate(target);
