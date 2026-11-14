@@ -12,6 +12,8 @@ import (
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 )
 
 func budget(availableKiB uint64, load float64, cpus int, freeBytes uint64) error {
@@ -65,7 +67,7 @@ func safety(ctx context.Context, root string, client *http.Client) error {
 	if err = budget(available, load, runtime.NumCPU(), disk.Bavail*uint64(disk.Bsize)); err != nil {
 		return err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://teste.abastevo.com.br/health/ready", nil)
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "https://"+config.OwnedHost+"/health/ready", nil)
 	if err != nil {
 		return err
 	}

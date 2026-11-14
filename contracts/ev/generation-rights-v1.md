@@ -60,7 +60,7 @@ configuration binds the candidate and the currently active baseline.
 The importer checks that baseline under the publication lock before
 staging a replacement. Supply the DSN privately through `ANPFUEL_DATABASE_URL`.
 Development and test targets use a loopback database. Staging requires
-`ANPFUEL_CANONICAL_HOST=teste.abastevo.com.br` and the staging database
+`ANPFUEL_CANONICAL_HOST=abastevo.com.br` and the staging database
 service. Set `ANPFUEL_ENV` to the corresponding environment. A coverage
 exception requires all three override flags for the previous digest,
 actor and reason and is recorded in the activation audit.

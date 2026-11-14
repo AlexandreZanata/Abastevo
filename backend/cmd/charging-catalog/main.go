@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/charging/adapters/prepared"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -120,7 +121,7 @@ func ownerDatabaseConfig(getenv func(string) string) (*pgxpool.Config, error) {
 	switch env {
 	case "development", "test":
 	case "staging":
-		if getenv("ANPFUEL_CANONICAL_HOST") != "teste.abastevo.com.br" {
+		if getenv("ANPFUEL_CANONICAL_HOST") != config.OwnedHost {
 			return nil, errors.New("staging catalog writes require the staging canonical host")
 		}
 	default:

@@ -444,7 +444,7 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 		Read:         chargingread.NewReader(pool.Underlying()),
 		Secrets:      cfg.CursorSecret,
 		Enabled:      func() bool { return cfg.ChargingReadsEnabled },
-		PilotEnabled: cfg.Env == config.EnvStaging && cfg.CanonicalHost == "teste.abastevo.com.br",
+		PilotEnabled: cfg.Env == config.EnvStaging && cfg.CanonicalHost == config.OwnedHost,
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every
 	// cross-module collaborator arrives as a narrow function built here.

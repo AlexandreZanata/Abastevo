@@ -12,9 +12,10 @@ func TestDevelopmentPhotoPreviewConfiguration(t *testing.T) {
 		allowed             bool
 	}{
 		{"development", "localhost", until, true},
-		{"staging", "teste.abastevo.com.br", until, true},
-		{"production", "teste.abastevo.com.br", until, false},
+		{"staging", "abastevo.com.br", until, true},
+		{"production", "abastevo.com.br", until, false},
 		{"staging", "api.abastevo.com.br", until, false},
+		{"staging", "teste.abastevo.com.br", until, false},
 		{"development", "localhost", "invalid", false},
 		{"development", "localhost", time.Now().Add(8 * 24 * time.Hour).Format(time.RFC3339), false},
 	} {

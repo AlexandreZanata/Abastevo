@@ -36,6 +36,11 @@ const (
 	EnvProduction  Environment = "production"
 )
 
+// OwnedHost is the official public host (web and API on one origin). The
+// staging environment runs on it, so staging-only switches stay bounded to
+// this exact canonical host.
+const OwnedHost = "abastevo.com.br"
+
 // Environment variable names.
 const (
 	keyEnv                = "ANPFUEL_ENV"
@@ -675,7 +680,7 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	if raw, present := getenv("ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL"); present && raw != "" {
 		deadline, err := time.Parse(time.RFC3339, raw)
 		if err != nil || cfg.Env == EnvProduction ||
-			(cfg.Env == EnvStaging && cfg.CanonicalHost != "teste.abastevo.com.br") ||
+			(cfg.Env == EnvStaging && cfg.CanonicalHost != OwnedHost) ||
 			deadline.After(time.Now().Add(7*24*time.Hour)) {
 			return Config{}, fmt.Errorf("ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL requires a valid bounded deadline in development or the owned staging host")
 		}
@@ -684,7 +689,7 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 	if raw, _ := getenv("ANPFUEL_DEV_STORAGE_SERVICE"); raw != "" {
 		enabled, err := strconv.ParseBool(raw)
 		if err != nil || (enabled && (cfg.Env == EnvProduction ||
-			(cfg.Env == EnvStaging && cfg.CanonicalHost != "teste.abastevo.com.br"))) {
+			(cfg.Env == EnvStaging && cfg.CanonicalHost != OwnedHost))) {
 			return Config{}, fmt.Errorf("ANPFUEL_DEV_STORAGE_SERVICE requires development or owned staging")
 		}
 		cfg.DevelopmentStorageService = enabled
