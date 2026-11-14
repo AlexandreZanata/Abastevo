@@ -1150,3 +1150,16 @@ org_finance_periods` to the runtime role (head writes are admitted only through
 the transition trigger and its guards). Owning record commands that call the
 period gate need `SELECT` on both tables, `SELECT` on `org_units` and the
 existing root row-lock privilege on `organizations`.
+
+### Organization notification core (EMP-NOTIF-001)
+
+Migration204 installs forced-RLS notification requests, recipients, notices,
+delivery history, preferences, hourly budgets and member receipts. The runtime
+principal needs `GRANT SELECT, INSERT ON org_notification_recipients,
+org_notification_deliveries, org_notification_commands` and `GRANT SELECT,
+INSERT, UPDATE ON org_notification_requests, org_notification_notices,
+org_notification_preferences, org_notification_budgets` (UPDATE only for the
+single dispatch claim, read mark, revisioned preference, budget count and row
+locks; guards refuse every other change), plus the existing AUTH-003
+current-authority reads. No kind, producer or dispatch worker is enabled;
+producers compose `notif.dispatch` in the existing Dispatcher before activation.

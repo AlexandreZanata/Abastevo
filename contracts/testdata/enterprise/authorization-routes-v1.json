@@ -783,6 +783,22 @@
       "boundary": "SELF_MEMBERSHIP"
     },
     {
+      "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/read",
+      "boundary": "SELF_NOTICE"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/update",
+      "boundary": "SELF_NOTICE"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/list",
+      "boundary": "SELF_NOTICE"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/{notice_id}/read",
+      "boundary": "SELF_NOTICE"
+    },
+    {
       "route": "POST /v1/orgs/{org_id}/sync/operations",
       "boundary": "SIGNED_BATCH"
     },

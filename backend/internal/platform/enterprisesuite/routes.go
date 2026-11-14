@@ -38,6 +38,10 @@ import (
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	eventpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/adapters"
+	notifypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/adapters"
+	notifyweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/adapters/http"
+	notifyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/application"
+	notify "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/domain"
 	syncpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	reviewpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters"
@@ -66,6 +70,10 @@ type Options struct {
 	IntakePlans        map[string]map[string][]string
 	IntakeNoAsyncPlans map[syncapp.OperationKey]map[string]syncapp.FollowupMode
 	IntakeConsumers    map[string]eventpg.Effect
+	// NoticeKinds are source-owned notification kinds registered by actual
+	// producers. None exists yet; the own inbox routes serve an empty catalog
+	// and the notif.dispatch consumer is composed with the first producer.
+	NoticeKinds []notify.Kind
 }
 
 // Register performs no I/O or provisioning. The default mounts no private
@@ -280,8 +288,29 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 
+	if err := registerNotices(router, o, cookies, gateway, roles, allowance); err != nil {
+		return err
+	}
+
 	cookies.RegisterRoutes(router)
 	return nil
+}
+
+// registerNotices mounts the four own-inbox routes (EMP-NOTIF-001). Their
+// writes use a dedicated route-class admission, not a catalog permission.
+func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, roles *accesspg.Store, allowance identity.OperationQuota) error {
+	kinds, err := notify.NewCatalog(o.NoticeKinds)
+	if err != nil {
+		return err
+	}
+	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{
+		{Class: "notif.self", Permissions: []string{notifyweb.WriteClass}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic own read marks and notice preferences inherit identity v1 write200/hour on every axis after current own-membership proof; production measurement remains required."},
+	})
+	if err != nil {
+		return err
+	}
+	store := &notifypg.Store{Pool: o.Pool, Catalog: kinds, Authority: roles, NewID: jobs.NewUUIDv4}
+	return notifyweb.Register(router, notifyweb.Options{Enabled: true, Service: notifyapp.Service{Enabled: true, Catalog: kinds, Repository: store}, Cookies: cookies, Gateway: gateway, Admission: admission})
 }
 
 type orgRootResolver struct{ roots org.Repository }

@@ -97,6 +97,21 @@ sql:
         emit_json_tags: true
         omit_unused_structs: true
   - engine: postgresql
+    queries: db/queries/orgnotify
+    schema:
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000170_membership_periods.sql
+      - db/migrations/000204_org_notifications.sql
+    gen:
+      go:
+        package: orgnotify
+        out: db/queries/orgnotify
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/companysession
     schema:
       - db/migrations/000020_accounts.sql

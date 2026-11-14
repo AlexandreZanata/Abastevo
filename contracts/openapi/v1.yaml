@@ -50,6 +50,8 @@ tags:
     description: Signed current-source operation transport with independent scoped transactions and protected receipts.
   - name: enterprise-finance
     description: Private organization financial periods; lock, reopen and re-lock with append-only history.
+  - name: enterprise-notifications
+    description: Own in-app notices and per-kind preferences of the current member; external channels stay disabled.
   - name: feedback
     description: Authenticated station/fuel ratings and comments plus anonymous reads.
   - name: premium
@@ -17307,6 +17309,296 @@ paths:
         original_author: true
         whole_body_preflight: true
         success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/list:
+    post:
+      tags:
+      - enterprise-notifications
+      operationId: enterpriseSelfNoticeList
+      summary: List own in-app notices newest first
+      description: EMP-NOTIF-001 own in-app inbox. Private no-store response without ETag. Dedicated company cookie, exact Origin/Host and CSRF are mandatory; current AUTH-003 membership authority is reloaded in the scoped transaction. Only the account-bound current membership may be selected; this is not an organization permission grant. Notices carry only references, enumerated codes, counts, dates and a relative panel link that its own route re-authorizes when opened.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: The caller's own current scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseNoticeListRequest'
+            example:
+              limit: 20
+              unread_only: false
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current own result or the original committed acknowledgement of a replayed command.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseNoticePage'
+              example:
+                notices:
+                - id: 7b0e2a54-0000-4000-8000-000000002401
+                  kind: report.export.ready
+                  template: report.export.ready.v1
+                  params:
+                    report_id: 7b0e2a54-0000-4000-8000-000000002402
+                    format: CSV
+                  link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+                  created_at: '2026-11-14T12:00:00Z'
+                  read_at: null
+                next_cursor: ''
+                data_mode: SYNTHETIC
+      x-abastevo-self-notice:
+        action: list
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/{notice_id}/read:
+    post:
+      tags:
+      - enterprise-notifications
+      operationId: enterpriseSelfNoticeRead
+      summary: Mark one own notice read
+      description: EMP-NOTIF-001 own in-app inbox. Private no-store response without ETag. Dedicated company cookie, exact Origin/Host and CSRF are mandatory; current AUTH-003 membership authority is reloaded in the scoped transaction. Only the account-bound current membership may be selected; this is not an organization permission grant. Notices carry only references, enumerated codes, counts, dates and a relative panel link that its own route re-authorizes when opened.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: The caller's own current scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      - name: notice_id
+        in: path
+        required: true
+        description: One own notice identity; another member's notice is indistinguishable from an unknown one.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseNoticeReadRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002403
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current own result or the original committed acknowledgement of a replayed command.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseNoticeReadResult'
+              example:
+                notice:
+                  id: 7b0e2a54-0000-4000-8000-000000002401
+                  kind: report.export.ready
+                  template: report.export.ready.v1
+                  params:
+                    report_id: 7b0e2a54-0000-4000-8000-000000002402
+                    format: CSV
+                  link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+                  created_at: '2026-11-14T12:00:00Z'
+                  read_at: '2026-11-14T12:05:00Z'
+                operation_id: 7b0e2a54-0000-4000-8000-000000002403
+                replayed: false
+                data_mode: SYNTHETIC
+      x-abastevo-self-notice:
+        action: read
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/read:
+    post:
+      tags:
+      - enterprise-notifications
+      operationId: enterpriseSelfNoticePreferencesRead
+      summary: Read own notice preferences per registered kind
+      description: EMP-NOTIF-001 own in-app inbox. Private no-store response without ETag. Dedicated company cookie, exact Origin/Host and CSRF are mandatory; current AUTH-003 membership authority is reloaded in the scoped transaction. Only the account-bound current membership may be selected; this is not an organization permission grant. Notices carry only references, enumerated codes, counts, dates and a relative panel link that its own route re-authorizes when opened.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: The caller's own current scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseNoticePreferencesRequest'
+            example:
+              {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current own result or the original committed acknowledgement of a replayed command.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseNoticePreferences'
+              example:
+                preferences:
+                - kind: report.export.ready
+                  muted: true
+                  mandatory: false
+                  revision: 1
+                data_mode: SYNTHETIC
+      x-abastevo-self-notice:
+        action: preferences_read
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/update:
+    post:
+      tags:
+      - enterprise-notifications
+      operationId: enterpriseSelfNoticePreferenceUpdate
+      summary: Mute or unmute one optional notice kind
+      description: EMP-NOTIF-001 own in-app inbox. Private no-store response without ETag. Dedicated company cookie, exact Origin/Host and CSRF are mandatory; current AUTH-003 membership authority is reloaded in the scoped transaction. Only the account-bound current membership may be selected; this is not an organization permission grant. Notices carry only references, enumerated codes, counts, dates and a relative panel link that its own route re-authorizes when opened.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: The caller's own current scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseNoticePreferenceUpdateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002404
+              kind: report.export.ready
+              muted: true
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current own result or the original committed acknowledgement of a replayed command.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseNoticePreferenceResult'
+              example:
+                preference:
+                  kind: report.export.ready
+                  muted: true
+                  mandatory: false
+                  revision: 1
+                operation_id: 7b0e2a54-0000-4000-8000-000000002404
+                replayed: false
+                data_mode: SYNTHETIC
+      x-abastevo-self-notice:
+        action: preferences_update
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -32501,6 +32793,284 @@ components:
           state: PENDING_SETUP
           root_revision: 2
         next_after_org_id: ''
+    EnterpriseNoticeListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+        unread_only:
+          type: boolean
+          default: false
+      required: []
+      example:
+        limit: 20
+        unread_only: false
+      description: Own inbox page; the cursor is bound to organization, account, membership, route, limit and filter.
+    EnterpriseNoticeView:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$
+        template:
+          type: string
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$
+        params:
+          type: object
+          maxProperties: 8
+          additionalProperties:
+            type: string
+            maxLength: 64
+            pattern: ^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[A-Z][A-Z0-9_]{0,63}|0|[1-9][0-9]{0,9}|[0-9]{4}-[0-9]{2}-[0-9]{2})$
+          description: Typed references only (UUID, enumerated code, count or calendar date); never free text.
+        link_path:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 256
+            pattern: ^(/[a-z0-9][a-z0-9-]*)+$
+          - type: 'null'
+          description: Relative panel path rendered from the kind's registered template; never a capability.
+        created_at:
+          type: string
+          format: date-time
+        read_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+      required:
+      - id
+      - kind
+      - template
+      - params
+      - link_path
+      - created_at
+      - read_at
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000002401
+        kind: report.export.ready
+        template: report.export.ready.v1
+        params:
+          report_id: 7b0e2a54-0000-4000-8000-000000002402
+          format: CSV
+        link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+        created_at: '2026-11-14T12:00:00Z'
+        read_at: null
+      description: One own in-app notice. Clients render localized text from the template key; no title, body,
+        attachment, document, coordinate, contact or token is stored or returned.
+    EnterpriseNoticePage:
+      type: object
+      additionalProperties: false
+      properties:
+        notices:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseNoticeView'
+        next_cursor:
+          type: string
+          maxLength: 2048
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - notices
+      - next_cursor
+      - data_mode
+      example:
+        notices:
+        - id: 7b0e2a54-0000-4000-8000-000000002401
+          kind: report.export.ready
+          template: report.export.ready.v1
+          params:
+            report_id: 7b0e2a54-0000-4000-8000-000000002402
+            format: CSV
+          link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+          created_at: '2026-11-14T12:00:00Z'
+          read_at: null
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseNoticeReadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - schema_version
+      - operation_id
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000002403
+      description: Idempotent own read mark; the same operation and notice replays, another target is OPERATION_ID_REUSED.
+    EnterpriseNoticeReadResult:
+      type: object
+      additionalProperties: false
+      properties:
+        notice:
+          $ref: '#/components/schemas/EnterpriseNoticeView'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - notice
+      - operation_id
+      - replayed
+      - data_mode
+      example:
+        notice:
+          id: 7b0e2a54-0000-4000-8000-000000002401
+          kind: report.export.ready
+          template: report.export.ready.v1
+          params:
+            report_id: 7b0e2a54-0000-4000-8000-000000002402
+            format: CSV
+          link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+          created_at: '2026-11-14T12:00:00Z'
+          read_at: '2026-11-14T12:05:00Z'
+        operation_id: 7b0e2a54-0000-4000-8000-000000002403
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseNoticePreferencesRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+      description: Empty body; the selected own membership comes from the path.
+    EnterpriseNoticePreference:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$
+        muted:
+          type: boolean
+        mandatory:
+          type: boolean
+          description: A mandatory kind is always delivered in-app and cannot be muted.
+        revision:
+          type: integer
+          minimum: 0
+          description: Current preference revision; 0 means no stored preference (default unmuted).
+      required:
+      - kind
+      - muted
+      - mandatory
+      - revision
+      example:
+        kind: report.export.ready
+        muted: true
+        mandatory: false
+        revision: 1
+    EnterpriseNoticePreferences:
+      type: object
+      additionalProperties: false
+      properties:
+        preferences:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/EnterpriseNoticePreference'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - preferences
+      - data_mode
+      example:
+        preferences:
+        - kind: report.export.ready
+          muted: true
+          mandatory: false
+          revision: 1
+        data_mode: SYNTHETIC
+      description: Every registered kind with the member's IN_APP preference; external channels are not available.
+    EnterpriseNoticePreferenceUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$
+        muted:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 1
+          description: Expected current revision; omit only when no preference is stored yet.
+      required:
+      - schema_version
+      - operation_id
+      - kind
+      - muted
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000002404
+        kind: report.export.ready
+        muted: true
+      description: Revisioned own preference change. Unknown or mandatory kinds are VALIDATION_FAILED; a stale revision is
+        CONFLICT; the same operation with other content is OPERATION_ID_REUSED.
+    EnterpriseNoticePreferenceResult:
+      type: object
+      additionalProperties: false
+      properties:
+        preference:
+          $ref: '#/components/schemas/EnterpriseNoticePreference'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - preference
+      - operation_id
+      - replayed
+      - data_mode
+      example:
+        preference:
+          kind: report.export.ready
+          muted: true
+          mandatory: false
+          revision: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000002404
+        replayed: false
+        data_mode: SYNTHETIC
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

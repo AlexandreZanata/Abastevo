@@ -22,6 +22,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |
 | `orgamend` (LOCAL_DONE, domain only) | PLAT | Append-only amendment, void and locked-period adjustment decisions (BR-AMD) | `orgaudit` reason bound; server-side amendment-v1 vectors; consumers own persistence and recalculation |
+| `orgnotify` (in-app core LOCAL_DONE; producers, external channels and app centre pending) | NOTIF | Member inbox, preferences, de-duplication, hourly limits and delivery history (migration 000204, SELF_NOTICE routes) | `orgevent` and the existing job queue; AUTH-003 current authority |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
 | `orgevent` (LOCAL_DONE, foundation) | PLAT | Transactional follow-up intents and consumer receipts | `orgaudit` application runner; scoped transactions; existing PostgreSQL job queue and dispatcher; source-owned catalogs/effects |
 | `orgcapability` (LOCAL_DONE) | PLAT | Registered organization capability state and audited activation | `orgaudit` application port, `kernel`, scoped transaction helper; AUTH authority port |

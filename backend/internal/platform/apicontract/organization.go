@@ -36,13 +36,17 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		contact, contactGuarded := handler.(orgapi.DeviceContactDescriptor)
 		batch, batchGuarded := handler.(orgapi.SignedBatchDescriptor)
 		reviewResults, reviewResultsGuarded := handler.(orgapi.SignedReviewResultsDescriptor)
+		selfNotice, selfNoticeGuarded := handler.(orgapi.SelfNoticeDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded && !reviewResultsGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded && !reviewResultsGuarded && !selfNoticeGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
 		if operation == nil {
 			return fmt.Errorf("missing organization operation %s %s", method, path)
+		}
+		if !selfNoticeGuarded && operation.Extensions["x-abastevo-self-notice"] != nil {
+			return fmt.Errorf("unexpected self notice metadata for %s", path)
 		}
 		if !setupsGuarded && operation.Extensions["x-abastevo-owned-setups"] != nil {
 			return fmt.Errorf("unexpected owned setups metadata for %s", path)
@@ -69,7 +73,30 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		if !reviewResultsGuarded && operation.Extensions["x-abastevo-signed-review-results"] != nil {
 			return fmt.Errorf("unexpected author result authority metadata for %s", path)
 		}
-		if reviewResultsGuarded {
+		if selfNoticeGuarded {
+			rule := selfNotice.SelfNoticeRule()
+			expected := orgapi.SelfNoticeRule{Action: rule.Action, Cookie: true, CSRF: true, Binding: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || reviewResultsGuarded ||
+				selfNoticePaths[rule.Action] == "" || path != selfNoticePaths[rule.Action] || rule != expected {
+				return fmt.Errorf("invalid self notice guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context", "x-abastevo-owned-setups", "x-abastevo-device-contact", "x-abastevo-signed-batch", "x-abastevo-signed-review-results"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for self notice %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-self-notice"])
+			var recorded orgapi.SelfNoticeRule
+			decoder := json.NewDecoder(strings.NewReader(string(raw)))
+			decoder.DisallowUnknownFields()
+			if e != nil || decoder.Decode(&recorded) != nil || recorded != expected {
+				return fmt.Errorf("self notice metadata differs for %s", path)
+			}
+			if e := validateCompanySecurity(document, operation, path, orgapi.CompanySessionRule{Cookie: true, CSRF: true, Success: 200}); e != nil {
+				return e
+			}
+			declared.Success = 200
+		} else if reviewResultsGuarded {
 			expected := orgapi.SignedReviewResultsRule{AccountProof: true, Signed: true, ExactEnrollment: true, OriginalAuthor: true, WholeBodyPreflight: true, Success: 200}
 			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || path != "/v1/orgs/{org_id}/sync/review-results" || reviewResults.SignedReviewResultsRule() != expected {
 				return fmt.Errorf("invalid signed original-author result guard for %s", path)
@@ -386,6 +413,14 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		}
 	}
 	return nil
+}
+
+// selfNoticePaths pins each own-inbox action to its only allowed route.
+var selfNoticePaths = map[string]string{
+	"list":               "/v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/list",
+	"read":               "/v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/{notice_id}/read",
+	"preferences_read":   "/v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/read",
+	"preferences_update": "/v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/update",
 }
 
 func exactReviewObject(schema *openapi3.Schema, names ...string) bool {

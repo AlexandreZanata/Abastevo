@@ -109,7 +109,7 @@ Organization import and notification paths remain scoped. External integrations 
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-NOTIF-001 — Notification core: inbox, preferences, de-duplication, limits and history
-- **Meta:** module NOTIF · phase F3 · cut - · priority P1 · type DB · size M · state TODO
+- **Meta:** module NOTIF · phase F3 · cut - · priority P1 · type DB · size M · state LOCAL_DONE
 - **Objective:** Provide the scoped in-app notification inbox and retry-safe dispatch contract.
 - **Rules and use cases:** REQ-17.2, EDR-032, BR-PRIV-003, BR-PRIV-008, BR-AUTH-014
 - **Depends on:** EMP-PLAT-010, EMP-AUTH-003
@@ -123,6 +123,11 @@ Organization import and notification paths remain scoped. External integrations 
 - **Validation:** V-API, V-SQL, V-JOB, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [integration design](../modules/imports-notifications-integrations.md) records the module boundary. Existing manual paths and separate provider, legal and activation approvals apply.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+EMP-NOTIF-001: LOCAL_DONE / INTEGRATION_PENDING (all task gates pass). Module
+`orgnotify` + migration 000204 + four SELF_NOTICE routes. Retained: production
+producers and `notif.dispatch` worker composition, inbox catalog permission,
+Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 
 ### EMP-NOTIF-002 — Delivery channels: Android local and push, and e-mail, with retries
 - **Meta:** module NOTIF · phase F3 · cut - · priority P1 · type INT · size M · state TODO

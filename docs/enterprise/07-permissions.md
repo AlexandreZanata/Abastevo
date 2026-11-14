@@ -313,6 +313,8 @@ AUTH-003/009 and onboarding own those application checks and audit.
 
 Produced: `auth.assignment.created`, `auth.assignment.ended`, `auth.delegation.created`, `auth.delegation.ended`, `auth.access.denied` (sampled, for security review). Consumed: `idn.membership.suspended`, `idn.membership.ended`, `org.organization.suspended`, `claim.authority.suspended` (to evaluate `INEFFECTIVE`). Notifications: the affected member is told when a role is given, changed, delegated or removed. No external integration.
 
+Own inbox and notice preferences use the special SELF_NOTICE boundary (account-bound current membership, no catalog permission); a dedicated inbox permission is an AUTH-owned future decision (EDR-151).
+
 ## 10. Data, formulas and examples
 
 Decision order and error codes (first failure wins):

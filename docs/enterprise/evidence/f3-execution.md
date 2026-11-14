@@ -316,3 +316,24 @@ fleet adapters and migrate: 9 packages, 441 top-level / 3057 subtests,
 clean. Retained: real consumers calling the gate and `PERIOD_LOCKED` sync
 binding, unit/cost-centre periods (AUTH-006), an AUDITOR read key, panel,
 production grants.
+
+### EMP-NOTIF-001 — notification core: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-notif001-notification-core.md). New module `orgnotify` and
+migration 000204 (seven forced-RLS tables: requests, recipients, notices,
+delivery history, preferences, hourly budgets, member receipts, with guards).
+Producers register keyed requests inside their own audited transaction; the
+`notif.dispatch` consumer re-checks current AUTH-003 authority per recipient,
+honours per-kind preferences (mandatory kinds cannot be muted), caps 20 notices
+per recipient per kind per UTC hour and records exactly one IN_APP history row
+(DELIVERED or SUPPRESSED INELIGIBLE/MUTED/LIMITED). Four SELF_NOTICE member
+routes (list, read mark, preference read/update) with replay and revision CAS
+(EDR-150/151). No kind, producer or worker is active in production. RED
+unit 13/14, contract 2/3, inventory 1/3, integration 12/12 failing → GREEN:
+unit 14/81, integration 24/106, contract 89/641, composition users 345/2379,
+untagged 199 packages; merged tree (after FLEET-003/APPR-006) union over
+orgnotify, organization adapters, orgaccess, review, enterprisesuite and
+migrate: 16 packages, 509 top-level / 4259 subtests, 0 failures, 0 skips.
+Retained: real producers (RPT-004, approvals, alerts) and dispatcher
+composition, external channels (NOTIF-002), subscriptions (NOTIF-003), app
+centre (NOTIF-004), retention/erasure of notices, rate measurement, grants.

@@ -3444,3 +3444,73 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   posts into the open November; after an authorized reopening with a reason
   the amendment is allowed; after a re-lock it is refused again. A close that
   races the record write admits exactly one ordering.
+
+## EMP-NOTIF-001 — Notification core: inbox, preferences, de-duplication, limits and history (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-notif001-notification-core.md).
+
+- **B-BR-EMP-215 — Register bounded reference-only notices in the producer transaction.**
+  A producer registers notice requests through the orgnotify producer port
+  inside its own audited orgevent transaction, bound to that source event and
+  target. A request names a kind from the closed composition-registered
+  catalog, one of the kind's template keys, exactly the kind's declared
+  parameters and 1..50 distinct recipient memberships of the same
+  organization; at most 10 requests per source event. Parameters are typed
+  references only: canonical UUID, a code from the kind's enumerated list, a
+  canonical count 0..1000000000 or a calendar date. No free text, attachment,
+  document bytes, coordinates, contact data or token can be expressed; any
+  undeclared, missing, malformed or oversized field is refused before writes.
+  The optional panel link is rendered only from the kind's relative link
+  template and its UUID parameters (no scheme, host, query or fragment); it is
+  never a capability and its own route re-authorizes it when opened. A
+  producer-supplied idempotency key de-duplicates: the same key with the same
+  canonical content returns the first request; the same key with different
+  content is refused as a reused operation; concurrent duplicates leave one
+  request.
+- **B-BR-EMP-216 — Dispatch once with current authority.**
+  The `notif.dispatch` consumer runs from the existing job queue through
+  orgevent (one receipt per event and consumer) and claims the event's
+  PENDING requests atomically, so concurrent dispatch creates no second
+  notice. Each recipient is evaluated at dispatch with current AUTH-003
+  authority at database time: a non-ended membership bound to an active
+  account, ACTIVE membership and employee, an organization that is not
+  CLOSED and, when the kind names a permission, a live assignment whose role
+  grants it. An ineligible recipient receives nothing. At most one notice
+  exists per request and recipient, and a foreign recipient or organization
+  is never addressed.
+- **B-BR-EMP-217 — Respect preferences and bounds and keep delivery history.**
+  A member may mute a non-mandatory kind for IN_APP; a mandatory kind cannot
+  be muted and ignores preferences. Delivery is bounded to 20 notices per
+  recipient and kind per UTC hour. Every evaluated recipient gets exactly one
+  IN_APP history row: DELIVERED with its notice, or SUPPRESSED with
+  INELIGIBLE, MUTED or LIMITED; nothing is silently dropped. IN_APP is the
+  only active channel; Android local, push and e-mail stay disabled and are
+  never contacted or recorded until EMP-NOTIF-002 and its delivery decision.
+  FAILED is reserved for those external channels.
+- **B-BR-EMP-218 — Read and change only the own current inbox.**
+  Self routes use the dedicated company cookie, exact Origin and CSRF, and
+  admit only the account-bound membership in the path when it is current
+  (ACTIVE membership and employee, web-capable access model, organization not
+  CLOSED); a foreign organization, another member or an ended membership gets
+  the same NOT_FOUND, a suspended member MEMBERSHIP_SUSPENDED. The inbox is a
+  newest-first keyset page bound to organization, account, membership, route
+  and filter. Marking read is idempotent and preference changes use the
+  expected revision. Each command carries an operation ID: the same ID and
+  content replays the original result without a second change; a different
+  content is OPERATION_ID_REUSED. Responses are no-store and carry only
+  references, codes, counts, dates and the link path.
+- **BUC-EMP-110 — Prove scoped once-only dispatch end to end.**
+  With real PostGIS, ordinary roles and forced RLS, a test-only producer
+  publishes through orgevent and the queue; the real handler dispatches to an
+  authorized recipient with a panel link. Prove two-organization isolation,
+  RLS without a scope, producer-port privacy refusals, idempotency-key replay
+  and conflict, concurrent duplicate producers and dispatchers, ended
+  membership and lost permission, muted and mandatory kinds, the hourly bound
+  and exact history rows.
+- **BUC-EMP-111 — Prove the member routes and the upgrade.**
+  Through the real cookie plane, list, mark read and manage preferences as the
+  current member; deny another member, another organization, an ended member
+  and a missing CSRF; replay and reuse operation IDs. Rehearse the populated
+  upgrade from the previous chain to 000204 with failure, recovery, retry,
+  previous-chain compatibility and no seeded work. Keep the route/contract
+  gate and authorization inventory exact.
