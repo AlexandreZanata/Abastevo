@@ -15818,6 +15818,533 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/acquisition/record:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetRecordAcquisition
+      summary: Record the acquisition instant of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. Allowed in DRAFT, ACTIVE and INACTIVE without changing the state; the instant is exact to the nanosecond and may not follow the server clock. No amount, counterpart or expense is collected.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetAcquisitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 1
+              acquired_at: '2026-10-01T12:00:00.123456789Z'
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: DRAFT
+                revision: 2
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/deactivate:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetDeactivate
+      summary: Deactivate an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. ACTIVE to INACTIVE with a required reason. Open trips or work orders refuse with ASSET_HAS_OPEN_OPERATIONS naming only the open kinds (until those modules exist the runtime source answers none). Assignments and allocation periods are unchanged.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetReasonRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 3
+              reason: Synthetic seasonal idle period
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: INACTIVE
+                revision: 4
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/reactivate:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetReactivate
+      summary: Reactivate an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. INACTIVE to ACTIVE. The activation checklist is re-proved from actual sources (active unit, tank and in-service meter for powered assets); a known missing item is VALIDATION_FAILED with REQUIRED details.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 4
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: ACTIVE
+                revision: 5
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/dispose:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetDispose
+      summary: Dispose of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. ACTIVE or INACTIVE to DISPOSED with kind SALE, WRITE_OFF or RETURN_TO_HOLDER, an exact instant not later than the server clock nor earlier than the recorded acquisition, and a required reason. Open work refuses with ASSET_HAS_OPEN_OPERATIONS. Earlier records stay readable; a signed field reading declared at or after the instant is held for review as ASSET_UNAVAILABLE.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetDisposeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 5
+              kind: SALE
+              disposed_at: '2026-11-10T12:00:00Z'
+              reason: Synthetic sale to a synthetic buyer
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: DISPOSED
+                revision: 6
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/disposal/revert:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetRevertDisposal
+      summary: Revert a disposal recorded by mistake
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. DISPOSED to INACTIVE with a required reason. The current disposal is cleared; the original disposal stays in the immutable lifecycle history and the asset can be disposed again. Assignments are not restored.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetReasonRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 6
+              reason: Synthetic disposal recorded by mistake
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: INACTIVE
+                revision: 7
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/archive:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetArchive
+      summary: Archive a disposed organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. DISPOSED to the terminal ARCHIVED state; ACTIVE or INACTIVE assets must be disposed first. The disposal is kept, the asset leaves default lists and its plate and fleet number become free for a new asset. Open work refuses with ASSET_HAS_OPEN_OPERATIONS.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 6
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: ARCHIVED
+                revision: 7
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetLifecycleList
+      summary: Read the immutable lifecycle history of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.read and same-organization membership; SELF remains closed. Revision-ordered keyset page of every
+        deactivate, reactivate, dispose, revert-disposal and archive command, including disposals that were later
+        reverted. Opaque 15-minute cursor bound to the account, organization, membership, route, asset and limit.
+        Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetLifecycleListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized history page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetLifecyclePage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install:
     post:
       tags:
@@ -16915,6 +17442,9 @@ components:
           type: string
           enum:
           - PERMISSION_CHANGED
+          - ASSET_UNAVAILABLE
+          description: PERMISSION_CHANGED for retained authority; ASSET_UNAVAILABLE for a reading declared at or after
+            the asset's current disposal instant.
         state:
           type: string
           enum:
@@ -18245,6 +18775,12 @@ components:
           example:
             unit_id: 7b0e2a54-0000-4000-8000-000000000801
             started_at: '2026-11-14T12:00:00Z'
+        acquired_at:
+          type: string
+          format: date-time
+          description: Current recorded acquisition instant; absent when none was recorded.
+        disposal:
+          $ref: '#/components/schemas/EnterpriseFleetAssetDisposal'
         data_mode:
           type: string
           enum:
@@ -18294,6 +18830,248 @@ components:
         data_mode: SYNTHETIC
       description: Stored private asset state and source-owned category/unit facts. Initial allocation is present only
         when actually created. No assignment, availability, public vehicle identity or source authority is inferred.
+    EnterpriseFleetAssetAcquisitionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        acquired_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 35
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$
+          description: Exact RFC 3339 instant with up to nine fraction digits; not later than the server clock.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - acquired_at
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008111
+        revision: 1
+        acquired_at: '2026-10-01T12:00:00.123456789Z'
+      description: Records the current acquisition instant; earlier values remain in revision snapshots. No amount,
+        counterpart or acquisition kind is collected.
+    EnterpriseFleetAssetReasonRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          pattern: \S
+          description: 1 to 280 Unicode scalars, not blank, without control characters (fleet §10.1, BR-PRIV-007).
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008111
+        revision: 3
+        reason: Synthetic seasonal idle period
+      description: Deactivate or revert-disposal command; the reason is required by the fleet lifecycle table.
+    EnterpriseFleetAssetDisposeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        kind:
+          type: string
+          enum:
+          - SALE
+          - WRITE_OFF
+          - RETURN_TO_HOLDER
+        disposed_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 35
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$
+          description: Exact disposal instant; not later than the server clock nor earlier than the recorded acquisition.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          pattern: \S
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - kind
+      - disposed_at
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008111
+        revision: 5
+        kind: SALE
+        disposed_at: '2026-11-10T12:00:00Z'
+        reason: Synthetic sale to a synthetic buyer
+      description: No amount, buyer, revenue or expense is collected; sale finance belongs to expenses-finance.
+    EnterpriseFleetAssetDisposal:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum:
+          - SALE
+          - WRITE_OFF
+          - RETURN_TO_HOLDER
+        disposed_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - kind
+      - disposed_at
+      - reason
+      example:
+        kind: SALE
+        disposed_at: '2026-11-10T12:00:00Z'
+        reason: Synthetic sale to a synthetic buyer
+      description: The current disposal; present exactly while the asset is DISPOSED or ARCHIVED.
+    EnterpriseFleetAssetLifecycleListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+      description: Revision keyset page of the immutable lifecycle history.
+    EnterpriseFleetAssetLifecycleEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 2
+          maximum: 9223372036854775807
+        command:
+          type: string
+          enum:
+          - DEACTIVATE
+          - REACTIVATE
+          - DISPOSE
+          - REVERT_DISPOSAL
+          - ARCHIVE
+        from_state:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - DISPOSED
+        to_state:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - DISPOSED
+          - ARCHIVED
+        reason:
+          type: string
+          maxLength: 280
+          description: Required reason of deactivate, dispose and revert-disposal; empty otherwise.
+        disposal_kind:
+          type: string
+          enum:
+          - SALE
+          - WRITE_OFF
+          - RETURN_TO_HOLDER
+        disposed_at:
+          type: string
+          format: date-time
+        recorded_at:
+          type: string
+          format: date-time
+      required:
+      - revision
+      - command
+      - from_state
+      - to_state
+      - reason
+      - recorded_at
+      example:
+        revision: 6
+        command: DISPOSE
+        from_state: INACTIVE
+        to_state: DISPOSED
+        reason: Synthetic sale to a synthetic buyer
+        disposal_kind: SALE
+        disposed_at: '2026-11-10T12:00:00Z'
+        recorded_at: '2026-11-14T12:00:00Z'
+      description: One immutable lifecycle transition. disposal_kind and disposed_at are present only on DISPOSE rows.
+        Actor identities stay in the audit log.
+    EnterpriseFleetAssetLifecyclePage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetLifecycleEntry'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - revision: 6
+          command: DISPOSE
+          from_state: INACTIVE
+          to_state: DISPOSED
+          reason: Synthetic sale to a synthetic buyer
+          disposal_kind: SALE
+          disposed_at: '2026-11-10T12:00:00Z'
+          recorded_at: '2026-11-14T12:00:00Z'
+        next_cursor: ''
+      description: Revision-ordered page of immutable lifecycle history; next_cursor is empty on the last page.
     EnterpriseFleetAssetPage:
       type: object
       additionalProperties: false
@@ -22468,7 +23246,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false

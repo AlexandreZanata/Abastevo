@@ -113,6 +113,13 @@ func TestMeterPopulatedOrdinaryUpgradeFailureRecoveryAndPreviousImage(t *testing
 	if assets, employees := fleetUnitCounts(t, fx, unit); assets != 0 || employees != 1 {
 		t.Fatal("meter source changed prior employee/home/team union")
 	}
+	// The current store reads later columns (EMP-FLEET-003 lifecycle data), so
+	// the ordinary source smoke runs on the complete embedded chain, as a
+	// deployment would: migrations always precede the binary that needs them.
+	if _, err := migrate.Apply(t.Context(), f.AdminDSN, migrations.Files); err != nil {
+		t.Fatal("remaining embedded chain after the 198 rehearsal", err)
+	}
+	f.GrantMeterUsage(t)
 	store := meterStore(t, fx)
 	installed, _, err := meterInstall(t, fx, store, meterInstallCommand(t, meterInstallInput(t, asset.AssetID, time.Now().UTC().Add(-time.Hour))))
 	if err != nil || installed.AssetRevision != 2 {

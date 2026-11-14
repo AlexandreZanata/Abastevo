@@ -226,6 +226,10 @@ type AssetView struct {
 	Revision      int64
 	UnitID        string
 	Allocation    *UnitAllocation
+	// AcquiredAt and Disposal are the current EMP-FLEET-003 lifecycle data;
+	// earlier values remain in revision snapshots and lifecycle history.
+	AcquiredAt *time.Time
+	Disposal   *AssetDisposal
 }
 
 func (v AssetView) Clone() AssetView {
@@ -233,6 +237,14 @@ func (v AssetView) Clone() AssetView {
 	if v.Allocation != nil {
 		a := *v.Allocation
 		v.Allocation = &a
+	}
+	if v.AcquiredAt != nil {
+		at := *v.AcquiredAt
+		v.AcquiredAt = &at
+	}
+	if v.Disposal != nil {
+		d := *v.Disposal
+		v.Disposal = &d
 	}
 	return v
 }
@@ -342,6 +354,10 @@ func validView(v AssetView, scope kernel.OrgScope, target string) bool {
 		return false
 	}
 	if v.State == fleet.Active && (v.UnitID == "" || v.Allocation == nil) {
+		return false
+	}
+	// B-BR-EMP-204: a current disposal exists exactly while DISPOSED/ARCHIVED.
+	if (v.State == fleet.Disposed || v.State == fleet.Archived) != (v.Disposal != nil) || v.Disposal != nil && !v.Disposal.valid() || v.AcquiredAt != nil && !validInstant(*v.AcquiredAt) {
 		return false
 	}
 	if a := v.Allocation; a != nil {

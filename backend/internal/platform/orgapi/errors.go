@@ -37,6 +37,7 @@ const (
 	LastUnit                 Code = "LAST_UNIT"
 	StructureInUse           Code = "STRUCTURE_IN_USE"
 	AssetIdentifierTaken     Code = "ASSET_IDENTIFIER_TAKEN"
+	AssetHasOpenOperations   Code = "ASSET_HAS_OPEN_OPERATIONS"
 	MeterAlreadyInService    Code = "METER_ALREADY_IN_SERVICE"
 	DuplicateReviewRequired  Code = "DUPLICATE_REVIEW_REQUIRED"
 	OwnerRequiresPersonal    Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
@@ -58,7 +59,7 @@ var statuses = map[Code]int{
 	DeviceRevoked: 403,
 	Conflict:      409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409, MergeConflict: 409, OpenResponsibilities: 409,
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
-	LastUnit: 409, StructureInUse: 409, AssetIdentifierTaken: 409, MeterAlreadyInService: 409, DuplicateReviewRequired: 409,
+	LastUnit: 409, StructureInUse: 409, AssetIdentifierTaken: 409, AssetHasOpenOperations: 409, MeterAlreadyInService: 409, DuplicateReviewRequired: 409,
 	OrgSetupIncomplete:    409,
 	OwnerRequiresPersonal: 409,
 	TransferPending:       409,
@@ -140,6 +141,27 @@ func IncompleteAsset(fields []string) error {
 		seen[field] = true
 	}
 	return assetActivationFailure{append([]string(nil), fields...)}
+}
+
+type assetOpenOperationsFailure struct{ kinds []string }
+
+func (assetOpenOperationsFailure) Error() string { return string(AssetHasOpenOperations) }
+func (assetOpenOperationsFailure) Unwrap() error { return AssetHasOpenOperations }
+
+// AssetOpenOperations accepts only the source-owned BR-FLEET-010 work kinds,
+// each at most once; never a trip, work order or other record identity.
+func AssetOpenOperations(kinds []string) error {
+	if len(kinds) == 0 || len(kinds) > 2 {
+		return Unavailable
+	}
+	seen := map[string]bool{}
+	for _, kind := range kinds {
+		if kind != "TRIP" && kind != "WORK_ORDER" || seen[kind] {
+			return Unavailable
+		}
+		seen[kind] = true
+	}
+	return assetOpenOperationsFailure{append([]string(nil), kinds...)}
 }
 
 // EmployeeRegistrationDuplicate has no caller-selected field or private value.
@@ -255,6 +277,12 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	if code == ValidationFailed && errors.As(err, &asset) {
 		for _, field := range asset.fields {
 			details = append(details, httpapi.Detail{Field: field, Code: "REQUIRED"})
+		}
+	}
+	var open assetOpenOperationsFailure
+	if code == AssetHasOpenOperations && errors.As(err, &open) {
+		for _, kind := range open.kinds {
+			details = append(details, httpapi.Detail{Field: "open_operations", Code: kind})
 		}
 	}
 	var structure structureFailure

@@ -201,6 +201,9 @@ func assetView(scope kernel.OrgScope, value app.AssetView) (map[string]any, erro
 	if value.State == d.Active && (value.UnitID == "" || value.Allocation == nil) {
 		return nil, orgapi.Unavailable
 	}
+	if (value.State == d.Disposed || value.State == d.Archived) != (value.Disposal != nil) {
+		return nil, orgapi.Unavailable
+	}
 	tanks := make([]map[string]any, 0, len(profile.Tanks))
 	for _, tank := range profile.Tanks {
 		v := tank.Snapshot()
@@ -212,6 +215,16 @@ func assetView(scope kernel.OrgScope, value app.AssetView) (map[string]any, erro
 		expected = append(expected, map[string]any{"product": v.Product, "basis": v.Basis, "value": strconv.FormatInt(v.Value, 10), "unit": v.Unit, "source": v.Source, "date": v.Date})
 	}
 	out := map[string]any{"id": value.Ref.ID().Value(), "kind": profile.Kind, "name": profile.Name, "fleet_number": profile.FleetNumber, "plate": profile.Plate, "serial_number": profile.SerialNumber, "usage_basis": profile.UsageBasis, "category": map[string]any{"id": profile.Category, "label": value.CategoryLabel}, "tanks": tanks, "expected_consumption": expected, "state": value.State, "revision": value.Revision, "unit_id": value.UnitID, "data_mode": "SYNTHETIC"}
+	// EMP-FLEET-003 current lifecycle data is present only when recorded.
+	if value.AcquiredAt != nil {
+		out["acquired_at"] = orgtime.FormatInstant(*value.AcquiredAt)
+	}
+	if disposal := value.Disposal; disposal != nil {
+		if _, err := d.ParseDisposalKind(string(disposal.Kind)); err != nil || disposal.At.IsZero() || !d.ValidReason(disposal.Reason) {
+			return nil, orgapi.Unavailable
+		}
+		out["disposal"] = map[string]any{"kind": disposal.Kind, "disposed_at": orgtime.FormatInstant(disposal.At), "reason": disposal.Reason}
+	}
 	if value.Allocation != nil {
 		allocation := value.Allocation
 		stamp := orgtime.FormatInstant(allocation.StartedAt)

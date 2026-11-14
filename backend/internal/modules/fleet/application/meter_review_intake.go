@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
@@ -33,4 +34,12 @@ type ReviewReference struct {
 // transaction, without applying a reading or changing transaction lifecycle.
 type MeterHeldRepository interface {
 	HoldMeterReadingTx(context.Context, syncapp.DBTX, syncapp.Source, protocol.Operation, MeterReadingCommand, string) (ReviewReference, error)
+}
+
+// MeterAssetLifecycle reads the asset's current disposal instant inside the
+// caller's intake transaction, after taking the organization root and asset
+// row locks in that order. A nil instant means no current disposal; a field
+// reading declared at or after a returned instant is held (B-BR-EMP-206).
+type MeterAssetLifecycle interface {
+	MeterAssetDisposalTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) (*time.Time, error)
 }

@@ -26,13 +26,16 @@ type AssetStore struct {
 	Authority app.FleetAuthority
 	Audit     auditing.TransactionRunner
 	NewID     func() (string, error)
+	// OpenWork answers BR-FLEET-010 inside lifecycle commands. Runtime wires
+	// NoOpenWork explicitly; a nil port fails every removal from service.
+	OpenWork app.AssetOpenWork
 }
 
 var _ app.AssetRepository = (*AssetStore)(nil)
 var _ app.AssetLookup = (*AssetStore)(nil)
 
 func AssetAuditDefinitions() []audit.Definition {
-	return []audit.Definition{{Action: "fleet.asset.created", TargetType: "asset"}, {Action: "fleet.asset.changed", TargetType: "asset"}, {Action: "fleet.asset.discarded", TargetType: "asset"}, {Action: "fleet.asset.activated", TargetType: "asset"}}
+	return append([]audit.Definition{{Action: "fleet.asset.created", TargetType: "asset"}, {Action: "fleet.asset.changed", TargetType: "asset"}, {Action: "fleet.asset.discarded", TargetType: "asset"}, {Action: "fleet.asset.activated", TargetType: "asset"}}, lifecycleAuditDefinitions()...)
 }
 func validID(raw string) bool { id, e := kernel.ParseOrgID(raw); return e == nil && id.String() == raw }
 func validCall(scope kernel.OrgScope, actor app.FleetActor, member string) error {
@@ -54,7 +57,7 @@ func storeError(ctx context.Context, err error) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrFreshAuthRequired, access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrConflict, app.ErrOperationReused, app.ErrIdentifierTaken, app.ErrNotFound, app.ErrUnavailable, app.ErrUnauthenticated, fleet.ErrInvalid, fleet.ErrScope, fleet.ErrKindLocked, fleet.ErrIncomplete} {
+	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrFreshAuthRequired, access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrConflict, app.ErrOperationReused, app.ErrIdentifierTaken, app.ErrNotFound, app.ErrOpenOperations, app.ErrUnavailable, app.ErrUnauthenticated, fleet.ErrInvalid, fleet.ErrScope, fleet.ErrKindLocked, fleet.ErrIncomplete} {
 		if errors.Is(err, known) {
 			return err
 		}
@@ -220,6 +223,8 @@ func (s *AssetStore) WriteAsset(ctx context.Context, scope kernel.OrgScope, acto
 					if v.Kind == app.ChangeAsset {
 						view.State = current.State
 						view.Revision = current.Revision + 1
+						// A profile change keeps the recorded acquisition in its snapshot.
+						view.AcquiredAt = current.AcquiredAt
 						if current.State != fleet.Draft && current.State != fleet.Active {
 							return app.ErrConflict
 						}

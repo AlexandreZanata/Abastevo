@@ -10,6 +10,7 @@ import (
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	fuel "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	orgtime "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgtime/domain"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -41,6 +42,15 @@ type revisionRecord struct {
 	UnitID        string           `json:"unit_id"`
 	Tanks         []tankRecord     `json:"tanks"`
 	Expected      []expectedRecord `json:"expected"`
+	// EMP-FLEET-003 fields are omitted when absent, so every snapshot shape
+	// written before 201 is reproduced byte for byte.
+	AcquiredAt string          `json:"acquired_at,omitempty"`
+	Disposal   *disposalRecord `json:"disposal,omitempty"`
+}
+type disposalRecord struct {
+	Kind   string `json:"kind"`
+	At     string `json:"disposed_at"`
+	Reason string `json:"reason"`
 }
 
 func snapshotBytes(v app.AssetView) ([]byte, error) {
@@ -52,6 +62,12 @@ func snapshotBytes(v app.AssetView) ([]byte, error) {
 	for _, e := range v.Profile.Expected {
 		x := e.Snapshot()
 		r.Expected = append(r.Expected, expectedRecord{x.Product, string(x.Basis), x.Value, string(x.Unit), x.Source, x.Date})
+	}
+	if v.AcquiredAt != nil {
+		r.AcquiredAt = orgtime.FormatInstant(*v.AcquiredAt)
+	}
+	if d := v.Disposal; d != nil {
+		r.Disposal = &disposalRecord{Kind: string(d.Kind), At: orgtime.FormatInstant(d.At), Reason: d.Reason}
 	}
 	return json.Marshal(r)
 }
@@ -125,6 +141,23 @@ func loadAsset(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, id string)
 		return app.AssetView{}, app.ErrUnavailable
 	}
 	view := app.AssetView{Ref: checked.Ref, Profile: checked.Profile, CategoryLabel: row.CategoryLabel, State: state, Revision: row.Revision, UnitID: row.UnitID}
+	if row.AcquiredAt.Valid {
+		at, err := exactMeterTime(row.AcquiredAt, row.AcquiredSubmicro)
+		if err != nil {
+			return app.AssetView{}, app.ErrUnavailable
+		}
+		view.AcquiredAt = &at
+	}
+	if row.DisposedAt.Valid {
+		at, err := exactMeterTime(row.DisposedAt, row.DisposedSubmicro)
+		if err != nil {
+			return app.AssetView{}, app.ErrUnavailable
+		}
+		view.Disposal = &app.AssetDisposal{Kind: fleet.DisposalKind(row.DisposalKind), At: at, Reason: row.DisposalReason}
+	}
+	if (state == fleet.Disposed || state == fleet.Archived) != (view.Disposal != nil) {
+		return app.AssetView{}, app.ErrUnavailable
+	}
 	allocation, err := queries.AssetCurrentAllocation(ctx, q.AssetCurrentAllocationParams{OrgID: org, AssetID: id})
 	if err == nil {
 		view.Allocation = &app.UnitAllocation{UnitID: allocation.UnitID, StartedAt: allocation.StartedAt.Time}

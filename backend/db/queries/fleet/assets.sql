@@ -11,7 +11,8 @@ SELECT CAST(id AS text) AS id, label FROM org_asset_categories WHERE org_id= CAS
 INSERT INTO org_asset_categories(org_id, id, label) VALUES(CAST(sqlc.arg(org_id)::text AS UUID), CAST(sqlc.arg(id)::text AS UUID), sqlc.arg(label)::text);
 
 -- name: GetAsset :one
-SELECT CAST(a.id AS text) AS id, a.kind, a.category_id::text AS category_id, c.label AS category_label, a.name, a.fleet_number, a.plate, a.serial_number, a.fleet_key, a.plate_key, a.usage_basis, a.state, a.revision, COALESCE(a.unit_id::text, '')::text AS unit_id
+SELECT CAST(a.id AS text) AS id, a.kind, a.category_id::text AS category_id, c.label AS category_label, a.name, a.fleet_number, a.plate, a.serial_number, a.fleet_key, a.plate_key, a.usage_basis, a.state, a.revision, COALESCE(a.unit_id::text, '')::text AS unit_id,
+a.acquired_at, a.acquired_submicro, COALESCE(a.disposal_kind, '')::text AS disposal_kind, a.disposed_at, a.disposed_submicro, COALESCE(a.disposal_reason, '')::text AS disposal_reason
 FROM org_assets a JOIN org_asset_categories c ON(c.org_id, c.id)=(a.org_id, a.category_id)
 WHERE a.org_id= CAST(sqlc.arg(org_id)::text AS UUID) AND a.id= CAST(sqlc.arg(id)::text AS UUID);
 

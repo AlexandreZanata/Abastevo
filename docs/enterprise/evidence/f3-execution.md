@@ -269,3 +269,22 @@ BUC-EMP-106..107, EDR-146/147 moved to canonical docs. Retained: real document
 authority/403 mapping (DOC-002/AUTH-003), export producer (RPT-001), location
 producers (F4), support sessions (BACK-003; operator access impossible until
 then), an audit read route, production grants on the new table.
+
+### EMP-FLEET-003 (F2 prerequisite) — asset lifecycle: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f2-fleet003-asset-lifecycle.md). First link of the EDR-109 chain.
+Migration 000201 adds acquisition/disposal columns, append-only
+`org_asset_lifecycle_events` and guards that refuse a state change without a
+history row; commands acquisition/record, deactivate, reactivate, dispose,
+disposal/revert, archive (fresh `fleet.asset.manage`, revision CAS, one audit
+event, replay) and lifecycle/list; an explicit open-work port answered by
+`NoOpenWork` until trips/work orders exist; a reading declared at/after the
+disposal instant is held as ASSET_UNAVAILABLE through the OFFL-008 review
+(EDR-143..145). RED unit 16+13, PostGIS 11/11 (no migration) and 10+30
+(stubbed) failing → GREEN: unit 191/1362, focused PostGIS 14/30, affected
+race union 510/3573 and untagged 190 packages, 0 failures. The 198/199 upgrade
+tests now apply later migrations before current-code smoke checks (their
+upgrade assertions are unchanged). Retained: real open-work sources (trips,
+maintenance), allocation periods (FLEET-005), ending assignments on disposal
+(FLEET-006), reservations (FLEET-007), holds for DRAFT/INACTIVE assets via
+derived availability, plan limit on reactivation, SCR-FLEET-05, live grants.

@@ -253,10 +253,16 @@
       "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/create",
       "routes": [
         "POST /v1/orgs/{org_id}/fleet/assets/create",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/acquisition/record",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/activate",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/archive",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/change",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/deactivate",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/discard",
-        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install"
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/disposal/revert",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/dispose",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reactivate"
       ],
       "reason": ""
     },
@@ -266,6 +272,7 @@
       "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/list",
       "routes": [
         "POST /v1/orgs/{org_id}/fleet/assets/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/read"

@@ -323,7 +323,8 @@ func (q *Queries) DeleteAssetTanks(ctx context.Context, arg DeleteAssetTanksPara
 }
 
 const getAsset = `-- name: GetAsset :one
-SELECT CAST(a.id AS text) AS id, a.kind, a.category_id::text AS category_id, c.label AS category_label, a.name, a.fleet_number, a.plate, a.serial_number, a.fleet_key, a.plate_key, a.usage_basis, a.state, a.revision, COALESCE(a.unit_id::text, '')::text AS unit_id
+SELECT CAST(a.id AS text) AS id, a.kind, a.category_id::text AS category_id, c.label AS category_label, a.name, a.fleet_number, a.plate, a.serial_number, a.fleet_key, a.plate_key, a.usage_basis, a.state, a.revision, COALESCE(a.unit_id::text, '')::text AS unit_id,
+a.acquired_at, a.acquired_submicro, COALESCE(a.disposal_kind, '')::text AS disposal_kind, a.disposed_at, a.disposed_submicro, COALESCE(a.disposal_reason, '')::text AS disposal_reason
 FROM org_assets a JOIN org_asset_categories c ON(c.org_id, c.id)=(a.org_id, a.category_id)
 WHERE a.org_id= CAST($1::text AS UUID) AND a.id= CAST($2::text AS UUID)
 `
@@ -334,20 +335,26 @@ type GetAssetParams struct {
 }
 
 type GetAssetRow struct {
-	ID            string `json:"id"`
-	Kind          string `json:"kind"`
-	CategoryID    string `json:"category_id"`
-	CategoryLabel string `json:"category_label"`
-	Name          string `json:"name"`
-	FleetNumber   string `json:"fleet_number"`
-	Plate         string `json:"plate"`
-	SerialNumber  string `json:"serial_number"`
-	FleetKey      string `json:"fleet_key"`
-	PlateKey      string `json:"plate_key"`
-	UsageBasis    string `json:"usage_basis"`
-	State         string `json:"state"`
-	Revision      int64  `json:"revision"`
-	UnitID        string `json:"unit_id"`
+	ID               string             `json:"id"`
+	Kind             string             `json:"kind"`
+	CategoryID       string             `json:"category_id"`
+	CategoryLabel    string             `json:"category_label"`
+	Name             string             `json:"name"`
+	FleetNumber      string             `json:"fleet_number"`
+	Plate            string             `json:"plate"`
+	SerialNumber     string             `json:"serial_number"`
+	FleetKey         string             `json:"fleet_key"`
+	PlateKey         string             `json:"plate_key"`
+	UsageBasis       string             `json:"usage_basis"`
+	State            string             `json:"state"`
+	Revision         int64              `json:"revision"`
+	UnitID           string             `json:"unit_id"`
+	AcquiredAt       pgtype.Timestamptz `json:"acquired_at"`
+	AcquiredSubmicro int16              `json:"acquired_submicro"`
+	DisposalKind     string             `json:"disposal_kind"`
+	DisposedAt       pgtype.Timestamptz `json:"disposed_at"`
+	DisposedSubmicro int16              `json:"disposed_submicro"`
+	DisposalReason   string             `json:"disposal_reason"`
 }
 
 func (q *Queries) GetAsset(ctx context.Context, arg GetAssetParams) (GetAssetRow, error) {
@@ -368,6 +375,12 @@ func (q *Queries) GetAsset(ctx context.Context, arg GetAssetParams) (GetAssetRow
 		&i.State,
 		&i.Revision,
 		&i.UnitID,
+		&i.AcquiredAt,
+		&i.AcquiredSubmicro,
+		&i.DisposalKind,
+		&i.DisposedAt,
+		&i.DisposedSubmicro,
+		&i.DisposalReason,
 	)
 	return i, err
 }

@@ -1126,3 +1126,16 @@ ACTIVE organization. Web installation retains real WEB_SESSION provenance,
 never a fabricated physical device. Real receipt/legal/release gates remain.
 See [current meter evidence](../docs/enterprise/evidence/f2-meter002-persistence-intake.md)
 for accepted source and still-open whole-task cases.
+
+### Asset lifecycle (EMP-FLEET-003)
+
+Migration201 adds nullable acquisition/disposal columns to `org_assets` and the
+forced-RLS, append-only `org_asset_lifecycle_events` history keyed by asset
+revision. The Fleet principal needs `SELECT, INSERT ON
+org_asset_lifecycle_events`; table-level `org_assets` grants already cover the
+new columns. Principals that insert meter readings or held readings with only
+column grants additionally need `SELECT (org_id, id, disposed_at,
+disposed_submicro) ON org_assets`. Lifecycle routes reuse the enterprise flag,
+the organizations capability and fresh company proof. The open-work port is
+answered by the explicit `NoOpenWork` adapter until trips and work orders
+exist. Nothing here provisions live grants.

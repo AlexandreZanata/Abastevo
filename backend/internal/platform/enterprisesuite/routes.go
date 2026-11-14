@@ -156,9 +156,14 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	fleetAuthority := &orgpg.FleetAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
-	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4}
+	// NoOpenWork is the explicit BR-FLEET-010 "none" source until the trip and
+	// maintenance epics deliver open trips and work orders (EDR-144).
+	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: fleetpg.NoOpenWork{}}
 	assetAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.FleetRecords{}, Now: time.Now}
 	if err := fleetweb.RegisterAssets(router, fleetapp.AssetService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	if err := fleetweb.RegisterAssetLifecycle(router, fleetapp.AssetLifecycleService{Enabled: true, Repository: assets}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}

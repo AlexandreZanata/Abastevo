@@ -46,7 +46,7 @@ Full METER-002 history/assignment/review remains its own open task. EDR-109
 continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccepted.
 
 ### EMP-FLEET-003 — Asset lifecycle: acquisition, active, sale, write-off, return, archive
-- **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Record how an asset enters and leaves service without losing its history, replacing the habit of deleting or renaming a row when a vehicle is sold.
 - **Rules and use cases:** BR-FLEET-008, BR-FLEET-009, BR-FLEET-010, BR-FLEET-011, UC-FLEET-02
 - **Depends on:** EMP-FLEET-002
@@ -60,6 +60,13 @@ continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccept
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: additive columns · rollback: capability flag off; columns remain
 - **Risks and assumptions:** The open-work check is only as complete as its adapters; the trip epic and the maintenance epic each replace a "none" adapter and add their own test.
 - **Done when:** Every row of the lifecycle table in the specification has a passing transition test and a passing refusal test.
+
+EMP-FLEET-003 — state LOCAL_DONE / INTEGRATION_PENDING (evidence
+`docs/enterprise/evidence/f2-fleet003-asset-lifecycle.md`). Migration 201,
+six lifecycle commands + history read, NoOpenWork port, ASSET_UNAVAILABLE intake
+hold through OFFL-008; every §6.1 row has a PostGIS transition and refusal test.
+Retained: real trip/work-order adapters, FLEET-005/006/007 effects, derived
+availability holds for DRAFT/INACTIVE. Next in the EDR-109 chain: EMP-FLEET-005.
 
 ### EMP-FLEET-004 — Tenure kinds: owned, leased, rented, third-party, loaned
 - **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state TODO

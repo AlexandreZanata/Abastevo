@@ -3283,3 +3283,92 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   leaves no audit event, the stored rows carry no content-shaped value, the
   audit read service lists only in-scope records for an authorized reader and
   refuses others, and the additive migration upgrades and recovers.
+
+## EMP-FLEET-003 — Asset lifecycle: acquisition, deactivation, disposal and archive (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-fleet003-asset-lifecycle.md).
+
+## Enterprise asset lifecycle (EMP-FLEET-003)
+
+- **B-BR-EMP-202 — Move the asset lifecycle only by named, audited commands.**
+  Six private company commands change lifecycle data, each naming the asset
+  and its expected current revision: record acquisition (`DRAFT`, `ACTIVE`,
+  `INACTIVE`; state unchanged), deactivate (`ACTIVE → INACTIVE`), reactivate
+  (`INACTIVE → ACTIVE`, BR-FLEET-004 checklist and unit admission re-proved
+  from actual sources), dispose (`ACTIVE`/`INACTIVE → DISPOSED`), revert
+  disposal (`DISPOSED → INACTIVE`) and archive (`DISPOSED → ARCHIVED`;
+  `ARCHIVED` is terminal and accepts no further update). A stale revision or
+  any other source state is `CONFLICT` with no effect. Each command requires
+  current fresh `fleet.asset.manage` through the existing company pipeline,
+  is serialized by the organization root lock and commits exactly one audit
+  event, one immutable revision snapshot, one immutable command receipt and,
+  for a state change, one immutable lifecycle history row in one transaction.
+  The same operation from the same actor with the same canonical intent
+  returns the first result (`replayed`) without a live source state; any other
+  reuse is `OPERATION_ID_REUSED`. No field edit can set the state.
+- **B-BR-EMP-203 — Validate reasons, instants and disposal data exactly.**
+  Deactivate, dispose and revert disposal require a reason of 1..280 Unicode
+  scalars, valid UTF-8, without control characters and not blank; reactivate,
+  archive and record acquisition carry no reason field. Dispose names exactly
+  one kind `SALE`, `WRITE_OFF` or `RETURN_TO_HOLDER` and an exact instant
+  (RFC 3339 UTC, nanoseconds preserved as microsecond timestamp plus
+  sub-microsecond digits); acquisition names one exact instant. Neither
+  instant may be later than the server clock at the command; a disposal may
+  not precede the recorded acquisition. Amounts, counterparts and expenses
+  are not collected (BR-FLEET-007; sale revenue stays with expenses-finance).
+  Any refusal here is `VALIDATION_FAILED` with no effect.
+- **B-BR-EMP-204 — Keep disposal history; archive frees identifiers only.**
+  The current disposal (kind, instant, reason) lives on the asset row only
+  while `DISPOSED` or `ARCHIVED`. Revert disposal returns `INACTIVE`, clears
+  the current disposal and keeps the original disposal row in the immutable
+  lifecycle history, together with the revert reason; the asset can be
+  disposed again. Archive keeps the disposal data, removes the asset from
+  default lists and frees its plate and fleet number for a new asset (the
+  existing non-archived partial unique indexes); it never deletes, renames or
+  moves earlier records. Assets, revisions, meters, readings, held reviews and
+  history of a disposed or archived asset remain readable by current
+  `fleet.asset.read` holders. Unit allocation periods are not closed here
+  (EMP-FLEET-005), assignments are not ended (EMP-FLEET-006 consumes the
+  disposal) and reservations do not exist yet (EMP-FLEET-007).
+- **B-BR-EMP-205 — Refuse removal from service with open work through a port.**
+  Deactivate, dispose and archive ask an explicit open-work port, inside the
+  command transaction after the revision/state check, which kinds of work are
+  open (`TRIP` for a trip `IN_PROGRESS`/`PAUSED`, `WORK_ORDER` for an open
+  maintenance work order). A non-empty answer refuses the command with
+  `ASSET_HAS_OPEN_OPERATIONS` (409) whose details name each open kind once
+  (`field=open_operations`, `code=<kind>`) and nothing else. Until the trip and
+  maintenance epics exist the runtime wires the named `NoOpenWork` adapter,
+  which answers "none" because no such records can exist; each epic replaces
+  it with its real adapter and test. A missing port fails closed
+  (`UNAVAILABLE`). A test-only adapter proves the refusal; it is never wired.
+- **B-BR-EMP-206 — Hold a field reading declared at or after the disposal.**
+  The signed `meter.reading.record` intake, after retained authority yields
+  APPLY, reads the asset's current disposal under the organization root and
+  asset row locks. A reading whose declared instant is at or after the
+  disposal instant (exact to the nanosecond) is accepted for review with code
+  `ASSET_UNAVAILABLE` through the existing OFFL-008 held mechanism: one review
+  item, one held reading, a version-1 review ACK, no applied reading and no
+  effect; replay returns the original ACK. A reading declared before the
+  instant is handled exactly as before. `PERMISSION_CHANGED` keeps precedence
+  when both apply. The database refuses a live reading at or after the
+  disposal (23514) and an `ASSET_UNAVAILABLE` held fact without an actual
+  disposal at or before its instant. After revert disposal there is no current
+  disposal and readings return to normal handling; items already held stay
+  held until reviewed. Readings on `DRAFT`/`INACTIVE` assets keep their
+  current normal handling until derived availability (BR-FLEET-025/027)
+  exists.
+- **BUC-EMP-104 — Take an asset out of service or dispose of it (UC-FLEET-02).**
+  A manager with fresh `fleet.asset.manage` records the acquisition instant,
+  deactivates with a reason, reactivates, disposes with kind/instant/reason,
+  reverts a mistaken disposal with a reason or archives a disposed asset,
+  each through `/v1/orgs/{org_id}/fleet/assets/{asset_id}/…` with the asset
+  revision; reads the asset (current acquisition/disposal) and its paged
+  lifecycle history with `fleet.asset.read`. Every §6.1 row is proved from its
+  source state and refused with `CONFLICT` from every other state, on real
+  PostGIS with forced RLS, two organizations and ordinary runtime roles.
+- **BUC-EMP-105 — Hold a post-disposal field reading for review.**
+  A device reading for a disposed asset arrives through the signed intake:
+  declared one nanosecond before the disposal it is applied; declared at or
+  after it is held `ASSET_UNAVAILABLE` and appears in the existing meter
+  review list for `meter.reading.correct`, whose accept/refuse decision is
+  unchanged; after a revert a new reading is applied again.
