@@ -1,4 +1,14 @@
 # Current execution state
+- Registry daily sync restored, 2026-11-14: PR #219 merged at `018f2df1`
+  (source-owned locality corrections, B-BR-SYNC05 amended; race integration
+  bound 30m). Host-path registry release `018f2df1` installed on the new VPS
+  (static station-sync/station-load from main; prepare_registry/opencnpj
+  reused by sha256); guarded Job published the stalled 2026-11-12 edition
+  (45747 accepted, 112 rejected, 10 curated preserved) after a verified DB
+  backup; CronJob re-enabled. The `018f2df1` image release awaits a rerun of a
+  flaky orgmedia S3 integration test on the main backend workflow before the
+  deploy agent applies it; the VPS keeps serving `43b21389` meanwhile.
+
 - Integration + deployment, 2026-11-14: PR #203 merged dev → main at
   `43b21389` (required checks green on head `41f0b46f`: Quick verification,
   fast, integration, test); dev fast-forwarded to main. Issues #204–#214 and
