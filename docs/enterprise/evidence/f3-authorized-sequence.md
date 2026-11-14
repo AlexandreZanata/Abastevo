@@ -21,7 +21,7 @@ do not implement them twice or declare them complete from planning labels.
 M3 requires the actual REL-004 allocation/no-double-counting, budget race,
 partial-approval/return-loop and corrected-consumption acceptance.
 
-Sequence: finish the current EMP-OFFL-003 and remaining audited F2/C1 work,
+Sequence: continue from completed EMP-OFFL-004 through remaining audited F2/C1 work,
 with bounded tasks and immediate critical validation; freeze a truthful F2
 local checkpoint; reconcile the actual F3 backlog/dependency graph and source
 checkpoints; finish any still-open prerequisites first; then implement F3
@@ -35,8 +35,7 @@ merge, deployment, real company pilots, real receipt retention or real money
 movement. Existing provider/legal/staging gates remain attached to their actual
 capabilities; use synthetic local fixtures without fabricating acceptance.
 
-Current source: F2 is IN_PROGRESS; seven completed local checkpoints through
-EMP-OFFL-003, whose predecessor d24b0d4f is backed up at
-origin/codex/enterprise-f2. Queue publication is pending its atomic commit;
-EMP-OFFL-004 is the next dependency-ready bounded task. No F3 implementation or acceptance
+Current source: F2 is IN_PROGRESS; eight completed local checkpoints through
+EMP-OFFL-004 are backed up at origin/codex/enterprise-f2.
+Next bounded implementation task is EMP-METER-001. No F3 implementation or acceptance
 is claimed by this sequencing record.

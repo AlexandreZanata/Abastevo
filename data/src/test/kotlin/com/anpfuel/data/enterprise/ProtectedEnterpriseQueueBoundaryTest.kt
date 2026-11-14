@@ -95,7 +95,7 @@ class ProtectedEnterpriseQueueBoundaryTest {
             val snapshot = generations(f).load(partition())!!
             val old = snapshot.entries.getValue("QUEUE:" + operation.operationId)
             val bytes = when (fault) {
-                "future" -> old.bytes.copyOf().also { ByteBuffer.wrap(it).putInt(4, 2) }
+                "future" -> old.bytes.copyOf().also { ByteBuffer.wrap(it).putInt(4, 3) }
                 "trailing" -> old.bytes + byteArrayOf(0)
                 else -> old.bytes.copyOf()
             }

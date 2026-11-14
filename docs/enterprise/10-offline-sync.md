@@ -302,6 +302,35 @@ explicit policy exists. See B-BR-EMP-115..122, EDR-076..080 and
 | Exports, reports, indicators | Online | Online | — | Online | Everything |
 | Station portal, Data portal, plan and billing | Online | Online | Online | Online | Everything |
 
+### 10.4 Protected status presentation (EMP-OFFL-004, in construction)
+
+The pending screen reads sanitized pages and full-partition totals from one
+trusted protected generation, including final review/refusal receipts. It also
+keeps accepted records with unconfirmed attachment delivery visible. History
+is a separate retained local view, not a claim of a complete business audit.
+No payload, original wire bytes, token or file bytes enters presentation.
+
+The queue's inner V2 visibility flag may explicitly hide only a final refusal;
+V1 reads as visible. This local action preserves original operation/ACK bytes,
+projection, retry, files and history. It does not alter business state. Unknown
+or changed framing is unavailable, never repaired or deleted automatically.
+
+No final ACK means saved on device. Actual matching ACKs establish acceptance,
+review or refusal; connectivity and HTTP attempts do not. A bounded scoped
+memory-only activity hint may show sending for the actual selected batch until
+durable receipt/retry processing ends. Manual checking respects all retained
+delay, including server Retry-After. Missing real owning actions stay absent.
+Declared time is not local save time, retry timer observations are not a full
+send log, and server received_at is not complete device synchronization.
+Attachment metadata acceptance never confirms its upload.
+
+Keep list/detail in the existing selected-context owner, clear private state
+on withdrawal and recheck exact current source plus rendered epoch/generation
+around every operation. Offline protected reads require actual custody rather
+than a fresh online catalog selection. See B-BR-EMP-123..130, EDR-082..086 and
+[status evidence](evidence/f2-offl004-sync-status-presentation.md) for actual
+implementation/acceptance state; this contract is not a PASS claim.
+
 ## 11. Screens
 
 | ID | Surface | Objective | Actor | Data | Actions | Rules and permissions | Validations and states |

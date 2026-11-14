@@ -80,7 +80,7 @@ recovery and normal Hilt/OS Worker acceptance pass. The runtime producer
 registry remains empty. Protected integration is pending.
 
 ### EMP-OFFL-004 — App: sync status model and the pending-sync screen
-- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Show truthful per-record synchronization and attachment status in the app.
 - **Rules and use cases:** BR-OFFL-010, BR-OFFL-013, BR-OFFL-015, BR-OFFL-017, UC-OFFL-01, SCR-OFFL-01, SCR-OFFL-02, SCR-OFFL-05
 - **Depends on:** EMP-OFFL-003
@@ -94,6 +94,12 @@ registry remains empty. Protected integration is pending.
 - **Validation:** V-APP, V-SYNC, V-ISO · migration: none outside the queue task · rollback: hide new screens and preserve operations
 - **Risks and assumptions:** Use current persisted state rather than inferring success from network connectivity.
 - **Done when:** Affected Compose states, screen-reader text and pending queue actions pass targeted tests.
+
+[F2 sync-status acceptance](../evidence/f2-offl004-sync-status-presentation.md)
+records exact protected receipts, offline ownership, explicit retained-refusal
+visibility, native V1/V2 recovery, accessible grouped lists and normal Hilt/OS
+execution. Eight localized catalogs retain identical keys. Runtime feature and
+upload producers remain separate; protected integration is pending.
 
 ### EMP-OFFL-005 — Attachment upload: offline queue, retry and resume, linkage to operations
 - **Meta:** module OFFL · phase F3 · cut C1 · priority P0 · type APP · size M · state TODO

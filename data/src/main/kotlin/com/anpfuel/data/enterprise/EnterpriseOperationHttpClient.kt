@@ -66,7 +66,7 @@ class EnterpriseOperationSessionSource(
 
     private fun observed(): Captured = Captured(sessions.load() ?: throw EnterpriseLocalDenied(), fence.epoch, fence.backgroundEpoch)
     private fun retained(value: Captured): Boolean = fence.epoch == value.epoch && fence.backgroundEpoch == value.background &&
-        sessions.load() == value.session
+        sessions.load() == value.session && fence.epoch == value.epoch && fence.backgroundEpoch == value.background
 
     private fun capture(value: Captured): EnterpriseQueueAccountLease {
         if (!retained(value)) throw EnterpriseLocalDenied()

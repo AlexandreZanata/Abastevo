@@ -12,10 +12,14 @@ import com.anpfuel.application.enterprise.queue.EnterpriseOperationTransport
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueRegistry
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueService
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
+import com.anpfuel.application.enterprise.sync.EnterpriseDeliveryActivity
+import com.anpfuel.application.enterprise.sync.EnterpriseSyncFlow
+import com.anpfuel.application.enterprise.sync.EnterpriseSyncStatusStore
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.data.enterprise.*
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
+import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
 import com.anpfuel.domain.enterprise.sync.SyncLimits
@@ -148,11 +152,25 @@ object EnterpriseModule {
 
     @Provides
     @Singleton
+    fun deliveryActivity(): EnterpriseDeliveryActivity = EnterpriseDeliveryActivity()
+
+    @Provides
+    @Singleton
+    fun syncStatus(store: ProtectedEnterprisePersistence): EnterpriseSyncStatusStore = ProtectedEnterpriseSyncStatusStore(store)
+
+    /** Each visible status owner is independent; no shared UI selection or retained view state. */
+    @Provides
+    fun syncFlow(source: EnterpriseQueueSource, store: EnterpriseSyncStatusStore,
+        delivery: EnterpriseQueueService, activity: EnterpriseDeliveryActivity,
+        fence: EnterpriseSessionFence): EnterpriseSyncFlow = EnterpriseSyncFlow(source, store, delivery, activity, fence)
+
+    @Provides
+    @Singleton
     fun queueService(@ApplicationContext context: Context, source: EnterpriseQueueSource,
         queue: EnterpriseOperationQueue, transport: EnterpriseOperationTransport, registry: EnterpriseQueueRegistry,
-        limits: SyncLimits): EnterpriseQueueService = EnterpriseQueueService(
+        limits: SyncLimits, activity: EnterpriseDeliveryActivity): EnterpriseQueueService = EnterpriseQueueService(
         source, queue, transport, registry, AndroidEnterpriseDeviceClock(context)::read,
-        entropy = { bound -> Random.Default.nextLong(bound) }, limits = limits,
+        entropy = { bound -> Random.Default.nextLong(bound) }, limits = limits, activity = activity,
     )
 
     @Provides

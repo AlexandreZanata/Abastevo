@@ -4,17 +4,17 @@
   [F3 sequence](../enterprise/evidence/f3-authorized-sequence.md) records the
   requested scope/M3 entry and exit. The maintainer reiterates overnight autonomy:
   choose recommended routine decisions, record them, and ask no questions.
-  F3 is queued; EMP-OFFL-003 remains the sole bounded implementation task.
+  F3 is queued; next bounded implementation task is EMP-METER-001.
 - Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2`
   from published dev `fac002e7`; verified main `6a19bcc7` remains an ancestor.
   [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
   all34 F2 tasks,25 transitive prerequisites and the additional formal M1 chain.
-  Seven checkpoints are LOCAL_DONE / INTEGRATION_PENDING;57 audited nodes remain.
+  Eight checkpoints are LOCAL_DONE / INTEGRATION_PENDING;56 audited nodes remain.
   Completed: FLEET-001(2daea515), OFFL-001(1cc9a7b3), AUTH-009(4743e0b9),
   ORG-014(efd7e886), PRIV-003(51c25146), OFFL-002(d24b0d4f), and
   [OFFL-003 protected queue](../enterprise/evidence/f2-offl003-protected-operation-queue.md).
-  The first six are backed up at origin/codex/enterprise-f2; queue atomic commit
-  and backup are next. No other checkout is modified.
+  All seven are backed up at origin/codex/enterprise-f2; OFFL-003 is49d3a122.
+  No other checkout is modified.
   OFFL-003 passes182 consolidated host cases,15 final application cases and
   seven affected ViewModel cases; all four final API36 native methods pass.
   Native acceptance found/fixed an actual Android discovery-prefix mismatch;
@@ -23,9 +23,18 @@
   source107.147s, full affected lint/build and actual normal Hilt/OS Worker
   execution pass. Runtime producers stay empty; legal/provider/release gates
   remain separate. The29-file source manifest pins tested behavior.
-  Next: publish the atomic OFFL-003 checkpoint, then EMP-OFFL-004 status/pending
-  UI before dependent work. The user authorizes only the owned API36 emulator
-  while the phone is disconnected; preserve other devices/apps/data.
+  [EMP-OFFL-004 status/pending UI](../enterprise/evidence/f2-offl004-sync-status-presentation.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. B-BR-EMP-123..130, BUC-EMP-61..64 and
+  EDR-082..086 precede behavior. Pure domain662+focused7, final application24,
+  DATA129 and ViewModel14 cases pass; genuine ten-thread visibility and source
+  fencing REDs are corrected. Native protected V1/V2 recovery2, current
+  presentation6/context1/regression4 and ordinary Hilt/OS Worker1 all pass.
+  Normal/isolated builds and full app/DATA lint pass with zero errors; eight
+  catalogs have75 identical keys. Final31-file manifest pins tested behavior.
+  Runtime feature/upload producers remain closed until their actual tasks.
+  Next: EMP-METER-001 pure meter/reading domain; then remaining F2 dependencies.
+  The user authorizes only the owned API36 emulator while the phone is
+  disconnected; preserve other devices/apps/data.
   PR203 dev still contains the earlier batch. Final phase delivery uses protected
   dev → main; no construction CI polling, merge, deployment or wiki publication.
   Full F2/M1/M2/C1 remain unaccepted. F3 follows their actual dependency closure.

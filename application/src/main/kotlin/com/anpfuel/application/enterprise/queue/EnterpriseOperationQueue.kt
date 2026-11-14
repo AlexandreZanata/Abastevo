@@ -3,6 +3,7 @@ package com.anpfuel.application.enterprise.queue
 import com.anpfuel.application.enterprise.*
 import com.anpfuel.domain.enterprise.*
 import com.anpfuel.domain.enterprise.sync.*
+import com.anpfuel.application.enterprise.sync.EnterpriseDeliveryActivity
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -126,7 +127,8 @@ class EnterpriseQueueDispatchResult(val attempted: Int = 0, val completed: Int =
 class EnterpriseQueueService(private val source: EnterpriseQueueSource, private val queue: EnterpriseOperationQueue,
     private val transport: EnterpriseOperationTransport, private val registry: EnterpriseQueueRegistry,
     private val clock: () -> EnterpriseDeviceClock, private val entropy: (Long) -> Long,
-    private val limits: SyncLimits = SyncLimits.DEFAULT, private val retryPolicy: QueueRetryPolicy = QueueRetryPolicy()) {
+    private val limits: SyncLimits = SyncLimits.DEFAULT, private val retryPolicy: QueueRetryPolicy = QueueRetryPolicy(),
+    private val activity: EnterpriseDeliveryActivity? = null) {
     private suspend fun <T> guarded(work: suspend () -> T): T = try { work() }
     catch (cancelled: CancellationException) { throw cancelled }
     catch (denied: EnterpriseLocalDenied) { throw denied }
@@ -238,6 +240,8 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
         if (selected.isEmpty()) return@guarded result(EnterpriseQueueDispatchResult(completed = completed.size, attention = attention.size,
             retryable = entries.size - attention.size - completed.size, retryAfterMillis = remainingDelay.values.minOrNull()))
 
+        val ticket = activity?.begin(attempt, selected.map { EnterpriseOperationIdentity(it.operationId, it.payloadDigest) })
+        try {
         suspend fun retry(operation: EnterpriseOperation, floor: Long?, knownFinal: OperationAcknowledgement?): Long? {
             attempt.assertCurrent()
             val old = byId.getValue(operation.operationId).retry
@@ -306,5 +310,10 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
         }
         result(EnterpriseQueueDispatchResult(selected.size, completed.size, entries.size - attention.size - completed.size,
             attention.size, remainingDelay.values.minOrNull()))
+        } finally {
+            // Publication/retry processing is finished before an observer refreshes.
+            // A retiring attempt can remove only its own progress ticket.
+            activity?.end(ticket)
+        }
     }
 }

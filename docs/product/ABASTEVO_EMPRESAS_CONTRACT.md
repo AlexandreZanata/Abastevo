@@ -2004,3 +2004,123 @@ the owning business producers and OFFL-004 pending screen remain separate work.
   clock/source failures, no retry exhaustion or automatic eviction, backoff and
   Retry-After bounds. A late account/family/context response changes no new
   source and never erases preserved work. Pause rollback retains the queue.
+
+### EMP-OFFL-004 — Evidence-based local synchronization presentation
+
+- **B-BR-EMP-123 — Project synchronization from retained evidence.**
+  A durable operation without a final matching ACK stays SAVED_ON_DEVICE,
+  regardless of connectivity, retry count or a completed HTTP request.
+  Matching immutable ACCEPTED, ACCEPTED_FOR_REVIEW and REJECTED receipts map
+  to ACCEPTED, NEEDS_REVIEW and REJECTED respectively. Every review/refusal
+  retains its supported reason and exposes localized plain-language text.
+  Acceptance never means business approval or payment. Review resolution needs
+  its separate owning source; never rewrite a final review ACK to resolve it.
+  A business record badge must use its owning projection's exact current
+  operation ID/digest, never a UUID/declared-time guess or another older accepted
+  operation for that entity. Generic transport errors do not create refusal ACKs.
+  Unknown, corrupt or unavailable facts do not become successful empty state.
+- **B-BR-EMP-124 — Read bounded sanitized protected snapshots.**
+  Use an additive status port on the same accepted protected queue. A page has
+  at most50 sanitized summaries, full-partition totals/pressure/legacy count
+  and the latest confirmed server receipt from one trusted generation.
+  Include retained final receipts; pending delivery alone is not the pending
+  presentation. Support pending and retained-history views, and detail bound
+  to the exact operation ID and complete intent digest. Never send payload,
+  canonical operation/ACK bytes, delivery proof or private file bytes to UI.
+  Cursor handles are memory-only, source/view-bound and generation-bound;
+  a changed generation restarts the page rather than mixing snapshots.
+  Each call rechecks the actual account/origin/org/member/enrollment/family,
+  fence/background and custody before/after I/O. No plaintext Room fallback.
+- **B-BR-EMP-125 — History names only facts actually retained.**
+  The V1 queue proves durable save, latest retained retry observation and any
+  final server receipt; it has no actual saved timestamp or complete attempt
+  log. Label occurred_at as the author's declared time, never local save time.
+  Show unknown times honestly. A server receipt is not the last successful
+  device synchronization. Do not invent SENT timestamps or intermediate steps;
+  a final receipt can directly establish its actual outcome. The latest known
+  review result stays visible until a separate accepted resolution source exists.
+- **B-BR-EMP-126 — Keep attachment delivery separate.**
+  Show declared attachment count and unconfirmed delivery independently of
+  operation acceptance. Detail may inspect actual protected local bytes in
+  the same scope and distinguish missing bytes, matching size/hash, mismatch
+  or unavailable inspection. No metadata ACK proves STORED, a percentage or
+  successful upload. Upload retry, new capture, create-again and business-record
+  navigation require real owning adapters; absent adapters expose no fake action.
+- **B-BR-EMP-127 — Dismiss only a refused item's local visibility.**
+  An explicit current gesture may hide a stored final REJECTED item from the
+  pending view, conditional on its original ID/digest and retained final ACK.
+  Add only a local dismissedRejected Boolean in inner queue frameV2, reading
+  V1 as false. Refuse the flag without final REJECTED and reject unknown/trailing
+  framing. Retain the exact original operation/ACK bytes, record projection,
+  history and attachments. Do not alter retry or invoke a business projector.
+  Repeated dismissal is a no-op; wrong digest, pending/review/accepted state,
+  source changes and failed publication cannot silently hide another item.
+  History includes explicitly hidden refusals. No TTL, deletion or eviction.
+- **B-BR-EMP-128 — Scope the presentation owner and every gesture.**
+  Keep list/detail inside the existing context destination and its owner;
+  no selector IDs in routes or SavedState. Each visible flow owns a generation
+  and captured selected account/origin/org/member, current family/fence/background.
+  Clear private rows/detail/actions synchronously on replacement selection,
+  personal mode, source change, stop or disposal. Check the rendered primitive
+  epoch and exact flow generation before/after asynchronous work; late results
+  never attach to a replacement owner. Reads use fresh offline source.account()
+  and actual custody, without networking merely to refresh a personal token.
+  Cached unconfirmed catalog metadata selects a local view, never operational
+  permission. A status view never acquires or replaces LocalContext selection.
+- **B-BR-EMP-129 — Observe actual attempts and respect retry floors.**
+  A passive bounded memory-only delivery-activity port surrounds only the actual
+  selected batch's transport and durable ACK/retry projection, and is removed
+  in finally afterward, including cancellation. End-of-attempt refresh cannot
+  run before the receipt publication it is meant to observe.
+  Bound observation to64 concurrent tickets and the frozen50 IDs per batch;
+  saturation omits a progress hint without preventing real delivery or changing
+  durable state. This is an in-memory safety budget, not an attempt ceiling.
+  Keep at most64 scoped completion hints with a monotonic revision. Conflated
+  begin/end notifications and completion during a busy read cannot lose the
+  durable reread: anchor observation before I/O and reconcile pending completion
+  after publication, using bounded extra work. A history gap conservatively
+  rereads only the still-current scope; the counter is never receipt evidence.
+  Before awaiting renewed proof, withdraw old credential-bearing read handles
+  and private presentation. Retain only the exact expected identity/family/
+  epoch/background selector across failure; fresh proof must match it before
+  another read or dispatch. Same-family rotation cannot race an old attempt
+  handle into false invalidation, or permit adoption of a replacement family.
+  It may show SENDING for those exact IDs as a saved-on-device progress hint;
+  generic busy state/connectivity cannot create it. It does not persist SENDING
+  or supply receipt/business authority. Refresh retained status after activity.
+  A current manual synchronization check dispatches only its captured visible
+  organization using fresh delivery proof. Honor the entire existing stored
+  delay, which combines client backoff and server Retry-After; never reset it
+  or promise immediate send. Connectivity only gates that network gesture.
+  Missing producers stay unavailable and old/unknown work remains retained.
+- **B-BR-EMP-130 — Present local emptiness, pressure and access honestly.**
+  A pending badge counts each saved, review or visible refused record once,
+  and includes accepted records whose declared attachments still lack delivery
+  confirmation. Keep separate attachment totals; no double counting. Explicitly
+  hidden refusals stay in history rather than reappearing through attachment counts.
+  An empty
+  local page never claims global delivery; nonzero legacy/unsupported data or
+  unreadable source remains explicit. Show the existing80% pressure threshold
+  and capacity guidance persistently in enterprise mode, without blocking or
+  automatic cleanup. Oldest declared time is not measured unsent age.
+  Use all supported locale catalogs, textual status/reasons, organization
+  headings, accessible actions and polite state announcements. Protected
+  unlock, unavailable storage and irreversible loss keep their distinct outcomes.
+- **BUC-EMP-61 — Prove status projection and truthful history.**
+  RED→GREEN every receipt/status/reason combination, transient/cancelled/unknown
+  delivery, review finality, no fabricated times or attachment acceptance,
+  local empty versus retained legacy, pressure and bounded generation paging.
+- **BUC-EMP-62 — Prove privacy and stale-action boundaries.**
+  Exercise two organizations/accounts/origins/families and source, membership,
+  enrollment, epoch/background, selection and lifecycle changes while list,
+  next page, detail, dismissal and manual dispatch wait. Withhold old results,
+  clear private presentation synchronously and preserve other scope/data.
+- **BUC-EMP-63 — Prove protected visibility upgrade and recovery.**
+  Test V1 reads and frameV2 upgrade without canonical-byte changes, explicit
+  refused dismissal/replay, wrong digest/state/source and corruption, generation
+  changes, publication faults, process recovery and retained records/attachments.
+- **BUC-EMP-64 — Prove the actual accessible app flow.**
+  Exercise pending/detail/back/home in the existing context owner, truthful
+  offline/manual-wait/receipt states and storage warning with meaningful
+  Compose/ViewModel cases plus the owned API36 emulator. Validate normal DI,
+  complete affected lint/locales and that no test producer enters product.

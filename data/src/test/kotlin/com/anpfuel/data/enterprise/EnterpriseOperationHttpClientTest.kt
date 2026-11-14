@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test
 class EnterpriseOperationHttpClientTest {
     init {
         val tests = EnterpriseOperationHttpClientTest::class.java.declaredMethods.filter { it.isAnnotationPresent(Test::class.java) }
-        check(tests.size == 9 && tests.all { it.returnType == Void.TYPE }) { "Queue HTTP tests must all be discoverable void methods" }
+        check(tests.size == 10 && tests.all { it.returnType == Void.TYPE }) { "Queue HTTP tests must all be discoverable void methods" }
     }
 
     private val account = "7b0e2a54-0000-4000-8000-000000000001"
@@ -59,8 +59,13 @@ class EnterpriseOperationHttpClientTest {
     private inner class Fixture(handle: (Request) -> Response) {
         val fence = EnterpriseSessionFence()
         @Volatile var stored: PortableAuth.Session? = PortableAuth.Session(account, account, "synthetic-access", "synthetic-refresh", 2000, 4000)
+        var onLoad: () -> Unit = {}
         val sessions = object : AuthSessionStore {
-            override fun load() = stored
+            override fun load(): PortableAuth.Session? {
+                val observed = stored
+                onLoad()
+                return observed
+            }
             override fun save(session: PortableAuth.Session) { stored = session }
             override fun clear() { stored = null }
         }
@@ -220,5 +225,21 @@ class EnterpriseOperationHttpClientTest {
             val failure = assertThrows(EnterpriseQueueDeliveryFailure::class.java) { runBlocking { fixture.client.deliver(fixture.attempt(), listOf(op)) } }
             assertEquals(if (kind == "valid") 120_000L else null, failure.retryAfterMillis)
         }
+    }
+
+    @Test fun sourceLeaseRefusesBackgroundInvalidationDuringItsFinalSessionRead(): Unit = runBlocking {
+        val fixture = Fixture { error("Source-only lease validation reached transport") }
+        val lease = fixture.source.account()
+        fixture.onLoad = {
+            fixture.onLoad = {}
+            // The provider has already observed the original session. A
+            // background transition while that read finishes cannot validate
+            // the captured old epoch merely because its token is unchanged.
+            fixture.fence.markBackground()
+        }
+        assertThrows(EnterpriseLocalDenied::class.java) { lease.assertCurrent() }
+        assertEquals(1L, fixture.fence.backgroundEpoch)
+        assertTrue(fixture.signed.isEmpty()); assertTrue(fixture.requests.isEmpty())
+        verify(exactly = 0) { fixture.auth.refreshSession() }
     }
 }

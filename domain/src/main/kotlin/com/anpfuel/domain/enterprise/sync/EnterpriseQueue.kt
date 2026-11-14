@@ -14,8 +14,11 @@ class QueueRetryState(val attempts: Long = 0, val clock: EnterpriseDeviceClock? 
 }
 
 class EnterpriseQueueEntry(val operation: EnterpriseOperation, val retry: QueueRetryState = QueueRetryState(),
-    val acknowledgement: OperationAcknowledgement? = null) {
-    init { require(acknowledgement == null || acknowledgement.matches(operation) && acknowledgement.isFinal) }
+    val acknowledgement: OperationAcknowledgement? = null, val dismissedRejected: Boolean = false) {
+    init {
+        require(acknowledgement == null || acknowledgement.matches(operation) && acknowledgement.isFinal)
+        require(!dismissedRejected || acknowledgement?.result == SyncResult.REJECTED)
+    }
     override fun toString(): String = "EnterpriseQueueEntry(redacted)"
 }
 

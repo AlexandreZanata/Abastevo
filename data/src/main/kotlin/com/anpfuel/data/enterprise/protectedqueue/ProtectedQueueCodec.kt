@@ -13,13 +13,14 @@ import java.io.DataOutputStream
 /** Versioned framing inside authenticated ciphertext; opaque legacy OPERATION bytes never enter here. */
 internal object ProtectedQueueCodec {
     private const val MAGIC = 0x51554555 // QUEU
-    private const val VERSION = 1
+    private const val VERSION = 2
     private const val MAX_PART = 8192
     private const val MAX_FRAME = 2 * MAX_PART + 2048
 
     fun encode(entry: EnterpriseQueueEntry): ByteArray {
         val buffer = PlainBuffer(MAX_FRAME)
         try {
+            if (entry.dismissedRejected && entry.acknowledgement?.result != SyncResult.REJECTED) throw EnterprisePersistenceUnavailable()
             DataOutputStream(buffer).use { out ->
                 out.writeInt(MAGIC); out.writeInt(VERSION)
                 val operation = entry.operation.canonicalBytes
@@ -35,6 +36,7 @@ internal object ProtectedQueueCodec {
                 out.writeBoolean(clock != null)
                 if (clock != null) { out.writeUTF(clock.boot); out.writeLong(clock.elapsedMillis); out.writeLong(clock.wallMillis) }
                 out.writeLong(entry.retry.delayMillis)
+                out.writeBoolean(entry.dismissedRejected)
             }
             require(buffer.length <= MAX_FRAME)
             return buffer.toByteArray()
@@ -45,7 +47,9 @@ internal object ProtectedQueueCodec {
         if (bytes.size !in 1..MAX_FRAME) throw EnterprisePersistenceUnavailable()
         DataInputStream(ByteArrayInputStream(bytes)).use { input ->
             // Unknown framing is preserved in the original generation, never repaired or erased.
-            if (input.readInt() != MAGIC || input.readInt() != VERSION) throw EnterprisePersistenceUnavailable()
+            val magic = input.readInt()
+            val version = input.readInt()
+            if (magic != MAGIC || version !in 1..VERSION) throw EnterprisePersistenceUnavailable()
             val operationBytes = part(input, input.readInt())
             val operation = try {
                 val p = snapshot.partition
@@ -71,8 +75,14 @@ internal object ProtectedQueueCodec {
                 else -> throw EnterprisePersistenceUnavailable()
             }
             val retry = QueueRetryState(attempts, clock, input.readLong())
+            val dismissed = if (version == 1) false else when (input.readUnsignedByte()) {
+                0 -> false
+                1 -> true
+                else -> throw EnterprisePersistenceUnavailable()
+            }
+            if (dismissed && acknowledgement?.result != SyncResult.REJECTED) throw EnterprisePersistenceUnavailable()
             if (input.available() != 0) throw EnterprisePersistenceUnavailable()
-            return EnterpriseQueueEntry(operation, retry, acknowledgement)
+            return EnterpriseQueueEntry(operation, retry, acknowledgement, dismissed)
         }
     }
 

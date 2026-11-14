@@ -110,6 +110,13 @@ class ProtectedEnterprisePersistence(
         return result.value
     }
 
+    /** Status cursors observe the same authenticated head as their borrowed snapshot. */
+    internal suspend fun <T> queueStatusAccess(attempt: EnterpriseQueueAttempt,
+        work: (VaultSnapshot, Long) -> VaultQueueChange<T>): T = queueAccess(attempt) { snapshot ->
+        val generation = generations.head(EnterpriseVaultCodec.token(snapshot.partition)) ?: throw EnterpriseVaultUnrecoverable()
+        work(snapshot, generation)
+    }
+
     private fun checkedQueueAttempt(attempt: EnterpriseQueueAttempt, snapshot: VaultSnapshot) {
         attempt.assertCurrent()
         checkedQueueAccount(attempt.account, snapshot.partition)
