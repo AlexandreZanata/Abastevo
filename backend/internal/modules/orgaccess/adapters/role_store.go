@@ -294,7 +294,9 @@ func (s *RoleStore) mutateRole(ctx context.Context, scope kernel.OrgScope, a app
 			from = now.Time
 		}
 		if in.kind == app.RoleChangeAction && targetMember == member {
-			reducing := d.PermissionsWithin(d.SystemCatalog(), []d.Role{before.Role}, in.role, in.scope == d.SelfScope) && !(before.Scope == d.SelfScope && in.scope != d.SelfScope) && !from.Before(before.ValidFrom) && (before.ValidTo.IsZero() || !in.to.IsZero() && !in.to.After(before.ValidTo))
+			// Keep or narrow only: ORG contains every scope, any other scope only
+			// itself, so SELF/structural → ORG or another target is a widening.
+			reducing := d.PermissionsWithin(d.SystemCatalog(), []d.Role{before.Role}, in.role, in.scope == d.SelfScope) && d.ScopeWithin(before.Scope, before.TargetID, in.scope, in.target) && !from.Before(before.ValidFrom) && (before.ValidTo.IsZero() || !in.to.IsZero() && !in.to.After(before.ValidTo))
 			if !d.CanModifyAssignment(member, targetMember, roles, reducing) {
 				return d.ErrSelfModificationForbidden
 			}

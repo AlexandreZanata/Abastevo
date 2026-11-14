@@ -2335,7 +2335,7 @@ paths:
       - enterprise-access
       operationId: enterpriseRoleAssign
       summary: Assign a scoped role to an active member
-      description: Assign a scoped role to a member with an active membership. Every granted permission must fit the actor's effective scope (BR-AUTH-007). Only an OWNER assigns OWNER. Self-assignment is prohibited. Dedicated company session cookie, exact HTTPS Origin/Host, CSRF, and current auth.role.assign authority are mandatory. Fresh configuration writes require the organizations capability and auth.role admission. Responses are no-store without ETag.
+      description: Assign a scoped role to a member with an active membership. Every granted permission must fit the actor's effective scope (BR-AUTH-007). Only an OWNER assigns OWNER. Self-assignment is prohibited. A structural scope (UNIT, COST_CENTRE, TEAM, ASSET) names one structure of the same organization; a missing or foreign target is NOT_FOUND and an archived target or DRAFT asset is VALIDATION_FAILED. Dedicated company session cookie, exact HTTPS Origin/Host, CSRF, and current auth.role.assign authority are mandatory. Fresh configuration writes require the organizations capability and auth.role admission. Responses are no-store without ETag.
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
@@ -22593,8 +22593,8 @@ components:
           example: ADMIN
         scope:
           type: string
-          enum: [ORG, SELF]
-          description: Scope level for the assignment.
+          enum: [ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET]
+          description: Scope level for the assignment. ORG targets the organization and SELF the target membership; UNIT, COST_CENTRE, TEAM and ASSET target one live unit, cost centre, team or asset of the same organization and cover only records that stored it (BR-AUTH-004/005). OWNER is ORG only.
           example: ORG
         target_id:
           $ref: '#/components/schemas/EnterpriseUUID'
@@ -22687,8 +22687,8 @@ components:
           example: FINANCE
         scope:
           type: string
-          enum: [ORG, SELF]
-          description: Scope level for the new assignment.
+          enum: [ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET]
+          description: Scope level for the new assignment; structural scopes target one live unit, cost centre, team or asset of the same organization. An owner changing an own assignment may only keep or narrow its scope.
           example: ORG
         target_id:
           $ref: '#/components/schemas/EnterpriseUUID'
@@ -22746,7 +22746,8 @@ components:
           example: ADMIN
         scope_type:
           type: string
-          description: Scope level (ORG, SELF).
+          enum: [ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET]
+          description: Scope level (ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET).
           example: ORG
         scope_target:
           $ref: '#/components/schemas/EnterpriseUUID'
@@ -22818,7 +22819,8 @@ components:
           example: ADMIN
         scope_type:
           type: string
-          description: Scope level (ORG, SELF).
+          enum: [ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET]
+          description: Scope level (ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET).
           example: ORG
         scope_target:
           $ref: '#/components/schemas/EnterpriseUUID'

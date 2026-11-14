@@ -26,6 +26,9 @@ type companyAuthority struct {
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
 	Capabilities setupCapability
+	// Structure is set only by owners of a structural record kind
+	// (EMP-AUTH-006); without it structural grants cover nothing here.
+	Structure *ResourceStructure
 }
 
 func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy, requestedRole ...permissions.Role) error {
@@ -122,6 +125,11 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 	}
 	if len(requestedRole) == 1 {
 		facts.RequestedRole = requestedRole[0]
+	}
+	// Under the retained locks and database time, the same structural lookup
+	// as Prepare (only for a current structural grant, EDR-161).
+	if facts, err = guard.Structure.structureTx(ctx, tx, scope, member, assignments, policy, facts, now.Time); err != nil {
+		return err
 	}
 	if _, err := permissions.CoveringRules(scope, member, assignments, policy.Permission, facts, now.Time); err != nil {
 		return err

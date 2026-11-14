@@ -3894,3 +3894,92 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   Structure UNCHECKED; unsafe XML is refused without expansion. Result: the
   Structure status states only what was checked; fiscal consultation remains
   with its authorized port (EMP-INTEG-004).
+
+## EMP-AUTH-006 — Unit, cost-centre, team and asset scopes with resource scope resolution (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-auth006-structural-scopes.md).
+
+- **B-BR-EMP-235 — Store unit, cost-centre, team and asset role scopes as
+  same-organization references admitted only while the target is live.** A
+  role assignment may be scoped to `ORG`, `SELF`, `UNIT`, `COST_CENTRE`,
+  `TEAM` or `ASSET`. A structural scope names exactly one unit, cost centre,
+  team or asset of the assignment's own organization; the database enforces
+  this with a composite foreign key per type, so a target of another
+  organization or an identifier of another kind is refused (`NOT_FOUND`). A
+  new structural assignment needs an `ACTIVE` unit, cost centre or team, or an
+  asset that is `ACTIVE`, `INACTIVE` or `DISPOSED`; a `DRAFT` asset (still
+  discardable) or any `ARCHIVED` target is refused (`VALIDATION_FAILED`,
+  BR-ORG-008). `OWNER` stays `ORG` only and station roles stay unavailable.
+  Scope type and target never change after creation; a change is a new
+  assignment (UC-AUTH-02). Overlap is refused per (membership, role, scope
+  type, target) exactly as for `ORG`/`SELF`, and admission, archiving and
+  overlap are serialized on the organization root lock. Archiving a unit,
+  cost centre, team or asset neither ends nor is blocked by structural
+  assignments (they are not "use" under BR-ORG-009); such an assignment keeps
+  covering records that carry the archived structure (BR-ORG-012) and no new
+  assignment can name it. Rows remain private under forced row-level
+  security.
+- **B-BR-EMP-236 — Decide structural coverage from the record's stored
+  snapshot.** `UNIT`, `COST_CENTRE` and `ASSET` cover a record only when the
+  unit, cost centre or asset that the server resolves for that record equals
+  the assignment's target; a missing value never matches and a cost centre is
+  never derived from a unit. A record that stores a snapshot is resolved from
+  what it stored at creation, never from the asset's or person's current
+  allocation (BR-AUTH-005): a held meter reading resolves its stored asset and
+  unit and no cost centre. An asset itself resolves to itself and to the unit
+  and cost centre the FLEET-005 port answers at the evaluated instant (a
+  `DRAFT` asset has no unit). Organization-level resources (lists, roots,
+  settings, role management, ownership, documents and periods today) carry no
+  structure, so a structural assignment does not cover them. An own-records
+  (`S`) descriptor under a structural scope requires both conditions: the
+  record is the member's own and it carries the scope. Example 3 holds at a
+  real entry point: a reading held while asset V was in unit Norte stays
+  readable by a Norte-scoped role and not by a Sul-scoped role after V moves
+  to Sul, while the asset itself becomes readable by the Sul-scoped role.
+- **B-BR-EMP-237 — A team scope covers records of the team's employees at
+  the record's instant; team membership alone grants nothing.** A `TEAM`
+  assignment covers a record when the record's author or assignee employee had
+  a link to that team containing the record's stored instant (half-open,
+  server instants). Joining a team gives the joining member no access
+  (BR-ORG-011); only an assignment naming the team does. A later link change
+  never moves history: the old team keeps covering the records created while
+  the link was current and the new team does not gain them. A record type
+  that stores no author/assignee instant (assets today; assignments arrive
+  with EMP-FLEET-006) is covered by no team; assets "assigned to a team" are
+  not inferred.
+- **B-BR-EMP-238 — Grant structural scopes without escalation.** Assigning or
+  changing to a structural scope follows UC-AUTH-01/02 and BR-AUTH-007: the
+  grantor needs a current `ORG`-scoped `auth.role.assign` and its current
+  `ORG`-scoped role union must contain every descriptor of the granted role at
+  organization coverage (a structural scope only narrows); a structurally
+  scoped `auth.role.assign` covers no role management. An owner reducing an
+  own assignment may only keep or narrow its scope (`ORG` contains every
+  scope; any other scope contains only itself), never widen it. Commands keep
+  the AUTH-002 idempotency: an exact retry returns the original result and a
+  changed target under the same operation is `OPERATION_ID_REUSED`.
+  Invitation grants and context hints stay `ORG`/`SELF`, and signed offline
+  intake keeps treating any non-`ORG` assignment as unsupported (held for
+  review), so no offline path is widened.
+- **BUC-EMP-120 — Grant or change a structurally scoped role.** Actor: member
+  with current `ORG`-scoped `auth.role.assign` and a fresh session. Main flow:
+  choose member, role, scope (`UNIT`, `COST_CENTRE`, `TEAM` or `ASSET`),
+  target, optional period and reason → the server rechecks proof,
+  organization, permission and BR-AUTH-007, then the database admits the
+  target under the root lock → assignment and audit event committed → the
+  member's next request sees it. Alternatives: target missing or of another
+  organization → `NOT_FOUND`; archived target or `DRAFT` asset →
+  `VALIDATION_FAILED`; `OWNER` with a structural scope → `FORBIDDEN`;
+  overlapping identical assignment → `CONFLICT`; replay → original result;
+  same operation with another target → `OPERATION_ID_REUSED`. Result: an
+  assignment that covers only records carrying its target.
+- **BUC-EMP-121 — Read a protected record under a structural scope.** Actor:
+  member whose only covering assignment is structural. Main flow: request a
+  record → `Prepare` loads current authority; because a current structural
+  assignment carries the permission, the route's structure source resolves
+  the record's stored (or, for an asset, current) unit, cost centre, asset and
+  team facts → coverage is decided on those facts → the owning transaction
+  re-resolves them under its locks with database time before reading.
+  Alternatives: no matching snapshot → `FORBIDDEN` naming the permission and
+  no record data; record of another organization → `NOT_FOUND`; an
+  organization-level list → `FORBIDDEN`. Result: the record is served only to
+  holders whose scope matches what the record stored.

@@ -26,6 +26,9 @@ type MeterAuthority struct {
 	Roles        access.TransactionRepository
 	Capabilities setupCapability
 	Devices      *memberpg.DeviceStore
+	// Structure resolves the asset's current allocation for structural grants
+	// on the company (web) path only; signed intake stays ORG-only.
+	Structure *ResourceStructure
 }
 
 var _ fleet.MeterAuthority = (*MeterAuthority)(nil)
@@ -56,7 +59,8 @@ func (g *MeterAuthority) currentMeterDevice(ctx context.Context, queries databas
 }
 
 // meterTarget reads the real scoped identity and current unit, but supplies no
-// assignment. AUTH-006 owns future unit/asset coverage; current SELF stays closed.
+// assignment. Web structural coverage comes from ResourceStructure (AUTH-006);
+// current SELF stays closed until FLEET-006.
 func meterTarget(ctx context.Context, queries database.OrgDBTX, scope kernel.OrgScope, asset string) error {
 	var id, unit string
 	if err := queries.QueryRow(ctx, `SELECT id::text,COALESCE(unit_id::text,'') FROM org_assets WHERE org_id=$1 AND id=$2`, scope.OrgID().String(), asset).Scan(&id, &unit); err != nil {
@@ -107,7 +111,7 @@ func (g *MeterAuthority) CheckMeterTx(ctx context.Context, tx syncapp.DBTX, scop
 			return fleet.ErrUnavailable
 		}
 		actor := org.CompanyActor{AccountID: source.Web.AccountID, SessionID: source.Web.SessionID}
-		guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}
+		guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities, Structure: g.Structure}
 		if err := guard.check(ctx, retained, scope, actor, member, asset, fleet.MeterPolicy(action)); err != nil {
 			return meterAuthorityError(err)
 		}

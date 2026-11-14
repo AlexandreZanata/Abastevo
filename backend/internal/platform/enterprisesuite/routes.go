@@ -194,7 +194,11 @@ func Register(router chi.Router, o Options) error {
 	// NoOpenWork is the explicit BR-FLEET-010 "none" source until the trip and
 	// maintenance epics deliver open trips and work orders (EDR-144).
 	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: fleetpg.NoOpenWork{}}
-	assetAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.FleetRecords{}, Now: time.Now}
+	// EMP-AUTH-006: structural grants on an asset resolve its current
+	// allocation through the FLEET-005 port, in Prepare and in the transaction.
+	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}
+	fleetAuthority.Structure = assetStructure
+	assetAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.FleetRecords{}, Structure: assetStructure, Now: time.Now}
 	if err := fleetweb.RegisterAssets(router, fleetapp.AssetService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
@@ -277,8 +281,10 @@ func Register(router chi.Router, o Options) error {
 	if e := memberweb.RegisterDevices(router, true, deviceStore, cookies, gateway, deviceAuthorization, roots, o.Accounts, proofauth.Verifier{Pool: o.Pool, Authority: origin.Host, Now: time.Now}); e != nil {
 		return e
 	}
-	meterAuthority := &orgpg.MeterAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Devices: deviceStore}
-	reviews := &fleetpg.MeterReviewStore{Pool: o.Pool, Authority: &orgpg.MeterReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore, NewID: jobs.NewUUIDv4,
+	meterAuthority := &orgpg.MeterAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Devices: deviceStore, Structure: assetStructure}
+	// Held readings resolve their stored asset/unit snapshot (07-permissions example 3).
+	heldStructure := &orgpg.ResourceStructure{Kind: orgpg.HeldMeterReadingStructure, Pool: o.Pool}
+	reviews := &fleetpg.MeterReviewStore{Pool: o.Pool, Authority: &orgpg.MeterReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: heldStructure}, Audit: auditStore, NewID: jobs.NewUUIDv4,
 		ConfirmSource: func(ctx context.Context, tx pgx.Tx, s syncapp.Source) (time.Time, error) {
 			_, now, err := deviceStore.CheckCurrentDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
 			return now, err
@@ -288,7 +294,7 @@ func Register(router chi.Router, o Options) error {
 	if err := fleetweb.RegisterMeters(router, fleetapp.MeterService{Enabled: true, Repository: meters, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
-	reviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.MeterReviewRecords{}, Now: time.Now}
+	reviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.MeterReviewRecords{}, Structure: heldStructure, Now: time.Now}
 	if err := fleetweb.RegisterMeterReviews(router, fleetapp.MeterReviewService{Enabled: true, Repository: reviews}, cookies, gateway, reviewAuthorization); err != nil {
 		return err
 	}

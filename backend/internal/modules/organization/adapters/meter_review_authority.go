@@ -19,6 +19,9 @@ type MeterReviewAuthority struct {
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
 	Capabilities setupCapability
+	// Structure resolves the held reading's stored snapshot for structural
+	// grants (EMP-AUTH-006, HeldMeterReadingStructure); nil keeps them uncovered.
+	Structure *ResourceStructure
 }
 
 var _ fleet.MeterReviewAuthority = (*MeterReviewAuthority)(nil)
@@ -33,7 +36,7 @@ func (g *MeterReviewAuthority) CheckMeterReviewTx(ctx context.Context, tx pgx.Tx
 	if err := database.ValidateOrgDBTX(ctx, tx, scope); err != nil {
 		return fleet.MeterReviewReviewer{}, fleet.ErrUnavailable
 	}
-	guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}
+	guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities, Structure: g.Structure}
 	proof := org.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}
 	if err := guard.check(ctx, tx, scope, proof, member, target, fleet.MeterReviewPolicy(write)); err != nil {
 		return fleet.MeterReviewReviewer{}, meterAuthorityError(err)

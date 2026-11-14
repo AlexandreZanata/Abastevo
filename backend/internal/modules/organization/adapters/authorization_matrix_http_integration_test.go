@@ -199,6 +199,12 @@ func matrixAssign(t *testing.T, fx deviceFixtureState, actor matrixPerson, role,
 	if scope == "SELF" {
 		target = actor.member
 	}
+	if scope == "UNIT" {
+		// EMP-AUTH-006: the organization's first operating unit.
+		if err := fx.f.Admin.QueryRow(t.Context(), `SELECT id::text FROM org_units WHERE org_id=$1 ORDER BY created_at,id LIMIT 1`, org).Scan(&target); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if err := unitSchemaExec(t, fx.legalFixtureState, `INSERT INTO org_role_assignments(org_id,id,membership_id,role,scope_type,scope_target,valid_from,valid_to,assigned_by,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'Synthetic authorization matrix')`, org, onboardingID(t), actor.member, role, scope, target, from, to, fx.member); err != nil {
 		t.Fatal(err)
 	}
@@ -423,10 +429,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					matrixCall(t, fx, router, actor, base+"/roles/assign", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "membership_id": target.member, "role": "OWNER", "scope": "ORG", "target_id": org, "reason": "Synthetic forbidden owner promotion"}, 403, "FORBIDDEN", "auth.role.assign", nil)
 				})
 			}
-			for _, variant := range []string{"missing-proof", "expired-proof", "bad-origin", "bad-csrf", "other-organization", "suspended-membership", "ended-assignment", "expired-assignment", "stale-authentication", "capability-off", "suspended-organization", "self-scope"} {
-				if variant == "self-scope" && role == "OWNER" {
+			for _, variant := range []string{"missing-proof", "expired-proof", "bad-origin", "bad-csrf", "other-organization", "suspended-membership", "ended-assignment", "expired-assignment", "stale-authentication", "capability-off", "suspended-organization", "self-scope", "unit-scope"} {
+				if (variant == "self-scope" || variant == "unit-scope") && role == "OWNER" {
 					continue
-				} // OWNER/SELF is not a persistable source state.
+				} // OWNER/SELF and OWNER/UNIT are not persistable source states.
 				if variant == "suspended-membership" {
 					if err := unitSchemaExec(t, fx.legalFixtureState, `UPDATE org_memberships SET state='SUSPENDED',suspension_origin='MANAGER',revision=revision+1 WHERE org_id=$1 AND id=$2`, org, actor.member); err != nil {
 						t.Fatal(err)
@@ -440,6 +446,9 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 				}
 				if variant == "self-scope" {
 					matrixAssign(t, fx, actor, role, "SELF", "ACTIVE")
+				}
+				if variant == "unit-scope" {
+					matrixAssign(t, fx, actor, role, "UNIT", "ACTIVE")
 				}
 				if variant == "stale-authentication" {
 					if _, err := fx.f.Runtime.Exec(t.Context(), `UPDATE company_web_sessions SET authenticated_at=authenticated_at-interval '20 minutes',created_at=created_at-interval '20 minutes',expires_at=expires_at-interval '20 minutes' WHERE id=$1`, actor.session); err != nil {
@@ -515,6 +524,11 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 							if entry.permission != "org.ownership.respond" && !(entry.permission == "doc.document.attach" && want == 201) {
 								want, code, key = 403, "FORBIDDEN", entry.permission
 							}
+						case "unit-scope":
+							// A structural grant covers only records that carry its unit
+							// (EMP-AUTH-006); every representative is organization-level,
+							// so even the ownership response and own documents are refused.
+							want, code, key = 403, "FORBIDDEN", entry.permission
 						}
 						matrixCall(t, fx, router, actor, path(entry, organization), body(entry), want, code, key, edit)
 					})
@@ -524,7 +538,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				if variant == "ended-assignment" || variant == "expired-assignment" || variant == "self-scope" {
+				if variant == "ended-assignment" || variant == "expired-assignment" || variant == "self-scope" || variant == "unit-scope" {
 					matrixAssign(t, fx, actor, role, "ORG", "ACTIVE")
 				}
 				if variant == "stale-authentication" {
@@ -592,5 +606,5 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	if exercised != 200 || allowed != 77 || denied != 123 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 64 permissions not yet routed; one actual signed Meter producer; Fleet S cells remain denied pending actual assignment integration; document S cells cover only own documents", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 64 permissions not yet routed; one actual signed Meter producer; Fleet S cells remain denied pending actual assignment integration; document S cells cover only own documents; a UNIT-scoped grant covers no organization-level representative", exercised, allowed, denied)
 }

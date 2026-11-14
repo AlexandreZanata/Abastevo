@@ -426,7 +426,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Audited role management and last-owner evidence](../evidence/f1-auth005-role-management.md).
 
 ### EMP-AUTH-006 — Unit, cost-centre, team and asset scopes with resource scope resolution
-- **Meta:** module AUTH · phase F2 · cut - · priority P1 · type DB · size M · state TODO
+- **Meta:** module AUTH · phase F2 · cut - · priority P1 · type DB · size M · state LOCAL_DONE
 - **Objective:** Resolve structural scopes against the appropriate current or historical resource context.
 - **Rules and use cases:** BR-AUTH-004, BR-AUTH-005, BR-AUTH-013, BR-ORG-011, BR-TEN-005
 - **Depends on:** EMP-AUTH-003, EMP-ORG-005, EMP-ORG-006, EMP-ORG-007, EMP-FLEET-002
@@ -440,6 +440,13 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive scoped references · rollback: remove new admission while retaining assignments
 - **Risks and assumptions:** Scope calculation uses the record and applicable policy, never a caller assertion.
 - **Done when:** Documented examples and foreign-scope denials pass at the resource entry points.
+
+- 2026-11-14 LOCAL_DONE (Validation PASS, INTEGRATION_PENDING): migration 000208 admits
+  UNIT/COST_CENTRE/TEAM/ASSET role scopes with same-organization foreign keys and live-target
+  admission; coverage uses the record's stored snapshot (held meter readings) or an asset's
+  FLEET-005 allocation, TEAM = author's link at the record instant. Example 3 proven at the
+  meter review read/resolve and asset routes. Retained: other record types' structure
+  sources, scoped list filtering, assignee facts (FLEET-006). [Evidence](../evidence/f2-auth006-structural-scopes.md).
 
 ### EMP-AUTH-007 — Temporary delegation and substitutes
 - **Meta:** module AUTH · phase F3 · cut - · priority P1 · type API · size S · state TODO

@@ -429,6 +429,30 @@ allocations (DOC-007), duplicates (DOC-008), app QR capture (DOC-009), fiscal
 consultation (INTEG-004), a reviewed per-state QR URL list, CPF issuers;
 version-2 QR field shapes are UNVERIFIED against the primary manual.
 
+### EMP-AUTH-006 (F2 prerequisite) — structural role scopes: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f2-auth006-structural-scopes.md). Third link of the EDR-109 chain.
+Migration 000208 widens `org_role_assignments` to UNIT, COST_CENTRE, TEAM and
+ASSET with generated same-organization foreign keys and a live-target
+admission trigger; usage sources only allow-list the keys (grants are not
+use). `Prepare` consults an optional structure source only when the member
+holds a current structural grant, so ORG/SELF behaviour is unchanged.
+Coverage uses the record's stored snapshot (held meter readings today) or an
+asset's FLEET-005 allocation at the instant; TEAM covers records whose author
+was linked to the team at the record's instant (EDR-160/161). Example 3 is
+proven on the meter review routes. Also fixes an owner widening an own
+assignment's scope (UNIT→ORG was allowed). RED unit 9+20, contract 1,
+PostGIS 4/4 and example 3 failing → GREEN; agent union 28 packages 776/6155.
+Merged-tree verification: untagged 211 packages, 2620/7399, 0 failures
+(4 pre-existing skips); race/integration union over orgaccess, organization
+adapters (818 s), fleet, review, document, orgexport, orgnotify, orgsync,
+membership and migrate: 37 packages, 855/6721, 0 failures, 0 skips.
+Retained: structure sources for fuelings, expenses, trips, document links and
+unit-scoped periods; scoped list filtering (org-level lists stay FORBIDDEN to
+structural-only members); assignee facts and team-assigned assets (FLEET-006);
+create commands into a structure; structural grants in signed offline intake;
+panel, Android and production grants.
+
 ## Interruption — 2026-11-14 (resumed)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,

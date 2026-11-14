@@ -72,7 +72,7 @@ Structure and boundary:
 - **BR-ORG-008 — Archive, never delete.** Units, teams and cost centres are archived, not deleted; an archived item accepts no new record or assignment, stays on every historical record and filter, and can be restored.
 - **BR-ORG-009 — Archiving needs an empty present.** A unit, team or cost centre cannot be archived while active assets, active employees, open budgets or operations in progress point to it; the refusal is `STRUCTURE_IN_USE` with counts per category and no record data.
 - **BR-ORG-010 — Each unit has a time zone.** A unit carries an IANA time zone, defaulting to the organization's; it decides the reporting day of the unit's records (BR-TIME-004). Changing it affects records created afterwards; existing records keep the zone stored on them (BR-TIME-001).
-- **BR-ORG-011 — Team membership is not access.** Adding an employee to a team changes no permission; a team matters to authorization only when a role assignment names it as scope (BR-AUTH-004).
+- **BR-ORG-011 — Team membership is not access.** Adding an employee to a team changes no permission; a team matters to authorization only when a role assignment names it as scope (BR-AUTH-004). A `TEAM` assignment covers records whose author or assignee was linked to the team at the record's instant; later link changes never move history (B-BR-EMP-237, EMP-AUTH-006).
 - **BR-ORG-012 — History survives structure changes.** Renaming or archiving a unit, team or cost centre, or renaming the organization, never rewrites a record; records keep the identifiers they were created with (BR-AUTH-005) and screens show the current name with "(arquivada)" when it applies.
 
 Legal entities:

@@ -1159,6 +1159,20 @@ both period tables. No UPDATE grant is needed until the EMP-FLEET-008 transfer
 History routes reuse the enterprise flag, the organizations capability and
 current `fleet.asset.read`. Nothing here provisions live grants.
 
+### Structural role scopes (EMP-AUTH-006)
+
+Migration208 widens `org_role_assignments` to `UNIT`, `COST_CENTRE`, `TEAM` and
+`ASSET` scopes with generated same-organization foreign keys and an insert
+admission trigger, and lets the unit, cost-centre, team and asset usage sources
+recognise the new keys (assignments are not use). The migration owner needs
+ownership of `org_role_assignments` and of the four `*_current_usage` functions
+and `REFERENCES` on `org_units`, `org_cost_centres`, `org_teams` and
+`org_assets`. The role-management principal additionally needs `SELECT (org_id,
+id, state)` on those four tables for structural grants. The meter-review
+principal needs `SELECT (org_id, team_id, employee_id, started_at, ended_at) ON
+org_team_links`; the fleet principal reuses its FLEET-005 snapshot-port grants.
+Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

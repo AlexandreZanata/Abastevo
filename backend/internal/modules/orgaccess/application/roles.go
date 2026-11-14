@@ -96,13 +96,17 @@ func (in RoleAssignInput) Validate(scope kernel.OrgScope) error {
 	if _, err := d.SystemCatalog().Rules(in.Role); err != nil {
 		return ErrRoleInvalid
 	}
-	if in.Scope != d.OrgScope && in.Scope != d.SelfScope {
+	if in.Scope != d.OrgScope && in.Scope != d.SelfScope && !in.Scope.Structural() {
 		return d.ErrAssignmentScope
 	}
 	if in.Scope == d.OrgScope && in.TargetID != scope.OrgID().String() {
 		return d.ErrAssignmentScope
 	}
 	if in.Scope == d.SelfScope && in.TargetID != in.MembershipID {
+		return d.ErrAssignmentScope
+	}
+	// The store proves the structure's kind, organization and state (EMP-AUTH-006).
+	if in.Scope.Structural() && (in.TargetID == scope.OrgID().String() || in.TargetID == in.MembershipID) {
 		return d.ErrAssignmentScope
 	}
 	if in.Role == d.Owner && in.Scope != d.OrgScope {
@@ -190,10 +194,13 @@ func (in RoleChangeInput) Validate(scope kernel.OrgScope) error {
 	if _, err := d.SystemCatalog().Rules(in.Role); err != nil {
 		return ErrRoleInvalid
 	}
-	if in.Scope != d.OrgScope && in.Scope != d.SelfScope {
+	if in.Scope != d.OrgScope && in.Scope != d.SelfScope && !in.Scope.Structural() {
 		return d.ErrAssignmentScope
 	}
 	if in.Scope == d.OrgScope && in.TargetID != scope.OrgID().String() {
+		return d.ErrAssignmentScope
+	}
+	if in.Scope.Structural() && in.TargetID == scope.OrgID().String() {
 		return d.ErrAssignmentScope
 	}
 	if in.Role == d.Owner && in.Scope != d.OrgScope {

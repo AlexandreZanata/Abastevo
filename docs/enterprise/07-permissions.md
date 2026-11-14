@@ -295,6 +295,17 @@ PostgreSQL persists microsecond precision. Ending records a server timestamp
 and revision, including cancellation before a scheduled start, without
 rewriting the original validity or deleting history.
 
+EMP-AUTH-006 interpretation (2026-11-14, EDR-160/161): `UNIT`, `COST_CENTRE`,
+`TEAM` and `ASSET` assignments name one live structure of the same
+organization (foreign → `NOT_FOUND`, archived or `DRAFT` asset →
+`VALIDATION_FAILED`); archiving neither ends nor is blocked by them. Coverage
+uses the record's stored snapshot (held meter readings today) or an asset's
+FLEET-005 allocation at the evaluated instant; `TEAM` covers records whose
+author or assignee was linked to the team at the record's instant.
+Organization-level resources carry no structure. A structural
+`auth.role.assign` manages no roles; an owner may only keep or narrow an own
+assignment's scope.
+
 The shared organization lock protects assignment overlap and continuous
 surviving-owner coverage through future expiry. The union of the surviving
 active owners' periods must cover the remaining time without gaps; adjacent
@@ -377,8 +388,9 @@ facts bind SELF coverage to the current member; the source transaction checks
 actual participant identities under the retained root lock before returning
 private state/receipts or changing anything. Station authority requirements are
 unchanged. An ACTIVE membership with no live role remains denied until an
-ordinary authorized role grant restores coverage. Finer UNIT/COST_CENTRE/TEAM/
-ASSET grant management belongs to AUTH-006 (F2).
+ordinary authorized role grant restores coverage. UNIT/COST_CENTRE/TEAM/ASSET
+grants are managed through the same role routes since AUTH-006
+(B-BR-EMP-235..238).
 
 AUTH-005 review clarification: permission containment is literal, including
 coverage and requirements. Neither OWNER nor ADMIN receives a wildcard. Some

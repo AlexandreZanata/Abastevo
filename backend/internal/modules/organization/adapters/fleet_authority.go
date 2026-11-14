@@ -21,6 +21,9 @@ type FleetAuthority struct {
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
 	Capabilities setupCapability
+	// Structure resolves an asset's current allocation for structural grants
+	// (EMP-AUTH-006, AssetStructure); nil keeps them uncovered.
+	Structure *ResourceStructure
 }
 
 var _ fleet.FleetAuthority = (*FleetAuthority)(nil)
@@ -36,7 +39,7 @@ func (g *FleetAuthority) CheckFleetTx(ctx context.Context, tx pgx.Tx, scope kern
 	if policy.Validate() != nil {
 		return fleet.ErrUnavailable
 	}
-	err := (companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}).check(ctx, tx, scope, org.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, target, policy)
+	err := (companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities, Structure: g.Structure}).check(ctx, tx, scope, org.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, target, policy)
 	switch {
 	case errors.Is(err, capability.ErrEntitlementRequired):
 		return access.ErrEntitlementRequired

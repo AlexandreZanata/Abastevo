@@ -34,7 +34,9 @@ func TestRoleGrantPreservesCoverageAndSourceGaps(t *testing.T) {
 	if d.PermissionsWithin(c, []d.Role{d.Driver}, d.Supervisor, true) {
 		t.Fatal("role restrictions or missing permission removed")
 	}
-	if d.CanAssignScopedRole(c, []d.Role{d.Owner}, d.Admin, "UNIT") {
-		t.Fatal("AUTH006 scope silently admitted in AUTH005")
+	// AUTH-006 admits UNIT/COST_CENTRE/TEAM/ASSET (structural_test.go); an
+	// unknown or station scope is still never grantable here.
+	if d.CanAssignScopedRole(c, []d.Role{d.Owner}, d.Admin, "STATION") {
+		t.Fatal("unavailable station scope silently admitted")
 	}
 }
