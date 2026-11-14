@@ -104,7 +104,7 @@ Sending operations needs the permission of the command itself (for example `fuel
 
 ## 9. Events, notifications and integrations
 
-Produced: `offl.operation.accepted`, `offl.operation.needs_review`, `offl.operation.refused`, `offl.review.resolved`, `offl.attachment.stored`. Consumed: `idn.membership.ended`, `idn.device.revoked`, `org.organization.suspended`, `subs.subscription.state_changed`. Notifications: the author is told when an item needs review, is resolved or is refused; reviewers are told when their queue has new items (digest, not one notification per item).
+Produced: `offl.operation.accepted`, `offl.operation.review`, `offl.operation.refused`, `offl.review.resolved`, `offl.attachment.stored`. The logical needs-review event originally named `offl.operation.needs_review` is persisted as `offl.operation.review` (EDR-074), conforming to the existing audit/outbox SQL identifier vocabulary; the frozen `ACCEPTED_FOR_REVIEW` result and codes are unchanged. Consumed: `idn.membership.ended`, `idn.device.revoked`, `org.organization.suspended`, `subs.subscription.state_changed`. Notifications: the author is told when an item needs review, is resolved or is refused; reviewers are told when their queue has new items (digest, not one notification per item).
 
 ## 10. Data, formulas and examples
 
@@ -159,10 +159,22 @@ Credentials are untrimmed ASCII graphic strings of1..512 bytes. It may contain
 0..50 raw operation candidates. Parsing the wrapper is not admission: preserve
 exact raw spans, then parse each operation against independently captured source
 binding. OFFL-002 must preflight trustworthy correlation identities and source
-bindings for the whole body before any receipt or effect. Uncorrelatable malformed
-items refuse the body before prefix effects; well-formed per-operation version
-or business failures can be independent. Duplicate valid operation IDs are refused.
+bindings for the whole body before any intake budget, claim, receipt or effect.
+Every candidate uses the complete frozen operation parser, not a partial
+correlation parser. Broken envelopes, digests and source bindings refuse the
+whole body before prefix effects. Structurally valid unsupported operation
+schemas or malformed business payloads can be independent only after a real
+owning handler establishes current command/resource authority. Duplicate valid
+operation IDs are refused. Identity nonce consumption retains its independent
+authentication semantics.
 Signing must cover the exact transmitted body.
+
+The signed intake response is EnterpriseSyncBatchResponse, an object with
+schema_version 1 and acknowledgements in request order (0..50). Each item is the
+complete canonical frozen EnterpriseSyncAcknowledgement; a replay retains its
+original bytes. This transport wrapper does not disclose account proof or add
+batch atomicity. Global source denial returns the safe error envelope instead
+of exposing buffered acknowledgement items.
 
 Default limits are65536 raw UTF-8 batch bytes (including credentials),8192 raw
 and complete canonical bytes per operation and64 transport container levels
@@ -192,6 +204,32 @@ remaining runtime work. The minimum OrgTime instant is valid declared evidence;
 it is forbidden as a final server receipt.
 
 ### 10.2 Intake decision table
+
+The table describes the owning integrations' target behavior, not blanket
+runtime authority. OFFL-002 requires a current signed account, source origin,
+membership and enrollment for the whole batch and inside every operation's
+transaction. Current unknown/revoked/ended/suspended proof remains a safe
+transport denial; F4 historical/grace outcomes require their actual historical
+authority and review producers. Missing type, history, held-fact/review,
+follow-up or explicitly configured transport budget returns UNAVAILABLE without
+a new claim. Unsupported operation schema is per-operation MALFORMED only
+after the owning installed type can authorize it. No generic FORBIDDEN result
+pretends to prove that a permission was never held.
+
+Claims, final ACKs and applied-effect readiness are distinct. An authorized
+DEPENDENCY_PENDING claim has no final receipt/audit/effect. Review acceptance
+alone is not dependency readiness. Owning current parent-record read coverage
+is also required; a same-organization receipt/effect does not prove visibility.
+After base command/target admission, a coverage refusal rolls back this operation
+and returns the same DEPENDENCY_PENDING as a missing parent without a new claim.
+Covered cross-device dependencies remain valid (EDR-075). Each operation commits its real effect or
+held facts, audit, required follow-up and immutable final receipt atomically;
+replay rechecks original ownership and current read coverage. Fresh DB time and
+current source/feature authority are confirmed after transactional waits and
+before commit. A later source denial withholds the response without claiming
+that earlier committed operations rolled back. Declared time is evidence only:
+normal offline delivery delay cannot establish CLOCK_SKEW. See B-BR-EMP-108..114,
+BUC-EMP-56/57 and [OFFL-002 evidence](evidence/f2-offl002-intake-ledger.md).
 
 | Condition at receipt | Result | Code |
 |---|---|---|

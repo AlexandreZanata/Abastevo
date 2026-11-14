@@ -34,6 +34,9 @@ import (
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	eventpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/adapters"
+	syncpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters"
+	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgquota"
@@ -48,6 +51,12 @@ type Options struct {
 	Pool         *pgxpool.Pool
 	Accounts     *account.Service
 	DeviceLimit  int64
+	// No production business producer or measured budget is implied by enabling
+	// the transport. Owning features supply reviewed handlers and real follow-up.
+	IntakeHandlers  []syncapp.Handler
+	IntakeBudget    *orgquota.TransportDefinition
+	IntakePlans     map[string]map[string][]string
+	IntakeConsumers map[string]eventpg.Effect
 }
 
 // Register performs no I/O or provisioning. The default mounts no private
@@ -84,6 +93,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, member.DeviceAuditDefinitions()...)
 	definitions = append(definitions, accesspg.RoleAuditDefinitions()...)
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
+	definitions = append(definitions, syncpg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -204,6 +214,9 @@ func Register(router chi.Router, o Options) error {
 	}
 	if e := memberweb.RegisterDevices(router, true, deviceStore, cookies, gateway, deviceAuthorization, roots, o.Accounts, proofauth.Verifier{Pool: o.Pool, Authority: origin.Host, Now: time.Now}); e != nil {
 		return e
+	}
+	if err := registerIntake(router, o, deviceStore, auditStore, auditCatalog); err != nil {
+		return err
 	}
 
 	roleStore := accesspg.NewRoleStore(o.Pool, roles, auditStore, &orgpg.RoleAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags})

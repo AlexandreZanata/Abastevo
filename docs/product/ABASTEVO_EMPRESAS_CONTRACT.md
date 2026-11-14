@@ -1758,3 +1758,110 @@ proof and the transactionally enforced three-pending-organization account cap.
   process/reboot/unlock/expiry and available OS backup/restore channels, retaining
   explicit owed evidence where the environment cannot prove a platform claim.
   Synthetic managed-key tests do not certify the missing managed server policy.
+
+### EMP-OFFL-002 — Scoped intake and durable receipts
+
+Recorded before behavior, 2026-11-13, from tested/published PRIV-003 51c25146.
+This construction task implements the receipt/transaction boundary. Owning
+feature handlers, historical authority, held-record/review producers and F4
+exceptions remain explicit integrations, never fabricated defaults.
+
+- **B-BR-EMP-108 — Validate the entire batch before intake writes.**
+  The signed path selects one organization. Resolve actual account, configured
+  origin, current membership, enrollment and signing key independently of the
+  operation fields. Parse every candidate with the existing frozen codec and
+  captured limits; compare every immutable owner/origin/organization/member/
+  enrollment before any claim, intake budget, receipt or business effect. A
+  broken envelope/digest/binding refuses the whole body without prefix effects.
+  Identity nonce consumption keeps its existing independent authentication
+  semantics. A structurally valid unsupported operation schema or malformed
+  business payload can be classified independently only by an available owning
+  type with actual current command/resource authority. No correlation-only
+  parser or client-selected limits/policy are introduced.
+- **B-BR-EMP-109 — Separate immutable claims, final ACKs and applied effects.**
+  Reserve (organization, operation ID) and its complete immutable digest only
+  after real owning policy/resource admission. An eligible DEPENDENCY_PENDING
+  retry may retain that claim, but has no final ACK, business effect, audit or
+  follow-up. Missing producer/history/review authority is UNAVAILABLE and cannot
+  create a new claim. Final effect or held facts, audit, required follow-up,
+  original ACK and effect-readiness proof commit in one ordinary scoped
+  transaction. Each operation has its own transaction; one refusal/failure
+  cannot roll back unrelated committed items. No success escapes before commit.
+  The final received_at comes from fresh DB time, never device or reservation
+  time. A failed commit returns uncertainty, not a provisional final result.
+- **B-BR-EMP-110 — Dependencies follow actual effects, not receipt labels.**
+  A hard dependency becomes ready only after its real committed effect or an
+  accepted completed review. ACCEPTED_FOR_REVIEW alone is not readiness; missing,
+  refused or foreign dependencies remain pending without revealing private
+  receipt data. Do not lock another pending claim while holding this one or
+  create placeholder claims for missing operations. The owning feature resolves
+  soft references and actually holds orphan facts; generic intake never edits
+  immutable intent/digest or pretends a missing review producer stored it.
+  After base command/target admission, the owning handler must cover the actual
+  parent records before a same-organization effect can release a dependency.
+  Missing, foreign and unreadable parents return the same DEPENDENCY_PENDING;
+  a coverage refusal rolls back this operation without a new claim or private
+  parent data. Current covered cross-device dependencies remain valid. Missing
+  historical/feature producers remain UNAVAILABLE. Confirm current authority
+  after waits; never commit partially failed admission (EDR-075).
+- **B-BR-EMP-111 — Replay is a current protected read.**
+  Original ACK bytes are immutable and revalidated against the attempted
+  operation before exposure. Reuse requires the same original owner/member/
+  enrollment plus actual current receipt-read coverage from the owning type.
+  A changed digest returns OPERATION_ID_REUSED for that attempt without replacing
+  the first claim/ACK/effect. Corrupt stored bytes or missing read authority are
+  unavailable/denied, never repaired into apparent success. Preserve minimal
+  provenance and company records through existing personal deletion/unlink;
+  do not add a live-account FK/cascade, personal export access or a personal
+  30-day TTL to organizational receipts. Never store tokens/signatures or raw
+  business payloads in the receipt ledger.
+- **B-BR-EMP-112 — Recheck source authority after waits.**
+  Current account/family/key/binding, membership/enrollment, record coverage,
+  role/capability and clock-bound proof remain required inside each transaction
+  and are confirmed with fresh DB time after target/audit/receipt waits before
+  commit. A previous Prepare/Decision or custody lease is not lasting authority.
+  Feature confirmation accounts for its own post-write state without applying
+  twice. If authority ends after earlier items commit, stop with a safe transport
+  refusal, retain those receipts and withhold private response data. No rollback
+  of already committed items is claimed. Inability to verify the current source
+  is equally fatal to private response exposure (bounded unavailable transport
+  refusal); ordinary feature/storage availability remains per-operation retry.
+  Current unknown/revoked/ended/suspended
+  device/member proof stays a transport denial; F4 final/grace codes are not
+  activated by the decision table. Declared time is evidence only; do not infer
+  CLOCK_SKEW from legitimate offline delay without an actual timing source.
+- **B-BR-EMP-113 — Meter intake without inventing a permission.**
+  Use an explicit trusted transport budget through the existing database limiter
+  and opaque organization/account/device axes. Charge max(1, operation count)
+  admission units, including replay attempts, atomically before prefix effects;
+  all axes roll back on budget failure. Prove source binding first so foreign or
+  malformed bodies cannot spend another scope's budget. Policy/caps/rationale
+  belong to source configuration, not the request. No unmeasured production
+  default, borrowed credential permission or commercial-plan quota is implied.
+  Missing configured admission stays unavailable; the first real feature
+  registration must supply its reviewed budget. Tests may use an explicitly
+  synthetic policy with real limiter storage and exhaustion races.
+- **B-BR-EMP-114 — Compose existing audit and follow-up once.**
+  Intake owns one generic offl.operation audit target per operation ID; feature
+  work uses only the borrowed query port and does not commit/rollback/open a
+  separate transaction or add a second same-ID audit. Event/consumer plans use
+  the existing registered catalog, writer and queue; the bound audit hash is
+  distinct from the immutable payload digest. Receipt event revision 1 does not
+  invent an entity revision. The logical needs-review event uses the persisted
+  name offl.operation.review, preserving the identifier vocabulary in applied
+  migrations165/168; ACCEPTED_FOR_REVIEW and its wire code remain unchanged.
+  Missing required real follow-up/held/effect
+  producers stays unavailable. No production probe/no-op handler or new queue
+  service is registered to manufacture acceptance.
+- **BUC-EMP-56 — Recover a lost batch answer without duplicate effects.**
+  Prove full-body preflight, ordinary PostGIS/signed normal intake, independent
+  outcomes, original-byte replay, changed-intent refusal, twelve-way contention,
+  target/proof/role expiry waits and rollback after every final projection stage.
+  A rejected/retryable item must not abort another eligible operation.
+- **BUC-EMP-57 — Preserve dependency and privacy boundaries.**
+  Prove pending dependency claims, review without readiness, later actual effect,
+  orphan holding through a real test consumer, current authorized receipt reads,
+  foreign scope/device/member denial, late revocation response withholding and
+  personal deletion preserving company history. Rehearse populated migration
+  195→196, injected failure/recovery/noop and previous-image compatibility.
+  Runtime producer absence, C1 feature readiness and release are distinct states.

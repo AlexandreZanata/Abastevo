@@ -34,8 +34,9 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		accountContext, contextGuarded := handler.(orgapi.AccountContextDescriptor)
 		ownedSetups, setupsGuarded := handler.(orgapi.OwnedSetupsDescriptor)
 		contact, contactGuarded := handler.(orgapi.DeviceContactDescriptor)
+		batch, batchGuarded := handler.(orgapi.SignedBatchDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
@@ -61,7 +62,44 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		if !contactGuarded && operation.Extensions["x-abastevo-device-contact"] != nil {
 			return fmt.Errorf("unexpected device contact metadata for %s", path)
 		}
-		if contactGuarded {
+		if !batchGuarded && operation.Extensions["x-abastevo-signed-batch"] != nil {
+			return fmt.Errorf("unexpected batch authority metadata for %s", path)
+		}
+		if batchGuarded {
+			expected := orgapi.SignedBatchRule{AccountProof: true, Signed: true, CurrentEnrollment: true, WholeBodyPreflight: true, PerOperation: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || path != "/v1/orgs/{org_id}/sync/operations" || batch.SignedBatchRule() != expected {
+				return fmt.Errorf("invalid signed batch guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context", "x-abastevo-owned-setups", "x-abastevo-device-contact"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for signed batch %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-signed-batch"])
+			var recorded orgapi.SignedBatchRule
+			if e != nil || json.Unmarshal(raw, &recorded) != nil || recorded != expected {
+				return fmt.Errorf("signed batch metadata differs for %s", path)
+			}
+			if e := validateSignedDeviceSecurity(operation, path); e != nil {
+				return e
+			}
+			body := operation.RequestBody.Value.Content.Get("application/json").Schema
+			if body.Ref != "#/components/schemas/EnterpriseSyncBatch" || len(body.Value.Required) != 4 || len(body.Value.Properties) != 4 {
+				return fmt.Errorf("invalid complete batch body for %s", path)
+			}
+			for _, name := range []string{"schema_version", "operations"} {
+				found := false
+				for _, required := range body.Value.Required {
+					if required == name {
+						found = true
+					}
+				}
+				if !found || body.Value.Properties[name] == nil {
+					return fmt.Errorf("missing batch wrapper field %s", name)
+				}
+			}
+			declared.Success = 200
+		} else if contactGuarded {
 			expected := orgapi.DeviceContactRule{AccountProof: true, Signed: true, ExactEnrollment: true, TerminalRead: true, PolicyLease: true, Success: 200}
 			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || path != "/v1/orgs/{org_id}/devices/contact" || contact.DeviceContactRule() != expected {
 				return fmt.Errorf("invalid device contact guard for %s", path)

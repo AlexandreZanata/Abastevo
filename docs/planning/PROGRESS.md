@@ -1,55 +1,40 @@
 # Current execution state
 - Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2` from
-  tested/published dev `fac002e7`; main `6a19bcc7` remains an ancestor. User
-  requests the whole phase. [Execution/dependency audit](../enterprise/evidence/f2-execution.md)
-  records34 F2 tasks,25 unfinished transitive prerequisites and the additional
-  formal M1 chain. EMP-FLEET-001 LOCAL_DONE, pure shared Go/Kotlin
-  asset model; [evidence](../enterprise/evidence/f2-fleet001-asset-domain.md).
-  B-BR-EMP-96/97, BUC-EMP-49 and EDR-060/061 precede behavior. All133 shared
-  vectors pass both consumers; Go race98.0% statements, Kotlin143 tests100%
-  scoped lines/99.48% instructions, format/vet/static/secret review pass.
-  EMP-OFFL-001 LOCAL_DONE, [protocol evidence](../enterprise/evidence/f2-offl001-sync-protocol.md):
-  full immutable digest, strict JSON, independent binding, trusted limits and
-  intent-bound ACKs pass260 shared vectors; Go race93.9% statements, Kotlin273
-  tests94.30% scoped instructions/95.74% lines, API/format/vet/static/plan/review
-  pass. B-BR-EMP-98/99, BUC-EMP-50 and EDR-062 precede behavior.
-  EMP-AUTH-009 LOCAL_DONE, [evidence](../enterprise/evidence/f2-auth009-authorization-conformance.md):
-  ordinary real PostGIS/company HTTP covers120 current role/permission cells
-  (41 allow/79 deny),1,689 named requests plus10 nonparticipants; exact denial
-  envelopes, next-request revocation, ADMIN→OWNER, scoped races/failure checks,
-  full-router inventory and all1,105 descriptors pass. B-BR-EMP-100/BUC-EMP-51/
-  EDR-063 precede tests.36 station cells and73 unrouted keys remain obligations.
-  EMP-ORG-014 LOCAL_DONE, [acceptance](../enterprise/evidence/f2-org014-onboarding-settings-panel.md):
-  source-bound create/recovery/checklist/settings/history and named members pass
-  actual ordinary PostGIS/HTTP, HTTPS browser and restricted Caddy. Complete
-  settings digest v2 fixes confirmation-policy collision while verifying genuine
-  immutable legacy retries. B-BR-EMP-101..103, BUC-EMP-52/53 and EDR-064..067
-  precede behavior/recovery. Backend9 unit/race packages,15 critical SQL cases,
-  full API582 cases and web51 tests pass; pinned/static/sqlc/review/visual checks
-  pass. Test-only exact-byte validation cache fixes600s timeout without weakening
-  checks; sandbox socket/cache failures recovered. Phase tracker215/PR203 retain
-  cumulative delivery; issue218 metadata reflects4743e0b9 and remains open.
-  ORG-014 commit efd7e886 and prior tested F2 commits are backed up at
-  origin/codex/enterprise-f2; PR203 dev head remains the earlier published batch.
-  EMP-PRIV-003 LOCAL_DONE / INTEGRATION_PENDING, [evidence](../enterprise/evidence/f2-priv003-protection-completion.md):
-  B-BR-EMP-104..107, BUC-EMP-54/55 and EDR-068..070 record exact signed contact,
-  strong membership/enrollment binding, committed-head rollback defense, durable
-  maintenance and owned emulator acceptance before implementation. Backend exact
-  signed contact passes26 real PostGIS/race cases/54 named runs and six affected
-  unit/race packages plus vet/static/sqlc/contracts. Host122 cases and targeted
-  recovery reruns26/27 pass. Actual API36 emulator22 executions/16 methods pass:
-  real source/Keystore, OS backup/transfer, credential/expiry/live-auth deletion,
-  clock/reboot and real worker retry/cancellation. Normal/opt-in builds, app/data
-  lint,4 ViewModel tests and real product startup/jobs pass. The accepted real
-  client/store ports are bound; no test graph enters the product APK. Keep only
-  the owned isolated emulator/packages. Five local checkpoints;59 audited nodes
-  remain. Next: commit/back up this source, then open the next ready dependency.
-  No active intake route/ledger/queue yet. Pure-domain entry is permitted by
-  roadmap §5; M1/M2/C1 and actual sync/business activation remain open.
-  Parent required Quick passed at opening; other CI was running. No polling
-  between tasks. User now authorizes the emulator while the phone is disconnected;
-  preserve other work/apps/data. Final phase
-  publication uses protected dev → main PR203; no merge/deploy/wiki.
+  tested/published dev `fac002e7`; main `6a19bcc7` remains an ancestor.
+  [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
+  all34 F2 tasks,25 transitive prerequisites and the additional formal M1 chain.
+  Six checkpoints are LOCAL_DONE / INTEGRATION_PENDING;58 audited nodes remain.
+  Completed: [FLEET-001](../enterprise/evidence/f2-fleet001-asset-domain.md)
+  (2daea515), [OFFL-001](../enterprise/evidence/f2-offl001-sync-protocol.md)
+  (1cc9a7b3), [AUTH-009](../enterprise/evidence/f2-auth009-authorization-conformance.md)
+  (4743e0b9), [ORG-014](../enterprise/evidence/f2-org014-onboarding-settings-panel.md)
+  (efd7e886), [PRIV-003](../enterprise/evidence/f2-priv003-protection-completion.md)
+  (51c25146), and now [OFFL-002](../enterprise/evidence/f2-offl002-intake-ledger.md).
+  Linked evidence retains the shared133/260 vectors, actual120-cell authorization
+  matrix, company web acceptance and22 real API36 native executions/16 methods.
+  Those five committed checkpoints are backed up at origin/codex/enterprise-f2.
+  OFFL-002 adds complete signed batch preflight, independent scoped transactions,
+  immutable claims/ACKs/effect proofs and current protected receipt/dependency
+  reads. B-BR-EMP-108..114, BUC-EMP-56/57 and EDR-071..075 precede behavior.
+  Final ordinary PostGIS/race union passes24 top-level/46 named cases/40 leaves
+  with zero failures/skips; three transport-only unit cases pass separately.
+  Scope includes actual signatures/nonces, replay/weighted quota, twelve-way
+  contention, late-source withholding, deferred commit failure/recovery,
+  populated two-org RLS, enrollment/creator/read coverage, migration195→196
+  recovery/previous-chain compatibility and personal erasure/export privacy.
+  Protocol/application race93.9%/93.5%, complete API contract327.733s and
+  cmd/api18.477s pass. The stale OFFL-001 no-route assertion was corrected with
+  isolated RED→GREEN while retaining every shared payload/hash/ACK check.
+  sqlc generation/vet, pinned vet/static/format, plan/diff/secret review pass.
+  Production business/history/review/follow-up registrations and measured intake
+  budget remain absent/closed; fixtures do not activate F4 or business readiness.
+  Next: commit/back up this checkpoint, then implement EMP-OFFL-003 durable
+  Android queue on the accepted protected store. The user authorizes the isolated
+  emulator while the phone is disconnected; it is parked after PRIV-003 acceptance.
+  Preserve other work/devices/data. M1/M2/C1 and the whole F2 remain unaccepted.
+  PR203 dev head still contains the earlier published batch; final phase delivery
+  uses protected dev → main. Parent Quick passed at opening; no construction CI
+  polling, merge, deployment or wiki publication.
 
 - Enterprise EMP-IDN-016..018 batch, 2026-11-13: LOCAL_DONE /
   INTEGRATION_PENDING on owned `codex/enterprise-idn016-018` from published dev

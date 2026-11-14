@@ -15,8 +15,8 @@ import (
 func TestEnterpriseSyncComponents(t *testing.T) {
 	doc := loadSpec(t)
 	for path := range doc.Paths.Map() {
-		if strings.Contains(path, "/sync") && strings.Contains(path, "/orgs/") {
-			t.Fatal("component-only protocol activated intake", path)
+		if strings.Contains(path, "/sync") && strings.Contains(path, "/orgs/") && path != "/v1/orgs/{org_id}/sync/operations" {
+			t.Fatal("sync component exposed an undelivered enterprise route", path)
 		}
 	}
 	file, err := os.Open(filepath.Join(contractsDir(t), "testdata", "enterprise", "sync", "operations-v1.psv"))

@@ -46,6 +46,8 @@ tags:
     description: FREE email-code signup/login plus session rotation.
   - name: enterprise-identity
     description: Private organization employee records, separate from login and membership.
+  - name: enterprise-sync
+    description: Signed current-source operation transport with independent scoped transactions and protected receipts.
   - name: feedback
     description: Authenticated station/fuel ratings and comments plus anonymous reads.
   - name: premium
@@ -14836,6 +14838,117 @@ paths:
         terminal_read: true
         policy_lease: true
         success: 200
+  /v1/orgs/{org_id}/sync/operations:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseSyncOperations
+      summary: Deliver a fully preflighted batch with independent scoped operation transactions
+      description: Existing-account signed current-device intake. All frozen operation envelopes, digests and exact
+        source-owned account/origin/organization/membership/enrollment tuples are preflighted before any budget,
+        claim or effect. Each operation owns an independent transaction with source and owning policy rechecks
+        after waits and before commit. Missing production handlers, review/history/follow-up or reviewed intake
+        budget stays unavailable. No default numeric budget, new permission or F4 late/grace policy is activated.
+        Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
+        withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
+        Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
+        The wrapper carries at most50operations and65536rawbytes; full codec/preflight also enforces each8192byte
+        operation, strict JSON, immutable digest and depth. Normal private failures never authorize local erasure.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: Signature
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      - name: Signature-Created
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Expires
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Keyid
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Nonce
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseSyncBatch'
+            example:
+              schema_version: 1
+              family_id: 7b0e2a54-0000-4000-8000-000000001504
+              access_token: synthetic-sync-access
+              operations: []
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Complete intent-bound ACKs in original request order, without claiming batch atomicity.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseSyncBatchResponse'
+              example:
+                schema_version: 1
+                acknowledgements: []
+      x-abastevo-signed-batch:
+        account_proof: true
+        signed: true
+        current_enrollment: true
+        whole_body_preflight: true
+        per_operation: true
+        success: 200
   /v1/orgs/{org_id}/memberships/{membership_id}/devices/list:
     post:
       tags:
@@ -27678,6 +27791,24 @@ components:
             type: 'null'
           review_item_id:
             type: 'null'
+    EnterpriseSyncBatchResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        acknowledgements:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/EnterpriseSyncAcknowledgement'
+      required: [schema_version, acknowledgements]
+      example:
+        schema_version: 1
+        acknowledgements: []
+      description: Complete original canonical ACKs in request order; current authority governs visibility.
+        A late source denial withholds the response without rolling back earlier committed operations.
     EnterpriseSyncReceiptInstant:
       allOf:
       - $ref: '#/components/schemas/EnterpriseSyncInstant'

@@ -17,6 +17,7 @@ type Acknowledgement struct {
 	operationID, digest, result, code, receivedAt, reviewID string
 	revision                                                *int64
 	warnings                                                []string
+	canonical                                               []byte
 }
 
 func (ack Acknowledgement) Result() string { return ack.result }
@@ -123,6 +124,7 @@ func ParseAcknowledgement(raw []byte, operation Operation, options ...Limits) (A
 	if ack.digest != operation.PayloadDigest() {
 		return Acknowledgement{}, ErrDigest
 	}
+	ack.canonical = canonical(root)
 	return ack, nil
 }
 

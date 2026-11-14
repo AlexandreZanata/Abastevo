@@ -704,6 +704,58 @@ removed on rollback; the prior API remains schema-compatible. Test with
 an explicit disposable `ANPFUEL_TEST_DATABASE_URL`.
 [Architecture and evidence](../docs/enterprise/09-architecture.md#31-implemented-company-account-session).
 
+### Scoped offline operation intake (EMP-OFFL-002)
+
+The default-off enterprise composition includes signed `POST
+/v1/orgs/{org_id}/sync/operations`. The frozen wrapper carries the current
+family/access proof and complete immutable operations. Current personal proof,
+identity-v1 signature/nonce, exact configured origin, membership and enrollment
+are resolved independently. Every operation is fully parsed and bound before
+intake admission or prefix effects; cookies, bearer authorization and CSRF
+headers do not authorize this route. The response wraps canonical per-operation
+ACKs in `schema_version:1` and `acknowledgements` in request order.
+
+Each operation has its own ordinary scoped transaction. Immutable claims,
+final receipts and applied-effect proofs are separate; a dependency retry is
+not final and a held review is not an applied effect. Owning handlers establish
+actual current command/record/reference coverage before a claim, and confirm
+authority after waits/projection. Replay requires current protected read
+coverage and preserves original canonical ACK bytes. A final transport source
+check withholds the buffered private response on revocation; previously
+committed operations remain available for an authorized retry.
+
+No business handler, historical/grace producer or production transport budget
+is installed by this task. Source registrations require actual handlers,
+explicit `IntakePlans`, real `IntakeConsumers` and a reviewed `IntakeBudget`.
+`enterprisesuite.IntakeEvents` validates the actual callbacks with the existing
+event handler; install that same handler in the existing Dispatcher before
+activating the first real feature. No default probe, no-op consumer, permission
+or numeric production allowance is supplied. The logical review event persists
+as `offl.operation.review`, preserving the applied audit/outbox vocabulary.
+Offline delivery delay does not establish `CLOCK_SKEW`.
+
+Apply additive migration196 first. It creates no runtime login or grants and
+does not change the compatibility floor. Review SELECT/INSERT on the three
+`org_sync_*` ledgers and column-only UPDATE(operation_id) on claims for
+PostgreSQL row locking; append-only triggers still reject updates, deletes and
+truncation, including empty/no-op statements. Existing source/account/key/nonce,
+root/role/capability, audit/outbox and queue privileges remain required. No
+payload, token, family or signature is stored in the ledger. Company provenance
+survives personal unlink; no personal export access or arbitrary receipt TTL
+is introduced. Rollback disables intake and preserves receipts/queued work.
+
+Use an explicit disposable local `ANPFUEL_TEST_DATABASE_URL` for critical tests:
+
+```sh
+go test -race ./internal/modules/orgsync/... -count=1
+go test -race -tags=integration -timeout=10m ./internal/modules/orgsync/adapters ./internal/modules/organization/adapters -run 'Test(Intake|SyncIntake|OrganizationSync|SyncCurrentDevice|SyncAuthority)' -count=1
+go test -race -tags=integration ./internal/platform/orgquota -run Intake -count=1
+```
+
+The [task evidence](../docs/enterprise/evidence/f2-offl002-intake-ledger.md)
+distinguishes local synthetic acceptance, remaining feature integrations and
+operator/legal/release gates.
+
 ### Current account company contexts (EMP-IDN-016)
 
 The same default-off company composition provides `POST

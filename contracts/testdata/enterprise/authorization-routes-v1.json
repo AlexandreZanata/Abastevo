@@ -749,6 +749,10 @@
     {
       "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/leave/read",
       "boundary": "SELF_MEMBERSHIP"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/sync/operations",
+      "boundary": "SIGNED_BATCH"
     }
   ],
   "unavailable_station_roles": [

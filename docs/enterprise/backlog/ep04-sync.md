@@ -30,7 +30,7 @@ The enterprise queue preserves the approved account, server origin and organizat
 - **Local evidence:** [EMP-OFFL-001](../evidence/f2-offl001-sync-protocol.md), task217: both consumers pass260 shared vectors; no route/ledger/queue is activated. Protected integration remains pending.
 
 ### EMP-OFFL-002 — Server operation intake: receipt ledger, idempotency and dependency ordering
-- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type DB · size L · state TODO
+- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type DB · size L · state LOCAL_DONE
 - **Objective:** Intake one organization operation at a time with deterministic replay and ordering.
 - **Rules and use cases:** BR-OFFL-004, BR-OFFL-005, BR-OFFL-006, BR-OFFL-007, BR-OFFL-008, BR-OFFL-018, BR-TEN-006, UC-OFFL-02
 - **Depends on:** EMP-OFFL-001, EMP-AUTH-003, EMP-PLAT-010
@@ -44,6 +44,16 @@ The enterprise queue preserves the approved account, server origin and organizat
 - **Validation:** V-SQL, V-API, V-ISO, V-AUTHZ, V-IDEM, V-SYNC · migration: additive with populated and prior-image rehearsal · rollback: stop intake and preserve receipts
 - **Risks and assumptions:** Reconcile shared refusal rules and the decision table before freezing consumer cases. Server authority governs processing and receipt visibility.
 - **Done when:** PostGIS proves ordered recovery, atomicity and scoped replay through normal intake.
+
+[F2 intake acceptance](../evidence/f2-offl002-intake-ledger.md),
+from tested/published PRIV-003 51c25146. B-BR-EMP-108..114, BUC-EMP-56/57 and
+EDR-071..075 precede behavior. Feature/F4/runtime readiness is not inferred.
+Final ordinary PostGIS/race union passes24 top-level/46 named cases, including
+actual signed HTTP, immutable replay, dependencies/held facts,12-way contention,
+late-source denial, deferred commit recovery, populated two-org RLS, original
+enrollment/current read coverage, upgrade and personal-erasure/export boundaries.
+Full affected API contract/cmd/api, protocol/application, generation/static/
+format/secret checks pass. Protected integration remains pending.
 
 ### EMP-OFFL-003 — Android persistent operation queue with immutable organization context
 - **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size L · state TODO

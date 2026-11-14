@@ -67,11 +67,27 @@ ordinary PostGIS/race/host and actual API36 emulator acceptance. Twenty-two
 native executions cover sixteen methods, including real source/keys, OS
 backup/transfer, credential, clock/reboot and worker boundaries. Actual product
 startup and normal/opt-in builds/lint pass; accepted ports now bind the real
-client/shared store. Five checkpoints are local;59 audited nodes remain open.
-Next: open the next dependency-ready task from this tested committed head.
+client/shared store.
+PRIV-003 commit51c25146 is backed up at origin/codex/enterprise-f2. The owned
+emulator is parked after acceptance and remains available for later native
+tests. EMP-OFFL-002 is now LOCAL_DONE / INTEGRATION_PENDING:
+[scoped intake and ledger](f2-offl002-intake-ledger.md). B-BR-EMP-108..114,
+BUC-EMP-56/57 and EDR-071..075 precede its implementation. The task adds full
+source preflight, independent transactional receipts and real-effect dependency
+readiness. Final ordinary PostGIS/race union passes24 top-level/46 named cases
+with zero failures/skips, plus three transport unit cases; complete affected
+API contract/cmd/api and source/protocol/generation/static/secret checks pass.
+This includes real signatures, original ACK recovery, weighted budgets,
+12-way contention, held facts, deferred commit rollback, populated two-org RLS,
+original enrollment/current read coverage and personal erasure/export privacy.
+Six checkpoints are local;58 audited nodes remain open. Next: commit/back up
+this checkpoint and begin EMP-OFFL-003 on the accepted protected store.
+Missing real feature/history/review/admission producers remain closed;
+no production no-op handler or F4 exception substitutes for those integrations.
 Use phase tracker215 and cumulative PR203, without an intermediate PR or
-remote-check wait. No asset persistence, intake route or queue was introduced
-by the completed checkpoints. The full F2 scope remains in progress;
+remote-check wait. The signed intake boundary and ledger are implemented;
+asset persistence, durable operation queue and actual business registrations
+remain next work. The full F2 scope remains in progress;
 M1/M2/C1 is not accepted by these checkpoints.
 
 ## Acceptance and retained gates
@@ -87,7 +103,8 @@ currently disconnected, superseding the earlier physical-only instruction for
 this execution. Use isolated synthetic fixtures and preserve other applications
 and data. Actual backup/transfer, secure-unlock, clock/key-loss
 and current-contact requirements must be proved, not inferred from host or UI
-tests. The protected-store/contact bindings remain closed until that acceptance.
+tests. PRIV-003's actual acceptance preceded its protected-store/contact
+bindings; queue/business producers require their own acceptance before binding.
 Legal retention of real receipts, real storage-provider behavior, production
 runtime credentials/grants and real pilot/deployment retain their external gates.
 REL-002 permits a named synthetic local rehearsal; it does not authorize a real
