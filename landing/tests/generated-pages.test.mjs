@@ -23,6 +23,7 @@ const decode = (s) => s.replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/
 const mdGuides = [...site.registry.values()].filter((e) => e.kind === 'guide');
 
 test('every Markdown guide renders the shared article layout', () => {
+  assert.ok(mdGuides.length >= 10, 'editorial wave 1 ships ten Markdown guides');
   for (const guide of mdGuides) {
     const html = read(guide.route);
     const category = site.categories.find((c) => c.slug === guide.category);

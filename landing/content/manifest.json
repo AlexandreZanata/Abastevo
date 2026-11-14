@@ -16,7 +16,7 @@
       }
     },
     {
-      "route": "/guias/etanol-ou-gasolina/", "source": "guias/etanol-ou-gasolina/index.html", "chrome": "shared", "lastmod": "2026-10-26",
+      "route": "/guias/etanol-ou-gasolina/", "source": "guias/etanol-ou-gasolina/index.html", "chrome": "shared", "lastmod": "2026-11-14",
       "guide": {
         "title": "Etanol ou gasolina: a regra dos 70% e como calcular",
         "summary": "A paridade de 70%, quando ela varia e como medir a relação real no seu carro flex.",
@@ -66,10 +66,28 @@
   },
   "categories": [
     {
+      "slug": "precos",
+      "name": "Preços e impostos",
+      "description": "Como o preço dos combustíveis se forma: refinaria, impostos federais, ICMS por litro, mistura obrigatória, frete e margens, explicados com fontes oficiais.",
+      "intro": "Por que o litro custa o que custa, quanto disso é imposto e por que o mesmo combustível tem preços diferentes de uma cidade para outra."
+    },
+    {
       "slug": "escolher-combustivel",
       "name": "Escolher o combustível",
       "description": "Etanol ou gasolina, gasolina comum ou aditivada, diesel S10 ou S500 e GNV: como escolher o combustível certo para o seu veículo e para o seu bolso.",
       "intro": "Comparações honestas entre combustíveis, com o que diz a especificação oficial e como fazer a conta para o seu próprio veículo."
+    },
+    {
+      "slug": "economia",
+      "name": "Economia de combustível",
+      "description": "Formas comprovadas de gastar menos combustível e como medir o consumo médio do carro com o método tanque a tanque, sem mitos e sem promessas mágicas.",
+      "intro": "Hábitos que reduzem o consumo de verdade, como medir o seu carro e como transformar o consumo em custo por quilômetro."
+    },
+    {
+      "slug": "direitos-e-qualidade",
+      "name": "Direitos e qualidade",
+      "description": "Seus direitos no posto, como identificar combustível adulterado ou bomba que entrega menos e onde denunciar: ANP, Inmetro, Procon e consumidor.gov.br.",
+      "intro": "O que a lei garante na hora de abastecer, como conferir qualidade e quantidade e a quem recorrer quando algo não está certo."
     },
     {
       "slug": "dados",
@@ -80,7 +98,10 @@
   ],
   "popularGuides": [
     "/guias/etanol-ou-gasolina/",
-    "/guias/pesquisa-anp/",
-    "/guias/como-ler-precos/"
+    "/guias/como-e-formado-o-preco-da-gasolina/",
+    "/guias/icms-sobre-combustiveis/",
+    "/guias/como-economizar-combustivel/",
+    "/guias/combustivel-adulterado/",
+    "/guias/direitos-do-consumidor-no-posto/"
   ]
 }

@@ -7,8 +7,9 @@ slug: custo-por-km
 datePublished: 2026-11-14
 dateModified: 2026-11-14
 related:
-  - /guias/pesquisa-anp/
-  - /ferramentas/consumo-medio/
+  - /guias/como-calcular-consumo-medio/
+  - /guias/gnv-compensa/
+  - /guias/como-e-formado-o-preco-da-gasolina/
   - /precos/
 ---
 
@@ -43,4 +44,4 @@ Os valores são ilustrativos, não refletem nenhuma tarifa ou preço específico
 - Perdas na recarga: parte da energia que sai da tomada não chega à bateria, então o custo real por km do elétrico é um pouco maior que o calculado.
 - Bandeiras tarifárias e tarifas diferentes por horário, que mudam o valor do kWh ao longo do ano.
 
-Para entender o que os preços de referência medem, leia [como funciona a pesquisa semanal da ANP](/guias/pesquisa-anp/).
+Para entender por que o litro custa o que custa, leia [como é formado o preço da gasolina](/guias/como-e-formado-o-preco-da-gasolina/).

@@ -8,7 +8,8 @@ datePublished: 2026-11-14
 dateModified: 2026-11-14
 related:
   - /guias/etanol-ou-gasolina/
-  - /guias/como-ler-precos/
+  - /guias/como-calcular-consumo-medio/
+  - /guias/gasolina-comum-ou-aditivada/
   - /precos/
 ---
 
@@ -26,7 +27,7 @@ relação = preço do etanol ÷ preço da gasolina
 - Se ficar **acima de 70%**, a gasolina tende a compensar mais.
 - O preço-limite do etanol é o preço da gasolina multiplicado por 0,70.
 
-Os 70% são uma média. Se você mediu o consumo do seu carro com os dois combustíveis, a referência passa a ser a relação entre os consumos (km/l com etanol ÷ km/l com gasolina), que é mais precisa para aquele veículo. Para medir, use a [calculadora de consumo médio](/ferramentas/consumo-medio/).
+Os 70% são uma média. Se você mediu o consumo do seu carro com os dois combustíveis, a referência passa a ser a relação entre os consumos (km/l com etanol ÷ km/l com gasolina), que é mais precisa para aquele veículo. Veja como medir no guia [como calcular o consumo médio do carro](/guias/como-calcular-consumo-medio/).
 
 ## Exemplo resolvido
 

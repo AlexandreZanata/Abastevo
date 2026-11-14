@@ -7,8 +7,9 @@ slug: custo-de-viagem
 datePublished: 2026-11-14
 dateModified: 2026-11-14
 related:
-  - /ferramentas/consumo-medio/
-  - /guias/como-ler-precos/
+  - /guias/como-economizar-combustivel/
+  - /guias/como-calcular-consumo-medio/
+  - /guias/precos-diferentes-entre-cidades/
   - /precos/
 ---
 
@@ -42,4 +43,4 @@ Os valores são ilustrativos e servem só para mostrar a conta.
 - Carga, ar-condicionado, velocidade, relevo e trânsito mudam o resultado. Vale somar uma folga ao planejar o orçamento.
 - O preço do combustível muda pelo caminho. Consulte os [preços de referência por estado](/precos/) para ter uma ideia das regiões por onde vai passar, sempre olhando a data da coleta.
 
-Para saber o consumo real do seu carro antes da viagem, use a [calculadora de consumo médio](/ferramentas/consumo-medio/).
+Para gastar menos na estrada, veja as [formas comprovadas de economizar combustível](/guias/como-economizar-combustivel/).

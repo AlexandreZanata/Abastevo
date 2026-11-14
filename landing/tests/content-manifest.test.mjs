@@ -81,8 +81,9 @@ test('the shipped content manifest and Markdown sources validate', () => {
   const kinds = [...site.registry.values()].reduce((acc, e) => ({ ...acc, [e.kind]: (acc[e.kind] || 0) + 1 }), {});
   assert.equal(kinds.tool, 5);
   assert.equal(kinds.page, 2);
-  assert.equal(kinds.category, site.manifest.categories.length);
+  assert.equal(kinds.category, 5);
   assert.equal(kinds['html-guide'], 3);
+  assert.ok(kinds.guide >= 10);
   const routes = [...site.registry.keys()];
   assert.equal(new Set(routes).size, routes.length, 'routes are unique');
   for (const entry of site.registry.values()) {

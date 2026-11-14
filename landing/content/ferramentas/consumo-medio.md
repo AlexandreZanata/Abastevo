@@ -7,8 +7,9 @@ slug: consumo-medio
 datePublished: 2026-11-14
 dateModified: 2026-11-14
 related:
+  - /guias/como-calcular-consumo-medio/
+  - /guias/como-economizar-combustivel/
   - /guias/etanol-ou-gasolina/
-  - /ferramentas/etanol-ou-gasolina/
   - /precos/
 ---
 
@@ -22,7 +23,7 @@ litros por 100 km = litros ÷ quilômetros × 100
 custo por km = preço do litro ÷ consumo (km/l)
 ```
 
-O guia [etanol ou gasolina: a regra dos 70%](/guias/etanol-ou-gasolina/) mostra como usar essa medição para comparar os dois combustíveis no seu carro flex.
+O passo a passo completo, com os cuidados para a medição ficar precisa, está no guia [como calcular o consumo médio do carro](/guias/como-calcular-consumo-medio/).
 
 ## Exemplo resolvido
 

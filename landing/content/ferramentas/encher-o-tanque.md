@@ -8,7 +8,8 @@ datePublished: 2026-11-14
 dateModified: 2026-11-14
 related:
   - /guias/como-ler-precos/
-  - /ferramentas/consumo-medio/
+  - /guias/direitos-do-consumidor-no-posto/
+  - /guias/como-economizar-combustivel/
   - /precos/
 ---
 
@@ -39,6 +40,6 @@ Os valores são ilustrativos.
 
 - O marcador não é preciso: em muitos carros ele demora a descer no começo e cai mais rápido no fim. Trate o resultado como aproximação.
 - A capacidade real pode ser um pouco diferente da indicada no manual, e a reserva não significa tanque seco.
-- Na bomba, confira se o visor começa zerado e se o preço é o mesmo da placa. O guia [como ler preços na bomba e na placa](/guias/como-ler-precos/) explica o que observar.
+- Na bomba, confira se o visor começa zerado e se o preço é o mesmo da placa. Seus direitos estão em [direitos do consumidor no posto](/guias/direitos-do-consumidor-no-posto/).
 
 Para saber se o preço do litro está alto ou baixo na sua região, compare com os [preços de referência por estado](/precos/), sempre olhando a data da coleta.
