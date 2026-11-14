@@ -7,6 +7,7 @@ import (
 	migrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	memberpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/application"
+	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/domain"
 	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
@@ -20,6 +21,22 @@ import (
 	"testing/fstest"
 	"time"
 )
+
+// beforeAdmissions runs a seed with the current invitation store on an image
+// older than 000189. The current issue/list path first materializes expired
+// admissions (B-BR-EMP-174) in a table that image does not have and that can
+// hold no rows before 000189, so an empty stand-in keeps that step a no-op. It
+// is dropped before any snapshot or migration assertion runs.
+func beforeAdmissions(t *testing.T, f *orgtest.Fixture, seed func()) {
+	t.Helper()
+	if _, e := f.Admin.Exec(t.Context(), `CREATE TABLE org_invitation_acceptances(org_id uuid NOT NULL,state text NOT NULL,revision bigint NOT NULL,cause text,deadline timestamptz NOT NULL);GRANT SELECT,UPDATE ON org_invitation_acceptances TO `+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
+		t.Fatal(e)
+	}
+	seed()
+	if _, e := f.Admin.Exec(t.Context(), `DROP TABLE org_invitation_acceptances`); e != nil {
+		t.Fatal(e)
+	}
+}
 
 func TestRedemptionOrdinaryPopulatedUpgradeRollbackRecovery(t *testing.T) {
 	const name = "000189_invitation_redemption.sql"
@@ -47,7 +64,9 @@ func TestRedemptionOrdinaryPopulatedUpgradeRollbackRecovery(t *testing.T) {
 		t.Fatal(e)
 	}
 	invfx := invitationFixtureState{legalFixtureState: fx, invites: &memberpg.InvitationStore{Pool: f.Runtime, Memberships: fx.store.Memberships, Authority: &orgpg.InvitationAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles, Capabilities: flags, Settings: &orgpg.SettingsStore{Pool: f.Runtime}}, Audit: auditpg.NewStore(f.Runtime, catalog)}}
-	v, code := redeemCode(t, invfx, "DRIVER")
+	var v d.InvitationSnapshot
+	var code string
+	beforeAdmissions(t, f, func() { v, code = redeemCode(t, invfx, "DRIVER") })
 	snapshot := func() string {
 		t.Helper()
 		var out string

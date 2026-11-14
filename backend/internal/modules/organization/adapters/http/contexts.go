@@ -25,7 +25,7 @@ func (e accountContextEndpoint) AccountContextRule() orgapi.AccountContextRule {
 	return orgapi.AccountContextRule{Action: e.action, Cookie: true, CSRF: true, Binding: true, Success: 200}
 }
 func contextMetadata(v app.AccountContext) map[string]any {
-	return map[string]any{"id": v.ID, "name": v.Name, "membership_id": v.MembershipID}
+	return map[string]any{"id": v.ID, "name": v.Name, "membership_id": v.MembershipID, "state": v.State, "suspension_reason": v.SuspensionReason}
 }
 func (e accountContextEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")

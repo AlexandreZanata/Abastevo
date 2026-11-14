@@ -79,7 +79,7 @@ func TestOwnershipTransferMappedErrors(t *testing.T) {
 		want orgapi.Code
 	}{
 		{d.ErrOwnerRequiresPersonalAccount, orgapi.OwnerRequiresPersonal}, {d.ErrTransferPending, orgapi.TransferPending},
-		{d.ErrSelfTransferForbidden, orgapi.Conflict}, {d.ErrTargetAlreadyOwner, orgapi.Conflict}, {d.ErrTargetNotActive, orgapi.Conflict}, {d.ErrTargetEmployeeNotActive, orgapi.Conflict},
+		{d.ErrSelfTransferForbidden, orgapi.Conflict}, {d.ErrTargetAlreadyOwner, orgapi.Conflict}, {permissions.ErrAssignmentConflict, orgapi.Conflict}, {d.ErrTargetNotActive, orgapi.Conflict}, {d.ErrTargetEmployeeNotActive, orgapi.Conflict},
 		{d.ErrTransferNotFound, orgapi.NotFound}, {d.ErrTransferNotPending, orgapi.Conflict}, {d.ErrTransferExpired, orgapi.Conflict},
 		{d.ErrNotTransferTarget, orgapi.NotFound}, {d.ErrNotTransferParticipant, orgapi.NotFound},
 		{d.ErrTransferOperationReused, orgapi.OperationReused}, {d.ErrOrganizationNotActive, orgapi.OrgSuspended},

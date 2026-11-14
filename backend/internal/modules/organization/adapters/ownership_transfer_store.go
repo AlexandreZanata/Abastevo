@@ -75,6 +75,11 @@ func transferError(ctx context.Context, e error) error {
 		}
 		return app.ErrUnavailable
 	}
+	// A role-period collision in the handover is a state conflict (409), never a
+	// retryable outage; the transaction has already rolled back.
+	if errors.Is(e, roles.ErrAssignmentConflict) {
+		return roles.ErrAssignmentConflict
+	}
 	for _, known := range []error{app.ErrUnauthenticated, app.ErrNotFound, access.ErrNoMembership, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrSetupIncomplete, d.ErrInvalid, d.ErrScope, d.ErrTransferPending, d.ErrTargetAlreadyOwner, d.ErrTransferNotPending, d.ErrTransferExpired, d.ErrTransferOperationReused, d.ErrSelfTransferForbidden, d.ErrOwnerRequiresPersonalAccount, d.ErrTargetNotActive, d.ErrTargetEmployeeNotActive, d.ErrOrganizationNotActive, kernel.ErrLastOrgOwner} {
 		if errors.Is(e, known) {
 			return e
@@ -199,6 +204,29 @@ func validTransferMember(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, 
 func currentTransferOwner(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string) (bool, error) {
 	return q.New(tx).TransferCurrentOwner(ctx, q.TransferCurrentOwnerParams{OrgID: scope.OrgID().String(), MemberID: member})
 }
+
+// B-BR-EMP-173: a recipient with any unended, unexpired OWNER period, current
+// or scheduled, is already an owner. The handover's open-ended OWNER period
+// would overlap that plan, so it is refused instead of rewritten.
+func (s *OwnershipTransferStore) transferTargetOwner(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string) (bool, error) {
+	if owner, e := currentTransferOwner(ctx, tx, scope, member); e != nil || owner {
+		return owner, e
+	}
+	periods, e := s.Assignments.RemainingOwnershipAssignmentsTx(ctx, tx, scope, member)
+	if e != nil {
+		return false, e
+	}
+	for _, period := range periods {
+		v, e := period.Snapshot(scope)
+		if e != nil {
+			return false, e
+		}
+		if v.Role == roles.Owner {
+			return true, nil
+		}
+	}
+	return false, nil
+}
 func transferDigest(scope kernel.OrgScope, kind, member, id, target string, step bool) string {
 	raw, _ := json.Marshal([]any{1, scope.OrgID().String(), kind, member, id, target, step})
 	return fmt.Sprintf("%x", sha256.Sum256(raw))
@@ -318,7 +346,7 @@ func (s *OwnershipTransferStore) write(ctx context.Context, scope kernel.OrgScop
 			if !owner {
 				return roles.DenyPermission("org.ownership.transfer")
 			}
-			already, e := currentTransferOwner(ctx, tx, scope, target)
+			already, e := s.transferTargetOwner(ctx, tx, scope, target)
 			if e != nil {
 				return e
 			}
@@ -356,7 +384,7 @@ func (s *OwnershipTransferStore) write(ctx context.Context, scope kernel.OrgScop
 				if !owner {
 					return d.ErrTransferNotPending
 				}
-				already, e := currentTransferOwner(ctx, tx, scope, before.TargetMembershipID)
+				already, e := s.transferTargetOwner(ctx, tx, scope, before.TargetMembershipID)
 				if e != nil {
 					return e
 				}

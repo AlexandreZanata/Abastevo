@@ -173,7 +173,7 @@ func (e personalInvitationEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Req
 	})).ServeHTTP(w, r)
 }
 func admissionResponse(v app.AdmissionView, replay bool) map[string]any {
-	return map[string]any{"invitation_id": v.InvitationID, "membership_id": v.MembershipID, "account_alias": v.Alias, "state": v.State, "revision": v.Revision, "accepted_at": v.AcceptedAt, "confirmation_deadline": v.Deadline, "replayed": replay, "data_mode": "SYNTHETIC"}
+	return map[string]any{"invitation_id": v.InvitationID, "membership_id": v.MembershipID, "account_alias": v.Alias, "account_erased": v.AccountErased, "state": v.State, "revision": v.Revision, "accepted_at": v.AcceptedAt, "confirmation_deadline": v.Deadline, "replayed": replay, "data_mode": "SYNTHETIC"}
 }
 func RegisterRedemption(router chi.Router, enabled bool, service app.RedemptionRepository, cookies company.Handler, gateway orgapi.Gateway, authorization access.Authorization, roots org.Repository, admit UnknownInvitationAdmission) error {
 	if !enabled {

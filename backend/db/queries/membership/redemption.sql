@@ -18,7 +18,7 @@ INSERT INTO org_invitation_person_commands(org_id,operation_id,actor_account_id,
 -- name: BeginInvitationAcceptance :exec
 INSERT INTO org_invitation_acceptances(org_id,invitation_id,membership_id,account_id,account_alias,state,deadline,confirmation_required,settings_revision)VALUES(CAST(@org_id::text AS uuid),CAST(@invitation_id::text AS uuid),CAST(@membership_id::text AS uuid),CAST(@account_id::text AS uuid),@alias::text,'WAITING',clock_timestamp()+interval '168 hours',@confirmation_required::boolean,@settings_revision::bigint);
 -- name: InvitationAcceptance :one
-SELECT invitation_id::text AS invitation_id,membership_id::text AS membership_id,account_id::text AS account_id,account_alias,state,revision,accepted_at,deadline,confirmation_required,settings_revision FROM org_invitation_acceptances WHERE org_id=CAST(@org_id::text AS uuid) AND invitation_id=CAST(@id::text AS uuid);
+SELECT invitation_id::text AS invitation_id,membership_id::text AS membership_id,COALESCE(account_id::text,'')::text AS account_id,account_alias,state,revision,accepted_at,deadline,confirmation_required,settings_revision FROM org_invitation_acceptances WHERE org_id=CAST(@org_id::text AS uuid) AND invitation_id=CAST(@id::text AS uuid);
 -- name: TransitionInvitationAcceptance :execrows
 UPDATE org_invitation_acceptances SET state= @state::text,revision=revision+1,cause= @cause::text,confirmed_by=NULLIF(@confirmed_by::text,'')::uuid WHERE org_id=CAST(@org_id::text AS uuid) AND invitation_id=CAST(@id::text AS uuid) AND state='WAITING' AND revision= @revision::bigint AND deadline>clock_timestamp();
 -- name: ExpireInvitationAcceptances :exec

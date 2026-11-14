@@ -139,7 +139,7 @@ func (q *Queries) InstallInvitationLocator(ctx context.Context, locator string) 
 }
 
 const invitationAcceptance = `-- name: InvitationAcceptance :one
-SELECT invitation_id::text AS invitation_id,membership_id::text AS membership_id,account_id::text AS account_id,account_alias,state,revision,accepted_at,deadline,confirmation_required,settings_revision FROM org_invitation_acceptances WHERE org_id=CAST($1::text AS uuid) AND invitation_id=CAST($2::text AS uuid)
+SELECT invitation_id::text AS invitation_id,membership_id::text AS membership_id,COALESCE(account_id::text,'')::text AS account_id,account_alias,state,revision,accepted_at,deadline,confirmation_required,settings_revision FROM org_invitation_acceptances WHERE org_id=CAST($1::text AS uuid) AND invitation_id=CAST($2::text AS uuid)
 `
 
 type InvitationAcceptanceParams struct {

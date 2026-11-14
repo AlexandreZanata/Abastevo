@@ -129,6 +129,17 @@ func loadInvitation(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, id st
 
 var invitationHash = regexp.MustCompile(`^[a-f0-9]{64}$`)
 
+// expireInvitationSources materializes server-time expiry of pending invitations
+// and of admissions past their confirmation deadline (B-BR-EMP-174), so an
+// expired admission's INVITED reservation cannot block issue, list or accept.
+// The caller already holds the organization root lock taken by its authority.
+func expireInvitationSources(ctx context.Context, queries *q.Queries, scope kernel.OrgScope) error {
+	if e := queries.ExpireInvitations(ctx, scope.OrgID().String()); e != nil {
+		return e
+	}
+	return queries.ExpireInvitationAcceptances(ctx, scope.OrgID().String())
+}
+
 func (s *InvitationStore) WriteInvitation(ctx context.Context, scope kernel.OrgScope, actor app.EmployeeActor, member string, c app.InvitationWrite, plan app.InvitationPlan) (d.Invitation, bool, error) {
 	if e := employeeCall(scope, actor, member); e != nil {
 		return d.Invitation{}, false, e
@@ -180,7 +191,7 @@ func (s *InvitationStore) WriteInvitation(ctx context.Context, scope kernel.OrgS
 		if !errors.Is(e, pgx.ErrNoRows) {
 			return e
 		}
-		if e := queries.ExpireInvitations(ctx, scope.OrgID().String()); e != nil {
+		if e := expireInvitationSources(ctx, queries, scope); e != nil {
 			return e
 		}
 		var old d.InvitationSnapshot
@@ -358,7 +369,7 @@ func (s *InvitationStore) ListInvitations(ctx context.Context, scope kernel.OrgS
 			return e
 		}
 		queries := q.New(tx)
-		if e := queries.ExpireInvitations(ctx, scope.OrgID().String()); e != nil {
+		if e := expireInvitationSources(ctx, queries, scope); e != nil {
 			return e
 		}
 		rows, e := queries.ListInvitations(ctx, q.ListInvitationsParams{OrgID: scope.OrgID().String(), IDFilter: f.ID, EmployeeFilter: f.EmployeeID, StateFilter: string(f.State), AfterID: f.AfterID, RowLimit: int32(f.Limit + 1)})

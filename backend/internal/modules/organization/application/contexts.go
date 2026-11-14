@@ -7,9 +7,12 @@ import (
 )
 
 // Account contexts are current source metadata, never a cached authority grant.
+// State and SuspensionReason carry the SCR-ORG-12 notice for readable
+// SUSPENDED/ARCHIVED organizations (BR-ORG-030/033); CLOSED is never a context.
 type AccountContext struct {
 	privateOnboarding
-	ID, Name, MembershipID string
+	ID, Name, MembershipID  string
+	State, SuspensionReason string
 }
 type AccountContextPage struct {
 	privateOnboarding

@@ -17,11 +17,17 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+// contextCapability is the advisory, non-locking current capability read.
+// A context read never takes the capability write/intake lock.
+type contextCapability interface {
+	StateTx(context.Context, pgx.Tx, kernel.OrgScope, string) (capability.State, error)
+}
+
 type AccountContextStore struct {
 	Pool         *pgxpool.Pool
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
-	Capabilities setupCapability
+	Capabilities contextCapability
 	Settings     app.SettingsIntakeRepository
 }
 
@@ -81,9 +87,6 @@ func contextScope(ctx context.Context, tx pgx.Tx, org string) (kernel.OrgScope, 
 }
 func (s *AccountContextStore) current(ctx context.Context, tx pgx.Tx, actor app.CompanyActor, scope kernel.OrgScope, member string, details bool) (app.AccountContextView, error) {
 	var empty app.AccountContextView
-	if e := s.Capabilities.GuardWrite(ctx, tx, scope, "organizations"); e != nil {
-		return empty, e
-	}
 	queries := q.New(tx)
 	params := q.LockLegalOrganizationParams{OrgID: scope.OrgID().String(), TermsVersion: d.SyntheticTermsVersion, TermsDigest: d.SyntheticTermsDigest}
 	var root q.LockLegalOrganizationRow
@@ -98,7 +101,17 @@ func (s *AccountContextStore) current(ctx context.Context, tx pgx.Tx, actor app.
 	if e != nil {
 		return empty, e
 	}
-	if !root.HasSnapshot || !root.State.Valid || !root.SyntheticSetup || root.State.String != "ACTIVE" && root.State.String != "PENDING_SETUP" {
+	if !root.HasSnapshot || !root.State.Valid || !root.SyntheticSetup {
+		return empty, app.ErrNotFound
+	}
+	// BR-ORG-030/033: suspended and archived organizations stay readable for
+	// their members; only these lifecycle states accept writes.
+	writable := false
+	switch d.State(root.State.String) {
+	case d.PendingSetup, d.Active:
+		writable = true
+	case d.Suspended, d.Archived:
+	default:
 		return empty, app.ErrNotFound
 	}
 	// Membership/employee/role changes retain this root lock, so the following
@@ -128,11 +141,23 @@ func (s *AccountContextStore) current(ctx context.Context, tx pgx.Tx, actor app.
 	if ev.State != memberd.EmployeeActive {
 		return empty, app.ErrNotFound
 	}
+	// Only a bound current member learns the capability outcome, so a
+	// non-member cannot tell capability state from NOT_FOUND. Plain read.
+	enabled, e := s.Capabilities.StateTx(ctx, tx, scope, "organizations")
+	if e != nil {
+		return empty, e
+	}
+	if e := enabled.CheckWrite(); e != nil {
+		return empty, e
+	}
 	meta, e := queries.GetRoot(ctx, scope.OrgID().String())
 	if e != nil {
 		return empty, e
 	}
-	result := app.AccountContextView{Organization: app.AccountContext{ID: scope.OrgID().String(), Name: meta.DisplayName, MembershipID: member}, Permissions: []permissions.Permission{}, InvitationGrants: []permissions.ContextGrant{}}
+	if meta.State != root.State.String {
+		return empty, app.ErrUnavailable
+	}
+	result := app.AccountContextView{Organization: app.AccountContext{ID: scope.OrgID().String(), Name: meta.DisplayName, MembershipID: member, State: meta.State, SuspensionReason: meta.SuspensionReason}, Permissions: []permissions.Permission{}, InvitationGrants: []permissions.ContextGrant{}}
 	if !details {
 		if _, e := contextProof(ctx, tx, actor); e != nil {
 			return empty, e
@@ -161,7 +186,9 @@ func (s *AccountContextStore) current(ctx context.Context, tx pgx.Tx, actor app.
 	if e != nil || !settingsInstant(now) {
 		return empty, app.ErrUnavailable
 	}
-	result.Permissions, result.InvitationGrants, e = permissions.ContextHints(scope, member, candidates, now.Time, fresh)
+	// Management hints are write controls; a read-only organization shows
+	// reading hints only, exactly like an expired-freshness session.
+	result.Permissions, result.InvitationGrants, e = permissions.ContextHints(scope, member, candidates, now.Time, fresh && writable)
 	if e != nil {
 		return empty, e
 	}
