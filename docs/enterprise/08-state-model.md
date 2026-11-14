@@ -111,7 +111,7 @@ Every state name below is canonical. "Kind" is O (operational), S (sync), R (rev
 | Maintenance plan occurrence | O | `UPCOMING`, `DUE`, `OVERDUE`, `DONE`, `SKIPPED` | [maintenance](modules/maintenance.md) |
 | Stock measurement reconciliation | L | `OPEN`, `EXPLAINED`, `ADJUSTED` | [fuel-stock](modules/fuel-stock.md) |
 | Finding | R | `OPEN`, `IN_REVIEW`, `CONFIRMED`, `JUSTIFIED`, `FALSE_POSITIVE`, `DISMISSED`, `SUPERSEDED` | [intelligence](modules/intelligence.md) |
-| Export job | L | `QUEUED`, `RUNNING`, `READY`, `EXPIRED`, `FAILED` | [intelligence](modules/intelligence.md) |
+| Export job | L | `QUEUED`, `RUNNING`, `READY`, `EXPIRED`, `FAILED` (`RUNNING`→`QUEUED` is a fenced lease release; the last attempt or a lease expired on it ends `FAILED` with `EXPORT_ATTEMPTS_EXHAUSTED`) | [intelligence](modules/intelligence.md) |
 | Import batch | L | `UPLOADED`, `PARSED`, `MAPPED`, `VALIDATED`, `CONFIRMED`, `APPLYING`, `APPLIED`, `APPLIED_WITH_ERRORS`, `FAILED`, `CANCELLED`, `REVERTED` | [imports-notifications-integrations](modules/imports-notifications-integrations.md) |
 | Notification | L | `PENDING`, `DELIVERED`, `FAILED`, `SUPPRESSED` (PENDING = registered request not yet dispatched; DELIVERED/SUPPRESSED are per-recipient IN_APP history with reasons INELIGIBLE, MUTED, LIMITED; FAILED belongs to the external channels of EMP-NOTIF-002) | [imports-notifications-integrations](modules/imports-notifications-integrations.md) |
 | Integration connection | L | `CONFIGURED`, `ACTIVE`, `DEGRADED`, `DISABLED` | [imports-notifications-integrations](modules/imports-notifications-integrations.md) |

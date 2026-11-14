@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	enterprisejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/adapters/jobs"
+	orgexport "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 )
 
@@ -25,7 +26,7 @@ func TestWorkerReservesExactlyFourSerialSafetySlots(t *testing.T) {
 		t.Fatal(dispatchers, err)
 	}
 	general := dispatchers[0]
-	if general.Kind != "" || len(general.ExcludedKinds) != 13 {
+	if general.Kind != "" || len(general.ExcludedKinds) != 15 {
 		t.Fatal("general dispatcher can steal safety work", general)
 	}
 	seen := map[string]bool{}
@@ -36,7 +37,7 @@ func TestWorkerReservesExactlyFourSerialSafetySlots(t *testing.T) {
 		seen[d.Kind] = true
 	}
 	for _, kind := range general.ExcludedKinds {
-		if !seen[kind] && kind != "quality-import" && kind != "quality-discovery" && kind != "quality-revalidate" && kind != "quality-recompute" && kind != "quality-sanctions-import" && kind != "quality-sanctions-discovery" && kind != "quality-enforcement-import" && kind != "quality-enforcement-discovery" {
+		if !seen[kind] && kind != "quality-import" && kind != "quality-discovery" && kind != "quality-revalidate" && kind != "quality-recompute" && kind != "quality-sanctions-import" && kind != "quality-sanctions-discovery" && kind != "quality-enforcement-import" && kind != "quality-enforcement-discovery" && kind != orgexport.BuildKind && kind != orgexport.CleanupKind {
 			t.Fatal("safety work lost its slot", kind)
 		}
 	}
@@ -82,7 +83,7 @@ func TestWorkerNativeSlotsAreExplicitAndIndependent(t *testing.T) {
 	if e != nil || len(enabled) != 11 || enabled[6].Kind != "quality-import" || enabled[7].Kind != "quality-revalidate" || enabled[8].Kind != "quality-recompute" || enabled[9].Kind != "quality-sanctions-import" || enabled[10].Kind != "quality-sanctions-discovery" {
 		t.Fatal("native slot", enabled, e)
 	}
-	if len(enabled[0].ExcludedKinds) != 13 {
+	if len(enabled[0].ExcludedKinds) != 15 {
 		t.Fatal("general worker can claim source jobs")
 	}
 	for _, kinds := range [][]string{{"foreign"}, {"quality-import", "quality-import"}} {
@@ -153,5 +154,34 @@ func TestEnterprisePortalRefreshIsIsolated(t *testing.T) {
 	}
 	if dispatchers[6].Kind != enterprisejobs.RefreshKind {
 		t.Fatalf("dedicated refresh dispatcher = %+v", dispatchers[6])
+	}
+}
+
+// EMP-RPT-001, BR-RPT-009: organization export work never runs on the
+// general dispatcher; when enabled each kind has its own serial slot, and
+// while disabled queued jobs wait without charging attempts.
+func TestOrganizationExportJobsRunOnTheirOwnSerialSlots(t *testing.T) {
+	handlers := map[string]jobs.Handler{}
+	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "payment-inbox", orgexport.BuildKind, orgexport.CleanupKind} {
+		handlers[kind] = dispatcherHandler(kind)
+	}
+	disabled, err := workerDispatchers(nil, handlers)
+	if err != nil || len(disabled) != 6 {
+		t.Fatal("export handlers implicitly claimed work", err)
+	}
+	waiting := map[string]bool{}
+	for _, kind := range disabled[0].ExcludedKinds {
+		waiting[kind] = true
+	}
+	if !waiting[orgexport.BuildKind] || !waiting[orgexport.CleanupKind] {
+		t.Fatal("general dispatcher can claim organization export work")
+	}
+	enabled, err := workerDispatchers(nil, handlers, orgexport.BuildKind, orgexport.CleanupKind)
+	if err != nil || len(enabled) != 8 || enabled[6].Kind != orgexport.BuildKind || enabled[7].Kind != orgexport.CleanupKind {
+		t.Fatal("export slots", err)
+	}
+	enabledHandlers, err := exportWorkerHandlers(workerExportConfig{})
+	if err != nil || len(enabledHandlers) != 0 {
+		t.Fatal("export handlers composed without the enterprise switch", err)
 	}
 }

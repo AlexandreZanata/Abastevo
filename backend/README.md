@@ -1182,3 +1182,18 @@ single dispatch claim, read mark, revisioned preference, budget count and row
 locks; guards refuse every other change), plus the existing AUTH-003
 current-authority reads. No kind, producer or dispatch worker is enabled;
 producers compose `notif.dispatch` in the existing Dispatcher before activation.
+
+### Organization export jobs (EMP-RPT-001)
+
+Migration207 adds the forced-RLS `org_export_jobs` table. The API and worker
+runtime roles need `GRANT SELECT, INSERT, UPDATE ON org_export_jobs`, `GRANT
+SELECT, INSERT ON org_audit_events, org_sensitive_access_events` and `GRANT
+SELECT, INSERT, UPDATE ON job_queue`; the export insert guard reads
+`org_memberships`. The worker's requester re-check needs what the company
+pipeline already uses: `SELECT` plus the row-lock privilege for `FOR SHARE` on
+`accounts` and `organizations`, and `SELECT` on `org_memberships`,
+`org_role_assignments`, `org_onboarding_commands` and `payment_billing_exits`.
+The worker must connect with an ordinary NOSUPERUSER/NOBYPASSRLS login that owns
+no RLS table. Rows are never deleted; export objects live under
+`org/<org_id>/export/` in the existing private bucket and are deleted by the
+`org-export-cleanup` job. No production format is registered (EMP-RPT-002).

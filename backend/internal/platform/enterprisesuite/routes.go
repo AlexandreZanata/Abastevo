@@ -41,6 +41,8 @@ import (
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	eventpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/adapters"
+	exportpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
+	exportapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/application"
 	mediapg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgmedia/adapters"
 	media "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgmedia/application"
 	notifypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/adapters"
@@ -83,6 +85,12 @@ type Options struct {
 	// document originals. Nil keeps the routes mounted while bytes and content
 	// are unavailable; provider qualification remains a separate gate.
 	DocumentStorage *mediapg.StorageConfig
+	// ExportStorage is the private bucket for export files; nil keeps every
+	// export transfer unavailable (EMP-RPT-001).
+	ExportStorage *exportpg.StorageConfig
+	// ExportFormats are the admitted export formats. Production composes
+	// none until EMP-RPT-002 admits one; tests add a synthetic kind.
+	ExportFormats []exportapp.Format
 }
 
 // Register performs no I/O or provisioning. The default mounts no private
@@ -126,6 +134,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, reviewpg.PeriodAuditDefinitions()...)
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
+	definitions = append(definitions, exportpg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -156,6 +165,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "idn.device", Permissions: []string{"idn.credential.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic scoped device enrollment and revocation inherit identity v1 write200/hour on every axis; current source membership precedes admission and production measurement remains required."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "doc.document", Permissions: []string{"doc.document.attach"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic document upload sessions inherit identity v1 write 200/hour on every axis; byte transfers keep the orgmedia slot limits and production measurement remains required."},
 	})
@@ -289,6 +299,11 @@ func Register(router chi.Router, o Options) error {
 	periods := &reviewpg.PeriodStore{Pool: o.Pool, Authority: &orgpg.PeriodAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}, Audit: auditStore}
 	periodAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: reviewweb.PeriodRecords{}, Now: time.Now}
 	if err := reviewweb.RegisterPeriods(router, reviewapp.PeriodService{Enabled: true, Repository: periods, NewID: jobs.NewUUIDv4}, cookies, gateway, periodAuthorization); err != nil {
+		return err
+	}
+
+	exportAuthority := &orgpg.ExportAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
+	if err := registerExports(router, o, cookies, gateway, exportAuthority, authorization.Capabilities, roles, auditStore); err != nil {
 		return err
 	}
 

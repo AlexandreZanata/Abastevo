@@ -48,6 +48,11 @@ const (
 	ManagedAccountRestricted Code = "MANAGED_ACCOUNT_RESTRICTED"
 	RateLimited              Code = "RATE_LIMITED"
 	Unavailable              Code = "UNAVAILABLE"
+	// Export refusals (EMP-RPT-001, intelligence §10.11).
+	ExportQueueFull         Code = "EXPORT_QUEUE_FULL"
+	ExportNotReady          Code = "EXPORT_NOT_READY"
+	ExportExpired           Code = "EXPORT_EXPIRED"
+	ExportFormatUnavailable Code = "EXPORT_FORMAT_UNAVAILABLE"
 )
 
 func (code Code) Error() string { return string(code) }
@@ -65,6 +70,7 @@ var statuses = map[Code]int{
 	TransferPending:       409,
 	EmployeeHasAccess:     409,
 	TokenInvalid:          404, AlreadyMember: 409, ManagedAccountRestricted: 403,
+	ExportQueueFull: 429, ExportNotReady: 409, ExportExpired: 410, ExportFormatUnavailable: 422,
 }
 
 type permissionFailure struct{ key string }

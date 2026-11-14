@@ -54,6 +54,8 @@ tags:
     description: Private organization financial periods; lock, reopen and re-lock with append-only history.
   - name: enterprise-notifications
     description: Own in-app notices and per-kind preferences of the current member; external channels stay disabled.
+  - name: enterprise-reports
+    description: Private organization exports; asynchronous jobs with private files and short audited requester-bound capabilities.
   - name: feedback
     description: Authenticated station/fuel ratings and comments plus anonymous reads.
   - name: premium
@@ -18052,6 +18054,387 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/request:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportRequest
+      summary: Request an asynchronous export of an admitted kind
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Write admission, enabled capability and ACTIVE organization. The kind must have an admitted format (else EXPORT_FORMAT_UNAVAILABLE 422); parameters are a canonical JSON object of at most 4096 bytes. One QUEUED job, one audit event and one reference-only worker job commit together; the operation ID replays the stored job. A requester with three QUEUED or RUNNING jobs gets EXPORT_QUEUE_FULL (429). Synthetic construction admits no real export format and does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 202
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009200
+              kind: test.synthetic_rows
+              parameters:
+                rows: 3
+      responses:
+        '202':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportAcknowledgement'
+              example:
+                export:
+                  export_id: 7b0e2a54-0000-4000-8000-000000009201
+                  kind: test.synthetic_rows
+                  parameters:
+                    rows: 3
+                  parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+                  state: QUEUED
+                  attempts: 0
+                  max_attempts: 3
+                  failure_code: null
+                  row_count: null
+                  byte_count: null
+                  sha256: null
+                  media_type: null
+                  requested_at: '2026-11-14T12:00:00Z'
+                  as_of: '2026-11-14T12:00:00Z'
+                  ready_at: null
+                  expires_at: null
+                  failed_at: null
+                  expired_at: null
+                  data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/list:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportList
+      summary: List the calling member's exports, newest first
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Lists only jobs requested by the calling membership; keyset cursor bound to the filter and caller; optional state filter. Expired jobs keep their metadata without a download. Synthetic construction admits no real export format and does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportPage'
+              example:
+                items:
+                - export_id: 7b0e2a54-0000-4000-8000-000000009201
+                  kind: test.synthetic_rows
+                  parameters:
+                    rows: 3
+                  parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+                  state: READY
+                  attempts: 1
+                  max_attempts: 3
+                  failure_code: null
+                  row_count: 3
+                  byte_count: 40
+                  sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+                  media_type: text/csv
+                  requested_at: '2026-11-14T12:00:00Z'
+                  as_of: '2026-11-14T12:00:00Z'
+                  ready_at: '2026-11-14T12:00:05Z'
+                  expires_at: '2026-11-21T12:00:05Z'
+                  failed_at: null
+                  expired_at: null
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/{export_id}/read:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportRead
+      summary: Read one of the calling member's exports
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Returns state, attempts, failure code, and for a published file its row count, size, SHA-256, media type, ready and expiry instants. No storage address is ever returned. Synthetic construction admits no real export format and does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: export_id
+        in: path
+        required: true
+        description: Export job of the calling membership; any other job, including another member's, is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportReadRequest'
+            example:
+              {}
+      responses:
+        '200':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportView'
+              example:
+                export_id: 7b0e2a54-0000-4000-8000-000000009201
+                kind: test.synthetic_rows
+                parameters:
+                  rows: 3
+                parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+                state: READY
+                attempts: 1
+                max_attempts: 3
+                failure_code: null
+                row_count: 3
+                byte_count: 40
+                sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+                media_type: text/csv
+                requested_at: '2026-11-14T12:00:00Z'
+                as_of: '2026-11-14T12:00:00Z'
+                ready_at: '2026-11-14T12:00:05Z'
+                expires_at: '2026-11-21T12:00:05Z'
+                failed_at: null
+                expired_at: null
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '410':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/{export_id}/access:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportAccess
+      summary: Obtain a short-lived capability for a ready export
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Requires a READY job before its expiry (EXPORT_NOT_READY 409, EXPORT_EXPIRED 410). Records EXPORT_FILE ISSUED in the sensitive-access log before minting a capability bound to the API origin, organization, account, membership, job and file, valid for at most five minutes. An audit failure issues nothing. Synthetic construction admits no real export format and does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: export_id
+        in: path
+        required: true
+        description: Export job of the calling membership; any other job, including another member's, is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportReadRequest'
+            example:
+              {}
+      responses:
+        '200':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportCapability'
+              example:
+                export_id: 7b0e2a54-0000-4000-8000-000000009201
+                capability: v1.synthetic-export-capability
+                expires_at: '2026-11-14T12:05:00Z'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '410':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/{export_id}/content:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportContent
+      summary: Download a ready export with its capability
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. The capability travels in the body. The server verifies it, re-checks authority, state and expiry, reads and verifies the private file, records EXPORT_FILE SERVED and only then returns the exact bytes base64-encoded. A foreign, changed or expired capability is NOT_FOUND; an audit failure serves nothing. Synthetic construction admits no real export format and does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: export_id
+        in: path
+        required: true
+        description: Export job of the calling membership; any other job, including another member's, is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportContentRequest'
+            example:
+              capability: v1.synthetic-export-capability
+      responses:
+        '200':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportContent'
+              example:
+                export_id: 7b0e2a54-0000-4000-8000-000000009201
+                media_type: text/csv
+                sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+                row_count: 3
+                byte_count: 8
+                content_base64: YSxiCjEsMgo=
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '410':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -19058,6 +19441,324 @@ components:
           time_basis: REPORTING_DAY
           data_mode: SYNTHETIC
         next_cursor: ''
+    EnterpriseExportKind:
+      description: Kind of an admitted export format; a kind without an admitted format is EXPORT_FORMAT_UNAVAILABLE.
+      type: string
+      maxLength: 64
+      pattern: '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$'
+      example: test.synthetic_rows
+    EnterpriseExportRequest:
+      description: Request one export job. The operation ID is the idempotency key; parameters are canonicalized and digested by the server.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          $ref: '#/components/schemas/EnterpriseExportKind'
+        parameters:
+          type: object
+          description: Filters of the format, lower-snake keys, no null, at most 4096 canonical bytes.
+      required:
+      - schema_version
+      - operation_id
+      - kind
+      - parameters
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009200
+        kind: test.synthetic_rows
+        parameters:
+          rows: 3
+    EnterpriseExportListRequest:
+      description: Keyset page of the calling member's exports, optionally filtered by state.
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+        state:
+          $ref: '#/components/schemas/EnterpriseExportState'
+      required: []
+      example:
+        limit: 20
+    EnterpriseExportReadRequest:
+      description: Empty body; the export is the path selector.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseExportContentRequest:
+      description: The capability issued by the access operation, carried in the authenticated body.
+      type: object
+      additionalProperties: false
+      properties:
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 2048
+      required:
+      - capability
+      example:
+        capability: v1.synthetic-export-capability
+    EnterpriseExportState:
+      description: Export job lifecycle; RUNNING returns to QUEUED only when a worker lease is released.
+      type: string
+      enum:
+      - QUEUED
+      - RUNNING
+      - READY
+      - EXPIRED
+      - FAILED
+      example: READY
+    EnterpriseExportView:
+      description: One export job of the calling member. File facts are present from READY on; nothing here is content, a storage address or a capability.
+      type: object
+      additionalProperties: false
+      properties:
+        export_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          $ref: '#/components/schemas/EnterpriseExportKind'
+        parameters:
+          type: object
+        parameters_digest:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        state:
+          $ref: '#/components/schemas/EnterpriseExportState'
+        attempts:
+          type: integer
+          minimum: 0
+          maximum: 3
+        max_attempts:
+          type: integer
+          minimum: 1
+          maximum: 3
+        failure_code:
+          type: [string, 'null']
+          enum: [EXPORT_TOO_LARGE, EXPORT_RIGHTS_LOST, EXPORT_FORMAT_UNAVAILABLE, EXPORT_ATTEMPTS_EXHAUSTED, null]
+        row_count:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 500000
+        byte_count:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 16777216
+        sha256:
+          type: [string, 'null']
+          pattern: '^[0-9a-f]{64}$'
+        media_type:
+          type: [string, 'null']
+          maxLength: 128
+        requested_at:
+          type: string
+          format: date-time
+        as_of:
+          type: string
+          format: date-time
+        ready_at:
+          type: [string, 'null']
+          format: date-time
+        expires_at:
+          type: [string, 'null']
+          format: date-time
+        failed_at:
+          type: [string, 'null']
+          format: date-time
+        expired_at:
+          type: [string, 'null']
+          format: date-time
+        data_mode:
+          type: string
+          const: SYNTHETIC
+      required:
+      - export_id
+      - kind
+      - parameters
+      - parameters_digest
+      - state
+      - attempts
+      - max_attempts
+      - failure_code
+      - row_count
+      - byte_count
+      - sha256
+      - media_type
+      - requested_at
+      - as_of
+      - ready_at
+      - expires_at
+      - failed_at
+      - expired_at
+      - data_mode
+      example:
+        export_id: 7b0e2a54-0000-4000-8000-000000009201
+        kind: test.synthetic_rows
+        parameters:
+          rows: 3
+        parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+        state: READY
+        attempts: 1
+        max_attempts: 3
+        failure_code: null
+        row_count: 3
+        byte_count: 40
+        sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+        media_type: text/csv
+        requested_at: '2026-11-14T12:00:00Z'
+        as_of: '2026-11-14T12:00:00Z'
+        ready_at: '2026-11-14T12:00:05Z'
+        expires_at: '2026-11-21T12:00:05Z'
+        failed_at: null
+        expired_at: null
+        data_mode: SYNTHETIC
+    EnterpriseExportAcknowledgement:
+      description: The stored job of a request; an exact replay returns it with replayed true.
+      type: object
+      additionalProperties: false
+      properties:
+        export:
+          $ref: '#/components/schemas/EnterpriseExportView'
+        replayed:
+          type: boolean
+      required:
+      - export
+      - replayed
+      example:
+        export:
+          export_id: 7b0e2a54-0000-4000-8000-000000009201
+          kind: test.synthetic_rows
+          parameters:
+            rows: 3
+          parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+          state: QUEUED
+          attempts: 0
+          max_attempts: 3
+          failure_code: null
+          row_count: null
+          byte_count: null
+          sha256: null
+          media_type: null
+          requested_at: '2026-11-14T12:00:00Z'
+          as_of: '2026-11-14T12:00:00Z'
+          ready_at: null
+          expires_at: null
+          failed_at: null
+          expired_at: null
+          data_mode: SYNTHETIC
+        replayed: false
+    EnterpriseExportPage:
+      description: The calling member's exports, newest first.
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseExportView'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - export_id: 7b0e2a54-0000-4000-8000-000000009201
+          kind: test.synthetic_rows
+          parameters:
+            rows: 3
+          parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+          state: READY
+          attempts: 1
+          max_attempts: 3
+          failure_code: null
+          row_count: 3
+          byte_count: 40
+          sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+          media_type: text/csv
+          requested_at: '2026-11-14T12:00:00Z'
+          as_of: '2026-11-14T12:00:00Z'
+          ready_at: '2026-11-14T12:00:05Z'
+          expires_at: '2026-11-21T12:00:05Z'
+          failed_at: null
+          expired_at: null
+          data_mode: SYNTHETIC
+        next_cursor: ''
+    EnterpriseExportCapability:
+      description: Requester-bound download capability valid for at most five minutes; it is not a storage URL.
+      type: object
+      additionalProperties: false
+      properties:
+        export_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - export_id
+      - capability
+      - expires_at
+      example:
+        export_id: 7b0e2a54-0000-4000-8000-000000009201
+        capability: v1.synthetic-export-capability
+        expires_at: '2026-11-14T12:05:00Z'
+    EnterpriseExportContent:
+      description: The verified export bytes, base64-encoded, with their identity.
+      type: object
+      additionalProperties: false
+      properties:
+        export_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        media_type:
+          type: string
+          maxLength: 128
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        row_count:
+          type: integer
+          minimum: 0
+          maximum: 500000
+        byte_count:
+          type: integer
+          minimum: 1
+          maximum: 16777216
+        content_base64:
+          type: string
+          minLength: 4
+          maxLength: 22369624
+          pattern: '^[A-Za-z0-9+/]+={0,2}$'
+      required:
+      - export_id
+      - media_type
+      - sha256
+      - row_count
+      - byte_count
+      - content_base64
+      example:
+        export_id: 7b0e2a54-0000-4000-8000-000000009201
+        media_type: text/csv
+        sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+        row_count: 3
+        byte_count: 8
+        content_base64: YSxiCjEsMgo=
     EnterpriseReviewSelector:
       type: object
       additionalProperties: false
@@ -24721,7 +25422,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false

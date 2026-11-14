@@ -3681,3 +3681,93 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   fueling at an instant before the change stores Norte, the port still
   answers Norte for that instant after the change, and answers Sul at the
   change instant and later. Result: the stored snapshot never moves.
+
+## EMP-RPT-001 — Asynchronous export infrastructure: job, private file and expiring link (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-rpt001-export-infrastructure.md).
+
+- **B-BR-EMP-227 — An export is one organization job, requested once.** A
+  member whose current role covers `rpt.export.run` for the whole
+  organization requests an export with fresh company proof, an `ACTIVE`
+  organization and the `organizations` capability on. The kind must be
+  registered in the closed format registry; a kind without an admitted format
+  is `EXPORT_FORMAT_UNAVAILABLE` (422) and creates nothing. Parameters are a
+  JSON object of at most 4 096 canonical bytes with lower-snake keys and no
+  null. In one transaction the server stores one `QUEUED` job (requester
+  account and membership, kind, canonical parameters and their SHA-256
+  digest, the receipt instant as the "as of" instant, the format's row, byte
+  and time ceilings capped by the infrastructure ceilings of 500 000 rows,
+  16 MiB and 120 seconds, three attempts and a retention of 7 days), writes
+  one `rpt.export.requested` audit event holding references and digests only,
+  and enqueues one reference-only worker job carrying the organization and the
+  job. The operation ID is the idempotency key: the same requester and
+  command returns the stored job with `replayed=true` and writes no second
+  job, event or queue entry; another command or account under it is
+  `OPERATION_ID_REUSED`. A requester who already holds three `QUEUED` or
+  `RUNNING` jobs gets `EXPORT_QUEUE_FULL` (429).
+- **B-BR-EMP-228 — The worker rechecks authority and fails loudly.** Export
+  work runs on its own serial dispatcher. The worker claims a job with a
+  fenced lease, so exactly one holder works on it; a concurrent claimer finds
+  it busy and retries later, and a `READY` or terminal job is left untouched.
+  Before producing anything it re-evaluates the requester's current authority
+  without a session: an active account, the same `ACTIVE` membership, an
+  `ACTIVE` organization and a current role covering `rpt.export.run` at
+  organization scope. Lost authority ends the job
+  `FAILED` with `EXPORT_RIGHTS_LOST` and no file; a kind whose format is no
+  longer registered ends `FAILED` with `EXPORT_FORMAT_UNAVAILABLE`. The format
+  writes through a bounded sink: exceeding the row, byte or time ceiling ends
+  `FAILED` with `EXPORT_TOO_LARGE` and never yields a truncated file. A
+  transient failure releases the lease (`RUNNING` back to `QUEUED`) and is
+  retried; a failure on the third attempt, or a lease that expired on the
+  third attempt, ends `FAILED` with `EXPORT_ATTEMPTS_EXHAUSTED`.
+- **B-BR-EMP-229 — Only a complete, verified private object becomes ready.**
+  The file is stored create-only in private storage under
+  `org/<org_id>/export/<export_id>/<sha256>`. Its digest, size and row count
+  are recorded on the job as provisional under the lease before the upload;
+  the media type is the admitted format's, fixed at request. The job becomes `READY`, with ready and expiry instants, only
+  after the stored object has been read back and matches that digest and
+  size, and only while the same lease still holds it. A failed, partial or
+  substituted upload or a lost lease leaves the job not `READY`, a stored
+  copy that does not match is deleted before the retry, and nothing that is
+  not `READY` is ever served. Content is deterministic for the same
+  parameters and "as of" instant, so a re-run converges on the same object;
+  a different provisional object is deleted before another is recorded, so a
+  job never publishes two files. The provisional object of a failed job is
+  deleted.
+- **B-BR-EMP-230 — Download is requester-bound, audited, short-lived and
+  expires.** Only the requester's own membership can list, read or download
+  a job; anybody else, including another member or organization, gets
+  `NOT_FOUND`. Delivery goes through the API in two steps, each re-checking
+  fresh current `rpt.export.run` authority and the same membership. Access
+  requires a `READY` job before its expiry (`EXPORT_NOT_READY` 409,
+  `EXPORT_EXPIRED` 410), records `EXPORT_FILE`/`ISSUED` through the
+  sensitive-access log and only then returns a capability bound to the API
+  origin, organization, account, membership, job and file identity that
+  expires after at most 5 minutes. Content verifies that capability, re-checks
+  authority and state, reads and verifies the private object, records
+  `EXPORT_FILE`/`SERVED` and only then returns the bytes. Any audit failure
+  serves nothing. No storage address or key reaches a client, a log or the
+  audit trail, and no capability appears outside the access response. After
+  the retention window the job becomes `EXPIRED` (also enforced at read time),
+  keeps its metadata, is never downloadable again, and a scheduled cleanup
+  deletes its object and confirms its absence before recording the deletion.
+- **BUC-EMP-116 — A finance member exports and downloads a list.** A
+  FINANCE member requests a synthetic export with an operation ID; the
+  response is the `QUEUED` job and a retry returns the same job. The worker
+  re-checks the member's authority, produces the file within its ceilings,
+  stores and verifies the private object and marks the job `READY` with row
+  count, size, SHA-256 and expiry. The member lists and reads the job, asks
+  for access (one `ISSUED` record and a capability valid for at most 5
+  minutes) and opens the content (one `SERVED` record and the exact bytes).
+  Another member and another organization see nothing. After expiry the job
+  is `EXPIRED`, the capability and the content are refused and the object is
+  deleted.
+- **BUC-EMP-117 — A failed or unsafe export publishes nothing.** The
+  requester loses the role before the worker starts: the job ends `FAILED`
+  with `EXPORT_RIGHTS_LOST` and no object. A format exceeds its row ceiling:
+  `FAILED` with `EXPORT_TOO_LARGE`, no file. Storage refuses or corrupts the
+  upload: the job is retried and stays not `READY` until a verified object
+  exists, or ends `FAILED` after three attempts with its provisional object
+  deleted. Two workers claim the same job concurrently: one produces, one
+  object. An audit outage at access or content issues no capability and
+  returns no byte.

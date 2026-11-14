@@ -92,6 +92,7 @@ import (
 	moderationdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/moderation/domain"
 	officialhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/http"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
+	orgexportpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyhttp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/http"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
@@ -523,7 +524,14 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	// leaves this closure.
 	payments.Billing.Proof = accountOwnerProof{validate: accountService.ValidateAccess}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
-	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Origin: "https://" + cfg.CanonicalHost, CursorSecret: cfg.CursorSecret, Pool: pool.Underlying(), Accounts: accountService, DeviceLimit: cfg.EnterpriseDeviceLimit}); err != nil {
+	// Export files use the existing private bucket when configured; without it
+	// every export transfer is unavailable. No export format is admitted yet.
+	var exportStorage *orgexportpg.StorageConfig
+	if cfg.R2 != nil {
+		exportStorage = &orgexportpg.StorageConfig{Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket, Region: cfg.R2.Region,
+			Credentials: evidencestorage.Credentials{AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey}}
+	}
+	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Origin: "https://" + cfg.CanonicalHost, CursorSecret: cfg.CursorSecret, Pool: pool.Underlying(), Accounts: accountService, DeviceLimit: cfg.EnterpriseDeviceLimit, ExportStorage: exportStorage}); err != nil {
 		return err
 	}
 	// Station/fuel feedback (P14-T03). Same closure rule: session

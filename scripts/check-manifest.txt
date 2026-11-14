@@ -65,6 +65,10 @@ backend/internal/modules/orgcapability/adapters
 backend/internal/modules/orgmedia/domain
 backend/internal/modules/orgmedia/application
 backend/internal/modules/orgmedia/adapters
+backend/internal/modules/orgexport/domain
+backend/internal/modules/orgexport/application
+backend/internal/modules/orgexport/adapters
+backend/internal/modules/orgexport/adapters/http
 backend/internal/modules/companysession/domain
 backend/internal/modules/companysession/application
 backend/internal/modules/companysession/adapters

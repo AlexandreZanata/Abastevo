@@ -375,6 +375,10 @@ Shared codes are in [09-architecture](../09-architecture.md) §6. Added here:
 
 `INSUFFICIENT_DATA` is a result with a reason (§10.4), not an error: the request succeeds.
 
+EMP-RPT-001 records `EXPORT_RIGHTS_LOST` and `EXPORT_ATTEMPTS_EXHAUSTED` as job
+failure codes (no HTTP status; read on the job). F3 delivers files through a
+base64 JSON capability exchange with a 16 MiB ceiling.
+
 ## 11. Screens
 
 | ID | Surface | Objective | Actor | Data | Actions | Rules and permissions | Validations and states |

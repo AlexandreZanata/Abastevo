@@ -375,7 +375,42 @@ adapters, orgsync, document, review and migrate: 20 packages, 613/4691,
 (AUTH-006), record modules adopting the port, legacy `unit_id` retirement,
 production grants, screens.
 
-## Stop point — 2026-11-14 (usage limit)
+### Sync with dev — 2026-11-14
+
+Merged origin/dev `0afdb85d` (PR #219 `018f2df1`: directory locality fix,
+30-minute race integration bound) with a normal merge `c9076528`; only
+PROGRESS conflicted. `scripts/check-backend-fast.sh` on that head passes
+(gofmt, build/vet/unit tests, whole-backend staticcheck, sqlc vet/diff,
+OpenAPI lint, tracked and changed-file secret scans). Log:
+`/data/dev/worktrees/f3-logs/check-backend-fast-c9076528.log`.
+
+### EMP-RPT-001 — export infrastructure: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-rpt001-export-infrastructure.md). New module `orgexport`
+(separate from the public-portal `enterpriseexport`) and migration 000207
+`org_export_jobs` (forced RLS, never deleted, deferred FK to the request audit
+event, guards for server-owned instants, lease-fenced claim and publish of the
+recorded object). Five CompanyOnly routes under `reports/exports/` with fresh
+`rpt.export.run`; the worker re-checks the requester's current authority,
+works within ceilings (500 000 rows, 16 MiB, 120 s; limits fail explicitly),
+publishes create-only and reads back before READY; access records EXPORT_FILE
+through the PRIV-005 log before a 5-minute requester-bound capability; cleanup
+deletes at expiry with confirmed absence (EDR-156/157). No production format
+is registered (RPT-002). RED unit 37/46 and integration 13 failing → GREEN
+unit 47/53, integration 42/2538, organization adapters 367/2819 (900 s),
+untagged 204 packages. `cmd/worker` integration: 5 tests need the pinned Rust
+preparer CLIs that this machine lacks and fail before export code (15/15
+otherwise; CI provides the CLIs). Merged with DOC-002/NOTIF-001/FLEET-005
+(route inventory 20 routed / 64 not routed / 103 normal / 24 special;
+authorization matrix 200 cells, 77 allowed / 123 denied; OpenAPI merged
+structurally); merged-tree union over orgexport, organization adapters,
+orgaudit, orgmedia (MinIO), document, enterprisesuite, orgapi, jobs and
+migrate: 19 packages, 558/3451, 0 failures, 0 skips. Retained: formats and
+scoped readers (RPT-002), auditor/export matrix (AUTH-011), inline small CSV
+and cancel, notifications/events, configurable retention, streaming above
+16 MiB, operator replay of dead jobs, production grants and storage lifecycle.
+
+## Interruption — 2026-11-14 (resumed)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,
 BUDG-001, FIN-001, PRIV-005, FLEET-003 (F2), APPR-006, NOTIF-001, DOC-002.

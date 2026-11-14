@@ -837,6 +837,9 @@ activated by this foundation. Ordinary runtime login/grants and backup-role
 review remain required before activation. See
 [local evidence](evidence/f1-plat010-transactional-events.md).
 
+Export jobs run on dedicated serial slots `org-export-build` and
+`org-export-cleanup`, excluded from the general dispatcher (EMP-RPT-001).
+
 ## 8. Keeping the panel current
 
 | Screen | Mechanism | Interval | Why |
@@ -958,6 +961,13 @@ Signals that justify the next infrastructure step (measured, sustained):
 | Track table size | Above 20 GB | Monthly partitions and partition drop for retention |
 | Queue delay for exports or track processing | Above 5 minutes | Dedicated worker role |
 | Panel polling share of requests | Above half of API load | Server-sent events for the live map |
+
+EMP-RPT-001 implements the export prefix as `org/<org_id>/export/<export_id>/<sha256>`
+in module `orgexport` (migration 000207): create-only upload, read-back before
+`READY`, a requester-bound 5-minute API capability (`orgexport.access.v1`)
+recorded as `EXPORT_FILE` before minting and serving, and deletion with
+confirmed absence at expiry by the `org-export-cleanup` job.
+[Evidence](evidence/f3-rpt001-export-infrastructure.md)
 
 ## 10. Activation, flags and rollback
 

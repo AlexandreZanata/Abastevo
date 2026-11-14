@@ -609,10 +609,16 @@
     },
     {
       "permission": "rpt.export.run",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Organization export and reporting routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/reports/exports/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/reports/exports/list",
+        "POST /v1/orgs/{org_id}/reports/exports/request",
+        "POST /v1/orgs/{org_id}/reports/exports/{export_id}/access",
+        "POST /v1/orgs/{org_id}/reports/exports/{export_id}/content",
+        "POST /v1/orgs/{org_id}/reports/exports/{export_id}/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "stn.metrics.read",

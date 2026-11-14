@@ -189,7 +189,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Done when:** Failure, concurrent run and replay tests yield one consistent version history.
 
 ### EMP-RPT-001 — Asynchronous export infrastructure: job, private file and expiring link
-- **Meta:** module RPT · phase F3 · cut - · priority P1 · type JOB · size M · state TODO
+- **Meta:** module RPT · phase F3 · cut - · priority P1 · type JOB · size M · state LOCAL_DONE
 - **Objective:** Provide scoped asynchronous exports with private expiring delivery.
 - **Rules and use cases:** BR-RPT-001, BR-RPT-002, BR-RPT-004, BR-RPT-005, BR-RPT-009, BR-PRIV-004, UC-RPT-01
 - **Depends on:** EMP-PLAT-006, EMP-PLAT-010, EMP-PRIV-005
@@ -203,6 +203,14 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Validation:** V-API, V-SQL, V-JOB, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive export state · rollback: stop new jobs and keep existing data private
 - **Risks and assumptions:** Use the existing job and object store. Keep worker and download authority independently checked.
 - **Done when:** Normal request, processing, retry, expiry and audited download pass on isolated storage and database fixtures.
+
+[F3 export infrastructure](../evidence/f3-rpt001-export-infrastructure.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Module `orgexport` with
+migration 000207: idempotent audited requests, a fenced worker that re-checks
+the requester and fails loudly at bounded ceilings, verified create-only
+private files, expiry with confirmed deletion and audited 5-minute
+requester-bound downloads, on real PostGIS and MinIO. Real formats (RPT-002),
+the export matrix (AUTH-011), notifications and F3 remain open.
 
 ### EMP-RPT-002 — CSV and spreadsheet exports for operational lists
 - **Meta:** module RPT · phase F3 · cut - · priority P1 · type API · size M · state TODO

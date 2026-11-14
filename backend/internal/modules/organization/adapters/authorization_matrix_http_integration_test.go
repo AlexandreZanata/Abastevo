@@ -51,6 +51,7 @@ var matrixRepresentatives = []matrixRoute{
 	{"fin.period.reopen", "/finance/periods/{period}/reopen", true, true},
 	{"doc.document.attach", "/documents/uploads/create", false, true},
 	{"doc.document.view_content", "/documents/{document_id}/content/access", false, false},
+	{"rpt.export.run", "/reports/exports/list", true, false},
 }
 
 func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
@@ -240,6 +241,7 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,period_month) FROM org_finance_periods x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,period_month,revision) FROM org_finance_period_transitions x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_documents x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_export_jobs x),
 	 (SELECT count(*) FROM org_sensitive_access_events),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),
 	 (SELECT count(*) FROM org_ownership_commands), (SELECT count(*) FROM org_role_commands))::text`).Scan(&value); err != nil {
@@ -317,6 +319,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	_ = fleetStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
 	fx.f.GrantMeterReviews(t)
 	periodGrant(t, fx.f)
+	exportGrant(t, fx)
 	roleSQL := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+roleSQL+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+roleSQL); err != nil {
 		t.Fatal(err)
@@ -586,8 +589,8 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 190 || allowed != 72 || denied != 118 {
+	if exercised != 200 || allowed != 77 || denied != 123 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 65 permissions not yet routed; one actual signed Meter producer; Fleet S cells remain denied pending actual assignment integration; document S cells cover only own documents", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 64 permissions not yet routed; one actual signed Meter producer; Fleet S cells remain denied pending actual assignment integration; document S cells cover only own documents", exercised, allowed, denied)
 }
