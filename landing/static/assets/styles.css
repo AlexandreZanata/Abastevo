@@ -1463,3 +1463,19 @@ a.store-pill {
   .landing-home .footer-col-precos { grid-column: auto; }
   .landing-home .footer-states { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* Guide formula/source helpers (replace former inline styles blocked by CSP). */
+.formula-expression {
+  margin-top: 0.5rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.formula-note {
+  margin-top: 0.5rem;
+}
+
+.source-note {
+  margin-top: 0.75rem;
+}

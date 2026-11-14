@@ -25,7 +25,7 @@
       }
     },
     {
-      "route": "/guias/como-ler-precos/", "source": "guias/como-ler-precos/index.html", "chrome": "shared", "lastmod": "2026-10-26",
+      "route": "/guias/como-ler-precos/", "source": "guias/como-ler-precos/index.html", "chrome": "shared", "lastmod": "2026-11-14",
       "guide": {
         "title": "Como ler preços na bomba e na placa",
         "summary": "Fonte, data, condição de pagamento e os selos que separam a referência da ANP das observações da comunidade.",
