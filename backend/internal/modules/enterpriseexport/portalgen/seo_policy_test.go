@@ -55,13 +55,11 @@ func TestRobotsValueHonoursGlobalSwitch(t *testing.T) {
 
 func TestRecentSurveyWeeksAndStationGate(t *testing.T) {
 	revisions := map[string]enterpriseexport.Revision{}
-	ids := []string{}
 	// Ten weekly revisions plus a correction of the newest week.
 	for i := 0; i < 10; i++ {
 		id := "rev-" + string(rune('a'+i))
 		start := addDays("2026-08-09", 7*i)
 		revisions[id] = enterpriseexport.Revision{RevisionID: id, SurveyStart: start, SurveyEnd: addDays(start, 6)}
-		ids = append(ids, id)
 	}
 	revisions["rev-j2"] = enterpriseexport.Revision{RevisionID: "rev-j2", SurveyStart: revisions["rev-j"].SurveyStart, SurveyEnd: revisions["rev-j"].SurveyEnd}
 	recent := recentSurveyRevisions(revisions, stationRecentSurveyWeeks)

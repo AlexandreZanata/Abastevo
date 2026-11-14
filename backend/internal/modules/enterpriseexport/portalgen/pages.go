@@ -70,26 +70,6 @@ func stateItems(links []stateLink) []listItem {
 	return items
 }
 
-func rankingItems(views []rankingView, rows []rankingRow) []listItem {
-	seen := map[string]bool{}
-	items := []listItem{}
-	add := func(row rankingRow) {
-		if !seen[row.StationID] {
-			seen[row.StationID] = true
-			items = append(items, listItem{Name: row.Name, Href: "/postos/" + row.StationID + "/"})
-		}
-	}
-	for _, view := range views {
-		for _, row := range view.Rows {
-			add(row)
-		}
-	}
-	for _, row := range rows {
-		add(row)
-	}
-	return items
-}
-
 func (g *generator) periodPhrase() string {
 	if g.periodShort == "" {
 		return "mais recente"
