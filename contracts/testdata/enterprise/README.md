@@ -218,3 +218,15 @@ Fresh-ID uniqueness and cross-record truth remain owning-command/DB work.
 ```sh
 (cd backend && go test -race ./internal/modules/organization/domain -count=1)
 ```
+
+## Amendment kernel v1
+
+EMP-PLAT-016 executes all 193 rows of
+[amendment-v1.psv](amendment/amendment-v1.psv) (DECIDE 165, RESOLVE 28) in Go.
+The [oracle README](amendment/README.md) fixes the grammar, defaults, decision
+order and outputs. It is server-side only: no client mirror exists; any future
+client must consume the same file.
+
+```sh
+(cd backend && go test -race ./internal/modules/orgamend/domain -count=1)
+```

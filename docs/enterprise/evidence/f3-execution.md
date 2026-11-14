@@ -150,3 +150,15 @@ open direct dependencies.
 ## Execution log
 
 Entries are appended per integrated task (commit, evidence, validation).
+
+### EMP-PLAT-016 — amendment kernel: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-plat016-amendment-kernel.md). Pure server-side `orgamend/domain`
+with the 193-case shared oracle (`amendment-v1.psv`); genuine RED (7/9
+top-level, 193/193 subtests failing on assertions against compiled stubs) →
+GREEN 9/9 and 193/193 under `-race`, 100% statement coverage, gofmt/vet/
+staticcheck/check_plan clean, re-run green on this branch. B-BR-EMP-190..193,
+BUC-EMP-98..99 and EDR-137/138 moved verbatim to the contract and decisions.
+Added to the quick manifest. Retained: review binding (APPR-001), period
+commands (APPR-006), consumer persistence/recalculation (FUEL-015 and others),
+reporting-day moves across periods, runtime VAL-19/20/26.

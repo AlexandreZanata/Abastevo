@@ -2714,3 +2714,78 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   ends the invitee's reservation after scope restore; scheduled-owner propose and
   repeated accept return 409 without changes; expired admissions unblock reissue,
   list and acceptance while an admission before its deadline stays intact.
+
+## EMP-PLAT-016 — Amendment kernel for approved records (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-plat016-amendment-kernel.md).
+
+- **B-BR-EMP-190 — Classify a correction by approval, never in place.**
+  A pure server-side kernel decides one correction from supplied facts: the
+  effective approved revision (0 when never approved), the latest revision,
+  the latest revision's BR-REV review state or `VOIDED`, the reporting day and
+  that day's period state. `EDIT` applies only while the latest revision is
+  `DRAFT` or `RETURNED` (BR-AMD-006), including a draft or returned pending
+  amendment, and appends latest+1 linked to latest. An `EDIT` of an approved
+  record without an editable pending amendment is `APPROVED_IMMUTABLE`; a
+  record under review, or a never-approved terminal one, is `NOT_EDITABLE`.
+  `AMEND`, `VOID` and `ADJUST` need an approved record, otherwise
+  `NOT_APPROVED`. Every command names the latest revision it saw; any other
+  latest is `CONFLICT` and changes nothing. The consumer states its append
+  plan: revision latest+1 for `EDIT`/`AMEND` and none for `VOID`/`ADJUST`,
+  linked to latest for `EDIT` and to the effective approved revision
+  otherwise. A plan that would overwrite a retained revision or link anywhere
+  else is `LOST_ORIGINAL`; a gap or malformed fact is `INVALID`.
+- **B-BR-EMP-191 — One reviewed amendment keeps the effective revision.**
+  `AMEND` appends latest+1 with author, server receipt time and reason, linked
+  to the effective approved revision, which stays effective. At most one
+  amendment is pending (latest above effective in `DRAFT`, `SUBMITTED`,
+  `IN_REVIEW` or `RETURNED`); another `AMEND`, a `VOID` or an `ADJUST` is
+  `AMENDMENT_PENDING` until it is decided or cancelled, and its draft or
+  returned revision changes only by `EDIT`. A review result names the pending
+  revision: `APPROVED` makes it effective and supersedes, never deletes, the
+  previous one; `RETURNED` keeps it pending; `REJECTED` and `CANCELLED` close
+  it; in those three the previous approved revision stays effective. A result
+  on any other revision, or without a pending amendment, is `CONFLICT`.
+  Review transitions, reviewer authority and self-approval stay with the
+  review lifecycle (BR-REV-003/004).
+- **B-BR-EMP-192 — Void and locked periods preserve history.** `VOID` marks
+  the approved record voided from its server receipt and retains the effective
+  revision; voiding again, and any later correction or review result of a
+  voided record, is `ALREADY_VOIDED`. A record whose reporting day is in a
+  `LOCKED` period cannot be amended, voided or have an amendment approved:
+  `PERIOD_LOCKED`. A `REOPENED` period qualifies only with a supplied reopening
+  whose authority was proven at its server receipt and which has a valid
+  reason; otherwise `REOPEN_UNAUTHORIZED` or the reason codes. Without a
+  reopening, `ADJUST` posts a correction linked to the original record and its
+  effective revision on a strictly later posting day whose period is writable
+  (`OPEN` or a qualifying `REOPENED`). `ADJUST` while the record's period is
+  writable is `PERIOD_NOT_LOCKED` (amend instead); a locked posting period is
+  `PERIOD_LOCKED`. Unknown intent, review, period or result tokens are
+  `INVALID`, never mapped to a known one.
+- **B-BR-EMP-193 — Reasons, receipt authority and derived-data markers.**
+  `AMEND`, `VOID` and `ADJUST` require a reason and `EDIT` may carry one. A
+  reason is valid UTF-8, nonblank, control-free and at most 280 code points,
+  the existing free-text bound; absent or blank is `REASON_REQUIRED`, otherwise
+  malformed is `REASON_INVALID`. The consumer evaluates authority at server
+  receipt (BR-TIME-003) and supplies it as facts: Edit for a never-approved
+  record, Amend for an amendment, an edit of a pending amendment and an
+  adjustment, Void for a void; a missing one is `UNAUTHORIZED`. An approved
+  amendment, a void and an adjustment each return one deterministic marker
+  naming the record, the revision derived data must now use or exclude, the
+  superseded revision, the cause (`AMENDED`, `VOIDED`, `ADJUSTED`), the day and
+  the time; consumers own recalculation jobs (BR-AMD-005). The kernel writes no
+  audit event: each consumer records one per decision with its registered
+  action and reason code, keeping the free-text reason on the revision
+  (BR-AUD-001/004).
+- **BUC-EMP-98 — Prove correction, conflict and review effect.** Shared
+  vectors cover edits before approval and of a returned amendment, amendment
+  of an approved record, in-place update, stale revision, lost original
+  (overwrite, detached base, gap), pending amendment, never-approved amendment,
+  approved/returned/rejected/cancelled results, replays after an applied
+  decision, the reason profile and every authority fact.
+- **BUC-EMP-99 — Prove void, locked-period and adjustment paths.** Shared
+  vectors cover void and void of a void, `LOCKED` refusal, qualifying,
+  unproven and reasonless reopenings, an adjustment linked to the original on a
+  later writable day, adjustment refused in a writable record period, a locked
+  posting period or an earlier posting day, approval refused after a relock,
+  unknown period and review tokens, and every derived-data marker.

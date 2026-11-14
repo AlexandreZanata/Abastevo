@@ -42,6 +42,7 @@ backend/internal/modules/orgevent/adapters
 backend/internal/modules/orgaudit/domain
 backend/internal/modules/orgaudit/application
 backend/internal/modules/orgaudit/adapters
+backend/internal/modules/orgamend/domain
 backend/internal/modules/orgcapability/domain
 backend/internal/modules/orgcapability/application
 backend/internal/modules/orgcapability/adapters

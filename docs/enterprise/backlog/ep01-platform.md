@@ -278,7 +278,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local UTC, reporting-day and clock-skew evidence](../evidence/f1-plat015-operation-time.md).
 
 ### EMP-PLAT-016 — Amendment kernel: append-only corrections for approved records
-- **Meta:** module PLAT · phase F3 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module PLAT · phase F3 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Preserve approved records through traceable corrections.
 - **Rules and use cases:** BR-AMD-001, BR-AMD-002, BR-AMD-003, BR-AMD-004, BR-AMD-005
 - **Depends on:** EMP-PLAT-003
@@ -292,6 +292,13 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-DOM, V-IDEM · migration: none · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Each consuming module owns its derived-data invalidation and transactional application.
 - **Done when:** The domain proves correction, conflict and locked-period invariants.
+
+[F3 amendment kernel](../evidence/f3-plat016-amendment-kernel.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Pure server-side `orgamend/domain`
+and the shared 193-case amendment oracle pass under race with 100% statement
+coverage. B-BR-EMP-190..193, BUC-EMP-98..99 and EDR-137/138 precede behaviour.
+Review binding (EMP-APPR-001), period commands (EMP-APPR-006), consumer
+persistence, recalculation jobs and routes (EMP-FUEL-015) remain open.
 
 ### EMP-PRIV-001 — Enterprise data inventory and retention schedule enforcement
 - **Meta:** module PRIV · phase F6 · cut - · priority P1 · type JOB · size M · state TODO
