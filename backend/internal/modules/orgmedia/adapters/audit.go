@@ -7,20 +7,21 @@ import (
 	"encoding/json"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	auditstore "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	auditapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgmedia/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgmedia/domain"
-	"github.com/jackc/pgx/v5"
 )
 
+// AuditDefinitions is the DOCUMENT_CONTENT part of the sensitive-access
+// vocabulary; its action names are unchanged from EMP-PLAT-006.
 func AuditDefinitions() []audit.Definition {
-	return []audit.Definition{
-		{Action: "document.access.issued", TargetType: "document", Reasons: []string{"member.authorized"}, RequireReason: true},
-		{Action: "document.content.accessed", TargetType: "document", Reasons: []string{"member.authorized"}, RequireReason: true},
-	}
+	return audit.AccessDefinitions(audit.DocumentContent)
 }
 
+// AccessAudit routes private document issuance and reads through the
+// organization sensitive-access log (EMP-PRIV-005).
 type AccessAudit struct{ Runner auditapp.Runner }
 
 var _ application.Audit = AccessAudit{}
@@ -33,17 +34,18 @@ func (recorder AccessAudit) Record(ctx context.Context, scope kernel.OrgScope, m
 	if recorder.Runner == nil {
 		return domain.ErrUnavailable
 	}
-	action := "document.access.issued"
+	stage := audit.AccessIssued
 	if intent == domain.Read {
-		action = "document.content.accessed"
+		stage = audit.AccessServed
 	}
-	raw, _ := json.Marshal([]any{"orgmedia.audit.v1", object.OrgID, member.AccountID, member.MembershipID, object.DocumentID,
-		object.SHA256, object.MIME, object.Bytes, object.Revision, accessID, intent})
+	// The binding pins the exact verified revision without recording its
+	// digest, type or size as readable facts.
+	raw, _ := json.Marshal([]any{"orgmedia.binding.v1", object.SHA256, object.MIME, object.Bytes, object.Revision})
 	sum := sha256.Sum256(raw)
-	event := audit.Event{OperationID: requestID, ActorID: member.AccountID, Action: action, TargetType: "document", TargetID: object.DocumentID,
-		ReasonCode: "member.authorized", RequestHash: hex.EncodeToString(sum[:])}
-	replayed, err := recorder.Runner.RecordChange(ctx, scope, event, func(context.Context, pgx.Tx) error { return nil })
-	if err != nil || replayed {
+	access := audit.SensitiveAccess{Category: audit.DocumentContent, Stage: stage, AccountID: member.AccountID,
+		MembershipID: member.MembershipID, TargetID: object.DocumentID, AccessID: accessID, RequestID: requestID,
+		Binding: hex.EncodeToString(sum[:])}
+	if err := (auditstore.AccessLog{Runner: recorder.Runner}).RecordAccess(ctx, scope, access); err != nil {
 		return domain.ErrUnavailable
 	}
 	return nil

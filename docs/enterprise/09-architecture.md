@@ -733,6 +733,17 @@ SELECT and INSERT only. Root and membership schemas are introduced by their
 own tasks. EMP-ORG-002 adds the root reference in migration 000169.
 Actor references remain historical through offboarding.
 
+Sensitive reads (EMP-PRIV-005) record through `orgaudit` `AccessRecorder`/`AccessLog`.
+[Migration 000202](../../backend/db/migrations/000202_org_sensitive_access_events.sql)
+adds `org_sensitive_access_events`, one append-only detail row per sensitive
+audit event (category, stage, membership, grant), written in the same runner
+transaction, with forced RLS, a guard that matches the event's action and
+member reason and links a served capability to its member-bound issuance, and
+a deferred check that no sensitive event commits without its detail. The
+runtime role receives SELECT and INSERT only. Owners record before minting a
+capability or releasing content and serve nothing on any error.
+[Evidence](evidence/f3-priv005-sensitive-access-log.md)
+
 Reads enter through `application.Service.List`. An injected authorizer
 must check current `audit.event.read` authority covering the whole
 organization or approved live support access for the actor and organization.

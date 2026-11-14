@@ -20,3 +20,12 @@ type OrgAuditEvent struct {
 	RequestHash  string             `json:"request_hash"`
 	RecordedAt   pgtype.Timestamptz `json:"recorded_at"`
 }
+
+type OrgSensitiveAccessEvent struct {
+	OrgID        pgtype.UUID `json:"org_id"`
+	OperationID  pgtype.UUID `json:"operation_id"`
+	Category     string      `json:"category"`
+	Stage        string      `json:"stage"`
+	MembershipID pgtype.UUID `json:"membership_id"`
+	AccessID     pgtype.UUID `json:"access_id"`
+}

@@ -3217,3 +3217,69 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   fueling, payable/settlement/statement identities posing as costs,
   settlement kinds refused as cost origins, two live obligations of one source
   and a cancelled obligation releasing its source.
+
+## EMP-PRIV-005 — Sensitive-access log for documents, exports and location (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-priv005-sensitive-access-log.md).
+
+- **B-BR-EMP-207 — Four closed sensitive categories, each with its own
+  permission.** A sensitive read is exactly one of `DOCUMENT_CONTENT`
+  (`doc.document.view_content`, target `document`), `EXPORT_FILE`
+  (`rpt.export.run`, target `export`), `LOCATION_LIVE`
+  (`gps.location.read_live`, target `trip`) or `LOCATION_TRACK`
+  (`gps.track.read`, target `trip`). A capability-delivered category records
+  `ISSUED` when it grants a short-lived capability and `SERVED` when content
+  leaves the API; a live position is served directly, so `LOCATION_LIVE` has
+  only `SERVED`. Registered actions are `document.access.issued` and
+  `document.content.accessed` (the existing EMP-PLAT-006 actions, unchanged),
+  `export.access.issued`, `export.content.accessed`, `location.track.issued`,
+  `location.track.accessed` and `location.live.accessed`, all with reason
+  `member.authorized`. Reading the owning trip, expense or document record
+  never implies these permissions (BR-AUTH-011).
+- **B-BR-EMP-208 — Check, record, then serve; fail closed.** The owning read
+  first resolves the organization scope, current session, membership, target
+  and the category's own permission. Only then does it record the access, and
+  only after a committed record does it mint and return a capability or
+  release content. A foreign or non-member request is `NOT_FOUND` and a member
+  without the category permission is `FORBIDDEN` (BR-AUTH-013); neither
+  writes a record. An expired session, an expired or revoked capability or a
+  changed target serves nothing and writes no `SERVED` record. Any failure to
+  record (invalid facts, unavailable storage, conflict or replay) serves
+  nothing.
+- **B-BR-EMP-209 — References and a digest only.** A record holds the
+  organization, the verified actor account and its membership, the category,
+  the stage (also implied by its action), target type and UUID, the server-generated
+  request UUID, the capability (grant) UUID, reason `member.authorized`, a
+  SHA-256 digest of these facts and of the owner's bounded binding digest,
+  and server time. It never holds content bytes, file names, MIME types,
+  storage keys, URLs, capability tokens, coordinates, filters or free text
+  (BR-AUD-004, BR-PRIV-008, BR-GPS-039). Every field is a UUID, a registered
+  code or a 64-hex digest, so such values cannot be stored.
+- **B-BR-EMP-210 — One record per request, linked to its grant, append-only
+  and isolated.** An organization holds one record per request UUID: an
+  identical retry is stored once and refused as a replay, the same request
+  UUID with other facts is a conflict, and neither serves. `ISSUED` and
+  `LOCATION_LIVE` use the request UUID as the grant UUID; a `SERVED` record of
+  a capability category must reference an `ISSUED` record of the same
+  organization, category, target, actor account and membership. Records are
+  append-only under forced organization row-level security. Organization
+  roles with `audit.event.read` over the whole organization read them through
+  the existing audit read service. No platform-operator or support-session
+  reason is registered, so operator access stays impossible until
+  EMP-BACK-003 adds approved support sessions (BR-AUD-006, BR-PRIV-021).
+- **BUC-EMP-106 — Prove audited private document access.** On real PostGIS,
+  the private document service issues a capability and serves content to a
+  member holding `doc.document.view_content`, writing exactly one `ISSUED` and
+  one `SERVED` record with the expected references. A foreign document or
+  organization, a member whose role lacks the permission (also after a role
+  change), an expired session, an expired or revoked capability and a refused
+  record write serve nothing and leave no new record in either organization.
+- **BUC-EMP-107 — Prove the log itself.** On real PostGIS, prove replay and
+  concurrent duplicates store one record, conflicting reuse is refused,
+  two organizations are isolated, rows are append-only, the database refuses a
+  category that does not match its action, a served record without its
+  member-bound grant, a sensitive event without its detail and a
+  foreign-organization insert, a failed detail write
+  leaves no audit event, the stored rows carry no content-shaped value, the
+  audit read service lists only in-scope records for an authorized reader and
+  refuses others, and the additive migration upgrades and recovers.

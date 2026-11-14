@@ -373,7 +373,7 @@ production acceptance remain separate obligations; no sync/business activation.
 - **Done when:** An isolated restore proves replay, failure recovery and access gating.
 
 ### EMP-PRIV-005 — Access log for sensitive reads: documents, location and exports
-- **Meta:** module PRIV · phase F3 · cut C1 · priority P0 · type API · size S · state TODO
+- **Meta:** module PRIV · phase F3 · cut C1 · priority P0 · type API · size S · state LOCAL_DONE
 - **Objective:** Record permission-checked access to sensitive organization content.
 - **Rules and use cases:** BR-AUD-003, BR-AUD-004, BR-AUTH-011, BR-PRIV-004, UC-PRIV-05
 - **Depends on:** EMP-PLAT-003
@@ -387,3 +387,11 @@ production acceptance remain separate obligations; no sync/business activation.
 - **Validation:** V-API, V-AUTHZ, V-PRIV, V-ISO, V-SQL · migration: additive under the audit module · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** A support session must explicitly cover the requested content category.
 - **Done when:** Each affected protected read proves denial, audit and successful scoped access.
+
+- **Status (2026-11-14):** LOCAL_DONE on `codex/enterprise-f3-priv005`. The
+  `orgaudit` sensitive-access contract (four categories, `AccessRecorder`,
+  `AccessLog`, migration 000202) is in place and private document issue/read
+  records through it; real-PostGIS tests prove audit, denial, isolation and
+  no leakage. Export (EMP-RPT-001), location (EMP-GPS-012), live document
+  authority (EMP-DOC-002), support sessions (EMP-BACK-003) and the audit read
+  route remain retained. [Evidence](../evidence/f3-priv005-sensitive-access-log.md)

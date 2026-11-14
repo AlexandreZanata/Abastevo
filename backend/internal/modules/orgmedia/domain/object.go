@@ -13,6 +13,7 @@ import (
 var (
 	ErrInvalid     = errors.New("orgmedia: invalid input")
 	ErrNotFound    = errors.New("orgmedia: not found")
+	ErrForbidden   = errors.New("orgmedia: content permission required")
 	ErrUnavailable = errors.New("orgmedia: unavailable")
 	ErrDisabled    = errors.New("orgmedia: disabled")
 	ErrIntegrity   = errors.New("orgmedia: integrity mismatch")

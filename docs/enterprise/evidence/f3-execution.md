@@ -247,3 +247,25 @@ EDR-139/140 moved to canonical docs; expenses-finance §6 states the derived
 payable state. Retained: reimbursement API (FIN-002), advances (FIN-003),
 payment records and the DB single-cost invariant (FIN-004), statements,
 cash views, panel; an exported review reason check for reuse.
+
+### EMP-PRIV-005 — sensitive-access log: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-priv005-sensitive-access-log.md). `orgaudit` gains the
+`AccessRecorder` contract (categories DOCUMENT_CONTENT, EXPORT_FILE,
+LOCATION_LIVE, LOCATION_TRACK, each bound to its catalog permission) and
+migration 000202 `org_sensitive_access_events`: one append-only detail row per
+sensitive audit event in the same runner transaction, forced RLS, a guard
+linking a served capability to its member-bound issuance, and a deferred check
+that no sensitive event commits without its detail. `orgmedia` now records
+before minting a capability, serves nothing on any error and maps a missing
+content permission to FORBIDDEN. RED unit 7/34 and integration 10/18 new tests
+failing → GREEN; agent sweep: untagged backend 192 packages, 22 enterprise
+integration packages, organization adapters 340/2369 alone. Re-run on this
+branch with a disposable MinIO from `infra/compose.validation.yml`
+(project `f3-s3-20261114`, CI credentials): orgmedia + orgaudit integration
+53 top-level / 38 subtests, 0 failures, 0 skips, including the two S3
+access-path tests that the OFFL-008 closure could not run. B-BR-EMP-207..210,
+BUC-EMP-106..107, EDR-146/147 moved to canonical docs. Retained: real document
+authority/403 mapping (DOC-002/AUTH-003), export producer (RPT-001), location
+producers (F4), support sessions (BACK-003; operator access impossible until
+then), an audit read route, production grants on the new table.
