@@ -27,11 +27,23 @@ class EnterpriseVaultErasure(
             keys.existing(EnterpriseVaultGenerationNames.denied(token)) != null || keys.existing(EnterpriseVaultGenerationNames.denied(account)) != null
     }
 
-    internal fun requireContactLocked(token: String) {
+    /**
+     * Durably records that [token] waits for explicit reconfirmation and returns whether this call
+     * created that requirement. Only a new requirement fences live contexts: an existing one is a
+     * quiet terminal wait, so background work and reads that observe it never advance the shared
+     * epoch again (EDR-122). Without a durable latch the fence is still applied conservatively.
+     */
+    internal fun requireContactLocked(token: String): Boolean {
         try {
             val alias = EnterpriseVaultGenerationNames.retained(token)
-            if (keys.existing(alias) == null) keys.create(alias, null)
-        } finally { fence.lock() }
+            if (keys.existing(alias) != null) return false
+            keys.create(alias, null)
+        } catch (failure: Exception) {
+            fence.lock()
+            throw failure
+        }
+        fence.lock()
+        return true
     }
 
     private fun intent(token: String): Boolean {

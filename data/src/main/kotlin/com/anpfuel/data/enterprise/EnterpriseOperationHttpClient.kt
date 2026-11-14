@@ -114,6 +114,9 @@ class EnterpriseOperationSessionSource(
         }
     }
 
+    /** An unreadable session store is treated as present: it is an outage, not a sign-out. */
+    override fun hasSession(): Boolean = try { sessions.load() != null } catch (_: Exception) { true }
+
     override suspend fun attempt(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): EnterpriseQueueAttempt = guarded {
         val captured = fence.access { checked(account) }
         if (!account.identity.owns(partition)) throw EnterpriseLocalDenied()
@@ -211,20 +214,29 @@ class EnterpriseOperationHttpClient(
     }
 }
 
-/** Shared Retry-After profile for the signed delivery plane; unusable hints keep normal backoff. */
+/**
+ * Shared Retry-After profile for the signed delivery plane (operation delivery and review lookup);
+ * unusable hints keep normal backoff. A usable hint is honored without shortening up to
+ * [MAX_MILLIS] and clamped there, so no server value can park retained work permanently (EDR-122).
+ */
 internal object EnterpriseRetryAfter {
+    /** Equal to the existing queue backoff cap (`QueueRetryPolicy` 6 h, EDR-078). */
+    const val MAX_MILLIS = 21_600_000L
+
     fun parse(header: String?, responseDate: String?): Long? {
         val raw = header?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         if (raw.all { it in '0'..'9' }) {
-            val seconds = raw.toLongOrNull() ?: return Long.MAX_VALUE
-            return if (seconds > Long.MAX_VALUE / 1000) Long.MAX_VALUE else seconds * 1000
+            // An all-digit value too long for Long is still a (huge) valid delta-seconds hint.
+            val seconds = raw.toLongOrNull() ?: return MAX_MILLIS
+            return if (seconds >= MAX_MILLIS / 1000) MAX_MILLIS else seconds * 1000
         }
         val target = httpDate(raw) ?: return null
         val received = httpDate(responseDate?.trim() ?: return null) ?: return null
         // Both instants come from the same authenticated response. Ignoring
         // transit is conservative; a fast device clock never shortens this wait.
         if (target <= received) return 0
-        return if (received < 0 && target > Long.MAX_VALUE + received) Long.MAX_VALUE else target - received
+        if (received < 0 && target > Long.MAX_VALUE + received) return MAX_MILLIS
+        return minOf(target - received, MAX_MILLIS)
     }
 
     private fun httpDate(raw: String): Long? = try {

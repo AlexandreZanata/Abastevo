@@ -103,6 +103,10 @@ namespaces. Each item still needs exact trusted descriptor/ownership validation.
 Failed cleanup remains retryable; no IDs, credentials or payloads enter worker
 input/logs. Read-time expiry remains mandatory when the OS delays work.
 No durable-success claim is made if all independent persistent channels fail.
+Only a newly created reconfirmation requirement advances the session fence; an
+existing one is a quiet wait for every maintenance, discovery and read path. A
+bare account lock file is never prior data, and discovery of an account with no
+protected footprint creates nothing (EDR-122).
 
 ## Validation
 
@@ -120,6 +124,10 @@ the current account/origin through authenticated protected descriptors. The
 actual Android provider accepts exact scoped normal/denial/lock prefixes;
 broader marker prefixes remain invalid. Native two-account key isolation and
 real signed lost-answer/process-death recovery pass against ordinary PostGIS.
+The worker idles while signed out, drains at most ten acknowledged batches per
+partition per run, schedules a delayed continuation for a known due time and
+keeps system backoff for unknown failures; Retry-After is bounded at the 6-hour
+queue backoff cap (EDR-122).
 [Queue evidence](../../../../../../../../docs/enterprise/evidence/f2-offl003-protected-operation-queue.md)
 keeps host, native, normal product composition and integration states distinct.
 

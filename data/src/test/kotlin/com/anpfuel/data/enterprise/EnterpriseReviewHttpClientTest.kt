@@ -147,6 +147,10 @@ class EnterpriseReviewHttpClientTest {
         val limited = Fixture { response(it, "{}", 429, mapOf("Retry-After" to "120")) }
         val failure = assertThrows(EnterpriseQueueDeliveryFailure::class.java) { runBlocking { limited.client.results(limited.attempt(), listOf(expected(1))) } }
         assertEquals(120_000L, failure.retryAfterMillis)
+        // The review lookup shares the bounded Retry-After profile (EDR-122): a huge hint cannot park review work.
+        val parked = Fixture { response(it, "{}", 503, mapOf("Retry-After" to "9223372036854775807")) }
+        val bounded = assertThrows(EnterpriseQueueDeliveryFailure::class.java) { runBlocking { parked.client.results(parked.attempt(), listOf(expected(1))) } }
+        assertEquals(21_600_000L, bounded.retryAfterMillis)
     }
 
     @Test fun backgroundAccountOrTokenReplacementDuringLookupIsDenied(): Unit = runBlocking {

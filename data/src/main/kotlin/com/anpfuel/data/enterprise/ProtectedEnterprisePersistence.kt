@@ -26,7 +26,7 @@ class ProtectedEnterprisePersistence(
             checkedQueueAccount(account, partition)
             files.locked(EnterpriseVaultCodec.accountTag(partition.ownerAccount, partition.origin)) {
                 checkedQueueAccount(account, partition)
-                val descriptor = queueDescriptor(account, EnterpriseVaultCodec.token(partition)) ?: throw EnterpriseLocalDenied()
+                val descriptor = queueCandidate(account, EnterpriseVaultCodec.token(partition)).descriptor ?: throw EnterpriseLocalDenied()
                 if (descriptor.partition != partition) throw EnterpriseLocalDenied()
                 checkedQueueAccount(account, partition)
                 descriptor.enrollment()
@@ -44,6 +44,13 @@ class ProtectedEnterprisePersistence(
                 val tag = EnterpriseVaultCodec.accountTag(account.identity.account, account.identity.origin)
                 if (afterOpaque != null && (!Regex("[0-9a-f]{64}-[0-9a-f]{64}").matches(afterOpaque) ||
                     !afterOpaque.startsWith("$tag-"))) throw EnterpriseLocalDenied()
+                // A personal-only account has no protected footprint. Discovering it creates nothing,
+                // not even the account lock file, so it can never later look like lost data (EDR-122).
+                // A concurrent first save is simply found by a later invocation.
+                if (!hasFootprint(tag)) {
+                    checkedQueueAccount(account)
+                    return@access EnterpriseQueueDiscoveryPage(emptyList(), null, 0)
+                }
                 files.locked(tag) {
                     checkedQueueAccount(account)
                     val tokens = sortedSetOf<String>()
@@ -57,16 +64,19 @@ class ProtectedEnterprisePersistence(
                     val candidates = tokens.filter { it.startsWith("$tag-") && (afterOpaque == null || it > afterOpaque) }.take(limit)
                     val bindings = mutableListOf<EnterpriseEnrollmentBinding>()
                     var unavailable = 0
+                    var contactRequired = 0
                     for (token in candidates) {
                         checkedQueueAccount(account)
                         try {
-                            queueDescriptor(account, token)?.let { bindings += it.enrollment() }
+                            val candidate = queueCandidate(account, token)
+                            candidate.descriptor?.let { bindings += it.enrollment() }
+                            if (candidate.contactRequired) contactRequired++
                         } catch (denied: EnterpriseLocalDenied) { throw denied }
                         catch (_: Exception) { unavailable++ }
                     }
                     checkedQueueAccount(account)
                     val last = candidates.lastOrNull()
-                    EnterpriseQueueDiscoveryPage(bindings, last?.takeIf { token -> tokens.any { it > token } }, unavailable)
+                    EnterpriseQueueDiscoveryPage(bindings, last?.takeIf { token -> tokens.any { it > token } }, unavailable, contactRequired)
                 }
             }
         }
@@ -83,17 +93,34 @@ class ProtectedEnterprisePersistence(
     private fun VaultMaintenance.enrollment() = EnterpriseEnrollmentBinding(
         EnterpriseDeviceTarget(partition, lease.membershipId), lease.enrollmentId, lease.enrollmentRevision)
 
-    private fun queueDescriptor(account: EnterpriseQueueAccountLease, token: String): VaultMaintenance? {
-        if (erasure.deniedLocked(token)) return null
-        val descriptor = generations.descriptor(token) ?: return null
-        if (!account.identity.owns(descriptor.partition) || descriptor.lease.time.sessionFamily != account.identity.family) return null
-        when (EnterpriseOfflineProtection.evaluate(descriptor.lease.time, clock())) {
-            EnterpriseLeaseDecision.ERASE -> { erasure.eraseLocked(token); return null }
-            EnterpriseLeaseDecision.RECONFIRM -> { erasure.requireContactLocked(token); return null }
-            EnterpriseLeaseDecision.ALLOW -> Unit
-        }
-        if (keys.existing(EnterpriseVaultGenerationNames.retained(token)) != null) return null
-        return descriptor
+    /**
+     * Opaque scope check only: real material or a durable denial/requirement, never a bare lock
+     * file. Uses only the exact scoped prefixes the actual Android key provider accepts.
+     */
+    private fun hasFootprint(tag: String): Boolean = files.present(tag) ||
+        keys.existing(EnterpriseVaultGenerationNames.denied(tag)) != null || listOf(
+            EnterpriseVaultGenerationNames.PREFIX + tag + "-",
+            EnterpriseVaultGenerationNames.PREFIX + "denied_" + tag + "-",
+            EnterpriseVaultGenerationNames.PREFIX + "lock_" + tag + "-",
+            EnterpriseVaultCodec.alias(tag + "-"),
+        ).any { keys.aliases(it).isNotEmpty() }
+
+    /** A null descriptor with [contactRequired] waits for the person's explicit reconfirmation. */
+    private class QueueCandidate(val descriptor: VaultMaintenance? = null, val contactRequired: Boolean = false) {
+        override fun toString() = "QueueCandidate(redacted)"
+    }
+
+    private fun queueCandidate(account: EnterpriseQueueAccountLease, token: String): QueueCandidate {
+        if (erasure.deniedLocked(token)) return ABSENT
+        val descriptor = generations.descriptor(token) ?: return ABSENT
+        if (!account.identity.owns(descriptor.partition) || descriptor.lease.time.sessionFamily != account.identity.family) return ABSENT
+        val decision = EnterpriseOfflineProtection.evaluate(descriptor.lease.time, clock())
+        // Proven privacy expiry still wins. Otherwise an existing durable requirement is checked
+        // before any RECONFIRM side effect: it is attention, not a failure, and fences nothing.
+        if (decision == EnterpriseLeaseDecision.ERASE) { erasure.eraseLocked(token); return ABSENT }
+        if (keys.existing(EnterpriseVaultGenerationNames.retained(token)) != null) return CONTACT_REQUIRED
+        if (decision == EnterpriseLeaseDecision.RECONFIRM) { erasure.requireContactLocked(token); return CONTACT_REQUIRED }
+        return QueueCandidate(descriptor)
     }
 
     internal suspend fun <T> queueAccess(attempt: EnterpriseQueueAttempt,
@@ -326,6 +353,11 @@ class ProtectedEnterprisePersistence(
         return access(p, false) { s ->
             s.entries[(if (cache) "CACHE:" else "ATTACHMENT:") + id]?.bytes?.copyOf()
         }
+    }
+
+    private companion object {
+        val ABSENT = QueueCandidate()
+        val CONTACT_REQUIRED = QueueCandidate(contactRequired = true)
     }
 }
 

@@ -1,5 +1,6 @@
 package com.anpfuel.data.enterprise
 
+import com.anpfuel.application.enterprise.EnterpriseLocalDenied
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueAccountLease
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueDispatchResult
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueDeliveryFailure
@@ -11,6 +12,22 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.yield
+
+/** What the system worker does after one bounded invocation; it carries no private selector. */
+sealed interface EnterpriseOperationWorkNext {
+    /** Nothing actionable remains now (or nobody is signed in): no reschedule. */
+    data object Done : EnterpriseOperationWorkNext
+    /** An unknown failure or stalled source: ordinary system backoff. */
+    data object Backoff : EnterpriseOperationWorkNext
+    /** Retained work is due after a known delay, honoring stored backoff and server Retry-After. */
+    class Continue(delayMillis: Long) : EnterpriseOperationWorkNext {
+        /** Clamped to the documented Retry-After bound (EDR-122); never negative. */
+        val delayMillis: Long = delayMillis.coerceIn(0, EnterpriseRetryAfter.MAX_MILLIS)
+        override fun equals(other: Any?): Boolean = other is Continue && other.delayMillis == delayMillis
+        override fun hashCode(): Int = delayMillis.hashCode()
+        override fun toString(): String = "Continue($delayMillis)"
+    }
+}
 
 /** Only aggregate counts leave a protected worker invocation. */
 class EnterpriseOperationWorkResult(
@@ -25,8 +42,24 @@ class EnterpriseOperationWorkResult(
     val reviewResolved: Int = 0,
     val reviewUnresolved: Int = 0,
     val reviewFailed: Int = 0,
+    /** No personal account session exists; background delivery goes idle (EDR-122). */
+    val signedOut: Boolean = false,
+    /** Earliest known delay before retained delivery work is due again; scheduling only. */
+    val nextAttemptMillis: Long? = null,
+    /** A failure without an authenticated floor or a stalled batch; use system backoff. */
+    val backoff: Boolean = false,
 ) {
-    val needsRetry: Boolean get() = failed > 0 || retryable > 0 || coalesced
+    init { require(nextAttemptMillis == null || nextAttemptMillis >= 0) }
+
+    val next: EnterpriseOperationWorkNext get() = when {
+        signedOut -> EnterpriseOperationWorkNext.Done
+        coalesced || backoff -> EnterpriseOperationWorkNext.Backoff
+        nextAttemptMillis != null -> EnterpriseOperationWorkNext.Continue(nextAttemptMillis)
+        failed > 0 || retryable > 0 -> EnterpriseOperationWorkNext.Backoff
+        else -> EnterpriseOperationWorkNext.Done
+    }
+    /** Another invocation is needed, either by system backoff or a delayed continuation. */
+    val needsRetry: Boolean get() = next != EnterpriseOperationWorkNext.Done
     override fun toString(): String = "EnterpriseOperationWorkResult(redacted)"
 }
 
@@ -50,8 +83,17 @@ class EnterpriseOperationWorkRunner(
         var reviewResolved = 0
         var reviewUnresolved = 0
         var reviewFailed = 0
+        var signedOut = false
+        var nextAttempt: Long? = null
+        var backoff = false
         fun observeRetryAfter(value: Long?) {
             if (value != null && value >= 0) retryAfter = maxOf(retryAfter ?: 0, value)
+        }
+        fun observeNext(value: Long) { nextAttempt = minOf(nextAttempt ?: value, value) }
+        /** An authenticated server floor schedules a continuation; anything else uses system backoff. */
+        fun observeFailure(floor: Long?) {
+            failed = add(failed, 1)
+            if (floor != null && floor >= 0) { observeRetryAfter(floor); observeNext(floor) } else backoff = true
         }
         try {
             currentCoroutineContext().ensureActive()
@@ -67,6 +109,9 @@ class EnterpriseOperationWorkRunner(
                 val page = discover(account, after, 50)
                 account.assertCurrent()
                 failed = add(failed, page.unavailable)
+                if (page.unavailable > 0) backoff = true
+                // Waiting for the person's reconfirmation is attention, not a worker failure.
+                attention = add(attention, page.contactRequired)
                 val enrollments = page.enrollments
                 if (enrollments.size > 50) throw EnterpriseQueueDeliveryFailure()
                 for (enrollment in enrollments) {
@@ -75,30 +120,48 @@ class EnterpriseOperationWorkRunner(
                     val partition = enrollment.target.partition
                     if (!account.identity.owns(partition)) {
                         failed = add(failed, 1)
+                        backoff = true
                         continue
                     }
                     if (!partitions.add(partition)) continue
                     try {
-                        val result = dispatch(account, partition)
-                        account.assertCurrent()
-                        val candidateDelay = result.retryAfterMillis
-                        require(result.attempted >= 0 && result.completed >= 0 && result.retryable >= 0 && result.attention >= 0 &&
-                            (candidateDelay == null || candidateDelay >= 0))
-                        attempted = add(attempted, result.attempted)
-                        completed = add(completed, result.completed)
-                        retryable = add(retryable, result.retryable)
-                        attention = add(attention, result.attention)
-                        observeRetryAfter(candidateDelay)
+                        // A fully acknowledged batch that left more due work sends the next page now,
+                        // bounded per invocation; a failed or partial batch never asks for more.
+                        var rounds = 0
+                        var drained: Boolean
+                        var last: EnterpriseQueueDispatchResult
+                        do {
+                            currentCoroutineContext().ensureActive()
+                            account.assertCurrent()
+                            last = dispatch(account, partition)
+                            account.assertCurrent()
+                            val candidateDelay = last.retryAfterMillis
+                            require(last.attempted >= 0 && last.completed >= 0 && last.retryable >= 0 && last.attention >= 0 &&
+                                (candidateDelay == null || candidateDelay >= 0))
+                            attempted = add(attempted, last.attempted)
+                            completed = add(completed, last.completed)
+                            rounds++
+                            drained = candidateDelay == 0L && last.attempted > 0 && last.completed >= last.attempted
+                            if (drained && rounds < MAX_DISPATCH_ROUNDS) yield()
+                        } while (drained && rounds < MAX_DISPATCH_ROUNDS)
+                        retryable = add(retryable, last.retryable)
+                        attention = add(attention, last.attention)
+                        observeRetryAfter(last.retryAfterMillis)
+                        when (val delay = last.retryAfterMillis) {
+                            null -> Unit
+                            // Due work left by a failed/partial batch must not be hammered immediately.
+                            0L -> if (drained) observeNext(0) else backoff = true
+                            else -> observeNext(delay)
+                        }
                     } catch (cancelled: CancellationException) {
                         throw cancelled
                     } catch (failure: EnterpriseQueueDeliveryFailure) {
                         account.assertCurrent()
-                        failed = add(failed, 1)
-                        observeRetryAfter(failure.retryAfterMillis)
+                        observeFailure(failure.retryAfterMillis)
                     } catch (_: Exception) {
                         // A paused organization never widens to the next account.
                         account.assertCurrent()
-                        failed = add(failed, 1)
+                        observeFailure(null)
                     }
                     val lookup = review
                     if (lookup != null) {
@@ -131,15 +194,19 @@ class EnterpriseOperationWorkRunner(
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: EnterpriseQueueDeliveryFailure) {
-            failed = add(failed, 1)
-            observeRetryAfter(failure.retryAfterMillis)
+            observeFailure(failure.retryAfterMillis)
+        } catch (denied: EnterpriseLocalDenied) {
+            // Signed out: nothing can be delivered until a session exists again. The periodic
+            // work and the next app start resume delivery; no backoff loop runs meanwhile.
+            if (!source.hasSession()) signedOut = true else observeFailure(null)
         } catch (_: Exception) {
-            failed = add(failed, 1)
+            observeFailure(null)
         } finally {
             invocation.unlock()
         }
         return EnterpriseOperationWorkResult(attempted, completed, retryable, attention, failed, retryAfter,
-            reviewResolved = reviewResolved, reviewUnresolved = reviewUnresolved, reviewFailed = reviewFailed)
+            reviewResolved = reviewResolved, reviewUnresolved = reviewUnresolved, reviewFailed = reviewFailed,
+            signedOut = signedOut, nextAttemptMillis = nextAttempt, backoff = backoff)
     }
     override fun toString(): String = "EnterpriseOperationWorkRunner(redacted)"
 
@@ -147,5 +214,9 @@ class EnterpriseOperationWorkRunner(
         require(left >= 0 && right >= 0)
         return (left.toLong() + right.toLong()).coerceAtMost(Int.MAX_VALUE.toLong()).toInt()
     }
-    companion object { private val OPAQUE = Regex("[0-9a-f]{64}-[0-9a-f]{64}") }
+    companion object {
+        private val OPAQUE = Regex("[0-9a-f]{64}-[0-9a-f]{64}")
+        /** At most 10 batches (500 operations at the frozen 50-operation limit) per partition per invocation. */
+        internal const val MAX_DISPATCH_ROUNDS = 10
+    }
 }
