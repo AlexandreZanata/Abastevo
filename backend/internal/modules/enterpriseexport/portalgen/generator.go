@@ -204,6 +204,7 @@ type consultarPage struct {
 
 type precosPage struct {
 	pageBase
+	FuelHubs      []fuelHubLink
 	National      []summaryRow
 	Rankings      []rankingView
 	States        []stateLink
@@ -317,6 +318,8 @@ type generator struct {
 	cityRoutes map[string]string
 	statePages map[string]bool
 	cityPages  map[string]bool
+	cityState  map[string]string
+	fuelHubs   map[string]fuelHubLink
 	// Page-wide publication facts.
 	period        string
 	periodShort   string
@@ -515,7 +518,9 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 	g.cityRoutes = cityRoutesFor(municipalityState, municipalityName)
+	g.cityState = municipalityState
 	latestSummaries := summariesFor(projection, latest)
+	g.fuelHubs = planFuelHubs(latestSummaries)
 	latestRankings := rankingsFor(projection, latest)
 	previous := previousRevision(snapshot.Revisions, latest)
 	previousSummaries := summariesForRevision(projection, previous)
@@ -553,6 +558,9 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 	if err := g.generateMunicipalities(latestSummaries, observations, municipalityStations, municipalityState, municipalityName); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateFuelHubs(latestSummaries, municipalityName); err != nil {
 		return Result{}, err
 	}
 	if err := g.generateStations(snapshot, stations, revisions, obsByStation, municipalityStations, official); err != nil {

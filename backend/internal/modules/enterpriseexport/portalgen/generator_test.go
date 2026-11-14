@@ -175,10 +175,11 @@ func TestGenerateFixturePages(t *testing.T) {
 	if searchRelease == "fixture" {
 		t.Fatal("search shards must not reuse the immutable snapshot URL")
 	}
-	// 28 page/asset/download files + 15 search index files: 10 prefix shards
-	// (7 name terms, 3 CNPJ prefixes), 2 cities, 2 fuels and indice.json.
-	if result.Pages != 18 || result.Files != 43 {
-		t.Fatalf("result = %+v, want 18 pages and 43 files", result)
+	// 30 page/asset/download files (including the gasolina-comum and etanol
+	// hubs) + 15 search index files: 10 prefix shards (7 name terms, 3 CNPJ
+	// prefixes), 2 cities, 2 fuels and indice.json.
+	if result.Pages != 20 || result.Files != 45 {
+		t.Fatalf("result = %+v, want 20 pages and 45 files", result)
 	}
 	for _, page := range []string{
 		"consultar/index.html", "precos/index.html", "precos/sp/index.html",
@@ -353,7 +354,7 @@ func TestGenerateFixturePages(t *testing.T) {
 		t.Fatal(err)
 	}
 	if manifest.InputContentSHA256 != "sha256:fixture" || manifest.Pages != result.Pages ||
-		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 42 {
+		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 44 {
 		t.Errorf("portal manifest = %+v", manifest)
 	}
 }
@@ -746,10 +747,10 @@ func TestOfficialRecordsPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 31 page/asset/download files + 16 search index files (the 15 above
+	// 33 page/asset/download files + 16 search index files (the 15 above
 	// plus fiscalizacao.json).
-	if result.Pages != 21 || result.Files != 47 {
-		t.Fatalf("result = %+v, want 21 pages and 47 files", result)
+	if result.Pages != 23 || result.Files != 49 {
+		t.Fatalf("result = %+v, want 23 pages and 49 files", result)
 	}
 	index := readPortal(t, out, "fiscalizacao/index.html")
 	indexLower := strings.ToLower(index)
@@ -886,10 +887,11 @@ func TestRealOfficialSnapshotPages(t *testing.T) {
 		t.Fatal(err)
 	}
 	pages := (manifest.Rows + officialPageSize - 1) / officialPageSize
-	wantPages := 18 + (pages - 1) + manifest.Rows
-	wantFiles := 28 + (pages - 1) + manifest.Rows
+	wantPages := 20 + (pages - 1) + manifest.Rows
+	wantFiles := 30 + (pages - 1) + manifest.Rows
 	if indexable {
-		wantFiles++
+		// sitemap index plus the hubs, precos and postos children.
+		wantFiles += 4
 	}
 	if searchJS != "" {
 		wantFiles++

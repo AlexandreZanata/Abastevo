@@ -109,7 +109,7 @@ const templates = `
     </thead>
     <tbody>
       {{range .}}<tr>
-        <td>{{.Fuel}}</td><td>{{.Unit}}</td>
+        <td>{{if .FuelHref}}<a href="{{.FuelHref}}">{{.Fuel}}</a>{{else}}{{.Fuel}}{{end}}</td><td>{{.Unit}}</td>
         <td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td><td class="num">{{.Observations}}</td>
         <td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td><td class="num">{{brl .Spread}}</td>
         <td>{{if .Insufficient}}<span class="tag tag-warn">amostra pequena</span>{{else}}—{{end}}</td>
@@ -177,6 +177,8 @@ const templates = `
   </section>{{end}}
   <h2>Brasil</h2>
   {{template "summary" .National}}
+  {{if .FuelHubs}}<h2>Preço por combustível</h2>
+  <ul class="station-list">{{range .FuelHubs}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a> — {{brl .Min}} a {{brl .Max}} por {{.Unit}} na amostra nacional</li>{{end}}</ul>{{end}}
   <h2>Menores preços encontrados na amostra</h2>
   {{if .Rankings}}{{range .Rankings}}{{template "ranking" .}}{{end}}{{else}}<div class="notice"><strong>Sem ranking nacional.</strong><p>Não há postos suficientes para este recorte.</p></div>{{end}}
   <h2>Estados</h2>
@@ -254,6 +256,31 @@ const templates = `
     <p class="muted source-url">Revisão: {{if .Source.Period}}{{.Source.Period}}{{else}}não informada{{end}} · checksum: {{if .Source.Checksum}}{{.Source.Checksum}}{{else}}não informado{{end}} · parser: {{if .Source.ParserVersion}}{{.Source.ParserVersion}}{{else}}não informado{{end}} · publicação na fonte: {{if .Source.PublishedAt}}{{.Source.PublishedAt}}{{else}}não informada{{end}}</p>
   </div>
   <div class="links"><a href="/consultar/">Voltar à consulta</a><a href="/precos/">Resumo por região</a><a href="/metodologia/">Metodologia e fontes</a></div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "fuel"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <h1>{{.H1}}</h1>
+  <p class="lead">Preços encontrados na pesquisa da ANP{{if .Period}} de {{.Period}}{{end}}, em R$ por {{.UnitLabel}}. Não é preço ao vivo nem estatística oficial da ANP.</p>
+  <div class="notice"><strong>Mesma unidade, mesmo combustível.</strong><p>Esta página compara apenas {{.Label}} em R$ por {{.UnitLabel}}. Mínimo, máximo e dispersão vêm dos postos com observação no período; a amostra não cobre todos os postos.</p></div>
+  <h2>Brasil</h2>
+  {{template "summary" .National}}
+  <h2>Por estado</h2>
+  {{if .States}}<div class="table-wrap"><table>
+    <caption>{{.Label}} por estado na amostra; R$ por {{.UnitLabel}}</caption>
+    <thead><tr><th scope="col">Estado</th><th scope="col" class="num">Amostra</th><th scope="col" class="num">Mínimo</th><th scope="col" class="num">Máximo</th><th scope="col" class="num">Dispersão</th></tr></thead>
+    <tbody>{{range .States}}<tr><td><a href="{{.Href}}">{{.Name}} ({{.UF}})</a></td><td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td><td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td><td class="num">{{brl .Spread}}</td></tr>{{end}}</tbody>
+  </table></div>{{else}}<div class="notice"><strong>Sem resumo estadual.</strong></div>{{end}}
+  <h2>Cidades com preço na amostra</h2>
+  {{if .Cities}}<div class="table-wrap"><table>
+    <caption>{{.Label}} por cidade; amostras com menos de 5 postos não mostram mínimo e máximo</caption>
+    <thead><tr><th scope="col">Cidade</th><th scope="col" class="num">Amostra</th><th scope="col" class="num">Mínimo</th><th scope="col" class="num">Máximo</th></tr></thead>
+    <tbody>{{range .Cities}}<tr><td><a href="{{.Href}}">{{.Name}} ({{.UF}})</a></td><td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td>{{if .Insufficient}}<td colspan="2"><span class="tag tag-warn">amostra pequena</span></td>{{else}}<td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td>{{end}}</tr>{{end}}</tbody>
+  </table></div>{{else}}<div class="notice"><strong>Sem cidades com resumo.</strong></div>{{end}}
+  {{if .Others}}<h2>Outros combustíveis</h2><ul class="station-list">{{range .Others}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a></li>{{end}}</ul>{{end}}
+  <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo Abastevo para mínimo, máximo e dispersão.</p></div>
+  <div class="links"><a href="/precos/">Preços no Brasil</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
 

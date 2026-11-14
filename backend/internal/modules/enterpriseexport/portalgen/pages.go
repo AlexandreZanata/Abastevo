@@ -91,7 +91,7 @@ func (g *generator) generateConsultar(summaries []analytics.Summary, states map[
 			Title: "Consultar preços de combustíveis", HeadTitle: "Consultar preços de combustíveis por posto, cidade ou CNPJ | abastevo",
 			Description: description, Active: "consultar", Crumbs: []crumb{{Label: "Consultar", Current: true}}, LastMod: g.dataDate,
 		}),
-		States: stateLinks(summaries, states), National: summaryRows(summaries, analytics.LevelNational, "BR", false),
+		States: stateLinks(summaries, states), National: g.summaryRows(summaries, analytics.LevelNational, "BR", false),
 		SearchStates: searchStates, SearchRelease: release,
 	}
 	return g.writeRoute("consultar", data)
@@ -106,7 +106,7 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 	if g.surveyDate != "" {
 		head = "Preços de combustíveis no Brasil por estado e cidade – ANP " + g.surveyDate
 	}
-	national := summaryRows(summaries, analytics.LevelNational, "BR", false)
+	national := g.summaryRows(summaries, analytics.LevelNational, "BR", false)
 	parts := []string{"Preços de combustíveis na pesquisa ANP " + g.periodPhrase() + ": resumo nacional, por combustível, estado e cidade."}
 	for _, row := range byFuelRank(national) {
 		parts = append(parts, rangeSentence(row))
@@ -117,7 +117,7 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 			Title: "Preços por região", HeadTitle: head, Description: composeDescription(parts...),
 			Active: "precos", Crumbs: []crumb{{Label: "Preços", Current: true}}, LastMod: g.dataDate,
 		}),
-		National: national, Rankings: views, States: stateLinks(summaries, states),
+		National: national, Rankings: views, States: stateLinks(summaries, states), FuelHubs: g.orderedFuelHubs(),
 		SearchRelease: g.searchRelease, SearchFuels: g.searchFuels,
 	}
 	return g.writeRoute("precos", data)
@@ -134,7 +134,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 		if !isUF(uf) {
 			return fmt.Errorf("portalgen: invalid state code")
 		}
-		stateSummaries := summaryRows(summaries, analytics.LevelState, uf, false)
+		stateSummaries := g.summaryRows(summaries, analytics.LevelState, uf, false)
 		views, err := rankingViews(rankings, analytics.LevelState, uf, stations, true)
 		if err != nil {
 			return err
@@ -210,7 +210,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 			name = "Município " + code
 		}
 		insufficient := municipalityStations[code] < minMunicipality
-		rows := summaryRows(summaries, analytics.LevelMunicipality, code, true)
+		rows := g.summaryRows(summaries, analytics.LevelMunicipality, code, true)
 		fuels := make([]string, 0, len(rows))
 		for _, row := range rows {
 			fuels = append(fuels, row.Code)

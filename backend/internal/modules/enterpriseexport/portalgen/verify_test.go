@@ -98,10 +98,10 @@ func TestVerifyNoindexArtifactAndSitemap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 5 hubs, 2 states, 2 cities and the one station that passes the
-	// D-SEO-02 gate (recent official price and complete address).
-	if verified.SitemapURLs != 10 {
-		t.Fatalf("sitemap URLs = %d, want 10", verified.SitemapURLs)
+	// 5 hubs, 2 fuel hubs, 2 states, 2 cities and the one station that
+	// passes the D-SEO-02 gate (recent official price and complete address).
+	if verified.SitemapURLs != 12 {
+		t.Fatalf("sitemap URLs = %d, want 12", verified.SitemapURLs)
 	}
 	sitemap := readSitemaps(t, indexable)
 	for _, want := range []string{
@@ -391,10 +391,10 @@ func TestVerifyOfficialSitemapCensus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// D-SEO-03: the fiscalização hub joins the 10 price URLs; record pages
+	// D-SEO-03: the fiscalização hub joins the 12 price URLs; record pages
 	// stay noindex,follow and out of the sitemap.
-	if verified.SitemapURLs != 11 {
-		t.Fatalf("official sitemap URLs = %d, want 11", verified.SitemapURLs)
+	if verified.SitemapURLs != 13 {
+		t.Fatalf("official sitemap URLs = %d, want 13", verified.SitemapURLs)
 	}
 	sitemap := readSitemaps(t, out)
 	if !strings.Contains(sitemap, "<loc>https://portal.example/fiscalizacao/</loc>") {
