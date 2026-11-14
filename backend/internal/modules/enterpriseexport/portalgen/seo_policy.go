@@ -18,15 +18,18 @@ const stationRecentSurveyWeeks = 8
 type pageFamily string
 
 const (
-	familyHub          pageFamily = "hub"
-	familyFiscalHub    pageFamily = "fiscal-hub"
-	familyFiscalPage   pageFamily = "fiscal-page"
-	familyFiscalRecord pageFamily = "fiscal-record"
-	familyFuel         pageFamily = "fuel"
-	familyState        pageFamily = "state"
-	familyCity         pageFamily = "city"
-	familyStation      pageFamily = "station"
-	familyNotFound     pageFamily = "not-found"
+	familyHub           pageFamily = "hub"
+	familyFiscalHub     pageFamily = "fiscal-hub"
+	familyFiscalPage    pageFamily = "fiscal-page"
+	familyFiscalRecord  pageFamily = "fiscal-record"
+	familyFuel          pageFamily = "fuel"
+	familyState         pageFamily = "state"
+	familyCity          pageFamily = "city"
+	familyStation       pageFamily = "station"
+	familyForumHub      pageFamily = "forum-hub"
+	familyForumCategory pageFamily = "forum-category"
+	familyForumPost     pageFamily = "forum-post"
+	familyNotFound      pageFamily = "not-found"
 )
 
 // indexFacts are the data facts the indexation policy reads.
@@ -37,6 +40,9 @@ type indexFacts struct {
 	HasCurrentData      bool
 	RecentOfficialPrice bool
 	CompleteAddress     bool
+	// PublishedEditorial: a forum post of the export's editorial projection
+	// (published, visible, approved Abastevo source; B-BR-SEO-08).
+	PublishedEditorial bool
 }
 
 // pageIndexable is the single indexation decision (B-BR-SEO-01): robots meta
@@ -50,6 +56,10 @@ func pageIndexable(facts indexFacts) bool {
 		return facts.HasCurrentData
 	case familyStation:
 		return facts.RecentOfficialPrice && facts.CompleteAddress
+	case familyForumHub, familyForumCategory:
+		return facts.HasCurrentData
+	case familyForumPost:
+		return facts.PublishedEditorial
 	default:
 		return false
 	}

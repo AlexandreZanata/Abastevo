@@ -19,7 +19,7 @@ func TestLinkGraphOfTheGeneratedPortal(t *testing.T) {
 	if result.SitemapURLs != result.Indexable || result.Indexable < 25 {
 		t.Fatalf("link graph = %+v", result)
 	}
-	for _, family := range []string{"hubs", "combustiveis", "estados", "cidades"} {
+	for _, family := range []string{"hubs", "combustiveis", "estados", "cidades", "forum"} {
 		if result.MinInbound[family] < DefaultMinInboundLinks {
 			t.Errorf("%s minimum inbound = %d, want >= %d", family, result.MinInbound[family], DefaultMinInboundLinks)
 		}

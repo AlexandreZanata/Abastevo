@@ -26,8 +26,13 @@ func TestHeadContractOnEveryGeneratedPage(t *testing.T) {
 		if head.Canonical != seoSite+route {
 			t.Errorf("%s canonical = %q, want self %q", path, head.Canonical, seoSite+route)
 		}
+		// Forum post pages are articles (B-BR-SEO-08); hubs stay websites.
+		ogType := "website"
+		if strings.HasPrefix(path, "forum/") && strings.Count(path, "/") == 3 {
+			ogType = "article"
+		}
 		for _, want := range []string{
-			`<meta property="og:type" content="website">`, `<meta property="og:site_name" content="abastevo">`,
+			`<meta property="og:type" content="` + ogType + `">`, `<meta property="og:site_name" content="abastevo">`,
 			`<meta property="og:locale" content="pt_BR">`, `<meta property="og:url" content="` + head.Canonical + `">`,
 			`<meta property="og:image" content="` + seoSite + `/assets/brand/og-image-v1.png">`,
 			`<meta name="twitter:card" content="summary_large_image">`,

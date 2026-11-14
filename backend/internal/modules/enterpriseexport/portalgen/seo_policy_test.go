@@ -26,6 +26,12 @@ func TestPageIndexablePolicy(t *testing.T) {
 		{"station gate passed", indexFacts{Family: familyStation, RecentOfficialPrice: true, CompleteAddress: true}, true},
 		{"station stale", indexFacts{Family: familyStation, CompleteAddress: true}, false},
 		{"station incomplete address", indexFacts{Family: familyStation, RecentOfficialPrice: true}, false},
+		{"forum hub with posts", indexFacts{Family: familyForumHub, HasCurrentData: true}, true},
+		{"forum hub without posts", indexFacts{Family: familyForumHub}, false},
+		{"forum category with posts", indexFacts{Family: familyForumCategory, HasCurrentData: true}, true},
+		{"forum category without posts", indexFacts{Family: familyForumCategory}, false},
+		{"forum published editorial", indexFacts{Family: familyForumPost, PublishedEditorial: true}, true},
+		{"forum post not a published editorial", indexFacts{Family: familyForumPost, HasCurrentData: true}, false},
 		{"not found", indexFacts{Family: familyNotFound, HasCurrentData: true}, false},
 	}
 	for _, tc := range cases {

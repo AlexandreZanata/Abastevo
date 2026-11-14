@@ -141,6 +141,12 @@ func writeJSONL(t *testing.T, path string, value any) {
 				t.Fatal(err)
 			}
 		}
+	case []enterpriseexport.ForumPost:
+		for _, row := range rows {
+			if err := encoder.Encode(row); err != nil {
+				t.Fatal(err)
+			}
+		}
 	default:
 		t.Fatalf("unsupported fixture type")
 	}

@@ -10,7 +10,7 @@ const templates = `
   <title>{{.HeadTitle}}</title>
   <meta name="description" content="{{.Description}}">
   {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">
-  <meta property="og:type" content="website">
+  <meta property="og:type" content="{{if .OGType}}{{.OGType}}{{else}}website{{end}}">
   <meta property="og:site_name" content="abastevo">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:url" content="{{.Canonical}}">
@@ -21,7 +21,9 @@ const templates = `
   <meta name="twitter:title" content="{{.HeadTitle}}">
   <meta name="twitter:description" content="{{.Description}}">
   <meta name="twitter:image" content="{{.OGImage}}">
-  {{end}}{{if .JSONLD}}<script type="application/ld+json">{{.JSONLD}}</script>{{end}}  {{if .CSSURL}}<link rel="stylesheet" href="{{.CSSURL}}">{{end}}
+  {{if .ArticlePublished}}<meta property="article:published_time" content="{{.ArticlePublished}}">
+  <meta property="article:modified_time" content="{{.ArticleModified}}">
+  {{end}}{{end}}{{if .JSONLD}}<script type="application/ld+json">{{.JSONLD}}</script>{{end}}  {{if .CSSURL}}<link rel="stylesheet" href="{{.CSSURL}}">{{end}}
 </head>
 <body>
   <a class="skip" href="#conteudo">Pular para o conteúdo</a>
@@ -42,7 +44,8 @@ const templates = `
           <nav class="site-nav" aria-label="Menu">
             {{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a>
             <a href="/precos/">Preços</a>
-            <a href="/fiscalizacao/">Fiscalização</a>{{end}}
+            <a href="/fiscalizacao/">Fiscalização</a>{{if .HasForum}}
+            <a href="/forum/">Fórum</a>{{end}}{{end}}
             <a href="/metodologia/">Metodologia</a>
             {{if .HasLanding}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
             <a href="{{.Landing}}/como-usar/">Como usar</a>
@@ -63,6 +66,7 @@ const templates = `
       <a href="/precos/" {{if eq .ActiveNav "precos"}}aria-current="page"{{end}}>Preços</a>
       <a href="/fiscalizacao/" {{if eq .ActiveNav "fiscalizacao"}}aria-current="page"{{end}}>Fiscalização</a>
       <a href="/curiosidades/" {{if eq .ActiveNav "curiosidades"}}aria-current="page"{{end}}>Curiosidades</a>
+      {{if .HasForum}}<a href="/forum/" {{if eq .ActiveNav "forum"}}aria-current="page"{{end}}>Fórum</a>{{end}}
       <a href="/metodologia/" {{if eq .ActiveNav "metodologia"}}aria-current="page"{{end}}>Metodologia</a>
       {{end}}
     </div>
@@ -77,7 +81,7 @@ const templates = `
         <p class="footer-tagline">Projeto aberto e independente, sem afiliação à ANP ou a qualquer governo. Preços da comunidade e a referência semanal da ANP andam separados, sempre com fonte e data.</p>
       </div>
       <div class="footer-cols">
-        <nav aria-label="Produto"><h2>Produto</h2>{{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a><a href="/fiscalizacao/">Fiscalização</a>{{end}}<a href="/metodologia/">Metodologia</a></nav>
+        <nav aria-label="Produto"><h2>Produto</h2>{{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a><a href="/fiscalizacao/">Fiscalização</a>{{if .HasForum}}<a href="/forum/">Fórum</a>{{end}}{{end}}<a href="/metodologia/">Metodologia</a></nav>
         {{if .OfficialOnly}}{{else}}<nav aria-label="Dados"><h2>Dados</h2><a href="/precos/">Preços</a><a href="/dados/">Baixar dados públicos</a><a href="/curiosidades/">Perguntas aprovadas</a></nav>{{end}}
         {{if .HasLanding}}<nav aria-label="Aprender"><h2>Aprender</h2><a href="{{.Landing}}/como-usar/">Como usar</a><a href="{{.Landing}}/guias/">Guias</a><a href="{{.Landing}}/ferramentas/">Ferramentas</a><a href="{{.Landing}}/#aplicativo">Aplicativo</a></nav>{{end}}
         <nav aria-label="Projeto"><h2>Projeto</h2>{{if .HasLanding}}<a href="{{.Landing}}/sobre/">Sobre</a><a href="{{.Landing}}/politica-editorial/">Política editorial</a>{{end}}<a href="https://github.com/AlexandreZanata/abastevo">GitHub</a><a href="https://github.com/AlexandreZanata/abastevo/issues">Contato</a><a href="https://github.com/AlexandreZanata/abastevo/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
@@ -491,6 +495,57 @@ const templates = `
   <div class="notice"><strong>Limites do registro</strong><p>Uma multa ou ação não prova adulteração, interdição atual ou culpa definitiva. O vencimento não é a data da ocorrência nem prova de propriedade. Ausência de registro não é certidão negativa. O vínculo é a decisão de empresa atual na data indicada, não um histórico de propriedade.</p></div>
   <div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. {{if .Record.SourceURL}}<a href="{{.Record.SourceURL}}">Página oficial da fonte</a>.{{end}}</p><p class="muted source-url">Revisão {{.Record.RevisionID}} · lease {{.Record.LeaseID}} · checksum {{.Record.SourceChecksum}} · publicação {{.Manifest.PublishedAt}}.</p></div>
   <div class="links"><a href="/fiscalizacao/">Voltar à fiscalização</a><a href="/metodologia/">Metodologia e fontes</a>{{if .OfficialOnly}}{{else}}<a href="/consultar/">Consultar preços</a>{{end}}</div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "forumList"}}<ul class="station-list forum-list">{{range .}}<li><a href="{{.Route}}">{{.Title}}</a> <span class="muted">{{.CategoryName}} · {{.Day}}</span>{{if .Excerpt}}<br><span class="muted">{{.Excerpt}}</span>{{end}}</li>{{end}}</ul>{{end}}
+
+{{define "forumHub"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <p class="eyebrow">Equipe abastevo</p>
+  <h1>Fórum abastevo</h1>
+  <p class="lead">Publicações editoriais da Equipe abastevo sobre combustíveis, mobilidade e os dados do portal, com data e categoria. Os preços continuam nas páginas de cada cidade, sempre com fonte e data da pesquisa ANP.</p>
+  <h2>Publicações recentes</h2>
+  {{template "forumList" .Posts}}
+  {{if gt .Total (len .Posts)}}<p class="muted">Exibindo as {{len .Posts}} publicações mais recentes de {{.Total}}; as demais estão nas categorias.</p>{{end}}
+  <h2>Categorias</h2>
+  <ul class="station-list">{{range .Categories}}<li><a href="{{.Route}}">{{.Name}}</a> <span class="muted">{{.Count}} {{plural .Count "publicação" "publicações"}}</span></li>{{end}}</ul>
+  {{if .AppHref}}<p><a href="{{.AppHref}}">Acompanhe o fórum e os preços no aplicativo abastevo</a></p>{{end}}
+  {{template "modules" .}}
+  <div class="links"><a href="/precos/">Preços por região</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "forumCategory"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <p class="eyebrow">Fórum abastevo</p>
+  <h1>{{.Name}}</h1>
+  {{if .Summary}}<p class="lead">{{.Summary}}</p>{{end}}
+  <h2>Publicações</h2>
+  {{template "forumList" .Posts}}
+  {{if .Truncated}}<p class="muted">Exibindo as {{len .Posts}} publicações mais recentes de {{.Total}}.</p>{{end}}
+  {{template "modules" .}}
+  <div class="links"><a href="/forum/">Todas as publicações do fórum</a><a href="/precos/">Preços por região</a><a href="/metodologia/">Metodologia e fontes</a></div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "forumPost"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <article class="forum-post">
+    <p class="eyebrow"><a href="{{.CategoryHref}}">{{.CategoryName}}</a></p>
+    <h1>{{.PostTitle}}</h1>
+    <p class="post-meta muted">Por {{if .AboutHref}}<a href="{{.AboutHref}}">{{.Author}}</a>{{else}}{{.Author}}{{end}} · Publicado em <time datetime="{{.PublishedISO}}">{{.PublishedDay}}</time>{{if .ShowUpdated}} · Atualizado em <time datetime="{{.UpdatedISO}}">{{.UpdatedDay}}</time>{{end}}</p>
+    {{if .Related}}<ul class="chips" aria-label="Dados relacionados">{{range .Related}}<li><a class="tag" href="{{.Href}}">{{.Label}}</a></li>{{end}}</ul>{{end}}
+    <div class="post-body">{{range .Blocks}}{{if eq .Kind "heading"}}
+      <h2>{{.Text}}</h2>{{else if eq .Kind "bullets"}}
+      <ul>{{range .Items}}<li>{{.}}</li>{{end}}</ul>{{else}}
+      <p>{{range $i, $line := .Lines}}{{if $i}}<br>{{end}}{{$line}}{{end}}</p>{{end}}{{end}}
+    </div>
+  </article>
+  <div class="source"><p><strong>Fonte:</strong> {{.Author}}, publicação editorial do fórum abastevo. Texto datado; não é preço ao vivo nem estatística oficial da ANP.</p></div>
+  {{if .AppHref}}<p><a href="{{.AppHref}}">Acompanhe o fórum e os preços no aplicativo abastevo</a></p>{{end}}
+  {{template "modules" .}}
+  <div class="links"><a href="/forum/">Todas as publicações do fórum</a><a href="{{.CategoryHref}}">Mais em {{.CategoryName}}</a><a href="/precos/">Preços por região</a></div>
 </main>
 {{template "foot" .}}{{end}}
 

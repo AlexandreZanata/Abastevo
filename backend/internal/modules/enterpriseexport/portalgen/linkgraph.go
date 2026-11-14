@@ -197,6 +197,8 @@ func routeFamily(route string) string {
 	switch {
 	case strings.HasPrefix(route, "/postos/"):
 		return "postos"
+	case strings.HasPrefix(route, "/forum/"):
+		return "forum"
 	case cityRoutePath.MatchString(route):
 		return "cidades"
 	case strings.HasPrefix(route, "/precos/") && route != "/precos/":

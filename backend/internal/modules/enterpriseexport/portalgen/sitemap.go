@@ -16,9 +16,9 @@ const (
 )
 
 // sitemapFamilies fixes the child file families and their order.
-var sitemapFamilies = []string{"hubs", "precos", "postos"}
+var sitemapFamilies = []string{"hubs", "precos", "postos", "forum"}
 
-var sitemapChildPath = regexp.MustCompile(`^sitemaps/portal-(hubs|precos|postos)-[1-9][0-9]*\.xml$`)
+var sitemapChildPath = regexp.MustCompile(`^sitemaps/portal-(hubs|precos|postos|forum)-[1-9][0-9]*\.xml$`)
 
 func sitemapFamily(family pageFamily) (string, error) {
 	switch family {
@@ -28,6 +28,8 @@ func sitemapFamily(family pageFamily) (string, error) {
 		return "precos", nil
 	case familyStation:
 		return "postos", nil
+	case familyForumHub, familyForumCategory, familyForumPost:
+		return "forum", nil
 	default:
 		return "", fmt.Errorf("portalgen: page family %s cannot be in a sitemap", family)
 	}

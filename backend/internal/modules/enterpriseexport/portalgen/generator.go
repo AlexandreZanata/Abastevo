@@ -131,6 +131,13 @@ type pageBase struct {
 	LastMod string
 	// JSONLD is the inline structured data graph (B-BR-SEO-06).
 	JSONLD template.JS
+	// HasForum adds the /forum/ navigation links (B-BR-SEO-08).
+	HasForum bool
+	// OGType is the og:type ("website" when empty); article pages also
+	// carry their published and modified instants.
+	OGType           string
+	ArticlePublished string
+	ArticleModified  string
 }
 
 func (b pageBase) page() pageBase { return b }
@@ -329,6 +336,10 @@ type generator struct {
 	cityState  map[string]string
 	fuelHubs   map[string]fuelHubLink
 	latest     *enterpriseexport.Revision
+	// forum is the planned web forum (B-BR-SEO-08); nil without posts.
+	forum *forumPlan
+	// stationIndex maps a station id to its entry, for forum post links.
+	stationIndex map[string]int
 	// Station index and city pages, prepared before any page is written.
 	entries         []stationEntry
 	pricesByStation map[string][]enterpriseexport.Price
@@ -550,6 +561,9 @@ func Generate(opts Options) (Result, error) {
 	g.observed = obsByStation
 	g.prepareStationIndex(snapshot, stations, revisions, obsByStation)
 	g.prepareGeography(latestSummaries, municipalityState, municipalityName)
+	if err := g.prepareForum(snapshot.ForumPosts); err != nil {
+		return Result{}, err
+	}
 	release := releaseSlug(manifest.ContentSHA256)
 	downloadFiles, manifestLink, err := g.writeDownloads(snapshot, latest, stations, observations, latestSummaries, release, period, published, combinedHash)
 	if err != nil {
@@ -581,6 +595,9 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 	if err := g.generateStations(snapshot, stations, revisions, official); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateForum(); err != nil {
 		return Result{}, err
 	}
 	if err := g.generateOfficial(official, stations); err != nil {
@@ -635,6 +652,11 @@ func readInput(dir string) (enterpriseexport.Manifest, enterpriseexport.Snapshot
 	snapshot, err := enterpriseexport.ReadSnapshot(dir)
 	if err != nil {
 		return manifest, enterpriseexport.Snapshot{}, analytics.Projection{}, err
+	}
+	// The forum section must be exactly the one the manifest binds.
+	if forum := manifest.Sources.Forum; (forum == nil) != (snapshot.ForumPosts == nil) ||
+		(forum != nil && (forum.Posts != len(snapshot.ForumPosts) || manifest.Counts.ForumPosts != forum.Posts)) {
+		return manifest, enterpriseexport.Snapshot{}, analytics.Projection{}, fmt.Errorf("portalgen: forum section does not match the export manifest")
 	}
 	return manifest, snapshot, projection, nil
 }

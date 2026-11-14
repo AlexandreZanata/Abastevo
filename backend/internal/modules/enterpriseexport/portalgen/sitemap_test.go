@@ -83,6 +83,16 @@ func TestBuildSitemapsSplitsFamiliesUnderTheURLLimit(t *testing.T) {
 	if _, _, err := buildSitemaps("https://abastevo.example", nil, SitemapChunkURLs); err == nil {
 		t.Error("empty sitemap accepted")
 	}
+	forum, forumIndex, err := buildSitemaps("https://abastevo.example", []sitemapEntry{
+		{Route: "/precos/", Family: familyHub, LastMod: "2026-10-18"},
+		{Route: "/forum/", Family: familyForumHub, LastMod: "2026-10-22"},
+		{Route: "/forum/combustiveis/", Family: familyForumCategory, LastMod: "2026-10-22"},
+		{Route: "/forum/combustiveis/etanol-f0000001/", Family: familyForumPost, LastMod: "2026-10-20"},
+	}, SitemapChunkURLs)
+	if err != nil || len(forum) != 2 || forum[1].Path != "sitemaps/portal-forum-1.xml" || !sitemapChildPath.MatchString(forum[1].Path) ||
+		strings.Count(string(forum[1].Body), "<loc>") != 3 || !strings.Contains(string(forumIndex), "portal-forum-1.xml</loc>\n    <lastmod>2026-10-22") {
+		t.Errorf("forum sitemap family = %v %v\n%s", forum, err, forumIndex)
+	}
 }
 
 func TestGeneratedSitemapIndexAndDataDates(t *testing.T) {

@@ -67,6 +67,10 @@ func (g *generator) prepareStationIndex(snapshot enterpriseexport.Snapshot, stat
 	}
 	recent := recentSurveyRevisions(revisions, stationRecentSurveyWeeks)
 	g.entries = g.prepareStations(ordered, g.pricesByStation, revisions, recent, observations)
+	g.stationIndex = make(map[string]int, len(g.entries))
+	for i, entry := range g.entries {
+		g.stationIndex[entry.station.StationID] = i
+	}
 }
 
 // prepareGeography builds the city pages (data cities from the current
@@ -310,6 +314,9 @@ func (g *generator) hubModule(self string) linkModule {
 		{Label: "Baixar dados públicos em CSV", Href: "/dados/"},
 		{Label: "Fiscalização: multas aplicadas pela ANP", Href: "/fiscalizacao/"},
 		{Label: "Metodologia e fontes", Href: "/metodologia/"},
+	}
+	if g.hasForum() {
+		hubs = append(hubs, moduleLink{Label: "Fórum: publicações da Equipe abastevo", Href: "/forum/"})
 	}
 	links := []moduleLink{}
 	for _, hub := range hubs {

@@ -40,6 +40,7 @@ func (g *generator) newBase(spec pageSpec) pageBase {
 		Period: g.period, PublishedAt: g.published, InputHash: g.inputHash,
 		CSSURL: g.cssURL, ScriptURL: g.scriptURL,
 		Route: spec.Route, Family: spec.Facts.Family, LastMod: lastMod,
+		HasForum: g.hasForum(),
 	}
 	crumbs := spec.Crumbs
 	if base.HasLanding {
@@ -165,7 +166,7 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 	for _, row := range national {
 		codes = append(codes, row.Code)
 	}
-	data.Modules = []linkModule{g.priceGuides(" no Brasil", codes), g.hubModule("/precos/")}
+	data.Modules = []linkModule{g.priceGuides(" no Brasil", codes), g.forumPrecosModule(), g.hubModule("/precos/")}
 	items := []listItem{}
 	for _, hub := range data.FuelHubs {
 		items = append(items, listItem{Name: "Preço de " + hub.Label + " por estado", Href: hub.Href})
@@ -258,6 +259,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 		base.Modules = []linkModule{
 			g.fuelModule("Preço por combustível no Brasil", codes),
 			{Title: "Outros estados", Links: otherStates},
+			g.forumRegionModule(uf, ""),
 			g.priceGuides(" em "+ufName(uf), codes),
 		}
 		data := statePage{pageBase: base, UF: uf, Name: ufName(uf), Summaries: stateSummaries, Rankings: views, Municipalities: links, NoDataCities: noData}
@@ -329,6 +331,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 		stationList, total := stationRows(city, g.observed, limit)
 		base.Modules = append(g.cityModules(city),
 			g.fuelModule("Preço por combustível no Brasil", fuels),
+			g.forumRegionModule(uf, code),
 			g.priceGuides(" em "+name, fuels))
 		data := municipalityPage{
 			pageBase: base, NoData: !city.HasData, Stations: stationList, StationsTotal: total,

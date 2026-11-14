@@ -1,6 +1,7 @@
 package portalgen
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -91,7 +92,76 @@ func seoFixture() ([]enterpriseexport.Station, []enterpriseexport.Revision, []en
 	return stations, revisions, prices
 }
 
+// seoForumPostID numbers the fixture's editorial posts.
+func seoForumPostID(n int) string { return fmt.Sprintf("f%07d-0000-4000-8000-%012d", n, 500+n) }
+
+// seoForumFixture is the editorial web projection of the SEO fixture: a
+// Cuiabá post with fuel, station and every body block kind, a statewide SP
+// post, a Várzea Grande diesel post and a national post with hostile text.
+func seoForumFixture() []enterpriseexport.ForumPost {
+	return []enterpriseexport.ForumPost{
+		{
+			PostID: seoForumPostID(1), Category: "FUELS", CategoryName: "Combustíveis",
+			CategoryDescription: "Preços, tributação, composição e qualidade de combustíveis.",
+			Title:               "Etanol ou gasolina em Cuiabá? A regra dos 70%",
+			Excerpt:             "Quando o etanol compensa mais que a gasolina comum em Cuiabá, com a conta passo a passo e os preços da pesquisa ANP.",
+			Body:                "O etanol compensa quando custa até 70% da gasolina.\n\nComo fazer a conta\n\n- Divida o preço do etanol pelo da gasolina.\n- Até 0,70: etanol.\n\nVeja o preço de cada posto\nna página da cidade.",
+			PublishedAt:         "2026-10-20T13:00:00Z", UpdatedAt: "2026-10-22T09:30:00Z",
+			RegionUF: "MT", RegionMunicipality: "5103403", FuelProduct: "ETHANOL", StationID: seoID(1), SourceName: "Equipe Abastevo",
+		},
+		{
+			PostID: seoForumPostID(2), Category: "ELECTRIC", CategoryName: "Eletromobilidade",
+			CategoryDescription: "Recarga elétrica, conectores, tarifas e infraestrutura.",
+			Title:               "Recarga elétrica nas rodovias paulistas",
+			Body:                "Pontos de recarga rápida se espalham pelas rodovias de São Paulo.\n\nO que observar\n\n- Conector e potência.\n- Tarifa por kWh.",
+			PublishedAt:         "2026-10-18T10:00:00Z", UpdatedAt: "2026-10-18T10:00:00Z",
+			RegionUF: "SP", SourceName: "Equipe Abastevo",
+		},
+		{
+			PostID: seoForumPostID(3), Category: "FUELS", CategoryName: "Combustíveis",
+			CategoryDescription: "Preços, tributação, composição e qualidade de combustíveis.",
+			Title:               "Diesel S10 em Várzea Grande",
+			Body:                "O diesel S10 é o mais procurado por caminhoneiros na região metropolitana de Cuiabá.",
+			PublishedAt:         "2026-10-15T08:00:00Z", UpdatedAt: "2026-10-15T08:00:00Z",
+			RegionUF: "MT", RegionMunicipality: "5108402", FuelProduct: "DIESEL_S10", SourceName: "Equipe Abastevo",
+		},
+		{
+			PostID: seoForumPostID(4), Category: "ABASTEVO_DATA", CategoryName: "Dados Abastevo",
+			CategoryDescription: "Transparência, estatísticas de mercado e análises agregadas.",
+			Title:               `Como lemos a pesquisa da ANP <script>alert("x")</script> & "aspas"`,
+			Excerpt:             "Como o abastevo lê a pesquisa semanal da ANP: amostra, período e o que um preço publicado significa.",
+			Body:                "Texto com <img src=x onerror=alert(1)> e javascript:alert(1) que fica como texto.\n\n</script><b>negrito?</b>",
+			PublishedAt:         "2026-10-10T12:00:00Z", UpdatedAt: "2026-10-10T12:00:00Z", SourceName: "Equipe Abastevo",
+		},
+	}
+}
+
+// writeForumSection writes posts as the snapshot's forum section and binds
+// them in the manifest, as the export builder does.
+func writeForumSection(t *testing.T, dir string, posts []enterpriseexport.ForumPost) {
+	t.Helper()
+	var manifest enterpriseexport.Manifest
+	raw, err := os.ReadFile(filepath.Join(dir, "manifest.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(raw, &manifest); err != nil {
+		t.Fatal(err)
+	}
+	manifest.Sources.Forum = &enterpriseexport.ForumPin{Kind: enterpriseexport.ForumKind, Posts: len(posts)}
+	manifest.Counts.ForumPosts = len(posts)
+	writeJSON(t, filepath.Join(dir, "manifest.json"), manifest)
+	writeJSONL(t, filepath.Join(dir, enterpriseexport.ForumFile), posts)
+}
+
 func writeSEOFixture(t *testing.T) string {
+	t.Helper()
+	dir := writeSEOFixtureWithoutForum(t)
+	writeForumSection(t, dir, seoForumFixture())
+	return dir
+}
+
+func writeSEOFixtureWithoutForum(t *testing.T) string {
 	t.Helper()
 	dir := t.TempDir()
 	stations, revisions, prices := seoFixture()

@@ -111,7 +111,7 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   `-{ibge}` suffix. No page links to the retired `/precos/uf/` routes.
 - **B-BR-SEO-04 Sitemap index.** `sitemap.xml` is a `<sitemapindex>` of
   `sitemaps/portal-{family}-{n}.xml` files (families `hubs`, `precos`,
-  `postos`), each at most 45,000 URLs and 50 MB. Per-URL `lastmod` is the date
+  `postos`, `forum`), each at most 45,000 URLs and 50 MB. Per-URL `lastmod` is the date
   the page data last changed: the current revision publication date for price
   pages and hubs derived from it, the latest valid observation date for a
   station, the official edition publication for `/fiscalizacao/`, and the build

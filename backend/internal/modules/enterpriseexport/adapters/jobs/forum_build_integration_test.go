@@ -4,6 +4,8 @@ package jobs
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -196,5 +198,56 @@ func TestBuildCarriesEditorialForumAndReconcilesChanges(t *testing.T) {
 	}
 	if state.Forum != nil || snapshot.ForumPosts != nil {
 		t.Fatalf("forum survived the read switch: %+v %+v", state.Forum, snapshot.ForumPosts)
+	}
+}
+
+// TestRefreshPublishesAndWithdrawsEditorialPostPages runs the worker
+// pipeline end to end on real PostGIS: publish → build → refresh serves the
+// post page and lists it in the forum sitemap; hide → reconcile → build →
+// refresh releases a portal without the page (404) or any forum route.
+func TestRefreshPublishesAndWithdrawsEditorialPostPages(t *testing.T) {
+	env := newForumEnv(t)
+	ctx := context.Background()
+	post := env.publish(t, "bbbbbbbb-0000-4000-8000-000000000001", "Etanol na estrada", time.Date(2026, 11, 12, 15, 0, 0, 0, time.UTC))
+	env.handle(t)
+	portalRoot := filepath.Join(t.TempDir(), "portal")
+	refresh := Refresh{ExportRoot: env.root, PortalRoot: portalRoot, SiteURL: "https://portal.example", Indexable: true}
+	if err := refresh.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	route := filepath.Join("forum", "combustiveis", "etanol-na-estrada-bbbbbbbb", "index.html")
+	page, err := os.ReadFile(filepath.Join(portalRoot, "current", route))
+	if err != nil {
+		t.Fatalf("post page not released: %v", err)
+	}
+	for _, want := range []string{"<h1>Etanol na estrada</h1>", `"@type":"DiscussionForumPosting"`, "<h2>Subtítulo</h2>", "<li>item um</li>", `<meta name="robots" content="index,follow">`} {
+		if !strings.Contains(string(page), want) {
+			t.Errorf("released post page lacks %s", want)
+		}
+	}
+	sitemap, err := os.ReadFile(filepath.Join(portalRoot, "current", "sitemaps", "portal-forum-1.xml"))
+	if err != nil || !strings.Contains(string(sitemap), "https://portal.example/forum/combustiveis/etanol-na-estrada-bbbbbbbb/") {
+		t.Fatalf("forum sitemap = %s, %v", sitemap, err)
+	}
+	if err := env.store.SetPostVisibility(ctx, post.ID, forumdomain.VisibilityHidden); err != nil {
+		t.Fatal(err)
+	}
+	if n := env.reconcileOnce(t); n != 1 {
+		t.Fatalf("hide enqueued %d builds", n)
+	}
+	env.handle(t)
+	if err := refresh.Handle(ctx, platformjobs.Job{}); err != nil {
+		t.Fatal(err)
+	}
+	if state, ok := loadRefreshState(portalRoot); !ok || state.LastOutcome != "released" {
+		t.Fatalf("refresh after hide = %+v", state)
+	}
+	if _, err := os.Stat(filepath.Join(portalRoot, "current", route)); !os.IsNotExist(err) {
+		t.Fatalf("hidden post still served: %v", err)
+	}
+	for _, gone := range []string{"forum", filepath.Join("sitemaps", "portal-forum-1.xml")} {
+		if _, err := os.Stat(filepath.Join(portalRoot, "current", gone)); !os.IsNotExist(err) {
+			t.Errorf("%s survived the last hidden post: %v", gone, err)
+		}
 	}
 }
