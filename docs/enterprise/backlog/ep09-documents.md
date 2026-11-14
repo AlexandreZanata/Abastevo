@@ -252,7 +252,7 @@ Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DO
 - **Done when:** Company panel role, scope, accessibility and conflict cases pass.
 
 ### EMP-DOC-014 — Upload safety checks: type, size and active content
-- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type JOB · size S · state TODO
+- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type JOB · size S · state LOCAL_DONE
 - **Objective:** Inspect uploads before allowing storage state to reach ready.
 - **Rules and use cases:** BR-PRIV-020, BR-PRIV-004, BR-PRIV-008, BR-OFFL-015, UC-OFFL-03
 - **Depends on:** EMP-DOC-002
@@ -266,6 +266,14 @@ Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DO
 - **Validation:** V-JOB, V-ISO, V-IDEM, V-PRIV · migration: preserve existing metadata and test restart · rollback: close access to unverified objects
 - **Risks and assumptions:** Use synthetic fixtures and reuse approved bounded primitives.
 - **Done when:** Pass and refusal cases converge across worker retry and storage failure.
+
+- **Result (2026-11-14, LOCAL_DONE):** the ingress stores only verified,
+  inspected bytes as `RECEIVED`; `STORED` comes only from the check over the
+  stored object; refused content is `QUARANTINED`/`FAILED` with a closed,
+  database-enforced reason (migration `000212`); the `org-document-safety`
+  job converges interrupted checks and closes sessions after 24 h
+  (EDR-169..170). C1 stays JPEG-only.
+  [Evidence](../evidence/f3-doc014-upload-safety.md).
 
 ### EMP-DOC-015 — Panel: receipt viewer inside fueling review
 - **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type WEB · size S · state TODO

@@ -1016,6 +1016,15 @@ func run() error {
 		handlers[handler.Kind()] = handler
 		nativeKinds = append(nativeKinds, handler.Kind())
 	}
+	// EMP-DOC-014: no document bucket is configured here, as in cmd/api.
+	documentHandlers, err := documentWorkerHandlers(workerDocumentConfig{Enabled: cfg.EnterpriseEnabled, Pool: raw})
+	if err != nil {
+		return err
+	}
+	for _, handler := range documentHandlers {
+		handlers[handler.Kind()] = handler
+		nativeKinds = append(nativeKinds, handler.Kind())
+	}
 	dispatchers, err := workerDispatchers(queue, handlers, nativeKinds...)
 	if err != nil {
 		return err

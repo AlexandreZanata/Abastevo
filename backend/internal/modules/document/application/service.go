@@ -2,6 +2,7 @@ package application
 
 import (
 	"context"
+	"errors"
 	"io"
 	"time"
 
@@ -30,8 +31,12 @@ type Repository interface {
 	Create(context.Context, kernel.OrgScope, Actor, Create) (View, bool, error)
 	// Pending returns the creator's own document under current attach authority.
 	Pending(context.Context, kernel.OrgScope, Actor, string) (View, error)
-	// MarkStored records UPLOADING -> RECEIVED -> STORED after verified bytes.
-	MarkStored(context.Context, kernel.OrgScope, Actor, string, string) (View, bool, error)
+	// MarkReceived records UPLOADING -> RECEIVED for the creator's verified,
+	// stored bytes and queues their safety check; RECEIVED or later replays.
+	MarkReceived(context.Context, kernel.OrgScope, Actor, string, string) (View, bool, error)
+	// Refuse closes the creator's pending document whose verified bytes were
+	// refused by content: UPLOADING -> RECEIVED -> QUARANTINED or FAILED.
+	Refuse(ctx context.Context, scope kernel.OrgScope, actor Actor, id string, reason Reason, operation string) (View, error)
 	// Facts is the guarded route resource resolver; it carries no authority.
 	Facts(context.Context, kernel.OrgScope, string) (Facts, error)
 }
@@ -70,9 +75,12 @@ type Service struct {
 	Repository Repository
 	Links      LinkRepository
 	Media      Media
-	Tokens     UploadTokens
-	Now        func() time.Time
-	NewID      func() (string, error)
+	// Safety is the check that alone makes received bytes STORED
+	// (EMP-DOC-014); without it bytes are unavailable.
+	Safety Safety
+	Tokens UploadTokens
+	Now    func() time.Time
+	NewID  func() (string, error)
 }
 
 func (s Service) now() time.Time {
@@ -112,7 +120,8 @@ func (s Service) Create(ctx context.Context, scope kernel.OrgScope, actor Actor,
 		return Created{}, err
 	}
 	out := Created{View: view, Replayed: replayed}
-	if view.Statuses.Storage == domain.Uploading {
+	// A capability never outlives the upload session (B-BR-EMP-254).
+	if view.Statuses.Storage == domain.Uploading && !s.now().Add(UploadTTL).After(view.CreatedAt.Add(UploadWindow)) {
 		upload, err := s.Tokens.Issue(scope, actor, view.ID, s.now())
 		if err != nil {
 			return Created{}, ErrUnavailable
@@ -140,8 +149,12 @@ func (s Service) VerifyUpload(scope kernel.OrgScope, documentID, token string) (
 	return actor, nil
 }
 
-// Upload sends verified bytes through orgmedia and only then records STORED.
-// A retry after STORED reads nothing and writes nothing.
+// Upload sends bytes through orgmedia's integrity gate and inspection; clean
+// bytes are stored and RECEIVED, and only the safety check over the stored
+// object makes them STORED (EMP-DOC-014). Content refused by a verified
+// snapshot closes the session with its reason. A retry while RECEIVED runs
+// the check without reading bytes; a retry after STORED reads and writes
+// nothing.
 func (s Service) Upload(ctx context.Context, scope kernel.OrgScope, actor Actor, documentID string, body io.Reader) (Stored, error) {
 	if err := s.ready(scope, actor); err != nil {
 		return Stored{}, err
@@ -156,25 +169,82 @@ func (s Service) Upload(ctx context.Context, scope kernel.OrgScope, actor Actor,
 	switch view.Statuses.Storage {
 	case domain.Stored:
 		return Stored{View: view, Replayed: true}, nil
+	case domain.Received:
+		return s.check(ctx, scope, actor, documentID, true)
 	case domain.Uploading:
 	default:
 		return Stored{}, ErrConflict
 	}
-	if s.Media == nil || s.NewID == nil {
+	if s.Media == nil || s.Safety == nil || s.NewID == nil {
 		return Stored{}, ErrUnavailable
 	}
-	if err := s.Media.Upload(WithActor(ctx, actor), scope, actor.Member(), documentID, body); err != nil {
-		return Stored{}, err
+	verdict := s.Media.Upload(WithActor(ctx, actor), scope, actor.Member(), documentID, body)
+	reason, refused := contentReason(verdict)
+	if verdict != nil && !refused {
+		return Stored{}, verdict
 	}
 	operation, err := s.NewID()
 	if err != nil || !validID(operation) {
 		return Stored{}, ErrUnavailable
 	}
-	view, replayed, err := s.Repository.MarkStored(ctx, scope, actor, documentID, operation)
+	if refused {
+		// The declared digest pins these bytes: no retry can succeed.
+		if _, err := s.Repository.Refuse(ctx, scope, actor, documentID, reason, operation); err != nil {
+			return Stored{}, err
+		}
+		return Stored{}, verdict
+	}
+	if _, _, err := s.Repository.MarkReceived(ctx, scope, actor, documentID, operation); err != nil {
+		return Stored{}, err
+	}
+	return s.check(ctx, scope, actor, documentID, false)
+}
+
+// contentReason maps orgmedia's content verdicts on a verified snapshot.
+func contentReason(err error) (Reason, bool) {
+	switch {
+	case errors.Is(err, media.ErrUnsafe):
+		return UnsafeContent, true
+	case errors.Is(err, media.ErrUnsupported):
+		return UnsupportedContent, true
+	}
+	return "", false
+}
+
+// check runs the safety check now. A check that cannot finish leaves the
+// received bytes to the queued job and answers the RECEIVED record.
+func (s Service) check(ctx context.Context, scope kernel.OrgScope, actor Actor, id string, replayed bool) (Stored, error) {
+	if s.Safety == nil {
+		return Stored{}, ErrUnavailable
+	}
+	outcome, _ := s.Safety.Converge(ctx, scope, id, false)
+	if refusal := refusalOf(outcome); refusal != nil {
+		return Stored{}, refusal
+	}
+	view, err := s.Repository.Pending(ctx, scope, actor, id)
 	if err != nil {
 		return Stored{}, err
 	}
-	return Stored{View: view, Replayed: replayed}, nil
+	switch view.Statuses.Storage {
+	case domain.Stored, domain.Received:
+		return Stored{View: view, Replayed: replayed}, nil
+	}
+	return Stored{}, ErrConflict
+}
+
+// refusalOf answers a terminal check outcome with the refusal its reason names.
+func refusalOf(outcome Outcome) error {
+	switch {
+	case outcome.State == domain.Quarantined:
+		return media.ErrUnsafe
+	case outcome.State != domain.StorageFailed:
+		return nil
+	case outcome.Reason == UnsupportedContent:
+		return media.ErrUnsupported
+	case outcome.Reason == IntegrityMismatch:
+		return media.ErrIntegrity
+	}
+	return ErrConflict
 }
 
 // IssueContent records ISSUED before a member-bound capability is minted.

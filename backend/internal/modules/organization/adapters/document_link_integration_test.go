@@ -319,7 +319,12 @@ func TestDocumentLinksResolveRealTargetsAndCheckBothEndpoints(t *testing.T) {
 	}
 	// A document that can no longer hold an original refuses new links.
 	failed := l.document(t, l.scope, l.manager)
-	if err := unitSchemaExec(t, l.legalFixtureState, `UPDATE org_documents SET storage_state='FAILED',storage_revision=2 WHERE org_id=$1 AND id=$2`, l.scope.OrgID().String(), failed); err != nil {
+	// EMP-DOC-014: a FAILED document passes through RECEIVED and carries
+	// its closed reason (an open session cannot be abandoned yet).
+	if err := unitSchemaExec(t, l.legalFixtureState, `UPDATE org_documents SET storage_state='RECEIVED',storage_revision=2 WHERE org_id=$1 AND id=$2`, l.scope.OrgID().String(), failed); err != nil {
+		t.Fatal(err)
+	}
+	if err := unitSchemaExec(t, l.legalFixtureState, `UPDATE org_documents SET storage_state='FAILED',storage_revision=3,storage_reason='INTEGRITY_MISMATCH' WHERE org_id=$1 AND id=$2`, l.scope.OrgID().String(), failed); err != nil {
 		t.Fatal(err)
 	}
 	if _, _, err := l.link(t, l.manager, failed, docdomain.Asset, l.activeAsset); !errors.Is(err, docapp.ErrConflict) {
@@ -548,7 +553,12 @@ func TestDocumentLinkSchemaGuardsScopeReferencesAndRetention(t *testing.T) {
 		t.Fatal("another organization saw links", visible, err)
 	}
 	failed := l.document(t, l.scope, l.manager)
-	if err := unitSchemaExec(t, l.legalFixtureState, `UPDATE org_documents SET storage_state='FAILED',storage_revision=2 WHERE org_id=$1 AND id=$2`, org, failed); err != nil {
+	// EMP-DOC-014: a FAILED document passes through RECEIVED and carries
+	// its closed reason (an open session cannot be abandoned yet).
+	if err := unitSchemaExec(t, l.legalFixtureState, `UPDATE org_documents SET storage_state='RECEIVED',storage_revision=2 WHERE org_id=$1 AND id=$2`, org, failed); err != nil {
+		t.Fatal(err)
+	}
+	if err := unitSchemaExec(t, l.legalFixtureState, `UPDATE org_documents SET storage_state='FAILED',storage_revision=3,storage_reason='INTEGRITY_MISMATCH' WHERE org_id=$1 AND id=$2`, org, failed); err != nil {
 		t.Fatal(err)
 	}
 	fresh := l.document(t, l.scope, l.manager)

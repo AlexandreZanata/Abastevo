@@ -177,6 +177,8 @@ func (service *Service) newID() (string, error) {
 
 // Upload bounds bytes. Its HTTP owner also sets the request read deadline, as in
 // the existing ingress gateway; context alone cannot interrupt an arbitrary Reader.
+// Integrity is decided first: ErrUnsupported and ErrUnsafe are returned only for
+// a snapshot whose exact size and digest matched, and nothing is stored then.
 func (service *Service) Upload(ctx context.Context, scope kernel.OrgScope, member domain.Member, id string, body io.Reader) error {
 	release, err := service.enter(scope, member)
 	if err != nil {
@@ -229,6 +231,8 @@ func (service *Service) inspect(ctx context.Context, object domain.Object, raw [
 		switch {
 		case errors.Is(err, domain.ErrUnsupported):
 			return domain.ErrUnsupported
+		case errors.Is(err, domain.ErrUnsafe):
+			return domain.ErrUnsafe
 		case errors.Is(err, domain.ErrTooLarge):
 			return domain.ErrTooLarge
 		case errors.Is(err, domain.ErrIntegrity):

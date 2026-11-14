@@ -18037,7 +18037,9 @@ paths:
         retry returns the first record and a fresh upload capability while pending; the same operation with other
         facts or actor is OPERATION_ID_REUSED and another operation naming an existing document is CONFLICT. The
         capability expires within five minutes and is bound to the origin, organization, document, account and
-        membership. Synthetic C1 only; real receipts and other formats remain gated.
+        membership. The upload session closes 24 hours after the declaration; a capability is minted only if it
+        expires by then, and a document still UPLOADING five minutes after the close becomes FAILED. Synthetic C1
+        only; real receipts and other formats remain gated.
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
@@ -18129,10 +18131,15 @@ paths:
       description: Capability-bound byte transport (DOCUMENT_INGRESS). The upload capability is verified before any
         byte is read; no cookie, signed proof, query parameter or JSON body is accepted. The server rechecks that the
         caller created the document, still holds doc.document.attach and the document is pending, then reads at most
-        the declared size plus one byte, verifies the exact digest, decides the type by content inspection and writes
-        the original under the organization prefix of private storage. Only then does storage move to STORED. A
-        refused, oversized, mismatched, wrong-type or interrupted transfer leaves the document UPLOADING; a retry
-        after STORED returns the stored record without reading or recording again.
+        the declared size plus one byte and verifies the exact digest; an oversized, mismatched, truncated or
+        interrupted transfer is VALIDATION_FAILED and leaves the document UPLOADING. Bytes that match the
+        declaration are inspected by content; a trailing payload or embedded active content makes the document
+        QUARANTINED, content that is not the declared image type makes it FAILED (both VALIDATION_FAILED, final,
+        nothing stored). Clean bytes are written under the organization prefix of private storage and the document
+        becomes RECEIVED; only the safety check over the stored object moves it to STORED, normally within this
+        request. If the check cannot finish now the response shows RECEIVED and a queued job completes it. A retry
+        while RECEIVED runs the check without reading bytes; a retry after STORED returns the stored record without
+        reading or recording again; a retry after QUARANTINED or FAILED is CONFLICT.
       security: []
       x-abastevo-document-ingress:
         capability: true
@@ -18167,7 +18174,8 @@ paths:
               maxLength: 5242880
       responses:
         '200':
-          description: Verified original stored, or the already stored record.
+          description: Verified and checked original stored, the received original whose safety check is still
+            pending (storage RECEIVED), or the already stored record.
           headers:
             Cache-Control:
               $ref: '#/components/headers/EnterpriseNoStore'
@@ -35224,7 +35232,8 @@ components:
     EnterpriseDocumentCreated:
       type: object
       additionalProperties: false
-      description: Declared (or identically replayed) document; an upload capability only while storage is UPLOADING.
+      description: Declared (or identically replayed) document; an upload capability only while storage is UPLOADING
+        and the upload session is open.
       required: [document, replayed]
       properties:
         document:

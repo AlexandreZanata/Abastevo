@@ -6,6 +6,7 @@ import (
 	"errors"
 	"sync"
 	"testing"
+	"time"
 
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/domain"
@@ -146,7 +147,10 @@ func TestConcurrentDuplicateDeclarationsWriteOneRowAndOneEvent(t *testing.T) {
 	}
 }
 
-func TestStoredTransitionIsCreatorBoundAuditedOnceAndReplaySafe(t *testing.T) {
+// EMP-DOC-014 amends the DOC-002 single stored transaction: the creator's
+// verified bytes are RECEIVED (creator-bound, audited once, replay-safe and
+// queued for their check), and only a system settlement stores them.
+func TestReceivedTransitionIsCreatorBoundAuditedOnceAndReplaySafe(t *testing.T) {
 	f := newDocFixture(t)
 	command := declare(t, syntheticJPEG(t))
 	if _, _, err := f.store.Create(t.Context(), f.scopeA, f.driver, command); err != nil {
@@ -160,24 +164,53 @@ func TestStoredTransitionIsCreatorBoundAuditedOnceAndReplaySafe(t *testing.T) {
 		if _, err := f.store.Pending(t.Context(), f.scopeA, other, command.DocumentID); !errors.Is(err, app.ErrNotFound) {
 			t.Fatal("another member opened the upload session", name, err)
 		}
-		if _, _, err := f.store.MarkStored(t.Context(), f.scopeA, other, command.DocumentID, newID(t)); !errors.Is(err, app.ErrNotFound) {
+		if _, _, err := f.store.MarkReceived(t.Context(), f.scopeA, other, command.DocumentID, newID(t)); !errors.Is(err, app.ErrNotFound) {
 			t.Fatal("another member completed the upload", name, err)
 		}
+		if _, err := f.store.Refuse(t.Context(), f.scopeA, other, command.DocumentID, app.UnsafeContent, newID(t)); !errors.Is(err, app.ErrNotFound) {
+			t.Fatal("another member closed the upload", name, err)
+		}
 	}
-	if _, _, err := f.store.MarkStored(t.Context(), f.scopeB, f.foreign, command.DocumentID, newID(t)); err == nil {
+	if _, _, err := f.store.MarkReceived(t.Context(), f.scopeB, f.foreign, command.DocumentID, newID(t)); err == nil {
 		t.Fatal("foreign organization completed the upload")
 	}
-	stored, replayed, err := f.store.MarkStored(t.Context(), f.scopeA, f.driver, command.DocumentID, newID(t))
-	if err != nil || replayed || stored.Statuses.Storage != domain.Stored || stored.Revisions.Storage != 3 || stored.Revisions.Conference != 1 || !stored.UpdatedAt.After(stored.CreatedAt) {
-		t.Fatal("verified upload did not move UPLOADING -> RECEIVED -> STORED", err, stored.Revisions)
+	received, replayed, err := f.store.MarkReceived(t.Context(), f.scopeA, f.driver, command.DocumentID, newID(t))
+	if err != nil || replayed || received.Statuses.Storage != domain.Received || received.Revisions.Storage != 2 || received.Revisions.Conference != 1 || !received.UpdatedAt.After(received.CreatedAt) {
+		t.Fatal("verified upload did not move UPLOADING -> RECEIVED", err, received.Revisions)
 	}
-	storedEvents := `SELECT count(*) FROM org_audit_events WHERE action='document.upload.stored' AND target_id=$1 AND actor_id=$2`
-	if f.count(t, f.scopeA, storedEvents, command.DocumentID, f.driver.AccountID) != 1 {
-		t.Fatal("stored transition not audited once")
+	events := `SELECT count(*) FROM org_audit_events WHERE action=$1 AND target_id=$2 AND actor_id=$3`
+	if f.count(t, f.scopeA, events, "document.upload.received", command.DocumentID, f.driver.AccountID) != 1 {
+		t.Fatal("received transition not audited once")
 	}
-	again, replayed, err := f.store.MarkStored(t.Context(), f.scopeA, f.driver, command.DocumentID, newID(t))
-	if err != nil || !replayed || again.Revisions.Storage != 3 || f.count(t, f.scopeA, storedEvents, command.DocumentID, f.driver.AccountID) != 1 {
+	var queued int
+	var due time.Time
+	if err := f.db.Admin.QueryRow(t.Context(), `SELECT count(*),max(not_before) FROM job_queue WHERE kind='org-document-safety' AND dedupe_key=$1 AND max_attempts=10
+		AND payload=jsonb_build_object('version',1,'org_id',$2::text,'document_id',$3::text)`,
+		"org-document-safety:check:"+f.scopeA.OrgID().String()+":"+command.DocumentID, f.scopeA.OrgID().String(), command.DocumentID).Scan(&queued, &due); err != nil || queued != 1 {
+		t.Fatal("received upload did not queue exactly one reference-only check", queued, err)
+	}
+	if wait := time.Until(due); wait < 30*time.Second || wait > 2*time.Minute {
+		t.Fatal("check job does not leave the inline check its delay", wait)
+	}
+	again, replayed, err := f.store.MarkReceived(t.Context(), f.scopeA, f.driver, command.DocumentID, newID(t))
+	if err != nil || !replayed || again.Revisions.Storage != 2 || f.count(t, f.scopeA, events, "document.upload.received", command.DocumentID, f.driver.AccountID) != 1 {
 		t.Fatal("repeated completion wrote another record", err)
+	}
+	if _, err := f.store.Refuse(t.Context(), f.scopeA, f.driver, command.DocumentID, app.UnsafeContent, newID(t)); !errors.Is(err, app.ErrConflict) {
+		t.Fatal("received bytes closed by an ingress refusal", err)
+	}
+	// Only the system settlement stores; it is attributed to the creating
+	// account, and a stale compare-and-set writes nothing.
+	outcome, err := f.store.Settle(t.Context(), f.scopeA, command.DocumentID, domain.Received, 2, "", newID(t))
+	if err != nil || outcome != (app.Outcome{State: domain.Stored}) {
+		t.Fatal("stored settlement", outcome, err)
+	}
+	if f.count(t, f.scopeA, events, "document.upload.stored", command.DocumentID, f.driver.AccountID) != 1 {
+		t.Fatal("stored settlement not audited once under the creating account")
+	}
+	if stale, err := f.store.Settle(t.Context(), f.scopeA, command.DocumentID, domain.Received, 2, app.IntegrityMismatch, newID(t)); err != nil || stale != (app.Outcome{State: domain.Stored}) ||
+		f.count(t, f.scopeA, `SELECT count(*) FROM org_audit_events WHERE target_id=$1`, command.DocumentID) != 3 {
+		t.Fatal("stale settlement wrote", stale, err)
 	}
 	// Losing the attach permission closes the session even for the creator.
 	f.authority.set(f.scopeA, f.driver, func(s *roleState) { s.role = roles.Auditor })

@@ -844,8 +844,7 @@ Use the existing `jobs.NewUUIDv4` generator for access/request IDs.
 
 Original keys are derived under `org/<org_id>/doc/<document_id>/<sha256>`.
 Conditional PUT plus a bounded verified GET refuses overwrite or substitution.
-Only the synthetic JPEG inspector is supplied; other format inspectors and
-durable ready/quarantine state stay with EMP-DOC-014/EMP-DOC-002.
+Only the synthetic JPEG inspector is supplied; it refuses trailing payloads and active content as unsafe (EMP-DOC-014). Other format inspectors stay unimplemented.
 Member-bound API access expires within five minutes, rechecks revocation and
 authority, and never returns a storage URL. A process runs at most four
 transfers, two per organization and one per member, refusing at once beyond
@@ -1248,3 +1247,17 @@ SELECT(org_id,reading_id,operation_id) ON org_meter_held_readings`, `GRANT
 SELECT(org_id,operation_id,membership_id) ON org_sync_operations` and `GRANT
 SELECT(org_id,id) ON org_employee_identities`. Links are never updated or
 deleted; only ASSET, EMPLOYEE and METER_READING targets are registered.
+
+### Document upload safety (EMP-DOC-014)
+
+Migration212 adds `org_documents.storage_reason` (closed reasons fixed by their
+transition), the 24-hour upload session window and the `org-document-safety`
+closure job of pending rows. The API runtime role needs `GRANT SELECT, INSERT ON
+job_queue` for declarations and received uploads, besides the document grants.
+The worker role needs `GRANT SELECT, INSERT, UPDATE ON job_queue`, `GRANT SELECT,
+UPDATE ON org_documents` (UPDATE also for the `FOR UPDATE` row lock) and `GRANT
+SELECT, INSERT ON org_audit_events`, connects as an ordinary
+NOSUPERUSER/NOBYPASSRLS login that owns no RLS table and uses the same private
+document bucket as the API. Neither `cmd/api` nor `cmd/worker` configures that
+bucket yet, so the job is not composed and queued jobs wait without charging
+attempts.

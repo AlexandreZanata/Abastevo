@@ -41,16 +41,42 @@ func documentView(storage domain.State) app.View {
 		Revisions: app.Revisions{Storage: 3, Extraction: 1, Structure: 1, Conference: 1, Fiscal: 1}, CreatedAt: time.Unix(1_800_000_000, 0).UTC(), UpdatedAt: time.Unix(1_800_000_001, 0).UTC()}
 }
 
-type repository struct{ pendingErr error }
+// repository keeps one row; the received transition and the check move it.
+type repository struct {
+	pendingErr error
+	state      *domain.State
+}
 
 func (repository) Create(context.Context, kernel.OrgScope, app.Actor, app.Create) (app.View, bool, error) {
 	return app.View{}, false, app.ErrUnavailable
 }
 func (r repository) Pending(context.Context, kernel.OrgScope, app.Actor, string) (app.View, error) {
-	return documentView(domain.Uploading), r.pendingErr
+	state := domain.Uploading
+	if r.state != nil {
+		state = *r.state
+	}
+	return documentView(state), r.pendingErr
 }
-func (repository) MarkStored(context.Context, kernel.OrgScope, app.Actor, string, string) (app.View, bool, error) {
-	return documentView(domain.Stored), false, nil
+func (r repository) MarkReceived(context.Context, kernel.OrgScope, app.Actor, string, string) (app.View, bool, error) {
+	if r.state != nil {
+		*r.state = domain.Received
+	}
+	return documentView(domain.Received), false, nil
+}
+func (r repository) Refuse(_ context.Context, _ kernel.OrgScope, _ app.Actor, _ string, reason app.Reason, _ string) (app.View, error) {
+	_, to, _ := reason.Transition()
+	if r.state != nil {
+		*r.state = to
+	}
+	return documentView(to), nil
+}
+
+// passingCheck stores every received document.
+type passingCheck struct{ state *domain.State }
+
+func (c passingCheck) Converge(context.Context, kernel.OrgScope, string, bool) (app.Outcome, error) {
+	*c.state = domain.Stored
+	return app.Outcome{State: domain.Stored}, nil
 }
 func (repository) Facts(context.Context, kernel.OrgScope, string) (app.Facts, error) {
 	return app.Facts{TargetID: docID, AuthoredBy: memberID}, nil
@@ -131,8 +157,9 @@ func errorCode(t *testing.T, w *httptest.ResponseRecorder) (string, []any) {
 }
 
 func service(media *originals, tokens uploadTokens) app.Service {
-	return app.Service{Enabled: true, Repository: repository{}, Media: media, Tokens: tokens, Now: func() time.Time { return time.Unix(1_800_000_000, 0) },
-		NewID: func() (string, error) { return "7b0e2a54-0000-4000-8000-000000020525", nil }}
+	state := domain.Uploading
+	return app.Service{Enabled: true, Repository: repository{state: &state}, Media: media, Safety: passingCheck{state: &state}, Tokens: tokens,
+		Now: func() time.Time { return time.Unix(1_800_000_000, 0) }, NewID: func() (string, error) { return "7b0e2a54-0000-4000-8000-000000020525", nil }}
 }
 
 func TestIngressVerifiesTheCapabilityAndTransportBeforeReadingBytes(t *testing.T) {
@@ -203,6 +230,7 @@ func TestIngressStoresVerifiedBytesAndMapsOriginalRefusals(t *testing.T) {
 		code, perm string
 	}{
 		{media.ErrIntegrity, 422, "VALIDATION_FAILED", ""}, {media.ErrTooLarge, 422, "VALIDATION_FAILED", ""}, {media.ErrUnsupported, 422, "VALIDATION_FAILED", ""},
+		{media.ErrUnsafe, 422, "VALIDATION_FAILED", ""},
 		{media.ErrNotFound, 404, "NOT_FOUND", ""}, {media.ErrForbidden, 403, "FORBIDDEN", "doc.document.attach"}, {media.ErrUnavailable, 503, "UNAVAILABLE", ""},
 	} {
 		w, _ := upload(ingress(t, service(&originals{err: refusal.err}, uploadTokens{})), nil)

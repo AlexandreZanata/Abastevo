@@ -103,11 +103,17 @@ func (m MediaAuthority) CheckAccess(ctx context.Context, scope kernel.OrgScope, 
 // transfer is unavailable, so no original is accepted or served.
 type UnavailableObjects struct{}
 
-var _ mediaapp.Objects = UnavailableObjects{}
+var (
+	_ mediaapp.Objects  = UnavailableObjects{}
+	_ app.SafetyObjects = UnavailableObjects{}
+)
 
 func (UnavailableObjects) Put(context.Context, kernel.OrgScope, media.Object, []byte) error {
 	return media.ErrUnavailable
 }
 func (UnavailableObjects) Get(context.Context, kernel.OrgScope, media.Object) ([]byte, error) {
 	return nil, media.ErrUnavailable
+}
+func (UnavailableObjects) Delete(context.Context, kernel.OrgScope, media.Object) error {
+	return media.ErrUnavailable
 }

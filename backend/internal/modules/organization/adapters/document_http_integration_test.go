@@ -31,7 +31,9 @@ import (
 func documentGrants(t *testing.T, fx deviceFixtureState) {
 	t.Helper()
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
-	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON org_documents TO "+role+"; GRANT SELECT,INSERT ON org_audit_events,org_sensitive_access_events TO "+role+"; GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role); err != nil {
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON org_documents TO "+role+"; GRANT SELECT,INSERT ON org_audit_events,org_sensitive_access_events TO "+role+"; GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role+
+		// EMP-DOC-014: declarations and received uploads queue their safety jobs.
+		"; GRANT SELECT,INSERT ON job_queue TO "+role); err != nil {
 		t.Fatal(err)
 	}
 }

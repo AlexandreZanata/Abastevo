@@ -597,6 +597,7 @@ sql:
       - db/migrations/000169_organization_roots.sql
       - db/migrations/000205_org_documents.sql
       - db/migrations/000209_org_document_links.sql
+      - db/migrations/000212_org_document_upload_safety.sql
     gen:
       go:
         package: document

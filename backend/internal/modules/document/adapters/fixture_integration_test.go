@@ -128,7 +128,9 @@ func newDocFixture(t *testing.T) *docFixture {
 	role := pgx.Identifier{f.db.RuntimeRole}.Sanitize()
 	if _, err := f.db.Admin.Exec(t.Context(), "GRANT USAGE ON SCHEMA public TO "+role+
 		"; GRANT SELECT, INSERT ON org_audit_events, org_sensitive_access_events TO "+role+
-		"; GRANT SELECT, INSERT, UPDATE ON org_documents TO "+role); err != nil {
+		"; GRANT SELECT, INSERT, UPDATE ON org_documents TO "+role+
+		// EMP-DOC-014: declarations and received uploads queue their safety jobs.
+		"; GRANT SELECT, INSERT ON job_queue TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	f.scopeA, f.scopeB = f.db.Organizations[0].Scope(t), f.db.Organizations[1].Scope(t)

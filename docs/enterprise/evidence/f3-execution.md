@@ -523,6 +523,37 @@ readings HELD/PERMISSION_CHANGED from assignment and role periods. Also
 retained: assignee notifications, OFFL-006 feed, FLEET-013 picker, IDN-014
 eligibility, FLEET-007 reservations, panel, Android, production grants.
 
+### EMP-DOC-014 — upload safety checks: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-doc014-upload-safety.md). Migration 000212 adds
+`org_documents.storage_reason` (closed reasons fixed by their transition), the
+24-hour upload session window and closure jobs for pending rows; it redefines
+`org_document_guard()` from its 000205 body. The ingress checks size and
+SHA-256 first (mismatch stays UPLOADING, nothing written); matching bytes are
+inspected in memory (trailing payload after end-of-image, markup/script/
+entity/PDF/archive/executable signatures → QUARANTINED `UNSAFE_CONTENT`;
+non-JPEG → FAILED `UNSUPPORTED_CONTENT`); clean bytes are stored create-only as
+RECEIVED and only the check over the stored object sets STORED (a differing
+copy → FAILED `INTEGRITY_MISMATCH`). The `org-document-safety` job (10
+attempts, compare-and-set settlements, own worker slot) converges interrupted
+checks and closes sessions 24 h + 5 min after declaration; quarantined objects
+are kept unserved, FAILED objects removed with confirmed absence
+(EDR-169/170). C1 stays JPEG-only. RED unit 15/95 and integration 25/105,
+composed 4/6 failing → GREEN; 7/7 mutations killed. The agent saw the
+pre-existing orgmedia S3 test `TestPrivateS3OriginalAndMemberBoundAuditedAccess`
+fail once under load average ~20 (`orgmedia: unavailable`), passing alone, in
+a full orgmedia rerun and in four later runs; the coordinator reports the same
+test as flaky on main CI. Merged-tree verification: race/integration union
+over document, orgmedia, orgaudit, organization adapters, enterprisesuite and
+migrate: 14 packages, 535/4172, 0 failures, 0 skips; `cmd/worker` integration
+16 passed (the 5 tests needing the Rust preparer CLIs, absent here, skipped;
+CI provides them). B-BR-EMP-220 now names the safety check as the only path to
+STORED. Retained: XML admission and inspector, PNG/PDF inspectors, reviewed
+deletion of quarantined objects and FAILED-row retention (DOC-012), links to
+QUARANTINED documents still allowed by the 209 guard, reason display
+(DOC-013/015), Android capability path (DOC-004), bucket/provider/grants
+(operator gate); real receipts stay legally gated.
+
 ## Interruption — 2026-11-14 (resumed)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,

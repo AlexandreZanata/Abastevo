@@ -92,7 +92,7 @@ func mapped(err error, permission string) error {
 		{app.ErrDisabled, orgapi.NotFound}, {app.ErrNotFound, orgapi.NotFound}, {media.ErrNotFound, orgapi.NotFound}, {media.ErrDisabled, orgapi.NotFound},
 		{access.ErrNoMembership, orgapi.NotFound}, {access.ErrNotFound, orgapi.NotFound}, {permissions.ErrResourceNotFound, orgapi.NotFound},
 		{app.ErrInvalid, orgapi.ValidationFailed}, {media.ErrIntegrity, orgapi.ValidationFailed}, {media.ErrTooLarge, orgapi.ValidationFailed},
-		{media.ErrUnsupported, orgapi.ValidationFailed}, {media.ErrInvalid, orgapi.ValidationFailed},
+		{media.ErrUnsupported, orgapi.ValidationFailed}, {media.ErrUnsafe, orgapi.ValidationFailed}, {media.ErrInvalid, orgapi.ValidationFailed},
 		{app.ErrConflict, orgapi.Conflict}, {app.ErrOperationReused, orgapi.OperationReused},
 		{access.ErrMembershipSuspended, orgapi.MembershipSuspended}, {access.ErrOrgSuspended, orgapi.OrgSuspended}, {access.ErrOrgArchived, orgapi.OrgArchived},
 		{access.ErrSetupIncomplete, orgapi.OrgSetupIncomplete}, {access.ErrUnauthenticated, orgapi.Unauthenticated}, {access.ErrFreshAuthRequired, orgapi.FreshAuthRequired},

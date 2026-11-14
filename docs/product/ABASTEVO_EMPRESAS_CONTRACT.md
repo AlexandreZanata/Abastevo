@@ -3548,11 +3548,7 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   Bytes reach the document ingress with the capability; the server rechecks
   the creator, the current authority and the pending state, then runs the
   existing bounded `orgmedia` upload (declared size plus one, exact digest,
-  type by content, conditional private write and verified read). Only after
-  that does one transaction move storage `UPLOADING → RECEIVED → STORED` and
-  record `document.upload.stored`. A refused, interrupted, oversized,
-  mismatched or wrong-type transfer leaves the document `UPLOADING` with no
-  event; a retry after `STORED` returns the stored record and writes nothing.
+  type by content, conditional private write and verified read). Only after that does storage move `UPLOADING → RECEIVED`, and only the EMP-DOC-014 safety check makes it `STORED` (B-BR-EMP-251..253). A refused, interrupted, oversized or mismatched transfer leaves the document `UPLOADING` with no event; content refused for bytes that match the declaration closes it (B-BR-EMP-252); a retry after `STORED` returns the stored record and writes nothing.
 - **B-BR-EMP-221 — Content only through an audited, member-bound
   capability.** Opening content requires the current session, membership and
   `doc.document.view_content` covering the document (own records for `S`
@@ -4225,3 +4221,96 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   `ACTIVE` assignments with asset, kind and period. Alternatives: foreign or
   unknown asset → `NOT_FOUND`; a member without a covering grant →
   `FORBIDDEN`. Result: read only; no notification is sent in this task.
+
+## EMP-DOC-014 — Upload safety checks: type, size and active content (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc014-upload-safety.md).
+
+- **B-BR-EMP-251 — Verified bytes are received, then checked before they are
+  ready.** The ingress keeps the EMP-DOC-002 integrity gate: a body whose size
+  or SHA-256 differs from the declaration, and an oversized, truncated,
+  interrupted or empty body, are refused (`VALIDATION_FAILED`) and leave the
+  document `UPLOADING` with no object and no event, so the device can retry
+  from its stored file (BR-OFFL-015, UC-OFFL-03). Bytes that match the
+  declaration exactly are inspected by content; clean bytes are written
+  create-only under `org/<org>/doc/<document>/<sha256>` and verified by
+  read-back, then one creator-bound transaction moves storage
+  `UPLOADING → RECEIVED`, records `document.upload.received` and queues the
+  safety job. `STORED` is reached only by the safety check over the stored
+  object: a bounded read of at most the declared size plus one byte, the exact
+  size and digest, the type decided by content equal to the declared type, the
+  active-content rules (B-BR-EMP-252) and an unchanged snapshot after
+  inspection; it records `document.upload.stored`. The upload request runs the
+  check at once and normally answers `STORED`; if the check cannot complete it
+  answers `RECEIVED` and the job finishes it. This amends the single
+  `UPLOADING → RECEIVED → STORED` transaction and the "wrong-type stays
+  `UPLOADING`" sentence of B-BR-EMP-220.
+- **B-BR-EMP-252 — Refused content keeps a truthful terminal state and stays
+  inaccessible.** The declared digest pins the bytes, so content that matches
+  the declaration but is refused can never succeed on retry and is closed at
+  once, passing through `RECEIVED`: bytes after the JPEG end-of-image marker,
+  or a markup, script, entity, document, archive or executable signature
+  inside the image (metadata segments for every signature, the whole stream
+  for the long markup ones) make it `QUARANTINED` with reason `UNSAFE_CONTENT`;
+  content that is not an admissible image of the declared type (magic, marker
+  structure, pixel caps, decoding, inspected type different from the declared
+  one) makes it `FAILED` with `UNSUPPORTED_CONTENT`; a stored object whose
+  size or digest differs from the declaration makes it `FAILED` with
+  `INTEGRITY_MISMATCH`. Every `QUARANTINED` or `FAILED` row entered after this
+  change carries exactly one closed reason that matches its transition, never
+  changes and is enforced by the database; each terminal step records one
+  `document.upload.quarantined` or `document.upload.failed` event with the
+  reason code. The ingress never writes refused bytes; an object that the
+  check finds unsafe is retained, isolated and never served, until the
+  reviewed retention workflow (EMP-DOC-012); the object of a `FAILED` document
+  is removed and its absence confirmed. Only `STORED` documents are served:
+  content access and reads refuse `UPLOADING`, `RECEIVED`, `QUARANTINED` and
+  `FAILED` documents as `NOT_FOUND`, also from a freshly started process over
+  the same database and bucket, and orgmedia's read-time re-inspection
+  refuses unsafe bytes even on a `STORED` row. An upload retry after a
+  terminal refusal is `CONFLICT` and reads no byte. C1 stays JPEG-only.
+- **B-BR-EMP-253 — The safety job is retry-safe and converges.** Queue kind
+  `org-document-safety` carries only `{version, org_id, document_id}` and is
+  queued twice per document under separate de-duplication keys: at
+  `RECEIVED` (check, one minute later) and at declaration (session close plus
+  grace, B-BR-EMP-254). It acts on the current row only: `RECEIVED` runs the
+  check; `UPLOADING` closes an expired session; `FAILED` removes the object;
+  every other state, a missing document and another organization's document
+  are no-ops. The verdict is a pure function of the immutable declaration and
+  the create-only object, and every settlement is a compare-and-set on the
+  expected state and storage revision under the row lock, so the inline
+  check, upload retries and repeated or concurrent jobs commit exactly one
+  outcome and one event while the others observe it. A storage, database or
+  inspection outage leaves the document `RECEIVED` with nothing written and is
+  retried; the job's final attempt settles `FAILED` with
+  `CHECK_ATTEMPTS_EXHAUSTED`. A failed object removal leaves `FAILED` and is
+  retried. No partial, unverified or refused object ever becomes `STORED`.
+- **B-BR-EMP-254 — Upload sessions close.** An upload session is open for 24
+  hours after its declaration (database clock): a declaration replay mints an
+  upload capability only if it expires by then. A document still `UPLOADING`
+  five minutes after the close is closed `FAILED` with reason
+  `UPLOAD_ABANDONED` by the job, and any object under its key is removed; the
+  database refuses that closure earlier. Documents declared before this
+  change keep their state and metadata; the migration queues their closure
+  job.
+- **BUC-EMP-128 — Prove pass and refusal paths on real PostGIS and isolated
+  storage.** Through the service and the stored-object check on the
+  disposable S3 bucket: digest-mismatched, oversized, truncated, interrupted
+  and empty bodies leave `UPLOADING` with no object; content with a matching
+  digest that is not a JPEG becomes `FAILED UNSUPPORTED_CONTENT`, a JPEG with
+  a trailing payload or embedded script becomes `QUARANTINED UNSAFE_CONTENT`,
+  neither writes an object and a retry is `CONFLICT`; a clean JPEG becomes
+  `STORED` at revision 3 with one received and one stored event; substituted,
+  truncated or unsafe stored objects under `RECEIVED` become `FAILED
+  INTEGRITY_MISMATCH` (object removed) or `QUARANTINED` (object kept) and are
+  never served; another organization's job or key reaches nothing; the schema
+  enforces closed reasons per transition and forced row-level security.
+- **BUC-EMP-129 — Prove convergence under retry, concurrency, storage failure
+  and restart.** Concurrent checks of one received document commit one
+  outcome and one event; a fault-injected object store leaves `RECEIVED` with
+  no event, a fresh process over the same database and bucket serves nothing
+  until the queued job, claimed through the real queue and dispatcher, stores
+  it; the final attempt settles `CHECK_ATTEMPTS_EXHAUSTED`; a failed removal
+  keeps `FAILED` and is retried; an expired session closes only after the
+  window; a populated database upgrades with preserved metadata and queued
+  closure jobs.

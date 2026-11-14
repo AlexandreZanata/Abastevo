@@ -39,6 +39,7 @@ type liveDocuments struct {
 	s3      *mediapg.S3
 	config  mediapg.StorageConfig
 	service app.Service
+	checker app.Checker
 	raw     []byte
 	clock   sync.Mutex
 	now     time.Time
@@ -92,7 +93,8 @@ func newLiveDocuments(t *testing.T) *liveDocuments {
 	if err != nil {
 		t.Fatal(err)
 	}
-	l.service = app.Service{Enabled: true, Repository: l.store, Media: originals, Tokens: uploads, Now: l.tick, NewID: jobs.NewUUIDv4}
+	l.checker = app.Checker{Repository: l.store, Objects: l.s3, Inspector: mediapg.JPEGInspector{}, NewID: jobs.NewUUIDv4}
+	l.service = app.Service{Enabled: true, Repository: l.store, Media: originals, Safety: l.checker, Tokens: uploads, Now: l.tick, NewID: jobs.NewUUIDv4}
 	return l
 }
 
@@ -168,14 +170,15 @@ func TestVerifiedUploadStoresOnlyTheDeclaredOriginalAndKeepsRefusalsPending(t *t
 		t.Fatal("foreign organization uploaded into the session")
 	}
 	// Matching digest and size but content that is not a JPEG: the declared
-	// type is decided by inspection, so the document stays pending.
+	// type is decided by inspection and the declared digest pins these bytes,
+	// so the session can never succeed and closes FAILED (EMP-DOC-014).
 	polyglot := append([]byte("%PDF-1.7 synthetic /JavaScript "), bytes.Repeat([]byte{0x20}, 64)...)
 	wrongType, wrongCreated := l.declared(t, l.driver, polyglot)
 	if _, err := l.service.Upload(t.Context(), l.scopeA, l.driver, wrongType.DocumentID, bytes.NewReader(polyglot)); !errors.Is(err, media.ErrUnsupported) {
 		t.Fatal("wrong content type accepted", err)
 	}
-	if state, _ := l.storage(t, l.scopeA, wrongType.DocumentID); state != "UPLOADING" || wrongCreated.Upload == nil {
-		t.Fatal("wrong-type bytes left pending state")
+	if state, revision := l.storage(t, l.scopeA, wrongType.DocumentID); state != "FAILED" || revision != 3 || wrongCreated.Upload == nil {
+		t.Fatal("wrong-type bytes did not close the session", state, revision)
 	}
 	if l.count(t, l.scopeA, stored) != 0 {
 		t.Fatal("refused transfer recorded a stored event")

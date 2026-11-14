@@ -8,7 +8,7 @@ EMP-PLAT-006 implements the [private storage/access foundation](../evidence/f1-p
 EMP-DOC-002 persists the document container (`org_documents`, migration
 000205), the creator-bound upload session with its capability-bound ingress and
 the audited content routes ([evidence](../evidence/f3-doc002-document-persistence.md));
-verification and lifecycle jobs retain EMP-DOC-014 ownership.
+EMP-DOC-014 adds the upload safety check: verified bytes are `RECEIVED`, only the check over the stored object makes them `STORED`, refused content is `QUARANTINED`/`FAILED` with a closed reason, and the `org-document-safety` job converges interrupted checks and closes sessions 24 hours after the declaration ([evidence](../evidence/f3-doc014-upload-safety.md)).
 EMP-DOC-003 persists owned same-organization links (`org_document_links`,
 migration 000209) to assets, employees and stored or held meter readings
 through a closed registry of owner resolvers, with a link port for operation

@@ -109,7 +109,7 @@ func TestDocumentMigrationPopulatedUpgradeFailureRecoveryAndPreviousCompatibilit
 	}
 	// The upgraded schema serves a new declaration through the ordinary login.
 	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
-	if _, err := f.Admin.Exec(ctx, "GRANT USAGE ON SCHEMA public TO "+role+"; GRANT SELECT, INSERT ON org_audit_events TO "+role+"; GRANT SELECT, INSERT, UPDATE ON org_documents TO "+role); err != nil {
+	if _, err := f.Admin.Exec(ctx, "GRANT USAGE ON SCHEMA public TO "+role+"; GRANT SELECT, INSERT ON org_audit_events TO "+role+"; GRANT SELECT, INSERT, UPDATE ON org_documents TO "+role+"; GRANT SELECT, INSERT ON job_queue TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	catalog, err := audit.NewCatalog(adapters.AuditDefinitions())

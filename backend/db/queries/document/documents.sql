@@ -25,7 +25,27 @@ FROM org_documents WHERE org_id= CAST(sqlc.arg(org_id)::text AS UUID) AND id= CA
 SELECT CAST(created_by AS text) AS created_by FROM org_documents
 WHERE org_id= CAST(sqlc.arg(org_id)::text AS UUID) AND id= CAST(sqlc.arg(id)::text AS UUID);
 
--- name: AdvanceStorage :execrows
-UPDATE org_documents SET storage_state= sqlc.arg(to_state)::text, storage_revision=storage_revision+1
+-- name: SettleStorage :execrows
+-- EMP-DOC-014: one storage step by compare-and-set; the reason is set only by
+-- a terminal step and the row guard fixes it to that step's closed reason.
+UPDATE org_documents SET storage_state= sqlc.arg(to_state)::text, storage_reason= sqlc.narg(reason)::text, storage_revision=storage_revision+1
 WHERE org_id= CAST(sqlc.arg(org_id)::text AS UUID) AND id= CAST(sqlc.arg(id)::text AS UUID)
  AND storage_state= sqlc.arg(from_state)::text AND storage_revision= sqlc.arg(expected_revision)::bigint;
+
+-- name: DocumentSafety :one
+SELECT CAST(id AS text) AS id, data_mode, CAST(operation_id AS text) AS operation_id, original_sha256, original_bytes, original_type,
+ storage_state, storage_revision, COALESCE(storage_reason,'')::text AS storage_reason,
+ org_document_upload_abandoned(created_at)::bool AS abandoned
+FROM org_documents WHERE org_id= CAST(sqlc.arg(org_id)::text AS UUID) AND id= CAST(sqlc.arg(id)::text AS UUID);
+
+-- name: DocumentSafetyForUpdate :one
+SELECT CAST(id AS text) AS id, data_mode, CAST(operation_id AS text) AS operation_id, original_sha256, original_bytes, original_type,
+ storage_state, storage_revision, COALESCE(storage_reason,'')::text AS storage_reason,
+ org_document_upload_abandoned(created_at)::bool AS abandoned
+FROM org_documents WHERE org_id= CAST(sqlc.arg(org_id)::text AS UUID) AND id= CAST(sqlc.arg(id)::text AS UUID) FOR UPDATE;
+
+-- name: DocumentCreatorAccount :one
+-- The creating account of a document, from its own creation event.
+SELECT CAST(actor_id AS text) AS actor_id FROM org_audit_events
+WHERE org_id= CAST(sqlc.arg(org_id)::text AS UUID) AND operation_id= CAST(sqlc.arg(operation_id)::text AS UUID)
+ AND action='document.upload.created' AND target_type='document' AND target_id= CAST(sqlc.arg(id)::text AS UUID);

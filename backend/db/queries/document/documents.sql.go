@@ -11,34 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const advanceStorage = `-- name: AdvanceStorage :execrows
-UPDATE org_documents SET storage_state= $1::text, storage_revision=storage_revision+1
-WHERE org_id= CAST($2::text AS UUID) AND id= CAST($3::text AS UUID)
- AND storage_state= $4::text AND storage_revision= $5::bigint
-`
-
-type AdvanceStorageParams struct {
-	ToState          string `json:"to_state"`
-	OrgID            string `json:"org_id"`
-	ID               string `json:"id"`
-	FromState        string `json:"from_state"`
-	ExpectedRevision int64  `json:"expected_revision"`
-}
-
-func (q *Queries) AdvanceStorage(ctx context.Context, arg AdvanceStorageParams) (int64, error) {
-	result, err := q.db.Exec(ctx, advanceStorage,
-		arg.ToState,
-		arg.OrgID,
-		arg.ID,
-		arg.FromState,
-		arg.ExpectedRevision,
-	)
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected(), nil
-}
-
 const documentCreator = `-- name: DocumentCreator :one
 SELECT CAST(created_by AS text) AS created_by FROM org_documents
 WHERE org_id= CAST($1::text AS UUID) AND id= CAST($2::text AS UUID)
@@ -54,6 +26,26 @@ func (q *Queries) DocumentCreator(ctx context.Context, arg DocumentCreatorParams
 	var created_by string
 	err := row.Scan(&created_by)
 	return created_by, err
+}
+
+const documentCreatorAccount = `-- name: DocumentCreatorAccount :one
+SELECT CAST(actor_id AS text) AS actor_id FROM org_audit_events
+WHERE org_id= CAST($1::text AS UUID) AND operation_id= CAST($2::text AS UUID)
+ AND action='document.upload.created' AND target_type='document' AND target_id= CAST($3::text AS UUID)
+`
+
+type DocumentCreatorAccountParams struct {
+	OrgID       string `json:"org_id"`
+	OperationID string `json:"operation_id"`
+	ID          string `json:"id"`
+}
+
+// The creating account of a document, from its own creation event.
+func (q *Queries) DocumentCreatorAccount(ctx context.Context, arg DocumentCreatorAccountParams) (string, error) {
+	row := q.db.QueryRow(ctx, documentCreatorAccount, arg.OrgID, arg.OperationID, arg.ID)
+	var actor_id string
+	err := row.Scan(&actor_id)
+	return actor_id, err
 }
 
 const documentForShare = `-- name: DocumentForShare :one
@@ -192,6 +184,92 @@ func (q *Queries) DocumentForUpdate(ctx context.Context, arg DocumentForUpdatePa
 	return i, err
 }
 
+const documentSafety = `-- name: DocumentSafety :one
+SELECT CAST(id AS text) AS id, data_mode, CAST(operation_id AS text) AS operation_id, original_sha256, original_bytes, original_type,
+ storage_state, storage_revision, COALESCE(storage_reason,'')::text AS storage_reason,
+ org_document_upload_abandoned(created_at)::bool AS abandoned
+FROM org_documents WHERE org_id= CAST($1::text AS UUID) AND id= CAST($2::text AS UUID)
+`
+
+type DocumentSafetyParams struct {
+	OrgID string `json:"org_id"`
+	ID    string `json:"id"`
+}
+
+type DocumentSafetyRow struct {
+	ID              string `json:"id"`
+	DataMode        string `json:"data_mode"`
+	OperationID     string `json:"operation_id"`
+	OriginalSha256  string `json:"original_sha256"`
+	OriginalBytes   int64  `json:"original_bytes"`
+	OriginalType    string `json:"original_type"`
+	StorageState    string `json:"storage_state"`
+	StorageRevision int64  `json:"storage_revision"`
+	StorageReason   string `json:"storage_reason"`
+	Abandoned       bool   `json:"abandoned"`
+}
+
+func (q *Queries) DocumentSafety(ctx context.Context, arg DocumentSafetyParams) (DocumentSafetyRow, error) {
+	row := q.db.QueryRow(ctx, documentSafety, arg.OrgID, arg.ID)
+	var i DocumentSafetyRow
+	err := row.Scan(
+		&i.ID,
+		&i.DataMode,
+		&i.OperationID,
+		&i.OriginalSha256,
+		&i.OriginalBytes,
+		&i.OriginalType,
+		&i.StorageState,
+		&i.StorageRevision,
+		&i.StorageReason,
+		&i.Abandoned,
+	)
+	return i, err
+}
+
+const documentSafetyForUpdate = `-- name: DocumentSafetyForUpdate :one
+SELECT CAST(id AS text) AS id, data_mode, CAST(operation_id AS text) AS operation_id, original_sha256, original_bytes, original_type,
+ storage_state, storage_revision, COALESCE(storage_reason,'')::text AS storage_reason,
+ org_document_upload_abandoned(created_at)::bool AS abandoned
+FROM org_documents WHERE org_id= CAST($1::text AS UUID) AND id= CAST($2::text AS UUID) FOR UPDATE
+`
+
+type DocumentSafetyForUpdateParams struct {
+	OrgID string `json:"org_id"`
+	ID    string `json:"id"`
+}
+
+type DocumentSafetyForUpdateRow struct {
+	ID              string `json:"id"`
+	DataMode        string `json:"data_mode"`
+	OperationID     string `json:"operation_id"`
+	OriginalSha256  string `json:"original_sha256"`
+	OriginalBytes   int64  `json:"original_bytes"`
+	OriginalType    string `json:"original_type"`
+	StorageState    string `json:"storage_state"`
+	StorageRevision int64  `json:"storage_revision"`
+	StorageReason   string `json:"storage_reason"`
+	Abandoned       bool   `json:"abandoned"`
+}
+
+func (q *Queries) DocumentSafetyForUpdate(ctx context.Context, arg DocumentSafetyForUpdateParams) (DocumentSafetyForUpdateRow, error) {
+	row := q.db.QueryRow(ctx, documentSafetyForUpdate, arg.OrgID, arg.ID)
+	var i DocumentSafetyForUpdateRow
+	err := row.Scan(
+		&i.ID,
+		&i.DataMode,
+		&i.OperationID,
+		&i.OriginalSha256,
+		&i.OriginalBytes,
+		&i.OriginalType,
+		&i.StorageState,
+		&i.StorageRevision,
+		&i.StorageReason,
+		&i.Abandoned,
+	)
+	return i, err
+}
+
 const insertDocument = `-- name: InsertDocument :exec
 INSERT INTO org_documents(org_id, id, kind, data_mode, operation_id, created_by, original_sha256, original_bytes, original_type,
  storage_state, storage_revision, extraction_state, extraction_revision, structure_state, structure_revision,
@@ -225,4 +303,36 @@ func (q *Queries) InsertDocument(ctx context.Context, arg InsertDocumentParams) 
 		arg.OriginalType,
 	)
 	return err
+}
+
+const settleStorage = `-- name: SettleStorage :execrows
+UPDATE org_documents SET storage_state= $1::text, storage_reason= $2::text, storage_revision=storage_revision+1
+WHERE org_id= CAST($3::text AS UUID) AND id= CAST($4::text AS UUID)
+ AND storage_state= $5::text AND storage_revision= $6::bigint
+`
+
+type SettleStorageParams struct {
+	ToState          string      `json:"to_state"`
+	Reason           pgtype.Text `json:"reason"`
+	OrgID            string      `json:"org_id"`
+	ID               string      `json:"id"`
+	FromState        string      `json:"from_state"`
+	ExpectedRevision int64       `json:"expected_revision"`
+}
+
+// EMP-DOC-014: one storage step by compare-and-set; the reason is set only by
+// a terminal step and the row guard fixes it to that step's closed reason.
+func (q *Queries) SettleStorage(ctx context.Context, arg SettleStorageParams) (int64, error) {
+	result, err := q.db.Exec(ctx, settleStorage,
+		arg.ToState,
+		arg.Reason,
+		arg.OrgID,
+		arg.ID,
+		arg.FromState,
+		arg.ExpectedRevision,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
 }

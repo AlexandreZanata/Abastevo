@@ -369,7 +369,7 @@ func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, g
 // storage, declarations work while bytes and content stay unavailable.
 func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authorization access.Authorization, roles *accesspg.Store, auditStore *auditpg.Store) error {
 	authority := documentpg.CurrentAuthority{Source: roles, Now: time.Now}
-	var objects media.Objects = documentpg.UnavailableObjects{}
+	var objects documentObjects = documentpg.UnavailableObjects{}
 	if o.DocumentStorage != nil {
 		s3, err := mediapg.NewS3(*o.DocumentStorage)
 		if err != nil {
@@ -395,7 +395,10 @@ func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler,
 	targets := documentapp.Targets{documentdomain.Asset: fleetpg.DocumentTargets{}, documentdomain.MeterReading: fleetpg.DocumentTargets{},
 		documentdomain.Employee: member.EmployeeDocumentTargets{}}
 	store := &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore, Targets: targets}
-	service := documentapp.Service{Enabled: true, Repository: store, Links: store, Media: originals, Tokens: uploads, Now: time.Now, NewID: jobs.NewUUIDv4}
+	// EMP-DOC-014: the ingress runs the same safety check as the queued job,
+	// over the same bucket and inspector, so STORED never skips it.
+	checker := documentapp.Checker{Repository: store, Objects: objects, Inspector: mediapg.JPEGInspector{}, NewID: jobs.NewUUIDv4}
+	service := documentapp.Service{Enabled: true, Repository: store, Links: store, Media: originals, Safety: checker, Tokens: uploads, Now: time.Now, NewID: jobs.NewUUIDv4}
 	return documentweb.Register(router, service, cookies, gateway, authorization)
 }
 

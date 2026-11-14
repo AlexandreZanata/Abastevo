@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	documentpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/adapters"
 	enterprisejobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/adapters/jobs"
 	orgexport "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
@@ -26,7 +27,7 @@ func TestWorkerReservesExactlyFourSerialSafetySlots(t *testing.T) {
 		t.Fatal(dispatchers, err)
 	}
 	general := dispatchers[0]
-	if general.Kind != "" || len(general.ExcludedKinds) != 15 {
+	if general.Kind != "" || len(general.ExcludedKinds) != 16 {
 		t.Fatal("general dispatcher can steal safety work", general)
 	}
 	seen := map[string]bool{}
@@ -37,7 +38,7 @@ func TestWorkerReservesExactlyFourSerialSafetySlots(t *testing.T) {
 		seen[d.Kind] = true
 	}
 	for _, kind := range general.ExcludedKinds {
-		if !seen[kind] && kind != "quality-import" && kind != "quality-discovery" && kind != "quality-revalidate" && kind != "quality-recompute" && kind != "quality-sanctions-import" && kind != "quality-sanctions-discovery" && kind != "quality-enforcement-import" && kind != "quality-enforcement-discovery" && kind != orgexport.BuildKind && kind != orgexport.CleanupKind {
+		if !seen[kind] && kind != "quality-import" && kind != "quality-discovery" && kind != "quality-revalidate" && kind != "quality-recompute" && kind != "quality-sanctions-import" && kind != "quality-sanctions-discovery" && kind != "quality-enforcement-import" && kind != "quality-enforcement-discovery" && kind != orgexport.BuildKind && kind != orgexport.CleanupKind && kind != documentpg.SafetyKind {
 			t.Fatal("safety work lost its slot", kind)
 		}
 	}
@@ -83,7 +84,7 @@ func TestWorkerNativeSlotsAreExplicitAndIndependent(t *testing.T) {
 	if e != nil || len(enabled) != 11 || enabled[6].Kind != "quality-import" || enabled[7].Kind != "quality-revalidate" || enabled[8].Kind != "quality-recompute" || enabled[9].Kind != "quality-sanctions-import" || enabled[10].Kind != "quality-sanctions-discovery" {
 		t.Fatal("native slot", enabled, e)
 	}
-	if len(enabled[0].ExcludedKinds) != 15 {
+	if len(enabled[0].ExcludedKinds) != 16 {
 		t.Fatal("general worker can claim source jobs")
 	}
 	for _, kinds := range [][]string{{"foreign"}, {"quality-import", "quality-import"}} {
@@ -183,5 +184,35 @@ func TestOrganizationExportJobsRunOnTheirOwnSerialSlots(t *testing.T) {
 	enabledHandlers, err := exportWorkerHandlers(workerExportConfig{})
 	if err != nil || len(enabledHandlers) != 0 {
 		t.Fatal("export handlers composed without the enterprise switch", err)
+	}
+}
+
+// EMP-DOC-014, EDR-170: document safety work never runs on the general
+// dispatcher; it has its own serial slot when composed, and production
+// composes it without a document bucket as none, so queued jobs wait.
+func TestDocumentSafetyJobsRunOnTheirOwnSerialSlot(t *testing.T) {
+	handlers := map[string]jobs.Handler{}
+	for _, kind := range []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "payment-inbox", documentpg.SafetyKind} {
+		handlers[kind] = dispatcherHandler(kind)
+	}
+	disabled, err := workerDispatchers(nil, handlers)
+	if err != nil || len(disabled) != 6 {
+		t.Fatal("document safety handler implicitly claimed work", err)
+	}
+	waiting := false
+	for _, kind := range disabled[0].ExcludedKinds {
+		waiting = waiting || kind == documentpg.SafetyKind
+	}
+	if !waiting {
+		t.Fatal("general dispatcher can claim document safety work")
+	}
+	enabled, err := workerDispatchers(nil, handlers, documentpg.SafetyKind)
+	if err != nil || len(enabled) != 7 || enabled[6].Kind != documentpg.SafetyKind || len(enabled[6].ExcludedKinds) != 0 {
+		t.Fatal("document safety slot", err)
+	}
+	for _, config := range []workerDocumentConfig{{}, {Enabled: true}} {
+		if composed, err := documentWorkerHandlers(config); err != nil || len(composed) != 0 {
+			t.Fatal("document safety handler composed without the switch and a bucket", err)
+		}
 	}
 }

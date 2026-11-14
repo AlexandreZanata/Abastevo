@@ -19,7 +19,10 @@ var (
 	ErrIntegrity   = errors.New("orgmedia: integrity mismatch")
 	ErrTooLarge    = errors.New("orgmedia: size exceeded")
 	ErrUnsupported = errors.New("orgmedia: unsupported content")
-	hashPattern    = regexp.MustCompile(`^[0-9a-f]{64}$`)
+	// ErrUnsafe is the inspector's verdict on content that is the declared
+	// type but carries a payload it refuses as potentially active (EMP-DOC-014).
+	ErrUnsafe   = errors.New("orgmedia: unsafe content")
+	hashPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 )
 
 const AccessTTL = 5 * 60 // seconds; the transport token's separate deadline is mandatory.

@@ -4,9 +4,6 @@ package adapters
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"time"
 
@@ -46,7 +43,8 @@ var _ app.Repository = (*Store)(nil)
 // AuditDefinitions registers the document upload vocabulary. Content access
 // keeps the orgmedia sensitive-access actions (EMP-PRIV-005).
 func AuditDefinitions() []audit.Definition {
-	return []audit.Definition{{Action: createdAction, TargetType: targetType}, {Action: storedAction, TargetType: targetType}, {Action: linkedAction, TargetType: targetType}}
+	definitions := []audit.Definition{{Action: createdAction, TargetType: targetType}, {Action: storedAction, TargetType: targetType}, {Action: linkedAction, TargetType: targetType}}
+	return append(definitions, safetyDefinitions()...)
 }
 
 func validID(raw string) bool { id, e := kernel.ParseOrgID(raw); return e == nil && id.String() == raw }
@@ -118,9 +116,13 @@ func (s *Store) Create(ctx context.Context, scope kernel.OrgScope, actor app.Act
 		}
 		var err error
 		replayed, err = s.Audit.RecordChangeTx(ctx, tx, scope, event, func(ctx context.Context, tx pgx.Tx) error {
-			return q.New(tx).InsertDocument(ctx, q.InsertDocumentParams{OrgID: org, ID: command.DocumentID, Kind: command.Original.Kind,
+			if err := q.New(tx).InsertDocument(ctx, q.InsertDocumentParams{OrgID: org, ID: command.DocumentID, Kind: command.Original.Kind,
 				OperationID: command.OperationID, CreatedBy: actor.MembershipID, OriginalSha256: command.Original.SHA256,
-				OriginalBytes: command.Original.Bytes, OriginalType: command.Original.MediaType})
+				OriginalBytes: command.Original.Bytes, OriginalType: command.Original.MediaType}); err != nil {
+				return err
+			}
+			// EMP-DOC-014: the per-document closure job of the upload session.
+			return enqueueSafety(ctx, tx, scope, command.DocumentID, ExpiryPurpose, time.Now().Add(app.UploadWindow+app.UploadGrace))
 		})
 		if err != nil {
 			return err
@@ -183,75 +185,6 @@ func (s *Store) Pending(ctx context.Context, scope kernel.OrgScope, actor app.Ac
 		return app.View{}, storeError(ctx, err)
 	}
 	return view, nil
-}
-
-// MarkStored applies the EMP-DOC-001 storage commands UPLOADING -> RECEIVED ->
-// STORED in one transaction with one audit event. A stored row is a replay.
-func (s *Store) MarkStored(ctx context.Context, scope kernel.OrgScope, actor app.Actor, id, operation string) (app.View, bool, error) {
-	if err := s.ready(scope, actor, id); err != nil {
-		return app.View{}, false, err
-	}
-	if !validID(operation) {
-		return app.View{}, false, app.ErrUnavailable
-	}
-	org := scope.OrgID().String()
-	var view app.View
-	replayed := false
-	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
-		row, err := s.load(ctx, tx, scope, actor, id, true)
-		if err != nil {
-			return err
-		}
-		switch domain.State(row.StorageState) {
-		case domain.Stored:
-			replayed = true
-			view, err = project(scope, row)
-			return err
-		case domain.Uploading:
-		default:
-			return app.ErrConflict
-		}
-		// The domain decides both storage steps of the verified snapshot.
-		pending, err := domain.New(scope, id, row.OriginalSha256)
-		if err != nil {
-			return app.ErrUnavailable
-		}
-		received, err := pending.Apply(domain.Transition{Dimension: domain.Storage, From: domain.Uploading, To: domain.Received})
-		if err != nil {
-			return app.ErrConflict
-		}
-		if _, err := received.Apply(domain.Transition{Dimension: domain.Storage, From: domain.Received, To: domain.Stored}); err != nil {
-			return app.ErrConflict
-		}
-		raw, _ := json.Marshal([]any{"document.upload.stored.v1", org, id, row.StorageRevision, row.OriginalSha256, row.OriginalBytes, row.OriginalType})
-		sum := sha256.Sum256(raw)
-		event := audit.Event{OperationID: operation, ActorID: actor.AccountID, Action: storedAction, TargetType: targetType, TargetID: id, RequestHash: hex.EncodeToString(sum[:])}
-		if _, err := s.Audit.RecordChangeTx(ctx, tx, scope, event, func(ctx context.Context, tx pgx.Tx) error {
-			queries := q.New(tx)
-			for i, step := range [][2]domain.State{{domain.Uploading, domain.Received}, {domain.Received, domain.Stored}} {
-				n, err := queries.AdvanceStorage(ctx, q.AdvanceStorageParams{OrgID: org, ID: id, FromState: string(step[0]), ToState: string(step[1]), ExpectedRevision: row.StorageRevision + int64(i)})
-				if err != nil {
-					return err
-				}
-				if n != 1 {
-					return app.ErrConflict
-				}
-			}
-			return nil
-		}); err != nil {
-			return err
-		}
-		current, err := q.New(tx).DocumentForUpdate(ctx, q.DocumentForUpdateParams{OrgID: org, ID: id})
-		if err != nil {
-			return err
-		}
-		view, err = project(scope, current)
-		return err
-	})
-	if err != nil {
-		return app.View{}, false, storeError(ctx, err)
-	}
-	return view, replayed, nil
 }
 
 // Facts resolves the authoring membership for the guarded route resolver. It
