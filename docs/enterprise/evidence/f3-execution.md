@@ -453,6 +453,28 @@ structural-only members); assignee facts and team-assigned assets (FLEET-006);
 create commands into a structure; structural grants in signed offline intake;
 panel, Android and production grants.
 
+### EMP-DOC-003 — document links: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-doc003-document-links.md). Migration 000209
+`org_document_links`: insert-only, forced RLS, audited, typed same-organization
+foreign keys to assets, employees and stored or held meter readings through a
+closed resolver registry (FUELING/EXPENSE/WORK_ORDER/TRIP refused until their
+owners register); both endpoints are authorized in the link transaction
+(`doc.document.attach` plus the target owner's permission); a pending upload
+can be linked; links convey no content read and are never a cost
+(EDR-162/163). `Store.LinkTx` is the port FUEL-002 will call; three company
+routes. RED unit 34/131, PostGIS 6/6 twice failing → GREEN unit 221/1099,
+apicontract 73/710, integration 281/874 + document 43/280, organization
+adapters 380/3097 (808 s), untagged green. Integration fix: 000209 was written
+against 000206's `org_asset_current_usage` and would have dropped AUTH-006's
+`org_role_assignments_scope_asset_fkey` allow-list entry; the coordinator
+rebased the body onto 000208 before commit. Merged-tree union over document,
+fleet, membership, orgaccess, organization adapters, orgmedia (MinIO) and
+migrate: 23 packages, 753/5922, 0 failures, 0 skips. Retained: resolvers for
+fueling/expense/work-order/trip, owner read surfaces and the DOC-015 viewer,
+unlink and retention (DOC-011/012), the Android producer (DOC-004/FUEL-011),
+production grants.
+
 ## Interruption — 2026-11-14 (resumed)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,

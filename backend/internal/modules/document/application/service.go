@@ -19,6 +19,9 @@ import (
 // returns the bounded orgaccess errors; it never trusts a client descriptor.
 type Authority interface {
 	CheckDocumentTx(context.Context, pgx.Tx, kernel.OrgScope, Actor, access.Policy, Facts) error
+	// CheckTargetTx applies a target owner's policy (EMP-DOC-003). The facts
+	// are resolved only after a positive permission is established.
+	CheckTargetTx(context.Context, pgx.Tx, kernel.OrgScope, Actor, access.Policy, func(context.Context) (Facts, error)) error
 }
 
 // Repository persists document containers. Every method checks current
@@ -60,10 +63,12 @@ func ActorFrom(ctx context.Context) (Actor, bool) {
 }
 
 // Service is default-off. Without Media the session can still be declared,
-// but bytes and content are unavailable (EDR-153).
+// but bytes and content are unavailable (EDR-153). Without Links the link
+// surface is unavailable (EMP-DOC-003).
 type Service struct {
 	Enabled    bool
 	Repository Repository
+	Links      LinkRepository
 	Media      Media
 	Tokens     UploadTokens
 	Now        func() time.Time

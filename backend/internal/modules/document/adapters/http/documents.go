@@ -254,6 +254,9 @@ func Register(router chi.Router, service app.Service, cookies company.Handler, g
 	}); err != nil {
 		return err
 	}
+	if err := registerLinks(owned, entry, service, authorization); err != nil {
+		return err
+	}
 	router.Method(http.MethodPost, UploadPath, ingress)
 	return nil
 }

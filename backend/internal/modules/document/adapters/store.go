@@ -37,6 +37,8 @@ type Store struct {
 	Pool      *pgxpool.Pool
 	Authority app.Authority
 	Audit     auditing.TransactionRunner
+	// Targets is the closed registry of linkable kinds (EMP-DOC-003).
+	Targets app.Targets
 }
 
 var _ app.Repository = (*Store)(nil)
@@ -44,7 +46,7 @@ var _ app.Repository = (*Store)(nil)
 // AuditDefinitions registers the document upload vocabulary. Content access
 // keeps the orgmedia sensitive-access actions (EMP-PRIV-005).
 func AuditDefinitions() []audit.Definition {
-	return []audit.Definition{{Action: createdAction, TargetType: targetType}, {Action: storedAction, TargetType: targetType}}
+	return []audit.Definition{{Action: createdAction, TargetType: targetType}, {Action: storedAction, TargetType: targetType}, {Action: linkedAction, TargetType: targetType}}
 }
 
 func validID(raw string) bool { id, e := kernel.ParseOrgID(raw); return e == nil && id.String() == raw }

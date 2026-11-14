@@ -18054,6 +18054,203 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/links/create:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentLinkCreate
+      summary: Link a private document to a same-organization record
+      description: Dedicated company cookie, exact Origin/CSRF and doc.document.attach covering the document (own
+        documents for SELF roles), plus, in the same transaction, the target owner's own permission covering the
+        target record (fleet.asset.manage for ASSET, meter.reading.record for METER_READING with own readings for
+        SELF roles, idn.employee.manage for EMPLOYEE). Only kinds with a registered owner resolver are accepted;
+        FUELING, EXPENSE, WORK_ORDER and TRIP are VALIDATION_FAILED until their owners register. A foreign, missing
+        or wrong-table target is NOT_FOUND; a DRAFT asset or a FAILED, REPLACED or DELETED document is CONFLICT. A
+        pending (UPLOADING) document can be linked and stays pending. The operation UUID replays the first link,
+        the same operation with other facts or member is OPERATION_ID_REUSED, and another operation naming an
+        existing link returns it with no new row or audit event. A link grants no content and allocates no money.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.attach
+        write: true
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Private document selector. Foreign and missing documents remain hidden; a selector is not
+          proof of attach permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentLinkCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000020901
+              target:
+                kind: METER_READING
+                id: 7b0e2a54-0000-4000-8000-000000020902
+      responses:
+        '201':
+          description: Created, replayed or already existing link.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentLinked'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/links/list:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentLinkList
+      summary: List the records a private document is linked to
+      description: Dedicated company cookie, exact Origin/CSRF and doc.document.attach (read) covering the document
+        (own documents for SELF roles). Keyset page ordered by target kind and target UUID; an opaque 15-minute
+        cursor is bound to the account, organization, membership, route, document and limit. Items carry link
+        metadata and the document's storage status only; content still requires doc.document.view_content.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.attach
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Private document selector. Foreign and missing documents remain hidden.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentLinkListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private page of the document's links.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentLinkPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/links/by-target:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentLinkByTarget
+      summary: List the documents linked to one same-organization record
+      description: Dedicated company cookie, exact Origin/CSRF, a current doc.document.attach permission and, in the
+        same transaction, the target owner's own permission covering the target record (the same owner permission
+        as link creation, read-only). Keyset page ordered by document UUID; an opaque 15-minute cursor is bound to
+        the account, organization, membership, route, target and limit. Items carry link metadata and the document's
+        storage status only; seeing a link never grants content, which still requires doc.document.view_content.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.attach
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentLinkByTargetRequest'
+            example:
+              target:
+                kind: ASSET
+                id: 7b0e2a54-0000-4000-8000-000000020903
+              limit: 20
+      responses:
+        '200':
+          description: Private page of the target's links.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentLinkPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/reports/exports/request:
     post:
       tags:
@@ -34589,6 +34786,144 @@ components:
         media_type: image/jpeg
         bytes: 4
         content_base64: /9j/2Q==
+    EnterpriseDocumentLinkTarget:
+      type: object
+      additionalProperties: false
+      description: One same-organization target record. Only kinds whose owning module registered a resolver are
+        accepted; a selector is not proof of the record or of any permission over it.
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [ASSET, EMPLOYEE, METER_READING]
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      example:
+        kind: METER_READING
+        id: 7b0e2a54-0000-4000-8000-000000020902
+    EnterpriseDocumentLinkCreateRequest:
+      type: object
+      additionalProperties: false
+      description: Associate the path document with one target. Authority comes only from the company session; no
+        amount, allocation, status or content field exists.
+      required: [schema_version, operation_id, target]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        target:
+          $ref: '#/components/schemas/EnterpriseDocumentLinkTarget'
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000020901
+        target:
+          kind: METER_READING
+          id: 7b0e2a54-0000-4000-8000-000000020902
+    EnterpriseDocumentLinkListRequest:
+      type: object
+      additionalProperties: false
+      description: Keyset page of one document's links. No target, member or content selector is caller-chosen.
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+    EnterpriseDocumentLinkByTargetRequest:
+      type: object
+      additionalProperties: false
+      description: Keyset page of one target's links.
+      required: [target]
+      properties:
+        target:
+          $ref: '#/components/schemas/EnterpriseDocumentLinkTarget'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      example:
+        target:
+          kind: ASSET
+          id: 7b0e2a54-0000-4000-8000-000000020903
+        limit: 20
+    EnterpriseDocumentLink:
+      type: object
+      additionalProperties: false
+      description: Link metadata only. The document's storage status says whether the original is still pending;
+        no content, digest, storage locator, creator, amount or allocation is exposed.
+      required: [document_id, target, document_storage, created_at]
+      properties:
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        target:
+          $ref: '#/components/schemas/EnterpriseDocumentLinkTarget'
+        document_storage:
+          type: string
+          enum: [UPLOADING, RECEIVED, STORED, QUARANTINED, FAILED, REPLACED, DELETED]
+        created_at:
+          type: string
+          format: date-time
+      example:
+        document_id: 7b0e2a54-0000-4000-8000-000000020542
+        target:
+          kind: METER_READING
+          id: 7b0e2a54-0000-4000-8000-000000020902
+        document_storage: UPLOADING
+        created_at: '2026-11-14T00:00:00.123456Z'
+    EnterpriseDocumentLinked:
+      type: object
+      additionalProperties: false
+      description: The created link, or the first link of an identical replay or of an existing association
+        (replayed is true when no row was written).
+      required: [link, replayed]
+      properties:
+        link:
+          $ref: '#/components/schemas/EnterpriseDocumentLink'
+        replayed:
+          type: boolean
+      example:
+        link:
+          document_id: 7b0e2a54-0000-4000-8000-000000020542
+          target:
+            kind: METER_READING
+            id: 7b0e2a54-0000-4000-8000-000000020902
+          document_storage: UPLOADING
+          created_at: '2026-11-14T00:00:00.123456Z'
+        replayed: false
+    EnterpriseDocumentLinkPage:
+      type: object
+      additionalProperties: false
+      description: Keyset page of links; next_cursor is empty on the last page.
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseDocumentLink'
+        next_cursor:
+          type: string
+      example:
+        items:
+        - document_id: 7b0e2a54-0000-4000-8000-000000020542
+          target:
+            kind: ASSET
+            id: 7b0e2a54-0000-4000-8000-000000020903
+          document_storage: STORED
+          created_at: '2026-11-14T00:00:00.123456Z'
+        next_cursor: ''
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

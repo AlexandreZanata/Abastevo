@@ -133,12 +133,17 @@ func TestMeterReviewNewReceiptsRequireVersionOneProofAndRealHeldFact(t *testing.
 		t.Fatal("actual append-only refusal unavailable", err)
 	}
 	// Even with explicit maintenance privileges, populated review evidence stays
-	// append-only (TRUNCATE targets the unreferenced held-fact table).
+	// append-only. Since EMP-DOC-003 document links reference held readings, a
+	// plain TRUNCATE is refused earlier (0A000); the CASCADE form, which also
+	// reaches the link table, must still meet the retention triggers.
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
-	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_sync_review_items,org_meter_held_readings,org_sync_review_resolutions TO "+role); err != nil {
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_sync_review_items,org_meter_held_readings,org_sync_review_resolutions,org_document_links TO "+role); err != nil {
 		t.Fatal(err)
 	}
-	for _, statement := range []string{`UPDATE org_sync_review_items SET code=code`, `UPDATE org_sync_review_resolutions SET reason=reason`, `DELETE FROM org_sync_review_resolutions`, `DELETE FROM org_meter_held_readings`, `TRUNCATE org_meter_held_readings`} {
+	if err := database.WithOrgTx(t.Context(), fx.f.Runtime, fx.scope, func(tx pgx.Tx) error { _, err := tx.Exec(t.Context(), `TRUNCATE org_meter_held_readings`); return err }); err == nil {
+		t.Fatal("plain truncate of referenced held readings succeeded")
+	}
+	for _, statement := range []string{`UPDATE org_sync_review_items SET code=code`, `UPDATE org_sync_review_resolutions SET reason=reason`, `DELETE FROM org_sync_review_resolutions`, `DELETE FROM org_meter_held_readings`, `TRUNCATE org_meter_held_readings CASCADE`} {
 		err := database.WithOrgTx(t.Context(), fx.f.Runtime, fx.scope, func(tx pgx.Tx) error { _, err := tx.Exec(t.Context(), statement); return err })
 		var pe *pgconn.PgError
 		if !errors.As(err, &pe) || pe.Code != "55000" {

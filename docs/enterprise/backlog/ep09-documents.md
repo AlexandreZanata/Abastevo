@@ -61,7 +61,7 @@ Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DO
   (DOC-004), safety job (DOC-014) and storage provider configuration retained.
 
 ### EMP-DOC-003 — Links between documents and operations
-- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size S · state TODO
+- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size S · state LOCAL_DONE
 - **Objective:** Associate documents with same-organization operations and records without granting new access.
 - **Rules and use cases:** BR-TEN-003, BR-TEN-005, BR-TEN-006, BR-TEN-007, BR-PRIV-004, BR-AUD-001, BR-OFFL-015, REQ-10.1, REQ-10.4
 - **Depends on:** EMP-DOC-002
@@ -75,6 +75,14 @@ Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DO
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive scoped relationships · rollback: close the write path without removing accepted evidence
 - **Risks and assumptions:** Each consumer owns the target record's permissions. An association and a financial allocation are separate.
 - **Done when:** Same-organization link, pending upload, duplicate retry and foreign-target denials pass through normal consumer entry points.
+
+- **Status (2026-11-14):** LOCAL_DONE in `codex/enterprise-f3-doc003`
+  ([evidence](../evidence/f3-doc003-document-links.md)). Migration 000209
+  `org_document_links` with real same-organization foreign keys to assets,
+  employees and stored or held readings; both endpoints checked through
+  orgaccess in the link transaction; `Linker.LinkTx` port and three company
+  routes. FUELING, EXPENSE, WORK_ORDER and TRIP resolvers, unlink and owner
+  read surfaces retained.
 
 ### EMP-DOC-004 — App: capture and import with offline queue and legibility check
 - **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type APP · size M · state TODO

@@ -147,7 +147,10 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/documents/uploads/create",
       "routes": [
-        "POST /v1/orgs/{org_id}/documents/uploads/create"
+        "POST /v1/orgs/{org_id}/documents/links/by-target",
+        "POST /v1/orgs/{org_id}/documents/uploads/create",
+        "POST /v1/orgs/{org_id}/documents/{document_id}/links/create",
+        "POST /v1/orgs/{org_id}/documents/{document_id}/links/list"
       ],
       "reason": ""
     },

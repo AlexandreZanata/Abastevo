@@ -154,8 +154,14 @@ func TestDocumentSchemaGuardsScopeIdentityRevisionsAndRetention(t *testing.T) {
 		}
 	}
 	// Removal is refused by the retention trigger even for the table owner, and
-	// the ordinary login holds no DELETE or TRUNCATE privilege at all.
-	for name, probe := range map[string]string{"delete": `DELETE FROM org_documents WHERE org_id=$1`, "truncate": `TRUNCATE org_documents`} {
+	// the ordinary login holds no DELETE or TRUNCATE privilege at all. Since
+	// EMP-DOC-003 links reference documents, a plain TRUNCATE is refused even
+	// earlier (0A000), so the owner probe truncates with CASCADE: the strongest
+	// removal still reaches, and is refused by, the retention triggers.
+	if _, err := f.db.Admin.Exec(t.Context(), `TRUNCATE org_documents`); sqlState(err) != "0A000" {
+		t.Fatal("plain truncate of referenced documents not refused", err)
+	}
+	for name, probe := range map[string]string{"delete": `DELETE FROM org_documents WHERE org_id=$1`, "truncate": `TRUNCATE org_documents CASCADE`} {
 		args := []any{org}
 		if name == "truncate" {
 			args = nil

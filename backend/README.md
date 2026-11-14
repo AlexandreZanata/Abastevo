@@ -1211,3 +1211,18 @@ The worker must connect with an ordinary NOSUPERUSER/NOBYPASSRLS login that owns
 no RLS table. Rows are never deleted; export objects live under
 `org/<org_id>/export/` in the existing private bucket and are deleted by the
 `org-export-cleanup` job. No production format is registered (EMP-RPT-002).
+
+### Organization document links (EMP-DOC-003)
+
+Migration209 adds the forced-RLS, insert-only `org_document_links` table and
+lists its asset reference in `org_asset_current_usage` (on top of the 208
+body). The API runtime role needs `GRANT SELECT, INSERT ON org_document_links`,
+the existing document grants (`SELECT, INSERT, UPDATE ON org_documents` —
+UPDATE only for the `FOR UPDATE` row lock that serializes link writes — and
+`SELECT, INSERT ON org_audit_events`) and the target columns the owner
+resolvers read: `GRANT SELECT(org_id,id,state) ON org_assets`, `GRANT
+SELECT(org_id,id,author_membership_id) ON org_meter_readings`, `GRANT
+SELECT(org_id,reading_id,operation_id) ON org_meter_held_readings`, `GRANT
+SELECT(org_id,operation_id,membership_id) ON org_sync_operations` and `GRANT
+SELECT(org_id,id) ON org_employee_identities`. Links are never updated or
+deleted; only ASSET, EMPLOYEE and METER_READING targets are registered.

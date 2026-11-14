@@ -3983,3 +3983,74 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   no record data; record of another organization → `NOT_FOUND`; an
   organization-level list → `FORBIDDEN`. Result: the record is served only to
   holders whose scope matches what the record stored.
+
+## EMP-DOC-003 — Links between documents and operations (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc003-document-links.md).
+
+- **B-BR-EMP-239 — A link is an owned same-organization reference.** One
+  organization-scoped, insert-only row associates one existing document with
+  one target record, identified by the EMP-DOC-001 target kind and the
+  record's UUID; at most one row exists per document, kind and target. Only a
+  kind whose owning module registered a target resolver is accepted — in C1
+  `ASSET`, `EMPLOYEE` and `METER_READING` (a stored or a held reading, which
+  share one identity); `FUELING`, `EXPENSE`, `WORK_ORDER`, `TRIP` and any other
+  token are `VALIDATION_FAILED` and are never stored as dangling references.
+  Each reference is a real same-organization foreign key to the record's own
+  table, so a document or target of another organization, a missing record,
+  or an identifier of another table presented under a kind is `NOT_FOUND`
+  (BR-TEN-006) with no row and no event. A `DRAFT` asset, which may still be
+  discarded, and a document whose storage is `FAILED`, `REPLACED` or
+  `DELETED` refuse new links as `CONFLICT`. Links are never updated or
+  deleted by a product flow and live under forced organization row-level
+  security, so a session without the organization setting sees and writes
+  nothing.
+- **B-BR-EMP-240 — Authority is checked on both endpoints at receipt.**
+  Creating a link requires, in the same transaction and from current server
+  facts: the member's current `doc.document.attach` covering the document
+  (own documents for `S` roles) and the target owner's own permission covering
+  the target record, which the owning module declares and resolves —
+  `fleet.asset.manage` for an asset, `meter.reading.record` for a reading
+  (own readings for `S` roles, the author being the stored reading's member or
+  the held operation's member) and `idn.employee.manage` for an employee. A
+  positive owner permission is required before the target is resolved, so a
+  member without it learns nothing about the record. A missing permission is
+  `FORBIDDEN` with that permission's key. Listing a document's links requires
+  `doc.document.attach` covering the document; listing a target's links
+  requires `doc.document.attach` and the owner's permission covering the
+  target. Neither list is filtered into a content grant.
+- **B-BR-EMP-241 — Link creation is idempotent, audited and transactional.**
+  The operation UUID is the idempotency key: an identical replay returns the
+  first link; the same operation with another document, target or member is
+  `OPERATION_ID_REUSED`; another operation naming an existing link returns
+  that link with no new row or event; concurrent duplicates write one row and
+  one audit event. Every new link writes exactly one `document.link.created`
+  event targeting the document (BR-AUD-001). The document link port runs inside
+  the consumer's own scoped transaction, so a fueling or reading and its
+  receipt link commit or roll back together.
+- **B-BR-EMP-242 — A link conveys neither content nor cost.** A document that
+  is still `UPLOADING` can be linked and stays pending (BR-OFFL-015); a link
+  shows only the document's storage status. Opening content still requires
+  `doc.document.view_content` through the audited EMP-DOC-002 capability
+  (BR-PRIV-004, BR-AUTH-011): the target permission never grants content, and
+  a pending document has no content. A link carries no amount: it never
+  allocates money, changes reconciliation, fiscal or any other status or
+  revision of the document, or creates an expense (BR-DOC-003, EDR-013).
+- **BUC-EMP-122 — Prove links against real records on PostGIS.** With real
+  assets, stored and held meter readings, employees, documents and current
+  role assignments, a member links a pending receipt to each registered kind
+  through the store and through the port inside a consumer transaction; the
+  replay, the duplicate under another operation and twelve concurrent
+  duplicates keep one row and one event; foreign, missing, forged-kind,
+  unregistered-kind and draft-asset references and members lacking either
+  endpoint's permission leave no row; the schema refuses unscoped, foreign,
+  mismatched-binding, eventless and mutated rows, and a populated upgrade from
+  the previous head recovers from a failed migration.
+- **BUC-EMP-123 — Prove the link routes over the company API.** Through the
+  composed enterprise routes with real sessions and roles, a member links an own
+  pending receipt to an own reading and a manager links an own receipt to an
+  asset; the lists by document and by target page through sealed cursors;
+  refusals carry the bounded envelope and change nothing; a member who can see
+  the link but lacks content permission over the document, and anyone asking
+  for a pending document's content, read nothing; the document's statuses and
+  revisions are unchanged by linking.

@@ -9,6 +9,12 @@ EMP-DOC-002 persists the document container (`org_documents`, migration
 000205), the creator-bound upload session with its capability-bound ingress and
 the audited content routes ([evidence](../evidence/f3-doc002-document-persistence.md));
 verification and lifecycle jobs retain EMP-DOC-014 ownership.
+EMP-DOC-003 persists owned same-organization links (`org_document_links`,
+migration 000209) to assets, employees and stored or held meter readings
+through a closed registry of owner resolvers, with a link port for operation
+consumers and three company routes
+([evidence](../evidence/f3-doc003-document-links.md)); fueling, expense,
+work-order and trip links retain their owning tasks.
 EMP-DOC-006 adds pure structure checks for access keys, NFC-e QR codes and a
 bounded server-only XML envelope ([evidence](../evidence/f3-doc006-fiscal-structure.md));
 a STRUCTURE_OK result commands only the structure status and never fiscal

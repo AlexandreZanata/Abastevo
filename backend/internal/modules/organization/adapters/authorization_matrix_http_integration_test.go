@@ -247,6 +247,7 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,period_month) FROM org_finance_periods x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,period_month,revision) FROM org_finance_period_transitions x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_documents x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,document_id,target_kind,target_id) FROM org_document_links x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_export_jobs x),
 	 (SELECT count(*) FROM org_sensitive_access_events),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),

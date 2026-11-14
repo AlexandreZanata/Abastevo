@@ -20,6 +20,7 @@ import (
 	documentpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/adapters"
 	documentweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/adapters/http"
 	documentapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/application"
+	documentdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/domain"
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	fleetweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters/http"
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
@@ -380,7 +381,12 @@ func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler,
 	if err != nil {
 		return err
 	}
-	service := documentapp.Service{Enabled: true, Repository: &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore}, Media: originals, Tokens: uploads, Now: time.Now, NewID: jobs.NewUUIDv4}
+	// EMP-DOC-003: the closed registry of linkable kinds, each resolved by
+	// the module that owns the target record (EDR-162).
+	targets := documentapp.Targets{documentdomain.Asset: fleetpg.DocumentTargets{}, documentdomain.MeterReading: fleetpg.DocumentTargets{},
+		documentdomain.Employee: member.EmployeeDocumentTargets{}}
+	store := &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore, Targets: targets}
+	service := documentapp.Service{Enabled: true, Repository: store, Links: store, Media: originals, Tokens: uploads, Now: time.Now, NewID: jobs.NewUUIDv4}
 	return documentweb.Register(router, service, cookies, gateway, authorization)
 }
 

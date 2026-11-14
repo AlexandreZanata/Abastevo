@@ -139,3 +139,75 @@ func TestDocumentIngressContractIsTheOnlyCapabilityBinaryBoundary(t *testing.T) 
 		}
 	}
 }
+
+func TestDocumentLinkContractRefusesAuthorityAmountsContentAndUnregisteredKinds(t *testing.T) {
+	doc := loadSpec(t)
+	for _, name := range []string{"EnterpriseDocumentLinkTarget", "EnterpriseDocumentLinkCreateRequest", "EnterpriseDocumentLinkListRequest", "EnterpriseDocumentLinkByTargetRequest", "EnterpriseDocumentLink", "EnterpriseDocumentLinked", "EnterpriseDocumentLinkPage"} {
+		t.Run(name, func(t *testing.T) {
+			schema := doc.Components.Schemas[name]
+			if schema == nil || schema.Value == nil || schema.Value.Example == nil {
+				t.Fatal("missing document link contract/example")
+			}
+			raw, err := json.Marshal(schema.Value.Example)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var example map[string]any
+			if json.Unmarshal(raw, &example) != nil {
+				t.Fatal("invalid document link contract object")
+			}
+			if err := schema.Value.VisitJSON(example); err != nil {
+				t.Fatal("invalid example", err)
+			}
+			// No caller-selected authority, amount, allocation, status or content.
+			for _, field := range []string{"account_id", "membership_id", "created_by", "amount", "centavos", "allocation", "content_base64", "capability", "storage_key", "url", "sha256", "statuses"} {
+				example[field] = "synthetic"
+				if schema.Value.VisitJSON(example) == nil {
+					t.Fatal("link contract admitted", field)
+				}
+				delete(example, field)
+			}
+		})
+	}
+	target := doc.Components.Schemas["EnterpriseDocumentLinkTarget"].Value
+	for _, kind := range []string{"FUELING", "EXPENSE", "WORK_ORDER", "TRIP", "asset", "BOGUS"} {
+		if target.VisitJSON(map[string]any{"kind": kind, "id": "7b0e2a54-0000-4000-8000-000000020902"}) == nil {
+			t.Fatal("unregistered link target kind admitted", kind)
+		}
+	}
+	if target.VisitJSON(map[string]any{"kind": "ASSET", "id": "00000000-0000-0000-0000-000000000000"}) == nil {
+		t.Fatal("nil link target admitted")
+	}
+	create := doc.Components.Schemas["EnterpriseDocumentLinkCreateRequest"].Value
+	for name, change := range map[string]func(map[string]any){
+		"schema":       func(v map[string]any) { v["schema_version"] = 2 },
+		"no-target":    func(v map[string]any) { delete(v, "target") },
+		"no-operation": func(v map[string]any) { delete(v, "operation_id") },
+		"document":     func(v map[string]any) { v["document_id"] = "7b0e2a54-0000-4000-8000-000000020542" },
+	} {
+		raw, _ := json.Marshal(create.Example)
+		var v map[string]any
+		_ = json.Unmarshal(raw, &v)
+		change(v)
+		if create.VisitJSON(v) == nil {
+			t.Fatal("link create contract admitted", name)
+		}
+	}
+	for path, write := range map[string]bool{"/v1/orgs/{org_id}/documents/{document_id}/links/create": true, "/v1/orgs/{org_id}/documents/{document_id}/links/list": false, "/v1/orgs/{org_id}/documents/links/by-target": false} {
+		item := doc.Paths.Value(path)
+		if item == nil || item.Post == nil {
+			t.Fatal("link route undocumented", path)
+		}
+		raw, err := json.Marshal(item.Post.Extensions["x-abastevo-organization"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var rule orgapi.Rule
+		if json.Unmarshal(raw, &rule) != nil || rule.Permission != "doc.document.attach" || rule.Write != write || rule.Fresh || !rule.CompanyOnly {
+			t.Fatal("link route is not a non-fresh doc.document.attach company route", path)
+		}
+		if item.Post.Extensions["x-abastevo-document-ingress"] != nil {
+			t.Fatal("link route carries ingress metadata", path)
+		}
+	}
+}

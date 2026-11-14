@@ -63,6 +63,38 @@ func (a *roleAuthority) CheckDocumentTx(ctx context.Context, tx pgx.Tx, scope ke
 	}
 	return nil
 }
+
+// CheckTargetTx applies the same snapshot to a target owner's permission and
+// resolves the target only after a positive permission (EMP-DOC-003).
+func (a *roleAuthority) CheckTargetTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.Actor, policy access.Policy, resolve func(context.Context) (app.Facts, error)) error {
+	if err := database.ValidateOrgTx(ctx, tx, scope); err != nil {
+		return access.ErrUnavailable
+	}
+	a.mu.Lock()
+	state, exists := a.members[scope.OrgID().String()][actor.MembershipID]
+	a.mu.Unlock()
+	if !exists || state.account != actor.AccountID {
+		return access.ErrNoMembership
+	}
+	if state.suspended {
+		return access.ErrMembershipSuspended
+	}
+	rule, err := roles.SystemCatalog().Lookup(state.role, policy.Permission)
+	if err != nil {
+		return access.ErrUnavailable
+	}
+	if rule.Coverage() == roles.Denied {
+		return roles.DenyPermission(policy.Permission)
+	}
+	facts, err := resolve(ctx)
+	if err != nil {
+		return err
+	}
+	if rule.Coverage() == roles.OwnRecords && facts.AuthoredBy != actor.MembershipID {
+		return roles.DenyPermission(policy.Permission)
+	}
+	return nil
+}
 func (a *roleAuthority) set(scope kernel.OrgScope, actor app.Actor, change func(*roleState)) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
