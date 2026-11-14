@@ -57,7 +57,7 @@ func storeError(ctx context.Context, err error) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrFreshAuthRequired, access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrConflict, app.ErrOperationReused, app.ErrIdentifierTaken, app.ErrNotFound, app.ErrOpenOperations, app.ErrUnavailable, app.ErrUnauthenticated, fleet.ErrInvalid, fleet.ErrScope, fleet.ErrKindLocked, fleet.ErrIncomplete} {
+	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrFreshAuthRequired, access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrConflict, app.ErrOperationReused, app.ErrIdentifierTaken, app.ErrNotFound, app.ErrOpenOperations, app.ErrUnallocated, app.ErrUnavailable, app.ErrUnauthenticated, fleet.ErrInvalid, fleet.ErrScope, fleet.ErrKindLocked, fleet.ErrIncomplete} {
 		if errors.Is(err, known) {
 			return err
 		}

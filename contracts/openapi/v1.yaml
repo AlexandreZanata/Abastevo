@@ -16351,6 +16351,137 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetUnitAllocationList
+      summary: Read the unit allocation history of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
+        current fleet.asset.read and same-organization membership; SELF remains closed. Start-ordered keyset page of
+        the half-open unit periods of the asset (EMP-FLEET-005), one gap-free chain from activation with exactly one
+        open-ended period; a DRAFT asset has none. The instant of a change belongs to the new period. Opaque 15-minute
+        cursor bound to the account, organization, membership, route, asset and limit. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetAllocationListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized history page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetUnitAllocationPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetCostCentreAllocationList
+      summary: Read the cost-centre allocation history of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
+        current fleet.asset.read and same-organization membership; SELF remains closed. Start-ordered keyset page of
+        the half-open cost-centre periods of the asset (EMP-FLEET-005). A cost centre is optional, never derived from
+        the unit, and at most one covers any instant; an empty page means no cost centre was ever allocated. Opaque
+        15-minute cursor bound to the account, organization, membership, route, asset and limit. Responses are private
+        no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetAllocationListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized history page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetCostCentreAllocationPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install:
     post:
       tags:
@@ -20292,6 +20423,130 @@ components:
           recorded_at: '2026-11-14T12:00:00Z'
         next_cursor: ''
       description: Revision-ordered page of immutable lifecycle history; next_cursor is empty on the last page.
+    EnterpriseFleetAssetAllocationListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+      description: Start keyset page of one allocation history. No instant, unit, cost centre or history selector is
+        caller-chosen.
+    EnterpriseFleetAssetUnitAllocation:
+      type: object
+      additionalProperties: false
+      properties:
+        unit_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond.
+        valid_to:
+          type: string
+          format: date-time
+          description: Exclusive end, a whole microsecond; absent while the period is open-ended.
+        recorded_at:
+          type: string
+          format: date-time
+          description: Database instant at which the period was recorded.
+      required:
+      - unit_id
+      - valid_from
+      - recorded_at
+      example:
+        unit_id: 7b0e2a54-0000-4000-8000-000000008301
+        valid_from: '2026-03-01T12:00:00Z'
+        valid_to: '2026-04-01T03:00:00.123456Z'
+        recorded_at: '2026-03-01T12:00:00Z'
+      description: One half-open unit period [valid_from, valid_to) of the asset. Same-organization unit; history rows
+        are never deleted and an open period is closed at most once.
+    EnterpriseFleetAssetUnitAllocationPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetUnitAllocation'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - unit_id: 7b0e2a54-0000-4000-8000-000000008301
+          valid_from: '2026-03-01T12:00:00Z'
+          valid_to: '2026-04-01T03:00:00.123456Z'
+          recorded_at: '2026-03-01T12:00:00Z'
+        - unit_id: 7b0e2a54-0000-4000-8000-000000008302
+          valid_from: '2026-04-01T03:00:00.123456Z'
+          recorded_at: '2026-03-20T10:00:00.000005Z'
+        next_cursor: ''
+      description: Start-ordered page of the unit history; next_cursor is empty on the last page.
+    EnterpriseFleetAssetCostCentreAllocation:
+      type: object
+      additionalProperties: false
+      properties:
+        cost_centre_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond.
+        valid_to:
+          type: string
+          format: date-time
+          description: Exclusive end, a whole microsecond; absent while the period is open-ended.
+        recorded_at:
+          type: string
+          format: date-time
+          description: Database instant at which the period was recorded.
+      required:
+      - cost_centre_id
+      - valid_from
+      - recorded_at
+      example:
+        cost_centre_id: 7b0e2a54-0000-4000-8000-000000008301
+        valid_from: '2026-03-01T12:00:00Z'
+        recorded_at: '2026-03-01T12:00:00Z'
+      description: One half-open cost-centre period [valid_from, valid_to) of the asset. Same-organization cost
+        centre; never invented.
+    EnterpriseFleetAssetCostCentreAllocationPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetCostCentreAllocation'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - cost_centre_id: 7b0e2a54-0000-4000-8000-000000008301
+          valid_from: '2026-03-01T12:00:00Z'
+          valid_to: '2026-04-01T03:00:00.123456Z'
+          recorded_at: '2026-03-01T12:00:00Z'
+        - cost_centre_id: 7b0e2a54-0000-4000-8000-000000008302
+          valid_from: '2026-04-01T03:00:00.123456Z'
+          recorded_at: '2026-03-20T10:00:00.000005Z'
+        next_cursor: ''
+      description: Start-ordered page of the cost-centre history; next_cursor is empty on the last page.
     EnterpriseFleetAssetPage:
       type: object
       additionalProperties: false

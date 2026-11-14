@@ -59,6 +59,8 @@ func TestFullProductionRouterEnterpriseContractAndDefaultOff(t *testing.T) {
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/disposal/revert",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/archive",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",

@@ -356,6 +356,25 @@ adapters, review, orgnotify, fleet adapters, orgapi and migrate: 24 packages,
 safety job (DOC-014), other status commands, links, duplicates, panel viewer,
 real storage provider, production grants; real receipts legally gated.
 
+### EMP-FLEET-005 (F2 prerequisite) — allocation history: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f2-fleet005-allocation-history.md). Second link of the EDR-109
+chain. Migration 000206 installs `btree_gist` (contrib, PostgreSQL License,
+recorded need) and forced-RLS `org_asset_unit_periods` /
+`org_asset_cost_centre_periods` with gist no-overlap exclusion, close-once and
+never-delete guards and a commit-time gap-free unit chain; each activated
+asset's recorded unit becomes its first period from its activation instant
+(no invented cost centre; inconsistent sources abort). `UnitAndCostCentreAt`
+snapshot port (half-open, microsecond floor, `ErrUnallocated`) and two history
+routes under `fleet.asset.read`; example 3 (Norte → Sul) reproduced through
+the port (EDR-154/155). RED unit 9, contract 2, router 2, PostGIS 7/7 and 5
+failing → GREEN; agent race union 526/3573. Merged with DOC-002/APPR-006/
+NOTIF-001 (98 normal routes); merged-tree union over fleet, organization
+adapters, orgsync, document, review and migrate: 20 packages, 613/4691,
+0 failures, 0 skips. Retained: transfer command (FLEET-008), scope evaluation
+(AUTH-006), record modules adopting the port, legacy `unit_id` retirement,
+production grants, screens.
+
 ## Stop point — 2026-11-14 (usage limit)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,

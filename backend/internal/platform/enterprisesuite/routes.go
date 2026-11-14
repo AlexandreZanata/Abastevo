@@ -191,6 +191,11 @@ func Register(router chi.Router, o Options) error {
 	if err := fleetweb.RegisterAssetLifecycle(router, fleetapp.AssetLifecycleService{Enabled: true, Repository: assets}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
+	// EMP-FLEET-005 history reads; the same store is the snapshot port that
+	// record-creating modules call (no producer is wired before them).
+	if err := fleetweb.RegisterAssetAllocations(router, fleetapp.AllocationHistoryService{Enabled: true, Repository: assets}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
 	centreAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: orgweb.StructureRecords{}, Now: time.Now}
 	if err := orgweb.RegisterCostCentres(router, org.CostCentreService{Enabled: true, Repository: centres, NewID: jobs.NewUUIDv4}, cookies, gateway, centreAuthorization, roots, centres); err != nil {

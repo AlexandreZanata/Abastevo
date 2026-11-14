@@ -283,10 +283,12 @@
       "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/list",
       "routes": [
         "POST /v1/orgs/{org_id}/fleet/assets/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
-        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/read"
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/read",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list"
       ],
       "reason": ""
     },

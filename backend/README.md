@@ -1140,6 +1140,25 @@ the organizations capability and fresh company proof. The open-work port is
 answered by the explicit `NoOpenWork` adapter until trips and work orders
 exist. Nothing here provisions live grants.
 
+### Allocation history (EMP-FLEET-005)
+
+Migration206 installs the trusted `btree_gist` extension (PostgreSQL contrib,
+PostgreSQL License, shipped in the pinned `postgis/postgis:18-3.6` image; the
+migrator needs CREATE on the database, which the database owner has) and the
+forced-RLS `org_asset_unit_periods` and `org_asset_cost_centre_periods` tables,
+and moves every activated asset's initial unit into its first period. The Fleet
+principal needs `SELECT, INSERT ON org_asset_unit_periods,
+org_asset_cost_centre_periods` (activation opens the first unit period through a
+trigger). Unit-source principals additionally need `SELECT (org_id, asset_id,
+unit_id, valid_to) ON org_asset_unit_periods`; cost-centre-source principals
+need `SELECT (org_id, id, state) ON org_assets` and `SELECT (org_id, asset_id,
+cost_centre_id, valid_to) ON org_asset_cost_centre_periods`. A module calling
+the snapshot port needs `SELECT (org_id, id) ON org_assets` and `SELECT` on
+both period tables. No UPDATE grant is needed until the EMP-FLEET-008 transfer
+(`UPDATE (valid_to)`); DELETE/TRUNCATE are refused by triggers regardless.
+History routes reuse the enterprise flag, the organizations capability and
+current `fleet.asset.read`. Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

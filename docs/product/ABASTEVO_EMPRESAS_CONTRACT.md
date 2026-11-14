@@ -3590,3 +3590,94 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   permission, `S` roles on another member's document, expired or foreign
   capabilities and an unavailable audit serve nothing. Captured logs and
   metrics contain no bytes, digest, storage key or capability.
+
+## EMP-FLEET-005 — Unit and cost-centre allocation history (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-fleet005-allocation-history.md).
+
+## Enterprise asset allocation history (EMP-FLEET-005)
+
+- **B-BR-EMP-223 — Keep unit and cost-centre allocations as half-open,
+  non-overlapping periods.** Each organization asset has two append-only
+  period histories, one of operating units and one of cost centres. A period
+  names one unit (or cost centre) of the same organization, a start and an
+  optional end, and covers `[start, end)`: the instant of a change belongs to
+  the new period. Boundaries are whole microseconds. Two periods of one asset
+  in the same history never overlap; the database enforces this with an
+  exclusion constraint, so of two concurrent overlapping writes at most one
+  commits. A new period must reference a unit or cost centre that is `ACTIVE`
+  at the write, of an asset that has left `DRAFT`, and may not start before
+  the asset's first unit period. A period is never deleted or truncated; the
+  only change is closing an open period once, with an end later than its
+  start. Rows are private to the organization under forced row-level
+  security; a session without the organization setting sees none and writes
+  none.
+- **B-BR-EMP-224 — An activated asset has exactly one unit at every instant
+  from its activation.** The unit history of an asset that has left `DRAFT`
+  starts at its activation instant (the instant of its FLEET-002 initial
+  allocation), has no gap and ends in exactly one open-ended period; a
+  `DRAFT` asset has none. Activation opens the first period in the same
+  transaction, at exactly the initial allocation instant and with the
+  asset's unit. Deactivation, reactivation, disposal, revert and archive
+  neither open nor close a period: an out-of-service asset keeps its unit and
+  reactivation keeps the one open period. A transaction that would leave the
+  chain broken (closing the only open period without a successor starting at
+  the same instant, a gap, a second open period, a first period not starting
+  at activation) is refused at commit with no effect. The cost-centre history
+  is optional: an asset may have no cost centre, or gaps, but at most one at
+  any instant, and none is ever derived from the unit or invented. Archiving
+  a unit or cost centre stays refused while an `ACTIVE` asset has a current or
+  future period referencing it; ended periods and out-of-service assets do
+  not block it (unchanged FLEET-002/003 semantics for units).
+- **B-BR-EMP-225 — Move the existing single unit into the first period
+  without inventing data.** Migration 000206 gives every asset that has left
+  `DRAFT` exactly one open unit period whose unit is its single FLEET-002
+  unit (the initial allocation row, which must equal the asset's unit column)
+  and whose start and recording instant are the database instant at which
+  that initial allocation was recorded at activation. `DRAFT` assets receive
+  none (their unit is only a proposal) and no cost-centre period is created
+  (no asset stores a cost centre). If any asset is inconsistent — a
+  non-`DRAFT` asset without exactly one open initial allocation equal to its
+  unit column, or a `DRAFT` asset with one — the migration fails as a whole
+  and changes nothing. The original unit column and the initial allocation
+  table stay unchanged until the next phase; the previous binary keeps
+  working because activation still records the initial allocation, from which
+  the database opens the first period. Rollback is the capability flag on the
+  history routes.
+- **B-BR-EMP-226 — Answer "unit and cost centre of this asset at this
+  instant" from the periods.** The snapshot port
+  `UnitAndCostCentreAt(organization, asset, instant)` (also offered inside the
+  caller's transaction) returns the unit of the unit period containing the
+  instant and the cost centre of the cost-centre period containing it, or no
+  cost centre when none does. The instant is floored to the microsecond,
+  which keeps the half-open rule exact because every boundary is a whole
+  microsecond. A missing asset or an asset of another organization is not
+  found; an instant not covered by a unit period (a `DRAFT` asset, or before
+  activation) is unallocated, never a guessed unit. A later period change
+  never changes the answer for an instant inside an unchanged period
+  (BR-FLEET-016); the calling module stores the answer on its record at
+  creation and coverage uses that stored value (BR-AUTH-005). The history
+  reads list each history in start order with unit or cost centre, start,
+  end when present and recording instant, under current `fleet.asset.read`
+  covering the asset; `SELF` stays closed until assignments exist.
+- **BUC-EMP-114 — Read the allocation history of an asset.** Actor: member
+  with current `fleet.asset.read` covering the asset. Main flow: open the unit
+  or the cost-centre allocation history of one asset → the server rechecks
+  membership, permission and organization → a start-ordered keyset page
+  (limit 1..100, default 20; opaque cursor bound to account, organization,
+  membership, route, asset and limit). Alternatives: foreign or missing asset
+  → `NOT_FOUND`; missing permission → `FORBIDDEN` naming `fleet.asset.read`;
+  `DRAFT` asset → empty unit history; no cost centre ever → empty page;
+  tampered or foreign cursor → `MALFORMED_REQUEST`. Result: read only, no
+  effect.
+- **BUC-EMP-115 — Snapshot the allocation when a record is created.** Actor:
+  the owning module (trip, fueling, expense, reading, document) inside its
+  own creating transaction. Main flow: call the port with the record's
+  authoritative instant → store the returned unit and optional cost centre
+  on the record. Alternatives: unallocated → the caller applies its own
+  refusal or review rule and never stores a guessed unit; no cost centre →
+  the record stores none. Example (07-permissions §10 example 3): vehicle V
+  is in unit Norte until the change instant and in unit Sul from it; a
+  fueling at an instant before the change stores Norte, the port still
+  answers Norte for that instant after the change, and answers Sul at the
+  change instant and later. Result: the stored snapshot never moves.

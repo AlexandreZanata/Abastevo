@@ -379,6 +379,16 @@ func (f *Fixture) GrantFleetUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// EMP-FLEET-005 unit and cost-centre usage read only these period columns.
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_asset_unit_periods') IS NOT NULL AND to_regclass('public.org_asset_cost_centre_periods') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,unit_id,valid_to) ON org_asset_unit_periods TO "+role+";GRANT SELECT(org_id,asset_id,cost_centre_id,valid_to) ON org_asset_cost_centre_periods TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // GrantMeterUsage adds only the actual columns read by installed asset-use and

@@ -85,7 +85,7 @@ availability holds for DRAFT/INACTIVE. Next in the EDR-109 chain: EMP-FLEET-005.
 - **Done when:** The invariant test passes after random sequences of tenure changes.
 
 ### EMP-FLEET-005 — Unit and cost-centre allocation history
-- **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Keep the history of the unit and cost centre of each asset, so that access scope and cost attribution of past records never move when the asset does.
 - **Rules and use cases:** BR-FLEET-015, BR-FLEET-016, BR-AUTH-005
 - **Depends on:** EMP-FLEET-002, EMP-ORG-005, EMP-ORG-006
@@ -99,6 +99,13 @@ availability holds for DRAFT/INACTIVE. Next in the EDR-109 chain: EMP-FLEET-005.
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-API · migration: additive tables with a data move from the single column, verified on a populated database · rollback: capability flag off; the original column is kept until the next phase
 - **Risks and assumptions:** Records created in cut C1 before this task already store their own snapshot, so no historical record depends on this migration.
 - **Done when:** The snapshot port answers the permissions example correctly before and after a change of unit.
+
+EMP-FLEET-005 LOCAL_DONE (pending integration): migration 000206 adds the
+unit and cost-centre period tables (btree_gist exclusion, forced RLS), moves
+every activated asset's initial unit into its first period, and adds the
+snapshot port and the two history routes. FLEET-008 owns the transfer command,
+scheduling/cancellation, the asset view's current allocation and the legacy
+`unit_id` retirement; AUTH-006 consumes the port for historical scope.
 
 ### EMP-FLEET-006 — Driver assignments: primary, temporary and multiple drivers
 - **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
@@ -145,7 +152,7 @@ availability holds for DRAFT/INACTIVE. Next in the EDR-109 chain: EMP-FLEET-005.
 - **Acceptance:** AC1 after a transfer with a past effective instant, records created before it keep their stored unit; AC2 a future transfer changes nothing until its instant and then applies without a job having to run, because allocation is read by period; AC3 a trip in progress at the effective instant keeps the unit it started with; AC4 the event carries identifiers only.
 - **Negative cases:** destination unit archived or of another organization; actor whose scope covers only the destination; an effective instant before the asset's first allocation; two concurrent transfers; cancelling a transfer already in effect.
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: none beyond EMP-FLEET-005 · rollback: capability flag off
-- **Risks and assumptions:** A past effective instant can surprise finance; the screen and the audit event state plainly that earlier records do not move.
+- **Risks and assumptions:** A past effective instant can surprise finance; the screen and the audit event state plainly that earlier records do not move. FLEET-005 period guards allow only closing an open period once and never delete; a scheduled-transfer cancellation needs an additive guard change here.
 - **Done when:** The past-instant and trip-in-progress tests pass and the audit event names the reason.
 
 ### EMP-FLEET-009 — Supplier registry
