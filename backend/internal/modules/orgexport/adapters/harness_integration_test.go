@@ -107,12 +107,50 @@ func newPerson(t *testing.T, f *orgtest.Fixture, scope kernel.OrgScope) person {
 
 // testAuthority emulates the export permission port on the real database:
 // the actor must hold the stated ACTIVE membership, and a requester whose
-// membership is marked revoked has lost its rights. The concrete company
-// pipeline is proven in organization/adapters.
+// membership is marked revoked has lost its rights. A data permission marked
+// withheld is refused to every member (EMP-AUTH-011); each data check is
+// counted. The concrete company pipeline is proven in organization/adapters.
 type testAuthority struct {
-	mu      sync.Mutex
-	revoked map[string]bool
-	outage  bool
+	mu       sync.Mutex
+	revoked  map[string]bool
+	withheld map[permissions.Permission]bool
+	checks   []permissions.Permission
+	outage   bool
+}
+
+func (a *testAuthority) withhold(read permissions.Permission, withheld bool) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	if a.withheld == nil {
+		a.withheld = map[permissions.Permission]bool{}
+	}
+	a.withheld[read] = withheld
+}
+
+func (a *testAuthority) dataChecks() []permissions.Permission {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	return append([]permissions.Permission(nil), a.checks...)
+}
+
+func (a *testAuthority) CheckDataTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.Actor, member string, read permissions.Permission) error {
+	if actor.Validate() != nil || !app.ExportableRead(read) {
+		return app.ErrUnavailable
+	}
+	ok, err := a.active(ctx, tx, scope, actor.AccountID, member)
+	if err != nil {
+		return app.ErrUnavailable
+	}
+	if !ok {
+		return access.ErrNoMembership
+	}
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.checks = append(a.checks, read)
+	if a.withheld[read] {
+		return permissions.DenyPermission(read)
+	}
+	return nil
 }
 
 func (a *testAuthority) revoke(member string) {
@@ -144,15 +182,19 @@ func (a *testAuthority) CheckExportTx(ctx context.Context, tx pgx.Tx, scope kern
 	return nil
 }
 
-func (a *testAuthority) CheckRequesterTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, r app.Requester, kind string) error {
+func (a *testAuthority) CheckRequesterTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, r app.Requester, kind string, read permissions.Permission) error {
 	a.mu.Lock()
-	revoked, outage := a.revoked[r.MembershipID], a.outage
+	revoked, outage, withheld := a.revoked[r.MembershipID], a.outage, a.withheld[read]
+	a.checks = append(a.checks, read)
 	a.mu.Unlock()
 	if outage {
 		return app.ErrUnavailable
 	}
-	if !domain.ValidKind(kind) {
+	if !domain.ValidKind(kind) || !app.ExportableRead(read) {
 		return app.ErrUnavailable
+	}
+	if withheld {
+		return app.ErrRightsLost
 	}
 	ok, err := a.active(ctx, tx, scope, r.AccountID, r.MembershipID)
 	if err != nil {
@@ -174,10 +216,11 @@ type rowsFormat struct {
 	release chan struct{}
 }
 
-func (*rowsFormat) Kind() string                         { return "test.synthetic_rows" }
-func (*rowsFormat) MediaType() string                    { return "text/csv" }
-func (f *rowsFormat) Limits() domain.Limits              { return f.limits }
-func (*rowsFormat) Canonical(raw []byte) ([]byte, error) { return raw, nil }
+func (*rowsFormat) Kind() string                           { return "test.synthetic_rows" }
+func (*rowsFormat) ReadPermission() permissions.Permission { return "exp.expense.read" }
+func (*rowsFormat) MediaType() string                      { return "text/csv" }
+func (f *rowsFormat) Limits() domain.Limits                { return f.limits }
+func (*rowsFormat) Canonical(raw []byte) ([]byte, error)   { return raw, nil }
 func (f *rowsFormat) Produce(ctx context.Context, in app.ProduceInput, sink *domain.Sink) error {
 	f.mu.Lock()
 	f.calls++

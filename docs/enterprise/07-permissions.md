@@ -155,7 +155,7 @@ Every permission used by any module is listed here. A module that needs a new ke
 | `stock.reconcile` | Record measurements and adjustments |
 | `kpi.dashboard.read` | Read indicators |
 | `find.finding.read` / `find.finding.resolve` | Read / decide findings |
-| `rpt.export.run` | Run exports and reports |
+| `rpt.export.run` | Run exports and reports; each export kind also needs the read permission it declares (EMP-AUTH-011) |
 | `audit.event.read` | Read the audit trail |
 | `import.batch.run` | Import files |
 | `notif.rule.manage` | Maintain organization alert rules |
@@ -282,6 +282,13 @@ and station views retain separate party scopes (station-commerce §7).
 Catalog lookup does not persist assignments, interpret a subscription as a
 role, evaluate current scope/time, waive self-review rules or enable the
 membership database policy. Actual authority remains AUTH-002/003 work.
+
+EMP-AUTH-011 proves the AUDITOR column on every routed organization route
+without a catalog change (EDR-166): documented reads succeed, the export request
+and the own ownership response are the only write-shaped routes it reaches, and
+every other route is `FORBIDDEN` with its key. `org.ownership.respond` stays a
+personal consent key; period reads stay under `fin.period.close` (EDR-149).
+[Evidence](evidence/f3-auth011-auditor-export-gating.md)
 
 ## 8. Offline, concurrency, idempotency and corrections
 

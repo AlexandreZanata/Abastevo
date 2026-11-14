@@ -475,6 +475,27 @@ fueling/expense/work-order/trip, owner read surfaces and the DOC-015 viewer,
 unlink and retention (DOC-011/012), the Android producer (DOC-004/FUEL-011),
 production grants.
 
+### EMP-AUTH-011 — auditor read-only role and export gating: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-auth011-auditor-export-gating.md). The catalog
+(`org-permissions-v4`) already confined AUDITOR to its 12 documented read keys,
+so no catalog, vector or migration change (EDR-166); `org.ownership.respond`
+stays a personal consent key and period reads stay under `fin.period.close`.
+New behaviour (EDR-167): each export format declares one registered
+`<module>.<resource>.read` key outside location; the request transaction, every
+worker attempt and each capability issue/download re-check it together with
+`rpt.export.run` (org-wide grants only), failing closed. Proof: an HTTP walk of
+every routed normal route as AUDITOR (documented reads succeed; every other
+route FORBIDDEN with its key and no state change) and export/content gate
+tests. RED unit 6/79, integration 4/6, contract 1 failing → GREEN; agent race
+union 27 packages 754/6216, untagged 211 packages. Merged with DOC-003: the
+walk now covers 106 routes (22 positive, 84 FORBIDDEN — the three link routes
+need `doc.document.attach`, which AUDITOR lacks); focused auditor/export tests
+3/84, orgexport integration 46/5, cmd/api and apicontract green on this
+branch. Retained: unrouted auditor reads (trips, tracks, fuelings, expenses,
+KPIs, audit trail) proven only at catalog level; a period read key; RPT-002
+formats, sensitive columns and UNIT/SELF row scoping.
+
 ## Interruption — 2026-11-14 (resumed)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,

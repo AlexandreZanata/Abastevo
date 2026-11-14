@@ -4054,3 +4054,78 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   the link but lacks content permission over the document, and anyone asking
   for a pending document's content, read nothing; the document's statuses and
   revisions are unchanged by linking.
+
+## EMP-AUTH-011 — Auditor read-only role and export permission gating (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-auth011-auditor-export-gating.md).
+
+- **B-BR-EMP-247 — The auditor reads and never writes.** The fixed `AUDITOR`
+  role holds exactly the documented set of `org-permissions-v4`:
+  `idn.employee.read`, `org.settings.read`, `fleet.asset.read`,
+  `trip.trip.read`, `fuel.fueling.read`, `exp.expense.read`,
+  `kpi.dashboard.read`, `audit.event.read`, `gps.track.read` (recorded tracks
+  only, never `gps.location.read_live`), `doc.document.view_content`,
+  `rpt.export.run` and the personal consent key `org.ownership.respond`; every
+  other key is denied. On every routed organization route an AUDITOR request
+  is one of: a documented read (success, nothing changed); an audited
+  sensitive or export read under its own permission (B-BR-EMP-248..250); a
+  consent attempt that the transaction participant check confines to a
+  proposal addressed to the auditor (any other proposal `NOT_FOUND`); or
+  `FORBIDDEN` with the route's permission key, no record read and no private
+  state changed. Every write route other than the export request and the own
+  ownership response is refused. A record of another organization, or an
+  organization without the auditor's membership, is `NOT_FOUND`
+  (BR-TEN-006). Finance period list and read stay under `fin.period.close`
+  (EDR-149), so the auditor has no period read until a matrix revision adds
+  a read key.
+- **B-BR-EMP-248 — An export needs both its own and the data's permission.**
+  Requesting an export needs fresh `rpt.export.run` covering the whole
+  organization and, in the same transaction, the read permission declared by
+  the export kind, held now by the same ACTIVE membership for the whole
+  organization; neither implies the other, and a structural or own-records
+  read grant does not cover an organization-level export. Every admitted kind
+  declares exactly one registered `<module>.<resource>.read` key outside
+  location (`gps.*`); a kind that declares `rpt.export.run`, any non-read key
+  (including `doc.document.view_content`), a location key or an unknown key
+  is not admitted. A missing data permission is `FORBIDDEN` with that key,
+  and no job, audit event or queue job is written.
+- **B-BR-EMP-249 — The data permission is re-checked at every later step.**
+  Each worker attempt re-evaluates the recorded requester's `rpt.export.run`
+  and the kind's declared read permission; losing either (role ended or
+  changed, membership suspended or ended, organization not ACTIVE) ends the
+  job `FAILED` with `EXPORT_RIGHTS_LOST` and no file. Issuing a download
+  capability and serving the file re-check both in the delivery transaction
+  (BR-AUTH-014): a requester who lost the data permission is `FORBIDDEN` with
+  that key and no `EXPORT_FILE` record is written; a ready job whose kind is
+  no longer admitted is `EXPORT_FORMAT_UNAVAILABLE`. Job metadata (list and
+  read of the requester's own jobs) needs `rpt.export.run` only.
+- **B-BR-EMP-250 — Sensitive bytes need their own permission whatever else is
+  held.** Document content is served only by the content routes under
+  `doc.document.view_content` and is recorded as `DOCUMENT_CONTENT`
+  `ISSUED`/`SERVED` (EMP-PRIV-005) for every holder, AUDITOR included. A
+  member with broad read permissions but without that key (for example
+  SUPERVISOR) is `FORBIDDEN` with `doc.document.view_content` and no access
+  record is written. Because no export kind may declare content or location
+  (B-BR-EMP-248), no general read or export path reaches document bytes, live
+  positions or tracks.
+- **BUC-EMP-126 — Audit an organization read-only.** Actor: member with an
+  organization-scoped AUDITOR assignment. Main flow: read employees,
+  settings and assets → open a document's content (recorded) → request an
+  export of an admitted kind whose read permission the auditor holds →
+  download it (recorded). Alternatives: any other write route → `FORBIDDEN`
+  with its key and nothing changes; a record or organization outside the
+  membership → `NOT_FOUND`; an ownership proposal addressed to someone else →
+  `NOT_FOUND`; period list/read → `FORBIDDEN` `fin.period.close`; a
+  UNIT-scoped auditor → `FORBIDDEN` `rpt.export.run` for exports. Result: the
+  auditor sees what the matrix grants and changes nothing.
+- **BUC-EMP-127 — Gate an export by the data's permission (system).** Actor:
+  requester and export worker. Main flow: request → `rpt.export.run` and the
+  kind's read permission checked in the request transaction → job `QUEUED` →
+  each worker attempt re-checks both → `READY` → access and content re-check
+  both and record `EXPORT_FILE`. Alternatives: no `rpt.export.run` (a
+  read-only role or a UNIT-scoped grant) → `FORBIDDEN` `rpt.export.run`; no
+  data permission → `FORBIDDEN` with that key, nothing written; role or data
+  permission lost before the attempt → `FAILED` `EXPORT_RIGHTS_LOST`, no
+  file; data permission lost after `READY` → `FORBIDDEN` on access/content,
+  nothing recorded. Result: an export never widens what its requester may
+  read now.

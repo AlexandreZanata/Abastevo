@@ -58,7 +58,7 @@ func TestRegistryIsClosed(t *testing.T) {
 	if _, ok := empty.Lookup("test.synthetic_rows"); ok {
 		t.Fatal("unregistered kind found")
 	}
-	a, b := syntheticFormat(), &rowsFormat{kind: "test.other_rows", limits: domain.DefaultLimits()}
+	a, b := syntheticFormat(), &rowsFormat{kind: "test.other_rows", read: "fleet.asset.read", limits: domain.DefaultLimits()}
 	r, err := app.NewRegistry(b, a)
 	if err != nil || strings.Join(r.Kinds(), ",") != "test.other_rows,test.synthetic_rows" {
 		t.Fatal("registry kinds", err)
@@ -66,7 +66,7 @@ func TestRegistryIsClosed(t *testing.T) {
 	if f, ok := r.Lookup("test.synthetic_rows"); !ok || f != a {
 		t.Fatal("registered kind not found")
 	}
-	for _, bad := range [][]app.Format{{nil}, {a, a}, {&rowsFormat{kind: "invalid", limits: domain.DefaultLimits()}}, {&rowsFormat{kind: "test.bad_limits", limits: domain.Limits{Rows: domain.MaxRows + 1, Bytes: 1, Duration: time.Second}}}, {mediaFormat{syntheticFormat()}}} {
+	for _, bad := range [][]app.Format{{nil}, {a, a}, {&rowsFormat{kind: "invalid", read: "exp.expense.read", limits: domain.DefaultLimits()}}, {&rowsFormat{kind: "test.bad_limits", read: "exp.expense.read", limits: domain.Limits{Rows: domain.MaxRows + 1, Bytes: 1, Duration: time.Second}}}, {mediaFormat{syntheticFormat()}}} {
 		if _, err := app.NewRegistry(bad...); !errors.Is(err, domain.ErrInvalid) {
 			t.Fatal("invalid registry admitted")
 		}

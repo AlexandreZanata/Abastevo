@@ -515,7 +515,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** The custom-role matrix and rollback behavior pass without changing fixed-role semantics.
 
 ### EMP-AUTH-011 — Auditor read-only role and export permission gating
-- **Meta:** module AUTH · phase F3 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module AUTH · phase F3 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Enforce the auditor read-only role and independently gate exports.
 - **Rules and use cases:** BR-AUTH-001, BR-AUTH-003, BR-AUTH-010, BR-AUTH-011, BR-AUTH-013, BR-AUD-003
 - **Depends on:** EMP-AUTH-003
@@ -529,3 +529,11 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-AUTHZ, V-ISO, V-PRIV · migration: reuse role scope · rollback: disable the new access path and retain audit evidence
 - **Risks and assumptions:** Export eligibility and payload contents remain owned by their workflow.
 - **Done when:** Allowed reads and denied writes, exports and sensitive reads pass through the relevant entry points.
+
+- **Status (2026-11-14):** LOCAL_DONE in `codex/enterprise-f3-auth011`
+  ([evidence](../evidence/f3-auth011-auditor-export-gating.md)). AUDITOR
+  proven on all 103 routed normal routes (22 documented positive, 81
+  `FORBIDDEN`) without a catalog change; export kinds declare one data read
+  permission, checked at request, worker attempt and delivery. Unrouted
+  auditor reads, period read key, sensitive export columns and F6 full export
+  retained.

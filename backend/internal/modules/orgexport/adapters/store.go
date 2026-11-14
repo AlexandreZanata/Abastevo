@@ -80,7 +80,7 @@ func storeError(ctx context.Context, err error) error {
 	}
 	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrSetupIncomplete, access.ErrFreshAuthRequired,
 		access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrOperationReused, app.ErrNotFound,
-		app.ErrUnavailable, app.ErrUnauthenticated, app.ErrQueueFull, app.ErrNotReady, app.ErrExpired, app.ErrRightsLost, app.ErrBusy, app.ErrSettled, domain.ErrInvalid} {
+		app.ErrUnavailable, app.ErrUnauthenticated, app.ErrQueueFull, app.ErrNotReady, app.ErrExpired, app.ErrRightsLost, app.ErrBusy, app.ErrSettled, app.ErrFormatUnavailable, domain.ErrInvalid} {
 		if errors.Is(err, known) {
 			return err
 		}
@@ -131,6 +131,15 @@ func viewOf(r viewRow) (app.View, error) {
 	return v, nil
 }
 
+// authorizeRequest proves rpt.export.run for a request and then, in the same
+// transaction, the data permission the kind declares (EMP-AUTH-011).
+func (s *Store) authorizeRequest(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.Actor, member string, c app.Command) error {
+	if err := s.Authority.CheckExportTx(ctx, tx, scope, actor, member, app.ActionRequest); err != nil {
+		return err
+	}
+	return s.Authority.CheckDataTx(ctx, tx, scope, actor, member, c.ReadPermission())
+}
+
 func (s *Store) Request(ctx context.Context, scope kernel.OrgScope, actor app.Actor, member, exportID string, c app.Command) (app.View, bool, error) {
 	if err := validCall(scope, actor, member, exportID); err != nil {
 		return app.View{}, false, err
@@ -147,7 +156,7 @@ func (s *Store) Request(ctx context.Context, scope kernel.OrgScope, actor app.Ac
 	var view app.View
 	replayed := false
 	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
-		if err := s.Authority.CheckExportTx(ctx, tx, scope, actor, member, app.ActionRequest); err != nil {
+		if err := s.authorizeRequest(ctx, tx, scope, actor, member, c); err != nil {
 			return err
 		}
 		queries := q.New(tx)
@@ -164,7 +173,7 @@ func (s *Store) Request(ctx context.Context, scope kernel.OrgScope, actor app.Ac
 				return err
 			}
 			replayed = true
-			return s.Authority.CheckExportTx(ctx, tx, scope, actor, member, app.ActionRequest)
+			return s.authorizeRequest(ctx, tx, scope, actor, member, c)
 		case !errors.Is(err, pgx.ErrNoRows):
 			return err
 		}
@@ -195,7 +204,7 @@ func (s *Store) Request(ctx context.Context, scope kernel.OrgScope, actor app.Ac
 		if view, err = s.readTx(ctx, tx, scope, member, exportID); err != nil {
 			return err
 		}
-		return s.Authority.CheckExportTx(ctx, tx, scope, actor, member, app.ActionRequest)
+		return s.authorizeRequest(ctx, tx, scope, actor, member, c)
 	})
 	if err != nil {
 		return app.View{}, false, storeError(ctx, err)
@@ -292,7 +301,7 @@ func (s *Store) List(ctx context.Context, scope kernel.OrgScope, actor app.Actor
 	return page, nil
 }
 
-func (s *Store) Deliverable(ctx context.Context, scope kernel.OrgScope, actor app.Actor, member, exportID string) (domain.Object, error) {
+func (s *Store) Deliverable(ctx context.Context, scope kernel.OrgScope, actor app.Actor, member, exportID string, formats app.Registry) (domain.Object, error) {
 	if err := validCall(scope, actor, member, exportID); err != nil {
 		return domain.Object{}, err
 	}
@@ -306,6 +315,15 @@ func (s *Store) Deliverable(ctx context.Context, scope kernel.OrgScope, actor ap
 		}
 		row, err := q.New(tx).ExportForRequester(ctx, q.ExportForRequesterParams{OrgID: scope.OrgID().String(), ID: exportID, MembershipID: member})
 		if err != nil {
+			return err
+		}
+		// The file carries the kind's data: its declared read permission is
+		// checked again now, before the state is disclosed (EMP-AUTH-011).
+		read, admitted := formats.ReadPermission(row.Kind)
+		if !admitted {
+			return app.ErrFormatUnavailable
+		}
+		if err := s.Authority.CheckDataTx(ctx, tx, scope, actor, member, read); err != nil {
 			return err
 		}
 		switch domain.State(row.State) {
@@ -420,7 +438,7 @@ func (s *Store) unclaimable(ctx context.Context, tx pgx.Tx, scope kernel.OrgScop
 	return false, app.ErrBusy
 }
 
-func (s *Store) CheckRequester(ctx context.Context, scope kernel.OrgScope, c app.Claim) error {
+func (s *Store) CheckRequester(ctx context.Context, scope kernel.OrgScope, c app.Claim, read permission.Permission) error {
 	if err := s.workerReady(scope, c.ExportID); err != nil {
 		return err
 	}
@@ -428,7 +446,7 @@ func (s *Store) CheckRequester(ctx context.Context, scope kernel.OrgScope, c app
 		return app.ErrUnavailable
 	}
 	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
-		return s.Authority.CheckRequesterTx(ctx, tx, scope, c.Requester, c.Kind)
+		return s.Authority.CheckRequesterTx(ctx, tx, scope, c.Requester, c.Kind, read)
 	})
 	switch {
 	case err == nil:

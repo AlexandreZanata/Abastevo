@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/domain"
 )
 
@@ -42,7 +43,10 @@ type Retirement struct {
 // claim's lease and return ErrBusy when it no longer holds the job.
 type WorkerStore interface {
 	Claim(context.Context, kernel.OrgScope, string, string, time.Duration) (Claim, error)
-	CheckRequester(context.Context, kernel.OrgScope, Claim) error
+	// CheckRequester re-evaluates the recorded requester's rpt.export.run and
+	// the kind's declared read permission now; ErrRightsLost when either is
+	// gone.
+	CheckRequester(context.Context, kernel.OrgScope, Claim, permissions.Permission) error
 	Provisional(context.Context, kernel.OrgScope, Claim, domain.Object) error
 	Publish(context.Context, kernel.OrgScope, Claim, domain.Object) error
 	Release(context.Context, kernel.OrgScope, Claim) error
@@ -100,15 +104,15 @@ func (w Worker) Build(ctx context.Context, scope kernel.OrgScope, exportID strin
 	if claim.Lease != lease || claim.ExportID != exportID || claim.Attempts < 1 || claim.Attempts > claim.MaxAttempts {
 		return ErrUnavailable
 	}
-	if err := w.Store.CheckRequester(ctx, scope, claim); err != nil {
+	format, ok := w.Formats.Lookup(claim.Kind)
+	if !ok {
+		return w.Store.Fail(ctx, scope, claim, domain.FormatUnavailable)
+	}
+	if err := w.Store.CheckRequester(ctx, scope, claim, format.ReadPermission()); err != nil {
 		if errors.Is(err, ErrRightsLost) {
 			return w.Store.Fail(ctx, scope, claim, domain.RightsLost)
 		}
 		return w.retry(ctx, scope, claim, err)
-	}
-	format, ok := w.Formats.Lookup(claim.Kind)
-	if !ok {
-		return w.Store.Fail(ctx, scope, claim, domain.FormatUnavailable)
 	}
 	file, err := w.produce(ctx, scope, claim, format)
 	if errors.Is(err, domain.ErrTooLarge) {

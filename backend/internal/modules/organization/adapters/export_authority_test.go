@@ -17,8 +17,12 @@ func TestExportAuthorityCannotRunWithoutRetainedTransactionAndSource(t *testing.
 				t.Fatal("missing retained source admitted an export action", err)
 			}
 		}
-		if err := guard.CheckRequesterTx(t.Context(), nil, kernel.OrgScope{}, exports.Requester{}, "test.synthetic_rows"); !errors.Is(err, exports.ErrUnavailable) {
+		if err := guard.CheckRequesterTx(t.Context(), nil, kernel.OrgScope{}, exports.Requester{}, "test.synthetic_rows", "exp.expense.read"); !errors.Is(err, exports.ErrUnavailable) {
 			t.Fatal("missing retained source re-evaluated a requester", err)
+		}
+		// EMP-AUTH-011: the data permission check has no source either.
+		if err := guard.CheckDataTx(t.Context(), nil, kernel.OrgScope{}, exports.Actor{}, "", "exp.expense.read"); !errors.Is(err, exports.ErrUnavailable) {
+			t.Fatal("missing retained source admitted a data permission", err)
 		}
 	}
 }

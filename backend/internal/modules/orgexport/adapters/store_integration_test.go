@@ -13,6 +13,7 @@ import (
 	"time"
 
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
+	permission "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
@@ -182,7 +183,7 @@ func TestExportReadsAreRequesterBoundAndIsolated(t *testing.T) {
 			return err
 		},
 		"colleague deliverable": func() error {
-			_, err := h.store.Deliverable(t.Context(), h.a, h.actor(h.colleague), h.colleague.member, first.ExportID)
+			_, err := h.store.Deliverable(t.Context(), h.a, h.actor(h.colleague), h.colleague.member, first.ExportID, h.formats)
 			return err
 		},
 		"foreign organization read": func() error {
@@ -205,7 +206,7 @@ func TestExportReadsAreRequesterBoundAndIsolated(t *testing.T) {
 	if _, err := h.store.Read(t.Context(), h.a, h.actor(h.colleague), h.requester.member, first.ExportID); err == nil {
 		t.Fatal("borrowed membership read a job")
 	}
-	if _, err := h.store.Deliverable(t.Context(), h.a, h.actor(h.requester), h.requester.member, first.ExportID); !errors.Is(err, app.ErrNotReady) {
+	if _, err := h.store.Deliverable(t.Context(), h.a, h.actor(h.requester), h.requester.member, first.ExportID, h.formats); !errors.Is(err, app.ErrNotReady) {
 		t.Fatal("queued job deliverable", err)
 	}
 	page, err := h.store.List(t.Context(), h.a, h.actor(h.requester), h.requester.member, app.Filter{Limit: 2})
@@ -401,5 +402,93 @@ func TestExportMigrationPopulatedUpgradeFailureAndRecovery(t *testing.T) {
 	}
 	if v, _, err := store.Request(ctx, scope, app.Actor{AccountID: p.account, SessionID: p.member}, p.member, newID(t), c); err != nil || v.State != domain.Queued {
 		t.Fatal("upgraded store refused a request", err)
+	}
+}
+
+// B-BR-EMP-248/249, EDR-167: the kind's data permission is checked inside the
+// request transaction (nothing written when refused), at every worker attempt
+// and in every delivery transaction, before the job state is disclosed.
+func TestKindReadPermissionIsCheckedInEveryTransaction(t *testing.T) {
+	h := newHarness(t, true)
+	counts := func() (int, int, int) {
+		t.Helper()
+		var jobs, events, entries int
+		if err := h.f.Admin.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM org_export_jobs),(SELECT count(*) FROM org_audit_events),(SELECT count(*) FROM job_queue)`).Scan(&jobs, &events, &entries); err != nil {
+			t.Fatal(err)
+		}
+		return jobs, events, entries
+	}
+	denied := func(err error) bool {
+		var denial *permission.PermissionDenial
+		return errors.As(err, &denial) && denial.Permission() == "exp.expense.read"
+	}
+	h.authority.withhold("exp.expense.read", true)
+	c := h.command(t, h.a, 2)
+	if c.ReadPermission() != "exp.expense.read" {
+		t.Fatal("command lost the kind's read permission", c.ReadPermission())
+	}
+	if _, _, err := h.store.Request(t.Context(), h.a, h.actor(h.requester), h.requester.member, newID(t), c); !denied(err) {
+		t.Fatal("request without the data permission admitted", err)
+	}
+	if jobs, events, entries := counts(); jobs != 0 || events != 0 || entries != 0 {
+		t.Fatal("refused request wrote a job, event or queue entry", jobs, events, entries)
+	}
+	h.authority.withhold("exp.expense.read", false)
+	v, replayed, err := h.store.Request(t.Context(), h.a, h.actor(h.requester), h.requester.member, newID(t), c)
+	if err != nil || replayed {
+		t.Fatal("request with the data permission", err)
+	}
+	// The replay repeats the check: a withheld permission is refused again.
+	h.authority.withhold("exp.expense.read", true)
+	if _, _, err := h.store.Request(t.Context(), h.a, h.actor(h.requester), h.requester.member, newID(t), c); !denied(err) {
+		t.Fatal("replay without the data permission returned the job", err)
+	}
+	// Delivery refuses on the data permission before disclosing the state.
+	if _, err := h.store.Deliverable(t.Context(), h.a, h.actor(h.requester), h.requester.member, v.ExportID, h.formats); !denied(err) {
+		t.Fatal("delivery check disclosed a queued job without the data permission", err)
+	}
+	h.authority.withhold("exp.expense.read", false)
+	if _, err := h.store.Deliverable(t.Context(), h.a, h.actor(h.requester), h.requester.member, v.ExportID, h.formats); !errors.Is(err, app.ErrNotReady) {
+		t.Fatal("queued job deliverable", err)
+	}
+	if _, err := h.store.Deliverable(t.Context(), h.a, h.actor(h.requester), h.requester.member, v.ExportID, app.Registry{}); !errors.Is(err, app.ErrFormatUnavailable) {
+		t.Fatal("retired kind delivered", err)
+	}
+	// The worker attempt checks the same declared permission.
+	h.authority.withhold("exp.expense.read", true)
+	if !h.runBuild(t) {
+		t.Fatal("build job not dispatched")
+	}
+	if state, failure, _, object := h.state(t, h.a, v.ExportID); state != domain.Failed || failure != string(domain.RightsLost) || object {
+		t.Fatal("worker produced without the data permission", state, failure)
+	}
+	h.authority.withhold("exp.expense.read", false)
+	ready := h.request(t, h.a, h.requester, 1)
+	if !h.runBuild(t) {
+		t.Fatal("build job not dispatched")
+	}
+	if state, _, _, _ := h.state(t, h.a, ready.ExportID); state != domain.Ready {
+		t.Fatal("job with the data permission not published", state)
+	}
+	service := h.service()
+	readCtx, readDecision := decisionFor(t, h.a, h.requester, app.ActionRead)
+	capability, err := service.Access(readCtx, h.a, h.actor(h.requester), readDecision, ready.ExportID)
+	if err != nil {
+		t.Fatal("access with the data permission", err)
+	}
+	h.authority.withhold("exp.expense.read", true)
+	if _, err := service.Access(readCtx, h.a, h.actor(h.requester), readDecision, ready.ExportID); !denied(err) {
+		t.Fatal("capability issued after the data permission was lost", err)
+	}
+	if _, err := service.Open(readCtx, h.a, h.actor(h.requester), readDecision, ready.ExportID, capability.Token); !denied(err) {
+		t.Fatal("content served after the data permission was lost", err)
+	}
+	if records := accessRows(t, h, h.a); len(records) != 1 || !strings.HasPrefix(records[0], "ISSUED|") {
+		t.Fatal("refused delivery recorded an access", records)
+	}
+	for _, read := range h.authority.dataChecks() {
+		if read != "exp.expense.read" {
+			t.Fatal("a check used another permission than the kind's declaration", read)
+		}
 	}
 }

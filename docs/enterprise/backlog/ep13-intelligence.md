@@ -225,7 +225,7 @@ the export matrix (AUTH-011), notifications and F3 remain open.
 - **Acceptance:** Files include the documented basis. Text remains text and excluded columns are reported without exposing their values.
 - **Negative cases:** Formula interpretation, foreign rows, stale requester scope, format advertised before review or incomplete output returned as ready.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-MONEY, V-PRIV · migration: none beyond export infrastructure · rollback: disable new formats
-- **Risks and assumptions:** A format that has not been admitted stays unavailable. Prefer existing standard-library options.
+- **Risks and assumptions:** A format that has not been admitted stays unavailable. Prefer existing standard-library options. Each format implements `Format.ReadPermission()` with the list's read key (EMP-AUTH-011); sensitive columns keep their own per-column permission and omission note.
 - **Done when:** Exact, scoped and inert output passes round-trip fixtures.
 
 ### EMP-RPT-003 — PDF reports: trip logbook, fueling statement and period summary

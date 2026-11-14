@@ -15,6 +15,7 @@ import (
 
 	accountpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/evidence/adapters/storage"
+	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	exportpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
 	exportapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/application"
 	exportdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/domain"
@@ -35,11 +36,13 @@ func exportGrant(t *testing.T, fx deviceFixtureState) {
 }
 
 // syntheticExportRows is the test-only kind admitted through the suite
-// option; production composes no format.
+// option; production composes no format. It declares expense reads as the
+// data permission (EMP-AUTH-011).
 type syntheticExportRows struct{}
 
-func (syntheticExportRows) Kind() string      { return "test.synthetic_rows" }
-func (syntheticExportRows) MediaType() string { return "text/csv" }
+func (syntheticExportRows) Kind() string                           { return "test.synthetic_rows" }
+func (syntheticExportRows) ReadPermission() permissions.Permission { return "exp.expense.read" }
+func (syntheticExportRows) MediaType() string                      { return "text/csv" }
 func (syntheticExportRows) Limits() exportdomain.Limits {
 	return exportdomain.Limits{Rows: 20, Bytes: 2048, Duration: 5 * time.Second}
 }

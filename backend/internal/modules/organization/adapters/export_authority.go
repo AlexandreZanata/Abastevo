@@ -73,16 +73,76 @@ func (g *ExportAuthority) CheckExportTx(ctx context.Context, tx pgx.Tx, scope ke
 	return nil
 }
 
+// CheckDataTx proves, after CheckExportTx in the same transaction, that the
+// actor's same ACTIVE membership holds a current grant covering the kind's
+// declared read permission for the whole organization (EMP-AUTH-011). A
+// missing grant is the bounded permission denial of that key.
+func (g *ExportAuthority) CheckDataTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor exports.Actor, member string, read permissions.Permission) error {
+	if g == nil || meterMissing(tx) || meterMissing(g.Memberships) || meterMissing(g.Roles) || !exports.ExportableRead(read) {
+		return exports.ErrUnavailable
+	}
+	if actor.Validate() != nil || legalIdentity(scope, member) != nil {
+		return exports.ErrUnauthenticated
+	}
+	if database.ValidateOrgDBTX(ctx, tx, scope) != nil {
+		return exports.ErrUnavailable
+	}
+	current, err := g.Memberships.ActiveByAccountTx(ctx, tx, scope, actor.AccountID)
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		if errors.Is(err, members.ErrNotFound) {
+			return access.ErrNoMembership
+		}
+		return exports.ErrUnavailable
+	}
+	if membership, err := current.Snapshot(scope); err != nil || membership.ID != member {
+		return access.ErrNoMembership
+	}
+	return g.covers(ctx, tx, scope, member, read)
+}
+
+// covers reports, under database time, whether the member's current
+// assignments cover permission for the whole organization. A missing grant
+// is the bounded permission denial; structural and own-records grants never
+// cover the organization target.
+func (g *ExportAuthority) covers(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string, permission permissions.Permission) error {
+	assignments, err := g.Roles.CandidatesTx(ctx, tx, scope, member)
+	if err != nil {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return exports.ErrUnavailable
+	}
+	now, err := q.New(tx).CurrentOnboardingTime(ctx)
+	if err != nil || !now.Valid || now.InfinityModifier != pgtype.Finite {
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
+		return exports.ErrUnavailable
+	}
+	facts := permissions.ResourceFacts{OrgID: scope.OrgID(), ID: scope.OrgID().String()}
+	if _, err := permissions.CoveringRules(scope, member, assignments, permission, facts, now.Time); err != nil {
+		if errors.Is(err, permissions.ErrPermissionDenied) {
+			return err
+		}
+		return exports.ErrUnavailable
+	}
+	return nil
+}
+
 // CheckRequesterTx returns ErrRightsLost when the recorded requester no
 // longer holds export authority now: inactive or deleting account, a
 // membership that is not the same ACTIVE one, an organization that is not
-// ACTIVE, or no current role covering rpt.export.run for the whole
-// organization. Only an unavailable source is ErrUnavailable.
-func (g *ExportAuthority) CheckRequesterTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, requester exports.Requester, kind string) error {
+// ACTIVE, or no current role covering rpt.export.run and the kind's declared
+// read permission for the whole organization. Only an unavailable source is
+// ErrUnavailable.
+func (g *ExportAuthority) CheckRequesterTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, requester exports.Requester, kind string, read permissions.Permission) error {
 	if g == nil || meterMissing(tx) || meterMissing(g.Memberships) || meterMissing(g.Roles) {
 		return exports.ErrUnavailable
 	}
-	if requester.Validate() != nil || legalIdentity(scope, requester.MembershipID) != nil || !exportdomain.ValidKind(kind) {
+	if requester.Validate() != nil || legalIdentity(scope, requester.MembershipID) != nil || !exportdomain.ValidKind(kind) || !exports.ExportableRead(read) {
 		return exports.ErrUnavailable
 	}
 	if database.ValidateOrgDBTX(ctx, tx, scope) != nil {
@@ -127,20 +187,15 @@ func (g *ExportAuthority) CheckRequesterTx(ctx context.Context, tx pgx.Tx, scope
 	if err != nil || membership.ID != requester.MembershipID {
 		return exports.ErrRightsLost
 	}
-	assignments, err := g.Roles.CandidatesTx(ctx, tx, scope, requester.MembershipID)
-	if err != nil {
-		return unavailable(err)
-	}
-	now, err := queries.CurrentOnboardingTime(ctx)
-	if err != nil || !now.Valid || now.InfinityModifier != pgtype.Finite {
-		return exports.ErrUnavailable
-	}
-	facts := permissions.ResourceFacts{OrgID: scope.OrgID(), ID: orgID}
-	if _, err := permissions.CoveringRules(scope, requester.MembershipID, assignments, exportdomain.Permission, facts, now.Time); err != nil {
-		if errors.Is(err, permissions.ErrPermissionDenied) {
-			return exports.ErrRightsLost
+	// rpt.export.run and the kind's data permission must both still cover the
+	// whole organization (B-BR-EMP-249).
+	for _, permission := range []permissions.Permission{exportdomain.Permission, read} {
+		if err := g.covers(ctx, tx, scope, requester.MembershipID, permission); err != nil {
+			if errors.Is(err, permissions.ErrPermissionDenied) {
+				return exports.ErrRightsLost
+			}
+			return err
 		}
-		return exports.ErrUnavailable
 	}
 	return nil
 }

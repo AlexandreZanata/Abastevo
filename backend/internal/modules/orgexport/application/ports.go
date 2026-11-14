@@ -12,10 +12,12 @@ import (
 	"log/slog"
 	"reflect"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
+	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/domain"
 	"github.com/jackc/pgx/v5"
 )
@@ -96,14 +98,32 @@ func Policy(action Action) access.Policy {
 
 // Authority is the export permission port. CheckExportTx retains the company
 // account/proof → capability → root → membership/role order for the
-// organization target in the caller's transaction. CheckRequesterTx
-// re-evaluates a recorded requester without a session for the worker: active
-// account, the same ACTIVE membership, a root that accepts work and a current
-// role covering rpt.export.run; lost authority is ErrRightsLost. The kind lets
-// EMP-AUTH-011/RPT-002 add per-kind read permissions without a new port.
+// organization target in the caller's transaction. CheckDataTx runs in the
+// same transaction after CheckExportTx and proves that the same ACTIVE
+// membership holds a current grant covering the kind's declared read
+// permission for the whole organization (EMP-AUTH-011); a missing grant is the
+// bounded permission denial of that key, never implied by rpt.export.run.
+// CheckRequesterTx re-evaluates a recorded requester without a session for
+// the worker: active account, the same ACTIVE membership, a root that accepts
+// work and current roles covering rpt.export.run and the kind's read
+// permission; lost authority is ErrRightsLost.
 type Authority interface {
 	CheckExportTx(context.Context, pgx.Tx, kernel.OrgScope, Actor, string, Action) error
-	CheckRequesterTx(context.Context, pgx.Tx, kernel.OrgScope, Requester, string) error
+	CheckDataTx(context.Context, pgx.Tx, kernel.OrgScope, Actor, string, permissions.Permission) error
+	CheckRequesterTx(context.Context, pgx.Tx, kernel.OrgScope, Requester, string, permissions.Permission) error
+}
+
+// ExportableRead reports a permission an export kind may declare as the read
+// permission of its data (EMP-AUTH-011): a registered
+// <module>.<resource>.read key outside location (gps.*). Document content,
+// live position and tracks are separate permissions with their own audit
+// categories (BR-AUTH-011, BR-RPT-003); rpt.export.run is never its own read.
+func ExportableRead(permission permissions.Permission) bool {
+	if _, err := permissions.SystemCatalog().Lookup(permissions.Owner, permission); err != nil {
+		return false
+	}
+	parts := strings.Split(string(permission), ".")
+	return len(parts) == 3 && parts[0] != "gps" && parts[2] == "read"
 }
 
 // ProduceInput is what a format reads: the scope, the recorded requester
@@ -121,6 +141,10 @@ type ProduceInput struct {
 // Format is an admitted export format (EMP-RPT-002 owns real ones).
 type Format interface {
 	Kind() string
+	// ReadPermission is the read permission of the exported data. The
+	// request, every worker attempt and every delivery check it in addition
+	// to rpt.export.run (EMP-AUTH-011, UC-RPT-01).
+	ReadPermission() permissions.Permission
 	MediaType() string
 	Limits() domain.Limits
 	// Canonical validates and canonicalizes infrastructure-canonical
@@ -133,12 +157,12 @@ type Format interface {
 // Registry is the closed set of admitted formats.
 type Registry struct{ formats map[string]Format }
 
-// NewRegistry admits each format once, with a valid kind, media type and
-// ceilings within the infrastructure ceilings.
+// NewRegistry admits each format once, with a valid kind, an exportable read
+// permission, a media type and ceilings within the infrastructure ceilings.
 func NewRegistry(formats ...Format) (Registry, error) {
 	r := Registry{formats: make(map[string]Format, len(formats))}
 	for _, f := range formats {
-		if unavailable(f) || !domain.ValidKind(f.Kind()) || !domain.ValidMediaType(f.MediaType()) || f.Limits().Validate() != nil {
+		if unavailable(f) || !domain.ValidKind(f.Kind()) || !ExportableRead(f.ReadPermission()) || !domain.ValidMediaType(f.MediaType()) || f.Limits().Validate() != nil {
 			return Registry{}, domain.ErrInvalid
 		}
 		if _, duplicate := r.formats[f.Kind()]; duplicate {
@@ -152,6 +176,15 @@ func NewRegistry(formats ...Format) (Registry, error) {
 func (r Registry) Lookup(kind string) (Format, bool) {
 	f, ok := r.formats[kind]
 	return f, ok
+}
+
+// ReadPermission returns the read permission an admitted kind declares.
+func (r Registry) ReadPermission(kind string) (permissions.Permission, bool) {
+	f, ok := r.formats[kind]
+	if !ok {
+		return "", false
+	}
+	return f.ReadPermission(), true
 }
 
 // Kinds lists the admitted kinds in a stable order.

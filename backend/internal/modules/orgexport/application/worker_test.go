@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/domain"
 )
@@ -30,6 +31,8 @@ type fakeWorkerStore struct {
 	retireErr   error
 	deleted     []domain.Object
 	stealLease  bool
+	// checked are the read permissions each requester re-check received.
+	checked []permissions.Permission
 }
 
 func (s *fakeWorkerStore) Claim(_ context.Context, _ kernel.OrgScope, exportID, lease string, ttl time.Duration) (app.Claim, error) {
@@ -61,8 +64,9 @@ func (s *fakeWorkerStore) fenced(c app.Claim) error {
 	}
 	return nil
 }
-func (s *fakeWorkerStore) CheckRequester(context.Context, kernel.OrgScope, app.Claim) error {
+func (s *fakeWorkerStore) CheckRequester(_ context.Context, _ kernel.OrgScope, _ app.Claim, read permissions.Permission) error {
 	s.events.add("check")
+	s.checked = append(s.checked, read)
 	return s.rightsErr
 }
 func (s *fakeWorkerStore) Provisional(_ context.Context, _ kernel.OrgScope, c app.Claim, o domain.Object) error {

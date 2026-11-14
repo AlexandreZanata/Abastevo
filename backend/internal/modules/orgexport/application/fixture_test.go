@@ -96,6 +96,7 @@ func decision(t *testing.T, action app.Action) (context.Context, kernel.OrgScope
 // requested number of rows, deterministically.
 type rowsFormat struct {
 	kind   string
+	read   permissions.Permission
 	limits domain.Limits
 	block  chan struct{}
 	err    error
@@ -103,7 +104,8 @@ type rowsFormat struct {
 	mu     sync.Mutex
 }
 
-func (f *rowsFormat) Kind() string { return f.kind }
+func (f *rowsFormat) Kind() string                           { return f.kind }
+func (f *rowsFormat) ReadPermission() permissions.Permission { return f.read }
 func (*rowsFormat) MediaType() string {
 	return "text/csv"
 }
@@ -144,7 +146,7 @@ func (f *rowsFormat) Produce(ctx context.Context, in app.ProduceInput, sink *dom
 }
 
 func syntheticFormat() *rowsFormat {
-	return &rowsFormat{kind: "test.synthetic_rows", limits: domain.Limits{Rows: 10, Bytes: 1024, Duration: time.Second}}
+	return &rowsFormat{kind: "test.synthetic_rows", read: "exp.expense.read", limits: domain.Limits{Rows: 10, Bytes: 1024, Duration: time.Second}}
 }
 
 func registry(t *testing.T, formats ...app.Format) app.Registry {
@@ -185,6 +187,8 @@ type fakeRepository struct {
 	deliverErr []error
 	requested  app.Command
 	member     string
+	// formats is the registry the service handed to the last delivery check.
+	formats []app.Registry
 }
 
 func (r *fakeRepository) Request(_ context.Context, _ kernel.OrgScope, _ app.Actor, member, exportID string, c app.Command) (app.View, bool, error) {
@@ -209,8 +213,9 @@ func (r *fakeRepository) List(_ context.Context, _ kernel.OrgScope, _ app.Actor,
 	r.member = member
 	return app.Page{Exports: []app.View{r.view}}, r.err
 }
-func (r *fakeRepository) Deliverable(context.Context, kernel.OrgScope, app.Actor, string, string) (domain.Object, error) {
+func (r *fakeRepository) Deliverable(_ context.Context, _ kernel.OrgScope, _ app.Actor, _, _ string, formats app.Registry) (domain.Object, error) {
 	r.events.add("deliverable")
+	r.formats = append(r.formats, formats)
 	if len(r.deliverErr) > 0 {
 		err := r.deliverErr[0]
 		r.deliverErr = r.deliverErr[1:]

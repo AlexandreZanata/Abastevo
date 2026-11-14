@@ -13,6 +13,7 @@ import (
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
+	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	auditing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/domain"
@@ -32,6 +33,7 @@ type CommandInput struct {
 type Command struct {
 	private
 	operationID, kind, digest, mediaType string
+	read                                 permissions.Permission
 	parameters                           []byte
 	limits                               domain.Limits
 	retention                            time.Duration
@@ -63,9 +65,12 @@ func NewCommand(scope kernel.OrgScope, registry Registry, in CommandInput) (Comm
 	if err != nil {
 		return Command{}, domain.ErrInvalid
 	}
-	return Command{operationID: in.OperationID, kind: in.Kind, digest: digest, mediaType: format.MediaType(), parameters: bytes.Clone(admitted),
+	return Command{operationID: in.OperationID, kind: in.Kind, digest: digest, mediaType: format.MediaType(), read: format.ReadPermission(), parameters: bytes.Clone(admitted),
 		limits: format.Limits(), retention: domain.DefaultRetention}, nil
 }
+
+// ReadPermission is the read permission the kind declares (EMP-AUTH-011).
+func (c Command) ReadPermission() permissions.Permission { return c.read }
 
 func (c Command) OperationID() string      { return c.operationID }
 func (c Command) Kind() string             { return c.kind }
@@ -77,7 +82,7 @@ func (c Command) Retention() time.Duration { return c.retention }
 
 // Valid reports a command built by NewCommand.
 func (c Command) Valid() bool {
-	return canonicalID(c.operationID) && domain.ValidKind(c.kind) && domain.ValidSHA256(c.digest) && domain.ValidMediaType(c.mediaType) &&
+	return canonicalID(c.operationID) && domain.ValidKind(c.kind) && ExportableRead(c.read) && domain.ValidSHA256(c.digest) && domain.ValidMediaType(c.mediaType) &&
 		len(c.parameters) > 0 && c.limits.Validate() == nil && domain.ValidRetention(c.retention)
 }
 
@@ -235,8 +240,11 @@ type Repository interface {
 	Read(context.Context, kernel.OrgScope, Actor, string, string) (View, error)
 	List(context.Context, kernel.OrgScope, Actor, string, Filter) (Page, error)
 	// Deliverable returns the READY, unexpired file of the caller's job;
-	// ErrNotReady, ErrExpired or ErrNotFound otherwise.
-	Deliverable(context.Context, kernel.OrgScope, Actor, string, string) (domain.Object, error)
+	// ErrNotReady, ErrExpired or ErrNotFound otherwise. In the same
+	// transaction it re-checks the read permission that the registry's
+	// format for the stored kind declares (ErrFormatUnavailable when the kind
+	// is no longer admitted).
+	Deliverable(context.Context, kernel.OrgScope, Actor, string, string, Registry) (domain.Object, error)
 }
 
 // Service is the HTTP-facing export boundary. Each call binds the completed
@@ -392,7 +400,7 @@ func (s Service) deliverable(ctx context.Context, scope kernel.OrgScope, actor A
 		return Requester{}, domain.Object{}, err
 	}
 	requester := Requester{AccountID: actor.AccountID, MembershipID: decision.Subject().MembershipID()}
-	object, err := s.Repository.Deliverable(ctx, scope, actor, requester.MembershipID, exportID)
+	object, err := s.Repository.Deliverable(ctx, scope, actor, requester.MembershipID, exportID, s.Formats)
 	if guard := current(ctx, scope, actor, decision, ActionRead); guard != nil {
 		return Requester{}, domain.Object{}, guard
 	}

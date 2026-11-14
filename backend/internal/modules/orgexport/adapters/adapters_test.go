@@ -224,7 +224,7 @@ func TestStoreRefusesWithoutSourcesOrScope(t *testing.T) {
 		t.Fatal("nil store read", err)
 	}
 	empty := &adapters.Store{}
-	if _, err := empty.Deliverable(context.Background(), s, actor, uid(4), uid(50)); !errors.Is(err, app.ErrUnavailable) {
+	if _, err := empty.Deliverable(context.Background(), s, actor, uid(4), uid(50), app.Registry{}); !errors.Is(err, app.ErrUnavailable) {
 		t.Fatal("store without sources served", err)
 	}
 	if _, err := empty.Claim(context.Background(), s, uid(50), uid(60), time.Minute); !errors.Is(err, app.ErrUnavailable) {

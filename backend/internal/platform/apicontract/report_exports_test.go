@@ -35,6 +35,13 @@ func TestReportExportContractExamplesAndExactShapes(t *testing.T) {
 		if strings.Contains(path, "{export_id}") && item.Post.Responses.Value("410") == nil {
 			t.Fatal("expired export response missing", path)
 		}
+		// EMP-AUTH-011: request and delivery also need the kind's data
+		// permission, refused as FORBIDDEN with that key.
+		if strings.HasSuffix(path, "/request") || strings.HasSuffix(path, "/access") || strings.HasSuffix(path, "/content") {
+			if !strings.Contains(item.Post.Description, "read permission declared by the kind") || item.Post.Responses.Value("403") == nil || item.Post.Responses.Value("422") == nil {
+				t.Fatal("export data permission gate undocumented", path)
+			}
+		}
 	}
 	names := []string{"EnterpriseExportRequest", "EnterpriseExportListRequest", "EnterpriseExportReadRequest", "EnterpriseExportContentRequest", "EnterpriseExportView", "EnterpriseExportAcknowledgement", "EnterpriseExportPage", "EnterpriseExportCapability", "EnterpriseExportContent"}
 	clone := func(t *testing.T, name string) map[string]any {
