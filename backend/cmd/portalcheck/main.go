@@ -14,7 +14,7 @@ func main() {
 	var artifact, compare, siteURL string
 	var maxFiles int
 	var maxBytes, maxHTML, maxScript, maxShard int64
-	var officialOnly bool
+	var officialOnly, linkGraph bool
 	flag.StringVar(&artifact, "artifact", "", "portal candidate directory")
 	flag.StringVar(&compare, "compare", "", "second candidate for reproducible comparison")
 	flag.StringVar(&siteURL, "site-url", "", "expected public origin (optional)")
@@ -24,6 +24,7 @@ func main() {
 	flag.Int64Var(&maxScript, "max-script-gzip", 0, "maximum gzip bytes per script (default 100 KiB)")
 	flag.Int64Var(&maxShard, "max-shard-gzip", 0, "maximum gzip bytes per search shard (default 512 KiB)")
 	flag.BoolVar(&officialOnly, "official-only", false, "require an official-only artifact (no price/station/search/download routes)")
+	flag.BoolVar(&linkGraph, "link-graph", false, "also verify the internal link graph (sitemap/canonical consistency, missing routes, inbound body links)")
 	flag.Parse()
 	if artifact == "" {
 		fmt.Fprintln(os.Stderr, "portalcheck: --artifact is required")
@@ -42,4 +43,13 @@ func main() {
 		result.Pages, result.Files, result.Bytes, result.ContentSHA256,
 		result.SitemapURLs, result.LargestHTMLGzipBytes, result.LargestScriptGzipBytes,
 		result.LargestCSSGzipBytes, result.LargestShardGzipBytes, result.InitialViewGzipBytes)
+	if linkGraph {
+		graph, err := portalgen.VerifyLinkGraph(artifact, portalgen.LinkGraphOptions{SiteURL: siteURL})
+		if err != nil {
+			fmt.Fprintln(os.Stderr, "portalcheck:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("portalcheck: link graph %d pages, %d indexable, sitemap=%d, min inbound %v, stations below target %d, %s\n",
+			graph.Pages, graph.Indexable, graph.SitemapURLs, graph.MinInbound, graph.StationsBelowTarget, graph.Digest)
+	}
 }

@@ -460,6 +460,9 @@ func (g *generator) generateOfficial(official *officialDataset, stations map[str
 		if g.searchFiscal {
 			data.SearchRelease = g.searchRelease
 		}
+		if page == 1 {
+			data.Modules = []linkModule{g.hubModule("/fiscalizacao/")}
+		}
 		if err := g.writeRoute("fiscalizacao", data); err != nil {
 			return err
 		}

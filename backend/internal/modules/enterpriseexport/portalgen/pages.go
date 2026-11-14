@@ -130,6 +130,7 @@ func (g *generator) generateConsultar(summaries []analytics.Summary, states map[
 		States: stateLinks(summaries, states), National: g.summaryRows(summaries, analytics.LevelNational, "BR", false),
 		SearchStates: searchStates, SearchRelease: release,
 	}
+	data.Modules = []linkModule{g.hubModule("/consultar/")}
 	var err error
 	if data.pageBase, err = g.collectionBase(data.pageBase, stateItems(data.States)); err != nil {
 		return err
@@ -160,6 +161,11 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 		National: national, Rankings: views, States: stateLinks(summaries, states), FuelHubs: g.orderedFuelHubs(),
 		SearchRelease: g.searchRelease, SearchFuels: g.searchFuels,
 	}
+	codes := make([]string, 0, len(national))
+	for _, row := range national {
+		codes = append(codes, row.Code)
+	}
+	data.Modules = []linkModule{g.priceGuides(" no Brasil", codes), g.hubModule("/precos/")}
 	items := []listItem{}
 	for _, hub := range data.FuelHubs {
 		items = append(items, listItem{Name: "Preço de " + hub.Label + " por estado", Href: hub.Href})
@@ -170,62 +176,91 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 	return g.writeRoute("precos", data)
 }
 
-func (g *generator) generateStates(summaries []analytics.Summary, rankings []analytics.Ranking, stations map[string]enterpriseexport.Station, municipalityStations map[string]int, municipalityState, municipalityName map[string]string) error {
+func (g *generator) generateStates(summaries []analytics.Summary, rankings []analytics.Ranking, stations map[string]enterpriseexport.Station, municipalityStations map[string]int) error {
 	states := map[string]bool{}
 	for _, summary := range summaries {
 		if summary.Geography.Level == analytics.LevelState {
+			if !isUF(summary.Geography.Code) {
+				return fmt.Errorf("portalgen: invalid state code")
+			}
 			states[summary.Geography.Code] = true
 		}
 	}
-	for _, uf := range sortedKeys(states) {
-		if !isUF(uf) {
-			return fmt.Errorf("portalgen: invalid state code")
+	registry := map[string]bool{}
+	for _, city := range g.cities {
+		registry[city.UF] = true
+	}
+	all := map[string]bool{}
+	for uf := range states {
+		all[uf] = true
+	}
+	for uf := range registry {
+		if knownUF(uf) {
+			all[uf] = true
 		}
+	}
+	for uf := range all {
+		g.statePages[uf] = true
+	}
+	for _, uf := range sortedKeys(all) {
 		stateSummaries := g.summaryRows(summaries, analytics.LevelState, uf, false)
 		views, err := rankingViews(rankings, analytics.LevelState, uf, stations, true)
 		if err != nil {
 			return err
 		}
-		municipalities := map[string]bool{}
-		for _, summary := range summaries {
-			if summary.Geography.Level == analytics.LevelMunicipality {
-				code := summary.Geography.Code
-				if municipalityState[code] == uf {
-					municipalities[code] = true
-				}
+		links := []municipalityLink{}
+		for _, city := range g.dataCities(uf) {
+			count := municipalityStations[city.Code]
+			links = append(links, municipalityLink{Code: city.Code, Name: city.Name, UF: uf, Href: city.Route, Stations: count, Insufficient: count < minMunicipality})
+		}
+		noData := []municipalityLink{}
+		for _, code := range sortedKeys(g.cities) {
+			if city := g.cities[code]; !city.HasData && city.UF == uf {
+				noData = append(noData, municipalityLink{Code: code, Name: city.Name, UF: uf, Href: city.Route, Stations: len(city.Stations)})
 			}
 		}
-		links := make([]municipalityLink, 0, len(municipalities))
-		for code := range municipalities {
-			stationsCount := municipalityStations[code]
-			name := municipalityName[code]
-			if name == "" {
-				name = "Município " + code
+		sort.Slice(noData, func(i, j int) bool {
+			if noData[i].Name != noData[j].Name {
+				return noData[i].Name < noData[j].Name
 			}
-			links = append(links, municipalityLink{
-				Code: code, Name: name, UF: uf,
-				Href:     g.cityRoutes[code],
-				Stations: stationsCount, Insufficient: stationsCount < minMunicipality,
-			})
-		}
-		sort.Slice(links, func(i, j int) bool {
-			if links[i].Name != links[j].Name {
-				return links[i].Name < links[j].Name
-			}
-			return links[i].Code < links[j].Code
+			return noData[i].Code < noData[j].Code
 		})
-		parts := []string{"Pesquisa ANP " + g.periodPhrase() + " em " + ufName(uf) + ", por cidade."}
-		for _, row := range byFuelRank(stateSummaries) {
-			parts = append(parts, rangeSentence(row))
+		if len(noData) > maxStateCityListing {
+			noData = noData[:maxStateCityListing]
 		}
-		data := statePage{
-			pageBase: g.newBase(pageSpec{
-				Route: stateRoute(uf), Facts: indexFacts{Family: familyState, HasCurrentData: len(stateSummaries) > 0},
-				Title: "Preços em " + ufName(uf), HeadTitle: stateTitle(uf, g.surveyDate), Description: composeDescription(parts...),
-				Active: "precos", Crumbs: []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Current: true}}, LastMod: g.dataDate,
-			}),
-			UF: uf, Name: ufName(uf), Summaries: stateSummaries, Rankings: views, Municipalities: links,
+		hasData := len(stateSummaries) > 0
+		head, description := stateTitle(uf, g.surveyDate), ""
+		if hasData {
+			parts := []string{"Pesquisa ANP " + g.periodPhrase() + " em " + ufName(uf) + ", por cidade."}
+			for _, row := range byFuelRank(stateSummaries) {
+				parts = append(parts, rangeSentence(row))
+			}
+			description = composeDescription(parts...)
+		} else {
+			head = "Postos de combustíveis em " + ufName(uf) + " – sem pesquisa ANP recente | abastevo"
+			description = composeDescription(ufName(uf)+" não tem preço na pesquisa ANP "+g.periodPhrase()+".", "Veja as cidades com postos cadastrados.")
 		}
+		base := g.newBase(pageSpec{
+			Route: stateRoute(uf), Facts: indexFacts{Family: familyState, HasCurrentData: hasData},
+			Title: "Preços em " + ufName(uf), HeadTitle: head, Description: description,
+			Active: "precos", Crumbs: []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Current: true}}, LastMod: g.dataDate,
+		})
+		codes := make([]string, 0, len(stateSummaries))
+		for _, row := range stateSummaries {
+			codes = append(codes, row.Code)
+		}
+		otherStates := []moduleLink{}
+		for _, other := range sortedKeys(all) {
+			if other != uf {
+				otherStates = append(otherStates, moduleLink{Label: "Preço dos combustíveis em " + ufName(other), Href: stateRoute(other)})
+			}
+		}
+		base.Modules = []linkModule{
+			g.fuelModule("Preço por combustível no Brasil", codes),
+			{Title: "Outros estados", Links: otherStates},
+			g.priceGuides(" em "+ufName(uf), codes),
+		}
+		data := statePage{pageBase: base, UF: uf, Name: ufName(uf), Summaries: stateSummaries, Rankings: views, Municipalities: links, NoDataCities: noData}
 		items := make([]listItem, 0, len(links))
 		for _, link := range links {
 			items = append(items, listItem{Name: "Preços em " + placeLabel(link.Name, uf), Href: link.Href})
@@ -236,71 +271,89 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 		if err := g.writeRoute("state", data); err != nil {
 			return err
 		}
-		g.statePages[uf] = true
 	}
 	return nil
 }
 
-func (g *generator) generateMunicipalities(summaries []analytics.Summary, observations []observation, municipalityStations map[string]int, municipalityState, municipalityName map[string]string) error {
-	municipalities := map[string]bool{}
+func (g *generator) generateMunicipalities(summaries []analytics.Summary, observations []observation, municipalityStations map[string]int) error {
 	for _, summary := range summaries {
-		if summary.Geography.Level == analytics.LevelMunicipality {
-			municipalities[summary.Geography.Code] = true
-		}
-	}
-	for _, code := range sortedKeys(municipalities) {
-		if !isIBGE(code) {
+		if summary.Geography.Level == analytics.LevelMunicipality && !isIBGE(summary.Geography.Code) {
 			return fmt.Errorf("portalgen: invalid municipality code")
 		}
-		uf := municipalityState[code]
-		if uf == "" {
-			continue
-		}
-		if !isUF(uf) {
-			return fmt.Errorf("portalgen: invalid municipality state")
-		}
-		name := municipalityName[code]
-		if name == "" {
-			name = "Município " + code
-		}
+	}
+	byCity := map[string][]observation{}
+	for _, item := range observations {
+		byCity[item.station.MunicipalityCode] = append(byCity[item.station.MunicipalityCode], item)
+	}
+	for _, code := range sortedKeys(g.cities) {
+		city := g.cities[code]
+		code, uf, name := city.Code, city.UF, city.Name
 		insufficient := municipalityStations[code] < minMunicipality
-		rows := g.summaryRows(summaries, analytics.LevelMunicipality, code, true)
+		rows := []summaryRow{}
+		if city.HasData {
+			rows = g.summaryRows(summaries, analytics.LevelMunicipality, code, true)
+		}
 		fuels := make([]string, 0, len(rows))
 		for _, row := range rows {
 			fuels = append(fuels, row.Code)
 		}
+		head := cityTitle(name, uf, fuels, g.surveyDate)
 		parts := []string{"Pesquisa ANP " + g.periodPhrase() + " em " + placeLabel(name, uf) + "."}
-		if insufficient {
+		switch {
+		case !city.HasData:
+			head = "Postos de combustíveis em " + placeLabel(name, uf) + " – sem pesquisa ANP recente | abastevo"
+			parts = []string{placeLabel(name, uf) + " não tem preço na pesquisa ANP " + g.periodPhrase() + ".",
+				"Veja os postos cadastrados, cidades próximas com preço e outras cidades de " + ufName(uf) + "."}
+		case insufficient:
 			parts = append(parts, fmt.Sprintf("%d %s com preço, sem ranking por amostra pequena.", municipalityStations[code], plural(municipalityStations[code], "posto", "postos")),
 				"Veja o preço de cada posto, a data da coleta e a fonte.")
-		} else {
+		default:
 			for _, row := range byFuelRank(rows) {
 				parts = append(parts, rangeSentence(row))
 			}
 		}
+		lastMod := g.dataDate
+		if !city.HasData {
+			lastMod = g.buildDate
+		}
+		base := g.newBase(pageSpec{
+			Route: city.Route, Facts: indexFacts{Family: familyCity, HasCurrentData: city.HasData && len(rows) > 0},
+			Title: "Preços em " + name, HeadTitle: head, Description: composeDescription(parts...),
+			Active: "precos", Crumbs: []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Href: stateRoute(uf)}, {Label: name, Current: true}},
+			LastMod: lastMod,
+		})
+		limit := cityStationListCap
+		if !city.HasData {
+			limit = noDataStationsCap
+		}
+		stationList, total := stationRows(city, g.observed, limit)
+		base.Modules = append(g.cityModules(city),
+			g.fuelModule("Preço por combustível no Brasil", fuels),
+			g.priceGuides(" em "+name, fuels))
 		data := municipalityPage{
-			pageBase: g.newBase(pageSpec{
-				Route: g.cityRoutes[code], Facts: indexFacts{Family: familyCity, HasCurrentData: len(rows) > 0},
-				Title: "Preços em " + name, HeadTitle: cityTitle(name, uf, fuels, g.surveyDate), Description: composeDescription(parts...),
-				Active: "precos", Crumbs: []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Href: stateRoute(uf)}, {Label: name, Current: true}},
-				LastMod: g.dataDate,
-			}),
+			pageBase: base, NoData: !city.HasData, Stations: stationList, StationsTotal: total,
 			Code: code, Name: name, UF: uf,
 			Summaries: rows, Insufficient: insufficient, Population: municipalityStations[code],
 		}
-		items := make([]observation, 0)
-		for _, item := range observations {
-			if item.station.MunicipalityCode == code && item.station.State == uf {
-				items = append(items, item)
+		if city.HasData {
+			items := make([]observation, 0, len(byCity[code]))
+			for _, item := range byCity[code] {
+				if item.station.State == uf {
+					items = append(items, item)
+				}
+			}
+			if insufficient {
+				data.Rows = observationRows(items, 0, false)
+			} else {
+				data.Rankings = observationRankings(items)
 			}
 		}
-		if insufficient {
-			data.Rows = observationRows(items, 0, false)
-		} else {
-			data.Rankings = observationRankings(items)
+		listed := make([]listItem, 0, len(stationList))
+		for _, row := range stationList {
+			listed = append(listed, listItem{Name: row.Label, Href: row.Href})
 		}
 		var err error
-		if data.pageBase, err = g.collectionBase(data.pageBase, rankingItems(data.Rankings, data.Rows)); err != nil {
+		if data.pageBase, err = g.collectionBase(data.pageBase, listed); err != nil {
 			return err
 		}
 		if err := g.writeRoute("municipality", data); err != nil {
@@ -437,23 +490,8 @@ func duplicateIndexes(entries []stationEntry, key func(stationEntry) string) []i
 	return out
 }
 
-func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, stations map[string]enterpriseexport.Station, revisions map[string]enterpriseexport.Revision, observations map[string][]observation, municipalityStations map[string]int, official *officialDataset) error {
-	ordered := make([]enterpriseexport.Station, 0, len(stations))
-	for _, station := range stations {
-		ordered = append(ordered, station)
-	}
-	sort.Slice(ordered, func(i, j int) bool {
-		if ordered[i].DisplayName != ordered[j].DisplayName {
-			return ordered[i].DisplayName < ordered[j].DisplayName
-		}
-		return ordered[i].StationID < ordered[j].StationID
-	})
-	pricesByStation := map[string][]enterpriseexport.Price{}
-	for _, price := range snapshot.Prices {
-		pricesByStation[price.StationID] = append(pricesByStation[price.StationID], price)
-	}
-	recent := recentSurveyRevisions(revisions, stationRecentSurveyWeeks)
-	entries := g.prepareStations(ordered, pricesByStation, revisions, recent, observations)
+func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, stations map[string]enterpriseexport.Station, revisions map[string]enterpriseexport.Revision, official *officialDataset) error {
+	pricesByStation, observations := g.pricesByStation, g.observed
 	source := sourceView{}
 	if latest := latestRevision(snapshot.Revisions); latest != nil {
 		source = sourceView{
@@ -462,7 +500,8 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 			Period: periodLabel(latest.SurveyStart, latest.SurveyEnd),
 		}
 	}
-	for _, entry := range entries {
+	for i := range g.entries {
+		entry := &g.entries[i]
 		station := entry.station
 		items := observations[station.StationID]
 		obsView := make([]observationView, 0, len(items))
@@ -528,15 +567,26 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 			Location: locationLabel(station.LocationQuality), Place: place,
 		}
 		crumbs := []crumb{{Label: "Consultar", Href: "/consultar/"}}
+		var modules []linkModule
+		fuels := make([]string, 0, len(historyKeys))
+		for _, key := range historyKeys {
+			fuels = append(fuels, key.fuel)
+		}
+		sort.Strings(fuels)
 		if g.statePages[station.State] {
 			view.StateHref = stateRoute(station.State)
 			view.StateName = ufName(station.State)
 			crumbs = []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(station.State), Href: view.StateHref}}
-			if g.cityPages[station.MunicipalityCode] && municipalityStations[station.MunicipalityCode] > 0 {
-				view.Municipality = placeLabel(entry.city, station.State)
-				view.MunicipalityHref = g.cityRoutes[station.MunicipalityCode]
-				crumbs = append(crumbs, crumb{Label: entry.city, Href: view.MunicipalityHref})
+			if city, ok := g.cities[station.MunicipalityCode]; ok && city.UF == station.State {
+				view.Municipality = placeLabel(city.Name, station.State)
+				view.MunicipalityHref = city.Route
+				crumbs = append(crumbs, crumb{Label: city.Name, Href: city.Route})
+				modules = append(modules, linkModule{Title: "Outros postos em " + city.Name, Links: siblingLinks(city, entry)})
 			}
+		}
+		modules = append(modules, g.fuelModule("Combustíveis deste posto no Brasil", fuels))
+		if len(fuels) > 0 {
+			modules = append(modules, g.landingModule(stationGuides(fuels)...))
 		}
 		crumbs = append(crumbs, crumb{Label: entry.name, Current: true})
 		lastMod := entry.facts.LastObserved
@@ -551,8 +601,9 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 			Station: view, Observations: obsView, Histories: historyViews, Source: source,
 			OfficialRecords: officialRecords, OfficialCount: officialCount, OfficialMore: officialCount > len(officialRecords),
 		}
+		data.Modules = modules
 		var err error
-		if data.pageBase, err = g.withStructuredData(data.pageBase, g.gasStationNode(data.pageBase, entry)); err != nil {
+		if data.pageBase, err = g.withStructuredData(data.pageBase, g.gasStationNode(data.pageBase, *entry)); err != nil {
 			return err
 		}
 		if err := g.writeRoute("station", data); err != nil {
@@ -572,6 +623,7 @@ func (g *generator) generateCuriosidades(cards []insightCard) error {
 		}),
 		Cards: cards, DownloadsHref: "/dados/",
 	}
+	data.Modules = []linkModule{g.hubModule("/curiosidades/")}
 	return g.writeRoute("curiosidades", data)
 }
 
@@ -585,6 +637,7 @@ func (g *generator) generateDownloads(files []downloadFile, manifest downloadFil
 		}),
 		Release: release, Period: g.period, Files: files, Manifest: manifest, Notes: downloadNotes,
 	}
+	data.Modules = []linkModule{g.hubModule("/dados/")}
 	var err error
 	if data.pageBase, err = g.withStructuredData(data.pageBase, g.datasetNode(data.pageBase, files, manifest, g.latest)); err != nil {
 		return err
@@ -599,6 +652,7 @@ func (g *generator) generateStatic() error {
 		Description: composeDescription("Como o abastevo trata fontes, datas, amostra, rankings, correções e privacidade nos preços da pesquisa ANP e na fiscalização."),
 		Active:      "metodologia", Crumbs: []crumb{{Label: "Metodologia", Current: true}},
 	})
+	metodologia.Modules = []linkModule{g.hubModule("/metodologia/")}
 	if err := g.writeRoute("metodologia", metodologia); err != nil {
 		return err
 	}

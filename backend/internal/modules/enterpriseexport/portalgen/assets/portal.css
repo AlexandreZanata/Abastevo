@@ -288,3 +288,8 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-sp
 @media (max-width: 640px) { .fiscal-filters { grid-template-columns: minmax(0,1fr); } }
 
 .fiscal-filters .button-secondary:hover { background: var(--surface-2); }
+.link-module { margin-top: 2.5rem; }
+.link-module h2 { margin-bottom: 0.75rem; }
+.link-list { columns: 16rem; column-gap: 2rem; margin: 0; padding: 0; list-style: none; }
+.link-list li { break-inside: avoid; max-width: none; margin: 0; padding: 0.375rem 0; }
+.link-list a { font-weight: 600; color: var(--ink); text-underline-offset: 3px; }

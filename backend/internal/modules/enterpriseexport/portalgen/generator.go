@@ -124,9 +124,11 @@ type pageBase struct {
 	CSSURL      string
 	ScriptURL   string
 	Breadcrumbs []crumb
-	Route       string
-	Family      pageFamily
-	LastMod     string
+	// Modules are contextual link lists rendered in the page body.
+	Modules []linkModule
+	Route   string
+	Family  pageFamily
+	LastMod string
 	// JSONLD is the inline structured data graph (B-BR-SEO-06).
 	JSONLD template.JS
 }
@@ -216,6 +218,7 @@ type precosPage struct {
 
 type statePage struct {
 	pageBase
+	NoDataCities   []municipalityLink
 	UF             string
 	Name           string
 	Summaries      []summaryRow
@@ -225,14 +228,17 @@ type statePage struct {
 
 type municipalityPage struct {
 	pageBase
-	Code         string
-	Name         string
-	UF           string
-	Summaries    []summaryRow
-	Rankings     []rankingView
-	Rows         []rankingRow
-	Insufficient bool
-	Population   int
+	NoData        bool
+	Stations      []moduleLink
+	StationsTotal int
+	Code          string
+	Name          string
+	UF            string
+	Summaries     []summaryRow
+	Rankings      []rankingView
+	Rows          []rankingRow
+	Insufficient  bool
+	Population    int
 }
 
 type stationView struct {
@@ -323,6 +329,11 @@ type generator struct {
 	cityState  map[string]string
 	fuelHubs   map[string]fuelHubLink
 	latest     *enterpriseexport.Revision
+	// Station index and city pages, prepared before any page is written.
+	entries         []stationEntry
+	pricesByStation map[string][]enterpriseexport.Price
+	cities          map[string]*cityInfo
+	observed        map[string][]observation
 	// Page-wide publication facts.
 	period        string
 	periodShort   string
@@ -520,7 +531,6 @@ func Generate(opts Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
-	g.cityRoutes = cityRoutesFor(municipalityState, municipalityName)
 	g.cityState = municipalityState
 	latestSummaries := summariesFor(projection, latest)
 	g.fuelHubs = planFuelHubs(latestSummaries)
@@ -537,6 +547,9 @@ func Generate(opts Options) (Result, error) {
 		g.dataDate = revisionDataDate(*latest, g.buildDate)
 	}
 	g.period, g.published, g.inputHash = period, published, combinedHash
+	g.observed = obsByStation
+	g.prepareStationIndex(snapshot, stations, revisions, obsByStation)
+	g.prepareGeography(latestSummaries, municipalityState, municipalityName)
 	release := releaseSlug(manifest.ContentSHA256)
 	downloadFiles, manifestLink, err := g.writeDownloads(snapshot, latest, stations, observations, latestSummaries, release, period, published, combinedHash)
 	if err != nil {
@@ -558,16 +571,16 @@ func Generate(opts Options) (Result, error) {
 	if err := g.generatePrecos(latestSummaries, latestRankings, stations, stateStations); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateStates(latestSummaries, latestRankings, stations, municipalityStations, municipalityState, municipalityName); err != nil {
+	if err := g.generateStates(latestSummaries, latestRankings, stations, municipalityStations); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateMunicipalities(latestSummaries, observations, municipalityStations, municipalityState, municipalityName); err != nil {
+	if err := g.generateMunicipalities(latestSummaries, observations, municipalityStations); err != nil {
 		return Result{}, err
 	}
 	if err := g.generateFuelHubs(latestSummaries, municipalityName); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateStations(snapshot, stations, revisions, obsByStation, municipalityStations, official); err != nil {
+	if err := g.generateStations(snapshot, stations, revisions, official); err != nil {
 		return Result{}, err
 	}
 	if err := g.generateOfficial(official, stations); err != nil {
@@ -782,16 +795,6 @@ func geography(observations []observation) (map[string]int, map[string]int, map[
 		municipalityStations[code] = len(set)
 	}
 	return stateStations, municipalityStations, municipalityState, municipalityName, nil
-}
-
-// cityRoutesFor assigns readable routes to every municipality with a known
-// state.
-func cityRoutesFor(municipalityState, municipalityName map[string]string) map[string]string {
-	keys := make([]cityKey, 0, len(municipalityState))
-	for _, code := range sortedKeys(municipalityState) {
-		keys = append(keys, cityKey{Code: code, UF: municipalityState[code], Name: municipalityName[code]})
-	}
-	return assignCityRoutes(keys)
 }
 
 func (g *generator) writePage(rel, templateName string, data any) error {

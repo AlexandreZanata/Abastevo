@@ -114,6 +114,35 @@ func writeSEOFixture(t *testing.T) string {
 	return dir
 }
 
+// TestWriteSEOFixtureSnapshot exports the SEO fixture snapshot (with the
+// official slice) for a local `go run ./cmd/portalgen` sample build:
+// ANPFUEL_TEST_SEO_SNAPSHOT_OUT=/tmp/seo-snapshot go test -run TestWriteSEOFixtureSnapshot.
+func TestWriteSEOFixtureSnapshot(t *testing.T) {
+	target := os.Getenv("ANPFUEL_TEST_SEO_SNAPSHOT_OUT")
+	if target == "" {
+		t.Skip("ANPFUEL_TEST_SEO_SNAPSHOT_OUT is not set")
+	}
+	snapshot := writeSEOFixture(t)
+	writeOfficialFixture(t, snapshot)
+	retargetOfficialFixture(t, snapshot)
+	if err := os.MkdirAll(target, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	entries, err := os.ReadDir(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		raw, err := os.ReadFile(filepath.Join(snapshot, entry.Name()))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(target, entry.Name()), raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 // generateSEOPortal builds the SEO fixture as the production worker does:
 // indexable, with the landing on the portal's own origin.
 func generateSEOPortal(t *testing.T, indexable bool) string {

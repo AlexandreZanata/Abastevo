@@ -72,7 +72,8 @@ func TestHeadContractOnEveryGeneratedPage(t *testing.T) {
 		t.Errorf("state title = %q", state.Title)
 	}
 	station := pages["postos/"+seoID(1)+"/index.html"]
-	if head := parseHead(station); head.Title != "Auto Posto Cuiabá Ltda – preços em Cuiabá (MT)" || head.Robots != "index,follow" {
+	if head := parseHead(station); head.Title != "Auto Posto Cuiabá Ltda – preços em Cuiabá (MT)" || head.Robots != "index,follow" ||
+		!strings.Contains(head.Description, "pesquisa ANP de 11/10 a 17/10/2026") || !strings.Contains(head.Description, "Gasolina comum R$ 6,199") {
 		t.Errorf("station head = %+v", head)
 	}
 	if !strings.Contains(station, "<h1>Auto Posto Cuiabá Ltda</h1>") || !strings.Contains(station, "Nome no cadastro da ANP: AUTO POSTO CUIABÁ LTDA") {

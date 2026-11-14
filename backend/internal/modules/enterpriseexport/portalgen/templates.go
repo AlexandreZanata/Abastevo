@@ -46,7 +46,8 @@ const templates = `
             <a href="/metodologia/">Metodologia</a>
             {{if .HasLanding}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
             <a href="{{.Landing}}/como-usar/">Como usar</a>
-            <a href="{{.Landing}}/guias/">Guias</a>{{end}}
+            <a href="{{.Landing}}/guias/">Guias</a>
+            <a href="{{.Landing}}/ferramentas/">Ferramentas</a>{{end}}
           </nav>
         </details>
       </div>
@@ -78,8 +79,8 @@ const templates = `
       <div class="footer-cols">
         <nav aria-label="Produto"><h2>Produto</h2>{{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a><a href="/fiscalizacao/">Fiscalização</a>{{end}}<a href="/metodologia/">Metodologia</a></nav>
         {{if .OfficialOnly}}{{else}}<nav aria-label="Dados"><h2>Dados</h2><a href="/precos/">Preços</a><a href="/dados/">Baixar dados públicos</a><a href="/curiosidades/">Perguntas aprovadas</a></nav>{{end}}
-        {{if .HasLanding}}<nav aria-label="Aprender"><h2>Aprender</h2><a href="{{.Landing}}/como-usar/">Como usar</a><a href="{{.Landing}}/guias/">Guias</a><a href="{{.Landing}}/#aplicativo">Aplicativo</a></nav>{{end}}
-        <nav aria-label="Projeto"><h2>Projeto</h2><a href="https://github.com/AlexandreZanata/abastevo">GitHub</a><a href="https://github.com/AlexandreZanata/abastevo/issues">Contato</a><a href="https://github.com/AlexandreZanata/abastevo/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
+        {{if .HasLanding}}<nav aria-label="Aprender"><h2>Aprender</h2><a href="{{.Landing}}/como-usar/">Como usar</a><a href="{{.Landing}}/guias/">Guias</a><a href="{{.Landing}}/ferramentas/">Ferramentas</a><a href="{{.Landing}}/#aplicativo">Aplicativo</a></nav>{{end}}
+        <nav aria-label="Projeto"><h2>Projeto</h2>{{if .HasLanding}}<a href="{{.Landing}}/sobre/">Sobre</a><a href="{{.Landing}}/politica-editorial/">Política editorial</a>{{end}}<a href="https://github.com/AlexandreZanata/abastevo">GitHub</a><a href="https://github.com/AlexandreZanata/abastevo/issues">Contato</a><a href="https://github.com/AlexandreZanata/abastevo/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
         {{if .HasLanding}}<nav aria-label="Privacidade"><h2>Privacidade</h2><a href="{{.Landing}}/privacidade/">Privacidade</a><a href="{{.Landing}}/excluir-conta/">Excluir conta</a><a href="{{.Landing}}/termos/">Termos</a></nav>{{end}}
       </div>
       <div class="footer-legal">
@@ -98,6 +99,11 @@ const templates = `
   {{if .ScriptURL}}<script type="module" src="{{.ScriptURL}}" defer></script>{{end}}
 </body>
 </html>{{end}}
+
+{{define "modules"}}{{range .Modules}}{{if .Links}}<section class="link-module">
+  <h2>{{.Title}}</h2>
+  <ul class="link-list">{{range .Links}}<li><a href="{{.Href}}">{{.Label}}</a>{{if .Note}} <span class="muted">{{.Note}}</span>{{end}}</li>{{end}}</ul>
+</section>{{end}}{{end}}{{end}}
 
 {{define "crumbs"}}{{if gt (len .Breadcrumbs) 1}}<nav class="wrap breadcrumbs" aria-label="Trilha de navegação">{{range $i, $c := .Breadcrumbs}}{{if $i}} · {{end}}{{if $c.Current}}<span aria-current="page">{{$c.Label}}</span>{{else}}<a href="{{$c.Href}}">{{$c.Label}}</a>{{end}}{{end}}</nav>{{end}}{{end}}
 
@@ -156,6 +162,7 @@ const templates = `
   {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="{{.Href}}">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem preços nesta publicação.</strong><p>A pesquisa mais recente não tem observações publicadas.</p></div>{{end}}
   <h2>Resumo nacional</h2>
   {{template "summary" .National}}
+  {{template "modules" .}}
 </main>
 {{template "foot" .}}{{end}}
 
@@ -183,6 +190,7 @@ const templates = `
   {{if .Rankings}}{{range .Rankings}}{{template "ranking" .}}{{end}}{{else}}<div class="notice"><strong>Sem ranking nacional.</strong><p>Não há postos suficientes para este recorte.</p></div>{{end}}
   <h2>Estados</h2>
   {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="{{.Href}}">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem resumo estadual.</strong></div>{{end}}
+  {{template "modules" .}}
 </main>
 {{template "foot" .}}{{end}}
 
@@ -195,14 +203,18 @@ const templates = `
   {{if .Rankings}}<h2>Menores preços encontrados na amostra</h2>{{range .Rankings}}{{template "ranking" .}}{{end}}{{else}}<div class="notice"><strong>Sem ranking estadual.</strong></div>{{end}}
   <h2>Municípios</h2>
   {{if .Municipalities}}<div class="grid cards">{{range .Municipalities}}<article class="card"><h3><a href="{{.Href}}">{{.Name}}</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra</p>{{if .Insufficient}}<p><span class="tag tag-warn">Amostra insuficiente (mínimo 5)</span></p>{{end}}</article>{{end}}</div>{{else}}<div class="notice"><strong>Sem municípios com resumo.</strong></div>{{end}}
+  {{if .NoDataCities}}<section class="link-module"><h2>Cidades sem preço na pesquisa ANP mais recente</h2><p class="muted">Postos cadastrados na ANP, sem observação nesta pesquisa; a ausência não significa preço zero.</p><ul class="link-list">{{range .NoDataCities}}<li><a href="{{.Href}}">Postos em {{.Name}}</a> <span class="muted">{{.Stations}} {{plural .Stations "posto" "postos"}}</span></li>{{end}}</ul></section>{{end}}
+  {{template "modules" .}}
 </main>
 {{template "foot" .}}{{end}}
 
 {{define "municipality"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <h1>Preços em {{.Name}}</h1>
+  <h1>{{if .NoData}}Postos de combustíveis em {{.Name}} ({{.UF}}){{else}}Preços em {{.Name}}{{end}}</h1>
   <p class="lead">{{.UF}} · IBGE {{.Code}} · {{.Population}} {{plural .Population "posto" "postos"}} na amostra</p>
-  {{if .Insufficient}}
+  {{if .NoData}}
+  <div class="notice"><strong>Sem preço na pesquisa ANP{{if .Period}} de {{.Period}}{{end}}.</strong><p>Nenhum posto desta cidade tem observação válida nesta pesquisa. A ausência não significa preço zero; veja as cidades próximas com preço ou o histórico de cada posto.</p></div>
+  {{else if .Insufficient}}
   <div class="notice"><strong>Amostra insuficiente para um resumo municipal.</strong><p>Há {{.Population}} {{plural .Population "posto" "postos"}} com observação; o mínimo definido é 5. Não exibimos ranking ou média municipal abaixo desse mínimo.</p></div>
   <h2>Postos com observação (sem ranking)</h2>
   <ul class="station-list">{{range .Rows}}<li><a href="/postos/{{.StationID}}/">{{.Name}}</a>{{if .LegalName}}<small class="station-legal-name muted">{{.LegalName}}</small>{{end}} — {{brl .Amount}} · {{.Collected}} · {{.Status}}</li>{{end}}</ul>
@@ -212,6 +224,9 @@ const templates = `
   <h2>Menores preços encontrados na amostra</h2>
   {{range .Rankings}}{{template "ranking" .}}{{end}}
   {{end}}
+  {{if .Stations}}<section class="link-module"><h2>Postos em {{.Name}}</h2>{{if gt .StationsTotal (len .Stations)}}<p class="muted">Exibindo {{len .Stations}} de {{.StationsTotal}} postos.</p>{{end}}<ul class="link-list">{{range .Stations}}<li><a href="{{.Href}}">{{.Label}}</a>{{if .Note}} <span class="muted">{{.Note}}</span>{{end}}</li>{{end}}</ul></section>{{end}}
+  {{template "modules" .}}
+  <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para resumos e rankings.</p></div>
 </main>
 {{template "foot" .}}{{end}}
 
@@ -255,6 +270,7 @@ const templates = `
     <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. {{if .Source.URL}}<a href="{{.Source.URL}}">Página oficial da pesquisa</a>.{{end}}</p>
     <p class="muted source-url">Revisão: {{if .Source.Period}}{{.Source.Period}}{{else}}não informada{{end}} · checksum: {{if .Source.Checksum}}{{.Source.Checksum}}{{else}}não informado{{end}} · parser: {{if .Source.ParserVersion}}{{.Source.ParserVersion}}{{else}}não informado{{end}} · publicação na fonte: {{if .Source.PublishedAt}}{{.Source.PublishedAt}}{{else}}não informada{{end}}</p>
   </div>
+  {{template "modules" .}}
   <div class="links"><a href="/consultar/">Voltar à consulta</a><a href="/precos/">Resumo por região</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -279,6 +295,7 @@ const templates = `
     <tbody>{{range .Cities}}<tr><td><a href="{{.Href}}">{{.Name}} ({{.UF}})</a></td><td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td>{{if .Insufficient}}<td colspan="2"><span class="tag tag-warn">amostra pequena</span></td>{{else}}<td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td>{{end}}</tr>{{end}}</tbody>
   </table></div>{{else}}<div class="notice"><strong>Sem cidades com resumo.</strong></div>{{end}}
   {{if .Others}}<h2>Outros combustíveis</h2><ul class="station-list">{{range .Others}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a></li>{{end}}</ul>{{end}}
+  {{template "modules" .}}
   <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo Abastevo para mínimo, máximo e dispersão.</p></div>
   <div class="links"><a href="/precos/">Preços no Brasil</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
@@ -292,6 +309,7 @@ const templates = `
     {{range .Cards}}<article class="card qa-card"><h2>{{.Question}}</h2><p class="qa-answer">{{.Answer}}</p>{{if .Caveat}}<p class="qa-caveat">{{.Caveat}}</p>{{end}}<p class="qa-meta">{{.Formula}} <a href="{{.SourceHref}}">Método e fonte</a></p></article>{{end}}
   </div>
   <div class="notice"><strong>Impressão e dados abertos</strong><p>Esta página foi preparada para impressão; a navegação e os formulários não aparecem no papel. Os mesmos recortes estão disponíveis em CSV no <a href="{{.DownloadsHref}}">diretório de downloads</a>.</p></div>
+  {{template "modules" .}}
   <div class="links"><a href="/dados/">Baixar dados públicos</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -310,6 +328,7 @@ const templates = `
   <h2 id="notas">Notas</h2>
   <ul>{{range .Notes}}<li>{{.}}</li>{{end}}</ul>
   <div class="source"><p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p></div>
+  {{template "modules" .}}
   <div class="links"><a href="/curiosidades/">Perguntas aprovadas</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -384,6 +403,7 @@ const templates = `
     <p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p>
     <p class="muted source-url">Snapshot: {{.InputHash}} · versão dos cálculos: abastevo-metrics-v1 · publicação: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}}</p>
   </div>
+  {{template "modules" .}}
 </main>
 {{template "foot" .}}{{end}}
 
@@ -430,6 +450,7 @@ const templates = `
   </table></div>{{else}}<div class="notice"><strong>Sem registros oficiais nesta edição.</strong></div>{{end}}
   <div class="links">{{if .PrevHref}}<a href="{{.PrevHref}}">Página anterior</a>{{end}}{{if .NextHref}}<a href="{{.NextHref}}">Próxima página</a>{{end}}<a href="/metodologia/">Metodologia e fontes</a>{{if .OfficialOnly}}{{else}}<a href="/consultar/">Consultar preços</a>{{end}}</div>
   </section>
+  {{template "modules" .}}
   {{else}}
   <h1>Fiscalização — ainda não disponível</h1>
   <p class="lead">Este recorte depende da aceitação do fluxo oficial de fiscalização e da associação segura ao posto. Até lá, nenhum registro é exibido.</p>
