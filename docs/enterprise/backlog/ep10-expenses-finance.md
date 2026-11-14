@@ -100,7 +100,7 @@ presentation. Persistence, routes, panel/app, levels and amounts remain open.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-APPR-006 — Period closing, lock and reopening
-- **Meta:** module APPR · phase F3 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module APPR · phase F3 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Enforce period locking and authorized reopening without rewriting approved records.
 - **Rules and use cases:** BR-AMD-001, BR-AMD-004, BR-TIME-003, BR-TIME-004, BR-AUD-001, REQ-11.4
 - **Depends on:** EMP-APPR-001
@@ -114,6 +114,13 @@ presentation. Persistence, routes, panel/app, levels and amounts remain open.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: prove additive upgrade and recovery if persistent state changes · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F3 period lock](../evidence/f3-appr006-period-lock.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-14. Organization-wide calendar-month periods with
+append-only lock/reopen/re-lock history (migration 000203), fresh
+`fin.period.close`/`fin.period.reopen` routes, idempotent replay, one audit per
+write and an in-transaction gate proven against the close race and the
+amendment kernel on real PostGIS. Real consumers, scoped periods and F3 remain open.
 
 ### EMP-APPR-007 — App: my submissions and returned items
 - **Meta:** module APPR · phase F3 · cut - · priority P1 · type APP · size S · state TODO

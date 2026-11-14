@@ -146,7 +146,7 @@ Every permission used by any module is listed here. A module that needs a new ke
 | `budg.budget.read` / `budg.budget.manage` | Read / maintain budgets and holds |
 | `fin.payable.read` | Read payables and payments |
 | `fin.payment.record` | Record payments, reimbursements and advances |
-| `fin.period.close` / `fin.period.reopen` | Lock / reopen a period |
+| `fin.period.close` / `fin.period.reopen` | Lock / reopen a period. Until a period read key exists, `fin.period.close` also gates period list and read (EDR-149); period grants must cover the whole organization. |
 | `maint.request.create` | Ask for maintenance |
 | `maint.workorder.manage` / `maint.workorder.review` | Run / approve work orders |
 | `maint.plan.manage` | Maintain preventive plans and expiries |

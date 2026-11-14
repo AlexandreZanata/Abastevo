@@ -48,6 +48,8 @@ tags:
     description: Private organization employee records, separate from login and membership.
   - name: enterprise-sync
     description: Signed current-source operation transport with independent scoped transactions and protected receipts.
+  - name: enterprise-finance
+    description: Private organization financial periods; lock, reopen and re-lock with append-only history.
   - name: feedback
     description: Authenticated station/fuel ratings and comments plus anonymous reads.
   - name: premium
@@ -16869,6 +16871,312 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/finance/periods/list:
+    post:
+      tags:
+      - enterprise-finance
+      operationId: enterpriseFinancePeriodList
+      summary: List the organization periods with history, newest month first
+      description: Current company cookie and exact Origin/CSRF. Fixed fin.period.close permission on the whole organization
+        (ORG-scope grant only). Lists only months with a lock history; keyset cursor bound to the filter and caller; optional state LOCKED or REOPENED. Periods are organization-wide calendar months of reporting days, half-open;
+        an untouched month is OPEN at the implicit revision 1. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fin.period.close
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFinancePeriodListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current source-backed period result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFinancePeriodPage'
+              example:
+                items:
+                - period: '2026-10'
+                  start_day: '2026-10-01'
+                  end_day: '2026-11-01'
+                  period_id: 7b0e2a54-0000-4000-8000-000000009102
+                  state: LOCKED
+                  revision: 2
+                  time_basis: REPORTING_DAY
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/finance/periods/{period}/read:
+    post:
+      tags:
+      - enterprise-finance
+      operationId: enterpriseFinancePeriodRead
+      summary: Read one period with its append-only history
+      description: Current company cookie and exact Origin/CSRF. Fixed fin.period.close permission on the whole organization
+        (ORG-scope grant only). Returns the head and every immutable transition with permission, actor, server time and the reopening reason. Periods are organization-wide calendar months of reporting days, half-open;
+        an untouched month is OPEN at the implicit revision 1. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fin.period.close
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: period
+        in: path
+        required: true
+        description: Canonical calendar month YYYY-MM of reporting days; any other key is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFinancePeriodReadRequest'
+            example:
+              {}
+      responses:
+        '200':
+          description: Private current source-backed period result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFinancePeriodView'
+              example:
+                period: '2026-10'
+                start_day: '2026-10-01'
+                end_day: '2026-11-01'
+                period_id: 7b0e2a54-0000-4000-8000-000000009102
+                state: REOPENED
+                revision: 3
+                time_basis: REPORTING_DAY
+                data_mode: SYNTHETIC
+                history:
+                - revision: 2
+                  kind: LOCK
+                  from_state: OPEN
+                  to_state: LOCKED
+                  authority: fin.period.close
+                  reason: ''
+                  actor_account_id: 7b0e2a54-0000-4000-8000-000000009110
+                  actor_membership_id: 7b0e2a54-0000-4000-8000-000000009111
+                  operation_id: 7b0e2a54-0000-4000-8000-000000009101
+                  recorded_at: '2026-11-05T12:00:00Z'
+                - revision: 3
+                  kind: REOPEN
+                  from_state: LOCKED
+                  to_state: REOPENED
+                  authority: fin.period.reopen
+                  reason: Synthetic approved fueling volume correction
+                  actor_account_id: 7b0e2a54-0000-4000-8000-000000009110
+                  actor_membership_id: 7b0e2a54-0000-4000-8000-000000009111
+                  operation_id: 7b0e2a54-0000-4000-8000-000000009103
+                  recorded_at: '2026-11-10T09:30:00Z'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/finance/periods/{period}/close:
+    post:
+      tags:
+      - enterprise-finance
+      operationId: enterpriseFinancePeriodClose
+      summary: Lock or re-lock a period at an expected revision
+      description: Current company cookie and exact Origin/CSRF. Fixed fin.period.close permission on the whole organization
+        (ORG-scope grant only). Fresh proof, enabled capability and ACTIVE organization. OPEN to LOCKED (LOCK) or REOPENED to LOCKED (RELOCK); a LOCKED period or another revision is CONFLICT. One immutable transition and one audit event in the same transaction; an exact replay returns the original result. Periods are organization-wide calendar months of reporting days, half-open;
+        an untouched month is OPEN at the implicit revision 1. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fin.period.close
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: period
+        in: path
+        required: true
+        description: Canonical calendar month YYYY-MM of reporting days; any other key is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFinancePeriodCloseRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009101
+              revision: 1
+      responses:
+        '200':
+          description: Private current source-backed period result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFinancePeriodAcknowledgement'
+              example:
+                period: '2026-10'
+                period_id: 7b0e2a54-0000-4000-8000-000000009102
+                kind: LOCK
+                state: LOCKED
+                revision: 2
+                recorded_at: '2026-11-05T12:00:00Z'
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/finance/periods/{period}/reopen:
+    post:
+      tags:
+      - enterprise-finance
+      operationId: enterpriseFinancePeriodReopen
+      summary: Reopen a locked period with a mandatory reason
+      description: Current company cookie and exact Origin/CSRF. Fixed fin.period.reopen permission on the whole organization
+        (ORG-scope grant only). Fresh proof, enabled capability and ACTIVE organization. LOCKED to REOPENED only, with a nonblank reason of at most 280 Unicode scalars without control characters (VALIDATION_FAILED otherwise). The earlier lock is never removed; record commands then see the proven reopening. Periods are organization-wide calendar months of reporting days, half-open;
+        an untouched month is OPEN at the implicit revision 1. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fin.period.reopen
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: period
+        in: path
+        required: true
+        description: Canonical calendar month YYYY-MM of reporting days; any other key is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFinancePeriodReopenRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009103
+              revision: 2
+              reason: Synthetic approved fueling volume correction
+      responses:
+        '200':
+          description: Private current source-backed period result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFinancePeriodAcknowledgement'
+              example:
+                period: '2026-10'
+                period_id: 7b0e2a54-0000-4000-8000-000000009102
+                kind: REOPEN
+                state: REOPENED
+                revision: 3
+                recorded_at: '2026-11-05T12:00:00Z'
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/sync/review-results:
     post:
       tags:
@@ -17707,6 +18015,304 @@ components:
           entity_revision: 1
         replayed: false
         data_mode: SYNTHETIC
+    EnterpriseFinancePeriodMonth:
+      description: Canonical calendar month YYYY-MM from 0001-01 to 9999-12.
+      type: string
+      pattern: '^(000[1-9]|00[1-9][0-9]|0[1-9][0-9]{2}|[1-9][0-9]{3})-(0[1-9]|1[0-2])$'
+      example: '2026-10'
+    EnterpriseFinancePeriodListRequest:
+      description: Keyset page of months with lock history, optionally filtered by current state.
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+        state:
+          type: string
+          enum:
+          - LOCKED
+          - REOPENED
+      required: []
+      example:
+        limit: 20
+    EnterpriseFinancePeriodReadRequest:
+      description: Empty body; the month is the path selector.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseFinancePeriodCloseRequest:
+      description: Lock an OPEN or re-lock a REOPENED month at the revision the caller saw.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: The current revision the caller saw; an untouched month is 1.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009101
+        revision: 1
+    EnterpriseFinancePeriodReopenRequest:
+      description: Reopen a LOCKED month at the revision the caller saw, with a mandatory reason.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: The current revision the caller saw; only a LOCKED (even) revision can be reopened.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          pattern: '\S'
+          description: Exact Unicode scalar text kept verbatim, nonblank, no controls.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009103
+        revision: 2
+        reason: Synthetic approved fueling volume correction
+    EnterpriseFinancePeriodAcknowledgement:
+      description: Recorded result of one accepted period command; replays return it unchanged.
+      type: object
+      additionalProperties: false
+      properties:
+        period:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+        period_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - LOCK
+          - REOPEN
+          - RELOCK
+        state:
+          type: string
+          enum:
+          - LOCKED
+          - REOPENED
+        revision:
+          type: integer
+          minimum: 2
+        recorded_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - period
+      - period_id
+      - kind
+      - state
+      - revision
+      - recorded_at
+      - replayed
+      - data_mode
+      example:
+        period: '2026-10'
+        period_id: 7b0e2a54-0000-4000-8000-000000009102
+        kind: LOCK
+        state: LOCKED
+        revision: 2
+        recorded_at: '2026-11-05T12:00:00Z'
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseFinancePeriodTransition:
+      description: One immutable period transition with its authorizing permission and actor.
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 2
+        kind:
+          type: string
+          enum:
+          - LOCK
+          - REOPEN
+          - RELOCK
+        from_state:
+          type: string
+          enum:
+          - OPEN
+          - LOCKED
+          - REOPENED
+        to_state:
+          type: string
+          enum:
+          - LOCKED
+          - REOPENED
+        authority:
+          type: string
+          enum:
+          - fin.period.close
+          - fin.period.reopen
+        reason:
+          type: string
+          maxLength: 280
+          description: Empty for LOCK and RELOCK; the verbatim reopening reason for REOPEN.
+        actor_account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        actor_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        recorded_at:
+          type: string
+          format: date-time
+      required:
+      - revision
+      - kind
+      - from_state
+      - to_state
+      - authority
+      - reason
+      - actor_account_id
+      - actor_membership_id
+      - operation_id
+      - recorded_at
+      example:
+        revision: 3
+        kind: REOPEN
+        from_state: LOCKED
+        to_state: REOPENED
+        authority: fin.period.reopen
+        reason: Synthetic approved fueling volume correction
+        actor_account_id: 7b0e2a54-0000-4000-8000-000000009110
+        actor_membership_id: 7b0e2a54-0000-4000-8000-000000009111
+        operation_id: 7b0e2a54-0000-4000-8000-000000009103
+        recorded_at: '2026-11-10T09:30:00Z'
+    EnterpriseFinancePeriodView:
+      description: Current head of one organization month; history only on read.
+      type: object
+      additionalProperties: false
+      properties:
+        period:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+        start_day:
+          type: string
+          format: date
+          description: First reporting day, inclusive.
+        end_day:
+          type: string
+          pattern: '^[0-9]{4,5}-[0-9]{2}-01$'
+          description: First day of the next month, exclusive.
+        period_id:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        state:
+          type: string
+          enum:
+          - OPEN
+          - LOCKED
+          - REOPENED
+        revision:
+          type: integer
+          minimum: 1
+        time_basis:
+          type: string
+          enum:
+          - REPORTING_DAY
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        history:
+          type: array
+          description: Present on read only; the complete append-only transition chain.
+          items:
+            $ref: '#/components/schemas/EnterpriseFinancePeriodTransition'
+      required:
+      - period
+      - start_day
+      - end_day
+      - period_id
+      - state
+      - revision
+      - time_basis
+      - data_mode
+      example:
+        period: '2026-10'
+        start_day: '2026-10-01'
+        end_day: '2026-11-01'
+        period_id: 7b0e2a54-0000-4000-8000-000000009102
+        state: LOCKED
+        revision: 2
+        time_basis: REPORTING_DAY
+        data_mode: SYNTHETIC
+        history:
+        - revision: 2
+          kind: LOCK
+          from_state: OPEN
+          to_state: LOCKED
+          authority: fin.period.close
+          reason: ''
+          actor_account_id: 7b0e2a54-0000-4000-8000-000000009110
+          actor_membership_id: 7b0e2a54-0000-4000-8000-000000009111
+          operation_id: 7b0e2a54-0000-4000-8000-000000009101
+          recorded_at: '2026-11-05T12:00:00Z'
+    EnterpriseFinancePeriodPage:
+      description: Months with lock history, newest first.
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFinancePeriodView'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - period: '2026-10'
+          start_day: '2026-10-01'
+          end_day: '2026-11-01'
+          period_id: 7b0e2a54-0000-4000-8000-000000009102
+          state: LOCKED
+          revision: 2
+          time_basis: REPORTING_DAY
+          data_mode: SYNTHETIC
+        next_cursor: ''
     EnterpriseReviewSelector:
       type: object
       additionalProperties: false

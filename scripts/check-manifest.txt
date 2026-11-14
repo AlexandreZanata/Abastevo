@@ -31,6 +31,10 @@ backend/internal/modules/expense/domain/payable
 backend/internal/modules/budget/domain
 backend/internal/modules/document/domain
 backend/internal/modules/review/domain
+backend/internal/modules/review/domain/period
+backend/internal/modules/review/application
+backend/internal/modules/review/adapters
+backend/internal/modules/review/adapters/http
 backend/internal/modules/organization/domain
 backend/internal/modules/organization/application
 backend/internal/modules/organization/adapters

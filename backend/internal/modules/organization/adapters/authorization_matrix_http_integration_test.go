@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -46,6 +47,8 @@ var matrixRepresentatives = []matrixRoute{
 	{"fleet.asset.manage", "/fleet/assets/create", true, true},
 	{"fleet.asset.read", "/fleet/assets/list", false, false},
 	{"meter.reading.correct", "/sync/reviews/meter-readings/list", false, false},
+	{"fin.period.close", "/finance/periods/list", false, false},
+	{"fin.period.reopen", "/finance/periods/{period}/reopen", true, true},
 }
 
 func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
@@ -232,6 +235,8 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_sync_review_items x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,review_item_id) FROM org_meter_held_readings x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_sync_review_resolutions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,period_month) FROM org_finance_periods x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,period_month,revision) FROM org_finance_period_transitions x),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),
 	 (SELECT count(*) FROM org_ownership_commands), (SELECT count(*) FROM org_role_commands))::text`).Scan(&value); err != nil {
 		t.Fatal(err)
@@ -307,6 +312,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	grantEmployeeTables(t, fx.legalFixtureState)
 	_ = fleetStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
 	fx.f.GrantMeterReviews(t)
+	periodGrant(t, fx.f)
 	roleSQL := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+roleSQL+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+roleSQL); err != nil {
 		t.Fatal(err)
@@ -356,12 +362,16 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": revision, "values": json.RawMessage(values), "reason": "Synthetic authorization matrix change"}
 				case "fleet.asset.manage":
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "kind": "IMPLEMENT", "name": "Synthetic matrix implement", "fleet_number": "MATRIX-" + strconv.Itoa(roleIndex), "usage_basis": "DISTANCE", "category": map[string]any{"new_label": "Synthetic matrix implements"}}
+				case "fin.period.reopen":
+					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 2, "reason": "Synthetic matrix reopening"}
 				default:
 					return map[string]any{}
 				}
 			}
+			// Each role reopens its own synthetic month, locked by the owner first.
+			month := fmt.Sprintf("2019-%02d", roleIndex+1)
 			path := func(entry matrixRoute, organization string) string {
-				return "/v1/orgs/" + organization + strings.ReplaceAll(entry.path, "{membership_id}", target.member)
+				return "/v1/orgs/" + organization + strings.NewReplacer("{membership_id}", target.member, "{period}", month).Replace(entry.path)
 			}
 			for _, entry := range matrixRepresentatives {
 				if entry.permission == "org.ownership.respond" && proposalID == "" {
@@ -369,6 +379,9 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					proposalID = v["transfer"].(map[string]any)["transfer_id"].(string)
 				}
 				cell := oracle[entry.permission][role]
+				if entry.permission == "fin.period.reopen" && strings.HasPrefix(cell, "O") {
+					matrixCall(t, fx, router, owner, base+"/finance/periods/"+month+"/close", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1}, 200, "", "", nil)
+				}
 				want, code, key := 200, "", ""
 				if entry.permission == "fleet.asset.manage" {
 					want = 201
@@ -557,8 +570,8 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 150 || allowed != 55 || denied != 95 {
+	if exercised != 170 || allowed != 59 || denied != 111 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 69 permissions not yet routed; one actual signed Meter producer; Fleet S cells remain denied pending actual assignment integration", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 67 permissions not yet routed; one actual signed Meter producer; Fleet S cells remain denied pending actual assignment integration", exercised, allowed, denied)
 }

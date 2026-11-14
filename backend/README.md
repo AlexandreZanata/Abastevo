@@ -1139,3 +1139,14 @@ disposed_submicro) ON org_assets`. Lifecycle routes reuse the enterprise flag,
 the organizations capability and fresh company proof. The open-work port is
 answered by the explicit `NoOpenWork` adapter until trips and work orders
 exist. Nothing here provisions live grants.
+
+### Finance periods (EMP-APPR-006)
+
+Migration203 adds the immutable `org_finance_period_transitions` history (also
+the command receipt) and the trigger-maintained head `org_finance_periods`, both
+with forced RLS. Rollout grants (no live provisioning): `GRANT SELECT, INSERT ON
+org_finance_period_transitions` and `GRANT SELECT, INSERT, UPDATE ON
+org_finance_periods` to the runtime role (head writes are admitted only through
+the transition trigger and its guards). Owning record commands that call the
+period gate need `SELECT` on both tables, `SELECT` on `org_units` and the
+existing root row-lock privilege on `organizations`.

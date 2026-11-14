@@ -214,17 +214,23 @@
     },
     {
       "permission": "fin.period.close",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Payable, payment and financial-period routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/finance/periods/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/finance/periods/list",
+        "POST /v1/orgs/{org_id}/finance/periods/{period}/close",
+        "POST /v1/orgs/{org_id}/finance/periods/{period}/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "fin.period.reopen",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Payable, payment and financial-period routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/finance/periods/{period}/reopen",
+      "routes": [
+        "POST /v1/orgs/{org_id}/finance/periods/{period}/reopen"
+      ],
+      "reason": ""
     },
     {
       "permission": "find.finding.read",

@@ -288,3 +288,31 @@ upgrade assertions are unchanged). Retained: real open-work sources (trips,
 maintenance), allocation periods (FLEET-005), ending assignments on disposal
 (FLEET-006), reservations (FLEET-007), holds for DRAFT/INACTIVE assets via
 derived availability, plan limit on reactivation, SCR-FLEET-05, live grants.
+Integration-branch re-run after PRIV-005 (`59b57c19` tree): untagged backend
+196 packages, 2498 top-level / 6827 subtests, 0 failures (4 pre-existing
+opt-in skips); race/integration union over fleet, organization adapters,
+orgsync, orgaudit, orgmedia (disposable MinIO) and migrate: 17 packages,
+573 top-level / 3626 subtests, 0 failures, 0 skips.
+
+### EMP-APPR-006 — period closing, lock and reopening: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-appr006-period-lock.md). Migration 000203 adds the immutable
+`org_finance_period_transitions` history (also the command receipt) and the
+trigger-maintained head `org_finance_periods` (forced RLS, guards).
+`review/domain/period`, application and adapters provide organization-wide
+calendar-month periods (implicit OPEN revision 1; LOCK, REOPEN with reason,
+RELOCK; history never deleted), routes `finance/periods/{list,read,close,
+reopen}` under fresh `fin.period.close`/`.reopen` ORG grants, and an
+in-transaction `PeriodGate` (organization row FOR KEY SHARE vs commands FOR
+UPDATE) whose fact feeds `orgamend` (EDR-148/149). RED unit 23 and integration
+14 failing → GREEN; agent union 382/2914 with a 170-cell authorization matrix;
+populated 200→203 upgrade/failure/recovery; zone boundary (America/Cuiaba),
+8-way concurrent close, lock-vs-write race both orderings with barriers and a
+test-only `orgamend` consumer (PERIOD_LOCKED → adjustment, reopen → amendment,
+relock → refused). Merged with FLEET-003 (route inventory 17 routed / 67 not
+routed / 93 routes); merged-tree union over review, organization adapters,
+fleet adapters and migrate: 9 packages, 441 top-level / 3057 subtests,
+0 failures, 0 skips; build/vet (both tags)/sqlc/gofmt/cmd/api/apicontract
+clean. Retained: real consumers calling the gate and `PERIOD_LOCKED` sync
+binding, unit/cost-centre periods (AUTH-006), an AUDITOR read key, panel,
+production grants.

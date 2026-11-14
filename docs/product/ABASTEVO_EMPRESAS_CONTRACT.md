@@ -3372,3 +3372,75 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   after it is held `ASSET_UNAVAILABLE` and appears in the existing meter
   review list for `meter.reading.correct`, whose accept/refuse decision is
   unchanged; after a revert a new reading is applied again.
+
+## EMP-APPR-006 — Period closing, lock and reopening (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-appr006-period-lock.md).
+
+- **B-BR-EMP-211 — A period is one organization calendar month of reporting
+  days.** A period is the calendar month `YYYY-MM` of one organization,
+  covering the half-open reporting-day range from its first day inclusive to
+  the first day of the next month exclusive. A record belongs to the period
+  that holds its BR-TIME-004 reporting day: the local calendar day of its
+  `occurred_at` in the time zone of its operating unit, or of the organization
+  when it has none. In this task a period is organization-wide; unit or
+  cost-centre scoped periods are not modelled. A month without history is
+  `OPEN` at the implicit revision 1, which is never stored; only a canonical
+  month from `0001-01` to `9999-12` is a period, any other key is not found.
+- **B-BR-EMP-212 — Lock, reopen and re-lock append history.** Close
+  (`fin.period.close`) moves `OPEN` to `LOCKED` (kind `LOCK`) or `REOPENED` to
+  `LOCKED` (kind `RELOCK`). Reopen (`fin.period.reopen`) moves `LOCKED` to
+  `REOPENED` and requires a reason of 1 to 280 Unicode scalars that is not
+  blank and has no control character (the B-BR-EMP-163 profile, kept
+  verbatim); close carries no reason. Every command names the revision it
+  saw: another current revision is `CONFLICT`; closing a `LOCKED` period or
+  reopening an `OPEN` or `REOPENED` one is `CONFLICT`; a missing reason is
+  `REASON_REQUIRED` and a malformed one `REASON_INVALID`; a refusal changes
+  nothing. An accepted command appends exactly one immutable transition at
+  revision+1 with its kind, previous and new state, the permission that
+  authorized it, the reason, the acting account and membership and the
+  server receipt time, and writes exactly one audit event in the same
+  transaction. Transitions are never updated or deleted, so a reopening never
+  removes the earlier lock and a re-lock never removes the reopening.
+- **B-BR-EMP-213 — Authority at receipt and idempotent replay.** Period
+  commands and reads are decided at server receipt by the existing company
+  pipeline: current company proof, enabled `organizations` capability, the
+  organization root, the current membership and a current role covering the
+  whole organization. Close and reopen need fresh authentication and an
+  `ACTIVE` organization; list and read need `fin.period.close`. A role without
+  the permission is `FORBIDDEN`; another organization or an ended membership
+  is `NOT_FOUND`; a suspended membership or organization keeps its existing
+  code. Replaying the same operation ID by the same account with the same
+  canonical command returns the original result with `replayed=true` and
+  writes no second transition or audit event; any other command or account
+  under that operation ID is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-214 — The period gate runs inside the owning record
+  transaction.** A record command obtains the period fact of a reporting day
+  from a server port inside its own transaction: the gate first takes a
+  key-share lock on the organization root, which every period command holds
+  exclusively until it commits, then reads the current state. A concurrent
+  close and record write therefore serialize: either the write commits while
+  the period is not `LOCKED`, or the close commits first and the write sees
+  `LOCKED`; a write never commits into a period that was `LOCKED` when it
+  committed. The gate can attribute an `occurred_at` itself with the current
+  organization zone or the zone of a unit of the same organization (an
+  unknown unit never falls back). A `REOPENED` fact carries the proven
+  reopening (permission, reason, actor and time). Mapped to the amendment
+  kernel, `LOCKED` refuses an in-place amendment or void with
+  `PERIOD_LOCKED`, a proven reopening allows it, and an adjustment posts into
+  a later writable period.
+- **BUC-EMP-108 — Finance closes, reopens and re-locks a month.** An OWNER or
+  FINANCE member lists the organization's periods and reads October 2026
+  (`OPEN`, revision 1), closes it naming revision 1 (`LOCKED`, revision 2),
+  reopens it naming revision 2 with a reason (`REOPENED`, revision 3) and
+  re-locks it naming revision 3 (`LOCKED`, revision 4). The read shows the
+  three transitions with their actors, permissions, times and the reopening
+  reason; the audit trail holds exactly three events. A stale, repeated or
+  unauthorized command changes nothing.
+- **BUC-EMP-109 — A record command consults the period at receipt.** For the
+  VAL-19 fueling (`occurred_at` `2026-11-01T02:30:00Z`, zone
+  `America/Sao_Paulo`) the gate attributes reporting day `2026-10-31`. With
+  October `LOCKED` an in-place amendment is `PERIOD_LOCKED` and an adjustment
+  posts into the open November; after an authorized reopening with a reason
+  the amendment is allowed; after a re-lock it is refused again. A close that
+  races the record write admits exactly one ordering.

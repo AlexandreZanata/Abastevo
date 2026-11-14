@@ -106,7 +106,7 @@ Every state name below is canonical. "Kind" is O (operational), S (sync), R (rev
 | Payable | L | `OPEN`, `PARTIALLY_SETTLED`, `SETTLED`, `CANCELLED` | [expenses-finance](modules/expenses-finance.md) |
 | Advance | L | `REQUESTED`, `APPROVED`, `PAID`, `PARTIALLY_ACCOUNTED`, `ACCOUNTED`, `REJECTED`, `CANCELLED` | [expenses-finance](modules/expenses-finance.md) |
 | Budget hold | L | `ACTIVE`, `CONSUMED`, `RELEASED`, `EXPIRED` | [expenses-finance](modules/expenses-finance.md) |
-| Period | L | `OPEN`, `LOCKED`, `REOPENED` | [expenses-finance](modules/expenses-finance.md) |
+| Period | L | `OPEN`, `LOCKED`, `REOPENED` (a month without history is `OPEN` at the implicit revision 1; `LOCK`, `REOPEN` with reason and `RELOCK` append history; `LOCKED` revisions are even, EDR-148) | [expenses-finance](modules/expenses-finance.md) |
 | Work order | O | `DRAFT`, `REQUESTED`, `QUOTED`, `APPROVED`, `SCHEDULED`, `IN_EXECUTION`, `COMPLETED`, `CLOSED`, `REJECTED`, `CANCELLED` | [maintenance](modules/maintenance.md) |
 | Maintenance plan occurrence | O | `UPCOMING`, `DUE`, `OVERDUE`, `DONE`, `SKIPPED` | [maintenance](modules/maintenance.md) |
 | Stock measurement reconciliation | L | `OPEN`, `EXPLAINED`, `ADJUSTED` | [fuel-stock](modules/fuel-stock.md) |
