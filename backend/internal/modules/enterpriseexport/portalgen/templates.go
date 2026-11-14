@@ -141,7 +141,7 @@ const templates = `
   </form>
   <noscript><p class="muted">A busca interativa requer JavaScript. Use a navegação por estado abaixo.</p></noscript>
   <h2>Estados com resumo</h2>
-  {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="/precos/uf/{{.Code}}/">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem preços nesta publicação.</strong><p>A pesquisa mais recente não tem observações publicadas.</p></div>{{end}}
+  {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="{{.Href}}">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem preços nesta publicação.</strong><p>A pesquisa mais recente não tem observações publicadas.</p></div>{{end}}
   <h2>Resumo nacional</h2>
   {{template "summary" .National}}
 </main>
@@ -168,7 +168,7 @@ const templates = `
   <h2>Menores preços encontrados na amostra</h2>
   {{if .Rankings}}{{range .Rankings}}{{template "ranking" .}}{{end}}{{else}}<div class="notice"><strong>Sem ranking nacional.</strong><p>Não há postos suficientes para este recorte.</p></div>{{end}}
   <h2>Estados</h2>
-  {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="/precos/uf/{{.Code}}/">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem resumo estadual.</strong></div>{{end}}
+  {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="{{.Href}}">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem resumo estadual.</strong></div>{{end}}
 </main>
 {{template "foot" .}}{{end}}
 

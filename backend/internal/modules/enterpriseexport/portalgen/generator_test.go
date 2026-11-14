@@ -181,9 +181,9 @@ func TestGenerateFixturePages(t *testing.T) {
 		t.Fatalf("result = %+v, want 18 pages and 43 files", result)
 	}
 	for _, page := range []string{
-		"consultar/index.html", "precos/index.html", "precos/uf/SP/index.html",
-		"precos/uf/SP/municipio/3550308/index.html",
-		"precos/uf/MG/municipio/3106200/index.html",
+		"consultar/index.html", "precos/index.html", "precos/sp/index.html",
+		"precos/sp/sao-paulo/index.html",
+		"precos/mg/belo-horizonte/index.html",
 		"postos/" + stA + "/index.html", "postos/" + stD + "/index.html",
 		"metodologia/index.html", "fiscalizacao/index.html", "404.html",
 		"curiosidades/index.html", "dados/index.html",
@@ -283,19 +283,19 @@ func TestGenerateFixturePages(t *testing.T) {
 			t.Errorf("precos missing %q", want)
 		}
 	}
-	state := readPortal(t, out, "precos/uf/SP/index.html")
+	state := readPortal(t, out, "precos/sp/index.html")
 	for _, want := range []string{"R$ 6,199", "R$ 6,399", "São Paulo", "5 postos"} {
 		if !strings.Contains(state, want) {
 			t.Errorf("state missing %q", want)
 		}
 	}
-	municipality := readPortal(t, out, "precos/uf/SP/municipio/3550308/index.html")
+	municipality := readPortal(t, out, "precos/sp/sao-paulo/index.html")
 	for _, want := range []string{"5 postos", "Menores preços encontrados", "São Paulo"} {
 		if !strings.Contains(municipality, want) {
 			t.Errorf("municipality missing %q", want)
 		}
 	}
-	insufficient := readPortal(t, out, "precos/uf/MG/municipio/3106200/index.html")
+	insufficient := readPortal(t, out, "precos/mg/belo-horizonte/index.html")
 	if !strings.Contains(insufficient, "Amostra insuficiente") || !strings.Contains(insufficient, "sem ranking") {
 		t.Errorf("insufficient municipality state missing")
 	}
@@ -334,8 +334,8 @@ func TestGenerateFixturePages(t *testing.T) {
 		t.Errorf("preview robots must disallow indexing")
 	}
 	for _, page := range []string{
-		"consultar/index.html", "precos/index.html", "precos/uf/SP/index.html",
-		"precos/uf/SP/municipio/3550308/index.html", "postos/" + stA + "/index.html",
+		"consultar/index.html", "precos/index.html", "precos/sp/index.html",
+		"precos/sp/sao-paulo/index.html", "postos/" + stA + "/index.html",
 		"metodologia/index.html", "404.html",
 	} {
 		html := readPortal(t, out, page)

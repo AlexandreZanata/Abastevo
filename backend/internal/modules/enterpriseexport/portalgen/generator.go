@@ -158,6 +158,7 @@ type rankingView struct {
 type stateLink struct {
 	Code     string
 	Name     string
+	Href     string
 	Stations int
 	Fuels    int
 }
@@ -288,6 +289,8 @@ type generator struct {
 	searchFiscal  bool
 	sitemapRoutes []string
 	hasSitemap    bool
+	// cityRoutes maps an IBGE code to its readable /precos/{uf}/{slug}/ route.
+	cityRoutes map[string]string
 }
 
 // Generate reads one frozen export candidate and writes a complete private
@@ -471,6 +474,7 @@ func Generate(opts Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	g.cityRoutes = cityRoutesFor(municipalityState, municipalityName)
 	latestSummaries := summariesFor(projection, latest)
 	latestRankings := rankingsFor(projection, latest)
 	previous := previousRevision(snapshot.Revisions, latest)
@@ -723,6 +727,16 @@ func geography(observations []observation) (map[string]int, map[string]int, map[
 		municipalityStations[code] = len(set)
 	}
 	return stateStations, municipalityStations, municipalityState, municipalityName, nil
+}
+
+// cityRoutesFor assigns readable routes to every municipality with a known
+// state.
+func cityRoutesFor(municipalityState, municipalityName map[string]string) map[string]string {
+	keys := make([]cityKey, 0, len(municipalityState))
+	for _, code := range sortedKeys(municipalityState) {
+		keys = append(keys, cityKey{Code: code, UF: municipalityState[code], Name: municipalityName[code]})
+	}
+	return assignCityRoutes(keys)
 }
 
 func (g *generator) writePage(rel, templateName string, data any) error {
@@ -983,7 +997,7 @@ func (g *generator) generateConsultar(summaries []analytics.Summary, states map[
 				fuels[summary.Fuel] = true
 			}
 		}
-		stateLinks = append(stateLinks, stateLink{Code: code, Name: ufName(code), Stations: stations, Fuels: len(fuels)})
+		stateLinks = append(stateLinks, stateLink{Code: code, Name: ufName(code), Href: stateRoute(code), Stations: stations, Fuels: len(fuels)})
 	}
 	sort.Slice(stateLinks, func(i, j int) bool { return stateLinks[i].Code < stateLinks[j].Code })
 	data := consultarPage{
@@ -1007,7 +1021,7 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 				fuels[summary.Fuel] = true
 			}
 		}
-		stateLinks = append(stateLinks, stateLink{Code: code, Name: ufName(code), Stations: stations, Fuels: len(fuels)})
+		stateLinks = append(stateLinks, stateLink{Code: code, Name: ufName(code), Href: stateRoute(code), Stations: stations, Fuels: len(fuels)})
 	}
 	sort.Slice(stateLinks, func(i, j int) bool { return stateLinks[i].Code < stateLinks[j].Code })
 	views, err := rankingViews(rankings, analytics.LevelNational, "", stations, true)
@@ -1061,7 +1075,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 			}
 			links = append(links, municipalityLink{
 				Code: code, Name: name, UF: uf,
-				Href:     "/precos/uf/" + uf + "/municipio/" + code + "/",
+				Href:     g.cityRoutes[code],
 				Stations: stationsCount, Insufficient: stationsCount < minMunicipality,
 			})
 		}
@@ -1070,10 +1084,10 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 			pageBase: g.base("Preços em "+ufName(uf), "Preços da pesquisa ANP em "+ufName(uf)+", com amostra, período, resumo derivado e postos.", "precos", period, published, inputHash, []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Current: true}}),
 			UF:       uf, Name: ufName(uf), Summaries: stateSummaries, Rankings: views, Municipalities: links,
 		}
-		if err := g.writePage("precos/uf/"+uf+"/index.html", "state", data); err != nil {
+		if err := g.writePage(strings.TrimPrefix(stateRoute(uf), "/")+"index.html", "state", data); err != nil {
 			return err
 		}
-		g.addSitemapRoute("/precos/uf/" + uf + "/")
+		g.addSitemapRoute(stateRoute(uf))
 	}
 	return nil
 }
@@ -1102,7 +1116,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 		}
 		insufficient := municipalityStations[code] < minMunicipality
 		data := municipalityPage{
-			pageBase: g.base("Preços em "+name, "Preços da pesquisa ANP em "+name+", com amostra, período e resumo derivado.", "precos", period, published, inputHash, []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Href: "/precos/uf/" + uf + "/"}, {Label: name, Current: true}}),
+			pageBase: g.base("Preços em "+name, "Preços da pesquisa ANP em "+name+", com amostra, período e resumo derivado.", "precos", period, published, inputHash, []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Href: stateRoute(uf)}, {Label: name, Current: true}}),
 			Code:     code, Name: name, UF: uf,
 			Summaries:    summaryRows(summaries, analytics.LevelMunicipality, code, true),
 			Insufficient: insufficient, Population: municipalityStations[code],
@@ -1118,10 +1132,11 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 		} else {
 			data.Rankings = observationRankings(items)
 		}
-		if err := g.writePage("precos/uf/"+uf+"/municipio/"+code+"/index.html", "municipality", data); err != nil {
+		route := g.cityRoutes[code]
+		if err := g.writePage(strings.TrimPrefix(route, "/")+"index.html", "municipality", data); err != nil {
 			return err
 		}
-		g.addSitemapRoute("/precos/uf/" + uf + "/municipio/" + code + "/")
+		g.addSitemapRoute(route)
 	}
 	return nil
 }
@@ -1202,11 +1217,11 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 			Location: locationLabel(station.LocationQuality), Place: place,
 		}
 		if station.State != "" && stateStations[station.State] > 0 {
-			view.StateHref = "/precos/uf/" + station.State + "/"
+			view.StateHref = stateRoute(station.State)
 		}
 		if station.MunicipalityCode != "" && station.State != "" && municipalityStations[station.MunicipalityCode] > 0 {
 			view.Municipality = place
-			view.MunicipalityHref = "/precos/uf/" + station.State + "/municipio/" + station.MunicipalityCode + "/"
+			view.MunicipalityHref = g.cityRoutes[station.MunicipalityCode]
 		}
 		source := sourceView{}
 		if latest := latestRevision(snapshot.Revisions); latest != nil {

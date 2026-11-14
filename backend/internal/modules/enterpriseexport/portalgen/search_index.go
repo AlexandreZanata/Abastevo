@@ -128,23 +128,28 @@ var (
 	ibgeNames map[string]struct{ N, U string }
 )
 
-// municipalityLabel names an IBGE municipality code from the embedded IBGE
-// table (derived from data/src/main/assets/ibge_municipalities.json),
-// falling back to the source address text; unknown codes stay empty.
-func municipalityLabel(code, addressName string) string {
+// ibgeTable is the embedded IBGE municipality table (derived from
+// data/src/main/assets/ibge_municipalities.json), keyed by IBGE code.
+func ibgeTable() map[string]struct{ N, U string } {
 	ibgeOnce.Do(func() {
 		raw := map[string]struct {
 			N string `json:"n"`
 			U string `json:"u"`
 		}{}
+		ibgeNames = map[string]struct{ N, U string }{}
 		if err := json.Unmarshal(ibgeMunicipalitiesRaw, &raw); err == nil {
-			ibgeNames = make(map[string]struct{ N, U string }, len(raw))
 			for k, v := range raw {
 				ibgeNames[k] = struct{ N, U string }{v.N, v.U}
 			}
 		}
 	})
-	if entry, ok := ibgeNames[code]; ok && entry.N != "" {
+	return ibgeNames
+}
+
+// municipalityLabel names an IBGE municipality code from the embedded IBGE
+// table, falling back to the source address text; unknown codes stay empty.
+func municipalityLabel(code, addressName string) string {
+	if entry, ok := ibgeTable()[code]; ok && entry.N != "" {
 		return titlePlace(entry.N)
 	}
 	return titlePlace(strings.TrimSpace(addressName))

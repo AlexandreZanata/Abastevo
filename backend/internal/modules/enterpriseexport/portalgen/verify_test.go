@@ -104,7 +104,7 @@ func TestVerifyNoindexArtifactAndSitemap(t *testing.T) {
 	sitemap := readPortal(t, indexable, "sitemap.xml")
 	for _, want := range []string{
 		"<loc>https://portal.example/consultar/</loc>",
-		"<loc>https://portal.example/precos/uf/SP/municipio/3550308/</loc>",
+		"<loc>https://portal.example/precos/sp/sao-paulo/</loc>",
 		"<loc>https://portal.example/postos/" + stA + "/</loc>",
 		"<loc>https://portal.example/metodologia/</loc>",
 	} {
