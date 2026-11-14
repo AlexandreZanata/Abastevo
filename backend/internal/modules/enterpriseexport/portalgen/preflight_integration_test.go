@@ -180,7 +180,10 @@ func TestPreflightRefusesBrokenArtifactLink(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corrupt := strings.Replace(string(raw), "</urlset>", "<url><loc>https://evil.example/stolen/</loc></url></urlset>", 1)
+	corrupt := strings.Replace(string(raw), "</sitemapindex>", "<sitemap><loc>https://evil.example/stolen.xml</loc></sitemap></sitemapindex>", 1)
+	if corrupt == string(raw) {
+		t.Fatal("sitemap index marker not found")
+	}
 	if err := os.WriteFile(sitemapPath, []byte(corrupt), 0o600); err != nil {
 		t.Fatal(err)
 	}

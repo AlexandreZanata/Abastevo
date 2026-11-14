@@ -439,7 +439,7 @@ func Generate(opts Options) (Result, error) {
 		if err := g.generateStatic(); err != nil {
 			return Result{}, err
 		}
-		if err := g.writeSitemap(manifest.BuiltAt); err != nil {
+		if err := g.writeSitemap(); err != nil {
 			return Result{}, err
 		}
 		if err := g.writeRobots(); err != nil {
@@ -564,7 +564,7 @@ func Generate(opts Options) (Result, error) {
 	if err := g.generateStatic(); err != nil {
 		return Result{}, err
 	}
-	if err := g.writeSitemap(manifest.BuiltAt); err != nil {
+	if err := g.writeSitemap(); err != nil {
 		return Result{}, err
 	}
 	if err := g.writeRobots(); err != nil {
@@ -912,35 +912,6 @@ type sitemapSet struct {
 	XMLName xml.Name     `xml:"urlset"`
 	XMLNS   string       `xml:"xmlns,attr"`
 	URLs    []sitemapURL `xml:"url"`
-}
-
-func (g *generator) writeSitemap(_ string) error {
-	if !g.indexable {
-		return nil
-	}
-	entries := append([]sitemapEntry(nil), g.sitemap...)
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Route < entries[j].Route })
-	if len(entries) == 0 || len(entries) > 50_000 {
-		return fmt.Errorf("portalgen: invalid sitemap route count")
-	}
-	set := sitemapSet{XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9", URLs: make([]sitemapURL, 0, len(entries))}
-	for i, entry := range entries {
-		if i > 0 && entries[i-1].Route == entry.Route {
-			return fmt.Errorf("portalgen: duplicate sitemap route")
-		}
-		set.URLs = append(set.URLs, sitemapURL{Loc: g.siteURL + entry.Route, LastMod: entry.LastMod})
-	}
-	body, err := xml.MarshalIndent(set, "", "  ")
-	if err != nil {
-		return err
-	}
-	body = append([]byte(xml.Header), body...)
-	body = append(body, 10)
-	if err := g.writeAsset("sitemap.xml", body); err != nil {
-		return err
-	}
-	g.hasSitemap = true
-	return nil
 }
 
 func (g *generator) writeRobots() error {
