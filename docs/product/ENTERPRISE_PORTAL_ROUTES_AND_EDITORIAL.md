@@ -23,6 +23,9 @@ labelled synthetic data and is not part of the landing build or `dist/`.
 | `/curiosidades/` | Approved deterministic data questions | indexable | ESP-04 metrics; official-record questions remain blocked by ESP-11 |
 | `/dados/` | Bounded CSV downloads and download manifest | indexable | Latest ESP-03/04 snapshot |
 | `/metodologia/` | Sources, dates, clocks, methods, rights and corrections | indexable | Source admission register + metrics definitions |
+| `/forum/` | Editorial forum hub: latest posts and categories (SEO-12) | indexable while at least one editorial post is published | Forum editorial web projection (B-BR-SEO-08) |
+| `/forum/{categoria-slug}/` | Category hub with its editorial posts | indexable while the category has a published editorial post; no page for empty categories | Forum editorial web projection |
+| `/forum/{categoria-slug}/{titulo-slug}-{id8}/` | One editorial post | indexable while published and visible; otherwise absent (404) | Forum editorial web projection |
 | `/404.html` | Unknown route or unknown station UUID | noindex | none |
 
 `/postos/{uuid}/` is the only canonical station identity route. Slugs, CNPJ,
@@ -82,7 +85,7 @@ A synthetic 6,000-station scale test measured a 2,000-station SP shard at
 70,029; the regional design is selected. Real-scale measurement remains OWED
 while the real edition is blocked by ESP-07.
 
-## Search-engine contract (SEO-01–SEO-07)
+## Search-engine contract (SEO-01–SEO-08, SEO-12)
 
 Owner decisions D-SEO-01..09 were accepted on 2026-11-14 in the
 [SEO growth plan](../planning/SEO_GROWTH_PLAN.md). The generator applies them
@@ -138,6 +141,56 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   stations in its city. The link-graph verifier enforces these invariants plus
   self-canonical sitemap URLs and no link to a missing route (landing routes
   are an explicit allowlist).
+- **B-BR-SEO-08 Web forum, editorial posts only (SEO-12, D-SEO-06).**
+  - *Input.* The export snapshot carries only `PUBLISHED`, `VISIBLE`
+    `EDITORIAL` posts whose source is an Abastevo editorial source (kind
+    `ABASTEVO`) with approved rights and publication enabled, read through the
+    forum module's own export port inside the export's read-only transaction,
+    and only while the forum read switch (`ANPFUEL_FORUM_ENABLED`) is on. News,
+    bulletins, user topics and comments never enter it (UGC waits for SEO-13).
+    Public fields only: id, category (code, name, description), title,
+    introduction, body, first publication and update instants, coarse region
+    (UF, IBGE), fuel, station id and the source display name. A post whose
+    public text holds a CPF-shaped token stays out of the snapshot and is
+    counted, because the portal privacy check would otherwise refuse the whole
+    release. The posts are a snapshot file, so any published-post change also
+    changes the export content hash.
+  - *Routes.* `/forum/`, `/forum/{categoria}/` (slug of the category name;
+    no page for an empty category) and `/forum/{categoria}/{titulo}-{id8}/`:
+    the title slug (B-BR-SEO-03 rules, at most 80 characters cut at a `-`)
+    plus the first 8 hex characters of the post id; a route still colliding in
+    a build uses the full id. A title edit moves the route; nothing is indexed
+    yet, so no redirect is kept.
+  - *Body.* Rendered with the Android rules: blocks split on blank lines; a
+    block whose non-blank lines all start with `- ` is a bullet list; a
+    single-line block of at most 80 UTF-16 units not ending in `.:;,!?…` is a
+    subheading; anything else is a paragraph keeping its line breaks. Text is
+    always escaped: no HTML, Markdown or clickable links from the body.
+  - *Post page.* H1 title, first publication and update dates (day in
+    America/Sao_Paulo), “Equipe abastevo” attribution linking `/sobre/` when
+    the landing shares the build, links to the state and city price pages,
+    the fuel hub and the station page only when those pages exist in the same
+    build, “Outras publicações” (same-category ring, same region, then a ring
+    over all posts, so every post receives links from other posts) and the
+    category list. Head: `og:type` `article` with published/modified times;
+    JSON-LD `DiscussionForumPosting` (headline, an excerpt of the visible body
+    as text, datePublished, dateModified, author Organization “Equipe
+    abastevo” with `{site}/sobre/`, url, isPartOf the `/forum/` hub) plus the
+    breadcrumb Início › Fórum › Categoria › Post. Hubs carry `CollectionPage`
+    + `ItemList`.
+  - *Indexing and links.* Every forum page is indexable while it exists and is
+    listed in the `forum` sitemap family; lastmod is the newest update day of
+    the page's posts. State and city price pages show “No fórum” with up to 3
+    posts of the same region (city: same municipality first, then statewide
+    posts of its UF); `/precos/` lists the 3 latest posts and their
+    categories; the portal hubs, header and footer link `/forum/`. Official-
+    only builds have no forum.
+  - *Withdrawal and latency.* A hidden, removed or rejected post, or one whose
+    source loses rights, leaves the next export, so the next release has no
+    page (404) and no sitemap entry. The export reconcile job (every 6 h)
+    compares a fingerprint of the exported fields with the export state and
+    enqueues a build; the build enqueues a portal refresh. Worst-case latency
+    is about 6 h plus build and generation time.
 
 ## Page fields (public allowlist)
 
@@ -201,7 +254,8 @@ as follows; tests in `portalgen` prove each rule on fixtures.
 ## Navigation and accessibility
 
 - Portal header: `Consultar`, `Preços`, `Metodologia`, `Fiscalização` (gated),
-  plus a link back to the Abastevo app/landing.
+  `Fórum` (only when the build has editorial posts), plus a link back to the
+  Abastevo app/landing.
 - Semantic landmarks, one `<h1>`, skip link, table captions/headers, visible
   focus, keyboard operation, 200% zoom/large font, AA contrast, print styles.
 - Mobile-first responsive layout at the existing 48rem/64rem breakpoints.

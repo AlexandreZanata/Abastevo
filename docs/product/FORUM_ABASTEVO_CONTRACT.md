@@ -146,6 +146,15 @@ deferred extensions. Their absence is not a reason to delay editorial reading.
   unbounded backlog. New replies are offered behind a "new replies" control
   instead of moving the list under the reader. The stream follows the read
   switch and never replaces the paginated reads.
+- **B-BR-FOR-19 — Web projection (SEO-12).** While the read switch is on, the
+  enterprise export reads published, visible `EDITORIAL` posts of an approved,
+  publication-enabled Abastevo editorial source through a forum-owned export
+  port (public projection fields only, never author or account data) and the
+  static portal renders them under `/forum/`
+  ([B-BR-SEO-08](ENTERPRISE_PORTAL_ROUTES_AND_EDITORIAL.md#search-engine-contract-seo-01seo-08-seo-12)).
+  The web body follows the Android formatting rules and stays plain escaped
+  text. Hidden, removed and rejected posts leave the next export and release.
+  News, bulletins, topics and comments are not projected until SEO-13.
 
 ## Use cases and observable acceptance
 
