@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 The [expense and finance specification](../modules/expenses-finance.md) records the recovered design. This recovery preserves the approved and documented one-cost rule, scoped review, synthetic fixtures and the separation of accounting records from actual payment.
 
 ### EMP-APPR-001 — Review lifecycle component: submit, approve, return, reject, no self-approval
-- **Meta:** module APPR · phase F3 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module APPR · phase F3 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Share a revision-bound review lifecycle with an explicit separation-of-duties guard.
 - **Rules and use cases:** BR-REV-001, BR-REV-002, BR-REV-003, BR-REV-004, BR-REV-005, BR-REV-006, BR-REV-007, BR-REV-009, EDR-012
 - **Depends on:** EMP-AUTH-003, EMP-PLAT-003
@@ -27,6 +27,13 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Validation:** V-DOM, V-AUTHZ · migration: none in this task · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F3 pure review lifecycle](../evidence/f3-appr001-review-lifecycle.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Go `review/domain` and the
+Kotlin `enterprise.review` mirror pass the same 232-case review-v1 oracle:
+C1 transitions, revision binding, append-only return loop, bounded reasons,
+canonical no self-approval, permission at receipt and honest local
+presentation. Persistence, routes, panel/app, levels and amounts remain open.
 
 ### EMP-APPR-002 — Approval policies: thresholds, levels and routing by scope
 - **Meta:** module APPR · phase F3 · cut - · priority P1 · type API · size M · state TODO

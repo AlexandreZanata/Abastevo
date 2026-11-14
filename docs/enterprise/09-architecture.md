@@ -21,6 +21,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `orgaccess` (AUTH-001/002/003/004 LOCAL_DONE) | AUTH | Code-frozen descriptors; forced-RLS ORG/SELF periods, current candidates and locked membership/owner policy; current request authorization and proof-bound context; production route composition remains owning-task work | `kernel`, owned sqlc/pgx ports, scoped membership/organization/account/billing references |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |
+| `orgamend` (LOCAL_DONE, domain only) | PLAT | Append-only amendment, void and locked-period adjustment decisions (BR-AMD) | `orgaudit` reason bound; server-side amendment-v1 vectors; consumers own persistence and recalculation |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
 | `orgevent` (LOCAL_DONE, foundation) | PLAT | Transactional follow-up intents and consumer receipts | `orgaudit` application runner; scoped transactions; existing PostgreSQL job queue and dispatcher; source-owned catalogs/effects |
 | `orgcapability` (LOCAL_DONE) | PLAT | Registered organization capability state and audited activation | `orgaudit` application port, `kernel`, scoped transaction helper; AUTH authority port |
@@ -31,7 +32,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `tracking` (proposed) | GPS, ROUTE | Tracking sessions, track segments, live position, geofences, route plans | `trip` |
 | `fueling` (pure domain LOCAL_DONE; runtime pending) | FUEL | Owned nine-product catalog, exact submit-ready candidates and purchased totals; intake/review/consumption remain their owning tasks | Pure `fleet` refs, accepted time/value kernels; future explicit `metrics`, `directory`/`official`/`community` read ports |
 | `document` (proposed) | DOC | Documents, extractions, fiscal documents, links, allocations | storage port; `kernel` CNPJ type (existing) |
-| `review` (proposed) | APPR | Review cases, approval policies, periods | `orgaccess` |
+| `review` (pure C1 lifecycle LOCAL_DONE; persistence, policies and periods proposed) | APPR | Review cases, approval policies, periods | `orgaccess`; shared Go/Kotlin review-v1 vectors |
 | `expense` (proposed) | EXP, FIN | Expenses, allocations, payables, payments, advances | `review`, `fueling`, `document` |
 | `budget` (proposed) | BUDG | Budgets, lines, holds | `expense` |
 | `maintenance` (proposed) | MAINT, CHECK | Checklists, incidents, plans, work orders, compliance items | `fleet`, `review`, `expense` |

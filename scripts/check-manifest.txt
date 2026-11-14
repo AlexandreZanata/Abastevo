@@ -26,6 +26,7 @@ backend/internal/modules/fleet/application
 backend/internal/modules/fleet/adapters
 backend/internal/modules/fleet/adapters/http
 backend/internal/modules/fueling/domain
+backend/internal/modules/review/domain
 backend/internal/modules/organization/domain
 backend/internal/modules/organization/application
 backend/internal/modules/organization/adapters

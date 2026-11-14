@@ -162,3 +162,17 @@ BUC-EMP-98..99 and EDR-137/138 moved verbatim to the contract and decisions.
 Added to the quick manifest. Retained: review binding (APPR-001), period
 commands (APPR-006), consumer persistence/recalculation (FUEL-015 and others),
 reporting-day moves across periods, runtime VAL-19/20/26.
+
+### EMP-APPR-001 — review lifecycle component: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-appr001-review-lifecycle.md). Pure Go `review/domain` and Kotlin
+`enterprise.review` share the 232-case `review-v1.psv` oracle (states,
+commands, apply, replay, presentation). RED: Go 7/9 top-level and 230/230
+subtests, Kotlin 237/238 failing against compiled stubs → GREEN: Go 9/232
+under `-race` (100% statements), Kotlin 240 review tests and the whole
+enterprise domain suite 1591/0 failures/0 skips (re-run on this branch).
+B-BR-EMP-175..179, BUC-EMP-92..93, EDR-128..130 moved to the canonical docs;
+suite added to the quick manifest. Retained: owner embedding, persistence of
+cases/history, receipt-time authority and audit, wire-code mapping, real
+PostgreSQL concurrency, levels/partial amounts (APPR-002/004), period lock
+(APPR-006), panel/app.

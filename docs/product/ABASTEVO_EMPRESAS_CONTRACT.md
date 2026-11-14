@@ -2789,3 +2789,76 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   later writable day, adjustment refused in a writable record period, a locked
   posting period or an earlier posting day, approval refused after a relock,
   unknown period and review tokens, and every derived-data marker.
+
+## EMP-APPR-001 — Review lifecycle component (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-appr001-review-lifecycle.md).
+
+- **B-BR-EMP-175 — Keep one closed single-level review lifecycle.**
+  review-v1 owns exactly DRAFT, SUBMITTED, IN_REVIEW, APPROVED, RETURNED,
+  REJECTED and CANCELLED, and the commands SUBMIT, CANCEL, RESUBMIT (author)
+  and OPEN, APPROVE, RETURN, REJECT (reviewer). Allowed transitions are the
+  BR-REV diagram for one C1 level: DRAFT to SUBMITTED or CANCELLED, SUBMITTED
+  to IN_REVIEW or CANCELLED, IN_REVIEW to APPROVED, RETURNED or REJECTED, and
+  RETURNED to SUBMITTED or CANCELLED. A decision is accepted only from
+  IN_REVIEW. APPROVED, REJECTED and CANCELLED refuse every command. Any other
+  pair is INVALID_TRANSITION. Tokens are exact uppercase; unknown, padded,
+  lowercase, sync (SAVED_ON_DEVICE, ACCEPTED), local (READY_TO_SEND),
+  approval-step (PENDING) or owner-extension (VOIDED) tokens are INVALID. A
+  case starts as DRAFT revision 1 and is the fold of its history. Levels,
+  partial amounts, substitutes, period locks, amendments and void stay with
+  their owners.
+- **B-BR-EMP-176 — Bind every command to the current revision, append-only.**
+  Each command names a positive revision. A revision different from the
+  case's current one is CONFLICT and yields no new case; the input case is
+  unchanged. RESUBMIT names the RETURNED revision n and creates revision n+1;
+  no other command changes the revision. Every accepted command appends one
+  entry (command, resulting revision, resulting state, exact reason); earlier
+  entries, including the decision on revision n and its reason, are never
+  changed or removed. Replaying a stored history starts from DRAFT revision 1
+  and must reproduce every entry exactly. An unreachable state, a skipped
+  OPEN, a wrong revision or state label, or a reason breaking the reason rule
+  is INVALID, so APPROVED cannot be restored without its server path.
+- **B-BR-EMP-177 — Decide only with current permission and independence.**
+  Every command receives server facts at receipt: the actor, the record
+  author and an optional beneficiary as canonical person identities (sets of
+  canonical lowercase non-nil account, membership and employee UUIDs, at
+  least one, already resolved through the actual employee merge chain), plus
+  the permission fact from the server authority port. An absent or false
+  permission is FORBIDDEN. An author command whose actor shares no identifier
+  with the author is FORBIDDEN. A reviewer command, OPEN included, whose actor
+  shares any identifier of any kind with the author or the beneficiary is
+  SELF_APPROVAL, whatever role or permission that person holds. The first
+  failure wins in the order INVALID, REASON_REQUIRED, FORBIDDEN,
+  SELF_APPROVAL, CONFLICT, INVALID_TRANSITION.
+- **B-BR-EMP-178 — Require a bounded reason to return or reject.**
+  RETURN and REJECT require a reason; APPROVE and CANCEL accept an optional
+  one; SUBMIT, RESUBMIT and OPEN carry none. Reasons reuse the existing
+  private 280-Unicode-scalar control-free rule of B-BR-EMP-163 and are
+  preserved exactly, including surrounding spaces. An empty or
+  whitespace-only reason is REASON_REQUIRED when required and INVALID when
+  optional or not accepted. Invalid UTF-8, any control scalar or more than
+  280 scalars is INVALID.
+- **B-BR-EMP-179 — Never present local readiness as a server review state.**
+  The review state shown to a person comes only from a server-confirmed
+  case. Without one, the record shows DRAFT, not server-confirmed, and
+  "ready to send" only for a pending local SUBMIT. With one, it shows that
+  server state and flags any pending local author command as ready to send
+  without advancing it. A local OPEN, APPROVE, RETURN or REJECT, or a local
+  RESUBMIT or CANCEL without a server case, is INVALID: decisions are
+  online-only and a device never holds SUBMITTED or APPROVED by itself. The
+  BR-REV-009 counting basis is COUNTED for APPROVED, PENDING for SUBMITTED
+  and IN_REVIEW (labelled as pending wherever included) and EXCLUDED for
+  DRAFT, RETURNED, REJECTED and CANCELLED.
+- **BUC-EMP-92 — Prove the lifecycle, revisions and reasons.**
+  Shared Go/Kotlin review-v1 vectors cover every token, every allowed and
+  every refused state/command pair (all seven commands from each terminal
+  state), the return loop to revisions 2 and 3 with retained history, stale
+  and future revisions, replay of valid and forged histories, and required,
+  blank, over-bound, control and multi-byte reasons.
+- **BUC-EMP-93 — Prove independence, permission and honest presentation.**
+  Vectors cover the author or the beneficiary deciding (sharing only an
+  account, only a membership or only a canonical employee), an author who
+  holds the review permission, absent or false permission, author commands by
+  someone else, malformed identities, the first-failure order and local
+  readiness that is never presented as SUBMITTED or APPROVED.
