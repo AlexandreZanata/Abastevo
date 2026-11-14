@@ -217,4 +217,3 @@ mechanically. Further exact proposals:
    (cd backend && go test -race ./internal/modules/expense/domain -count=1)
    ```
    ````
-

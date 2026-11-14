@@ -154,4 +154,3 @@ parser and does not import or duplicate `orgamend` (EMP-PLAT-016).
 5. `docs/enterprise/09-architecture.md` module table: the `review` row may
    note that the pure C1 lifecycle exists in `review/domain` (persistence,
    policies and periods still proposed).
-

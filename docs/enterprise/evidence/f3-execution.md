@@ -176,3 +176,20 @@ suite added to the quick manifest. Retained: owner embedding, persistence of
 cases/history, receipt-time authority and audit, wire-code mapping, real
 PostgreSQL concurrency, levels/partial amounts (APPR-002/004), period lock
 (APPR-006), panel/app.
+
+### EMP-EXP-001 — expense domain: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-exp001-expense-domain.md), commit `0afb1329`. Pure Go
+`expense/domain` and Kotlin `enterprise.expense` share the 222-case
+`expense-v1.psv` oracle: closed cost origins (FUELING, WORK_ORDER, DIRECT;
+settlement/evidence/stock kinds refused), exact paid/company centavos without
+a false zero, structural category key, competence reporting day and
+approved-versus-pending totals that fail closed. A receipt-free
+`AttributeReportingDay` is extracted from the time kernel and reused by
+Capture unchanged (EDR-094 precedent). RED: Go 222/222 vectors and 14/15
+top-level, Kotlin 236/237 failing → GREEN: Go 15+8 top-level / 222+99 cases
+under `-race` (100% statements), affected time-kernel consumers green;
+Kotlin enterprise suite 1829/0/0 on this branch. B-BR-EMP-180..184,
+BUC-EMP-94..95, EDR-131..133 moved to canonical docs. Retained: persistence,
+uniqueness and fueling projection (EXP-002, VAL-13), binding `ReviewState` to
+the integrated `review` vocabulary, categories (EXP-003), allocation (EXP-006).
