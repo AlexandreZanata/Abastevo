@@ -92,7 +92,7 @@ B-BR-EMP-115..122, BUC-EMP-58..60 and EDR-076..080 precede behavior. Extend
 the accepted protected store with typed atomic local operation/ACK projection,
 exact source-attempt leases, actual signed retry and opaque WorkManager jobs;
 retain legacy work unsent and keep missing real producers closed.
-Eight checkpoints are now local;56 audited nodes remain open. OFFL-003 passes
+Nine checkpoints are now local;55 audited nodes remain open. OFFL-003 passes
 consolidated182 host cases,15 final application cases after two new REDs and
 seven affected ViewModel tests. All four final API36 native methods pass:
 actual two-account key-prefix isolation, proof redaction, independent two-org
@@ -107,8 +107,11 @@ EMP-OFFL-004 is LOCAL_DONE / INTEGRATION_PENDING: [truthful status/pending UI](f
 B-BR-EMP-123..130, BUC-EMP-61..64 and EDR-082..086 precede behavior.
 Host/strict receipt/concurrency cases, native V1/V2 recovery, all11 current
 presentation/context regressions and actual ordinary Hilt/OS execution pass.
-Build/full affected lint and final reviews pass. Next: EMP-METER-001, the pure
-meter/reading dependency, before actual fleet/meter persistence.
+Build/full affected lint and final reviews pass. EMP-METER-001 is LOCAL_DONE / INTEGRATION_PENDING:
+[pure meter/reading evidence](f2-meter001-reading-domain.md). Shared261 cases
+pass both languages, Go race/static and Kotlin941 enterprise regression pass;
+final source/loader reviews are clear. Next: EMP-FUEL-001, whose actual owned
+product catalog is required before runtime fleet/meter persistence.
 Missing real feature/history/review/admission producers remain closed;
 no production no-op handler or F4 exception substitutes for those integrations.
 Use phase tracker215 and cumulative PR203, without an intermediate PR or

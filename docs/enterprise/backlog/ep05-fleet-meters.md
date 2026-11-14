@@ -214,7 +214,7 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Done when:** The state tests pass and the picker returns an asset to a calling screen with no network.
 
 ### EMP-METER-001 — Meter and reading domain: append-only evidence, sources and corrections
-- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Model a meter reading as evidence with origin, instant, author and a supersession chain, so that no part of the product can treat a meter value as one overwritable number.
 - **Rules and use cases:** BR-METER-001, BR-METER-002, BR-METER-003, BR-METER-004, BR-METER-005, BR-METER-006, BR-METER-007, BR-METER-008, BR-METER-013, BR-METER-014, BR-METER-021, BR-METER-022, BR-METER-023, BR-METER-024, UC-METER-01
 - **Depends on:** EMP-FLEET-001
@@ -228,6 +228,11 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Validation:** V-DOM, V-MONEY · migration: none · rollback: revert the change; no data is involved
 - **Risks and assumptions:** Building segments into the first model costs little now and avoids a data migration when replacement arrives.
 - **Done when:** Both languages pass the shared meter vectors.
+
+[F2 meter domain construction](../evidence/f2-meter001-reading-domain.md)
+is LOCAL_DONE / INTEGRATION_PENDING from tested/published OFFL-004 ea42ef9d. B-BR-EMP-131..136,
+BUC-EMP-65..68 and EDR-087..090 precede behavior; persistence, plausibility
+and meter replacement remain their owning tasks.
 
 ### EMP-METER-002 — Meter persistence and reading intake
 - **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DB · size M · state TODO

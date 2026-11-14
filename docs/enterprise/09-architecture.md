@@ -26,7 +26,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `orgcapability` (LOCAL_DONE) | PLAT | Registered organization capability state and audited activation | `orgaudit` application port, `kernel`, scoped transaction helper; AUTH authority port |
 | `orgmedia` (LOCAL_DONE) | PLAT | Bounded private originals and member-bound access | Existing S3/HMAC/JPEG primitives; `orgaudit` application port; AUTH/DOC authority and metadata ports |
 | `orgsync` (proposed) | OFFL | Operation intake, acknowledgements, review items, reference feed | `orgaccess`; handlers registered by each module |
-| `fleet` (proposed) | FLEET, METER | Assets, tanks, meters, readings, assignments, reservations, suppliers | `organization`, `membership` |
+| `fleet` (pure asset/meter domains LOCAL_DONE; runtime pending) | FLEET, METER | Scoped asset/tank values; exact meter/reading evidence under EMP-METER-001; persistence, assignments, reservations and suppliers remain their owning tasks | `kernel`, accepted time/value domains; future explicit `organization`/`membership` ports |
 | `trip` (proposed) | TRIP | Missions, trips, stops, logbook | `fleet`, `review` |
 | `tracking` (proposed) | GPS, ROUTE | Tracking sessions, track segments, live position, geofences, route plans | `trip` |
 | `fueling` (proposed) | FUEL | Fuelings, consumption intervals, price reference snapshots | `fleet`, `metrics` (existing engine), `directory`/`official`/`community` (read) |

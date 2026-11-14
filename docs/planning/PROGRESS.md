@@ -4,12 +4,12 @@
   [F3 sequence](../enterprise/evidence/f3-authorized-sequence.md) records the
   requested scope/M3 entry and exit. The maintainer reiterates overnight autonomy:
   choose recommended routine decisions, record them, and ask no questions.
-  F3 is queued; next bounded implementation task is EMP-METER-001.
+  F3 is queued; next bounded implementation task is EMP-FUEL-001.
 - Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2`
   from published dev `fac002e7`; verified main `6a19bcc7` remains an ancestor.
   [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
   all34 F2 tasks,25 transitive prerequisites and the additional formal M1 chain.
-  Eight checkpoints are LOCAL_DONE / INTEGRATION_PENDING;56 audited nodes remain.
+  Nine checkpoints are LOCAL_DONE / INTEGRATION_PENDING;55 audited nodes remain.
   Completed: FLEET-001(2daea515), OFFL-001(1cc9a7b3), AUTH-009(4743e0b9),
   ORG-014(efd7e886), PRIV-003(51c25146), OFFL-002(d24b0d4f), and
   [OFFL-003 protected queue](../enterprise/evidence/f2-offl003-protected-operation-queue.md).
@@ -32,7 +32,14 @@
   Normal/isolated builds and full app/DATA lint pass with zero errors; eight
   catalogs have75 identical keys. Final31-file manifest pins tested behavior.
   Runtime feature/upload producers remain closed until their actual tasks.
-  Next: EMP-METER-001 pure meter/reading domain; then remaining F2 dependencies.
+  OFFL-004 ea42ef9d is backed up at origin/codex/enterprise-f2.
+  [EMP-METER-001 pure reading domain](../enterprise/evidence/f2-meter001-reading-domain.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. B-BR-EMP-131..136, BUC-EMP-65..68 and
+  EDR-087..090 precede behavior. Shared261 cases, Go race314 test nodes and
+  Kotlin941 enterprise cases pass; scoped meter coverage95.89% instructions.
+  Real time/list/API defects receive RED→GREEN; no remaining peer-review blocker.
+  Next: EMP-FUEL-001, actual owned catalog/pure fueling prerequisite for runtime
+  fleet persistence. Full F3 remains queued beyond C1/F2 dependency closure.
   The user authorizes only the owned API36 emulator while the phone is
   disconnected; preserve other devices/apps/data.
   PR203 dev still contains the earlier batch. Final phase delivery uses protected

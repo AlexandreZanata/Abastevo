@@ -2124,3 +2124,74 @@ the owning business producers and OFFL-004 pending screen remain separate work.
   offline/manual-wait/receipt states and storage warning with meaningful
   Compose/ViewModel cases plus the owned API36 emulator. Validate normal DI,
   complete affected lint/locales and that no test producer enters product.
+
+
+## Enterprise meter evidence (EMP-METER-001)
+
+- **B-BR-EMP-131 — Preserve exact typed meter values.**
+  ODOMETER uses metres in0..1000000000000 and HOUR_METER uses seconds in
+  0..3600000000. A supplied positive int64 modulus further requires a value
+  strictly below it. Canonical domain input uses ASCII digits and a dot,
+  no sign/exponent/grouping/whitespace or redundant leading integer zero.
+  Kilometres allow at most three fractional digits; hours at most two.
+  Convert exactly without rounding. Hours-and-minutes uses separate canonical
+  whole-hour and0..59 minute inputs, rather than an invented localized grammar.
+  Missing observation carries a nonblank reason and remains distinct from zero.
+- **B-BR-EMP-132 — Retain organization-bound evidence.**
+  A meter/segment/reading and its asset, author membership, device, operation
+  and optional photo references belong to the same supplied organization scope.
+  Retain strict nonzero canonical identifiers, known kind/origin/method and
+  validated declared instant, zone, offset and server receipt. These values
+  do not authenticate an author, grant access or confirm a document upload.
+  Reuse the accepted exact time kernel; no device clock acquisition. The
+  reading does not own reporting-day fields: validate its time snapshot using
+  UTC solely as the kernel validation calendar, without treating a device
+  entry zone as the organization reporting zone or persisting that choice.
+- **B-BR-EMP-133 — Derive deterministic current evidence.**
+  Order by occurred_at, received_at, then canonical reading identifier.
+  The latest reading is the latest VALID nonvoid/non-superseded observation
+  in its exact meter and segment at or before the requested instant.
+  Keep equal observations from different operation IDs. Reject duplicate
+  evidence IDs and same-meter operation replay as a new fact. One parent
+  operation may carry observations of different meter kinds. Supplied SUSPECT state is
+  excluded, without implementing the future plausibility/confirmation policy.
+- **B-BR-EMP-134 — Append corrections without rewriting observations.**
+  Preserve original immutable reading evidence; append reason-bearing void or
+  supersession facts. Void is terminal and each target is superseded at most
+  once. A replacement has a fresh identity and the same owning scope, asset,
+  meter, segment and kind; no cycle, duplicate ID, foreign link or second
+  correction of a voided target. One fresh logical correction operation owns
+  both its fresh replacement reading and its fresh supersession fact; those
+  two parts share that operation ID. Reusing it for a separate later action
+  is refused. A void similarly owns a fresh operation and fact. Reasons and
+  missing-observation text follow the existing nonblank280-character metadata
+  profile, without controls or invalid Unicode. Correction chains may continue through their
+  distinct current replacements. Pure transitions grant no correction authority.
+- **B-BR-EMP-135 — Keep usage within one real segment and kind.**
+  Usage retains both actual latest-valid anchors at the requested endpoints
+  and their exact difference, never interpolation. A missing anchor yields
+  INSUFFICIENT_DATA/NO_READING_BEFORE rather than zero. Reject foreign/mixed
+  meter, segment or kind subtraction and decreasing valid anchors. Odometer
+  and hour-meter results remain independent. Reset, replacement, rollover,
+  multiple segments and recalculation/persistence belong to later tasks.
+- **B-BR-EMP-136 — Keep this checkpoint pure and bounded.**
+  The first model includes one open segment per meter with observed opening
+  evidence. The caller's supplied VALID/SUSPECT classification is not an
+  automatic intake verdict. No route, database, runtime producer, fake meter
+  presence, new dependency or guessed origin-method policy is introduced.
+- **BUC-EMP-65 — Prove exact conversion and absence.**
+  Shared Go/Kotlin vectors cover both documented conversions, zero, boundaries,
+  modulus, excessive precision, malformed/overflow input and explicit missing.
+- **BUC-EMP-66 — Prove immutable evidence and transitions.**
+  Cover author/time/reference failures, all known origin/method values, duplicate
+  identities/operations, supplied suspect exclusion, reason requirements,
+  terminal void, one supersession, correction chains and original preservation.
+- **BUC-EMP-67 — Prove deterministic series and usage.**
+  Exercise all ordering ties/permutations, actual anchor selection, before-first
+  insufficient data, foreign/mixed kinds/segments and worked examples B/E.
+  Latest-valid must never return a voided or superseded observation.
+- **BUC-EMP-68 — Keep both implementations conformant.**
+  Strictly load one versioned shared corpus, detect unknown/missing/duplicate
+  cases and compare exact results in Go and Kotlin. Run focused domain race,
+  static/format and JVM regressions. No native/SQL acceptance is inferred from
+  this pure-domain checkpoint.

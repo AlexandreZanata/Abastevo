@@ -19,6 +19,7 @@ backend/internal/modules/orgvalue/domain
 backend/internal/modules/orgtime/domain
 backend/internal/modules/orgsync/protocol
 backend/internal/modules/fleet/domain
+backend/internal/modules/fleet/domain/meter
 backend/internal/modules/organization/domain
 backend/internal/modules/organization/application
 backend/internal/modules/organization/adapters
