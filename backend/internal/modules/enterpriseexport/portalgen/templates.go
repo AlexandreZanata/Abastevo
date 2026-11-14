@@ -6,19 +6,31 @@ const templates = `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="{{if .Indexable}}index,follow{{else}}noindex,nofollow{{end}}">
-  <title>{{.Title}} | abastevo</title>
+  <meta name="robots" content="{{.Robots}}">
+  <title>{{.HeadTitle}}</title>
   <meta name="description" content="{{.Description}}">
-  {{if .CSSURL}}<link rel="stylesheet" href="{{.CSSURL}}">{{end}}
+  {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="abastevo">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:url" content="{{.Canonical}}">
+  <meta property="og:title" content="{{.HeadTitle}}">
+  <meta property="og:description" content="{{.Description}}">
+  <meta property="og:image" content="{{.OGImage}}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{.HeadTitle}}">
+  <meta name="twitter:description" content="{{.Description}}">
+  <meta name="twitter:image" content="{{.OGImage}}">
+  {{end}}  {{if .CSSURL}}<link rel="stylesheet" href="{{.CSSURL}}">{{end}}
 </head>
 <body>
   <a class="skip" href="#conteudo">Pular para o conteúdo</a>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="{{if .Landing}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
+      <a class="brand" href="{{if .HasLanding}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
       <nav class="topnav" aria-label="Navegação principal">
         {{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar</a>{{end}}
-        {{if .Landing}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
+        {{if .HasLanding}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
         <a href="{{.Landing}}/como-usar/">Como usar</a>
         <a href="{{.Landing}}/guias/">Guias</a>{{else}}<a href="/metodologia/">Metodologia</a>{{end}}
       </nav>
@@ -32,7 +44,7 @@ const templates = `
             <a href="/precos/">Preços</a>
             <a href="/fiscalizacao/">Fiscalização</a>{{end}}
             <a href="/metodologia/">Metodologia</a>
-            {{if .Landing}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
+            {{if .HasLanding}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
             <a href="{{.Landing}}/como-usar/">Como usar</a>
             <a href="{{.Landing}}/guias/">Guias</a>{{end}}
           </nav>
@@ -60,15 +72,15 @@ const templates = `
   <footer class="footer">
     <div class="wrap">
       <div class="footer-top">
-        <a class="brand" href="{{if .Landing}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
+        <a class="brand" href="{{if .HasLanding}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
         <p class="footer-tagline">Projeto aberto e independente, sem afiliação à ANP ou a qualquer governo. Preços da comunidade e a referência semanal da ANP andam separados, sempre com fonte e data.</p>
       </div>
       <div class="footer-cols">
         <nav aria-label="Produto"><h2>Produto</h2>{{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a><a href="/fiscalizacao/">Fiscalização</a>{{end}}<a href="/metodologia/">Metodologia</a></nav>
         {{if .OfficialOnly}}{{else}}<nav aria-label="Dados"><h2>Dados</h2><a href="/precos/">Preços</a><a href="/dados/">Baixar dados públicos</a><a href="/curiosidades/">Perguntas aprovadas</a></nav>{{end}}
-        {{if .Landing}}<nav aria-label="Aprender"><h2>Aprender</h2><a href="{{.Landing}}/como-usar/">Como usar</a><a href="{{.Landing}}/guias/">Guias</a><a href="{{.Landing}}/#aplicativo">Aplicativo</a></nav>{{end}}
+        {{if .HasLanding}}<nav aria-label="Aprender"><h2>Aprender</h2><a href="{{.Landing}}/como-usar/">Como usar</a><a href="{{.Landing}}/guias/">Guias</a><a href="{{.Landing}}/#aplicativo">Aplicativo</a></nav>{{end}}
         <nav aria-label="Projeto"><h2>Projeto</h2><a href="https://github.com/AlexandreZanata/abastevo">GitHub</a><a href="https://github.com/AlexandreZanata/abastevo/issues">Contato</a><a href="https://github.com/AlexandreZanata/abastevo/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
-        {{if .Landing}}<nav aria-label="Privacidade"><h2>Privacidade</h2><a href="{{.Landing}}/privacidade/">Privacidade</a><a href="{{.Landing}}/excluir-conta/">Excluir conta</a><a href="{{.Landing}}/termos/">Termos</a></nav>{{end}}
+        {{if .HasLanding}}<nav aria-label="Privacidade"><h2>Privacidade</h2><a href="{{.Landing}}/privacidade/">Privacidade</a><a href="{{.Landing}}/excluir-conta/">Excluir conta</a><a href="{{.Landing}}/termos/">Termos</a></nav>{{end}}
       </div>
       <div class="footer-legal">
         {{if .OfficialOnly}}
@@ -204,6 +216,7 @@ const templates = `
 {{define "station"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
   <h1>{{.Station.Name}}</h1>
+  {{if .Station.Registry}}<p class="station-legal-name muted">Nome no cadastro da ANP: {{.Station.Registry}}</p>{{end}}
   {{if .Station.LegalName}}<p class="station-legal-name muted">{{.Station.LegalName}}</p>{{end}}
   <p class="lead">{{.Station.Place}} · {{.Station.CNPJ}} · <span class="status">{{.Station.Status}}</span></p>
   <div class="grid summary-grid">
@@ -212,7 +225,7 @@ const templates = `
       <p>{{if .Station.Address}}{{.Station.Address}}{{else}}Endereço não informado{{end}}</p>
       <p class="muted">{{.Station.Location}}. Coordenadas não são exibidas nesta versão.</p>
       <p class="muted">Identificador canônico: {{.Station.ID}}</p>
-      {{if .Station.MunicipalityHref}}<p><a href="{{.Station.MunicipalityHref}}">{{.Station.Municipality}}</a></p>{{else if .Station.StateHref}}<p><a href="{{.Station.StateHref}}">Resumo do estado</a></p>{{end}}
+      {{if .Station.MunicipalityHref}}<p><a href="{{.Station.MunicipalityHref}}">Preços de combustíveis em {{.Station.Municipality}}</a></p>{{else if .Station.StateHref}}<p><a href="{{.Station.StateHref}}">Preços de combustíveis em {{.Station.StateName}}</a></p>{{end}}
       <p class="muted">O status é informado pela fonte; não é um score de qualidade, confiança ou segurança.</p>
     </section>
     <section class="card">

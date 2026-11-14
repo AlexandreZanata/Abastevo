@@ -98,8 +98,10 @@ func TestVerifyNoindexArtifactAndSitemap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if verified.SitemapURLs != 16 {
-		t.Fatalf("sitemap URLs = %d, want 16", verified.SitemapURLs)
+	// 5 hubs, 2 states, 2 cities and the one station that passes the
+	// D-SEO-02 gate (recent official price and complete address).
+	if verified.SitemapURLs != 10 {
+		t.Fatalf("sitemap URLs = %d, want 10", verified.SitemapURLs)
 	}
 	sitemap := readPortal(t, indexable, "sitemap.xml")
 	for _, want := range []string{
@@ -112,8 +114,15 @@ func TestVerifyNoindexArtifactAndSitemap(t *testing.T) {
 			t.Errorf("sitemap missing %q", want)
 		}
 	}
-	if strings.Contains(sitemap, "404.html") || strings.Contains(sitemap, "fiscalizacao") {
-		t.Error("sitemap lists an unavailable page")
+	if strings.Contains(sitemap, "404.html") || strings.Contains(sitemap, "fiscalizacao") || strings.Contains(sitemap, stB) {
+		t.Error("sitemap lists an unavailable or gated page")
+	}
+	if page := readPortal(t, indexable, "postos/"+stB+"/index.html"); !strings.Contains(page, `<meta name="robots" content="noindex,follow">`) {
+		t.Error("gated station is not noindex,follow")
+	}
+	if page := readPortal(t, indexable, "postos/"+stA+"/index.html"); !strings.Contains(page, `<meta name="robots" content="index,follow">`) ||
+		!strings.Contains(page, `<link rel="canonical" href="https://portal.example/postos/`+stA+`/">`) {
+		t.Error("indexable station lacks index,follow or its self canonical")
 	}
 	robots := readPortal(t, indexable, "robots.txt")
 	if !strings.Contains(robots, "Allow: /") || !strings.Contains(robots, "Sitemap: https://portal.example/sitemap.xml") {
@@ -382,18 +391,22 @@ func TestVerifyOfficialSitemapCensus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if verified.SitemapURLs != 20 {
-		t.Fatalf("official sitemap URLs = %d, want 20", verified.SitemapURLs)
+	// D-SEO-03: the fiscalização hub joins the 10 price URLs; record pages
+	// stay noindex,follow and out of the sitemap.
+	if verified.SitemapURLs != 11 {
+		t.Fatalf("official sitemap URLs = %d, want 11", verified.SitemapURLs)
 	}
 	sitemap := readPortal(t, out, "sitemap.xml")
-	for _, want := range []string{
-		"<loc>https://portal.example/fiscalizacao/</loc>",
-		"<loc>https://portal.example/fiscalizacao/registro/" + officialRecordID("f1") + "/</loc>",
-		"<loc>https://portal.example/fiscalizacao/registro/" + officialRecordID("f2") + "/</loc>",
-		"<loc>https://portal.example/fiscalizacao/registro/" + officialRecordID("f3") + "/</loc>",
-	} {
-		if !strings.Contains(sitemap, want) {
-			t.Errorf("official sitemap missing %q", want)
+	if !strings.Contains(sitemap, "<loc>https://portal.example/fiscalizacao/</loc>") {
+		t.Error("official sitemap misses the fiscalização hub")
+	}
+	for _, id := range []string{"f1", "f2", "f3"} {
+		if strings.Contains(sitemap, officialRecordID(id)) {
+			t.Errorf("official record %s is in the sitemap", id)
+		}
+		record := readPortal(t, out, "fiscalizacao/registro/"+officialRecordID(id)+"/index.html")
+		if !strings.Contains(record, `<meta name="robots" content="noindex,follow">`) {
+			t.Errorf("official record %s is not noindex,follow", id)
 		}
 	}
 	if strings.Contains(sitemap, "/fiscalizacao/pagina/") {

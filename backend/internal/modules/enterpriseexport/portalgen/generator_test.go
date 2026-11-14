@@ -468,6 +468,9 @@ func checkPortalLinks(t *testing.T, out string) {
 		}
 		for _, match := range linkPattern.FindAllStringSubmatch(string(raw), -1) {
 			target := match[1]
+			if LandingRoutes[target] {
+				continue
+			}
 			full := filepath.Join(out, strings.TrimPrefix(target, "/"))
 			if strings.HasSuffix(target, "/") {
 				full = filepath.Join(full, "index.html")

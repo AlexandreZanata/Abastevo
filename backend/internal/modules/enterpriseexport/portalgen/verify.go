@@ -75,6 +75,17 @@ var (
 	shaPrefixName         = regexp.MustCompile(`^portal\.([0-9a-f]{8})\.(css|js)$`)
 )
 
+// LandingRoutes are the same-origin landing pages a portal page may link
+// root-relatively when the landing shares the portal origin. Any other
+// root-relative link must resolve to an artifact file.
+var LandingRoutes = map[string]bool{
+	"/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,
+	"/excluir-conta/": true, "/termos/": true, "/sobre/": true, "/politica-editorial/": true,
+	"/guias/etanol-ou-gasolina/": true, "/guias/como-ler-precos/": true, "/guias/pesquisa-anp/": true,
+	"/ferramentas/": true, "/ferramentas/etanol-ou-gasolina/": true, "/ferramentas/custo-de-viagem/": true,
+	"/ferramentas/consumo-medio/": true, "/ferramentas/custo-por-km/": true, "/ferramentas/encher-o-tanque/": true,
+}
+
 type VerifyOptions struct {
 	SiteURL            string
 	CompareDir         string
@@ -784,10 +795,17 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 			if len(robots) != 2 {
 				return VerifyResult{}, fmt.Errorf("portalcheck: page lacks robots meta")
 			}
-			if string(robots[1]) == "index,follow" {
+			switch string(robots[1]) {
+			case "index,follow":
 				indexable[path] = true
-			} else if string(robots[1]) != "noindex,nofollow" {
+			case "noindex,follow", "noindex,nofollow":
+			default:
 				return VerifyResult{}, fmt.Errorf("portalcheck: unexpected robots value")
+			}
+			// D-SEO-03: official record pages and fiscalização pagination
+			// are never indexable.
+			if indexable[path] && (strings.HasPrefix(path, "fiscalizacao/registro/") || strings.HasPrefix(path, "fiscalizacao/pagina/")) {
+				return VerifyResult{}, fmt.Errorf("portalcheck: indexable official record or pagination %s", path)
 			}
 			if err := checkHTMLReferences(dir, files, path, body); err != nil {
 				return VerifyResult{}, err
@@ -918,7 +936,7 @@ func checkHTMLReferences(dir string, files map[string]FileDigest, path string, b
 		if strings.HasSuffix(target, "/") {
 			target += "index.html"
 		}
-		if _, ok := files[target]; !ok {
+		if _, ok := files[target]; !ok && !LandingRoutes[ref] {
 			return fmt.Errorf("portalcheck: broken link %s in %s", ref, path)
 		}
 	}

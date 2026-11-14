@@ -404,13 +404,18 @@ func officialView(record officialRecord, stations map[string]enterpriseexport.St
 	return view
 }
 
-func (g *generator) generateOfficial(official *officialDataset, stations map[string]enterpriseexport.Station, period, published, inputHash string) error {
+func (g *generator) generateOfficial(official *officialDataset, stations map[string]enterpriseexport.Station) error {
 	if official == nil {
-		base := g.base("Fiscalização — ainda não disponível", "Recorte oficial de fiscalização ainda não presente no snapshot; nenhum registro é exibido ou inferido.", "fiscalizacao", period, published, inputHash, []crumb{{Label: "Fiscalização", Current: true}})
-		base.Indexable = false
-		return g.writePage("fiscalizacao/index.html", "fiscalizacao", fiscalizacaoPage{pageBase: base})
+		base := g.newBase(pageSpec{
+			Route: "/fiscalizacao/", Facts: indexFacts{Family: familyFiscalHub},
+			Title:       "Fiscalização — ainda não disponível",
+			Description: "Recorte oficial de fiscalização ainda não presente no snapshot; nenhum registro é exibido ou inferido.",
+			Active:      "fiscalizacao", Crumbs: []crumb{{Label: "Fiscalização", Current: true}},
+		})
+		return g.writeRoute("fiscalizacao", fiscalizacaoPage{pageBase: base})
 	}
 	pin := official.Manifest.pin()
+	officialDate := isoDate(official.Manifest.PublishedAt)
 	views := make([]officialRecordView, 0, len(official.Records))
 	for _, record := range official.Records {
 		views = append(views, officialView(record, stations, !g.opts.OfficialOnly))
@@ -431,12 +436,22 @@ func (g *generator) generateOfficial(official *officialDataset, stations map[str
 			next = fmt.Sprintf("/fiscalizacao/pagina/%d/", page+1)
 		}
 		crumbs := []crumb{{Label: "Fiscalização", Current: page == 1}}
+		route, facts := "/fiscalizacao/", indexFacts{Family: familyFiscalHub, HasCurrentData: true}
+		head := "Fiscalização da ANP: multas aplicadas por posto | abastevo"
+		lead := fmt.Sprintf("Multas aplicadas pela ANP na edição %s: %s registros, uma linha por evento.", pin.Edition, groupThousands(int64(pin.Rows)))
 		if page > 1 {
-			crumbs[0].Href = "/fiscalizacao/"
+			crumbs = []crumb{{Label: "Fiscalização", Href: "/fiscalizacao/"}, {Label: fmt.Sprintf("Página %d", page), Current: true}}
+			route, facts = fmt.Sprintf("/fiscalizacao/pagina/%d/", page), indexFacts{Family: familyFiscalPage, HasCurrentData: true}
+			head = fmt.Sprintf("Fiscalização da ANP: multas aplicadas – página %d | abastevo", page)
+			lead = fmt.Sprintf("Página %d de %d das multas aplicadas pela ANP na edição %s.", page, official.Pages, pin.Edition)
 		}
 		data := fiscalizacaoPage{
-			pageBase: g.base(fiscalizacaoTitle(page), "Registros oficiais de multas aplicadas, com vínculo apenas quando a associação foi decidida com segurança.", "fiscalizacao", period, published, inputHash, crumbs),
-			HasData:  true, Manifest: pin, Records: views[start:end],
+			pageBase: g.newBase(pageSpec{
+				Route: route, Facts: facts, Title: fiscalizacaoTitle(page), HeadTitle: head,
+				Description: composeDescription(lead, "Vínculo de posto só quando decidido com segurança.", "Multa não prova adulteração ou culpa."),
+				Active:      "fiscalizacao", Crumbs: crumbs, LastMod: officialDate,
+			}),
+			HasData: true, Manifest: pin, Records: views[start:end],
 			Page: page, Pages: official.Pages, PrevHref: prev, NextHref: next,
 			Linked: pin.AssociationCensus.Linked, Unmatched: pin.AssociationCensus.Unmatched + pin.AssociationCensus.WrongBranch + pin.AssociationCensus.SuccessionReview,
 			Ambiguous: pin.AssociationCensus.Ambiguous, Total: pin.Rows,
@@ -445,32 +460,21 @@ func (g *generator) generateOfficial(official *officialDataset, stations map[str
 		if g.searchFiscal {
 			data.SearchRelease = g.searchRelease
 		}
-		path := "fiscalizacao/index.html"
-		if page > 1 {
-			path = fmt.Sprintf("fiscalizacao/pagina/%d/index.html", page)
-		}
-		if err := g.writePage(path, "fiscalizacao", data); err != nil {
+		if err := g.writeRoute("fiscalizacao", data); err != nil {
 			return err
 		}
-		if page == 1 {
-			g.addSitemapRoute("/fiscalizacao/")
-		} else {
-			g.addSitemapRoute(fmt.Sprintf("/fiscalizacao/pagina/%d/", page))
-		}
-	}
-	recordPageBase := func(view officialRecordView) pageBase {
-		return g.base("Registro oficial — "+view.Proceeding, "Registro oficial de multa aplicada com status, datas, fonte e vínculo apenas quando decidido com segurança.", "fiscalizacao", period, published, inputHash, []crumb{
-			{Label: "Fiscalização", Href: "/fiscalizacao/"},
-			{Label: view.Proceeding, Current: true},
-		})
 	}
 	for _, view := range views {
-		if err := g.writePage("fiscalizacao/registro/"+view.RecordID+"/index.html", "fiscalizacaoRecord", fiscalizacaoRecordPage{
-			pageBase: recordPageBase(view), Record: view, Manifest: pin,
-		}); err != nil {
+		base := g.newBase(pageSpec{
+			Route: "/fiscalizacao/registro/" + view.RecordID + "/", Facts: indexFacts{Family: familyFiscalRecord},
+			Title:       "Registro oficial — " + view.Proceeding,
+			Description: "Registro oficial de multa aplicada com status, datas, fonte e vínculo apenas quando decidido com segurança.",
+			Active:      "fiscalizacao", Crumbs: []crumb{{Label: "Fiscalização", Href: "/fiscalizacao/"}, {Label: view.Proceeding, Current: true}},
+			LastMod: officialDate,
+		})
+		if err := g.writeRoute("fiscalizacaoRecord", fiscalizacaoRecordPage{pageBase: base, Record: view, Manifest: pin}); err != nil {
 			return err
 		}
-		g.addSitemapRoute("/fiscalizacao/registro/" + view.RecordID + "/")
 	}
 	return nil
 }
