@@ -8,13 +8,13 @@ Status: LOCAL_DONE / INTEGRATION_PENDING (source); DEPLOYED (bounded staging acc
 - B-BR-SYNC02: downloads stream to owned disk under byte/deadline/redirect bounds. The Rust child prepares one bounded snapshot; the Go loader validates/publishes it. Children run serially under one resource envelope. No source rows, DSNs or response bodies in logs.
 - B-BR-SYNC03: unchanged source/reference/pipeline fingerprint verifies the last prepared publication in the DB and skips preparation/writes. Durable pending metadata and exact frozen files survive process death; retry resumes that batch before fetching another. Success is recorded only after publication. Failure preserves last success and canonical/history data.
 - B-BR-SYNC04: CronJob Forbid plus an exclusive OS lock on the shared Abastevo state directory prevents overlapping processes; no foreign directory cleanup. Snapshot identity/hash/timestamp are immutable on resume. Only owned temporary/previous artifacts may be removed; no persistent DB facts are deleted.
-- B-BR-SYNC05: source-backed name/address refresh may update the canonical projection only if its current values match previously published prepared evidence, or already match the new facts. Curated name/address differences are preserved and explicitly counted; locality conflicts fail visibly. No price, profile claims, status, reviewed coordinates, photo/media or community facts are overwritten. Missing rows never imply closure.
+- B-BR-SYNC05: source-backed name/address refresh may update the canonical projection only if its current values match previously published prepared evidence, or already match the new facts. Curated name/address differences are preserved and explicitly counted. Locality (municipality/UF) follows the same source-owned rule (amended 2026-11-14): an official correction replaces a canonical locality that equals previously published source evidence from a completed run; a curated or otherwise unproven locality difference still fails visibly. No price, profile claims, status, reviewed coordinates, photo/media or community facts are overwritten. Missing rows never imply closure.
 - B-BR-SYNC06: already published unchanged assertions are not republished. Successful verification accounts the full eligible membership and zero unpublished rows. New/changed facts create or update queryable station/profile projections through owning ports, with replay and failure recovery.
 - B-BR-SYNC07: the real VPS load test uses actual HTTPS alongside the bounded sync job, frozen workload/latency budgets and existing host/service guard. Only Abastevo Jobs/cron configuration/binaries may change; preserve existing API/worker/media containers and data when their executable bytes do not need replacement. Never roll an emptyDir media pod merely to refresh identical source.
 
 BUC-SYNC01: a daily unchanged edition is verified without preparing/inserting another batch.
 BUC-SYNC02: failure after prepare/load/partial publication resumes exact files and stable IDs.
-BUC-SYNC03: a changed source-owned name/address becomes readable; curated differences remain intact and are counted; locality conflicts cause a visible failure.
+BUC-SYNC03: a changed source-owned name/address or locality becomes readable; curated name/address differences remain intact and are counted; a curated or unproven locality conflict causes a visible failure.
 BUC-SYNC04: duplicate workers, oversized/redirected/malformed sources, cancellation and missing DB evidence fail safely.
 BUC-SYNC05: mixed HTTP+sync run records CPU/RSS/time/accounting and stops on shared-host pressure without changing other systems.
 
@@ -282,3 +282,17 @@ recovery. See [current acceptance](evidence/sna/NATIONAL_REFRESH_AND_PORTAL.md)
 for the tested source and separate activation state. The portal remains static
 and publishes generated immutable search files; none of these jobs provide a
 website search API.
+
+## Source-owned locality correction (2026-11-14)
+
+The daily job stalled from 2026-11-12: one active station published as
+municipality 3110301/MG by five consecutive completed ANP editions moved to
+3151800/MG in the next edition, and the loader refused every locality
+difference, so the whole publication failed. `SetInitialRegistryLocality` now
+also replaces a canonical municipality/UF that equals a completed source
+assertion for that station (same evidence predicates as the name/address
+`source_*_owned` checks). Curated or unproven localities still return no row
+and fail the publication visibly. Genuine RED reproduced the production error;
+`TestPreparedRefreshFollowsSourceOwnedLocalityAndRefusesCurated` covers same-UF
+and cross-UF corrections plus the curated refusal, and the existing publication
+test keeps its negative against a curated locality.

@@ -100,8 +100,13 @@ func TestPreparedPublicationThroughHTTPAndProfiles(t *testing.T) {
 	if doc["has_badge"] != false || doc["location_quality"] != "unknown" {
 		t.Fatalf("unearned trust %+v", doc)
 	}
+	// B-BR-SYNC05: a locality curated away from every published source
+	// assertion is never overwritten by a conflicting source value.
+	if _, err := pool.Exec(ctx, "UPDATE directory_stations SET municipality_code='3509502', state='SP' WHERE id=$1::uuid", stationID); err != nil {
+		t.Fatal(err)
+	}
 	if err := canon.SetInitialLocality(ctx, stationID, "4106902", "PR"); err == nil {
-		t.Fatal("conflicting locality overwrote source evidence")
+		t.Fatal("conflicting locality overwrote curated evidence")
 	}
 	// A source cannot rebind a completed manifest to publish altered facts.
 	manifest.Inputs[0].Edition = "changed"

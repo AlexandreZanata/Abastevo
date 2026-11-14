@@ -6,12 +6,37 @@
   FUEL-002. EDR-127: ready pure domains first (APPR-001, EXP-001, DOC-001,
   PLAT-016, then FIN-001/BUDG-001); no persistence before METER-002 closes.
   No M3/F3 acceptance is claimed; cumulative dev → main PR at batch end.
-  Stopped 2026-11-14 at the usage limit: 11 tasks integrated LOCAL_DONE on
-  `codex/enterprise-f3` (PLAT-016, APPR-001, EXP-001, DOC-001, BUDG-001,
-  FIN-001, PRIV-005, FLEET-003, APPR-006, NOTIF-001, DOC-002); FLEET-005 done
-  on its own branch, RPT-001 unfinished. Next: merge origin/dev, integrate
-  FLEET-005, continue AUTH-006 → FLEET-006 → METER-002, open the PR.
-  [Stop point](../enterprise/evidence/f3-execution.md#stop-point--2026-11-14-usage-limit).
+  Current: 12 tasks LOCAL_DONE / INTEGRATION_PENDING on the branch
+  (PLAT-016, APPR-001, EXP-001, DOC-001, BUDG-001, FIN-001, PRIV-005,
+  APPR-006, NOTIF-001, DOC-002 and F2 prerequisites FLEET-003/005), synced
+  with dev `018f2df1`. In progress: AUTH-006 (chain), RPT-001, DOC-006.
+  [Ledger log](../enterprise/evidence/f3-execution.md#execution-log).
+
+- Registry daily sync restored, 2026-11-14: PR #219 merged at `018f2df1`
+  (source-owned locality corrections, B-BR-SYNC05 amended; race integration
+  bound 30m). Host-path registry release `018f2df1` installed on the new VPS
+  (static station-sync/station-load from main; prepare_registry/opencnpj
+  reused by sha256); guarded Job published the stalled 2026-11-12 edition
+  (45747 accepted, 112 rejected, 10 curated preserved) after a verified DB
+  backup; CronJob re-enabled. The `018f2df1` image release awaits a rerun of a
+  flaky orgmedia S3 integration test on the main backend workflow before the
+  deploy agent applies it; the VPS keeps serving `43b21389` meanwhile.
+
+- Integration + deployment, 2026-11-14: PR #203 merged dev → main at
+  `43b21389` (required checks green on head `41f0b46f`: Quick verification,
+  fast, integration, test); dev fast-forwarded to main. Issues #204–#214 and
+  #216–#218 closed as completed by the merge; tracker #215 stays open with
+  retained F2/F3 obligations. The signed `release-staging` manifest for
+  `43b21389` was applied by the deploy agent on the new VPS 72.60.147.2
+  (official origin https://abastevo.com.br): schema window 000132..000183,
+  verified backup `pre-43b21389b5f7-20261114T145508Z.dump`, migration job to
+  000200, api/worker rollout (signed GHCR digests), landing switched; public
+  health/v1/landing/portal/forum/sitemap smoke and admin/company noindex pass.
+  Retained: registry-sync CronJob and RFB refresh still run the old
+  station-sync build that probes the retired staging host (CronJob suspended;
+  rebuild the registry-sync release from main before re-enabling);
+  `android-release` sdkmanager PATH flake on hosted runners; INTEGRATED is not
+  RELEASE_CERTIFIED (G09/G24 unchanged).
 
 - Enterprise EMP-OFFL-008, 2026-11-14: LOCAL_DONE / INTEGRATION_PENDING
   (Claude Code takeover). Backend handoff items, union regressions and SQL
