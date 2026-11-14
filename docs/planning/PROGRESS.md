@@ -1,4 +1,20 @@
 # Current execution state
+- Integration + deployment, 2026-11-14: PR #203 merged dev → main at
+  `43b21389` (required checks green on head `41f0b46f`: Quick verification,
+  fast, integration, test); dev fast-forwarded to main. Issues #204–#214 and
+  #216–#218 closed as completed by the merge; tracker #215 stays open with
+  retained F2/F3 obligations. The signed `release-staging` manifest for
+  `43b21389` was applied by the deploy agent on the new VPS 72.60.147.2
+  (official origin https://abastevo.com.br): schema window 000132..000183,
+  verified backup `pre-43b21389b5f7-20261114T145508Z.dump`, migration job to
+  000200, api/worker rollout (signed GHCR digests), landing switched; public
+  health/v1/landing/portal/forum/sitemap smoke and admin/company noindex pass.
+  Retained: registry-sync CronJob and RFB refresh still run the old
+  station-sync build that probes the retired staging host (CronJob suspended;
+  rebuild the registry-sync release from main before re-enabling);
+  `android-release` sdkmanager PATH flake on hosted runners; INTEGRATED is not
+  RELEASE_CERTIFIED (G09/G24 unchanged).
+
 - Enterprise EMP-OFFL-008, 2026-11-14: LOCAL_DONE / INTEGRATION_PENDING
   (Claude Code takeover). Backend handoff items, union regressions and SQL
   reviewer findings closed with RED→GREEN; Android protected V3/resolution/
