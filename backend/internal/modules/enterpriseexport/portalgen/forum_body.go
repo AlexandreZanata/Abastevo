@@ -131,15 +131,19 @@ func lastRune(value string) rune {
 }
 
 // forumPlainText flattens blocks to one whitespace-collapsed line for
-// descriptions and the structured-data text excerpt.
+// descriptions and the structured-data text excerpt. A subheading ends its
+// sentence there, so it does not run into the next block.
 func forumPlainText(blocks []forumBlock) string {
 	parts := []string{}
 	for _, block := range blocks {
-		if block.Kind == blockBullets {
+		switch block.Kind {
+		case blockBullets:
 			parts = append(parts, block.Items...)
-			continue
+		case blockHeading:
+			parts = append(parts, block.Text+".")
+		default:
+			parts = append(parts, block.Text)
 		}
-		parts = append(parts, block.Text)
 	}
 	return strings.Join(strings.Fields(strings.Join(parts, " ")), " ")
 }

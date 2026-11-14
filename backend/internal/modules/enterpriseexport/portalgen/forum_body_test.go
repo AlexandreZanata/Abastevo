@@ -75,7 +75,7 @@ func TestForumParagraphLinesSplitOnNewlines(t *testing.T) {
 
 func TestForumPlainTextFlattensBlocks(t *testing.T) {
 	blocks := parseForumBody("Introdução.\n\nRegra\n\n- um\n- dois\n\nFim\ncom quebra.")
-	if got := forumPlainText(blocks); got != "Introdução. Regra um dois Fim com quebra." {
+	if got := forumPlainText(blocks); got != "Introdução. Regra. um dois Fim com quebra." {
 		t.Fatalf("plain text = %q", got)
 	}
 }
