@@ -75,4 +75,13 @@
     <string name="enterprise_sync_reason_window">Срок приёма закончился</string>
     <string name="enterprise_sync_reason_forbidden">Источник не разрешил эту операцию</string>
     <string name="enterprise_sync_reason_suspended">Организация была приостановлена</string>
+    <string name="enterprise_sync_review_accepted">Принято после проверки компанией</string>
+    <string name="enterprise_sync_review_refused">Отклонено после проверки компанией</string>
+    <string name="enterprise_sync_review_unresolved">Решение компании ещё не получено</string>
+    <string name="enterprise_sync_review_decision_title">Решение по проверке компании</string>
+    <string name="enterprise_sync_review_reason">Причина проверяющего: %1$s</string>
+    <string name="enterprise_sync_review_no_reason">Для этого принятия причина не указана</string>
+    <string name="enterprise_sync_review_decided_at">Решение зарегистрировано сервером: %1$s</string>
+    <string name="enterprise_sync_review_original_kept">Исходная квитанция проверки остаётся без изменений.</string>
+    <string name="enterprise_sync_review_history">Подтверждённое решение по проверке: %1$s</string>
 </resources>

@@ -62,8 +62,9 @@ class EnterpriseSyncViewModel @Inject constructor(
         action(renderedEpoch, generation) { flow.more(renderedEpoch, generation) }
     fun detail(identity: EnterpriseOperationIdentity, renderedEpoch: Long, generation: Long) =
         action(renderedEpoch, generation) { flow.showDetail(identity.operationId, identity.payloadDigest, renderedEpoch, generation) }
-    fun dismiss(identity: EnterpriseOperationIdentity, receiptDigest: String, renderedEpoch: Long, generation: Long) =
-        action(renderedEpoch, generation) { flow.dismiss(identity.operationId, identity.payloadDigest, receiptDigest, renderedEpoch, generation) }
+    /** The digest names the rendered refused outcome (original REJECTED receipt or REFUSED resolution). */
+    fun dismiss(identity: EnterpriseOperationIdentity, outcomeDigest: String, renderedEpoch: Long, generation: Long) =
+        action(renderedEpoch, generation) { flow.dismiss(identity.operationId, identity.payloadDigest, outcomeDigest, renderedEpoch, generation) }
     fun manualCheck(renderedEpoch: Long, generation: Long) =
         action(renderedEpoch, generation, online = true) { flow.manualCheck(connected.value, renderedEpoch, generation) }
     fun changeMode(mode: EnterpriseSyncMode, renderedEpoch: Long, generation: Long) =

@@ -75,4 +75,13 @@
     <string name="enterprise_sync_reason_window">Das Empfangsfenster war geschlossen</string>
     <string name="enterprise_sync_reason_forbidden">Die Quelle hat diesen Vorgang nicht autorisiert</string>
     <string name="enterprise_sync_reason_suspended">Das Unternehmen war gesperrt</string>
+    <string name="enterprise_sync_review_accepted">Nach Prüfung durch das Unternehmen angenommen</string>
+    <string name="enterprise_sync_review_refused">Nach Prüfung durch das Unternehmen abgelehnt</string>
+    <string name="enterprise_sync_review_unresolved">Es ist noch keine Entscheidung des Unternehmens eingegangen</string>
+    <string name="enterprise_sync_review_decision_title">Prüfentscheidung des Unternehmens</string>
+    <string name="enterprise_sync_review_reason">Begründung der prüfenden Person: %1$s</string>
+    <string name="enterprise_sync_review_no_reason">Für diese Annahme wurde keine Begründung angegeben</string>
+    <string name="enterprise_sync_review_decided_at">Vom Server erfasste Entscheidung: %1$s</string>
+    <string name="enterprise_sync_review_original_kept">Der ursprüngliche Prüfbeleg bleibt unverändert.</string>
+    <string name="enterprise_sync_review_history">Bestätigte Prüfentscheidung: %1$s</string>
 </resources>

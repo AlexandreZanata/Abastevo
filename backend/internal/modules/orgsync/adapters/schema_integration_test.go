@@ -19,6 +19,16 @@ func TestIntakeSchemaRejectsInvalidClaimsAndEmptyMutation(t *testing.T) {
 	if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE,DELETE,TRUNCATE ON org_sync_operations,org_sync_acknowledgements,org_sync_effects TO "+role); e != nil {
 		t.Fatal(e)
 	}
+	// TRUNCATE ... CASCADE reaches every referencing history table (for example
+	// 199's review items, held facts and resolutions). Grant the whole closure so
+	// the append-only triggers, not a missing privilege, must refuse it.
+	var closure string
+	if e := f.Admin.QueryRow(t.Context(), `WITH RECURSIVE r(oid) AS(SELECT 'org_sync_operations'::regclass::oid UNION SELECT c.conrelid FROM pg_constraint c JOIN r ON c.confrelid=r.oid WHERE c.contype='f') SELECT string_agg(format('%I',relname),',') FROM pg_class WHERE oid IN(SELECT oid FROM r)`).Scan(&closure); e != nil || closure == "" {
+		t.Fatal("truncate closure unavailable", e)
+	}
+	if _, e := f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON "+closure+" TO "+role); e != nil {
+		t.Fatal(e)
+	}
 	for _, table := range []string{"org_sync_operations", "org_sync_acknowledgements", "org_sync_effects"} {
 		var forced bool
 		if e := f.Admin.QueryRow(t.Context(), `SELECT relrowsecurity AND relforcerowsecurity FROM pg_class WHERE oid=$1::regclass`, table).Scan(&forced); e != nil || !forced {

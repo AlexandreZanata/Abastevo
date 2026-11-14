@@ -63,18 +63,24 @@ class ProtectedEnterpriseSyncStatusStore(private val store: ProtectedEnterpriseP
         }
     }
 
+    /** Visibility is bound to the effective refused outcome: an original REJECTED receipt or a REFUSED resolution. */
     override suspend fun dismissRejected(attempt: EnterpriseQueueAttempt, operationId: String,
-        digest: String, expectedReceiptDigest: String): Boolean {
+        digest: String, expectedOutcomeDigest: String): Boolean {
         EnterprisePartition.requireId(operationId)
         return store.queueAccess(attempt) { snapshot ->
             val entry = retained(snapshot, operationId, digest)
             val receipt = entry.acknowledgement ?: throw EnterprisePersistenceUnavailable()
-            if (receipt.result != SyncResult.REJECTED || expectedReceiptDigest != "sha256:" + sha(receipt.canonicalBytes))
-                throw EnterprisePersistenceUnavailable()
+            val resolution = entry.resolution
+            val outcome = when {
+                receipt.result == SyncResult.REJECTED -> receipt.canonicalBytes
+                entry.refusedOutcome && resolution != null -> resolution.canonicalBytes
+                else -> throw EnterprisePersistenceUnavailable()
+            }
+            if (expectedOutcomeDigest != "sha256:" + sha(outcome)) throw EnterprisePersistenceUnavailable()
             if (entry.dismissedRejected) VaultQueueChange(false)
             else {
                 snapshot.entries["QUEUE:$operationId"] = VaultEntry(VaultKind.QUEUE, operationId, "",
-                    ProtectedQueueCodec.encode(EnterpriseQueueEntry(entry.operation, entry.retry, receipt, true)))
+                    ProtectedQueueCodec.encode(EnterpriseQueueEntry(entry.operation, entry.retry, receipt, true, resolution, entry.reviewRetry)))
                 VaultQueueChange(true, true)
             }
         }

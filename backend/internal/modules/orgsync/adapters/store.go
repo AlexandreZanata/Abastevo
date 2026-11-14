@@ -73,7 +73,7 @@ func NewStore(config Config) *Store {
 		}
 		noAsync[key] = make(map[string]app.FollowupMode, len(results))
 		for result, mode := range results {
-			if mode != app.NoAsyncFollowup || (result != protocol.Accepted && result != protocol.Rejected) {
+			if !(mode == app.NoAsyncFollowup && (result == protocol.Accepted || result == protocol.Rejected)) && !(mode == app.AtomicReview && result == protocol.AcceptedForReview) {
 				invalid = true
 			}
 			noAsync[key][result] = mode
@@ -107,8 +107,11 @@ func action(result string) string {
 	}
 	return ""
 }
-func (s *Store) plan(source app.Source, op protocol.Operation, descriptor app.Descriptor, result string) (event.Plan, audit.Event, error) {
+func (s *Store) plan(source app.Source, op protocol.Operation, descriptor app.Descriptor, result string, proof app.ReviewProof) (event.Plan, audit.Event, error) {
 	if s == nil || s.invalidNoAsync || descriptor.Validate() != nil || descriptor.Type != op.Snapshot().Type || !slices.Contains(descriptor.Results(), result) {
+		return event.Plan{}, audit.Event{}, app.ErrUnavailable
+	}
+	if result == protocol.AcceptedForReview && nilPort(proof) {
 		return event.Plan{}, audit.Event{}, app.ErrUnavailable
 	}
 	name := action(result)
@@ -118,7 +121,8 @@ func (s *Store) plan(source app.Source, op protocol.Operation, descriptor app.De
 	}
 	mode, declared := s.config.NoAsyncPlans[app.OperationKey{Type: descriptor.Type, Schema: descriptor.Schema}][result]
 	if declared {
-		if mode != app.NoAsyncFollowup || len(descriptor.TerminalResults) == 0 || result == protocol.AcceptedForReview || len(s.config.Plans[descriptor.Type][result]) != 0 {
+		validMode := mode == app.NoAsyncFollowup && (result == protocol.Accepted || result == protocol.Rejected) || mode == app.AtomicReview && result == protocol.AcceptedForReview && !nilPort(proof)
+		if !validMode || len(descriptor.TerminalResults) == 0 || len(s.config.Plans[descriptor.Type][result]) != 0 {
 			return event.Plan{}, audit.Event{}, app.ErrUnavailable
 		}
 		return event.Plan{}, a, nil
@@ -149,6 +153,17 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 	if descriptor.Validate() != nil || descriptor.Type != v.Type {
 		return result, app.ErrUnavailable
 	}
+	var proof app.ReviewProof
+	if slices.Contains(descriptor.Results(), protocol.AcceptedForReview) {
+		provider, ok := handler.(app.ReviewProofProvider)
+		if !ok || nilPort(provider) {
+			return result, app.ErrUnavailable
+		}
+		proof = provider.ReviewProof()
+		if nilPort(proof) {
+			return result, app.ErrUnavailable
+		}
+	}
 	binding, e := protocol.NewBinding(source.Actor.AccountID, source.Origin, source.Scope.OrgID().String())
 	if e != nil {
 		return result, app.SourceDenied(orgapi.NotFound)
@@ -157,7 +172,7 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 		return result, app.SourceDenied(orgapi.NotFound)
 	}
 	for _, outcome := range descriptor.Results() {
-		if _, _, e := s.plan(source, op, descriptor, outcome); e != nil {
+		if _, _, e := s.plan(source, op, descriptor, outcome, proof); e != nil {
 			return result, app.ErrUnavailable
 		}
 	}
@@ -204,6 +219,12 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 		}
 		queries := q.New(tx)
 		db := app.Borrow(tx)
+		proofError := func(err error) error {
+			if errors.Is(err, app.ErrSourceDenied) {
+				return err
+			}
+			return app.SourceDenied(err)
+		}
 		original, e := queries.ReadOperation(ctx, q.ReadOperationParams{OrgID: v.OrgID, OperationID: op.ID()})
 		exists := e == nil
 		if e != nil && !errors.Is(e, pgx.ErrNoRows) {
@@ -233,11 +254,20 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 			}
 			stored, e := queries.ReadAcknowledgement(ctx, q.ReadAcknowledgementParams{OrgID: v.OrgID, OperationID: op.ID()})
 			if e == nil {
-				if e := handler.Admit(ctx, db, source, op, app.ReadReceipt); e != nil {
-					if errors.Is(e, app.ErrDependencyPending) && !errors.Is(e, app.ErrSourceDenied) {
-						return app.ErrUnavailable
+				ownReview := false
+				if proof != nil {
+					ownReview, e = proof.CheckOwnReceiptTx(ctx, app.Borrow(db), source, op)
+					if e != nil {
+						return proofError(e)
 					}
-					return e
+				}
+				if !ownReview {
+					if e := handler.Admit(ctx, db, source, op, app.ReadReceipt); e != nil {
+						if errors.Is(e, app.ErrDependencyPending) && !errors.Is(e, app.ErrSourceDenied) {
+							return app.ErrUnavailable
+						}
+						return e
+					}
 				}
 				raw := stored.CanonicalAck
 				ack, e := protocol.ParseAcknowledgement(raw, op, limits)
@@ -253,11 +283,23 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 					return app.ErrUnavailable
 				}
 				outcome := app.Outcome{Result: a.Result, Code: a.Code, EntityRevision: a.EntityRevision, ReviewItemID: a.ReviewItemID, Warnings: a.Warnings}
-				if e := handler.Confirm(ctx, db, source, op, app.ReadReceipt, outcome); e != nil {
-					if errors.Is(e, app.ErrDependencyPending) && !errors.Is(e, app.ErrSourceDenied) {
-						return app.ErrUnavailable
+				if a.Result == protocol.AcceptedForReview {
+					if nilPort(proof) {
+						return proofError(app.ErrUnavailable)
 					}
-					return e
+					if e := proof.CheckHeldTx(ctx, app.Borrow(db), source, op, outcome.Copy()); e != nil {
+						return proofError(e)
+					}
+				} else if ownReview {
+					return proofError(app.ErrUnavailable)
+				}
+				if !ownReview {
+					if e := handler.Confirm(ctx, db, source, op, app.ReadReceipt, outcome); e != nil {
+						if errors.Is(e, app.ErrDependencyPending) && !errors.Is(e, app.ErrSourceDenied) {
+							return app.ErrUnavailable
+						}
+						return e
+					}
 				}
 				if _, e := fresh(); e != nil {
 					return e
@@ -319,7 +361,7 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 			return app.ErrUnavailable
 		}
 		var final protocol.Acknowledgement
-		plan, bound, e := s.plan(source, op, descriptor, outcome.Result)
+		plan, bound, e := s.plan(source, op, descriptor, outcome.Result, proof)
 		if e != nil {
 			return e
 		}
@@ -327,6 +369,14 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 			for _, consumer := range plan.Consumers {
 				if e := s.config.EventWriter.Enqueue(ctx, source.Scope, tx, event.Envelope{Version: event.Version, OrgID: v.OrgID, Consumer: consumer, Event: plan.Event}, bound.RequestHash); e != nil {
 					return e
+				}
+			}
+			if outcome.Result == protocol.AcceptedForReview {
+				if nilPort(proof) {
+					return proofError(app.ErrUnavailable)
+				}
+				if e := proof.CheckHeldTx(ctx, app.Borrow(db), source, op, outcome.Copy()); e != nil {
+					return proofError(e)
 				}
 			}
 			at, e := fresh()

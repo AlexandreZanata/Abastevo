@@ -21,6 +21,7 @@ type MeterStore struct {
 	Pool      *pgxpool.Pool
 	Authority app.MeterAuthority
 	Audit     auditing.TransactionRunner
+	Reviews   *MeterReviewStore
 }
 
 var _ app.MeterRepository = (*MeterStore)(nil)

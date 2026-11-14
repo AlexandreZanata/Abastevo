@@ -2511,3 +2511,147 @@ the owning business producers and OFFL-004 pending screen remain separate work.
   undeclared/review plans. Verify actual runtime routing/inventory/OpenAPI and
   powered Fleet dependency. Static/format/sqlc/secret and targeted regressions
   must match the final source before any whole-task checkpoint.
+
+
+## EMP-OFFL-008 — Actual held review and durable author outcomes (2026-11-14)
+
+- **B-BR-EMP-160 — Hold only source-proven field evidence.** Keep current signed
+  account, ACTIVE member/employee, exact enrolled device and enabled operational
+  capability mandatory. For the first actual Meter owner, a narrow disposition
+  port evaluates complete real ORG permission periods retained by AUTH-005,
+  with actual creation/effective/end times. Current candidates alone are not
+  historical proof. Continuous current coverage across declaration and receipt
+  may apply. A formerly effective grant with a gap/removal/regrant permits only
+  a held PERMISSION_CHANGED fact, including a client declaration after removal;
+  the client clock cannot prove historical absence. Complete server history
+  proving no ever-effective ORG grant by receipt is FORBIDDEN. Scheduled grants
+  never grant present authority; missing/unknown history is unavailable.
+  A declared clock never grants a write. SELF/structural and F4 late/grace
+  sources remain closed until their actual owners integrate.
+- **B-BR-EMP-161 — Store actual review before acknowledging it.** Persist an
+  immutable review item and typed Meter held fact in the original retained
+  transaction, with exact IDs/value/declaration/capture and actual server source
+  context. No reading/effect is applied while held. Bind operation/digest/reason
+  and review ID by deferred composite database references; a UUID alone is not
+  review provenance. Existing unsupported review ACKs retain NULL legacy proof
+  version and immutable bytes; they remain unproven/unready. A validated MATCH
+  SIMPLE composite FK plus a new-insert guard requires version1 and actual typed
+  held source for every new REVIEW. Never fabricate a backfill from ACK alone.
+  The production SQL source validator knows only delivered owners; a named
+  test-only extension must prove its actual held row without weakening Meter.
+  No raw transport credentials or arbitrary payload blob is retained. Review source failure rolls back claim/item/audit/ACK together.
+  Every REVIEW proof failure, including the owner's final post-receipt check,
+  is a review-source failure that withholds the whole signed response; it is
+  never downgraded to a per-operation RETRY that exposes buffered receipts.
+  A held fact reserves its exact reading identity and operation against
+  ordinary readings in both directions. Its unit snapshot is retained history,
+  not current unit usage, so it never blocks or bypasses unit archive checks.
+- **B-BR-EMP-162 — Preserve original immutable acknowledgements.** An operation
+  keeps exactly its original ACK/canonical bytes forever, including REVIEW.
+  Resolution is separate immutable evidence, with one terminal resolution per
+  item and expected item revision1→2. Add a source-owned atomic-review mode only
+  when a real review proof port and SQL source constraints verify that item;
+  existing NoAsync accepted/rejected behavior and mandatory-consumer plans stay
+  unchanged. REVIEW alone never becomes applied dependency readiness.
+- **B-BR-EMP-163 — Resolve once with current reviewer authority.** The first
+  Meter decision uses current meter.reading.correct under dedicated company
+  cookie/Origin/CSRF and fresh proof, an enabled capability and ACTIVE root.
+  Reviewer list/detail remain current private reads; a write-disabled capability
+  never authorizes a decision and does not invent loss of retained read rights.
+  Check authority under the same transaction after waits and before publication.
+  Refuse self-review by captured account/member/employee, following the actual
+  canonical employee merge chain so rehire/merge cannot evade it. Accept the
+  unchanged actual fact or refuse with a reason; editing fields is unavailable
+  until an owning command explicitly implements it. Reasons reuse the existing
+  private280-Unicode-scalar/control-free bound, preserved exactly; acceptance
+  may omit a reason. Same command/body returns its original result; changed-ID
+  reuse, stale revision, competing decision or source change leaves no effect.
+  The server decision instant lies between the original receipt and the
+  current database clock.
+- **B-BR-EMP-164 — Apply reviewed evidence without retagging.** Accepted Meter
+  resolution appends the actual reading with original author/enrollment,
+  declaration and initial server receipt. The current resolver is a separate
+  audit actor; never manufacture a session/device for the original author.
+  Append migration199's narrowly review-bound insertion branch to198's live
+  source guard, proven against exact held fact/accepted resolution. Ordinary
+  inserts retain current source and server receipt checks. Publish readiness
+  only with the matching accepted resolution and actual applied reading in
+  one transaction; refusal/review cannot create effects or costs. The database
+  refuses an accepted resolution committed without that readiness effect.
+- **B-BR-EMP-165 — Minimize the author's own result read.** Add a separate signed
+  own-operation result endpoint with request correlation/current exact source
+  tuple and at most50 operation/digest selectors. Return one ordered explicit
+  slot per selector, unresolved or an immutable resolution. Author ownership
+  permits only this minimal receipt/outcome, never restored fleet.read/record
+  or access to private record previews. Current member/device proof remains
+  mandatory; ended/revoked sources and foreign/mismatched selectors fail closed
+  with no buffered prefix exposed. Do not add fields to the frozen V1 batch or
+  replace its ACK. New endpoint request64KiB/response128KiB/resolution4KiB bounds
+  are explicit and tested for complete worst-case Unicode; no suffix omission.
+- **B-BR-EMP-166 — Persist resolution separately in the protected client.** Add
+  a versioned resolution value/projection and queue V3, preserving V1/V2 reads,
+  original operation/ACK bytes, source tuple, retry metadata and dismissal.
+  Parse/correlate the full response before local changes; CAS against the exact
+  original review receipt and intent/source lease. Equal replay changes nothing;
+  divergent terminal evidence is unavailable. Poll review-only retained work
+  even when pending delivery is empty, using the same verified session/signature
+  attempt and no lock across network. Never retag or auto-delete pending work,
+  fabricate SENDING for a result lookup or invent a business projector. Retain
+  separate review retry/Retry-After state; the existing15minute worker polls
+  unresolved reviews without altering operation-delivery retry counts. Bind
+  dismissal to the effective outcome so dismissing REVIEW cannot hide its
+  later resolution. Production DI must bind the real review polling service.
+  Chosen client semantics (EDR-120/121): a resolution is accepted only for a
+  retained final REVIEW whose ACK bytes, ReviewID, operation and digest match
+  and whose server decision time is not before the original receipt. A
+  successful unresolved answer ends only that entry's failure backoff, keeping
+  an authenticated Retry-After as an uncounted floor; a failed or uncorrelated
+  answer writes no resolution and advances the review retry with the stored
+  policy and Retry-After floor. A failed durable write or divergent stored
+  decision affects only its own entry. A review-only failure during a manual
+  check never hides committed delivery state. Old V1/V2 frames stay readable
+  and are rewritten only when their state actually changes.
+- **B-BR-EMP-167 — Show the actual decision.** Effective operation status/counts
+  can reflect verified accepted/refused resolution while details retain the
+  original REVIEW ACK and add decision/reason/server time. Do not change the
+  original received_at, imply attachments are stored or reveal reviewer proof.
+  Keep the eight locale catalogs consistent. Durable scoped completion triggers
+  a reread; context/account/server/enrollment changes fence late responses.
+  An unresolved REVIEW states that no company decision has been received; only
+  a refused effective outcome (original REJECTED or REFUSED resolution) offers
+  hiding, and accepted-after-review records with attachments stay pending.
+- **B-BR-EMP-168 — Derive expiration from the actual review rule.** No current
+  organization setting owns review expiry; intake-window settings do not apply.
+  Stamp source-owned review-expiry-v1/default60days (elapsed60×86400seconds,
+  independent of SQL session timezone/DST) at creation and derive
+  expired-unresolved visibility from original receipt and server time. Retain
+  evidence/listing and permit late resolution. This does not claim a digest,
+  notification or scheduled escalation worker that has no actual consumer.
+- **B-BR-EMP-169 — Complete real acceptance before dependent lifecycle.** Build
+  from tested/pushed71b995ae (full Fleet-002 local, Meter source foundation).
+  Ordinary PostGIS negative/replay/two-reviewer/rollback/upgrade/privacy tests
+  are immediate. Real Go HTTPS and owned API36 emulator must prove durable
+  review-only polling, process death/response loss, original ACK identity and
+  source isolation. Full OFFL-008 cannot claim author-next-sync behavior from
+  API-only tests. Preserve separate assignment/history, full F2/F3 and legal/
+  provider/live release gates. No no-op review consumer resolves this dependency.
+- **BUC-EMP-83 — Prove the shared immutable resolution protocol.** RED→GREEN
+  Go/Kotlin exact shapes, Unicode/bounds/correlation/order/id+digest/review ID,
+  invalid epochs/source and revision; retain all old operation/ACK vectors.
+- **BUC-EMP-84 — Prove actual historical hold admission.** Real current source,
+  complete role periods, continuous replacement versus gap/removal/regrant,
+  never allowed and missing source; declared clock does not authorize acceptance.
+- **BUC-EMP-85 — Prove real review persistence and decisions.** Two organizations,
+  forced RLS, actual held source references, two reviewers/one result, stale
+  revision, same-body replay/reuse, self-review/rehire/merge, source expiry,
+  orphan review IDs, audit/outbox/late COMMIT failure and reviewed readiness.
+- **BUC-EMP-86 — Prove provenance and recovery.** Retain original author/capture/
+  declaration/receipt after source cleanup; fresh resolver proof cannot retag
+  it. Populated198→199 failure/recovery/previous image and real personal export/
+  erasure preserve corporate history without private disclosure.
+- **BUC-EMP-87 — Prove durable client resolution.** V1/V2→V3, same/different CAS,
+  full response preflight, process crash, pressure/dismissal, stale source and
+  normal review-only Worker, with actual signature/nonce/HTTPS and two contexts.
+- **BUC-EMP-88 — Prove visible outcome and delivery.** Accepted/refused status,
+  reason/history, localized counts and unchanged attachment truth on the owned
+  emulator; final code/static/SQL/format/secret checks match the committed inputs.

@@ -75,4 +75,13 @@
     <string name="enterprise_sync_reason_window">接收窗口已关闭</string>
     <string name="enterprise_sync_reason_forbidden">来源未授权此操作</string>
     <string name="enterprise_sync_reason_suspended">企业当时已暂停</string>
+    <string name="enterprise_sync_review_accepted">经公司审核后已接受</string>
+    <string name="enterprise_sync_review_refused">经公司审核后已拒绝</string>
+    <string name="enterprise_sync_review_unresolved">尚未收到公司的决定</string>
+    <string name="enterprise_sync_review_decision_title">公司审核决定</string>
+    <string name="enterprise_sync_review_reason">审核人理由：%1$s</string>
+    <string name="enterprise_sync_review_no_reason">此接受未附理由</string>
+    <string name="enterprise_sync_review_decided_at">服务器记录的决定时间：%1$s</string>
+    <string name="enterprise_sync_review_original_kept">原始审核回执保持不变。</string>
+    <string name="enterprise_sync_review_history">已确认的审核决定：%1$s</string>
 </resources>

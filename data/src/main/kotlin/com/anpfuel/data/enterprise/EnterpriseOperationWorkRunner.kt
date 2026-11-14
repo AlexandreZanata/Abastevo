@@ -4,6 +4,7 @@ import com.anpfuel.application.enterprise.queue.EnterpriseQueueAccountLease
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueDispatchResult
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueDeliveryFailure
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
+import com.anpfuel.application.enterprise.queue.EnterpriseReviewPollResult
 import com.anpfuel.domain.enterprise.EnterprisePartition
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
@@ -20,6 +21,10 @@ class EnterpriseOperationWorkResult(
     val failed: Int = 0,
     val retryAfterMillis: Long? = null,
     val coalesced: Boolean = false,
+    /** Review result lookups keep separate counts; they never decide delivery retry. */
+    val reviewResolved: Int = 0,
+    val reviewUnresolved: Int = 0,
+    val reviewFailed: Int = 0,
 ) {
     val needsRetry: Boolean get() = failed > 0 || retryable > 0 || coalesced
     override fun toString(): String = "EnterpriseOperationWorkResult(redacted)"
@@ -30,6 +35,7 @@ class EnterpriseOperationWorkRunner(
     private val source: EnterpriseQueueSource,
     private val discover: suspend (EnterpriseQueueAccountLease, String?, Int) -> EnterpriseQueueDiscoveryPage,
     private val dispatch: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> EnterpriseQueueDispatchResult,
+    private val review: (suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> EnterpriseReviewPollResult)? = null,
 ) {
     private val invocation = Mutex()
 
@@ -41,6 +47,9 @@ class EnterpriseOperationWorkRunner(
         var attention = 0
         var failed = 0
         var retryAfter: Long? = null
+        var reviewResolved = 0
+        var reviewUnresolved = 0
+        var reviewFailed = 0
         fun observeRetryAfter(value: Long?) {
             if (value != null && value >= 0) retryAfter = maxOf(retryAfter ?: 0, value)
         }
@@ -91,6 +100,25 @@ class EnterpriseOperationWorkRunner(
                         account.assertCurrent()
                         failed = add(failed, 1)
                     }
+                    val lookup = review
+                    if (lookup != null) {
+                        // Review-only work is polled after delivery under its own fresh attempt, even
+                        // when nothing was pending. Its counts never alter delivery retry decisions.
+                        try {
+                            currentCoroutineContext().ensureActive()
+                            account.assertCurrent()
+                            val reviewed = lookup(account, partition)
+                            account.assertCurrent()
+                            reviewResolved = add(reviewResolved, reviewed.resolved)
+                            reviewUnresolved = add(reviewUnresolved, reviewed.unresolved)
+                            reviewFailed = add(reviewFailed, reviewed.failed)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            account.assertCurrent()
+                            reviewFailed = add(reviewFailed, 1)
+                        }
+                    }
                     yield()
                 }
                 account.assertCurrent()
@@ -110,7 +138,8 @@ class EnterpriseOperationWorkRunner(
         } finally {
             invocation.unlock()
         }
-        return EnterpriseOperationWorkResult(attempted, completed, retryable, attention, failed, retryAfter)
+        return EnterpriseOperationWorkResult(attempted, completed, retryable, attention, failed, retryAfter,
+            reviewResolved = reviewResolved, reviewUnresolved = reviewUnresolved, reviewFailed = reviewFailed)
     }
     override fun toString(): String = "EnterpriseOperationWorkRunner(redacted)"
 

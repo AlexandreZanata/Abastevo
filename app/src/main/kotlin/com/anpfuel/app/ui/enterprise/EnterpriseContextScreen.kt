@@ -191,7 +191,7 @@ fun EnterpriseContextScreen(
             onMode = { if (currentGesture()) syncViewModel.changeMode(it, renderedEpoch, renderedGeneration) },
             onDetail = { if (currentGesture()) syncViewModel.detail(it, renderedEpoch, renderedGeneration) },
             onManualCheck = { if (currentGesture()) syncViewModel.manualCheck(renderedEpoch, renderedGeneration) },
-            onDismiss = { identity, receipt -> if (currentGesture()) syncViewModel.dismiss(identity, receipt, renderedEpoch, renderedGeneration) },
+            onDismiss = { identity, outcome -> if (currentGesture()) syncViewModel.dismiss(identity, outcome, renderedEpoch, renderedGeneration) },
             modifier = Modifier.fillMaxSize().padding(padding),
         ) else Column(
             Modifier.fillMaxSize().padding(padding).verticalScroll(rememberScrollState()).padding(16.dp),

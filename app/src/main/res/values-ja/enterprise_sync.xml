@@ -75,4 +75,13 @@
     <string name="enterprise_sync_reason_window">受付期間が終了していました</string>
     <string name="enterprise_sync_reason_forbidden">ソースがこの操作を許可しませんでした</string>
     <string name="enterprise_sync_reason_suspended">企業は停止中でした</string>
+    <string name="enterprise_sync_review_accepted">会社の審査後に承認されました</string>
+    <string name="enterprise_sync_review_refused">会社の審査後に却下されました</string>
+    <string name="enterprise_sync_review_unresolved">会社の決定はまだ受信されていません</string>
+    <string name="enterprise_sync_review_decision_title">会社の審査結果</string>
+    <string name="enterprise_sync_review_reason">審査者の理由：%1$s</string>
+    <string name="enterprise_sync_review_no_reason">この承認には理由が示されていません</string>
+    <string name="enterprise_sync_review_decided_at">サーバーが記録した決定日時：%1$s</string>
+    <string name="enterprise_sync_review_original_kept">元の審査受領記録は変更されません。</string>
+    <string name="enterprise_sync_review_history">確認済みの審査結果：%1$s</string>
 </resources>

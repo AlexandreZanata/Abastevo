@@ -44,6 +44,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgquota"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -87,6 +88,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.UnitAuditDefinitions()...)
 	definitions = append(definitions, fleetpg.AssetAuditDefinitions()...)
 	definitions = append(definitions, fleetpg.MeterAuditDefinitions()...)
+	definitions = append(definitions, fleetpg.MeterReviewAuditDefinitions()...)
 	definitions = append(definitions, orgpg.CostCentreAuditDefinitions()...)
 	definitions = append(definitions, orgpg.TeamAuditDefinitions()...)
 	definitions = append(definitions, orgpg.SettingsAuditDefinitions()...)
@@ -124,6 +126,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "fleet.asset", Permissions: []string{"fleet.asset.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic fleet configuration inherits identity v1 write 200/hour on each current organization/account/web-or-device axis; production measurement and cleanup remain required."},
+		{Class: "meter.review", Permissions: []string{"meter.reading.correct"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic held meter review decisions inherit identity v1 write200/hour on every current organization/account/web-or-device axis; production measurement and cleanup remain required."},
 		{Class: "idn.invitation", Permissions: []string{"idn.invitation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic invitation writes use the existing identity v1 write allowance on every axis; production measurement remains required."},
 		{Class: "idn.membership", Permissions: []string{"idn.membership.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic membership lifecycle uses identity v1 write200/hour on every axis; production measurement remains required."},
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -230,8 +233,18 @@ func Register(router chi.Router, o Options) error {
 		return e
 	}
 	meterAuthority := &orgpg.MeterAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Devices: deviceStore}
-	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore}
+	reviews := &fleetpg.MeterReviewStore{Pool: o.Pool, Authority: &orgpg.MeterReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore, NewID: jobs.NewUUIDv4,
+		ConfirmSource: func(ctx context.Context, tx pgx.Tx, s syncapp.Source) (time.Time, error) {
+			_, now, err := deviceStore.CheckCurrentDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
+			return now, err
+		},
+	}
+	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore, Reviews: reviews}
 	if err := fleetweb.RegisterMeters(router, fleetapp.MeterService{Enabled: true, Repository: meters, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	reviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.MeterReviewRecords{}, Now: time.Now}
+	if err := fleetweb.RegisterMeterReviews(router, fleetapp.MeterReviewService{Enabled: true, Repository: reviews}, cookies, gateway, reviewAuthorization); err != nil {
 		return err
 	}
 	if err := registerIntake(router, o, deviceStore, meters, auditStore, auditCatalog); err != nil {

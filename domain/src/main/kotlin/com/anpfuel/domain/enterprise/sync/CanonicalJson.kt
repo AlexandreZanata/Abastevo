@@ -58,6 +58,16 @@ object CanonicalJson {
     fun parse(raw: ByteArray, maxBytes: Int = MAX_BATCH_BYTES, maxDepth: Int = MAX_TRANSPORT_DEPTH): SyncJson =
         parseSpanned(raw, maxBytes, maxDepth).value
 
+    /** Separate reviewed-results profile; the public V1 parser keeps its 64KiB ceiling. */
+    internal fun parseReviewResultsSpanned(raw: ByteArray): JsonNode {
+        if (raw.size > ReviewResultsResponse.MAX_BYTES) throw invalid(SyncFailure.LIMIT)
+        val text = try {
+            Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(raw)).toString()
+        } catch (_: java.nio.charset.CharacterCodingException) { throw invalid() }
+        return Parser(text, MAX_TRANSPORT_DEPTH).parse()
+    }
+
     internal fun parseSpanned(raw: ByteArray, maxBytes: Int, maxDepth: Int): JsonNode {
         if (maxBytes !in 1..MAX_BATCH_BYTES || maxDepth !in 1..MAX_TRANSPORT_DEPTH) throw invalid()
         if (raw.size > maxBytes) throw invalid(SyncFailure.LIMIT)

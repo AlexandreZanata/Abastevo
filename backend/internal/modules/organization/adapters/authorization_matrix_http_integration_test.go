@@ -45,6 +45,7 @@ var matrixRepresentatives = []matrixRoute{
 	{"org.structure.manage", "/units/list", false, false},
 	{"fleet.asset.manage", "/fleet/assets/create", true, true},
 	{"fleet.asset.read", "/fleet/assets/list", false, false},
+	{"meter.reading.correct", "/sync/reviews/meter-readings/list", false, false},
 }
 
 func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
@@ -228,6 +229,9 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_sync_operations x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_sync_acknowledgements x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_sync_effects x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_sync_review_items x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,review_item_id) FROM org_meter_held_readings x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_sync_review_resolutions x),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),
 	 (SELECT count(*) FROM org_ownership_commands), (SELECT count(*) FROM org_role_commands))::text`).Scan(&value); err != nil {
 		t.Fatal(err)
@@ -302,6 +306,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	fx := devicesFixture(t)
 	grantEmployeeTables(t, fx.legalFixtureState)
 	_ = fleetStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
+	fx.f.GrantMeterReviews(t)
 	roleSQL := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+roleSQL+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+roleSQL); err != nil {
 		t.Fatal(err)
@@ -552,8 +557,8 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 140 || allowed != 51 || denied != 89 {
+	if exercised != 150 || allowed != 55 || denied != 95 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 71 permissions not yet routed; Fleet S cells remain denied pending actual assignment integration", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 69 permissions not yet routed; one actual signed Meter producer; Fleet S cells remain denied pending actual assignment integration", exercised, allowed, denied)
 }

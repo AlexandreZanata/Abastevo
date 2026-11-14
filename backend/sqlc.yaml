@@ -612,8 +612,10 @@ sql:
       - db/migrations/000170_membership_periods.sql
       - db/migrations/000172_organization_onboarding.sql
       - db/migrations/000194_organization_devices.sql
+      - db/migrations/000196_organization_sync_intake.sql
       - db/migrations/000197_organization_assets.sql
       - db/migrations/000198_organization_meters.sql
+      - db/migrations/000199_organization_meter_reviews.sql
     gen:
       go:
         package: fleet

@@ -95,7 +95,7 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if _, exists := noAsync[meterKey]; exists {
 		return app.ErrUnavailable
 	}
-	noAsync[meterKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	noAsync[meterKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup, protocol.AcceptedForReview: app.AtomicReview}
 	catalog, _, err := IntakeEvents(o.Pool, o.IntakeConsumers)
 	if err != nil {
 		return err
@@ -113,5 +113,9 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return app.ErrUnavailable
 	}
-	return syncweb.Register(router, syncweb.Options{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: auth.Verifier{Pool: o.Pool, Authority: origin.Host, Now: time.Now}, Devices: devices, Service: app.Service{Store: store, Admission: intakeAdmission{budget}, Registry: registry}, Limits: protocol.DefaultLimits()})
+	verifier := auth.Verifier{Pool: o.Pool, Authority: origin.Host, Now: time.Now}
+	if err := syncweb.RegisterReviewResults(router, syncweb.ReviewResultsOptions{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Repository: meters.Reviews}); err != nil {
+		return err
+	}
+	return syncweb.Register(router, syncweb.Options{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Service: app.Service{Store: store, Admission: intakeAdmission{budget}, Registry: registry}, Limits: protocol.DefaultLimits()})
 }

@@ -137,6 +137,10 @@ func (fx meterIntakeHTTPFixture) dispatch(t *testing.T, op protocol.Operation, w
 func TestMeterIntakeDefaultRuntimeSignedTLSAuthorizationMatrix(t *testing.T) {
 	roles, cells := matrixOracle(t)
 	fx := meterIntakeHTTP(t)
+	// The default runtime's held-review producer appends the typed held fact.
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT INSERT ON org_meter_held_readings TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	allowed, denied := 0, 0
 	var first protocol.Operation
 	var original protocol.Acknowledgement
@@ -154,7 +158,13 @@ func TestMeterIntakeDefaultRuntimeSignedTLSAuthorizationMatrix(t *testing.T) {
 				}
 				allowed++
 			} else {
-				fx.dispatch(t, op, http.StatusForbidden)
+				// syncFixture first gave this member an effective ADMIN/ORG grant.
+				// B-BR-EMP-160/EDR-118: after that grant ends, a denied role holds
+				// the actual fact for review; it never applies a reading or effect.
+				ack := fx.dispatch(t, op, http.StatusOK)
+				if ack.Result() != protocol.AcceptedForReview || ack.Code() != "PERMISSION_CHANGED" || ack.Snapshot().EntityRevision != nil {
+					t.Fatal("formerly authorized denied role was not held for review", ack.Result(), ack.Code())
+				}
 				denied++
 			}
 		})
@@ -162,12 +172,31 @@ func TestMeterIntakeDefaultRuntimeSignedTLSAuthorizationMatrix(t *testing.T) {
 	if allowed != 4 || denied != 6 {
 		t.Fatal("signed ordinary role applicability drift", allowed, denied)
 	}
+	// A member whose complete retained history never had an effective ORG grant
+	// is FORBIDDEN through the same signed TLS route and changes nothing.
+	t.Run("never-authorized-FINANCE", func(t *testing.T) {
+		never := fx
+		never.person = meterHistoryFinancePerson(t, fx.deviceFixtureState)
+		never.source = meterHistoricalSource(t, fx.deviceFixtureState, never.person)
+		never.dispatch(t, never.operation(t, "184190000", nil), http.StatusForbidden)
+	})
 	for _, role := range []string{"DRIVER", "OPERATIONS_STAFF"} {
-		t.Run(role+"-actual-self-unavailable", func(t *testing.T) {
+		t.Run(role+"-actual-self-after-org-held", func(t *testing.T) {
+			// Current SELF never applies; the proven former ORG grant holds it.
 			matrixAssign(t, fx.deviceFixtureState, matrixPerson{member: fx.person.member}, role, "SELF", "ACTIVE")
-			fx.dispatch(t, fx.operation(t, "184190000", nil), http.StatusForbidden)
+			if ack := fx.dispatch(t, fx.operation(t, "184190000", nil), http.StatusOK); ack.Result() != protocol.AcceptedForReview || ack.Code() != "PERMISSION_CHANGED" {
+				t.Fatal("SELF after a former ORG grant was not held for review", ack.Result(), ack.Code())
+			}
 		})
 	}
+	// SELF-only retained history cannot prove absence (EDR-118): unavailable,
+	// with the whole signed response withheld and no private state change.
+	t.Run("actual-self-only-unavailable", func(t *testing.T) {
+		self := fx
+		self.person = deviceNewPerson(t, fx.deviceFixtureState)
+		self.source = meterHistoricalSource(t, fx.deviceFixtureState, self.person)
+		self.dispatch(t, self.operation(t, "184190000", nil), http.StatusServiceUnavailable)
+	})
 	matrixAssign(t, fx.deviceFixtureState, matrixPerson{member: fx.person.member}, "ADMIN", "ORG", "ACTIVE")
 	replay := fx.dispatch(t, first, http.StatusOK)
 	if !bytes.Equal(replay.CanonicalBytes(), original.CanonicalBytes()) {
@@ -176,10 +205,14 @@ func TestMeterIntakeDefaultRuntimeSignedTLSAuthorizationMatrix(t *testing.T) {
 	var exact bool
 	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT
  (SELECT count(*) FROM org_meter_readings WHERE org_id=$1)=5 AND
- (SELECT count(*) FROM org_sync_operations WHERE org_id=$1)=4 AND
- (SELECT count(*) FROM org_sync_acknowledgements WHERE org_id=$1)=4 AND
+ (SELECT count(*) FROM org_sync_operations WHERE org_id=$1)=12 AND
+ (SELECT count(*) FROM org_sync_acknowledgements WHERE org_id=$1 AND result='ACCEPTED')=4 AND
+ (SELECT count(*) FROM org_sync_acknowledgements WHERE org_id=$1 AND result='ACCEPTED_FOR_REVIEW' AND review_proof_version=1)=8 AND
+ (SELECT count(*) FROM org_sync_review_items WHERE org_id=$1)=8 AND
+ (SELECT count(*) FROM org_meter_held_readings WHERE org_id=$1)=8 AND
  (SELECT count(*) FROM org_sync_effects WHERE org_id=$1)=4 AND
  (SELECT count(*) FROM org_audit_events WHERE org_id=$1 AND action='offl.operation.accepted')=4 AND
+ (SELECT count(*) FROM org_audit_events WHERE org_id=$1 AND action='offl.operation.review')=8 AND
  (SELECT count(*) FROM org_event_intents WHERE org_id=$1)=0`, fx.scope.OrgID().String()).Scan(&exact); err != nil || !exact {
 		t.Fatal("actual signed role requests duplicated/lost reading/audit/ACK/effect or invented async work", err)
 	}

@@ -132,6 +132,7 @@ func installSyntheticUnitUsageSource(t *testing.T, fx legalFixtureState) {
  OR (c.conrelid='public.org_teams'::regclass AND c.conname='org_team_unit_fkey')
  OR (c.conrelid='public.org_assets'::regclass AND c.conname='org_asset_unit_fkey')
  OR (c.conrelid='public.org_asset_unit_allocations'::regclass AND c.conname='org_asset_allocation_unit_fkey')
+ OR (c.conrelid='public.org_meter_held_readings'::regclass AND c.conname='org_meter_held_readings_unit_fkey')
  OR c.conrelid='public.synthetic_unit_work'::regclass)) THEN RAISE EXCEPTION USING ERRCODE='P7704',MESSAGE='unit usage source unavailable';END IF;
  RETURN (SELECT jsonb_build_object('assets',count(*) FILTER(WHERE kind='ASSET')+(SELECT count(*) FROM public.org_asset_unit_allocations p JOIN public.org_assets a ON(a.org_id,a.id)=(p.org_id,p.asset_id) WHERE p.org_id=selected_org AND p.unit_id=selected_unit AND p.ended_at IS NULL AND a.state='ACTIVE'),'employees',count(*) FILTER(WHERE kind='EMPLOYEE')+(SELECT count(*) FROM (
   SELECT p.employee_id FROM public.org_employee_profiles p JOIN public.org_employee_identities e ON(e.org_id,e.id)=(p.org_id,p.employee_id) WHERE p.org_id=selected_org AND p.home_unit_id=selected_unit AND e.state='ACTIVE'

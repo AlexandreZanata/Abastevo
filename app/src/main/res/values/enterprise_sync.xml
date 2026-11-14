@@ -75,4 +75,13 @@
     <string name="enterprise_sync_reason_window">The receipt window had closed</string>
     <string name="enterprise_sync_reason_forbidden">The source did not authorize this operation</string>
     <string name="enterprise_sync_reason_suspended">The company was suspended</string>
+    <string name="enterprise_sync_review_accepted">Accepted after company review</string>
+    <string name="enterprise_sync_review_refused">Refused after company review</string>
+    <string name="enterprise_sync_review_unresolved">No company decision has been received yet</string>
+    <string name="enterprise_sync_review_decision_title">Company review decision</string>
+    <string name="enterprise_sync_review_reason">Reviewer’s reason: %1$s</string>
+    <string name="enterprise_sync_review_no_reason">No reason was given with this acceptance</string>
+    <string name="enterprise_sync_review_decided_at">Decision recorded by the server: %1$s</string>
+    <string name="enterprise_sync_review_original_kept">The original review receipt remains unchanged.</string>
+    <string name="enterprise_sync_review_history">Confirmed review decision: %1$s</string>
 </resources>

@@ -6,6 +6,8 @@ import com.anpfuel.application.enterprise.EnterpriseOperationReused
 import com.anpfuel.application.enterprise.queue.EnterpriseOperationQueue
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueAttempt
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueTransaction
+import com.anpfuel.application.enterprise.queue.EnterpriseReviewQueue
+import com.anpfuel.domain.enterprise.sync.ReviewResolution
 import com.anpfuel.data.enterprise.*
 import com.anpfuel.domain.enterprise.EnterpriseLocalRecord
 import com.anpfuel.domain.enterprise.EnterprisePartition
@@ -14,9 +16,10 @@ import com.anpfuel.domain.enterprise.sync.EnterpriseQueueStats
 import com.anpfuel.domain.enterprise.sync.QueueRetryState
 import com.anpfuel.domain.enterprise.sync.EnterpriseOperation
 import com.anpfuel.domain.enterprise.sync.OperationAcknowledgement
+import com.anpfuel.domain.enterprise.sync.SyncResult
 
 /** Typed queue shares the accepted sealed snapshot and its trusted committed head. */
-class ProtectedEnterpriseQueue(private val store: ProtectedEnterprisePersistence) : EnterpriseOperationQueue {
+class ProtectedEnterpriseQueue(private val store: ProtectedEnterprisePersistence) : EnterpriseOperationQueue, EnterpriseReviewQueue {
     override suspend fun save(attempt: EnterpriseQueueAttempt, operation: EnterpriseOperation,
         project: (EnterpriseQueueTransaction) -> Unit): Boolean = store.queueAccess(attempt) { snapshot ->
         ProtectedQueueCodec.checkBinding(operation, snapshot)
@@ -60,7 +63,8 @@ class ProtectedEnterpriseQueue(private val store: ProtectedEnterprisePersistence
         } else {
             project(snapshot, project)
             snapshot.entries[key] = VaultEntry(VaultKind.QUEUE, stored.id, "",
-                ProtectedQueueCodec.encode(EnterpriseQueueEntry(entry.operation, entry.retry, ack)))
+                ProtectedQueueCodec.encode(EnterpriseQueueEntry(entry.operation, entry.retry, ack, entry.dismissedRejected,
+                    entry.resolution, entry.reviewRetry)))
             VaultQueueChange(true, true)
         }
     }
@@ -76,7 +80,55 @@ class ProtectedEnterpriseQueue(private val store: ProtectedEnterprisePersistence
         else if (sameRetry(entry.retry, next)) VaultQueueChange(true)
         else {
             snapshot.entries[key] = VaultEntry(VaultKind.QUEUE, stored.id, "",
-                ProtectedQueueCodec.encode(EnterpriseQueueEntry(entry.operation, next)))
+                ProtectedQueueCodec.encode(EnterpriseQueueEntry(entry.operation, next, entry.acknowledgement,
+                    entry.dismissedRejected, entry.resolution, entry.reviewRetry)))
+            VaultQueueChange(true, true)
+        }
+    }
+
+    override suspend fun unresolvedReviews(attempt: EnterpriseQueueAttempt): List<EnterpriseQueueEntry> = store.queueAccess(attempt) { snapshot ->
+        VaultQueueChange(snapshot.entries.values.filter { it.kind == VaultKind.QUEUE }
+            .map { ProtectedQueueCodec.decode(it.bytes, snapshot, it.id) }.filter { it.unresolvedReview })
+    }
+
+    /** One locked read-check-write: exact intent, original REVIEW bytes and its ReviewID; equal replay is a no-op. */
+    override suspend fun resolve(attempt: EnterpriseQueueAttempt, operation: EnterpriseOperation,
+        acknowledgement: OperationAcknowledgement, resolution: ReviewResolution): Boolean = store.queueAccess(attempt) { snapshot ->
+        ProtectedQueueCodec.checkBinding(operation, snapshot)
+        val key = "QUEUE:" + operation.operationId
+        val stored = snapshot.entries[key] ?: throw EnterprisePersistenceUnavailable()
+        val entry = ProtectedQueueCodec.decode(stored.bytes, snapshot, stored.id)
+        sameIntent(operation, entry.operation)
+        val receipt = entry.acknowledgement ?: throw EnterprisePersistenceUnavailable()
+        if (receipt.result != SyncResult.ACCEPTED_FOR_REVIEW || !receipt.canonicalBytes.contentEquals(acknowledgement.canonicalBytes))
+            throw EnterprisePersistenceUnavailable()
+        val existing = entry.resolution
+        if (existing != null) {
+            if (!existing.canonicalBytes.contentEquals(resolution.canonicalBytes)) throw EnterprisePersistenceUnavailable()
+            VaultQueueChange(false)
+        } else {
+            val resolved = try {
+                EnterpriseQueueEntry(entry.operation, entry.retry, receipt, entry.dismissedRejected, resolution)
+            } catch (_: IllegalArgumentException) { throw EnterprisePersistenceUnavailable() }
+            snapshot.entries[key] = VaultEntry(VaultKind.QUEUE, stored.id, "", ProtectedQueueCodec.encode(resolved))
+            VaultQueueChange(true, true)
+        }
+    }
+
+    override suspend fun reviewRetry(attempt: EnterpriseQueueAttempt, operation: EnterpriseOperation,
+        acknowledgement: OperationAcknowledgement, expected: QueueRetryState, next: QueueRetryState): Boolean = store.queueAccess(attempt) { snapshot ->
+        ProtectedQueueCodec.checkBinding(operation, snapshot)
+        val key = "QUEUE:" + operation.operationId
+        val stored = snapshot.entries[key] ?: throw EnterprisePersistenceUnavailable()
+        val entry = ProtectedQueueCodec.decode(stored.bytes, snapshot, stored.id)
+        sameIntent(operation, entry.operation)
+        val receipt = entry.acknowledgement ?: throw EnterprisePersistenceUnavailable()
+        if (!receipt.canonicalBytes.contentEquals(acknowledgement.canonicalBytes)) throw EnterprisePersistenceUnavailable()
+        if (!entry.unresolvedReview || !entry.reviewRetry.sameAs(expected)) VaultQueueChange(false)
+        else if (entry.reviewRetry.sameAs(next)) VaultQueueChange(true)
+        else {
+            snapshot.entries[key] = VaultEntry(VaultKind.QUEUE, stored.id, "", ProtectedQueueCodec.encode(
+                EnterpriseQueueEntry(entry.operation, entry.retry, receipt, entry.dismissedRejected, null, next)))
             VaultQueueChange(true, true)
         }
     }
@@ -94,8 +146,7 @@ class ProtectedEnterpriseQueue(private val store: ProtectedEnterprisePersistence
             !attempted.canonicalBytes.contentEquals(stored.canonicalBytes)) throw EnterpriseOperationReused()
     }
 
-    private fun sameRetry(a: QueueRetryState, b: QueueRetryState) =
-        a.attempts == b.attempts && a.clock == b.clock && a.delayMillis == b.delayMillis
+    private fun sameRetry(a: QueueRetryState, b: QueueRetryState) = a.sameAs(b)
 
     private fun project(snapshot: VaultSnapshot, projector: (EnterpriseQueueTransaction) -> Unit) {
         val transaction = BorrowedProjection(snapshot)

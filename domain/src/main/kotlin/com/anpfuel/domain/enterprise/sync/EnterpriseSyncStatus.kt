@@ -47,15 +47,42 @@ class EnterpriseSyncReceipt(val result: SyncResult, val code: String?, val recei
 
 class EnterpriseSyncItem(val identity: EnterpriseOperationIdentity, val type: String, val operationSchema: Long,
     val declared: TimeDeclaration, val retry: QueueRetryState, val receipt: EnterpriseSyncReceipt?,
-    val attachmentCount: Int, val dismissedRejected: Boolean = false) {
+    val attachmentCount: Int, val dismissedRejected: Boolean = false, val resolution: EnterpriseSyncResolution? = null) {
     init {
         val segments = type.split('.')
         require(type.length <= 8192 && segments.size >= 2 && segments.all(::segmented) && operationSchema > 0 && attachmentCount >= 0)
-        require(!dismissedRejected || receipt?.result == SyncResult.REJECTED)
+        if (resolution != null) {
+            require(receipt?.result == SyncResult.ACCEPTED_FOR_REVIEW && resolution.identity == identity &&
+                !resolution.resolvedAt.isBefore(receipt.receivedAt))
+        }
+        require(!dismissedRejected || receipt?.result == SyncResult.REJECTED ||
+            resolution?.outcome == EnterpriseReviewOutcome.REFUSED)
     }
     val status: EnterpriseSyncStatus get() = EnterpriseSyncProjection.status(this)
     val pending: Boolean get() = EnterpriseSyncProjection.pending(this)
     override fun toString(): String = "EnterpriseSyncItem(redacted)"
+}
+
+enum class EnterpriseReviewOutcome { ACCEPTED, REFUSED }
+
+/** Minimal decision projection; canonical bytes, review/resolution IDs and reviewer proof never enter UI models. */
+class EnterpriseSyncResolution private constructor(val identity: EnterpriseOperationIdentity, val outcome: EnterpriseReviewOutcome,
+    val reason: String, val resolvedAt: Instant, val entityRevision: Long?, val resolutionDigest: String) {
+    override fun toString(): String = "EnterpriseSyncResolution(redacted)"
+    companion object {
+        fun from(value: ReviewResolution): EnterpriseSyncResolution {
+            val decided = value.snapshot()
+            val outcome = when (decided.outcome) {
+                ReviewResolution.ACCEPTED -> EnterpriseReviewOutcome.ACCEPTED
+                ReviewResolution.REFUSED -> EnterpriseReviewOutcome.REFUSED
+                else -> throw IllegalArgumentException("Unknown review outcome")
+            }
+            val hash = "sha256:" + MessageDigest.getInstance("SHA-256").digest(value.canonicalBytes)
+                .joinToString("") { "%02x".format(it.toInt() and 255) }
+            return EnterpriseSyncResolution(EnterpriseOperationIdentity(decided.operationId, decided.payloadDigest), outcome,
+                decided.reason, EnterpriseTime.parseInstant(decided.resolvedAt), decided.entityRevision, hash)
+        }
+    }
 }
 
 /** Local file evidence is not a document upload lifecycle state. */
@@ -70,7 +97,7 @@ class EnterpriseSyncAttachment(val id: String, val declaredBytes: Long, val sha2
     override fun toString(): String = "EnterpriseSyncAttachment(redacted)"
 }
 
-enum class EnterpriseSyncHistoryKind { DURABLE_SAVE, RETRY_OBSERVATION, SERVER_RECEIPT }
+enum class EnterpriseSyncHistoryKind { DURABLE_SAVE, RETRY_OBSERVATION, SERVER_RECEIPT, REVIEW_RESOLUTION }
 enum class EnterpriseSyncTimeSource { UNKNOWN, DEVICE, SERVER }
 class EnterpriseSyncHistoryEvent(val kind: EnterpriseSyncHistoryKind, val time: Instant?, val source: EnterpriseSyncTimeSource) {
     override fun toString(): String = "EnterpriseSyncHistoryEvent(redacted)"
@@ -104,15 +131,21 @@ object EnterpriseSyncProjection {
         EnterpriseOperationIdentity(entry.operation.operationId, entry.operation.payloadDigest), entry.operation.type,
         entry.operation.operationSchema, entry.operation.declaration, entry.retry,
         entry.acknowledgement?.let(EnterpriseSyncReceipt::from), entry.operation.attachments.size, entry.dismissedRejected,
+        entry.resolution?.let(EnterpriseSyncResolution::from),
     )
+    /** A verified separate resolution decides the effective status; the original receipt stays unchanged. */
     fun status(item: EnterpriseSyncItem, sending: Boolean = false): EnterpriseSyncStatus = when (item.receipt?.result) {
         SyncResult.ACCEPTED -> EnterpriseSyncStatus.ACCEPTED
-        SyncResult.ACCEPTED_FOR_REVIEW -> EnterpriseSyncStatus.NEEDS_REVIEW
+        SyncResult.ACCEPTED_FOR_REVIEW -> when (item.resolution?.outcome) {
+            EnterpriseReviewOutcome.ACCEPTED -> EnterpriseSyncStatus.ACCEPTED
+            EnterpriseReviewOutcome.REFUSED -> EnterpriseSyncStatus.REJECTED
+            null -> EnterpriseSyncStatus.NEEDS_REVIEW
+        }
         SyncResult.REJECTED -> EnterpriseSyncStatus.REJECTED
         else -> if (sending) EnterpriseSyncStatus.SENDING else EnterpriseSyncStatus.SAVED_ON_DEVICE
     }
     fun pending(item: EnterpriseSyncItem): Boolean = !item.dismissedRejected &&
-        (item.receipt?.result != SyncResult.ACCEPTED || item.attachmentCount > 0)
+        (status(item) != EnterpriseSyncStatus.ACCEPTED || item.attachmentCount > 0)
     fun history(item: EnterpriseSyncItem): List<EnterpriseSyncHistoryEvent> = buildList {
         add(EnterpriseSyncHistoryEvent(EnterpriseSyncHistoryKind.DURABLE_SAVE, null, EnterpriseSyncTimeSource.UNKNOWN))
         if (item.retry.attempts > 0 || item.retry.clock != null) {
@@ -121,15 +154,17 @@ object EnterpriseSyncProjection {
                 if (clock == null) EnterpriseSyncTimeSource.UNKNOWN else EnterpriseSyncTimeSource.DEVICE))
         }
         item.receipt?.let { add(EnterpriseSyncHistoryEvent(EnterpriseSyncHistoryKind.SERVER_RECEIPT, it.receivedAt, EnterpriseSyncTimeSource.SERVER)) }
+        item.resolution?.let { add(EnterpriseSyncHistoryEvent(EnterpriseSyncHistoryKind.REVIEW_RESOLUTION, it.resolvedAt, EnterpriseSyncTimeSource.SERVER)) }
     }
     fun recordStatus(currentHead: EnterpriseOperationIdentity, item: EnterpriseSyncItem,
         sending: Boolean = false): EnterpriseSyncStatus? = if (currentHead == item.identity) status(item, sending) else null
     fun totals(items: List<EnterpriseSyncItem>, storage: EnterpriseQueueStats): EnterpriseSyncTotals {
         require(items.size <= 10000 && items.map { it.identity.operationId }.distinct().size == items.size)
         val pending = items.filter(::pending)
+        val effective = items.map(::status)
         return EnterpriseSyncTotals(items.size, pending.size, items.count { it.receipt == null },
-            items.count { it.receipt?.result == SyncResult.ACCEPTED_FOR_REVIEW }, items.count { it.receipt?.result == SyncResult.REJECTED },
-            items.count { it.receipt?.result == SyncResult.ACCEPTED }, items.count { it.dismissedRejected },
+            effective.count { it == EnterpriseSyncStatus.NEEDS_REVIEW }, effective.count { it == EnterpriseSyncStatus.REJECTED },
+            effective.count { it == EnterpriseSyncStatus.ACCEPTED }, items.count { it.dismissedRejected },
             items.sumOf { it.attachmentCount.toLong() }, items.filterNot { it.dismissedRejected }.sumOf { it.attachmentCount.toLong() },
             storage, pending.minOfOrNull { it.declared.occurredAt }, items.mapNotNull { it.receipt?.receivedAt }.maxOrNull())
     }

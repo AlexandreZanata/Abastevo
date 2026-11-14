@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -31,15 +32,18 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.enterprise.EnterpriseAccessError
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncViewState
 import com.anpfuel.domain.enterprise.sync.EnterpriseAttachmentEvidence
 import com.anpfuel.domain.enterprise.sync.EnterpriseOperationIdentity
+import com.anpfuel.domain.enterprise.sync.EnterpriseReviewOutcome
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncDetail
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncHistoryKind
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncItem
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncMode
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncProjection
+import com.anpfuel.domain.enterprise.sync.EnterpriseSyncResolution
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncStatus
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncTotals
 import com.anpfuel.domain.enterprise.sync.SyncResult
@@ -110,7 +114,7 @@ internal fun EnterpriseSyncPanel(
                             modifier = Modifier.fillMaxWidth().testTag("enterprise-sync-group-${status.name}").semantics { heading() })
                     }
                     items(group, key = { it.identity.operationId }) { item ->
-                        val label = stringResource(statusText(EnterpriseSyncProjection.status(item, item.identity in state.active)))
+                        val label = stringResource(itemStatusText(item, item.identity in state.active))
                         Card(onClick = { onDetail(item.identity) }, enabled = !state.busy,
                             modifier = Modifier.fillMaxWidth().testTag("enterprise-sync-item-${item.identity.operationId}")
                                 .semantics(mergeDescendants = true) { stateDescription = label }) {
@@ -192,7 +196,9 @@ private fun StorageNotices(totals: EnterpriseSyncTotals) {
 
 @Composable
 private fun ItemFacts(item: EnterpriseSyncItem, sending: Boolean) {
-    Text(stringResource(statusText(EnterpriseSyncProjection.status(item, sending))), style = MaterialTheme.typography.titleMedium)
+    Text(stringResource(itemStatusText(item, sending)), style = MaterialTheme.typography.titleMedium)
+    if (item.receipt?.result == SyncResult.ACCEPTED_FOR_REVIEW && item.resolution == null)
+        Text(stringResource(R.string.enterprise_sync_review_unresolved))
     item.receipt?.code?.let { Text(stringResource(reasonText(it))) }
     if (item.dismissedRejected) Text(stringResource(R.string.enterprise_sync_hidden))
     Text(stringResource(R.string.enterprise_sync_declared_at, formattedTime(item.declared.occurredAt, item.declared.entryZone)))
@@ -214,8 +220,10 @@ private fun SyncDetail(detail: EnterpriseSyncDetail, sending: Boolean, enabled: 
                 else stringResource(R.string.enterprise_sync_retry_observation, formattedTime(time)))
         }
         EnterpriseSyncHistoryKind.SERVER_RECEIPT -> event.time?.let { Text(stringResource(R.string.enterprise_sync_receipt_at, formattedTime(it))) }
+        EnterpriseSyncHistoryKind.REVIEW_RESOLUTION -> event.time?.let { Text(stringResource(R.string.enterprise_sync_review_history, formattedTime(it))) }
     }
     if (item.receipt?.warnings?.contains("CLOCK_SKEW") == true) Notice(stringResource(R.string.enterprise_sync_clock_warning))
+    item.resolution?.let { ReviewDecision(it) }
     detail.attachments.forEachIndexed { index, attachment ->
         Card(Modifier.fillMaxWidth()) {
             Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -231,16 +239,46 @@ private fun SyncDetail(detail: EnterpriseSyncDetail, sending: Boolean, enabled: 
             }
         }
     }
+    // Only a refused effective outcome may be hidden, bound to that outcome's own fingerprint.
     val receipt = item.receipt
-    if (receipt?.result == SyncResult.REJECTED && !item.dismissedRejected) {
+    val resolution = item.resolution
+    val outcomeDigest = when {
+        receipt != null && receipt.result == SyncResult.REJECTED -> receipt.receiptDigest
+        receipt != null && receipt.result == SyncResult.ACCEPTED_FOR_REVIEW && resolution != null &&
+            resolution.outcome == EnterpriseReviewOutcome.REFUSED -> resolution.resolutionDigest
+        else -> null
+    }
+    if (outcomeDigest != null && !item.dismissedRejected) {
         TextButton(onClick = { confirm = true }, enabled = enabled,
             modifier = Modifier.fillMaxWidth().testTag("enterprise-sync-dismiss")) { Text(stringResource(R.string.enterprise_sync_hide)) }
         if (confirm) AlertDialog(onDismissRequest = { confirm = false },
             title = { Text(stringResource(R.string.enterprise_sync_hide_title)) },
             text = { Text(stringResource(R.string.enterprise_sync_hide_copy)) },
-            confirmButton = { TextButton(onClick = { confirm = false; onDismiss(item.identity, receipt.receiptDigest) }, enabled = enabled,
+            confirmButton = { TextButton(onClick = { confirm = false; onDismiss(item.identity, outcomeDigest) }, enabled = enabled,
                 modifier = Modifier.testTag("enterprise-sync-dismiss-confirm")) { Text(stringResource(R.string.enterprise_sync_hide_confirm)) } },
             dismissButton = { TextButton(onClick = { confirm = false }) { Text(stringResource(R.string.enterprise_sync_cancel)) } })
+    }
+}
+
+/** The separate verified decision; reviewer proof and review/resolution identifiers are never shown. */
+@Composable
+private fun ReviewDecision(resolution: EnterpriseSyncResolution) {
+    val containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+    Card(
+        modifier = Modifier.fillMaxWidth().testTag("enterprise-sync-review-decision").semantics(mergeDescendants = true) { },
+        shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        border = AnpContainerDefaults.borderStroke(containerColor),
+    ) {
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(stringResource(R.string.enterprise_sync_review_decision_title), style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.semantics { heading() })
+            // The outcome itself is the item status directly above; the card adds only the decision facts.
+            Text(if (resolution.reason.isEmpty()) stringResource(R.string.enterprise_sync_review_no_reason)
+                else stringResource(R.string.enterprise_sync_review_reason, resolution.reason))
+            Text(stringResource(R.string.enterprise_sync_review_decided_at, formattedTime(resolution.resolvedAt)))
+            Text(stringResource(R.string.enterprise_sync_review_original_kept))
+        }
     }
 }
 
@@ -254,6 +292,13 @@ private fun formattedTime(instant: Instant, zone: String = "UTC"): String {
     val locale = LocalConfiguration.current.locales[0]
     val formatter = remember(locale, zone) { DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(locale).withZone(ZoneId.of(zone)) }
     return formatter.format(instant) + " (" + zone + ")"
+}
+
+/** A verified resolution names its own outcome; the original REVIEW receipt stays separately visible. */
+private fun itemStatusText(item: EnterpriseSyncItem, sending: Boolean): Int = when (item.resolution?.outcome) {
+    EnterpriseReviewOutcome.ACCEPTED -> R.string.enterprise_sync_review_accepted
+    EnterpriseReviewOutcome.REFUSED -> R.string.enterprise_sync_review_refused
+    null -> statusText(EnterpriseSyncProjection.status(item, sending))
 }
 
 private fun statusText(status: EnterpriseSyncStatus): Int = when (status) {

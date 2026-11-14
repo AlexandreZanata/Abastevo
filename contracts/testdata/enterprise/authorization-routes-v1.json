@@ -451,10 +451,14 @@
     },
     {
       "permission": "meter.reading.correct",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Meter-reading operation and correction routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
+        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/read",
+        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve"
+      ],
+      "reason": ""
     },
     {
       "permission": "meter.reading.record",
@@ -768,6 +772,10 @@
     {
       "route": "POST /v1/orgs/{org_id}/sync/operations",
       "boundary": "SIGNED_BATCH"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/sync/review-results",
+      "boundary": "SIGNED_REVIEW_RESULTS"
     }
   ],
   "unavailable_station_roles": [

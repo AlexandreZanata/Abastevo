@@ -1,11 +1,38 @@
 # Current execution state
+- Enterprise EMP-OFFL-008, 2026-11-14: LOCAL_DONE / INTEGRATION_PENDING
+  (Claude Code takeover). Backend handoff items, union regressions and SQL
+  reviewer findings closed with RED→GREEN; Android protected V3/resolution/
+  polling/presentation pass host, Compose and native API36 acceptance.
+  [Closure evidence](../enterprise/evidence/f2-offl008-real-review.md#closure-by-claude-code--2026-11-14).
+  Full METER-002, the remaining audited F2 nodes, M1/M2/C1 and F3 stay open in
+  tracker #215; decision recorded: integrate the tested cumulative batch now
+  instead of continuing all of F2/F3 in this execution.
+
+- Handoff requested, 2026-11-14: implementation stopped at the maintainer's
+  request for Claude Code to finish/review the work, validate the cumulative
+  PR, reconcile issues, integrate main and deploy the new version to the VPS.
+  [Exact handoff and known failures](../enterprise/evidence/f2-offl008-real-review.md#handoff-to-claude-code--execution-stopped).
+  Owned worktree `.worktrees/enterprise-suite-execution`, branch
+  `codex/enterprise-f2`, HEAD/published backup `71b995ae`. Current OFFL-008
+  changes are uncommitted/unpushed; they include intentional Android RED stubs
+  and two known generic SQL fixture failures. Preserve all modified/untracked
+  files. No agent-owned Go/Gradle test process remains active.
+  GitHub PR203 was verified OPEN/ready, `dev`→`main`: head `6131d0a3`, base
+  `6a19bcc7`. Dev advanced independently:12 F2 commits are absent from dev,
+  and dev has4 commits absent from this worktree (merge-base `fac002e7`).
+  Normal integration must preserve both histories; no reset/force/cherry-pick
+  duplication. CI for the cumulative new head has not been run or certified.
+  Eleven tasks remain LOCAL_DONE / INTEGRATION_PENDING; full F2/Meter002/F3
+  are incomplete. New authorization is handoff scope, not a deployment already
+  performed here. No merge/issue closure/deployment was performed in this turn.
 - Authorized continuation, 2026-11-13: finish the whole in-progress F2, then
   implement F3 after completing and validating unfinished cross-phase dependencies.
   [F3 sequence](../enterprise/evidence/f3-authorized-sequence.md) records the
   requested scope/M3 entry and exit. The maintainer reiterates overnight autonomy:
   choose recommended routine decisions, record them, and ask no questions.
-  F3 is queued; the tested FLEET-002 source foundation now permits the sole
-  METER-002 dependency task; full powered FLEET-002 acceptance remains open.
+  F3 is queued. FLEET-002 is locally complete; actual Meter foundation71b995ae
+  is backed up. OFFL-008 real review is now the sole bounded implementation;
+  full METER-002 remains open for its actual remaining dependency acceptance.
 - Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2`
   from published dev `fac002e7`; verified main `6a19bcc7` remains an ancestor.
   [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
@@ -55,10 +82,10 @@
   cookie matrix140 and signed TLS10-role matrix pass with zero failures/skips.
   Full API614 contract nodes and affected host/static/sqlc/peer checks pass.
   [METER-002 source foundation](../enterprise/evidence/f2-meter002-persistence-intake.md)
-  is tested/frozen for atomic commit/backup; full METER-002 remains IN_PROGRESS
+  is committed/backed up at71b995ae; full METER-002 remains IN_PROGRESS
   until actual assignment/history/held-review acceptance. Its66-file manifest
   pins every tested source; legal/provider/live runtime/release gates remain.
-  Next bounded implementation: OFFL-008 real review (also required for actual
+  Current bounded implementation: [OFFL-008 real review](../enterprise/evidence/f2-offl008-real-review.md) (also required for actual
   post-disposal handling), then FLEET-003/005, AUTH-006, FLEET-006 and remaining
   Meter closure. EDR-109 records this cycle-free sequence. Full F3 stays queued.
   The user authorizes only the owned API36 emulator while the phone is

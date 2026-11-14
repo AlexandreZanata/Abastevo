@@ -14,9 +14,26 @@ import (
 // the structural DTOs and result catalog agree with the shared wire oracle.
 func TestEnterpriseSyncComponents(t *testing.T) {
 	doc := loadSpec(t)
+	// Exactly the delivered sync routes: the OFFL-002 batch plus the OFFL-008
+	// company Meter review and signed own-result endpoints.
+	delivered := map[string]bool{
+		"/v1/orgs/{org_id}/sync/operations":                                      false,
+		"/v1/orgs/{org_id}/sync/review-results":                                  false,
+		"/v1/orgs/{org_id}/sync/reviews/meter-readings/list":                     false,
+		"/v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/read":    false,
+		"/v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve": false,
+	}
 	for path := range doc.Paths.Map() {
-		if strings.Contains(path, "/sync") && strings.Contains(path, "/orgs/") && path != "/v1/orgs/{org_id}/sync/operations" {
-			t.Fatal("sync component exposed an undelivered enterprise route", path)
+		if strings.Contains(path, "/sync") && strings.Contains(path, "/orgs/") {
+			if _, ok := delivered[path]; !ok {
+				t.Fatal("sync component exposed an undelivered enterprise route", path)
+			}
+			delivered[path] = true
+		}
+	}
+	for path, found := range delivered {
+		if !found {
+			t.Fatal("delivered enterprise sync route missing from the contract", path)
 		}
 	}
 	file, err := os.Open(filepath.Join(contractsDir(t), "testdata", "enterprise", "sync", "operations-v1.psv"))

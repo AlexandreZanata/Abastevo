@@ -150,7 +150,7 @@ upload producers remain separate; protected integration is pending.
 - **Done when:** Boundary vectors prove that client time cannot authorize an operation.
 
 ### EMP-OFFL-008 — Review queue for operations that need review, with resolution actions
-- **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type API · size M · state IN_PROGRESS
 - **Objective:** Resolve held operations once through scoped reviewer decisions.
 - **Rules and use cases:** BR-OFFL-006, BR-OFFL-009, BR-AUTH-001, BR-REV-003, BR-REV-007, BR-REV-009, BR-AUD-001, UC-OFFL-04
 - **Depends on:** EMP-OFFL-002
@@ -164,6 +164,11 @@ upload producers remain separate; protected integration is pending.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-SYNC · migration: additive review storage · rollback: stop new resolutions and preserve evidence
 - **Risks and assumptions:** The owning command defines whether a reviewer may change a field during resolution.
 - **Done when:** Two-reviewer and retry races produce one final outcome and one audit record.
+
+[Actual F2 review construction](../evidence/f2-offl008-real-review.md) begins
+from tested/pushed71b995ae after full Fleet-002 closure. B-BR-EMP-160..169,
+BUC-EMP-83..88 and EDR-110..116 precede behavior. Actual original ACK and source
+history remain immutable; next-sync acceptance includes the protected client.
 
 ### EMP-OFFL-009 — Post-revocation intake window and quarantine
 - **Meta:** module OFFL · phase F4 · cut - · priority P1 · type API · size M · state TODO

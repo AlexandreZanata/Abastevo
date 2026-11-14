@@ -8,6 +8,7 @@ import (
 
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	meter "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	permission "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
@@ -20,17 +21,25 @@ const MeterReadingOperationType = "meter.reading.record"
 
 type meterIntakeHandler struct {
 	authority  app.MeterAuthority
+	classifier app.MeterIntakeAuthority
 	repository app.EmbeddedMeterRepository
 	lookup     app.MeterIntakeLookup
+	held       app.MeterHeldRepository
+	proof      syncapp.ReviewProof
 }
 
 func NewMeterIntakeHandler(authority app.MeterAuthority, repository app.EmbeddedMeterRepository) (syncapp.Handler, error) {
 	lookup, ok := repository.(app.MeterIntakeLookup)
-	if meterIntakeAbsent(authority) || meterIntakeAbsent(repository) || !ok || meterIntakeAbsent(lookup) {
+	classifier, classifies := authority.(app.MeterIntakeAuthority)
+	held, holds := repository.(app.MeterHeldRepository)
+	proof, proves := repository.(syncapp.ReviewProof)
+	if meterIntakeAbsent(authority) || meterIntakeAbsent(repository) || !ok || meterIntakeAbsent(lookup) || !classifies || meterIntakeAbsent(classifier) || !holds || meterIntakeAbsent(held) || !proves || meterIntakeAbsent(proof) {
 		return nil, syncapp.ErrUnavailable
 	}
-	return &meterIntakeHandler{authority: authority, repository: repository, lookup: lookup}, nil
+	return &meterIntakeHandler{authority: authority, classifier: classifier, repository: repository, lookup: lookup, held: held, proof: proof}, nil
 }
+
+func (h *meterIntakeHandler) ReviewProof() syncapp.ReviewProof { return h.proof }
 
 func meterIntakeAbsent(value any) bool {
 	if value == nil {
@@ -45,7 +54,7 @@ func meterIntakeAbsent(value any) bool {
 }
 
 func (*meterIntakeHandler) Descriptor() syncapp.Descriptor {
-	return syncapp.Descriptor{Type: MeterReadingOperationType, Schema: 1, WritePolicy: app.MeterPolicy(app.MeterRecordAction), ReadPolicy: app.MeterPolicy(app.MeterReadAction), TerminalResults: []string{protocol.Accepted, protocol.Rejected}}
+	return syncapp.Descriptor{Type: MeterReadingOperationType, Schema: 1, WritePolicy: app.MeterPolicy(app.MeterRecordAction), ReadPolicy: app.MeterPolicy(app.MeterReadAction), TerminalResults: []string{protocol.Accepted, protocol.AcceptedForReview, protocol.Rejected}}
 }
 func (h *meterIntakeHandler) request(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, mode syncapp.Mode) (app.MeterReadingCommand, error) {
 	if h == nil || meterIntakeAbsent(h.authority) || meterIntakeAbsent(h.repository) || meterIntakeAbsent(h.lookup) || ctx == nil || syncapp.Borrow(db) == nil || (mode != syncapp.Write && mode != syncapp.ReadReceipt) {
@@ -139,11 +148,11 @@ func (h *meterIntakeHandler) target(ctx context.Context, db syncapp.DBTX, source
 	if err != nil {
 		return app.MeterView{}, syncapp.ErrUnavailable
 	}
-	if err := h.authorityAt(ctx, db, source, in.AssetID, mode); err != nil {
+	if _, err := h.commandAuthority(ctx, db, source, command, mode); err != nil {
 		return app.MeterView{}, err
 	}
 	view, lookupErr := h.lookup.ReadMeterTargetTx(ctx, syncapp.Borrow(db), source.Scope, in.AssetID, in.MeterID, in.SegmentID)
-	if err := h.authorityAt(ctx, db, source, in.AssetID, mode); err != nil {
+	if _, err := h.commandAuthority(ctx, db, source, command, mode); err != nil {
 		return app.MeterView{}, err
 	}
 	if errors.Is(lookupErr, syncapp.ErrSourceDenied) {
@@ -159,6 +168,25 @@ func (h *meterIntakeHandler) target(ctx context.Context, db syncapp.DBTX, source
 		return app.MeterView{}, syncapp.ErrUnavailable
 	}
 	return view.Clone(), nil
+}
+
+func (h *meterIntakeHandler) commandAuthority(ctx context.Context, db syncapp.DBTX, source syncapp.Source, command app.MeterReadingCommand, mode syncapp.Mode) (app.MeterDisposition, error) {
+	in, err := command.Snapshot()
+	if err != nil {
+		return "", syncapp.ErrUnavailable
+	}
+	if mode == syncapp.ReadReceipt {
+		return app.MeterApply, h.authorityAt(ctx, db, source, in.AssetID, mode)
+	}
+	copy := source
+	disposition, err := h.classifier.ClassifyMeterTx(ctx, syncapp.Borrow(db), source.Scope, app.MeterSource{Device: &copy}, source.MembershipID, command)
+	if err != nil {
+		return "", meterIntakeSourceDenied(err)
+	}
+	if disposition != app.MeterApply && disposition != app.MeterHoldPermissionChanged {
+		return "", syncapp.SourceDenied(syncapp.ErrUnavailable)
+	}
+	return disposition, nil
 }
 
 func (h *meterIntakeHandler) Admit(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, mode syncapp.Mode) error {
@@ -199,9 +227,27 @@ func (h *meterIntakeHandler) Apply(ctx context.Context, db syncapp.DBTX, source 
 	if _, err := meter.NewValue(view.Reference.Kind(), in.Value.Count(), view.Reference.Modulus()); err != nil || in.Value.Kind() != view.Reference.Kind() {
 		return malformedMeterOutcome(), nil
 	}
+	disposition, err := h.commandAuthority(ctx, db, source, command, syncapp.Write)
+	if err != nil {
+		return syncapp.Outcome{}, err
+	}
+	if disposition == app.MeterHoldPermissionChanged {
+		reference, err := h.held.HoldMeterReadingTx(ctx, syncapp.Borrow(db), source, op, command, "PERMISSION_CHANGED")
+		if err != nil {
+			return syncapp.Outcome{}, syncapp.ErrUnavailable
+		}
+		id, err := kernel.ParseOrgID(reference.ReviewItemID)
+		if err != nil || id.String() != reference.ReviewItemID || reference.Revision != 1 {
+			return syncapp.Outcome{}, syncapp.ErrUnavailable
+		}
+		return syncapp.Outcome{Result: protocol.AcceptedForReview, Code: "PERMISSION_CHANGED", ReviewItemID: reference.ReviewItemID}, nil
+	}
 	copy := source
 	recorded, _, recordErr := h.repository.RecordEmbedded(ctx, syncapp.Borrow(db), source.Scope, app.MeterSource{Device: &copy}, source.MembershipID, command)
-	if err := h.authorityAt(ctx, db, source, in.AssetID, syncapp.Write); err != nil {
+	if disposition, err := h.commandAuthority(ctx, db, source, command, syncapp.Write); err != nil || disposition != app.MeterApply {
+		if err == nil {
+			err = syncapp.ErrUnavailable
+		}
 		return syncapp.Outcome{}, err
 	}
 	if errors.Is(recordErr, syncapp.ErrSourceDenied) {
@@ -229,7 +275,7 @@ func meterIntakeReading(source syncapp.Source, op protocol.Operation, command ap
 
 func (h *meterIntakeHandler) Confirm(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, mode syncapp.Mode, outcome syncapp.Outcome) error {
 	command, err := h.request(ctx, db, source, op, mode)
-	if err == nil && outcome.Result != protocol.Accepted && outcome.Result != protocol.Rejected && !(mode == syncapp.Write && outcome.Result == protocol.Retry && outcome.Code == "DEPENDENCY_PENDING") {
+	if err == nil && outcome.Result != protocol.Accepted && outcome.Result != protocol.AcceptedForReview && outcome.Result != protocol.Rejected && !(mode == syncapp.Write && outcome.Result == protocol.Retry && outcome.Code == "DEPENDENCY_PENDING") {
 		return syncapp.ErrUnavailable
 	}
 	if errors.Is(err, meter.ErrInvalid) {
@@ -248,11 +294,33 @@ func (h *meterIntakeHandler) Confirm(ctx context.Context, db syncapp.DBTX, sourc
 	if err != nil {
 		return err
 	}
+	if outcome.Result == protocol.AcceptedForReview {
+		if outcome.Code != "PERMISSION_CHANGED" || outcome.EntityRevision != nil {
+			return syncapp.ErrUnavailable
+		}
+		// Same classification as the Store's own proof checks: a failed REVIEW
+		// proof withholds the whole signed response (B-BR-EMP-161).
+		if err := h.proof.CheckHeldTx(ctx, syncapp.Borrow(db), source, op, outcome.Copy()); err != nil {
+			if errors.Is(err, syncapp.ErrSourceDenied) {
+				return err
+			}
+			return syncapp.SourceDenied(err)
+		}
+		return nil
+	}
 	if outcome.Result != protocol.Accepted {
 		return nil
 	}
 	if outcome.EntityRevision == nil || *outcome.EntityRevision != 1 {
 		return syncapp.ErrUnavailable
+	}
+	if mode == syncapp.Write {
+		if disposition, err := h.commandAuthority(ctx, db, source, command, mode); err != nil || disposition != app.MeterApply {
+			if err != nil {
+				return err
+			}
+			return syncapp.ErrUnavailable
+		}
 	}
 	in, _ := command.Snapshot()
 	reading, readErr := h.lookup.ReadMeterReadingTx(ctx, syncapp.Borrow(db), source.Scope, in.AssetID, in.MeterID, in.SegmentID, in.ReadingID)

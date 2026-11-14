@@ -75,4 +75,13 @@
     <string name="enterprise_sync_reason_window">La ventana de recepción había cerrado</string>
     <string name="enterprise_sync_reason_forbidden">La fuente no autorizó esta operación</string>
     <string name="enterprise_sync_reason_suspended">La empresa estaba suspendida</string>
+    <string name="enterprise_sync_review_accepted">Aceptado tras la revisión de la empresa</string>
+    <string name="enterprise_sync_review_refused">Rechazado tras la revisión de la empresa</string>
+    <string name="enterprise_sync_review_unresolved">Aún no se ha recibido ninguna decisión de la empresa</string>
+    <string name="enterprise_sync_review_decision_title">Decisión de la revisión de la empresa</string>
+    <string name="enterprise_sync_review_reason">Motivo del revisor: %1$s</string>
+    <string name="enterprise_sync_review_no_reason">No se indicó ningún motivo con esta aceptación</string>
+    <string name="enterprise_sync_review_decided_at">Decisión registrada por el servidor: %1$s</string>
+    <string name="enterprise_sync_review_original_kept">El recibo original de la revisión se mantiene sin cambios.</string>
+    <string name="enterprise_sync_review_history">Decisión de revisión confirmada: %1$s</string>
 </resources>

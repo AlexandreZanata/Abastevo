@@ -1,6 +1,7 @@
 package com.anpfuel.domain.enterprise.sync
 
 import com.anpfuel.domain.enterprise.EnterpriseDeviceClock
+import com.anpfuel.domain.enterprise.EnterpriseTime
 
 /** Protected retry metadata is separate from the immutable intent and final receipt. */
 class QueueRetryState(val attempts: Long = 0, val clock: EnterpriseDeviceClock? = null, val delayMillis: Long = 0) {
@@ -10,15 +11,37 @@ class QueueRetryState(val attempts: Long = 0, val clock: EnterpriseDeviceClock? 
         if (now.boot != captured.boot || now.elapsedMillis < captured.elapsedMillis) return false
         return now.elapsedMillis - captured.elapsedMillis >= delayMillis
     }
+    /** Structural equality for compare-and-set; it grants no authority. */
+    fun sameAs(other: QueueRetryState): Boolean = attempts == other.attempts && clock == other.clock && delayMillis == other.delayMillis
+    val initial: Boolean get() = attempts == 0L && clock == null && delayMillis == 0L
     override fun toString(): String = "QueueRetryState(redacted)"
 }
 
+/**
+ * The original final acknowledgement stays immutable. A review resolution is a
+ * separate terminal fact that only an exact unresolved REVIEW receipt can carry.
+ */
 class EnterpriseQueueEntry(val operation: EnterpriseOperation, val retry: QueueRetryState = QueueRetryState(),
-    val acknowledgement: OperationAcknowledgement? = null, val dismissedRejected: Boolean = false) {
+    val acknowledgement: OperationAcknowledgement? = null, val dismissedRejected: Boolean = false,
+    val resolution: ReviewResolution? = null, val reviewRetry: QueueRetryState = QueueRetryState()) {
     init {
         require(acknowledgement == null || acknowledgement.matches(operation) && acknowledgement.isFinal)
-        require(!dismissedRejected || acknowledgement?.result == SyncResult.REJECTED)
+        if (resolution != null) {
+            val receipt = requireNotNull(acknowledgement)
+            val decided = resolution.snapshot()
+            require(receipt.result == SyncResult.ACCEPTED_FOR_REVIEW && decided.operationId == operation.operationId &&
+                decided.payloadDigest == operation.payloadDigest && decided.reviewItemId == receipt.reviewItemId)
+            require(!EnterpriseTime.parseInstant(decided.resolvedAt).isBefore(requireNotNull(receipt.receivedAt)))
+        }
+        // Review retry metadata exists only while an original REVIEW is unresolved.
+        require(reviewRetry.initial || acknowledgement?.result == SyncResult.ACCEPTED_FOR_REVIEW && resolution == null)
+        require(!dismissedRejected || refusedOutcome)
     }
+    /** Only a refused effective outcome can be hidden; an unresolved REVIEW never can. */
+    val refusedOutcome: Boolean get() = acknowledgement?.result == SyncResult.REJECTED ||
+        acknowledgement?.result == SyncResult.ACCEPTED_FOR_REVIEW && resolution?.snapshot()?.outcome == ReviewResolution.REFUSED
+    /** Retained final REVIEW work that still needs the author's next result lookup. */
+    val unresolvedReview: Boolean get() = acknowledgement?.result == SyncResult.ACCEPTED_FOR_REVIEW && resolution == null
     override fun toString(): String = "EnterpriseQueueEntry(redacted)"
 }
 

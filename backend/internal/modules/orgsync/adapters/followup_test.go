@@ -17,6 +17,17 @@ import (
 
 type followupWriter struct{}
 
+type refusingReviewProof struct{ calls int }
+
+func (p *refusingReviewProof) CheckHeldTx(context.Context, app.DBTX, app.Source, protocol.Operation, app.Outcome) error {
+	p.calls++
+	return app.ErrUnavailable
+}
+func (p *refusingReviewProof) CheckOwnReceiptTx(context.Context, app.DBTX, app.Source, protocol.Operation) (bool, error) {
+	p.calls++
+	return false, app.ErrUnavailable
+}
+
 func (*followupWriter) Enqueue(context.Context, kernel.OrgScope, pgx.Tx, event.Envelope, string) error {
 	return errors.New("planning must not enqueue")
 }
@@ -54,18 +65,18 @@ func TestExplicitNoAsyncRequiresExactFrozenSourceResult(t *testing.T) {
 	source, op, descriptor, config := followupFixture(t)
 	store := NewStore(config)
 	for _, result := range []string{protocol.Accepted, protocol.Rejected} {
-		plan, bound, err := store.plan(source, op, descriptor, result)
+		plan, bound, err := store.plan(source, op, descriptor, result, nil)
 		if err != nil || len(plan.Consumers) != 0 || bound.RequestHash != strings.TrimPrefix(op.PayloadDigest(), "sha256:") || bound.Action != action(result) {
 			t.Fatal("explicit atomic result required a fabricated asynchronous producer", err)
 		}
 	}
 	for _, result := range []string{protocol.AcceptedForReview, protocol.Retry, "UNKNOWN"} {
-		if _, _, err := store.plan(source, op, descriptor, result); !errors.Is(err, app.ErrUnavailable) {
+		if _, _, err := store.plan(source, op, descriptor, result, nil); !errors.Is(err, app.ErrUnavailable) {
 			t.Fatal("undeclared terminal result acquired readiness")
 		}
 	}
 	delete(config.NoAsyncPlans[app.OperationKey{Type: descriptor.Type, Schema: 1}], protocol.Accepted)
-	if _, _, err := store.plan(source, op, descriptor, protocol.Accepted); err != nil {
+	if _, _, err := store.plan(source, op, descriptor, protocol.Accepted, nil); err != nil {
 		t.Fatal("caller mutated captured followup declaration", err)
 	}
 }
@@ -105,7 +116,7 @@ func TestNoAsyncCannotReplaceMissingOrReviewProducer(t *testing.T) {
 			case "conflicting_async":
 				config.Plans = map[string]map[string][]string{descriptor.Type: {result: {"validation.sync"}}}
 			}
-			if _, _, err := NewStore(config).plan(source, op, descriptor, result); !errors.Is(err, app.ErrUnavailable) {
+			if _, _, err := NewStore(config).plan(source, op, descriptor, result, nil); !errors.Is(err, app.ErrUnavailable) {
 				t.Fatal("missing or invalid followup producer became ready")
 			}
 		})
@@ -122,17 +133,60 @@ func TestRequiredAsyncPlanKeepsConsumerAndWriterObligations(t *testing.T) {
 	config.EventCatalog = catalog
 	config.EventWriter = &followupWriter{}
 	config.Plans = map[string]map[string][]string{descriptor.Type: {protocol.Accepted: {"validation.sync"}}}
-	plan, bound, err := NewStore(config).plan(source, op, descriptor, protocol.Accepted)
+	plan, bound, err := NewStore(config).plan(source, op, descriptor, protocol.Accepted, nil)
 	if err != nil || len(plan.Consumers) != 1 || plan.Consumers[0] != "validation.sync" || bound.RequestHash == strings.TrimPrefix(op.PayloadDigest(), "sha256:") {
 		t.Fatal("required async plan changed", err)
 	}
 	config.EventWriter = nil
-	if _, _, err := NewStore(config).plan(source, op, descriptor, protocol.Accepted); !errors.Is(err, app.ErrUnavailable) {
+	if _, _, err := NewStore(config).plan(source, op, descriptor, protocol.Accepted, nil); !errors.Is(err, app.ErrUnavailable) {
 		t.Fatal("missing required writer counted as readiness")
 	}
 	var absent *followupWriter
 	config.EventWriter = absent
-	if _, _, err := NewStore(config).plan(source, op, descriptor, protocol.Accepted); !errors.Is(err, app.ErrUnavailable) {
+	if _, _, err := NewStore(config).plan(source, op, descriptor, protocol.Accepted, nil); !errors.Is(err, app.ErrUnavailable) {
 		t.Fatal("typed nil required writer counted as readiness")
+	}
+}
+
+func TestAtomicReviewPlanNeedsCapturedProofAndExplicitExactMode(t *testing.T) {
+	source, op, descriptor, config := followupFixture(t)
+	descriptor.TerminalResults = []string{protocol.Accepted, protocol.AcceptedForReview, protocol.Rejected}
+	key := app.OperationKey{Type: descriptor.Type, Schema: 1}
+	config.NoAsyncPlans[key][protocol.AcceptedForReview] = app.AtomicReview
+	proof := &refusingReviewProof{}
+	plan, bound, err := NewStore(config).plan(source, op, descriptor, protocol.AcceptedForReview, proof)
+	if err != nil || len(plan.Consumers) != 0 || bound.Action != "offl.operation.review" || proof.calls != 0 {
+		t.Fatal("explicit atomic review declaration unavailable or planner pretended to verify a held fact", err)
+	}
+	var typedNil *refusingReviewProof
+	for _, missing := range []app.ReviewProof{nil, typedNil} {
+		if _, _, err := NewStore(config).plan(source, op, descriptor, protocol.AcceptedForReview, missing); !errors.Is(err, app.ErrUnavailable) {
+			t.Fatal("missing review proof gained readiness")
+		}
+	}
+	config.NoAsyncPlans[key][protocol.AcceptedForReview] = app.NoAsyncFollowup
+	if _, _, err := NewStore(config).plan(source, op, descriptor, protocol.AcceptedForReview, proof); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("ordinary no-async mode impersonated actual review")
+	}
+}
+
+func TestAsyncReviewStillRequiresCapturedProof(t *testing.T) {
+	source, op, descriptor, config := followupFixture(t)
+	descriptor.TerminalResults = []string{protocol.AcceptedForReview, protocol.Rejected}
+	config.NoAsyncPlans = nil
+	catalog, err := event.NewCatalog(EventDefinitions([]string{"validation.sync"}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	config.EventCatalog = catalog
+	config.EventWriter = &followupWriter{}
+	config.Plans = map[string]map[string][]string{descriptor.Type: {protocol.AcceptedForReview: {"validation.sync"}}}
+	if _, _, err := NewStore(config).plan(source, op, descriptor, protocol.AcceptedForReview, nil); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("asynchronous delivery plan replaced the real held-source proof")
+	}
+	proof := &refusingReviewProof{}
+	plan, _, err := NewStore(config).plan(source, op, descriptor, protocol.AcceptedForReview, proof)
+	if err != nil || len(plan.Consumers) != 1 || plan.Consumers[0] != "validation.sync" || proof.calls != 0 {
+		t.Fatal("real asynchronous obligation changed", err)
 	}
 }

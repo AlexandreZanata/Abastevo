@@ -31,8 +31,9 @@ interface EnterpriseSyncStatusStore {
     suspend fun page(attempt: EnterpriseQueueAttempt, mode: EnterpriseSyncMode, cursor: EnterpriseSyncCursor? = null,
         limit: Int = 50): EnterpriseSyncPage
     suspend fun detail(attempt: EnterpriseQueueAttempt, operationId: String, digest: String): EnterpriseSyncDetail
+    /** Hides only a refused effective outcome; the digest names that outcome (REJECTED receipt or REFUSED resolution). */
     suspend fun dismissRejected(attempt: EnterpriseQueueAttempt, operationId: String, digest: String,
-        expectedReceiptDigest: String): Boolean
+        expectedOutcomeDigest: String): Boolean
 }
 
 /** Actual selected attempts only. Saturation omits a hint and never blocks delivery. */
@@ -73,6 +74,20 @@ class EnterpriseDeliveryActivity {
             val revision = Math.addExact(before.revision, 1)
             val completions = (before.completions + Completion(revision, Scope(retiring.attempt))).takeLast(64)
             if (snapshots.compareAndSet(before, Snapshot(before.active - ticket, revision, completions))) {
+                mutableChanges.update { if (it == Long.MAX_VALUE) it else it + 1 }
+                return
+            }
+        }
+    }
+    /** Ticketless durable completion for a review result lookup: a reread hint, never SENDING. */
+    fun completed(attempt: EnterpriseQueueAttempt) {
+        attempt.assertCurrent()
+        val scope = Scope(attempt)
+        while (true) {
+            val before = snapshots.value
+            val revision = Math.addExact(before.revision, 1)
+            val completions = (before.completions + Completion(revision, scope)).takeLast(64)
+            if (snapshots.compareAndSet(before, Snapshot(before.active, revision, completions))) {
                 mutableChanges.update { if (it == Long.MAX_VALUE) it else it + 1 }
                 return
             }
@@ -135,7 +150,7 @@ data class EnterpriseSyncViewState(
 /** One visible owner. No route/SavedState selector and no LocalContext selection ownership. */
 class EnterpriseSyncFlow(private val source: EnterpriseQueueSource, private val store: EnterpriseSyncStatusStore,
     private val delivery: EnterpriseQueueService, private val activity: EnterpriseDeliveryActivity,
-    private val fence: EnterpriseSessionFence) {
+    private val fence: EnterpriseSessionFence, private val reviews: EnterpriseReviewService? = null) {
     private val mutable = MutableStateFlow(EnterpriseSyncViewState())
     val state: StateFlow<EnterpriseSyncViewState> = mutable.asStateFlow()
     private val deferredRefresh = MutableStateFlow(0L)
@@ -359,17 +374,24 @@ class EnterpriseSyncFlow(private val source: EnterpriseQueueSource, private val 
         val request = begin(renderedEpoch, generation, mode, clearRows = true) ?: return
         perform(request) { capture(request)?.let { load(request, it, mode) } }
     }
-    suspend fun dismiss(operationId: String, digest: String, expectedReceiptDigest: String, renderedEpoch: Long, generation: Long) {
+    /** Only a rendered refused effective outcome can be hidden, bound to that outcome's own digest. */
+    suspend fun dismiss(operationId: String, digest: String, expectedOutcomeDigest: String, renderedEpoch: Long, generation: Long) {
         invalidateIfStale()
         val identity = EnterpriseOperationIdentity(operationId, digest)
         val item = mutable.value.detail?.item?.takeIf { it.identity == identity } ?: mutable.value.items.firstOrNull { it.identity == identity } ?: return
         val receipt = item.receipt ?: return
-        if (receipt.result != SyncResult.REJECTED || item.dismissedRejected || receipt.receiptDigest != expectedReceiptDigest) return
+        val resolution = item.resolution
+        val outcomeDigest = when {
+            receipt.result == SyncResult.REJECTED -> receipt.receiptDigest
+            receipt.result == SyncResult.ACCEPTED_FOR_REVIEW && resolution?.outcome == EnterpriseReviewOutcome.REFUSED -> resolution.resolutionDigest
+            else -> return
+        }
+        if (item.dismissedRejected || outcomeDigest != expectedOutcomeDigest) return
         val request = begin(renderedEpoch, generation) ?: return
         val mode = mutable.value.mode
         perform(request) {
             val attempt = capture(request) ?: return@perform
-            store.dismissRejected(attempt, operationId, digest, expectedReceiptDigest)
+            store.dismissRejected(attempt, operationId, digest, expectedOutcomeDigest)
             if (!retained(request)) { invalidateIfStale(); return@perform }
             load(request, attempt, mode)
         }
@@ -383,6 +405,13 @@ class EnterpriseSyncFlow(private val source: EnterpriseQueueSource, private val 
         perform(request) {
             val attempt = capture(request, deliveryProof = true) ?: return@perform
             val outcome = delivery.dispatch(attempt.account, request.context.partition)
+            if (!retained(request)) { invalidateIfStale(); return@perform }
+            // Review-only work is looked up even when nothing is pending delivery; it is never shown as sending.
+            // Its failure never hides committed delivery state: the reread below surfaces real storage faults.
+            try { reviews?.poll(attempt.account, request.context.partition) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (denied: EnterpriseLocalDenied) { throw denied }
+            catch (_: Exception) { }
             if (!retained(request)) { invalidateIfStale(); return@perform }
             load(request, attempt, mode, detailIdentity = detail, waiting = outcome.retryAfterMillis, attention = outcome.attention)
         }

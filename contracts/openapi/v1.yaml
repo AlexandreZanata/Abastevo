@@ -14866,7 +14866,11 @@ paths:
           terminal_results:
           - ACCEPTED
           - REJECTED
-          followup: NO_ASYNC_FOLLOWUP
+          - ACCEPTED_FOR_REVIEW
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+            ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
       security: []
       parameters:
       - $ref: '#/components/parameters/EnterpriseOrgID'
@@ -16078,6 +16082,396 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/sync/reviews/meter-readings/list:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseMeterReviewList
+      summary: List actual held meter reviews
+      description: Current company cookie and exact Origin/CSRF. Fixed meter.reading.correct permission. Decisions
+        require fresh current proof, ACTIVE organization and enabled capability, exact revision and no self-review
+        across account, membership or canonical employee. Accept unchanged fact or refuse with reason; one immutable
+        audited resolution. Reads retain private history with capability disabled. Expiry is default60days, visible
+        and still resolvable; no automatic acceptance or invented notification worker. Synthetic construction does
+        not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: meter.reading.correct
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterReviewListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current source-backed review result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMeterReviewPage'
+              example:
+                items:
+                - review_item_id: 7b0e2a54-0000-4000-8000-000000008502
+                  operation_id: 7b0e2a54-0000-4000-8000-000000008501
+                  author_account_id: 7b0e2a54-0000-4000-8000-000000008510
+                  author_membership_id: 7b0e2a54-0000-4000-8000-000000008511
+                  author_employee_id: 7b0e2a54-0000-4000-8000-000000008512
+                  enrollment_id: 7b0e2a54-0000-4000-8000-000000008513
+                  payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                  code: PERMISSION_CHANGED
+                  state: OPEN
+                  revision: 1
+                  received_at: '2026-11-14T00:01:00Z'
+                  expires_at: '2027-01-13T00:01:00Z'
+                  fact:
+                    operation_id: 7b0e2a54-0000-4000-8000-000000008501
+                    asset_id: 7b0e2a54-0000-4000-8000-000000008401
+                    meter_id: 7b0e2a54-0000-4000-8000-000000008402
+                    segment_id: 7b0e2a54-0000-4000-8000-000000008403
+                    reading_id: 7b0e2a54-0000-4000-8000-000000008404
+                    kind: ODOMETER
+                    value: '123456'
+                    occurred_at: '2026-11-14T00:00:00.123456789Z'
+                    entry_zone: UTC
+                    device_offset_seconds: 0
+                    origin: STANDALONE
+                    method: TYPED
+                  resolution: null
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/read:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseMeterReviewRead
+      summary: Read actual held meter reviews
+      description: Current company cookie and exact Origin/CSRF. Fixed meter.reading.correct permission. Decisions
+        require fresh current proof, ACTIVE organization and enabled capability, exact revision and no self-review
+        across account, membership or canonical employee. Accept unchanged fact or refuse with reason; one immutable
+        audited resolution. Reads retain private history with capability disabled. Expiry is default60days, visible
+        and still resolvable; no automatic acceptance or invented notification worker. Synthetic construction does
+        not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: meter.reading.correct
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: review_item_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current source-backed review result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMeterReviewView'
+              example:
+                review_item_id: 7b0e2a54-0000-4000-8000-000000008502
+                operation_id: 7b0e2a54-0000-4000-8000-000000008501
+                author_account_id: 7b0e2a54-0000-4000-8000-000000008510
+                author_membership_id: 7b0e2a54-0000-4000-8000-000000008511
+                author_employee_id: 7b0e2a54-0000-4000-8000-000000008512
+                enrollment_id: 7b0e2a54-0000-4000-8000-000000008513
+                payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                code: PERMISSION_CHANGED
+                state: OPEN
+                revision: 1
+                received_at: '2026-11-14T00:01:00Z'
+                expires_at: '2027-01-13T00:01:00Z'
+                fact:
+                  operation_id: 7b0e2a54-0000-4000-8000-000000008501
+                  asset_id: 7b0e2a54-0000-4000-8000-000000008401
+                  meter_id: 7b0e2a54-0000-4000-8000-000000008402
+                  segment_id: 7b0e2a54-0000-4000-8000-000000008403
+                  reading_id: 7b0e2a54-0000-4000-8000-000000008404
+                  kind: ODOMETER
+                  value: '123456'
+                  occurred_at: '2026-11-14T00:00:00.123456789Z'
+                  entry_zone: UTC
+                  device_offset_seconds: 0
+                  origin: STANDALONE
+                  method: TYPED
+                resolution: null
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseMeterReviewResolve
+      summary: Resolve actual held meter reviews
+      description: Current company cookie and exact Origin/CSRF. Fixed meter.reading.correct permission. Decisions
+        require fresh current proof, ACTIVE organization and enabled capability, exact revision and no self-review
+        across account, membership or canonical employee. Accept unchanged fact or refuse with reason; one immutable
+        audited resolution. Reads retain private history with capability disabled. Expiry is default60days, visible
+        and still resolvable; no automatic acceptance or invented notification worker. Synthetic construction does
+        not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: meter.reading.correct
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: review_item_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterReviewResolveRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008503
+              revision: 1
+              decision: ACCEPT
+              reason: ''
+      responses:
+        '200':
+          description: Private current source-backed review result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMeterReviewResolveResult'
+              example:
+                resolution:
+                  schema_version: 1
+                  operation_id: 7b0e2a54-0000-4000-8000-000000008501
+                  payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                  review_item_id: 7b0e2a54-0000-4000-8000-000000008502
+                  resolution_id: 7b0e2a54-0000-4000-8000-000000008503
+                  review_revision: 2
+                  outcome: ACCEPTED
+                  reason: ''
+                  resolved_at: '2026-11-14T01:00:00Z'
+                  entity_revision: 1
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/sync/review-results:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseOwnReviewResults
+      summary: Read minimal immutable review results as the current original enrolled author
+      description: Normal account family plus exact signed bytes and current exact enrollment. No company cookie or
+        business record permission. Every selector must match the original retained REVIEW actor/member/enrollment/op/digest
+        and proven typed held source. Unknown or foreign selectors refuse the entire response without a private prefix.
+        Response has exact current source and request correlation; original ACK never changes. No F4 revoked-source
+        exception.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: Signature
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      - name: Signature-Created
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Expires
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Keyid
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Nonce
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseReviewResultsRequest'
+            example:
+              schema_version: 1
+              request_id: 7b0e2a54-0000-4000-8000-000000008520
+              family_id: 7b0e2a54-0000-4000-8000-000000008521
+              access_token: synthetic-review-access
+              membership_id: 7b0e2a54-0000-4000-8000-000000008511
+              enrollment_id: 7b0e2a54-0000-4000-8000-000000008513
+              selectors:
+              - operation_id: 7b0e2a54-0000-4000-8000-000000008501
+                payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Whole correlated private outcomes, including null for unresolved items.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseReviewResultsResponse'
+              example:
+                schema_version: 1
+                request_id: 7b0e2a54-0000-4000-8000-000000008520
+                owner_account_id: 7b0e2a54-0000-4000-8000-000000008510
+                api_origin: https://company.example.invalid
+                org_id: 7b0e2a54-0000-4000-8000-000000000001
+                membership_id: 7b0e2a54-0000-4000-8000-000000008511
+                enrollment_id: 7b0e2a54-0000-4000-8000-000000008513
+                results:
+                - operation_id: 7b0e2a54-0000-4000-8000-000000008501
+                  payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                  resolution:
+                    schema_version: 1
+                    operation_id: 7b0e2a54-0000-4000-8000-000000008501
+                    payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                    review_item_id: 7b0e2a54-0000-4000-8000-000000008502
+                    resolution_id: 7b0e2a54-0000-4000-8000-000000008503
+                    review_revision: 2
+                    outcome: ACCEPTED
+                    reason: ''
+                    resolved_at: '2026-11-14T01:00:00Z'
+                    entity_revision: 1
+      x-abastevo-signed-review-results:
+        account_proof: true
+        signed: true
+        exact_enrollment: true
+        original_author: true
+        whole_body_preflight: true
+        success: 200
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -16326,6 +16720,605 @@ components:
       example: {}
       description: Private current-source read. Foreign or discarded assets are not found; read permission does not
         infer an assignment.
+    EnterpriseReviewResolution:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        payload_digest:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        review_item_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        resolution_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        review_revision:
+          type: integer
+          const: 2
+        outcome:
+          type: string
+          enum:
+          - ACCEPTED
+          - REFUSED
+        reason:
+          type: string
+          maxLength: 280
+          description: Exact Unicode scalar text, no controls. Empty only for acceptance; refusal requires nonblank
+            reason.
+        resolved_at:
+          type: string
+          format: date-time
+        entity_revision:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+      required:
+      - schema_version
+      - operation_id
+      - payload_digest
+      - review_item_id
+      - resolution_id
+      - review_revision
+      - outcome
+      - reason
+      - resolved_at
+      - entity_revision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008501
+        payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        review_item_id: 7b0e2a54-0000-4000-8000-000000008502
+        resolution_id: 7b0e2a54-0000-4000-8000-000000008503
+        review_revision: 2
+        outcome: ACCEPTED
+        reason: ''
+        resolved_at: '2026-11-14T01:00:00Z'
+        entity_revision: 1
+      x-abastevo-max-raw-bytes: 4096
+      description: Separate immutable version1 resolution. Original REVIEW ACK is never replaced. ACCEPTED requires
+        positive entity_revision; REFUSED requires null and a nonblank reason.
+      oneOf:
+      - properties:
+          outcome:
+            type: string
+            enum:
+            - ACCEPTED
+          entity_revision:
+            type: integer
+            minimum: 1
+      - properties:
+          outcome:
+            type: string
+            enum:
+            - REFUSED
+          entity_revision:
+            type: 'null'
+          reason:
+            type: string
+            minLength: 1
+            maxLength: 280
+            pattern: '[^\s\p{Z}]'
+    EnterpriseMeterReviewFact:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        meter_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - ODOMETER
+          - HOUR_METER
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+          maxLength: 19
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+        device_offset_seconds:
+          type: integer
+          minimum: -50400
+          maximum: 50400
+        origin:
+          type: string
+          enum:
+          - STANDALONE
+        method:
+          type: string
+          enum:
+          - TYPED
+      required:
+      - operation_id
+      - asset_id
+      - meter_id
+      - segment_id
+      - reading_id
+      - kind
+      - value
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      - origin
+      - method
+      example:
+        operation_id: 7b0e2a54-0000-4000-8000-000000008501
+        asset_id: 7b0e2a54-0000-4000-8000-000000008401
+        meter_id: 7b0e2a54-0000-4000-8000-000000008402
+        segment_id: 7b0e2a54-0000-4000-8000-000000008403
+        reading_id: 7b0e2a54-0000-4000-8000-000000008404
+        kind: ODOMETER
+        value: '123456'
+        occurred_at: '2026-11-14T00:00:00.123456789Z'
+        entry_zone: UTC
+        device_offset_seconds: 0
+        origin: STANDALONE
+        method: TYPED
+      allOf: []
+      oneOf:
+      - properties:
+          kind:
+            enum:
+            - ODOMETER
+          value:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,11}|1000000000000)$
+        required:
+        - kind
+        - value
+      - properties:
+          kind:
+            enum:
+            - HOUR_METER
+          value:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,8}|[12][0-9]{9}|3[0-5][0-9]{8}|3600000000)$
+        required:
+        - kind
+        - value
+    EnterpriseMeterReviewView:
+      type: object
+      additionalProperties: false
+      properties:
+        review_item_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        author_account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        author_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        author_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        payload_digest:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        code:
+          type: string
+          enum:
+          - PERMISSION_CHANGED
+        state:
+          type: string
+          enum:
+          - OPEN
+          - EXPIRED_UNRESOLVED
+          - RESOLVED_ACCEPTED
+          - RESOLVED_REFUSED
+        revision:
+          type: integer
+          enum:
+          - 1
+          - 2
+        received_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        fact:
+          $ref: '#/components/schemas/EnterpriseMeterReviewFact'
+        resolution:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseReviewResolution'
+          - type: 'null'
+      required:
+      - review_item_id
+      - operation_id
+      - author_account_id
+      - author_membership_id
+      - author_employee_id
+      - enrollment_id
+      - payload_digest
+      - code
+      - state
+      - revision
+      - received_at
+      - expires_at
+      - fact
+      - resolution
+      example:
+        review_item_id: 7b0e2a54-0000-4000-8000-000000008502
+        operation_id: 7b0e2a54-0000-4000-8000-000000008501
+        author_account_id: 7b0e2a54-0000-4000-8000-000000008510
+        author_membership_id: 7b0e2a54-0000-4000-8000-000000008511
+        author_employee_id: 7b0e2a54-0000-4000-8000-000000008512
+        enrollment_id: 7b0e2a54-0000-4000-8000-000000008513
+        payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        code: PERMISSION_CHANGED
+        state: OPEN
+        revision: 1
+        received_at: '2026-11-14T00:01:00Z'
+        expires_at: '2027-01-13T00:01:00Z'
+        fact:
+          operation_id: 7b0e2a54-0000-4000-8000-000000008501
+          asset_id: 7b0e2a54-0000-4000-8000-000000008401
+          meter_id: 7b0e2a54-0000-4000-8000-000000008402
+          segment_id: 7b0e2a54-0000-4000-8000-000000008403
+          reading_id: 7b0e2a54-0000-4000-8000-000000008404
+          kind: ODOMETER
+          value: '123456'
+          occurred_at: '2026-11-14T00:00:00.123456789Z'
+          entry_zone: UTC
+          device_offset_seconds: 0
+          origin: STANDALONE
+          method: TYPED
+        resolution: null
+      oneOf:
+      - properties:
+          state:
+            type: string
+            enum:
+            - OPEN
+            - EXPIRED_UNRESOLVED
+          revision:
+            type: integer
+            enum:
+            - 1
+          resolution:
+            type: 'null'
+      - properties:
+          state:
+            type: string
+            enum:
+            - RESOLVED_ACCEPTED
+          revision:
+            type: integer
+            enum:
+            - 2
+          resolution:
+            allOf:
+            - $ref: '#/components/schemas/EnterpriseReviewResolution'
+            - properties:
+                outcome:
+                  type: string
+                  enum:
+                  - ACCEPTED
+      - properties:
+          state:
+            type: string
+            enum:
+            - RESOLVED_REFUSED
+          revision:
+            type: integer
+            enum:
+            - 2
+          resolution:
+            allOf:
+            - $ref: '#/components/schemas/EnterpriseReviewResolution'
+            - properties:
+                outcome:
+                  type: string
+                  enum:
+                  - REFUSED
+    EnterpriseMeterReviewListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+        state:
+          type: string
+          enum:
+          - ''
+          - OPEN
+          - EXPIRED_UNRESOLVED
+          - RESOLVED_ACCEPTED
+          - RESOLVED_REFUSED
+      required: []
+      example:
+        limit: 20
+    EnterpriseMeterReviewPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseMeterReviewView'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - review_item_id: 7b0e2a54-0000-4000-8000-000000008502
+          operation_id: 7b0e2a54-0000-4000-8000-000000008501
+          author_account_id: 7b0e2a54-0000-4000-8000-000000008510
+          author_membership_id: 7b0e2a54-0000-4000-8000-000000008511
+          author_employee_id: 7b0e2a54-0000-4000-8000-000000008512
+          enrollment_id: 7b0e2a54-0000-4000-8000-000000008513
+          payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          code: PERMISSION_CHANGED
+          state: OPEN
+          revision: 1
+          received_at: '2026-11-14T00:01:00Z'
+          expires_at: '2027-01-13T00:01:00Z'
+          fact:
+            operation_id: 7b0e2a54-0000-4000-8000-000000008501
+            asset_id: 7b0e2a54-0000-4000-8000-000000008401
+            meter_id: 7b0e2a54-0000-4000-8000-000000008402
+            segment_id: 7b0e2a54-0000-4000-8000-000000008403
+            reading_id: 7b0e2a54-0000-4000-8000-000000008404
+            kind: ODOMETER
+            value: '123456'
+            occurred_at: '2026-11-14T00:00:00.123456789Z'
+            entry_zone: UTC
+            device_offset_seconds: 0
+            origin: STANDALONE
+            method: TYPED
+          resolution: null
+        next_cursor: ''
+    EnterpriseMeterReviewResolveRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        decision:
+          type: string
+          enum:
+          - ACCEPT
+          - REFUSE
+        reason:
+          type: string
+          maxLength: 280
+          description: Exact Unicode scalar text, no controls. Empty only for acceptance; refusal requires nonblank
+            reason.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - decision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008503
+        revision: 1
+        decision: ACCEPT
+        reason: ''
+      oneOf:
+      - properties:
+          decision:
+            type: string
+            enum:
+            - ACCEPT
+      - properties:
+          decision:
+            type: string
+            enum:
+            - REFUSE
+          reason:
+            type: string
+            minLength: 1
+            maxLength: 280
+            pattern: '[^\s\p{Z}]'
+        required:
+        - reason
+    EnterpriseMeterReviewResolveResult:
+      type: object
+      additionalProperties: false
+      properties:
+        resolution:
+          $ref: '#/components/schemas/EnterpriseReviewResolution'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - resolution
+      - replayed
+      - data_mode
+      example:
+        resolution:
+          schema_version: 1
+          operation_id: 7b0e2a54-0000-4000-8000-000000008501
+          payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          review_item_id: 7b0e2a54-0000-4000-8000-000000008502
+          resolution_id: 7b0e2a54-0000-4000-8000-000000008503
+          review_revision: 2
+          outcome: ACCEPTED
+          reason: ''
+          resolved_at: '2026-11-14T01:00:00Z'
+          entity_revision: 1
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseReviewSelector:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        payload_digest:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+      required:
+      - operation_id
+      - payload_digest
+      example:
+        operation_id: 7b0e2a54-0000-4000-8000-000000008501
+        payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    EnterpriseReviewResultsRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[!-~]+$
+          description: Current untrimmed delivery credential; not part of immutable operation identity.
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        selectors:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/EnterpriseReviewSelector'
+      required:
+      - schema_version
+      - request_id
+      - family_id
+      - access_token
+      - membership_id
+      - enrollment_id
+      - selectors
+      example:
+        schema_version: 1
+        request_id: 7b0e2a54-0000-4000-8000-000000008520
+        family_id: 7b0e2a54-0000-4000-8000-000000008521
+        access_token: synthetic-review-access
+        membership_id: 7b0e2a54-0000-4000-8000-000000008511
+        enrollment_id: 7b0e2a54-0000-4000-8000-000000008513
+        selectors:
+        - operation_id: 7b0e2a54-0000-4000-8000-000000008501
+          payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+      x-abastevo-max-raw-bytes: 65536
+      description: Current original enrolled author only, at most50 distinct operation IDs. Whole-body exact source/digest
+        selection before private results; no business read or write permission is granted.
+    EnterpriseReviewResult:
+      type: object
+      additionalProperties: false
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        payload_digest:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        resolution:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseReviewResolution'
+          - type: 'null'
+      required:
+      - operation_id
+      - payload_digest
+      - resolution
+      example:
+        operation_id: 7b0e2a54-0000-4000-8000-000000008501
+        payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+        resolution: null
+    EnterpriseReviewResultsResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        owner_account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        api_origin:
+          type: string
+          format: uri
+        org_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        results:
+          type: array
+          maxItems: 50
+          items:
+            $ref: '#/components/schemas/EnterpriseReviewResult'
+      required:
+      - schema_version
+      - request_id
+      - owner_account_id
+      - api_origin
+      - org_id
+      - membership_id
+      - enrollment_id
+      - results
+      example:
+        schema_version: 1
+        request_id: 7b0e2a54-0000-4000-8000-000000008520
+        owner_account_id: 7b0e2a54-0000-4000-8000-000000008510
+        api_origin: https://company.example.invalid
+        org_id: 7b0e2a54-0000-4000-8000-000000000001
+        membership_id: 7b0e2a54-0000-4000-8000-000000008511
+        enrollment_id: 7b0e2a54-0000-4000-8000-000000008513
+        results:
+        - operation_id: 7b0e2a54-0000-4000-8000-000000008501
+          payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+          resolution:
+            schema_version: 1
+            operation_id: 7b0e2a54-0000-4000-8000-000000008501
+            payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+            review_item_id: 7b0e2a54-0000-4000-8000-000000008502
+            resolution_id: 7b0e2a54-0000-4000-8000-000000008503
+            review_revision: 2
+            outcome: ACCEPTED
+            reason: ''
+            resolved_at: '2026-11-14T01:00:00Z'
+            entity_revision: 1
+      x-abastevo-max-raw-bytes: 131072
+      description: Exactly one slot per requested selector, same order; unresolved is null. Validate entire source/request/op/digest/original
+        ReviewID correlation before any local write. Existing batch/ACK limits are unchanged.
     EnterpriseMeterListRequest:
       type: object
       additionalProperties: false

@@ -35,13 +35,14 @@ func TestMeterIntakeCapabilityFlipDoesNotInvertRetainedSourceLocks(t *testing.T)
 		t.Fatal("actual audit root FK must be deferred", err)
 	}
 	meters := meterStore(t, fx.legalFixtureState)
+	meters.Reviews = meterReviewStore(t, fx.syncFixtureState)
 	meters.Authority = &orgpg.MeterAuthority{Memberships: fx.legalFixtureState.store.Memberships, Roles: fx.legalFixtureState.store.Roles, Capabilities: fx.flags, Devices: fx.devices}
 	handler, err := fleetpg.NewMeterIntakeHandler(meters.Authority, meters)
 	if err != nil {
 		t.Fatal(err)
 	}
 	config := fx.config
-	config.NoAsyncPlans = map[syncapp.OperationKey]map[string]syncapp.FollowupMode{{Type: fleetpg.MeterReadingOperationType, Schema: 1}: {protocol.Accepted: syncapp.NoAsyncFollowup, protocol.Rejected: syncapp.NoAsyncFollowup}}
+	config.NoAsyncPlans = map[syncapp.OperationKey]map[string]syncapp.FollowupMode{{Type: fleetpg.MeterReadingOperationType, Schema: 1}: {protocol.Accepted: syncapp.NoAsyncFollowup, protocol.AcceptedForReview: syncapp.AtomicReview, protocol.Rejected: syncapp.NoAsyncFollowup}}
 	confirmed := make(chan int, 1)
 	release := make(chan struct{})
 	var first atomic.Bool

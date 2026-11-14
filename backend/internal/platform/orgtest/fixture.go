@@ -395,4 +395,29 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_meter_held_readings') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// Asset usage counts held facts; the reading guard checks the reserved
+		// held identity. Neither exposes any held value or observation.
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,reading_id,operation_id) ON org_meter_held_readings TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantMeterReviews enables current read projections only. The owning command
+// fixture must explicitly grant inserts and the item-row lock for decisions.
+func (f *Fixture) GrantMeterReviews(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_sync_review_items') IS NOT NULL AND to_regclass('public.org_meter_held_readings') IS NOT NULL AND to_regclass('public.org_sync_review_resolutions') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT ON org_sync_review_items,org_meter_held_readings,org_sync_review_resolutions,org_sync_operations,org_sync_acknowledgements TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 }

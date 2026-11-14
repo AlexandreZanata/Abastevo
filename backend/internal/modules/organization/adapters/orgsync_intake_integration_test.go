@@ -175,6 +175,9 @@ func (h *syncSQLHandler) Apply(ctx context.Context, tx syncapp.DBTX, s syncapp.S
 	if _, e := tx.Exec(ctx, `INSERT INTO org_sync_test_records(org_id,operation_id,target_id,value,held,review_id,author_member,links,proposed_refs) VALUES($1,$2,$3,$4,$5,NULLIF($6,'')::uuid,$7,$8::uuid[],$9::uuid[])`, s.Scope.OrgID().String(), op.ID(), op.Snapshot().Entity.ID, payload.Value, outcome.Result == protocol.AcceptedForReview, outcome.ReviewItemID, s.MembershipID, syncUUIDArray(links), syncUUIDArray(proposed)); e != nil {
 		return syncapp.Outcome{}, e
 	}
+	if err := syncRecordReview(ctx, tx, s, op, outcome); err != nil {
+		return syncapp.Outcome{}, err
+	}
 	if h.afterApply != nil {
 		if e := h.afterApply(ctx, tx); e != nil {
 			return syncapp.Outcome{}, e
@@ -206,6 +209,13 @@ func syncFixture(t *testing.T) syncFixtureState {
 	}
 	if _, e := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sync_operations TO "+r+";GRANT UPDATE(operation_id) ON org_sync_operations TO "+r+";GRANT SELECT,INSERT ON org_sync_acknowledgements,org_sync_effects,org_audit_events,org_event_intents,org_event_receipts TO "+r+";GRANT SELECT,INSERT,UPDATE ON job_queue TO "+r); e != nil {
 		t.Fatal(e)
+	}
+	syncInstallReviewSource(t, fx)
+	// Migration199's shared effect guard plans its reviewed-Meter branch for
+	// every effect, so the generic intake role needs exactly the reading columns
+	// that guard compares. It still cannot read any Meter value or observation.
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sync_review_items TO "+r+";GRANT SELECT ON org_sync_review_resolutions,org_meter_held_readings TO "+r+";GRANT SELECT(org_id,id,operation_id,review_resolution_id) ON org_meter_readings TO "+r); err != nil {
+		t.Fatal(err)
 	}
 	target := onboardingID(t)
 	if e := unitSchemaExec(t, fx.legalFixtureState, `INSERT INTO org_sync_test_targets VALUES($1,$2,$3,1)`, fx.scope.OrgID().String(), target, fx.person.member); e != nil {
@@ -308,9 +318,8 @@ func TestSyncIntakeDependencyClaimsReviewAndMissingProducer(t *testing.T) {
 	if a, e := fx.store.Process(t.Context(), fx.source, heldChild, protocol.DefaultLimits(), fx.handler); e != nil || a.Code() != "DEPENDENCY_PENDING" {
 		t.Fatal("review ACK became readiness", e)
 	}
-	if e := unitSchemaExec(t, fx.legalFixtureState, `INSERT INTO org_sync_effects(org_id,operation_id,entity_revision)VALUES($1,$2,1)`, fx.scope.OrgID().String(), review.ID()); e == nil {
-		t.Fatal("SQL allowed fabricated review readiness")
-	}
+	// The actual effect guard must refuse it, not a missing fixture privilege.
+	unitSchemaCode(t, unitSchemaExec(t, fx.legalFixtureState, `INSERT INTO org_sync_effects(org_id,operation_id,entity_revision)VALUES($1,$2,1)`, fx.scope.OrgID().String(), review.ID()), "23514")
 	unavailable := syncOperation(t, fx, onboardingID(t), "Synthetic temporarily unavailable", nil, nil, nil)
 	before := syncCount(t, fx, "org_sync_operations")
 	fx.handler.available.Store(false)

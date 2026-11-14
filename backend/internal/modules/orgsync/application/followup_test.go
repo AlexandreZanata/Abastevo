@@ -50,7 +50,9 @@ func TestDescriptorRejectsInvalidTerminalDeclarations(t *testing.T) {
 			t.Fatal("valid declared/default terminal set refused", err)
 		}
 	}
-	if !slices.Equal(newHandler().Descriptor().Results(), []string{protocol.Accepted, protocol.AcceptedForReview, protocol.Rejected}) {
+	legacy := newHandler().Descriptor()
+	legacy.TerminalResults = nil
+	if !slices.Equal(legacy.Results(), []string{protocol.Accepted, protocol.AcceptedForReview, protocol.Rejected}) {
 		t.Fatal("legacy descriptor lost its required followups")
 	}
 }

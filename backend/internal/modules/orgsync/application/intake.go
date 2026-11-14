@@ -210,6 +210,7 @@ type registeredHandler struct {
 	privateValue
 	descriptor Descriptor
 	source     Handler
+	proof      ReviewProof
 }
 
 func (handler registeredHandler) Descriptor() Descriptor { return handler.descriptor.Copy() }
@@ -234,7 +235,11 @@ func NewRegistry(handlers ...Handler) (Registry, error) {
 		if descriptor.Validate() != nil || registry.handlers[descriptor.Type] != nil {
 			return Registry{}, ErrUnavailable
 		}
-		registry.handlers[descriptor.Type] = registeredHandler{descriptor: descriptor, source: handler}
+		proof, err := captureReviewProof(handler, descriptor)
+		if err != nil {
+			return Registry{}, err
+		}
+		registry.handlers[descriptor.Type] = registeredHandler{descriptor: descriptor, source: handler, proof: proof}
 	}
 	return registry, nil
 }

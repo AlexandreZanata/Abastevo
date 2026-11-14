@@ -75,4 +75,13 @@
     <string name="enterprise_sync_reason_window">Le délai de réception était clos</string>
     <string name="enterprise_sync_reason_forbidden">La source n’a pas autorisé cette opération</string>
     <string name="enterprise_sync_reason_suspended">L’entreprise était suspendue</string>
+    <string name="enterprise_sync_review_accepted">Accepté après examen par l’entreprise</string>
+    <string name="enterprise_sync_review_refused">Refusé après examen par l’entreprise</string>
+    <string name="enterprise_sync_review_unresolved">Aucune décision de l’entreprise n’a encore été reçue</string>
+    <string name="enterprise_sync_review_decision_title">Décision d’examen de l’entreprise</string>
+    <string name="enterprise_sync_review_reason">Motif de l’examinateur : %1$s</string>
+    <string name="enterprise_sync_review_no_reason">Aucun motif n’a été indiqué avec cette acceptation</string>
+    <string name="enterprise_sync_review_decided_at">Décision enregistrée par le serveur : %1$s</string>
+    <string name="enterprise_sync_review_original_kept">L’accusé d’examen d’origine reste inchangé.</string>
+    <string name="enterprise_sync_review_history">Décision d’examen confirmée : %1$s</string>
 </resources>

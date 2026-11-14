@@ -44,14 +44,14 @@ func TestMeterStandaloneContractHasOneExplicitAtomicOwner(t *testing.T) {
 		Payload struct {
 			Ref string `json:"$ref"`
 		} `json:"payload"`
-		Results  []string `json:"terminal_results"`
-		Followup string   `json:"followup"`
+		Results   []string          `json:"terminal_results"`
+		Followups map[string]string `json:"followup_by_result"`
 	}
 	if json.Unmarshal(raw, &owners) != nil || len(owners) != 1 {
 		t.Fatal("missing explicit source-owned operation declaration")
 	}
 	owner := owners["meter.reading.record"]
-	if owner.Schema != 1 || owner.Entity != "meter_reading" || owner.Payload.Ref != "#/components/schemas/EnterpriseStandaloneMeterReadingPayload" || owner.Followup != "NO_ASYNC_FOLLOWUP" || len(owner.Results) != 2 || owner.Results[0] != "ACCEPTED" || owner.Results[1] != "REJECTED" {
+	if owner.Schema != 1 || owner.Entity != "meter_reading" || owner.Payload.Ref != "#/components/schemas/EnterpriseStandaloneMeterReadingPayload" || len(owner.Followups) != 3 || owner.Followups["ACCEPTED"] != "NO_ASYNC_FOLLOWUP" || owner.Followups["REJECTED"] != "NO_ASYNC_FOLLOWUP" || owner.Followups["ACCEPTED_FOR_REVIEW"] != "ATOMIC_REVIEW" || len(owner.Results) != 3 || owner.Results[0] != "ACCEPTED" || owner.Results[1] != "REJECTED" || owner.Results[2] != "ACCEPTED_FOR_REVIEW" {
 		t.Fatal("standalone owner/outcome drift")
 	}
 	schema := doc.Components.Schemas["EnterpriseStandaloneMeterReadingPayload"].Value

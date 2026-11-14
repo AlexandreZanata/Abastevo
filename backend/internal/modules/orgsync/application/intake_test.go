@@ -73,8 +73,9 @@ type handler struct{ descriptor app.Descriptor }
 
 func newHandler() *handler {
 	return &handler{app.Descriptor{Type: "synthetic.record", Schema: 1,
-		WritePolicy: access.Policy{Permission: "fuel.fueling.record", Capability: "fuelings", Effect: access.OperationalWrite},
-		ReadPolicy:  access.Policy{Permission: "fuel.fueling.read", Capability: "fuelings", Effect: access.Read}}}
+		TerminalResults: []string{protocol.Accepted, protocol.Rejected},
+		WritePolicy:     access.Policy{Permission: "fuel.fueling.record", Capability: "fuelings", Effect: access.OperationalWrite},
+		ReadPolicy:      access.Policy{Permission: "fuel.fueling.read", Capability: "fuelings", Effect: access.Read}}}
 }
 func (h *handler) Descriptor() app.Descriptor { return h.descriptor }
 func (*handler) Admit(context.Context, app.DBTX, app.Source, protocol.Operation, app.Mode) error {

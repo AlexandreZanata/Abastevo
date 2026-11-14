@@ -11,6 +11,14 @@ import com.anpfuel.application.enterprise.queue.EnterpriseQueueAccountLease
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueAttempt
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueDeliveryFailure
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
+import com.anpfuel.application.enterprise.queue.EnterpriseReviewDelivery
+import com.anpfuel.application.enterprise.queue.EnterpriseReviewTransport
+import com.anpfuel.domain.enterprise.sync.ReviewExpectation
+import com.anpfuel.domain.enterprise.sync.ReviewResultsRequest
+import com.anpfuel.domain.enterprise.sync.ReviewResultsRequestSnapshot
+import com.anpfuel.domain.enterprise.sync.ReviewResultsResponse
+import com.anpfuel.domain.enterprise.sync.ReviewSourceBinding
+import com.anpfuel.domain.enterprise.sync.SyncBinding
 import com.anpfuel.application.portable.AuthApiResult
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
@@ -175,7 +183,7 @@ class EnterpriseOperationHttpClient(
             attempt.assertCurrent()
             awaitCompanyResponse(http.newCall(request)).use { response ->
                 if (source.proof(attempt) != session) throw EnterpriseLocalDenied()
-                val retryAfter = retryAfter(response.headers.values("Retry-After").singleOrNull(),
+                val retryAfter = EnterpriseRetryAfter.parse(response.headers.values("Retry-After").singleOrNull(),
                     response.headers.values("Date").singleOrNull())
                 require(response.headers.values("Set-Cookie").isEmpty() && response.headers.values("ETag").isEmpty() &&
                     response.headers.values("Cache-Control").singleOrNull()?.equals("no-store", true) == true)
@@ -196,7 +204,16 @@ class EnterpriseOperationHttpClient(
         catch (_: Exception) { throw EnterpriseQueueDeliveryFailure() }
     }
 
-    private fun retryAfter(header: String?, responseDate: String?): Long? {
+    override fun toString(): String = "EnterpriseOperationHttpClient(redacted)"
+    companion object {
+        private val JSON = "application/json".toMediaType()
+        private val PROOF_HEADERS = setOf("Signature", "Signature-Created", "Signature-Expires", "Signature-Keyid", "Signature-Nonce")
+    }
+}
+
+/** Shared Retry-After profile for the signed delivery plane; unusable hints keep normal backoff. */
+internal object EnterpriseRetryAfter {
+    fun parse(header: String?, responseDate: String?): Long? {
         val raw = header?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         if (raw.all { it in '0'..'9' }) {
             val seconds = raw.toLongOrNull() ?: return Long.MAX_VALUE
@@ -213,8 +230,76 @@ class EnterpriseOperationHttpClient(
     private fun httpDate(raw: String): Long? = try {
         ZonedDateTime.parse(raw, DateTimeFormatter.RFC_1123_DATE_TIME).toInstant().toEpochMilli()
     } catch (_: Exception) { null }
+}
 
-    override fun toString(): String = "EnterpriseOperationHttpClient(redacted)"
+/**
+ * Signed minimal own-result lookup on the same delivery plane; never a company cookie read.
+ * The whole answer is bound to the request ID, exact source tuple and original ReviewIDs
+ * before any slot is returned.
+ */
+class EnterpriseReviewHttpClient(
+    http: OkHttpClient,
+    private val source: EnterpriseOperationSessionSource,
+    private val signer: EnterpriseDeviceSigner,
+    private val newId: () -> String = { UUID.randomUUID().toString() },
+) : EnterpriseReviewTransport {
+    private val http = http.newBuilder().followRedirects(false).followSslRedirects(false)
+        .retryOnConnectionFailure(false).cookieJar(CookieJar.NO_COOKIES).cache(null)
+        .authenticator(Authenticator.NONE).proxyAuthenticator(Authenticator.NONE)
+        .callTimeout(20, TimeUnit.SECONDS).build()
+
+    override suspend fun results(attempt: EnterpriseQueueAttempt, expected: List<ReviewExpectation>): EnterpriseReviewDelivery = withContext(Dispatchers.IO) {
+        try {
+            attempt.assertCurrent()
+            val targets = expected.toList()
+            val partition = attempt.partition
+            if (partition.origin != source.apiOrigin) throw EnterpriseLocalDenied()
+            if (targets.isEmpty() || targets.size > ReviewResultsRequest.MAX_SELECTORS ||
+                targets.map { it.selector.operationId }.distinct().size != targets.size) throw EnterpriseQueueDeliveryFailure()
+            val member = attempt.enrollment.target.membershipId
+            val enrollment = attempt.enrollment.enrollmentId
+            val session = source.proof(attempt)
+            val request = ReviewResultsRequest.create(ReviewResultsRequestSnapshot(newId(), session.familyId, session.accessToken,
+                member, enrollment, targets.map { it.selector }))
+            val bound = ReviewSourceBinding(SyncBinding.of(partition.ownerAccount, partition.origin, partition.organizationId), member, enrollment)
+            request.validateSource(bound)
+            val raw = request.canonicalBytes
+            val path = "/v1/orgs/${partition.organizationId}/sync/review-results"
+            val binding = EnterpriseAccessBinding(session.accountId, source.apiOrigin, session.familyId, attempt.account.epoch)
+            if (source.proof(attempt) != session) throw EnterpriseLocalDenied()
+            val headers = signer.headers(binding, path, raw.copyOf()).toMap()
+            require(headers.keys == PROOF_HEADERS && headers.values.all { value ->
+                value.length in 1..2048 && value.all { it.code in 33..126 }
+            })
+            if (source.proof(attempt) != session) throw EnterpriseLocalDenied()
+            val call = Request.Builder().url(source.apiOrigin + path).header("Origin", source.apiOrigin)
+                .header("Accept", "application/json").header("Cache-Control", "no-store")
+                .post(raw.toRequestBody(JSON)).apply { headers.forEach { (name, value) -> header(name, value) } }.build()
+            attempt.assertCurrent()
+            awaitCompanyResponse(http.newCall(call)).use { response ->
+                if (source.proof(attempt) != session) throw EnterpriseLocalDenied()
+                val retryAfter = EnterpriseRetryAfter.parse(response.headers.values("Retry-After").singleOrNull(),
+                    response.headers.values("Date").singleOrNull())
+                require(response.headers.values("Set-Cookie").isEmpty() && response.headers.values("ETag").isEmpty() &&
+                    response.headers.values("Cache-Control").singleOrNull()?.equals("no-store", true) == true)
+                val body = response.body ?: throw EnterpriseQueueDeliveryFailure(retryAfter)
+                require(response.headers.values("Content-Type").size == 1 && body.contentType()?.let {
+                    it.type == "application" && it.subtype == "json"
+                } == true)
+                if (response.code != 200) throw EnterpriseQueueDeliveryFailure(retryAfter)
+                val input = body.source()
+                require(!input.request(ReviewResultsResponse.MAX_BYTES.toLong() + 1))
+                val decoded = ReviewResultsResponse.parse(input.readByteArray(), request, bound, targets)
+                if (source.proof(attempt) != session) throw EnterpriseLocalDenied()
+                EnterpriseReviewDelivery(decoded.results, retryAfter)
+            }
+        } catch (cancelled: CancellationException) { throw cancelled }
+        catch (denied: EnterpriseLocalDenied) { throw denied }
+        catch (failure: EnterpriseQueueDeliveryFailure) { throw failure }
+        catch (_: Exception) { throw EnterpriseQueueDeliveryFailure() }
+    }
+
+    override fun toString(): String = "EnterpriseReviewHttpClient(redacted)"
     companion object {
         private val JSON = "application/json".toMediaType()
         private val PROOF_HEADERS = setOf("Signature", "Signature-Created", "Signature-Expires", "Signature-Keyid", "Signature-Nonce")

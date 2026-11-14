@@ -12,6 +12,9 @@ import com.anpfuel.application.enterprise.queue.EnterpriseOperationTransport
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueRegistry
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueService
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
+import com.anpfuel.application.enterprise.queue.EnterpriseReviewQueue
+import com.anpfuel.application.enterprise.queue.EnterpriseReviewService
+import com.anpfuel.application.enterprise.queue.EnterpriseReviewTransport
 import com.anpfuel.application.enterprise.sync.EnterpriseDeliveryActivity
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncFlow
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncStatusStore
@@ -145,6 +148,30 @@ object EnterpriseModule {
     @Singleton
     fun operationTransport(client: EnterpriseOperationHttpClient): EnterpriseOperationTransport = client
 
+    /** The protected queue's separate review-only port (EDR-120); delivery ports stay unchanged. */
+    @Provides
+    @Singleton
+    fun reviewQueue(queue: ProtectedEnterpriseQueue): EnterpriseReviewQueue = queue
+
+    @Provides
+    @Singleton
+    fun reviewClient(source: EnterpriseOperationSessionSource, signer: EnterpriseDeviceSigner): EnterpriseReviewHttpClient =
+        EnterpriseReviewHttpClient(
+            OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build(),
+            source, signer,
+        )
+
+    @Provides
+    @Singleton
+    fun reviewTransport(client: EnterpriseReviewHttpClient): EnterpriseReviewTransport = client
+
+    @Provides
+    @Singleton
+    fun reviewService(@ApplicationContext context: Context, source: EnterpriseQueueSource, queue: EnterpriseReviewQueue,
+        transport: EnterpriseReviewTransport, limits: SyncLimits, activity: EnterpriseDeliveryActivity): EnterpriseReviewService =
+        EnterpriseReviewService(source, queue, transport, AndroidEnterpriseDeviceClock(context)::read,
+            entropy = { bound -> Random.Default.nextLong(bound) }, activity = activity, limits = limits)
+
     /** Owning offline business producers must be accepted separately before registration. */
     @Provides
     @Singleton
@@ -162,7 +189,8 @@ object EnterpriseModule {
     @Provides
     fun syncFlow(source: EnterpriseQueueSource, store: EnterpriseSyncStatusStore,
         delivery: EnterpriseQueueService, activity: EnterpriseDeliveryActivity,
-        fence: EnterpriseSessionFence): EnterpriseSyncFlow = EnterpriseSyncFlow(source, store, delivery, activity, fence)
+        fence: EnterpriseSessionFence, reviews: EnterpriseReviewService): EnterpriseSyncFlow =
+        EnterpriseSyncFlow(source, store, delivery, activity, fence, reviews)
 
     @Provides
     @Singleton
@@ -176,8 +204,9 @@ object EnterpriseModule {
     @Provides
     @Singleton
     fun operationRunner(source: EnterpriseQueueSource, store: ProtectedEnterprisePersistence,
-        service: EnterpriseQueueService): EnterpriseOperationWorkRunner = EnterpriseOperationWorkRunner(
+        service: EnterpriseQueueService, reviews: EnterpriseReviewService): EnterpriseOperationWorkRunner = EnterpriseOperationWorkRunner(
         source, store::discover, { account, partition -> service.dispatch(account, partition) },
+        { account, partition -> reviews.poll(account, partition) },
     )
 
     @Provides
