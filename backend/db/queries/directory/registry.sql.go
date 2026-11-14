@@ -1406,13 +1406,21 @@ func (q *Queries) SetAssertionSuperseded(ctx context.Context, arg SetAssertionSu
 }
 
 const setInitialRegistryLocality = `-- name: SetInitialRegistryLocality :one
-UPDATE directory_stations
-SET municipality_code = COALESCE(municipality_code, $1),
-    state = COALESCE(state, $2)
-WHERE id = $3
-  AND (municipality_code IS NULL OR municipality_code = $1)
-  AND (state IS NULL OR state = $2)
-RETURNING id
+UPDATE directory_stations s
+SET municipality_code = $1,
+    state = $2
+WHERE s.id = $3
+  AND (
+    ((s.municipality_code IS NULL OR s.municipality_code = $1)
+      AND (s.state IS NULL OR s.state = $2))
+    OR EXISTS(SELECT 1 FROM registry_assertions a WHERE a.station_id=s.id
+      AND a.municipality_code=s.municipality_code AND a.state=s.state
+      AND a.source IN ('registry-csv','registry-api','station-prep')
+      AND EXISTS(SELECT 1 FROM registry_source_runs r WHERE r.state='complete' AND r.source=a.source
+        AND (r.id=a.run_id OR EXISTS(SELECT 1 FROM registry_run_assertions m WHERE m.assertion_id=a.id AND m.run_id=r.id))
+        AND (a.source<>'station-prep' OR (a.latitude IS NULL AND a.longitude IS NULL AND jsonb_typeof(a.address)='object' AND a.address ? 'municipio_ibge' AND a.address ? 'uf' AND r.prepared_manifest_sha256 <> '' AND r.snapshot_identity LIKE 'station-prep:%:registry-13col'))))
+  )
+RETURNING s.id
 `
 
 type SetInitialRegistryLocalityParams struct {
@@ -1421,6 +1429,10 @@ type SetInitialRegistryLocalityParams struct {
 	ID               pgtype.UUID `json:"id"`
 }
 
+// B-BR-SYNC05: source-backed locality fills a missing value, confirms an equal
+// one, or replaces a canonical locality that is itself previously published
+// source evidence (an official correction). A curated or otherwise unproven
+// locality matches no completed source assertion and still refuses (no row).
 func (q *Queries) SetInitialRegistryLocality(ctx context.Context, arg SetInitialRegistryLocalityParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, setInitialRegistryLocality, arg.MunicipalityCode, arg.State, arg.ID)
 	var id pgtype.UUID

@@ -141,5 +141,7 @@ jobs:
       - name: Integration tests (real PostGIS, race detector)
         # The full organization and contract packages exceed Go's implicit 10m
         # package deadline under the race detector on the shared runner. Keep
-        # every case and the same explicit bounded limit as local acceptance.
-        run: cd backend && go test -race -count=1 -timeout=20m -tags=integration ./...
+        # every case with an explicit bounded limit. organization/adapters took
+        # 1121.7s (main 43b21389) after the F2 OFFL-008 review suites and timed
+        # out at 20m on PR #219 runner variance, so the bound is 30m.
+        run: cd backend && go test -race -count=1 -timeout=30m -tags=integration ./...
