@@ -39,8 +39,8 @@ class PrivacyDocumentLinksDeviceTest {
         compose.onNodeWithTag("privacy-external-deletion").assertIsDisplayed().performClick()
         compose.runOnIdle {
             assertEquals(listOf(
-                "https://teste.abastevo.com.br/privacidade/",
-                "https://teste.abastevo.com.br/excluir-conta/",
+                "https://abastevo.com.br/privacidade/",
+                "https://abastevo.com.br/excluir-conta/",
             ), opened)
         }
     }

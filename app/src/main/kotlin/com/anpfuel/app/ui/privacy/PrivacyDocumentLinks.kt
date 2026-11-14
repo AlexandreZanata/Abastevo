@@ -28,8 +28,8 @@ import com.anpfuel.app.ui.theme.AnpContainerDefaults
 
 /** Public static documents: opening a link never submits consent or erasure. */
 internal object PrivacyDocumentLinks {
-    const val POLICY = "https://teste.abastevo.com.br/privacidade/"
-    const val DELETION = "https://teste.abastevo.com.br/excluir-conta/"
+    const val POLICY = "https://abastevo.com.br/privacidade/"
+    const val DELETION = "https://abastevo.com.br/excluir-conta/"
 }
 
 @Composable

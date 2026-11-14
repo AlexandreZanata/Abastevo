@@ -55,8 +55,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 /** Public documents the first-use screen links to; opening a link accepts nothing. */
 internal object TermsDocumentLinks {
-    const val TERMS = "https://teste.abastevo.com.br/termos/"
-    const val PRIVACY = "https://teste.abastevo.com.br/privacidade/"
+    const val TERMS = "https://abastevo.com.br/termos/"
+    const val PRIVACY = "https://abastevo.com.br/privacidade/"
 }
 
 /**
