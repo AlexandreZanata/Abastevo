@@ -9,6 +9,13 @@ import (
 // same shape the portal privacy check refuses.
 var cpfShapedToken = regexp.MustCompile(`(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})([^0-9A-Za-z]|$)`)
 
+// HasCPFShapedToken reports whether text holds a standalone CPF-shaped
+// token. Free text that cannot be minimized without changing its meaning
+// (an editorial post body) is kept out of public exports instead.
+func HasCPFShapedToken(text string) bool {
+	return cpfShapedToken.MatchString(text)
+}
+
 // PublicStationName minimizes an official station name for every public
 // surface (B-BR-017): MEI legal names often carry the owner's CPF, which is
 // never public. A name left empty falls back to the establishment CNPJ.

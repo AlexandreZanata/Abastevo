@@ -930,6 +930,18 @@ func run() error {
 				return err
 			}
 		}
+		// The web forum follows the forum read switch (B-BR-FOR-16/19): with
+		// reads off, no editorial post enters the export or the portal.
+		var forumEditorialTx func(pgx.Tx) forumapp.EditorialExportReader
+		var forumEditorialPool func(*pgxpool.Pool) forumapp.EditorialExportReader
+		if cfg.ForumEnabled {
+			forumEditorialTx = func(tx pgx.Tx) forumapp.EditorialExportReader {
+				return forumadapters.NewEditorialExportReader(tx)
+			}
+			forumEditorialPool = func(pool *pgxpool.Pool) forumapp.EditorialExportReader {
+				return forumadapters.NewEditorialExportReader(pool)
+			}
+		}
 		handlers[enterprisejobs.BuildKind] = enterprisejobs.Build{
 			Pool: raw, Root: cfg.EnterpriseExportRoot,
 			WindowWeeks: cfg.EnterpriseExportWindowWeeks,
@@ -937,6 +949,7 @@ func run() error {
 			OfficialRecords: func(tx pgx.Tx) enterprisejobs.OfficialProvider {
 				return enterprisejobs.NewQualityOfficialProvider(qualityread.NewExportReader(tx))
 			},
+			ForumEditorial: forumEditorialTx,
 		}
 		handlers[enterprisejobs.ReconcileKind] = enterprisejobs.Reconcile{
 			Pool: raw, Root: cfg.EnterpriseExportRoot,
@@ -945,6 +958,7 @@ func run() error {
 			OfficialRecords: func(pool *pgxpool.Pool) enterprisejobs.OfficialProvider {
 				return enterprisejobs.NewQualityOfficialProvider(qualityread.NewExportReader(pool))
 			},
+			ForumEditorial: forumEditorialPool,
 		}
 		if cfg.EnterprisePortalRefreshEnabled {
 			handlers[enterprisejobs.RefreshKind] = enterprisejobs.Refresh{

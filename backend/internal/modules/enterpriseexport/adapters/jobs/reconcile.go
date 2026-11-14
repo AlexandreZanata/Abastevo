@@ -13,6 +13,7 @@ import (
 
 	directoryread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/adapters/read"
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
+	forumapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
@@ -29,6 +30,9 @@ type Reconcile struct {
 	MaxRevisions    int
 	Enqueue         func(ctx context.Context, payload BuildPayload, dedupe string) (platformjobs.EnqueueResult, error)
 	OfficialRecords func(pool *pgxpool.Pool) OfficialProvider
+	// ForumEditorial mirrors Build.ForumEditorial so a published, edited or
+	// hidden editorial post enqueues a rebuild (B-BR-SEO-08).
+	ForumEditorial func(pool *pgxpool.Pool) forumapp.EditorialExportReader
 }
 
 func (Reconcile) Kind() string { return ReconcileKind }
@@ -92,17 +96,25 @@ func (r Reconcile) Handle(ctx context.Context, job platformjobs.Job) error {
 			return err
 		}
 	}
+	var forumReader forumapp.EditorialExportReader
+	if r.ForumEditorial != nil {
+		forumReader = r.ForumEditorial(r.Pool)
+	}
+	currentForumState, err := currentForum(ctx, forumReader)
+	if err != nil {
+		return err
+	}
 	state, hasState := LoadState(r.Root)
-	if hasState && stateMatches(state, fingerprint, pins, fromSurvey, toSurvey, currentOfficial) && state.Valid() {
+	if hasState && stateMatches(state, fingerprint, pins, fromSurvey, toSurvey, currentOfficial, currentForumState) && state.Valid() {
 		return nil
 	}
 	_, err = r.Enqueue(ctx, BuildPayload{
 		Version: 1, Trigger: "reconcile", RevisionID: latest.ID,
-	}, "enterprise-export:reconcile:"+period+":"+exportStateKey(fingerprint, pins, currentOfficial))
+	}, "enterprise-export:reconcile:"+period+":"+exportStateKey(fingerprint, pins, currentOfficial, currentForumState))
 	return err
 }
 
-func exportStateKey(fingerprint directoryapp.ExportFingerprint, pins []RevisionState, official *OfficialPin) string {
+func exportStateKey(fingerprint directoryapp.ExportFingerprint, pins []RevisionState, official *OfficialPin, forum *ForumState) string {
 	hash := sha256.New()
 	_, _ = hash.Write([]byte(fmt.Sprintf("%s|%d|", fingerprint.Hash, fingerprint.Stations)))
 	for _, pin := range pins {
@@ -110,6 +122,9 @@ func exportStateKey(fingerprint directoryapp.ExportFingerprint, pins []RevisionS
 	}
 	if official != nil {
 		_, _ = hash.Write([]byte(official.RevisionID + "|" + official.LeaseID + "|" + official.Edition + "|"))
+	}
+	if forum != nil {
+		_, _ = hash.Write([]byte(fmt.Sprintf("forum|%d|%s|", forum.Posts, forum.Fingerprint)))
 	}
 	return hex.EncodeToString(hash.Sum(nil))
 }

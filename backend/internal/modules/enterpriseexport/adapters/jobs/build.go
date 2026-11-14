@@ -20,6 +20,7 @@ import (
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/enterpriseexport/analytics"
+	forumapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
 	platformjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
@@ -59,7 +60,11 @@ type Build struct {
 	AnalyticsOptions analytics.Options
 	Now              func() time.Time
 	OfficialRecords  func(tx pgx.Tx) OfficialProvider
-	AfterBuild       func(ctx context.Context, state State) error
+	// ForumEditorial wires the forum module's editorial web export port on
+	// the build transaction; nil (forum read switch off) leaves the forum
+	// out of the snapshot (B-BR-SEO-08).
+	ForumEditorial func(tx pgx.Tx) forumapp.EditorialExportReader
+	AfterBuild     func(ctx context.Context, state State) error
 }
 
 func (Build) Kind() string { return BuildKind }
@@ -185,7 +190,15 @@ func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
 			return err
 		}
 	}
-	if hasState && stateMatches(state, fingerprint, pins, fromSurvey, toSurvey, currentOfficial) && state.Valid() {
+	var forumReader forumapp.EditorialExportReader
+	if b.ForumEditorial != nil {
+		forumReader = b.ForumEditorial(tx)
+	}
+	currentForumState, err := currentForum(ctx, forumReader)
+	if err != nil {
+		return err
+	}
+	if hasState && stateMatches(state, fingerprint, pins, fromSurvey, toSurvey, currentOfficial, currentForumState) && state.Valid() {
 		return nil
 	}
 
@@ -207,7 +220,7 @@ func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
 		Stations: dirReader, Prices: officialReader,
 		PageSize: b.pageSize(), MaxStations: b.maxStations(),
 		MaxRevisions: b.maxRevisions(), MaxPrices: b.maxPrices(),
-		Now: b.now,
+		Forum: forumReader, Now: b.now,
 	}
 	manifest, err := builder.Build(ctx, enterpriseexport.Options{
 		FromSurvey: fromSurvey, ToSurvey: toSurvey,
@@ -276,6 +289,7 @@ func (b Build) Handle(ctx context.Context, job platformjobs.Job) error {
 		ToSurvey:             toSurvey,
 		OfficialRevisions:    pinsFromManifest(manifest),
 		Official:             officialPin,
+		Forum:                currentForumState,
 	}
 	if err := WriteState(b.Root, next); err != nil {
 		return err
@@ -335,11 +349,11 @@ func pinsFromManifest(manifest enterpriseexport.Manifest) []RevisionState {
 	return pins
 }
 
-func stateMatches(state State, fingerprint directoryapp.ExportFingerprint, pins []RevisionState, fromSurvey, toSurvey string, official *OfficialPin) bool {
+func stateMatches(state State, fingerprint directoryapp.ExportFingerprint, pins []RevisionState, fromSurvey, toSurvey string, official *OfficialPin, forum *ForumState) bool {
 	if state.FromSurvey != fromSurvey || state.ToSurvey != toSurvey {
 		return false
 	}
-	if !sameOfficial(state.Official, official) {
+	if !sameOfficial(state.Official, official) || !sameForum(state.Forum, forum) {
 		return false
 	}
 	if state.DirectoryFingerprint != fingerprint.Hash || state.DirectoryStations != fingerprint.Stations {
