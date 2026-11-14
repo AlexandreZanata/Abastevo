@@ -230,3 +230,17 @@ client must consume the same file.
 ```sh
 (cd backend && go test -race ./internal/modules/orgamend/domain -count=1)
 ```
+
+## Expense vectors v1
+
+EMP-EXP-001 executes all 222 rows of
+[expense/expense-v1.psv](expense/expense-v1.psv) in Go and Kotlin (ENUM 40,
+AMOUNTS 36, CATEGORY 24, PERIOD 17, EXPENSE 57, TOTALS 48). The oracle pins
+cost-origin kinds and refused settlement kinds, exact paid/company amounts
+without a false zero, the category key profile, competence reporting days
+and approved-versus-pending totals. See [expense/README.md](expense/README.md).
+No persistence, review, settlement or runtime acceptance is claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/expense/domain -count=1)
+```

@@ -132,7 +132,7 @@ presentation. Persistence, routes, panel/app, levels and amounts remain open.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-EXP-001 — Expense domain: categories, origin, competence date and company amount
-- **Meta:** module EXP · phase F3 · cut - · priority P1 · type DOM · size M · state TODO
+- **Meta:** module EXP · phase F3 · cut - · priority P1 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Represent a distinct organization economic cost with its recorded source and competence date.
 - **Rules and use cases:** EDR-013, BR-MONEY-001, BR-MONEY-004, BR-TIME-004, BR-REV-009, REQ-11.1
 - **Depends on:** EMP-PLAT-009, EMP-PLAT-015
@@ -146,6 +146,13 @@ presentation. Persistence, routes, panel/app, levels and amounts remain open.
 - **Validation:** V-DOM, V-MONEY · migration: none in this task · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F3 pure expense domain](../evidence/f3-exp001-expense-domain.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. One cost per closed origin
+(FUELING/WORK_ORDER/DIRECT; settlement kinds refused), exact paid/company
+centavos without a false zero, category key profile, receipt-free reporting
+day and approved-versus-pending totals pass all 222 shared Go/Kotlin vectors
+with 100% Go statements. Persistence, projection, review binding and F3 remain open.
 
 ### EMP-EXP-002 — Expense persistence, sync handlers and the fueling-to-expense projection
 - **Meta:** module EXP · phase F3 · cut - · priority P1 · type DB · size M · state TODO

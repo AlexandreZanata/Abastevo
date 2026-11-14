@@ -2862,3 +2862,77 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   holds the review permission, absent or false permission, author commands by
   someone else, malformed identities, the first-failure order and local
   readiness that is never presented as SUBMITTED or APPROVED.
+
+## EMP-EXP-001 — Expense domain: origin, competence and company amount (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-exp001-expense-domain.md).
+
+## Enterprise pure expense (EMP-EXP-001)
+
+- **B-BR-EMP-180 — One cost origin with one source identity.**
+  An expense records exactly one origin from the closed cost-origin kinds
+  FUELING, WORK_ORDER and DIRECT. FUELING references the scoped FUEL-001
+  FuelingRef and WORK_ORDER a scoped work-order reference, both in the
+  expense's organization; DIRECT is its own source, carries no separate source
+  and is keyed by the expense identity. The origin key (organization, kind,
+  source or expense identity) is the one-origin-one-cost identity of EDR-013
+  and BR-EXP-001. The settlement, evidence and stock-movement kinds PAYMENT,
+  REIMBURSEMENT, CARD_STATEMENT, ADVANCE, PAYABLE, DOCUMENT, STOCK_PURCHASE and
+  STOCK_TRANSFER are recognized only to be refused as NOT_COST_ORIGIN; unknown,
+  empty, padded or differently cased tokens are INVALID. A missing origin is
+  INVALID, never defaulted. A source reference does not prove that the fueling
+  or work order exists, was accepted or was approved.
+- **B-BR-EMP-181 — Exact paid and company amounts without a false zero.**
+  The paid amount (the actual amount, authoritative) and the company amount
+  (the part the organization bears) are both required canonical integer
+  centavos parsed by the accepted exact-value kernel: 0..1000000000000, with
+  no sign, decimal point, exponent, grouping, whitespace or redundant leading
+  zero. Decimal or otherwise non-canonical text is INVALID and never rounded.
+  The company amount is at most the paid amount (COMPANY_EXCEEDS_PAID
+  otherwise). Neither is recomputed from quantity and unit price nor defaulted
+  from the other. An absent amount is INVALID and never becomes 0; a present
+  known 0 is a recorded fact (a zero-paid fueling still has its one expense).
+- **B-BR-EMP-182 — Structural category code now, configured catalogue later.**
+  The category is a required code matching the repository key profile
+  `^[A-Z][A-Z0-9_]{0,63}$`. It is validated structurally only, without
+  normalization or case folding. Membership in the organization's configured
+  catalogue, retirement, labels and origin-to-category consistency belong to
+  EMP-EXP-003; the REQ-11.1 default names are not hard-coded here.
+- **B-BR-EMP-183 — Competence instant and its reporting day.**
+  The competence instant is a declaration validated by the accepted
+  declaration-only time entry (bounded instant, IANA entry zone, integral
+  device offset, UTC normalization). Its reporting day is the local calendar
+  day of that instant in the supplied operating-unit zone, otherwise the
+  organization zone (BR-TIME-004), computed by a receipt-free attribution entry
+  extracted from the time kernel and reused unchanged by Capture. Zones come
+  from the resolved operating context; an invalid unit zone never falls back
+  to the organization; no server receipt, clock read or entry-zone
+  substitution occurs. A cost belongs to its competence day, never to a
+  payment or settlement date.
+- **B-BR-EMP-184 — Approved cost basis with a separately identified pending part.**
+  A pure totals function takes one organization scope, one half-open
+  reporting-day period [start, end), an explicit basis and expenses that each
+  carry a closed review state (the BR-REV states plus VOIDED). APPROVED company
+  amounts form the approved cost; SUBMITTED and IN_REVIEW form the separately
+  identified pending part; DRAFT, RETURNED, REJECTED, CANCELLED and VOIDED are
+  excluded and only counted. The figure equals the approved cost under basis
+  APPROVED and approved plus pending under INCLUDES_PENDING, which alone sets
+  the "includes pending" flag. Sums are exact widened integers without a total
+  or count cap. A foreign-organization entry is SCOPE, an entry outside the
+  period is OUT_OF_PERIOD and a repeated expense identity or origin key is
+  DUPLICATE_COST whatever its state; the first failing entry in input order
+  decides and no partial total is returned. Settlement never enters the basis.
+- **BUC-EMP-94 — Prove one exact expense per cost origin.**
+  Shared Go/Kotlin vectors cover each cost-origin kind, each refused
+  settlement/evidence/stock kind, missing, foreign and malformed origins and
+  identities, exact amount bounds and non-canonical decimals, absent versus
+  known zero, a company amount above the paid amount, the category profile,
+  competence validation and reporting-day attribution by unit or organization
+  zone across local midnight (VAL-19's 2026-10-31).
+- **BUC-EMP-95 — Prove the reporting basis.**
+  Shared vectors cover VAL-13's single 97 350 fueling cost with no second cost
+  from a reimbursement or payment, VAL-25's pending exclusion and "includes
+  pending" figure, all eight review states and their exclusion counts, exact
+  sums above the single-record ceiling, an empty selection, a foreign
+  organization, entries at and beyond both period bounds and duplicate origin
+  keys or identities across states.

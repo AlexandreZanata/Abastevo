@@ -33,7 +33,7 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `fueling` (pure domain LOCAL_DONE; runtime pending) | FUEL | Owned nine-product catalog, exact submit-ready candidates and purchased totals; intake/review/consumption remain their owning tasks | Pure `fleet` refs, accepted time/value kernels; future explicit `metrics`, `directory`/`official`/`community` read ports |
 | `document` (proposed) | DOC | Documents, extractions, fiscal documents, links, allocations | storage port; `kernel` CNPJ type (existing) |
 | `review` (pure C1 lifecycle LOCAL_DONE; persistence, policies and periods proposed) | APPR | Review cases, approval policies, periods | `orgaccess`; shared Go/Kotlin review-v1 vectors |
-| `expense` (proposed) | EXP, FIN | Expenses, allocations, payables, payments, advances | `review`, `fueling`, `document` |
+| `expense` (pure expense domain LOCAL_DONE; runtime pending) | EXP, FIN | One cost per origin, exact paid/company amounts, competence reporting day and review-basis totals; payables, payments, advances, allocations and persistence remain their owning tasks | `fueling` refs, accepted time/value kernels; future `review`, `document` |
 | `budget` (proposed) | BUDG | Budgets, lines, holds | `expense` |
 | `maintenance` (proposed) | MAINT, CHECK | Checklists, incidents, plans, work orders, compliance items | `fleet`, `review`, `expense` |
 | `fuelstock` (proposed) | STOCK | Internal tanks and movements | `fueling`, `expense` |
