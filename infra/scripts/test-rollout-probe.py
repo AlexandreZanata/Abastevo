@@ -91,7 +91,15 @@ time.sleep(30)
             path.write_text('{}')
             path.chmod(0o644)
             with self.assertRaises(ValueError):
-                read(str(path),"https://teste.abastevo.com.br",60,0)
+                read(str(path),"https://abastevo.com.br",60,0)
+
+    def test_origin_is_the_official_host_or_loopback(self):
+        origin=runpy.run_path(str(PROBE))["origin"]
+        self.assertEqual(origin("https://abastevo.com.br").hostname,"abastevo.com.br")
+        for raw in ("https://teste.abastevo.com.br","http://abastevo.com.br","https://abastevo.com.br:8443",
+                    "https://abastevo.com.br.evil.example","https://user@abastevo.com.br"):
+            with self.assertRaises(ValueError):
+                origin(raw)
 
     def test_http_only_never_certifies(self):
         code,summary=self.campaign(http_only=True)

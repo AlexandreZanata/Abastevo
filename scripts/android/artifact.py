@@ -62,7 +62,7 @@ def bundle(apk, version, certificate, output, aapt, apksigner):
     shutil.copyfile('release/android/signing-certificate.pem', output / 'signing-certificate.pem')
     files = {p.name: {'sha256': digest(p), 'bytes': p.stat().st_size} for p in sorted(output.iterdir())}
     manifest = {**version, 'certificate_sha256': certificate['certificate_sha256'], 'native_abis': abis,
-                'origin': 'https://teste.abastevo.com.br', 'files': files}
+                'origin': 'https://abastevo.com.br', 'files': files}
     (output / 'release.json').write_text(json.dumps(manifest, indent=2, sort_keys=True) + '\n')
     (output / 'SHA256SUMS').write_text(''.join(f'{digest(p)}  {p.name}\n' for p in sorted(output.iterdir())))
     return manifest

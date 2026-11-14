@@ -1,15 +1,20 @@
-# Staging same-origin web tier. The static landing serves / and the verified
+# Official same-origin web tier (https://abastevo.com.br). The static landing serves / and the verified
 # enterprise portal release serves its own routes (search, prices, stations,
 # fines). The existing TLS edge keeps /v1, /health and media on the API and
 # proxies everything else here; this server never proxies the API.
 #
 # Mounts (read-only): /srv/landing = landing root whose atomically switched
-# current symlink is the dist built for the staging origin; /srv/portal = the
+# current symlink is the dist built for the official origin; /srv/portal = the
 # worker's private portal root (current release + retained asset
 # generations). Runs as the worker uid, so the private 0600 release files
 # stay private on the host.
 #
-# Staging is never indexable: noindex everywhere, robots disallow, no sitemap.
+# The official origin is indexable: robots allows the public site and lists
+# the landing sitemap (/sitemap.xml, served by the landing) and the portal
+# sitemap (/sitemap-portal.xml, the portal release's own sitemap.xml). The
+# private surfaces (/admin/, /empresas/) carry X-Robots-Tag noindex; robots
+# disallows them and the portal search shards, and refuses AI training
+# crawlers (GPTBot, ClaudeBot).
 {
 	admin off
 	persist_config off
@@ -30,7 +35,6 @@
 		X-Content-Type-Options nosniff
 		X-Frame-Options DENY
 		Permissions-Policy "camera=(), microphone=(), geolocation=()"
-		X-Robots-Tag "noindex, nofollow"
 		-Server
 	}
 }
@@ -43,14 +47,32 @@
 	encode gzip
 
 	import security_headers
+	header /admin/* X-Robots-Tag "noindex, nofollow"
+	header /empresas/* X-Robots-Tag "noindex, nofollow"
 
 	handle /robots.txt {
 		respond "User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /empresas/
+Disallow: /dados/busca/
+
+User-agent: GPTBot
 Disallow: /
+
+User-agent: ClaudeBot
+Disallow: /
+
+Sitemap: https://abastevo.com.br/sitemap.xml
+Sitemap: https://abastevo.com.br/sitemap-portal.xml
 " 200
 	}
-	handle /sitemap.xml {
-		respond 404
+	# The portal release ships its own sitemap.xml; the landing's sitemap.xml
+	# is served by the final landing handler.
+	handle /sitemap-portal.xml {
+		rewrite * /sitemap.xml
+		root * /srv/portal/current
+		file_server
 	}
 
 	@portalBare path /consultar /precos /fiscalizacao /curiosidades /dados /metodologia
@@ -154,7 +176,8 @@ Disallow: /
 	# Admin web panel (ADR-023 B3): static, shipped inside the signed landing
 	# bundle under admin/; data comes only from the same-origin /v1/admin API,
 	# which stays 404 until an admin key hash and CIDR fence are configured.
-	# Global CSP/noindex apply; pages are never cached.
+	# Global CSP and the site-level /admin/* noindex apply; pages are never
+	# cached.
 	handle /admin/* {
 		root * /srv/landing/current
 		@adminAsset path /admin/assets/*

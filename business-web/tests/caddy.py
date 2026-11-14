@@ -26,13 +26,17 @@ def run():
     image = os.environ.get("ANPFUEL_TEST_CADDY_IMAGE",
                            "caddy:2.10.2-alpine@sha256:4c6e91c6ed0e2fa03efd5b44747b625fec79bc9cd06ac5235a779726618e530d")
     name = "enterprise-plat008-caddy-" + str(os.getpid())
-    with tempfile.TemporaryDirectory(prefix="empresas-caddy-") as directory:
+    with tempfile.TemporaryDirectory(prefix="empresas-caddy-") as directory, \
+            tempfile.TemporaryDirectory(prefix="portal-caddy-") as portal_directory:
         tree = Path(directory)
+        portal = Path(portal_directory)
         shutil.copytree(ROOT / "business-web/dist", tree / "empresas")
         (tree / "index.html").write_text("Synthetic landing sentinel")
         (tree / "404.html").write_text("Synthetic public 404 sentinel")
+        (tree / "sitemap.xml").write_text("Synthetic landing sitemap sentinel")
         (tree / "admin/login").mkdir(parents=True)
         (tree / "admin/login/index.html").write_text("Synthetic admin sentinel")
+        (portal / "sitemap.xml").write_text("Synthetic portal sitemap sentinel")
         subprocess.run(["docker", "run", "--rm", "--network", "none",
                         "-v", str(config) + ":/etc/caddy/Caddyfile:ro", image,
                         "caddy", "validate", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"],
@@ -40,7 +44,8 @@ def run():
         try:
             subprocess.run(["docker", "run", "--rm", "-d", "--name", name, "-p", "127.0.0.1::8080",
                             "-v", str(config) + ":/etc/caddy/Caddyfile:ro",
-                            "-v", str(tree) + ":/srv/landing/current:ro", image,
+                            "-v", str(tree) + ":/srv/landing/current:ro",
+                            "-v", str(portal) + ":/srv/portal/current:ro", image,
                             "caddy", "run", "--config", "/etc/caddy/Caddyfile", "--adapter", "caddyfile"],
                            check=True, stdout=subprocess.DEVNULL)
             port = subprocess.check_output(["docker", "port", name, "8080/tcp"], text=True).strip().split(":")[-1]
@@ -100,7 +105,24 @@ def run():
                 assert "base-uri 'self'" in headers["Content-Security-Policy"]
                 assert "img-src 'self' data:" in headers["Content-Security-Policy"]
             assert request("/v1/org-access/session/read")[0] == 404, "Static tier started proxying the API"
-            print("PASS: Caddy company entry, canonical deep links, private cache/conditional rules without validators, fingerprinted-only immutable assets, revalidated licences, real 404s, public/admin separation")
+            # Official origin indexing: public pages are indexable, private
+            # surfaces stay noindex, robots lists both sitemaps.
+            _, headers, _ = request("/")
+            assert not headers.get("X-Robots-Tag"), "Public landing still sends X-Robots-Tag"
+            _, headers, _ = request("/admin/login/")
+            assert headers.get("X-Robots-Tag") == "noindex, nofollow", "Admin panel lost noindex"
+            code, _, raw = request("/robots.txt")
+            robots = raw.decode()
+            assert code == 200 and "User-agent: *\nAllow: /\n" in robots, "Robots does not allow the public site"
+            for rule in ["Disallow: /admin/", "Disallow: /empresas/", "Disallow: /dados/busca/",
+                         "User-agent: GPTBot\nDisallow: /\n", "User-agent: ClaudeBot\nDisallow: /\n",
+                         "Sitemap: https://abastevo.com.br/sitemap.xml\n",
+                         "Sitemap: https://abastevo.com.br/sitemap-portal.xml\n"]:
+                assert rule in robots, "Robots rule missing: " + rule
+            assert "Disallow: /\n" not in robots.split("User-agent: GPTBot")[0], "Robots still refuses every crawler"
+            assert request("/sitemap.xml")[:3:2] == (200, b"Synthetic landing sitemap sentinel"), "Landing sitemap not served"
+            assert request("/sitemap-portal.xml")[:3:2] == (200, b"Synthetic portal sitemap sentinel"), "Portal sitemap not served"
+            print("PASS: Caddy company entry, canonical deep links, private cache/conditional rules without validators, fingerprinted-only immutable assets, revalidated licences, real 404s, public/admin separation, official-origin indexing with private noindex")
         finally:
             subprocess.run(["docker", "rm", "-f", name], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
