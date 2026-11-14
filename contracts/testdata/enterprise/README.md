@@ -276,3 +276,18 @@ claimed.
 ```sh
 (cd backend && go test -race ./internal/modules/budget/domain -count=1)
 ```
+
+## Payables vectors v1
+
+EMP-FIN-001 executes all 275 rows of
+[payable/payable-v1.psv](payable/payable-v1.psv) in Go (ENUM 27,
+SETTLEMENT 25, PAYABLE 183, LEDGER 40). The oracle pins supplier,
+reimbursement and card statement obligations from approved expenses, exact
+line and settlement amounts, the derived settlement state, cancellation and
+separate cost and settlement views in which obligations and payments never
+become a cost. It is server-side only: no client mirror exists; any future
+client must consume the same file. See [payable/README.md](payable/README.md).
+
+```sh
+(cd backend && go test -race ./internal/modules/expense/domain/payable -count=1)
+```

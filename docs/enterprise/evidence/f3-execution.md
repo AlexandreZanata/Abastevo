@@ -229,3 +229,21 @@ branch. B-BR-EMP-198..201, BUC-EMP-102..103, EDR-141/142 moved to canonical
 docs. Retained: persistence, fixed-order line locks and the real PostGIS
 VAL-14 race (BUDG-002), reservation API/expiry (BUDG-003), overrun policy
 (BUDG-004), panel (BUDG-005), driver/asset limits (BUDG-006).
+
+### EMP-FIN-001 — payables domain: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-fin001-payables-domain.md). Server-only Go
+`expense/domain/payable` with the 275-case `payable-v1.psv` oracle (EDR-139:
+no Kotlin mirror). Closed kinds SUPPLIER, REIMBURSEMENT, CARD_STATEMENT
+(advances stay FIN-003) from APPROVED expenses with an explicit payer; lines
+bounded by the source company amount, reimbursement exactly equal; state
+OPEN/PARTIALLY_SETTLED/SETTLED derived from exact settlement entries,
+overpayment refused, reasoned cancellation only from OPEN; separate cost and
+settlement views where an obligation or payment never becomes a cost and one
+expense backs one live payable (EDR-140). RED 15/17 top-level and 270/275
+subtests failing → GREEN 17/275 under `-race`, 100% statements; dependents
+green; re-run on this branch. B-BR-EMP-194..197, BUC-EMP-100..101,
+EDR-139/140 moved to canonical docs; expenses-finance §6 states the derived
+payable state. Retained: reimbursement API (FIN-002), advances (FIN-003),
+payment records and the DB single-cost invariant (FIN-004), statements,
+cash views, panel; an exported review reason check for reuse.

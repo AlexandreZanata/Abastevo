@@ -3125,3 +3125,95 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   non-approved and repeated postings, double release or expiry, consuming
   released, expired or consumed holds and a late retry that cannot revive a
   released hold.
+
+## EMP-FIN-001 — Payables domain: supplier, reimbursement and card statement obligations (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-fin001-payables-domain.md).
+
+## Enterprise payables domain (EMP-FIN-001)
+
+- **B-BR-EMP-194 — Closed obligation kinds with one counterparty and approved expense sources.**
+  A payable is an amount the organization owes, recorded with exactly one kind
+  from the closed list SUPPLIER, REIMBURSEMENT and CARD_STATEMENT; ADVANCE,
+  PAYMENT, PAYABLE and every unknown, empty, padded or differently cased
+  token are INVALID (advances belong to EMP-FIN-003). Each kind names exactly
+  its own counterparty and no other: REIMBURSEMENT the beneficiary employee,
+  SUPPLIER the supplier plus an optional supplier document, CARD_STATEMENT the
+  statement; a missing or extra counterparty is INVALID. A payable has 1..1000
+  source lines (REIMBURSEMENT exactly one); each line attributes an amount to
+  one EMP-EXP-001 expense (its identity, origin key and company amount)
+  together with the server-resolved facts the owning command supplies: the
+  current review state and the explicit payer, COMPANY or EMPLOYEE with the
+  paying employee present exactly for EMPLOYEE. The payable, its counterparty,
+  every source expense and every paying employee belong to the scoped
+  organization; any other organization, including a mix within one payable,
+  is SCOPE. A repeated expense identity or origin key within one payable is
+  DUPLICATE_SOURCE. A source is eligible only when APPROVED; REIMBURSEMENT
+  requires an EMPLOYEE payer who is the beneficiary, and SUPPLIER and
+  CARD_STATEMENT require a COMPANY payer (NOT_ELIGIBLE otherwise). References
+  prove no existence, authority, supplier consistency or payment.
+- **B-BR-EMP-195 — Exact obligation bounded by its sources.**
+  Each line amount is a required canonical integer number of centavos parsed
+  by the accepted exact-value kernel and at least 1; an absent, zero, signed,
+  decimal, padded or out-of-range amount is INVALID and never rounded or
+  defaulted. A line never exceeds its source's company amount
+  (EXCEEDS_SOURCE). A REIMBURSEMENT equals the approved company amount exactly
+  (PARTIAL_REIMBURSEMENT below it): the review decision, including a partial
+  approval, already fixed what the company bears, and installments are
+  partial settlements, not partial obligations. SUPPLIER and CARD_STATEMENT
+  lines may be smaller than their source. The obligation amount is the exact
+  sum of its lines, never an independent input, and at most the financial-v1
+  total ceiling of 1000000000000 centavos (INVALID above). Checks run in this
+  order, lines in input order within each: INVALID (shape, tokens, presence,
+  amounts, ceiling), SCOPE, NOT_COST_ORIGIN, DUPLICATE_SOURCE, NOT_ELIGIBLE,
+  then EXCEEDS_SOURCE or PARTIAL_REIMBURSEMENT. Recognizing an obligation never
+  changes, re-recognizes or replaces its source expense.
+- **B-BR-EMP-196 — Settlement state derived from exact settlement entries.**
+  A settlement entry has a scoped identity and a positive canonical amount
+  (INVALID otherwise) and belongs to one payable. Recording one checks, in
+  order, scope and shape, NOT_COST_ORIGIN (its identity equals the payable,
+  statement, a source expense or that expense's origin source), CANCELLED (the
+  payable is cancelled), DUPLICATE_ENTRY (its identity is already recorded)
+  and EXCEEDS_REMAINING (overpayment, including any amount on a SETTLED
+  payable); a refusal leaves the payable unchanged. The state is derived,
+  never stored as truth: no settlement is OPEN, a positive sum below the
+  obligation PARTIALLY_SETTLED and a sum equal to it SETTLED. CANCELLED is the
+  only state set by a command: an explicit cancellation with a nonblank,
+  control-free reason of at most 280 Unicode scalars (the B-BR-EMP-163 bound,
+  INVALID otherwise) moves an OPEN payable to CANCELLED; it is CANCELLED for
+  an already cancelled payable and HAS_SETTLEMENT once any settlement exists
+  (reversal is not modelled). The remaining amount is derived as obligation
+  minus settled, and 0 for a CANCELLED payable. A stored or displayed state
+  asserted against the facts must equal the derived state (STATE_MISMATCH;
+  an unknown token is INVALID).
+- **B-BR-EMP-197 — Obligations and settlements never become a cost.**
+  A pure views function computes the cost view with the unchanged EMP-EXP-001
+  totals over the cost entries alone (their own failures returned unchanged)
+  and, separately, the settlement view over the payables alone: payable count,
+  counts per state and exact widened sums of the obligation of non-cancelled
+  payables, the settled amount and the remaining amount. Any number of
+  payables and settlements leaves every cost figure identical, and no cost
+  figure includes an obligation or a payment. A payable, settlement or
+  statement identity used as a cost entry's expense identity or origin source
+  is NOT_COST_ORIGIN, as are the settlement-side kinds already refused by
+  EMP-EXP-001. Each expense is the source of at most one non-cancelled payable
+  in a selection (DUPLICATE_SOURCE), a payable or settlement identity appears
+  once (DUPLICATE_ENTRY) and every payable belongs to the scope (SCOPE). Cost
+  failures come first, then payables in input order, then identity
+  separation.
+- **BUC-EMP-100 — Recognize and settle one obligation.**
+  Shared vectors cover each kind with its counterparty and source rules,
+  ADVANCE and PAYMENT refused as kinds, every review state and both payers,
+  a wrong beneficiary, mixed organizations, duplicate sources, exact amount
+  grammar, the source bound and total ceiling, partial reimbursement, partial
+  and exact settlement, overpayment, settlement on a cancelled payable,
+  cancellation with and without settlements, reason bounds, identities posing
+  as costs and asserted states that contradict the derived state.
+- **BUC-EMP-101 — Prove one cost with its settlement view.**
+  Shared vectors cover VAL-13's 97 350 fueling with a matching reimbursement
+  and payment (cost 97 350, payable SETTLED, never 194 700), a replayed
+  payment, many payables of every kind and many settlements leaving the cost
+  unchanged, a source outside the cost period, a second expense of the same
+  fueling, payable/settlement/statement identities posing as costs,
+  settlement kinds refused as cost origins, two live obligations of one source
+  and a cancelled obligation releasing its source.

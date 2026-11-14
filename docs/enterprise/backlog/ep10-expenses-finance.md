@@ -251,7 +251,7 @@ with 100% Go statements. Persistence, projection, review binding and F3 remain o
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-FIN-001 — Payables domain: supplier, reimbursement and card statement obligations
-- **Meta:** module FIN · phase F3 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module FIN · phase F3 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Model financial obligations independently of recognized cost.
 - **Rules and use cases:** EDR-013, BR-MONEY-001, BR-TRUTH-001, REQ-11.1, REQ-11.2
 - **Depends on:** EMP-EXP-001
@@ -265,6 +265,13 @@ with 100% Go statements. Persistence, projection, review binding and F3 remain o
 - **Validation:** V-DOM, V-MONEY · migration: none in this task · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F3 pure payables domain](../evidence/f3-fin001-payables-domain.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Supplier, reimbursement and card
+statement obligations from approved expenses, exact bounded lines, derived
+settlement state, reasoned cancellation and separate cost/settlement views
+pass all 275 server-only Go vectors with 100% statements. Persistence,
+reimbursement API, payments, advances, panel and F3 remain open.
 
 ### EMP-FIN-002 — Reimbursements for out-of-pocket expenses
 - **Meta:** module FIN · phase F3 · cut - · priority P1 · type API · size M · state TODO

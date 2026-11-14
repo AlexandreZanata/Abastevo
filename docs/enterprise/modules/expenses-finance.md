@@ -36,7 +36,7 @@ The organization owns expense, allocation, review case, approval step, payable, 
 
 ## 6. States and transitions
 
-Expenses use BR-REV states plus void, preserving revisions. Approval steps use pending, approved, returned, rejected or explicitly skipped under their policy. Payables are open, partially settled, settled or cancelled. Advances retain their requested, approved, paid and accounted stages. Holds are active, consumed, released or expired. Periods are open, locked or reopened. The [state catalog](../08-state-model.md) is canonical. Every transition checks actor, scope, current revision and required reason. A locked-period correction uses authorized reopening or an open-period adjustment.
+Expenses use BR-REV states plus void, preserving revisions. Approval steps use pending, approved, returned, rejected or explicitly skipped under their policy. Payables are open, partially settled, settled or cancelled. The payable state is derived from the exact obligation and its settlement entries; only an explicit, reasoned cancellation of an open payable sets cancelled (B-BR-EMP-196). Advances retain their requested, approved, paid and accounted stages. Holds are active, consumed, released or expired. Periods are open, locked or reopened. The [state catalog](../08-state-model.md) is canonical. Every transition checks actor, scope, current revision and required reason. A locked-period correction uses authorized reopening or an open-period adjustment.
 
 ## 7. Roles and permissions
 
