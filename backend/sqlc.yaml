@@ -591,6 +591,20 @@ sql:
         emit_json_tags: true
 
   - engine: postgresql
+    queries: db/queries/document
+    schema:
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000205_org_documents.sql
+    gen:
+      go:
+        package: document
+        out: db/queries/document
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+
+  - engine: postgresql
     queries: db/queries/orgcapability
     schema:
       - db/migrations/000166_org_capabilities.sql

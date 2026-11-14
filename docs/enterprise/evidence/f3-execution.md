@@ -337,3 +337,35 @@ migrate: 16 packages, 509 top-level / 4259 subtests, 0 failures, 0 skips.
 Retained: real producers (RPT-004, approvals, alerts) and dispatcher
 composition, external channels (NOTIF-002), subscriptions (NOTIF-003), app
 centre (NOTIF-004), retention/erasure of notices, rate measurement, grants.
+
+### EMP-DOC-002 — document persistence and audited access: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-doc002-document-persistence.md). Migration 000205
+`org_documents` owns the orgmedia original identity; six independent status
+columns with the DOC-001 graph enforced in SQL, forced RLS, retention guard;
+upload create (≤5-minute capability), capability-bound `DOCUMENT_INGRESS`
+(JPEG only in C1; RECEIVED/STORED only after verified bytes), audited content
+access/read through the PRIV-005 log (EDR-152/153). Merged with FLEET-003,
+APPR-006 and NOTIF-001 (route inventory 19 routed / 65 not routed / 96 normal
+/ 24 special; authorization matrix 190 cells, 72 allowed / 118 denied;
+OpenAPI blocks inserted structurally). Merged-tree verification: untagged
+206 packages, 2551/7034, 0 failures (4 pre-existing skips); race/integration
+union with disposable MinIO over document, orgmedia, orgaudit, organization
+adapters, review, orgnotify, fleet adapters, orgapi and migrate: 24 packages,
+580/3773, 0 failures, 0 skips. Retained: Android producer (DOC-004/OFFL-005),
+safety job (DOC-014), other status commands, links, duplicates, panel viewer,
+real storage provider, production grants; real receipts legally gated.
+
+## Stop point — 2026-11-14 (usage limit)
+
+Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,
+BUDG-001, FIN-001, PRIV-005, FLEET-003 (F2), APPR-006, NOTIF-001, DOC-002.
+Not integrated: EMP-FLEET-005 is LOCAL_DONE on branch
+`codex/enterprise-f3-fleet005` (`dc83111e`, migration 000206, backed up to
+origin) and must be cherry-picked with its route-count/usage-guard merges;
+EMP-RPT-001 was stopped mid-work in `/data/dev/worktrees/enterprise-f3-rpt001`
+(uncommitted, unvalidated). Not started: AUTH-006, FLEET-006, METER-002
+closure, FUEL-002 and everything downstream, DOC-003/006/008/014, AUTH-007/011,
+FLEET-009, OFFL-005, RPT-002 and REL-004. M3/F3 are not accepted. The branch
+is not yet merged with origin/dev `018f2df1`, not pushed to `dev`, and no PR
+is open. The disposable MinIO project `f3-s3-20261114` is still running.

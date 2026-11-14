@@ -144,10 +144,12 @@
     },
     {
       "permission": "doc.document.attach",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Private document metadata, content and processing routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/documents/uploads/create",
+      "routes": [
+        "POST /v1/orgs/{org_id}/documents/uploads/create"
+      ],
+      "reason": ""
     },
     {
       "permission": "doc.document.confer",
@@ -165,10 +167,13 @@
     },
     {
       "permission": "doc.document.view_content",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Private document metadata, content and processing routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/documents/{document_id}/content/access",
+      "routes": [
+        "POST /v1/orgs/{org_id}/documents/{document_id}/content/access",
+        "POST /v1/orgs/{org_id}/documents/{document_id}/content/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "exp.category.manage",
@@ -765,6 +770,10 @@
     {
       "route": "POST /v1/orgs/{org_id}/devices/enroll",
       "boundary": "SIGNED_DEVICE"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/documents/{document_id}/content/upload",
+      "boundary": "DOCUMENT_INGRESS"
     },
     {
       "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/devices/self/list",

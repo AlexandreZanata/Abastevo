@@ -37,7 +37,7 @@ exact expense-only allocations with derived reconciliation (EDR-134..136).
 Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DOC-002..014.
 
 ### EMP-DOC-002 — Document persistence, upload session and audited private access
-- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Persist scoped documents and deliver private originals through authorized access.
 - **Rules and use cases:** BR-TEN-006, BR-PRIV-004, BR-PRIV-008, BR-PRIV-020, BR-AUD-003, OQ-04, UC-PRIV-05
 - **Depends on:** EMP-DOC-001, EMP-PLAT-006, EMP-AUTH-003, EMP-PRIV-005
@@ -51,6 +51,14 @@ Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DO
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive with populated upgrade and recovery · rollback: stop new intake and keep retained objects private
 - **Risks and assumptions:** The approved C1 path uses synthetic receipts. Real intake requires legal and release gates.
 - **Done when:** Real PostGIS and isolated storage prove authorization, audit, failure and replay behavior.
+
+- **Status (2026-11-14):** LOCAL_DONE in `codex/enterprise-f3-doc002`
+  ([evidence](../evidence/f3-doc002-document-persistence.md)). Migration
+  000205 `org_documents`, creator-bound upload session with a capability-bound
+  `DOCUMENT_INGRESS`, and audited content access/read over EMP-PLAT-006 and
+  EMP-PRIV-005; real PostGIS and disposable S3 prove authorization, audit,
+  refusal, replay and concurrency. Synthetic JPEG only; Android producer
+  (DOC-004), safety job (DOC-014) and storage provider configuration retained.
 
 ### EMP-DOC-003 — Links between documents and operations
 - **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size S · state TODO

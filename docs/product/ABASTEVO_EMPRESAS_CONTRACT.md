@@ -3514,3 +3514,79 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   upgrade from the previous chain to 000204 with failure, recovery, retry,
   previous-chain compatibility and no seeded work. Keep the route/contract
   gate and authorization inventory exact.
+
+## EMP-DOC-002 — Document persistence, upload session and audited private access (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc002-document-persistence.md).
+
+- **B-BR-EMP-219 — The document record owns the original identity.** One
+  organization-scoped row persists each EMP-DOC-001 container: a
+  client-declared document UUID, kind `RECEIPT`, data mode `SYNTHETIC`, the
+  declared original (lower-case SHA-256, exact byte count, media type), the
+  creating membership and operation, timestamps and the six status dimensions
+  as independent columns. Storage, extraction, structure, conference and
+  fiscal each carry their own revision, which grows by exactly one per change
+  of that dimension and only along the EMP-DOC-001 transition graph from its
+  current state; reconciliation is derived and stays `UNALLOCATED` until
+  allocations exist. The private original's `orgmedia` identity is this row:
+  its document UUID, digest, size and type come only from the row, its
+  revision is the storage revision and it is ready only when storage is
+  `STORED`. Rows start at the initial states, keep their identity, are never
+  deleted and live under forced organization row-level security, so a session
+  without the organization setting sees and writes nothing.
+- **B-BR-EMP-220 — Upload session: declare, then verified bytes.** A member
+  whose current `doc.document.attach` covers a record they author creates the
+  session with an operation UUID, the document UUID and the declared original;
+  C1 accepts only `image/jpeg` up to the 5 MiB budget. The document starts
+  `UPLOADING` and the response carries an upload capability that expires
+  within five minutes and is bound to the canonical origin, organization,
+  document, account and membership. Repeating the same operation with
+  identical facts returns the first record and a fresh capability while it is
+  pending; the same operation with other facts or another actor is
+  `OPERATION_ID_REUSED`, another operation naming an existing document UUID is
+  `CONFLICT`, and concurrent duplicates write one row and one audit event.
+  Bytes reach the document ingress with the capability; the server rechecks
+  the creator, the current authority and the pending state, then runs the
+  existing bounded `orgmedia` upload (declared size plus one, exact digest,
+  type by content, conditional private write and verified read). Only after
+  that does one transaction move storage `UPLOADING → RECEIVED → STORED` and
+  record `document.upload.stored`. A refused, interrupted, oversized,
+  mismatched or wrong-type transfer leaves the document `UPLOADING` with no
+  event; a retry after `STORED` returns the stored record and writes nothing.
+- **B-BR-EMP-221 — Content only through an audited, member-bound
+  capability.** Opening content requires the current session, membership and
+  `doc.document.view_content` covering the document (own records for `S`
+  roles) on a `STORED` document. The `ISSUED` access record (EMP-PRIV-005)
+  commits before a capability is minted; it expires within five minutes and is
+  bound to the member and the document's verified revision. Reading presents
+  that capability in the request body together with the same session and
+  authority, and the `SERVED` record commits before the original is returned,
+  base64-encoded in a no-store JSON body. Another organization's document,
+  a non-member, another member's or organization's capability, an expired
+  capability, a pending document and a refused or unavailable audit record all
+  serve nothing and write no `SERVED` record; a member lacking the permission
+  is `FORBIDDEN`, an unavailable access log is `UNAVAILABLE`, and every
+  other refusal of a document is `NOT_FOUND` (BR-TEN-006, BR-AUTH-013).
+- **B-BR-EMP-222 — Telemetry never carries content.** Logs, metric labels,
+  error bodies, audit rows and redacted value formatting carry route
+  templates, bounded codes and UUIDs only: never original bytes or their
+  encoding, content digests, storage keys or URLs, or capability tokens
+  (BR-PRIV-008). The declared digest is returned only to the authorized
+  creator in its own no-store session response.
+- **BUC-EMP-112 — Prove the upload session on real PostGIS and isolated
+  storage.** A member declares a synthetic JPEG, uploads it through the
+  capability and observes `STORED` with exactly one creation and one stored
+  event; the object exists only under the organization prefix. Retried and
+  concurrent creates keep one row, a replayed upload writes nothing, and
+  unverified, oversized, mismatched or wrong-type bytes, a foreign or expired
+  capability and another member's capability leave the document `UPLOADING`.
+  Forced row-level security, the transition guard (equal to the domain graph),
+  immutable identity and a populated upgrade from the previous head with
+  failure recovery are proven.
+- **BUC-EMP-113 — Prove audited private reads over the company API.** Through
+  the composed enterprise routes with real sessions and roles, a permitted
+  member receives a capability and reads the exact original with one `ISSUED`
+  and one `SERVED` record, while foreign organizations, members without the
+  permission, `S` roles on another member's document, expired or foreign
+  capabilities and an unavailable audit serve nothing. Captured logs and
+  metrics contain no bytes, digest, storage key or capability.

@@ -17,6 +17,9 @@ import (
 	companypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters"
 	companyweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/application"
+	documentpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/adapters"
+	documentweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/adapters/http"
+	documentapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/application"
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	fleetweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters/http"
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
@@ -38,6 +41,8 @@ import (
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	eventpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/adapters"
+	mediapg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgmedia/adapters"
+	media "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgmedia/application"
 	notifypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/adapters"
 	notifyweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/adapters/http"
 	notifyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/application"
@@ -74,6 +79,10 @@ type Options struct {
 	// producers. None exists yet; the own inbox routes serve an empty catalog
 	// and the notif.dispatch consumer is composed with the first producer.
 	NoticeKinds []notify.Kind
+	// DocumentStorage is the private organization bucket for synthetic
+	// document originals. Nil keeps the routes mounted while bytes and content
+	// are unavailable; provider qualification remains a separate gate.
+	DocumentStorage *mediapg.StorageConfig
 }
 
 // Register performs no I/O or provisioning. The default mounts no private
@@ -115,6 +124,8 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	definitions = append(definitions, syncpg.AuditDefinitions()...)
 	definitions = append(definitions, reviewpg.PeriodAuditDefinitions()...)
+	definitions = append(definitions, documentpg.AuditDefinitions()...)
+	definitions = append(definitions, mediapg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -146,6 +157,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "doc.document", Permissions: []string{"doc.document.attach"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic document upload sessions inherit identity v1 write 200/hour on every axis; byte transfers keep the orgmedia slot limits and production measurement remains required."},
 	})
 	if err != nil {
 		return err
@@ -291,6 +303,9 @@ func Register(router chi.Router, o Options) error {
 	if err := registerNotices(router, o, cookies, gateway, roles, allowance); err != nil {
 		return err
 	}
+	if err := registerDocuments(router, o, cookies, gateway, access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: documentweb.DocumentRecords{}, Now: time.Now}, roles, auditStore); err != nil {
+		return err
+	}
 
 	cookies.RegisterRoutes(router)
 	return nil
@@ -311,6 +326,36 @@ func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, g
 	}
 	store := &notifypg.Store{Pool: o.Pool, Catalog: kinds, Authority: roles, NewID: jobs.NewUUIDv4}
 	return notifyweb.Register(router, notifyweb.Options{Enabled: true, Service: notifyapp.Service{Enabled: true, Catalog: kinds, Repository: store}, Cookies: cookies, Gateway: gateway, Admission: admission})
+}
+
+// registerDocuments composes EMP-DOC-002 over the EMP-PLAT-006 private
+// original service and the EMP-PRIV-005 access log. Without configured
+// storage, declarations work while bytes and content stay unavailable.
+func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authorization access.Authorization, roles *accesspg.Store, auditStore *auditpg.Store) error {
+	authority := documentpg.CurrentAuthority{Source: roles, Now: time.Now}
+	var objects media.Objects = documentpg.UnavailableObjects{}
+	if o.DocumentStorage != nil {
+		s3, err := mediapg.NewS3(*o.DocumentStorage)
+		if err != nil {
+			return err
+		}
+		objects = s3
+	}
+	mediaTokens, err := mediapg.NewTokens(o.Origin, o.CursorSecret)
+	if err != nil {
+		return err
+	}
+	originals, err := media.NewService(media.Config{Enabled: true, Authority: documentpg.MediaAuthority{Pool: o.Pool, Authority: authority}, Objects: objects,
+		Inspector: mediapg.JPEGInspector{}, Tokens: mediaTokens, Audit: mediapg.AccessAudit{Runner: auditStore}, Now: time.Now, NewID: jobs.NewUUIDv4})
+	if err != nil {
+		return err
+	}
+	uploads, err := documentpg.NewUploadTokens(o.Origin, o.CursorSecret)
+	if err != nil {
+		return err
+	}
+	service := documentapp.Service{Enabled: true, Repository: &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore}, Media: originals, Tokens: uploads, Now: time.Now, NewID: jobs.NewUUIDv4}
+	return documentweb.Register(router, service, cookies, gateway, authorization)
 }
 
 type orgRootResolver struct{ roots org.Repository }

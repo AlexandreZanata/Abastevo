@@ -5,8 +5,10 @@ Recovered from the surviving enterprise requirements, shared rules and backlog.
 The accepted F0 decisions and existing release gates govern any implementation.
 
 EMP-PLAT-006 implements the [private storage/access foundation](../evidence/f1-plat006-private-document-storage.md).
-Document metadata/schema, upload-session persistence, feature routes and
-verification/lifecycle jobs retain EMP-DOC-002 and EMP-DOC-014 ownership.
+EMP-DOC-002 persists the document container (`org_documents`, migration
+000205), the creator-bound upload session with its capability-bound ingress and
+the audited content routes ([evidence](../evidence/f3-doc002-document-persistence.md));
+verification and lifecycle jobs retain EMP-DOC-014 ownership.
 The current synthetic inspector accepts JPEG; other format inspectors are
 not activated by a MIME declaration or a READY flag.
 

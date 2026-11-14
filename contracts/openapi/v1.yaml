@@ -46,6 +46,8 @@ tags:
     description: FREE email-code signup/login plus session rotation.
   - name: enterprise-identity
     description: Private organization employee records, separate from login and membership.
+  - name: enterprise-documents
+    description: Private synthetic receipts, verified upload and audited content access.
   - name: enterprise-sync
     description: Signed current-source operation transport with independent scoped transactions and protected receipts.
   - name: enterprise-finance
@@ -17599,6 +17601,326 @@ paths:
         csrf: true
         binding: true
         success: 200
+  /v1/orgs/{org_id}/documents/uploads/create:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentUploadCreate
+      summary: Declare a synthetic private receipt and open its upload session
+      description: Dedicated company cookie, exact Origin/CSRF and doc.document.attach covering a document the member
+        authors (own records for SELF roles). The client-declared document UUID, SHA-256, exact size and image/jpeg
+        type are fixed; the document starts UPLOADING and is never received before verified bytes. An identical
+        retry returns the first record and a fresh upload capability while pending; the same operation with other
+        facts or actor is OPERATION_ID_REUSED and another operation naming an existing document is CONFLICT. The
+        capability expires within five minutes and is bound to the origin, organization, document, account and
+        membership. Synthetic C1 only; real receipts and other formats remain gated.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.attach
+        write: true
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000020541
+              document_id: 7b0e2a54-0000-4000-8000-000000020542
+              kind: RECEIPT
+              original:
+                sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+                bytes: 1024
+                media_type: image/jpeg
+      responses:
+        '201':
+          description: Declared or identically replayed upload session.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentCreated'
+              example:
+                document:
+                  id: 7b0e2a54-0000-4000-8000-000000020542
+                  kind: RECEIPT
+                  data_mode: SYNTHETIC
+                  original:
+                    sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+                    bytes: 1024
+                    media_type: image/jpeg
+                  statuses:
+                    storage: UPLOADING
+                    extraction: NONE
+                    structure: NOT_APPLICABLE
+                    conference: UNCONFERRED
+                    reconciliation: UNALLOCATED
+                    fiscal: NOT_CONSULTED
+                  revisions:
+                    storage: 1
+                    extraction: 1
+                    structure: 1
+                    conference: 1
+                    fiscal: 1
+                  created_at: '2026-11-14T00:00:00.123456Z'
+                  updated_at: '2026-11-14T00:00:00.123456Z'
+                replayed: false
+                upload:
+                  capability: REDACTED
+                  expires_at: '2026-11-14T00:05:00Z'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/content/upload:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentContentUpload
+      summary: Send the declared original through the private document ingress
+      description: Capability-bound byte transport (DOCUMENT_INGRESS). The upload capability is verified before any
+        byte is read; no cookie, signed proof, query parameter or JSON body is accepted. The server rechecks that the
+        caller created the document, still holds doc.document.attach and the document is pending, then reads at most
+        the declared size plus one byte, verifies the exact digest, decides the type by content inspection and writes
+        the original under the organization prefix of private storage. Only then does storage move to STORED. A
+        refused, oversized, mismatched, wrong-type or interrupted transfer leaves the document UPLOADING; a retry
+        after STORED returns the stored record without reading or recording again.
+      security: []
+      x-abastevo-document-ingress:
+        capability: true
+        member_bound: true
+        current_authority: true
+        verified_bytes: true
+        permission: doc.document.attach
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: The declared document. A foreign, missing or other member's document stays hidden.
+      - name: X-Abastevo-Upload-Capability
+        in: header
+        required: true
+        description: Upload capability from the declaration response; at most five minutes, single-valued.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+              maxLength: 5242880
+      responses:
+        '200':
+          description: Verified original stored, or the already stored record.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentStored'
+              example:
+                document:
+                  id: 7b0e2a54-0000-4000-8000-000000020542
+                  kind: RECEIPT
+                  data_mode: SYNTHETIC
+                  original:
+                    sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+                    bytes: 1024
+                    media_type: image/jpeg
+                  statuses:
+                    storage: STORED
+                    extraction: NONE
+                    structure: NOT_APPLICABLE
+                    conference: UNCONFERRED
+                    reconciliation: UNALLOCATED
+                    fiscal: NOT_CONSULTED
+                  revisions:
+                    storage: 3
+                    extraction: 1
+                    structure: 1
+                    conference: 1
+                    fiscal: 1
+                  created_at: '2026-11-14T00:00:00.123456Z'
+                  updated_at: '2026-11-14T00:01:00.654321Z'
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/content/access:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentContentAccess
+      summary: Open an audited short-lived content capability
+      description: Dedicated company cookie, exact Origin/CSRF and doc.document.view_content covering the document
+        (own records for SELF roles); reading the record never implies content. The ISSUED access record commits
+        before the capability is minted; the capability expires within five minutes and is bound to the member and
+        the document's verified revision. A pending, foreign or missing document is NOT_FOUND, a member without the
+        permission is FORBIDDEN, and an unavailable access log mints nothing.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.view_content
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Private document selector. Foreign, missing and pending documents remain hidden; a selector is
+          not proof of content permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentContentAccessRequest'
+            example: {}
+      responses:
+        '200':
+          description: Audited member-bound content capability.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentContentAccess'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/content/read:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentContentRead
+      summary: Read the private original through its audited capability
+      description: Same session, membership and doc.document.view_content as the access route, plus the caller's own
+        unexpired capability for this document in the body. The SERVED access record commits before the original is
+        returned base64-encoded in this no-store JSON body; no storage URL, file name or conditional cache response
+        is emitted. Another member's, organization's or document's capability, an expired capability, a changed
+        document and an unavailable access log serve nothing.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.view_content
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Private document selector. Foreign, missing and pending documents remain hidden; a selector is
+          not proof of content permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentContentReadRequest'
+            example:
+              capability: REDACTED
+      responses:
+        '200':
+          description: Audited original content.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentContent'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -33071,6 +33393,244 @@ components:
         operation_id: 7b0e2a54-0000-4000-8000-000000002404
         replayed: false
         data_mode: SYNTHETIC
+    EnterpriseDocumentOriginal:
+      type: object
+      additionalProperties: false
+      description: Declared private original. Only a verified upload proves it; a digest match proves no fiscal fact.
+      required: [sha256, bytes, media_type]
+      properties:
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 5242880
+        media_type:
+          type: string
+          enum: [image/jpeg]
+      example:
+        sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+        bytes: 1024
+        media_type: image/jpeg
+    EnterpriseDocumentCreateRequest:
+      type: object
+      additionalProperties: false
+      description: Synthetic C1 receipt declaration. Authority comes only from the company session.
+      required: [schema_version, operation_id, document_id, kind, original]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum: [RECEIPT]
+        original:
+          $ref: '#/components/schemas/EnterpriseDocumentOriginal'
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000020541
+        document_id: 7b0e2a54-0000-4000-8000-000000020542
+        kind: RECEIPT
+        original:
+          sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+          bytes: 1024
+          media_type: image/jpeg
+    EnterpriseDocumentStatuses:
+      type: object
+      additionalProperties: false
+      description: Six independent answers; none is derived from another and reconciliation alone is computed.
+      required: [storage, extraction, structure, conference, reconciliation, fiscal]
+      properties:
+        storage:
+          type: string
+          enum: [UPLOADING, RECEIVED, STORED, QUARANTINED, FAILED, REPLACED, DELETED]
+        extraction:
+          type: string
+          enum: [NONE, PENDING, DONE, FAILED]
+        structure:
+          type: string
+          enum: [NOT_APPLICABLE, UNCHECKED, STRUCTURE_OK, STRUCTURE_INVALID]
+        conference:
+          type: string
+          enum: [UNCONFERRED, CONFERRED_OK, DIVERGENT, ILLEGIBLE]
+        reconciliation:
+          type: string
+          enum: [UNALLOCATED, PARTIALLY_ALLOCATED, RECONCILED, OVER_ALLOCATED]
+        fiscal:
+          type: string
+          enum: [NOT_CONSULTED, AUTHORIZED_AS_OF, CANCELLED_AS_OF, UNAVAILABLE]
+    EnterpriseDocumentRevisions:
+      type: object
+      additionalProperties: false
+      description: Independent revision of each commanded dimension.
+      required: [storage, extraction, structure, conference, fiscal]
+      properties:
+        storage: {type: integer, format: int64, minimum: 1}
+        extraction: {type: integer, format: int64, minimum: 1}
+        structure: {type: integer, format: int64, minimum: 1}
+        conference: {type: integer, format: int64, minimum: 1}
+        fiscal: {type: integer, format: int64, minimum: 1}
+    EnterpriseDocumentView:
+      type: object
+      additionalProperties: false
+      description: Private document container returned to its authorized creator. It carries no storage key, URL or content.
+      required: [id, kind, data_mode, original, statuses, revisions, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum: [RECEIPT]
+        data_mode:
+          type: string
+          enum: [SYNTHETIC]
+        original:
+          $ref: '#/components/schemas/EnterpriseDocumentOriginal'
+        statuses:
+          $ref: '#/components/schemas/EnterpriseDocumentStatuses'
+        revisions:
+          $ref: '#/components/schemas/EnterpriseDocumentRevisions'
+        fiscal_consulted_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000020542
+        kind: RECEIPT
+        data_mode: SYNTHETIC
+        original:
+          sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+          bytes: 1024
+          media_type: image/jpeg
+        statuses:
+          storage: UPLOADING
+          extraction: NONE
+          structure: NOT_APPLICABLE
+          conference: UNCONFERRED
+          reconciliation: UNALLOCATED
+          fiscal: NOT_CONSULTED
+        revisions:
+          storage: 1
+          extraction: 1
+          structure: 1
+          conference: 1
+          fiscal: 1
+        created_at: '2026-11-14T00:00:00.123456Z'
+        updated_at: '2026-11-14T00:00:00.123456Z'
+    EnterpriseDocumentUploadCapability:
+      type: object
+      additionalProperties: false
+      description: Upload capability for the document ingress header; expires within five minutes.
+      required: [capability, expires_at]
+      properties:
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        expires_at:
+          type: string
+          format: date-time
+    EnterpriseDocumentCreated:
+      type: object
+      additionalProperties: false
+      description: Declared (or identically replayed) document; an upload capability only while storage is UPLOADING.
+      required: [document, replayed]
+      properties:
+        document:
+          $ref: '#/components/schemas/EnterpriseDocumentView'
+        replayed:
+          type: boolean
+        upload:
+          $ref: '#/components/schemas/EnterpriseDocumentUploadCapability'
+    EnterpriseDocumentStored:
+      type: object
+      additionalProperties: false
+      description: Verified stored document, or the already stored record of a retry.
+      required: [document, replayed]
+      properties:
+        document:
+          $ref: '#/components/schemas/EnterpriseDocumentView'
+        replayed:
+          type: boolean
+    EnterpriseDocumentContentAccessRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      required: []
+      example: {}
+      description: No client authority, record or storage selector is accepted.
+    EnterpriseDocumentContentAccess:
+      type: object
+      additionalProperties: false
+      description: Audited member- and document-bound content capability.
+      required: [document_id, capability, expires_at]
+      properties:
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        expires_at:
+          type: string
+          format: date-time
+      example:
+        document_id: 7b0e2a54-0000-4000-8000-000000020542
+        capability: REDACTED
+        expires_at: '2026-11-14T00:05:00Z'
+    EnterpriseDocumentContentReadRequest:
+      type: object
+      additionalProperties: false
+      description: The caller's own content capability for this document.
+      required: [capability]
+      properties:
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 2048
+      example:
+        capability: REDACTED
+    EnterpriseDocumentContent:
+      type: object
+      additionalProperties: false
+      description: Audited original bytes, base64-encoded; never a storage URL or file name.
+      required: [document_id, data_mode, media_type, bytes, content_base64]
+      properties:
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        data_mode:
+          type: string
+          enum: [SYNTHETIC]
+        media_type:
+          type: string
+          enum: [image/jpeg]
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 5242880
+        content_base64:
+          type: string
+          format: byte
+          minLength: 4
+          maxLength: 6990508
+      example:
+        document_id: 7b0e2a54-0000-4000-8000-000000020542
+        data_mode: SYNTHETIC
+        media_type: image/jpeg
+        bytes: 4
+        content_base64: /9j/2Q==
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

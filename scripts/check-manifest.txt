@@ -30,6 +30,9 @@ backend/internal/modules/expense/domain
 backend/internal/modules/expense/domain/payable
 backend/internal/modules/budget/domain
 backend/internal/modules/document/domain
+backend/internal/modules/document/application
+backend/internal/modules/document/adapters
+backend/internal/modules/document/adapters/http
 backend/internal/modules/review/domain
 backend/internal/modules/review/domain/period
 backend/internal/modules/review/application

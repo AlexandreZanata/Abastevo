@@ -6,6 +6,12 @@
   FUEL-002. EDR-127: ready pure domains first (APPR-001, EXP-001, DOC-001,
   PLAT-016, then FIN-001/BUDG-001); no persistence before METER-002 closes.
   No M3/F3 acceptance is claimed; cumulative dev → main PR at batch end.
+  Stopped 2026-11-14 at the usage limit: 11 tasks integrated LOCAL_DONE on
+  `codex/enterprise-f3` (PLAT-016, APPR-001, EXP-001, DOC-001, BUDG-001,
+  FIN-001, PRIV-005, FLEET-003, APPR-006, NOTIF-001, DOC-002); FLEET-005 done
+  on its own branch, RPT-001 unfinished. Next: merge origin/dev, integrate
+  FLEET-005, continue AUTH-006 → FLEET-006 → METER-002, open the PR.
+  [Stop point](../enterprise/evidence/f3-execution.md#stop-point--2026-11-14-usage-limit).
 
 - Enterprise EMP-OFFL-008, 2026-11-14: LOCAL_DONE / INTEGRATION_PENDING
   (Claude Code takeover). Backend handoff items, union regressions and SQL
