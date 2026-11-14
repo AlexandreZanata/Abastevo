@@ -52,8 +52,12 @@ var downloadNotes = []string{
 	"Amostra datada da pesquisa ANP; não é preço ao vivo.",
 	"Sem CPF, fotos de usuários, GPS de colaborador ou documentos internos.",
 	"CSV em UTF-8; campos iniciados por =, +, - ou @ são prefixados com apóstrofo.",
-	"Direitos de redistribuição de preços/cadastro pendentes; não use comercialmente sem licença.",
+	dataLicenseNote,
 }
+
+// dataLicenseNote is the usage/license statement shown on /dados/ and
+// carried as the Dataset license.
+const dataLicenseNote = "Direitos de redistribuição de preços/cadastro pendentes; não use comercialmente sem licença."
 
 func summaryLevelOrder(level string) int {
 	switch level {

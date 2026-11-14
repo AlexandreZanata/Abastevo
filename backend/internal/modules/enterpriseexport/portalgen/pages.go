@@ -50,7 +50,43 @@ func (g *generator) newBase(spec pageSpec) pageBase {
 		base.Canonical = g.siteURL + spec.Route
 		base.OGImage = g.siteURL + ogImagePath
 	}
+	// Marshalling maps of strings and numbers cannot fail; a page without a
+	// canonical simply carries no structured data.
+	base, _ = g.withStructuredData(base)
 	return base
+}
+
+// collectionBase adds the CollectionPage/ItemList node to a page base.
+func (g *generator) collectionBase(base pageBase, items []listItem) (pageBase, error) {
+	return g.withStructuredData(base, g.collectionNode(base, items))
+}
+
+func stateItems(links []stateLink) []listItem {
+	items := make([]listItem, 0, len(links))
+	for _, link := range links {
+		items = append(items, listItem{Name: "Preços em " + link.Name, Href: link.Href})
+	}
+	return items
+}
+
+func rankingItems(views []rankingView, rows []rankingRow) []listItem {
+	seen := map[string]bool{}
+	items := []listItem{}
+	add := func(row rankingRow) {
+		if !seen[row.StationID] {
+			seen[row.StationID] = true
+			items = append(items, listItem{Name: row.Name, Href: "/postos/" + row.StationID + "/"})
+		}
+	}
+	for _, view := range views {
+		for _, row := range view.Rows {
+			add(row)
+		}
+	}
+	for _, row := range rows {
+		add(row)
+	}
+	return items
 }
 
 func (g *generator) periodPhrase() string {
@@ -94,6 +130,10 @@ func (g *generator) generateConsultar(summaries []analytics.Summary, states map[
 		States: stateLinks(summaries, states), National: g.summaryRows(summaries, analytics.LevelNational, "BR", false),
 		SearchStates: searchStates, SearchRelease: release,
 	}
+	var err error
+	if data.pageBase, err = g.collectionBase(data.pageBase, stateItems(data.States)); err != nil {
+		return err
+	}
 	return g.writeRoute("consultar", data)
 }
 
@@ -119,6 +159,13 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 		}),
 		National: national, Rankings: views, States: stateLinks(summaries, states), FuelHubs: g.orderedFuelHubs(),
 		SearchRelease: g.searchRelease, SearchFuels: g.searchFuels,
+	}
+	items := []listItem{}
+	for _, hub := range data.FuelHubs {
+		items = append(items, listItem{Name: "Preço de " + hub.Label + " por estado", Href: hub.Href})
+	}
+	if data.pageBase, err = g.collectionBase(data.pageBase, append(items, stateItems(data.States)...)); err != nil {
+		return err
 	}
 	return g.writeRoute("precos", data)
 }
@@ -178,6 +225,13 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 				Active: "precos", Crumbs: []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Current: true}}, LastMod: g.dataDate,
 			}),
 			UF: uf, Name: ufName(uf), Summaries: stateSummaries, Rankings: views, Municipalities: links,
+		}
+		items := make([]listItem, 0, len(links))
+		for _, link := range links {
+			items = append(items, listItem{Name: "Preços em " + placeLabel(link.Name, uf), Href: link.Href})
+		}
+		if data.pageBase, err = g.collectionBase(data.pageBase, items); err != nil {
+			return err
 		}
 		if err := g.writeRoute("state", data); err != nil {
 			return err
@@ -244,6 +298,10 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 			data.Rows = observationRows(items, 0, false)
 		} else {
 			data.Rankings = observationRankings(items)
+		}
+		var err error
+		if data.pageBase, err = g.collectionBase(data.pageBase, rankingItems(data.Rankings, data.Rows)); err != nil {
+			return err
 		}
 		if err := g.writeRoute("municipality", data); err != nil {
 			return err
@@ -493,6 +551,10 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 			Station: view, Observations: obsView, Histories: historyViews, Source: source,
 			OfficialRecords: officialRecords, OfficialCount: officialCount, OfficialMore: officialCount > len(officialRecords),
 		}
+		var err error
+		if data.pageBase, err = g.withStructuredData(data.pageBase, g.gasStationNode(data.pageBase, entry)); err != nil {
+			return err
+		}
 		if err := g.writeRoute("station", data); err != nil {
 			return err
 		}
@@ -522,6 +584,10 @@ func (g *generator) generateDownloads(files []downloadFile, manifest downloadFil
 			Crumbs:      []crumb{{Label: "Dados para download", Current: true}}, LastMod: g.dataDate,
 		}),
 		Release: release, Period: g.period, Files: files, Manifest: manifest, Notes: downloadNotes,
+	}
+	var err error
+	if data.pageBase, err = g.withStructuredData(data.pageBase, g.datasetNode(data.pageBase, files, manifest, g.latest)); err != nil {
+		return err
 	}
 	return g.writeRoute("dados", data)
 }

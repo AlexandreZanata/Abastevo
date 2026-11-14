@@ -127,6 +127,8 @@ type pageBase struct {
 	Route       string
 	Family      pageFamily
 	LastMod     string
+	// JSONLD is the inline structured data graph (B-BR-SEO-06).
+	JSONLD template.JS
 }
 
 func (b pageBase) page() pageBase { return b }
@@ -320,6 +322,7 @@ type generator struct {
 	cityPages  map[string]bool
 	cityState  map[string]string
 	fuelHubs   map[string]fuelHubLink
+	latest     *enterpriseexport.Revision
 	// Page-wide publication facts.
 	period        string
 	periodShort   string
@@ -521,6 +524,7 @@ func Generate(opts Options) (Result, error) {
 	g.cityState = municipalityState
 	latestSummaries := summariesFor(projection, latest)
 	g.fuelHubs = planFuelHubs(latestSummaries)
+	g.latest = latest
 	latestRankings := rankingsFor(projection, latest)
 	previous := previousRevision(snapshot.Revisions, latest)
 	previousSummaries := summariesForRevision(projection, previous)

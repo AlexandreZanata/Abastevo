@@ -171,6 +171,17 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 			Code: hub.Code, Label: hub.Label, H1: "Preço " + words.Article + " " + words.Name + " no Brasil",
 			UnitLabel: unitLabel(hub.Unit), National: national, States: states, Cities: cities, Others: others,
 		}
+		items := make([]listItem, 0, len(states)+len(cities))
+		for _, row := range states {
+			items = append(items, listItem{Name: "Preços em " + row.Name, Href: row.Href})
+		}
+		for _, row := range cities {
+			items = append(items, listItem{Name: "Preços em " + placeLabel(row.Name, row.UF), Href: row.Href})
+		}
+		var err error
+		if data.pageBase, err = g.collectionBase(data.pageBase, items); err != nil {
+			return err
+		}
 		if err := g.writeRoute("fuel", data); err != nil {
 			return err
 		}

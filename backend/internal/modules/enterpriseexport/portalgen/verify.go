@@ -66,7 +66,7 @@ var (
 	fiscalRecordIDShape   = regexp.MustCompile(`^[0-9a-f]{24}$`)
 	cpfTextPattern        = regexp.MustCompile(`(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})([^0-9A-Za-z]|$)`)
 	rawScriptTag          = regexp.MustCompile(`<script\b[^>]*>`)
-	allowedScript         = regexp.MustCompile(`^<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>$`)
+	allowedScript         = regexp.MustCompile(`^(?:<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>|<script type="application/ld\+json">)$`)
 	unsafeAttribute       = regexp.MustCompile(`(?i)<[^>]*\sonerror\s*=`)
 	unsafeURL             = regexp.MustCompile(`(?i)(?:href|src)="\s*javascript:`)
 	assetRef              = regexp.MustCompile(`(?:href|src)="(/assets/[^"]+)"`)
@@ -810,6 +810,9 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 			if indexable[path] && (strings.HasPrefix(path, "fiscalizacao/registro/") || strings.HasPrefix(path, "fiscalizacao/pagina/")) {
 				return VerifyResult{}, fmt.Errorf("portalcheck: indexable official record or pagination %s", path)
 			}
+			if err := checkStructuredData(path, body); err != nil {
+				return VerifyResult{}, err
+			}
 			if canonical := canonicalLink.FindSubmatch(body); len(canonical) == 2 {
 				canonicals[path] = string(canonical[1])
 			}
@@ -888,6 +891,30 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 	}
 	result.InitialViewGzipBytes = initial
 	return result, nil
+}
+
+// checkStructuredData requires every JSON-LD block to be one valid JSON
+// document without ratings or offers (B-BR-SEO-06).
+func checkStructuredData(path string, body []byte) error {
+	const open, closing = `<script type="application/ld+json">`, `</script>`
+	for rest := body; ; {
+		start := bytes.Index(rest, []byte(open))
+		if start < 0 {
+			return nil
+		}
+		rest = rest[start+len(open):]
+		end := bytes.Index(rest, []byte(closing))
+		if end < 0 || !json.Valid(rest[:end]) {
+			return fmt.Errorf("portalcheck: invalid JSON-LD in %s", path)
+		}
+		block := rest[:end]
+		for _, forbidden := range []string{`"aggregateRating"`, `"review"`, `"offers"`} {
+			if bytes.Contains(block, []byte(forbidden)) {
+				return fmt.Errorf("portalcheck: JSON-LD %s in %s", forbidden, path)
+			}
+		}
+		rest = rest[end:]
+	}
 }
 
 // gzipSizer measures default-level gzip sizes with one reused compressor

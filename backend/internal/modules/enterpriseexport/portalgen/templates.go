@@ -21,7 +21,7 @@ const templates = `
   <meta name="twitter:title" content="{{.HeadTitle}}">
   <meta name="twitter:description" content="{{.Description}}">
   <meta name="twitter:image" content="{{.OGImage}}">
-  {{end}}  {{if .CSSURL}}<link rel="stylesheet" href="{{.CSSURL}}">{{end}}
+  {{end}}{{if .JSONLD}}<script type="application/ld+json">{{.JSONLD}}</script>{{end}}  {{if .CSSURL}}<link rel="stylesheet" href="{{.CSSURL}}">{{end}}
 </head>
 <body>
   <a class="skip" href="#conteudo">Pular para o conteúdo</a>
@@ -307,7 +307,7 @@ const templates = `
     {{range .Files}}<li><a href="{{.Href}}">{{.Label}}</a> — {{.Rows}} linhas · {{.Bytes}} bytes</li>{{end}}
     <li><a href="{{.Manifest.Href}}">{{.Manifest.Label}}</a> — hashes, contagens e notas</li>
   </ul>
-  <h2>Notas</h2>
+  <h2 id="notas">Notas</h2>
   <ul>{{range .Notes}}<li>{{.}}</li>{{end}}</ul>
   <div class="source"><p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p></div>
   <div class="links"><a href="/curiosidades/">Perguntas aprovadas</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
