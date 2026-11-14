@@ -54,7 +54,7 @@ func deviceError(ctx context.Context, e error) error {
 	if e == nil {
 		return nil
 	}
-	for _, v := range []error{app.ErrDeviceRevoked, app.ErrDeviceLimit, app.ErrDeviceConflict, app.ErrEmployeeOperationReused, app.ErrEmployeeNotFound, app.ErrEmployeeUnauthenticated, app.ErrManagedRestricted, app.ErrRegisterUnavailable, d.ErrConflict, d.ErrInvalid, d.ErrScope, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrEntitlementRequired, access.ErrNoMembership} {
+	for _, v := range []error{app.ErrDeviceRevoked, app.ErrDeviceLimit, app.ErrDeviceConflict, app.ErrEmployeeOperationReused, app.ErrEmployeeNotFound, app.ErrEmployeeUnauthenticated, app.ErrManagedRestricted, app.ErrRegisterUnavailable, d.ErrConflict, d.ErrInvalid, d.ErrScope, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrSetupIncomplete, access.ErrEntitlementRequired, access.ErrNoMembership} {
 		if errors.Is(e, v) {
 			return v
 		}
@@ -165,6 +165,17 @@ func deviceReceiptRecord(scope kernel.OrgScope, current app.DeviceRecord, raw []
 	return out, nil
 }
 func (s *DeviceStore) signed(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, a app.DeviceActor, enroll, required bool) (d.Membership, error) {
+	var guard func() error
+	if enroll {
+		guard = func() error { return s.Capabilities.GuardWrite(ctx, tx, scope, "organizations") }
+	}
+	return s.signedFor(ctx, tx, scope, a, enroll, required, false, guard)
+}
+
+// The capability closure preserves existing enrollment behavior and permits a
+// source-owned operational write to lock capability before the root without
+// imposing enrollment's fresh15-minute rule or exposing transaction lifecycle.
+func (s *DeviceStore) signedFor(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, a app.DeviceActor, enroll, required, operationalWrite bool, capabilityGuard func() error) (d.Membership, error) {
 	if scope.Validate() != nil || a.Validate() != nil {
 		return d.Membership{}, app.ErrEmployeeUnauthenticated
 	}
@@ -205,15 +216,15 @@ func (s *DeviceStore) signed(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 		return d.Membership{}, app.ErrEmployeeUnauthenticated
 	}
 	// Establish the private account binding before inspecting organization facts.
-	_, e = NewStore(s.Pool).ActiveByAccountTx(ctx, tx, scope, a.AccountID)
+	_, e = NewStore(s.Pool).ActiveByAccountDBTX(ctx, tx, scope, a.AccountID)
 	if e != nil {
 		if errors.Is(e, app.ErrNotFound) {
 			return d.Membership{}, app.ErrEmployeeNotFound
 		}
 		return d.Membership{}, e
 	}
-	if enroll {
-		if e := s.Capabilities.GuardWrite(ctx, tx, scope, "organizations"); e != nil {
+	if capabilityGuard != nil {
+		if e := capabilityGuard(); e != nil {
 			return d.Membership{}, e
 		}
 	}
@@ -227,7 +238,11 @@ func (s *DeviceStore) signed(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 		return d.Membership{}, app.ErrRegisterUnavailable
 	}
 	switch org.State(state) {
-	case org.Active, org.PendingSetup:
+	case org.Active:
+	case org.PendingSetup:
+		if operationalWrite {
+			return d.Membership{}, access.ErrSetupIncomplete
+		}
 	case org.Suspended:
 		return d.Membership{}, access.ErrOrgSuspended
 	case org.Archived:
@@ -235,7 +250,7 @@ func (s *DeviceStore) signed(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 	default:
 		return d.Membership{}, app.ErrEmployeeNotFound
 	}
-	member, e := NewStore(s.Pool).ActiveByAccountTx(ctx, tx, scope, a.AccountID)
+	member, e := NewStore(s.Pool).ActiveByAccountDBTX(ctx, tx, scope, a.AccountID)
 	if e != nil {
 		if errors.Is(e, app.ErrNotFound) {
 			return d.Membership{}, app.ErrEmployeeNotFound
@@ -246,7 +261,7 @@ func (s *DeviceStore) signed(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 	if e != nil {
 		return d.Membership{}, e
 	}
-	employee, e := NewStore(s.Pool).GetEmployeeTx(ctx, tx, scope, m.EmployeeID)
+	employee, e := NewStore(s.Pool).GetEmployeeDBTX(ctx, tx, scope, m.EmployeeID)
 	if e != nil {
 		return d.Membership{}, e
 	}

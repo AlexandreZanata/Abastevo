@@ -48,8 +48,13 @@ type Config struct {
 	EventWriter   events.Writer
 	// Exact source-owned consumer plans indexed by handler type, then final result.
 	Plans map[string]map[string][]string
+	// Exact source-owned atomic outcomes; never inferred from an absent catalog.
+	NoAsyncPlans map[app.OperationKey]map[string]app.FollowupMode
 }
-type Store struct{ config Config }
+type Store struct {
+	config         Config
+	invalidNoAsync bool
+}
 
 func NewStore(config Config) *Store {
 	plans := make(map[string]map[string][]string, len(config.Plans))
@@ -60,7 +65,22 @@ func NewStore(config Config) *Store {
 		}
 	}
 	config.Plans = plans
-	return &Store{config: config}
+	noAsync := make(map[app.OperationKey]map[string]app.FollowupMode, len(config.NoAsyncPlans))
+	invalid := false
+	for key, results := range config.NoAsyncPlans {
+		if !protocol.ValidOperationType(key.Type) || key.Schema != 1 {
+			invalid = true
+		}
+		noAsync[key] = make(map[string]app.FollowupMode, len(results))
+		for result, mode := range results {
+			if mode != app.NoAsyncFollowup || (result != protocol.Accepted && result != protocol.Rejected) {
+				invalid = true
+			}
+			noAsync[key][result] = mode
+		}
+	}
+	config.NoAsyncPlans = noAsync
+	return &Store{config: config, invalidNoAsync: invalid}
 }
 func AuditDefinitions() []audit.Definition {
 	return []audit.Definition{
@@ -87,10 +107,23 @@ func action(result string) string {
 	}
 	return ""
 }
-func (s *Store) plan(source app.Source, op protocol.Operation, result string) (event.Plan, audit.Event, error) {
+func (s *Store) plan(source app.Source, op protocol.Operation, descriptor app.Descriptor, result string) (event.Plan, audit.Event, error) {
+	if s == nil || s.invalidNoAsync || descriptor.Validate() != nil || descriptor.Type != op.Snapshot().Type || !slices.Contains(descriptor.Results(), result) {
+		return event.Plan{}, audit.Event{}, app.ErrUnavailable
+	}
 	name := action(result)
 	a := audit.Event{OperationID: op.ID(), ActorID: source.Actor.AccountID, Action: name, TargetType: "offl.operation", TargetID: op.ID(), ReasonCode: "intake", RequestHash: strings.TrimPrefix(op.PayloadDigest(), "sha256:")}
 	if s.config.AuditCatalog.Validate(a) != nil {
+		return event.Plan{}, audit.Event{}, app.ErrUnavailable
+	}
+	mode, declared := s.config.NoAsyncPlans[app.OperationKey{Type: descriptor.Type, Schema: descriptor.Schema}][result]
+	if declared {
+		if mode != app.NoAsyncFollowup || len(descriptor.TerminalResults) == 0 || result == protocol.AcceptedForReview || len(s.config.Plans[descriptor.Type][result]) != 0 {
+			return event.Plan{}, audit.Event{}, app.ErrUnavailable
+		}
+		return event.Plan{}, a, nil
+	}
+	if nilPort(s.config.EventWriter) {
 		return event.Plan{}, audit.Event{}, app.ErrUnavailable
 	}
 	plan, bound, e := s.config.EventCatalog.Prepare(source.Scope, a, event.Event{ID: op.ID(), Name: name, TargetType: "offl.operation", TargetID: op.ID(), Revision: 1}, s.config.Plans[op.Snapshot().Type][result])
@@ -108,10 +141,10 @@ func ackFor(op protocol.Operation, o app.Outcome, at time.Time, limits protocol.
 }
 func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Operation, limits protocol.Limits, handler app.Handler) (protocol.Acknowledgement, error) {
 	var result protocol.Acknowledgement
-	if s == nil || s.config.Pool == nil || s.config.ConfirmSource == nil || nilPort(s.config.Audit) || nilPort(s.config.EventWriter) || nilPort(handler) || source.Validate() != nil {
+	if s == nil || s.config.Pool == nil || s.config.ConfirmSource == nil || nilPort(s.config.Audit) || nilPort(handler) || source.Validate() != nil {
 		return result, app.ErrUnavailable
 	}
-	descriptor := handler.Descriptor()
+	descriptor := handler.Descriptor().Copy()
 	v := op.Snapshot()
 	if descriptor.Validate() != nil || descriptor.Type != v.Type {
 		return result, app.ErrUnavailable
@@ -123,8 +156,8 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 	if _, e = protocol.ParseOperation(op.CanonicalBytes(), binding, limits); e != nil || v.MembershipID != source.MembershipID || v.EnrollmentID != source.EnrollmentID {
 		return result, app.SourceDenied(orgapi.NotFound)
 	}
-	for _, outcome := range []string{protocol.Accepted, protocol.AcceptedForReview, protocol.Rejected} {
-		if _, _, e := s.plan(source, op, outcome); e != nil {
+	for _, outcome := range descriptor.Results() {
+		if _, _, e := s.plan(source, op, descriptor, outcome); e != nil {
 			return result, app.ErrUnavailable
 		}
 	}
@@ -212,6 +245,9 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 					return app.ErrUnavailable
 				}
 				a := ack.Snapshot()
+				if !slices.Contains(descriptor.Results(), a.Result) {
+					return app.ErrUnavailable
+				}
 				received, e := orgtime.ParseInstant(a.ReceivedAt)
 				if e != nil || !stored.ReceivedAt.Valid || !stored.ReceivedAt.Time.Equal(received) || stored.Result != a.Result || stored.Code != a.Code || stored.ReviewItemID != a.ReviewItemID || !slices.Equal(stored.Warnings, a.Warnings) || stored.EntityRevision.Valid != (a.EntityRevision != nil) || (a.EntityRevision != nil && stored.EntityRevision.Int64 != *a.EntityRevision) || stored.AuditActorID != source.Actor.AccountID || stored.AuditAction != action(a.Result) || stored.AuditTargetType != "offl.operation" || stored.AuditTargetID != op.ID() || stored.SourceAuditHash != stored.AuditHash {
 					return app.ErrUnavailable
@@ -275,7 +311,7 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 				return e
 			}
 		}
-		if outcome.Result == protocol.Retry {
+		if !slices.Contains(descriptor.Results(), outcome.Result) {
 			return app.ErrUnavailable
 		}
 		// Validate shape without exposing or persisting this provisional time.
@@ -283,7 +319,7 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 			return app.ErrUnavailable
 		}
 		var final protocol.Acknowledgement
-		plan, bound, e := s.plan(source, op, outcome.Result)
+		plan, bound, e := s.plan(source, op, descriptor, outcome.Result)
 		if e != nil {
 			return e
 		}

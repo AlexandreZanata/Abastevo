@@ -2404,3 +2404,110 @@ the owning business producers and OFFL-004 pending screen remain separate work.
   pages through actual HTTP/ordinary source. IMPLEMENT activation proves its
   own path; powered positive acceptance uses actual METER-002 before closure.
   Compile/static/sqlc/contract/secret checks must match the tested source head.
+
+
+## EMP-METER-002 — Source-backed immutable meter intake (2026-11-14)
+
+- **B-BR-EMP-152 — Capture the actual observed source.** Readings retain an
+  explicit scoped ENROLLED_DEVICE or WEB_SESSION capture locator. The panel
+  installation uses its actual currently verified company session; it never
+  manufactures an Android enrollment. Historic locators are immutable and
+  contain no token/key/proof, and survive ephemeral session deletion. The
+  accepted pure Device input remains enrolled shorthand; an explicit capture
+  input is mutually exclusive with that shorthand. Canonical reading capture
+  is always explicit. Author membership and operation remain mandatory.
+- **B-BR-EMP-153 — Install real meters and opening evidence atomically.**
+  An authorized fresh fleet.asset.manage command installs a meter on a real
+  scoped asset with an explicitly observed opening value/instant/zone/offset,
+  stable opening-reading ID, kind, label and optional positive modulus.
+  Store one initial INSTALLATION segment and one actual opening reading in
+  the same transaction; enforce one in-service kind per asset. No invented
+  zero, missing opening value, GPS estimate or client authority/state/receipt
+  fields. Preserve original command acknowledgement on exact replay. Bounds
+  use the accepted pure domain; monotonic/plausibility flags stay METER-003.
+- **B-BR-EMP-154 — Preserve insert-only scoped evidence.** Append migration198
+  after published197, with forced RLS/composite organization references and
+  insert-only reading protection for ordinary application/maintenance roles.
+  No product UPDATE/DELETE or parent cascade may erase accepted readings.
+  A real opening reading makes a draft used and prevents physical discard or
+  kind change. Keep source-use guards and employee/team/current asset counts
+  correct; unknown consumers remain unavailable until explicitly integrated.
+- **B-BR-EMP-155 — Serialize and order actual observations.** Source/current
+  authority precedes asset/meter locks. The retained caller transaction owns
+  embedded readings; the embedded port cannot commit or begin its own work.
+  Use the real DB receipt time and occurred_at/received_at/ID order. Distinct
+  operations with equal values remain distinct; replay returns original
+  evidence. Reject an observation outside its meter/segment service interval.
+  Declared evidence retains all accepted nine fractional digits: persist the
+  microsecond-floored PostgreSQL instant plus an explicit0..999 nanosecond
+  remainder; reconstruct the exact instant and compare/order the tuple for
+  reading/service/segment boundaries. Do not let PostgreSQL rounding change
+  observations or silently narrow the accepted time profile. Server receipt
+  precision remains the actual database clock. Latest-valid is a reproducible
+  SQL query on the open segment, not a stored
+  current-value truth or the future METER-006 maintained projection.
+- **B-BR-EMP-156 — Keep operational source and scope truthful.** Standalone
+  meter.reading.record accepts only actual signed current enrolled-device
+  operations. Use its actual membership/enrollment and source binding, never
+  payload author/device/received_at. Current source/record coverage is checked
+  before claims, original receipt reads and final publication. SELF remains
+  denied without the real FLEET-006 assignment source; changed-history/held
+  review needs its actual producer and cannot be accepted using a dummy item.
+  Panel meter management/history uses fleet.asset.manage/read respectively.
+  Invalid-shape/unsupported-schema operations may obtain only an actual ORG
+  base permission to record a bounded MALFORMED rejection: the explicit root
+  target is org_id, never an invented asset. Valid payloads never downgrade
+  a foreign/missing target to that fallback. ASSET/UNIT/SELF cannot inherit ORG
+  coverage. Real target/reference and accepted-reading queries are read-only
+  before claims and cached ACK publication; no record attempt substitutes for
+  a lookup.
+- **B-BR-EMP-157 — Declare only actual asynchronous obligations.** An exact
+  source-owned operation/schema may explicitly declare terminal outcomes whose
+  complete business effect is already atomic and needs no async follow-up.
+  Default missing declaration/plans remain unavailable; required consumer
+  catalogs/plans and enqueue-failure rollback retain their existing behavior.
+  Never infer readiness from an empty catalog, install a no-op consumer or
+  duplicate audit delivery evidence. A handler's explicit outcome set is
+  validated and frozen by registry; undeclared outcomes cannot commit. The
+  first meter handler declares accepted/rejected only, with atomic audit,
+  immutable reading, effect and original ACK. Review remains unavailable until
+  real flags/history/review source integration; future maintained projections
+  and consumers require their owning acceptance before declaration changes.
+- **B-BR-EMP-158 — Expose real bounded meter management.** Company-cookie/CSRF
+  install and private list/latest reads under asset routes use exact integer
+  strings and current scoped proof. No labels, values, source locators or proof
+  secrets enter diagnostics/audit payloads. Optional document evidence remains
+  unavailable until actual DOC reference admission; no dangling photo fixture
+  is a production source. Extend actual route/permission contracts and tests.
+- **B-BR-EMP-159 — Close the real dependency chain.** Consume tested fleet
+  foundation6e3dde65. After real meters exist, update the powered SQL guard and
+  Fleet activation to query actual in-service facts, test missing-meter422 and
+  powered-positive200, then close FLEET-002 only when all required source cases
+  pass. Keep unfinished assignment/review dependencies explicit; no partial
+  evidence may impersonate full METER-002, F2/M1/M2/C1/F3 or release acceptance. After the tested meter source satisfies
+  powered activation, FLEET-002 can close on its own actual route acceptance;
+  METER-002 remains IN_PROGRESS until real FLEET-006 assignment/history and
+  OFFL-008 review cases pass. FLEET-005 supplies actual temporal structure and
+  AUTH-006 structural scope; OFFL-007 only captures clocks. Use the existing
+  AUTH-005 role periods rather than inventing authority history. Continue one
+  dependency-ready task at a time without a circular whole-task requirement.
+- **BUC-EMP-78 — Prove capture provenance across both pure domains.** Shared
+  Go/Kotlin RED→GREEN cases cover both true source kinds, zero/both/malformed/
+  cross-org inputs, snapshots and privacy while retaining all old meter vectors.
+- **BUC-EMP-79 — Prove ordinary database history and recovery.** Real PostGIS
+  RLS/two-org reads and writes, immutable readings including direct SQL and
+  parent deletion, populated197→198 recovery/previous-image compatibility and
+  exact actual usage/grants, with no source/test bypass.
+- **BUC-EMP-80 — Prove atomic exactly-once evidence.** Three identical ACKs/one
+  row, equal-valued distinct operations, two enrolled devices in contention,
+  embedded rollback, late commit/audit/outbox failure, actual opening receipt
+  replay and latest-by-observation independent of arrival all receive tests.
+- **BUC-EMP-81 — Prove real current permission and source denials.** Missing,
+  foreign, ended/suspended/revoked/expired-after-wait proof, absent capability,
+  unknown history/assignment and invalid service interval cannot leak evidence
+  or leave claims. Actual signed HTTP and company routes use ordinary roles.
+- **BUC-EMP-82 — Prove declaration and runtime closure.** Source-owned explicit
+  atomic outcomes do not weaken required-consumer failures or permit missing/
+  undeclared/review plans. Verify actual runtime routing/inventory/OpenAPI and
+  powered Fleet dependency. Static/format/sqlc/secret and targeted regressions
+  must match the final source before any whole-task checkpoint.

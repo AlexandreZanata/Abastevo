@@ -92,7 +92,7 @@ B-BR-EMP-115..122, BUC-EMP-58..60 and EDR-076..080 precede behavior. Extend
 the accepted protected store with typed atomic local operation/ACK projection,
 exact source-attempt leases, actual signed retry and opaque WorkManager jobs;
 retain legacy work unsent and keep missing real producers closed.
-Ten checkpoints are now local;54 audited nodes remain open. OFFL-003 passes
+Eleven full tasks are now local;53 audited nodes remain open. OFFL-003 passes
 consolidated182 host cases,15 final application cases after two new REDs and
 seven affected ViewModel tests. All four final API36 native methods pass:
 actual two-account key-prefix isolation, proof redaction, independent two-org
@@ -121,8 +121,16 @@ FUEL-00121601ae8 is backed up. Current bounded task:
 truthful retained powered-meter dependency sequencing before full task closure.
 Its40-file tested foundation passes2024 ordinary PostGIS/race nodes,52 real
 HTTP assertions and140 authorization cells plus affected runtime/contract/static
-checks. Next sole task METER-002 consumes that actual source; full FLEET-002
-remains IN_PROGRESS until powered acceptance. No extra task is counted done.
+checks. Foundation6e3dde65 is backed up. Current sole task
+[METER-002 source integration](f2-meter002-persistence-intake.md) now has real
+meter persistence,63 company HTTP assertions/full powered activation and signed
+TLS10-role acceptance; critical ordinary198 SQL/upgrade/privacy/race closure
+remains due. Full Meter remains IN_PROGRESS for actual assignment/history and
+OFFL-008 held review. Once its own actual scope passes, close FLEET-002 and
+continue OFFL-008/FLEET-003/FLEET-005/AUTH-006/FLEET-006 before full Meter closure;
+real review also precedes post-disposal ASSET_UNAVAILABLE handling.
+EDR-109 preserves the source dependency without a circular whole-task claim.
+No extra task is counted done before that tested closure.
 Missing real feature/history/review/admission producers remain closed;
 no production no-op handler or F4 exception substitutes for those integrations.
 Use phase tracker215 and cumulative PR203, without an intermediate PR or
@@ -150,3 +158,18 @@ Legal retention of real receipts, real storage-provider behavior, production
 runtime credentials/grants and real pilot/deployment retain their external gates.
 REL-002 permits a named synthetic local rehearsal; it does not authorize a real
 company pilot. No LOCAL_DONE/M1/M2/C1 claim is made at opening.
+
+
+## Latest tested source checkpoint — 2026-11-14
+
+EMP-FLEET-002 is LOCAL_DONE / INTEGRATION_PENDING after actual Meter integration.
+Final seven-package ordinary PostGIS/race union passes125 top-level/2243 named
+nodes with zero failures/skips;63 company HTTP assertions,140 cookie permission
+cells, signed TLS10-role matrix plus2SELF denials, real erasure/export and
+populated197→198 recovery pass. Complete API/route/contract614 nodes plus
+current host/static/sqlc/peer/manifest checks pass. Eleven full tasks are local;
+53 audited nodes remain. Full METER-002 retains IN_PROGRESS until actual
+assignment/history/held review. Next sole implementation OFFL-008, then actual
+lifecycle/temporal scopes/assignments before full Meter closure. Current66-file
+source hash and exact required test discovery are retained in the linked Meter
+evidence; no phase/production/PR/CI acceptance is inferred from this checkpoint.

@@ -14,6 +14,7 @@ type ReadingInput struct {
 	ReceivedAt time.Time
 	Author     MembershipRef
 	Device     DeviceRef
+	Capture    *CaptureSource
 	Operation  OperationRef
 	Origin     Origin
 	Method     Method
@@ -22,10 +23,15 @@ type ReadingInput struct {
 }
 type Reading struct {
 	redacted
-	input ReadingInput
+	input   ReadingInput
+	capture CaptureSource
 }
 
 func copyInput(in ReadingInput) ReadingInput {
+	if in.Capture != nil {
+		source := *in.Capture
+		in.Capture = &source
+	}
 	if in.Declared != nil {
 		d := *in.Declared
 		in.Declared = &d
@@ -40,8 +46,27 @@ func NewReading(scope kernel.OrgScope, in ReadingInput) (Reading, error) {
 	if err := in.Reference.validate(scope); err != nil {
 		return Reading{}, err
 	}
-	for _, r := range []scopedID{in.Author.scopedID, in.Device.scopedID, in.Operation.scopedID} {
+	for _, r := range []scopedID{in.Author.scopedID, in.Operation.scopedID} {
 		if err := r.validate(scope); err != nil {
+			return Reading{}, err
+		}
+	}
+	var source CaptureSource
+	if in.Capture != nil {
+		if in.Device != (DeviceRef{}) {
+			return Reading{}, ErrInvalid
+		}
+		if err := in.Capture.validate(scope); err != nil {
+			return Reading{}, err
+		}
+		source = *in.Capture
+	} else {
+		if err := in.Device.validate(scope); err != nil {
+			return Reading{}, err
+		}
+		var err error
+		source, err = NewCaptureSource(scope, CaptureEnrolledDevice, in.Device.ID())
+		if err != nil {
 			return Reading{}, err
 		}
 	}
@@ -66,9 +91,10 @@ func NewReading(scope kernel.OrgScope, in ReadingInput) (Reading, error) {
 	in = copyInput(in)
 	in.Declared.OccurredAt = record.OccurredAt
 	in.ReceivedAt = record.ReceivedAt
-	return Reading{input: in}, nil
+	return Reading{input: in, capture: source}, nil
 }
-func (r Reading) Snapshot() ReadingInput { return copyInput(r.input) }
+func (r Reading) Snapshot() ReadingInput       { return copyInput(r.input) }
+func (r Reading) CaptureSource() CaptureSource { return r.capture }
 
 type FactInput struct {
 	redacted

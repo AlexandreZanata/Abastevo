@@ -12,7 +12,10 @@ import (
 	"strings"
 	"testing"
 
+	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
+	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
+	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/apicontract"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/getkin/kin-openapi/openapi3"
@@ -30,11 +33,13 @@ type authorizationInventory struct {
 	UnavailableStationRoles []authorizationUnavailableRole `json:"unavailable_station_roles"`
 }
 type authorizationPermission struct {
-	Permission     string   `json:"permission"`
-	Status         string   `json:"status"`
-	Representative string   `json:"representative_route"`
-	Routes         []string `json:"routes"`
-	Reason         string   `json:"reason"`
+	Permission      string   `json:"permission"`
+	Status          string   `json:"status"`
+	Representative  string   `json:"representative_route"`
+	Routes          []string `json:"routes"`
+	Reason          string   `json:"reason"`
+	OperationType   string   `json:"operation_type"`
+	OperationSchema int64    `json:"operation_schema"`
 }
 type authorizationSpecialRoute struct {
 	Route    string `json:"route"`
@@ -73,10 +78,14 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 		return nil, nil, fmt.Errorf("authorization inventory version or permission count drift")
 	}
 	normal, special := map[string]string{}, map[string]string{}
-	routed, notRouted := 0, 0
+	routed, signed, notRouted := 0, 0, 0
+	var signedRoutes []string
 	var keys []access.Permission
 	for _, row := range inventory.Permissions {
 		keys = append(keys, access.Permission(row.Permission))
+		if row.Status != "SIGNED_OPERATION" && (row.OperationType != "" || row.OperationSchema != 0) {
+			return nil, nil, fmt.Errorf("non-operation inventory includes signed operation fields")
+		}
 		switch row.Status {
 		case "ROUTED":
 			routed++
@@ -89,6 +98,12 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 				}
 				normal[route] = row.Permission
 			}
+		case "SIGNED_OPERATION":
+			signed++
+			if row.Reason != "" || row.OperationType != "meter.reading.record" || row.OperationSchema != 1 || row.Permission != "meter.reading.record" || len(row.Routes) != 1 || row.Representative != "POST /v1/orgs/{org_id}/sync/operations" || row.Routes[0] != row.Representative {
+				return nil, nil, fmt.Errorf("signed-operation inventory lacks its exact source-owned descriptor")
+			}
+			signedRoutes = append(signedRoutes, row.Representative)
 		case "NOT_YET_ROUTED":
 			notRouted++
 			if len(row.Routes) != 0 || row.Representative != "" || strings.TrimSpace(row.Reason) == "" {
@@ -98,7 +113,7 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 			return nil, nil, fmt.Errorf("unknown authorization inventory status")
 		}
 	}
-	if !slices.Equal(keys, catalog.Permissions()) || routed != 14 || notRouted != 71 || len(normal) != 76 {
+	if !slices.Equal(keys, catalog.Permissions()) || routed != 14 || signed != 1 || notRouted != 70 || len(normal) != 79 {
 		return nil, nil, fmt.Errorf("authorization inventory does not cover every catalog permission")
 	}
 	expectedBoundaries := map[string]int{"ACCOUNT_CONTEXT": 2, "OWNED_SETUPS": 1, "COMPANY_SESSION": 3, "ORGANIZATION_CREATION": 1, "PERSONAL_INVITATION": 3, "SELF_MEMBERSHIP": 2, "SIGNED_DEVICE": 2, "SELF_DEVICE": 2, "DEVICE_CONTACT": 1, "SIGNED_BATCH": 1}
@@ -120,6 +135,11 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 			return nil, nil, fmt.Errorf("special authorization boundary count drift")
 		}
 	}
+	for _, route := range signedRoutes {
+		if special[route] != "SIGNED_BATCH" {
+			return nil, nil, fmt.Errorf("signed operation is not behind the actual signed batch boundary")
+		}
+	}
 	var unavailable []string
 	for _, row := range inventory.UnavailableStationRoles {
 		if row.Scope != "STATION" || strings.TrimSpace(row.Reason) == "" {
@@ -134,6 +154,35 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 		return nil, nil, fmt.Errorf("unavailable station role inventory drift")
 	}
 	return normal, special, nil
+}
+
+func TestAuthorizationInventoryMatchesRegisteredMeterDescriptor(t *testing.T) {
+	inventory := loadAuthorizationInventory(t)
+	if _, _, err := authorizationInventoryMaps(inventory); err != nil {
+		t.Fatal(err)
+	}
+	// This inspects only actual source-owned descriptor registration. The
+	// separate signed HTTP matrix proves ordinary current runtime authority.
+	handler, err := fleetpg.NewMeterIntakeHandler(&orgpg.MeterAuthority{}, &fleetpg.MeterStore{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	registry, err := syncapp.NewRegistry(handler)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, row := range inventory.Permissions {
+		if row.Status == "SIGNED_OPERATION" {
+			registered, ok := registry.Lookup(row.OperationType)
+			if !ok {
+				t.Fatal("inventoried signed producer is not registered")
+			}
+			descriptor := registered.Descriptor()
+			if descriptor.Validate() != nil || descriptor.Type != row.OperationType || descriptor.Schema != row.OperationSchema || descriptor.WritePolicy.Permission != access.Permission(row.Permission) {
+				t.Fatal("signed permission/type/schema drift from actual descriptor")
+			}
+		}
+	}
 }
 
 func inventoryOrganizationRoute(route string) bool {
@@ -353,6 +402,31 @@ func TestAuthorizationInventoryRejectsMissingOrFalseObligations(t *testing.T) {
 		{"missing permission", func(i *authorizationInventory) { i.Permissions = i.Permissions[1:] }},
 		{"duplicate permission", func(i *authorizationInventory) { i.Permissions[1].Permission = i.Permissions[0].Permission }},
 		{"unknown status", func(i *authorizationInventory) { i.Permissions[0].Status = "PASSED" }},
+		{"operation fields on future permission", func(i *authorizationInventory) { i.Permissions[0].OperationType = "meter.reading.record" }},
+		{"wrong signed schema", func(i *authorizationInventory) {
+			for j := range i.Permissions {
+				if i.Permissions[j].Status == "SIGNED_OPERATION" {
+					i.Permissions[j].OperationSchema = 2
+					return
+				}
+			}
+		}},
+		{"wrong signed type", func(i *authorizationInventory) {
+			for j := range i.Permissions {
+				if i.Permissions[j].Status == "SIGNED_OPERATION" {
+					i.Permissions[j].OperationType = "invented.record"
+					return
+				}
+			}
+		}},
+		{"signed permission as cookie route", func(i *authorizationInventory) {
+			for j := range i.Permissions {
+				if i.Permissions[j].Status == "SIGNED_OPERATION" {
+					i.Permissions[j].Representative = "POST /v1/orgs/{org_id}/fleet/assets/list"
+					return
+				}
+			}
+		}},
 		{"missing future reason", func(i *authorizationInventory) { i.Permissions[0].Reason = "" }},
 		{"invented representative", func(i *authorizationInventory) {
 			for j := range i.Permissions {

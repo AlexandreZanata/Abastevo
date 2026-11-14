@@ -10,7 +10,7 @@
   from published dev `fac002e7`; verified main `6a19bcc7` remains an ancestor.
   [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
   all34 F2 tasks,25 transitive prerequisites and the additional formal M1 chain.
-  Ten checkpoints are LOCAL_DONE / INTEGRATION_PENDING;54 audited nodes remain.
+  Eleven full tasks are LOCAL_DONE / INTEGRATION_PENDING;53 audited nodes remain.
   Completed: FLEET-001(2daea515), OFFL-001(1cc9a7b3), AUTH-009(4743e0b9),
   ORG-014(efd7e886), PRIV-003(51c25146), OFFL-002(d24b0d4f), and
   [OFFL-003 protected queue](../enterprise/evidence/f2-offl003-protected-operation-queue.md).
@@ -49,17 +49,18 @@
   behavior. Final peer/manifest/static/secret checks pass.
   FUEL-00121601ae8 is backed up at origin/codex/enterprise-f2.
   [EMP-FLEET-002 actual persistence](../enterprise/evidence/f2-fleet002-asset-persistence.md)
-  is IN_PROGRESS. B-BR-EMP-144..151, BUC-EMP-73..77 and EDR-095..099 precede
-  actual categories/unit admission, scoped commands and ordinary DB acceptance.
-  The full parent stays open until real METER-002 powered activation; a tested
-  foundation may precede that sole dependency task without fake facts or CI wait.
-  Foundation PASS: ordinary PostGIS/race2024 nodes, HTTP52 assertions and
-  authorization140 cells, with zero failures/skips. Current unit/employee/team
-  regressions, populated recovery, full-router/OpenAPI/static/manifest checks
-  pass. Forty source inputs are pinned in its evidence; no fake meter source.
-  Next: commit/back up this foundation, implement actual METER-002, then return
-  to powered activation before full FLEET-002 closure. Full F3 remains queued
-  beyond C1/F2 dependency closure.
+  is LOCAL_DONE / INTEGRATION_PENDING. Foundation6e3dde65 is backed up; actual
+  Meter integration now passes missing-meter422 and full powered200. Final
+  ordinary PostGIS/race2243 nodes/125 top-level tests,63 company HTTP assertions,
+  cookie matrix140 and signed TLS10-role matrix pass with zero failures/skips.
+  Full API614 contract nodes and affected host/static/sqlc/peer checks pass.
+  [METER-002 source foundation](../enterprise/evidence/f2-meter002-persistence-intake.md)
+  is tested/frozen for atomic commit/backup; full METER-002 remains IN_PROGRESS
+  until actual assignment/history/held-review acceptance. Its66-file manifest
+  pins every tested source; legal/provider/live runtime/release gates remain.
+  Next bounded implementation: OFFL-008 real review (also required for actual
+  post-disposal handling), then FLEET-003/005, AUTH-006, FLEET-006 and remaining
+  Meter closure. EDR-109 records this cycle-free sequence. Full F3 stays queued.
   The user authorizes only the owned API36 emulator while the phone is
   disconnected; preserve other devices/apps/data.
   PR203 dev still contains the earlier batch. Final phase delivery uses protected

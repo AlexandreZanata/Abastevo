@@ -1,8 +1,8 @@
 # EMP-FLEET-002 — Actual private fleet persistence
 
 Date: 2026-11-14.
-Status: IN_PROGRESS
-Validation: PENDING
+Status: LOCAL_DONE
+Validation: PASS
 Integration: INTEGRATION_PENDING
 
 Continue authorized full F2 then F3 from tested/pushed FUEL-00121601ae8 on
@@ -136,10 +136,11 @@ RED reproduces503 instead of422; the final typed mapping below fixes it. No
 known issue is deferred into a PASS declaration.
 
 
-## Tested foundation, full parent still open
+## Tested foundation and subsequent full acceptance
 
-Foundation validation: PASS, 2026-11-14. Full task Validation remains PENDING:
-powered activation must consume the actual METER-002 source before closure.
+Foundation validation: PASS at6e3dde65, 2026-11-14. Full task remained PENDING
+at that head; the subsequent actual Meter integration and final union below
+now satisfy the powered/route source requirement.
 All source inputs are frozen and independently reviewed. The combined40-file
 code/SQL/generated/contract/inventory/quick-manifest record is
 /tmp/enterprise-fleet002-foundation-source-final.json, SHA256
@@ -192,3 +193,43 @@ return to the full FLEET-002 powered cases before marking the parent done.
 Ten full tasks remain LOCAL_DONE / INTEGRATION_PENDING;54 audited nodes remain.
 Commit/backup this meaningful foundation without a false whole-task checkpoint,
 PR wait, aggregate rerun or construction CI polling.
+
+
+## Full local acceptance — 2026-11-14
+
+Status: LOCAL_DONE
+Validation: PASS
+Integration: INTEGRATION_PENDING
+
+Actual migration198 meters/opening readings now supply powered activation.
+A successful empty query produces typed missing-meter422; source failure remains
+unavailable. Real installed in-service evidence produces ACTIVE200 with its
+actual initial unit period. There is no fake MeterFact or always-empty producer.
+The final ordinary PostGIS/race union passes125 top-level/2243 named nodes,
+zero failures/skips, across seven affected packages. All63 composed company
+Fleet/Meter HTTP assertions pass1.280s, actual cookie authorization140 cells
+passes12.390s, signed Meter TLS matrix/strict cases pass1.540s/1.320s, real
+privacy0.970s, capability/root contention1.060s and populated197→198 recovery/
+previous image1.000s. Final package organization acceptance147.103s includes
+all affected original units/teams/employees/device/source/receipt regressions.
+The previous hardcoded powered503 cases are replaced by actual source checks.
+
+Source /tmp/enterprise-meter002-final-db-union.jsonl and structured
+/tmp/enterprise-meter002-final-db-summary.json retain exact discovery/counts.
+Combined66-file source manifest SHA256
+d71a3f6ad328cbd818a7f58fe5fbac3fe201ca39f7bf94979dae045507dd92ae
+at /tmp/enterprise-meter002-source-final.json matches every tested input.
+The full current API/router/contract661 nodes (614 contract nodes), affected
+root application/HTTP/orgapi190 nodes, actual shared pure domains, integration
+vet/static/sqlc generation reproduction, format and peer checks pass. Final
+plan/diff/secret review accompanies the atomic source commit/backup. No full
+API aggregate is repeated for these evidence-only closure edits.
+
+This closes FLEET-002's own local source acceptance, making eleven tasks
+LOCAL_DONE / INTEGRATION_PENDING and53 audited nodes open. Full METER-002
+remains IN_PROGRESS: actual current ORG cases are not assignment/history/
+held-review acceptance. EDR-109 puts real OFFL-008 review before lifecycle,
+then FLEET-003/005, AUTH-006 and FLEET-006 before remaining Meter closure.
+Source functionality can satisfy this parent without a circular dependency
+on whole Meter completion. No F2/M1/M2/C1/F3, protected integration, live runtime,
+legal retention, deployment or release certification is implied.

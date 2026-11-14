@@ -22,7 +22,7 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task216](https://github.com/AlexandreZanata/Abastevo/issues/216), [phase215](https://github.com/AlexandreZanata/Abastevo/issues/215), cumulative PR203. Both pure domains consume all133 shared vectors; Go race/boundary/format/vet/static checks pass with98.0% statements, Kotlin143 tests pass with100% scoped lines and99.48% instructions. Typed scope, catalog-unit consistency under changing descriptors, Unicode ordering, exact quantities, privacy/defensive copies and activation facts pass independent review. [Evidence](../evidence/f2-fleet001-asset-domain.md). Runtime category registration, real meter presence and all persistence/operations remain owning tasks; F2/M1/M2/C1 is not closed.
 
 ### EMP-FLEET-002 — Asset persistence and management with per-organization identifier uniqueness
-- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state IN_PROGRESS
+- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state DONE
 - **Objective:** Let a manager register, edit, activate, list and read the organization's assets, so that trips, fuelings and readings refer to a real asset instead of free text.
 - **Rules and use cases:** BR-FLEET-001, BR-FLEET-003, BR-FLEET-004, BR-FLEET-008, BR-FLEET-011, BR-FLEET-015, BR-TEN-001, BR-TEN-006, UC-FLEET-01
 - **Depends on:** EMP-FLEET-001, EMP-PLAT-002, EMP-AUTH-003, EMP-FUEL-001
@@ -37,11 +37,13 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Risks and assumptions:** Assumes the operating-unit table of the organization epic exists; INDEX lists no direct dependency on it. The plan limit of active assets goes through the entitlement gate and is a no-op until plans exist.
 - **Done when:** The route-versus-contract test and the two-organization suite pass for every asset route.
 
-[F2 asset persistence construction](../evidence/f2-fleet002-asset-persistence.md)
-starts from tested/published FUEL-00121601ae8. B-BR-EMP-144..151,
-BUC-EMP-73..77 and EDR-095..099 precede behavior. Powered activation stays
-pending the real METER-002 integration; implement-only source tests do not
-close the full task. No runtime fake meter or assignment provider.
+[F2 actual asset persistence](../evidence/f2-fleet002-asset-persistence.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Foundation6e3dde65 is backed up;
+actual Meter source integration now passes full powered/route/isolation and
+contract acceptance. Final ordinary PostGIS/race union2243 nodes and63 actual
+company HTTP assertions pass, with zero failures/skips and no fake meter.
+Full METER-002 history/assignment/review remains its own open task. EDR-109
+continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccepted.
 
 ### EMP-FLEET-003 — Asset lifecycle: acquisition, active, sale, write-off, return, archive
 - **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state TODO
@@ -241,7 +243,7 @@ BUC-EMP-65..68 and EDR-087..090 precede behavior; persistence, plausibility
 and meter replacement remain their owning tasks.
 
 ### EMP-METER-002 — Meter persistence and reading intake
-- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DB · size M · state TODO
+- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DB · size M · state IN_PROGRESS
 - **Objective:** Store meters and readings as insert-only rows and accept readings from the field exactly once, so that trips and fuelings can attach readings that survive retries and corrections.
 - **Rules and use cases:** BR-METER-001, BR-METER-002, BR-METER-005, BR-METER-006, BR-METER-008, BR-METER-024, BR-OFFL-004, BR-TIME-002, UC-METER-01
 - **Depends on:** EMP-METER-001, EMP-FLEET-002, EMP-OFFL-002
@@ -255,6 +257,11 @@ and meter replacement remain their owning tasks.
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-SYNC, V-API · migration: additive tables with insert-only protection, applied on a populated database · rollback: capability flag off; tables remain
 - **Risks and assumptions:** Insert-only protection must also hold for maintenance jobs; any repair runs through a documented operator role and is audited.
 - **Done when:** The replay, insert-only and isolation tests pass on real PostGIS.
+
+[F2 meter persistence/intake construction](../evidence/f2-meter002-persistence-intake.md)
+consumes the tested/pushed Fleet source foundation6e3dde65 while keeping full
+FLEET-002 powered acceptance open. B-BR-EMP-152..159, BUC-EMP-78..82 and
+EDR-100..104 precede behavior; no assignment/history/review producer is faked.
 
 ### EMP-METER-003 — Reading validation: monotonicity, retroactive inserts and suspect flags
 - **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size S · state TODO

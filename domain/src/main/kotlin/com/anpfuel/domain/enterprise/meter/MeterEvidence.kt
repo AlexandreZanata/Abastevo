@@ -63,12 +63,23 @@ private fun queryTime(at: Instant) {
     catch (_: EnterpriseTimeException) { throw invalid() }
 }
 
+private fun readingCapture(org: String, device: DeviceRef?, capture: CaptureSource?): CaptureSource {
+    if ((device == null) == (capture == null)) throw invalid()
+    val source = capture ?: CaptureSource(org, CaptureKind.ENROLLED_DEVICE, device!!.id)
+    if (source.organizationId != org || device != null && device.organizationId != org) throw scope()
+    return source
+}
+
 class Reading(val reference: ReadingRef, val value: MeterValue, val declared: TimeDeclaration, val receivedAt: Instant,
-    val author: MembershipRef, val device: DeviceRef, val origin: ReadingOrigin, val method: ReadingMethod,
-    val operation: OperationRef, val photo: PhotoRef? = null, val classification: ReadingState) {
+    val author: MembershipRef, device: DeviceRef? = null, val origin: ReadingOrigin, val method: ReadingMethod,
+    val operation: OperationRef, val photo: PhotoRef? = null, val classification: ReadingState, capture: CaptureSource? = null) {
+    val capture: CaptureSource = readingCapture(reference.organizationId, device, capture)
+    /** Legacy enrolled accessor. A WEB_SESSION never impersonates a physical device. */
+    val device: DeviceRef get() = deviceOrNull ?: throw invalid()
+    val deviceOrNull: DeviceRef? get() = if (capture.kind == CaptureKind.ENROLLED_DEVICE) DeviceRef(capture.organizationId, capture.id) else null
     init {
         val org = reference.organizationId
-        if (author.organizationId != org || device.organizationId != org || operation.organizationId != org ||
+        if (author.organizationId != org || operation.organizationId != org ||
             photo != null && photo.organizationId != org) throw scope()
         val meter = reference.segment.meter
         if (classification == ReadingState.VOIDED || value.kind != meter.kind) throw invalid()

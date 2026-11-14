@@ -8,6 +8,7 @@ import (
 	"io"
 	"log/slog"
 	"reflect"
+	"slices"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	membership "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/application"
@@ -114,12 +115,48 @@ type Descriptor struct {
 	Type                    string
 	Schema                  int64
 	WritePolicy, ReadPolicy access.Policy
+	// Empty preserves all legacy terminal obligations. An explicit set must
+	// include REJECTED for the framework's unsupported-schema refusal.
+	TerminalResults []string
+}
+
+type OperationKey struct {
+	Type   string
+	Schema int64
+}
+
+type FollowupMode string
+
+const NoAsyncFollowup FollowupMode = "NO_ASYNC_FOLLOWUP"
+
+func (descriptor Descriptor) Copy() Descriptor {
+	descriptor.TerminalResults = slices.Clone(descriptor.TerminalResults)
+	return descriptor
+}
+
+func (descriptor Descriptor) Results() []string {
+	if len(descriptor.TerminalResults) != 0 {
+		return slices.Clone(descriptor.TerminalResults)
+	}
+	return []string{protocol.Accepted, protocol.AcceptedForReview, protocol.Rejected}
 }
 
 func (descriptor Descriptor) Validate() error {
 	if !protocol.ValidOperationType(descriptor.Type) || descriptor.Schema != 1 || descriptor.WritePolicy.Validate() != nil ||
 		!descriptor.WritePolicy.Effect.Write() || descriptor.ReadPolicy.Validate() != nil || descriptor.ReadPolicy.Effect != access.Read {
 		return ErrUnavailable
+	}
+	if len(descriptor.TerminalResults) > 0 {
+		seen := make(map[string]bool, 3)
+		for _, result := range descriptor.TerminalResults {
+			if seen[result] || (result != protocol.Accepted && result != protocol.AcceptedForReview && result != protocol.Rejected) {
+				return ErrUnavailable
+			}
+			seen[result] = true
+		}
+		if !seen[protocol.Rejected] {
+			return ErrUnavailable
+		}
 	}
 	return nil
 }
@@ -175,7 +212,7 @@ type registeredHandler struct {
 	source     Handler
 }
 
-func (handler registeredHandler) Descriptor() Descriptor { return handler.descriptor }
+func (handler registeredHandler) Descriptor() Descriptor { return handler.descriptor.Copy() }
 func (handler registeredHandler) Admit(ctx context.Context, tx DBTX, source Source, operation protocol.Operation, mode Mode) error {
 	return handler.source.Admit(ctx, Borrow(tx), source, operation, mode)
 }
@@ -193,7 +230,7 @@ func NewRegistry(handlers ...Handler) (Registry, error) {
 		if nilPort(handler) {
 			return Registry{}, ErrUnavailable
 		}
-		descriptor := handler.Descriptor()
+		descriptor := handler.Descriptor().Copy()
 		if descriptor.Validate() != nil || registry.handlers[descriptor.Type] != nil {
 			return Registry{}, ErrUnavailable
 		}

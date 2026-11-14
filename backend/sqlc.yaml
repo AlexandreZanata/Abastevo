@@ -605,12 +605,15 @@ sql:
   - engine: postgresql
     queries: db/queries/fleet
     schema:
+      - db/migrations/000004_identity.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000165_org_audit_events.sql
       - db/migrations/000169_organization_roots.sql
       - db/migrations/000170_membership_periods.sql
       - db/migrations/000172_organization_onboarding.sql
+      - db/migrations/000194_organization_devices.sql
       - db/migrations/000197_organization_assets.sql
+      - db/migrations/000198_organization_meters.sql
     gen:
       go:
         package: fleet

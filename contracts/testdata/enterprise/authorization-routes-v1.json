@@ -255,7 +255,8 @@
         "POST /v1/orgs/{org_id}/fleet/assets/create",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/activate",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/change",
-        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/discard"
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/discard",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install"
       ],
       "reason": ""
     },
@@ -265,6 +266,8 @@
       "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/list",
       "routes": [
         "POST /v1/orgs/{org_id}/fleet/assets/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/read"
       ],
       "reason": ""
@@ -455,10 +458,14 @@
     },
     {
       "permission": "meter.reading.record",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Meter-reading operation and correction routes have not been delivered."
+      "status": "SIGNED_OPERATION",
+      "representative_route": "POST /v1/orgs/{org_id}/sync/operations",
+      "routes": [
+        "POST /v1/orgs/{org_id}/sync/operations"
+      ],
+      "reason": "",
+      "operation_type": "meter.reading.record",
+      "operation_schema": 1
     },
     {
       "permission": "notif.rule.manage",

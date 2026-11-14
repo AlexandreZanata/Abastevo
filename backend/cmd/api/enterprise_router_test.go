@@ -52,6 +52,9 @@ func TestFullProductionRouterEnterpriseContractAndDefaultOff(t *testing.T) {
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/change",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/discard",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/activate",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
 					} {
 						if !mounted[http.MethodPost+" "+path] {
 							t.Fatal("fleet contract route missing from complete production router", path)

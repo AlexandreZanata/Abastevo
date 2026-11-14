@@ -146,6 +146,7 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 	}
 
 	f.GrantFleetUsage(t)
+	f.GrantMeterUsage(t)
 
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -375,6 +376,22 @@ func (f *Fixture) GrantFleetUsage(t *testing.T) {
 	}
 	if installed {
 		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,state) ON org_assets TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+";GRANT SELECT(org_id,asset_id,unit_id,ended_at) ON org_asset_unit_allocations TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantMeterUsage adds only the actual columns read by installed asset-use and
+// meter-presence guards. It does not authorize reading observation evidence.
+func (f *Fixture) GrantMeterUsage(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_meters') IS NOT NULL AND to_regclass('public.org_meter_readings') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,asset_id,installed_at,installed_submicro,removed_at) ON org_meters TO "+role+";GRANT SELECT(org_id,meter_id) ON org_meter_readings TO "+role); err != nil {
 			t.Fatal(err)
 		}
 	}

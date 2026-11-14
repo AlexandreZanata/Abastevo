@@ -93,6 +93,8 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		Permissions        []struct {
 			Permission, Status string
 			Representative     string `json:"representative_route"`
+			OperationType      string `json:"operation_type"`
+			OperationSchema    int64  `json:"operation_schema"`
 		} `json:"permissions"`
 	}
 	raw, err := os.ReadFile(filepath.Join(directory, "authorization-routes-v1.json"))
@@ -100,12 +102,19 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		t.Fatal("independent route inventory unavailable or invalid")
 	}
 	routed := map[string]string{}
+	signed := 0
 	for _, entry := range inventory.Permissions {
 		if entry.Status == "ROUTED" {
 			routed[entry.Permission] = entry.Representative
 		}
+		if entry.Status == "SIGNED_OPERATION" {
+			signed++
+			if entry.Permission != "meter.reading.record" || entry.OperationType != "meter.reading.record" || entry.OperationSchema != 1 || entry.Representative != "POST /v1/orgs/{org_id}/sync/operations" {
+				t.Fatal("signed producer descriptor and independent inventory disagree")
+			}
+		}
 	}
-	if len(routed) != len(matrixRepresentatives) {
+	if len(routed) != len(matrixRepresentatives) || signed != 1 {
 		t.Fatal("new routed permission lacks runtime matrix coverage")
 	}
 	for _, entry := range matrixRepresentatives {
@@ -212,6 +221,13 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,started_at) FROM org_asset_unit_allocations x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,revision) FROM org_asset_revisions x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_commands x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meters x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meter_segments x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meter_readings x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_meter_commands x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_sync_operations x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_sync_acknowledgements x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_sync_effects x),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),
 	 (SELECT count(*) FROM org_ownership_commands), (SELECT count(*) FROM org_role_commands))::text`).Scan(&value); err != nil {
 		t.Fatal(err)

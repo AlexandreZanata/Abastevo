@@ -37,6 +37,7 @@ const (
 	LastUnit                 Code = "LAST_UNIT"
 	StructureInUse           Code = "STRUCTURE_IN_USE"
 	AssetIdentifierTaken     Code = "ASSET_IDENTIFIER_TAKEN"
+	MeterAlreadyInService    Code = "METER_ALREADY_IN_SERVICE"
 	DuplicateReviewRequired  Code = "DUPLICATE_REVIEW_REQUIRED"
 	OwnerRequiresPersonal    Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
 	TransferPending          Code = "TRANSFER_PENDING"
@@ -57,7 +58,7 @@ var statuses = map[Code]int{
 	DeviceRevoked: 403,
 	Conflict:      409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409, MergeConflict: 409, OpenResponsibilities: 409,
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
-	LastUnit: 409, StructureInUse: 409, AssetIdentifierTaken: 409, DuplicateReviewRequired: 409,
+	LastUnit: 409, StructureInUse: 409, AssetIdentifierTaken: 409, MeterAlreadyInService: 409, DuplicateReviewRequired: 409,
 	OrgSetupIncomplete:    409,
 	OwnerRequiresPersonal: 409,
 	TransferPending:       409,

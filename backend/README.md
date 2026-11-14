@@ -1084,5 +1084,45 @@ prior migration chains unchanged.
 Fleet routes reuse the existing enterprise flag, organizations capability and
 fresh current company proof. They do not activate real companies or provision
 production credentials/grants. The [current source evidence](../docs/enterprise/evidence/f2-fleet002-asset-persistence.md)
-retains full task IN_PROGRESS until actual METER-002 powered activation is
-integrated. An unavailable provider is never an empty/positive meter fact.
+records LOCAL_DONE / INTEGRATION_PENDING after actual migration198 powered
+activation is integrated and tested. An unavailable provider is never an empty/
+positive meter fact; full Meter history/review and release remain separate.
+
+
+### Immutable meter source and exact time (EMP-METER-002)
+
+Migration198 installs actual organization meters, initial segments and insert-only
+readings. Declared instants retain nine fractional digits as a microsecond floor
+plus a0..999 nanosecond remainder; receipt time remains the actual DB clock.
+Latest valid evidence is derived from observation/receipt/ID order. Meter source
+and maintained projection acceptance are separate.
+
+When198 is installed, existing asset-use/activation principals also need these
+narrow source columns before serving the previous image:
+
+```sql
+GRANT SELECT (org_id, id, asset_id, installed_at, installed_submicro, removed_at)
+  ON org_meters TO runtime_role;
+GRANT SELECT (org_id, meter_id) ON org_meter_readings TO runtime_role;
+```
+
+The actual meter principal additionally needs SELECT/INSERT on org_meters,
+org_meter_segments, org_meter_readings and org_meter_commands, plus UPDATE(id)
+on org_meters solely for row locking. Immutable triggers refuse product UPDATE,
+DELETE and TRUNCATE even if an overly broad grant is accidentally installed.
+Existing reviewed fleet/current-proof/audit/sync privileges remain necessary;
+these examples do not provision or certify a live login. Rehearse migration,
+grants and previous-image compatibility together using an ordinary non-owner
+NOSUPERUSER/NOBYPASSRLS principal; do not weaken forced RLS or applied migrations.
+
+The enabled synthetic runtime registers meter.reading.record with exact owned
+accepted/rejected atomic outcomes. It creates no placeholder async consumer.
+The explicit weighted transport allowance inherits identity v1 write200/hour on
+each organization/account/device axis. Production measurement/cleanup and actual
+Android producer/reference/assignment acceptance remain separate. Capability
+snapshot locking precedes the intake root without requiring enabled state for
+original receipt reads; new writes require the actual enabled capability and
+ACTIVE organization. Web installation retains real WEB_SESSION provenance,
+never a fabricated physical device. Real receipt/legal/release gates remain.
+See [current meter evidence](../docs/enterprise/evidence/f2-meter002-persistence-intake.md)
+for accepted source and still-open whole-task cases.

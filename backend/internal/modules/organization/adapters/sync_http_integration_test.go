@@ -90,7 +90,7 @@ func syncHTTPAssertNoIntake(t *testing.T, fx deviceFixtureState) {
 	}
 }
 
-func TestOrganizationSyncUnconfiguredRuntimeAndSignedBoundary(t *testing.T) {
+func TestOrganizationSyncDefaultRuntimeAndSignedBoundary(t *testing.T) {
 	fx := devicesFixture(t)
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
@@ -109,14 +109,14 @@ func TestOrganizationSyncUnconfiguredRuntimeAndSignedBoundary(t *testing.T) {
 	router := chi.NewRouter()
 	accounts := *fx.accounts
 	accounts.Store, accounts.Clock = accountpg.NewPGStore(fx.f.Runtime), syncHTTPClock{}
-	// The normal runtime has no installed operation producer or measured budget.
-	// It still mounts the real signed source boundary; it cannot admit effects.
+	// The normal synthetic runtime now owns the actual meter producer and its
+	// explicit reviewed budget. Unknown owners remain nonfinal and cannot claim effects.
 	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: true, Origin: deviceTestOrigin,
 		CursorSecret: bytes.Repeat([]byte{92}, 32), Pool: fx.f.Runtime, Accounts: &accounts}); err != nil {
 		t.Fatal(err)
 	}
 	path := "/v1/orgs/" + fx.scope.OrgID().String() + "/sync/operations"
-	dispatch := func(t *testing.T, body map[string]any, want int, edit func(*http.Request)) {
+	dispatch := func(t *testing.T, body map[string]any, want int, edit func(*http.Request)) []json.RawMessage {
 		t.Helper()
 		r := deviceSignedRequest(t, fx.registrar, fx.person.signer, path, body, time.Time{})
 		if edit != nil {
@@ -128,12 +128,21 @@ func TestOrganizationSyncUnconfiguredRuntimeAndSignedBoundary(t *testing.T) {
 			t.Fatalf("signed sync status=%d want=%d; private cache headers=%v", w.Code, want, w.Header().Get("Cache-Control"))
 		}
 		var response struct {
-			Error struct {
+			SchemaVersion    int               `json:"schema_version"`
+			Acknowledgements []json.RawMessage `json:"acknowledgements"`
+			Error            struct {
 				Code string `json:"code"`
 			} `json:"error"`
 		}
-		if json.Unmarshal(w.Body.Bytes(), &response) != nil || response.Error.Code == "" {
-			t.Fatal("signed intake error envelope")
+		if json.Unmarshal(w.Body.Bytes(), &response) != nil {
+			t.Fatal("signed intake envelope")
+		}
+		if want >= 400 {
+			if response.Error.Code == "" {
+				t.Fatal("signed intake error envelope")
+			}
+		} else if response.SchemaVersion != 1 || response.Acknowledgements == nil || response.Error.Code != "" {
+			t.Fatal("signed intake acknowledgement envelope")
 		}
 		for _, private := range []string{fx.person.auth.Session.AccessToken, fx.person.auth.Session.FamilyID,
 			fx.person.signer.keyID, fx.person.signer.fingerprint, fx.person.signer.contributor} {
@@ -141,12 +150,22 @@ func TestOrganizationSyncUnconfiguredRuntimeAndSignedBoundary(t *testing.T) {
 				t.Fatal("signed intake disclosed source proof")
 			}
 		}
+		return response.Acknowledgements
 	}
 	op := syncHTTPOperation(t, fx, snapshot.ID, nil)
 	valid := syncHTTPBody(fx, op.CanonicalBytes())
-	t.Run("missing-real-producer-and-budget", func(t *testing.T) {
-		dispatch(t, syncHTTPBody(fx), http.StatusServiceUnavailable, nil)
-		dispatch(t, valid, http.StatusServiceUnavailable, nil)
+	t.Run("actual-runtime-budget-with-unknown-owner-closed", func(t *testing.T) {
+		if acks := dispatch(t, syncHTTPBody(fx), http.StatusOK, nil); len(acks) != 0 {
+			t.Fatal("empty batch invented an operation")
+		}
+		acks := dispatch(t, valid, http.StatusOK, nil)
+		if len(acks) != 1 {
+			t.Fatal("missing unavailable acknowledgement")
+		}
+		ack, e := protocol.ParseAcknowledgement(acks[0], op)
+		if e != nil || ack.Result() != protocol.Retry || ack.Code() != "UNAVAILABLE" || ack.IsFinal() {
+			t.Fatal("unknown owner became a final effect", e)
+		}
 	})
 	t.Run("full-envelope-before-availability", func(t *testing.T) {
 		dispatch(t, syncHTTPBody(fx, op.CanonicalBytes(), json.RawMessage(`{"schema_version":1}`)), http.StatusBadRequest, nil)
@@ -178,8 +197,18 @@ func TestOrganizationSyncUnconfiguredRuntimeAndSignedBoundary(t *testing.T) {
 		r := deviceSignedRequest(t, fx.registrar, fx.person.signer, path, valid, time.Time{})
 		first := httptest.NewRecorder()
 		router.ServeHTTP(first, r)
-		if first.Code != http.StatusServiceUnavailable {
-			t.Fatal("missing producer source proof", first.Code)
+		if first.Code != http.StatusOK {
+			t.Fatal("unknown owner transport proof", first.Code)
+		}
+		var response struct {
+			Acknowledgements []json.RawMessage `json:"acknowledgements"`
+		}
+		if json.Unmarshal(first.Body.Bytes(), &response) != nil || len(response.Acknowledgements) != 1 {
+			t.Fatal("unknown owner acknowledgement")
+		}
+		ack, e := protocol.ParseAcknowledgement(response.Acknowledgements[0], op)
+		if e != nil || ack.Result() != protocol.Retry || ack.Code() != "UNAVAILABLE" || ack.IsFinal() {
+			t.Fatal("missing owner admitted a final effect", e)
 		}
 		raw, err := json.Marshal(valid)
 		if err != nil {

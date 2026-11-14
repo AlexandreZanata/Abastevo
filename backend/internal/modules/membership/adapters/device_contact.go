@@ -16,7 +16,7 @@ import (
 
 // contactProof checks only current personal proof. It grants no membership or
 // organization reads, and may therefore precede an exact owned terminal lookup.
-func contactProof(ctx context.Context, tx pgx.Tx, a app.DeviceActor) (time.Time, error) {
+func contactProof(ctx context.Context, tx database.OrgDBTX, a app.DeviceActor) (time.Time, error) {
 	p, e := q.New(tx).DeviceProof(ctx, q.DeviceProofParams{AccountID: a.AccountID, FamilyID: a.FamilyID, KeyID: a.KeyID, ContributorID: a.ContributorID, Fingerprint: a.Fingerprint})
 	if errors.Is(e, pgx.ErrNoRows) {
 		return time.Time{}, app.ErrEmployeeUnauthenticated

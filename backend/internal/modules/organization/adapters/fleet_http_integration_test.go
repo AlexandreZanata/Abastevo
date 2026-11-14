@@ -27,6 +27,7 @@ import (
 func TestFleetAssetsThroughComposedCompanyHTTP(t *testing.T) {
 	fx := legalFixture(t)
 	_ = fleetStore(t, fx) // Exact installed fleet privileges; no permissive grant.
+	_ = meterStore(t, fx) // Installed real meter owner, not fixture presence facts.
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
@@ -191,8 +192,8 @@ func TestFleetAssetsThroughComposedCompanyHTTP(t *testing.T) {
 	if code(call("stale profile no effect", path+"/change", stale, 409, nil)) != "CONFLICT" {
 		t.Fatal("stale profile code changed")
 	}
-	// The source cannot pretend that a powered asset has a meter before its
-	// actual dependency is installed. Exact profile fields remain readable.
+	// Powered activation now consumes actual persisted meter facts. A real
+	// empty source has a typed missing-meter checklist; installation satisfies it.
 	powered := clone(create)
 	powered["operation_id"] = onboardingID(t)
 	powered["kind"] = "VEHICLE"
@@ -208,7 +209,62 @@ func TestFleetAssetsThroughComposedCompanyHTTP(t *testing.T) {
 	if poweredView["tanks"].([]any)[0].(map[string]any)["capacity_milli"] != "275000" || poweredView["expected_consumption"].([]any)[0].(map[string]any)["value"] != "9007199254740993" {
 		t.Fatal("HTTP rounded exact fleet fields")
 	}
-	call("actual meter dependency unavailable", poweredPath+"/activate", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1}, 503, nil)
+	missingMeter := call("actual source proves missing meter", poweredPath+"/activate", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1}, 422, nil)
+	if code(missingMeter) != "VALIDATION_FAILED" {
+		t.Fatal("missing real meter code")
+	}
+	details := missingMeter["error"].(map[string]any)["details"].([]any)
+	if len(details) != 1 || details[0].(map[string]any)["field"] != "meters" || details[0].(map[string]any)["code"] != "REQUIRED" {
+		t.Fatal("missing real meter checklist")
+	}
+	observed := time.Now().UTC().Add(-time.Hour).Truncate(time.Second).Add(123456789 * time.Nanosecond).Format(time.RFC3339Nano)
+	install := map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1, "opening_reading_id": onboardingID(t), "kind": "ODOMETER", "label": "Synthetic observed display", "opening_value": "1000000000000", "modulus": "1000000000001", "occurred_at": observed, "entry_zone": "America/Cuiaba", "device_offset_seconds": -14400, "method": "TYPED"}
+	installed := call("real observed meter installation", poweredPath+"/meters/install", install, 201, nil)
+	meterID := installed["meter_id"].(string)
+	if installed["revision"] != float64(2) || installed["opening_reading_id"] != install["opening_reading_id"] {
+		t.Fatal("meter installation metadata")
+	}
+	original := call("meter original acknowledgement", poweredPath+"/meters/install", install, 201, nil)
+	if original["replayed"] != true || original["meter_id"] != meterID || original["revision"] != installed["revision"] {
+		t.Fatal("meter replay changed actual result")
+	}
+	changedInstall := clone(install)
+	changedInstall["label"] = "Synthetic changed display"
+	if code(call("changed meter operation body", poweredPath+"/meters/install", changedInstall, 409, nil)) != "OPERATION_ID_REUSED" {
+		t.Fatal("meter intent reuse")
+	}
+	duplicateMeter := clone(install)
+	duplicateMeter["operation_id"] = onboardingID(t)
+	duplicateMeter["opening_reading_id"] = onboardingID(t)
+	duplicateMeter["revision"] = 2
+	if code(call("second in-service meter kind", poweredPath+"/meters/install", duplicateMeter, 409, nil)) != "METER_ALREADY_IN_SERVICE" {
+		t.Fatal("meter in-service uniqueness")
+	}
+	meterView := call("actual latest observed reading", poweredPath+"/meters/"+meterID+"/latest", map[string]any{}, 200, nil)
+	latest := meterView["latest"].(map[string]any)
+	if latest["value"] != "1000000000000" || latest["occurred_at"] != observed || latest["capture"].(map[string]any)["kind"] != "WEB_SESSION" {
+		t.Fatal("private exact meter evidence lost")
+	}
+	if active := call("powered actual source activation", poweredPath+"/activate", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 2}, 200, nil); active["state"] != "ACTIVE" || active["revision"] != float64(3) {
+		t.Fatal("powered activation did not consume real meter")
+	}
+	hour := clone(install)
+	hour["operation_id"] = onboardingID(t)
+	hour["opening_reading_id"] = onboardingID(t)
+	hour["revision"] = 3
+	hour["kind"] = "HOUR_METER"
+	hour["opening_value"] = "3600"
+	delete(hour, "modulus")
+	call("second independent meter kind", poweredPath+"/meters/install", hour, 201, nil)
+	meterPage := call("bounded actual meter page", poweredPath+"/meters/list", map[string]any{"limit": 1}, 200, nil)
+	meterCursor := meterPage["next_cursor"].(string)
+	if len(meterPage["items"].([]any)) != 1 || meterCursor == "" {
+		t.Fatal("meter keyset pagination missing")
+	}
+	call("actual next meter page", poweredPath+"/meters/list", map[string]any{"limit": 1, "cursor": meterCursor}, 200, nil)
+	call("meter cursor bound to asset", path+"/meters/list", map[string]any{"limit": 1, "cursor": meterCursor}, 400, nil)
+	call("foreign actual meter hidden", otherBase+"/"+foreign["asset_id"].(string)+"/meters/"+meterID+"/latest", map[string]any{}, 404, nil)
+
 	activation := map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1}
 	foreignPath := otherBase + "/" + foreign["asset_id"].(string)
 	if active := call("implement actual activation", foreignPath+"/activate", activation, 200, nil); active["state"] != "ACTIVE" || active["revision"] != float64(2) {
@@ -325,5 +381,5 @@ func TestFleetAssetsThroughComposedCompanyHTTP(t *testing.T) {
 		t.Fatal(err)
 	}
 	call("revoked company source", poweredPath+"/read", map[string]any{}, 401, nil)
-	t.Logf("actual private fleet HTTP request assertions: %d; powered activation remains its real dependency", requests)
+	t.Logf("actual private fleet/meter HTTP request assertions: %d; powered activation uses real persisted evidence", requests)
 }

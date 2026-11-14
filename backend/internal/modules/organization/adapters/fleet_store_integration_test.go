@@ -202,8 +202,8 @@ func TestFleetStoreImplementsActivationAndClosesPoweredAdmission(t *testing.T) {
 	change.ExpectedRevision = 2
 	change.Profile.Kind = fleet.Vehicle
 	change.Category = fa.CategoryChoice{ExistingID: view.Profile.Category}
-	if _, _, err := fleetWrite(t, fx, s, fleetCommand(t, change)); !errors.Is(err, fa.ErrUnavailable) {
-		t.Fatal("active kind change fabricated meter availability", err)
+	if _, _, err := fleetWrite(t, fx, s, fleetCommand(t, change)); !errors.Is(err, fleet.ErrIncomplete) {
+		t.Fatal("active kind change ignored known missing source facts", err)
 	}
 	var exact bool
 	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM org_asset_unit_allocations WHERE org_id=$1 AND asset_id=$2)=1 AND(SELECT count(*) FROM org_asset_revisions WHERE org_id=$1 AND asset_id=$2)=2 AND(SELECT kind='IMPLEMENT' AND revision=2 FROM org_assets WHERE org_id=$1 AND id=$2)`, fx.scope.OrgID().String(), created.AssetID).Scan(&exact); err != nil || !exact {

@@ -54,12 +54,14 @@ type Options struct {
 	Pool         *pgxpool.Pool
 	Accounts     *account.Service
 	DeviceLimit  int64
-	// No production business producer or measured budget is implied by enabling
-	// the transport. Owning features supply reviewed handlers and real follow-up.
-	IntakeHandlers  []syncapp.Handler
-	IntakeBudget    *orgquota.TransportDefinition
-	IntakePlans     map[string]map[string][]string
-	IntakeConsumers map[string]eventpg.Effect
+	// The synthetic runtime owns the immutable meter producer and its explicit
+	// transport allowance. Additional owners supply their actual follow-up plans;
+	// production measurement and Android producer activation remain separate.
+	IntakeHandlers     []syncapp.Handler
+	IntakeBudget       *orgquota.TransportDefinition
+	IntakePlans        map[string]map[string][]string
+	IntakeNoAsyncPlans map[syncapp.OperationKey]map[string]syncapp.FollowupMode
+	IntakeConsumers    map[string]eventpg.Effect
 }
 
 // Register performs no I/O or provisioning. The default mounts no private
@@ -84,6 +86,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.LegalAuditDefinitions()...)
 	definitions = append(definitions, orgpg.UnitAuditDefinitions()...)
 	definitions = append(definitions, fleetpg.AssetAuditDefinitions()...)
+	definitions = append(definitions, fleetpg.MeterAuditDefinitions()...)
 	definitions = append(definitions, orgpg.CostCentreAuditDefinitions()...)
 	definitions = append(definitions, orgpg.TeamAuditDefinitions()...)
 	definitions = append(definitions, orgpg.SettingsAuditDefinitions()...)
@@ -226,7 +229,12 @@ func Register(router chi.Router, o Options) error {
 	if e := memberweb.RegisterDevices(router, true, deviceStore, cookies, gateway, deviceAuthorization, roots, o.Accounts, proofauth.Verifier{Pool: o.Pool, Authority: origin.Host, Now: time.Now}); e != nil {
 		return e
 	}
-	if err := registerIntake(router, o, deviceStore, auditStore, auditCatalog); err != nil {
+	meterAuthority := &orgpg.MeterAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Devices: deviceStore}
+	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore}
+	if err := fleetweb.RegisterMeters(router, fleetapp.MeterService{Enabled: true, Repository: meters, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	if err := registerIntake(router, o, deviceStore, meters, auditStore, auditCatalog); err != nil {
 		return err
 	}
 

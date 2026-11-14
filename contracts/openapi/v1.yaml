@@ -14847,13 +14847,26 @@ paths:
       description: Existing-account signed current-device intake. All frozen operation envelopes, digests and exact
         source-owned account/origin/organization/membership/enrollment tuples are preflighted before any budget,
         claim or effect. Each operation owns an independent transaction with source and owning policy rechecks
-        after waits and before commit. Missing production handlers, review/history/follow-up or reviewed intake
-        budget stays unavailable. No default numeric budget, new permission or F4 late/grace policy is activated.
+        after waits and before commit. Missing owning review/history/follow-up remains unavailable. The first actual
+        meter.reading.record owner commits immutable evidence, audit, effect and ACK atomically with explicit accepted/
+        rejected outcomes and no artificial asynchronous consumer. Its source-owned synthetic transport allowance is
+        identity v1 write200/hour per organization/account/device, weighted by attempts; production measurement and
+        cleanup remain separate. Android producers, SELF/history and F4 late/grace require their actual owners.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
         The wrapper carries at most50operations and65536rawbytes; full codec/preflight also enforces each8192byte
         operation, strict JSON, immutable digest and depth. Normal private failures never authorize local erasure.
+      x-abastevo-operation-owners:
+        meter.reading.record:
+          schema: 1
+          entity_type: meter_reading
+          payload:
+            $ref: '#/components/schemas/EnterpriseStandaloneMeterReadingPayload'
+          terminal_results:
+          - ACCEPTED
+          - REJECTED
+          followup: NO_ASYNC_FOLLOWUP
       security: []
       parameters:
       - $ref: '#/components/parameters/EnterpriseOrgID'
@@ -15801,6 +15814,270 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseMeterInstall
+      summary: Install a real meter and observed opening reading
+      description: Dedicated current company cookie, exact Origin/CSRF and source-owned fleet asset permission. Fresh
+        configuration proof is required for installation. Real forced-RLS assets/meters and immutable observation
+        order are used. SELF remains denied without actual assignments. Source-pinned synthetic construction does
+        not authorize production or real receipt retention.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterInstallRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008101
+              revision: 1
+              opening_reading_id: 7b0e2a54-0000-4000-8000-000000008403
+              kind: ODOMETER
+              label: Synthetic observed display
+              opening_value: '123456'
+              method: TYPED
+              occurred_at: '2026-11-14T00:00:00.123456789Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+      responses:
+        '201':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMeterAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                meter_id: 7b0e2a54-0000-4000-8000-000000008401
+                segment_id: 7b0e2a54-0000-4000-8000-000000008402
+                opening_reading_id: 7b0e2a54-0000-4000-8000-000000008403
+                revision: 2
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseMeterList
+      summary: List private asset meters
+      description: Dedicated current company cookie, exact Origin/CSRF and source-owned fleet asset permission. Fresh
+        configuration proof is required for installation. Real forced-RLS assets/meters and immutable observation
+        order are used. SELF remains denied without actual assignments. Source-pinned synthetic construction does
+        not authorize production or real receipt retention.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMeterPage'
+              example:
+                items:
+                - id: 7b0e2a54-0000-4000-8000-000000008401
+                  asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                  segment_id: 7b0e2a54-0000-4000-8000-000000008402
+                  kind: ODOMETER
+                  unit: m
+                  label: Synthetic observed display
+                  installed_at: '2026-11-14T00:00:00.123456789Z'
+                  latest:
+                    id: 7b0e2a54-0000-4000-8000-000000008403
+                    value: '123456'
+                    state: VALID
+                    occurred_at: '2026-11-14T00:00:00.123456789Z'
+                    entry_zone: America/Cuiaba
+                    device_offset_seconds: -14400
+                    received_at: '2026-11-14T00:01:00.000001Z'
+                    author_membership_id: 7b0e2a54-0000-4000-8000-000000008101
+                    operation_id: 7b0e2a54-0000-4000-8000-000000008101
+                    origin: METER_INSTALLATION
+                    method: TYPED
+                    capture:
+                      kind: WEB_SESSION
+                      id: 7b0e2a54-0000-4000-8000-000000008101
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseMeterLatest
+      summary: Read the latest valid meter evidence
+      description: Dedicated current company cookie, exact Origin/CSRF and source-owned fleet asset permission. Fresh
+        configuration proof is required for installation. Real forced-RLS assets/meters and immutable observation
+        order are used. SELF remains denied without actual assignments. Source-pinned synthetic construction does
+        not authorize production or real receipt retention.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      - name: meter_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMeterView'
+              example:
+                id: 7b0e2a54-0000-4000-8000-000000008401
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                segment_id: 7b0e2a54-0000-4000-8000-000000008402
+                kind: ODOMETER
+                unit: m
+                label: Synthetic observed display
+                installed_at: '2026-11-14T00:00:00.123456789Z'
+                latest:
+                  id: 7b0e2a54-0000-4000-8000-000000008403
+                  value: '123456'
+                  state: VALID
+                  occurred_at: '2026-11-14T00:00:00.123456789Z'
+                  entry_zone: America/Cuiaba
+                  device_offset_seconds: -14400
+                  received_at: '2026-11-14T00:01:00.000001Z'
+                  author_membership_id: 7b0e2a54-0000-4000-8000-000000008101
+                  operation_id: 7b0e2a54-0000-4000-8000-000000008101
+                  origin: METER_INSTALLATION
+                  method: TYPED
+                  capture:
+                    kind: WEB_SESSION
+                    id: 7b0e2a54-0000-4000-8000-000000008101
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -15875,6 +16152,469 @@ components:
         type: string
         format: uuid
   schemas:
+    EnterpriseStandaloneMeterReadingPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        meter_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - ODOMETER
+          - HOUR_METER
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+          maxLength: 13
+        method:
+          type: string
+          enum:
+          - TYPED
+          - TYPED_WITH_PHOTO
+          - IMPORTED
+          - INTEGRATION
+      required:
+      - asset_id
+      - meter_id
+      - segment_id
+      - kind
+      - value
+      - method
+      oneOf:
+      - properties:
+          kind:
+            enum:
+            - ODOMETER
+          value:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,11}|1000000000000)$
+        required:
+        - kind
+        - value
+      - properties:
+          kind:
+            enum:
+            - HOUR_METER
+          value:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,8}|[12][0-9]{9}|3[0-5][0-9]{8}|3600000000)$
+        required:
+        - kind
+        - value
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        meter_id: 7b0e2a54-0000-4000-8000-000000008401
+        segment_id: 7b0e2a54-0000-4000-8000-000000008402
+        kind: ODOMETER
+        value: '123456'
+        method: TYPED
+      description: Owner schema1 for meter.reading.record. Reading identity is envelope entity.type=meter_reading/entity.id;
+        expected_revision is null. Declaration belongs only to envelope occurred_at/entry_zone/device_offset_seconds.
+        Server fixes STANDALONE origin and actual enrollment/author/receipt/state. Current owner supports TYPED; actual
+        document/import/integration and cross-record reference producers are required before their otherwise recognized
+        forms can execute. Nonempty attachments/depends_on/soft_references stay unavailable; missing/foreign actual
+        target coverage never becomes an accepted effect.
+    EnterpriseMeterInstallRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        opening_reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - ODOMETER
+          - HOUR_METER
+        label:
+          type: string
+          minLength: 1
+        modulus:
+          type: string
+          pattern: ^[1-9][0-9]*$
+          maxLength: 19
+          description: Canonical positive int64 text. The owning exact-value decoder also enforces at most9223372036854775807
+            and value below modulus.
+        opening_value:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+          maxLength: 19
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        method:
+          type: string
+          enum:
+          - TYPED
+          - TYPED_WITH_PHOTO
+          - IMPORTED
+          - INTEGRATION
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - opening_reading_id
+      - kind
+      - label
+      - opening_value
+      - method
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008101
+        revision: 1
+        opening_reading_id: 7b0e2a54-0000-4000-8000-000000008403
+        kind: ODOMETER
+        label: Synthetic observed display
+        opening_value: '123456'
+        method: TYPED
+        occurred_at: '2026-11-14T00:00:00.123456789Z'
+        entry_zone: America/Cuiaba
+        device_offset_seconds: -14400
+      description: Actual observed opening evidence; exact integer strings and all nine fractional instant digits are
+        preserved. Server captures current author, actual WEB_SESSION provenance and DB receipt time. Unsupported document/import/integration
+        sources remain unavailable until their owners integrate; no client authority, state or receipt fields.
+      oneOf:
+      - properties:
+          kind:
+            enum:
+            - ODOMETER
+          opening_value:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,11}|1000000000000)$
+        required:
+        - kind
+        - opening_value
+      - properties:
+          kind:
+            enum:
+            - HOUR_METER
+          opening_value:
+            type: string
+            pattern: ^(0|[1-9][0-9]{0,8}|[12][0-9]{9}|3[0-5][0-9]{8}|3600000000)$
+        required:
+        - kind
+        - opening_value
+    EnterpriseMeterReadRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      required: []
+      example: {}
+      description: Private current-source read. Foreign or discarded assets are not found; read permission does not
+        infer an assignment.
+    EnterpriseMeterListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+    EnterpriseMeterAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        meter_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        opening_reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 2
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - asset_id
+      - meter_id
+      - segment_id
+      - opening_reading_id
+      - revision
+      - replayed
+      - data_mode
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        meter_id: 7b0e2a54-0000-4000-8000-000000008401
+        segment_id: 7b0e2a54-0000-4000-8000-000000008402
+        opening_reading_id: 7b0e2a54-0000-4000-8000-000000008403
+        revision: 2
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseMeterReading:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]*)$
+          maxLength: 19
+        state:
+          type: string
+          enum:
+          - VALID
+          - SUSPECT
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        received_at:
+          type: string
+          format: date-time
+        author_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        origin:
+          type: string
+          enum:
+          - TRIP_START
+          - TRIP_END
+          - HANDOVER
+          - FUELING
+          - CHECKLIST
+          - MAINTENANCE
+          - STANDALONE
+          - IMPORT
+          - METER_INSTALLATION
+          - METER_REMOVAL
+        method:
+          type: string
+          enum:
+          - TYPED
+          - TYPED_WITH_PHOTO
+          - IMPORTED
+          - INTEGRATION
+        capture:
+          type: object
+          additionalProperties: false
+          properties:
+            kind:
+              type: string
+              enum:
+              - ENROLLED_DEVICE
+              - WEB_SESSION
+            id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+          required:
+          - kind
+          - id
+          example:
+            kind: WEB_SESSION
+            id: 7b0e2a54-0000-4000-8000-000000008101
+      required:
+      - id
+      - value
+      - state
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      - received_at
+      - author_membership_id
+      - operation_id
+      - origin
+      - method
+      - capture
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000008403
+        value: '123456'
+        state: VALID
+        occurred_at: '2026-11-14T00:00:00.123456789Z'
+        entry_zone: America/Cuiaba
+        device_offset_seconds: -14400
+        received_at: '2026-11-14T00:01:00.000001Z'
+        author_membership_id: 7b0e2a54-0000-4000-8000-000000008101
+        operation_id: 7b0e2a54-0000-4000-8000-000000008101
+        origin: METER_INSTALLATION
+        method: TYPED
+        capture:
+          kind: WEB_SESSION
+          id: 7b0e2a54-0000-4000-8000-000000008101
+    EnterpriseMeterView:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - ODOMETER
+          - HOUR_METER
+        unit:
+          type: string
+          enum:
+          - m
+          - s
+        label:
+          type: string
+          minLength: 1
+        modulus:
+          type: string
+          pattern: ^[1-9][0-9]*$
+          maxLength: 19
+        installed_at:
+          type: string
+          format: date-time
+        removed_at:
+          type: string
+          format: date-time
+        latest:
+          allOf:
+          - $ref: '#/components/schemas/EnterpriseMeterReading'
+          - properties:
+              state:
+                enum:
+                - VALID
+            required:
+            - state
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - id
+      - asset_id
+      - segment_id
+      - kind
+      - unit
+      - label
+      - installed_at
+      - data_mode
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000008401
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        segment_id: 7b0e2a54-0000-4000-8000-000000008402
+        kind: ODOMETER
+        unit: m
+        label: Synthetic observed display
+        installed_at: '2026-11-14T00:00:00.123456789Z'
+        latest:
+          id: 7b0e2a54-0000-4000-8000-000000008403
+          value: '123456'
+          state: VALID
+          occurred_at: '2026-11-14T00:00:00.123456789Z'
+          entry_zone: America/Cuiaba
+          device_offset_seconds: -14400
+          received_at: '2026-11-14T00:01:00.000001Z'
+          author_membership_id: 7b0e2a54-0000-4000-8000-000000008101
+          operation_id: 7b0e2a54-0000-4000-8000-000000008101
+          origin: METER_INSTALLATION
+          method: TYPED
+          capture:
+            kind: WEB_SESSION
+            id: 7b0e2a54-0000-4000-8000-000000008101
+        data_mode: SYNTHETIC
+      oneOf:
+      - properties:
+          kind:
+            enum:
+            - ODOMETER
+          unit:
+            enum:
+            - m
+        required:
+        - kind
+        - unit
+      - properties:
+          kind:
+            enum:
+            - HOUR_METER
+          unit:
+            enum:
+            - s
+        required:
+        - kind
+        - unit
+    EnterpriseMeterPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseMeterView'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - id: 7b0e2a54-0000-4000-8000-000000008401
+          asset_id: 7b0e2a54-0000-4000-8000-000000008201
+          segment_id: 7b0e2a54-0000-4000-8000-000000008402
+          kind: ODOMETER
+          unit: m
+          label: Synthetic observed display
+          installed_at: '2026-11-14T00:00:00.123456789Z'
+          latest:
+            id: 7b0e2a54-0000-4000-8000-000000008403
+            value: '123456'
+            state: VALID
+            occurred_at: '2026-11-14T00:00:00.123456789Z'
+            entry_zone: America/Cuiaba
+            device_offset_seconds: -14400
+            received_at: '2026-11-14T00:01:00.000001Z'
+            author_membership_id: 7b0e2a54-0000-4000-8000-000000008101
+            operation_id: 7b0e2a54-0000-4000-8000-000000008101
+            origin: METER_INSTALLATION
+            method: TYPED
+            capture:
+              kind: WEB_SESSION
+              id: 7b0e2a54-0000-4000-8000-000000008101
+          data_mode: SYNTHETIC
+        next_cursor: ''
     EnterpriseFleetAssetCategoryChoice:
       type: object
       additionalProperties: false
@@ -20708,7 +21448,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false
@@ -28294,7 +29034,7 @@ components:
           format: date-time
         last_sync_at:
           type: 'null'
-          description: No installed sync producer; registration/check time is never represented as successful sync.
+          description: No successful-sync timestamp projection is installed; registration/check time is never represented as successful sync.
         revoked_at:
           anyOf:
           - type: string

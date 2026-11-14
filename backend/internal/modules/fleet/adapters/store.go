@@ -194,33 +194,12 @@ func (s *AssetStore) WriteAsset(ctx context.Context, scope kernel.OrgScope, acto
 					if current.State != fleet.Draft {
 						return app.ErrConflict
 					}
-					if current.Profile.Kind != fleet.Implement {
-						return app.ErrUnavailable
-					}
-					if current.UnitID == "" {
-						pure, err := fleet.NewDraft(current.Ref, current.Profile, ownedCatalog{categoryID: current.Profile.Category})
-						if err != nil {
-							return err
-						}
-						return pure.CheckActivation(scope, fleet.ActivationFacts{})
-					}
-					if err := queries.AssetAdmitUnit(ctx, q.AssetAdmitUnitParams{OrgID: org, UnitID: current.UnitID}); err != nil {
-						return err
-					}
 					var err error
 					checked, err = validated(scope, id, current.Profile)
 					if err != nil {
 						return err
 					}
-					unit, err := fleet.NewUnitRef(scope, current.UnitID)
-					if err != nil {
-						return err
-					}
-					pure, err := fleet.NewDraft(checked.Ref, current.Profile, ownedCatalog{categoryID: current.Profile.Category})
-					if err != nil {
-						return err
-					}
-					if err := pure.CheckActivation(scope, fleet.ActivationFacts{Unit: &unit}); err != nil {
+					if err := checkActualActivation(ctx, tx, scope, current.Ref, current.Profile, current.UnitID); err != nil {
 						return err
 					}
 					view = current
@@ -245,14 +224,14 @@ func (s *AssetStore) WriteAsset(ctx context.Context, scope kernel.OrgScope, acto
 							return app.ErrConflict
 						}
 						if current.State == fleet.Active {
-							if view.Profile.Kind != fleet.Implement {
-								return app.ErrUnavailable
-							}
 							if v.UnitID != "" && v.UnitID != current.UnitID {
 								return app.ErrConflict
 							}
 							view.UnitID = current.UnitID
 							view.Allocation = current.Allocation
+							if err := checkActualActivation(ctx, tx, scope, view.Ref, view.Profile, view.UnitID); err != nil {
+								return err
+							}
 						}
 					}
 				}
