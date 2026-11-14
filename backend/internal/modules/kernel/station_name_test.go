@@ -20,3 +20,24 @@ func TestPublicStationNameDropsCPFShapedTokens(t *testing.T) {
 		}
 	}
 }
+
+func TestHasCPFShapedTokenMatchesThePortalPrivacyShape(t *testing.T) {
+	for _, tc := range []struct {
+		text string
+		want bool
+	}{
+		{"Ligue 12345678909 hoje", true},
+		{"CPF 123.456.789-09.", true},
+		{"12345678909", true},
+		{"linha\n12345678909\n", true},
+		{"(65) 99999-9999", false},
+		{"CNPJ 04218406000104", false},
+		{"A1234567890B", false},
+		{"R$ 6,199 em 1.234 postos", false},
+		{"", false},
+	} {
+		if got := HasCPFShapedToken(tc.text); got != tc.want {
+			t.Errorf("HasCPFShapedToken(%q) = %v, want %v", tc.text, got, tc.want)
+		}
+	}
+}

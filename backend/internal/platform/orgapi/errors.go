@@ -13,30 +13,40 @@ import (
 type Code string
 
 const (
-	Malformed               Code = "MALFORMED"
-	Unauthenticated         Code = "UNAUTHENTICATED"
-	NotFound                Code = "NOT_FOUND"
-	Forbidden               Code = "FORBIDDEN"
-	MembershipSuspended     Code = "MEMBERSHIP_SUSPENDED"
-	MembershipEnded         Code = "MEMBERSHIP_ENDED"
-	OrgSuspended            Code = "ORG_SUSPENDED"
-	OrgArchived             Code = "ORG_ARCHIVED"
-	OrgSetupIncomplete      Code = "ORG_SETUP_INCOMPLETE"
-	FreshAuthRequired       Code = "FRESH_AUTH_REQUIRED"
-	EntitlementRequired     Code = "ENTITLEMENT_REQUIRED"
-	LimitReached            Code = "LIMIT_REACHED"
-	Conflict                Code = "CONFLICT"
-	OperationReused         Code = "OPERATION_ID_REUSED"
-	ValidationFailed        Code = "VALIDATION_FAILED"
-	SelfApproval            Code = "SELF_APPROVAL"
-	PeriodLocked            Code = "PERIOD_LOCKED"
-	LastOwner               Code = "LAST_OWNER"
-	LastUnit                Code = "LAST_UNIT"
-	StructureInUse          Code = "STRUCTURE_IN_USE"
-	DuplicateReviewRequired Code = "DUPLICATE_REVIEW_REQUIRED"
-	OwnerRequiresPersonal   Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
-	RateLimited             Code = "RATE_LIMITED"
-	Unavailable             Code = "UNAVAILABLE"
+	Malformed                Code = "MALFORMED"
+	Unauthenticated          Code = "UNAUTHENTICATED"
+	NotFound                 Code = "NOT_FOUND"
+	Forbidden                Code = "FORBIDDEN"
+	MembershipSuspended      Code = "MEMBERSHIP_SUSPENDED"
+	MembershipEnded          Code = "MEMBERSHIP_ENDED"
+	OrgSuspended             Code = "ORG_SUSPENDED"
+	OrgArchived              Code = "ORG_ARCHIVED"
+	OrgSetupIncomplete       Code = "ORG_SETUP_INCOMPLETE"
+	FreshAuthRequired        Code = "FRESH_AUTH_REQUIRED"
+	EntitlementRequired      Code = "ENTITLEMENT_REQUIRED"
+	LimitReached             Code = "LIMIT_REACHED"
+	Conflict                 Code = "CONFLICT"
+	OperationReused          Code = "OPERATION_ID_REUSED"
+	ValidationFailed         Code = "VALIDATION_FAILED"
+	SelfApproval             Code = "SELF_APPROVAL"
+	PeriodLocked             Code = "PERIOD_LOCKED"
+	LastOwner                Code = "LAST_OWNER"
+	MergeConflict            Code = "MERGE_CONFLICT"
+	DeviceRevoked            Code = "DEVICE_REVOKED"
+	OpenResponsibilities     Code = "OPEN_RESPONSIBILITIES"
+	LastUnit                 Code = "LAST_UNIT"
+	StructureInUse           Code = "STRUCTURE_IN_USE"
+	AssetIdentifierTaken     Code = "ASSET_IDENTIFIER_TAKEN"
+	MeterAlreadyInService    Code = "METER_ALREADY_IN_SERVICE"
+	DuplicateReviewRequired  Code = "DUPLICATE_REVIEW_REQUIRED"
+	OwnerRequiresPersonal    Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
+	TransferPending          Code = "TRANSFER_PENDING"
+	EmployeeHasAccess        Code = "EMPLOYEE_HAS_ACCESS"
+	TokenInvalid             Code = "TOKEN_INVALID"
+	AlreadyMember            Code = "ALREADY_MEMBER"
+	ManagedAccountRestricted Code = "MANAGED_ACCOUNT_RESTRICTED"
+	RateLimited              Code = "RATE_LIMITED"
+	Unavailable              Code = "UNAVAILABLE"
 )
 
 func (code Code) Error() string { return string(code) }
@@ -45,11 +55,15 @@ var statuses = map[Code]int{
 	Malformed: 400, Unauthenticated: 401, NotFound: 404,
 	Forbidden: 403, MembershipSuspended: 403, MembershipEnded: 403, OrgSuspended: 403, OrgArchived: 403,
 	FreshAuthRequired: 401, EntitlementRequired: 403, LimitReached: 403,
-	Conflict: 409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409,
+	DeviceRevoked: 403,
+	Conflict:      409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409, MergeConflict: 409, OpenResponsibilities: 409,
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
-	LastUnit: 409, StructureInUse: 409, DuplicateReviewRequired: 409,
+	LastUnit: 409, StructureInUse: 409, AssetIdentifierTaken: 409, MeterAlreadyInService: 409, DuplicateReviewRequired: 409,
 	OrgSetupIncomplete:    409,
 	OwnerRequiresPersonal: 409,
+	TransferPending:       409,
+	EmployeeHasAccess:     409,
+	TokenInvalid:          404, AlreadyMember: 409, ManagedAccountRestricted: 403,
 }
 
 type permissionFailure struct{ key string }
@@ -100,6 +114,32 @@ func UnitDuplicate(field string) error {
 		return Unavailable
 	}
 	return fieldFailure{field, "DUPLICATE"}
+}
+
+type assetActivationFailure struct{ fields []string }
+
+func (assetActivationFailure) Error() string { return string(ValidationFailed) }
+func (assetActivationFailure) Unwrap() error { return ValidationFailed }
+
+// IncompleteAsset accepts only source-owned activation checklist selectors.
+// Meter-provider unavailability is not evidence of a missing meter.
+func IncompleteAsset(fields []string) error {
+	if len(fields) == 0 || len(fields) > 3 {
+		return Unavailable
+	}
+	seen := map[string]bool{}
+	for _, field := range fields {
+		switch field {
+		case "unit_id", "tanks", "meters":
+		default:
+			return Unavailable
+		}
+		if seen[field] {
+			return Unavailable
+		}
+		seen[field] = true
+	}
+	return assetActivationFailure{append([]string(nil), fields...)}
 }
 
 // EmployeeRegistrationDuplicate has no caller-selected field or private value.
@@ -210,6 +250,12 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	var field fieldFailure
 	if code == ValidationFailed && errors.As(err, &field) {
 		details = []httpapi.Detail{{Field: field.field, Code: field.reason}}
+	}
+	var asset assetActivationFailure
+	if code == ValidationFailed && errors.As(err, &asset) {
+		for _, field := range asset.fields {
+			details = append(details, httpapi.Detail{Field: field, Code: "REQUIRED"})
+		}
 	}
 	var structure structureFailure
 	if code == StructureInUse && errors.As(err, &structure) {

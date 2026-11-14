@@ -12,6 +12,8 @@ type Snapshot struct {
 	Stations  []Station
 	Revisions []Revision
 	Prices    []Price
+	// ForumPosts is nil when the snapshot has no forum section.
+	ForumPosts []ForumPost
 }
 
 // ReadSnapshot decodes the deterministic JSONL payload of a candidate
@@ -47,6 +49,22 @@ func ReadSnapshot(dir string) (Snapshot, error) {
 		snapshot.Prices = append(snapshot.Prices, row)
 		return nil
 	}); err != nil {
+		return Snapshot{}, err
+	}
+	forumPath := filepath.Join(dir, ForumFile)
+	if _, err := os.Stat(forumPath); err == nil {
+		snapshot.ForumPosts = []ForumPost{}
+		if err := decodeJSONL(forumPath, func(dec *json.Decoder) error {
+			var row ForumPost
+			if err := dec.Decode(&row); err != nil {
+				return err
+			}
+			snapshot.ForumPosts = append(snapshot.ForumPosts, row)
+			return nil
+		}); err != nil {
+			return Snapshot{}, err
+		}
+	} else if !os.IsNotExist(err) {
 		return Snapshot{}, err
 	}
 	return snapshot, nil

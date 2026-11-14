@@ -1,4 +1,359 @@
 # Current execution state
+- Enterprise EMP-OFFL-008, 2026-11-14: LOCAL_DONE / INTEGRATION_PENDING
+  (Claude Code takeover). Backend handoff items, union regressions and SQL
+  reviewer findings closed with RED→GREEN; Android protected V3/resolution/
+  polling/presentation pass host, Compose and native API36 acceptance.
+  [Closure evidence](../enterprise/evidence/f2-offl008-real-review.md#closure-by-claude-code--2026-11-14).
+  Full METER-002, the remaining audited F2 nodes, M1/M2/C1 and F3 stay open in
+  tracker #215; decision recorded: integrate the tested cumulative batch now
+  instead of continuing all of F2/F3 in this execution.
+  Cumulative PR203 review: no CRITICAL/HIGH; M1–M3 and L1/L3/L4/L7/L8/L9 fixed
+  (0f1fef39, b0123365, migration 000200); L2/L5/L6/L10/L11 retained.
+
+- Handoff requested, 2026-11-14: implementation stopped at the maintainer's
+  request for Claude Code to finish/review the work, validate the cumulative
+  PR, reconcile issues, integrate main and deploy the new version to the VPS.
+  [Exact handoff and known failures](../enterprise/evidence/f2-offl008-real-review.md#handoff-to-claude-code--execution-stopped).
+  Owned worktree `.worktrees/enterprise-suite-execution`, branch
+  `codex/enterprise-f2`, HEAD/published backup `71b995ae`. Current OFFL-008
+  changes are uncommitted/unpushed; they include intentional Android RED stubs
+  and two known generic SQL fixture failures. Preserve all modified/untracked
+  files. No agent-owned Go/Gradle test process remains active.
+  GitHub PR203 was verified OPEN/ready, `dev`→`main`: head `6131d0a3`, base
+  `6a19bcc7`. Dev advanced independently:12 F2 commits are absent from dev,
+  and dev has4 commits absent from this worktree (merge-base `fac002e7`).
+  Normal integration must preserve both histories; no reset/force/cherry-pick
+  duplication. CI for the cumulative new head has not been run or certified.
+  Eleven tasks remain LOCAL_DONE / INTEGRATION_PENDING; full F2/Meter002/F3
+  are incomplete. New authorization is handoff scope, not a deployment already
+  performed here. No merge/issue closure/deployment was performed in this turn.
+- Authorized continuation, 2026-11-13: finish the whole in-progress F2, then
+  implement F3 after completing and validating unfinished cross-phase dependencies.
+  [F3 sequence](../enterprise/evidence/f3-authorized-sequence.md) records the
+  requested scope/M3 entry and exit. The maintainer reiterates overnight autonomy:
+  choose recommended routine decisions, record them, and ask no questions.
+  F3 is queued. FLEET-002 is locally complete; actual Meter foundation71b995ae
+  is backed up. OFFL-008 real review is now the sole bounded implementation;
+  full METER-002 remains open for its actual remaining dependency acceptance.
+- Enterprise F2, 2026-11-13: IN_PROGRESS on owned `codex/enterprise-f2`
+  from published dev `fac002e7`; verified main `6a19bcc7` remains an ancestor.
+  [Phase215/dependency ledger](../enterprise/evidence/f2-execution.md) preserves
+  all34 F2 tasks,25 transitive prerequisites and the additional formal M1 chain.
+  Eleven full tasks are LOCAL_DONE / INTEGRATION_PENDING;53 audited nodes remain.
+  Completed: FLEET-001(2daea515), OFFL-001(1cc9a7b3), AUTH-009(4743e0b9),
+  ORG-014(efd7e886), PRIV-003(51c25146), OFFL-002(d24b0d4f), and
+  [OFFL-003 protected queue](../enterprise/evidence/f2-offl003-protected-operation-queue.md).
+  All seven are backed up at origin/codex/enterprise-f2; OFFL-003 is49d3a122.
+  No other checkout is modified.
+  OFFL-003 passes182 consolidated host cases,15 final application cases and
+  seven affected ViewModel cases; all four final API36 native methods pass.
+  Native acceptance found/fixed an actual Android discovery-prefix mismatch;
+  real signed response loss, process death, original ACK and two independent
+  organizations converge without duplicate effects. Ordinary PostGIS/race
+  source107.147s, full affected lint/build and actual normal Hilt/OS Worker
+  execution pass. Runtime producers stay empty; legal/provider/release gates
+  remain separate. The29-file source manifest pins tested behavior.
+  [EMP-OFFL-004 status/pending UI](../enterprise/evidence/f2-offl004-sync-status-presentation.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. B-BR-EMP-123..130, BUC-EMP-61..64 and
+  EDR-082..086 precede behavior. Pure domain662+focused7, final application24,
+  DATA129 and ViewModel14 cases pass; genuine ten-thread visibility and source
+  fencing REDs are corrected. Native protected V1/V2 recovery2, current
+  presentation6/context1/regression4 and ordinary Hilt/OS Worker1 all pass.
+  Normal/isolated builds and full app/DATA lint pass with zero errors; eight
+  catalogs have75 identical keys. Final31-file manifest pins tested behavior.
+  Runtime feature/upload producers remain closed until their actual tasks.
+  OFFL-004 ea42ef9d is backed up at origin/codex/enterprise-f2.
+  [EMP-METER-001 pure reading domain](../enterprise/evidence/f2-meter001-reading-domain.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. B-BR-EMP-131..136, BUC-EMP-65..68 and
+  EDR-087..090 precede behavior. Shared261 cases, Go race314 test nodes and
+  Kotlin941 enterprise cases pass; scoped meter coverage95.89% instructions.
+  Real time/list/API defects receive RED→GREEN; no remaining peer-review blocker.
+  METER-001 05c83376 is backed up at origin/codex/enterprise-f2.
+  [EMP-FUEL-001 supply domain](../enterprise/evidence/f2-fuel001-supply-domain.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. B-BR-EMP-137..143, BUC-EMP-69..72 and
+  EDR-091..094 precede behavior. Owned nine-product catalog, exact immutable
+  candidates and compatible totals pass200 shared vectors, Go812 affected
+  race nodes and Kotlin1158 enterprise tests, with zero failures/skips. Time
+  declaration-only validation preserves original Capture reporting/receipt
+  behavior. Final peer/manifest/static/secret checks pass.
+  FUEL-00121601ae8 is backed up at origin/codex/enterprise-f2.
+  [EMP-FLEET-002 actual persistence](../enterprise/evidence/f2-fleet002-asset-persistence.md)
+  is LOCAL_DONE / INTEGRATION_PENDING. Foundation6e3dde65 is backed up; actual
+  Meter integration now passes missing-meter422 and full powered200. Final
+  ordinary PostGIS/race2243 nodes/125 top-level tests,63 company HTTP assertions,
+  cookie matrix140 and signed TLS10-role matrix pass with zero failures/skips.
+  Full API614 contract nodes and affected host/static/sqlc/peer checks pass.
+  [METER-002 source foundation](../enterprise/evidence/f2-meter002-persistence-intake.md)
+  is committed/backed up at71b995ae; full METER-002 remains IN_PROGRESS
+  until actual assignment/history/held-review acceptance. Its66-file manifest
+  pins every tested source; legal/provider/live runtime/release gates remain.
+  Current bounded implementation: [OFFL-008 real review](../enterprise/evidence/f2-offl008-real-review.md) (also required for actual
+  post-disposal handling), then FLEET-003/005, AUTH-006, FLEET-006 and remaining
+  Meter closure. EDR-109 records this cycle-free sequence. Full F3 stays queued.
+  The user authorizes only the owned API36 emulator while the phone is
+  disconnected; preserve other devices/apps/data.
+  PR203 dev still contains the earlier batch. Final phase delivery uses protected
+  dev → main; no construction CI polling, merge, deployment or wiki publication.
+  Full F2/M1/M2/C1 remain unaccepted. F3 follows their actual dependency closure.
+
+- Enterprise EMP-IDN-016..018 batch, 2026-11-13: LOCAL_DONE /
+  INTEGRATION_PENDING on owned `codex/enterprise-idn016-018` from published dev
+  `6b0921ce`; fetched main `6a19bcc7` remains an ancestor. Publication targets
+  protected dev → main [PR203](https://github.com/AlexandreZanata/Abastevo/pull/203).
+  [Panel016](../enterprise/evidence/f1-idn016-company-identity-panel.md),
+  [native invitation017](../enterprise/evidence/f1-idn017-android-invitation.md)
+  and [context018](../enterprise/evidence/f1-idn018-android-contexts.md) pin tested
+  behavior/artifacts and [tasks212](https://github.com/AlexandreZanata/Abastevo/issues/212),
+  [213](https://github.com/AlexandreZanata/Abastevo/issues/213),
+  [214](https://github.com/AlexandreZanata/Abastevo/issues/214).
+  Task016 commit `ae5defcd`,017 `8728dff6`;018 follows that tested checkpoint.
+  Current-account source/migration195, actual employee access-state reads and
+  guarded company panel pass real HTTPS/two-org/keyboard/responsive acceptance.
+  Android invitations/context shell pass domain231/application31/data-debug56/
+  app36 tests, normal/isolated builds and full lint. All12 final physical
+  Android16 tests pass, including real warm→cold entry without logout/data clear
+  between those two methods. Existing phone apps/data remain unchanged; no emulator.
+  Rendered primitive epochs, per-adapter transport owners and per-attempt local
+  leases cover stale intent/cleanup, same-flow replacement and in-flight I/O;
+  queued work is never retagged. Scoped real PostGIS/race14 organization/47
+  session cases,570 API cases, vet/static, protection/SQL/Android-script/plan
+  checks pass. Full local Quick228s passes with pinned Go1.27.4; no vulnerabilities.
+  Exact tested source trees and retained diagnostic failures/fixes are in018
+  evidence. Required remote checks apply to the published head; no remote PASS
+  is inferred. Next: protected review/integration of the published batch.
+  F1/M1, managed/vault-contact/runtime/offline/legal/staging/release gates remain
+  open. No merge, wiki or deployment requested; issues stay open until integration.
+
+- Enterprise EMP-IDN-015, 2026-11-13: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn015 from published dev f1ad43ac; publish to dev/PR203,
+  [task211](https://github.com/AlexandreZanata/Abastevo/issues/211).
+  [Device evidence](../enterprise/evidence/f1-idn015-device-registry.md) records
+  six actual signed/self/manager routes, source-bound slots/current key proof,
+  scoped metadata and terminal revocation with actual membership-ending causes.
+  B-BR-EMP-87..89, BUC-EMP-45 and EDR-056 precede behavior. Ordinary populated
+  migration194 recovery/RLS, signatures/nonces/HTTP, twelve-way retry/slot races,
+  ending/revoke/check contention, proof waits, late faults and independent
+  personal/other-org access pass. Device/schema suite76.389s; ordinary two-scope
+  populated erasure2.083s. Affected regression completes after scoped3.881s
+  recovery of two legacy erasure-role grant lists; API62.565s. Prior CI audit
+  CASCADE fixture/deadline failures repaired separately in57bec09c. Full local
+  Quick246s, no vulnerabilities, domain91.3%; static/generation/contract/compat/
+  plan/format/secret checks pass. Tested backend tree
+  783ee2c2250d6c924426c6648d49d9e706ffd7b3; contract Git blob
+  e03535c45986af9f5b898921f30970ebfc3b0ad0.
+  Required remote check awaits the new head. Next: protected review/integration;
+  this request stops at this task. Managed/GOV-013/native/sync/intake/runtime/
+  legal/staging/production and full F1/M1 remain open. No merge/wiki/deployment;
+  issue stays open until integration.
+
+- Enterprise EMP-IDN-013, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn013 from published dev cce39312; publish to dev/PR203,
+  [task210](https://github.com/AlexandreZanata/Abastevo/issues/210).
+  [Contact evidence](../enterprise/evidence/f1-idn013-contact-change.md) records
+  existing exact-revision profile replacement and atomic PENDING/WAITING contact
+  reductions, fresh authority after projection/receipt waits, original retries
+  and unchanged ACTIVE/personal/other-org access. B-BR-EMP-85/86, BUC-EMP-44 and
+  EDR-055 precede behavior. Source RED/GREEN, twelve-way retry/CAS, concurrent
+  redeem/resend/confirm, proof waits, foreign/non-manager/disabled denials,
+  late faults/recovery, populated source migration retention and actual HTTP
+  pass. Affected regression completed with scoped audited-snapshot fixture
+  recovery; complete contact/source-upgrade recovery33.077s, API68.910s.
+  Full local Quick265s, no vulnerabilities, domain91.2%; vet/staticcheck/sqlc/
+  contract/compatibility/plan/format/secret checks pass. Tested backend tree
+  2613623f72e0db99cd161a2638053da8a63e2bfe; contract Git blob
+  380a1abc5de141693c35a7af1304102d54b9f3a7. Required remote check awaits the new
+  head. Next: protected review/integration; this request stops at this task.
+  Managed/GOV-013/native/runtime/legal/staging/production and F1/M1 remain open.
+  No merge/wiki/deployment; issue stays open until integration.
+
+- Enterprise EMP-IDN-012, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn012 from published dev 054eacf0; publish to dev/PR203,
+  [task209](https://github.com/AlexandreZanata/Abastevo/issues/209).
+  [Merge evidence](../enterprise/evidence/f1-idn012-employee-merge.md) records
+  fresh scoped reviewed merge, preserved identity/profile/access history,
+  actual team period transfer/deduplication and bounded chained resolution.
+  Any live access holder stays survivor; no access or personal account is merged
+  or ended. B-BR-EMP-83/84, BUC-EMP-43 and EDR-054 precede behavior. Twelve-way
+  retry/distinct-CAS, opposite merges, proof-wait/stale review/foreign/disabled/
+  late-failure cases, ordinary populated192→193 recovery/RLS/retention and
+  actual HTTP/OpenAPI/router pass. Full affected membership/organization/API
+  race regression passes after recovery from a local disk compilation failure.
+  Full local Quick161s, no vulnerabilities, domain91.2%; build/vet/staticcheck/
+  sqlc/compatibility/plan/format/secret checks pass. Tested backend tree
+  93f595c7f684de83163432c1f11d7237ffb33a64; contract Git blob
+  43a33000eab604f6c2bd04507f9c2e4015721cb5. Required remote check awaits the new
+  head. Next: protected review/integration; this request stops at this task.
+  F1/M1 and managed/GOV-013/native/runtime/legal/staging/production remain open.
+  No merge/wiki/deployment; issue stays open until integration.
+
+- Enterprise EMP-IDN-011, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn011 from published dev b721691a; publish to dev/PR203,
+  [task208](https://github.com/AlexandreZanata/Abastevo/issues/208).
+  [Rehire evidence](../enterprise/evidence/f1-idn011-employee-rehire.md) records
+  fresh current manager authority, exact employee revision, no live period,
+  unmerged termination and immutable original acknowledgements. Profile and
+  ended access remain unchanged; a separate new invitation creates a distinct
+  period. B-BR-EMP-82, BUC-EMP-42 and EDR-053 precede behavior. Actual HTTP,
+  populated migration192 recovery/RLS/retention, twelve-way retry/CAS, foreign/
+  merged/overlap, proof-wait/capability and late-failure checks pass. Affected
+  PostGIS/race, build/vet/static/generation/contracts/compatibility/plan/secret
+  checks and full local Quick pass; Quick159s, no vulnerabilities, domain91.8%.
+  Tested backend tree6407d5836ddd646b8f128528a1e2031dbd41d530;
+  contract Git blob64ecca76b6afb67b7a0b5ffcc28209de7899536d.
+  Required remote check awaits publication. Next: protected review/integration;
+  this request stops here. F1/M1, managed/GOV-013, native/device/operational/
+  late-intake/legal/runtime/staging/production remain open. No merge, wiki or
+  deployment; issue stays open until integration.
+
+- Enterprise EMP-IDN-010, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn010 from published dev63b9365a; publish to dev/PR203,
+  [task207](https://github.com/AlexandreZanata/Abastevo/issues/207).
+  [Offboarding evidence](../enterprise/evidence/f1-idn010-offboarding.md) records
+  fresh manager offboarding and account-bound personal self-leave, reviewed
+  actual settings/team flags, employee retain/terminate choice, original
+  acknowledgements, actual role/source reductions and personal independence.
+  B-BR-EMP-80/81, BUC-EMP-41 and EDR-052 precede behavior. Last-owner, twelve-way
+  retry/CAS, observed proof-wait, late failure/recovery, populated migration191
+  recovery/RLS/retention and actual HTTP/router/contracts pass. Affected real
+  PostGIS/race, static/generation/compatibility/plan/secret checks and local Quick
+  pass; Quick166s, no vulnerabilities, membership domain91.8%. Final binding
+  before private-root reads passes scoped source/unit/static verification.
+  Tested backend tree312293cf96e1729328ea6d9e6379548f1b6f526a;
+  contract Git blob3aadb41b3a0bf9fcf7c873cc1db3320dc05fa0ea.
+  Required remote check awaits publication. Next: protected review/integration;
+  this request stops here. Managed/device/delegation/operational/late-intake
+  producers must integrate before activation. F1/M1, legal/runtime/staging/native/
+  production remain open. No merge/wiki/deployment; issue stays open until merge.
+
+- Enterprise EMP-IDN-009, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn009 from published dev621b6767; publish to dev/PR203,
+  [task206](https://github.com/AlexandreZanata/Abastevo/issues/206).
+  [Membership access evidence](../enterprise/evidence/f1-idn009-membership-access.md)
+  records three fresh guarded manager routes, immediate scoped suspension,
+  reactivation under original valid periods, self/last-owner protection,
+  immutable CAS acknowledgements and actual pending notices. Source reductions
+  stay consumed; personal sessions/other organizations remain independent.
+  B-BR-EMP-78/79, BUC-EMP-40 and EDR-051 precede behavior. Ordinary populated
+  migration190 recovery/RLS/retention, actual HTTP/router/contracts, twelve-way
+  retry/CAS and last-owner/proof-wait/fault races pass. Complete membership and
+  orgaccess race suites, affected organization regression and static/generation/
+  compatibility/plan/secret checks pass; domain93.6%. Full local Quick passed
+  in270s, including the prior-head formatting repair and vulnerability scan.
+  Tested backend tree461a88dd458968b3da374e036b6b7bd9b085f1d6;
+  contract Git blob b8d6848fe0ac0c4249598b34d2c1c38a9ad9ec2b.
+  Required remote check awaits the publication head. Next: protected review/
+  integration; this request stops at this task. F1/M1, managed006..008/GOV-013,
+  native/device/offline, providers/runtime, legal/staging/production remain open.
+  No merge, wiki or deployment is claimed; issue stays open until integration.
+
+- Enterprise EMP-IDN-005, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-idn005 from dev ed603f34; publish to cumulative dev/PR203.
+  [Acceptance evidence](../enterprise/evidence/f1-idn005-invitation-acceptance.md)
+  and [issue205](https://github.com/AlexandreZanata/Abastevo/issues/205) record
+  three fresh personal-cookie preview/accept/decline routes and three guarded
+  manager acceptance/read/confirm/reject routes. Account-bound consent, current
+  issuer/grant checks, one-use immutable outcomes, five-failure lockout and
+  keyed unknown-locator limits pass. Privileged/optional-policy acceptances
+  wait without roles; confirmation, source reductions and exact seven-day
+  expiry retain history. Migration189 is append-only, scoped and recoverable.
+  B-BR-EMP-76/77, BUC-EMP-39 and EDR-050 precede behavior. Full affected real
+  PostGIS/race, populated upgrade/recovery, twelve-way contention, late faults,
+  actual HTTP/OpenAPI/production router and scoped final checks pass. Initial
+  local aggregate timeouts were completed with explicit 20m package limits;
+  no assertion/check was removed. Membership domain95.1%; build/vet/staticcheck/
+  sqlc/compatibility/plan/format/secret checks pass.
+  Tested backend tree c88e5a6d4902d5fff80280d6d1d96e371a9d3938; contract Git
+  blob aa1978be1945e88ce2714eefa9d23d46c5ede75d. Required remote check awaits
+  the publication head. Issue stays open until integration; this request stops
+  at this task. F1/M1, native/device, providers/runtime, legal, staging and
+  production gates remain open. No merge or deployment is claimed.
+
+- Enterprise EMP-IDN-004, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
+  reviewed dev587fb6eb on owned codex/enterprise-idn004; publish to dev/PR203.
+  [Invitation evidence](../enterprise/evidence/f1-idn004-invitation-lifecycle.md)
+  and [issue204](https://github.com/AlexandreZanata/Abastevo/issues/204) record
+  five guarded fresh company routes, literal ORG/SELF grants, unbound INVITED
+  reservations, CAS replacement, metadata-only retries and one-time code/link/QR
+  payload. Migration188 preserves history and captures settings validity,
+  actual contact creation/edit, employee/issuer/organization reductions,
+  observed expiry and pending notices. No account/role/device grant occurs.
+  B-BR-EMP-74/75, BUC-EMP-38 and EDR-049 precede behavior. Full affected real
+  PostGIS/race, 12-way retry/CAS, proof wait/revocation, tenant/secret/late-failure,
+  ordinary populated upgrade/recovery/RLS, actual HTTP/OpenAPI/router and scoped
+  regression checks pass. Membership domain95.6%; build/vet/staticcheck/sqlc/
+  compatibility/plan/format/secret verification accompany publication.
+  Backend tree e2bcc9a10bd5a251c688540b0da5c90a676b9319; contract Git blob
+  a857299a0c2b7cc8302e37c73c6cf6874e2cfccb. Remote required check is pending the
+  new publication head; issue stays open until integration. Next authorized
+  task may be IDN-005 (redemption/consent/attempts); this request stops here.
+  F1/M1 and providers/runtime/legal/staging/native/production gates remain open.
+
+- Antigravity review, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING on owned
+  codex/enterprise-org010 from published dev ca9df3cd; publishing fixes to dev
+  in PR #203 (dev -> main). Scope: AUTH-005/845d1d94 and ORG-010/ca9df3cd.
+  Current transactional proof, literal permission containment, safe reductions,
+  original command receipts/reasons, guarded/limited ownership routes, source
+  participant privacy and current/future handover periods are corrected.
+  Forward migrations186/187 preserve published migrations/history and retain
+  actual source reductions plus pending notices. B-BR-EMP-71..73, BUC-EMP-36/37
+  and EDR-048 record decisions; [review evidence](../enterprise/evidence/f1-antigravity-review.md)
+  supersedes the earlier broad claims below, including fabricated aliases and
+  exceptional-recovery/notification-delivery implications.
+  Full affected real PostGIS/race, adversarial/fault/concurrency, ordinary
+  populated upgrade186/187 recovery/erasure, actual production-router/OpenAPI,
+  staticcheck/build/vet/sqlc/compatibility/plan/format/secret checks pass.
+  Final role codec/migration additions have a passing complete orgaccess rerun.
+  Tested backend tree65707289a58f4805d4778d837ddca670cbc4be91;
+  contract Git blob9ffa2c0b44cb418d4c83fe292d901633572828ef.
+  Remote required check: not yet observed for the publication head. Next:
+  current-head PR review/integration; remaining enterprise/production gates stay
+  open. No next task, merge, wiki or deployment acceptance is claimed.
+
+- Enterprise EMP-ORG-010, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
+  dev 845d1d94 (PR #203, EMP-AUTH-005). Owned branch codex/enterprise-org010
+  publishes to maintained dev (updating PR #203). [Ownership transfer evidence](../enterprise/evidence/f1-org010-ownership-transfer.md)
+  records 4 audited company routes under /v1/orgs/{org_id}/ownership-transfer (propose, read, accept, cancel),
+  7-day proposal validity, 1-pending transfer invariant via partial unique index, personal account invariant
+  (managed accounts rejected per BR-ORG-026), atomic handover in accept preserving the database last-owner
+  trigger (BR-AUTH-006, UC-ORG-09), voluntary step-down to admin, and automated cancellation triggers when
+  target membership is suspended/ended or organization is archived/closed.
+  BR-ORG-026, BR-ORG-034, BR-ORG-035, BR-AUTH-006, UC-ORG-09 and EDR-047 precede behavior.
+  Real PostGIS integration tests (positive propose, negative guards, accept with step down, accept without
+  step down, cancel/decline, automatic membership end trigger) and composed HTTP lifecycle tests pass.
+  OpenAPI v1.yaml lint (vacuum) and check-compat.sh pass with 0 errors. Plan checker passes (0 problems).
+  Next: PR #203 review and dev integration checkpoint; unblocks next open dependent task. Merge and deployment remain separate.
+
+- Enterprise EMP-AUTH-005, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
+  dev 8a48c0a3 (PR #203, EMP-ORG-009). Owned branch codex/enterprise-auth005
+  publishes to maintained dev (updating PR #203). [Role management evidence](../enterprise/evidence/f1-auth005-role-management.md)
+  records 5 audited company routes under /v1/orgs/{org_id}/roles (assign, end, change, read, list),
+  fresh authentication proof, immediate effect, target membership checks, separation of duties
+  (ADMIN cannot assign OWNER; self-assignment and self-modification forbidden), and PostgreSQL P7501
+  last-owner invariant mapped to ErrLastOrgOwner. Single atomic audit event per command
+  (auth.assignment.created / auth.assignment.ended) with exact replay idempotency.
+  BR-AUTH-003, BR-AUTH-006, BR-AUTH-007, BR-AUTH-010, BR-AUTH-014, UC-AUTH-01/02 and EDR-046 precede behavior.
+  Real PostGIS integration tests (positive assign/end/change, concurrent last-owner race contention,
+  negative guards, replay idempotency, cursor list) and composed HTTP lifecycle tests pass.
+  OpenAPI v1.yaml lint (vacuum) and check-compat.sh pass with 0 errors. Plan checker passes (0 problems).
+  Next: PR #203 review and dev integration checkpoint; unblocks EMP-ORG-010. Merge and deployment remain separate.
+
+- Enterprise EMP-ORG-009, 2026-11-12: LOCAL_DONE / INTEGRATION_PENDING from
+  integrated main/dev 6a19bcc7 (PR202, including Claude fixes through 69d02109).
+  Owned branch codex/enterprise-org009 publishes to maintained dev while its
+  other checkout remains occupied. [Suspension evidence](../enterprise/evidence/f1-org009-suspension.md)
+  records two actual admin-cookie routes, transactional fresh proof/replay,
+  retained periods, archived causes, pending owner notices and historical intake.
+  B-BR-EMP-69/70, BUC-EMP-35 and EDR-045 precede behavior. Real PostGIS/race
+  CAS/retry/intake, revoked/stale proof, late rollback/recovery, company read/write
+  gates and ordinary populated upgrade pass. Full affected suites/OpenAPI,
+  actual production router, scoped static/build/sqlc pass; org domain 91.84%.
+  Tested backend tree 487c9d9003ea055b7ec8b622d319dad8715f01ad;
+  contract blob e69bc7b7f4a25a4277c5c9e444e7399cb4ec048c.
+  Final strict-transport regression is fixed and verified. Plan/format/links/
+  secret review accompany publication. Next: review this dev/main checkpoint;
+  no next task, merge or deployment is authorized by this request. F1/M1,
+  current-head/base CI and the recorded external activation gates stay open.
+
 - Enterprise PR202 final review, 2026-11-12: reviewed head `45230e28`
   (remote checks green) with emphasis on ORG-002..008, IDN-001..003 and
   AUTH-001..004; no critical/high finding. Fixes follow as new commits on dev

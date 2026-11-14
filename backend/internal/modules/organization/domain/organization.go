@@ -288,9 +288,18 @@ func (*SetupError) Error() string        { return ErrSetup.Error() }
 func (*SetupError) Unwrap() error        { return ErrSetup }
 func (e *SetupError) Missing() []Missing { return append([]Missing(nil), e.missing...) }
 
-func (o Organization) activation(facts Conditions) error {
+// SetupChecklist reports the owning activation requirements without changing
+// state or certifying a future command. Callers supply current source facts.
+func (o Organization) SetupChecklist(scope kernel.OrgScope, facts Conditions) ([]Missing, error) {
+	if err := o.check(scope); err != nil {
+		return nil, err
+	}
+	return o.setupMissing(facts)
+}
+
+func (o Organization) setupMissing(facts Conditions) ([]Missing, error) {
 	if facts.ActiveUnits < 0 || facts.ActiveOwners < 0 {
-		return ErrInvalid
+		return nil, ErrInvalid
 	}
 	var missing []Missing
 	if blankName(o.value.Profile.Name) {
@@ -307,6 +316,14 @@ func (o Organization) activation(facts Conditions) error {
 	}
 	if !facts.TermsRecorded {
 		missing = append(missing, MissingTerms)
+	}
+	return missing, nil
+}
+
+func (o Organization) activation(facts Conditions) error {
+	missing, err := o.setupMissing(facts)
+	if err != nil {
+		return err
 	}
 	if len(missing) > 0 {
 		return &SetupError{missing: missing}

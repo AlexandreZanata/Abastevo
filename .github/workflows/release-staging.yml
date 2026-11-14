@@ -158,11 +158,11 @@ jobs:
           set -euo pipefail
           node --version
           node -e 'if (Number(process.versions.node.split(".")[0]) < 20) process.exit(1)'
-      - name: Build landing for the staging origin
+      - name: Build landing for the official origin
         run: |
           set -euo pipefail
           npm --prefix landing ci
-          npm --prefix landing run build -- --origin https://teste.abastevo.com.br
+          npm --prefix landing run build -- --origin https://abastevo.com.br
           npm --prefix landing run check
           npm --prefix landing test
       - name: Build admin web panel into the landing bundle

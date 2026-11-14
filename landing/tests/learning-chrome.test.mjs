@@ -13,10 +13,10 @@ test('learning and legal routes share the home header/footer and resolve home-se
   try {
     build({ projectRoot: root, outDir });
     const home = fs.readFileSync(path.join(outDir, 'index.html'), 'utf8');
-    for (const section of ['guias', 'como-usar', 'privacidade', 'excluir-conta', 'termos']) {
+    for (const section of ['guias', 'como-usar', 'ferramentas', 'privacidade', 'excluir-conta', 'termos', 'sobre', 'politica-editorial']) {
       const files = fs.readdirSync(path.join(outDir, section), { recursive: true })
         .filter((file) => file.endsWith('index.html'));
-      const learning = section === 'guias' || section === 'como-usar';
+      const learning = section === 'guias' || section === 'como-usar' || section === 'ferramentas';
       assert.ok(files.length >= (learning ? 4 : 1), `${section} includes its public routes`);
       for (const file of files) {
         const html = fs.readFileSync(path.join(outDir, section, file), 'utf8');

@@ -1,5 +1,10 @@
 # F1 EMP-PRIV-003 protected device store
 
+Historical V1 source evidence, frozen at the 2026-11-11 entry below. Current
+task closure is the [F2 signed-contact/generation/native acceptance](f2-priv003-protection-completion.md).
+Its actual source and OS results supersede the pending V1 limitations; this
+record retains its original status, tested revision and diagnostics.
+
 Status: IN_PROGRESS
 Validation: HOST_PASS / NATIVE_PENDING
 

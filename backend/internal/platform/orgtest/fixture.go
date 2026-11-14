@@ -132,6 +132,21 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 	f.runtimeConfig.ConnConfig.Password = password
 	f.runtimeConfig.MinConns = 0
 	f.Runtime = f.RuntimePool(t, 1)
+	// Installed device projections run in every existing membership-ending
+	// transaction. The ordinary fixture role needs the exact source effect
+	// privileges even when the selected membership has no enrolled device.
+	var devices bool
+	if err := f.Admin.QueryRow(ctx, `SELECT to_regclass('public.org_device_enrollments') IS NOT NULL`).Scan(&devices); err != nil {
+		t.Fatal(err)
+	}
+	if devices {
+		if _, err := f.Admin.Exec(ctx, "GRANT SELECT,UPDATE ON org_device_enrollments TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	f.GrantFleetUsage(t)
+	f.GrantMeterUsage(t)
 
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -215,6 +230,193 @@ func (f *Fixture) GrantSettingsLifecycle(t *testing.T) {
 	if installed {
 		r := pgx.Identifier{f.RuntimeRole}.Sanitize()
 		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_versions,org_settings_designations,org_settings_notices TO "+r+"; GRANT SELECT,INSERT,UPDATE ON org_settings_heads TO "+r); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantOwnershipLifecycle enables only this disposable runtime's ownership
+// receipts and reduction projections when their additive tables exist. Prior-chain upgrade
+// fixtures keep their original grants; this is not runtime provisioning.
+func (f *Fixture) GrantOwnershipLifecycle(t *testing.T) {
+	t.Helper()
+	f.GrantInvitationLifecycle(t)
+	var transfers, notices, commands bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_ownership_transfers') IS NOT NULL,to_regclass('public.org_ownership_notices') IS NOT NULL,to_regclass('public.org_ownership_commands') IS NOT NULL`).Scan(&transfers, &notices, &commands); e != nil {
+		t.Fatal(e)
+	}
+	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+	if transfers {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,UPDATE ON org_ownership_transfers TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if notices {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_ownership_notices TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+	if commands {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_ownership_commands TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+}
+
+// GrantInvitationLifecycle is limited to this disposable fixture runtime. It
+// preserves previous-chain upgrade fixtures and is not production provisioning.
+func (f *Fixture) GrantInvitationLifecycle(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_invitations') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON org_invitations TO "+role+";GRANT SELECT,INSERT ON org_invitation_commands,org_invitation_notices TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+	var redemption bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_invitation_acceptances') IS NOT NULL`).Scan(&redemption); e != nil {
+		t.Fatal(e)
+	}
+	if redemption {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_invitation_locators,org_invitation_person_commands,org_invitation_acceptance_notices TO "+role+";GRANT SELECT,INSERT,UPDATE ON org_invitation_acceptances TO "+role); e != nil {
+			t.Fatal(e)
+		}
+	}
+
+}
+
+// GrantMembershipAccessCommands enables only this disposable runtime's new
+// manual lifecycle receipts/notices, never production role provisioning.
+func (f *Fixture) GrantMembershipAccessCommands(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_membership_access_commands') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_membership_access_commands,org_membership_access_notices TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
+			t.Fatal(e)
+		}
+	}
+}
+
+// GrantOffboardingCommands is disposable test provisioning, never runtime grants.
+func (f *Fixture) GrantOffboardingCommands(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_offboarding_commands') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_offboarding_commands,org_offboarding_notices TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
+			t.Fatal(e)
+		}
+	}
+}
+
+// GrantRehireCommands provisions only the disposable ordinary test role.
+func (f *Fixture) GrantRehireCommands(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_employee_rehire_commands') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_employee_rehire_commands TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
+			t.Fatal(e)
+		}
+	}
+}
+
+// GrantEmployeeMergeCommands provisions only the disposable ordinary test role.
+func (f *Fixture) GrantEmployeeMergeCommands(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_employee_merge_commands') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_employee_merge_commands TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
+			t.Fatal(e)
+		}
+	}
+}
+
+// GrantDeviceCommands provisions only the disposable ordinary test role. Source
+// rows retain real locks/proof checks; no privileged verifier replaces them.
+func (f *Fixture) GrantDeviceCommands(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_device_commands') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_device_commands TO "+role+
+			";GRANT SELECT,INSERT,UPDATE ON org_device_enrollments TO "+role+
+			";GRANT SELECT,UPDATE ON accounts,account_session_families,identity_keys,identity_contributors,identity_challenges,account_contributor_bindings TO "+role+
+			";GRANT SELECT ON payment_billing_exits TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantFleetUsage provisions only the columns read by the installed current
+// unit-usage projection. Earlier embedded migration images remain unchanged.
+func (f *Fixture) GrantFleetUsage(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_assets') IS NOT NULL AND to_regclass('public.org_asset_unit_allocations') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,state) ON org_assets TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+";GRANT SELECT(org_id,asset_id,unit_id,ended_at) ON org_asset_unit_allocations TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantMeterUsage adds only the actual columns read by installed asset-use and
+// meter-presence guards. It does not authorize reading observation evidence.
+func (f *Fixture) GrantMeterUsage(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_meters') IS NOT NULL AND to_regclass('public.org_meter_readings') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,asset_id,installed_at,installed_submicro,removed_at) ON org_meters TO "+role+";GRANT SELECT(org_id,meter_id) ON org_meter_readings TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_meter_held_readings') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// Asset usage counts held facts; the reading guard checks the reserved
+		// held identity. Neither exposes any held value or observation.
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,reading_id,operation_id) ON org_meter_held_readings TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantMeterReviews enables current read projections only. The owning command
+// fixture must explicitly grant inserts and the item-row lock for decisions.
+func (f *Fixture) GrantMeterReviews(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_sync_review_items') IS NOT NULL AND to_regclass('public.org_meter_held_readings') IS NOT NULL AND to_regclass('public.org_sync_review_resolutions') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT ON org_sync_review_items,org_meter_held_readings,org_sync_review_resolutions,org_sync_operations,org_sync_acknowledgements TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 			t.Fatal(err)
 		}
 	}

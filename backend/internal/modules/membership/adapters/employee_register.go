@@ -87,7 +87,7 @@ func employeeRow(scope kernel.OrgScope, row q.GetEmployeeRecordRow) (d.EmployeeR
 	if err != nil {
 		return d.EmployeeRecord{}, app.ErrRegisterUnavailable
 	}
-	result, err := d.RehydrateEmployeeRecord(scope, d.EmployeeRecordSnapshot{Employee: e, ProfileRevision: row.ProfileRevision, Profile: d.EmployeeProfile{DisplayName: row.DisplayName, RegistrationNumber: row.RegistrationNumber, WorkEmail: row.WorkEmail, WorkPhone: row.WorkPhone, JobTitle: row.JobTitle, HomeUnitID: row.HomeUnitID}})
+	result, err := d.RehydrateEmployeeRecord(scope, d.EmployeeRecordSnapshot{Employee: e, ProfileRevision: row.ProfileRevision, AccessState: d.EmployeeAccessState(row.AccessState), Profile: d.EmployeeProfile{DisplayName: row.DisplayName, RegistrationNumber: row.RegistrationNumber, WorkEmail: row.WorkEmail, WorkPhone: row.WorkPhone, JobTitle: row.JobTitle, HomeUnitID: row.HomeUnitID}})
 	if err != nil {
 		return d.EmployeeRecord{}, app.ErrRegisterUnavailable
 	}
@@ -169,6 +169,9 @@ func (s *EmployeeStore) WriteEmployee(ctx context.Context, scope kernel.OrgScope
 			state := d.EmployeeState(prior.ResultState)
 			if state != d.EmployeeActive && state != d.EmployeeInactive && state != d.EmployeeTerminated {
 				return app.ErrRegisterUnavailable
+			}
+			if e := s.Authority.CheckEmployeeTx(ctx, tx, scope, a, member, target, app.EmployeeManage); e != nil {
+				return e
 			}
 			result = app.EmployeeResult{EmployeeID: prior.EmployeeID, State: state, ProfileRevision: prior.ResultProfileRevision, IdentityRevision: prior.ResultIdentityRevision}
 			replay = true
@@ -268,6 +271,12 @@ func (s *EmployeeStore) WriteEmployee(ctx context.Context, scope kernel.OrgScope
 		}
 		if repeated {
 			return app.ErrRegisterUnavailable
+		}
+		// Profile/contact projection and receipt SQL may have waited after the
+		// entry proof check. Retain the source locks and reject expired authority
+		// before exposing any acknowledgement; the whole change then rolls back.
+		if e := s.Authority.CheckEmployeeTx(ctx, tx, scope, a, member, target, app.EmployeeManage); e != nil {
+			return e
 		}
 		readyToCommit = true
 		return nil

@@ -704,6 +704,136 @@ removed on rollback; the prior API remains schema-compatible. Test with
 an explicit disposable `ANPFUEL_TEST_DATABASE_URL`.
 [Architecture and evidence](../docs/enterprise/09-architecture.md#31-implemented-company-account-session).
 
+### Scoped offline operation intake (EMP-OFFL-002)
+
+The default-off enterprise composition includes signed `POST
+/v1/orgs/{org_id}/sync/operations`. The frozen wrapper carries the current
+family/access proof and complete immutable operations. Current personal proof,
+identity-v1 signature/nonce, exact configured origin, membership and enrollment
+are resolved independently. Every operation is fully parsed and bound before
+intake admission or prefix effects; cookies, bearer authorization and CSRF
+headers do not authorize this route. The response wraps canonical per-operation
+ACKs in `schema_version:1` and `acknowledgements` in request order.
+
+Each operation has its own ordinary scoped transaction. Immutable claims,
+final receipts and applied-effect proofs are separate; a dependency retry is
+not final and a held review is not an applied effect. Owning handlers establish
+actual current command/record/reference coverage before a claim, and confirm
+authority after waits/projection. Replay requires current protected read
+coverage and preserves original canonical ACK bytes. A final transport source
+check withholds the buffered private response on revocation; previously
+committed operations remain available for an authorized retry.
+
+No business handler, historical/grace producer or production transport budget
+is installed by this task. Source registrations require actual handlers,
+explicit `IntakePlans`, real `IntakeConsumers` and a reviewed `IntakeBudget`.
+`enterprisesuite.IntakeEvents` validates the actual callbacks with the existing
+event handler; install that same handler in the existing Dispatcher before
+activating the first real feature. No default probe, no-op consumer, permission
+or numeric production allowance is supplied. The logical review event persists
+as `offl.operation.review`, preserving the applied audit/outbox vocabulary.
+Offline delivery delay does not establish `CLOCK_SKEW`.
+
+Apply additive migration196 first. It creates no runtime login or grants and
+does not change the compatibility floor. Review SELECT/INSERT on the three
+`org_sync_*` ledgers and column-only UPDATE(operation_id) on claims for
+PostgreSQL row locking; append-only triggers still reject updates, deletes and
+truncation, including empty/no-op statements. Existing source/account/key/nonce,
+root/role/capability, audit/outbox and queue privileges remain required. No
+payload, token, family or signature is stored in the ledger. Company provenance
+survives personal unlink; no personal export access or arbitrary receipt TTL
+is introduced. Rollback disables intake and preserves receipts/queued work.
+
+Use an explicit disposable local `ANPFUEL_TEST_DATABASE_URL` for critical tests:
+
+```sh
+go test -race ./internal/modules/orgsync/... -count=1
+go test -race -tags=integration -timeout=10m ./internal/modules/orgsync/adapters ./internal/modules/organization/adapters -run 'Test(Intake|SyncIntake|OrganizationSync|SyncCurrentDevice|SyncAuthority)' -count=1
+go test -race -tags=integration ./internal/platform/orgquota -run Intake -count=1
+```
+
+The [task evidence](../docs/enterprise/evidence/f2-offl002-intake-ledger.md)
+distinguishes local synthetic acceptance, remaining feature integrations and
+operator/legal/release gates.
+
+### Current account company contexts (EMP-IDN-016)
+
+The same default-off company composition provides `POST
+/v1/org-access/contexts/list` and `/contexts/read`. Both require the dedicated
+company cookie, `X-CSRF`, exact configured Origin/Host and a current personal
+existing-account source family. No bearer/signed authority or client account
+selector is accepted. List scans at most100 own-account membership references
+in UUID order; continue on `next_after_org_id` even for an empty eligible page.
+Read requires the exact organization/membership period and rechecks current
+account, employee, membership, root, capability and assignments. Returned C1
+permissions/grant options describe controls only; commands recheck authority.
+Freshness expiry removes employee/invitation management options. Nothing is
+stored as cached authority or added to the public/community/personal plane.
+
+Apply additive migration195 before the API. Its SELECT-only membership policy
+is confined to the unselected, account-bound bootstrap; repositories clear that
+transaction-local context before installing a private organization scope. The
+migration owner must own `org_memberships`; it creates no runtime grants or
+source data. Runtime remains an ordinary login without ownership, role change,
+superuser or BYPASSRLS. Review existing table-specific source grants: SELECT
+on memberships/employee identities/role assignments/roots/account deletion
+reservations; SELECT and required row-lock UPDATE grants on accounts/source
+families/company sessions/roots/capabilities; and existing settings bootstrap
+function plus its heads/versions grants. API enablement, runtime credential
+provisioning and staging validation remain independent operator work.
+
+```sh
+go test -race ./internal/modules/orgaccess/domain -run TestContextHints -count=1
+go test -race -tags=integration ./internal/modules/organization/adapters -run '^TestAccountContext' -count=1
+go test ./internal/platform/apicontract -run TestAccountContext -count=1
+```
+
+These tests require an explicit disposable local `ANPFUEL_TEST_DATABASE_URL`.
+
+### Organization device enrolments (EMP-IDN-015)
+
+The default-off enterprise composition now has a distinct signed existing-account
+plane: `POST /v1/orgs/{org_id}/devices/enroll` and `/devices/check`. Both require
+the actual personal family/access proof and registered bound P256 signing key;
+only enrolment is a bootstrap exception to the current-enrolment check. It does
+not bypass current membership, employee, capability, proof or source locks.
+The existing identity-v1 signature clock envelope is preserved and expiry is
+rechecked against database time after waits. Client-selected proof flags, keys,
+account IDs, counts and limits are not authority.
+
+`ANPFUEL_ENTERPRISE_DEVICE_LIMIT` is server-owned deployment configuration,
+default3, range1–5. Slot counts and insertion serialize under the source root;
+an operator lowering the limit does not erase existing periods. Managed
+activation/recovery remains uninstalled behind GOV-013/IDN-006..008.
+
+Fresh cookie self list/revoke and fresh `idn.credential.manage` manager list/revoke
+operate under `/v1/orgs/{org_id}/memberships/{membership_id}/devices/`. Managers
+can reduce access while the organization is suspended/archived or its pilot flag
+is disabled. Responses contain scoped enrolment metadata, never personal session
+families, contributor/key inventory or other organizations. Last-sync remains
+null until a real sync producer exists.
+
+Append-only migration194 installs FORCE-RLS periods, immutable audited command
+receipts and membership-ending revocation. LOST_OR_COMPROMISED bars that key
+throughout this organization. ACCESS_ENDED remains terminal for the old period;
+an explicitly invited distinct ACTIVE membership can create a new enrolment for
+the still-valid personal key. Neither class grants normal access or an intake
+window. Personal families/keys/cloud devices and other organizations survive.
+Native erase/acceptance, future intake, production grants/providers and release
+certification remain separate gates; no immediate remote wipe is promised.
+
+Runtime needs the reviewed scoped device table/receipt and source row-lock/nonce
+privileges; migration194 creates no production grants. Its migration owner must
+own `org_memberships` to install the ending trigger. The ordinary disposable
+upgrade test proves missing grants fail rather than silently provisioning them.
+Run the real source/protocol/upgrade suite with an explicit disposable PostGIS:
+
+```sh
+go test -race -tags=integration -timeout=20m ./internal/modules/organization/adapters -run TestOrganizationDevice -count=1
+```
+
+[Device acceptance evidence](../docs/enterprise/evidence/f1-idn015-device-registry.md).
+
 ### Private original transfers (EMP-PLAT-006)
 
 `orgmedia` supplies bounded organization storage and audited member-bound
@@ -927,3 +1057,72 @@ Keep **delay + timeout + 5s < terminationGracePeriodSeconds**. The staging
 manifest pins both values and 60s grace. Workers stop new claims, join all
 loops and finalize held leases using a separate bounded 5s fenced operation;
 expiry remains recovery when the database cannot acknowledge shutdown.
+
+
+### Private asset source and rollout grants (EMP-FLEET-002)
+
+Migration197 adds the private fleet foundation and extends existing unit-use
+queries to count actual current asset allocations while retaining employee/team
+counts. Existing unit-source database principals also require these narrow
+column grants when the tables are installed:
+
+```sql
+GRANT SELECT (org_id, id, state) ON org_assets TO runtime_role;
+GRANT SELECT (org_id, asset_id, unit_id, ended_at)
+  ON org_asset_unit_allocations TO runtime_role;
+```
+
+Use the independently provisioned ordinary runtime principal; retain forced
+RLS and NOSUPERUSER/NOBYPASSRLS/non-owner access. Coordinate these grants with
+migration rollout before serving the affected source. They are an explicit
+old-image compatibility prerequisite, not automatically verified live state.
+Fleet's own principal additionally needs its reviewed per-table command/read/
+audit privileges. The versioned SQL product projection is read-only at runtime.
+The test fixture applies only the installed source's required columns and keeps
+prior migration chains unchanged.
+
+Fleet routes reuse the existing enterprise flag, organizations capability and
+fresh current company proof. They do not activate real companies or provision
+production credentials/grants. The [current source evidence](../docs/enterprise/evidence/f2-fleet002-asset-persistence.md)
+records LOCAL_DONE / INTEGRATION_PENDING after actual migration198 powered
+activation is integrated and tested. An unavailable provider is never an empty/
+positive meter fact; full Meter history/review and release remain separate.
+
+
+### Immutable meter source and exact time (EMP-METER-002)
+
+Migration198 installs actual organization meters, initial segments and insert-only
+readings. Declared instants retain nine fractional digits as a microsecond floor
+plus a0..999 nanosecond remainder; receipt time remains the actual DB clock.
+Latest valid evidence is derived from observation/receipt/ID order. Meter source
+and maintained projection acceptance are separate.
+
+When198 is installed, existing asset-use/activation principals also need these
+narrow source columns before serving the previous image:
+
+```sql
+GRANT SELECT (org_id, id, asset_id, installed_at, installed_submicro, removed_at)
+  ON org_meters TO runtime_role;
+GRANT SELECT (org_id, meter_id) ON org_meter_readings TO runtime_role;
+```
+
+The actual meter principal additionally needs SELECT/INSERT on org_meters,
+org_meter_segments, org_meter_readings and org_meter_commands, plus UPDATE(id)
+on org_meters solely for row locking. Immutable triggers refuse product UPDATE,
+DELETE and TRUNCATE even if an overly broad grant is accidentally installed.
+Existing reviewed fleet/current-proof/audit/sync privileges remain necessary;
+these examples do not provision or certify a live login. Rehearse migration,
+grants and previous-image compatibility together using an ordinary non-owner
+NOSUPERUSER/NOBYPASSRLS principal; do not weaken forced RLS or applied migrations.
+
+The enabled synthetic runtime registers meter.reading.record with exact owned
+accepted/rejected atomic outcomes. It creates no placeholder async consumer.
+The explicit weighted transport allowance inherits identity v1 write200/hour on
+each organization/account/device axis. Production measurement/cleanup and actual
+Android producer/reference/assignment acceptance remain separate. Capability
+snapshot locking precedes the intake root without requiring enabled state for
+original receipt reads; new writes require the actual enabled capability and
+ACTIVE organization. Web installation retains real WEB_SESSION provenance,
+never a fabricated physical device. Real receipt/legal/release gates remain.
+See [current meter evidence](../docs/enterprise/evidence/f2-meter002-persistence-intake.md)
+for accepted source and still-open whole-task cases.

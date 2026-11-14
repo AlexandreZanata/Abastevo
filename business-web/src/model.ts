@@ -1,10 +1,12 @@
 // Company UI values carry account and membership identity explicitly.
 export interface Organization { id: string; name: string; membershipId: string }
 export interface MembershipSnapshot { accountId: string; organizations: Organization[] }
-export interface Authority { accountId: string; organization: Organization }
-export type Route = { kind: 'login' | 'overview' | 'not-found' } | { kind: 'organization'; id: string };
+export interface InvitationGrant { role: string; scope: 'ORG' | 'SELF' }
+export interface Authority { accountId: string; organization: Organization; permissions?: string[]; invitationGrants?: InvitationGrant[]; invitationValidityDays?: number }
+export type Route = { kind: 'login' | 'overview' | 'not-found' | 'create' } | { kind: 'organization' | 'setup'; id: string };
 export const HOME = '/empresas/';
 export const LOGIN = '/empresas/entrar/';
+export const CREATE = '/empresas/criar/';
 export function isUuid(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(value) && value !== '00000000-0000-0000-0000-000000000000';
 }
@@ -12,12 +14,19 @@ export function route(path: string, search = ''): Route {
   if (search !== '') return { kind: 'not-found' };
   if (path === HOME) return { kind: 'overview' };
   if (path === LOGIN) return { kind: 'login' };
+  if (path === CREATE) return { kind: 'create' };
+  const setup = /^\/empresas\/organizacoes\/([^/]+)\/configuracao\/$/.exec(path);
+  if (setup) return isUuid(setup[1]) ? { kind: 'setup', id: setup[1] } : { kind: 'not-found' };
   const match = /^\/empresas\/organizacoes\/([^/]+)\/$/.exec(path);
   return match && isUuid(match[1]) ? { kind: 'organization', id: match[1] } : { kind: 'not-found' };
 }
 export function organizationPath(id: string): string {
   if (!isUuid(id)) throw new Error('Invalid organization reference');
   return `/empresas/organizacoes/${id}/`;
+}
+export function setupPath(id: string): string {
+  if (!isUuid(id)) throw new Error('Invalid organization reference');
+  return `/empresas/organizacoes/${id}/configuracao/`;
 }
 export function record(value: unknown): Record<string, unknown> {
   return value !== null && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -29,5 +38,6 @@ export function validOrganization(value: unknown): value is Organization {
 export function validSnapshot(value: unknown, accountId: string): value is MembershipSnapshot {
   const v = record(value);
   return v.accountId === accountId && isUuid(accountId) && Array.isArray(v.organizations) &&
-    v.organizations.every(validOrganization) && new Set(v.organizations.map(o => o.id)).size === v.organizations.length;
+    v.organizations.every(validOrganization) && new Set(v.organizations.map(o => o.id)).size === v.organizations.length &&
+    new Set(v.organizations.map(o => o.membershipId)).size === v.organizations.length;
 }

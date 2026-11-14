@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AssignmentTurnedIn
+import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.CalendarMonth
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.DarkMode
@@ -274,6 +275,22 @@ fun ProfileScreen(
                         )
                         HorizontalDivider()
                     }
+                    ProfileToolItem(
+                        icon = Icons.Default.Business,
+                        title = stringResource(R.string.enterprise_context_entry),
+                        subtitle = stringResource(R.string.enterprise_context_intro),
+                        onClick = { onNavigate(Routes.ENTERPRISE_CONTEXT) },
+                        modifier = Modifier.testTag("enterprise-context-entry"),
+                    )
+                    HorizontalDivider()
+                    ProfileToolItem(
+                        icon = Icons.Default.Business,
+                        title = stringResource(R.string.enterprise_invitation_entry),
+                        subtitle = stringResource(R.string.enterprise_invitation_entry_hint),
+                        onClick = { onNavigate(Routes.ENTERPRISE_INVITATION) },
+                        modifier = Modifier.testTag("enterprise-invitation-entry"),
+                    )
+                    HorizontalDivider()
                     ProfileToolItem(
                         icon = Icons.Default.DirectionsCar,
                         title = stringResource(R.string.profile_tool_vehicles_title),

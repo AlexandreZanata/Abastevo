@@ -280,6 +280,21 @@ func (q *Queries) LockAccount(ctx context.Context, id pgtype.UUID) (Account, err
 	return i, err
 }
 
+const lockFreshOperatorSession = `-- name: LockFreshOperatorSession :one
+SELECT id FROM admin_sessions
+WHERE id=$1::uuid AND revoked_at IS NULL
+ AND created_at<=clock_timestamp() AND created_at>clock_timestamp()-interval '15 minutes'
+ AND last_seen_at>clock_timestamp()-interval '30 minutes' AND expires_at>clock_timestamp()
+FOR UPDATE
+`
+
+func (q *Queries) LockFreshOperatorSession(ctx context.Context, sessionID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, lockFreshOperatorSession, sessionID)
+	var id pgtype.UUID
+	err := row.Scan(&id)
+	return id, err
+}
+
 const lockLoginWindow = `-- name: LockLoginWindow :one
 INSERT INTO admin_login_attempts (scope, subject, window_start, failures)
 VALUES ($1, $2, $3, 0)

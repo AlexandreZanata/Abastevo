@@ -108,6 +108,16 @@ func TestOnboardingReceiptAndUnitIsolationAndTermsConstraints(t *testing.T) {
 	if _, err := f.Admin.Exec(t.Context(), "GRANT ALL ON org_onboarding_commands,org_units TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+"; GRANT TRUNCATE ON org_unit_commands,org_employee_profiles,org_employee_commands,org_employee_unit_clearings,org_teams,org_team_links,org_team_commands TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
+	// TRUNCATE org_units CASCADE also reaches every later referencing history
+	// table (assets, meters, held facts...). Grant the whole FK closure so the
+	// append-only triggers, not a missing privilege, must refuse it.
+	var closure string
+	if err := f.Admin.QueryRow(t.Context(), `WITH RECURSIVE r(oid) AS(SELECT 'org_units'::regclass::oid UNION SELECT c.conrelid FROM pg_constraint c JOIN r ON c.confrelid=r.oid WHERE c.contype='f') SELECT string_agg(format('%I',relname),',') FROM pg_class WHERE oid IN(SELECT oid FROM r)`).Scan(&closure); err != nil || closure == "" {
+		t.Fatal("truncate closure unavailable", err)
+	}
+	if _, err := f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON "+closure+" TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	for _, statement := range []string{`UPDATE org_onboarding_commands SET result_revision=result_revision+1`, `DELETE FROM org_onboarding_commands`, `TRUNCATE org_units CASCADE`} {
 		err := database.WithOrgTx(t.Context(), f.Runtime, scope, func(tx pgx.Tx) error { _, err := tx.Exec(t.Context(), statement); return err })
 		schemaCode(t, err, "55000")

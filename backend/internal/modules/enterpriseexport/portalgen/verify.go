@@ -66,14 +66,26 @@ var (
 	fiscalRecordIDShape   = regexp.MustCompile(`^[0-9a-f]{24}$`)
 	cpfTextPattern        = regexp.MustCompile(`(^|[^0-9A-Za-z])([0-9]{11}|[0-9]{3}\.[0-9]{3}\.[0-9]{3}-[0-9]{2})([^0-9A-Za-z]|$)`)
 	rawScriptTag          = regexp.MustCompile(`<script\b[^>]*>`)
-	allowedScript         = regexp.MustCompile(`^<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>$`)
+	allowedScript         = regexp.MustCompile(`^(?:<script type="module" src="/assets/portal\.[0-9a-f]{8}\.js" defer>|<script type="application/ld\+json">)$`)
 	unsafeAttribute       = regexp.MustCompile(`(?i)<[^>]*\sonerror\s*=`)
 	unsafeURL             = regexp.MustCompile(`(?i)(?:href|src)="\s*javascript:`)
 	assetRef              = regexp.MustCompile(`(?:href|src)="(/assets/[^"]+)"`)
 	htmlRef               = regexp.MustCompile(`(?:href|src)="([^"]+)"`)
 	metaRobots            = regexp.MustCompile(`<meta name="robots" content="([^"]+)">`)
+	canonicalLink         = regexp.MustCompile(`<link rel="canonical" href="([^"]+)">`)
 	shaPrefixName         = regexp.MustCompile(`^portal\.([0-9a-f]{8})\.(css|js)$`)
 )
+
+// LandingRoutes are the same-origin landing pages a portal page may link
+// root-relatively when the landing shares the portal origin. Any other
+// root-relative link must resolve to an artifact file.
+var LandingRoutes = map[string]bool{
+	"/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,
+	"/excluir-conta/": true, "/termos/": true, "/sobre/": true, "/politica-editorial/": true,
+	"/guias/etanol-ou-gasolina/": true, "/guias/como-ler-precos/": true, "/guias/pesquisa-anp/": true,
+	"/ferramentas/": true, "/ferramentas/etanol-ou-gasolina/": true, "/ferramentas/custo-de-viagem/": true,
+	"/ferramentas/consumo-medio/": true, "/ferramentas/custo-por-km/": true, "/ferramentas/encher-o-tanque/": true,
+}
 
 type VerifyOptions struct {
 	SiteURL            string
@@ -322,6 +334,7 @@ func walkArtifact(dir string) ([]string, error) {
 var officialOnlyAllowed = []*regexp.Regexp{
 	regexp.MustCompile(`^fiscalizacao/(index\.html|pagina/[0-9]+/index\.html|registro/[0-9a-f]{24}/index\.html)$`),
 	regexp.MustCompile(`^(metodologia/index\.html|404\.html|robots\.txt|sitemap\.xml|portal-manifest\.json)$`),
+	sitemapChildPath,
 	regexp.MustCompile(`^assets/portal\.[0-9a-f]{8}\.(css|js)$`),
 }
 
@@ -761,6 +774,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 		maxShard = DefaultMaxShardGzip
 	}
 	indexable := map[string]bool{}
+	canonicals := map[string]string{}
 	sitemapSeen := false
 	sizer := newGzipSizer()
 	for path := range files {
@@ -784,10 +798,23 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 			if len(robots) != 2 {
 				return VerifyResult{}, fmt.Errorf("portalcheck: page lacks robots meta")
 			}
-			if string(robots[1]) == "index,follow" {
+			switch string(robots[1]) {
+			case "index,follow":
 				indexable[path] = true
-			} else if string(robots[1]) != "noindex,nofollow" {
+			case "noindex,follow", "noindex,nofollow":
+			default:
 				return VerifyResult{}, fmt.Errorf("portalcheck: unexpected robots value")
+			}
+			// D-SEO-03: official record pages and fiscalização pagination
+			// are never indexable.
+			if indexable[path] && (strings.HasPrefix(path, "fiscalizacao/registro/") || strings.HasPrefix(path, "fiscalizacao/pagina/")) {
+				return VerifyResult{}, fmt.Errorf("portalcheck: indexable official record or pagination %s", path)
+			}
+			if err := checkStructuredData(path, body); err != nil {
+				return VerifyResult{}, err
+			}
+			if canonical := canonicalLink.FindSubmatch(body); len(canonical) == 2 {
+				canonicals[path] = string(canonical[1])
 			}
 			if err := checkHTMLReferences(dir, files, path, body); err != nil {
 				return VerifyResult{}, err
@@ -822,14 +849,14 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 			if compressed > result.LargestCSSGzipBytes {
 				result.LargestCSSGzipBytes = compressed
 			}
-		case path == "sitemap.xml":
-			sitemapSeen = true
+		case path == "sitemap.xml" || strings.HasPrefix(path, "sitemaps/"):
+			sitemapSeen = sitemapSeen || path == "sitemap.xml"
 			if int64(len(body)) > MaxSitemapBytes {
 				return VerifyResult{}, &BudgetError{Msg: "portalcheck: sitemap bytes budget exceeded"}
 			}
 		}
 	}
-	sitemapURLs, err := checkSitemap(dir, files, indexable, sitemapSeen, opts.SiteURL)
+	sitemapURLs, err := checkSitemap(dir, files, indexable, canonicals, sitemapSeen, opts.SiteURL)
 	if err != nil {
 		return VerifyResult{}, err
 	}
@@ -864,6 +891,30 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 	}
 	result.InitialViewGzipBytes = initial
 	return result, nil
+}
+
+// checkStructuredData requires every JSON-LD block to be one valid JSON
+// document without ratings or offers (B-BR-SEO-06).
+func checkStructuredData(path string, body []byte) error {
+	const open, closing = `<script type="application/ld+json">`, `</script>`
+	for rest := body; ; {
+		start := bytes.Index(rest, []byte(open))
+		if start < 0 {
+			return nil
+		}
+		rest = rest[start+len(open):]
+		end := bytes.Index(rest, []byte(closing))
+		if end < 0 || !json.Valid(rest[:end]) {
+			return fmt.Errorf("portalcheck: invalid JSON-LD in %s", path)
+		}
+		block := rest[:end]
+		for _, forbidden := range []string{`"aggregateRating"`, `"review"`, `"offers"`} {
+			if bytes.Contains(block, []byte(forbidden)) {
+				return fmt.Errorf("portalcheck: JSON-LD %s in %s", forbidden, path)
+			}
+		}
+		rest = rest[end:]
+	}
 }
 
 // gzipSizer measures default-level gzip sizes with one reused compressor
@@ -918,7 +969,7 @@ func checkHTMLReferences(dir string, files map[string]FileDigest, path string, b
 		if strings.HasSuffix(target, "/") {
 			target += "index.html"
 		}
-		if _, ok := files[target]; !ok {
+		if _, ok := files[target]; !ok && !LandingRoutes[ref] {
 			return fmt.Errorf("portalcheck: broken link %s in %s", ref, path)
 		}
 	}
@@ -947,38 +998,39 @@ func checkMixedVersionAssets(dir string, files map[string]FileDigest) error {
 	return nil
 }
 
-func checkSitemap(dir string, files map[string]FileDigest, indexable map[string]bool, sitemapSeen bool, siteURL string) (int, error) {
+// checkSitemap verifies the sitemap index and every child sitemap: same
+// origin, no duplicates, valid lastmod, size limits, every URL an indexable
+// self-canonical artifact page, every indexable page listed, and no child
+// file left unreferenced.
+func checkSitemap(dir string, files map[string]FileDigest, indexable map[string]bool, canonicals map[string]string, sitemapSeen bool, siteURL string) (int, error) {
 	robotsRaw, err := os.ReadFile(filepath.Join(dir, "robots.txt"))
 	if err != nil {
 		return 0, fmt.Errorf("portalcheck: robots.txt unavailable")
 	}
 	robots := string(robotsRaw)
-	if sitemapSeen {
-		if !strings.Contains(robots, "Allow: /") || strings.Contains(robots, "Disallow: /") {
-			return 0, fmt.Errorf("portalcheck: sitemap with disallow robots")
+	children := map[string]bool{}
+	for path := range files {
+		if strings.HasPrefix(path, "sitemaps/") {
+			if !sitemapChildPath.MatchString(path) {
+				return 0, fmt.Errorf("portalcheck: unexpected sitemap file %s", path)
+			}
+			children[path] = true
 		}
-	} else {
+	}
+	if !sitemapSeen {
 		if !strings.Contains(robots, "Disallow: /") || strings.Contains(robots, "Allow: /") {
 			return 0, fmt.Errorf("portalcheck: noindex artifact lacks disallow robots")
 		}
 		if len(indexable) != 0 {
 			return 0, fmt.Errorf("portalcheck: indexable page in noindex artifact")
 		}
-		if strings.Contains(robots, "Sitemap:") {
+		if strings.Contains(robots, "Sitemap:") || len(children) != 0 {
 			return 0, fmt.Errorf("portalcheck: sitemap declared without artifact")
 		}
 		return 0, nil
 	}
-	raw, err := os.ReadFile(filepath.Join(dir, "sitemap.xml"))
-	if err != nil {
-		return 0, fmt.Errorf("portalcheck: sitemap unavailable")
-	}
-	var set sitemapSet
-	if err := xml.Unmarshal(raw, &set); err != nil || set.XMLNS != "http://www.sitemaps.org/schemas/sitemap/0.9" {
-		return 0, fmt.Errorf("portalcheck: invalid sitemap")
-	}
-	if len(set.URLs) == 0 || len(set.URLs) > MaxSitemapURLs {
-		return 0, fmt.Errorf("portalcheck: invalid sitemap URL count")
+	if !strings.Contains(robots, "Allow: /") || strings.Contains(robots, "Disallow: /") {
+		return 0, fmt.Errorf("portalcheck: sitemap with disallow robots")
 	}
 	origin := ""
 	if siteURL != "" {
@@ -988,39 +1040,93 @@ func checkSitemap(dir string, files map[string]FileDigest, indexable map[string]
 		}
 		origin = parsed.Scheme + "://" + parsed.Host
 	}
+	sameOrigin := func(loc string) (*url.URL, error) {
+		parsed, err := url.Parse(loc)
+		if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+			return nil, fmt.Errorf("portalcheck: invalid sitemap URL")
+		}
+		current := parsed.Scheme + "://" + parsed.Host
+		if origin == "" {
+			origin = current
+		} else if origin != current {
+			return nil, fmt.Errorf("portalcheck: mixed sitemap origins")
+		}
+		return parsed, nil
+	}
+	validLastMod := func(value string) bool {
+		if value == "" {
+			return true
+		}
+		_, err := time.Parse("2006-01-02", value)
+		return err == nil
+	}
+	raw, err := os.ReadFile(filepath.Join(dir, "sitemap.xml"))
+	if err != nil {
+		return 0, fmt.Errorf("portalcheck: sitemap unavailable")
+	}
+	var index sitemapIndexDoc
+	if err := xml.Unmarshal(raw, &index); err != nil || index.XMLNS != sitemapXMLNS {
+		return 0, fmt.Errorf("portalcheck: invalid sitemap index")
+	}
+	if len(index.Sitemaps) == 0 || len(index.Sitemaps) > MaxSitemapURLs {
+		return 0, fmt.Errorf("portalcheck: invalid sitemap index count")
+	}
 	seen := map[string]bool{}
 	mapped := map[string]bool{}
-	for _, entry := range set.URLs {
-		parsed, err := url.Parse(entry.Loc)
-		if err != nil || parsed.Host == "" || (parsed.Scheme != "https" && parsed.Scheme != "http") || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
-			return 0, fmt.Errorf("portalcheck: invalid sitemap URL")
+	referenced := map[string]bool{}
+	total := 0
+	for _, ref := range index.Sitemaps {
+		parsed, err := sameOrigin(ref.Loc)
+		if err != nil {
+			return 0, err
 		}
-		currentOrigin := parsed.Scheme + "://" + parsed.Host
-		if origin == "" {
-			origin = currentOrigin
-		} else if origin != currentOrigin {
-			return 0, fmt.Errorf("portalcheck: mixed sitemap origins")
+		child := strings.TrimPrefix(parsed.Path, "/")
+		if !children[child] || referenced[child] || !validLastMod(ref.LastMod) {
+			return 0, fmt.Errorf("portalcheck: sitemap index entry has no child sitemap")
 		}
-		if seen[entry.Loc] {
-			return 0, fmt.Errorf("portalcheck: duplicate sitemap URL")
+		referenced[child] = true
+		body, err := os.ReadFile(filepath.Join(dir, filepath.FromSlash(child)))
+		if err != nil {
+			return 0, fmt.Errorf("portalcheck: child sitemap unavailable")
 		}
-		seen[entry.Loc] = true
-		if entry.LastMod != "" {
-			if _, err := time.Parse("2006-01-02", entry.LastMod); err != nil {
+		var set sitemapSet
+		if err := xml.Unmarshal(body, &set); err != nil || set.XMLNS != sitemapXMLNS {
+			return 0, fmt.Errorf("portalcheck: invalid sitemap")
+		}
+		if len(set.URLs) == 0 || len(set.URLs) > MaxSitemapURLs {
+			return 0, fmt.Errorf("portalcheck: invalid sitemap URL count")
+		}
+		for _, entry := range set.URLs {
+			parsed, err := sameOrigin(entry.Loc)
+			if err != nil {
+				return 0, err
+			}
+			if seen[entry.Loc] {
+				return 0, fmt.Errorf("portalcheck: duplicate sitemap URL")
+			}
+			seen[entry.Loc] = true
+			if !validLastMod(entry.LastMod) || (ref.LastMod != "" && entry.LastMod > ref.LastMod) {
 				return 0, fmt.Errorf("portalcheck: invalid sitemap lastmod")
 			}
+			target := strings.TrimPrefix(parsed.Path, "/")
+			if target == "" || strings.HasSuffix(target, "/") {
+				target += "index.html"
+			}
+			if _, ok := files[target]; !ok || !strings.HasSuffix(target, ".html") {
+				return 0, fmt.Errorf("portalcheck: sitemap URL has no artifact page")
+			}
+			if !indexable[target] {
+				return 0, fmt.Errorf("portalcheck: sitemap lists a noindex page")
+			}
+			if canonicals[target] != entry.Loc {
+				return 0, fmt.Errorf("portalcheck: sitemap URL is not self-canonical: %s", entry.Loc)
+			}
+			mapped[target] = true
 		}
-		target := strings.TrimPrefix(parsed.Path, "/")
-		if target == "" || strings.HasSuffix(target, "/") {
-			target += "index.html"
-		}
-		if _, ok := files[target]; !ok || !strings.HasSuffix(target, ".html") {
-			return 0, fmt.Errorf("portalcheck: sitemap URL has no artifact page")
-		}
-		if !indexable[target] {
-			return 0, fmt.Errorf("portalcheck: sitemap lists a noindex page")
-		}
-		mapped[target] = true
+		total += len(set.URLs)
+	}
+	if len(referenced) != len(children) {
+		return 0, fmt.Errorf("portalcheck: unreferenced child sitemap")
 	}
 	if !strings.Contains(robots, "Sitemap: "+origin+"/sitemap.xml") {
 		return 0, fmt.Errorf("portalcheck: robots sitemap declaration mismatch")
@@ -1030,7 +1136,7 @@ func checkSitemap(dir string, files map[string]FileDigest, indexable map[string]
 			return 0, fmt.Errorf("portalcheck: indexable page absent from sitemap")
 		}
 	}
-	return len(set.URLs), nil
+	return total, nil
 }
 
 func checkOfficialPin(pin *officialPin) error {

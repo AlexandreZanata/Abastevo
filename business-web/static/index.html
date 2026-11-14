@@ -26,7 +26,7 @@
         <button id="organization-open" class="button-quiet" type="submit" disabled>Abrir empresa</button>
       </form>
       <p id="organization-help" class="field-help">Seus acessos aparecerão aqui.</p>
-      <nav aria-label="Painel"><a id="overview-link" class="nav-item" href="/empresas/" aria-current="page"><span aria-hidden="true">⌂</span> Visão geral</a></nav>
+      <nav aria-label="Painel"><a id="overview-link" class="nav-item" href="/empresas/" aria-current="page"><span aria-hidden="true">⌂</span> Visão geral</a><a id="create-company-link" class="nav-item" href="/empresas/criar/">Cadastrar ou retomar empresa</a><a id="company-settings-link" class="nav-item" href="/empresas/" hidden>Configurações da empresa</a></nav>
       <p class="nav-note">Cada empresa tem seu próprio espaço. Você escolhe onde trabalhar.</p>
     </aside>
     <main id="main-content" tabindex="-1">
@@ -55,7 +55,7 @@
       <section id="workspace" class="workspace" aria-labelledby="page-title" hidden>
         <p class="eyebrow">VISÃO GERAL</p>
         <p id="selected-company" class="company-name" hidden></p>
-        <div class="state-card">
+        <div id="workspace-state-card" class="state-card">
           <span id="state-marker" class="state-marker">Seu acesso</span>
           <div class="state-icon" aria-hidden="true">↗</div>
           <h1 id="page-title" tabindex="-1">Abastevo Empresas</h1>
@@ -66,6 +66,71 @@
             <a id="home-link" class="button-quiet" href="/empresas/" hidden>Voltar ao início</a>
           </div>
         </div>
+        <section id="setup-panel" class="setup-panel" aria-labelledby="setup-title" hidden>
+          <div class="section-heading"><div><p class="eyebrow">CADASTRO E CONFIGURAÇÕES</p><h1 id="setup-title" tabindex="-1">Prepare sua empresa</h1></div><button id="setup-refresh" class="button-quiet" type="button" disabled>Atualizar cadastro</button></div>
+          <p class="setup-demo-note">Ambiente de demonstração. Use somente nomes e dados fictícios.</p>
+          <p id="setup-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <ul id="setup-errors" class="form-error" role="alert"></ul>
+          <button id="setup-retry" class="button-quiet" type="button" hidden>Tentar a mesma operação novamente</button>
+          <section id="setup-directory" aria-labelledby="setup-directory-title"><h3 id="setup-directory-title">Retomar um cadastro salvo</h3><p>Estes cadastros foram criados por sua conta e ainda podem ser consultados por você. Uma empresa salva pode estar aguardando habilitação.</p><ul id="setup-directory-list" class="record-list"></ul><button id="setup-directory-more" class="button-quiet" type="button" hidden>Mais cadastros</button></section>
+          <section id="setup-create" aria-labelledby="setup-create-title"><h3 id="setup-create-title">Cadastrar uma empresa</h3><p>Confira os dados antes de salvar. Depois, o servidor confirma o que falta para concluir a configuração.</p>
+            <form id="setup-create-form" autocomplete="off"><fieldset id="setup-draft-fields" disabled><legend class="sr-only">Dados da nova empresa</legend>
+              <div class="field-grid"><div><label for="setup-name">Nome da empresa</label><input id="setup-name" maxlength="240" required></div><div><label for="setup-time-zone">Fuso da empresa</label><input id="setup-time-zone" list="setup-time-zones" maxlength="100" required aria-describedby="setup-zone-help"></div><div><label for="setup-unit-name">Nome da primeira unidade</label><input id="setup-unit-name" maxlength="240" required></div></div>
+              <p id="setup-zone-help" class="field-help">Escolha a região que define as datas e os horários dos registros da empresa.</p>
+              <fieldset class="setup-kinds"><legend>Atividades da empresa</legend><div class="setup-kind-grid"><label class="check-label"><input id="setup-kind-delivery" type="checkbox" data-setup-kind="DELIVERY">Entregas</label><label class="check-label"><input id="setup-kind-carrier" type="checkbox" data-setup-kind="CARRIER">Transportadora</label><label class="check-label"><input id="setup-kind-services" type="checkbox" data-setup-kind="SERVICES">Serviços</label><label class="check-label"><input id="setup-kind-farm" type="checkbox" data-setup-kind="FARM">Fazenda</label><label class="check-label"><input id="setup-kind-other" type="checkbox" data-setup-kind="OTHER">Outras atividades</label></div></fieldset>
+              <label class="check-label"><input id="setup-terms" type="checkbox" required>Conferi e aceito os termos de demonstração para este cadastro fictício.</label><p class="field-help">Este cadastro usa termos sintéticos de teste e não libera o uso de dados reais.</p>
+              <button id="setup-create-submit" class="button-primary" type="submit" disabled>Salvar cadastro da empresa</button>
+            </fieldset></form>
+          </section>
+          <section id="setup-detail" aria-labelledby="setup-organization-name" hidden>
+            <div class="section-heading"><h3 id="setup-organization-name" tabindex="-1"></h3><span id="setup-organization-state" class="state-marker"></span></div>
+            <dl id="setup-profile" class="record-fields"></dl><p id="setup-capability-note" class="setup-notice"></p>
+            <section aria-labelledby="setup-checklist-title"><h4 id="setup-checklist-title">O que falta para concluir</h4><ul id="setup-checklist" class="setup-checklist"></ul><button id="setup-activate" class="button-primary" type="button" disabled>Concluir configuração</button></section>
+            <form id="setup-settings-form" autocomplete="off"><fieldset id="setup-settings-fields" disabled><legend>Configurações e padrões</legend><p id="setup-settings-access" class="field-help"></p>
+              <div class="field-grid"><div><label for="setup-settings-time-zone">Fuso dos registros</label><input id="setup-settings-time-zone" list="setup-time-zones" maxlength="100" required></div><div><label for="setup-consumption-display">Exibição do consumo</label><select id="setup-consumption-display"><option value="KM_PER_L">Quilômetros por litro (km/L)</option><option value="L_PER_100KM">Litros a cada 100 km (L/100 km)</option></select></div><div><label for="setup-approval-levels">Níveis padrão de aprovação</label><input id="setup-approval-levels" type="number" min="1" max="3" step="1" required></div><div><label for="setup-closure-days">Período de fechamento (dias)</label><input id="setup-closure-days" type="number" min="7" max="90" step="1" required></div></div>
+              <fieldset class="setup-review"><legend>Revisão obrigatória</legend><label class="check-label"><input id="setup-review-trips" type="checkbox">Exigir revisão de viagens</label><label class="check-label"><input id="setup-review-fuelings" type="checkbox">Exigir revisão de abastecimentos</label><label class="check-label"><input id="setup-review-expenses" type="checkbox">Exigir revisão de despesas</label></fieldset>
+              <h4>Prazos e convites</h4><div class="field-grid"><div><label for="setup-intake-days">Recebimento após fim do vínculo (dias)</label><input id="setup-intake-days" type="number" min="0" max="60" step="1" required></div><div><label for="setup-clock-skew">Alerta de diferença do relógio (segundos)</label><input id="setup-clock-skew" type="text" inputmode="numeric" pattern="0|[1-9][0-9]{0,18}" maxlength="19" required></div><div><label for="setup-delegation-days">Prazo máximo de delegação (dias)</label><input id="setup-delegation-days" type="number" min="1" max="180" step="1" required></div><div><label for="setup-invitation-days">Validade dos convites (dias)</label><input id="setup-invitation-days" type="number" min="1" max="30" step="1" required></div><div><label for="setup-activation-hours">Prazo de ativação (horas)</label><input id="setup-activation-hours" type="number" min="1" max="168" step="1" required></div></div>
+              <label class="check-label"><input id="setup-invitation-confirmation" type="checkbox">Exigir confirmação do responsável após o aceite de convites</label>
+              <h4>Responsáveis e substitutos</h4><button id="setup-members-load" class="button-quiet" type="button">Consultar pessoas disponíveis</button><p class="field-help">Escolha pessoas pelo nome. O acesso e a disponibilidade são conferidos novamente ao salvar.</p>
+              <fieldset class="setup-responsibility"><legend>Revisão de registros</legend><div class="field-grid"><div><label for="setup-review_fallback-primary">Responsável — revisão de registros</label><select id="setup-review_fallback-primary"><option value="">Não definido</option></select></div><div><label for="setup-review_fallback-substitute">Substituto — revisão de registros</label><select id="setup-review_fallback-substitute"><option value="">Não definido</option></select></div></div></fieldset><fieldset class="setup-responsibility"><legend>Avisos da empresa</legend><div class="field-grid"><div><label for="setup-platform_notices-primary">Responsável — avisos da empresa</label><select id="setup-platform_notices-primary"><option value="">Não definido</option></select></div><div><label for="setup-platform_notices-substitute">Substituto — avisos da empresa</label><select id="setup-platform_notices-substitute"><option value="">Não definido</option></select></div></div></fieldset><fieldset class="setup-responsibility"><legend>Proteção de dados</legend><div class="field-grid"><div><label for="setup-data_protection-primary">Responsável — proteção de dados</label><select id="setup-data_protection-primary"><option value="">Não definido</option></select></div><div><label for="setup-data_protection-substitute">Substituto — proteção de dados</label><select id="setup-data_protection-substitute"><option value="">Não definido</option></select></div></div></fieldset><fieldset class="setup-responsibility"><legend>Cobrança</legend><div class="field-grid"><div><label for="setup-billing-primary">Responsável — cobrança</label><select id="setup-billing-primary"><option value="">Não definido</option></select></div><div><label for="setup-billing-substitute">Substituto — cobrança</label><select id="setup-billing-substitute"><option value="">Não definido</option></select></div></div></fieldset>
+              <button id="setup-members-more" class="button-quiet" type="button" hidden>Mais pessoas disponíveis</button>
+              <label for="setup-reason">Motivo da alteração</label><textarea id="setup-reason" maxlength="240" rows="3" required></textarea>
+              <p id="setup-draft-status" class="field-help" role="status"></p><button id="setup-reload-values" class="button-quiet" type="button" hidden>Recarregar valores atuais</button><button id="setup-save" class="button-primary" type="submit" disabled>Salvar nova revisão</button>
+            </fieldset></form>
+            <section id="setup-history" aria-labelledby="setup-history-title"><div class="section-heading"><h4 id="setup-history-title">Histórico das configurações</h4><button id="setup-history-load" class="button-quiet" type="button">Consultar histórico</button></div><ul id="setup-history-list" class="record-list"></ul><button id="setup-history-more" class="button-quiet" type="button" hidden>Mais revisões</button><section id="setup-history-detail" hidden><h5 id="setup-history-heading" tabindex="-1">Revisão histórica — somente leitura</h5><p>Os valores abaixo pertencem à revisão escolhida. O cadastro e o checklist acima mostram a situação atual.</p><dl id="setup-history-values" class="record-fields"></dl></section></section>
+          </section>
+          <datalist id="setup-time-zones"><option value="America/Sao_Paulo" label="Horário de Brasília"></option><option value="America/Cuiaba" label="Cuiabá"></option><option value="America/Manaus" label="Manaus"></option><option value="America/Rio_Branco" label="Rio Branco"></option><option value="America/Noronha" label="Fernando de Noronha"></option><option value="America/Bahia" label="Bahia"></option><option value="America/Fortaleza" label="Fortaleza"></option><option value="UTC" label="UTC"></option></datalist>
+        </section>
+        <section id="employee-access" class="employee-access" aria-labelledby="employees-title" hidden>
+          <div class="section-heading"><div><p class="eyebrow">PESSOAS E ACESSOS</p><h2 id="employees-title" tabindex="-1">Funcionários e convites</h2></div><button id="employees-refresh" class="button-quiet" type="button">Atualizar registros</button></div>
+          <p id="employee-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <button id="employee-retry" class="button-quiet" type="button" hidden>Tentar a mesma operação novamente</button>
+          <form id="employee-filter-form" class="inline-form"><label for="employee-state">Situação do cadastro</label><select id="employee-state"><option value="">Todas</option><option value="ACTIVE">Ativo</option><option value="INACTIVE">Inativo</option><option value="TERMINATED">Desligado</option></select><button class="button-quiet" type="submit">Filtrar</button></form>
+          <ul id="employee-list" class="record-list" aria-label="Funcionários"></ul>
+          <button id="employees-next" class="button-quiet" type="button" hidden>Próxima página de funcionários</button>
+          <details id="employee-create"><summary>Adicionar funcionário</summary>
+            <p>O cadastro identifica a pessoa na empresa. Ele não cria conta ou acesso.</p>
+            <form id="employee-create-form" autocomplete="off">
+              <div class="field-grid"><div><label for="employee-name">Nome do funcionário</label><input id="employee-name" maxlength="200" required></div><div><label for="employee-registration">Matrícula</label><input id="employee-registration" maxlength="64"></div><div><label for="employee-email">E-mail profissional</label><input id="employee-email" type="email" maxlength="254"></div><div><label for="employee-phone">Telefone profissional</label><input id="employee-phone" maxlength="16" placeholder="+5511999999999"></div><div><label for="employee-job">Cargo</label><input id="employee-job" maxlength="120"></div></div>
+              <button id="employee-review" class="button-quiet" type="submit">Conferir possíveis duplicados</button>
+              <ul id="employee-duplicates" class="record-list" aria-label="Cadastros para comparação"></ul>
+              <label class="check-label"><input id="employee-duplicate-confirm" type="checkbox">Comparei os dados e confirmo que é outra pessoa.</label>
+              <button id="employee-save" class="button-primary" type="button">Salvar funcionário</button>
+            </form>
+          </details>
+          <section id="employee-detail" class="employee-detail" aria-labelledby="employee-detail-name" hidden>
+            <h3 id="employee-detail-name" tabindex="-1"></h3><dl id="employee-fields" class="record-fields"></dl>
+            <section id="invitation-section" aria-labelledby="invitations-title" hidden>
+              <h3 id="invitations-title">Convites deste funcionário</h3>
+              <p id="invitation-validity" class="field-help"></p>
+              <form id="invitation-issue-form"><label for="invitation-role">Papel e alcance do acesso</label><select id="invitation-role" aria-describedby="invitation-help"></select><p id="invitation-help" class="field-help">As opções indisponíveis excedem sua permissão atual. O servidor confirma o acesso antes de emitir. Papéis privilegiados exigem confirmação posterior.</p><button id="invitation-issue" class="button-primary" type="submit">Emitir convite</button></form>
+              <ul id="invitation-list" class="record-list" aria-label="Histórico de convites"></ul>
+              <button id="invitations-next" class="button-quiet" type="button" hidden>Próxima página de convites</button>
+              <section id="invitation-admission" aria-labelledby="admission-title" hidden><h4 id="admission-title">Aceite do convite</h4><p id="admission-description"></p><div class="state-actions"><button id="admission-confirm" class="button-primary" type="button">Confirmar este aceite</button><button id="admission-reject" class="button-quiet" type="button">Recusar este aceite</button></div></section>
+            </section>
+          </section>
+          <section id="invitation-delivery" class="delivery-card" aria-labelledby="delivery-title" hidden><h3 id="delivery-title" tabindex="-1">Guarde o convite agora</h3><p>O código é exibido apenas nesta emissão. Entregue-o somente à pessoa convidada. Ao fechar ou trocar de empresa, ele será removido desta tela.</p><label for="delivery-code">Código do convite</label><input id="delivery-code" readonly autocomplete="off"><button id="delivery-copy-code" class="button-quiet" type="button">Copiar código</button><label for="delivery-link">Link do convite</label><input id="delivery-link" readonly autocomplete="off"><div class="state-actions"><button id="delivery-copy-link" class="button-quiet" type="button">Copiar link</button><button id="delivery-print" class="button-quiet" type="button">Imprimir convite</button><button id="delivery-close" class="button-primary" type="button">Fechar convite</button></div><p id="delivery-status" role="status"></p></section>
+        </section>
       </section>
       <p id="live-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
       <noscript>Ative o JavaScript para entrar no painel com segurança.</noscript>

@@ -444,7 +444,7 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 		Read:         chargingread.NewReader(pool.Underlying()),
 		Secrets:      cfg.CursorSecret,
 		Enabled:      func() bool { return cfg.ChargingReadsEnabled },
-		PilotEnabled: cfg.Env == config.EnvStaging && cfg.CanonicalHost == "teste.abastevo.com.br",
+		PilotEnabled: cfg.Env == config.EnvStaging && cfg.CanonicalHost == config.OwnedHost,
 	}.RegisterRoutes(router)
 	// Community writes and owner reads (P04-T04). Same closure rule: every
 	// cross-module collaborator arrives as a narrow function built here.
@@ -523,7 +523,7 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	// leaves this closure.
 	payments.Billing.Proof = accountOwnerProof{validate: accountService.ValidateAccess}
 	accounthttp.Handler{Service: accountService, Audience: "anpfuel-backend"}.RegisterRoutes(router)
-	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Origin: "https://" + cfg.CanonicalHost, CursorSecret: cfg.CursorSecret, Pool: pool.Underlying(), Accounts: accountService}); err != nil {
+	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Origin: "https://" + cfg.CanonicalHost, CursorSecret: cfg.CursorSecret, Pool: pool.Underlying(), Accounts: accountService, DeviceLimit: cfg.EnterpriseDeviceLimit}); err != nil {
 		return err
 	}
 	// Station/fuel feedback (P14-T03). Same closure rule: session
@@ -927,6 +927,10 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	// no route is mounted and every /v1/admin/* path stays 404.
 	if adminSurface, ok := newAdminHandler(cfg, pool.Underlying(), trustedProxies); ok {
 		adminSurface.RegisterRoutes(router)
+		if err := enterprisesuite.RegisterAdmin(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Pool: pool.Underlying()}, adminSurface); err != nil {
+			return err
+		}
+
 		// Contributor admin mutations (approve/reject/link/hide) commit
 		// through the shared admin audit/idempotency helper.
 		contributorService.Runner = adminSurface.Service.Store

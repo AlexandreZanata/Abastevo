@@ -111,7 +111,13 @@ test('guides schemas and discovery: JSON-LD graphs, sitemap and llms.txt', () =>
     for (const guide of GUIDES) {
       assert.ok(sitemap.includes(`<loc>https://abastevo.com.br${guide.canonicalPath}</loc>`), `sitemap must list ${guide.canonicalPath}`);
     }
-    assert.ok(!sitemap.includes('<lastmod>'), 'sitemap must not fabricate lastmod');
+    for (const guide of GUIDES) {
+      assert.match(
+        sitemap,
+        new RegExp(`<loc>https://abastevo\\.com\\.br${guide.canonicalPath}</loc>\\s*<lastmod>\\d{4}-\\d{2}-\\d{2}</lastmod>`),
+        `sitemap must date ${guide.canonicalPath} with its content lastmod`
+      );
+    }
     assert.ok(!sitemap.includes('404.html'), 'sitemap must not list 404 page');
 
     const llms = fs.readFileSync(path.join(tmpOut, 'llms.txt'), 'utf8');

@@ -6,7 +6,7 @@ import path from 'node:path';
 import { build } from '../scripts/build.mjs';
 
 const out = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-policy-'));
-build({outDir:out, origin:'https://teste.abastevo.com.br'});
+build({outDir:out, origin:'https://abastevo.com.br'});
 const read = route => fs.readFileSync(path.join(out,route,'index.html'),'utf8');
 const main = html => html.match(/<main\b[\s\S]*?<\/main>/)?.[0] ?? '';
 test.after(()=>fs.rmSync(out,{recursive:true,force:true}));
@@ -22,7 +22,7 @@ test('privacy remains public static HTML with controller identity, actual rights
  for(const id of ['controlador','dados','localizacao','fotos','bases-legais','compartilhamento','transferencias','retencao','direitos','exclusao','seguranca','criancas','alteracoes']) assert.ok(body.includes(`id="${id}"`),id);
  for(const [,anchor] of body.matchAll(/href="#([^"]+)"/g)) assert.ok(body.includes(`id="${anchor}"`),anchor);
  assert.doesNotMatch(body,/<form\b|<iframe\b|<script\b|type="password"/);
- assert.match(html,/rel="canonical" href="https:\/\/teste\.abastevo\.com\.br\/privacidade\/"/);
+ assert.match(html,/rel="canonical" href="https:\/\/abastevo\.com\.br\/privacidade\/"/);
 });
 
 test('account deletion has a private outside-app route and never asks for a public issue or credentials',()=>{

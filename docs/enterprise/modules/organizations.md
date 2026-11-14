@@ -1,6 +1,6 @@
 # Organizations
 
-Status: **EMP-ORG-001–008 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `ORG`. Tasks: `EMP-ORG-001…015` in [backlog/ep02-organizations](../backlog/ep02-organizations.md).
+Status: **EMP-ORG-001–009 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `ORG`. Tasks: `EMP-ORG-001…015` in [backlog/ep02-organizations](../backlog/ep02-organizations.md).
 
 Evidence. EMP-ORG-001 implements the pure scoped aggregate and lifecycle under `backend/internal/modules/organization/domain/`; see [domain evidence](../evidence/f1-org001-organization-domain.md). EMP-ORG-002 adds the permanent forced-RLS root, scoped repository/CAS and additive populated-upgrade recovery; see [persistence evidence](../evidence/f1-org002-organization-persistence.md). Existing private IDs remain metadata-pending anchors without fabricated lifecycle, ownership or consent. EMP-ORG-003 supplies local atomic onboarding/activation ([evidence](../evidence/f1-org003-atomic-onboarding.md)); ORG-004 supplies declared legal parties ([evidence](../evidence/f1-org004-legal-declarations.md)); ORG-005/006 supply units and cost centres ([unit evidence](../evidence/f1-org005-operating-units.md), [cost-centre evidence](../evidence/f1-org006-cost-centres.md)). Full closure remains F8. The F0 [diagnosis](../01-diagnosis.md) is a historical pre-implementation snapshot. Three existing pieces are reused. The validated value type `kernel.CNPJ` in `backend/internal/modules/kernel/cnpj.go` already accepts the alphanumeric format and computes both check digits, and `backend/internal/modules/kernel/kernel_test.go` contains the official test value: `IMPLEMENTED`. The station catalog keeps one CNPJ per station (`backend/internal/modules/directory/`): `IMPLEMENTED`; this module only references it. The signed-declaration proof of the station profile (`backend/internal/modules/stationprofile/domain/proof.go`) is `PARTIAL` (intake disabled) and is the pattern proposed for verification evidence. Private declared CPF validation, masking and fresh audited reveal are locally implemented by ORG-004; no external registry verification or real-data legal approval is inferred. EMP-GOV-001 and [ADR-025](../../adr/025-private-abastevo-empresas-organization-boundary.md) resolve the historical CX-01 conflict for private Empresas data only.
 
@@ -15,6 +15,14 @@ responsibility pairs and atomic reduction cleanup, with explicit permissions v3:
 `LOCAL_DONE / INTEGRATION_PENDING`; see [settings evidence](../evidence/f1-org008-versioned-settings.md).
 Source policy holders do not imply completed consuming workflows or legal
 retention approval; pending notice facts do not claim notification delivery.
+
+EMP-ORG-009 (`LOCAL_DONE / INTEGRATION_PENDING`) adds operator-only
+suspension/reactivation, retained periods and
+server-received field-intake assessment. Company roles cannot suspend their own
+organization; the existing ADR-023 administrative credential plane is separate.
+[Local suspension evidence](../evidence/f1-org009-suspension.md) records the
+entry points and actual tests. Subscription automation, field-ingress persistence
+and owner-notice delivery remain their owning modules' workflows.
 
 ## 1. Purpose
 
@@ -196,7 +204,8 @@ Keys are those of [07-permissions](../07-permissions.md) §7.2. All `org.*` perm
 | `org.settings.manage` | UC-ORG-02, UC-ORG-06, UC-ORG-07 | `OWNER`, `ADMIN` (§7.3) |
 | `org.structure.manage` | UC-ORG-03 | `OWNER`, `ADMIN` (§7.3) |
 | `org.legal_entity.manage` | UC-ORG-04, UC-ORG-05 | `OWNER`, `ADMIN` (§7.3, org-permissions-v2; EDR-037) |
-| `org.ownership.transfer` | UC-ORG-09 | `OWNER` (§7.3) |
+| `org.ownership.transfer` | UC-ORG-09 proposal | `OWNER` (§7.3) |
+| `org.ownership.respond` | UC-ORG-09 participant read, consent and cancellation | A live fixed-role assignment plus actual source participant check; v4/EDR-048 |
 | `org.lifecycle.manage` | UC-ORG-11, UC-ORG-12 | `OWNER` (proposed; no row in §7.3) |
 | `org.group.manage` | UC-ORG-10 | `OWNER` (proposed; no row in §7.3) |
 
@@ -326,3 +335,12 @@ Dependencies: EMP-GOV-001 (tenancy decision, CX-01); [09-architecture](../09-arc
 Risks: treating a CNPJ as identity and leaking the existence of another organization (BR-ORG-017 and criterion 4); managers reading "declared" as "verified" (fixed wording, BR-ORG-016); an organization left without a reachable owner (BR-ORG-026, BR-ORG-035); suspension surprising drivers in the field (banner, grace period, review instead of discard); verification workload exceeding reviewer capacity (verification gates only F7 features; AS-11); closure deleting data a customer still needs (closure period, export reminders, cancellation, legal hold); consolidation used as a back door to another company's records (field list, read-only, two consents).
 
 Phase: F1 for creation, activation, units, settings, declared legal entities, cost centres, teams, suspension and ownership transfer; F6 for groups; F7 for verification; F8 for archive and closure. The later phases are justified in §2. Microtasks: EMP-ORG-001 to EMP-ORG-015.
+
+PR #203 ownership review clarification (EDR-048): UC-ORG-09 is the normal
+consensual handover, not BR-ORG-035 exceptional recovery. All four company
+routes use the AUTH request lease; write attempts use the ownership admission
+class. Responses are restricted to the initiator/recipient and require fresh
+proof even on reads/retries. Either participant's suspension/end cancels the
+proposal, with real source metadata. Notices are retained for NOTIF-001; no
+provider delivery is claimed. A recipient still needs an effective role to use
+`org.ownership.respond`; a roleless membership receives no implied permission.

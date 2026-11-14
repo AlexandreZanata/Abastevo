@@ -6,10 +6,11 @@ import java.net.URI
  * P34-T02 explicit backend origin/environment (B-BR-011 privacy).
  *
  * Single source of truth for auth, anonymous identity, community, feedback
- * and contribution clients. [STAGING] selects `https://teste.abastevo.com.br`;
- * [PREVIEW] is the RFC 2606 non-resolving placeholder. The release target
- * stays explicit and separately certified: it is never inferred from staging
- * and must not reuse the test origin without its own certification.
+ * and contribution clients. [STAGING] selects the official origin
+ * `https://abastevo.com.br`, whose deployment still runs the staging
+ * environment; [PREVIEW] is the RFC 2606 non-resolving placeholder. Selecting
+ * this origin certifies nothing: production release certification stays
+ * explicit and separate.
  *
  * Origins carry no secret, token, key or precise location by construction.
  * Route joining never produces a double `/v1`; origins containing a `/v1`
@@ -17,7 +18,7 @@ import java.net.URI
  */
 enum class ApiEnvironment(val origin: String, private val localProof: Boolean = false) {
     PREVIEW("https://api.anpfuel.example.invalid"),
-    STAGING("https://teste.abastevo.com.br"),
+    STAGING("https://abastevo.com.br"),
     // Debug-build loopback proof only. Release network security forbids
     // cleartext, so an accidental release selection still fails closed.
     LOCAL_PROOF("http://127.0.0.1:18080", localProof = true);

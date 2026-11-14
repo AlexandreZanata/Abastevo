@@ -6,6 +6,7 @@ import com.anpfuel.domain.enterprise.EnterprisePendingOperation
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import java.util.concurrent.atomic.AtomicLong
 
 /** All ports require a creation scope. There is no unscoped enumeration or dispatcher. */
 interface EnterprisePersistence {
@@ -43,33 +44,107 @@ class EnterpriseLocalContext(
     private val accessEpoch: () -> Long = { 0L },
 ) {
     private val mutex = Mutex()
+    private val ownership = Any()
     private var current: EnterprisePartition? = null
-    private var generation = 0L
+    private val generation = AtomicLong()
+    class Owner internal constructor()
+    class Lease internal constructor(internal val owner: Owner, internal val generation: Long)
+    private var owner: Owner? = null
+
+    /** Invalidates old handles immediately, including I/O in progress, without changing creation ownership. */
+    fun invalidate() = synchronized(ownership) { owner = null; generation.incrementAndGet(); Unit }
+
+    /** An explicit new selection attempt replaces local ownership before any suspension or server contact. */
+    fun acquire(requestOwner: Owner): Lease = synchronized(ownership) {
+        owner = requestOwner
+        Lease(requestOwner, generation.incrementAndGet())
+    }
+
+    /** Starts an independent custody ceremony without exposing an owner's constructor across modules. */
+    fun acquireOwner(): Lease = acquire(Owner())
+
+    /** An outgoing flow can invalidate only its own selection, never a replacement flow's handles. */
+    fun invalidate(requestOwner: Owner): Lease? = synchronized(ownership) {
+        if (owner !== requestOwner) null else Lease(requestOwner, generation.incrementAndGet())
+    }
+
+    private fun owns(lease: Lease): Boolean = owner === lease.owner && generation.get() == lease.generation
+
+    fun reserveContact(lease: Lease, binding: EnterpriseAccessBinding, fence: EnterpriseSessionFence,
+        currentBinding: () -> EnterpriseAccessBinding?): EnterpriseFenceOwner = synchronized(ownership) {
+        if (!owns(lease) || !matchesIdentity(binding.accountId, binding.origin) || accessEpoch() != binding.epoch ||
+            fence.epoch != binding.epoch || runCatching(currentBinding).getOrNull() != binding
+        ) throw EnterpriseLocalDenied()
+        EnterpriseFenceOwner(this, lease, binding, fence.backgroundEpoch, fence, currentBinding)
+    }
+
+    internal fun retainsContact(contact: EnterpriseFenceOwner): Boolean = synchronized(ownership) {
+        contact.local === this && owns(contact.lease) && accessEpoch() == contact.binding.epoch &&
+            matchesIdentity(contact.binding.accountId, contact.binding.origin) && runCatching(contact.currentBinding).getOrNull() == contact.binding
+    }
+
+    internal fun publishContact(contact: EnterpriseFenceOwner, publish: (Lease) -> EnterpriseFenceHandoff): EnterpriseFenceHandoff = synchronized(ownership) {
+        if (!retainsContact(contact)) throw EnterpriseLocalDenied()
+        publish(Lease(contact.lease.owner, generation.incrementAndGet()))
+    }
+
+    internal fun retainsHandoff(contact: EnterpriseFenceOwner, handoff: EnterpriseFenceHandoff,
+        binding: EnterpriseAccessBinding?): Boolean = synchronized(ownership) {
+        contact.local === this && owns(handoff.lease) && !handoff.consumed.get() &&
+            binding == contact.binding.copy(epoch = handoff.nextEpoch) && accessEpoch() == handoff.nextEpoch &&
+            matchesIdentity(contact.binding.accountId, contact.binding.origin) && runCatching(contact.currentBinding).getOrNull() == binding
+    }
+
+    fun consumeContact(contact: EnterpriseFenceOwner, handoff: EnterpriseFenceHandoff,
+        binding: EnterpriseAccessBinding?): Lease = synchronized(ownership) {
+        if (!contact.fence.handoffIsCurrent(contact, handoff, binding) || !handoff.consumed.compareAndSet(false, true)) throw EnterpriseLocalDenied()
+        handoff.lease
+    }
 
     suspend fun select(partition: EnterprisePartition): BoundStore = mutex.withLock {
-        // Even a refused switch invalidates the previously selected handle.
-        current = null
-        generation++
-        if (!matchesIdentity(partition)) throw EnterpriseLocalDenied()
-        current = partition
-        BoundStore(partition, generation, accessEpoch())
+        synchronized(ownership) {
+            // Legacy feature handles inherit the active flow owner, while the scope remains explicit.
+            current = null
+            val token = generation.incrementAndGet()
+            if (!matchesIdentity(partition)) throw EnterpriseLocalDenied()
+            current = partition
+            BoundStore(partition, token, accessEpoch())
+        }
+    }
+
+    suspend fun select(lease: Lease, partition: EnterprisePartition): BoundStore = mutex.withLock {
+        synchronized(ownership) {
+            // Check after the mutex wait, before touching another attempt's selection or generation.
+            if (!owns(lease)) throw EnterpriseLocalDenied()
+            current = null
+            val token = generation.incrementAndGet() // Consume the immutable lease; it cannot revive old handles.
+            if (!matchesIdentity(partition)) throw EnterpriseLocalDenied()
+            current = partition
+            BoundStore(partition, token, accessEpoch())
+        }
     }
 
     suspend fun lock() = mutex.withLock {
-        current = null
-        generation++
+        synchronized(ownership) { current = null; owner = null; generation.incrementAndGet(); Unit }
     }
 
-    private fun matchesIdentity(partition: EnterprisePartition): Boolean = try {
-        ownerAccount() == partition.ownerAccount &&
-            EnterprisePartition.canonicalOrigin(serverOrigin()) == partition.origin
+    suspend fun lock(lease: Lease): Boolean = mutex.withLock {
+        synchronized(ownership) {
+            if (!owns(lease)) false else { current = null; true }
+        }
+    }
+
+    private fun matchesIdentity(partition: EnterprisePartition): Boolean = matchesIdentity(partition.ownerAccount, partition.origin)
+
+    private fun matchesIdentity(account: String, origin: String): Boolean = try {
+        ownerAccount() == account && EnterprisePartition.canonicalOrigin(serverOrigin()) == origin
     } catch (_: Exception) { false }
 
     private suspend fun <T> scoped(partition: EnterprisePartition, token: Long, epoch: Long, block: suspend () -> T): T = mutex.withLock {
-        if (current != partition || generation != token || accessEpoch() != epoch) throw EnterpriseLocalDenied()
+        if (current != partition || generation.get() != token || accessEpoch() != epoch) throw EnterpriseLocalDenied()
         if (!matchesIdentity(partition) || accessEpoch() != epoch) {
             current = null
-            generation++
+            generation.compareAndSet(token, token + 1)
             throw EnterpriseLocalDenied()
         }
         val result = try {
@@ -91,15 +166,18 @@ class EnterpriseLocalContext(
             throw EnterprisePersistenceUnavailable()
         }
         // Account/session changes may happen independently of this local selection.
-        if (!matchesIdentity(partition) || accessEpoch() != epoch) {
+        if (!matchesIdentity(partition) || accessEpoch() != epoch || generation.get() != token) {
             current = null
-            generation++
+            // A newer attempt may have reserved a lease while this I/O held the mutex.
+            // Do not advance or revoke its generation merely because the old result is withheld.
+            generation.compareAndSet(token, token + 1)
             throw EnterpriseLocalDenied()
         }
         result
     }
 
     inner class BoundStore internal constructor(val partition: EnterprisePartition, private val token: Long, private val epoch: Long) {
+        fun isCurrent(): Boolean = generation.get() == token && accessEpoch() == epoch && matchesIdentity(partition)
         suspend fun record(id: String): EnterpriseLocalRecord? = scoped(partition, token, epoch) {
             val row = persistence.record(partition, EnterprisePartition.requireId(id))
             if (row != null && (row.partition != partition || row.id != id)) throw EnterpriseLocalDenied()

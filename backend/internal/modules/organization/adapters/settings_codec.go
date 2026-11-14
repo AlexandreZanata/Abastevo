@@ -10,7 +10,9 @@ import (
 )
 
 // Explicit boundary representation: domain objects redact generic JSON/logging.
-// No field is optional; an explicit false/zero/empty reference is meaningful.
+// The added confirmation policy omits false to preserve historical five-key
+// policies; explicit false has the same default meaning. Other fields remain
+// mandatory, including zero and empty references.
 type settingsWire struct {
 	TimeZone           string               `json:"time_zone"`
 	ConsumptionDisplay d.ConsumptionDisplay `json:"consumption_display"`
@@ -22,11 +24,12 @@ type settingsWire struct {
 	ApprovalLevelsDefault int `json:"approval_levels_default"`
 	ClosurePeriodDays     int `json:"closure_period_days"`
 	Policies              struct {
-		IntakeWindowDays        int    `json:"intake_window_days"`
-		ClockSkewLimitSeconds   string `json:"clock_skew_limit_seconds"`
-		DelegationMaximumDays   int    `json:"delegation_maximum_days"`
-		InvitationValidityDays  int    `json:"invitation_validity_days"`
-		ActivationValidityHours int    `json:"activation_validity_hours"`
+		RequireInvitationConfirmation bool   `json:"require_invitation_confirmation,omitempty"`
+		IntakeWindowDays              int    `json:"intake_window_days"`
+		ClockSkewLimitSeconds         string `json:"clock_skew_limit_seconds"`
+		DelegationMaximumDays         int    `json:"delegation_maximum_days"`
+		InvitationValidityDays        int    `json:"invitation_validity_days"`
+		ActivationValidityHours       int    `json:"activation_validity_hours"`
 	} `json:"policies"`
 	Responsibilities struct {
 		ReviewFallback  settingsPairWire `json:"review_fallback"`
@@ -48,6 +51,7 @@ func EncodeSettingsValues(v d.SettingsValues) ([]byte, error) {
 	w.ReviewRequired.Trips = v.ReviewRequired.Trips
 	w.ReviewRequired.Fuelings = v.ReviewRequired.Fuelings
 	w.ReviewRequired.Expenses = v.ReviewRequired.Expenses
+	w.Policies.RequireInvitationConfirmation = v.Policies.RequireInvitationConfirmation
 	w.Policies.IntakeWindowDays = v.Policies.IntakeWindowDays
 	w.Policies.ClockSkewLimitSeconds = strconv.FormatInt(v.Policies.ClockSkewLimitSeconds, 10)
 	w.Policies.DelegationMaximumDays = v.Policies.DelegationMaximumDays
@@ -72,13 +76,23 @@ func DecodeSettingsValues(raw []byte) (d.SettingsValues, error) {
 	pair := func(p settingsPairWire) d.ResponsibilityPair {
 		return d.ResponsibilityPair{PrimaryID: p.Primary, SubstituteID: p.Substitute}
 	}
-	v := d.SettingsValues{TimeZone: w.TimeZone, ConsumptionDisplay: w.ConsumptionDisplay, ReviewRequired: d.ReviewRequired{Trips: w.ReviewRequired.Trips, Fuelings: w.ReviewRequired.Fuelings, Expenses: w.ReviewRequired.Expenses}, ApprovalLevelsDefault: w.ApprovalLevelsDefault, ClosurePeriodDays: w.ClosurePeriodDays, Policies: d.SourcePolicies{IntakeWindowDays: w.Policies.IntakeWindowDays, ClockSkewLimitSeconds: skew, DelegationMaximumDays: w.Policies.DelegationMaximumDays, InvitationValidityDays: w.Policies.InvitationValidityDays, ActivationValidityHours: w.Policies.ActivationValidityHours}, Responsibilities: d.Responsibilities{ReviewFallback: pair(w.Responsibilities.ReviewFallback), PlatformNotices: pair(w.Responsibilities.PlatformNotices), DataProtection: pair(w.Responsibilities.DataProtection), Billing: pair(w.Responsibilities.Billing)}}
+	v := d.SettingsValues{TimeZone: w.TimeZone, ConsumptionDisplay: w.ConsumptionDisplay, ReviewRequired: d.ReviewRequired{Trips: w.ReviewRequired.Trips, Fuelings: w.ReviewRequired.Fuelings, Expenses: w.ReviewRequired.Expenses}, ApprovalLevelsDefault: w.ApprovalLevelsDefault, ClosurePeriodDays: w.ClosurePeriodDays, Policies: d.SourcePolicies{RequireInvitationConfirmation: w.Policies.RequireInvitationConfirmation, IntakeWindowDays: w.Policies.IntakeWindowDays, ClockSkewLimitSeconds: skew, DelegationMaximumDays: w.Policies.DelegationMaximumDays, InvitationValidityDays: w.Policies.InvitationValidityDays, ActivationValidityHours: w.Policies.ActivationValidityHours}, Responsibilities: d.Responsibilities{ReviewFallback: pair(w.Responsibilities.ReviewFallback), PlatformNotices: pair(w.Responsibilities.PlatformNotices), DataProtection: pair(w.Responsibilities.DataProtection), Billing: pair(w.Responsibilities.Billing)}}
 	canonical, e := EncodeSettingsValues(v)
 	if e != nil {
 		return d.SettingsValues{}, e
 	}
 	var input, output any
-	if json.Unmarshal(raw, &input) != nil || json.Unmarshal(canonical, &output) != nil || !reflect.DeepEqual(input, output) {
+	if json.Unmarshal(raw, &input) != nil || json.Unmarshal(canonical, &output) != nil {
+		return d.SettingsValues{}, d.ErrInvalid
+	}
+	if object, ok := input.(map[string]any); ok {
+		if policies, ok := object["policies"].(map[string]any); ok {
+			if policies["require_invitation_confirmation"] == false {
+				delete(policies, "require_invitation_confirmation")
+			}
+		}
+	}
+	if !reflect.DeepEqual(input, output) {
 		return d.SettingsValues{}, d.ErrInvalid
 	}
 	return v, nil

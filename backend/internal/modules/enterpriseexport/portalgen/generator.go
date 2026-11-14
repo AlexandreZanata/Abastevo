@@ -101,19 +101,49 @@ type Manifest struct {
 }
 
 type pageBase struct {
-	Title        string
-	Description  string
-	ActiveNav    string
+	// Title is the short page title (the H1 of some templates); HeadTitle is
+	// the <title> and og:title.
+	Title       string
+	HeadTitle   string
+	Description string
+	ActiveNav   string
+	// Indexable is the per-page decision (global switch and pageIndexable);
+	// Robots renders it and only indexable pages enter a sitemap.
 	Indexable    bool
+	Robots       string
+	Canonical    string
+	OGImage      string
 	OfficialOnly bool
-	Landing      string
-	Period       string
-	PublishedAt  string
-	InputHash    string
-	CSSURL       string
-	ScriptURL    string
-	Breadcrumbs  []crumb
+	// HasLanding enables landing links; Landing is their prefix, empty for a
+	// landing on the portal's own origin (root-relative links).
+	HasLanding  bool
+	Landing     string
+	Period      string
+	PublishedAt string
+	InputHash   string
+	CSSURL      string
+	ScriptURL   string
+	Breadcrumbs []crumb
+	// Modules are contextual link lists rendered in the page body.
+	Modules []linkModule
+	Route   string
+	Family  pageFamily
+	LastMod string
+	// JSONLD is the inline structured data graph (B-BR-SEO-06).
+	JSONLD template.JS
+	// HasForum adds the /forum/ navigation links (B-BR-SEO-08).
+	HasForum bool
+	// OGType is the og:type ("website" when empty); article pages also
+	// carry their published and modified instants.
+	OGType           string
+	ArticlePublished string
+	ArticleModified  string
 }
+
+func (b pageBase) page() pageBase { return b }
+
+// routedPage is template data that carries its page base.
+type routedPage interface{ page() pageBase }
 
 type crumb struct {
 	Label   string
@@ -122,7 +152,10 @@ type crumb struct {
 }
 
 type summaryRow struct {
+	Code         string
 	Fuel         string
+	FuelName     string
+	FuelHref     string
 	Unit         string
 	Stations     int
 	Observations int
@@ -158,6 +191,7 @@ type rankingView struct {
 type stateLink struct {
 	Code     string
 	Name     string
+	Href     string
 	Stations int
 	Fuels    int
 }
@@ -181,6 +215,7 @@ type consultarPage struct {
 
 type precosPage struct {
 	pageBase
+	FuelHubs      []fuelHubLink
 	National      []summaryRow
 	Rankings      []rankingView
 	States        []stateLink
@@ -190,6 +225,7 @@ type precosPage struct {
 
 type statePage struct {
 	pageBase
+	NoDataCities   []municipalityLink
 	UF             string
 	Name           string
 	Summaries      []summaryRow
@@ -199,19 +235,23 @@ type statePage struct {
 
 type municipalityPage struct {
 	pageBase
-	Code         string
-	Name         string
-	UF           string
-	Summaries    []summaryRow
-	Rankings     []rankingView
-	Rows         []rankingRow
-	Insufficient bool
-	Population   int
+	NoData        bool
+	Stations      []moduleLink
+	StationsTotal int
+	Code          string
+	Name          string
+	UF            string
+	Summaries     []summaryRow
+	Rankings      []rankingView
+	Rows          []rankingRow
+	Insufficient  bool
+	Population    int
 }
 
 type stationView struct {
 	ID               string
 	Name             string
+	Registry         string
 	LegalName        string
 	CNPJ             string
 	Address          string
@@ -219,6 +259,7 @@ type stationView struct {
 	Location         string
 	Place            string
 	StateHref        string
+	StateName        string
 	Municipality     string
 	MunicipalityHref string
 }
@@ -286,8 +327,33 @@ type generator struct {
 	searchRelease string
 	searchFuels   []searchFuel
 	searchFiscal  bool
-	sitemapRoutes []string
+	sitemap       []sitemapEntry
 	hasSitemap    bool
+	// cityRoutes maps an IBGE code to its readable /precos/{uf}/{slug}/ route.
+	cityRoutes map[string]string
+	statePages map[string]bool
+	cityPages  map[string]bool
+	cityState  map[string]string
+	fuelHubs   map[string]fuelHubLink
+	latest     *enterpriseexport.Revision
+	// forum is the planned web forum (B-BR-SEO-08); nil without posts.
+	forum *forumPlan
+	// stationIndex maps a station id to its entry, for forum post links.
+	stationIndex map[string]int
+	// Station index and city pages, prepared before any page is written.
+	entries         []stationEntry
+	pricesByStation map[string][]enterpriseexport.Price
+	cities          map[string]*cityInfo
+	observed        map[string][]observation
+	// Page-wide publication facts.
+	period        string
+	periodShort   string
+	surveyDate    string
+	published     string
+	inputHash     string
+	buildDate     string
+	dataDate      string
+	landingPrefix string
 }
 
 // Generate reads one frozen export candidate and writes a complete private
@@ -339,8 +405,13 @@ func Generate(opts Options) (Result, error) {
 	}
 	g := &generator{
 		opts: opts, outDir: tmp, files: map[string]FileDigest{}, indexable: opts.Indexable,
-		siteURL: siteURL,
+		siteURL: siteURL, buildDate: isoDate(manifest.BuiltAt),
+		statePages: map[string]bool{}, cityPages: map[string]bool{},
 	}
+	if opts.LandingURL != "" && opts.LandingURL != siteURL {
+		g.landingPrefix = opts.LandingURL
+	}
+	g.dataDate = g.buildDate
 	g.tmpl, err = template.New("portal").Funcs(template.FuncMap{
 		"brl": brl, "brlPtr": brlPtr, "dateBR": dateBR,
 		"periodLabel": periodLabel, "fuelLabel": fuelLabel, "plural": plural,
@@ -389,14 +460,14 @@ func Generate(opts Options) (Result, error) {
 		if official == nil {
 			return Result{}, fmt.Errorf("portalgen: official-only output requires an official dataset")
 		}
-		officialPublished := publicationLabel(manifest.BuiltAt)
-		if err := g.generateOfficial(official, stations, "", officialPublished, combinedHash); err != nil {
+		g.published, g.inputHash = publicationLabel(manifest.BuiltAt), combinedHash
+		if err := g.generateOfficial(official, stations); err != nil {
 			return Result{}, err
 		}
-		if err := g.generateStatic("", officialPublished, combinedHash); err != nil {
+		if err := g.generateStatic(); err != nil {
 			return Result{}, err
 		}
-		if err := g.writeSitemap(manifest.BuiltAt); err != nil {
+		if err := g.writeSitemap(); err != nil {
 			return Result{}, err
 		}
 		if err := g.writeRobots(); err != nil {
@@ -471,7 +542,10 @@ func Generate(opts Options) (Result, error) {
 	if err != nil {
 		return Result{}, err
 	}
+	g.cityState = municipalityState
 	latestSummaries := summariesFor(projection, latest)
+	g.fuelHubs = planFuelHubs(latestSummaries)
+	g.latest = latest
 	latestRankings := rankingsFor(projection, latest)
 	previous := previousRevision(snapshot.Revisions, latest)
 	previousSummaries := summariesForRevision(projection, previous)
@@ -479,6 +553,16 @@ func Generate(opts Options) (Result, error) {
 	period := ""
 	if latest != nil {
 		period = periodLabel(latest.SurveyStart, latest.SurveyEnd)
+		g.periodShort = periodShort(latest.SurveyStart, latest.SurveyEnd)
+		g.surveyDate = dateBR(latest.SurveyEnd)
+		g.dataDate = revisionDataDate(*latest, g.buildDate)
+	}
+	g.period, g.published, g.inputHash = period, published, combinedHash
+	g.observed = obsByStation
+	g.prepareStationIndex(snapshot, stations, revisions, obsByStation)
+	g.prepareGeography(latestSummaries, municipalityState, municipalityName)
+	if err := g.prepareForum(snapshot.ForumPosts); err != nil {
+		return Result{}, err
 	}
 	release := releaseSlug(manifest.ContentSHA256)
 	downloadFiles, manifestLink, err := g.writeDownloads(snapshot, latest, stations, observations, latestSummaries, release, period, published, combinedHash)
@@ -489,35 +573,40 @@ func Generate(opts Options) (Result, error) {
 	if official != nil {
 		cards = append(cards, buildOfficialInsights(official)...)
 	}
-	if err := g.generateCuriosidades(cards, period, published, combinedHash); err != nil {
+	if err := g.generateCuriosidades(cards); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateDownloads(downloadFiles, manifestLink, period, release, published, combinedHash); err != nil {
+	if err := g.generateDownloads(downloadFiles, manifestLink, release); err != nil {
 		return Result{}, err
 	}
-
-	if err := g.generateConsultar(latestSummaries, stateStations, searchStates, searchRelease, period, published, combinedHash); err != nil {
+	if err := g.generateConsultar(latestSummaries, stateStations, searchStates, searchRelease); err != nil {
 		return Result{}, err
 	}
-	if err := g.generatePrecos(latestSummaries, latestRankings, stations, stateStations, period, published, combinedHash); err != nil {
+	if err := g.generatePrecos(latestSummaries, latestRankings, stations, stateStations); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateStates(latestSummaries, latestRankings, stations, municipalityStations, municipalityState, municipalityName, period, published, combinedHash); err != nil {
+	if err := g.generateStates(latestSummaries, latestRankings, stations, municipalityStations); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateMunicipalities(latestSummaries, observations, municipalityStations, municipalityState, municipalityName, period, published, combinedHash); err != nil {
+	if err := g.generateMunicipalities(latestSummaries, observations, municipalityStations); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateStations(snapshot, stations, obsByStation, stateStations, municipalityStations, municipalityName, official, period, published, combinedHash); err != nil {
+	if err := g.generateFuelHubs(latestSummaries, municipalityName); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateOfficial(official, stations, period, published, combinedHash); err != nil {
+	if err := g.generateStations(snapshot, stations, revisions, official); err != nil {
 		return Result{}, err
 	}
-	if err := g.generateStatic(period, published, combinedHash); err != nil {
+	if err := g.generateForum(); err != nil {
 		return Result{}, err
 	}
-	if err := g.writeSitemap(manifest.BuiltAt); err != nil {
+	if err := g.generateOfficial(official, stations); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateStatic(); err != nil {
+		return Result{}, err
+	}
+	if err := g.writeSitemap(); err != nil {
 		return Result{}, err
 	}
 	if err := g.writeRobots(); err != nil {
@@ -563,6 +652,11 @@ func readInput(dir string) (enterpriseexport.Manifest, enterpriseexport.Snapshot
 	snapshot, err := enterpriseexport.ReadSnapshot(dir)
 	if err != nil {
 		return manifest, enterpriseexport.Snapshot{}, analytics.Projection{}, err
+	}
+	// The forum section must be exactly the one the manifest binds.
+	if forum := manifest.Sources.Forum; (forum == nil) != (snapshot.ForumPosts == nil) ||
+		(forum != nil && (forum.Posts != len(snapshot.ForumPosts) || manifest.Counts.ForumPosts != forum.Posts)) {
+		return manifest, enterpriseexport.Snapshot{}, analytics.Projection{}, fmt.Errorf("portalgen: forum section does not match the export manifest")
 	}
 	return manifest, snapshot, projection, nil
 }
@@ -824,8 +918,26 @@ func (g *generator) copyAssets() error {
 	return nil
 }
 
-func (g *generator) addSitemapRoute(route string) {
-	g.sitemapRoutes = append(g.sitemapRoutes, route)
+// writeRoute renders one routed page and, when the page decision is
+// indexable, registers it for the sitemap with its data date.
+func (g *generator) writeRoute(templateName string, data routedPage) error {
+	base := data.page()
+	if !strings.HasPrefix(base.Route, "/") || !strings.HasSuffix(base.Route, "/") {
+		return fmt.Errorf("portalgen: invalid page route")
+	}
+	if err := g.writePage(strings.TrimPrefix(base.Route, "/")+"index.html", templateName, data); err != nil {
+		return err
+	}
+	if base.Indexable {
+		g.sitemap = append(g.sitemap, sitemapEntry{Route: base.Route, Family: base.Family, LastMod: base.LastMod})
+	}
+	return nil
+}
+
+type sitemapEntry struct {
+	Route   string
+	Family  pageFamily
+	LastMod string
 }
 
 type sitemapURL struct {
@@ -837,45 +949,6 @@ type sitemapSet struct {
 	XMLName xml.Name     `xml:"urlset"`
 	XMLNS   string       `xml:"xmlns,attr"`
 	URLs    []sitemapURL `xml:"url"`
-}
-
-func (g *generator) writeSitemap(builtAt string) error {
-	if !g.indexable {
-		return nil
-	}
-	routes := append([]string(nil), g.sitemapRoutes...)
-	sort.Strings(routes)
-	unique := routes[:0]
-	for _, route := range routes {
-		if len(unique) == 0 || unique[len(unique)-1] != route {
-			unique = append(unique, route)
-		}
-	}
-	if len(unique) == 0 || len(unique) > 50_000 {
-		return fmt.Errorf("portalgen: invalid sitemap route count")
-	}
-	lastMod := ""
-	if at, err := time.Parse(time.RFC3339, builtAt); err == nil {
-		lastMod = at.UTC().Format("2006-01-02")
-	}
-	set := sitemapSet{XMLNS: "http://www.sitemaps.org/schemas/sitemap/0.9", URLs: make([]sitemapURL, 0, len(unique))}
-	for _, route := range unique {
-		if !strings.HasPrefix(route, "/") || !strings.HasSuffix(route, "/") {
-			return fmt.Errorf("portalgen: invalid sitemap route")
-		}
-		set.URLs = append(set.URLs, sitemapURL{Loc: g.siteURL + route, LastMod: lastMod})
-	}
-	body, err := xml.MarshalIndent(set, "", "  ")
-	if err != nil {
-		return err
-	}
-	body = append([]byte(xml.Header), body...)
-	body = append(body, '\n')
-	if err := g.writeAsset("sitemap.xml", body); err != nil {
-		return err
-	}
-	g.hasSitemap = true
-	return nil
 }
 
 func (g *generator) writeRobots() error {
@@ -965,486 +1038,23 @@ func digestBytes(data []byte) string {
 	return "sha256:" + hex.EncodeToString(sum[:])
 }
 
-func (g *generator) base(title, description, active, period, published, inputHash string, crumbs []crumb) pageBase {
-	return pageBase{
-		Title: title, Description: description, ActiveNav: active,
-		Indexable: g.indexable, OfficialOnly: g.opts.OfficialOnly, Landing: g.opts.LandingURL,
-		Period: period, PublishedAt: published,
-		InputHash: inputHash, CSSURL: g.cssURL, ScriptURL: g.scriptURL, Breadcrumbs: crumbs,
-	}
-}
-
-func (g *generator) generateConsultar(summaries []analytics.Summary, states map[string]int, searchStates []searchState, release, period, published, inputHash string) error {
-	stateLinks := make([]stateLink, 0)
-	for code, stations := range states {
-		fuels := map[string]bool{}
-		for _, summary := range summaries {
-			if summary.Geography.Level == analytics.LevelState && summary.Geography.Code == code {
-				fuels[summary.Fuel] = true
-			}
-		}
-		stateLinks = append(stateLinks, stateLink{Code: code, Name: ufName(code), Stations: stations, Fuels: len(fuels)})
-	}
-	sort.Slice(stateLinks, func(i, j int) bool { return stateLinks[i].Code < stateLinks[j].Code })
-	data := consultarPage{
-		pageBase: g.base("Consultar preços de combustíveis", "Consulta estática de preços da pesquisa ANP, com período, fonte, amostra e status informado.", "consultar", period, published, inputHash, []crumb{{Label: "Consultar", Current: true}}),
-		States:   stateLinks, National: summaryRows(summaries, analytics.LevelNational, "BR", false),
-		SearchStates: searchStates, SearchRelease: release,
-	}
-	if err := g.writePage("consultar/index.html", "consultar", data); err != nil {
-		return err
-	}
-	g.addSitemapRoute("/consultar/")
-	return nil
-}
-
-func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []analytics.Ranking, stations map[string]enterpriseexport.Station, states map[string]int, period, published, inputHash string) error {
-	stateLinks := make([]stateLink, 0)
-	for code, stations := range states {
-		fuels := map[string]bool{}
-		for _, summary := range summaries {
-			if summary.Geography.Level == analytics.LevelState && summary.Geography.Code == code {
-				fuels[summary.Fuel] = true
-			}
-		}
-		stateLinks = append(stateLinks, stateLink{Code: code, Name: ufName(code), Stations: stations, Fuels: len(fuels)})
-	}
-	sort.Slice(stateLinks, func(i, j int) bool { return stateLinks[i].Code < stateLinks[j].Code })
-	views, err := rankingViews(rankings, analytics.LevelNational, "", stations, true)
+// isoDate is the UTC calendar day of an RFC 3339 instant, or "".
+func isoDate(value string) string {
+	at, err := time.Parse(time.RFC3339, value)
 	if err != nil {
-		return err
+		return ""
 	}
-	data := precosPage{
-		pageBase: g.base("Preços por região", "Resumo derivado da pesquisa ANP por região, com amostra, mínimo, máximo, dispersão e vínculo com a metodologia.", "precos", period, published, inputHash, []crumb{{Label: "Preços", Current: true}}),
-		National: summaryRows(summaries, analytics.LevelNational, "BR", false), Rankings: views, States: stateLinks,
-		SearchRelease: g.searchRelease, SearchFuels: g.searchFuels,
-	}
-	if err := g.writePage("precos/index.html", "precos", data); err != nil {
-		return err
-	}
-	g.addSitemapRoute("/precos/")
-	return nil
+	return at.UTC().Format("2006-01-02")
 }
 
-func (g *generator) generateStates(summaries []analytics.Summary, rankings []analytics.Ranking, stations map[string]enterpriseexport.Station, municipalityStations map[string]int, municipalityState, municipalityName map[string]string, period, published, inputHash string) error {
-	states := map[string]bool{}
-	for _, summary := range summaries {
-		if summary.Geography.Level == analytics.LevelState {
-			states[summary.Geography.Code] = true
-		}
+// revisionDataDate is the day the revision's data changed: its publication
+// day, else its survey end, else fallback.
+func revisionDataDate(revision enterpriseexport.Revision, fallback string) string {
+	if day := isoDate(revision.PublishedAt); day != "" {
+		return day
 	}
-	for code := range states {
-		uf := code
-		if !isUF(uf) {
-			return fmt.Errorf("portalgen: invalid state code")
-		}
-		stateSummaries := summaryRows(summaries, analytics.LevelState, uf, false)
-		views, err := rankingViews(rankings, analytics.LevelState, uf, stations, true)
-		if err != nil {
-			return err
-		}
-		municipalities := map[string]bool{}
-		for _, summary := range summaries {
-			if summary.Geography.Level == analytics.LevelMunicipality {
-				code := summary.Geography.Code
-				if municipalityState[code] == uf {
-					municipalities[code] = true
-				}
-			}
-		}
-		links := make([]municipalityLink, 0, len(municipalities))
-		for code := range municipalities {
-			stationsCount := municipalityStations[code]
-			name := municipalityName[code]
-			if name == "" {
-				name = "Município " + code
-			}
-			links = append(links, municipalityLink{
-				Code: code, Name: name, UF: uf,
-				Href:     "/precos/uf/" + uf + "/municipio/" + code + "/",
-				Stations: stationsCount, Insufficient: stationsCount < minMunicipality,
-			})
-		}
-		sort.Slice(links, func(i, j int) bool { return links[i].Name < links[j].Name })
-		data := statePage{
-			pageBase: g.base("Preços em "+ufName(uf), "Preços da pesquisa ANP em "+ufName(uf)+", com amostra, período, resumo derivado e postos.", "precos", period, published, inputHash, []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Current: true}}),
-			UF:       uf, Name: ufName(uf), Summaries: stateSummaries, Rankings: views, Municipalities: links,
-		}
-		if err := g.writePage("precos/uf/"+uf+"/index.html", "state", data); err != nil {
-			return err
-		}
-		g.addSitemapRoute("/precos/uf/" + uf + "/")
+	if _, err := parseDay(revision.SurveyEnd); err == nil {
+		return revision.SurveyEnd
 	}
-	return nil
-}
-
-func (g *generator) generateMunicipalities(summaries []analytics.Summary, observations []observation, municipalityStations map[string]int, municipalityState, municipalityName map[string]string, period, published, inputHash string) error {
-	municipalities := map[string]bool{}
-	for _, summary := range summaries {
-		if summary.Geography.Level == analytics.LevelMunicipality {
-			municipalities[summary.Geography.Code] = true
-		}
-	}
-	for code := range municipalities {
-		if !isIBGE(code) {
-			return fmt.Errorf("portalgen: invalid municipality code")
-		}
-		uf := municipalityState[code]
-		if uf == "" {
-			continue
-		}
-		if !isUF(uf) {
-			return fmt.Errorf("portalgen: invalid municipality state")
-		}
-		name := municipalityName[code]
-		if name == "" {
-			name = "Município " + code
-		}
-		insufficient := municipalityStations[code] < minMunicipality
-		data := municipalityPage{
-			pageBase: g.base("Preços em "+name, "Preços da pesquisa ANP em "+name+", com amostra, período e resumo derivado.", "precos", period, published, inputHash, []crumb{{Label: "Preços", Href: "/precos/"}, {Label: ufName(uf), Href: "/precos/uf/" + uf + "/"}, {Label: name, Current: true}}),
-			Code:     code, Name: name, UF: uf,
-			Summaries:    summaryRows(summaries, analytics.LevelMunicipality, code, true),
-			Insufficient: insufficient, Population: municipalityStations[code],
-		}
-		items := make([]observation, 0)
-		for _, item := range observations {
-			if item.station.MunicipalityCode == code && item.station.State == uf {
-				items = append(items, item)
-			}
-		}
-		if insufficient {
-			data.Rows = observationRows(items, 0, false)
-		} else {
-			data.Rankings = observationRankings(items)
-		}
-		if err := g.writePage("precos/uf/"+uf+"/municipio/"+code+"/index.html", "municipality", data); err != nil {
-			return err
-		}
-		g.addSitemapRoute("/precos/uf/" + uf + "/municipio/" + code + "/")
-	}
-	return nil
-}
-
-func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, stations map[string]enterpriseexport.Station, observations map[string][]observation, stateStations, municipalityStations map[string]int, municipalityName map[string]string, official *officialDataset, period, published, inputHash string) error {
-	ordered := make([]enterpriseexport.Station, 0, len(stations))
-	for _, station := range stations {
-		ordered = append(ordered, station)
-	}
-	sort.Slice(ordered, func(i, j int) bool {
-		if ordered[i].DisplayName != ordered[j].DisplayName {
-			return ordered[i].DisplayName < ordered[j].DisplayName
-		}
-		return ordered[i].StationID < ordered[j].StationID
-	})
-	for _, station := range ordered {
-		items := observations[station.StationID]
-		obsView := make([]observationView, 0, len(items))
-		historyKeys := map[string]struct{ fuel, unit string }{}
-		for _, item := range items {
-			obsView = append(obsView, observationView{
-				Fuel: fuelLabel(item.price.FuelProduct), Unit: item.price.Unit,
-				Condition: "À vista", Amount: item.price.AmountMilliBRL,
-				Collected: dateBR(item.price.CollectedOn), Period: period,
-			})
-			historyKeys[item.price.FuelProduct+"\x00"+item.price.Unit] = struct{ fuel, unit string }{item.price.FuelProduct, item.price.Unit}
-		}
-		for _, price := range snapshot.Prices {
-			if price.StationID != station.StationID {
-				continue
-			}
-			unit, err := kernel.Product(price.FuelProduct).Unit()
-			if err != nil || price.Unit != string(unit) {
-				continue
-			}
-			historyKeys[price.FuelProduct+"\x00"+price.Unit] = struct{ fuel, unit string }{price.FuelProduct, price.Unit}
-		}
-		historyViews := make([]historyView, 0, len(historyKeys))
-		for _, key := range historyKeys {
-			history, err := analytics.StationHistory(snapshot.Prices, snapshot.Revisions, station.StationID, key.fuel, key.unit)
-			if err != nil {
-				return err
-			}
-			points := make([]historyPointView, 0, len(history.Points))
-			hasObservation := false
-			for _, point := range history.Points {
-				points = append(points, historyPointView{
-					Period:    periodLabel(point.SurveyStart, point.SurveyEnd),
-					Collected: dateBR(point.CollectedOn), Amount: point.AmountMilliBRL, Missing: point.Missing,
-				})
-				if !point.Missing {
-					hasObservation = true
-				}
-			}
-			if hasObservation {
-				historyViews = append(historyViews, historyView{Fuel: fuelLabel(key.fuel), Unit: key.unit, Points: points})
-			}
-		}
-		sort.Slice(historyViews, func(i, j int) bool {
-			if historyViews[i].Fuel != historyViews[j].Fuel {
-				return historyViews[i].Fuel < historyViews[j].Fuel
-			}
-			return historyViews[i].Unit < historyViews[j].Unit
-		})
-		place := "Localização não informada"
-		if station.MunicipalityCode != "" {
-			name := municipalityName[station.MunicipalityCode]
-			if name == "" {
-				name = "Município " + station.MunicipalityCode
-			}
-			place = name + "/" + station.State
-		} else if station.State != "" {
-			place = ufName(station.State)
-		}
-		view := stationView{
-			ID: station.StationID, Name: station.DisplayName, LegalName: stationLegalName(station), CNPJ: cnpjBR(station.CNPJ),
-			Address: addressLine(station.Address), Status: statusLabel(station.OperationStatus),
-			Location: locationLabel(station.LocationQuality), Place: place,
-		}
-		if station.State != "" && stateStations[station.State] > 0 {
-			view.StateHref = "/precos/uf/" + station.State + "/"
-		}
-		if station.MunicipalityCode != "" && station.State != "" && municipalityStations[station.MunicipalityCode] > 0 {
-			view.Municipality = place
-			view.MunicipalityHref = "/precos/uf/" + station.State + "/municipio/" + station.MunicipalityCode + "/"
-		}
-		source := sourceView{}
-		if latest := latestRevision(snapshot.Revisions); latest != nil {
-			source = sourceView{
-				URL: latest.SourceURL, Checksum: latest.SourceChecksum,
-				ParserVersion: latest.ParserVersion, PublishedAt: publicationLabel(latest.PublishedAt),
-				Period: periodLabel(latest.SurveyStart, latest.SurveyEnd),
-			}
-		}
-		officialRecords, officialCount := officialStationViews(official, station.StationID, stations)
-		data := stationPage{
-			pageBase: g.base(station.DisplayName, "Preços datados da pesquisa ANP para "+station.DisplayName+", com fonte, histórico, lacunas, status informado e registros oficiais vinculados.", "consultar", period, published, inputHash, []crumb{{Label: "Consultar", Href: "/consultar/"}, {Label: station.DisplayName, Current: true}}),
-			Station:  view, Observations: obsView, Histories: historyViews, Source: source,
-			OfficialRecords: officialRecords, OfficialCount: officialCount, OfficialMore: officialCount > len(officialRecords),
-		}
-		if err := g.writePage("postos/"+station.StationID+"/index.html", "station", data); err != nil {
-			return err
-		}
-		g.addSitemapRoute("/postos/" + station.StationID + "/")
-	}
-	return nil
-}
-
-func (g *generator) generateCuriosidades(cards []insightCard, period, published, inputHash string) error {
-	data := curiosidadesPage{
-		pageBase: g.base("Perguntas aprovadas sobre os dados", "Respostas determinísticas sobre amostra, preços e cobertura da pesquisa ANP, com fórmula e fonte.", "curiosidades", period, published, inputHash, []crumb{{Label: "Curiosidades", Current: true}}),
-		Cards:    cards, DownloadsHref: "/dados/",
-	}
-	if err := g.writePage("curiosidades/index.html", "curiosidades", data); err != nil {
-		return err
-	}
-	g.addSitemapRoute("/curiosidades/")
-	return nil
-}
-
-func (g *generator) generateDownloads(files []downloadFile, manifest downloadFile, period, release, published, inputHash string) error {
-	data := dadosPage{
-		pageBase: g.base("Baixar dados públicos", "Downloads CSV e manifesto da pesquisa ANP mais recente, com amostra, período, fonte e limites.", "", period, published, inputHash, []crumb{{Label: "Dados para download", Current: true}}),
-		Release:  release, Period: period, Files: files, Manifest: manifest, Notes: downloadNotes,
-	}
-	if err := g.writePage("dados/index.html", "dados", data); err != nil {
-		return err
-	}
-	g.addSitemapRoute("/dados/")
-	return nil
-}
-
-func (g *generator) generateStatic(period, published, inputHash string) error {
-	metodologia := g.base("Metodologia e fontes", "Fontes, datas, amostra, cálculos derivados, correções, direitos e limites da publicação.", "metodologia", period, published, inputHash, []crumb{{Label: "Metodologia", Current: true}})
-	if err := g.writePage("metodologia/index.html", "metodologia", metodologia); err != nil {
-		return err
-	}
-	g.addSitemapRoute("/metodologia/")
-	notFound := g.base("Página não encontrada", "A página ou o posto solicitado não existe neste portal estático.", "", period, published, inputHash, []crumb{{Label: "Página não encontrada", Current: true}})
-	notFound.Indexable = false
-	return g.writePage("404.html", "notfound", notFound)
-}
-
-func summaryRows(summaries []analytics.Summary, level, code string, markInsufficient bool) []summaryRow {
-	rows := make([]summaryRow, 0)
-	for _, summary := range summaries {
-		if summary.Geography.Level != level || summary.Geography.Code != code {
-			continue
-		}
-		rows = append(rows, summaryRow{
-			Fuel: fuelLabel(summary.Fuel), Unit: summary.Unit,
-			Stations: summary.StationCount, Observations: summary.SourceObservations,
-			Min: summary.MinMilliBRL, Max: summary.MaxMilliBRL, Spread: summary.SpreadMilliBRL,
-			Insufficient: markInsufficient && summary.StationCount < minMunicipality,
-		})
-	}
-	sort.Slice(rows, func(i, j int) bool {
-		if rows[i].Fuel != rows[j].Fuel {
-			return rows[i].Fuel < rows[j].Fuel
-		}
-		return rows[i].Unit < rows[j].Unit
-	})
-	return rows
-}
-
-func rankingViews(rankings []analytics.Ranking, level, code string, stations map[string]enterpriseexport.Station, pageCap bool) ([]rankingView, error) {
-	views := make([]rankingView, 0)
-	for _, ranking := range rankings {
-		if ranking.Geography.Level != level || (code != "" && ranking.Geography.Code != code) {
-			continue
-		}
-		rows := make([]rankingRow, 0, len(ranking.Entries))
-		for _, entry := range ranking.Entries {
-			station, ok := stations[entry.StationID]
-			if !ok {
-				return nil, fmt.Errorf("portalgen: ranking references unknown station")
-			}
-			rows = append(rows, rankingRow{
-				Position: entry.Position, Name: station.DisplayName, LegalName: stationLegalName(station), StationID: entry.StationID,
-				CNPJ: cnpjBR(station.CNPJ), Place: stationPlace(station),
-				Status: statusLabel(entry.OperationStatus), Amount: entry.AmountMilliBRL,
-				Collected: dateBR(entry.CollectedOn), TieCount: entry.TieCount,
-			})
-		}
-		view := rankingView{
-			Title: fuelLabel(ranking.Fuel) + " · " + ranking.Unit,
-			Fuel:  fuelLabel(ranking.Fuel), Unit: ranking.Unit,
-			Population: ranking.PopulationStations, Rows: rows,
-			Truncated: ranking.Truncated, TiesAtCutoff: ranking.TiesAtCutoff,
-		}
-		if pageCap && len(view.Rows) > maxRankingPerPage {
-			cutoff := view.Rows[maxRankingPerPage-1].Amount
-			end := maxRankingPerPage
-			for end < len(view.Rows) && view.Rows[end].Amount == cutoff {
-				end++
-			}
-			view.Rows = view.Rows[:end]
-			view.Truncated = true
-			view.TiesAtCutoff = 0
-			for _, row := range view.Rows {
-				if row.Amount == cutoff {
-					view.TiesAtCutoff++
-				}
-			}
-		}
-		views = append(views, view)
-	}
-	sort.Slice(views, func(i, j int) bool {
-		if views[i].Fuel != views[j].Fuel {
-			return views[i].Fuel < views[j].Fuel
-		}
-		return views[i].Unit < views[j].Unit
-	})
-	return views, nil
-}
-
-func observationRows(items []observation, limit int, ranked bool) []rankingRow {
-	sort.Slice(items, func(i, j int) bool {
-		if ranked && items[i].price.AmountMilliBRL != items[j].price.AmountMilliBRL {
-			return items[i].price.AmountMilliBRL < items[j].price.AmountMilliBRL
-		}
-		if items[i].station.DisplayName != items[j].station.DisplayName {
-			return items[i].station.DisplayName < items[j].station.DisplayName
-		}
-		return items[i].station.StationID < items[j].station.StationID
-	})
-	counts := map[int64]int{}
-	for _, item := range items {
-		counts[item.price.AmountMilliBRL]++
-	}
-	rows := make([]rankingRow, 0, len(items))
-	for i, item := range items {
-		position := 0
-		if ranked {
-			position = i + 1
-		}
-		rows = append(rows, rankingRow{
-			Position: position, Name: item.station.DisplayName, LegalName: stationLegalName(item.station), StationID: item.station.StationID,
-			CNPJ: cnpjBR(item.station.CNPJ), Place: stationPlace(item.station),
-			Status: statusLabel(item.station.OperationStatus), Amount: item.price.AmountMilliBRL,
-			Collected: dateBR(item.price.CollectedOn), TieCount: counts[item.price.AmountMilliBRL],
-		})
-		if limit > 0 && len(rows) >= limit {
-			break
-		}
-	}
-	return rows
-}
-
-func observationRankings(items []observation) []rankingView {
-	groups := map[string][]observation{}
-	for _, item := range items {
-		key := item.price.FuelProduct + "\x00" + item.price.Unit
-		groups[key] = append(groups[key], item)
-	}
-	keys := make([]string, 0, len(groups))
-	for key := range groups {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	views := make([]rankingView, 0, len(keys))
-	for _, key := range keys {
-		group := groups[key]
-		rows := observationRows(group, 0, true)
-		if len(rows) > maxRankingPerPage {
-			cutoff := rows[maxRankingPerPage-1].Amount
-			end := maxRankingPerPage
-			for end < len(rows) && rows[end].Amount == cutoff {
-				end++
-			}
-			rows = rows[:end]
-			ties := 0
-			for _, row := range rows {
-				if row.Amount == cutoff {
-					ties++
-				}
-			}
-			views = append(views, rankingView{
-				Title: fuelLabel(group[0].price.FuelProduct) + " · " + group[0].price.Unit,
-				Fuel:  fuelLabel(group[0].price.FuelProduct), Unit: group[0].price.Unit,
-				Population: len(group), Rows: rows, Truncated: true, TiesAtCutoff: ties,
-			})
-			continue
-		}
-		views = append(views, rankingView{
-			Title: fuelLabel(group[0].price.FuelProduct) + " · " + group[0].price.Unit,
-			Fuel:  fuelLabel(group[0].price.FuelProduct), Unit: group[0].price.Unit,
-			Population: len(group), Rows: rows,
-		})
-	}
-	return views
-}
-
-func isUF(value string) bool {
-	if len(value) != 2 {
-		return false
-	}
-	for _, r := range value {
-		if r < 'A' || r > 'Z' {
-			return false
-		}
-	}
-	return true
-}
-
-func isIBGE(value string) bool {
-	if len(value) != 7 {
-		return false
-	}
-	for _, r := range value {
-		if r < '0' || r > '9' {
-			return false
-		}
-	}
-	return true
-}
-
-func stationPlace(station enterpriseexport.Station) string {
-	if station.MunicipalityCode != "" && station.State != "" {
-		return station.MunicipalityCode + "/" + station.State
-	}
-	if station.State != "" {
-		return station.State
-	}
-	return "localização não informada"
+	return fallback
 }

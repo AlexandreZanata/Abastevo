@@ -13,10 +13,10 @@ ADR-019 construction batch. See the
 The C1 fueling path uses the approved synthetic receipt scope. Consumption, reference comparisons, amendments and other later work keep their indexed dependencies.
 
 ### EMP-FUEL-001 — Fueling domain: products, units, payer and supplier roles
-- **Meta:** module FUEL · phase F3 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module FUEL · phase F3 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Define one scoped supply event with exact product and unit semantics.
 - **Rules and use cases:** BR-FUEL-001, BR-FUEL-002, BR-FUEL-003, BR-FUEL-004, BR-FUEL-005, BR-FUEL-006, BR-FUEL-009, BR-FUEL-011, BR-MONEY-009
-- **Depends on:** EMP-PLAT-009, EMP-FLEET-001
+- **Depends on:** EMP-PLAT-009, EMP-FLEET-001, EMP-METER-001
 - **Read first:** [fueling specification](../modules/fuelings.md) §§4–12, [validation scenarios](../15-validation.md) and [F0 decisions](../evidence/f0-m0-decisions.md)
 - **Scope:** in: required fields, product, fill, payer and independent supplier roles · out: storage and inferred fill levels
 - **Areas:** existing: exact-value and fleet types · proposed: pure fueling domain
@@ -27,6 +27,11 @@ The C1 fueling path uses the approved synthetic receipt scope. Consumption, refe
 - **Validation:** V-DOM, V-MONEY · migration: none in this task · rollback: close the new admission or projection path and preserve approved records, revisions and private data
 - **Risks and assumptions:** The owning specification supplies business rules. Keep scope, synthetic C1 evidence and the applicable phase gates explicit.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F2/C1 pure fueling construction](../evidence/f2-fuel001-supply-domain.md)
+is LOCAL_DONE / INTEGRATION_PENDING from tested/published METER-00105c83376. B-BR-EMP-137..143,
+BUC-EMP-69..72 and EDR-091..094 precede behavior. The actual owned product
+catalog is a prerequisite for runtime fleet persistence; full F3 stays queued.
 
 ### EMP-FUEL-002 — Fueling persistence, sync handlers and arithmetic consistency
 - **Meta:** module FUEL · phase F3 · cut C1 · priority P0 · type DB · size L · state TODO

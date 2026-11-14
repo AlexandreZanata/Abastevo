@@ -71,3 +71,20 @@ test('a fresh-authentication refusal stays distinct from an invalid key and from
   await assert.rejects(g.api.signIn('key'),e=>e instanceof ApiError&&e.kind==='unauthenticated');assert.equal(g.api.authenticated,false);
  }
 });
+test('business requests require a live memory-only company session, strict paths and epoch fencing',async()=>{
+ const f=fixture(path=>path.endsWith('/keys/login')?json(proof):path.includes('/session/')?json({...view(),csrf_token:csrf}):json({items:[],next_cursor:''}));
+ await assert.rejects(f.api.privatePost('/v1/org-access/contexts/list',{}),e=>e.kind==='unauthenticated');await f.api.signIn('key');
+ const before=f.calls.length;for(const path of ['/v1/admin/accounts/read','/v1/org-access/contexts/list?code=private','/v1/orgs/../../employees/list'])await assert.rejects(f.api.privatePost(path,{}),e=>e.kind==='denied');assert.equal(f.calls.length,before);
+ await f.api.privatePost('/v1/org-access/contexts/list',{});const call=f.calls.at(-1);assert.equal(call.init.headers['X-CSRF'],csrf);assert.equal(call.init.cache,'no-store');
+ const late=deferred();const g=fixture(path=>path.endsWith('/keys/login')?json(proof):path.includes('/session/')?json({...view(),csrf_token:csrf}):late.promise);await g.api.signIn('key');const pending=g.api.privatePost('/v1/org-access/contexts/list',{});g.api.forget();late.resolve(json({items:[]}));await assert.rejects(pending,e=>e.kind==='cancelled');
+});
+test('concealed missing membership on a private company request is a definitive denial',async()=>{
+ const f=fixture(path=>path.endsWith('/keys/login')?json(proof):path.includes('/session/')?json({...view(),csrf_token:csrf}):json({error:{code:'NOT_FOUND'}},404));await f.api.signIn('key');await assert.rejects(f.api.privatePost(`/v1/orgs/${uuid(2)}/employees/list`,{}),e=>e.kind==='denied');
+});
+test('organization setup routes are allowlisted and only registered refusal codes and field keys reach UI',async()=>{
+ const f=fixture(path=>path.endsWith('/keys/login')?json(proof):path.includes('/session/')?json({...view(),csrf_token:csrf}):json({ok:true}));await f.api.signIn('key');
+ for(const path of ['/v1/org-access/organizations/create','/v1/org-access/organizations/setups/list',`/v1/orgs/${uuid(2)}/settings/read`,`/v1/orgs/${uuid(2)}/settings/change`,`/v1/orgs/${uuid(2)}/settings/history`,`/v1/orgs/${uuid(2)}/settings/revision/read`,`/v1/orgs/${uuid(2)}/settings/responsibility-members/list`,`/v1/orgs/${uuid(2)}/organization/activate`])await f.api.privatePost(path,{});
+ for(const path of ['/v1/org-access/organizations/setups/list?account=private',`/v1/orgs/${uuid(2)}/settings/unsafe`,`/v1/orgs/${uuid(2)}/organization/configure`])await assert.rejects(f.api.privatePost(path,{}),e=>e.kind==='denied');
+ const g=fixture(path=>path.endsWith('/keys/login')?json(proof):path.includes('/session/')?json({...view(),csrf_token:csrf}):json({error:{code:'ORG_SETUP_INCOMPLETE',message:'PRIVATE',details:[{field:'name',code:'REQUIRED'},{field:'PRIVATE-IDENTITY',code:'PRIVATE'}]}},409));await g.api.signIn('key');await assert.rejects(g.api.privatePost(`/v1/orgs/${uuid(2)}/organization/activate`,{}),e=>e.code==='ORG_SETUP_INCOMPLETE'&&e.fields.join(',')==='name'&&!JSON.stringify(e).includes('PRIVATE'));
+ assert.equal(new ApiError('invalid','PRIVATE-CODE',['PRIVATE-IDENTITY']).code,'');
+});

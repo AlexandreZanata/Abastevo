@@ -210,6 +210,84 @@ func (policy *auditReadPolicy) AuthorizeAuditRead(_ context.Context, scope kerne
 	return nil
 }
 
+// isolateAuditTruncateProbe follows the actual CASCADE closure, including newer
+// command receipts. Only this disposable role gets those TRUNCATE grants, and
+// only dependent TRUNCATE triggers are suspended: the audit guard stays active.
+func isolateAuditTruncateProbe(t *testing.T, f *orgtest.Fixture) func() {
+	t.Helper()
+	rows, err := f.Admin.Query(t.Context(), `WITH RECURSIVE dependents(oid) AS (
+ SELECT 'public.org_audit_events'::regclass::oid
+ UNION
+ SELECT c.conrelid FROM pg_constraint c JOIN dependents d ON c.confrelid=d.oid WHERE c.contype='f'
+) SELECT n.nspname,c.relname,COALESCE(t.tgname,''),COALESCE(t.tgenabled::text,'')
+ FROM dependents d JOIN pg_class c ON c.oid=d.oid JOIN pg_namespace n ON n.oid=c.relnamespace
+ LEFT JOIN pg_trigger t ON t.tgrelid=c.oid AND NOT t.tgisinternal AND(t.tgtype&32)=32 AND t.tgenabled<>'D'
+ WHERE c.oid<>'public.org_audit_events'::regclass ORDER BY n.nspname,c.relname,t.tgname`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	type savedTrigger struct{ table, name, enabled string }
+	var triggers []savedTrigger
+	var tables []string
+	last := ""
+	for rows.Next() {
+		var schema, table, name, enabled string
+		if err := rows.Scan(&schema, &table, &name, &enabled); err != nil {
+			rows.Close()
+			t.Fatal(err)
+		}
+		qualified := pgx.Identifier{schema, table}.Sanitize()
+		if qualified != last {
+			tables = append(tables, qualified)
+			last = qualified
+		}
+		if name != "" {
+			triggers = append(triggers, savedTrigger{qualified, pgx.Identifier{name}.Sanitize(), enabled})
+		}
+	}
+	rows.Close()
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	if len(tables) == 0 {
+		t.Fatal("audit CASCADE closure unexpectedly empty")
+	}
+	if _, err := f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON "+strings.Join(tables, ",")+" TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	restored := false
+	restore := func() {
+		if restored {
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
+		for _, trigger := range triggers {
+			mode := "ENABLE"
+			switch trigger.enabled {
+			case "O":
+			case "A":
+				mode = "ENABLE ALWAYS"
+			case "R":
+				mode = "ENABLE REPLICA"
+			default:
+				t.Fatalf("unknown saved trigger state %q", trigger.enabled)
+			}
+			if _, err := f.Admin.Exec(ctx, "ALTER TABLE "+trigger.table+" "+mode+" TRIGGER "+trigger.name); err != nil {
+				t.Error("restore dependent truncate trigger", err)
+			}
+		}
+		restored = true
+	}
+	t.Cleanup(restore)
+	for _, trigger := range triggers {
+		if _, err := f.Admin.Exec(t.Context(), "ALTER TABLE "+trigger.table+" DISABLE TRIGGER "+trigger.name); err != nil {
+			t.Fatal(err)
+		}
+	}
+	return restore
+}
+
 func TestAuditReadIsolationAndImmutability(t *testing.T) {
 	f, store := newAuditFixture(t)
 	a, b := f.Organizations[0], f.Organizations[1]
@@ -257,30 +335,10 @@ func TestAuditReadIsolationAndImmutability(t *testing.T) {
 		}
 	}
 	// Even an accidental broad DML grant cannot mutate or truncate the trail.
-	if _, err := f.Admin.Exec(t.Context(), "GRANT ALL ON org_audit_events TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+
-		"; GRANT TRUNCATE ON org_event_intents,org_event_receipts,org_onboarding_commands,org_legal_commands,org_unit_commands,org_cost_centre_commands,org_employee_commands,org_employee_unit_clearings,org_team_links,org_team_commands,org_settings_versions,org_settings_heads,org_settings_designations,org_settings_commands,org_settings_notices TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+	if _, err := f.Admin.Exec(t.Context(), "GRANT ALL ON org_audit_events TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
-	// CASCADE reaches the append-only trigger despite the event-intent FK. The
-	// event tables' own append-only triggers are disabled for this check, so only
-	// the audit trail's trigger can produce its 55000 and message.
-	if _, err := f.Admin.Exec(t.Context(), `ALTER TABLE org_event_intents DISABLE TRIGGER org_event_intents_immutable;
-		ALTER TABLE org_event_receipts DISABLE TRIGGER org_event_receipts_immutable;
-		ALTER TABLE org_onboarding_commands DISABLE TRIGGER org_onboarding_history;
- ALTER TABLE org_legal_commands DISABLE TRIGGER org_legal_command_history;
- ALTER TABLE org_unit_commands DISABLE TRIGGER org_unit_command_history;
- ALTER TABLE org_cost_centre_commands DISABLE TRIGGER org_cost_centre_command_history;
- ALTER TABLE org_employee_commands DISABLE TRIGGER org_employee_command_history;
- ALTER TABLE org_employee_unit_clearings DISABLE TRIGGER org_employee_clearing_history;
- ALTER TABLE org_team_links DISABLE TRIGGER org_team_link_history;
- ALTER TABLE org_team_commands DISABLE TRIGGER org_team_command_history;
- ALTER TABLE org_settings_versions DISABLE TRIGGER org_settings_version_history;
- ALTER TABLE org_settings_heads DISABLE TRIGGER org_settings_head_history;
- ALTER TABLE org_settings_designations DISABLE TRIGGER org_settings_designation_history;
- ALTER TABLE org_settings_commands DISABLE TRIGGER org_settings_command_history;
- ALTER TABLE org_settings_notices DISABLE TRIGGER org_settings_notice_history`); err != nil {
-		t.Fatal(err)
-	}
+	restore := isolateAuditTruncateProbe(t, f)
 	for _, query := range []string{`UPDATE org_audit_events SET reason_code='correction'`, `DELETE FROM org_audit_events`, `TRUNCATE org_audit_events CASCADE`} {
 		err := database.WithOrgTx(t.Context(), f.Runtime, a.Scope(t), func(tx pgx.Tx) error {
 			_, err := tx.Exec(t.Context(), query)
@@ -291,18 +349,7 @@ func TestAuditReadIsolationAndImmutability(t *testing.T) {
 			t.Fatalf("immutable trail query returned %v", err)
 		}
 	}
-	if _, err := f.Admin.Exec(t.Context(), `ALTER TABLE org_event_intents ENABLE TRIGGER org_event_intents_immutable;
-		ALTER TABLE org_event_receipts ENABLE TRIGGER org_event_receipts_immutable;
-		ALTER TABLE org_onboarding_commands ENABLE TRIGGER org_onboarding_history;
- ALTER TABLE org_legal_commands ENABLE TRIGGER org_legal_command_history;
- ALTER TABLE org_unit_commands ENABLE TRIGGER org_unit_command_history;
- ALTER TABLE org_cost_centre_commands ENABLE TRIGGER org_cost_centre_command_history;
- ALTER TABLE org_employee_commands ENABLE TRIGGER org_employee_command_history;
- ALTER TABLE org_employee_unit_clearings ENABLE TRIGGER org_employee_clearing_history;
- ALTER TABLE org_team_links ENABLE TRIGGER org_team_link_history;
- ALTER TABLE org_team_commands ENABLE TRIGGER org_team_command_history`); err != nil {
-		t.Fatal(err)
-	}
+	restore()
 	err = database.WithOrgTx(t.Context(), f.Runtime, a.Scope(t), func(tx pgx.Tx) error {
 		_, err := tx.Exec(t.Context(), `INSERT INTO org_audit_events
 			(org_id,operation_id,actor_id,action,target_type,target_id,request_hash)

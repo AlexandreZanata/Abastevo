@@ -14,15 +14,18 @@ labelled synthetic data and is not part of the landing build or `dist/`.
 | Route | Purpose | Indexability | Data |
 | --- | --- | --- | --- |
 | `/consultar/` | Station/name/CNPJ search and directory entry | indexable; query strings canonical to `/consultar/` | Directory + latest official observation |
-| `/postos/{uuid}/` | Canonical station detail and dated history | indexable when the station has an admitted observation; `noindex,follow` when empty/stale | Directory + Official |
-| `/precos/` | National overview and links to state/municipality summaries | indexable | Official current revisions |
-| `/precos/uf/{uf}/` | State summary and municipalities | indexable when the state has a sample | Official current revisions + Directory geography |
-| `/precos/uf/{uf}/municipio/{ibge}/` | Municipality summary and cheapest-in-sample list | indexable when the municipality has at least five priced stations; otherwise `noindex,follow` | Official current revisions + Directory geography |
-| `/combustiveis/{fuel}/` | Fuel/unit definitions and period context | indexable | Official metadata; reserved for ESP-09/12 |
-| `/fiscalizacao/` | Source-reported official events, event-level | indexable when publication is authorized; candidate `noindex` | FQ-07/FQ-08 frozen export; FQ-06 still gated |
-| `/curiosidades/` | Approved deterministic data questions | formulas approved in ESP-12; candidate builds `noindex` until publication | ESP-04 metrics; official-record questions remain blocked by ESP-11 |
-| `/dados/` | Bounded CSV downloads and download manifest | indexable when publication is authorized; candidate builds `noindex` | Latest ESP-03/04 snapshot |
+| `/postos/{uuid}/` | Canonical station detail and dated history | indexable only with an official ANP price in the 8 most recent survey weeks and a complete address (D-SEO-02); otherwise `noindex,follow` | Directory + Official |
+| `/precos/` | National overview and links to fuel, state and municipality summaries | indexable | Official current revisions |
+| `/precos/{fuel-slug}/` | Fuel hub: national summary, table by state, cities with that fuel (SEO-07) | indexable when the current survey has the fuel | Official current revisions |
+| `/precos/{uf}/` | State summary and municipalities (lowercase UF, D-SEO-01) | indexable when the state has observations in the current survey; otherwise honest no-data page `noindex,follow` | Official current revisions + Directory geography |
+| `/precos/{uf}/{cidade-slug}/` | Municipality summary and cheapest-in-sample list (D-SEO-01) | indexable when the municipality has observations in the current survey (small samples keep the no-ranking state); otherwise honest no-data page `noindex,follow` | Official current revisions + Directory geography |
+| `/fiscalizacao/` | Source-reported official events, event-level | first page indexable when the official slice is present; pagination self-canonical `noindex,follow`; record pages always `noindex,follow` (D-SEO-03) | FQ-07/FQ-08 frozen export; FQ-06 still gated |
+| `/curiosidades/` | Approved deterministic data questions | indexable | ESP-04 metrics; official-record questions remain blocked by ESP-11 |
+| `/dados/` | Bounded CSV downloads and download manifest | indexable | Latest ESP-03/04 snapshot |
 | `/metodologia/` | Sources, dates, clocks, methods, rights and corrections | indexable | Source admission register + metrics definitions |
+| `/forum/` | Editorial forum hub: latest posts and categories (SEO-12) | indexable while at least one editorial post is published | Forum editorial web projection (B-BR-SEO-08) |
+| `/forum/{categoria-slug}/` | Category hub with its editorial posts | indexable while the category has a published editorial post; no page for empty categories | Forum editorial web projection |
+| `/forum/{categoria-slug}/{titulo-slug}-{id8}/` | One editorial post | indexable while published and visible; otherwise absent (404) | Forum editorial web projection |
 | `/404.html` | Unknown route or unknown station UUID | noindex | none |
 
 `/postos/{uuid}/` is the only canonical station identity route. Slugs, CNPJ,
@@ -81,6 +84,113 @@ A synthetic 6,000-station scale test measured a 2,000-station SP shard at
 346,084 bytes / 23,639 gzip versus a synthetic national locator at 1,020,084 /
 70,029; the regional design is selected. Real-scale measurement remains OWED
 while the real edition is blocked by ESP-07.
+
+## Search-engine contract (SEO-01–SEO-08, SEO-12)
+
+Owner decisions D-SEO-01..09 were accepted on 2026-11-14 in the
+[SEO growth plan](../planning/SEO_GROWTH_PLAN.md). The generator applies them
+as follows; tests in `portalgen` prove each rule on fixtures.
+
+- **B-BR-SEO-01 One indexation decision.** One pure function decides whether a
+  page is indexable from its family and data facts. The robots meta and the
+  sitemap read that same decision: indexable pages are `index,follow` and in a
+  sitemap; gated pages are `noindex,follow` and in no sitemap. A build with the
+  global indexable switch off is `noindex,nofollow` everywhere, has no sitemap
+  and a disallowing `robots.txt`.
+- **B-BR-SEO-02 Station gate.** A station page is indexable only when the
+  station has a valid official ANP price (BRL, canonical unit, collected inside
+  its survey week) in one of the 8 most recent distinct survey weeks of the
+  snapshot **and** a complete address: a street with letters, a municipality
+  name and a known UF.
+- **B-BR-SEO-03 Readable geo URLs.** States are `/precos/{uf}/` (lowercase UF);
+  cities are `/precos/{uf}/{slug}/`. The slug is: Unicode NFD, drop combining
+  marks, lowercase, remove apostrophes (`'` and `’`), replace every run of
+  characters outside `[a-z0-9]` with `-`, trim `-`. The IBGE name is the slug
+  source; slugs are unique per UF over the full IBGE table (tested). A code
+  outside the IBGE table, or a slug that collides inside a build, gets the
+  `-{ibge}` suffix. No page links to the retired `/precos/uf/` routes.
+- **B-BR-SEO-04 Sitemap index.** `sitemap.xml` is a `<sitemapindex>` of
+  `sitemaps/portal-{family}-{n}.xml` files (families `hubs`, `precos`,
+  `postos`, `forum`), each at most 45,000 URLs and 50 MB. Per-URL `lastmod` is the date
+  the page data last changed: the current revision publication date for price
+  pages and hubs derived from it, the latest valid observation date for a
+  station, the official edition publication for `/fiscalizacao/`, and the build
+  date only for pages without a data date. No `priority` or `changefreq`.
+- **B-BR-SEO-05 Head contract.** Every page with a configured site URL carries
+  an absolute self `<link rel="canonical">` (trailing slash), Open Graph and
+  Twitter tags (`og:site_name` `abastevo`, `og:locale` `pt_BR`, landing image
+  `/assets/brand/og-image-v1.png`). Titles use the survey end date
+  (`dd/mm/aaaa`), never “hoje”; descriptions are 120–160 characters, carry only
+  figures shown on the page and are unique per indexable page. ALL-CAPS
+  registry names are shown in Portuguese title case in the title/H1 while the
+  registry and legal names stay visible.
+- **B-BR-SEO-06 Structured data.** Inline JSON-LD describes only visible facts:
+  `BreadcrumbList` mirroring the visible breadcrumb (Início › Preços › UF ›
+  Cidade › Posto), `CollectionPage` + `ItemList` on hubs, fuel, state and city
+  pages, `GasStation` with `PostalAddress` (no ratings or offers) on stations
+  and `Dataset` with `DataDownload` files, the license text shown on `/dados/`
+  and temporal/spatial coverage on `/dados/`.
+- **B-BR-SEO-07 Linking.** City pages link nearby cities (k=8, centroid of the
+  city's own station coordinates; omitted when no coordinates exist), other
+  cities of the UF, the city's stations, fuel hubs and the related landing
+  guides/tools. Station pages link their city with a descriptive anchor, up to
+  10 other stations of the city and the fuel hubs of their observations. No
+  brand field exists in the export, so “mesma bandeira” is not rendered. Every
+  indexable page receives at least 3 inbound body links from distinct pages;
+  for stations the bound is `min(3, n)` where `n` is the number of indexable
+  stations in its city. The link-graph verifier enforces these invariants plus
+  self-canonical sitemap URLs and no link to a missing route (landing routes
+  are an explicit allowlist).
+- **B-BR-SEO-08 Web forum, editorial posts only (SEO-12, D-SEO-06).**
+  - *Input.* The export snapshot carries only `PUBLISHED`, `VISIBLE`
+    `EDITORIAL` posts whose source is an Abastevo editorial source (kind
+    `ABASTEVO`) with approved rights and publication enabled, read through the
+    forum module's own export port inside the export's read-only transaction,
+    and only while the forum read switch (`ANPFUEL_FORUM_ENABLED`) is on. News,
+    bulletins, user topics and comments never enter it (UGC waits for SEO-13).
+    Public fields only: id, category (code, name, description), title,
+    introduction, body, first publication and update instants, coarse region
+    (UF, IBGE), fuel, station id and the source display name. A post whose
+    public text holds a CPF-shaped token stays out of the snapshot and is
+    counted, because the portal privacy check would otherwise refuse the whole
+    release. The posts are a snapshot file, so any published-post change also
+    changes the export content hash.
+  - *Routes.* `/forum/`, `/forum/{categoria}/` (slug of the category name;
+    no page for an empty category) and `/forum/{categoria}/{titulo}-{id8}/`:
+    the title slug (B-BR-SEO-03 rules, at most 80 characters cut at a `-`)
+    plus the first 8 hex characters of the post id; a route still colliding in
+    a build uses the full id. A title edit moves the route; nothing is indexed
+    yet, so no redirect is kept.
+  - *Body.* Rendered with the Android rules: blocks split on blank lines; a
+    block whose non-blank lines all start with `- ` is a bullet list; a
+    single-line block of at most 80 UTF-16 units not ending in `.:;,!?…` is a
+    subheading; anything else is a paragraph keeping its line breaks. Text is
+    always escaped: no HTML, Markdown or clickable links from the body.
+  - *Post page.* H1 title, first publication and update dates (day in
+    America/Sao_Paulo), “Equipe abastevo” attribution linking `/sobre/` when
+    the landing shares the build, links to the state and city price pages,
+    the fuel hub and the station page only when those pages exist in the same
+    build, “Outras publicações” (same-category ring, same region, then a ring
+    over all posts, so every post receives links from other posts) and the
+    category list. Head: `og:type` `article` with published/modified times;
+    JSON-LD `DiscussionForumPosting` (headline, an excerpt of the visible body
+    as text, datePublished, dateModified, author Organization “Equipe
+    abastevo” with `{site}/sobre/`, url, isPartOf the `/forum/` hub) plus the
+    breadcrumb Início › Fórum › Categoria › Post. Hubs carry `CollectionPage`
+    + `ItemList`.
+  - *Indexing and links.* Every forum page is indexable while it exists and is
+    listed in the `forum` sitemap family; lastmod is the newest update day of
+    the page's posts. State and city price pages show “No fórum” with up to 3
+    posts of the same region (city: same municipality first, then statewide
+    posts of its UF); `/precos/` lists the 3 latest posts and their
+    categories; the portal hubs, header and footer link `/forum/`. Official-
+    only builds have no forum.
+  - *Withdrawal and latency.* A hidden, removed or rejected post, or one whose
+    source loses rights, leaves the next export, so the next release has no
+    page (404) and no sitemap entry. The export reconcile job (every 6 h)
+    compares a fingerprint of the exported fields with the export state and
+    enqueues a build; the build enqueues a portal refresh. Worst-case latency
+    is about 6 h plus build and generation time.
 
 ## Page fields (public allowlist)
 
@@ -144,7 +254,8 @@ while the real edition is blocked by ESP-07.
 ## Navigation and accessibility
 
 - Portal header: `Consultar`, `Preços`, `Metodologia`, `Fiscalização` (gated),
-  plus a link back to the Abastevo app/landing.
+  `Fórum` (only when the build has editorial posts), plus a link back to the
+  Abastevo app/landing.
 - Semantic landmarks, one `<h1>`, skip link, table captions/headers, visible
   focus, keyboard operation, 200% zoom/large font, AA contrast, print styles.
 - Mobile-first responsive layout at the existing 48rem/64rem breakpoints.

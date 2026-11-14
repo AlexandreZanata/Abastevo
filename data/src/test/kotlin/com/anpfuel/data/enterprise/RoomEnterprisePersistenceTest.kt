@@ -2,8 +2,7 @@ package com.anpfuel.data.enterprise
 
 import com.anpfuel.application.enterprise.EnterpriseLocalDenied
 import com.anpfuel.application.enterprise.EnterpriseOperationReused
-import com.anpfuel.application.enterprise.EnterprisePersistenceUnavailable
-import com.anpfuel.application.enterprise.UnavailableEnterprisePersistence
+import com.anpfuel.application.enterprise.EnterpriseLocalIdentity
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.data.di.EnterpriseModule
 import com.anpfuel.data.remote.ApiEnvironment
@@ -16,8 +15,11 @@ import io.mockk.mockk
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Path
 
 class RoomEnterprisePersistenceTest {
+    @TempDir lateinit var directory: Path
     private val a = "7b0e2a54-0000-4000-8000-000000000001"
     private val b = "7b0e2a54-0000-4000-8000-000000000002"
     private val origin = "https://api.example.invalid"
@@ -83,22 +85,32 @@ class RoomEnterprisePersistenceTest {
     }
 
     @Test
-    fun `production graph reuses account and configured origin with unavailable persistence`(): Unit = runBlocking {
-        assertSame(UnavailableEnterprisePersistence,EnterpriseModule.persistence())
+    fun `production graph retains protected custody and current account origin and shared fence`(): Unit = runBlocking {
+        val fixture = VaultFixture(directory)
+        fixture.identity = EnterpriseLocalIdentity(a, ApiEnvironment.STAGING.origin, a)
+        val persistence = EnterpriseModule.persistence(fixture.store)
         val auth = mockk<AuthFlow>()
         val session = PortableAuth.Session(a,a,"synthetic-access","synthetic-refresh",100,200)
         every { auth.rehydrate() } returns AuthFlow.AuthState.Active(session)
-        val fence = EnterpriseModule.sessionFence()
-        val context = EnterpriseModule.localContext(auth,ApiEnvironment.STAGING,EnterpriseModule.persistence(),fence)
+        val fence = fixture.fence
+        val context = EnterpriseModule.localContext(auth,ApiEnvironment.STAGING,persistence,fence)
         val p = EnterprisePartition.of(a,ApiEnvironment.STAGING.origin,b)
+        val unconfirmed = context.select(p)
+        assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { unconfirmed.pending() } }
+        fixture.confirm(p)
+        val confirmed = context.select(p)
+        assertTrue(confirmed.pending().isEmpty())
+        assertTrue(confirmed.enqueue(EnterprisePendingOperation(p, a, b, byteArrayOf(7))))
         // The graph's shared fence, not a private one, invalidates selected handles.
         val backgrounded = context.select(p)
         fence.markBackground()
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { backgrounded.pending() } }
         val bound = context.select(p)
-        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { bound.pending() } }
+        assertEquals(1, bound.pending().size)
+        val contacts = fixture.contacts
         every { auth.rehydrate() } returns AuthFlow.AuthState.NeedsRefresh(session)
-        assertThrows(EnterprisePersistenceUnavailable::class.java) { runBlocking { bound.pending() } }
+        assertEquals(1, bound.pending().size)
+        assertEquals(contacts, fixture.contacts)
         every { auth.rehydrate() } returns AuthFlow.AuthState.LoggedOut
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { bound.pending() } }
         every { auth.rehydrate() } returns AuthFlow.AuthState.Active(session.copy(accountId=b))
@@ -106,7 +118,7 @@ class RoomEnterprisePersistenceTest {
         every { auth.rehydrate() } returns AuthFlow.AuthState.Active(session)
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { context.select(partition()) } }
         // Debug loopback configuration must not crash the existing app graph.
-        val loopback = EnterpriseModule.localContext(auth,ApiEnvironment.LOCAL_PROOF,EnterpriseModule.persistence(),fence)
+        val loopback = EnterpriseModule.localContext(auth,ApiEnvironment.LOCAL_PROOF,persistence,fence)
         assertThrows(EnterpriseLocalDenied::class.java) { runBlocking { loopback.select(p) } }
     }
 }

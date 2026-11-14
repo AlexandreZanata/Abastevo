@@ -1,90 +1,103 @@
 apiVersion: v1
 data:
-  Caddyfile: "# Staging same-origin web tier. The static landing serves / and the\
-    \ verified\n# enterprise portal release serves its own routes (search, prices,\
-    \ stations,\n# fines). The existing TLS edge keeps /v1, /health and media on the\
-    \ API and\n# proxies everything else here; this server never proxies the API.\n\
-    #\n# Mounts (read-only): /srv/landing = landing root whose atomically switched\n\
-    # current symlink is the dist built for the staging origin; /srv/portal = the\n\
-    # worker's private portal root (current release + retained asset\n# generations).\
-    \ Runs as the worker uid, so the private 0600 release files\n# stay private on\
-    \ the host.\n#\n# Staging is never indexable: noindex everywhere, robots disallow,\
-    \ no sitemap.\n{\n\tadmin off\n\tpersist_config off\n\tauto_https off\n}\n\n(security_headers)\
-    \ {\n\theader @companySecurity {\n\t\tReferrer-Policy no-referrer\n\t\tContent-Security-Policy\
-    \ \"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src\
-    \ 'self'; font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors\
-    \ 'none'; object-src 'none'\"\n\t}\n\theader @ordinarySecurity {\n\t\tReferrer-Policy\
+  Caddyfile: "# Official same-origin web tier (https://abastevo.com.br). The static\
+    \ landing serves / and the verified\n# enterprise portal release serves its own\
+    \ routes (search, prices, stations,\n# fines). The existing TLS edge keeps /v1,\
+    \ /health and media on the API and\n# proxies everything else here; this server\
+    \ never proxies the API.\n#\n# Mounts (read-only): /srv/landing = landing root\
+    \ whose atomically switched\n# current symlink is the dist built for the official\
+    \ origin; /srv/portal = the\n# worker's private portal root (current release +\
+    \ retained asset\n# generations). Runs as the worker uid, so the private 0600\
+    \ release files\n# stay private on the host.\n#\n# The official origin is indexable:\
+    \ robots allows the public site and lists\n# the landing sitemap (/sitemap.xml,\
+    \ served by the landing) and the portal\n# sitemap (/sitemap-portal.xml, the portal\
+    \ release's own sitemap.xml). The\n# private surfaces (/admin/, /empresas/) carry\
+    \ X-Robots-Tag noindex; robots\n# disallows them and the portal search shards,\
+    \ and refuses AI training\n# crawlers (GPTBot, ClaudeBot).\n{\n\tadmin off\n\t\
+    persist_config off\n\tauto_https off\n}\n\n(security_headers) {\n\theader @companySecurity\
+    \ {\n\t\tReferrer-Policy no-referrer\n\t\tContent-Security-Policy \"default-src\
+    \ 'self'; script-src 'self'; style-src 'self'; img-src 'self'; connect-src 'self';\
+    \ font-src 'self'; base-uri 'none'; form-action 'self'; frame-ancestors 'none';\
+    \ object-src 'none'\"\n\t}\n\theader @ordinarySecurity {\n\t\tReferrer-Policy\
     \ strict-origin-when-cross-origin\n\t\tContent-Security-Policy \"default-src 'self';\
     \ script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self';\
     \ font-src 'self'; base-uri 'self'; form-action 'self'; frame-ancestors 'none';\
     \ object-src 'none'\"\n\t}\n\theader {\n\t\tStrict-Transport-Security \"max-age=31536000\"\
     \n\t\tX-Content-Type-Options nosniff\n\t\tX-Frame-Options DENY\n\t\tPermissions-Policy\
-    \ \"camera=(), microphone=(), geolocation=()\"\n\t\tX-Robots-Tag \"noindex, nofollow\"\
-    \n\t\t-Server\n\t}\n}\n\n:8080 {\n\t@companySecurity path /empresas/*\n\t@ordinarySecurity\
-    \ not path /empresas/*\n\t# gzip only: zstd encoders hold large windows per concurrent\
-    \ response and\n\t# OOM-killed a 128 MiB tier under load; the edge caches compressed\
-    \ bodies.\n\tencode gzip\n\n\timport security_headers\n\n\thandle /robots.txt\
-    \ {\n\t\trespond \"User-agent: *\nDisallow: /\n\" 200\n\t}\n\thandle /sitemap.xml\
-    \ {\n\t\trespond 404\n\t}\n\n\t@portalBare path /consultar /precos /fiscalizacao\
-    \ /curiosidades /dados /metodologia\n\tredir @portalBare {path}/ 308\n\n\t# Static\
-    \ map overlay releases are content-addressed and never change.\n\thandle_path\
-    \ /dados/mapa/* {\n\t\troot * /srv/portal/map\n\t\t# current/ is an atomic symlink\
-    \ that moves on every release: short\n\t\t# cache. Release directories are content-addressed:\
-    \ immutable.\n\t\t@current path /current/*\n\t\theader @current Cache-Control\
-    \ \"public, max-age=300\"\n\t\t@release not path /current/*\n\t\theader @release\
-    \ Cache-Control \"public, max-age=31536000, immutable\"\n\t\t# Caddy 2.10.2 answers\
-    \ 206 to a plain GET with precompressed; the\n\t\t# global gzip encoder plus the\
-    \ edge micro-cache serve these instead.\n\t\tfile_server\n\t}\n\n\t# Offline map\
-    \ distribution (MAP completion D10): static and signed. The\n\t# per-region manifest\
-    \ is a signed envelope the app verifies before use;\n\t# generation packages are\
-    \ immutable and served with Range for resume.\n\t# The API never serves map bytes.\n\
-    \thandle_path /dados/mapa-dist/* {\n\t\troot * /srv/map-dist\n\t\t@manifest path\
-    \ /regions/*\n\t\theader @manifest Content-Type \"application/json\"\n\t\theader\
-    \ @manifest Cache-Control \"public, max-age=60, must-revalidate\"\n\t\t@package\
-    \ not path /regions/*\n\t\theader @package Content-Type \"application/octet-stream\"\
-    \n\t\theader @package Cache-Control \"public, max-age=31536000, immutable\"\n\t\
-    \tfile_server\n\t}\n\n\t# Search shards are addressed by release, so they never\
-    \ change in place.\n\t@portal path /consultar/* /precos/* /postos/* /fiscalizacao/*\
-    \ /curiosidades/* /dados/* /metodologia/* /portal-manifest.json\n\thandle @portal\
-    \ {\n\t\troot * /srv/portal/current\n\t\t@shards path /dados/busca/*\n\t\t@pages\
-    \ not path /dados/busca/*\n\t\theader @shards Cache-Control \"public, max-age=31536000,\
-    \ immutable\"\n\t\theader @pages Cache-Control \"public, max-age=0, must-revalidate\"\
-    \n\t\tfile_server\n\t}\n\n\t# Content-hashed assets: landing first, then the portal's\
-    \ retained\n\t# generations (old cached pages keep loading), then the current\
-    \ release.\n\thandle /assets/* {\n\t\theader Cache-Control \"public, max-age=31536000,\
-    \ immutable\"\n\t\t@landingAsset file {\n\t\t\troot /srv/landing/current\n\t\t\
-    }\n\t\thandle @landingAsset {\n\t\t\troot * /srv/landing/current\n\t\t\tfile_server\n\
-    \t\t}\n\t\t@retainedAsset file {\n\t\t\troot /srv/portal/retained\n\t\t}\n\t\t\
-    handle @retainedAsset {\n\t\t\troot * /srv/portal/retained\n\t\t\tfile_server\n\
-    \t\t}\n\t\thandle {\n\t\t\troot * /srv/portal/current\n\t\t\tfile_server\n\t\t\
-    }\n\t}\n\n\t# EMP-PLAT-008: a separate static company build in the signed landing\n\
-    \t# bundle. This serves the shell only; API session/organization authority\n\t\
-    # remains on /v1 and keeps its independent default-off switch.\n\tredir /empresas\
-    \ /empresas/ 308\n\thandle /empresas/* {\n\t\troot * /srv/landing/current\n\t\t\
-    # Only content-fingerprinted files are immutable; unhashed font\n\t\t# licence\
-    \ texts revalidate like the landing's ordinary static files.\n\t\t@companyAsset\
-    \ path_regexp companyAsset ^/empresas/assets/(?:fonts/)?[a-z0-9-]+\\.[a-f0-9]{8}\\\
-    .(?:js|css|svg|woff2)$\n\t\theader @companyAsset Cache-Control \"public, max-age=31536000,\
-    \ immutable\"\n\t\t@companyStatic {\n\t\t\tpath /empresas/assets/*\n\t\t\tnot\
-    \ path_regexp ^/empresas/assets/(?:fonts/)?[a-z0-9-]+\\.[a-f0-9]{8}\\.(?:js|css|svg|woff2)$\n\
-    \t\t}\n\t\theader @companyStatic Cache-Control \"public, max-age=3600, must-revalidate\"\
-    \n\t\t@companyPage not path /empresas/assets/*\n\t\trequest_header @companyPage\
-    \ -If-None-Match\n\t\trequest_header @companyPage -If-Modified-Since\n\t\theader\
-    \ @companyPage {\n\t\t\tCache-Control no-store\n\t\t\t-ETag\n\t\t\t-Last-Modified\n\
-    \t\t\tdefer\n\t\t}\n\t\t# Only canonical organization paths use the shell fallback.\
-    \ Unknown\n\t\t# routes/assets retain a genuine 404, never a blanket SPA response.\n\
-    \t\t@companyOrganization path_regexp companyOrganization ^/empresas/organizacoes/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/$\n\
+    \ \"camera=(), microphone=(), geolocation=()\"\n\t\t-Server\n\t}\n}\n\n:8080 {\n\
+    \t@companySecurity path /empresas/*\n\t@ordinarySecurity not path /empresas/*\n\
+    \t# gzip only: zstd encoders hold large windows per concurrent response and\n\t\
+    # OOM-killed a 128 MiB tier under load; the edge caches compressed bodies.\n\t\
+    encode gzip\n\n\timport security_headers\n\theader /admin/* X-Robots-Tag \"noindex,\
+    \ nofollow\"\n\theader /empresas/* X-Robots-Tag \"noindex, nofollow\"\n\n\thandle\
+    \ /robots.txt {\n\t\trespond \"User-agent: *\nAllow: /\nDisallow: /admin/\nDisallow:\
+    \ /empresas/\nDisallow: /dados/busca/\n\nUser-agent: GPTBot\nDisallow: /\n\nUser-agent:\
+    \ ClaudeBot\nDisallow: /\n\nSitemap: https://abastevo.com.br/sitemap.xml\nSitemap:\
+    \ https://abastevo.com.br/sitemap-portal.xml\n\" 200\n\t}\n\t# The portal release\
+    \ ships its own sitemap.xml; the landing's sitemap.xml\n\t# is served by the final\
+    \ landing handler.\n\thandle /sitemap-portal.xml {\n\t\trewrite * /sitemap.xml\n\
+    \t\troot * /srv/portal/current\n\t\tfile_server\n\t}\n\n\t@portalBare path /consultar\
+    \ /precos /forum /fiscalizacao /curiosidades /dados /metodologia\n\tredir @portalBare\
+    \ {path}/ 308\n\n\t# Static map overlay releases are content-addressed and never\
+    \ change.\n\thandle_path /dados/mapa/* {\n\t\troot * /srv/portal/map\n\t\t# current/\
+    \ is an atomic symlink that moves on every release: short\n\t\t# cache. Release\
+    \ directories are content-addressed: immutable.\n\t\t@current path /current/*\n\
+    \t\theader @current Cache-Control \"public, max-age=300\"\n\t\t@release not path\
+    \ /current/*\n\t\theader @release Cache-Control \"public, max-age=31536000, immutable\"\
+    \n\t\t# Caddy 2.10.2 answers 206 to a plain GET with precompressed; the\n\t\t\
+    # global gzip encoder plus the edge micro-cache serve these instead.\n\t\tfile_server\n\
+    \t}\n\n\t# Offline map distribution (MAP completion D10): static and signed. The\n\
+    \t# per-region manifest is a signed envelope the app verifies before use;\n\t\
+    # generation packages are immutable and served with Range for resume.\n\t# The\
+    \ API never serves map bytes.\n\thandle_path /dados/mapa-dist/* {\n\t\troot *\
+    \ /srv/map-dist\n\t\t@manifest path /regions/*\n\t\theader @manifest Content-Type\
+    \ \"application/json\"\n\t\theader @manifest Cache-Control \"public, max-age=60,\
+    \ must-revalidate\"\n\t\t@package not path /regions/*\n\t\theader @package Content-Type\
+    \ \"application/octet-stream\"\n\t\theader @package Cache-Control \"public, max-age=31536000,\
+    \ immutable\"\n\t\tfile_server\n\t}\n\n\t# Search shards are addressed by release,\
+    \ so they never change in place.\n\t@portal path /consultar/* /precos/* /postos/*\
+    \ /forum/* /fiscalizacao/* /curiosidades/* /dados/* /metodologia/* /sitemaps/*\
+    \ /portal-manifest.json\n\thandle @portal {\n\t\troot * /srv/portal/current\n\t\
+    \t@shards path /dados/busca/*\n\t\t@pages not path /dados/busca/*\n\t\theader\
+    \ @shards Cache-Control \"public, max-age=31536000, immutable\"\n\t\theader @pages\
+    \ Cache-Control \"public, max-age=0, must-revalidate\"\n\t\tfile_server\n\t}\n\
+    \n\t# Content-hashed assets: landing first, then the portal's retained\n\t# generations\
+    \ (old cached pages keep loading), then the current release.\n\thandle /assets/*\
+    \ {\n\t\theader Cache-Control \"public, max-age=31536000, immutable\"\n\t\t@landingAsset\
+    \ file {\n\t\t\troot /srv/landing/current\n\t\t}\n\t\thandle @landingAsset {\n\
+    \t\t\troot * /srv/landing/current\n\t\t\tfile_server\n\t\t}\n\t\t@retainedAsset\
+    \ file {\n\t\t\troot /srv/portal/retained\n\t\t}\n\t\thandle @retainedAsset {\n\
+    \t\t\troot * /srv/portal/retained\n\t\t\tfile_server\n\t\t}\n\t\thandle {\n\t\t\
+    \troot * /srv/portal/current\n\t\t\tfile_server\n\t\t}\n\t}\n\n\t# EMP-PLAT-008:\
+    \ a separate static company build in the signed landing\n\t# bundle. This serves\
+    \ the shell only; API session/organization authority\n\t# remains on /v1 and keeps\
+    \ its independent default-off switch.\n\tredir /empresas /empresas/ 308\n\thandle\
+    \ /empresas/* {\n\t\troot * /srv/landing/current\n\t\t# Only content-fingerprinted\
+    \ files are immutable; unhashed font\n\t\t# licence texts revalidate like the\
+    \ landing's ordinary static files.\n\t\t@companyAsset path_regexp companyAsset\
+    \ ^/empresas/assets/(?:fonts/)?[a-z0-9-]+\\.[a-f0-9]{8}\\.(?:js|css|svg|woff2)$\n\
+    \t\theader @companyAsset Cache-Control \"public, max-age=31536000, immutable\"\
+    \n\t\t@companyStatic {\n\t\t\tpath /empresas/assets/*\n\t\t\tnot path_regexp ^/empresas/assets/(?:fonts/)?[a-z0-9-]+\\\
+    .[a-f0-9]{8}\\.(?:js|css|svg|woff2)$\n\t\t}\n\t\theader @companyStatic Cache-Control\
+    \ \"public, max-age=3600, must-revalidate\"\n\t\t@companyPage not path /empresas/assets/*\n\
+    \t\trequest_header @companyPage -If-None-Match\n\t\trequest_header @companyPage\
+    \ -If-Modified-Since\n\t\theader @companyPage {\n\t\t\tCache-Control no-store\n\
+    \t\t\t-ETag\n\t\t\t-Last-Modified\n\t\t\tdefer\n\t\t}\n\t\t# Only creation and\
+    \ canonical organization/settings paths use the shell\n\t\t# fallback. Unknown\
+    \ routes/assets retain a genuine 404, never a blanket\n\t\t# SPA response.\n\t\
+    \t@companyCreate path /empresas/criar/\n\t\trewrite @companyCreate /empresas/index.html\n\
+    \t\t@companyOrganization path_regexp companyOrganization ^/empresas/organizacoes/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:configuracao/)?$\n\
     \t\trewrite @companyOrganization /empresas/index.html\n\t\tfile_server\n\t}\n\n\
     \t# Admin web panel (ADR-023 B3): static, shipped inside the signed landing\n\t\
     # bundle under admin/; data comes only from the same-origin /v1/admin API,\n\t\
     # which stays 404 until an admin key hash and CIDR fence are configured.\n\t#\
-    \ Global CSP/noindex apply; pages are never cached.\n\thandle /admin/* {\n\t\t\
-    root * /srv/landing/current\n\t\t@adminAsset path /admin/assets/*\n\t\theader\
-    \ @adminAsset Cache-Control \"public, max-age=31536000, immutable\"\n\t\t@adminPage\
-    \ not path /admin/assets/*\n\t\theader @adminPage Cache-Control \"no-store\"\n\
-    \t\tfile_server\n\t}\n\n\thandle {\n\t\troot * /srv/landing/current\n\t\theader\
-    \ Cache-Control \"public, max-age=3600, must-revalidate\"\n\t\tfile_server\n\t\
-    }\n\n\thandle_errors 404 {\n\t\timport security_headers\n\t\t@companyError path\
+    \ Global CSP and the site-level /admin/* noindex apply; pages are never\n\t# cached.\n\
+    \thandle /admin/* {\n\t\troot * /srv/landing/current\n\t\t@adminAsset path /admin/assets/*\n\
+    \t\theader @adminAsset Cache-Control \"public, max-age=31536000, immutable\"\n\
+    \t\t@adminPage not path /admin/assets/*\n\t\theader @adminPage Cache-Control \"\
+    no-store\"\n\t\tfile_server\n\t}\n\n\thandle {\n\t\troot * /srv/landing/current\n\
+    \t\theader Cache-Control \"public, max-age=3600, must-revalidate\"\n\t\tfile_server\n\
+    \t}\n\n\thandle_errors 404 {\n\t\timport security_headers\n\t\t@companyError path\
     \ /empresas/*\n\t\thandle @companyError {\n\t\t\troot * /srv/landing/current\n\
     \t\t\trewrite * /empresas/404.html\n\t\t\theader {\n\t\t\t\tCache-Control no-store\n\
     \t\t\t\tReferrer-Policy no-referrer\n\t\t\t\t-ETag\n\t\t\t\t-Last-Modified\n\t\

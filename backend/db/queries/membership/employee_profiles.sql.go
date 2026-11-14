@@ -105,7 +105,8 @@ const getEmployeeRecord = `-- name: GetEmployeeRecord :one
 SELECT e.id::text AS id,e.state,e.revision AS identity_revision,COALESCE(e.merged_into::text,'')::text AS merged_into,
  COALESCE(p.revision,0)::bigint AS profile_revision,COALESCE(p.display_name,'')::text AS display_name,
  COALESCE(p.registration_number,'')::text AS registration_number,COALESCE(p.work_email,'')::text AS work_email,
- COALESCE(p.work_phone,'')::text AS work_phone,COALESCE(p.job_title,'')::text AS job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id
+ COALESCE(p.work_phone,'')::text AS work_phone,COALESCE(p.job_title,'')::text AS job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id,
+ COALESCE((SELECT m.state FROM org_memberships m WHERE (m.org_id,m.employee_id)=(e.org_id,e.id) AND m.state<>'ENDED'),'NONE')::text AS access_state
 FROM org_employee_identities e LEFT JOIN org_employee_profiles p ON (p.org_id,p.employee_id)=(e.org_id,e.id)
 WHERE e.org_id=CAST($1::text AS uuid) AND e.id=CAST($2::text AS uuid)
 `
@@ -127,6 +128,7 @@ type GetEmployeeRecordRow struct {
 	WorkPhone          string `json:"work_phone"`
 	JobTitle           string `json:"job_title"`
 	HomeUnitID         string `json:"home_unit_id"`
+	AccessState        string `json:"access_state"`
 }
 
 func (q *Queries) GetEmployeeRecord(ctx context.Context, arg GetEmployeeRecordParams) (GetEmployeeRecordRow, error) {
@@ -144,6 +146,7 @@ func (q *Queries) GetEmployeeRecord(ctx context.Context, arg GetEmployeeRecordPa
 		&i.WorkPhone,
 		&i.JobTitle,
 		&i.HomeUnitID,
+		&i.AccessState,
 	)
 	return i, err
 }
@@ -216,7 +219,8 @@ const listEmployeeRecords = `-- name: ListEmployeeRecords :many
 SELECT e.id::text AS id,e.state,e.revision AS identity_revision,COALESCE(e.merged_into::text,'')::text AS merged_into,
  COALESCE(p.revision,0)::bigint AS profile_revision,COALESCE(p.display_name,'')::text AS display_name,
  COALESCE(p.registration_number,'')::text AS registration_number,COALESCE(p.work_email,'')::text AS work_email,
- COALESCE(p.work_phone,'')::text AS work_phone,COALESCE(p.job_title,'')::text AS job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id
+ COALESCE(p.work_phone,'')::text AS work_phone,COALESCE(p.job_title,'')::text AS job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id,
+ COALESCE((SELECT m.state FROM org_memberships m WHERE (m.org_id,m.employee_id)=(e.org_id,e.id) AND m.state<>'ENDED'),'NONE')::text AS access_state
 FROM org_employee_identities e LEFT JOIN org_employee_profiles p ON (p.org_id,p.employee_id)=(e.org_id,e.id)
 WHERE e.org_id=CAST($1::text AS uuid) AND ($2::text='' OR e.state= $2::text)
  AND ($3::text='' OR e.id>NULLIF($3::text,'')::uuid)
@@ -242,6 +246,7 @@ type ListEmployeeRecordsRow struct {
 	WorkPhone          string `json:"work_phone"`
 	JobTitle           string `json:"job_title"`
 	HomeUnitID         string `json:"home_unit_id"`
+	AccessState        string `json:"access_state"`
 }
 
 func (q *Queries) ListEmployeeRecords(ctx context.Context, arg ListEmployeeRecordsParams) ([]ListEmployeeRecordsRow, error) {
@@ -270,6 +275,7 @@ func (q *Queries) ListEmployeeRecords(ctx context.Context, arg ListEmployeeRecor
 			&i.WorkPhone,
 			&i.JobTitle,
 			&i.HomeUnitID,
+			&i.AccessState,
 		); err != nil {
 			return nil, err
 		}
@@ -283,7 +289,8 @@ func (q *Queries) ListEmployeeRecords(ctx context.Context, arg ListEmployeeRecor
 
 const matchEmployeeRecords = `-- name: MatchEmployeeRecords :many
 SELECT e.id::text AS id,e.state,e.revision AS identity_revision,COALESCE(e.merged_into::text,'')::text AS merged_into,
- p.revision AS profile_revision,p.display_name,p.registration_number,p.work_email,p.work_phone,p.job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id
+ p.revision AS profile_revision,p.display_name,p.registration_number,p.work_email,p.work_phone,p.job_title,COALESCE(p.home_unit_id::text,'')::text AS home_unit_id,
+ COALESCE((SELECT m.state FROM org_memberships m WHERE (m.org_id,m.employee_id)=(e.org_id,e.id) AND m.state<>'ENDED'),'NONE')::text AS access_state
 FROM org_employee_identities e JOIN org_employee_profiles p ON (p.org_id,p.employee_id)=(e.org_id,e.id)
 WHERE e.org_id=CAST($1::text AS uuid) AND e.id<>CAST($2::text AS uuid)
  AND lower(regexp_replace(p.display_name,' +',' ','g'))=lower(regexp_replace($3::text,' +',' ','g'))
@@ -314,6 +321,7 @@ type MatchEmployeeRecordsRow struct {
 	WorkPhone          string `json:"work_phone"`
 	JobTitle           string `json:"job_title"`
 	HomeUnitID         string `json:"home_unit_id"`
+	AccessState        string `json:"access_state"`
 }
 
 func (q *Queries) MatchEmployeeRecords(ctx context.Context, arg MatchEmployeeRecordsParams) ([]MatchEmployeeRecordsRow, error) {
@@ -345,6 +353,7 @@ func (q *Queries) MatchEmployeeRecords(ctx context.Context, arg MatchEmployeeRec
 			&i.WorkPhone,
 			&i.JobTitle,
 			&i.HomeUnitID,
+			&i.AccessState,
 		); err != nil {
 			return nil, err
 		}

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-PRIV-003: explicit credential retry and acknowledged empty recovery. -->
+    <string name="enterprise_protection_unlock_required">Entsperre das Gerät und wähle das Unternehmen erneut aus, um den Zugriff zu prüfen.</string>
+    <string name="enterprise_protection_unlock_action">Gerät entsperren</string>
+    <string name="enterprise_protection_unlock_title">Gerätesperre bestätigen</string>
+    <string name="enterprise_protection_unlock_copy">Verwende die Bildschirmsperre. Der Unternehmenszugriff wird erneut geprüft.</string>
+    <string name="enterprise_protection_unlock_done">Gerät bestätigt. Wähle das Unternehmen erneut aus, um den Zugriff zu prüfen.</string>
+    <string name="enterprise_protection_device_lock_required">Richte eine Bildschirmsperre auf dem Gerät ein, um fortzufahren.</string>
+    <string name="enterprise_protection_recovery_required">Die bisherigen lokalen Daten können nicht erneut geöffnet werden. Ein Neustart verwirft noch nicht gesendete lokale Arbeit.</string>
+    <string name="enterprise_protection_recovery_action">Lokale Daten für %1$s neu beginnen</string>
+    <string name="enterprise_protection_recovery_title">Bisherige lokale Arbeit verwerfen?</string>
+    <string name="enterprise_protection_recovery_copy">Diese Aktion entfernt die lokalen Daten dieses Unternehmens, einschließlich noch nicht gesendeter Vorgänge. Der Server prüft den Zugriff, bevor mit leeren lokalen Daten begonnen wird.</string>
+    <string name="enterprise_protection_recovery_confirm">Verwerfen und Zugriff prüfen</string>
+</resources>

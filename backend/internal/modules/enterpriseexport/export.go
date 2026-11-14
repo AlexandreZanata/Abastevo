@@ -20,6 +20,7 @@ import (
 	"time"
 
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
+	forumapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
 )
@@ -29,10 +30,16 @@ const (
 	ContentVersion    = "1"
 	PublicFieldPolicy = "esp-02"
 
-	defaultPageSize     = 500
-	defaultMaxStations  = 100_000
-	defaultMaxRevisions = 2_000
-	defaultMaxPrices    = 5_000_000
+	// ForumFile holds the editorial web projection (B-BR-SEO-08); ForumKind
+	// names its source pin.
+	ForumFile = "forum-editorial.jsonl"
+	ForumKind = "forum-editorial"
+
+	defaultPageSize      = 500
+	defaultMaxStations   = 100_000
+	defaultMaxRevisions  = 2_000
+	defaultMaxPrices     = 5_000_000
+	defaultMaxForumPosts = 5_000
 )
 
 type StationSource interface {
@@ -44,14 +51,22 @@ type PriceSource interface {
 	ExportPrices(ctx context.Context, revisionID, afterID string, limit int) ([]officialapp.ExportPrice, string, error)
 }
 
+// ForumSource is the forum module's editorial web export port. A nil
+// source leaves the forum out of the snapshot.
+type ForumSource interface {
+	ExportEditorialPage(ctx context.Context, afterID string, limit int) ([]forumapp.EditorialExportPost, string, error)
+}
+
 type Builder struct {
-	Stations     StationSource
-	Prices       PriceSource
-	Now          func() time.Time
-	PageSize     int
-	MaxStations  int
-	MaxRevisions int
-	MaxPrices    int
+	Stations      StationSource
+	Prices        PriceSource
+	Forum         ForumSource
+	Now           func() time.Time
+	PageSize      int
+	MaxStations   int
+	MaxRevisions  int
+	MaxPrices     int
+	MaxForumPosts int
 }
 
 type Options struct {
@@ -88,15 +103,25 @@ type RevisionPin struct {
 	ParserVersion        string `json:"parser_version"`
 }
 
+// ForumPin describes the editorial forum section: exported posts and posts
+// kept out because their public text holds a CPF-shaped token.
+type ForumPin struct {
+	Kind            string `json:"kind"`
+	Posts           int    `json:"posts"`
+	ExcludedPrivacy int    `json:"excluded_privacy"`
+}
+
 type Sources struct {
 	Directory DirectoryPin  `json:"directory"`
 	Official  []RevisionPin `json:"official"`
+	Forum     *ForumPin     `json:"forum,omitempty"`
 }
 
 type Counts struct {
-	Stations  int `json:"stations"`
-	Revisions int `json:"revisions"`
-	Prices    int `json:"prices"`
+	Stations   int `json:"stations"`
+	Revisions  int `json:"revisions"`
+	Prices     int `json:"prices"`
+	ForumPosts int `json:"forum_posts,omitempty"`
 }
 
 type FileDigest struct {
@@ -154,6 +179,26 @@ type Price struct {
 	CollectedOn    string `json:"collected_on"`
 }
 
+// ForumPost is one published, visible Abastevo editorial post in its public
+// web projection (B-BR-SEO-08). Instants are RFC 3339 UTC; the region
+// municipality is the 7-digit IBGE code.
+type ForumPost struct {
+	PostID              string `json:"post_id"`
+	Category            string `json:"category"`
+	CategoryName        string `json:"category_name"`
+	CategoryDescription string `json:"category_description,omitempty"`
+	Title               string `json:"title"`
+	Excerpt             string `json:"excerpt,omitempty"`
+	Body                string `json:"body"`
+	PublishedAt         string `json:"published_at"`
+	UpdatedAt           string `json:"updated_at"`
+	RegionUF            string `json:"region_uf,omitempty"`
+	RegionMunicipality  string `json:"region_municipality_ibge,omitempty"`
+	FuelProduct         string `json:"fuel_product,omitempty"`
+	StationID           string `json:"station_id,omitempty"`
+	SourceName          string `json:"source_name"`
+}
+
 var publicAddressKeys = []string{"street", "number", "complement", "district", "postal_code", "municipio", "uf"}
 
 func (b Builder) pageSize() int {
@@ -185,6 +230,17 @@ func (b Builder) maxPrices() int {
 		return defaultMaxPrices
 	}
 	return b.MaxPrices
+}
+
+func (b Builder) maxForumPosts() int {
+	if b.MaxForumPosts <= 0 {
+		return defaultMaxForumPosts
+	}
+	return b.MaxForumPosts
+}
+
+func (b Builder) forumPageSize() int {
+	return min(b.pageSize(), forumapp.MaxEditorialExportLimit)
 }
 
 func (b Builder) now() time.Time {
@@ -407,6 +463,16 @@ func (b Builder) Build(ctx context.Context, opts Options) (Manifest, error) {
 	}
 	files := []FileDigest{stationsDigest, revisionsDigest, pricesDigest}
 	counts := Counts{Stations: stationCount, Revisions: len(revisions), Prices: priceCount}
+	var forumPin *ForumPin
+	if b.Forum != nil {
+		forumDigest, pin, err := b.writeForum(ctx, tmp)
+		if err != nil {
+			return Manifest{}, err
+		}
+		files = append(files, forumDigest)
+		counts.ForumPosts = pin.Posts
+		forumPin = &pin
+	}
 	scope := Scope{
 		FromSurvey: opts.FromSurvey, ToSurvey: opts.ToSurvey,
 		PageSize: b.pageSize(), MaxStations: b.maxStations(),
@@ -424,6 +490,7 @@ func (b Builder) Build(ctx context.Context, opts Options) (Manifest, error) {
 				StationStatuses:  statusCounts,
 			},
 			Official: revisionPins,
+			Forum:    forumPin,
 		},
 		Counts: counts,
 		Files:  files,
@@ -463,6 +530,133 @@ func publicAddress(in map[string]string) map[string]string {
 	return out
 }
 
+// writeForum writes the editorial forum section in post id order. A post
+// whose public text holds a CPF-shaped token is counted and left out: free
+// editorial text cannot be minimized without changing its meaning, and the
+// portal privacy check would refuse the whole release.
+func (b Builder) writeForum(ctx context.Context, dir string) (FileDigest, ForumPin, error) {
+	file, err := newHashedFile(dir, ForumFile)
+	if err != nil {
+		return FileDigest{}, ForumPin{}, err
+	}
+	enc := json.NewEncoder(file)
+	enc.SetEscapeHTML(false)
+	pin := ForumPin{Kind: ForumKind}
+	afterID, previous, seen := "", "", 0
+	for {
+		page, next, err := b.Forum.ExportEditorialPage(ctx, afterID, b.forumPageSize())
+		if err != nil {
+			_, _ = file.Close()
+			return FileDigest{}, ForumPin{}, err
+		}
+		for _, post := range page {
+			row, err := forumRow(post)
+			if err != nil {
+				_, _ = file.Close()
+				return FileDigest{}, ForumPin{}, err
+			}
+			if row.PostID <= previous {
+				_, _ = file.Close()
+				return FileDigest{}, ForumPin{}, fmt.Errorf("export: forum posts out of order")
+			}
+			previous = row.PostID
+			seen++
+			if seen > b.maxForumPosts() {
+				_, _ = file.Close()
+				return FileDigest{}, ForumPin{}, fmt.Errorf("export: forum budget exceeded")
+			}
+			if kernel.HasCPFShapedToken(row.Title) || kernel.HasCPFShapedToken(row.Excerpt) || kernel.HasCPFShapedToken(row.Body) {
+				pin.ExcludedPrivacy++
+				continue
+			}
+			if err := enc.Encode(row); err != nil {
+				_, _ = file.Close()
+				return FileDigest{}, ForumPin{}, err
+			}
+			pin.Posts++
+		}
+		if next == "" {
+			break
+		}
+		if next == afterID {
+			_, _ = file.Close()
+			return FileDigest{}, ForumPin{}, fmt.Errorf("export: forum cursor did not advance")
+		}
+		afterID = next
+	}
+	digest, err := file.Close()
+	if err != nil {
+		return FileDigest{}, ForumPin{}, err
+	}
+	digest.Rows = pin.Posts
+	return digest, pin, nil
+}
+
+// forumRow validates one projected post and converts it to its snapshot row.
+func forumRow(post forumapp.EditorialExportPost) (ForumPost, error) {
+	if !isLowerUUID(post.ID) || strings.TrimSpace(post.Title) == "" || post.Category == "" ||
+		post.PublishedAt.IsZero() || post.UpdatedAt.IsZero() {
+		return ForumPost{}, fmt.Errorf("export: invalid forum post")
+	}
+	row := ForumPost{
+		PostID: post.ID, Category: string(post.Category),
+		CategoryName: post.CategoryName, CategoryDescription: post.CategoryDescription,
+		Title: post.Title, Excerpt: post.Excerpt, Body: post.BodyText,
+		PublishedAt: post.PublishedAt.UTC().Format(time.RFC3339),
+		UpdatedAt:   post.UpdatedAt.UTC().Format(time.RFC3339),
+		SourceName:  post.SourceName,
+	}
+	if row.CategoryName == "" {
+		row.CategoryName = row.Category
+	}
+	if post.Region != nil {
+		if !isUpperUF(post.Region.UF) {
+			return ForumPost{}, fmt.Errorf("export: invalid forum post region")
+		}
+		row.RegionUF = post.Region.UF
+		if code := post.Region.MunicipalityIBGE; code != nil {
+			if *code < 1_000_000 || *code > 9_999_999 {
+				return ForumPost{}, fmt.Errorf("export: invalid forum post municipality")
+			}
+			row.RegionMunicipality = fmt.Sprintf("%07d", *code)
+		}
+	}
+	if post.FuelProduct != nil {
+		row.FuelProduct = *post.FuelProduct
+	}
+	if post.StationID != nil {
+		if !isLowerUUID(*post.StationID) {
+			return ForumPost{}, fmt.Errorf("export: invalid forum post station")
+		}
+		row.StationID = *post.StationID
+	}
+	return row, nil
+}
+
+func isLowerUUID(value string) bool {
+	if len(value) != 36 {
+		return false
+	}
+	for i := 0; i < len(value); i++ {
+		c := value[i]
+		switch i {
+		case 8, 13, 18, 23:
+			if c != '-' {
+				return false
+			}
+		default:
+			if !(c >= '0' && c <= '9' || c >= 'a' && c <= 'f') {
+				return false
+			}
+		}
+	}
+	return true
+}
+
+func isUpperUF(value string) bool {
+	return len(value) == 2 && value[0] >= 'A' && value[0] <= 'Z' && value[1] >= 'A' && value[1] <= 'Z'
+}
+
 type contentSources struct {
 	Directory struct {
 		Source          string         `json:"source"`
@@ -470,6 +664,7 @@ type contentSources struct {
 		StationStatuses map[string]int `json:"station_statuses"`
 	} `json:"directory"`
 	Official []RevisionPin `json:"official"`
+	Forum    *ForumPin     `json:"forum,omitempty"`
 }
 
 type contentScope struct {
@@ -500,6 +695,7 @@ func contentDigest(manifest Manifest) (string, error) {
 	descriptor.Sources.Directory.Kind = manifest.Sources.Directory.Kind
 	descriptor.Sources.Directory.StationStatuses = manifest.Sources.Directory.StationStatuses
 	descriptor.Sources.Official = manifest.Sources.Official
+	descriptor.Sources.Forum = manifest.Sources.Forum
 	descriptor.Counts = manifest.Counts
 	descriptor.Files = manifest.Files
 	encoded, err := json.Marshal(descriptor)

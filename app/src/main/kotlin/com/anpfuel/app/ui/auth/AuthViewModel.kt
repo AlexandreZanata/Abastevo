@@ -173,6 +173,15 @@ class AuthViewModel @Inject constructor(
         _uiState.update { it.copy(step = AuthStep.KEY_ENTRY, error = null) }
     }
 
+    /** Explicit fresh proof keeps the personal session until a new key login succeeds. */
+    fun beginReauthentication() {
+        if (_uiState.value.step == AuthStep.BUSY) return
+        refreshGeneration++
+        pendingAttempt = null
+        AccountKeyUnlockSession.grant.reset()
+        _uiState.value = AuthUiState(step = AuthStep.KEY_ENTRY)
+    }
+
     fun onBackToUsername() {
         if (_uiState.value.step == AuthStep.BUSY) return
         _uiState.update { it.copy(step = AuthStep.USERNAME_ENTRY, accountKey = "", issuedKey = "", keyBackup = null, error = null) }

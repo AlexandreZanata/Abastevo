@@ -122,3 +122,10 @@ WHERE (sqlc.narg('action')::text IS NULL OR action = sqlc.narg('action')::text)
        (at, id) < (sqlc.narg('before_at')::timestamptz, sqlc.narg('before_id')::bigint))
 ORDER BY at DESC, id DESC
 LIMIT @row_limit;
+
+-- name: LockFreshOperatorSession :one
+SELECT id FROM admin_sessions
+WHERE id=sqlc.arg('session_id')::uuid AND revoked_at IS NULL
+ AND created_at<=clock_timestamp() AND created_at>clock_timestamp()-interval '15 minutes'
+ AND last_seen_at>clock_timestamp()-interval '30 minutes' AND expires_at>clock_timestamp()
+FOR UPDATE;

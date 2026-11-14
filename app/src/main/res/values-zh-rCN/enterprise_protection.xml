@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-PRIV-003: explicit credential retry and acknowledged empty recovery. -->
+    <string name="enterprise_protection_unlock_required">请解锁设备，然后重新选择企业以验证访问权限。</string>
+    <string name="enterprise_protection_unlock_action">解锁设备</string>
+    <string name="enterprise_protection_unlock_title">确认设备锁</string>
+    <string name="enterprise_protection_unlock_copy">请使用屏幕锁进行确认。企业访问权限将重新验证。</string>
+    <string name="enterprise_protection_unlock_done">设备已确认。请重新选择企业以验证访问权限。</string>
+    <string name="enterprise_protection_device_lock_required">请先设置设备屏幕锁再继续。</string>
+    <string name="enterprise_protection_recovery_required">之前的本地数据无法重新打开。重新开始将丢弃尚未发送的本地工作。</string>
+    <string name="enterprise_protection_recovery_action">重新开始 %1$s 的本地数据</string>
+    <string name="enterprise_protection_recovery_title">丢弃之前的本地工作？</string>
+    <string name="enterprise_protection_recovery_copy">此操作将删除该企业的本地数据，包括尚未发送的操作。在使用空白本地数据开始之前，服务器将验证访问权限。</string>
+    <string name="enterprise_protection_recovery_confirm">丢弃并验证访问权限</string>
+</resources>

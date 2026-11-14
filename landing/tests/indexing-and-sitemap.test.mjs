@@ -4,12 +4,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSite } from '../scripts/build.mjs';
+import { loadSite } from '../scripts/content/site.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const root = path.resolve(__dirname, '..');
 
-test('sitemap: valid XML, required indexable URLs present, no 404 and no fabricated lastmod', () => {
+test('sitemap: valid XML, required indexable URLs present, no 404 and content-dated lastmod', () => {
   const tmpOut = path.join(root, '.test-sitemap-' + Math.random().toString(36).slice(2, 8));
   try {
     buildSite({
@@ -37,7 +38,21 @@ test('sitemap: valid XML, required indexable URLs present, no 404 and no fabrica
 
     // Negative assertions
     assert.ok(!sitemapContent.includes('404'), 'Sitemap must NOT contain 404 page');
-    assert.ok(!sitemapContent.includes('<lastmod>'), 'Sitemap must NOT fabricate lastmod');
+    // SEO-08: every URL carries the date its content last changed, taken from
+    // the content manifest or front matter. Build time is never used.
+    const urlBlocks = [...sitemapContent.matchAll(/<url>\s*<loc>([^<]+)<\/loc>\s*<lastmod>([^<]+)<\/lastmod>\s*<\/url>/g)];
+    assert.equal(urlBlocks.length, (sitemapContent.match(/<url>/g) || []).length, 'Every sitemap URL needs exactly loc + lastmod');
+    const expected = new Map([...loadSite(root).registry.values()]
+      .filter((entry) => entry.indexable)
+      .map((entry) => [`https://abastevo.com.br${entry.route}`, entry.lastmod]));
+    assert.equal(urlBlocks.length, expected.size, 'Sitemap lists exactly the indexable manifest pages');
+    for (const [, loc, lastmod] of urlBlocks) {
+      assert.match(lastmod, /^\d{4}-\d{2}-\d{2}$/, `${loc} lastmod format`);
+      assert.equal(lastmod, expected.get(loc), `${loc} lastmod must equal its manifest/front-matter date`);
+    }
+    assert.match(sitemapContent, /<loc>https:\/\/abastevo\.com\.br\/como-usar\/<\/loc>\s*<lastmod>2026-10-26<\/lastmod>/, 'static pages keep their fixed manifest date');
+    assert.match(sitemapContent, /<loc>https:\/\/abastevo\.com\.br\/ferramentas\/consumo-medio\/<\/loc>\s*<lastmod>2026-11-14<\/lastmod>/, 'Markdown pages use their front matter dateModified');
+    assert.ok(!/<(priority|changefreq)>/.test(sitemapContent), 'Sitemap must not declare priority or changefreq');
     assert.ok(!sitemapContent.includes('localhost'), 'Sitemap must NOT contain localhost');
     assert.ok(!sitemapContent.includes('{{CANONICAL_ORIGIN}}'), 'Sitemap must NOT have unreplaced origin placeholders');
 

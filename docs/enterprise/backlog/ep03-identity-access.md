@@ -1,6 +1,6 @@
 # EP03 — Identity, employee accounts and authorization
 
-Status: **IN_PROGRESS**, 2026-11-11.
+Status: **IN_PROGRESS**, 2026-11-12.
 
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
@@ -67,7 +67,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Local persistence, erasure fencing and upgrade evidence](../evidence/f1-idn003-membership-persistence.md).
 
 ### EMP-IDN-004 — Invitations: issue, expire, resend, revoke
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Issue, expire, replace and revoke invitations under organization authority.
 - **Rules and use cases:** BR-IDN-005, BR-IDN-008, BR-IDN-010, BR-IDN-012, BR-IDN-013, BR-IDN-014, BR-IDN-015, BR-IDN-018, UC-IDN-02, UC-IDN-04
 - **Depends on:** EMP-IDN-002, EMP-IDN-003
@@ -82,8 +82,10 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Risks and assumptions:** The public redemption result is uniform. Issuer status is available only in the authorized organization.
 - **Done when:** Issuer lifecycle, scope and secrecy checks pass with synthetic values.
 
+[Invitation lifecycle evidence](../evidence/f1-idn004-invitation-lifecycle.md); [task #204](https://github.com/AlexandreZanata/Abastevo/issues/204).
+
 ### EMP-IDN-005 — Invitation acceptance by an existing Abastevo account
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Allow an existing personal account to accept or decline an authorized invitation.
 - **Rules and use cases:** BR-IDN-009, BR-IDN-011, BR-IDN-012, BR-IDN-015, BR-IDN-016, BR-IDN-017, BR-IDN-033, UC-IDN-03, UC-IDN-04
 - **Depends on:** EMP-IDN-004
@@ -97,6 +99,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: preserve invitation and membership history · rollback: disable redemption and retain recorded outcomes
 - **Risks and assumptions:** The same invalid result covers the invalid states specified by the identity contract.
 - **Done when:** Acceptance, confirmation, time boundaries and transaction races pass on real PostGIS.
+
+[Personal acceptance evidence](../evidence/f1-idn005-invitation-acceptance.md); [task #205](https://github.com/AlexandreZanata/Abastevo/issues/205).
 
 ### EMP-IDN-006 — Managed corporate credential: activation code issuance
 - **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size M · state TODO
@@ -147,7 +151,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** Recovery and old-device denial pass through the normal entry points.
 
 ### EMP-IDN-009 — Membership suspension and reactivation
-- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Suspend and reactivate membership without rewriting historical assignments.
 - **Rules and use cases:** BR-IDN-026, BR-IDN-030, BR-IDN-036, BR-AUTH-014, UC-IDN-08
 - **Depends on:** EMP-IDN-003, EMP-AUTH-003
@@ -158,12 +162,13 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Deliverable:** Audited membership suspension and reactivation commands.
 - **Acceptance:** The next request honors suspension. Reactivation restores only assignments still valid under their original terms.
 - **Negative cases:** Self-suspension, concurrent last-owner removal, foreign membership or cache retaining access.
-- **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: reuse membership state · rollback: disable the new command and keep audit and state
+- **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: additive190 immutable commands/notices, existing membership state · rollback: disable the new command and keep audit and state
 - **Risks and assumptions:** Membership suspension and employee-state suspension must preserve their recorded cause.
 - **Done when:** State changes, role denial and concurrency tests pass on PostGIS.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task206](https://github.com/AlexandreZanata/Abastevo/issues/206), cumulative PR203. Fresh guarded read/suspend/reactivate, real last-owner/CAS/proof-wait races, original role periods/causes, immutable retries and actual pending notices pass. Populated189→190 recovery/RLS/retention, actual HTTP/router/contracts, affected PostGIS/race/static/generation and full local Quick verification pass. [Evidence](../evidence/f1-idn009-membership-access.md). Offboarding, native/device, offline review and managed activation remain separate.
 
 ### EMP-IDN-010 — Offboarding: end membership, revoke sessions, hand over responsibilities
-- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** End organization access atomically and leave a clear handover record.
 - **Rules and use cases:** BR-IDN-025, BR-IDN-027, BR-IDN-028, BR-IDN-029, BR-IDN-030, BR-IDN-031, UC-IDN-09, UC-IDN-10
 - **Depends on:** EMP-IDN-009
@@ -177,9 +182,10 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive where handover needs state · rollback: preserve completed access revocations
 - **Risks and assumptions:** Late offline facts follow review rules. Offboarding is not an automatic work closure.
 - **Done when:** PostGIS proves consistent handover and access denial, including rollback and replay.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task207](https://github.com/AlexandreZanata/Abastevo/issues/207), cumulative PR203. The actual existing-account ORG_F1 runtime has manager review/complete and fresh account-bound self review/leave, employee retain/terminate choice, exact reviewed source flags, actual reductions and immutable receipts. PostGIS/race, last-owner/retry/CAS/proof-wait/fault, ordinary190→191 recovery/RLS/retention and actual HTTP/router/contracts pass. [Evidence](../evidence/f1-idn010-offboarding.md). Managed provisioning, device/delegation/operational producers and late intake remain explicit pending sources and must integrate before activation; no live enrollment revocation or native acceptance is claimed.
 
 ### EMP-IDN-011 — Rehire: a new membership period on the same employee record
-- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state LOCAL_DONE
 - **Objective:** Rehire on the existing employee record while opening a distinct access period.
 - **Rules and use cases:** BR-IDN-002, BR-IDN-032, BR-IDN-033, UC-IDN-11
 - **Depends on:** EMP-IDN-010
@@ -193,9 +199,10 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: reuse historical identifiers · rollback: preserve existing periods
 - **Risks and assumptions:** Rehire does not recover a personal account.
 - **Done when:** Rehire, duplicate requests and intact history pass on synthetic data.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task208](https://github.com/AlexandreZanata/Abastevo/issues/208), cumulative PR203. Fresh guarded rehire reopens only an unmerged terminated employee with no live period; current authority and immutable original receipts govern retries. Actual profile/ended-history preservation, distinct new invitation period, twelve-way retry/CAS, stale/foreign/merged/overlap/capability/proof-wait/fault cases and populated191→192 recovery/RLS/retention pass. Actual HTTP/router/contracts, affected PostGIS/race and full local Quick verification pass. [Evidence](../evidence/f1-idn011-employee-rehire.md). New access remains a separate invitation; managed provisioning and other owning gates remain open.
 
 ### EMP-IDN-012 — Multiple memberships and duplicate employee detection and merge
-- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size M · state LOCAL_DONE
 - **Objective:** Keep memberships independent and resolve same-organization employee duplicates explicitly.
 - **Rules and use cases:** BR-IDN-033, BR-IDN-034, BR-IDN-035, UC-IDN-12, UC-IDN-13
 - **Depends on:** EMP-IDN-005
@@ -209,9 +216,10 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive survivor links · rollback: preserve accepted merge history
 - **Risks and assumptions:** A likely match is evidence for review rather than authority to merge.
 - **Done when:** Scoped merge and two-organization independence pass under concurrent edits.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task209](https://github.com/AlexandreZanata/Abastevo/issues/209), cumulative PR203. Fresh guarded preview/confirm/resolution preserves both identities, profiles, ended membership/account/role bindings and original receipts. Explicit survivor selection keeps any live access holder; a live source or two live records conflict. Actual team links close as historical periods and are transferred/deduplicated through the owning module. Bounded chained resolution rejects cycles or missing history. Twelve-way retry/distinct-CAS, opposite merges, stale review/proof, foreign/disabled access, late failure/recovery, populated ordinary192→193 migration/RLS/retention, actual HTTP/OpenAPI/router and affected PostGIS/race regressions pass. Full local Quick passes; [evidence](../evidence/f1-idn012-employee-merge.md) records the disk-space compilation recovery. No personal account or unrelated access is merged or ended. Remaining F1/M1, managed/native/runtime/legal/staging gates stay open.
 
 ### EMP-IDN-013 — Contact change and invitation invalidation
-- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P2 · type API · size S · state LOCAL_DONE
 - **Objective:** Invalidate issued access tokens when an employee contact changes.
 - **Rules and use cases:** BR-IDN-013, BR-IDN-018, BR-IDN-025, UC-IDN-14
 - **Depends on:** EMP-IDN-004
@@ -225,6 +233,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: reuse existing token state · rollback: preserve revocations
 - **Risks and assumptions:** Existing active memberships are governed by their own state.
 - **Done when:** The update and redemption race leaves a single consistent outcome.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-12; [task210](https://github.com/AlexandreZanata/Abastevo/issues/210), cumulative PR203. Existing guarded exact-revision profile replacement atomically consumes PENDING invitations and WAITING admissions on a canonical contact difference, retaining actual source revisions. Final fresh manager authority now applies after projection and receipt waits. Equivalent contacts/unrelated metadata, ACTIVE/personal/other-organization access and original receipts remain independent; retries do not revoke a later reissue. Real PostGIS/HTTP, twelve-way retry/CAS, concurrent redemption/resend/confirmation, stale-proof waits, foreign/non-manager/disabled refusals and late rollback/recovery pass. Affected regression acceptance completed with scoped recovery of an audited-snapshot fixture; full local Quick265s passes. [Evidence](../evidence/f1-idn013-contact-change.md). No schema/route/dependency added. Managed activation producers retain GOV-013/IDN-006..008 and must integrate this source before activation; no code inventory, delivery, native or full F1/M1 acceptance is claimed.
 
 ### EMP-IDN-014 — Driver profile: licence category, expiry and eligibility
 - **Meta:** module IDN · phase F2 · cut - · priority P1 · type API · size S · state TODO
@@ -243,7 +252,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** Expiry, optional fields and negative access pass using synthetic fixtures.
 
 ### EMP-IDN-015 — Device registry, session list and revocation
-- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module IDN · phase F1 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** List and revoke scoped device enrolments without exposing personal sessions.
 - **Rules and use cases:** BR-IDN-025, BR-IDN-037, BR-IDN-038, BR-IDN-039, BR-PRIV-018, UC-IDN-16
 - **Depends on:** EMP-IDN-005
@@ -257,9 +266,10 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive enrolment registry · rollback: preserve revocations and recorded scope
 - **Risks and assumptions:** Later intake and on-contact cleanup depend on the revocation class.
 - **Done when:** Registry, revocation and scoped denial pass on real PostGIS.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task211](https://github.com/AlexandreZanata/Abastevo/issues/211), cumulative PR203. Six actual signed/self/manager routes enrol/check/list/revoke existing-account device periods, with fresh source proof, scoped metadata, server-owned default3/range1–5 and terminal class/revision/audit/receipts. Membership ending revokes ACCESS_ENDED; LOST remains barred throughout the organization, while a distinct freshly invited ACTIVE period can enrol a still-valid personal key. Personal/other-organization access stays independent. Ordinary populated193→194 recovery/RLS/retention, real signatures/nonces/HTTP, twelve-way contention, current proof after waits, revoke/ending races, deferred faults and two-scope ordinary erasure pass. Full local Quick246s passes; affected regression completes with scoped recovery of two legacy erasure-role grants. [Evidence](../evidence/f1-idn015-device-registry.md). Last-sync, native wipe, intake-only delivery and managed activation retain their own producers/gates. No personal session inventory, deployment or F1/M1 completion is claimed.
 
 ### EMP-IDN-016 — Panel: employees, invitations and activation codes
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type WEB · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type WEB · size M · state LOCAL_DONE
 - **Objective:** Expose employee and invitation management in the company panel.
 - **Rules and use cases:** BR-IDN-003, BR-IDN-008, BR-IDN-013, BR-IDN-016, BR-IDN-039, UC-IDN-01, UC-IDN-02, SCR-IDN-01, SCR-IDN-03, SCR-IDN-04
 - **Depends on:** EMP-IDN-002, EMP-IDN-004, EMP-PLAT-008
@@ -270,12 +280,13 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Deliverable:** A scoped employee and invitation UI in the approved panel.
 - **Acceptance:** A manager sees the selected organization's permitted records. Invitation secrets appear only during issuance.
 - **Negative cases:** Foreign results after switching, missing fresh authentication, secret in navigation or premature managed-code controls.
-- **Validation:** V-WEB, V-AUTHZ, V-ISO, V-PRIV · migration: none · rollback: remove the new routes and preserve issued invitations
+- **Validation:** V-WEB, V-AUTHZ, V-ISO, V-PRIV · migration: additive current-account SELECT policy195 · rollback: remove the new UI/routes and preserve issued invitations
 - **Risks and assumptions:** The indexed title retains managed codes. C1 closes on the existing-account invitation path.
 - **Done when:** The C1 screen flow passes with keyboard access and server-confirmed state.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task212](https://github.com/AlexandreZanata/Abastevo/issues/212), cumulative PR203. Current account context discovery/selection, actual employee access-state reads and the C1 employee/invitation panel pass ordinary PostGIS/race/upgrade/HTTP/contract checks and real HTTPS Chromium flows. Thirty web unit tests, keyboard, two-organization isolation, one-time delivery, confirmation/rejection, fresh/revoked access and responsive layouts pass. [Evidence](../evidence/f1-idn016-company-identity-panel.md). Unit selection/team management and managed activation keep their owning scope. Full local Quick runs once at the end of tasks016..018; no merge, deployment or F1/M1 completion is claimed.
 
 ### EMP-IDN-017 — App: invitation acceptance and managed activation
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Accept an existing-account invitation from Android.
 - **Rules and use cases:** BR-IDN-005, BR-IDN-012, BR-IDN-017, BR-IDN-033, BR-PRIV-015, UC-IDN-03, SCR-IDN-09, SCR-IDN-10
 - **Depends on:** EMP-IDN-005, EMP-PLAT-011
@@ -289,9 +300,10 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-APP, V-API, V-AUTHZ, V-ISO, V-PRIV · migration: preserve personal storage · rollback: hide the new entry and retain acknowledged membership
 - **Risks and assumptions:** The indexed title retains managed activation. That part follows its own approval and API evidence outside C1.
 - **Done when:** Existing-account acceptance and negative outcomes pass in the affected Android flow.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task213](https://github.com/AlexandreZanata/Abastevo/issues/213), cumulative PR203. Actual current-account company-cookie transport, informed consent, explicit decline and server-confirmed ACTIVE versus pending confirmation pass scoped identity/cancellation/retry/privacy tests and six actual physical Android journeys, with zero failures/errors/skips. Compiled callbacks capture the rendered primitive epoch; stale input cannot adopt a new session. Domain enterprise228/application15/data49/app33 tests, app build/lint, actual TLS/PostGIS session rotation and secret/plan checks pass. [Evidence](../evidence/f1-idn017-android-invitation.md). Managed activation, protected persistence, F1/M1 and production retain their own gates. Next bounded task: EMP-IDN-018.
 
 ### EMP-IDN-018 — App: personal and enterprise context switch with the enterprise home shell
-- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module IDN · phase F1 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Switch personal and organization context without changing stored operation ownership.
 - **Rules and use cases:** BR-AUTH-012, BR-AUTH-014, BR-IDN-033, BR-TEN-004, BR-PRIV-016, UC-AUTH-04, SCR-IDN-12
 - **Depends on:** EMP-AUTH-003, EMP-PLAT-011, EMP-IDN-017
@@ -305,6 +317,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-APP, V-SYNC, V-AUTHZ, V-ISO, V-PRIV · migration: preserve personal mode and held data · rollback: hide enterprise entry without discarding queues
 - **Risks and assumptions:** The follow-up sync task owns logout and pending-queue semantics.
 - **Done when:** The same account can switch between its authorized contexts without leaking private state.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-13; [task214](https://github.com/AlexandreZanata/Abastevo/issues/214), cumulative PR203. Source-backed bounded selector, exact membership read and named enterprise home pass two-company, unconfirmed/offline/background, definitive denial, late reply, personal return and fresh-process acceptance. Per-adapter transport ownership and per-attempt local leases prevent old cleanup/selection from replacing a new context, including same-flow races. Pending ownership remains unchanged; protected persistence/contact stay unavailable. Domain231/application31/data-debug56/app36 tests, normal/isolated builds/full lint, actual12-test physical Android run, scoped PostGIS/race/570 API cases and full local Quick228s pass. [Evidence](../evidence/f1-idn018-android-contexts.md). No emulator, merge, deployment or F1/M1 closure is claimed.
 
 ### EMP-IDN-019 — Personal account erasure versus organization-owned history
 - **Meta:** module IDN · phase F6 · cut - · priority P1 · type API · size M · state TODO
@@ -395,7 +408,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Pilot entitlement and rollback acceptance](../evidence/f1-auth004-pilot-entitlements.md).
 
 ### EMP-AUTH-005 — Role management with last-owner and separation-of-duties guards
-- **Meta:** module AUTH · phase F1 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module AUTH · phase F1 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Change scoped roles without escalation or removing the last owner.
 - **Rules and use cases:** BR-AUTH-003, BR-AUTH-006, BR-AUTH-007, BR-AUTH-010, BR-AUTH-014, UC-AUTH-01, UC-AUTH-02
 - **Depends on:** EMP-AUTH-003, EMP-PLAT-003
@@ -409,6 +422,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: preserve assignment history · rollback: disable commands without undoing accepted revocations
 - **Risks and assumptions:** Separation-of-duties and record-state rules still apply after a grant.
 - **Done when:** Permission, last-owner and audit atomicity tests pass on real PostGIS.
+
+[Audited role management and last-owner evidence](../evidence/f1-auth005-role-management.md).
 
 ### EMP-AUTH-006 — Unit, cost-centre, team and asset scopes with resource scope resolution
 - **Meta:** module AUTH · phase F2 · cut - · priority P1 · type DB · size M · state TODO
@@ -459,7 +474,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** Authorized role management and negative states pass through the normal company routes.
 
 ### EMP-AUTH-009 — Authorization matrix conformance suite
-- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type TEST · size M · state TODO
+- **Meta:** module AUTH · phase F1 · cut C1 · priority P0 · type TEST · size M · state LOCAL_DONE
 - **Objective:** Prove authorization matrix conformance across organization boundaries.
 - **Rules and use cases:** BR-AUTH-001, BR-AUTH-003, BR-AUTH-006, BR-AUTH-007, BR-AUTH-013, BR-AUTH-014, BR-PRIV-002
 - **Depends on:** EMP-AUTH-003
@@ -473,6 +488,8 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-AUTHZ, V-ISO, V-SQL, V-PRIV · migration: none · rollback: retain required regression coverage
 - **Risks and assumptions:** Use synthetic fixtures and normal entry points.
 - **Done when:** The fixed matrix is covered with no unexplained omissions.
+
+- **Local evidence:** [AUTH-009 acceptance](../evidence/f2-auth009-authorization-conformance.md), task218: independent inventory/full-router and ordinary actual HTTP matrix pass. Future station/scopes/routes remain explicit; integration pending.
 
 ### EMP-AUTH-010 — Custom roles as named permission bundles
 - **Meta:** module AUTH · phase F6 · cut - · priority P3 · type API · size M · state TODO

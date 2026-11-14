@@ -1,0 +1,37 @@
+Cumulative dev → main PR for enterprise F1 construction tasks.
+
+## Included Tasks
+
+### EMP-ORG-009 — Operator suspension and reactivation
+- Two administrative POST routes: `/v1/admin/organizations/{org_id}/suspend` and `/v1/admin/organizations/{org_id}/reactivate`.
+- Migration 000184: forced-RLS retained periods and pending owner notices.
+- Seven-day inclusive grace and historical review retention for field intake.
+- Evidence: [f1-org009-suspension.md](docs/enterprise/evidence/f1-org009-suspension.md).
+
+### EMP-AUTH-005 — Role management with last-owner and separation-of-duties guards
+- Audited role management routes under `/v1/orgs/{org_id}/roles`: `assign`, `{assignment_id}/end`, `{assignment_id}/change`, `{assignment_id}/read`, `list`.
+- Invariant & rule enforcement: BR-AUTH-003, BR-AUTH-006 (last-owner guard, PostgreSQL P7501 mapped to `ErrLastOrgOwner`), BR-AUTH-007 (separation of duties, ADMIN cannot assign OWNER, self-assignment and self-modification forbidden), BR-AUTH-010 (fresh authentication), BR-AUTH-014 (immediate effect).
+- Exact replay idempotency and single atomic audit event per command (`auth.assignment.created` / `auth.assignment.ended`).
+- Unblocks **EMP-ORG-010** (ownership transfer).
+- Evidence: [f1-auth005-role-management.md](docs/enterprise/evidence/f1-auth005-role-management.md).
+
+### EMP-ORG-010 — Ownership transfer and last-owner invariant
+- Four audited routes under `/v1/orgs/{org_id}/ownership-transfer`: `propose`, `read`, `accept`, `cancel`.
+- Migration 000185: `org_ownership_transfers` with forced RLS, single pending transfer invariant via partial unique index, and replay idempotency via `(org_id, operation_id)`.
+- Enforces BR-ORG-026: personal account invariant (managed accounts rejected with `OWNER_REQUIRES_PERSONAL_ACCOUNT` 409).
+- Two-party consent protocol (BR-ORG-034, BR-ORG-035) with 7-day proposal validity.
+- Preserves the last-owner invariant during atomic transfer handover (BR-AUTH-006, UC-ORG-09): target granted OWNER before/in transaction with initiator step-down to ADMIN.
+- Automated cancellation triggers on target membership suspension/end or organization archival/close.
+- Evidence: [f1-org010-ownership-transfer.md](docs/enterprise/evidence/f1-org010-ownership-transfer.md).
+
+## Validation
+- Real PostgreSQL 18 / PostGIS 3.6 test suites: positive propose/accept/cancel, replay idempotency, negative guards (self-transfer, managed account, duplicate transfer), concurrent last-owner race contention, automated triggers on membership end, and composed HTTP lifecycle tests with company cookies/CSRF/origin.
+- OpenAPI specification updated and validated with `vacuum lint` (0 errors) and `scripts/check-compat.sh` (0 errors).
+- Plan checker: 348 tasks, 545 rules, 167 use cases, 145 screens, 0 problems.
+- `git diff --check` passed.
+
+[Decisions](docs/enterprise/16-decisions.md) · [Progress](docs/planning/PROGRESS.md)
+
+## Boundaries
+- Merge and deployment remain separate for explicit user authorization.
+- F1/M1 and external activation blockers stay open.

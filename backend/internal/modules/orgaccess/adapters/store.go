@@ -76,8 +76,8 @@ func validateID(scope kernel.OrgScope, raw string) error {
 	}
 	return nil
 }
-func check(ctx context.Context, tx pgx.Tx, s kernel.OrgScope) error {
-	return safe(ctx, database.ValidateOrgTx(ctx, tx, s))
+func check(ctx context.Context, tx database.OrgDBTX, s kernel.OrgScope) error {
+	return safe(ctx, database.ValidateOrgDBTX(ctx, tx, s))
 }
 func run[T any](ctx context.Context, s *Store, scope kernel.OrgScope, work func(pgx.Tx) (T, error)) (T, error) {
 	var zero, result T
@@ -297,6 +297,10 @@ func (s *Store) Candidates(ctx context.Context, scope kernel.OrgScope, member st
 	return run(ctx, s, scope, func(tx pgx.Tx) ([]d.Assignment, error) { return s.CandidatesTx(ctx, tx, scope, member) })
 }
 func (s *Store) CandidatesTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string) ([]d.Assignment, error) {
+	return s.CandidatesDBTX(ctx, tx, scope, member)
+}
+
+func (s *Store) CandidatesDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, member string) ([]d.Assignment, error) {
 	if err := validateID(scope, member); err != nil {
 		return nil, err
 	}
@@ -312,6 +316,55 @@ func (s *Store) CandidatesTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 		a, err := value(scope, q.GetAssignmentRow(row))
 		if err != nil {
 			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
+// RemainingOwnershipAssignmentsTx is the ownership module's narrow history port.
+// OWNER and ADMIN future periods support consented step-down, never current proof.
+// Ordinary CandidatesTx deliberately retains its current-time-only semantics.
+func (s *Store) RemainingOwnershipAssignmentsTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string) ([]d.Assignment, error) {
+	if err := validateID(scope, member); err != nil {
+		return nil, err
+	}
+	if err := check(ctx, tx, scope); err != nil {
+		return nil, err
+	}
+	rows, err := q.New(tx).RemainingOwnershipAssignments(ctx, q.RemainingOwnershipAssignmentsParams{OrgID: scope.OrgID().String(), MembershipID: member})
+	if err != nil {
+		return nil, safe(ctx, err)
+	}
+	out := make([]d.Assignment, 0, len(rows))
+	for _, row := range rows {
+		a, err := value(scope, q.GetAssignmentRow(row))
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, a)
+	}
+	return out, nil
+}
+
+// ReactivationCandidatesTx returns valid recorded periods for an explicit
+// membership reactivation, never authorization. CandidatesTx is unchanged.
+func (s *Store) ReactivationCandidatesTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string) ([]d.Assignment, error) {
+	if e := validateID(scope, member); e != nil {
+		return nil, e
+	}
+	if e := check(ctx, tx, scope); e != nil {
+		return nil, e
+	}
+	rows, e := q.New(tx).ReactivationCandidateAssignments(ctx, q.ReactivationCandidateAssignmentsParams{OrgID: scope.OrgID().String(), MembershipID: member})
+	if e != nil {
+		return nil, safe(ctx, e)
+	}
+	out := make([]d.Assignment, 0, len(rows))
+	for _, row := range rows {
+		a, e := value(scope, q.GetAssignmentRow(row))
+		if e != nil {
+			return nil, e
 		}
 		out = append(out, a)
 	}

@@ -6,19 +6,33 @@ const templates = `
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="robots" content="{{if .Indexable}}index,follow{{else}}noindex,nofollow{{end}}">
-  <title>{{.Title}} | abastevo</title>
+  <meta name="robots" content="{{.Robots}}">
+  <title>{{.HeadTitle}}</title>
   <meta name="description" content="{{.Description}}">
-  {{if .CSSURL}}<link rel="stylesheet" href="{{.CSSURL}}">{{end}}
+  {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">
+  <meta property="og:type" content="{{if .OGType}}{{.OGType}}{{else}}website{{end}}">
+  <meta property="og:site_name" content="abastevo">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:url" content="{{.Canonical}}">
+  <meta property="og:title" content="{{.HeadTitle}}">
+  <meta property="og:description" content="{{.Description}}">
+  <meta property="og:image" content="{{.OGImage}}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{{.HeadTitle}}">
+  <meta name="twitter:description" content="{{.Description}}">
+  <meta name="twitter:image" content="{{.OGImage}}">
+  {{if .ArticlePublished}}<meta property="article:published_time" content="{{.ArticlePublished}}">
+  <meta property="article:modified_time" content="{{.ArticleModified}}">
+  {{end}}{{end}}{{if .JSONLD}}<script type="application/ld+json">{{.JSONLD}}</script>{{end}}  {{if .CSSURL}}<link rel="stylesheet" href="{{.CSSURL}}">{{end}}
 </head>
 <body>
   <a class="skip" href="#conteudo">Pular para o conteúdo</a>
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="{{if .Landing}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
+      <a class="brand" href="{{if .HasLanding}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
       <nav class="topnav" aria-label="Navegação principal">
         {{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar</a>{{end}}
-        {{if .Landing}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
+        {{if .HasLanding}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
         <a href="{{.Landing}}/como-usar/">Como usar</a>
         <a href="{{.Landing}}/guias/">Guias</a>{{else}}<a href="/metodologia/">Metodologia</a>{{end}}
       </nav>
@@ -30,11 +44,13 @@ const templates = `
           <nav class="site-nav" aria-label="Menu">
             {{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a>
             <a href="/precos/">Preços</a>
-            <a href="/fiscalizacao/">Fiscalização</a>{{end}}
+            <a href="/fiscalizacao/">Fiscalização</a>{{if .HasForum}}
+            <a href="/forum/">Fórum</a>{{end}}{{end}}
             <a href="/metodologia/">Metodologia</a>
-            {{if .Landing}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
+            {{if .HasLanding}}<a href="{{.Landing}}/#aplicativo">Aplicativo</a>
             <a href="{{.Landing}}/como-usar/">Como usar</a>
-            <a href="{{.Landing}}/guias/">Guias</a>{{end}}
+            <a href="{{.Landing}}/guias/">Guias</a>
+            <a href="{{.Landing}}/ferramentas/">Ferramentas</a>{{end}}
           </nav>
         </details>
       </div>
@@ -50,6 +66,7 @@ const templates = `
       <a href="/precos/" {{if eq .ActiveNav "precos"}}aria-current="page"{{end}}>Preços</a>
       <a href="/fiscalizacao/" {{if eq .ActiveNav "fiscalizacao"}}aria-current="page"{{end}}>Fiscalização</a>
       <a href="/curiosidades/" {{if eq .ActiveNav "curiosidades"}}aria-current="page"{{end}}>Curiosidades</a>
+      {{if .HasForum}}<a href="/forum/" {{if eq .ActiveNav "forum"}}aria-current="page"{{end}}>Fórum</a>{{end}}
       <a href="/metodologia/" {{if eq .ActiveNav "metodologia"}}aria-current="page"{{end}}>Metodologia</a>
       {{end}}
     </div>
@@ -60,15 +77,15 @@ const templates = `
   <footer class="footer">
     <div class="wrap">
       <div class="footer-top">
-        <a class="brand" href="{{if .Landing}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
+        <a class="brand" href="{{if .HasLanding}}{{.Landing}}/{{else if .OfficialOnly}}/fiscalizacao/{{else}}/consultar/{{end}}" aria-label="abastevo — início"><span class="brand-logo" aria-hidden="true"></span><span class="brand-wordmark">abastevo</span></a>
         <p class="footer-tagline">Projeto aberto e independente, sem afiliação à ANP ou a qualquer governo. Preços da comunidade e a referência semanal da ANP andam separados, sempre com fonte e data.</p>
       </div>
       <div class="footer-cols">
-        <nav aria-label="Produto"><h2>Produto</h2>{{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a><a href="/fiscalizacao/">Fiscalização</a>{{end}}<a href="/metodologia/">Metodologia</a></nav>
+        <nav aria-label="Produto"><h2>Produto</h2>{{if .OfficialOnly}}<a href="/fiscalizacao/">Fiscalização</a>{{else}}<a href="/consultar/">Consultar dados</a><a href="/fiscalizacao/">Fiscalização</a>{{if .HasForum}}<a href="/forum/">Fórum</a>{{end}}{{end}}<a href="/metodologia/">Metodologia</a></nav>
         {{if .OfficialOnly}}{{else}}<nav aria-label="Dados"><h2>Dados</h2><a href="/precos/">Preços</a><a href="/dados/">Baixar dados públicos</a><a href="/curiosidades/">Perguntas aprovadas</a></nav>{{end}}
-        {{if .Landing}}<nav aria-label="Aprender"><h2>Aprender</h2><a href="{{.Landing}}/como-usar/">Como usar</a><a href="{{.Landing}}/guias/">Guias</a><a href="{{.Landing}}/#aplicativo">Aplicativo</a></nav>{{end}}
-        <nav aria-label="Projeto"><h2>Projeto</h2><a href="https://github.com/AlexandreZanata/abastevo">GitHub</a><a href="https://github.com/AlexandreZanata/abastevo/issues">Contato</a><a href="https://github.com/AlexandreZanata/abastevo/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
-        {{if .Landing}}<nav aria-label="Privacidade"><h2>Privacidade</h2><a href="{{.Landing}}/privacidade/">Privacidade</a><a href="{{.Landing}}/excluir-conta/">Excluir conta</a><a href="{{.Landing}}/termos/">Termos</a></nav>{{end}}
+        {{if .HasLanding}}<nav aria-label="Aprender"><h2>Aprender</h2><a href="{{.Landing}}/como-usar/">Como usar</a><a href="{{.Landing}}/guias/">Guias</a><a href="{{.Landing}}/ferramentas/">Ferramentas</a><a href="{{.Landing}}/#aplicativo">Aplicativo</a></nav>{{end}}
+        <nav aria-label="Projeto"><h2>Projeto</h2>{{if .HasLanding}}<a href="{{.Landing}}/sobre/">Sobre</a><a href="{{.Landing}}/politica-editorial/">Política editorial</a>{{end}}<a href="https://github.com/AlexandreZanata/abastevo">GitHub</a><a href="https://github.com/AlexandreZanata/abastevo/issues">Contato</a><a href="https://github.com/AlexandreZanata/abastevo/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
+        {{if .HasLanding}}<nav aria-label="Privacidade"><h2>Privacidade</h2><a href="{{.Landing}}/privacidade/">Privacidade</a><a href="{{.Landing}}/excluir-conta/">Excluir conta</a><a href="{{.Landing}}/termos/">Termos</a></nav>{{end}}
       </div>
       <div class="footer-legal">
         {{if .OfficialOnly}}
@@ -87,6 +104,11 @@ const templates = `
 </body>
 </html>{{end}}
 
+{{define "modules"}}{{range .Modules}}{{if .Links}}<section class="link-module">
+  <h2>{{.Title}}</h2>
+  <ul class="link-list">{{range .Links}}<li><a href="{{.Href}}">{{.Label}}</a>{{if .Note}} <span class="muted">{{.Note}}</span>{{end}}</li>{{end}}</ul>
+</section>{{end}}{{end}}{{end}}
+
 {{define "crumbs"}}{{if gt (len .Breadcrumbs) 1}}<nav class="wrap breadcrumbs" aria-label="Trilha de navegação">{{range $i, $c := .Breadcrumbs}}{{if $i}} · {{end}}{{if $c.Current}}<span aria-current="page">{{$c.Label}}</span>{{else}}<a href="{{$c.Href}}">{{$c.Label}}</a>{{end}}{{end}}</nav>{{end}}{{end}}
 
 {{define "summary"}}{{if .}}<div class="table-wrap">
@@ -97,7 +119,7 @@ const templates = `
     </thead>
     <tbody>
       {{range .}}<tr>
-        <td>{{.Fuel}}</td><td>{{.Unit}}</td>
+        <td>{{if .FuelHref}}<a href="{{.FuelHref}}">{{.Fuel}}</a>{{else}}{{.Fuel}}{{end}}</td><td>{{.Unit}}</td>
         <td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td><td class="num">{{.Observations}}</td>
         <td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td><td class="num">{{brl .Spread}}</td>
         <td>{{if .Insufficient}}<span class="tag tag-warn">amostra pequena</span>{{else}}—{{end}}</td>
@@ -141,9 +163,10 @@ const templates = `
   </form>
   <noscript><p class="muted">A busca interativa requer JavaScript. Use a navegação por estado abaixo.</p></noscript>
   <h2>Estados com resumo</h2>
-  {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="/precos/uf/{{.Code}}/">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem preços nesta publicação.</strong><p>A pesquisa mais recente não tem observações publicadas.</p></div>{{end}}
+  {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="{{.Href}}">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem preços nesta publicação.</strong><p>A pesquisa mais recente não tem observações publicadas.</p></div>{{end}}
   <h2>Resumo nacional</h2>
   {{template "summary" .National}}
+  {{template "modules" .}}
 </main>
 {{template "foot" .}}{{end}}
 
@@ -165,10 +188,13 @@ const templates = `
   </section>{{end}}
   <h2>Brasil</h2>
   {{template "summary" .National}}
+  {{if .FuelHubs}}<h2>Preço por combustível</h2>
+  <ul class="station-list">{{range .FuelHubs}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a> — {{brl .Min}} a {{brl .Max}} por {{.Unit}} na amostra nacional</li>{{end}}</ul>{{end}}
   <h2>Menores preços encontrados na amostra</h2>
   {{if .Rankings}}{{range .Rankings}}{{template "ranking" .}}{{end}}{{else}}<div class="notice"><strong>Sem ranking nacional.</strong><p>Não há postos suficientes para este recorte.</p></div>{{end}}
   <h2>Estados</h2>
-  {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="/precos/uf/{{.Code}}/">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem resumo estadual.</strong></div>{{end}}
+  {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="{{.Href}}">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem resumo estadual.</strong></div>{{end}}
+  {{template "modules" .}}
 </main>
 {{template "foot" .}}{{end}}
 
@@ -181,14 +207,18 @@ const templates = `
   {{if .Rankings}}<h2>Menores preços encontrados na amostra</h2>{{range .Rankings}}{{template "ranking" .}}{{end}}{{else}}<div class="notice"><strong>Sem ranking estadual.</strong></div>{{end}}
   <h2>Municípios</h2>
   {{if .Municipalities}}<div class="grid cards">{{range .Municipalities}}<article class="card"><h3><a href="{{.Href}}">{{.Name}}</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra</p>{{if .Insufficient}}<p><span class="tag tag-warn">Amostra insuficiente (mínimo 5)</span></p>{{end}}</article>{{end}}</div>{{else}}<div class="notice"><strong>Sem municípios com resumo.</strong></div>{{end}}
+  {{if .NoDataCities}}<section class="link-module"><h2>Cidades sem preço na pesquisa ANP mais recente</h2><p class="muted">Postos cadastrados na ANP, sem observação nesta pesquisa; a ausência não significa preço zero.</p><ul class="link-list">{{range .NoDataCities}}<li><a href="{{.Href}}">Postos em {{.Name}}</a> <span class="muted">{{.Stations}} {{plural .Stations "posto" "postos"}}</span></li>{{end}}</ul></section>{{end}}
+  {{template "modules" .}}
 </main>
 {{template "foot" .}}{{end}}
 
 {{define "municipality"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <h1>Preços em {{.Name}}</h1>
+  <h1>{{if .NoData}}Postos de combustíveis em {{.Name}} ({{.UF}}){{else}}Preços em {{.Name}}{{end}}</h1>
   <p class="lead">{{.UF}} · IBGE {{.Code}} · {{.Population}} {{plural .Population "posto" "postos"}} na amostra</p>
-  {{if .Insufficient}}
+  {{if .NoData}}
+  <div class="notice"><strong>Sem preço na pesquisa ANP{{if .Period}} de {{.Period}}{{end}}.</strong><p>Nenhum posto desta cidade tem observação válida nesta pesquisa. A ausência não significa preço zero; veja as cidades próximas com preço ou o histórico de cada posto.</p></div>
+  {{else if .Insufficient}}
   <div class="notice"><strong>Amostra insuficiente para um resumo municipal.</strong><p>Há {{.Population}} {{plural .Population "posto" "postos"}} com observação; o mínimo definido é 5. Não exibimos ranking ou média municipal abaixo desse mínimo.</p></div>
   <h2>Postos com observação (sem ranking)</h2>
   <ul class="station-list">{{range .Rows}}<li><a href="/postos/{{.StationID}}/">{{.Name}}</a>{{if .LegalName}}<small class="station-legal-name muted">{{.LegalName}}</small>{{end}} — {{brl .Amount}} · {{.Collected}} · {{.Status}}</li>{{end}}</ul>
@@ -198,12 +228,16 @@ const templates = `
   <h2>Menores preços encontrados na amostra</h2>
   {{range .Rankings}}{{template "ranking" .}}{{end}}
   {{end}}
+  {{if .Stations}}<section class="link-module"><h2>Postos em {{.Name}}</h2>{{if gt .StationsTotal (len .Stations)}}<p class="muted">Exibindo {{len .Stations}} de {{.StationsTotal}} postos.</p>{{end}}<ul class="link-list">{{range .Stations}}<li><a href="{{.Href}}">{{.Label}}</a>{{if .Note}} <span class="muted">{{.Note}}</span>{{end}}</li>{{end}}</ul></section>{{end}}
+  {{template "modules" .}}
+  <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para resumos e rankings.</p></div>
 </main>
 {{template "foot" .}}{{end}}
 
 {{define "station"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
   <h1>{{.Station.Name}}</h1>
+  {{if .Station.Registry}}<p class="station-legal-name muted">Nome no cadastro da ANP: {{.Station.Registry}}</p>{{end}}
   {{if .Station.LegalName}}<p class="station-legal-name muted">{{.Station.LegalName}}</p>{{end}}
   <p class="lead">{{.Station.Place}} · {{.Station.CNPJ}} · <span class="status">{{.Station.Status}}</span></p>
   <div class="grid summary-grid">
@@ -212,7 +246,7 @@ const templates = `
       <p>{{if .Station.Address}}{{.Station.Address}}{{else}}Endereço não informado{{end}}</p>
       <p class="muted">{{.Station.Location}}. Coordenadas não são exibidas nesta versão.</p>
       <p class="muted">Identificador canônico: {{.Station.ID}}</p>
-      {{if .Station.MunicipalityHref}}<p><a href="{{.Station.MunicipalityHref}}">{{.Station.Municipality}}</a></p>{{else if .Station.StateHref}}<p><a href="{{.Station.StateHref}}">Resumo do estado</a></p>{{end}}
+      {{if .Station.MunicipalityHref}}<p><a href="{{.Station.MunicipalityHref}}">Preços de combustíveis em {{.Station.Municipality}}</a></p>{{else if .Station.StateHref}}<p><a href="{{.Station.StateHref}}">Preços de combustíveis em {{.Station.StateName}}</a></p>{{end}}
       <p class="muted">O status é informado pela fonte; não é um score de qualidade, confiança ou segurança.</p>
     </section>
     <section class="card">
@@ -240,7 +274,34 @@ const templates = `
     <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. {{if .Source.URL}}<a href="{{.Source.URL}}">Página oficial da pesquisa</a>.{{end}}</p>
     <p class="muted source-url">Revisão: {{if .Source.Period}}{{.Source.Period}}{{else}}não informada{{end}} · checksum: {{if .Source.Checksum}}{{.Source.Checksum}}{{else}}não informado{{end}} · parser: {{if .Source.ParserVersion}}{{.Source.ParserVersion}}{{else}}não informado{{end}} · publicação na fonte: {{if .Source.PublishedAt}}{{.Source.PublishedAt}}{{else}}não informada{{end}}</p>
   </div>
+  {{template "modules" .}}
   <div class="links"><a href="/consultar/">Voltar à consulta</a><a href="/precos/">Resumo por região</a><a href="/metodologia/">Metodologia e fontes</a></div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "fuel"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <h1>{{.H1}}</h1>
+  <p class="lead">Preços encontrados na pesquisa da ANP{{if .Period}} de {{.Period}}{{end}}, em R$ por {{.UnitLabel}}. Não é preço ao vivo nem estatística oficial da ANP.</p>
+  <div class="notice"><strong>Mesma unidade, mesmo combustível.</strong><p>Esta página compara apenas {{.Label}} em R$ por {{.UnitLabel}}. Mínimo, máximo e dispersão vêm dos postos com observação no período; a amostra não cobre todos os postos.</p></div>
+  <h2>Brasil</h2>
+  {{template "summary" .National}}
+  <h2>Por estado</h2>
+  {{if .States}}<div class="table-wrap"><table>
+    <caption>{{.Label}} por estado na amostra; R$ por {{.UnitLabel}}</caption>
+    <thead><tr><th scope="col">Estado</th><th scope="col" class="num">Amostra</th><th scope="col" class="num">Mínimo</th><th scope="col" class="num">Máximo</th><th scope="col" class="num">Dispersão</th></tr></thead>
+    <tbody>{{range .States}}<tr><td><a href="{{.Href}}">{{.Name}} ({{.UF}})</a></td><td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td><td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td><td class="num">{{brl .Spread}}</td></tr>{{end}}</tbody>
+  </table></div>{{else}}<div class="notice"><strong>Sem resumo estadual.</strong></div>{{end}}
+  <h2>Cidades com preço na amostra</h2>
+  {{if .Cities}}<div class="table-wrap"><table>
+    <caption>{{.Label}} por cidade; amostras com menos de 5 postos não mostram mínimo e máximo</caption>
+    <thead><tr><th scope="col">Cidade</th><th scope="col" class="num">Amostra</th><th scope="col" class="num">Mínimo</th><th scope="col" class="num">Máximo</th></tr></thead>
+    <tbody>{{range .Cities}}<tr><td><a href="{{.Href}}">{{.Name}} ({{.UF}})</a></td><td class="num">{{.Stations}} {{plural .Stations "posto" "postos"}}</td>{{if .Insufficient}}<td colspan="2"><span class="tag tag-warn">amostra pequena</span></td>{{else}}<td class="num">{{brl .Min}}</td><td class="num">{{brl .Max}}</td>{{end}}</tr>{{end}}</tbody>
+  </table></div>{{else}}<div class="notice"><strong>Sem cidades com resumo.</strong></div>{{end}}
+  {{if .Others}}<h2>Outros combustíveis</h2><ul class="station-list">{{range .Others}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a></li>{{end}}</ul>{{end}}
+  {{template "modules" .}}
+  <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo Abastevo para mínimo, máximo e dispersão.</p></div>
+  <div class="links"><a href="/precos/">Preços no Brasil</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
 
@@ -252,6 +313,7 @@ const templates = `
     {{range .Cards}}<article class="card qa-card"><h2>{{.Question}}</h2><p class="qa-answer">{{.Answer}}</p>{{if .Caveat}}<p class="qa-caveat">{{.Caveat}}</p>{{end}}<p class="qa-meta">{{.Formula}} <a href="{{.SourceHref}}">Método e fonte</a></p></article>{{end}}
   </div>
   <div class="notice"><strong>Impressão e dados abertos</strong><p>Esta página foi preparada para impressão; a navegação e os formulários não aparecem no papel. Os mesmos recortes estão disponíveis em CSV no <a href="{{.DownloadsHref}}">diretório de downloads</a>.</p></div>
+  {{template "modules" .}}
   <div class="links"><a href="/dados/">Baixar dados públicos</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -267,9 +329,10 @@ const templates = `
     {{range .Files}}<li><a href="{{.Href}}">{{.Label}}</a> — {{.Rows}} linhas · {{.Bytes}} bytes</li>{{end}}
     <li><a href="{{.Manifest.Href}}">{{.Manifest.Label}}</a> — hashes, contagens e notas</li>
   </ul>
-  <h2>Notas</h2>
+  <h2 id="notas">Notas</h2>
   <ul>{{range .Notes}}<li>{{.}}</li>{{end}}</ul>
   <div class="source"><p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p></div>
+  {{template "modules" .}}
   <div class="links"><a href="/curiosidades/">Perguntas aprovadas</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -344,6 +407,7 @@ const templates = `
     <p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p>
     <p class="muted source-url">Snapshot: {{.InputHash}} · versão dos cálculos: abastevo-metrics-v1 · publicação: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}}</p>
   </div>
+  {{template "modules" .}}
 </main>
 {{template "foot" .}}{{end}}
 
@@ -390,6 +454,7 @@ const templates = `
   </table></div>{{else}}<div class="notice"><strong>Sem registros oficiais nesta edição.</strong></div>{{end}}
   <div class="links">{{if .PrevHref}}<a href="{{.PrevHref}}">Página anterior</a>{{end}}{{if .NextHref}}<a href="{{.NextHref}}">Próxima página</a>{{end}}<a href="/metodologia/">Metodologia e fontes</a>{{if .OfficialOnly}}{{else}}<a href="/consultar/">Consultar preços</a>{{end}}</div>
   </section>
+  {{template "modules" .}}
   {{else}}
   <h1>Fiscalização — ainda não disponível</h1>
   <p class="lead">Este recorte depende da aceitação do fluxo oficial de fiscalização e da associação segura ao posto. Até lá, nenhum registro é exibido.</p>
@@ -430,6 +495,57 @@ const templates = `
   <div class="notice"><strong>Limites do registro</strong><p>Uma multa ou ação não prova adulteração, interdição atual ou culpa definitiva. O vencimento não é a data da ocorrência nem prova de propriedade. Ausência de registro não é certidão negativa. O vínculo é a decisão de empresa atual na data indicada, não um histórico de propriedade.</p></div>
   <div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. {{if .Record.SourceURL}}<a href="{{.Record.SourceURL}}">Página oficial da fonte</a>.{{end}}</p><p class="muted source-url">Revisão {{.Record.RevisionID}} · lease {{.Record.LeaseID}} · checksum {{.Record.SourceChecksum}} · publicação {{.Manifest.PublishedAt}}.</p></div>
   <div class="links"><a href="/fiscalizacao/">Voltar à fiscalização</a><a href="/metodologia/">Metodologia e fontes</a>{{if .OfficialOnly}}{{else}}<a href="/consultar/">Consultar preços</a>{{end}}</div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "forumList"}}<ul class="station-list forum-list">{{range .}}<li><a href="{{.Route}}">{{.Title}}</a> <span class="muted">{{.CategoryName}} · {{.Day}}</span>{{if .Excerpt}}<br><span class="muted">{{.Excerpt}}</span>{{end}}</li>{{end}}</ul>{{end}}
+
+{{define "forumHub"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <p class="eyebrow">Equipe abastevo</p>
+  <h1>Fórum abastevo</h1>
+  <p class="lead">Publicações editoriais da Equipe abastevo sobre combustíveis, mobilidade e os dados do portal, com data e categoria. Os preços continuam nas páginas de cada cidade, sempre com fonte e data da pesquisa ANP.</p>
+  <h2>Publicações recentes</h2>
+  {{template "forumList" .Posts}}
+  {{if gt .Total (len .Posts)}}<p class="muted">Exibindo as {{len .Posts}} publicações mais recentes de {{.Total}}; as demais estão nas categorias.</p>{{end}}
+  <h2>Categorias</h2>
+  <ul class="station-list">{{range .Categories}}<li><a href="{{.Route}}">{{.Name}}</a> <span class="muted">{{.Count}} {{plural .Count "publicação" "publicações"}}</span></li>{{end}}</ul>
+  {{if .AppHref}}<p><a href="{{.AppHref}}">Acompanhe o fórum e os preços no aplicativo abastevo</a></p>{{end}}
+  {{template "modules" .}}
+  <div class="links"><a href="/precos/">Preços por região</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "forumCategory"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <p class="eyebrow">Fórum abastevo</p>
+  <h1>{{.Name}}</h1>
+  {{if .Summary}}<p class="lead">{{.Summary}}</p>{{end}}
+  <h2>Publicações</h2>
+  {{template "forumList" .Posts}}
+  {{if .Truncated}}<p class="muted">Exibindo as {{len .Posts}} publicações mais recentes de {{.Total}}.</p>{{end}}
+  {{template "modules" .}}
+  <div class="links"><a href="/forum/">Todas as publicações do fórum</a><a href="/precos/">Preços por região</a><a href="/metodologia/">Metodologia e fontes</a></div>
+</main>
+{{template "foot" .}}{{end}}
+
+{{define "forumPost"}}{{template "head" .}}{{template "crumbs" .}}
+<main id="conteudo" class="wrap">
+  <article class="forum-post">
+    <p class="eyebrow"><a href="{{.CategoryHref}}">{{.CategoryName}}</a></p>
+    <h1>{{.PostTitle}}</h1>
+    <p class="post-meta muted">Por {{if .AboutHref}}<a href="{{.AboutHref}}">{{.Author}}</a>{{else}}{{.Author}}{{end}} · Publicado em <time datetime="{{.PublishedISO}}">{{.PublishedDay}}</time>{{if .ShowUpdated}} · Atualizado em <time datetime="{{.UpdatedISO}}">{{.UpdatedDay}}</time>{{end}}</p>
+    {{if .Related}}<ul class="chips" aria-label="Dados relacionados">{{range .Related}}<li><a class="tag" href="{{.Href}}">{{.Label}}</a></li>{{end}}</ul>{{end}}
+    <div class="post-body">{{range .Blocks}}{{if eq .Kind "heading"}}
+      <h2>{{.Text}}</h2>{{else if eq .Kind "bullets"}}
+      <ul>{{range .Items}}<li>{{.}}</li>{{end}}</ul>{{else}}
+      <p>{{range $i, $line := .Lines}}{{if $i}}<br>{{end}}{{$line}}{{end}}</p>{{end}}{{end}}
+    </div>
+  </article>
+  <div class="source"><p><strong>Fonte:</strong> {{.Author}}, publicação editorial do fórum abastevo. Texto datado; não é preço ao vivo nem estatística oficial da ANP.</p></div>
+  {{if .AppHref}}<p><a href="{{.AppHref}}">Acompanhe o fórum e os preços no aplicativo abastevo</a></p>{{end}}
+  {{template "modules" .}}
+  <div class="links"><a href="/forum/">Todas as publicações do fórum</a><a href="{{.CategoryHref}}">Mais em {{.CategoryName}}</a><a href="/precos/">Preços por região</a></div>
 </main>
 {{template "foot" .}}{{end}}
 

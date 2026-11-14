@@ -82,7 +82,7 @@ Services or CronJob.
 
 ## Admin key and dev seeds (manual, not rendered)
 
-- Admin panel: `https://teste.abastevo.com.br/admin/login/` (served from the
+- Admin panel: `https://abastevo.com.br/admin/login/` (served from the
   signed landing bundle). The API mounts `/v1/admin/*` only when
   `ANPFUEL_ADMIN_KEY_SHA256` and `ANPFUEL_ADMIN_ORIGIN` are present in the
   `abastevo-temp-secrets` Secret; they are patched there directly (the

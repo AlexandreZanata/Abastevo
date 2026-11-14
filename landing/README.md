@@ -23,9 +23,8 @@ landing/
     termos/index.html             # Community guidelines and moderation terms
     404.html                      # Real 404 page with noindex
     robots.txt                    # Crawler policy & sitemap pointer
-    sitemap.xml                   # Static sitemap (canonical 200 URLs only)
     site.webmanifest              # Web application manifest with icons
-    llms.txt                      # Factual project summary for LLMs (D-L07)
+    llms.txt                      # Factual project summary for LLMs (D-L07); content links generated
     .well-known/security.txt      # RFC 9116 security policy & contact
     favicon.ico                   # Root legacy multi-resolution favicon
     _headers                      # Security headers & cache rules for static hosts
@@ -40,12 +39,19 @@ landing/
         icon-512.png              # 512x512 Android splash icon & schema logo
         og-image-v1.png           # 1200x630 versioned social preview (<300 KiB)
         icon-provenance.json      # Provenance and derivation log
+  content/
+    manifest.json                 # Validated page manifest: static pages, hubs, categories, popular guides
+    guias/*.md                    # Guides (front matter + Markdown subset) → /guias/{slug}/
+    ferramentas/*.md              # Calculator explanations → /ferramentas/{slug}/
+    paginas/*.md                  # E-E-A-T pages → /sobre/, /politica-editorial/
   src/
     main.ts                       # TypeScript progressive enhancement
     search.ts                     # Portal static search (SP-10); emits search.<hash>.js
+    tools.ts                      # Calculators: pure formulas + optional DOM enhancement → tools.<hash>.js
   scripts/
     build.mjs                     # Asset fingerprinting & HTML build
-    check.mjs                     # Artifact, SEO, JSON-LD & budget verification
+    check.mjs                     # Artifact, SEO, JSON-LD, link & budget verification
+    content/                      # Manifest loader, Markdown renderer, layouts, shared data
   tests/                          # Automated contract & behavior tests
   dist/                           # Deployable built output (gitignored)
   package.json
@@ -73,6 +79,57 @@ npm run check
 npm test
 ```
 
+### Content pipeline (SEO-08)
+
+Every page comes from `content/manifest.json`: authored HTML pages are listed
+there with a fixed `lastmod`, and guides, category hubs (`/guias/{categoria}/`),
+the `/guias/` and `/ferramentas/` hubs, calculators and `/sobre/` /
+`/politica-editorial/` are generated from Markdown. The build fails on invalid
+front matter (required fields, title/description bounds, real dates, known
+category, unique slug matching the file name) and on any internal link or
+`related` route that is neither a landing page nor a known portal route
+(`/precos/`, `/precos/{uf}/`, `/consultar/`, `/dados/`, `/metodologia/`,
+`/curiosidades/`, `/fiscalizacao/`).
+
+Guide front matter:
+
+```yaml
+---
+title: Como é formado o preço da gasolina no Brasil   # <title>, 25–65 chars with " | abastevo"
+headline: Optional longer H1 / Article headline
+description: 110–165 characters
+summary: Optional card text
+slug: como-e-formado-o-preco-da-gasolina             # must equal the file name
+category: precos                                     # a manifest category
+tags: [gasolina, impostos]
+datePublished: 2026-11-14
+dateModified: 2026-11-14                            # drives sitemap lastmod
+related:
+  - /guias/icms-sobre-combustiveis/
+  - /precos/
+---
+```
+
+The in-house Markdown subset supports `##`–`####` headings (no h1, no skipped
+levels), paragraphs, `**bold**`, `*italic*`, `` `code` ``, `[links](url)`
+(https, internal paths, `#anchors` only), one-level `-`/`1.` lists, pipe tables
+followed by a `: caption` line, `>` quotes, standalone `![alt](/assets/...)`
+images (alt required), fenced code and `::: resumo|nota|atencao` callouts. All
+text is HTML-escaped; raw HTML is never passed through.
+
+`sitemap.xml` is generated from the same registry: indexable pages only, one
+`lastmod` per URL (front matter `dateModified` or the manifest date, never the
+build time) and no `priority`/`changefreq`.
+
+### Calculators (SEO-10)
+
+`/ferramentas/{etanol-ou-gasolina,custo-de-viagem,consumo-medio,custo-por-km,encher-o-tanque}/`
+explain the formula and a worked example in plain HTML. `src/tools.ts` holds the
+pure parsing (pt-BR decimal comma), validation and formulas used by the tests,
+plus a DOM enhancement that reveals the form, reads optional `?campo=valor`
+prefill (canonical stays the clean URL) and writes results with `textContent`
+into a polite live region. No values leave the browser.
+
 ### Portal search asset
 
 `npm run build` emits `dist/assets/search.<hash>.js` from `src/search.ts`. The
@@ -93,6 +150,14 @@ optional enhancement: the HTML directory navigation remains usable without it.
   `<meta name="abastevo-api">` for the `/contribuidores/` live list. Must be
   an `https:` origin without path when set; empty (default) keeps the
   enhancement disabled and the page fully static.
+
+### Check Options
+
+`scripts/check.mjs` verifies every emitted landing page (unique titles and
+descriptions, self-canonical on the configured origin, valid JSON-LD, no inline
+scripts, resolving internal links with portal routes allowlisted) and the
+sitemap/robots/llms files. `--origin <url>` defaults to
+`https://abastevo.com.br`; `--dist-dir <path>` defaults to `dist`.
 
 ## Hosting & Response Policy
 

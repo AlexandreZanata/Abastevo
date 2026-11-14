@@ -162,3 +162,28 @@ func TestControlRequiresExactApprovalAndRejectsProduction(t *testing.T) {
 		t.Fatalf("production target was not rejected by the environment guard: %v", err)
 	}
 }
+
+func TestStagingCatalogWritesRequireTheOfficialCanonicalHost(t *testing.T) {
+	staging := func(host string) func(string) string {
+		return func(key string) string {
+			switch key {
+			case "ANPFUEL_ENV":
+				return "staging"
+			case "ANPFUEL_CANONICAL_HOST":
+				return host
+			case "ANPFUEL_DATABASE_URL":
+				return "postgres://fixture:fixture@abastevo-temp-db:5432/fixture"
+			}
+			return ""
+		}
+	}
+	for _, host := range []string{"teste.abastevo.com.br", "api.abastevo.com.br", ""} {
+		if _, err := ownerDatabaseConfig(staging(host)); err == nil ||
+			!strings.Contains(err.Error(), "staging canonical host") {
+			t.Fatalf("staging host %q was not refused by the host guard: %v", host, err)
+		}
+	}
+	if cfg, err := ownerDatabaseConfig(staging("abastevo.com.br")); err != nil || cfg.MaxConns != 2 {
+		t.Fatalf("official canonical host refused: %v", err)
+	}
+}

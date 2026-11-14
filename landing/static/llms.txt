@@ -19,12 +19,17 @@ O abastevo é um projeto com código disponível sob licença de atribuição vi
 - Tutorial: Entender os preços de um posto: {{CANONICAL_ORIGIN}}/como-usar/precos-do-posto/
 - Tutorial: Usar a Comunidade: {{CANONICAL_ORIGIN}}/como-usar/comunidade/
 - Tutorial: Offline e recuperação: {{CANONICAL_ORIGIN}}/como-usar/offline-e-recuperacao/
-- Guias Educativos: {{CANONICAL_ORIGIN}}/guias/
-- Guia: Pesquisa semanal da ANP: {{CANONICAL_ORIGIN}}/guias/pesquisa-anp/
-- Guia: Etanol ou gasolina (regra dos 70%): {{CANONICAL_ORIGIN}}/guias/etanol-ou-gasolina/
-- Guia: Como ler preços na bomba e na placa: {{CANONICAL_ORIGIN}}/guias/como-ler-precos/
 - Política de Privacidade: {{CANONICAL_ORIGIN}}/privacidade/
 - Exclusão de Conta e Dados: {{CANONICAL_ORIGIN}}/excluir-conta/
 - Termos de Uso e Comunidade: {{CANONICAL_ORIGIN}}/termos/
 - Contribuidores do projeto: {{CANONICAL_ORIGIN}}/contribuidores/
 - Repositório no GitHub: https://github.com/AlexandreZanata/abastevo
+
+## Guias, ferramentas e páginas do projeto
+{{LLMS_CONTENT_LINKS}}
+
+## Dados públicos (portal no mesmo domínio)
+- Preços de referência por estado e cidade: {{CANONICAL_ORIGIN}}/precos/
+- Consultar postos e preços: {{CANONICAL_ORIGIN}}/consultar/
+- Metodologia: {{CANONICAL_ORIGIN}}/metodologia/
+- Fiscalização (multas publicadas pela ANP): {{CANONICAL_ORIGIN}}/fiscalizacao/

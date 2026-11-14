@@ -80,7 +80,7 @@ def main():
     release = release_or_none(tag)
     ensure_tag(tag, sha)
     if release is None:
-        notes = (f"Signed Android release build for staging: https://teste.abastevo.com.br\n\n"
+        notes = (f"Signed Android release build for staging: https://abastevo.com.br\n\n"
                  f"Version {manifest['version_name']} · code {manifest['version_code']}\n"
                  f"Source: {sha}\n\nAPK, checksums, public signing certificate and license notices are attached. "
                  "This prerelease does not certify production or iOS.\n")

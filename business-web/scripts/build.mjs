@@ -44,7 +44,7 @@ export function build({outDir=path.join(root,'dist')}={}){
   }
   for(const name of ['OFL-Manrope.txt','OFL-Source-Sans-3.txt'])fs.copyFileSync(path.join(landing,'fonts',name),path.join(out,'assets/fonts',name));
   for(const name of ['abastevo-logo.svg','favicon.svg'])write(name,fs.readFileSync(path.join(landing,'brand',name)));
-  for(const [source,dest]of [['index.html','index.html'],['index.html','entrar/index.html'],['404.html','404.html']]){
+  for(const [source,dest]of [['index.html','index.html'],['index.html','entrar/index.html'],['index.html','criar/index.html'],['404.html','404.html']]){
    let html=fs.readFileSync(path.join(root,'static',source),'utf8');
    for(const [name,fingerprinted]of assets)html=html.replaceAll(`/empresas/assets/${name}`,`/empresas/assets/${fingerprinted}`);
    fs.mkdirSync(path.dirname(path.join(out,dest)),{recursive:true});fs.writeFileSync(path.join(out,dest),html);

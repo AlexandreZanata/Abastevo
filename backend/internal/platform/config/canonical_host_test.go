@@ -12,7 +12,7 @@ func TestCanonicalHostLoopbackPortOnlyInDevelopment(t *testing.T) {
 	}{
 		{"development", "127.0.0.1:18080", true},
 		{"development", "localhost:18080", true},
-		{"development", "teste.abastevo.com.br", true},
+		{"development", "abastevo.com.br", true},
 		{"development", "10.0.0.5:18080", false},
 		{"development", "example.com:443", false},
 		{"development", "127.0.0.1:0", false},

@@ -42,6 +42,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -84,6 +85,7 @@ fun AuthRoute(
     idTokenArg: String = "",
     nonceArg: String = "",
     stateArg: String = "",
+    requireFreshProof: Boolean = false,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     LaunchedEffect(providerArg, idTokenArg, nonceArg, stateArg) {
@@ -95,7 +97,7 @@ fun AuthRoute(
         viewModel.navigation.collect { onNavigateBack() }
     }
     androidx.lifecycle.compose.LifecycleEventEffect(androidx.lifecycle.Lifecycle.Event.ON_RESUME) {
-        viewModel.refreshAccount()
+        if (requireFreshProof) viewModel.beginReauthentication() else viewModel.refreshAccount()
     }
     AuthScreen(
         state = uiState,
@@ -278,12 +280,12 @@ fun AuthScreen(
                                 keyboardActions = KeyboardActions(onDone = { if (state.accountKey.isNotBlank()) onLoginWithKey() }),
                                 shape = RoundedCornerShape(16.dp),
                                 singleLine = true,
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().testTag("account-key-entry"),
                             )
                             Button(
                                 onClick = onLoginWithKey,
                                 enabled = state.accountKey.isNotBlank(),
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier.fillMaxWidth().testTag("account-key-submit"),
                             ) {
                                 Text(text = stringResource(R.string.auth_key_login))
                             }

@@ -11,7 +11,7 @@ import (
 )
 
 func TestCatalogMatrix(t *testing.T) {
-	f, err := os.Open("../../../../../contracts/testdata/enterprise/authorization-catalog-v3.psv")
+	f, err := os.Open("../../../../../contracts/testdata/enterprise/authorization-catalog-v4.psv")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -23,11 +23,11 @@ func TestCatalogMatrix(t *testing.T) {
 		t.Fatal(err)
 	}
 	header := []string{"permission", "OWNER", "ADMIN", "FLEET_MANAGER", "SUPERVISOR", "FINANCE", "APPROVER", "DRIVER", "OPERATIONS_STAFF", "AUDITOR", "STATION_ADMIN", "STATION_MANAGER", "STATION_ATTENDANT", "DATA_MANAGER"}
-	if len(rows) != 85 || !slices.Equal(rows[0], header) {
+	if len(rows) != 86 || !slices.Equal(rows[0], header) {
 		t.Fatal("fixture shape/header/count")
 	}
 	catalog := d.SystemCatalog()
-	if len(catalog.Roles()) != 13 || len(catalog.Permissions()) != 84 {
+	if len(catalog.Roles()) != 13 || len(catalog.Permissions()) != 85 {
 		t.Fatal("system catalog missing fixed roles or keys")
 	}
 	seen := map[string]bool{}
@@ -73,7 +73,7 @@ func TestCatalogMatrix(t *testing.T) {
 			checks++
 		}
 	}
-	if checks != 1092 {
+	if checks != 1105 {
 		t.Fatal("incomplete role/permission cross product")
 	}
 }

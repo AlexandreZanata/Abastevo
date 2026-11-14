@@ -71,3 +71,15 @@ test('a stale account proof at sign-in asks for a new sign-in instead of a key c
  await f.controller.signIn('key',{kind:'overview'});
  assert.equal(f.controller.state.phase,'signed-out');assert.equal(f.controller.state.message,'Sua confirmação de acesso expirou. Entre novamente.');
 });
+test('an authentication refusal clears the current membership directory port',async()=>{
+ let clears=0;let valid=true;
+ const accountId=uuid(1),organization={id:uuid(2),membershipId:uuid(3),name:'Synthetic organization'};
+ const session={authenticated:true,deadline:Date.now()+3600000,async read(){if(!valid)throw new ApiError('unauthenticated');return {accountId};},forget(){this.authenticated=false;}};
+ const source={async list(){return {accountId,organizations:[organization]};},async authorize(){return {accountId,organization};},clear(){clears++;}};
+ const controller=new CompanyController(session,source,()=>{});await controller.navigate({kind:'organization',id:organization.id});assert.equal(controller.state.phase,'ready');valid=false;await controller.revalidate({kind:'organization',id:organization.id});assert.equal(controller.state.phase,'signed-out');assert.equal(clears,1);
+});
+test('isolated setup confirms session before bypassing operational discovery without creating authority',async()=>{
+ const f=fixture({async list(){throw new Error('Operational discovery must not admit setup');},async authorize(){throw new Error('No fabricated operational authority');}});
+ await f.controller.navigate({kind:'setup',id:a.id});assert.equal(f.controller.state.phase,'setup');assert.equal(f.controller.state.setupAccountId,uuid(1));assert.equal(f.controller.state.authority,undefined);
+ f.session.forget();await f.controller.navigate({kind:'create'});assert.equal(f.controller.state.phase,'signed-out');
+});

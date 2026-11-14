@@ -27,9 +27,9 @@ def origin(raw):
     u = urlsplit(raw)
     if u.username or u.password or u.fragment or u.scheme not in ("http", "https"):
         raise ValueError("invalid probe URL")
-    if not ((u.scheme == "https" and u.hostname == "teste.abastevo.com.br" and u.port in (None, 443))
+    if not ((u.scheme == "https" and u.hostname == "abastevo.com.br" and u.port in (None, 443))
             or u.hostname in ("127.0.0.1", "localhost", "::1")):
-        raise ValueError("probe is restricted to owned staging or loopback fixtures")
+        raise ValueError("probe is restricted to the owned official host or loopback fixtures")
     return u
 
 def request(label, raw, timeout, upload=None):
@@ -157,7 +157,7 @@ def descriptor(path, base, duration, start):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base-url", default="https://teste.abastevo.com.br")
+    parser.add_argument("--base-url", default="https://abastevo.com.br")
     parser.add_argument("--duration", type=float, default=600)
     parser.add_argument("--rate", type=float, default=20)
     parser.add_argument("--workers", type=int, default=128)

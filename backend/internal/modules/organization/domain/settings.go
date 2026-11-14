@@ -47,6 +47,7 @@ const (
 
 type ReviewRequired struct{ Trips, Fuelings, Expenses bool }
 type SourcePolicies struct {
+	RequireInvitationConfirmation bool
 	privateSettings
 	IntakeWindowDays                                                       int
 	ClockSkewLimitSeconds                                                  int64

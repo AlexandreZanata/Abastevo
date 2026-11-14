@@ -22,7 +22,7 @@ https://localhost:18443 {
 	@assets path /assets/*
 	header @assets Cache-Control "public, max-age=31536000, immutable"
 
-	@documents path /consultar/ /consultar/* /precos/ /precos/* /postos/* /fiscalizacao/ /fiscalizacao/* /curiosidades/ /curiosidades/* /dados/ /dados/* /metodologia/
+	@documents path /consultar/ /consultar/* /precos/ /precos/* /postos/* /forum/ /forum/* /fiscalizacao/ /fiscalizacao/* /curiosidades/ /curiosidades/* /dados/ /dados/* /metodologia/
 	header @documents Cache-Control "public, max-age=0, must-revalidate"
 
 	file_server {

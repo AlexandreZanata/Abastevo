@@ -6,16 +6,18 @@ import { type Authority, type MembershipSnapshot, type Organization, type Route,
 export interface MembershipSource {
   list(accountId: string, signal: AbortSignal): Promise<MembershipSnapshot>;
   authorize(accountId: string, orgId: string, signal: AbortSignal): Promise<Authority>;
+  clear?(): void;
 }
 export const unavailableMemberships: MembershipSource = {
   async list() { throw new ApiError('unavailable'); },
   async authorize() { throw new ApiError('unavailable'); },
 };
-export type Phase = 'signed-out' | 'loading' | 'choose' | 'empty' | 'ready' | 'denied' | 'unavailable' | 'signing-out' | 'not-found';
-export interface State { phase: Phase; organizations: Organization[]; selected: Organization | null; message: string }
+export type Phase = 'signed-out' | 'loading' | 'choose' | 'empty' | 'ready' | 'denied' | 'unavailable' | 'signing-out' | 'not-found' | 'setup';
+export interface State { phase: Phase; organizations: Organization[]; selected: Organization | null; message: string; authority?: Authority; setupAccountId?: string }
 const sameOrganization = (a: Organization | null, b: Organization | null): boolean =>
   a === b || (a !== null && b !== null && a.id === b.id && a.name === b.name && a.membershipId === b.membershipId);
-const sameState = (a: State, b: State): boolean => a.phase === b.phase && a.message === b.message &&
+const sameState = (a: State, b: State): boolean => a.phase === b.phase && a.message === b.message && a.setupAccountId === b.setupAccountId &&
+  JSON.stringify(a.authority) === JSON.stringify(b.authority) &&
   sameOrganization(a.selected, b.selected) && a.organizations.length === b.organizations.length &&
   a.organizations.every((o, i) => sameOrganization(o, b.organizations[i] ?? null));
 export class CompanyController {
@@ -24,8 +26,8 @@ export class CompanyController {
   #quiet = -1;
   state: State = { phase: 'signed-out', organizations: [], selected: null, message: '' };
   constructor(private readonly session: SessionPort, private readonly source: MembershipSource, private readonly render: (state: State, unchanged: boolean) => void) {}
-  #show(phase: Phase, organizations: Organization[] = [], selected: Organization | null = null, message = ''): void {
-    const next = { phase, organizations, selected, message };
+  #show(phase: Phase, organizations: Organization[] = [], selected: Organization | null = null, message = '', authority?: Authority, setupAccountId?: string): void {
+    const next = { phase, organizations, selected, message, ...(authority ? { authority } : {}), ...(setupAccountId ? { setupAccountId } : {}) };
     // A background recheck that lands where it started changes nothing visible.
     const unchanged = this.#quiet === this.#epoch && sameState(this.state, next);
     this.state = next;
@@ -39,9 +41,10 @@ export class CompanyController {
     else this.#show(phase);
     return { epoch: this.#epoch, signal: this.#pending.signal };
   }
-  reset(message = ''): void { this.#begin('signed-out'); this.session.forget(); this.#show('signed-out', [], null, message); }
+  reset(message = ''): void { this.#begin('signed-out'); this.source.clear?.(); this.session.forget(); this.#show('signed-out', [], null, message); }
   #failure(error: unknown, epoch: number): void {
     if (epoch !== this.#epoch || (error instanceof ApiError && error.kind === 'cancelled')) return;
+    this.source.clear?.();
     if (!this.session.authenticated || (error instanceof ApiError && (error.kind === 'unauthenticated' || error.kind === 'fresh'))) {
       this.session.forget();
       this.#show('signed-out', [], null, 'Sua sessão expirou. Entre novamente.');
@@ -52,6 +55,11 @@ export class CompanyController {
     try {
       const session = await this.session.read(signal);
       if (epoch !== this.#epoch) return;
+      if (route.kind === 'create' || route.kind === 'setup') {
+        this.source.clear?.();
+        this.#show('setup', [], null, '', undefined, session.accountId);
+        return;
+      }
       const snapshot = await this.source.list(session.accountId, signal);
       if (epoch !== this.#epoch) return;
       if (!validSnapshot(snapshot, session.accountId)) throw new ApiError('denied');
@@ -66,7 +74,7 @@ export class CompanyController {
       if (epoch !== this.#epoch) return;
       if (authority.accountId !== session.accountId || !validOrganization(authority.organization) ||
           authority.organization.id !== requested.id || authority.organization.membershipId !== requested.membershipId) throw new ApiError('denied');
-      this.#show('ready', organizations, { ...authority.organization });
+      this.#show('ready', organizations, { ...authority.organization }, '', authority);
     } catch (error) { this.#failure(error, epoch); }
   }
   async navigate(route: Route): Promise<void> {
@@ -101,6 +109,7 @@ export class CompanyController {
   // Navigation must not cancel the server logout, so it gets no page signal.
   async signOut(): Promise<void> {
     const { epoch } = this.#begin('signing-out');
+    this.source.clear?.();
     let message = '';
     try { await this.session.signOut(); }
     catch { message = 'A saída no servidor não pôde ser confirmada. Entre novamente para continuar.'; }

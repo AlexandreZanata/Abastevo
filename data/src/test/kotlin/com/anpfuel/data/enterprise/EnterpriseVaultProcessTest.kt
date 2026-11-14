@@ -41,10 +41,9 @@ class EnterpriseVaultProcessTest {
     fun independentProcessesAndAbruptDeathKeepCompleteSnapshotsAndRetrySemantics(): Unit = runBlocking {
         val p = partition()
         val directory = root.resolve("vault")
-        val f = VaultFixture(directory)
-        f.store.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, byteArrayOf(7)))
-        val key = root.resolve("synthetic-test-key")
-        Files.write(key, f.keys.values.values.single().secret.encoded)
+        val key = root.resolve("synthetic-test-provider")
+        val f = VaultFixture(directory, FileTestVaultKeys(key))
+        f.confirm(p); f.store.put(EnterpriseLocalRecord(p, A, byteArrayOf(7)))
         complete(child(directory, key, "read", id(40)))
         val writers = (41..44).map { child(directory, key, "write", id(it)) }
         writers.forEach(::complete)

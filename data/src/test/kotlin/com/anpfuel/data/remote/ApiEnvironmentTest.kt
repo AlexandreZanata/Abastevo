@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test
 class ApiEnvironmentTest {
 
     @Test
-    fun `staging selects teste origin and preview stays invalid`() {
-        assertEquals("https://teste.abastevo.com.br", ApiEnvironment.STAGING.origin)
+    fun `staging selects the official origin and preview stays invalid`() {
+        assertEquals("https://abastevo.com.br", ApiEnvironment.STAGING.origin)
         assertEquals("https://api.anpfuel.example.invalid", ApiEnvironment.PREVIEW.origin)
         assertTrue(ApiEnvironment.STAGING.origin != ApiEnvironment.PREVIEW.origin)
     }
@@ -29,7 +29,7 @@ class ApiEnvironmentTest {
         )
         for (route in routes) {
             val url = ApiEnvironment.STAGING.join(route)
-            assertEquals("https://teste.abastevo.com.br$route", url)
+            assertEquals("https://abastevo.com.br$route", url)
             assertTrue(!url.contains("//v1"), url)
             assertTrue(!url.contains("/v1/v1"), url)
         }
@@ -38,13 +38,13 @@ class ApiEnvironmentTest {
     @Test
     fun `malformed and non-https origins are refused`() {
         assertThrows(IllegalArgumentException::class.java) {
-            ApiEnvironment.requireValidOrigin("http://teste.abastevo.com.br")
+            ApiEnvironment.requireValidOrigin("http://abastevo.com.br")
         }
         assertThrows(IllegalArgumentException::class.java) {
             ApiEnvironment.requireValidOrigin("")
         }
         assertThrows(IllegalArgumentException::class.java) {
-            ApiEnvironment.requireValidOrigin("https://teste.abastevo.com.br/v1")
+            ApiEnvironment.requireValidOrigin("https://abastevo.com.br/v1")
         }
         assertThrows(IllegalArgumentException::class.java) {
             ApiEnvironment.requireValidOrigin("not-a-url")

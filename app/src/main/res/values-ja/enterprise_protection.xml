@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-PRIV-003: explicit credential retry and acknowledged empty recovery. -->
+    <string name="enterprise_protection_unlock_required">端末のロックを解除し、企業をもう一度選択してアクセスを確認してください。</string>
+    <string name="enterprise_protection_unlock_action">端末のロックを解除</string>
+    <string name="enterprise_protection_unlock_title">端末のロックを確認</string>
+    <string name="enterprise_protection_unlock_copy">画面ロックで本人確認を行ってください。企業へのアクセスは改めて確認されます。</string>
+    <string name="enterprise_protection_unlock_done">端末を確認しました。企業をもう一度選択してアクセスを確認してください。</string>
+    <string name="enterprise_protection_device_lock_required">続行するには端末の画面ロックを設定してください。</string>
+    <string name="enterprise_protection_recovery_required">以前のローカルデータは再び開けません。最初から始めると、未送信のローカル作業が破棄されます。</string>
+    <string name="enterprise_protection_recovery_action">%1$s のローカルデータを最初から開始</string>
+    <string name="enterprise_protection_recovery_title">以前のローカル作業を破棄しますか？</string>
+    <string name="enterprise_protection_recovery_copy">この企業のローカルデータと未送信の操作が削除されます。空のローカルデータで開始する前に、サーバーがアクセスを確認します。</string>
+    <string name="enterprise_protection_recovery_confirm">破棄してアクセスを確認</string>
+</resources>

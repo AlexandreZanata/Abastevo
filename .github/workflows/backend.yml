@@ -139,4 +139,7 @@ jobs:
       - name: Enable PostGIS via the migrator
         run: cd backend && ANPFUEL_DATABASE_URL=${{ env.ANPFUEL_TEST_DATABASE_URL }} go run ./cmd/migrate
       - name: Integration tests (real PostGIS, race detector)
-        run: cd backend && go test -race -count=1 -tags=integration ./...
+        # The full organization and contract packages exceed Go's implicit 10m
+        # package deadline under the race detector on the shared runner. Keep
+        # every case and the same explicit bounded limit as local acceptance.
+        run: cd backend && go test -race -count=1 -timeout=20m -tags=integration ./...

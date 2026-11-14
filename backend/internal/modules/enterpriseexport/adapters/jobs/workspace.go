@@ -39,6 +39,9 @@ type State struct {
 	ToSurvey             string          `json:"to_survey"`
 	OfficialRevisions    []RevisionState `json:"official_revisions"`
 	Official             *OfficialPin    `json:"official,omitempty"`
+	// Forum is the editorial forum fingerprint the candidate was built from;
+	// nil when the build had no forum source (B-BR-SEO-08).
+	Forum *ForumState `json:"forum,omitempty"`
 }
 
 // Valid checks that the state points at a complete candidate payload.

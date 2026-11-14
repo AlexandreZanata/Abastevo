@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 The enterprise queue preserves the approved account, server origin and organization partition. C1 attachment validation uses synthetic receipts. The F4 late-intake and device-cleanup tasks retain their separate gates.
 
 ### EMP-OFFL-001 — Sync protocol contract: operation envelope, results, error codes, golden vectors
-- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Freeze an operation envelope and per-operation results for enterprise sync.
 - **Rules and use cases:** BR-OFFL-001, BR-OFFL-003, BR-OFFL-004, BR-OFFL-007, BR-OFFL-008, BR-OFFL-018, UC-OFFL-02
 - **Depends on:** EMP-PLAT-004
@@ -27,9 +27,10 @@ The enterprise queue preserves the approved account, server origin and organizat
 - **Validation:** V-API, V-SYNC, V-ISO · migration: none · rollback: keep the endpoint disabled until matching consumers exist
 - **Risks and assumptions:** Reuse compatible conventions from personal sync. Enterprise batches carry independent per-operation transactions.
 - **Done when:** The OpenAPI section, result catalog and shared vectors agree on the supported cases.
+- **Local evidence:** [EMP-OFFL-001](../evidence/f2-offl001-sync-protocol.md), task217: both consumers pass260 shared vectors; no route/ledger/queue is activated. Protected integration remains pending.
 
 ### EMP-OFFL-002 — Server operation intake: receipt ledger, idempotency and dependency ordering
-- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type DB · size L · state TODO
+- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type DB · size L · state LOCAL_DONE
 - **Objective:** Intake one organization operation at a time with deterministic replay and ordering.
 - **Rules and use cases:** BR-OFFL-004, BR-OFFL-005, BR-OFFL-006, BR-OFFL-007, BR-OFFL-008, BR-OFFL-018, BR-TEN-006, UC-OFFL-02
 - **Depends on:** EMP-OFFL-001, EMP-AUTH-003, EMP-PLAT-010
@@ -44,8 +45,18 @@ The enterprise queue preserves the approved account, server origin and organizat
 - **Risks and assumptions:** Reconcile shared refusal rules and the decision table before freezing consumer cases. Server authority governs processing and receipt visibility.
 - **Done when:** PostGIS proves ordered recovery, atomicity and scoped replay through normal intake.
 
+[F2 intake acceptance](../evidence/f2-offl002-intake-ledger.md),
+from tested/published PRIV-003 51c25146. B-BR-EMP-108..114, BUC-EMP-56/57 and
+EDR-071..075 precede behavior. Feature/F4/runtime readiness is not inferred.
+Final ordinary PostGIS/race union passes24 top-level/46 named cases, including
+actual signed HTTP, immutable replay, dependencies/held facts,12-way contention,
+late-source denial, deferred commit recovery, populated two-org RLS, original
+enrollment/current read coverage, upgrade and personal-erasure/export boundaries.
+Full affected API contract/cmd/api, protocol/application, generation/static/
+format/secret checks pass. Protected integration remains pending.
+
 ### EMP-OFFL-003 — Android persistent operation queue with immutable organization context
-- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size L · state TODO
+- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size L · state LOCAL_DONE
 - **Objective:** Persist each Android operation with its original organization and actor context.
 - **Rules and use cases:** BR-OFFL-001, BR-OFFL-002, BR-OFFL-003, BR-OFFL-005, BR-OFFL-013, BR-TEN-004, BR-PRIV-016, UC-OFFL-01
 - **Depends on:** EMP-OFFL-001, EMP-PLAT-011
@@ -60,8 +71,16 @@ The enterprise queue preserves the approved account, server origin and organizat
 - **Risks and assumptions:** The approved device protection applies to private queue payloads and files. Context changes cannot retag records.
 - **Done when:** Queue durability and independent retry converge in process-death and two-organization tests.
 
+[F2 protected queue acceptance](../evidence/f2-offl003-protected-operation-queue.md),
+from tested/published OFFL-002 d24b0d4f. B-BR-EMP-115..122, BUC-EMP-58..60 and
+EDR-076..080 precede behavior. Runtime producer/permission and C1 readiness stay
+separate from typed queue/source acceptance. Use the owned API36 emulator.
+Host/race, real two-account Keystore isolation, signed lost-answer/process
+recovery and normal Hilt/OS Worker acceptance pass. The runtime producer
+registry remains empty. Protected integration is pending.
+
 ### EMP-OFFL-004 — App: sync status model and the pending-sync screen
-- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Show truthful per-record synchronization and attachment status in the app.
 - **Rules and use cases:** BR-OFFL-010, BR-OFFL-013, BR-OFFL-015, BR-OFFL-017, UC-OFFL-01, SCR-OFFL-01, SCR-OFFL-02, SCR-OFFL-05
 - **Depends on:** EMP-OFFL-003
@@ -75,6 +94,12 @@ The enterprise queue preserves the approved account, server origin and organizat
 - **Validation:** V-APP, V-SYNC, V-ISO · migration: none outside the queue task · rollback: hide new screens and preserve operations
 - **Risks and assumptions:** Use current persisted state rather than inferring success from network connectivity.
 - **Done when:** Affected Compose states, screen-reader text and pending queue actions pass targeted tests.
+
+[F2 sync-status acceptance](../evidence/f2-offl004-sync-status-presentation.md)
+records exact protected receipts, offline ownership, explicit retained-refusal
+visibility, native V1/V2 recovery, accessible grouped lists and normal Hilt/OS
+execution. Eight localized catalogs retain identical keys. Runtime feature and
+upload producers remain separate; protected integration is pending.
 
 ### EMP-OFFL-005 — Attachment upload: offline queue, retry and resume, linkage to operations
 - **Meta:** module OFFL · phase F3 · cut C1 · priority P0 · type APP · size M · state TODO
@@ -125,7 +150,7 @@ The enterprise queue preserves the approved account, server origin and organizat
 - **Done when:** Boundary vectors prove that client time cannot authorize an operation.
 
 ### EMP-OFFL-008 — Review queue for operations that need review, with resolution actions
-- **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type API · size M · state IN_PROGRESS
 - **Objective:** Resolve held operations once through scoped reviewer decisions.
 - **Rules and use cases:** BR-OFFL-006, BR-OFFL-009, BR-AUTH-001, BR-REV-003, BR-REV-007, BR-REV-009, BR-AUD-001, UC-OFFL-04
 - **Depends on:** EMP-OFFL-002
@@ -139,6 +164,11 @@ The enterprise queue preserves the approved account, server origin and organizat
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-SYNC · migration: additive review storage · rollback: stop new resolutions and preserve evidence
 - **Risks and assumptions:** The owning command defines whether a reviewer may change a field during resolution.
 - **Done when:** Two-reviewer and retry races produce one final outcome and one audit record.
+
+[Actual F2 review construction](../evidence/f2-offl008-real-review.md) begins
+from tested/pushed71b995ae after full Fleet-002 closure. B-BR-EMP-160..169,
+BUC-EMP-83..88 and EDR-110..116 precede behavior. Actual original ACK and source
+history remain immutable; next-sync acceptance includes the protected client.
 
 ### EMP-OFFL-009 — Post-revocation intake window and quarantine
 - **Meta:** module OFFL · phase F4 · cut - · priority P1 · type API · size M · state TODO

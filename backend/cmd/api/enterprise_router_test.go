@@ -38,6 +38,28 @@ func TestFullProductionRouterEnterpriseContractAndDefaultOff(t *testing.T) {
 					t.Fatal("not the complete production router", count)
 				}
 				if enabled == "true" {
+					mounted := map[string]bool{}
+					if err := chi.Walk(router, func(method, path string, _ http.Handler, _ ...func(http.Handler) http.Handler) error {
+						mounted[method+" "+path] = true
+						return nil
+					}); err != nil {
+						t.Fatal(err)
+					}
+					for _, path := range []string{
+						"/v1/orgs/{org_id}/fleet/assets/create",
+						"/v1/orgs/{org_id}/fleet/assets/list",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/read",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/change",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/discard",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/activate",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
+					} {
+						if !mounted[http.MethodPost+" "+path] {
+							t.Fatal("fleet contract route missing from complete production router", path)
+						}
+					}
 					if err := apicontract.ValidateOrganizationRoutes(router, document); err != nil {
 						t.Fatal("fully composed private route drift", err)
 					}

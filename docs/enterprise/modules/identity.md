@@ -1,6 +1,72 @@
 # Identity, employees and access
 
-Status: **EMP-IDN-001/002/003 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+Status: **EMP-IDN-001/002/003/004/005/009/010/011/012/013/015 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-13; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+
+EMP-IDN-015 adds actual existing-account signed key enrolment/current checks and
+fresh account-bound self/manager scoped list/revoke. Server-owned deployment
+configuration defaults to3 devices, range1–5; source locks serialize slots.
+Migration194 keeps FORCE-RLS periods, immutable audit/receipts and actual
+membership-ending ACCESS_ENDED causes. LOST keys stay barred in the organization;
+a distinct freshly invited ACTIVE membership may create a new ACCESS_ENDED-key
+period without reopening the old one. No personal families, keys, cloud devices
+or other organizations are revoked or exposed. Last-sync remains null until
+its producer exists. [Device evidence](../evidence/f1-idn015-device-registry.md)
+records real signed/cookie HTTP, contention, proof waits, fault/upgrade recovery
+and ordinary two-scope account erasure. Managed activation, native wipe and
+future intake-only handling retain their own implementation/approval gates.
+
+EMP-IDN-013 completes the existing guarded contact/profile replacement and
+invitation/admission source projection. Canonical contact changes atomically
+revoke PENDING invitations and end WAITING admissions with actual profile
+revisions. Final fresh manager authority is rechecked after projection and
+receipt waits. Exact retries preserve original acknowledgements and later
+reissued invitations; equivalent contacts and unrelated metadata do not revoke
+admission. ACTIVE memberships, personal sessions and other organizations remain
+unchanged. [Contact evidence](../evidence/f1-idn013-contact-change.md) records
+real HTTP/PostGIS, contention, proof waits, atomic faults and source recovery.
+Managed activation producers remain gated by GOV-013/IDN-006..008 and must
+integrate the contact source before activation; no managed-code inventory or
+external delivery is supplied here.
+
+EMP-IDN-012 adds fresh scoped employee merge preview/confirmation and historical
+resolution. Explicit reviewed survivor selection keeps any live membership
+holder; a live source fails without ending or rewriting access. Both identities
+and profiles remain, the source becomes TERMINATED with an immutable pointer,
+and actual team links transfer as new periods or deduplicate existing survivor
+links. Original private receipts and bounded chained lookups preserve history.
+[Merge evidence](../evidence/f1-idn012-employee-merge.md) records real PostGIS,
+HTTP, contention/fault checks and ordinary migration193 rollback/recovery.
+Duplicate warnings remain suggestions; personal accounts, membership/account
+bindings and other organizations are unchanged. No automatic merge occurs.
+
+EMP-IDN-011 adds the fresh guarded employee rehire command, retaining the same
+identity/profile while leaving all ended access untouched. Only an unmerged
+TERMINATED employee with no live membership is eligible. Original private
+receipts remain immutable after later employee transitions; current manager
+authority and capability still apply to replay. [Rehire evidence](../evidence/f1-idn011-employee-rehire.md)
+records real PostGIS/HTTP, migration192 recovery and a separate new invitation
+with a distinct access period. No account recovery, implicit role restoration
+or managed provisioning is supplied by rehire.
+
+EMP-IDN-010 supplies current existing-account ORG_F1 manager offboarding and
+personal self-leave, including suspended/no-role members and authenticated
+ended retries. Reviewed actual settings/team flags remain available after source
+reductions. Employee retention/termination, actual role endings, last-owner
+protection and immutable audit/acknowledgements are atomic. [Offboarding evidence](../evidence/f1-idn010-offboarding.md)
+records source coverage and uninstalled managed/device/delegation/operational
+and late-intake producers; they must integrate before activation. Personal
+sessions and other organizations remain independent. Native/device revocation
+and managed-account disabling are not certified by this checkpoint.
+
+EMP-IDN-009 supplies fresh manager read/suspend/reactivate routes with original
+role periods and suspension causes, immediate organization denial, actual
+last-owner protection, immutable CAS outcomes and pending source notices.
+[Membership access evidence](../evidence/f1-idn009-membership-access.md) records
+ordinary migration190 recovery, adversarial PostGIS/race and actual HTTP/router
+checks. Reactivation does not restore consumed invitations, teams, settings
+designations or ownership proposals. Personal sessions and other organizations
+remain independent; native locking and device revocation remain planned.
+IDN-010 supplies current offboarding as described above. Managed006..008 still require GOV-013.
 
 EMP-IDN-001 confirms `membership/domain` as the private identity/lifecycle
 core, separate from existing contributor proof in `identity/domain`.
@@ -12,7 +78,7 @@ storage, session issuance or runtime authorization provider in IDN-001. IDN-003 
 The implementation inventory below describes existing runtime capabilities;
 the new unused pure core does not provision any of the proposed features.
 
-Evidence. Accounts and sessions exist: `backend/internal/modules/account/` issues opaque tokens sent as `family_id` + `access_token`, with a 900-second access token and a 30-day refresh ceiling (`backend/internal/modules/account/domain/policy.go`), a session revoke route and an account deletion route (`backend/internal/modules/account/adapters/http/http.go`): `IMPLEMENTED`. Login methods are `PARTIAL` ([01-diagnosis](../01-diagnosis.md) §3.1): username plus account key works (`backend/internal/modules/account/application/keyaccounts.go`); e-mail codes exist only with the in-memory mail adapter (`backend/internal/modules/account/adapters/mail/memory.go`), so no e-mail is delivered in production; Google and Apple can only be linked to an existing account (`backend/internal/modules/account/adapters/oidc/`). Device proof of possession exists for anonymous contributors (`backend/internal/modules/identity/adapters/auth/auth.go`), one account binds to a contributor key (`backend/db/migrations/000022_account_bindings.sql`), and the personal cloud registers at most three devices per account (`backend/internal/modules/cloudsync/adapters/device.go`): `IMPLEMENTED`, all keyed to a person, none to an organization. Existing private modules erase their rows when an account is deleted through a trigger on the account status (for example `backend/db/migrations/000143_staff_roles.sql`): `IMPLEMENTED`. The Android sign-in screens are in `app/src/main/kotlin/com/anpfuel/app/ui/auth/`: `IMPLEMENTED`. EMP-IDN-003 adds minimal employee identity and membership-period persistence in `backend/internal/modules/membership/`, plus the account-deletion/billing-exit database safeguard: `LOCAL_DONE / INTEGRATION_PENDING`; see [persistence evidence](../evidence/f1-idn003-membership-persistence.md). EMP-IDN-002 adds the scoped minimal employee register, independent profile revisions, explicit duplicate review and real home-unit usage/archival effects: `LOCAL_DONE / INTEGRATION_PENDING`; see [employee register evidence](../evidence/f1-idn002-employee-register.md). Invitations, activation codes, managed account provisioning and organization device enrolment remain `PROPOSED`. AUTH-002/003 now supply tested local current role/owner policy; production grants/providers remain separate gates.
+Evidence. Accounts and sessions exist: `backend/internal/modules/account/` issues opaque tokens sent as `family_id` + `access_token`, with a 900-second access token and a 30-day refresh ceiling (`backend/internal/modules/account/domain/policy.go`), a session revoke route and an account deletion route (`backend/internal/modules/account/adapters/http/http.go`): `IMPLEMENTED`. Login methods are `PARTIAL` ([01-diagnosis](../01-diagnosis.md) §3.1): username plus account key works (`backend/internal/modules/account/application/keyaccounts.go`); e-mail codes exist only with the in-memory mail adapter (`backend/internal/modules/account/adapters/mail/memory.go`), so no e-mail is delivered in production; Google and Apple can only be linked to an existing account (`backend/internal/modules/account/adapters/oidc/`). Device proof of possession exists for anonymous contributors (`backend/internal/modules/identity/adapters/auth/auth.go`), one account binds to a contributor key (`backend/db/migrations/000022_account_bindings.sql`), and the personal cloud registers at most three devices per account (`backend/internal/modules/cloudsync/adapters/device.go`): `IMPLEMENTED`, all keyed to a person, none to an organization. Existing private modules erase their rows when an account is deleted through a trigger on the account status (for example `backend/db/migrations/000143_staff_roles.sql`): `IMPLEMENTED`. The Android sign-in screens are in `app/src/main/kotlin/com/anpfuel/app/ui/auth/`: `IMPLEMENTED`. EMP-IDN-003 adds minimal employee identity and membership-period persistence in `backend/internal/modules/membership/`, plus the account-deletion/billing-exit database safeguard: `LOCAL_DONE / INTEGRATION_PENDING`; see [persistence evidence](../evidence/f1-idn003-membership-persistence.md). EMP-IDN-002 adds the scoped minimal employee register, independent profile revisions, explicit duplicate review and real home-unit usage/archival effects: `LOCAL_DONE / INTEGRATION_PENDING`; see [employee register evidence](../evidence/f1-idn002-employee-register.md). EMP-IDN-004 adds manager-mediated invitation issue/read/list/CAS resend/revoke with metadata-only retries, observed expiry and causal reductions: `LOCAL_DONE / INTEGRATION_PENDING`; see [invitation evidence](../evidence/f1-idn004-invitation-lifecycle.md). EMP-IDN-005 adds fresh personal-cookie preview/consent/accept/decline, privileged or optional-policy confirmation, immutable authenticated retries, wrong-secret/unknown-locator limits and observed seven-day admission expiry: `LOCAL_DONE / INTEGRATION_PENDING`; see [acceptance evidence](../evidence/f1-idn005-invitation-acceptance.md). Activation codes, managed account provisioning, native acceptance screens and organization device enrolment remain `PROPOSED`. AUTH-002/003 now supply tested local current role/owner policy; production grants/providers remain separate gates.
 
 ## 1. Purpose
 
@@ -272,9 +338,9 @@ Integrations: none in F1. Employee import is specified in [imports-notifications
 
 ### 10.2 Token format and defaults
 
-A token is written `LLLLLL-SSSS-SSSS`: a 6-symbol locator that finds the record and an 8-symbol secret, both from the 31-symbol unambiguous alphabet already used for account keys (`backend/internal/modules/account/domain/keyaccount.go`), typed without regard to case. The locator is stored in clear; the secret only as a keyed hash computed with a server-side key that is not in the database, compared in constant time (the salted-hash and constant-time precedent is `backend/internal/modules/account/domain/hash.go`). The exact construction is frozen by the security review EMP-GOV-013.
+The implemented existing-account invitation format is `AIN1.<UUID locator>.<base64url secret>` (EDR-049/050): a random locator and 256 random secret bits. Only a domain-separated keyed verifier is stored and comparisons use constant time. A valid locator with a malformed secret still counts as a failed secret. The fragment-only handover link never sends the code in a URL query. A first successful issue/resend displays it once; immutable operation receipts cannot recover it.
 
-Guessing: the secret space is `31⁸ = 852 891 037 441`. With 5 attempts before lockout the chance of guessing one token is `5 ÷ 852 891 037 441 ≈ 5.9 × 10⁻¹²`.
+The earlier `LLLLLL-SSSS-SSSS` construction (6-symbol locator and 8-symbol secret from the 31-symbol account-key alphabet) remains a **managed-code proposal**, subject to EMP-GOV-013. Its `31^8` guessing calculation does not describe the implemented invitation. Managed activation remains gated and unimplemented in this task.
 
 | Token | Validity (default; range) | Uses | Failed attempts | At the limit |
 |---|---|---|---|---|
@@ -365,3 +431,22 @@ Dependencies: [organizations](organizations.md) (organization, units, teams); [0
 Risks: an invitation handed to the wrong person (confirmation for privileged roles, alias shown, single use, short validity); a manager and employee sharing a phone or a code (individual codes, device binding, audit of issuer); account-key loss by employees who use invitations (managed access offered as the alternative; recovery path stated in §10.1); device loss with unsent records (stated openly in the recovery and revocation screens); the device-key login for managed accounts being new attack surface (EMP-GOV-013 before EMP-IDN-006); over-collection of employee data by habit (closed field list, BR-IDN-006); confusion between the personal cloud device ceiling and organization enrolments (separate records, BR-IDN-037).
 
 Phase: F1 for everything except the driver profile (F2) and the complete account-deletion treatment (F6), both justified in §2. Managed access is F1 but outside cut C1, because the cut signs people in with existing accounts ([14-roadmap](../14-roadmap.md) §4). Microtasks: EMP-IDN-001 to EMP-IDN-019.
+
+EMP-IDN-004 source interpretation (EDR-049): F1 invitations contain1..10 fixed
+ORG/SELF role templates within actual current grant authority. They reserve an
+unbound INVITED membership and create no roles/accounts. Issue while a live
+reservation exists requires explicit resend of its pending invitation and CAS
+revision, rather than replacing another manager's code accidentally. A resend
+uses current settings validity and issuer authority, supersedes the old token,
+and preserves its unbound reservation. Exact command retries return original
+metadata without delivery; lost delivery requires another explicit resend.
+
+The first committed response supplies a 256-bit code, a fragment-only panel link
+and that link as QR payload. The panel rendering and recipient flow retain their
+own tasks. The database retains a keyed verifier only; key rotation requires
+reissue. Status/list responses never contain the verifier or delivery. Notices
+remain PENDING_NOTIFICATION_CORE. Expiry materializes at actual scoped manager
+access and ends unused reservations; IDN-005 must enforce time/context again on
+every redemption and implement the public uniform-failure/attempt limits. No
+scheduled notification delivery, public redemption, provider or device acceptance
+is claimed by IDN-004. The feature plane remains off by default.
