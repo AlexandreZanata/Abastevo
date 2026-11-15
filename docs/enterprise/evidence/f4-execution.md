@@ -597,3 +597,44 @@ Merged-tree verification of `cbf68c67` (adds TRIP-004): untagged
 `go test ./...` 222 packages ok; race/integration union 58 packages, 57 pass,
 1396 top-level / 10823 named, 26.8 min; only the 5 known Rust-preparer-gated
 `cmd/worker` tests fail (`f4-logs/coord-union-cbf68c67.jsonl`).
+
+### EMP-FLEET-013 (F2/C1 prerequisite) — app: my assets and asset selection: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-fleet013-my-assets.md), commit `c2e857dc`, no backend
+migration, route or OpenAPI change. Kotlin client of the OFFL-006 signed
+reference feed: strict request/response parsing, versioned cache format,
+delta/tombstone/RESET/FORBIDDEN application, 24 h confirmation and the picker
+choice (`domain/.../enterprise/fleet/ReferenceFeed.kt`, a separate 2 MiB
+canonical-JSON parse limit); offline read and compare-and-set refresh with one
+cursorless retry after 404 (`application/.../MyAssets.kt`); the cache is one
+versioned entry sealed in the PRIV-003 protected store, not Room tables —
+EDR-076 rejected a second Room store and PRIV-003 forbids plaintext (EDR-224);
+signed `EnterpriseReferenceHttpClient`; "Meus ativos" list, read-only detail
+and a reusable picker that returns an asset to a calling screen with no
+network (unconfirmed or not-available assets need a warning), 53 strings in
+eight locales, rollback flag `enterpriseFleetUiEnabled` (EDR-224..227). New
+129-row `sync/reference-feed-v1.psv` from an independent oracle, consumed by
+Kotlin and by a Go test running the real server parser/encoder. RED domain 7/7
+and 129/129, application 12/12, data 11/11, ViewModel 4/4 → GREEN; host
+suites domain 2950, application 108, data 176, app 19; lint 0 errors. Native
+acceptance on `emulator-5588` only: presentation 6/6, context 2/2 (AC1, AC2
+offline, AC4 organization switch, AC5 personal vehicles unchanged),
+regressions, and a real-backend three-process run (online pull of two
+organizations, force-stop, server-side assignment end, offline cache intact
+with the asset marked not confirmed and the picker working, reconnect applying
+both tombstones). Incidents recorded in the evidence: an early native run
+triggered a real `SESSION_REVOKED` erasure of the synthetic validation account
+on the local test API (restored through the product's acknowledged empty
+recovery; the test now aligns the session first), and one unreproduced
+intermittent failure of `EnterpriseSyncContextDeviceTest` (8 later runs
+passed). Retained: last readings and tank capacity (not in the feed),
+availability as an entity type, starting operations from the picker
+(TRIP-005, FUEL-011, CHECK-002), a background pull, native two-account and
+24 h boundary runs, the intermittent, visual/TalkBack review.
+
+Integration (`b96e598d`): only the contract and EDR table conflicted; the
+proposed shared text of OFFL-006 and FLEET-013 is applied (10-offline-sync
+§10.3, backend and data READMEs, ep04 OFFL-006 state). Merged tree: Go build,
+vet, gofmt and orgsync tests green; Android host suites domain 3055,
+application 644, data 176, app enterprise 19 tests, 0 failures, and
+`:app:assembleDebug` pass (`f4-logs/coord-android-merged.log`).
