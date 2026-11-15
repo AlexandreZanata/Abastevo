@@ -58,6 +58,8 @@ data class TripStartInput(
     val departure: TripMeterEvidence? = null,
     val declared: TimeDeclaration? = null,
     val zones: ReportingZones? = null,
+    /** Optional device monotonic witness (EMP-TRIP-017). */
+    val clock: TripRunClock? = null,
 ) {
     override fun toString(): String = "EnterpriseTripStartInput(redacted)"
 }
@@ -67,12 +69,15 @@ data class TripFinishInput(
     val author: MembershipRef? = null,
     val final: TripMeterEvidence? = null,
     val declared: TimeDeclaration? = null,
+    /** Optional device monotonic witness (EMP-TRIP-017). */
+    val clock: TripRunClock? = null,
 ) {
     override fun toString(): String = "EnterpriseTripFinishInput(redacted)"
 }
 
 /** One recorded lifecycle event: actor, declaration and evidence. */
-class TripEvent internal constructor(val author: MembershipRef, val declared: TimeDeclaration, val evidence: TripMeterEvidence) {
+class TripEvent internal constructor(val author: MembershipRef, val declared: TimeDeclaration, val evidence: TripMeterEvidence,
+    val clock: TripRunClock?) {
     override fun toString(): String = "EnterpriseTripEvent(redacted)"
 }
 
@@ -93,6 +98,8 @@ class Trip private constructor(
     val started: TripEvent,
     val reporting: ReportingAttribution,
     val finished: TripEvent?,
+    /** The informational local day of the finish in the stored reporting zone (EMP-TRIP-017). */
+    internal val endDay: String?,
 ) {
     val organizationId: String get() = reference.organizationId
 
@@ -137,7 +144,10 @@ class Trip private constructor(
         if (author != started.author) throw TripDomainException(TripFailure.FORBIDDEN)
         val next = TripLifecycle.transition(state, TripCommand.FINISH)
         if (declared!!.occurredAt < started.declared.occurredAt) throw TripDomainException(TripFailure.FINISH_BEFORE_START)
-        return Trip(reference, asset, driver, next, started, reporting, TripEvent(author, declared, final!!))
+        // The trip keeps its start attribution; the end day is informational, in the stored zone (B-BR-EMP-276).
+        val endDay = try { EnterpriseTime.attributeReportingDay(declared.occurredAt, ReportingZones(reporting.zone)).day }
+        catch (_: EnterpriseTimeException) { throw invalid() }
+        return Trip(reference, asset, driver, next, started, reporting, TripEvent(author, declared, final!!, input.clock), endDay)
     }
 
     override fun toString(): String = "EnterpriseTrip(redacted)"
@@ -167,7 +177,7 @@ class Trip private constructor(
             val zones = input.zones ?: throw invalid()
             val reporting = try { EnterpriseTime.attributeReportingDay(declared!!.occurredAt, zones) }
             catch (_: EnterpriseTimeException) { throw invalid() }
-            return Trip(reference, asset!!, driver!!, TripState.IN_PROGRESS, TripEvent(author, declared, departure!!), reporting, null)
+            return Trip(reference, asset!!, driver!!, TripState.IN_PROGRESS, TripEvent(author, declared, departure!!, input.clock), reporting, null, null)
         }
 
         private fun declaration(declared: TimeDeclaration): TimeDeclaration =

@@ -4703,3 +4703,63 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   context, invalid and terminal transitions, unsupported pause, resume and
   cancel, completion mistaken for approval, foreign asset, driver, actor or
   reading, and a finish before its start.
+
+## EMP-TRIP-017 — Midnight and time-zone crossing rules (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip017-time-crossing.md).
+
+- **B-BR-EMP-276 — One trip keeps its start reporting day.** A trip
+  belongs to the reporting day of its start (BR-TIME-004) for its whole
+  life. FINISH takes no zone and never re-attributes: the stored day, zone
+  and source are unchanged when the trip crosses local midnight, several
+  days, a device entry zone or a device offset. The end day is informational
+  only: the local day of the finish instant in the stored reporting zone, so
+  crossing midnight means the end day differs from the start day. Nothing
+  splits the trip identity or adds a second trip day. A finish whose local
+  day in the stored zone falls outside years 0001..9999 is `INVALID`,
+  checked after `FINISH_BEFORE_START`.
+- **B-BR-EMP-277 — Every event keeps its source time context.** Start and
+  finish each retain their own UTC instant with nanoseconds, device entry
+  zone and device offset exactly as declared, even when the offset
+  disagrees with the zone's rules. The crossing view reports
+  `entry_zone_changed` (the entry zones differ) and `offset_changed` (the
+  device offsets differ) separately: a daylight-saving change in one zone is
+  an offset change, a zone with the same offset is an entry-zone change.
+  Neither decides the reporting day.
+- **B-BR-EMP-278 — Elapsed time comes only from instants.** The elapsed
+  time of a finished trip is the exact difference of its finish and start
+  instants in seconds and non-negative nanoseconds, computed without a
+  saturating duration and never from local wall times, entry zones, offsets
+  or zone rules: daylight-saving gaps and folds and zone crossings neither
+  add nor remove time. An unfinished trip reports `NOT_FINISHED` with no
+  value. No working hours, wage or time-clock result is derived (EDR-028).
+- **B-BR-EMP-279 — A wall-clock change or reboot is a flagged gap
+  (BR-TIME-005).** Each event may carry a device run clock: a boot identity
+  of 1 to 64 characters from `A-Z a-z 0-9 . _ -` and a non-negative
+  monotonic count in milliseconds (validated after the declaration; a
+  malformed one is `INVALID`). With both witnesses on one boot, a
+  non-negative monotonic difference within the caller's explicit
+  non-negative tolerance in milliseconds (no domain default; negative is
+  `INVALID`) of the instant difference, the elapsed time is `CONFIRMED`; a
+  different boot is a `GAP` with `BOOT_CHANGED`; a negative monotonic
+  difference or one beyond the tolerance is a `GAP` with
+  `CLOCK_DISCONTINUITY`; a witness missing on either event gives `DECLARED`
+  (instants only, unconfirmed). A gap carries no elapsed value, so no
+  duration is invented; the facts are kept and the finish is never refused
+  for clock reasons.
+- **BUC-EMP-139 — Finish after midnight in another zone.** A trip started
+  at 23:30 in Cuiabá on 2026-11-14 and finished at 01:10 São Paulo time
+  keeps the day 2026-11-14 and its reporting zone, reports its end day,
+  the midnight crossing and the entry-zone and offset changes, and remains
+  one trip with one identity.
+- **BUC-EMP-140 — Measure elapsed time honestly.** Daylight-saving
+  spring-forward and fall-back and zone crossings give the instant
+  difference whatever the local clock faces show; a device clock moved
+  against its monotonic clock, or a reboot, gives a gap for review instead
+  of a duration.
+- **BUC-EMP-141 — Prove the time crossing in both languages.** Go and
+  Kotlin load the same `trip/trip-time-v1.psv` oracle, assert its hash,
+  counts and error codes, and cover the full 0001..9999 instant range, the
+  largest monotonic counts and tolerances without overflow, and the named
+  negatives: a local clock change inventing duration, midnight splitting
+  one trip and a lost reporting basis.

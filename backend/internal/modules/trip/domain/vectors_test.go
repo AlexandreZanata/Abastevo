@@ -294,6 +294,13 @@ func vectorStart(t *testing.T, f fields) (trip.Trip, error) {
 	if !omit["zone"] {
 		in.Zones = orgtime.ReportingZones{Organization: f["zone"], Unit: optional(f, "unit_zone")}
 	}
+	if raw, ok := f["boot_hex"]; ok {
+		c, e := vectorClock(t, raw, f["mono"])
+		if e != nil {
+			return trip.Trip{}, e
+		}
+		in.Clock = &c
+	}
 	return trip.Start(vectorScope(f["scope"]), in)
 }
 
@@ -332,6 +339,13 @@ func vectorFinish(t *testing.T, args fields) (trip.Trip, error) {
 		if in.Declared, e = declaration(f["fin_at"], f["fin_entry"], f["fin_offset"]); e != nil {
 			return trip.Trip{}, e
 		}
+	}
+	if raw, ok := f["fin_boot_hex"]; ok {
+		c, e := vectorClock(t, raw, f["fin_mono"])
+		if e != nil {
+			return trip.Trip{}, e
+		}
+		in.Clock = &c
 	}
 	before := tripFields(started)
 	scope := vectorScope(f["fin_scope"])

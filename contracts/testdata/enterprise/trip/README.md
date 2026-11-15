@@ -131,3 +131,63 @@ START 57, FINISH 47. SHA256:
 (cd backend && go test -race -count=1 ./internal/modules/trip/domain)
 ./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.trip.*'
 ```
+
+# Trip time-crossing oracle v1
+
+EMP-TRIP-017 / B-BR-EMP-276..279, BUC-EMP-139..141, EDR-182..183.
+`trip-time-v1.psv` uses the same header, field, hex, alias and START/FINISH
+fixture grammar as `trip-v1.psv` (its defaults included) and covers the
+device run clock, the midnight and zone crossing view and elapsed time. It
+does not cover persistence, the Android clock source, period locks, paid
+hours or any labour result.
+
+## Fixed semantics
+
+- A run clock is a boot identity matching `^[A-Za-z0-9._-]{1,64}$` and a
+  non-negative monotonic count in milliseconds; anything else is `INVALID`.
+  A run clock is validated after the declaration of its event.
+- The trip's day, zone and source are always those of its start. FINISH
+  takes no zone. The end day is the local day of the finish instant in the
+  stored reporting zone; `crosses_midnight` is true when it differs from the
+  start day. `entry_zone_changed` compares the two entry zones and
+  `offset_changed` the two device offsets. A finish whose local day in the
+  stored zone is outside 0001..9999 is `INVALID` (after
+  `FINISH_BEFORE_START`). An unfinished trip prints `?` for every finish and
+  crossing field.
+- Elapsed time is finish instant minus start instant as `seconds` and
+  non-negative `nanos`. Without a run clock on both events it is
+  `DECLARED`. With both on one boot, a non-negative monotonic difference
+  whose distance from the instant difference is at most the tolerance is
+  `CONFIRMED` (the value stays the instant difference); a different boot is
+  `GAP` with `BOOT_CHANGED`; a negative monotonic difference or one beyond the
+  tolerance is `GAP` with `CLOCK_DISCONTINUITY`. A gap and `NOT_FINISHED`
+  carry no value (`?`). A negative tolerance is `INVALID`, checked first.
+
+## Operations and defaults
+
+Errors are exactly `error=INVALID` or `FINISH_BEFORE_START`.
+
+- CLOCK (`boot_hex;elapsed`) returns `boot_hex` and `elapsed`.
+- CROSSING (`at`, `entry`, `offset`, `zone`, `unit_zone`, `fin_at`,
+  `fin_entry`, `fin_offset`, `finished`) builds the trip-v1 START, and
+  FINISH unless `finished=false`, with every other trip-v1 default. Output:
+  `id`, `state`, `day`, `zone`, `reporting_source`, `start_at`,
+  `start_entry`, `start_offset`, `finish_at`, `finish_entry`,
+  `finish_offset`, `end_day`, `crosses_midnight`, `entry_zone_changed`,
+  `offset_changed`.
+- ELAPSED (`at`, `entry`, `offset`, `zone`, `fin_at`, `fin_entry`,
+  `fin_offset`, `boot_hex` with `mono` for the start clock, `fin_boot_hex`
+  with `fin_mono` for the finish clock, `tolerance` in milliseconds with the
+  fixture value 2000 when absent, `finished`) builds the trip the same way;
+  a fixture run clock is built after the zones (start) or the declaration
+  (finish). Output: `state`, `status`, `seconds`, `nanos`, `gap`,
+  `start_clock`, `finish_clock` (`<boot hex>:<count>` or `?`).
+
+The frozen corpus contains 66 cases: CLOCK 12, CROSSING 17, ELAPSED 37.
+SHA256:
+`c5054633152e33112d7345b5302bd264ee6a5235f399617397f3971ae45c6a22`.
+
+```sh
+(cd backend && go test -race -count=1 -run 'Time|Clock|Elapsed' ./internal/modules/trip/domain)
+./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.trip.EnterpriseTripTime*'
+```

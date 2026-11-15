@@ -147,6 +147,7 @@ type StartInput struct {
 	Departure MeterObservation
 	Declared  *orgtime.Declaration
 	Zones     orgtime.ReportingZones
+	Clock     *RunClock // optional device monotonic witness (EMP-TRIP-017)
 }
 
 // FinishInput is an operational completion; it cannot change the trip.
@@ -155,6 +156,7 @@ type FinishInput struct {
 	Author   MembershipRef
 	Final    MeterObservation
 	Declared *orgtime.Declaration
+	Clock    *RunClock // optional device monotonic witness (EMP-TRIP-017)
 }
 
 // Event is one recorded lifecycle event: actor, declaration and evidence.
@@ -163,11 +165,13 @@ type Event struct {
 	author   MembershipRef
 	declared orgtime.Declaration
 	evidence MeterObservation
+	clock    *RunClock
 }
 
 func (e Event) Author() MembershipRef         { return e.author }
 func (e Event) Declared() orgtime.Declaration { return e.declared }
 func (e Event) Evidence() MeterObservation    { return e.evidence }
+func (e Event) Clock() *RunClock              { return copyPointer(e.clock) }
 
 // Trip is an immutable operational trip; only Start and Finish build one.
 type Trip struct {
@@ -179,6 +183,7 @@ type Trip struct {
 	start     Event
 	reporting orgtime.ReportingAttribution
 	finish    *Event
+	endDay    string
 }
 
 // Start creates a C1 driver-initiated trip in IN_PROGRESS (B-BR-EMP-269/270).
@@ -222,6 +227,10 @@ func Start(scope kernel.OrgScope, in StartInput) (Trip, error) {
 			return Trip{}, ErrInvalid
 		}
 	}
+	clock, e := optionalClock(in.Clock)
+	if e != nil {
+		return Trip{}, e
+	}
 	if len(missing) != 0 {
 		return Trip{}, &IncompleteError{missing: missing}
 	}
@@ -230,7 +239,7 @@ func Start(scope kernel.OrgScope, in StartInput) (Trip, error) {
 		return Trip{}, ErrInvalid
 	}
 	return Trip{reference: in.Reference, asset: in.Asset, driver: in.Driver, state: InProgress,
-		start: Event{author: in.Author, declared: declared, evidence: in.Departure}, reporting: reporting}, nil
+		start: Event{author: in.Author, declared: declared, evidence: in.Departure, clock: clock}, reporting: reporting}, nil
 }
 
 // Finish completes the trip operationally and returns the next value
@@ -265,6 +274,10 @@ func (t Trip) Finish(scope kernel.OrgScope, in FinishInput) (Trip, error) {
 			return Trip{}, ErrInvalid
 		}
 	}
+	clock, e := optionalClock(in.Clock)
+	if e != nil {
+		return Trip{}, e
+	}
 	if len(missing) != 0 {
 		return Trip{}, &IncompleteError{missing: missing}
 	}
@@ -278,9 +291,15 @@ func (t Trip) Finish(scope kernel.OrgScope, in FinishInput) (Trip, error) {
 	if declared.OccurredAt.Before(t.start.declared.OccurredAt) {
 		return Trip{}, ErrFinishBeforeStart
 	}
+	// The trip keeps its start attribution; the end day is informational,
+	// in the stored reporting zone (B-BR-EMP-276).
+	endDay, e := localDay(declared, t.reporting.Zone)
+	if e != nil {
+		return Trip{}, e
+	}
 	out := t
-	out.state = next
-	out.finish = &Event{author: in.Author, declared: declared, evidence: in.Final}
+	out.state, out.endDay = next, endDay
+	out.finish = &Event{author: in.Author, declared: declared, evidence: in.Final, clock: clock}
 	return out, nil
 }
 
