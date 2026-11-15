@@ -523,7 +523,7 @@ func (q *Queries) TripInProgressOnAsset(ctx context.Context, arg TripInProgressO
 }
 
 const tripStartFacts = `-- name: TripStartFacts :one
-SELECT a.state AS asset_state,a.disposed_at,a.disposed_submicro,
+SELECT a.state AS asset_state,a.kind AS asset_kind,a.disposed_at,a.disposed_submicro,
  EXISTS(SELECT 1 FROM org_employee_identities e WHERE e.org_id=a.org_id AND e.id=CAST($1::text AS uuid) AND e.state='ACTIVE' AND e.merged_into IS NULL)::boolean AS driver_active,
  COALESCE((SELECT t.operation_id::text FROM org_trips t WHERE t.org_id=a.org_id AND t.id=CAST($2::text AS uuid)),'')::text AS existing_operation,
  COALESCE((SELECT h.operation_id::text FROM org_trip_held_starts h WHERE h.org_id=a.org_id AND h.trip_id=CAST($2::text AS uuid)),'')::text AS held_operation,
@@ -542,6 +542,7 @@ type TripStartFactsParams struct {
 
 type TripStartFactsRow struct {
 	AssetState        string             `json:"asset_state"`
+	AssetKind         string             `json:"asset_kind"`
 	DisposedAt        pgtype.Timestamptz `json:"disposed_at"`
 	DisposedSubmicro  int16              `json:"disposed_submicro"`
 	DriverActive      bool               `json:"driver_active"`
@@ -562,6 +563,7 @@ func (q *Queries) TripStartFacts(ctx context.Context, arg TripStartFactsParams) 
 	var i TripStartFactsRow
 	err := row.Scan(
 		&i.AssetState,
+		&i.AssetKind,
 		&i.DisposedAt,
 		&i.DisposedSubmicro,
 		&i.DriverActive,

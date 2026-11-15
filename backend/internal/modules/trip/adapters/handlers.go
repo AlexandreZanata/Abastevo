@@ -162,7 +162,8 @@ func (h *startHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 		// A stored fact without its stored receipt is never re-acknowledged.
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if facts.AssetState == "DRAFT" || !facts.DriverActive || facts.ExistingOperation != "" || facts.HeldOperation != "" || !readingFits(v.Event, view) {
+	// EMP-FLEET-011 AC4 (EDR-219): an IMPLEMENT is never a trip's main asset.
+	if facts.AssetState == "DRAFT" || fleet.MainAssetAllowed(fleet.Kind(facts.AssetKind)) != nil || !facts.DriverActive || facts.ExistingOperation != "" || facts.HeldOperation != "" || !readingFits(v.Event, view) {
 		return malformed(), nil
 	}
 	decision, err := h.availability.StartDecisionDBTX(ctx, syncapp.Borrow(db), source.Scope, v.AssetID, source.MembershipID, v.Declared.OccurredAt)

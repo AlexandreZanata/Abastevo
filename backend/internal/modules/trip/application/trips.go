@@ -189,11 +189,11 @@ func MeterCommand(e Event, asset string, origin meter.Origin) (fleetapp.MeterRea
 // StartFacts are the admission facts read under the root and asset locks.
 type StartFacts struct {
 	private
-	AuthorEmployeeID, AssetState, ExistingOperation, HeldOperation, ActiveTripID string
-	UnitID, CostCentreID                                                         string
-	DriverActive                                                                 bool
-	DisposedAt                                                                   *time.Time
-	Zones                                                                        orgtime.ReportingZones
+	AuthorEmployeeID, AssetState, AssetKind, ExistingOperation, HeldOperation, ActiveTripID string
+	UnitID, CostCentreID                                                                    string
+	DriverActive                                                                            bool
+	DisposedAt                                                                              *time.Time
+	Zones                                                                                   orgtime.ReportingZones
 }
 
 // FinishRecord is the stored finish fact of a trip.

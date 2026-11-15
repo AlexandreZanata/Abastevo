@@ -5,7 +5,7 @@ WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(membershi
 
 -- name: TripStartFacts :one
 -- Admission facts of one start, taken after the root and asset locks.
-SELECT a.state AS asset_state,a.disposed_at,a.disposed_submicro,
+SELECT a.state AS asset_state,a.kind AS asset_kind,a.disposed_at,a.disposed_submicro,
  EXISTS(SELECT 1 FROM org_employee_identities e WHERE e.org_id=a.org_id AND e.id=CAST(sqlc.arg(driver_id)::text AS uuid) AND e.state='ACTIVE' AND e.merged_into IS NULL)::boolean AS driver_active,
  COALESCE((SELECT t.operation_id::text FROM org_trips t WHERE t.org_id=a.org_id AND t.id=CAST(sqlc.arg(trip_id)::text AS uuid)),'')::text AS existing_operation,
  COALESCE((SELECT h.operation_id::text FROM org_trip_held_starts h WHERE h.org_id=a.org_id AND h.trip_id=CAST(sqlc.arg(trip_id)::text AS uuid)),'')::text AS held_operation,
