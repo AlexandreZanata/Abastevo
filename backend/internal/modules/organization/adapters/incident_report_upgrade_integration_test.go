@@ -174,6 +174,9 @@ VALUES($1,$2,'RECEIPT','SYNTHETIC',$3,$4,repeat('ab',32),1024,'image/jpeg','UPLO
 	if _, err := migrate.Apply(t.Context(), f.AdminDSN, migrations.Files); err != nil {
 		t.Fatal("remaining embedded chain after the 230 rehearsal", err)
 	}
+	// EMP-TRIP-011: the upgraded logbook and finish guards read the 000233
+	// lifecycle rows, granted once the chain reaches them.
+	tripGrants(t, x.legalFixtureState)
 	// The pre-existing in-progress trip takes a report, read on its timeline;
 	// the usage sources still answer with the new key and the old link.
 	h := incidentFixtureOn(t, eventFixtureOn(t, x))

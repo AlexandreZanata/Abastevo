@@ -6701,3 +6701,104 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   PostGIS and MinIO, host suites prove the device rules and the protected
   store across process death, and the owned emulator runs the whole flow
   against a real local backend.
+
+## EMP-TRIP-011 — Pause, resume and cancellation (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip011-pause-resume-cancel.md).
+
+- **B-BR-EMP-390 — Pause, resume and cancellation keep one trip.** The pure
+  trip (Go `trip/domain`, Kotlin `enterprise.trip`) gains the commands of
+  REQ-07.5 with a new transition table (it replaces the EMP-TRIP-001
+  `UNSUPPORTED_COMMAND` refusals): `IN_PROGRESS` + PAUSE is `PAUSED`,
+  `PAUSED` + RESUME is `IN_PROGRESS`, CANCEL from `IN_PROGRESS` or `PAUSED`
+  is `CANCELLED`, FINISH from `IN_PROGRESS` or `PAUSED` is `COMPLETED` (a
+  paused trip may be ended); START, PAUSE on `PAUSED` and RESUME on
+  `IN_PROGRESS` are `INVALID_TRANSITION`; any command on `COMPLETED` or
+  `CANCELLED` is `INVALID_TRANSITION` (terminal); `PLANNED`, `ASSIGNED` and
+  `ACCEPTED` stay `UNSUPPORTED_COMMAND` (missions own them). A trip carries
+  an operational revision: 1 after START and exactly one more after each
+  PAUSE, RESUME, CANCEL or FINISH. A lifecycle command takes its author
+  membership, the expected revision, an optional reason (required for CANCEL;
+  when present nonblank, control-free and at most 280 characters, the
+  METER-001 profile) and the time-kernel declaration, and fails first on
+  scope (`SCOPE`; an unconstructed trip `INVALID`), then the author (absent
+  `INVALID`, another organization `SCOPE`), the present reason and
+  declaration (`INVALID`), a non-positive expected revision (`INVALID`), then
+  the absent parts as `INCOMPLETE` with the ordered list REASON (CANCEL only),
+  DECLARATION, then a member other than the trip's responsible member — the
+  member who started it — (`FORBIDDEN`), then a terminal trip
+  (`INVALID_TRANSITION`), then a stale revision (`CONFLICT`), then the table
+  (`INVALID_TRANSITION`), then an instant strictly before the start instant
+  (`BEFORE_START`; an equal instant is accepted). An accepted command returns
+  the next trip value with the same identity, organization, asset, driver,
+  start event and start reporting attribution and appends one lifecycle fact
+  (command, revision, previous and next state, author, declaration, reason);
+  earlier facts never change. A cancelled trip is terminal, has no finish and
+  reports usage `NOT_MEASURED` with the reason `CANCELLED` even with a
+  departure reading (no distance is fabricated); a paused trip keeps
+  `NOT_FINISHED`. A logbook event of a cancelled trip strictly after the
+  cancellation instant is `EVENT_AFTER_FINISH`, as after a finish; a paused
+  trip takes events. Both languages execute the shared `trip/trip-v2.psv`
+  oracle, which supersedes `trip-v1.psv` (kept unchanged, no longer
+  consumed).
+- **B-BR-EMP-391 — Signed lifecycle operations decided at receipt.** The
+  device sends `trip.pause`, `trip.resume` and `trip.cancel` schema 1:
+  envelope entity `trip` with the trip identity and the required
+  `expected_revision` (1..1 000 000), payload exactly `{"reason": string |
+  null}`, at most one dependency, no soft references or attachments
+  (`RETRY`/`UNAVAILABLE`). Each is decided on current facts under the
+  organization root and asset locks with the `trip.trip.start` authority of
+  EMP-TRIP-002: a wrong shape, a CANCEL without reason or an instant before
+  the start is a final `MALFORMED`; a member other than the trip's
+  responsible member is `FORBIDDEN`; a trip not stored here (undelivered,
+  held or another organization's) is `RETRY`/`DEPENDENCY_PENDING` and
+  reveals nothing; a trip already `COMPLETED` or `CANCELLED` (a resume after
+  a terminal state) is held `ACCEPTED_FOR_REVIEW` `TRIP_ALREADY_CLOSED`; a
+  stale expected revision, or a command the trip's current state no longer
+  admits, is held `STALE_REVISION` (EMP-TRIP-015) and changes nothing;
+  changed rights store nothing (`RETRY`/`UNAVAILABLE`, as for the finish).
+  An accepted command is acknowledged `ACCEPTED` at the trip's new revision;
+  the identical resend returns the stored acknowledgement byte for byte and
+  the same identifier with another payload is `OPERATION_ID_REUSED`
+  (BR-OFFL-004). A `trip.finish` is acknowledged at the trip's revision after
+  the finish (2 for a trip without lifecycle commands, as before). The
+  reserved logbook types PAUSE, RESUME and CANCEL of `trip.event.record`
+  keep their EMP-TRIP-003 answer (`RETRY`/`UNAVAILABLE`, shared device vectors
+  unchanged): the lifecycle has its own operations.
+- **B-BR-EMP-392 — A paused trip holds its asset; a cancelled one releases
+  it.** The one-active-trip rule, FLEET-003 open work, the EMP-TRIP-013
+  running-trip check and the `ASSET_BUSY` re-proof count `IN_PROGRESS` and
+  `PAUSED` trips; FLEET-007 active use holds the asset from the start until
+  the finish or the cancellation instant. After a cancellation the next
+  start on the asset is admitted. A finish of a cancelled trip and a logbook
+  event declared after its cancellation are held `TRIP_ALREADY_CLOSED`; an
+  event at or before it is a late delivery and is accepted. A cancelled trip
+  is never submitted: its `trip.submit` is a final `MALFORMED`. Cancellation
+  writes no review entry and no reading; the review case stays `DRAFT`.
+- **B-BR-EMP-393 — Lifecycle history and database guards.** Each accepted
+  command appends one insert-only, forced-RLS lifecycle row (trip, revision,
+  command, previous and next state, reason, operation, payload digest,
+  author membership and employee, enrollment, declaration and server
+  receipt) and one audit event and receipt through the intake. The database
+  moves a trip's state only together with the lifecycle row of its next
+  revision (or the finish), re-proves the command's operation, author,
+  table, revision, reason policy and start instant, publishes a row only with
+  its `ACCEPTED` acknowledgement at that revision, and keeps held lifecycle
+  facts whose condition (`TRIP_ALREADY_CLOSED` or `STALE_REVISION`) it
+  re-proves. Transitions reference only the trip, operation, membership,
+  employee record and enrollment, so no asset, unit or cost-centre usage
+  source changes. Synthetic data only.
+- **BUC-EMP-197 — Pause for lunch, resume, or cancel a trip.** A driver
+  starts at 184 320 000 m, pauses at 12:30 with the reason "Almoço" (revision
+  2), resumes at 13:30 (revision 3) and finishes (revision 4, 290 000 m); the
+  timeline keeps every fact with its actor and time. In another trip the
+  customer cancels: the driver cancels with the reason "Cliente cancelou";
+  the trip is `CANCELLED` with its start reading and no distance, and the
+  vehicle is free for the next start.
+- **BUC-EMP-198 — Prove the lifecycle on real PostGIS.** Pause, resume and
+  cancel through the signed intake with exact replay and identifier reuse;
+  resume after a terminal state; stale and duplicated requests; a missing
+  reason; another organization's trip; another member's pause; a paused
+  trip holding its asset and a cancelled one releasing it; the database
+  guards and a populated upgrade from 000232 with injected failure and
+  recovery.

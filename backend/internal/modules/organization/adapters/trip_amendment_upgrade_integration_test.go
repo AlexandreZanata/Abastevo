@@ -154,6 +154,9 @@ func TestTripAmendmentPopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing
 	if _, err := migrate.Apply(t.Context(), f.AdminDSN, migrations.Files); err != nil {
 		t.Fatal("remaining embedded chain after the 229 rehearsal", err)
 	}
+	// EMP-TRIP-011: the upgraded logbook and finish guards read the 000233
+	// lifecycle rows, granted once the chain reaches them.
+	tripGrants(t, x.legalFixtureState)
 	// The pre-existing trips under the upgraded schema and owners.
 	tripReviewGrants(t, f)
 	amendReviews(x.tripReviewState)

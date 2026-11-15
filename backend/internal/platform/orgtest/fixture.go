@@ -474,6 +474,15 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_transitions') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// EMP-TRIP-011: a cancelled trip holds its asset until its cancellation.
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,trip_id,command,occurred_at,occurred_submicro) ON org_trip_transitions TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_asset_implement_attachments') IS NOT NULL`).Scan(&installed); err != nil {
 		t.Fatal(err)
 	}

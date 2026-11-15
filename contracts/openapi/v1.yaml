@@ -14906,6 +14906,12 @@ paths:
         never books a cost or stores a document. An unknown or another organization's asset is NOT_FOUND, no
         check.incident.report FORBIDDEN, a DRAFT asset or a wrong shape MALFORMED, a trip not stored here
         RETRY/DEPENDENCY_PENDING; changed rights and attachment declarations stay RETRY/UNAVAILABLE.
+        The trip.pause, trip.resume and trip.cancel owners (EMP-TRIP-011) move the member's own stored trip at the
+        named expected_revision (IN_PROGRESS to PAUSED, PAUSED to IN_PROGRESS, either to CANCELLED with a reason) and
+        are acknowledged ACCEPTED at the trip's new revision; a trip.finish is acknowledged at the trip revision after
+        it. A closed trip holds the command TRIP_ALREADY_CLOSED and a stale revision or a state that no longer admits
+        it STALE_REVISION; a missing cancellation reason, a wrong shape or an instant before the start is MALFORMED;
+        another member is FORBIDDEN; a trip not stored here is RETRY/DEPENDENCY_PENDING.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -15010,6 +15016,45 @@ paths:
           followup_by_result:
             ACCEPTED: NO_ASYNC_FOLLOWUP
             REJECTED: NO_ASYNC_FOLLOWUP
+        trip.pause:
+          schema: 1
+          entity_type: trip
+          payload:
+            $ref: '#/components/schemas/EnterpriseTripTransitionPayload'
+          terminal_results:
+          - ACCEPTED
+          - ACCEPTED_FOR_REVIEW
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+            ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
+        trip.resume:
+          schema: 1
+          entity_type: trip
+          payload:
+            $ref: '#/components/schemas/EnterpriseTripTransitionPayload'
+          terminal_results:
+          - ACCEPTED
+          - ACCEPTED_FOR_REVIEW
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+            ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
+        trip.cancel:
+          schema: 1
+          entity_type: trip
+          payload:
+            $ref: '#/components/schemas/EnterpriseTripTransitionPayload'
+          terminal_results:
+          - ACCEPTED
+          - ACCEPTED_FOR_REVIEW
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+            ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
       security: []
       parameters:
       - $ref: '#/components/parameters/EnterpriseOrgID'
@@ -22287,6 +22332,29 @@ components:
         the instant the author marked the trip ready to send. Only the author of a COMPLETED trip submits; the review
         state becomes SUBMITTED on acceptance (BR-REV-002). Naming the returned revision resubmits it as the next
         revision; a stale or duplicate submission is held STALE_REVISION (EMP-TRIP-015).
+    EnterpriseTripTransitionPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 280
+          description: Required (non-null) for trip.cancel; optional for trip.pause and trip.resume. Nonblank and
+            control-free (the METER-001 reason profile).
+      required:
+      - reason
+      example:
+        reason: Cliente cancelou
+      description: Owner schema1 for trip.pause, trip.resume and trip.cancel (EMP-TRIP-011). Envelope entity.type=trip,
+        entity.id = the trip, expected_revision = the trip revision the device saw (1 after the start, one more per
+        lifecycle command or finish; 1..1000000); at most one depends_on entry; soft_references and attachments are
+        empty. The envelope declaration is the instant of the command and may not precede the start. Only the member
+        who started the trip changes it. The server fixes the author, enrollment, receipt, previous and next state and
+        the new revision; a cancellation keeps every earlier fact, records no finish and no reading, and the trip's
+        meter usage stays NOT_MEASURED.
     EnterpriseIncidentReportPayload:
       type: object
       additionalProperties: false
