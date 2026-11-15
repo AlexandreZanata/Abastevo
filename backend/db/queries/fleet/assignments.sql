@@ -62,3 +62,19 @@ WHERE a.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND m.id=CAST(sqlc.arg(membe
  AND m.started_at IS NOT NULL AND m.started_at<=sqlc.arg(at)::timestamptz AND(m.ended_at IS NULL OR sqlc.arg(at)::timestamptz<m.ended_at)
  AND a.valid_from<=sqlc.arg(at)::timestamptz AND(a.valid_to IS NULL OR sqlc.arg(at)::timestamptz<a.valid_to)
 GROUP BY a.asset_id ORDER BY a.asset_id;
+
+-- name: MemberAssetAssignmentPeriods :many
+-- EMP-METER-002 (EDR-173): every non-empty retained period in which the asset
+-- was assigned to the membership's employee record while the membership
+-- period contained it (B-BR-EMP-246), in start order. An instant lies in one
+-- of them exactly when AssetAssignedAt answers true for it. disposal_ended is
+-- set only when the assignment end, ended by the asset's disposal, bounds it.
+SELECT GREATEST(a.valid_from,m.started_at)::timestamptz AS period_from,
+ LEAST(a.valid_to,m.ended_at)::timestamptz AS period_to,
+ (a.end_cause='ASSET_DISPOSED' AND a.valid_to IS NOT NULL AND(m.ended_at IS NULL OR a.valid_to<=m.ended_at))::boolean AS disposal_ended
+FROM org_asset_assignments a JOIN org_memberships m ON(m.org_id,m.employee_id)=(a.org_id,a.employee_id)
+WHERE a.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND a.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND m.id=CAST(sqlc.arg(membership_id)::text AS uuid)
+ AND m.started_at IS NOT NULL
+ AND(a.valid_to IS NULL OR GREATEST(a.valid_from,m.started_at)<a.valid_to)
+ AND(m.ended_at IS NULL OR GREATEST(a.valid_from,m.started_at)<m.ended_at)
+ORDER BY 1,2 NULLS LAST;

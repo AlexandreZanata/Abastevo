@@ -322,7 +322,7 @@ held on a later-closed segment (no segment close exists yet); one malformed
 operation from a formerly authorized member withholds the batch; PENDING_SETUP
 review decision maps to 503; per-item authority locks in review lists (cost);
 lenient SQL JSON check on stored canonical resolutions (Go re-validates);
-client confirmation of SELF-only 503 (EDR-118); no per-run cap on review
+client confirmation of SELF-only 503 (EDR-118; superseded 2026-11-14 by the EMP-METER-002 closure: a never-assigned SELF member now gets 403 `FORBIDDEN` and an assignment change a held review ACK; native client confirmation of those outcomes stays retained); no per-run cap on review
 lookups and the runner ignores `retryAfterMillis` for reviews (EDR-120);
 full rehire-with-new-account end-to-end test not run.
 

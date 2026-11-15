@@ -265,7 +265,7 @@ BUC-EMP-65..68 and EDR-087..090 precede behavior; persistence, plausibility
 and meter replacement remain their owning tasks.
 
 ### EMP-METER-002 — Meter persistence and reading intake
-- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DB · size M · state IN_PROGRESS
+- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DB · size M · state LOCAL_DONE
 - **Objective:** Store meters and readings as insert-only rows and accept readings from the field exactly once, so that trips and fuelings can attach readings that survive retries and corrections.
 - **Rules and use cases:** BR-METER-001, BR-METER-002, BR-METER-005, BR-METER-006, BR-METER-008, BR-METER-024, BR-OFFL-004, BR-TIME-002, UC-METER-01
 - **Depends on:** EMP-METER-001, EMP-FLEET-002, EMP-OFFL-002
@@ -284,6 +284,13 @@ and meter replacement remain their owning tasks.
 consumes the tested/pushed Fleet source foundation6e3dde65 while keeping full
 FLEET-002 powered acceptance open. B-BR-EMP-152..159, BUC-EMP-78..82 and
 EDR-100..104 precede behavior; no assignment/history/review producer is faked.
+
+Full closure (2026-11-14): the signed intake adopts SELF from the FLEET-006
+assignment periods (B-BR-EMP-259..262, BUC-EMP-132/133, EDR-173/174): never
+covered → `FORBIDDEN`, formerly covered → held `PERMISSION_CHANGED`,
+disposal-only → `ASSET_UNAVAILABLE`; AC1–AC5 and every negative pass on real
+PostGIS. Retained: review on a later-closed segment (EMP-METER-005),
+structural grants in signed intake, native client confirmation of SELF 403.
 
 ### EMP-METER-003 — Reading validation: monotonicity, retroactive inserts and suspect flags
 - **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size S · state TODO

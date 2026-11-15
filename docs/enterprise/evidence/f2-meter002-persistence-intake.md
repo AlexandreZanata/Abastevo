@@ -1,8 +1,8 @@
 # EMP-METER-002 — Actual meter persistence and reading intake
 
 Date: 2026-11-14.
-Status: IN_PROGRESS
-Validation: PENDING
+Status: LOCAL_DONE
+Validation: PASS
 Integration: INTEGRATION_PENDING
 
 Sole bounded implementation task from tested/pushed fleet foundation6e3dde65.
@@ -244,3 +244,225 @@ GOCACHE=/tmp/enterprise-go-build):
 ```sh
 go test -json -race -tags=integration -timeout=10m -p=2 ./internal/modules/fleet/adapters ./internal/modules/organization/adapters ./internal/modules/orgsync/adapters ./internal/modules/membership/adapters ./internal/modules/orgaccess/adapters ./internal/modules/orgcapability/adapters ./internal/platform/database -run '^Test(Meter|Fleet|Sync(Intake|NoAsync|CurrentDevice|Authority)|OrganizationSync|OrganizationDevices|DeviceContact(Exact|Ended|Actual|Invalid|Rehire|Revoke|Proof|Late)|OperatingUnit|Employee(HomeUnit|UnitArchive)|TeamUnit|AuthorizationMatrixActualCompanyHTTP|StorePreservesOnlySafeCurrentAuthorityRefusals|IntakeSchema|MembershipRoundTripReplayAndIsolation|MembershipPolicyFailClosedAndPeriodsRetainHistory|IdentitySQLGuardsRetainPrivateHistory|CurrentAuthorityDoesNotCacheRevokedOrForeignMembership|CandidatesExcludeExpiredScheduledSuspendedAndEndedPeriods|Capability(DisableReenableAndGlobalRollback|DisableWaitsForAcceptedWrites|GuardJoinsExistingAuditTransaction)|OrganizationTemplateIsolation)' -count=1
 ```
+
+
+## Full closure — 2026-11-14
+
+Bounded closure in worktree `codex/enterprise-f3-meter002`, opened from the
+integrated head `4bb39be3` (migrations through 000210). The EDR-109 chain
+FLEET-003 → FLEET-005 → AUTH-006 → FLEET-006 is integrated, so this task
+adopts the real assignment source in the signed intake and finishes the
+task's own acceptance. IDs used: B-BR-EMP-259..262, BUC-EMP-132..133,
+EDR-173..174. No migration is needed (000214 stays unused); shared canonical
+docs are not edited here: the bullets, EDR rows and backlog note below are
+frozen between the markers for the coordinator, other proposals follow under
+"Proposed shared-doc changes".
+
+Observed before any change: `meterHistoryDisposition` treats every non-`ORG`
+grant as unsupported, so a SELF-only member is unavailable (503) and a SELF
+member with a former `ORG` grant is held; the device path of `CheckMeterTx`
+passes facts without an assignee, so even a current SELF member on an
+assigned asset could not record or replay a read receipt; the runtime meter
+authority already carries the FLEET-006 `ResourceAssignee` (web only).
+`AssignedAtDBTX` answers one instant; no query returns the periods.
+
+### Rules frozen before behaviour
+
+Rules B-BR-EMP-259..262 and BUC-EMP-132..133 are recorded in the [product contract](../../product/ABASTEVO_EMPRESAS_CONTRACT.md) section "EMP-METER-002 — Full closure: assignment-backed SELF intake" (frozen before behaviour; text moved verbatim at integration).
+
+Decisions EDR-173, EDR-174 are recorded in [16-decisions](../16-decisions.md).
+
+
+### Implementation
+
+- Port (EDR-173): `AssignedAssetsPort.AssignmentPeriodsDBTX` and the value
+  `AssignedPeriod` (`fleet/application/assignments.go`); sqlc query
+  `MemberAssetAssignmentPeriods` (`db/queries/fleet/assignments.sql`,
+  regenerated `assignments.sql.go` only): the non-empty intersections of the
+  asset's assignments of the membership's employee record with the membership
+  period, in start order, `disposal_ended` only when an `ASSET_DISPOSED`
+  assignment end bounds the period. `AssetStore.AssignmentPeriodsDBTX`
+  validates the borrowed port's organization (`ValidateOrgDBTX`), exact
+  microsecond values, non-empty ordered periods and a closed disposal period.
+  No migration: the 210 table, RLS and indexes already serve it.
+- Classifier (`organization/adapters/meter_intake_authority.go`):
+  `meterHistoryDisposition` takes the retained assignment periods (nil = no
+  assigned-asset source, SELF stays unsupported); `ORG`/`O` intervals are
+  unchanged; SELF intervals are the recorded SELF grant period intersected
+  with each assignment period; the unchanged EDR-118 algorithm
+  (`meterCoverageDisposition`, now on a clone so the input is never reordered)
+  decides FORBIDDEN / unavailable / held / apply on the union; a hold is
+  re-evaluated with `ASSET_DISPOSED` ends opened only to return
+  `HOLD_DISPOSAL_ENDED` (never apply). `ClassifyMeterTx` reads the periods
+  through the composed `Assignee.Assignments` port on the borrowed intake port
+  only when a recorded SELF grant has a positive rule (`meterSelfRecorded`, so
+  `ORG`-only members keep their previous queries), before the final device and
+  server-time sample.
+- Current device path (`meter_authority.go`, `resource_assignee.go`): for
+  record and read (never the root admission selector) `CheckMeterTx` adds the
+  assignee fact through `ResourceAssignee.assigneeTx` on the borrowed port at
+  the database instant, only for a current SELF candidate (FLEET-006
+  `SelfCandidate`); `ResourceAssignee` now takes `database.OrgDBTX` and also
+  answers for `meter.reading.record` on an asset. The web path is unchanged
+  (no panel route records a reading or reaches that policy).
+- Handler (`fleet/adapters/meter_intake.go`): `HOLD_DISPOSAL_ENDED` is an
+  admitted disposition; it reads the current disposal under the same locks and
+  holds `ASSET_UNAVAILABLE` at or after it, else `PERMISSION_CHANGED`; it never
+  records. Composition is unchanged: the runtime meter authority already
+  carries the asset store as `Assignee` (enterprisesuite).
+- No OpenAPI, Android, shared vector, route, job or composition change.
+
+### Acceptance on real PostGIS
+
+| Backlog item | Test(s) |
+|---|---|
+| AC1 replay: one row, identical ACKs | `TestMeterEmbeddedRollbackReplayAndNanosecondOrdering` (3 sends), `TestMeterConcurrentOriginalRecordsRemainOnce` (12-way), signed TLS replay in `TestMeterIntakeDefaultRuntimeSignedTLSAuthorizationMatrix`; SELF: `TestMeterIntakeSelfAssignmentHistoryOnActualSignedIntake/assigned-start-boundary-and-replay` (3 sends, one row) |
+| AC2 insert-only for the application role | `TestMeterSchemaProtectsHistoryFromOrdinaryMaintenanceAndParentDeletion` |
+| AC3 latest valid by `occurred_at` | `TestMeterEmbeddedRollbackReplayAndNanosecondOrdering`, `TestMeterLatestFutureEvidenceDoesNotInventCurrentService` |
+| AC4 equal values from distinct operations | `TestMeterTwoActualEnrolledDevicesKeepDistinctEqualObservations`, `TestMeterEmbeddedRollbackReplayAndNanosecondOrdering` |
+| AC5 `METER_ALREADY_IN_SERVICE` | `TestMeterConcurrentInstallationReplaysOriginalAndEnforcesServiceKind` |
+| Meter of another organization | `TestMeterCompositeReferencesAndReadingLookupsStayPrivate`; SELF: `TestMeterIntakeSelfAssignmentPeriodsMatchThePortAndStayIsolated` (signed `NOT_FOUND`, port scope refusal, no foreign period) |
+| Member without assignment: `FORBIDDEN` never allowed | `…HistoryOnActualSignedIntake/{never-assigned,another-asset,scheduled-after-receipt}-forbidden`; TLS `actual-self-only-assignment` (403, then 200 once assigned) |
+| Member without assignment: held when the right changed | `…HistoryOnActualSignedIntake/{ended-before-receipt-and-before-declaration-held,assigned-start-boundary-and-replay,temporary-end-boundary}`; ORG: `TestMeterIntakeHistoryUsesActualRetainedOrgPeriods`, TLS matrix |
+| Concurrent end of assignment vs intake | `TestMeterIntakeSelfAssignmentEndRacesIntakeInRootLockOrder` (both orders forced by observed lock waits) |
+| Two devices at once on one meter | `TestMeterTwoActualEnrolledDevicesKeepDistinctEqualObservations`; SELF signed: `TestMeterIntakeSelfTwoDevicesRecordAtOnceOnOneMeter` |
+| Embedded reading rolled back with its parent | `TestMeterEmbeddedRollbackReplayAndNanosecondOrdering`; SELF: `…/embedded-port-commits-and-rolls-back-with-parent` |
+| Declared while the meter was not in service | `TestMeterEmbeddedRejectsActualOneNanosecondBeforeServiceBeforeInsert`, TLS `before-actual-installation`, `TestMeterIntakeActualServiceWindowIsExactBeforeRecording` |
+| Disposal after/at declaration (B-BR-EMP-206/261) | `TestFleetDisposalHoldsSignedReadingsAtOrAfterTheExactInstant` (ORG); `TestMeterIntakeSelfDisposalHoldsAssetUnavailableAtOrAfterTheInstant` (SELF: D−1ns and earlier `PERMISSION_CHANGED`, D/D+1ns/D+1ms `ASSET_UNAVAILABLE`, reviewer decision, revert restores nothing) |
+| Pure classifier and labels | `TestMeterHistoryResolvesSelfFromRetainedAssignmentPeriods` (28 cases), `TestMeterSelfRecordedOnlyForPositiveSelfGrants`, `TestMeterIntakeLabelsDisposalOnlyHoldsByTheCurrentDisposalInstant` |
+
+### Validation — RED → GREEN and gates (2026-11-14/15)
+
+Environment: backend cwd, Go 1.27.4 toolchain, `GOCACHE=/data/dev/cache/f3-go-build`,
+owned PostGIS `127.0.0.1:32775` (orgtest isolated child databases/roles),
+coordinator MinIO for the union. Logs in `/data/dev/worktrees/f3-logs/`.
+
+- RED (compiled stubs: port method returning unavailable, classifier
+  ignoring assignment periods, handler without the new disposition):
+  `go test -json -race -tags=integration -count=1 ./internal/modules/organization/adapters/ -run '^(TestMeterIntakeSelf|TestMeterIntakeDefaultRuntimeSignedTLSAuthorizationMatrix|TestMeterHistory|TestMeterIntakeHistoryUsesActualRetainedOrgPeriods)'`
+  → `meter002-closure-go-red-integration.jsonl`: 10 top-level (4 unchanged
+  guards pass, 6 fail), 76 named nodes (37 pass, 39 fail), 31 s. Failures are
+  behavioural: SELF never-assigned/other-asset/scheduled got 503 instead of
+  `FORBIDDEN`, covered SELF readings were not accepted, held cases unavailable,
+  the port answered unavailable, the TLS matrix got 503 for 403, and 22 of 28
+  pure classifier cases failed (the 6 passing are the unchanged
+  unavailable/denied guards). One summary assertion queried a non-existent
+  `code` column of `org_meter_held_readings` (fixture typo, corrected to the
+  review items; not counted as RED). Handler RED reproduced against the
+  pre-change handler: `meter002-closure-go-red-unit-handler.jsonl`, 1 top / 5
+  named, all fail ("disposal-only hold refused at admission").
+- GREEN focused (after the edits, race):
+  `meter002-closure-go-green-integration-final.jsonl` 13 top / 79 named, 0
+  failures/skips (SELF tests 1.2–1.9 s each, TLS matrix 2.3 s, ORG disposal
+  regression 1.4 s); handler/fleet unit `meter002-closure-go-green-unit-fleet.jsonl`
+  18 top / 74 named, 0 failures. The TLS matrix needed one fixture correction
+  after GREEN (the fixture asset has no unit, so the SELF subtest installs a
+  real meter on its own unit-allocated asset); no assertion was weakened, the
+  final counts grew by the new accepted SELF reading.
+- Affected race union (task command, `-tags=integration -race -count=1`, 60m
+  timeout, fleet/orgsync/organization adapters/orgaccess/membership/migrate):
+  `meter002-closure-race-union.jsonl`, exit 0, 19 packages, 760 top-level /
+  6801 named nodes, 0 failures, 0 skips, wall 13m43s (organization adapters
+  402 top / 3957 named, 805 s; orgaccess adapters 47 s; membership adapters
+  22 s; migrate 6.7 s). It ran before the last AC1 third-send edit of the
+  SELF test, which the focused GREEN rerun above covers.
+- Untagged `go test -count=1 -timeout=45m ./...`: 211 packages ok, 0
+  failures, 67 s (`meter002-closure-untagged-all.log`).
+- `go build ./... && go vet ./... && go vet -tags=integration ./...` pass
+  (`meter002-closure-build-vet.log`); toolchain `gofmt -l` empty; staticcheck
+  (GOTOOLCHAIN go1.27.1) plain and `-tags=integration` on fleet and
+  organization adapters: no findings (`meter002-closure-staticcheck.log`);
+  `sqlc vet` and `sqlc generate` reproduce with no diff (only
+  `assignments.sql.go` changed, by the new query); `git diff --check` clean;
+  `check_plan.py` 348 tasks / 545 rules / 167 use cases, 0 problems. OpenAPI
+  unchanged, so vacuum was not rerun.
+- Coverage of the touched code (integration focused run, profile
+  `meter002-closure-cover-integration.out`): `meterHistoryDisposition` 94.2%,
+  `meterCoverageDisposition` 97.1%, `meterIntersect` and `meterSelfRecorded`
+  100%, `ClassifyMeterTx` 75.0%, `AssignmentPeriodsDBTX` 73.9%,
+  `commandAuthority` 83.3%, handler `Apply` 82.0% (unit profile), `assigneeTx`
+  73.3%; uncovered lines are the unavailable/invalid-evidence refusals.
+- Secret/PII scan of the staged diff: only synthetic identifiers and the
+  existing test token field names; no credential, real name, CNPJ or CPF.
+
+Full EMP-METER-002 is LOCAL_DONE / INTEGRATION_PENDING: AC1–AC5 and every
+backlog negative are proven on real PostGIS above, and its "Done when"
+(replay, insert-only and isolation tests on real PostGIS) holds. No F2/M1/M2/C1
+or F3 acceptance, deployment or release is claimed.
+
+### Retained (with reasons; not part of this task's acceptance)
+
+- Review held on a later-closed segment: no segment close exists until
+  EMP-METER-005 (replacement/reset), which owns that proof.
+- Structural (`UNIT`/`COST_CENTRE`/`TEAM`/`ASSET`) grants and `ORG`-scoped
+  own-records cells in signed intake stay unsupported (503 when alone,
+  B-BR-EMP-262/EDR-174); needs the device-path structural fact and the
+  asset allocation across the declared span (EDR-161 is web-only).
+- A SELF-only member's malformed operation is a batch-level `FORBIDDEN`
+  (root admission uses `ORG` grants only; 10-offline-sync §10.2, L2).
+- Native Android confirmation that a SELF member's 403 and held outcomes
+  render as expected (supersedes the OFFL-008 "SELF-only 503" item); the app
+  already handles held review outcomes and no shared vector changed, so no
+  Android code was touched and no emulator/device was used.
+- OFFL-008 items not owned here: `PENDING_SETUP` review decision maps to 503,
+  review-results budget/429, per-item authority lock cost.
+- Production grants for the intake principal (proposal 7 below), panel
+  screens and release remain separate.
+
+### Proposed shared-doc changes
+
+Not edited here; exact text for the coordinator.
+
+1. Product contract: move the bullets between `CONTRACT:BEGIN`/`CONTRACT:END`
+   verbatim under a new section after "EMP-FLEET-006 — Driver assignments:
+   primary, temporary and multiple drivers", headed
+   `## EMP-METER-002 closure — SELF field readings on assigned assets (2026-11-14)`
+   with the usual evidence link to this file. In B-BR-EMP-160 replace the last
+   sentence with: "SELF follows B-BR-EMP-259..262; structural and F4
+   late/grace sources remain closed until their actual owners integrate." In
+   B-BR-EMP-246 replace "the signed meter intake keeps its `ORG`-only rule
+   until EMP-METER-002 adopts this query" with "the signed meter intake adopts
+   this query for `meter.reading.record` (EMP-METER-002, B-BR-EMP-259)".
+2. `docs/enterprise/16-decisions.md`: insert the rows between
+   `EDR:BEGIN`/`EDR:END` in number order; append to EDR-103's Scope/refs:
+   "SELF clause superseded by EDR-173 (2026-11-14)".
+3. `docs/enterprise/backlog/ep05-fleet-meters.md` EMP-METER-002: state
+   `IN_PROGRESS` → `LOCAL_DONE` with the note between
+   `BACKLOG:BEGIN`/`BACKLOG:END` (only if the coordinator accepts the closure
+   validation below).
+4. `docs/enterprise/07-permissions.md` §8, after the EMP-FLEET-006
+   interpretation: "EMP-METER-002 interpretation (2026-11-14, EDR-173/174): in
+   the signed meter intake a `SELF` grant with a positive
+   `meter.reading.record` rule covers an asset while it is assigned to the
+   member; a field reading applies only with coverage continuous from its
+   declared instant to its receipt, is held `PERMISSION_CHANGED` when the
+   coverage existed earlier, and is `FORBIDDEN` when it never existed.
+   Structural grants and `ORG`-scoped own-records cells stay unsupported in the
+   signed intake." In the EMP-FLEET-006 paragraph replace "no other permission
+   gains SELF coverage from an assignment" with "no other permission gains
+   SELF coverage from an assignment, except `meter.reading.record` in the
+   signed intake (EMP-METER-002)".
+5. `docs/enterprise/modules/fleet.md` §7 SELF sentence: append "and, in the
+   signed intake, `meter.reading.record` on that asset (EMP-METER-002)".
+6. `docs/enterprise/10-offline-sync.md` §8 (held outcomes): "A driver reading
+   whose assignment changed between its declared instant and its receipt is
+   held `PERMISSION_CHANGED`; one declared at or after the asset's disposal is
+   held `ASSET_UNAVAILABLE` (B-BR-EMP-261)." §10.2 is unchanged (a SELF-only
+   member's malformed operation is still a batch-level `FORBIDDEN`).
+7. `backend/README.md`, Meter intake subsection: "The signed meter intake
+   principal also needs `SELECT (org_id, employee_id, asset_id, valid_from,
+   valid_to, end_cause) ON org_asset_assignments` and `SELECT (org_id, id,
+   employee_id, started_at, ended_at) ON org_memberships` to resolve SELF
+   (EMP-METER-002, EDR-173). Nothing here provisions live grants."
+8. `contracts/openapi/v1.yaml`, `enterpriseSyncOperations` description:
+   replace "Android producers, SELF/history and F4 late/grace require their
+   actual owners." with "ORG and SELF (assigned-asset) history are resolved
+   from retained periods; Android producers and F4 late/grace require their
+   actual owners." (description only; no schema, status or code changes, so
+   not edited in this task).
+9. `docs/enterprise/evidence/f2-offl008-real-review.md` retained item "client
+   confirmation of SELF-only 503 (EDR-118)": superseded — a composed runtime
+   now answers a never-assigned SELF member with 403 `FORBIDDEN` (whole
+   response) and an assignment change with a held review ACK; the native
+   client confirmation of those two outcomes for a SELF member stays retained.
+10. `scripts/check-manifest.txt`: no change (no new package).

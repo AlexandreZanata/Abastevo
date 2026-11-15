@@ -316,7 +316,16 @@ assignment's scope.
 EMP-FLEET-006 interpretation (2026-11-14, EDR-165): a current `SELF` grant with
 a positive `fleet.asset.read` rule covers an asset while it is assigned to the
 member at the evaluated instant (membership and assignment periods both contain
-it); no other permission gains SELF coverage from an assignment.
+it); no other permission gains SELF coverage from an assignment, except
+`meter.reading.record` in the signed intake (EMP-METER-002).
+
+EMP-METER-002 interpretation (2026-11-14, EDR-173/174): in the signed meter
+intake a `SELF` grant with a positive `meter.reading.record` rule covers an
+asset while it is assigned to the member; a field reading applies only with
+coverage continuous from its declared instant to its receipt, is held
+`PERMISSION_CHANGED` when the coverage existed earlier, and is `FORBIDDEN` when
+it never existed. Structural grants and `ORG`-scoped own-records cells stay
+unsupported in the signed intake.
 
 The shared organization lock protects assignment overlap and continuous
 surviving-owner coverage through future expiry. The union of the surviving

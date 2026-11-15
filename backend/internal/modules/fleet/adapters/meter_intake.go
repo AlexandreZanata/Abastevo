@@ -196,7 +196,7 @@ func (h *meterIntakeHandler) commandAuthority(ctx context.Context, db syncapp.DB
 	if err != nil {
 		return "", meterIntakeSourceDenied(err)
 	}
-	if disposition != app.MeterApply && disposition != app.MeterHoldPermissionChanged {
+	if disposition != app.MeterApply && disposition != app.MeterHoldPermissionChanged && disposition != app.MeterHoldDisposalEnded {
 		return "", syncapp.SourceDenied(syncapp.ErrUnavailable)
 	}
 	return disposition, nil
@@ -260,6 +260,11 @@ func (h *meterIntakeHandler) Apply(ctx context.Context, db syncapp.DBTX, source 
 		}
 		if disposed != nil && !in.Declared.OccurredAt.Before(*disposed) {
 			held = meterHeldAssetUnavailable
+		} else if disposition == app.MeterHoldDisposalEnded {
+			// B-BR-EMP-261: an assignment ended by the disposal is still a
+			// changed right for a reading declared before the current
+			// disposal instant, or when there is no current disposal.
+			held = meterHeldPermissionChanged
 		}
 	}
 	if held != "" {

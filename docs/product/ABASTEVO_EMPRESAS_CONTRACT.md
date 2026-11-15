@@ -2527,8 +2527,9 @@ the owning business producers and OFFL-004 pending screen remain separate work.
   the client clock cannot prove historical absence. Complete server history
   proving no ever-effective ORG grant by receipt is FORBIDDEN. Scheduled grants
   never grant present authority; missing/unknown history is unavailable.
-  A declared clock never grants a write. SELF/structural and F4 late/grace
-  sources remain closed until their actual owners integrate.
+  A declared clock never grants a write. SELF follows B-BR-EMP-259..262;
+  structural and F4 late/grace sources remain closed until their actual owners
+  integrate.
 - **B-BR-EMP-161 — Store actual review before acknowledging it.** Persist an
   immutable review item and typed Meter held fact in the original retained
   transaction, with exact IDs/value/declaration/capture and actual server source
@@ -4197,8 +4198,8 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   covers the organization list nor any other permission (assignment commands,
   asset management), and `ORG` and structural coverage are unchanged. The member's own assigned-asset read lists the assignments that
   are `ACTIVE` at the server instant. Changing an assignment never changes a
-  stored record; the signed meter intake keeps its `ORG`-only rule until
-  EMP-METER-002 adopts this query.
+  stored record; the signed meter intake adopts this query for
+  `meter.reading.record` (EMP-METER-002, B-BR-EMP-259).
 - **BUC-EMP-124 — Assign, replace and end assignments of an asset.** Actor:
   member with fresh `fleet.asset.assign` covering the asset (`ORG`, or a
   `UNIT`, `COST_CENTRE` or `ASSET` grant matching the asset's FLEET-005
@@ -4411,3 +4412,104 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   count mismatch → the file is not the published one and is discarded.
   Result: values identical to the stored records, with nothing a spreadsheet
   can execute.
+
+## EMP-METER-002 — Full closure: assignment-backed SELF intake (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-meter002-persistence-intake.md).
+
+- **B-BR-EMP-259 — A SELF grant records a field reading only on an asset
+  assigned to the member, continuously.** In the signed `meter.reading.record`
+  intake a role assignment with scope `SELF` whose role has a positive
+  `meter.reading.record` rule covers an asset at the instants where (a) the
+  grant is effective (its recorded period: from the later of its start and its
+  server recording to the earlier of its end and its ending), (b) an
+  assignment of the member's employee record to that asset contains the
+  instant (B-BR-EMP-243 half-open periods of any kind) and (c) the member's
+  membership period contains it (B-BR-EMP-246). `ORG` grants with an `O` cell
+  keep their B-BR-EMP-160 coverage unchanged; a reading's coverage is the
+  union of both. A reading is applied only when that union covers without a
+  gap every instant from the earlier to the later of its declared instant and
+  its server receipt, and the current source check at receipt confirms it: for
+  a SELF grant the assigned-asset port answers that the asset is assigned to
+  the member at the database receipt instant. Assignment history comes only
+  from the retained assignment periods of the membership's employee record,
+  never from current candidates, current assignments or the client. The replay
+  of an accepted reading reads it under current `fleet.asset.read` coverage,
+  where a SELF grant covers the asset while it is assigned to the member
+  (B-BR-EMP-246); a held receipt replays from its review proof without a
+  business read. Web meter commands are unchanged: the panel records no
+  reading, installs under `fleet.asset.manage` (no SELF cell) and reads under
+  B-BR-EMP-246.
+- **B-BR-EMP-260 — Never covered is a final FORBIDDEN; formerly covered is
+  held PERMISSION_CHANGED.** When no `ORG` grant and no SELF grant with an
+  assignment of that asset covered it at any instant up to the receipt, the
+  operation is refused `FORBIDDEN`: the signed response is withheld and
+  nothing is claimed, stored, audited or held. This includes a member never
+  assigned to the asset, a member assigned only to another asset, an
+  assignment that starts after the receipt and a SELF grant that was never
+  effective while an assignment existed. When coverage existed at some instant
+  up to the receipt but does not cover the whole span between the declared
+  instant and the receipt, the reading is held for review with
+  `PERMISSION_CHANGED` through the existing OFFL-008 mechanism (one review
+  item, one held reading, a version-1 review ACK, no applied reading, no
+  effect): an assignment or grant ended before the receipt, coverage that
+  started after the declared instant, a gap between two assignments, and an
+  assignment that ended before the declared instant (the declared instant is a
+  client claim and cannot prove that the member never held the right,
+  EDR-118). Boundaries are half-open: a reading declared exactly at an
+  assignment's start is covered and one declared exactly at its end is not.
+  An assignment command and an intake serialize on the organization root
+  lock: an intake that holds it first decides on the still-active assignment
+  and the end is recorded after its receipt; an intake that waits decides on
+  the ended period.
+- **B-BR-EMP-261 — A hold caused only by the asset's disposal stays
+  ASSET_UNAVAILABLE.** A disposal ends the asset's assignments at the disposal
+  instant (B-BR-EMP-245). When a reading would be applied if the member's
+  assignments ended by the asset's disposal (cause `ASSET_DISPOSED`) were not
+  ended, it is held `ASSET_UNAVAILABLE` when declared at or after the asset's
+  current disposal instant (B-BR-EMP-206, exact to the nanosecond) and
+  `PERMISSION_CHANGED` otherwise, including after the disposal is reverted
+  (reverting restores no assignment). A real change of the member's right (a
+  grant ended, an assignment ended by a command, a replacement or a
+  termination) keeps the `PERMISSION_CHANGED` precedence of B-BR-EMP-206, and
+  `ORG` handling is unchanged.
+- **B-BR-EMP-262 — SELF is resolvable; unsupported grants stay unavailable.**
+  With the assigned-asset source composed (the default runtime), a SELF-only
+  member is no longer unavailable: the outcome is `FORBIDDEN`, held or applied
+  by B-BR-EMP-259/260. Grants the intake cannot resolve stay unsupported:
+  `UNIT`, `COST_CENTRE`, `TEAM` and `ASSET` grants (EDR-161 resolves them for
+  web records only), an `ORG` grant whose `meter.reading.record` cell is
+  own-records (`S`: `DRIVER` or `OPERATIONS_STAFF` granted at `ORG`), and SELF
+  when no assigned-asset source is composed. An unsupported grant never
+  applies a reading; when one was effective at or before the receipt and no
+  `ORG` or SELF coverage ever was, the request is unavailable (503, whole
+  response withheld, nothing stored) because the server cannot prove absence.
+  The malformed-payload admission keeps using `ORG` grants only.
+- **BUC-EMP-132 — Record a reading on my assigned asset from the field.**
+  Actor: member with a current SELF grant for `meter.reading.record`
+  (`DRIVER`, `OPERATIONS_STAFF` or another role granted at SELF) on an
+  enrolled device. Main flow: the app records the typed reading with the
+  device's declared instant and sends the signed `meter.reading.record` → the
+  server checks the current device proof, the asset and meter, the retained
+  grant and assignment periods (B-BR-EMP-259) and the asset's disposal →
+  coverage continuous from the declared instant to the receipt → one reading,
+  one audit event, one effect and one `ACCEPTED` ACK; a replay returns the
+  same ACK while the asset stays assigned. Alternatives: never assigned to
+  that asset, or only to another one → `FORBIDDEN`, nothing stored; the
+  assignment ended (command, replacement, termination) or started after the
+  declared instant → `ACCEPTED_FOR_REVIEW` `PERMISSION_CHANGED`; declared at
+  or after the asset's disposal → `ACCEPTED_FOR_REVIEW` `ASSET_UNAVAILABLE`;
+  declared outside the meter's service → `REJECTED` `MALFORMED`. Result: an
+  applied reading or a held review item, never a silent drop.
+- **BUC-EMP-133 — Hold a field reading after the member's assignment changed
+  (system).** Actor: the signed intake, then an existing reviewer. Main flow:
+  a reading arrives whose author had SELF coverage of the asset at some
+  instant up to the receipt but not across the declared instant and the
+  receipt → the reading is held with `PERMISSION_CHANGED` (or
+  `ASSET_UNAVAILABLE` under B-BR-EMP-261) in the original transaction → the
+  existing OFFL-008 reviewer reads it and accepts or rejects it. Alternatives:
+  an assignment end racing the intake → whichever holds the organization root
+  lock first decides, consistently with the end instant; replay → the first
+  ACK; an asset or assignment of another organization → `NOT_FOUND` or no
+  coverage, never a cross-organization effect. Result: one held item and no
+  reading until a reviewer accepts it.

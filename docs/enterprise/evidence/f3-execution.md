@@ -576,6 +576,39 @@ ASSET/SELF row scoping, per-column permissions for location/document
 columns, a document list (no role holds `doc.document.read`), inline CSV,
 cancel, schedules, PDF, full organization export, screens, runtime grants.
 
+### EMP-METER-002 (F2 prerequisite) — full closure: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f2-meter002-persistence-intake.md#full-closure--2026-11-14). Last
+link of the EDR-109 chain; FUEL-002's dependency is now satisfied locally.
+`AssignedAssetsPort.AssignmentPeriodsDBTX` returns retained assignment periods
+(bounded by the membership period, disposal-ended flagged); the signed intake
+combines SELF grant periods with assignment periods under EDR-118's continuity
+rule: never covered up to receipt → FORBIDDEN (nothing stored); covered at some
+point but not continuously across declaration and receipt (including an
+assignment ended before the declared instant, since the client clock cannot
+prove absence) → held `PERMISSION_CHANGED`; declared at/after disposal → held
+`ASSET_UNAVAILABLE`; half-open boundaries. Structural grants and ORG-scoped
+own-record cells stay unsupported in signed intake; the SELF-only 503 is
+retired (EDR-173/174). AC1–AC5 and every backlog negative pass on real PostGIS
+(replay ×3, insert-only, latest-valid by `occurred_at`, equal values kept,
+second meter refused, embedded rollback, two devices at once, assignment end
+racing intake both orders via lock waits). RED integration 39 named, handler
+5 failing → GREEN; agent race union 19 packages 760/6801. No migration
+(000214 unused).
+
+Final batch verification on this tree (all integrated tasks): untagged backend
+212 packages, 2687/7517, 0 failures (4 pre-existing opt-in skips); full
+`go test -race -count=1 -timeout=45m -tags=integration ./...` with PostGIS and
+the disposable MinIO: 224 packages pass, 4268/11402; 15 top-level failures,
+all in untouched `cmd/worker`, `directory` and `quality` packages and each
+requiring a pinned Rust preparer CLI (`ANPFUEL_TEST_*_PREPARER_PATH`) that the
+CI integration job builds and this machine lacks; `organization/adapters`
+807 s, `apicontract` 634 s. Retained: review held on a later-closed segment
+(segments close in METER-005), structural grants in signed intake, SELF-only
+malformed operation stays batch-level FORBIDDEN (§10.2), native Android
+confirmation of SELF 403/held outcomes, OFFL-008 PENDING_SETUP 503 and
+review-results budget, production grants.
+
 ## Interruption — 2026-11-14 (resumed)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,

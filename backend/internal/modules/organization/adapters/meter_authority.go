@@ -29,8 +29,10 @@ type MeterAuthority struct {
 	// Structure resolves the asset's current allocation for structural grants
 	// on the company (web) path only; signed intake stays ORG-only.
 	Structure *ResourceStructure
-	// Assignee resolves SELF on assigned assets on the company (web) path only
-	// (EMP-FLEET-006); the signed intake adoption belongs to EMP-METER-002.
+	// Assignee resolves SELF on assigned assets on the company (web) path
+	// (EMP-FLEET-006) and, since EMP-METER-002 (EDR-173), on the signed device
+	// path and in the intake history classification. Without it SELF covers
+	// no asset and signed SELF history stays unavailable (B-BR-EMP-262).
 	Assignee *ResourceAssignee
 }
 
@@ -175,6 +177,15 @@ func (g *MeterAuthority) CheckMeterTx(ctx context.Context, tx syncapp.DBTX, scop
 	if err != nil {
 		return err
 	}
-	_, err = permission.CoveringRules(scope, member, assignments, fleet.MeterPolicy(action).Permission, permission.ResourceFacts{OrgID: scope.OrgID(), ID: asset}, now)
+	facts := permission.ResourceFacts{OrgID: scope.OrgID(), ID: asset}
+	// B-BR-EMP-259 (EDR-173): the web re-check's assignee lookup, here on the
+	// borrowed intake port at the database receipt instant, only for a current
+	// SELF candidate; the root admission selector is never an assigned asset.
+	if !rootFallback {
+		if facts, err = g.Assignee.assigneeTx(ctx, tx, scope, member, assignments, fleet.MeterPolicy(action), facts, now); err != nil {
+			return meterAuthorityError(err)
+		}
+	}
+	_, err = permission.CoveringRules(scope, member, assignments, fleet.MeterPolicy(action).Permission, facts, now)
 	return err
 }

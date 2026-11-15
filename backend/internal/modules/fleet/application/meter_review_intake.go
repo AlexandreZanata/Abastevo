@@ -16,6 +16,11 @@ type MeterDisposition string
 const (
 	MeterApply                 MeterDisposition = "APPLY"
 	MeterHoldPermissionChanged MeterDisposition = "HOLD_PERMISSION_CHANGED"
+	// MeterHoldDisposalEnded is a hold whose only cause is an assignment of
+	// the member ended by the asset's disposal (B-BR-EMP-261, EDR-174): the
+	// intake labels it ASSET_UNAVAILABLE when the reading is declared at or
+	// after the current disposal instant and PERMISSION_CHANGED otherwise.
+	MeterHoldDisposalEnded MeterDisposition = "HOLD_DISPOSAL_ENDED"
 )
 
 // MeterIntakeAuthority checks current enrolled proof before classifying complete

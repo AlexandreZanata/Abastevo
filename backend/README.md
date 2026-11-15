@@ -1126,6 +1126,12 @@ never a fabricated physical device. Real receipt/legal/release gates remain.
 See [current meter evidence](../docs/enterprise/evidence/f2-meter002-persistence-intake.md)
 for accepted source and still-open whole-task cases.
 
+The signed meter intake principal also needs `SELECT (org_id, employee_id,
+asset_id, valid_from, valid_to, end_cause) ON org_asset_assignments` and
+`SELECT (org_id, id, employee_id, started_at, ended_at) ON org_memberships` to
+resolve SELF (EMP-METER-002 closure, EDR-173). Nothing here provisions live
+grants.
+
 ### Asset lifecycle (EMP-FLEET-003)
 
 Migration201 adds nullable acquisition/disposal columns to `org_assets` and the

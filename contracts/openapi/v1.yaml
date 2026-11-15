@@ -14859,7 +14859,7 @@ paths:
         meter.reading.record owner commits immutable evidence, audit, effect and ACK atomically with explicit accepted/
         rejected outcomes and no artificial asynchronous consumer. Its source-owned synthetic transport allowance is
         identity v1 write200/hour per organization/account/device, weighted by attempts; production measurement and
-        cleanup remain separate. Android producers, SELF/history and F4 late/grace require their actual owners.
+        cleanup remain separate. ORG and SELF (assigned-asset) history are resolved from retained periods; Android producers and F4 late/grace require their actual owners.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.

@@ -270,7 +270,7 @@ Defaults: early tolerance 30 minutes; no-show tolerance 60 minutes, configurable
 | `meter.reading.correct` | Correct, void, confirm, replace, reset, rollover | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` |
 | `trip.mission.manage` | Request a reservation for a mission | As in the matrix |
 
-Scope: `UNIT` and `COST_CENTRE` scopes cover an asset through its current allocation for register actions, and through the stored snapshot for its past records (BR-AUTH-005). `ASSET` scope covers one asset. `SELF` covers assets with an `ACTIVE` assignment to the member. Supplier names and kinds are reference data delivered to any member who can record against a supplier; identification and contact fields need `fleet.supplier.manage`. No permission is evaluated on the device (BR-AUTH-002). `SELF` covers assets with an `ACTIVE` assignment to the member (EMP-FLEET-006: `fleet.asset.read` only; the member's own assignment list is the member's own record).
+Scope: `UNIT` and `COST_CENTRE` scopes cover an asset through its current allocation for register actions, and through the stored snapshot for its past records (BR-AUTH-005). `ASSET` scope covers one asset. `SELF` covers assets with an `ACTIVE` assignment to the member. Supplier names and kinds are reference data delivered to any member who can record against a supplier; identification and contact fields need `fleet.supplier.manage`. No permission is evaluated on the device (BR-AUTH-002). `SELF` covers assets with an `ACTIVE` assignment to the member (EMP-FLEET-006: `fleet.asset.read` only; the member's own assignment list is the member's own record) and, in the signed intake, `meter.reading.record` on that asset (EMP-METER-002).
 
 ## 8. Offline, concurrency, idempotency and corrections
 

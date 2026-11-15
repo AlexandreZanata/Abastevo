@@ -444,3 +444,42 @@ func (s *AssetStore) AssetsAssignedAtDBTX(ctx context.Context, db syncapp.DBTX, 
 	}
 	return append([]string{}, assets...), nil
 }
+
+// AssignmentPeriodsDBTX lists, in start order, the retained periods in which
+// the asset was assigned to the membership (EDR-173): the same membership-
+// bounded semantics as AssignedAtDBTX, over every retained assignment, never
+// the current ones only. It takes no locks; the intake already holds the
+// organization root lock that assignment commands and disposal also take.
+func (s *AssetStore) AssignmentPeriodsDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, member, asset string) ([]app.AssignedPeriod, error) {
+	if s == nil || !validID(asset) || !validID(member) {
+		return nil, app.ErrUnavailable
+	}
+	db = syncapp.Borrow(db)
+	if db == nil || database.ValidateOrgDBTX(ctx, db, scope) != nil {
+		return nil, app.ErrUnavailable
+	}
+	rows, err := q.New(db).MemberAssetAssignmentPeriods(ctx, q.MemberAssetAssignmentPeriodsParams{OrgID: scope.OrgID().String(), AssetID: asset, MembershipID: member})
+	if err != nil {
+		return nil, storeError(ctx, err)
+	}
+	periods := make([]app.AssignedPeriod, 0, len(rows))
+	for _, row := range rows {
+		from, err := exactMeterTime(row.PeriodFrom, 0)
+		if err != nil {
+			return nil, app.ErrUnavailable
+		}
+		period := app.AssignedPeriod{From: from, DisposalEnded: row.DisposalEnded}
+		if row.PeriodTo.Valid {
+			if period.To, err = exactMeterTime(row.PeriodTo, 0); err != nil || !from.Before(period.To) {
+				return nil, app.ErrUnavailable
+			}
+		} else if row.DisposalEnded {
+			return nil, app.ErrUnavailable
+		}
+		if n := len(periods); n > 0 && from.Before(periods[n-1].From) {
+			return nil, app.ErrUnavailable
+		}
+		periods = append(periods, period)
+	}
+	return periods, nil
+}

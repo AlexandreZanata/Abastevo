@@ -18,10 +18,12 @@ import (
 // ResourceAssignee is the EMP-FLEET-006 assignee lookup of the SELF scope on
 // assets (B-BR-EMP-246, EDR-165): an asset is the member's own record exactly
 // while the Fleet assigned-asset port says it is assigned to the membership
-// at the evaluated instant. It answers only for fleet.asset.read on an asset;
-// the organization root, other permissions and other records are never
-// assigned. Prepare uses the pool form; the company authority re-check uses
-// the same lookup inside the owning transaction with database time.
+// at the evaluated instant. It answers only for fleet.asset.read and, for the
+// signed meter intake (EMP-METER-002, B-BR-EMP-259), meter.reading.record on
+// an asset; the organization root, other permissions and other records are
+// never assigned. Prepare uses the pool form; the company authority re-check
+// and the signed device path use the same lookup inside the owning (or
+// borrowed) transaction with database time.
 type ResourceAssignee struct {
 	Pool        *pgxpool.Pool
 	Assignments fleet.AssignedAssetsPort
@@ -48,11 +50,11 @@ func (r *ResourceAssignee) ResolveAssignee(ctx context.Context, scope kernel.Org
 	return false, access.ErrUnavailable
 }
 
-func (r *ResourceAssignee) assignedTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, policy access.Policy, facts permissions.ResourceFacts, member string, at time.Time) (bool, error) {
-	if r == nil || tx == nil || at.IsZero() || facts.Validate(scope) != nil || legalIdentity(scope, member) != nil || meterMissing(r.Assignments) {
+func (r *ResourceAssignee) assignedTx(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, policy access.Policy, facts permissions.ResourceFacts, member string, at time.Time) (bool, error) {
+	if r == nil || meterMissing(tx) || at.IsZero() || facts.Validate(scope) != nil || legalIdentity(scope, member) != nil || meterMissing(r.Assignments) {
 		return false, org.ErrUnavailable
 	}
-	if policy.Permission != "fleet.asset.read" || facts.ID == scope.OrgID().String() {
+	if policy.Permission != "fleet.asset.read" && policy.Permission != "meter.reading.record" || facts.ID == scope.OrgID().String() {
 		return false, nil
 	}
 	assigned, err := r.Assignments.AssignedAtDBTX(ctx, tx, scope, member, facts.ID, at)
@@ -67,8 +69,9 @@ func (r *ResourceAssignee) assignedTx(ctx context.Context, tx pgx.Tx, scope kern
 
 // assigneeTx adds the assignee fact to an in-transaction re-check only when
 // the member holds a current SELF grant for the permission and the record
-// states no own authorship or assignment.
-func (r *ResourceAssignee) assigneeTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string, assignments []permissions.Assignment, policy access.Policy, facts permissions.ResourceFacts, at time.Time) (permissions.ResourceFacts, error) {
+// states no own authorship or assignment. The signed device path passes the
+// borrowed intake port; the company path its owning pgx.Tx.
+func (r *ResourceAssignee) assigneeTx(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, member string, assignments []permissions.Assignment, policy access.Policy, facts permissions.ResourceFacts, at time.Time) (permissions.ResourceFacts, error) {
 	if r == nil || facts.AssignedTo != "" || facts.AuthoredBy == member {
 		return facts, nil
 	}

@@ -464,4 +464,20 @@ func (s AssignmentService) Mine(ctx context.Context, scope kernel.OrgScope, acto
 type AssignedAssetsPort interface {
 	AssignedAtDBTX(context.Context, syncapp.DBTX, kernel.OrgScope, string, string, time.Time) (bool, error)
 	AssetsAssignedAtDBTX(context.Context, syncapp.DBTX, kernel.OrgScope, string, time.Time) ([]string, error)
+	// AssignmentPeriodsDBTX returns every retained period in which the asset
+	// was assigned to the membership (EMP-METER-002, EDR-173): the non-empty
+	// intersections of the asset's assignments of the membership's employee
+	// record with the membership period, in start order. An instant is in
+	// one of them exactly when AssignedAtDBTX answers true for it.
+	AssignmentPeriodsDBTX(context.Context, syncapp.DBTX, kernel.OrgScope, string, string) ([]AssignedPeriod, error)
+}
+
+// AssignedPeriod is one half-open period [From, To) of an asset assigned to
+// a membership; a zero To is open. DisposalEnded states that the assignment
+// itself (not the membership) bounds the period and was ended by the asset's
+// disposal (cause ASSET_DISPOSED, B-BR-EMP-245).
+type AssignedPeriod struct {
+	private
+	From, To      time.Time
+	DisposalEnded bool
 }

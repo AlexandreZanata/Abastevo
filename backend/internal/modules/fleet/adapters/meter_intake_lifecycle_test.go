@@ -145,3 +145,54 @@ func TestMeterIntakeRequiresTheActualAssetLifecycleSource(t *testing.T) {
 		t.Fatal("intake without asset lifecycle source entered registry")
 	}
 }
+
+// B-BR-EMP-261 (EDR-174): a hold caused only by an assignment ended through
+// the asset's disposal is ASSET_UNAVAILABLE at or after the current disposal
+// instant and PERMISSION_CHANGED before it or without a current disposal; it
+// never records a reading.
+func TestMeterIntakeLabelsDisposalOnlyHoldsByTheCurrentDisposalInstant(t *testing.T) {
+	for _, test := range []struct {
+		name     string
+		disposal *time.Duration
+		code     string
+	}{
+		{"declared exactly at disposal", new(time.Duration(0)), "ASSET_UNAVAILABLE"},
+		{"declared one nanosecond after disposal", new(-time.Nanosecond), "ASSET_UNAVAILABLE"},
+		{"declared one nanosecond before disposal", new(time.Nanosecond), "PERMISSION_CHANGED"},
+		{"no current disposal after a revert", nil, "PERMISSION_CHANGED"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			source, authority, base, _ := intakeFixture(t)
+			repository := &disposalIntakeRepository{intakeRepository: base, reference: app.ReviewReference{ReviewItemID: intakeID(49), Revision: 1}}
+			if test.disposal != nil {
+				disposal := intakeDeclared.Add(*test.disposal)
+				repository.disposal = &disposal
+			}
+			ended := &reviewIntakeAuthority{intakeAuthority: authority, disposition: app.MeterHoldDisposalEnded}
+			handler, err := fleetpg.NewMeterIntakeHandler(ended, repository)
+			if err != nil {
+				t.Fatal(err)
+			}
+			op := intakeOperation(t, source, nil)
+			if err := handler.Admit(t.Context(), &intakeTx{}, source, op, syncapp.Write); err != nil {
+				t.Fatal("disposal-only hold refused at admission", err)
+			}
+			outcome, err := handler.Apply(t.Context(), &intakeTx{}, source, op)
+			if err != nil || outcome.Result != protocol.AcceptedForReview || outcome.Code != test.code || outcome.EntityRevision != nil || base.recorded != 0 || repository.held != 1 || repository.codes[0] != test.code || repository.disposals != 1 {
+				t.Fatal("disposal-only hold chose the wrong code or applied a reading", err, outcome)
+			}
+			if err := handler.Confirm(t.Context(), &intakeTx{}, source, op, syncapp.Write, outcome); err != nil || repository.proofs != 1 {
+				t.Fatal("disposal-only hold lacks its actual proof", err)
+			}
+		})
+	}
+	source, authority, base, _ := intakeFixture(t)
+	failing := &disposalIntakeRepository{intakeRepository: base, disposalErr: errors.New("Synthetic private SQL detail"), reference: app.ReviewReference{ReviewItemID: intakeID(50), Revision: 1}}
+	handler, err := fleetpg.NewMeterIntakeHandler(&reviewIntakeAuthority{intakeAuthority: authority, disposition: app.MeterHoldDisposalEnded}, failing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outcome, err := handler.Apply(t.Context(), &intakeTx{}, source, intakeOperation(t, source, nil)); !errors.Is(err, syncapp.ErrUnavailable) || outcome.Result != "" || failing.held != 0 || base.recorded != 0 {
+		t.Fatal("unknown disposal source labelled a disposal-only hold", err)
+	}
+}
