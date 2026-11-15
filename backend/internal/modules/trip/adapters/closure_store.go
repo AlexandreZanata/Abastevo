@@ -79,7 +79,10 @@ func closeResult(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, tripID s
 		return app.CloseResult{}, app.ErrUnavailable
 	}
 	usage := closed.MeterUsage()
-	return app.CloseResult{TripID: record.ID, Operational: closed.State(), Revision: app.OpenRevision + 1, Closure: *record.Closure, UsageStatus: usage.Status(), UsageReason: usage.Reason()}, nil
+	if closed.Revision() != record.Revision() {
+		return app.CloseResult{}, app.ErrUnavailable
+	}
+	return app.CloseResult{TripID: record.ID, Operational: closed.State(), Revision: closed.Revision(), Closure: *record.Closure, UsageStatus: usage.Status(), UsageReason: usage.Reason()}, nil
 }
 
 // CloseTrip records one supervisor closure (B-BR-EMP-399..403): authority
@@ -145,11 +148,9 @@ func (s *ClosureStore) CloseTrip(ctx context.Context, scope kernel.OrgScope, act
 		if err != nil {
 			return err
 		}
-		current := app.OpenRevision
-		if record.State != trip.InProgress {
-			current++
-		}
-		if v.ExpectedRevision != current || record.State != trip.InProgress {
+		// EMP-TRIP-011: an open trip is IN_PROGRESS or PAUSED; a completed or
+		// cancelled one, or a stale revision, is CONFLICT.
+		if v.ExpectedRevision != record.Revision() || record.State != trip.InProgress && record.State != trip.Paused {
 			return app.ErrClosureConflict
 		}
 		// B-BR-EMP-401: account, membership and canonical employee of the
@@ -242,7 +243,7 @@ func (s *ClosureStore) ListOpenTrips(ctx context.Context, scope kernel.OrgScope,
 				return app.ErrUnavailable
 			}
 			page.Items = append(page.Items, app.OpenTrip{TripID: row.ID, AssetID: row.AssetID, DriverEmployeeID: row.DriverEmployeeID, AuthorMembershipID: row.AuthorMembershipID,
-				ReportingDay: row.ReportingDay, StartedAt: started, Revision: app.OpenRevision, AuthorState: row.AuthorMembershipState})
+				ReportingDay: row.ReportingDay, StartedAt: started, Revision: row.Revision, State: trip.State(row.State), AuthorState: row.AuthorMembershipState})
 		}
 		again, err := s.Authority.CheckTripCloseTx(ctx, tx, scope, actor, member, org, false)
 		if err != nil {

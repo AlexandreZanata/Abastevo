@@ -49,8 +49,9 @@ func TestMeterStandaloneContractHasOneExplicitAtomicOwner(t *testing.T) {
 	}
 	// EMP-FUEL-002 adds fueling.submit, EMP-TRIP-002 trip.start/finish,
 	// EMP-TRIP-003 trip.event.record, EMP-TRIP-004 trip.submit, EMP-TRIP-008
-	// trip.mission.respond and EMP-CHECK-003 check.incident.report.
-	if json.Unmarshal(raw, &owners) != nil || len(owners) != 8 {
+	// trip.mission.respond, EMP-CHECK-003 check.incident.report and EMP-TRIP-011
+	// trip.pause, trip.resume and trip.cancel.
+	if json.Unmarshal(raw, &owners) != nil || len(owners) != 11 {
 		t.Fatal("missing explicit source-owned operation declaration")
 	}
 	owner := owners["meter.reading.record"]

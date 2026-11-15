@@ -84,7 +84,7 @@ ORDER BY mission_id,revision DESC;
 
 -- name: MissionAssigneeTripRunning :one
 SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
- AND driver_employee_id=CAST(sqlc.arg(employee_id)::text AS uuid) AND state='IN_PROGRESS')::boolean AS running;
+ AND driver_employee_id=CAST(sqlc.arg(employee_id)::text AS uuid) AND state IN('IN_PROGRESS','PAUSED'))::boolean AS running;
 
 -- name: InsertMissionVehicle :exec
 INSERT INTO org_trip_mission_vehicles(org_id,mission_id,revision,operation_id,previous_asset_id,asset_id,reason,changed_by,changed_by_membership_id)

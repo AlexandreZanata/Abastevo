@@ -778,6 +778,7 @@ sql:
       - db/migrations/000216_organization_meter_reading_states.sql
       - db/migrations/000226_organization_trip_reviews.sql
       - db/migrations/000229_organization_trip_amendments.sql
+      - db/migrations/000233_organization_trip_lifecycle.sql
       - db/migrations/000235_organization_trip_closures.sql
     gen:
       go:

@@ -24,8 +24,8 @@ import (
 // carries the command digest and no reason text (BR-AUD-004).
 const CloseAuditAction = "trip.trip.closed"
 
-// OpenRevision is the operational revision of a trip in progress (its
-// start ACK); a completed trip is at revision 2 (its finish or closure).
+// OpenRevision is the operational revision right after the start (its ACK);
+// each lifecycle command, the finish or the closure adds one (EMP-TRIP-011).
 const OpenRevision int64 = 1
 
 var (
@@ -133,6 +133,8 @@ type OpenTrip struct {
 	TripID, AssetID, DriverEmployeeID, AuthorMembershipID, ReportingDay string
 	StartedAt                                                           time.Time
 	Revision                                                            int64
+	// State is IN_PROGRESS or PAUSED (EMP-TRIP-011: a paused trip is open).
+	State trip.State
 	// AuthorState is the author's membership state (EMP-TRIP-018): ENDED or
 	// SUSPENDED shows a trip left open by a member who lost access.
 	AuthorState string
@@ -181,7 +183,7 @@ func (s ClosureService) Close(ctx context.Context, scope kernel.OrgScope, actor 
 	if err != nil {
 		return CloseResult{}, false, err
 	}
-	if result.TripID != in.TripID || result.Operational != trip.Completed || result.Revision != OpenRevision+1 || result.Closure.Reason != in.Reason ||
+	if result.TripID != in.TripID || result.Operational != trip.Completed || result.Revision != in.ExpectedRevision+1 || result.Closure.Reason != in.Reason ||
 		result.Closure.MissingReason != in.MissingReason || result.Closure.OperationID != in.OperationID || !canonicalID(result.Closure.CloserMembershipID) ||
 		result.Closure.ClosedAt.IsZero() || result.UsageStatus != trip.NotMeasured || result.UsageReason != trip.ReasonReadingAbsent {
 		return CloseResult{}, false, ErrUnavailable
@@ -218,7 +220,8 @@ func (s ClosureService) ListOpen(ctx context.Context, scope kernel.OrgScope, act
 	seen := map[string]bool{}
 	for _, v := range page.Items {
 		if !canonicalID(v.TripID) || seen[v.TripID] || !canonicalID(v.AssetID) || !canonicalID(v.DriverEmployeeID) || !canonicalID(v.AuthorMembershipID) ||
-			v.ReportingDay == "" || v.StartedAt.IsZero() || v.Revision != OpenRevision || v.AuthorState != "ACTIVE" && v.AuthorState != "SUSPENDED" && v.AuthorState != "ENDED" {
+			v.ReportingDay == "" || v.StartedAt.IsZero() || v.Revision < OpenRevision || v.State != trip.InProgress && v.State != trip.Paused ||
+			v.AuthorState != "ACTIVE" && v.AuthorState != "SUSPENDED" && v.AuthorState != "ENDED" {
 			return OpenTripPage{}, ErrUnavailable
 		}
 		seen[v.TripID] = true
@@ -245,14 +248,19 @@ func CloseDomain(scope kernel.OrgScope, record Record, closerMembership, closerE
 	return stored.Close(scope, in)
 }
 
-// closedDomain rebuilds a stored closure through the pure domain.
+// closedDomain rebuilds a stored closure through the pure domain: the start
+// and lifecycle rows (EMP-TRIP-011), then the closure.
 func closedDomain(scope kernel.OrgScope, record Record) (trip.Trip, error) {
 	c := record.Closure
 	if record.Finish != nil || record.State != trip.Completed {
 		return trip.Trip{}, ErrUnavailable
 	}
+	open := trip.InProgress
+	for _, x := range record.Transitions {
+		open = x.To
+	}
 	started := record
-	started.State, started.Closure = trip.InProgress, nil
+	started.State, started.Closure = open, nil
 	closed, err := CloseDomain(scope, started, c.CloserMembershipID, c.CloserEmployeeID, c.MissingReason)
 	if err != nil {
 		return trip.Trip{}, ErrUnavailable

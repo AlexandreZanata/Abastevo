@@ -10,9 +10,10 @@ import (
 )
 
 // ErrConflict is a command decided on a stale mission revision (EMP-TRIP-008,
-// B-BR-EMP-353); identity, scope, author and table failures keep ErrInvalid,
+// B-BR-EMP-353) or a trip lifecycle command naming a stale trip revision
+// (EMP-TRIP-011, B-BR-EMP-390); identity, scope, author and table failures keep ErrInvalid,
 // ErrScope, ErrForbidden, ErrInvalidTransition and ErrUnsupportedCommand.
-var ErrConflict = errors.New("trip: stale mission revision")
+var ErrConflict = errors.New("trip: stale revision")
 
 // MissionState is a mission operational state of the canonical catalog
 // (08-state-model §3).

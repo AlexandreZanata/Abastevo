@@ -14906,6 +14906,12 @@ paths:
         never books a cost or stores a document. An unknown or another organization's asset is NOT_FOUND, no
         check.incident.report FORBIDDEN, a DRAFT asset or a wrong shape MALFORMED, a trip not stored here
         RETRY/DEPENDENCY_PENDING; changed rights and attachment declarations stay RETRY/UNAVAILABLE.
+        The trip.pause, trip.resume and trip.cancel owners (EMP-TRIP-011) move the member's own stored trip at the
+        named expected_revision (IN_PROGRESS to PAUSED, PAUSED to IN_PROGRESS, either to CANCELLED with a reason) and
+        are acknowledged ACCEPTED at the trip's new revision; a trip.finish is acknowledged at the trip revision after
+        it. A closed trip holds the command TRIP_ALREADY_CLOSED and a stale revision or a state that no longer admits
+        it STALE_REVISION; a missing cancellation reason, a wrong shape or an instant before the start is MALFORMED;
+        another member is FORBIDDEN; a trip not stored here is RETRY/DEPENDENCY_PENDING.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -15010,6 +15016,45 @@ paths:
           followup_by_result:
             ACCEPTED: NO_ASYNC_FOLLOWUP
             REJECTED: NO_ASYNC_FOLLOWUP
+        trip.pause:
+          schema: 1
+          entity_type: trip
+          payload:
+            $ref: '#/components/schemas/EnterpriseTripTransitionPayload'
+          terminal_results:
+          - ACCEPTED
+          - ACCEPTED_FOR_REVIEW
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+            ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
+        trip.resume:
+          schema: 1
+          entity_type: trip
+          payload:
+            $ref: '#/components/schemas/EnterpriseTripTransitionPayload'
+          terminal_results:
+          - ACCEPTED
+          - ACCEPTED_FOR_REVIEW
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+            ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
+        trip.cancel:
+          schema: 1
+          entity_type: trip
+          payload:
+            $ref: '#/components/schemas/EnterpriseTripTransitionPayload'
+          terminal_results:
+          - ACCEPTED
+          - ACCEPTED_FOR_REVIEW
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+            ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
       security: []
       parameters:
       - $ref: '#/components/parameters/EnterpriseOrgID'
@@ -19443,9 +19488,9 @@ paths:
       operationId: enterpriseTripOpenList
       summary: List the organization's trips in progress
       description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.close_for_other permission on the whole
-        organization (an ORG grant; structural supervisors close each trip through its path). Returns the trips
-        still IN_PROGRESS, oldest start first, with only trip, asset, driver employee, author membership, start instant,
-        start reporting day and operational revision; keyset cursor bound to the caller and the limit. No reading,
+        organization (an ORG grant; structural supervisors close each trip through its path). Returns the open trips
+        (IN_PROGRESS or PAUSED), oldest start first, with only trip, asset, driver employee, author membership and its
+        state, start instant, start reporting day, operational state and revision; keyset cursor bound to the caller and the limit. No reading,
         run clock, coordinate or event (EMP-TRIP-014, B-BR-EMP-403).
       security:
       - CompanySessionCookie: []
@@ -19503,11 +19548,12 @@ paths:
       description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization,
         enabled capability and trip.trip.close_for_other covering the trip (ORG, or UNIT/COST_CENTRE/TEAM/ASSET through
         the trip's stored asset, start unit and cost centre and the teams of its author or driver at the start
-        receipt). Completes an IN_PROGRESS trip at operational revision 1 with the reason and the reason why no final
-        reading exists (both 1..280 scalars, no control character); the body has no reading, value or distance field
-        and an unknown key is MALFORMED. The trip becomes COMPLETED at revision 2 with usage NOT_MEASURED
+        receipt). Completes an open (IN_PROGRESS or PAUSED) trip at its current operational revision with the reason and
+        the reason why no final reading exists (both 1..280 scalars, no control character); the body has no reading,
+        value or distance field and an unknown key is MALFORMED. The trip becomes COMPLETED at the next revision with
+        usage NOT_MEASURED
         (READING_ABSENT); the review case is unchanged (DRAFT). The trip's author or driver closing it is SELF_APPROVAL
-        (the author finishes it instead); a stale revision or a trip already finished or closed is CONFLICT; a missing
+        (the author finishes it instead); a stale revision or a trip already finished, cancelled or closed is CONFLICT; a missing
         reason VALIDATION_FAILED; an unknown or another organization's trip NOT_FOUND. The closer never decides the
         trip's review. The driver's later finish and logbook events are held TRIP_ALREADY_CLOSED. Same operation and
         digest returns the first result with replayed=true and no second audit event; another digest is
@@ -20611,6 +20657,136 @@ paths:
         signed: true
         current_enrollment: true
         bound_cursor: true
+        whole_body_preflight: true
+        success: 200
+  /v1/orgs/{org_id}/sync/attachments:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseAttachmentSession
+      summary: Declare, link and open the upload of one of the enrolled member's own attachments
+      description: Normal account family plus exact signed bytes and the current exact enrollment (EMP-OFFL-005). The
+        server declares the synthetic C1 receipt as the enrolled member's own document (EMP-DOC-002, doc.document.attach,
+        idempotent by declaration_id), links it to the named record with the record owner's permission and coverage
+        (EMP-DOC-003, idempotent by link_id) and answers the document's storage state. Only while storage is UPLOADING
+        inside its 24-hour session does the answer carry a fresh five-minute capability for the content/upload ingress;
+        asking again renews it. A document already FAILED, REPLACED or DELETED is answered with its state, no link and
+        no capability. A missing or foreign record is NOT_FOUND, another member's record or a missing permission is
+        FORBIDDEN, a declaration outside C1 is VALIDATION_FAILED, a reused identifier with other facts is
+        OPERATION_ID_REUSED and a document identifier taken by another declaration is CONFLICT. No content is served.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: Signature
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      - name: Signature-Created
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Expires
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Keyid
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Nonce
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseAttachmentSessionRequest'
+            example:
+              schema_version: 1
+              request_id: 7b0e2a54-0000-4000-8000-000000041501
+              family_id: 7b0e2a54-0000-4000-8000-000000041502
+              access_token: synthetic-attachment-access
+              membership_id: 7b0e2a54-0000-4000-8000-000000041503
+              enrollment_id: 7b0e2a54-0000-4000-8000-000000041504
+              declaration_id: 7b0e2a54-0000-4000-8000-000000041505
+              document_id: 7b0e2a54-0000-4000-8000-000000041506
+              kind: RECEIPT
+              sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+              bytes: 1024
+              media_type: image/jpeg
+              link_id: 7b0e2a54-0000-4000-8000-000000041507
+              target_kind: METER_READING
+              target_id: 7b0e2a54-0000-4000-8000-000000041508
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: The declared and linked document's storage state, with an upload capability only while UPLOADING.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseAttachmentSessionResponse'
+              example:
+                schema_version: 1
+                request_id: 7b0e2a54-0000-4000-8000-000000041501
+                membership_id: 7b0e2a54-0000-4000-8000-000000041503
+                enrollment_id: 7b0e2a54-0000-4000-8000-000000041504
+                document_id: 7b0e2a54-0000-4000-8000-000000041506
+                storage: UPLOADING
+                storage_revision: 1
+                upload:
+                  capability: synthetic-upload-capability
+                  expires_at: '2026-11-15T12:05:00Z'
+      x-abastevo-signed-attachment-session:
+        account_proof: true
+        signed: true
+        current_enrollment: true
+        creator_bound: true
+        owner_linked: true
         whole_body_preflight: true
         success: 200
   /v1/orgs/{org_id}/sync/review-results:
@@ -22289,6 +22465,29 @@ components:
         the instant the author marked the trip ready to send. Only the author of a COMPLETED trip submits; the review
         state becomes SUBMITTED on acceptance (BR-REV-002). Naming the returned revision resubmits it as the next
         revision; a stale or duplicate submission is held STALE_REVISION (EMP-TRIP-015).
+    EnterpriseTripTransitionPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        reason:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 280
+          description: Required (non-null) for trip.cancel; optional for trip.pause and trip.resume. Nonblank and
+            control-free (the METER-001 reason profile).
+      required:
+      - reason
+      example:
+        reason: Cliente cancelou
+      description: Owner schema1 for trip.pause, trip.resume and trip.cancel (EMP-TRIP-011). Envelope entity.type=trip,
+        entity.id = the trip, expected_revision = the trip revision the device saw (1 after the start, one more per
+        lifecycle command or finish; 1..1000000); at most one depends_on entry; soft_references and attachments are
+        empty. The envelope declaration is the instant of the command and may not precede the start. Only the member
+        who started the trip changes it. The server fixes the author, enrollment, receipt, previous and next state and
+        the new revision; a cancellation keeps every earlier fact, records no finish and no reading, and the trip's
+        meter usage stays NOT_MEASURED.
     EnterpriseIncidentReportPayload:
       type: object
       additionalProperties: false
@@ -23145,12 +23344,16 @@ components:
           type: string
           format: date
         operational_state:
+          description: An open trip is IN_PROGRESS or PAUSED (EMP-TRIP-011).
           type: string
           enum:
           - IN_PROGRESS
+          - PAUSED
         revision:
+          description: The trip's operational revision (1 after the start, one more per pause, resume or cancellation),
+            named by a closure.
           type: integer
-          const: 1
+          minimum: 1
         author_membership_state:
           description: The author's membership state; ENDED or SUSPENDED marks a trip left open by a member who lost
             access (EMP-TRIP-018).
@@ -23204,8 +23407,8 @@ components:
     EnterpriseTripCloseRequest:
       type: object
       additionalProperties: false
-      description: The operational revision the closer saw (1 while in progress), why the trip is closed and why no
-        final reading exists. There is no reading, value or distance field (B-BR-EMP-400).
+      description: The operational revision the closer saw (the open trip's current revision), why the trip is closed
+        and why no final reading exists. There is no reading, value or distance field (B-BR-EMP-400).
       properties:
         schema_version:
           type: integer
@@ -23271,8 +23474,9 @@ components:
           enum:
           - COMPLETED
         revision:
+          description: The trip's operational revision after the closure (the named revision plus one).
           type: integer
-          const: 2
+          minimum: 2
         closure:
           $ref: '#/components/schemas/EnterpriseTripClosure'
         final_reading:
@@ -26429,6 +26633,106 @@ components:
       - cursor
       - entity_types
       - changes
+    EnterpriseAttachmentSessionRequest:
+      type: object
+      additionalProperties: false
+      description: One signed device attachment (EMP-OFFL-005); the whole body is at most 4096 bytes. Authority comes
+        only from the device proof; the body's membership and enrollment must equal the enrolled ones.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[!-~]+$
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        declaration_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum: [RECEIPT]
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 5242880
+        media_type:
+          type: string
+          enum: [image/jpeg]
+        link_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        target_kind:
+          type: string
+          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT]
+        target_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - schema_version
+      - request_id
+      - family_id
+      - access_token
+      - membership_id
+      - enrollment_id
+      - declaration_id
+      - document_id
+      - kind
+      - sha256
+      - bytes
+      - media_type
+      - link_id
+      - target_kind
+      - target_id
+    EnterpriseAttachmentSessionResponse:
+      type: object
+      additionalProperties: false
+      description: Bound to the request, the enrolled membership and enrollment and the declared document. upload is
+        present only while storage is UPLOADING; STORED is the only verified state.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        storage:
+          type: string
+          enum: [UPLOADING, RECEIVED, STORED, QUARANTINED, FAILED, REPLACED, DELETED]
+        storage_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        upload:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseDocumentUploadCapability'
+          - type: 'null'
+      required:
+      - schema_version
+      - request_id
+      - membership_id
+      - enrollment_id
+      - document_id
+      - storage
+      - storage_revision
+      - upload
     EnterpriseReviewResultsRequest:
       type: object
       additionalProperties: false

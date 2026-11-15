@@ -119,7 +119,8 @@ func (e LogbookEntry) Declared() orgtime.Declaration { return e.declared }
 // failure first: scope and trip, event identity, author, type (unknown
 // ErrInvalid, reserved ErrUnsupportedEvent), text, declaration, the starting
 // member (ErrForbidden), then time (ErrEventBeforeStart; after the finish of
-// a completed trip ErrEventAfterFinish). The trip is never changed.
+// a completed trip or the cancellation of a cancelled one
+// ErrEventAfterFinish). The trip is never changed.
 func (t Trip) Log(scope kernel.OrgScope, in LogbookInput) (LogbookEntry, error) {
 	if scope.Validate() != nil {
 		return LogbookEntry{}, ErrScope
@@ -151,16 +152,17 @@ func (t Trip) Log(scope kernel.OrgScope, in LogbookInput) (LogbookEntry, error) 
 	if err != nil {
 		return LogbookEntry{}, ErrInvalid
 	}
-	if in.Author != t.start.author {
+	if in.Author != t.Responsible() {
 		return LogbookEntry{}, ErrForbidden
-	}
-	if t.state != InProgress && t.state != Completed {
-		return LogbookEntry{}, ErrInvalid
 	}
 	if declared.OccurredAt.Before(t.start.declared.OccurredAt) {
 		return LogbookEntry{}, ErrEventBeforeStart
 	}
 	if end, ok := t.Finished(); ok && declared.OccurredAt.After(end.Declared().OccurredAt) {
+		return LogbookEntry{}, ErrEventAfterFinish
+	}
+	// EMP-TRIP-011: a cancellation closes the logbook like a finish.
+	if end, ok := t.Cancellation(); ok && declared.OccurredAt.After(end.Declared().OccurredAt) {
 		return LogbookEntry{}, ErrEventAfterFinish
 	}
 	// EMP-TRIP-014 (B-BR-EMP-402): a closure has no device instant, so every

@@ -90,10 +90,11 @@ func (q *Queries) InsertTripClosure(ctx context.Context, arg InsertTripClosurePa
 
 const openTrips = `-- name: OpenTrips :many
 SELECT t.id::text AS id,t.asset_id::text AS asset_id,t.driver_employee_id::text AS driver_employee_id,t.author_membership_id::text AS author_membership_id,
- t.occurred_at,t.occurred_submicro,t.reporting_day::text AS reporting_day,m.state AS author_membership_state
+ t.occurred_at,t.occurred_submicro,t.reporting_day::text AS reporting_day,m.state AS author_membership_state,
+ t.state,org_trip_revision(t.org_id,t.id)::bigint AS revision
 FROM org_trips t
 JOIN org_memberships m ON(m.org_id,m.id)=(t.org_id,t.author_membership_id)
-WHERE t.org_id=CAST($1::text AS uuid) AND t.state='IN_PROGRESS'
+WHERE t.org_id=CAST($1::text AS uuid) AND t.state IN('IN_PROGRESS','PAUSED')
  AND($2::text='' OR(t.occurred_at,t.occurred_submicro,t.id)>(SELECT a.occurred_at,a.occurred_submicro,a.id FROM org_trips a
   WHERE a.org_id=t.org_id AND a.id=CAST(NULLIF($2::text,'') AS uuid)))
 ORDER BY t.occurred_at,t.occurred_submicro,t.id
@@ -115,9 +116,12 @@ type OpenTripsRow struct {
 	OccurredSubmicro      int16              `json:"occurred_submicro"`
 	ReportingDay          string             `json:"reporting_day"`
 	AuthorMembershipState string             `json:"author_membership_state"`
+	State                 string             `json:"state"`
+	Revision              int64              `json:"revision"`
 }
 
-// Trips in progress, oldest start first, after one trip (keyset).
+// Open trips (IN_PROGRESS or PAUSED, EMP-TRIP-011) with their operational
+// revision, oldest start first, after one trip (keyset).
 // EMP-TRIP-018: the author's membership state shows trips left open by an
 // ended or suspended member.
 func (q *Queries) OpenTrips(ctx context.Context, arg OpenTripsParams) ([]OpenTripsRow, error) {
@@ -138,6 +142,8 @@ func (q *Queries) OpenTrips(ctx context.Context, arg OpenTripsParams) ([]OpenTri
 			&i.OccurredSubmicro,
 			&i.ReportingDay,
 			&i.AuthorMembershipState,
+			&i.State,
+			&i.Revision,
 		); err != nil {
 			return nil, err
 		}
@@ -151,7 +157,7 @@ func (q *Queries) OpenTrips(ctx context.Context, arg OpenTripsParams) ([]OpenTri
 
 const openTripsOfAuthor = `-- name: OpenTripsOfAuthor :many
 SELECT id::text AS id FROM org_trips
-WHERE org_id=CAST($1::text AS uuid) AND author_membership_id=CAST($2::text AS uuid) AND state='IN_PROGRESS'
+WHERE org_id=CAST($1::text AS uuid) AND author_membership_id=CAST($2::text AS uuid) AND state IN('IN_PROGRESS','PAUSED')
 ORDER BY id LIMIT 501
 `
 

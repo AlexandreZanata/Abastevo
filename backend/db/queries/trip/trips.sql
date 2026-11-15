@@ -9,7 +9,7 @@ SELECT a.state AS asset_state,a.kind AS asset_kind,a.disposed_at,a.disposed_subm
  EXISTS(SELECT 1 FROM org_employee_identities e WHERE e.org_id=a.org_id AND e.id=CAST(sqlc.arg(driver_id)::text AS uuid) AND e.state='ACTIVE' AND e.merged_into IS NULL)::boolean AS driver_active,
  COALESCE((SELECT t.operation_id::text FROM org_trips t WHERE t.org_id=a.org_id AND t.id=CAST(sqlc.arg(trip_id)::text AS uuid)),'')::text AS existing_operation,
  COALESCE((SELECT h.operation_id::text FROM org_trip_held_starts h WHERE h.org_id=a.org_id AND h.trip_id=CAST(sqlc.arg(trip_id)::text AS uuid)),'')::text AS held_operation,
- COALESCE((SELECT t.id::text FROM org_trips t WHERE t.org_id=a.org_id AND t.asset_id=a.id AND t.state='IN_PROGRESS'),'')::text AS active_trip,
+ COALESCE((SELECT t.id::text FROM org_trips t WHERE t.org_id=a.org_id AND t.asset_id=a.id AND t.state IN('IN_PROGRESS','PAUSED')),'')::text AS active_trip,
  COALESCE(o.time_zone,'')::text AS organization_zone
 FROM org_assets a JOIN organizations o ON o.org_id=a.org_id
 WHERE a.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND a.id=CAST(sqlc.arg(asset_id)::text AS uuid);
@@ -104,15 +104,28 @@ LEFT JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id)=(i.org_id,i.op
 WHERE i.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND i.operation_id=CAST(sqlc.arg(operation_id)::text AS uuid);
 
 -- name: TripInProgressOnAsset :one
--- FLEET-003 open work: an IN_PROGRESS trip of the asset (B-BR-EMP-318).
-SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND state='IN_PROGRESS')::boolean AS open;
+-- FLEET-003 open work: an IN_PROGRESS or PAUSED trip of the asset (B-BR-EMP-318/392).
+SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND state IN('IN_PROGRESS','PAUSED'))::boolean AS open;
 
 -- name: TripUsesOfAssetAt :many
--- FLEET-007 active use (EDR-206): trips holding the asset at the instant.
--- A trip without a finish holds it only while IN_PROGRESS: a trip closed by
--- a supervisor gets no invented end instant (EMP-TRIP-014, EDR-258).
+-- FLEET-007 active use (EDR-206): trips holding the asset at the instant,
+-- from the start until the finish or the cancellation (B-BR-EMP-392). A
+-- trip without either holds it only while open: a trip closed by a
+-- supervisor gets no invented end instant (EMP-TRIP-014, EDR-258).
+SELECT t.id::text AS id,t.occurred_at,t.occurred_submicro FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+LEFT JOIN org_trip_transitions c ON(c.org_id,c.trip_id,c.command)=(t.org_id,t.id,'CANCEL')
+WHERE t.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND t.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
+AND(t.occurred_at,t.occurred_submicro)<=(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint)
+AND(f.trip_id IS NULL OR(f.occurred_at,f.occurred_submicro)>(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint))
+AND(c.trip_id IS NULL OR(c.occurred_at,c.occurred_submicro)>(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint))
+AND(f.trip_id IS NOT NULL OR c.trip_id IS NOT NULL OR t.state IN('IN_PROGRESS','PAUSED'))
+ORDER BY t.occurred_at,t.occurred_submicro,t.id;
+
+-- name: TripUsesOfAssetAtBeforeLifecycle :many
+-- The same answer on a schema image before 000233, where no trip is
+-- cancelled (rehearsals of earlier upgrades only).
 SELECT t.id::text AS id,t.occurred_at,t.occurred_submicro FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
 WHERE t.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND t.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
 AND(t.occurred_at,t.occurred_submicro)<=(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint)
-AND(f.trip_id IS NULL AND t.state='IN_PROGRESS' OR(f.occurred_at,f.occurred_submicro)>(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint))
+AND(f.trip_id IS NULL OR(f.occurred_at,f.occurred_submicro)>(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint))
 ORDER BY t.occurred_at,t.occurred_submicro,t.id;

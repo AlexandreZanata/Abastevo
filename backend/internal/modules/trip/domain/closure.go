@@ -37,11 +37,12 @@ func (c Closure) Closer() MembershipRef       { return c.closer }
 func (c Closure) CloserEmployee() EmployeeRef { return c.closerEmployee }
 func (c Closure) Absence() meter.Missing      { return c.absence }
 
-// Close completes an IN_PROGRESS trip of another member without a final
-// reading, first failure first: scope and trip, the closer references, the
-// absence reason, self-closure, then the state (terminal INVALID_TRANSITION,
-// any other non-running state UNSUPPORTED_COMMAND). The receiver never
-// changes; the result is COMPLETED with the closure and no finish.
+// Close completes an open (IN_PROGRESS or PAUSED) trip of another member
+// without a final reading, first failure first: scope and trip, the closer
+// references, the absence reason, self-closure, then the state (terminal
+// INVALID_TRANSITION, any other state UNSUPPORTED_COMMAND). The receiver
+// never changes; the result is COMPLETED at the next revision with the
+// closure and no finish.
 func (t Trip) Close(scope kernel.OrgScope, in CloseInput) (Trip, error) {
 	if scope.Validate() != nil {
 		return Trip{}, ErrScope
@@ -61,17 +62,18 @@ func (t Trip) Close(scope kernel.OrgScope, in CloseInput) (Trip, error) {
 	if _, e := meter.NewMissing(in.Absence.Reason()); e != nil {
 		return Trip{}, ErrInvalid
 	}
-	if in.Closer == t.start.author || in.CloserEmployee == t.driver {
+	if in.Closer == t.start.author || in.Closer == t.Responsible() || in.CloserEmployee == t.driver {
 		return Trip{}, ErrSelfClosure
 	}
 	if t.state.Terminal() {
 		return Trip{}, ErrInvalidTransition
 	}
-	if t.state != InProgress {
+	// EMP-TRIP-011: a paused trip is still open and may be closed.
+	if t.state != InProgress && t.state != Paused {
 		return Trip{}, ErrUnsupportedCommand
 	}
 	out := t
-	out.state = Completed
+	out.state, out.revision = Completed, t.revision+1
 	out.closure = &Closure{closer: in.Closer, closerEmployee: in.CloserEmployee, absence: in.Absence}
 	return out, nil
 }

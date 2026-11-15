@@ -1467,6 +1467,27 @@ ON org_trips, org_memberships, org_employee_identities, org_meter_readings,
 org_sync_review_items` and ownership of the replaced functions and of
 `org_trip_review_entries`. Nothing here provisions live grants.
 
+### Trip pause, resume and cancellation (EMP-TRIP-011)
+
+Migration 233 admits `PAUSED` and `CANCELLED` in `org_trips.state`, rebuilds
+the one-active-asset index (same name) over `IN_PROGRESS` and `PAUSED`, adds
+forced-RLS, insert-only `org_trip_transitions` (one row per accepted
+`trip.pause`, `trip.resume` or `trip.cancel` at the trip's next revision; its
+insert moves the trip's state) and `org_trip_held_transitions`
+(`TRIP_ALREADY_CLOSED` / `STALE_REVISION` held commands with OFFL-008 review
+items), the functions `org_trip_revision` and `org_trip_lifecycle_next`, and
+redefines the 220 completion guard, finish source, finish apply, publication
+and held source, the 229 logbook and held-logbook sources and review-source
+hook and the 232 mission vehicle source, keeping every other line. The
+migration owner needs ownership of `org_trips` and of the nine replaced
+functions and `REFERENCES ON org_sync_operations, org_memberships,
+org_employee_identities, org_device_enrollments, org_sync_review_items`. The
+signed intake principal needs `SELECT, INSERT ON org_trip_transitions,
+org_trip_held_transitions` (with its existing trip grants, including `UPDATE
+(state) ON org_trips`); the FLEET-007 active-use reader needs `SELECT (org_id,
+trip_id, command, occurred_at, occurred_submicro) ON org_trip_transitions`.
+No route is added. Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also
@@ -1539,6 +1560,9 @@ SELECT(org_id,reading_id,operation_id) ON org_meter_held_readings`, `GRANT
 SELECT(org_id,operation_id,membership_id) ON org_sync_operations` and `GRANT
 SELECT(org_id,id) ON org_employee_identities`. Links are never updated or
 deleted; only ASSET, EMPLOYEE and METER_READING targets are registered.
+
+The signed device attachment session (EMP-OFFL-005) reuses the DOC-002 and
+DOC-003 grants; no new grant.
 
 ### Document upload safety (EMP-DOC-014)
 

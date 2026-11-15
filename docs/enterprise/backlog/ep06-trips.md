@@ -241,7 +241,7 @@ remains EMP-TRIP-021.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-011 — Pause, resume and cancellation
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Apply scoped pause, resume and cancellation as lifecycle events.
 - **Rules and use cases:** REQ-07.5, BR-REV-001, BR-AUD-001, BR-OFFL-004
 - **Depends on:** EMP-TRIP-002
@@ -255,6 +255,15 @@ remains EMP-TRIP-021.
 - **Validation:** V-DOM, V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 pause, resume and cancellation](../evidence/f4-trip011-pause-resume-cancel.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Signed `trip.pause`,
+`trip.resume` and `trip.cancel` (migration 000233) move the member's own trip
+at the named trip revision (IN_PROGRESS ↔ PAUSED, either to CANCELLED with a
+reason; a paused trip may be finished) with one insert-only lifecycle row each;
+a closed trip holds the command `TRIP_ALREADY_CLOSED`, a stale revision
+`STALE_REVISION`; a paused trip keeps its asset, a cancelled one releases it
+and reports no distance. Pure rules in Go and Kotlin over `trip-v2.psv`.
 
 ### EMP-TRIP-012 — Driver handover during a trip
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO

@@ -3,7 +3,7 @@
 -- earlier line: the 191 offboarding guard admits a TRIP handover flag (a
 -- trip in progress that the ending membership started, source revision 1)
 -- and refuses an offboarding that leaves such a trip unflagged; offboarding
--- never closes, cancels or deletes the trip. The 220 held-trip guard admits
+-- never closes, cancels or deletes the trip. The 233 held-trip guard admits
 -- a late finish (ACCESS_ENDED_BEFORE_RECEIPT) of the trip's author from its
 -- exact ended period, declared or claimed before the end (EMP-OFFL-009). No
 -- table, key or usage source changes.
@@ -32,18 +32,18 @@ BEGIN
    (parts[1]='TEAM_LINK' AND array_length(parts,1)=2 AND item->>'source_revision'='1' AND EXISTS(SELECT 1 FROM public.org_team_links l JOIN public.org_memberships m ON(m.org_id,m.employee_id)=(l.org_id,l.employee_id) WHERE m.org_id=NEW.org_id AND m.id=NEW.membership_id AND l.id::text=parts[2] AND l.end_reason='MEMBERSHIP_ENDED' AND l.source_membership_id=NEW.membership_id AND l.source_membership_revision::text=NEW.result->>'revision'))
    OR(parts[1]='SETTING' AND array_length(parts,1)=3 AND EXISTS(SELECT 1 FROM public.org_settings_designations d WHERE d.org_id=NEW.org_id AND d.member_id=NEW.membership_id AND d.settings_revision::text=item->>'source_revision' AND d.responsibility=parts[2] AND d.slot=parts[3] AND EXISTS(SELECT 1 FROM public.org_settings_versions v WHERE v.org_id=d.org_id AND v.revision=d.settings_revision+1 AND v.source='MEMBERSHIP_REDUCTION' AND v.source_membership_id=NEW.membership_id AND v.source_membership_revision::text=NEW.result->>'revision')))
    -- EMP-TRIP-018: a trip in progress that the ending membership started.
-   OR(parts[1]='TRIP' AND array_length(parts,1)=2 AND item->>'source_revision'='1' AND EXISTS(SELECT 1 FROM public.org_trips t WHERE t.org_id=NEW.org_id AND t.id::text=parts[2] AND t.author_membership_id=NEW.membership_id AND t.state='IN_PROGRESS')))
+   OR(parts[1]='TRIP' AND array_length(parts,1)=2 AND item->>'source_revision'='1' AND EXISTS(SELECT 1 FROM public.org_trips t WHERE t.org_id=NEW.org_id AND t.id::text=parts[2] AND t.author_membership_id=NEW.membership_id AND t.state IN('IN_PROGRESS','PAUSED'))))
   THEN RAISE EXCEPTION USING ERRCODE='P9002',MESSAGE='handover source unavailable';END IF;
  END LOOP;
  -- EMP-TRIP-018 (B-BR-EMP-404): no trip in progress of the ending membership
  -- is left without its flag; offboarding never closes or deletes it.
- IF EXISTS(SELECT 1 FROM public.org_trips t WHERE t.org_id=NEW.org_id AND t.author_membership_id=NEW.membership_id AND t.state='IN_PROGRESS'
+ IF EXISTS(SELECT 1 FROM public.org_trips t WHERE t.org_id=NEW.org_id AND t.author_membership_id=NEW.membership_id AND t.state IN('IN_PROGRESS','PAUSED')
   AND NOT EXISTS(SELECT 1 FROM jsonb_array_elements(NEW.result->'items') x WHERE x.value->>'key'='TRIP:'||t.id::text))
  THEN RAISE EXCEPTION USING ERRCODE='P9002',MESSAGE='handover source unavailable';END IF;
  NEW.occurred_at=clock_timestamp();RETURN NEW;
 END $$;
 
--- The 220 held-trip guard with the late finish branch; every other check unchanged.
+-- The 233 held-trip guard with the late finish branch; every other check unchanged.
 CREATE OR REPLACE FUNCTION org_trip_held_source() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 DECLARE i public.org_sync_review_items%ROWTYPE;t public.org_trips%ROWTYPE;o public.org_sync_operations%ROWTYPE;late_end TIMESTAMPTZ;
 BEGIN
@@ -63,9 +63,11 @@ BEGIN
   -- ASSET_UNAVAILABLE (lifecycle, block, reservation, maintenance, missing
   -- assignment) and PERMISSION_CHANGED are decided by their owning ports in
   -- this transaction and are not re-derived here.
+  -- EMP-TRIP-011: a paused trip holds the asset; a cancelled one until its cancellation.
   IF i.code='ASSET_BUSY' AND NOT EXISTS(SELECT 1 FROM public.org_trips t2 LEFT JOIN public.org_trip_finishes f2 ON(f2.org_id,f2.trip_id)=(t2.org_id,t2.id)
-   WHERE t2.org_id=NEW.org_id AND t2.asset_id=NEW.asset_id AND(t2.state='IN_PROGRESS' OR((t2.occurred_at,t2.occurred_submicro)<=(NEW.occurred_at,NEW.occurred_submicro)
-   AND(f2.occurred_at,f2.occurred_submicro)>(NEW.occurred_at,NEW.occurred_submicro))))
+   LEFT JOIN public.org_trip_transitions c2 ON(c2.org_id,c2.trip_id,c2.command)=(t2.org_id,t2.id,'CANCEL')
+   WHERE t2.org_id=NEW.org_id AND t2.asset_id=NEW.asset_id AND(t2.state IN('IN_PROGRESS','PAUSED') OR((t2.occurred_at,t2.occurred_submicro)<=(NEW.occurred_at,NEW.occurred_submicro)
+   AND(COALESCE(f2.occurred_at,c2.occurred_at),COALESCE(f2.occurred_submicro,c2.occurred_submicro))>(NEW.occurred_at,NEW.occurred_submicro))))
   THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='held trip condition unavailable';END IF;
  ELSE
   SELECT * INTO t FROM public.org_trips WHERE org_id=NEW.org_id AND id=NEW.trip_id FOR UPDATE;
@@ -87,7 +89,7 @@ BEGIN
    THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='held trip finish source unavailable';END IF;
    RETURN NEW;
   END IF;
-  IF i.operation_type<>'trip.finish' OR i.operation_schema<>1 OR i.code<>'TRIP_ALREADY_CLOSED' OR t.state<>'COMPLETED'
+  IF i.operation_type<>'trip.finish' OR i.operation_schema<>1 OR i.code<>'TRIP_ALREADY_CLOSED' OR t.state NOT IN('COMPLETED','CANCELLED')
   OR NOT public.org_trip_operation_valid(NEW.org_id,NEW.operation_id,'trip.finish',NEW.trip_id,i.payload_digest,t.author_membership_id,NULL,t.author_employee_id)
   OR EXISTS(SELECT 1 FROM public.org_trip_finishes f WHERE f.org_id=NEW.org_id AND f.operation_id=NEW.operation_id)
   OR(NEW.occurred_at,NEW.occurred_submicro)<(t.occurred_at,t.occurred_submicro)

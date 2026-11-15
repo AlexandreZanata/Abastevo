@@ -1,6 +1,7 @@
 -- EMP-TRIP-014. Supervisor closure of another member's open trip
 -- (B-BR-EMP-399..403, EDR-257..259). Additive: one insert-only closure fact
--- per trip completes an IN_PROGRESS trip without a finish, with the closing
+-- per trip completes an open (IN_PROGRESS or PAUSED, EMP-TRIP-011) trip
+-- without a finish at its next revision, with the closing
 -- member, the reason and the explicit reason why no final reading exists. A
 -- closure holds no reading, value, segment or distance. The closer is never
 -- the trip's author or driver and never reviews the trip. Logbook events
@@ -38,7 +39,8 @@ BEGIN
  IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='23503',MESSAGE='private reference not found';END IF;
  SELECT * INTO t FROM public.org_trips WHERE org_id=NEW.org_id AND id=NEW.trip_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='23503',MESSAGE='private reference not found';END IF;
- IF t.state<>'IN_PROGRESS' OR EXISTS(SELECT 1 FROM public.org_trip_finishes f WHERE f.org_id=NEW.org_id AND f.trip_id=NEW.trip_id)
+ -- EMP-TRIP-011: a paused trip is open; a cancelled one is closed.
+ IF t.state NOT IN('IN_PROGRESS','PAUSED') OR EXISTS(SELECT 1 FROM public.org_trip_finishes f WHERE f.org_id=NEW.org_id AND f.trip_id=NEW.trip_id)
  THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='trip already closed';END IF;
  IF NOT EXISTS(SELECT 1 FROM public.org_memberships m JOIN public.org_employee_identities e ON(e.org_id,e.id)=(m.org_id,m.employee_id)
   WHERE m.org_id=NEW.org_id AND m.id=NEW.closer_membership_id AND m.employee_id=NEW.closer_employee_id AND m.state='ACTIVE' AND e.state='ACTIVE' AND e.merged_into IS NULL)
@@ -55,7 +57,7 @@ END $$;
 CREATE TRIGGER org_trip_closure_source BEFORE INSERT ON org_trip_closures FOR EACH ROW EXECUTE FUNCTION org_trip_closure_source();
 CREATE FUNCTION org_trip_closure_apply() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 BEGIN
- UPDATE public.org_trips SET state='COMPLETED' WHERE org_id=NEW.org_id AND id=NEW.trip_id AND state='IN_PROGRESS';
+ UPDATE public.org_trips SET state='COMPLETED' WHERE org_id=NEW.org_id AND id=NEW.trip_id AND state IN('IN_PROGRESS','PAUSED');
  IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='trip already closed';END IF;
  RETURN NULL;
 END $$;
@@ -81,19 +83,31 @@ CREATE POLICY org_trip_closures_scope ON org_trip_closures USING(org_id=NULLIF(c
 CREATE TRIGGER org_trip_closures_immutable BEFORE UPDATE OR DELETE OR TRUNCATE ON org_trip_closures FOR EACH STATEMENT EXECUTE FUNCTION org_trip_keep_history();
 REVOKE ALL ON org_trip_closures FROM PUBLIC;
 
--- The 220 completion guard: IN_PROGRESS -> COMPLETED only beside the finish
--- or the closure inserted in this transaction; every other check unchanged.
+-- The 233 trip revision with the closure counted like a finish.
+CREATE OR REPLACE FUNCTION org_trip_revision(p_org UUID,p_trip UUID) RETURNS BIGINT LANGUAGE SQL STABLE SET search_path=pg_catalog AS $$
+ SELECT 1+(SELECT count(*) FROM public.org_trip_transitions x WHERE x.org_id=p_org AND x.trip_id=p_trip)
+  +(SELECT count(*) FROM public.org_trip_finishes f WHERE f.org_id=p_org AND f.trip_id=p_trip)
+  -- EMP-TRIP-014: the closure ends the trip at the next revision like a finish.
+  +(SELECT count(*) FROM public.org_trip_closures c WHERE c.org_id=p_org AND c.trip_id=p_trip)
+ $$;
+
+-- The 233 completion guard with one more admitted move: an open trip to
+-- COMPLETED beside the closure inserted in this transaction.
 CREATE OR REPLACE FUNCTION org_trip_completion_guard() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 BEGIN
- IF OLD.state<>'IN_PROGRESS' OR NEW.state<>'COMPLETED' OR to_jsonb(NEW)-'state'<>to_jsonb(OLD)-'state'
- OR NOT EXISTS(SELECT 1 FROM public.org_trip_finishes f WHERE f.org_id=OLD.org_id AND f.trip_id=OLD.id)
- AND NOT EXISTS(SELECT 1 FROM public.org_trip_closures c WHERE c.org_id=OLD.org_id AND c.trip_id=OLD.id)
+ IF to_jsonb(NEW)-'state'<>to_jsonb(OLD)-'state' OR NOT(
+  (OLD.state IN('IN_PROGRESS','PAUSED') AND NEW.state='COMPLETED' AND EXISTS(SELECT 1 FROM public.org_trip_finishes f WHERE f.org_id=OLD.org_id AND f.trip_id=OLD.id))
+  -- EMP-TRIP-011: a lifecycle move only with the transition row of the trip's latest revision.
+  OR EXISTS(SELECT 1 FROM public.org_trip_transitions x WHERE x.org_id=OLD.org_id AND x.trip_id=OLD.id AND x.from_state=OLD.state AND x.to_state=NEW.state
+   AND x.revision=public.org_trip_revision(OLD.org_id,OLD.id))
+  -- EMP-TRIP-014: an open trip completes with the closure inserted in this transaction.
+  OR(OLD.state IN('IN_PROGRESS','PAUSED') AND NEW.state='COMPLETED' AND EXISTS(SELECT 1 FROM public.org_trip_closures c WHERE c.org_id=OLD.org_id AND c.trip_id=OLD.id)))
  THEN RAISE EXCEPTION USING ERRCODE='55000',MESSAGE='organization trip history is insert-only';END IF;
  RETURN NEW;
 END $$;
 
--- The 229 logbook source unchanged except one clause: a closed trip takes
--- no direct fact (B-BR-EMP-402).
+-- The 233 logbook source unchanged except one clause: a trip closed by a
+-- supervisor takes no direct fact (B-BR-EMP-402).
 CREATE OR REPLACE FUNCTION org_trip_event_source() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 DECLARE t public.org_trips%ROWTYPE;f public.org_trip_finishes%ROWTYPE;
 BEGIN
@@ -112,6 +126,10 @@ BEGIN
  SELECT * INTO f FROM public.org_trip_finishes WHERE org_id=NEW.org_id AND trip_id=NEW.trip_id;
  IF FOUND AND(NEW.occurred_at,NEW.occurred_submicro)>(f.occurred_at,f.occurred_submicro)
  THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='trip already closed';END IF;
+ -- EMP-TRIP-011: a cancellation closes the logbook like a finish.
+ IF EXISTS(SELECT 1 FROM public.org_trip_transitions x WHERE x.org_id=NEW.org_id AND x.trip_id=NEW.trip_id AND x.command='CANCEL'
+  AND(NEW.occurred_at,NEW.occurred_submicro)>(x.occurred_at,x.occurred_submicro))
+ THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='trip already closed';END IF;
  -- EMP-TRIP-014: a trip closed by a supervisor takes no direct fact.
  IF EXISTS(SELECT 1 FROM public.org_trip_closures c WHERE c.org_id=NEW.org_id AND c.trip_id=NEW.trip_id)
  THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='trip already closed';END IF;
@@ -120,12 +138,12 @@ BEGIN
  NEW.received_at=clock_timestamp();RETURN NEW;
 END $$;
 
--- The 229 held-event source with TRIP_ALREADY_CLOSED on a trip closed by a
+-- The 233 held-event source with TRIP_ALREADY_CLOSED on a trip closed by a
 -- supervisor (any instant at or after the start: the closure has no device
 -- instant); STALE_REVISION stays a finished trip's; every other check
 -- unchanged.
 CREATE OR REPLACE FUNCTION org_trip_held_event_source() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
-DECLARE i public.org_sync_review_items%ROWTYPE;t public.org_trips%ROWTYPE;f public.org_trip_finishes%ROWTYPE;finished BOOLEAN;closed BOOLEAN;
+DECLARE i public.org_sync_review_items%ROWTYPE;t public.org_trips%ROWTYPE;f public.org_trip_finishes%ROWTYPE;end_at TIMESTAMPTZ;end_sub SMALLINT;closed BOOLEAN;
 BEGIN
  IF NEW.org_id IS DISTINCT FROM NULLIF(current_setting('anpfuel.org_id',true),'')::uuid THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='organization scope denied';END IF;
  PERFORM 1 FROM public.organizations WHERE org_id=NEW.org_id AND has_snapshot FOR UPDATE;
@@ -134,16 +152,19 @@ BEGIN
  SELECT * INTO t FROM public.org_trips WHERE org_id=NEW.org_id AND id=NEW.trip_id FOR UPDATE;
  IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='23503',MESSAGE='private reference not found';END IF;
  SELECT * INTO f FROM public.org_trip_finishes WHERE org_id=NEW.org_id AND trip_id=NEW.trip_id;
- finished=FOUND;
+ -- EMP-TRIP-011: the end of a closed trip is its finish or its cancellation.
+ SELECT COALESCE(f.occurred_at,x.occurred_at),COALESCE(f.occurred_submicro,x.occurred_submicro) INTO end_at,end_sub
+  FROM(SELECT 1) one LEFT JOIN public.org_trip_transitions x ON x.org_id=NEW.org_id AND x.trip_id=NEW.trip_id AND x.command='CANCEL';
+ -- EMP-TRIP-014: a trip closed by a supervisor has no device end instant.
  closed=EXISTS(SELECT 1 FROM public.org_trip_closures c WHERE c.org_id=NEW.org_id AND c.trip_id=NEW.trip_id);
- IF i.operation_type<>'trip.event.record' OR i.operation_schema<>1 OR i.code NOT IN('TRIP_ALREADY_CLOSED','STALE_REVISION') OR t.state<>'COMPLETED' OR NOT(finished OR closed)
+ IF i.operation_type<>'trip.event.record' OR i.operation_schema<>1 OR i.code NOT IN('TRIP_ALREADY_CLOSED','STALE_REVISION') OR t.state NOT IN('COMPLETED','CANCELLED') OR end_at IS NULL AND NOT closed
  OR NOT public.org_trip_event_operation_valid(NEW.org_id,NEW.operation_id,NEW.id,i.payload_digest,t.author_membership_id,NULL,t.author_employee_id)
  OR i.author_employee_id<>t.author_employee_id
- OR(i.code='TRIP_ALREADY_CLOSED' AND finished AND(NEW.occurred_at,NEW.occurred_submicro)<=(f.occurred_at,f.occurred_submicro))
+ OR(i.code='TRIP_ALREADY_CLOSED' AND NOT closed AND(NEW.occurred_at,NEW.occurred_submicro)<=(end_at,end_sub))
  -- EMP-TRIP-014: after a supervisor closure, any instant from the start on.
  OR(i.code='TRIP_ALREADY_CLOSED' AND closed AND(NEW.occurred_at,NEW.occurred_submicro)<(t.occurred_at,t.occurred_submicro))
  -- EMP-TRIP-015: within the trip, but its revision is submitted, decided or amended.
- OR(i.code='STALE_REVISION' AND(NOT finished OR(NEW.occurred_at,NEW.occurred_submicro)>(f.occurred_at,f.occurred_submicro)
+ OR(i.code='STALE_REVISION' AND(t.state<>'COMPLETED' OR closed OR(NEW.occurred_at,NEW.occurred_submicro)>(f.occurred_at,f.occurred_submicro)
   OR(NEW.occurred_at,NEW.occurred_submicro)<(t.occurred_at,t.occurred_submicro) OR NOT public.org_trip_revision_closed(NEW.org_id,NEW.trip_id)))
  OR NOT EXISTS(SELECT 1 FROM pg_timezone_names WHERE name=NEW.entry_zone)
  THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='held trip event source unavailable';END IF;

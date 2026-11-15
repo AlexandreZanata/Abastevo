@@ -159,6 +159,9 @@ func TestTripEventPopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing.T) 
 	if _, err := migrate.Apply(t.Context(), f.AdminDSN, migrations.Files); err != nil {
 		t.Fatal("remaining embedded chain after the 225 rehearsal", err)
 	}
+	// EMP-TRIP-011: the upgraded logbook and finish guards read the 000233
+	// lifecycle rows, granted once the chain reaches them.
+	tripGrants(t, x.legalFixtureState)
 	e := eventFixtureOn(t, x)
 	inProgress := e.eventOp(t, d, tripOf(ongoing), "ARRIVAL", "Cliente Norte", ongoingAt.Add(time.Minute), nil)
 	ack, err = e.process(t, d, inProgress)

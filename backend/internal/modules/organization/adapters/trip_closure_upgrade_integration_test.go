@@ -94,7 +94,7 @@ func TestTripClosurePopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing.T
 	role := pgx.Identifier{migrator}.Sanitize()
 	if _, err := f.Admin.Exec(t.Context(), "CREATE ROLE "+role+" NOLOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE;GRANT USAGE,CREATE ON SCHEMA public TO "+role+";GRANT SELECT,INSERT ON schema_migrations TO "+role+
 		";GRANT REFERENCES ON org_trips,org_memberships,org_employee_identities,org_audit_events TO "+role+
-		";ALTER FUNCTION org_trip_completion_guard() OWNER TO "+role+";ALTER FUNCTION org_trip_event_source() OWNER TO "+role+
+		";ALTER FUNCTION org_trip_completion_guard() OWNER TO "+role+";ALTER FUNCTION org_trip_revision(uuid,uuid) OWNER TO "+role+";ALTER FUNCTION org_trip_event_source() OWNER TO "+role+
 		";ALTER FUNCTION org_trip_held_event_source() OWNER TO "+role+";ALTER FUNCTION org_trip_review_entry_source() OWNER TO "+role); err != nil {
 		t.Fatal(err)
 	}

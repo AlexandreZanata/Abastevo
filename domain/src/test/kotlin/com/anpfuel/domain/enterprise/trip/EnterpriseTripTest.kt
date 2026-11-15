@@ -50,17 +50,25 @@ class EnterpriseTripTest {
         TripReviewState.entries.forEach { assertSame(it, TripReviewState.parse(it.name)) }
     }
 
-    @Test fun `the transition table is total and only finishes an in-progress trip`() {
+    // EMP-TRIP-011 (EDR-252) replaced the EDR-178 refusals of PAUSE, RESUME and CANCEL with the open-trip table.
+    @Test fun `the transition table is total and moves only an open trip`() {
+        val open = setOf(TripState.IN_PROGRESS, TripState.PAUSED)
         for (state in TripState.entries) for (command in TripCommand.entries) {
-            val expected = when {
-                state.terminal -> TripFailure.INVALID_TRANSITION
-                command in setOf(TripCommand.PAUSE, TripCommand.RESUME, TripCommand.CANCEL) -> TripFailure.UNSUPPORTED_COMMAND
-                state != TripState.IN_PROGRESS -> TripFailure.UNSUPPORTED_COMMAND
-                command == TripCommand.START -> TripFailure.INVALID_TRANSITION
+            val next = when {
+                state.terminal || state !in open -> null
+                command == TripCommand.FINISH -> TripState.COMPLETED
+                command == TripCommand.CANCEL -> TripState.CANCELLED
+                command == TripCommand.PAUSE && state == TripState.IN_PROGRESS -> TripState.PAUSED
+                command == TripCommand.RESUME && state == TripState.PAUSED -> TripState.IN_PROGRESS
                 else -> null
             }
-            if (expected == null) assertEquals(TripState.COMPLETED, TripLifecycle.transition(state, command))
-            else assertEquals(expected, failure { TripLifecycle.transition(state, command) }.failure, "$state $command")
+            val failure = when {
+                state.terminal -> TripFailure.INVALID_TRANSITION
+                state !in open -> TripFailure.UNSUPPORTED_COMMAND
+                else -> TripFailure.INVALID_TRANSITION
+            }
+            if (next != null) assertEquals(next, TripLifecycle.transition(state, command), "$state $command")
+            else assertEquals(failure, failure { TripLifecycle.transition(state, command) }.failure, "$state $command")
         }
     }
 

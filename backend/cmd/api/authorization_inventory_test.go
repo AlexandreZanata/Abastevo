@@ -116,7 +116,7 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 	if !slices.Equal(keys, catalog.Permissions()) || routed != 29 || signed != 1 || notRouted != 55 || len(normal) != 149 {
 		return nil, nil, fmt.Errorf("authorization inventory does not cover every catalog permission")
 	}
-	expectedBoundaries := map[string]int{"ACCOUNT_CONTEXT": 2, "OWNED_SETUPS": 1, "COMPANY_SESSION": 3, "ORGANIZATION_CREATION": 1, "PERSONAL_INVITATION": 3, "SELF_MEMBERSHIP": 2, "SIGNED_DEVICE": 2, "SELF_DEVICE": 2, "DEVICE_CONTACT": 1, "SIGNED_BATCH": 1, "SIGNED_REVIEW_RESULTS": 1, "SIGNED_REFERENCE_FEED": 1, "SELF_NOTICE": 4, "DOCUMENT_INGRESS": 1}
+	expectedBoundaries := map[string]int{"ACCOUNT_CONTEXT": 2, "OWNED_SETUPS": 1, "COMPANY_SESSION": 3, "ORGANIZATION_CREATION": 1, "PERSONAL_INVITATION": 3, "SELF_MEMBERSHIP": 2, "SIGNED_DEVICE": 2, "SELF_DEVICE": 2, "DEVICE_CONTACT": 1, "SIGNED_BATCH": 1, "SIGNED_REVIEW_RESULTS": 1, "SIGNED_REFERENCE_FEED": 1, "SIGNED_ATTACHMENT_SESSION": 1, "SELF_NOTICE": 4, "DOCUMENT_INGRESS": 1}
 	actualBoundaries := map[string]int{}
 	var specialOrder []string
 	for _, row := range inventory.SpecialRoutes {
@@ -127,7 +127,7 @@ func authorizationInventoryMaps(inventory authorizationInventory) (map[string]st
 		specialOrder = append(specialOrder, row.Route)
 		actualBoundaries[row.Boundary]++
 	}
-	if len(special) != 25 || !slices.IsSorted(specialOrder) || len(actualBoundaries) != len(expectedBoundaries) {
+	if len(special) != 26 || !slices.IsSorted(specialOrder) || len(actualBoundaries) != len(expectedBoundaries) {
 		return nil, nil, fmt.Errorf("special authorization inventory coverage drift")
 	}
 	for boundary, count := range expectedBoundaries {
@@ -214,6 +214,8 @@ func authorizationSpecialBoundary(handler http.Handler) string {
 		return "SIGNED_REVIEW_RESULTS"
 	case orgapi.SignedReferenceFeedDescriptor:
 		return "SIGNED_REFERENCE_FEED"
+	case orgapi.SignedAttachmentSessionDescriptor:
+		return "SIGNED_ATTACHMENT_SESSION"
 	case orgapi.SelfDeviceDescriptor:
 		return "SELF_DEVICE"
 	case orgapi.SelfNoticeDescriptor:

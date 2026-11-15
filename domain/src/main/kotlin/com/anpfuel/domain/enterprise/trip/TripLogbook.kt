@@ -81,10 +81,11 @@ fun Trip.log(scope: String, input: TripLogbookInput): TripLogbookEntry {
     }
     val declared = input.declared ?: throw logbook()
     try { EnterpriseTime.validateDeclaration(declared) } catch (_: EnterpriseTimeException) { throw logbook() }
-    if (author != started.author) throw logbook(TripLogbookFailure.FORBIDDEN)
+    if (author != responsible) throw logbook(TripLogbookFailure.FORBIDDEN)
     if (declared.occurredAt < started.declared.occurredAt) throw logbook(TripLogbookFailure.EVENT_BEFORE_START)
-    val end = finished
-    if (end != null && declared.occurredAt > end.declared.occurredAt) throw logbook(TripLogbookFailure.EVENT_AFTER_FINISH)
+    // EMP-TRIP-011: a cancellation closes the logbook like a finish.
+    val end = finished?.declared ?: cancellation?.declared
+    if (end != null && declared.occurredAt > end.occurredAt) throw logbook(TripLogbookFailure.EVENT_AFTER_FINISH)
     return TripLogbookEntry(reference, event, author, type, text, declared)
 }
 

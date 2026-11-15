@@ -363,3 +363,20 @@ acceptance is claimed; EMP-CHECK-002 consumes the rule.
 ```sh
 (cd backend && go test -race ./internal/modules/maintenance/domain/checklist -count=1)
 ```
+
+## Tracking session vectors v1
+
+EMP-GPS-001 executes all 359 rows of
+[tracking/session-v1.psv](tracking/session-v1.psv) in Go and Kotlin (ENUM 64,
+OPEN 55, START 53, RESUME 30, SUSPEND 23, INTERRUPT 28, REDUCE 13, END 23,
+FOLLOW 22, COLLECT 22, QUALITY 26). The oracle pins the closed session
+vocabularies, the trip-bound opening, the explicit start and resume with the
+device permission stated, typed suspension, interruption, reduction and end
+causes, the trip-follow rule, collection, recorded history and periods, and
+the track quality classification. Synthetic only; no coordinates, runtime
+collection, persistence or device acceptance is claimed. See
+[tracking/README.md](tracking/README.md).
+
+```sh
+(cd backend && go test -race ./internal/modules/tracking/domain -count=1)
+```

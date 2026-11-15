@@ -20,8 +20,11 @@ var (
 	ErrIncomplete         = errors.New("trip: eligible context incomplete")
 	ErrForbidden          = errors.New("trip: command by another member")
 	ErrInvalidTransition  = errors.New("trip: transition not allowed")
-	ErrUnsupportedCommand = errors.New("trip: command not available in the C1 lifecycle")
+	ErrUnsupportedCommand = errors.New("trip: command owned by the mission lifecycle")
 	ErrFinishBeforeStart  = errors.New("trip: finish declared before start")
+	// ErrBeforeStart is a pause, resume or cancellation declared strictly
+	// before the start instant.
+	ErrBeforeStart = errors.New("trip: lifecycle command declared before start")
 )
 
 type redacted struct{}
@@ -85,10 +88,13 @@ func ParseCommand(raw string) (Command, error) {
 	return "", ErrInvalid
 }
 
-// Transition is the C1 operational table (EDR-178), first failure first:
-// unknown tokens, terminal states (a new attempt is a new trip), commands and
-// states whose lifecycle belongs to a later owner, then START on a trip that
-// already exists. START itself creates a trip only through Start.
+// Transition is the operational table (EDR-178, EMP-TRIP-011 EDR-252), first
+// failure first: unknown tokens, terminal states (a new attempt is a new
+// trip), the mission-owned states PLANNED, ASSIGNED and ACCEPTED, then the
+// moves of an open trip: PAUSE IN_PROGRESS → PAUSED, RESUME PAUSED →
+// IN_PROGRESS, CANCEL → CANCELLED and FINISH → COMPLETED from either; START
+// on an existing trip and any other pair is INVALID_TRANSITION. START itself
+// creates a trip only through Start.
 func Transition(from State, cmd Command) (State, error) {
 	if _, e := ParseState(string(from)); e != nil {
 		return "", e
@@ -99,13 +105,20 @@ func Transition(from State, cmd Command) (State, error) {
 	if from.Terminal() {
 		return "", ErrInvalidTransition
 	}
-	if from != InProgress || (cmd != CommandStart && cmd != CommandFinish) {
+	if from != InProgress && from != Paused {
 		return "", ErrUnsupportedCommand
 	}
-	if cmd == CommandStart {
-		return "", ErrInvalidTransition
+	switch {
+	case cmd == CommandFinish:
+		return Completed, nil
+	case cmd == CommandCancel:
+		return Cancelled, nil
+	case cmd == CommandPause && from == InProgress:
+		return Paused, nil
+	case cmd == CommandResume && from == Paused:
+		return InProgress, nil
 	}
-	return Completed, nil
+	return "", ErrInvalidTransition
 }
 
 // ReviewState is the closed trip review vocabulary: BR-REV states plus VOIDED.

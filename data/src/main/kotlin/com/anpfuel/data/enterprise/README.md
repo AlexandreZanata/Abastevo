@@ -128,6 +128,12 @@ EMP-TRIP-005 registers the first business producers (`trip.start`,
 `RECORD` per partition (`trip-book` v1, bound to membership and enrollment)
 written in the same protected write as each operation; no plaintext table exists.
 
+EMP-OFFL-005 seals attachment bytes as `ATTACHMENT` entries and their index as one
+`attachment-book` v1 `RECORD` per partition, written together beside an operation
+already queued; verified bytes are removed in the write that records `STORED`; the
+operation worker delivers them after the queue behind
+`ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED` (default off).
+
 The separate operation WorkManager uses empty system input and discovers only
 the current account/origin through authenticated protected descriptors. The
 actual Android provider accepts exact scoped normal/denial/lock prefixes;

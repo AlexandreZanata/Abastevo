@@ -154,3 +154,25 @@ func TestTripClosureValuesAreRedacted(t *testing.T) {
 		}
 	}
 }
+
+// EMP-TRIP-011 × EMP-TRIP-014: a paused trip is open and may be closed at
+// its next revision; a cancelled trip is closed (INVALID_TRANSITION).
+func TestTripCloseTreatsPausedAsOpenAndCancelledAsClosed(t *testing.T) {
+	defer guard(t)
+	s := scope(t, 1)
+	started := must(trip.Start(s, startInput(t, s)))
+	author := started.Started().Author()
+	paused := must(started.Pause(s, trip.LifecycleInput{Author: author, Expected: 1, Declared: at(t, "2026-11-14T13:00:00Z")}))
+	closed, err := paused.Close(s, closeInput(t, s))
+	if err != nil || closed.State() != trip.Completed || closed.Revision() != 3 || paused.Revision() != 2 {
+		t.Fatal("a paused trip was not closed at its next revision", err, closed.Revision())
+	}
+	if u := closed.MeterUsage(); u.Status() != trip.NotMeasured || u.Reason() != trip.ReasonReadingAbsent {
+		t.Fatal("closed paused usage", u.Reason())
+	}
+	reason := "Viagem desmarcada"
+	cancelled := must(started.Cancel(s, trip.LifecycleInput{Author: author, Expected: 1, Reason: &reason, Declared: at(t, "2026-11-14T13:00:00Z")}))
+	if _, err := cancelled.Close(s, closeInput(t, s)); !errors.Is(err, trip.ErrInvalidTransition) {
+		t.Fatal("a cancelled trip was closed", err)
+	}
+}
