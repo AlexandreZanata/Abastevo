@@ -1,4 +1,31 @@
 # Current execution state
+- Supplemental OpenTatu audit publication, 2026-11-14: LOCAL_DONE /
+  INTEGRATION_PENDING; bounded documentation task on maintained `dev`.
+  [Engine evidence and source follow-up](../security/opentatu/2026-11-14/ENGINE_REVIEW.md)
+  records source `018f2df18c8b029ec3e665fc98ba7318e6f076bc`, engine `7df5899c`,
+  native PARTIAL result (7 hypotheses: 0 confirmed, 1 dismissed, 6 inconclusive),
+  0 native findings/tasks and US$ 0.12783331 recorded model consumption.
+  The independent static candidate and ten-case patch remain unexecuted;
+  source follow-up does not rewrite native verdicts or certify a correction.
+  Final artifact identities, JSON projection/privacy and patch-format checks
+  are recorded in the bundle; the complete OpenTatu check passed 410 tests.
+  [Publication PR #220](https://github.com/AlexandreZanata/Abastevo/pull/220) follows maintained `dev` -> protected `main`;
+  required current-head `Quick verification` is reported by the PR checks.
+  Next: owner review of the evidence/handoff and required checks before integration.
+  Existing implementation-stage, integration, release and operational obligations
+  remain unchanged. Engine implementation review is separate in
+  [OpenTatu PR #1](https://github.com/AlexandreZanata/OpenTatu/pull/1).
+
+- Registry daily sync restored, 2026-11-14: PR #219 merged at `018f2df1`
+  (source-owned locality corrections, B-BR-SYNC05 amended; race integration
+  bound 30m). Host-path registry release `018f2df1` installed on the new VPS
+  (static station-sync/station-load from main; prepare_registry/opencnpj
+  reused by sha256); guarded Job published the stalled 2026-11-12 edition
+  (45747 accepted, 112 rejected, 10 curated preserved) after a verified DB
+  backup; CronJob re-enabled. The `018f2df1` image release awaits a rerun of a
+  flaky orgmedia S3 integration test on the main backend workflow before the
+  deploy agent applies it; the VPS keeps serving `43b21389` meanwhile.
+
 - Integration + deployment, 2026-11-14: PR #203 merged dev → main at
   `43b21389` (required checks green on head `41f0b46f`: Quick verification,
   fast, integration, test); dev fast-forwarded to main. Issues #204–#214 and
