@@ -1,4 +1,14 @@
 # Current execution state
+- Enterprise F4, 2026-11-15: IN_PROGRESS on owned `codex/enterprise-f4` from
+  `origin/dev` `8c2ee654` (= open F3 PR #221 head; F4 reaches `dev` only after
+  #221 merges). [F4 ledger](../enterprise/evidence/f4-execution.md) reconciles
+  38 tasks: none in source; 6 ready (OFFL-009/011/012, FLEET-007, FLEET-011,
+  CHECK-001), 32 blocked behind the open C1 trip chain TRIP-001..005, METER-003/
+  004 and, for every GPS task and REL-005, EMP-GOV-005 (legal review pending)
+  and EMP-GOV-006 (target-device spike). EDR-196: wave 1 TRIP-001 → TRIP-017,
+  METER-003 → METER-004, catalog v5 → FLEET-007, then TRIP-002..004 and the F4
+  trip APIs. No M4/F4 acceptance is claimed.
+
 - Enterprise F3, 2026-11-14: IN_PROGRESS on owned `codex/enterprise-f3` from
   merged main/dev `43b21389` (Claude Code). [F3 ledger](../enterprise/evidence/f3-execution.md)
   reconciles 67 tasks: FUEL-001 consumed, 10 ready, 56 blocked mostly behind
