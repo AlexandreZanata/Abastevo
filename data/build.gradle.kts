@@ -12,6 +12,10 @@ android {
     defaultConfig {
         buildConfigField("boolean", "QUALITY_CACHE_ENABLED", providers.gradleProperty("qualityCacheEnabled").orElse("true").get().toBooleanStrict().toString())
         buildConfigField("boolean", "QUALITY_OUTBOX_ENABLED", providers.gradleProperty("qualityOutboxEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-OFFL-005 capability flag (EDR-267): attachment capture and upload stay off until real receipts are
+        // legally approved (OQ-04); enterprise validation builds turn it on for synthetic JPEGs only.
+        buildConfigField("boolean", "ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED", providers.gradleProperty("enterpriseAttachmentUploadEnabled")
+            .orElse(providers.gradleProperty("enterpriseDeviceValidation")).orElse("false").get().toBooleanStrict().toString())
         // Debug-only loopback proof origin switch. Release builds and
         // default debug builds keep the explicit staging origin.
         buildConfigField("boolean", "MAP_API_LOCAL_PROOF", providers.gradleProperty("mapApiLocalProof").orElse("false").get().toBooleanStrict().toString())

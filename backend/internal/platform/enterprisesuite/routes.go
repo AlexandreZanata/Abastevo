@@ -56,6 +56,7 @@ import (
 	notifyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/application"
 	notify "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/domain"
 	syncpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters"
+	syncweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters/http"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	reviewpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters"
 	reviewweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters/http"
@@ -423,7 +424,7 @@ func Register(router chi.Router, o Options) error {
 	if err := registerNotices(router, o, cookies, gateway, roles, allowance); err != nil {
 		return err
 	}
-	if err := registerDocuments(router, o, cookies, gateway, access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: documentweb.DocumentRecords{}, Now: time.Now}, roles, auditStore); err != nil {
+	if err := registerDocuments(router, o, cookies, gateway, access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: documentweb.DocumentRecords{}, Now: time.Now}, roles, auditStore, deviceStore); err != nil {
 		return err
 	}
 
@@ -451,7 +452,7 @@ func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, g
 // registerDocuments composes EMP-DOC-002 over the EMP-PLAT-006 private
 // original service and the EMP-PRIV-005 access log. Without configured
 // storage, declarations work while bytes and content stay unavailable.
-func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authorization access.Authorization, roles *accesspg.Store, auditStore *auditpg.Store) error {
+func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authorization access.Authorization, roles *accesspg.Store, auditStore *auditpg.Store, devices *member.DeviceStore) error {
 	authority := documentpg.CurrentAuthority{Source: roles, Now: time.Now}
 	var objects documentObjects = documentpg.UnavailableObjects{}
 	if o.DocumentStorage != nil {
@@ -483,7 +484,17 @@ func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler,
 	// over the same bucket and inspector, so STORED never skips it.
 	checker := documentapp.Checker{Repository: store, Objects: objects, Inspector: mediapg.JPEGInspector{}, NewID: jobs.NewUUIDv4}
 	service := documentapp.Service{Enabled: true, Repository: store, Links: store, Media: originals, Safety: checker, Tokens: uploads, Now: time.Now, NewID: jobs.NewUUIDv4}
-	return documentweb.Register(router, service, cookies, gateway, authorization)
+	if err := documentweb.Register(router, service, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	// EMP-OFFL-005 (EDR-270): the signed device declares, links and receives
+	// the upload capability of its own attachment; bytes use the ingress above.
+	origin, err := url.Parse(o.Origin)
+	if err != nil {
+		return documentapp.ErrUnavailable
+	}
+	return syncweb.RegisterAttachments(router, syncweb.AttachmentOptions{Enabled: true, Origin: o.Origin, Accounts: o.Accounts,
+		Verifier: proofauth.Verifier{Pool: o.Pool, Authority: origin.Host, Now: time.Now}, Devices: devices, Sessions: documentweb.DeviceSessions{Service: service}})
 }
 
 type orgRootResolver struct{ roots org.Repository }

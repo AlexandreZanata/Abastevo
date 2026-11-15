@@ -868,6 +868,10 @@
       "boundary": "SELF_NOTICE"
     },
     {
+      "route": "POST /v1/orgs/{org_id}/sync/attachments",
+      "boundary": "SIGNED_ATTACHMENT_SESSION"
+    },
+    {
       "route": "POST /v1/orgs/{org_id}/sync/operations",
       "boundary": "SIGNED_BATCH"
     },

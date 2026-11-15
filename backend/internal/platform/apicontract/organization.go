@@ -39,8 +39,9 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		selfNotice, selfNoticeGuarded := handler.(orgapi.SelfNoticeDescriptor)
 		ingress, ingressGuarded := handler.(orgapi.DocumentIngressDescriptor)
 		referenceFeed, referenceGuarded := handler.(orgapi.SignedReferenceFeedDescriptor)
+		attachmentSession, attachmentGuarded := handler.(orgapi.SignedAttachmentSessionDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded && !reviewResultsGuarded && !selfNoticeGuarded && !ingressGuarded && !referenceGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded && !reviewResultsGuarded && !selfNoticeGuarded && !ingressGuarded && !referenceGuarded && !attachmentGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
@@ -81,8 +82,47 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		if !referenceGuarded && operation.Extensions["x-abastevo-signed-reference-feed"] != nil {
 			return fmt.Errorf("unexpected reference feed metadata for %s", path)
 		}
+		if !attachmentGuarded && operation.Extensions["x-abastevo-signed-attachment-session"] != nil {
+			return fmt.Errorf("unexpected attachment session metadata for %s", path)
+		}
 		bodyType := "application/json"
-		if referenceGuarded {
+		if attachmentGuarded {
+			// EMP-OFFL-005: the enrolled member's own signed attachment session (EDR-270).
+			expected := orgapi.SignedAttachmentSessionRule{AccountProof: true, Signed: true, CurrentEnrollment: true, CreatorBound: true, OwnerLinked: true, WholeBodyPreflight: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || reviewResultsGuarded || selfNoticeGuarded || ingressGuarded || referenceGuarded ||
+				path != "/v1/orgs/{org_id}/sync/attachments" || attachmentSession.SignedAttachmentSessionRule() != expected {
+				return fmt.Errorf("invalid signed attachment session guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context", "x-abastevo-owned-setups", "x-abastevo-device-contact", "x-abastevo-signed-batch", "x-abastevo-signed-review-results", "x-abastevo-self-notice", "x-abastevo-document-ingress", "x-abastevo-signed-reference-feed"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for attachment session %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-signed-attachment-session"])
+			var recorded orgapi.SignedAttachmentSessionRule
+			decoder := json.NewDecoder(strings.NewReader(string(raw)))
+			decoder.DisallowUnknownFields()
+			if e != nil || decoder.Decode(&recorded) != nil || recorded != expected {
+				return fmt.Errorf("signed attachment session metadata differs for %s", path)
+			}
+			if e := validateSignedDeviceSecurity(operation, path); e != nil {
+				return e
+			}
+			body := operation.RequestBody.Value.Content.Get("application/json").Schema
+			if body.Ref != "#/components/schemas/EnterpriseAttachmentSessionRequest" || !exactReviewObject(body.Value, "schema_version", "request_id", "family_id", "access_token", "membership_id", "enrollment_id",
+				"declaration_id", "document_id", "kind", "sha256", "bytes", "media_type", "link_id", "target_kind", "target_id") {
+				return fmt.Errorf("invalid whole attachment session body for %s", path)
+			}
+			if operation.Responses == nil || operation.Responses.Value("200") == nil || operation.Responses.Value("200").Value == nil {
+				return fmt.Errorf("missing attachment session response for %s", path)
+			}
+			media := operation.Responses.Value("200").Value.Content.Get("application/json")
+			if media == nil || media.Schema == nil || media.Schema.Ref != "#/components/schemas/EnterpriseAttachmentSessionResponse" ||
+				!exactReviewObject(media.Schema.Value, "schema_version", "request_id", "membership_id", "enrollment_id", "document_id", "storage", "storage_revision", "upload") {
+				return fmt.Errorf("invalid attachment session response for %s", path)
+			}
+			declared.Success = 200
+		} else if referenceGuarded {
 			// EMP-OFFL-006: the member's signed, purpose-bound reference feed.
 			expected := orgapi.SignedReferenceFeedRule{AccountProof: true, Signed: true, CurrentEnrollment: true, BoundCursor: true, WholeBodyPreflight: true, Success: 200}
 			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || reviewResultsGuarded || selfNoticeGuarded || ingressGuarded || path != "/v1/orgs/{org_id}/sync/reference" || referenceFeed.SignedReferenceFeedRule() != expected {

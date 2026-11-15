@@ -6591,3 +6591,113 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   duplicate session, another member, another trip or organization, a hidden
   or absent permission, a session continuing after its trip ended, a
   terminal session and an out-of-order instant.
+
+## EMP-OFFL-005 — Attachment upload: offline queue, retry and resume, linkage to operations (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-offl005-attachment-upload.md).
+
+- **B-BR-EMP-415 — An attachment is captured offline, sealed and bound to its
+  operation.** The app captures a C1 attachment only as a synthetic JPEG
+  (`image/jpeg`, starting with the JPEG start-of-image marker and ending with
+  the end-of-image marker, 1 byte to 5 MiB, the EMP-DOC-002 budget) for an
+  operation already saved in the same partition's protected queue, naming the
+  record it documents as one EMP-DOC-003 link target (kind and identifier).
+  The device computes the size and SHA-256 from the exact bytes and fixes, at
+  capture, the attachment (document) identifier, the declaration operation
+  identifier and the link operation identifier; none of them ever changes. The
+  bytes are one sealed `ATTACHMENT` entry and the attachment index one sealed
+  `attachment-book` v1 record of the creation partition (EMP-PRIV-003
+  generation, account, origin, organization, membership and enrollment), both
+  written in one protected write before the app reports the capture as saved;
+  a failed write reports that nothing was saved. Unsettled attachments of a
+  partition hold at most 16 MiB of bytes and the index at most 500 entries;
+  beyond that the capture is refused with that reason and nothing is evicted.
+  Capture and delivery stay off unless the build flag
+  `ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED` is on (default off: real receipts stay
+  gated by OQ-04; validation builds turn it on).
+- **B-BR-EMP-416 — Operation and attachment outcomes are independent.** The
+  owning operation is delivered and acknowledged only by the EMP-OFFL-003
+  queue; an attachment never delays, changes, blocks or re-sends it. The
+  attachment waits until its operation has a final receipt: `ACCEPTED` or
+  `ACCEPTED_FOR_REVIEW` let it be declared; `REJECTED` makes it refused
+  (`OWNER_REJECTED`) with its bytes kept on the device; `RETRY` or no receipt
+  keeps it waiting. A record can be accepted by the company while its
+  attachment is still saved, sending, being verified or refused, and each is
+  shown with its own state. The attachment is never shown as verified before
+  a server answer reports its document `STORED`.
+- **B-BR-EMP-417 — One signed device route declares, links and grants the
+  upload.** `POST /v1/orgs/{org_id}/sync/attachments` (special boundary
+  `SIGNED_ATTACHMENT_SESSION`) takes the exact signed device proof of the
+  reference feed (current account session, identity-v1 signature, current
+  enrollment, the body's membership and enrollment equal to the enrolled
+  ones) and one declaration: request, declaration, document and link
+  identifiers, kind `RECEIPT`, SHA-256, size, media type `image/jpeg`, target
+  kind and target identifier. The server declares the document through
+  EMP-DOC-002 with the device as actor (channel `android`, creator the
+  enrolled membership, `doc.document.attach`, idempotent by the declaration
+  identifier), links it through EMP-DOC-003 (the target owner's permission and
+  coverage, idempotent by the link identifier) and answers the document's
+  storage state and revision and, only while it is `UPLOADING` inside its
+  24-hour session, a fresh five-minute upload capability. A repeated request
+  answers the current state and a fresh capability: an expired capability is
+  renewed by asking again. A target that does not exist or belongs to another
+  organization is `NOT_FOUND`; another member's record or a missing permission
+  is `FORBIDDEN` with the permission key; a declaration outside C1 is
+  `VALIDATION_FAILED`; an identifier reused with other facts is
+  `OPERATION_ID_REUSED`; a document identifier taken by another declaration is
+  `CONFLICT`; a document already `FAILED`, `REPLACED` or `DELETED` is answered
+  with its state and no link or capability. No SQL, migration, permission or
+  job is added; a declared document whose link was refused closes after its
+  session (B-BR-EMP-254).
+- **B-BR-EMP-418 — Bytes reach stored state only through the private ingress
+  and its verification.** The app sends the exact sealed bytes, after checking
+  their size and SHA-256 again, to the EMP-DOC-002 ingress
+  `content/upload` with the capability header and no cookie or signature. A
+  `RECEIVED` answer is shown as being verified, `STORED` as verified;
+  verified sealed bytes are then removed from the device in the same protected
+  write. An ingress refusal for mismatched, truncated or oversized bytes or an
+  expired capability leaves the document `UPLOADING` and the attachment
+  pending for retry; content refused by the safety check (`QUARANTINED`,
+  `FAILED`) makes the attachment refused with that state. Only bytes whose
+  size and SHA-256 equal the declaration ever become `STORED`.
+- **B-BR-EMP-419 — Retry, resume and process death converge safely.** The
+  ingress accepts whole bodies only, so delivery is a whole-body safe retry:
+  an interrupted session request or transfer (lost answer, timeout, process
+  death at any byte) leaves the attachment pending and the next delivery asks
+  for the session again and resends the sealed bytes; the server's replay
+  rules (`UPLOADING` accepts the bytes, `RECEIVED` finishes the check,
+  `STORED` reads and writes nothing) make a duplicate completion idempotent.
+  Pending attachments are retried by the operation worker after the queue
+  with the EMP-OFFL-003 policy (30-second base, 6-hour cap, equal jitter, no
+  attempt limit, a valid `Retry-After` honoured within the cap), each with its
+  own retry state in the index. A sealed entry that is missing, unreadable or
+  no longer matches its declaration makes the attachment `FILE_MISSING`
+  ("comprovante não encontrado no aparelho"; a new capture is needed), never
+  a silent skip or success.
+- **B-BR-EMP-420 — Attachment bytes stay private and in their partition.**
+  Bytes, digests, identifiers and capabilities never appear in a plaintext
+  file, path, URI, cache, log, WorkManager input, notification or
+  diagnostics; the capability lives in memory for one transfer only; another
+  account or organization on the device can neither read nor send them; they
+  share the partition's erasure; the device never deletes unsent bytes by
+  itself (BR-OFFL-013), only verified ones.
+- **BUC-EMP-211 — Capture offline, upload when the network returns.** A driver
+  starts a trip offline with the odometer reading and captures a synthetic
+  photo of the odometer for that reading; both show "Salvo no aparelho".
+  On reconnection the trip start is accepted, the photo is declared, linked to
+  the reading, sent and verified, and the reading's documents list it as
+  `STORED`.
+- **BUC-EMP-212 — Interrupted and refused uploads converge.** A transfer cut
+  in the middle, bytes altered on the way, a capability that expired and an
+  app killed during the transfer each leave the attachment pending; the next
+  delivery completes it with the same document and the stored original equals
+  the declaration; a photo whose sealed bytes are missing is shown as missing;
+  a photo of a refused record is shown as refused and kept.
+- **BUC-EMP-213 — Prove it on real PostGIS, a private bucket and the
+  emulator.** Another organization's route, document or capability, another
+  member's or a missing record, an invalid declaration, reused identifiers,
+  mismatched and truncated bytes, repeated completion, an expired session
+  request and process death are exercised against the composed API with
+  PostGIS and MinIO, host suites prove the device rules and the protected
+  store across process death, and the owned emulator runs the whole flow
+  against a real local backend.
