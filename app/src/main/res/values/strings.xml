@@ -623,8 +623,8 @@
     <!-- Share -->
     <string name="settings_share_section">Share</string>
     <string name="settings_share_app">Share app</string>
-    <string name="settings_share_app_message">Check out ANP Fuel Prices — free weekly fuel prices from ANP: %1$s</string>
-    <string name="app_release_apk_url" translatable="false">https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS/releases/latest/download/app-release.apk</string>
+    <string name="settings_share_app_message">Check out Abastevo — weekly fuel prices for your city, from ANP data and the community: %1$s</string>
+    <string name="app_share_url" translatable="false">https://abastevo.com.br/</string>
 
     <!-- Accessibility (Phase 9.3) -->
     <string name="a11y_loading">Loading content</string>

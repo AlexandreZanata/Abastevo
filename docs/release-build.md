@@ -51,7 +51,7 @@ third-party notices remain bundled as legal records.
 ## Verification and published files
 
 The workflow builds `:app:assembleRelease :app:verifyReleaseApkSize` with JDK 17,
-Android 35 tools, R8/resource shrinking and the pinned native CoMaps engine.
+Android 36 platform tools, R8/resource shrinking and the pinned native CoMaps engine.
 `scripts/android/artifact.py` requires the package `com.anpfuel.app`, exact derived
 version, non-debuggable manifest, pinned signing certificate, native map engine
 for each advertised ABI and the existing **80-MiB** APK ceiling. It verifies the

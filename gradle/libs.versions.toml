@@ -22,9 +22,9 @@ kxml2 = "2.3.0"
 datastore = "1.1.1"
 # Reviewed in docs/mobile/p37-ocr-live-framing.md (Apache-2.0; libyuv BSD-3-Clause).
 camerax = "1.4.2"
-compileSdk = "35"
+compileSdk = "36"
 minSdk = "26"
-targetSdk = "35"
+targetSdk = "36"
 
 [libraries]
 kotlinx-coroutines-core = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-core", version.ref = "coroutines" }

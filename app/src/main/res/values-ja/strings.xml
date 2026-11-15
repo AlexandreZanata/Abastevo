@@ -495,7 +495,7 @@
     <!-- Share -->
     <string name="settings_share_section">共有</string>
     <string name="settings_share_app">アプリを共有</string>
-    <string name="settings_share_app_message">ANP Fuel Prices をチェック — ANPの週次燃料価格、無料: %1$s</string>
+    <string name="settings_share_app_message">Abastevo をチェック — ANP とコミュニティのデータで見る、あなたの街の週次燃料価格: %1$s</string>
 
     <!-- Accessibility (Phase 9.3) -->
     <string name="a11y_loading">コンテンツを読み込み中</string>

@@ -623,7 +623,7 @@
     <!-- Compartilhar -->
     <string name="settings_share_section">Compartilhar</string>
     <string name="settings_share_app">Compartilhar app</string>
-    <string name="settings_share_app_message">Confira o Preços ANP Combustíveis — preços semanais de combustíveis da ANP, grátis: %1$s</string>
+    <string name="settings_share_app_message">Confira o Abastevo — preços de combustíveis da sua cidade, com dados da ANP e da comunidade: %1$s</string>
 
     <!-- Accessibility (Phase 9.3) -->
     <string name="a11y_loading">Carregando conteúdo</string>

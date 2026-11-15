@@ -495,7 +495,7 @@
     <!-- Share -->
     <string name="settings_share_section">分享</string>
     <string name="settings_share_app">分享应用</string>
-    <string name="settings_share_app_message">看看 ANP Fuel Prices — 免费获取 ANP 每周燃油价格：%1$s</string>
+    <string name="settings_share_app_message">看看 Abastevo — 基于 ANP 和社区数据的本市每周燃油价格：%1$s</string>
 
     <!-- Accessibility (Phase 9.3) -->
     <string name="a11y_loading">正在加载内容</string>

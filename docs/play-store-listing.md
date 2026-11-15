@@ -1,188 +1,161 @@
-# Play Store Listing Draft
+# Play Store listing — Abastevo
 
-> **Status:** Draft for v3.1.0  
-> **Distribution:** Sideload via [GitHub Releases](https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS/releases) is the primary path until Play Console submission.  
-> **Product contract:** [user-business-logic.md](user-business-logic.md) · **Privacy:** [privacy-policy.md](privacy-policy.md)
+> **Status:** Draft for the first Play submission, rewritten 2026-11-15 for the
+> current app (accounts, community, forum, offline maps). The earlier draft
+> described a no-account, no-backend app and must not be used.
+> **Readiness:** [docs/store/PLAY_STORE_READINESS.md](store/PLAY_STORE_READINESS.md)
+> · **Graphics:** [docs/store/](store/README.md)
+> · **Privacy:** [abastevo.com.br/privacidade](https://abastevo.com.br/privacidade/)
 
----
+The Google Play metadata policy forbids ranking/price/promotion claims ("melhor",
+"nº 1", "grátis", "novo"), calls to action and keyword lists in the title, short
+description and graphics. Apps showing government data must cite the source and
+state that they do not represent a government body. Keep both when editing.
 
 ## Store metadata
 
 | Field | Value |
 |-------|-------|
-| **Package name** | `com.anpfuel.app` |
-| **Category** | Auto & Vehicles |
-| **Tags** | fuel prices, ANP, gasoline, ethanol, diesel, Brazil, offline |
-| **Content rating** | Everyone (no sensitive content; public government data) |
-| **Pricing** | Free |
+| **App name** | Abastevo |
+| **Package name** | `com.anpfuel.app` (permanent after the first upload) |
+| **Default language** | Português (Brasil) — `pt-BR`; translation: English (United States) |
+| **Category** | Auto & Vehicles (to confirm) |
+| **Website** | https://abastevo.com.br |
+| **Contact email** | To be supplied by the owner (required by Play; never invent one) |
+| **Privacy policy URL** | https://abastevo.com.br/privacidade/ |
+| **Account deletion URL** | https://abastevo.com.br/excluir-conta/ |
 | **Ads** | No |
-| **In-app purchases** | No |
-| **Min Android** | API 26 (Android 8.0) |
-| **Target Android** | API 35 |
-| **Privacy policy URL** | `https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS/blob/main/docs/privacy-policy.md` |
+| **In-app purchases** | No (no sale is enabled in the app) |
+| **Government app** | No — independent app that uses public ANP data |
+| **Min / target Android** | API 26 (Android 8.0) / API 36 (Android 16) |
 
-### Data safety (Google Play form)
-
-| Question | Answer |
-|----------|--------|
-| Collects or shares user data? | **No** — vehicle names are user-entered labels stored on device only |
-| Optional location used? | **Yes, one-shot** — only if user taps Use my location; coordinates not stored |
-| Local notifications? | **Optional** — price drop alerts generated on device after sync |
-| Data encrypted in transit? | **Yes** (HTTPS to gov.br and Nominatim when used) |
-| Users can request data deletion? | **N/A** — no account; clear cache in Settings (UC-008) |
-| Independent security review? | **No** |
+Data safety, content rating and other App content answers:
+[readiness §2 and §5](store/PLAY_STORE_READINESS.md#2-app-content-declarations-play-console--policy--app-content).
 
 ---
 
-## English listing (default)
+## Português (Brasil) — padrão
 
-### App name (max 30 characters)
-
-```
-ANP Fuel Prices
-```
-
-### Short description (max 80 characters)
-
-<!-- begin:short-description-en -->
-Official ANP weekly fuel prices by city. Offline, free, open source.
-<!-- end:short-description-en -->
-
-### Full description (max 4000 characters)
-
-<!-- begin:full-description-en -->
-Browse official Brazilian fuel prices from ANP (National Agency of Petroleum, Natural Gas and Biofuels) — directly on your phone.
-
-**Features**
-• Average gasoline, ethanol, and diesel prices by municipality
-• **Tank fill cost** — register vehicles and see estimated full-tank price for your city
-• **Price drop alerts** — optional local notifications when your tracked fuel price falls week over week
-• Search any Brazilian city with autocomplete
-• Works offline after the first sync
-• Optional per-station prices (CNPJ, brand, address) with **Navigate** to Maps/Waze
-• Optional **Use my location** during onboarding to detect your city (coordinates not stored)
-• Price history trends for your selected city
-• English and Brazilian Portuguese UI
-• No account, no ads, no backend — 100% on-device
-
-**How it works**
-ANP publishes weekly price surveys on gov.br. The app downloads public spreadsheets, imports them locally, and lets you explore averages and station detail without a server.
-
-**Important**
-• Prices are weekly surveys, not real-time pump prices
-• Data freshness depends on ANP publication schedule
-• This app is not affiliated with ANP
-• Source: ANP — Agência Nacional do Petróleo, Gás Natural e Biocombustíveis
-
-**Open source**
-MIT licensed. Source code: https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS
-
-**Privacy**
-No personal data collected. See privacy policy in the repository.
-<!-- end:full-description-en -->
-
----
-
-## Portuguese listing (pt-BR)
-
-### App name
+### Nome do app (máx. 30)
 
 ```
-ANP Fuel Prices
+Abastevo
 ```
 
-### Short description (max 80 characters)
+### Descrição curta (máx. 80)
 
 <!-- begin:short-description-pt -->
-Preços semanais oficiais da ANP por cidade. Offline, grátis e open source.
+Preços de combustíveis da ANP por cidade, mapa de postos e comunidade.
 <!-- end:short-description-pt -->
 
-### Full description (max 4000 characters)
+### Descrição completa (máx. 4000)
 
 <!-- begin:full-description-pt -->
-Consulte preços oficiais de combustíveis da ANP (Agência Nacional do Petróleo, Gás Natural e Biocombustíveis) — direto no seu celular.
+O Abastevo reúne os preços de combustíveis da sua cidade em um só lugar: médias semanais da pesquisa da ANP, preços por posto, mapa e as informações compartilhadas pela comunidade de motoristas.
 
-**Recursos**
-• Médias de gasolina, etanol e diesel por município
-• **Custo do tanque** — cadastre veículos e veja o preço estimado de encher o tanque na sua cidade
-• **Alertas de queda de preço** — notificações locais opcionais quando o combustível acompanhado cair entre semanas
-• Busca de cidades brasileiras com autocompletar
-• Funciona offline após a primeira sincronização
-• Preços por posto (CNPJ, bandeira, endereço) com botão **Ir** para Maps/Waze
-• **Usar minha localização** opcional no onboarding para detectar sua cidade (coordenadas não armazenadas)
-• Histórico de preços da cidade selecionada
-• Interface em português (Brasil) e inglês
-• Sem conta, sem anúncios, sem servidor — 100% no aparelho
+O QUE VOCÊ ENCONTRA
+• Médias semanais de gasolina, etanol, diesel, GNV e GLP por município, com a semana de referência da pesquisa
+• Lista de postos com preço, bandeira e endereço, do menor para o maior preço
+• Mapa de postos e pontos de recarga, com rota até o posto; baixe o mapa da sua região para usar sem internet
+• Custo para encher o tanque: cadastre até 3 veículos e veja quanto custa um tanque cheio na sua cidade
+• Aviso opcional no celular quando o preço do combustível que você acompanha cair
+• Histórico para comparar os preços semana a semana
+• Semanas da pesquisa salvas no aparelho para consultar offline
+• Comunidade: compartilhe o preço que você viu no posto, com foto opcional, e ajude outros motoristas
+• Fórum Abastevo com guias e discussões sobre combustíveis, eletromobilidade e trânsito
 
-**Como funciona**
-A ANP publica pesquisas semanais em gov.br. O app baixa planilhas públicas, importa localmente e permite explorar médias e detalhes de revendas sem backend.
+Para consultar preços não é preciso criar conta. Para participar da comunidade, a conta é criada só com um nome de usuário.
 
-**Importante**
-• Preços são pesquisas semanais, não valores em tempo real no posto
-• A atualização depende do calendário de publicação da ANP
-• Este app não é afiliado à ANP
-• Fonte: ANP — Agência Nacional do Petróleo, Gás Natural e Biocombustíveis
+DE ONDE VÊM OS DADOS
+Os preços médios e por posto vêm do Levantamento de Preços de Combustíveis publicado pela ANP — Agência Nacional do Petróleo, Gás Natural e Biocombustíveis: https://www.gov.br/anp/pt-br
+A pesquisa é semanal e feita por amostragem: não inclui todos os postos e não é o preço em tempo real na bomba. Os preços enviados pela comunidade aparecem identificados separadamente dos dados da ANP.
 
-**Código aberto**
-Licença MIT. Código-fonte: https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS
+IMPORTANTE
+• O Abastevo é um aplicativo independente. Não é afiliado à ANP e não representa nenhum órgão do governo.
+• Confira sempre o preço no posto antes de abastecer.
 
-**Privacidade**
-Nenhum dado pessoal coletado. Política de privacidade no repositório.
+PRIVACIDADE E CONTA
+• Política de Privacidade: https://abastevo.com.br/privacidade/
+• Termos de Uso: https://abastevo.com.br/termos/
+• Excluir conta e dados: no app (Perfil › Gerenciar conta) ou em https://abastevo.com.br/excluir-conta/
 <!-- end:full-description-pt -->
 
 ---
 
-## Required disclaimers (must appear in store copy)
+## English (United States)
 
-- [x] ANP data attribution (BR-009)
-- [x] Not affiliated with ANP
-- [x] Weekly data — not real-time prices
-- [x] Offline-capable after first sync
-- [x] No personal data collected (links to privacy policy)
-- [x] Open-source MIT license and repository URL
+### App name (max 30)
+
+```
+Abastevo
+```
+
+### Short description (max 80)
+
+<!-- begin:short-description-en -->
+Brazilian fuel prices from ANP by city, a station map and a driver community.
+<!-- end:short-description-en -->
+
+### Full description (max 4000)
+
+<!-- begin:full-description-en -->
+Abastevo brings together fuel prices for your Brazilian city: weekly averages from the ANP survey, per-station prices, a station map and prices shared by the driver community.
+
+WHAT YOU GET
+• Weekly average prices for gasoline, ethanol, diesel, CNG and LPG by municipality, with the survey reference week
+• Station list with price, brand and address, sorted from the lowest price
+• Map of fuel stations and EV chargers with directions; download your region's map to use it offline
+• Tank fill cost: add up to 3 vehicles and see what a full tank costs in your city
+• Optional on-device alert when the price of the fuel you follow drops
+• Price history to compare week by week
+• Survey weeks saved on your phone for offline use
+• Community: share the price you saw at the pump, with an optional photo, to help other drivers
+• Abastevo Forum with guides and discussions about fuel, e-mobility and traffic
+
+Browsing prices needs no account. Joining the community only needs a username.
+
+WHERE THE DATA COMES FROM
+Average and per-station prices come from the fuel price survey published by ANP — Brazil's National Agency of Petroleum, Natural Gas and Biofuels: https://www.gov.br/anp/pt-br
+The survey is weekly and sample-based: it does not cover every station and is not a real-time pump price. Community prices are labeled separately from ANP data.
+
+IMPORTANT
+• Abastevo is an independent app. It is not affiliated with ANP and does not represent any government body.
+• Always check the price at the station before refueling.
+
+PRIVACY AND ACCOUNT
+• Privacy policy: https://abastevo.com.br/privacidade/
+• Terms of use: https://abastevo.com.br/termos/
+• Delete your account and data: in the app (Profile › Manage account) or at https://abastevo.com.br/excluir-conta/
+<!-- end:full-description-en -->
 
 ---
 
-## Graphics checklist (not yet produced)
+## Graphics
 
-| Asset | Spec | Status |
-|-------|------|--------|
-| App icon | 512 × 512 PNG | Use `@mipmap/ic_launcher` export |
-| Feature graphic | 1024 × 500 PNG | Pending |
-| Phone screenshots | ≥ 2, 16:9 or 9:16 | Pending — Home, Search, Prices, Settings |
-| 7-inch tablet screenshots | Optional | Pending |
-| Promo video | Optional | N/A |
+All files are in [docs/store/listing-assets](store/listing-assets/) and are
+regenerated by [docs/store/cards/build_cards.py](store/cards/build_cards.py).
 
-Suggested screenshot captions (pt-BR primary market):
+| Play Console field | File(s) |
+|---|---|
+| App icon (512 × 512) | `icon-512.png` |
+| Feature graphic (1024 × 500) | `feature-graphic-1024x500.png` |
+| Phone screenshots (8) | `phone/01…08-*.png` (1080 × 1920) |
+| 7-inch tablet screenshots (6) | `tablet-7in/01…06-*.png` (1080 × 1920) |
+| 10-inch tablet screenshots (6) | `tablet-10in/01…06-*.png` (1440 × 2560) |
 
-1. Home — médias da semana na sua cidade
-2. Home — custo do tanque com veículo cadastrado
-3. Veículos — cadastro e alerta de queda de preço
-4. Postos — botão Ir para Maps/Waze
-5. Busca — encontre qualquer município
-6. Offline — dados em cache sem internet
+Suggested alt text (≤ 140 characters each, pt-BR), in phone order:
 
----
+1. Médias semanais da ANP para gasolina, etanol e diesel em Sorriso, MT.
+2. Mapa offline de São Paulo com postos de combustível.
+3. Lista de postos de São Paulo ordenada do menor preço da gasolina.
+4. Custo estimado para encher o tanque de 50 litros em Sorriso, MT.
+5. Comunidade: compartilhar preços vistos no posto com a cidade.
+6. Fórum Abastevo com artigos sobre a pesquisa da ANP e etanol ou gasolina.
+7. Histórico semanal do preço da gasolina comum em Sorriso, MT.
+8. Semanas da pesquisa da ANP baixadas para consulta offline.
 
-## Sideload distribution (v1 primary)
+## Release notes template (pt-BR)
 
-Until Play Store submission:
-
-1. Publish signed APK/AAB on GitHub Releases (Phase 10.5–10.6).
-2. Users enable “Install unknown apps” for their browser/files app.
-3. README and release notes link to ANP attribution and offline disclaimer.
-
-Release notes must repeat:
-
-> Fuel price data © ANP (public government data). This app is not affiliated with ANP. Prices reflect weekly surveys, not live pump prices.
-
----
-
-## Pre-submission checklist
-
-- [ ] Signed release build (10.5)
-- [ ] Screenshots captured on emulator + physical device
-- [ ] Privacy policy URL live on `main` branch
-- [ ] Data safety form completed in Play Console
-- [ ] ANP attribution visible in-app (BR-009) — verified in MVP script
-- [ ] Store listing reviewed in both `en` and `pt-BR`
+```
+Primeira versão no Google Play. Preços de combustíveis da ANP por cidade, mapa de postos com uso offline, custo do tanque, histórico, comunidade e fórum.
+```
