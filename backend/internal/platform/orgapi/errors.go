@@ -39,6 +39,7 @@ const (
 	AssetIdentifierTaken     Code = "ASSET_IDENTIFIER_TAKEN"
 	AssetHasOpenOperations   Code = "ASSET_HAS_OPEN_OPERATIONS"
 	AssignmentOverlap        Code = "ASSIGNMENT_OVERLAP"
+	ReservationConflict      Code = "RESERVATION_CONFLICT"
 	MeterAlreadyInService    Code = "METER_ALREADY_IN_SERVICE"
 	DuplicateReviewRequired  Code = "DUPLICATE_REVIEW_REQUIRED"
 	OwnerRequiresPersonal    Code = "OWNER_REQUIRES_PERSONAL_ACCOUNT"
@@ -65,7 +66,7 @@ var statuses = map[Code]int{
 	DeviceRevoked: 403,
 	Conflict:      409, OperationReused: 409, SelfApproval: 409, PeriodLocked: 409, LastOwner: 409, MergeConflict: 409, OpenResponsibilities: 409,
 	ValidationFailed: 422, RateLimited: 429, Unavailable: 503,
-	LastUnit: 409, StructureInUse: 409, AssetIdentifierTaken: 409, AssetHasOpenOperations: 409, AssignmentOverlap: 409, MeterAlreadyInService: 409, DuplicateReviewRequired: 409,
+	LastUnit: 409, StructureInUse: 409, AssetIdentifierTaken: 409, AssetHasOpenOperations: 409, AssignmentOverlap: 409, ReservationConflict: 409, MeterAlreadyInService: 409, DuplicateReviewRequired: 409,
 	OrgSetupIncomplete:    409,
 	OwnerRequiresPersonal: 409,
 	TransferPending:       409,
@@ -169,6 +170,25 @@ func AssetOpenOperations(kinds []string) error {
 		seen[kind] = true
 	}
 	return assetOpenOperationsFailure{append([]string(nil), kinds...)}
+}
+
+type reservationConflictFailure struct{ from, to string }
+
+func (reservationConflictFailure) Error() string { return string(ReservationConflict) }
+func (reservationConflictFailure) Unwrap() error { return ReservationConflict }
+
+// ReservationWindowConflict reports the conflicting window of B-BR-EMP-295
+// and nothing else: its start and, when it has one, its end, as exact UTC
+// instants; never an identifier, person, purpose, reason or record kind.
+func ReservationWindowConflict(from time.Time, to *time.Time) error {
+	if from.IsZero() || from.Nanosecond()%1000 != 0 || to != nil && (!to.After(from) || to.Nanosecond()%1000 != 0) {
+		return Unavailable
+	}
+	failure := reservationConflictFailure{from: from.UTC().Format(time.RFC3339Nano)}
+	if to != nil {
+		failure.to = to.UTC().Format(time.RFC3339Nano)
+	}
+	return failure
 }
 
 // EmployeeRegistrationDuplicate has no caller-selected field or private value.
@@ -290,6 +310,13 @@ func WriteError(w http.ResponseWriter, r *http.Request, err error) {
 	if code == AssetHasOpenOperations && errors.As(err, &open) {
 		for _, kind := range open.kinds {
 			details = append(details, httpapi.Detail{Field: "open_operations", Code: kind})
+		}
+	}
+	var window reservationConflictFailure
+	if code == ReservationConflict && errors.As(err, &window) {
+		details = append(details, httpapi.Detail{Field: "conflict_window", Code: "STARTS_AT", Instant: window.from})
+		if window.to != "" {
+			details = append(details, httpapi.Detail{Field: "conflict_window", Code: "ENDS_AT", Instant: window.to})
 		}
 	}
 	var structure structureFailure

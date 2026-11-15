@@ -290,11 +290,14 @@
       "routes": [
         "POST /v1/orgs/{org_id}/fleet/assets/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/read",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list",
         "POST /v1/orgs/{org_id}/fleet/assignments/mine/list"
       ],
@@ -302,10 +305,16 @@
     },
     {
       "permission": "fleet.reservation.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Fleet domain values exist; fleet storage and operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/request",
+      "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/create",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/{block_id}/remove",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/request",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/{reservation_id}/cancel",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/{reservation_id}/confirm"
+      ],
+      "reason": ""
     },
     {
       "permission": "fleet.supplier.manage",

@@ -132,7 +132,7 @@ assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
 (EMP-OFFL-006), the app picker (EMP-FLEET-013) and driver eligibility (EMP-IDN-014).
 
 ### EMP-FLEET-007 — Reservations, blocks and derived availability
-- **Meta:** module FLEET · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module FLEET · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Let managers hold an asset for planned work or block it, and give every screen one derived answer to "can this asset start an operation now", instead of a typed status that goes stale.
 - **Rules and use cases:** BR-FLEET-014, BR-FLEET-025, BR-FLEET-027, BR-FLEET-028, BR-FLEET-029, BR-FLEET-030, BR-FLEET-031, BR-FLEET-032, UC-FLEET-06, UC-FLEET-07
 - **Depends on:** EMP-FLEET-006
@@ -146,6 +146,18 @@ assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API, V-JOB · migration: additive tables · rollback: capability flag off; starts are then checked against lifecycle and active trips only
 - **Risks and assumptions:** The matrix in the permissions document has no row for `fleet.reservation.manage`; the roles assumed in the specification must be confirmed first. Port adapters for trips and maintenance decide how complete the answer is.
 - **Done when:** Every row of the availability table and of the reservation transition table has a passing test.
+
+EMP-FLEET-007 LOCAL_DONE (pending integration): org-permissions-v5 grants
+`fleet.reservation.manage` (EDR-190); migration 000217 adds forced-RLS
+reservations (guarded §6.4 transitions, CONFIRMED exclusion, block overlap
+refused), blocks and receipts, cancels open reservations when an asset leaves
+service, and eight routes (request/confirm/cancel, block/remove, lists and the
+availability read). Outcomes are derived at read time, settled by a
+per-reservation job and before every reservation command. Trips and maintenance
+holds answer "no source" (`missing_sources`); the start decision and port are
+ready for EMP-TRIP-002. Retained: mission linkage and FULFILLED (EMP-TRIP-023),
+notifications, configurable tolerance, the calendar (EMP-TRIP-022).
+[Evidence](../evidence/f4-fleet007-reservations-availability.md).
 
 ### EMP-FLEET-008 — Transfer between units with an effective date
 - **Meta:** module FLEET · phase F2 · cut - · priority P2 · type API · size S · state TODO

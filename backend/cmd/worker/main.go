@@ -1016,6 +1016,14 @@ func run() error {
 		handlers[handler.Kind()] = handler
 		nativeKinds = append(nativeKinds, handler.Kind())
 	}
+	// EMP-FLEET-007: reservation outcomes run on the general dispatcher.
+	fleetHandlers, err := fleetWorkerHandlers(cfg.EnterpriseEnabled, raw)
+	if err != nil {
+		return err
+	}
+	for _, handler := range fleetHandlers {
+		handlers[handler.Kind()] = handler
+	}
 	// EMP-DOC-014: no document bucket is configured here, as in cmd/api.
 	documentHandlers, err := documentWorkerHandlers(workerDocumentConfig{Enabled: cfg.EnterpriseEnabled, Pool: raw})
 	if err != nil {
