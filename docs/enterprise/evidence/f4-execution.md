@@ -445,3 +445,49 @@ disposable MinIO over 20 package roots: 53 packages, 52 pass, 1336 top-level /
 10152 named, 25.7 min (`organization/adapters` 1393 s); the only failures are
 the 5 known Rust-preparer-gated `cmd/worker` tests
 (`f4-logs/coord-union-6a843325.jsonl`).
+
+### EMP-CHECK-001 — checklist templates per asset category: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-check001-checklist-templates.md), commit `256fa3ea`
+(reassigned from the FLEET-011 agent, whose context ran out before starting
+it). New `maintenance` module: pure `domain/checklist` (template definition,
+critical-item policy, answer/outcome rule, applicable-template resolution and
+policy-in-force lookup) mirrored in Kotlin
+`com.anpfuel.domain.enterprise.maintenance.checklist` over the 127-case
+`checklist/checklist-v1.psv` oracle (error codes `INVALID`,
+`ANSWER_NOT_ALLOWED`, `PHOTO_REQUIRED`, `INCOMPLETE`). Migration 000223: six
+forced-RLS tables — a guarded template head (fixed context; publish, policy
+change and archive each bump the single revision under the organization root
+lock), insert-only versions, items, targets, policy revisions and receipts; a
+deferred check closes each committed version and refuses a target already
+named by another ACTIVE template of the same context; only ACTIVE/INACTIVE
+assets can be targets. Seven routes: create, publish, policy and archive under
+fresh `check.template.manage` (ORG coverage only), template list/read under
+`check.template.manage`, and `checklists/assets/{asset_id}/applicable` under
+`fleet.asset.read` resolving asset → category → organization default and
+returning only the version and policy revision a run pins (EDR-213..215; the
+applicable read is a positive AUDITOR route because AUDITOR holds
+`fleet.asset.read`). RED Go 6/7 top-level and 127/127 vectors, Kotlin 132/133,
+PostGIS 6/6 twice, router 3, contract 18 subtests → GREEN Go 8/127 (100%),
+Kotlin 133/133, PostGIS 6/6, contract 2/46; matrix 230 cells (88/142); union
+16 packages 794/5785, 0 failures. Retained: checklist runs and their server
+recheck (CHECK-002), the trip gate (TRIP-019), the reference-feed extension
+(OFFL-006 entity type), template events, policy-history/version reads, panel
+(CHECK-004), production grants.
+
+Integration (`08b3e37c`): 000223 redefined `org_asset_current_usage` from the
+000217 body and runs after 000220/000222, so it would have dropped the trip,
+held-start and attachment lines; its body is now the 000222 body plus the
+checklist target line. Route counts merged to 131 normal (23 routed / 61 not
+routed, 25 special) and the auditor walk to 131 / 30 positive / 101 FORBIDDEN;
+both matrix fixtures keep the attachment store and add the checklist grants;
+the quick manifest lists both trip and maintenance packages. Build, vet, gofmt,
+`sqlc diff`, `cmd/api`, apicontract and maintenance unit tests green; Kotlin
+enterprise domain suite on the merged tree 2813 tests, 0 failures
+(`f4-logs/coord-kotlin-08b3e37c.log`).
+Merged-tree union on `08b3e37c` (adds `maintenance`): 57 packages, 56 pass,
+1361 top-level / 10504 named, 40 min (`organization/adapters` 2212 s under
+load); the only failures are the 5 known Rust-preparer-gated `cmd/worker`
+tests (`f4-logs/coord-union-08b3e37c.jsonl`); untagged `go test ./...` and
+whole-backend staticcheck clean (`coord-untagged-08b3e37c.log`,
+`coord-staticcheck-08b3e37c.log`).
