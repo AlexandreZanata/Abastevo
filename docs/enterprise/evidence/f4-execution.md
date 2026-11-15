@@ -1034,3 +1034,36 @@ merged tree domain 4002, application 664, data 195, app 23 tests, 0 failures,
 `:app:assembleDebug` (`f4-logs/coord-android-offl005-merged.log`); proposed
 shared text applied (10-offline-sync §10.3, data and backend READMEs,
 documents.md, 09-architecture).
+
+### EMP-TRIP-011 — pause, resume and cancellation: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip011-pause-resume-cancel.md), commit `4bc35660`, migration
+000233 (redefines nine trip/mission functions from their latest bodies:
+the 000220 completion guard, finish source/apply, publication and held
+source; the 000229 logbook, held-logbook and review-source functions; the
+000232 mission-vehicle source). Signed `trip.pause`, `trip.resume` and
+`trip.cancel` name the expected trip revision (1 after start, +1 per pause,
+resume, cancel or finish) and carry only a `reason` (required for cancel);
+IN_PROGRESS ↔ PAUSED, either → CANCELLED (reason) or COMPLETED; a closed trip
+holds `TRIP_ALREADY_CLOSED`, a stale revision or disallowed state holds
+`STALE_REVISION`, wrong shape / cancel without reason / instant before start
+is `MALFORMED`, another member `FORBIDDEN`, an undelivered or foreign trip
+`RETRY`/`DEPENDENCY_PENDING`; replay byte for byte. A paused trip keeps its
+asset; a cancelled trip frees it at the cancellation, keeps prior facts,
+reports `NOT_MEASURED`/`CANCELLED` (no fabricated distance) and closes its
+logbook (EDR-252/253). The logbook PAUSE/RESUME/CANCEL types still answer
+RETRY/UNAVAILABLE (device vectors unchanged). New 297-case `trip-v2.psv`
+replaces `trip-v1` for both languages. RED Go 5/26 top-level and 96/297
+vectors, Kotlin 99/865, PostGIS 6/6 → GREEN Go 26/809 (100%), Kotlin 865,
+PostGIS 6/16; union 33 packages 1193/8331. Pre-233 upgrade rehearsals use an
+opt-out `PreLifecycleImage` flag (production default false). Retained:
+Android builders (TRIP-021), supervisor cancel/close (TRIP-014), held-command
+resolution (TRIP-007), panel timeline (TRIP-006), production grants.
+EMP-TRIP-012 was not attempted (context); its IDs (394..398 / 199..201 /
+254..256, migration 000234) stay reserved with the agent's design notes in
+the coordinator notes.
+
+Integration (`bc438c2b`): contract and EDR table conflicted; build, vet (both
+tags), gofmt, `sqlc diff`, cmd/api, apicontract (11 signed owners), trip,
+tracking and orgsync unit tests and the Kotlin enterprise domain suite (4094
+tests) green.
