@@ -10,7 +10,8 @@ One bounded F4 API task (module CHECK, P1, size M) on
 based on the F4 integration head `22c521b2` (CHECK-001 `maintenance` module,
 TRIP-001..004, DOC-002/003/014, PRIV-005, catalog v5) and then merged with the
 F4 heads carrying EMP-FLEET-013 and EMP-TRIP-008, then EMP-TRIP-016 and
-EMP-TRIP-015 (section "Merged-tree validation"). The coordinator integrates it into `codex/enterprise-f4` and owns
+EMP-TRIP-015, then the PR #222 storage fix (section "Merged-tree
+validation"). The coordinator integrates it into `codex/enterprise-f4` and owns
 PROGRESS, the F4 ledger, pushes and the PR. Synthetic data only; no real photo,
 person, plate or place.
 
@@ -352,6 +353,19 @@ On this merged tree:
 - `check_plan.py` 0 problems (348 tasks, 545 rules, 167 use cases, 145
   screens); `git diff --check` clean; gitleaks over the branch commits since
   `22c521b2`: no leaks.
+
+### Third merge: F4 head `25e8b6d6` (PR #222 storage replay fix)
+
+The F4 head then took the `main` storage fix (conditional PUT replayed once
+after a stale connection; two files in `evidence/adapters/storage`, outside
+this task) and merged without conflict. On that tree: toolchain gofmt empty,
+`go build ./...`, `go vet` (both tags) on evidence, document and orgmedia,
+staticcheck (both tags) on the storage package clean; `go test -race
+-tags=integration -count=1 -p 2` on `evidence/adapters/storage`, `document`
+and `orgmedia` with PostGIS and the coordinator MinIO
+(`check003-storage-merge3.jsonl`): 9 packages, 124 top-level / 622 subtests
+pass, 0 failures, 0 skips. The full union was not repeated for this
+two-file delta that no CHECK-003 code calls.
 
 ## Retained
 
