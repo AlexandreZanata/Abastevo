@@ -163,7 +163,7 @@ and the panel remain EMP-TRIP-015/006.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-008 — Missions: create, assign, accept and decline
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Create and assign missions with a clear accept or decline outcome.
 - **Rules and use cases:** REQ-07.1, REQ-07.2, BR-AUTH-001, BR-REV-001
 - **Depends on:** EMP-TRIP-002
@@ -177,6 +177,17 @@ and the panel remain EMP-TRIP-015/006.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 missions](../evidence/f4-trip008-missions.md) are LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. Pure mission domain shared with Kotlin
+through `mission-v1.psv`; migration 000227 (guarded head, insert-only
+transitions and receipts). Company routes under `trip.mission.manage` create
+(DRAFT), list, read, assign (eligible `trip.trip.start` member, FLEET-007
+start decision as a warning only) and cancel with revision CAS; the own list
+under `trip.trip.start`; the assignee answers offline through the signed
+`trip.mission.respond`, decided on current facts at receipt (FORBIDDEN,
+NOT_FOUND, CONFLICT store nothing). No response starts a trip; the trip link,
+planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 
 ### EMP-TRIP-009 — Manager-planned trips: destination, reason, customer or project, cargo or passengers
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO

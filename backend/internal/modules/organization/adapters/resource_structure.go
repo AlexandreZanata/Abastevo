@@ -32,6 +32,9 @@ const (
 	// centre it stored at the start, and the teams whose links covered its
 	// author or driver at the start receipt (EMP-TRIP-004, EDR-222).
 	TripStructure
+	// MissionStructure: a stored mission resolves to the unit and the
+	// optional asset it names (EMP-TRIP-008, EDR-231).
+	MissionStructure
 )
 
 // ResourceStructure is the EMP-AUTH-006 structural scope lookup for one
@@ -64,6 +67,9 @@ const tripStructure = `SELECT t.asset_id::text,COALESCE(t.unit_id::text,''),COAL
  COALESCE((SELECT array_agg(DISTINCT l.team_id::text) FROM org_team_links l WHERE l.org_id=t.org_id AND l.employee_id IN(t.author_employee_id,t.driver_employee_id)
   AND l.started_at<=t.received_at AND(l.ended_at IS NULL OR l.ended_at>t.received_at)),'{}'::text[])
 FROM org_trips t WHERE t.org_id=$1 AND t.id=$2`
+
+// missionStructure reads the mission's immutable unit and asset.
+const missionStructure = `SELECT unit_id::text,COALESCE(asset_id::text,'') FROM org_trip_missions WHERE org_id=$1 AND id=$2`
 
 func (r *ResourceStructure) ResolveStructure(ctx context.Context, scope kernel.OrgScope, policy access.Policy, facts permissions.ResourceFacts, at time.Time) (permissions.ResourceFacts, error) {
 	if r == nil || r.Pool == nil {
@@ -127,6 +133,13 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 		}
 		slices.Sort(teams)
 		out.Teams = teams
+	case r.Kind == MissionStructure && policy.Permission == "trip.mission.manage":
+		if err := tx.QueryRow(ctx, missionStructure, scope.OrgID().String(), facts.ID).Scan(&out.UnitID, &out.AssetID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return permissions.ResourceFacts{}, errStructureNotFound
+			}
+			return permissions.ResourceFacts{}, org.ErrUnavailable
+		}
 	case r.Kind == TripStructure && policy.Permission == "trip.trip.review":
 		var teams []string
 		if err := tx.QueryRow(ctx, tripStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {

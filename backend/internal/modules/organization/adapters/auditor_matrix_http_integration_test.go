@@ -53,6 +53,7 @@ func auditorRouter(t *testing.T, fx deviceFixtureState) (chi.Router, *jobs.Dispa
 	grantEmployeeTables(t, fx.legalFixtureState)
 	_ = attachmentStore(t, fx.legalFixtureState)
 	grantChecklistTables(t, fx.legalFixtureState)
+	grantMissionTables(t, fx.legalFixtureState)
 	_ = meterStore(t, fx.legalFixtureState)
 	fx.f.GrantMeterReviews(t)
 	fx.f.GrantMembershipAccessCommands(t)
@@ -458,7 +459,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 134 || positive != 30 || denied != 104 {
+	if len(routes) != 140 || positive != 30 || denied != 110 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 
