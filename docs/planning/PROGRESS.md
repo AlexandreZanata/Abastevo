@@ -1,13 +1,18 @@
 # Current execution state
-- Enterprise F4, 2026-11-15: IN_PROGRESS on owned `codex/enterprise-f4` from
-  `origin/dev` `8c2ee654` (= open F3 PR #221 head; F4 reaches `dev` only after
-  #221 merges). [F4 ledger](../enterprise/evidence/f4-execution.md) reconciles
-  38 tasks: none in source; 6 ready (OFFL-009/011/012, FLEET-007, FLEET-011,
-  CHECK-001), 32 blocked behind the open C1 trip chain TRIP-001..005, METER-003/
-  004 and, for every GPS task and REL-005, EMP-GOV-005 (legal review pending)
-  and EMP-GOV-006 (target-device spike). EDR-196: wave 1 TRIP-001 → TRIP-017,
-  METER-003 → METER-004, catalog v5 → FLEET-007, then TRIP-002..004 and the F4
-  trip APIs. No M4/F4 acceptance is claimed.
+- Enterprise F4, 2026-11-15: batch checkpoint LOCAL_DONE / INTEGRATION_PENDING
+  on owned `codex/enterprise-f4` (Claude Code), merged with `origin/dev`
+  `82a5f97e` and `origin/main` `a0b72533` after PRs #221/#222.
+  [F4 ledger](../enterprise/evidence/f4-execution.md) (EDR-196). Delivered: F2/C1
+  prerequisites TRIP-001..005, METER-003/004, OFFL-006, FLEET-013; F4 tasks
+  TRIP-017, FLEET-007 (+ `org-permissions-v5`), FLEET-011, OFFL-009/012,
+  CHECK-001/003, TRIP-008, TRIP-015/016 (10 of 38). Not done: 28 F4 tasks —
+  GPS-001..015 and REL-005 (M4 gate) blocked by EMP-GOV-005/006; TRIP-009/013
+  in progress on their own branch; TRIP-007/010/011/012/014/018..023,
+  OFFL-011/013, ROUTE-004, CHECK-002/004 open. No M4/F4 acceptance is claimed.
+  Final local gates on `bff5a788`: `check-backend-fast.sh` and `make
+  quick-verify` pass; merged-tree unions green except the 5 known Rust-CLI
+  `cmd/worker` tests. Delivered through one cumulative dev → main PR.
+  [Batch checkpoint](../enterprise/evidence/f4-execution.md#batch-checkpoint--2026-11-15).
 
 - Enterprise F3, 2026-11-14: IN_PROGRESS on owned `codex/enterprise-f3` from
   merged main/dev `43b21389` (Claude Code). [F3 ledger](../enterprise/evidence/f3-execution.md)

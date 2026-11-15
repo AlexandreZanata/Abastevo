@@ -837,3 +837,51 @@ tests green; Android host suites domain 3461, application 656, data 183, app
 23 tests, 0 failures, and `:app:assembleDebug`
 (`f4-logs/coord-android-trip005-merged.log`); the proposed 10-offline-sync
 §10.3 and data README text is applied.
+
+## Batch checkpoint — 2026-11-15
+
+Status of this construction batch (all **LOCAL_DONE / INTEGRATION_PENDING**;
+none is INTEGRATED, RELEASE_CERTIFIED or an M4 acceptance):
+
+- F2 / cut C1 prerequisites closed for F4 (9): EMP-TRIP-001, EMP-TRIP-002,
+  EMP-TRIP-003, EMP-TRIP-004, EMP-TRIP-005, EMP-METER-003, EMP-METER-004,
+  EMP-OFFL-006, EMP-FLEET-013.
+- F4 tasks done here (10 of 38): EMP-TRIP-017, EMP-FLEET-007, EMP-FLEET-011,
+  EMP-OFFL-009, EMP-OFFL-012, EMP-CHECK-001, EMP-CHECK-003, EMP-TRIP-008,
+  EMP-TRIP-015, EMP-TRIP-016; plus the `org-permissions-v5` catalog amendment
+  and the implement × trip-start wiring (EDR-219).
+- Batch fixes: untimed slog redaction checks, canonical reference cursors,
+  SUSPECT embedded trip readings accepted, readings of approved trips routed
+  through reviewed amendments.
+
+Not done and retained (28 F4 tasks):
+
+- Blocked by governance: EMP-GPS-001, 002, 003, 004, 005, 006, 010, 012, 015
+  and the M4 gate EMP-REL-005 — EMP-GOV-005 (legal review with human
+  reviewers) and EMP-GOV-006 (tracking spike on target devices; the physical
+  phone is excluded and an emulator is not a target device).
+- In progress on `codex/enterprise-f4-trip009` (not in this delivery):
+  EMP-TRIP-009, EMP-TRIP-013.
+- Open: EMP-TRIP-007, 010, 011, 012, 014, 018, 019, 020 (needs FUEL-011 and
+  EXP-004), 021, 022, 023; EMP-OFFL-011, EMP-OFFL-013 (needs OFFL-005);
+  EMP-ROUTE-004; EMP-CHECK-002, EMP-CHECK-004.
+- Per-task retained obligations (production grants including TRIP-002's,
+  held-item resolution, panel screens, the author's own trip review-result
+  read, OWED two-physical-device and visual/TalkBack checks) are in each
+  task's evidence and log entry above.
+
+Final local gates on `bff5a788` (the delivered code; later commits are
+record-only): `scripts/check-backend-fast.sh` exit 0 (gofmt, build/vet/unit
+tests, whole-backend staticcheck, sqlc vet/diff, OpenAPI lint 0 errors,
+tracked and changed-file secret scans) and `make quick-verify` exit 0
+(govulncheck "No vulnerabilities found", mobile static guards including no
+background location tracking in shipped sources), logs
+`f4-logs/coord-check-backend-fast-bff5a788.log` and
+`coord-quick-verify-bff5a788.log`. Merged-tree race/integration unions on
+each integration head are recorded above (latest full coordinator union on
+`3345865b`; the TRIP-015/016, CHECK-003 and TRIP-005 agents ran their unions
+on merged trees including every earlier head); the only failures anywhere are
+the 5 `cmd/worker` tests needing pinned Rust preparer CLIs (CI builds them)
+and the `orgmedia` S3 flake fixed by PR #222. Android host suites on the final
+code: domain 3461, application 656, data 183, app enterprise 23 tests, 0
+failures; native acceptance only on `emulator-5588`.
