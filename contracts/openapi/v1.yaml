@@ -32506,6 +32506,7 @@ components:
       required:
       - account_id
       - organization
+      - employee_id
       - permissions
       - invitation_grants
       - invitation_validity_days
@@ -32514,6 +32515,12 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         organization:
           $ref: '#/components/schemas/EnterpriseAccountContext'
+        employee_id:
+          allOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          description: The requesting membership's own employee record (immutable for that membership, EDR-054). The
+            Android app writes it only as the driver of its own trip.start (EMP-TRIP-005, EDR-244); it grants nothing
+            and the list never carries it.
         permissions:
           type: array
           uniqueItems: true
@@ -32538,6 +32545,7 @@ components:
       example:
         account_id: 7b0e2a54-0000-4000-8000-000000000101
         organization: {id: 7b0e2a54-0000-4000-8000-000000000001, name: Synthetic company, membership_id: 7b0e2a54-0000-4000-8000-000000000601}
+        employee_id: 7b0e2a54-0000-4000-8000-000000000501
         permissions:
         - idn.employee.read
         invitation_grants: []

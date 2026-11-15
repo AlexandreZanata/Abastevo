@@ -22,6 +22,11 @@ import com.anpfuel.application.enterprise.queue.EnterpriseReviewTransport
 import com.anpfuel.application.enterprise.sync.EnterpriseDeliveryActivity
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncFlow
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncStatusStore
+import com.anpfuel.application.enterprise.trip.EnterpriseTripProducers
+import com.anpfuel.application.enterprise.trip.EnterpriseTripService
+import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
+import com.anpfuel.application.enterprise.trip.EnterpriseTripStore
+import com.anpfuel.application.enterprise.trip.TripFlow
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.data.enterprise.*
@@ -29,6 +34,7 @@ import com.anpfuel.data.enterprise.fleet.EnterpriseReferenceHttpClient
 import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
+import com.anpfuel.data.enterprise.trip.ProtectedTripStore
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
 import com.anpfuel.domain.enterprise.sync.SyncLimits
@@ -38,6 +44,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import java.io.File
+import java.time.ZoneId
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
@@ -207,10 +214,36 @@ object EnterpriseModule {
     fun myAssetsFlow(@ApplicationContext context: Context, source: EnterpriseQueueSource, service: EnterpriseReferenceService,
         fence: EnterpriseSessionFence): MyAssetsFlow = MyAssetsFlow(source, service, fence, AndroidEnterpriseDeviceClock(context)::read)
 
-    /** Owning offline business producers must be accepted separately before registration. */
+    /** In-memory start labels for the trip producers; never persisted elsewhere or used as authority (EDR-242). */
     @Provides
     @Singleton
-    fun queueRegistry(): EnterpriseQueueRegistry = EnterpriseQueueRegistry()
+    fun tripStartHints(): EnterpriseTripStartHints = EnterpriseTripStartHints()
+
+    /**
+     * Owning offline business producers are registered only after their own acceptance: the four EMP-TRIP-005
+     * `trip.*` producers (EDR-242) are the first. Their queued work keeps its delivery whatever the UI flag says.
+     */
+    @Provides
+    @Singleton
+    fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry = EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints))
+
+    /** The sealed trip book and the entries it names, never a plaintext table (EDR-242). */
+    @Provides
+    @Singleton
+    fun tripStore(store: ProtectedEnterprisePersistence): EnterpriseTripStore = ProtectedTripStore(store)
+
+    @Provides
+    @Singleton
+    fun tripService(@ApplicationContext context: Context, source: EnterpriseQueueSource, delivery: EnterpriseQueueService,
+        store: EnterpriseTripStore, hints: EnterpriseTripStartHints): EnterpriseTripService = EnterpriseTripService(
+        source, { partition, operation -> delivery.save(partition, operation) }, store, hints,
+        AndroidEnterpriseDeviceClock(context)::read, { ZoneId.systemDefault() },
+    )
+
+    /** Each visible trip owner is independent, like "Meus ativos"; "Enviar agora" is one dispatch of its partition. */
+    @Provides
+    fun tripFlow(source: EnterpriseQueueSource, service: EnterpriseTripService, fence: EnterpriseSessionFence,
+        delivery: EnterpriseQueueService): TripFlow = TripFlow(source, service, fence) { account, partition -> delivery.dispatch(account, partition) }
 
     @Provides
     @Singleton

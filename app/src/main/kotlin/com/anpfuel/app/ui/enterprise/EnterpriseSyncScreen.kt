@@ -301,7 +301,7 @@ private fun itemStatusText(item: EnterpriseSyncItem, sending: Boolean): Int = wh
     null -> statusText(EnterpriseSyncProjection.status(item, sending))
 }
 
-private fun statusText(status: EnterpriseSyncStatus): Int = when (status) {
+internal fun statusText(status: EnterpriseSyncStatus): Int = when (status) {
     EnterpriseSyncStatus.SAVED_ON_DEVICE -> R.string.enterprise_sync_saved
     EnterpriseSyncStatus.SENDING -> R.string.enterprise_sync_sending
     EnterpriseSyncStatus.SENT -> R.string.enterprise_sync_sent
@@ -310,7 +310,7 @@ private fun statusText(status: EnterpriseSyncStatus): Int = when (status) {
     EnterpriseSyncStatus.REJECTED -> R.string.enterprise_sync_rejected
 }
 
-private fun reasonText(code: String): Int = when (code) {
+internal fun reasonText(code: String): Int = when (code) {
     "ORPHAN_REFERENCE" -> R.string.enterprise_sync_reason_orphan
     "ACCESS_ENDED_BEFORE_RECEIPT" -> R.string.enterprise_sync_reason_access_ended
     "PERMISSION_CHANGED" -> R.string.enterprise_sync_reason_permission_changed

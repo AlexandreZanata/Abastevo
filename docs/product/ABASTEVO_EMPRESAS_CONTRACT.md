@@ -6229,3 +6229,110 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   with self-approval, stale and locked refusals, two proposals racing in
   both orders, the METER-004 refusal, the database guards and a populated
   upgrade with injected failure and recovery.
+
+## EMP-TRIP-005 — App: start a trip, log events and finish, offline first (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip005-app-trip.md).
+
+- **B-BR-EMP-375 — A trip is four signed operations sealed to their creation
+  partition.** The app records a driver-initiated trip only as the frozen
+  schema 1 operations of EMP-TRIP-002/003/004 with their exact payloads:
+  `trip.start` (entity `trip`, the device trip UUID; the asset chosen in the
+  FLEET-013 picker, the member's own employee record as driver, the departure
+  reading — meter, its open segment, a new reading UUID, kind and exact value
+  in base units — or a stated absence reason, and the run clock; no
+  dependency), `trip.event.record` (entity `trip_event`; `NOTE` with a text,
+  `STOP`, `ARRIVAL` or `DEPARTURE` with an optional text; depends on the
+  start), `trip.finish` (the final reading or a stated absence and the run
+  clock; depends on the start) and `trip.submit` (entity `trip_review` with
+  `expected_revision` 1 and the empty payload; depends on the finish). Each
+  envelope carries the account, API origin, organization, membership and
+  enrollment of the exact enrollment that created it (BR-OFFL-003); switching
+  to personal mode or another organization never rewrites, moves or hides
+  them, and they keep being delivered to their own organization in the
+  background. Reserved logbook types, attachments and soft references are
+  never produced.
+- **B-BR-EMP-376 — "Salvo no aparelho" only after a durable write.** The
+  operation and the trip's local index are committed together in one
+  protected write of the creation partition (EMP-PRIV-003 generation) before
+  the screen reports the record as saved; when the write fails the screen
+  says that nothing was saved and shows no new record. The local index is one
+  sealed record per partition (versioned `trip-book` format) listing each
+  trip's asset label, departure instant, the identifiers of its start,
+  events, finish and submission, and whether the start was finally refused;
+  a process death leaves either both or neither. After a restart the
+  creation partition shows the same trips and records; another account,
+  origin or organization never reads them.
+- **B-BR-EMP-377 — Local eligibility is checked on the device and decides
+  nothing on the server.** Before queueing, the app refuses: a start for an
+  asset that already has an unfinished trip of this partition on this device
+  (the first one must be finished; a trip whose start the server finally
+  refused no longer counts); an event, a finish or "ready to send" on a trip
+  that is not in the required local state (events and the finish only while
+  unfinished and not refused, the finish once, "ready to send" once and only
+  after the finish); and an event or finish declared before the trip's start
+  instant (the device clock went back; the EMP-TRIP-001/003 order rules).
+  The server still decides every fact as if no device rule existed:
+  `ASSET_BUSY` between devices, availability and permissions are its
+  outcomes.
+- **B-BR-EMP-378 — Declaration and run clock come from the device, never
+  invented.** Each record declares the device wall instant, the device time
+  zone when it is an accepted zone identifier (otherwise `UTC`) and the
+  device offset at that instant. The start and the finish carry the run clock
+  read from the same source as the protected lease clock: the boot identity
+  and the elapsed real time in milliseconds since that boot. When the clock
+  cannot be read the run clock is absent; nothing is estimated.
+- **B-BR-EMP-379 — Acceptance follows each record's own receipt.** The
+  timeline shows the start, each event in occurrence order and the finish,
+  each with its own sync state from its own retained queue entry: "Salvo no
+  aparelho" without a final receipt, "Aceito pela empresa" only after an
+  `ACCEPTED` receipt (or an accepted review resolution), "Precisa de revisão"
+  with the reason for an `ACCEPTED_FOR_REVIEW` receipt (`ASSET_BUSY`,
+  `ASSET_UNAVAILABLE`, `TRIP_ALREADY_CLOSED`, `PERMISSION_CHANGED` and the
+  other review codes) and "Não aceito" with the reason for a refusal. The
+  trip's operational line is local ("Em andamento", "Encerrada no aparelho")
+  and never claims a server state. The review line shows only what a receipt
+  proves: "Pronto para enviar" while the submission waits, "Aguardando
+  aprovação" after its `ACCEPTED` receipt; approval, return or rejection are
+  never shown or inferred. When the start needs review or was refused, the
+  trip says that its other records wait for, or depend on, that outcome. A
+  start or finish whose reading the METER-003 validator keeps aside as
+  `SUSPECT` is accepted like any other: the warning belongs to the reading
+  (B-BR-EMP-280..285) and never holds the trip's own record back.
+- **B-BR-EMP-380 — The member's own employee record identifier.** The
+  context read of the selected organization (`/v1/org-access/contexts/read`)
+  also returns `employee_id`, the employee record of the requesting
+  membership, which never changes for that membership (EDR-054). The app
+  keeps it only in memory with the selected context and writes it only as
+  the driver of its own `trip.start`; it is never displayed and grants
+  nothing. Without it the start is unavailable and the app asks to confirm
+  the organization again.
+- **BUC-EMP-189 — Start a trip offline (UC-TRIP-01, UC-OFFL-01, JRN-06,
+  SCR-TRIP-01).** Actor: assigned driver in the selected organization. Main
+  flow: "Iniciar viagem" → choose the asset in the picker (cached assets,
+  warning for a not available or not confirmed one) → enter the departure
+  reading of an in-service meter or state why it is missing → save → the
+  trip appears in progress with its start "Salvo no aparelho".
+  Alternatives: the asset already has an unfinished trip here → refused with
+  the reason, nothing saved; the protected write fails → error, nothing
+  saved; the employee identifier is unknown → confirm the organization
+  again.
+- **BUC-EMP-190 — Log events, finish and mark ready to send.** Actor: the
+  same driver. Main flow: add `STOP`, `ARRIVAL`, `DEPARTURE` or a `NOTE` with
+  text → each appears in the timeline "Salvo no aparelho" → "Encerrar
+  viagem" with the final reading or its absence (a reading below the
+  departure or an implausible rate is warned, never blocked) → "Marcar
+  pronta para enviar" → when a connection exists the queue sends in
+  dependency order and each record changes only with its own receipt.
+  Alternatives: a held start (`ASSET_BUSY` from another member's device)
+  shows "Precisa de revisão" with the reason while its children wait;
+  process death at any step → the same timeline after restart.
+- **BUC-EMP-191 — Prove the producer.** One shared operation oracle
+  (`trip/trip-operations-v1.psv`) whose exact bytes the Kotlin builders
+  produce and the Go intake parsers accept or refuse identically; host tests
+  for the trip book, producers, service and flow, the protected store
+  format, partition isolation and process death; and native acceptance on
+  the owned API 36 emulator against an ordinary PostGIS signed intake:
+  offline start, events, finish and submission, process death, reconnection
+  with each record accepted exactly once, and a held start against another
+  member's earlier start on the same asset.

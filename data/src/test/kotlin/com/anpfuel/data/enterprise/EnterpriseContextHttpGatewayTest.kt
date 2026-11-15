@@ -101,6 +101,31 @@ class EnterpriseContextHttpGatewayTest {
         assertFalse(result.value.toString().contains("Synthetic"))
     }
 
+    /** EMP-TRIP-005 (B-BR-EMP-380, EDR-244): only the read names the member's own employee record, strictly. */
+    @Test fun `the context read carries the member's own employee identifier and refuses a malformed one`() = runBlocking {
+        val employee = "7b0e2a54-0000-4000-8000-000000000005"
+        val fixture = Fixture { request, index -> when (index) {
+            0 -> response(request, login().toString(), cookie = true)
+            1 -> response(request, page(listOf(metadata().put("employee_id", employee))).toString())
+            else -> response(request, read().put("employee_id", employee).toString())
+        } }
+        val binding = fixture.open()
+        val listed = (fixture.gateway.list(binding) as EnterpriseAccessResult.Ok).value.contexts.single()
+        assertNull(listed.employeeId, "a list entry never supplies the driver identity")
+        val selected = (fixture.gateway.read(binding, listed) as EnterpriseAccessResult.Ok).value
+        assertEquals(employee, selected.employeeId)
+        assertEquals(summary().copy(employeeId = employee), selected)
+        assertFalse(selected.toString().contains(employee))
+        // An older server without the field reads as unknown; a malformed value refuses the read.
+        val older = Fixture { request, index -> if (index == 0) response(request, login().toString(), cookie = true) else response(request, read().toString()) }
+        assertNull((older.gateway.read(older.open(), summary()) as EnterpriseAccessResult.Ok).value.employeeId)
+        for (bad in listOf(employee.uppercase(), "", "00000000-0000-0000-0000-000000000000", "synthetic")) {
+            val malformed = Fixture { request, index -> if (index == 0) response(request, login().toString(), cookie = true)
+                else response(request, read().put("employee_id", bad).toString()) }
+            error(EnterpriseAccessError.UNAVAILABLE, malformed.gateway.read(malformed.open(), summary()))
+        }
+    }
+
     @Test fun `empty scanned pages retain the forward cursor and the next request sends it exactly`() = runBlocking {
         val fixture = Fixture { request, index -> when (index) {
             0 -> response(request, login().toString(), cookie = true)

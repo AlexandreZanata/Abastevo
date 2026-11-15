@@ -1,5 +1,11 @@
 package com.anpfuel.app.ui.enterprise
 
+import com.anpfuel.app.ui.enterprise.trip.TripViewModel
+import com.anpfuel.application.enterprise.trip.EnterpriseTripService
+import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
+import com.anpfuel.application.enterprise.trip.TripFlow
+import com.anpfuel.data.enterprise.trip.ProtectedTripStore
+import java.time.ZoneId
 import android.content.Context
 import android.content.res.Configuration
 import android.view.ContextThemeWrapper
@@ -98,18 +104,20 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var contextModel: EnterpriseContextViewModel
             lateinit var syncModel: EnterpriseSyncViewModel
             lateinit var assetsModel: MyAssetsViewModel
+            lateinit var tripModel: TripViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
                 assetsModel = MyAssetsViewModel(graph.assetsFlow, graph.network, fence)
-                models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel)
+                tripModel = TripViewModel(graph.tripFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel); models.put("trips", tripModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
                     MaterialTheme { EnterpriseContextScreen({ personal = true }, { sourceCalls.incrementAndGet() },
-                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel) }
+                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel) }
                 }
             }
             awaitTag(option(graph.a))
@@ -214,17 +222,19 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var contextModel: EnterpriseContextViewModel
             lateinit var syncModel: EnterpriseSyncViewModel
             lateinit var assetsModel: MyAssetsViewModel
+            lateinit var tripModel: TripViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
                 assetsModel = MyAssetsViewModel(graph.assetsFlow, graph.network, fence)
-                models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel)
+                tripModel = TripViewModel(graph.tripFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel); models.put("trips", tripModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
-                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel) }
+                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel) }
                 }
             }
             fun names() = assetsModel.state.value.snapshot?.assets?.map { it.asset.name }
@@ -374,6 +384,9 @@ class EnterpriseSyncContextDeviceTest {
         private fun graphOnline() = online.value
         val assetsFlow = MyAssetsFlow(source, EnterpriseReferenceService(source, ProtectedReferenceCacheStore(store), referenceTransport, clock::read),
             fence, clock::read)
+        /** EMP-TRIP-005: the trip owner over the same protected store; no trip action runs in these methods. */
+        val tripFlow = TripFlow(source, EnterpriseTripService(source, delivery::save, ProtectedTripStore(store), EnterpriseTripStartHints(),
+            clock::read, { ZoneId.systemDefault() }), fence) { account, partition -> delivery.dispatch(account, partition) }
         fun asset(name: String): String = """{"id":"${UUID.randomUUID()}","revision":1,"kind":"VEHICLE","usage_basis":"DISTANCE","state":"ACTIVE","name":"$name","fleet_number":"SYN-1","plate":"","catalog":"fuel-products-v1","products":["DIESEL_S10"],"meters":[],"assignment":{"kind":"PRIMARY","valid_to":null}}"""
         lateinit var first: EnterpriseOperation
         lateinit var second: EnterpriseOperation

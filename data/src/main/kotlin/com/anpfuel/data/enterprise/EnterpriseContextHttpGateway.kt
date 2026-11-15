@@ -38,7 +38,7 @@ class EnterpriseContextHttpGateway(private val client: CompanyAccessClient) : En
             .put("membership_id", context.membershipId)), binding) { root ->
             summary(root.getJSONObject("organization"), binding).also {
                 if (it.partition != context.partition || it.membershipId != context.membershipId) throw BindingDenied()
-            }
+            }.copy(employeeId = employee(root))
         }
     }
 
@@ -46,6 +46,10 @@ class EnterpriseContextHttpGateway(private val client: CompanyAccessClient) : En
         EnterprisePartition.of(binding.accountId, binding.origin, value.strictString("id")),
         value.strictString("membership_id"), value.strictString("name"),
     )
+
+    /** EMP-TRIP-005 (B-BR-EMP-380): the member's own employee record, canonical when present; an older server omits it. */
+    private fun employee(root: JSONObject): String? =
+        if (!root.has("employee_id")) null else EnterprisePartition.requireId(root.strictString("employee_id"))
 
     private class BindingDenied : IllegalArgumentException("Enterprise context response unavailable")
 
