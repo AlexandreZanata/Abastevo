@@ -806,6 +806,7 @@ sql:
       - db/migrations/000201_organization_asset_lifecycle.sql
       - db/migrations/000220_organization_trips.sql
       - db/migrations/000227_organization_trip_missions.sql
+      - db/migrations/000231_organization_trip_mission_plans.sql
     gen:
       go:
         package: mission

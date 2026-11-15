@@ -50,7 +50,7 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"EnterpriseMissionCreateRequest", "EnterpriseMissionAssignRequest", "EnterpriseMissionCancelRequest", "EnterpriseMissionListRequest", "EnterpriseMissionReadRequest",
-		"EnterpriseMissionAck", "EnterpriseMissionPage", "EnterpriseMissionView", "EnterpriseTripMissionRespondPayload"} {
+		"EnterpriseMissionAck", "EnterpriseMissionPage", "EnterpriseMissionView", "EnterpriseTripMissionRespondPayload", "EnterpriseMissionPlanRequest", "EnterpriseMissionPlan"} {
 		schema := doc.Components.Schemas[name]
 		if schema == nil || schema.Value == nil || schema.Value.Example == nil {
 			t.Fatal("missing mission schema or explicit example", name)
@@ -91,6 +91,7 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 		prefix + "{mission_id}/read":   read,
 		prefix + "{mission_id}/assign": command,
 		prefix + "{mission_id}/cancel": command,
+		prefix + "{mission_id}/plan":   command,
 		prefix + "mine/list":           {"permission": "trip.trip.start", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
 	} {
 		operation := doc.Paths.Value(path).Post
@@ -121,6 +122,68 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 			if ValidateOrganizationRoutes(actual, document) == nil {
 				t.Fatal("mission authority/contract drift accepted", path)
 			}
+		}
+	}
+}
+
+// EMP-TRIP-009 (B-BR-EMP-382, EDR-249): the plan body is closed — a
+// destination is exactly a text or a unit, passengers carry only a count and
+// no identity field fits anywhere; the read projections carry the plan.
+func TestTripMissionPlanContractShapes(t *testing.T) {
+	doc := loadSpec(t)
+	request := doc.Components.Schemas["EnterpriseMissionPlanRequest"].Value
+	base := func(destination, load map[string]any) map[string]any {
+		return map[string]any{"schema_version": 1, "operation_id": "7b0e2a54-0000-4000-8000-000000008804", "revision": 1, "destination": destination, "reason": "Entrega", "load": load}
+	}
+	visit := func(v map[string]any) error {
+		raw, _ := json.Marshal(v)
+		var decoded map[string]any
+		if err := json.Unmarshal(raw, &decoded); err != nil {
+			return err
+		}
+		return request.VisitJSON(decoded)
+	}
+	text := map[string]any{"kind": "TEXT", "text": "Centro de distribuição Norte"}
+	unit := map[string]any{"kind": "UNIT", "unit_id": "7b0e2a54-0000-4000-8000-000000008102"}
+	for name, v := range map[string]map[string]any{
+		"text-cargo":      base(text, map[string]any{"kind": "CARGO", "description": "Peças"}),
+		"unit-passengers": base(unit, map[string]any{"kind": "PASSENGERS", "count": 999}),
+		"none":            base(text, map[string]any{"kind": "NONE"}),
+	} {
+		if err := visit(v); err != nil {
+			t.Fatal("a valid plan request is refused", name, err)
+		}
+	}
+	for name, v := range map[string]map[string]any{
+		"passenger-names":       base(text, map[string]any{"kind": "PASSENGERS", "count": 2, "names": []any{"Pessoa"}}),
+		"passenger-description": base(text, map[string]any{"kind": "PASSENGERS", "count": 2, "description": "Equipe"}),
+		"passenger-count-zero":  base(text, map[string]any{"kind": "PASSENGERS", "count": 0}),
+		"passenger-count-1000":  base(text, map[string]any{"kind": "PASSENGERS", "count": 1000}),
+		"cargo-with-count":      base(text, map[string]any{"kind": "CARGO", "description": "Peças", "count": 2}),
+		"cargo-without-text":    base(text, map[string]any{"kind": "CARGO"}),
+		"unknown-load":          base(text, map[string]any{"kind": "BOTH"}),
+		"both-destinations":     base(map[string]any{"kind": "TEXT", "text": "X", "unit_id": "7b0e2a54-0000-4000-8000-000000008102"}, map[string]any{"kind": "NONE"}),
+		"coordinates":           base(map[string]any{"kind": "TEXT", "text": "X", "latitude": -15.6}, map[string]any{"kind": "NONE"}),
+		"customer-person": func() map[string]any {
+			v := base(text, map[string]any{"kind": "NONE"})
+			v["customer_name"] = "Pessoa"
+			return v
+		}(),
+		"missing-reason": func() map[string]any { v := base(text, map[string]any{"kind": "NONE"}); delete(v, "reason"); return v }(),
+		"missing-revision": func() map[string]any {
+			v := base(text, map[string]any{"kind": "NONE"})
+			delete(v, "revision")
+			return v
+		}(),
+	} {
+		if visit(v) == nil {
+			t.Fatal("an invalid plan request was admitted", name)
+		}
+	}
+	for _, name := range []string{"EnterpriseMissionView", "EnterpriseMissionItem"} {
+		plan := doc.Components.Schemas[name].Value.Properties["plan"]
+		if plan == nil || plan.Ref != "#/components/schemas/EnterpriseMissionPlan" {
+			t.Fatal("mission projection without the plan", name)
 		}
 	}
 }

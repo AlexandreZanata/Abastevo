@@ -28,15 +28,16 @@ const MissionTargetType = "trip_mission"
 
 var missionActions = map[app.MissionCommandKind]string{
 	app.MissionCreate:        "trip.mission.created",
+	app.MissionPlanCommand:   "trip.mission.planned",
 	app.MissionAssignCommand: "trip.mission.assigned",
 	app.MissionCancelCommand: "trip.mission.cancelled",
 }
 
 // MissionAuditDefinitions registers one action per company command kind
-// (B-BR-EMP-358); responses are audited by their intake receipt.
+// (B-BR-EMP-358, B-BR-EMP-385); responses are audited by their intake receipt.
 func MissionAuditDefinitions() []audit.Definition {
 	out := []audit.Definition{}
-	for _, kind := range []app.MissionCommandKind{app.MissionCreate, app.MissionAssignCommand, app.MissionCancelCommand} {
+	for _, kind := range []app.MissionCommandKind{app.MissionCreate, app.MissionPlanCommand, app.MissionAssignCommand, app.MissionCancelCommand} {
 		out = append(out, audit.Definition{Action: missionActions[kind], TargetType: MissionTargetType})
 	}
 	return out
@@ -256,7 +257,62 @@ func (s *MissionStore) create(ctx context.Context, queries *q.Queries, scope ker
 	return app.MissionAck{MissionID: mission, Revision: 1, State: trip.MissionDraft}, nil
 }
 
-// change applies ASSIGN or CANCEL to the locked head through the pure rules.
+// planInput resolves the plan's unit and cost centre of the organization
+// (else not found; archived is ineligible) and builds the domain input
+// (EMP-TRIP-009, B-BR-EMP-382).
+func planInput(ctx context.Context, queries *q.Queries, scope kernel.OrgScope, p app.MissionPlanFields) (trip.PlanInput, error) {
+	org := scope.OrgID().String()
+	for _, ref := range []struct {
+		id   string
+		read func() (string, error)
+	}{
+		{p.DestinationUnitID, func() (string, error) {
+			return queries.MissionUnitState(ctx, q.MissionUnitStateParams{OrgID: org, ID: p.DestinationUnitID})
+		}},
+		{p.CostCentreID, func() (string, error) {
+			return queries.MissionCostCentreState(ctx, q.MissionCostCentreStateParams{OrgID: org, ID: p.CostCentreID})
+		}},
+	} {
+		if ref.id == "" {
+			continue
+		}
+		state, err := ref.read()
+		if errors.Is(err, pgx.ErrNoRows) {
+			return trip.PlanInput{}, app.ErrNotFound
+		}
+		if err != nil {
+			return trip.PlanInput{}, err
+		}
+		if state != "ACTIVE" {
+			return trip.PlanInput{}, app.ErrMissionIneligible
+		}
+	}
+	return p.Domain(scope)
+}
+
+func int4(v *int) pgtype.Int4 {
+	if v == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: int32(*v), Valid: true}
+}
+
+// planRow is the planning revision of a decided PLAN.
+func planRow(org string, actor app.MissionActor, member string, in app.MissionCommandInput, revision int64, plan trip.Plan) q.InsertMissionPlanParams {
+	v := plan.Snapshot()
+	row := q.InsertMissionPlanParams{OrgID: org, MissionID: in.MissionID, Revision: revision, OperationID: in.OperationID, DestinationText: text(v.DestinationText), Reason: v.Reason,
+		LoadKind: string(v.Load), CargoDescription: text(v.CargoDescription), PassengerCount: int4(v.Passengers), PlannedBy: actor.AccountID, PlannedByMembershipID: member}
+	if v.DestinationUnit != nil {
+		row.DestinationUnitID = nullable(v.DestinationUnit.ID())
+	}
+	if v.CostCentre != nil {
+		row.CostCentreID = nullable(v.CostCentre.ID())
+	}
+	return row
+}
+
+// change applies PLAN, ASSIGN or CANCEL to the locked head through the pure
+// rules.
 func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries, scope kernel.OrgScope, actor app.MissionActor, member string, in app.MissionCommandInput) (app.MissionAck, error) {
 	org := scope.OrgID().String()
 	record, err := s.head(ctx, queries, org, in.MissionID, true)
@@ -274,7 +330,19 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 		FromState: nullable(string(record.View.State)), Source: "COMPANY", ActorAccountID: actor.AccountID, ActorMembershipID: member, OperationID: in.OperationID}
 	var next trip.Mission
 	var warning *app.MissionWarning
+	var planned *q.InsertMissionPlanParams
 	switch in.Kind {
+	case app.MissionPlanCommand:
+		input, err := planInput(ctx, queries, scope, *in.Plan)
+		if err != nil {
+			return app.MissionAck{}, err
+		}
+		var plan trip.Plan
+		if next, plan, err = current.Plan(scope, in.ExpectedRevision, input); err != nil {
+			return app.MissionAck{}, err
+		}
+		row := planRow(org, actor, member, in, record.View.Revision+1, plan)
+		planned = &row
 	case app.MissionAssignCommand:
 		target, err := assignee(ctx, queries, org, in.AssigneeEmployeeID)
 		if err != nil {
@@ -316,6 +384,11 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 	transition.ToState, transition.AssigneeEmployeeID, transition.AssigneeMembershipID = string(v.State), nullable(employee), nullable(membership)
 	if err := queries.InsertMissionTransition(ctx, transition); err != nil {
 		return app.MissionAck{}, err
+	}
+	if planned != nil {
+		if err := queries.InsertMissionPlan(ctx, *planned); err != nil {
+			return app.MissionAck{}, err
+		}
 	}
 	advance := q.AdvanceMissionParams{OrgID: org, ID: in.MissionID, Revision: record.View.Revision, State: string(v.State), AssigneeEmployeeID: nullable(employee), AssigneeMembershipID: nullable(membership)}
 	if v.Answer != nil {
@@ -414,6 +487,42 @@ func (s *MissionStore) CommandMission(ctx context.Context, scope kernel.OrgScope
 	return ack, replayed, nil
 }
 
+// withPlans attaches each mission's current planning revision (EMP-TRIP-009).
+func withPlans(ctx context.Context, queries *q.Queries, org string, views []app.MissionView) error {
+	if len(views) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(views))
+	for _, v := range views {
+		ids = append(ids, v.MissionID)
+	}
+	rows, err := queries.MissionPlans(ctx, q.MissionPlansParams{OrgID: org, MissionIds: ids})
+	if err != nil {
+		return err
+	}
+	plans := make(map[string]*app.MissionPlanView, len(rows))
+	for _, r := range rows {
+		planned, err := at(r.RecordedAt)
+		if err != nil {
+			return err
+		}
+		fields := app.MissionPlanFields{DestinationText: optionalText(r.DestinationText), DestinationUnitID: r.DestinationUnitID, Reason: r.Reason, CostCentreID: r.CostCentreID,
+			Load: r.LoadKind, CargoDescription: optionalText(r.CargoDescription)}
+		if r.PassengerCount.Valid {
+			n := int(r.PassengerCount.Int32)
+			fields.Passengers = &n
+		}
+		if _, seen := plans[r.MissionID]; seen {
+			return app.ErrUnavailable
+		}
+		plans[r.MissionID] = &app.MissionPlanView{Revision: r.Revision, Fields: fields, PlannedAt: planned}
+	}
+	for i := range views {
+		views[i].Plan = plans[views[i].MissionID]
+	}
+	return nil
+}
+
 // read runs one read between two authority checks of the action and target.
 func (s *MissionStore) read(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, target string, action app.MissionAction, call func(*q.Queries) error) error {
 	if err := validMissionCall(scope, actor, member); err != nil {
@@ -476,7 +585,7 @@ func (s *MissionStore) ListMissions(ctx context.Context, scope kernel.OrgScope, 
 			}
 			page.Missions = append(page.Missions, record.View)
 		}
-		return nil
+		return withPlans(ctx, queries, org, page.Missions)
 	})
 	if err != nil {
 		return app.MissionPage{}, err
@@ -492,7 +601,11 @@ func (s *MissionStore) ReadMission(ctx context.Context, scope kernel.OrgScope, a
 		if err != nil {
 			return err
 		}
-		v = record.View
+		views := []app.MissionView{record.View}
+		if err := withPlans(ctx, queries, scope.OrgID().String(), views); err != nil {
+			return err
+		}
+		v = views[0]
 		return nil
 	})
 	if err != nil {

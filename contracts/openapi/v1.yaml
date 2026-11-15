@@ -19817,6 +19817,87 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/plan:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionPlan
+      summary: Record a planning revision of a mission
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        capability and trip.mission.manage covering the mission (its stored unit and asset). PLAN moves a DRAFT, PLANNED,
+        ASSIGNED or DECLINED mission at the named revision to PLANNED, withdrawing its assignee and answer, and appends one
+        insert-only planning revision with the planner, the command and the server time; an ACCEPTED, IN_PROGRESS,
+        COMPLETED or CANCELLED mission or a stale revision is CONFLICT. The plan is exactly a destination (free text or an
+        ACTIVE unit of the organization), a reason, an optional ACTIVE cost centre (the approved customer or project
+        reference) and a load (NONE, CARGO with a description, PASSENGERS with a count 1..999 and nothing else). Texts are
+        1..280 scalars without control characters and without a CPF-shaped token; an unknown field (for example a
+        passenger identity) is MALFORMED; invalid or sensitive content and an archived unit or cost centre are
+        VALIDATION_FAILED; an unknown or another organization's unit or cost centre is NOT_FOUND. A plan never starts,
+        changes or completes a trip, reading or review. Same operation and digest returns the first result with
+        replayed=true and no second audit event (trip.mission.planned); another digest is OPERATION_ID_REUSED
+        (EMP-TRIP-009, B-BR-EMP-381..385).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionPlanRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008804
+              revision: 1
+              destination:
+                kind: TEXT
+                text: Centro de distribuição Norte
+              reason: Entrega de peças de reposição
+              cost_centre_id: 7b0e2a54-0000-4000-8000-000000008401
+              load:
+                kind: CARGO
+                description: Peças de reposição
+      responses:
+        '200':
+          description: Private audited planning revision or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAck'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose:
     post:
       tags:
@@ -23115,6 +23196,146 @@ components:
         operation_id: 7b0e2a54-0000-4000-8000-000000008802
         revision: 1
         assignee_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+    EnterpriseMissionDestination:
+      description: A plan destination, exactly a free-text place or an ACTIVE unit of the organization (EMP-TRIP-009).
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            const: TEXT
+          text:
+            type: string
+            minLength: 1
+            maxLength: 1120
+        required:
+        - kind
+        - text
+      - type: object
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            const: UNIT
+          unit_id:
+            $ref: '#/components/schemas/EnterpriseUUID'
+        required:
+        - kind
+        - unit_id
+    EnterpriseMissionLoad:
+      description: A plan load; passengers carry only a count, never an identity or a description (EMP-TRIP-009, EDR-247).
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            const: NONE
+        required:
+        - kind
+      - type: object
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            const: CARGO
+          description:
+            type: string
+            minLength: 1
+            maxLength: 1120
+        required:
+        - kind
+        - description
+      - type: object
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            const: PASSENGERS
+          count:
+            type: integer
+            minimum: 1
+            maximum: 999
+        required:
+        - kind
+        - count
+    EnterpriseMissionPlanRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        destination:
+          $ref: '#/components/schemas/EnterpriseMissionDestination'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1120
+        cost_centre_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        load:
+          $ref: '#/components/schemas/EnterpriseMissionLoad'
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - destination
+      - reason
+      - load
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008804
+        revision: 1
+        destination:
+          kind: TEXT
+          text: Centro de distribuição Norte
+        reason: Entrega de peças de reposição
+        cost_centre_id: 7b0e2a54-0000-4000-8000-000000008401
+        load:
+          kind: CARGO
+          description: Peças de reposição
+    EnterpriseMissionPlan:
+      type: object
+      additionalProperties: false
+      description: The mission's current planning revision (EMP-TRIP-009); the planner stays in the audited history.
+      properties:
+        revision:
+          type: integer
+          minimum: 2
+        destination:
+          $ref: '#/components/schemas/EnterpriseMissionDestination'
+        reason:
+          type: string
+        cost_centre_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        load:
+          $ref: '#/components/schemas/EnterpriseMissionLoad'
+        planned_at:
+          type: string
+          format: date-time
+      required:
+      - revision
+      - destination
+      - reason
+      - load
+      - planned_at
+      example:
+        revision: 2
+        destination:
+          kind: UNIT
+          unit_id: 7b0e2a54-0000-4000-8000-000000008102
+        reason: Transporte da equipe
+        load:
+          kind: PASSENGERS
+          count: 4
+        planned_at: '2026-11-15T10:10:00.123456Z'
     EnterpriseMissionCancelRequest:
       type: object
       additionalProperties: false
@@ -23260,6 +23481,8 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         answer:
           $ref: '#/components/schemas/EnterpriseMissionAnswer'
+        plan:
+          $ref: '#/components/schemas/EnterpriseMissionPlan'
         created_at:
           type: string
           format: date-time
@@ -23339,6 +23562,8 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         answer:
           $ref: '#/components/schemas/EnterpriseMissionAnswer'
+        plan:
+          $ref: '#/components/schemas/EnterpriseMissionPlan'
         created_at:
           type: string
           format: date-time

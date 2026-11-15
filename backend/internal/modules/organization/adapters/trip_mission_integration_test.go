@@ -29,12 +29,22 @@ import (
 const missionMigration = "000227_organization_trip_missions.sql"
 
 // grantMissionTables gives the ordinary runtime role exactly the EMP-TRIP-008
-// table rights.
+// table rights and, once migration 000231 exists, the EMP-TRIP-009 planning
+// revisions (the 000227 rehearsal runs before it).
 func grantMissionTables(t *testing.T, fx legalFixtureState) {
 	t.Helper()
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON org_trip_missions TO "+role+";GRANT SELECT,INSERT ON org_trip_mission_transitions,org_trip_mission_commands TO "+role); err != nil {
 		t.Fatal(err)
+	}
+	var plans bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('org_trip_mission_plans') IS NOT NULL`).Scan(&plans); err != nil {
+		t.Fatal(err)
+	}
+	if plans {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_mission_plans TO "+role+";GRANT SELECT ON org_cost_centres TO "+role); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

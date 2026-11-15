@@ -71,10 +71,11 @@ func ParseMissionCommand(raw string) (MissionCommand, error) {
 	return MissionCommand(raw), nil
 }
 
-// MissionTransition is the EDR-228 table, first failure first: a terminal
-// state; PLAN, START, COMPLETE and every IN_PROGRESS change (later owners);
-// ACCEPT and DECLINE only from ASSIGNED; ASSIGN and CANCEL from DRAFT,
-// PLANNED, ASSIGNED, ACCEPTED and DECLINED.
+// MissionTransition is the EDR-228 table with the EDR-246 PLAN rows, first
+// failure first: a terminal state; START, COMPLETE and every IN_PROGRESS
+// change (later owners); ACCEPT and DECLINE only from ASSIGNED; PLAN never
+// from ACCEPTED (an accepted plan is not rewritten), else to PLANNED; ASSIGN
+// and CANCEL from DRAFT, PLANNED, ASSIGNED, ACCEPTED and DECLINED.
 func MissionTransition(from MissionState, command MissionCommand) (MissionState, error) {
 	if _, err := ParseMissionState(string(from)); err != nil {
 		return "", err
@@ -85,10 +86,15 @@ func MissionTransition(from MissionState, command MissionCommand) (MissionState,
 	if from.Terminal() {
 		return "", ErrInvalidTransition
 	}
-	if command == MissionPlan || command == MissionStart || command == MissionComplete || from == MissionInProgress {
+	if command == MissionStart || command == MissionComplete || from == MissionInProgress {
 		return "", ErrUnsupportedCommand
 	}
 	switch command {
+	case MissionPlan:
+		if from == MissionAccepted {
+			return "", ErrInvalidTransition
+		}
+		return MissionPlanned, nil
 	case MissionAccept, MissionDecline:
 		if from != MissionAssigned {
 			return "", ErrInvalidTransition

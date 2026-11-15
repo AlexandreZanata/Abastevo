@@ -6336,3 +6336,90 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   offline start, events, finish and submission, process death, reconnection
   with each record accepted exactly once, and a held start against another
   member's earlier start on the same asset.
+
+## EMP-TRIP-009 — Manager-planned trips: destination, reason, customer or project, cargo or passengers (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip009-planned-trips.md).
+
+- **B-BR-EMP-381 — `PLAN` in the mission table.** `PLAN` moves a `DRAFT`,
+  `PLANNED`, `ASSIGNED` or `DECLINED` mission to `PLANNED` at exactly the
+  next revision and withdraws its current assignee and answer (both stay in
+  the transition history); the planner assigns the planned mission again,
+  any eligible member including the previous one, and an answer still in
+  flight is a whole-response `FORBIDDEN` because its member is no longer the
+  assignee (B-BR-EMP-356 order). From `ACCEPTED` it is
+  `INVALID_TRANSITION`: an accepted plan is the work the member committed
+  to, so the planner reassigns or cancels instead of rewriting it. From
+  `IN_PROGRESS` it is `UNSUPPORTED_COMMAND` (every change of a running
+  mission belongs to the trip link of EMP-TRIP-021/023) and from `COMPLETED`
+  or `CANCELLED` `INVALID_TRANSITION`. Every other row of the B-BR-EMP-353
+  table is unchanged; `START` and `COMPLETE` stay `UNSUPPORTED_COMMAND`. The
+  command fails first on scope, then on the plan content, then on a
+  non-positive expected revision, then `CONFLICT` for a stale revision (which
+  changes nothing), then the table. `PLAN` never changes the mission's unit,
+  asset, title or window.
+- **B-BR-EMP-382 — Minimised plan content.** A plan has exactly: a
+  destination that is either a free-text place or an `ACTIVE` operating unit
+  of the organization (never both, never neither); a required reason; an
+  optional customer or project reference, which is an `ACTIVE` cost centre of
+  the organization (the organization's approved representation of a client
+  contract, project or route); and a load that is `NONE`, `CARGO` with a
+  required description, or `PASSENGERS` with a count from 1 to 999 and
+  nothing else. Free texts (place, reason, cargo description) follow the
+  METER-001 text profile (nonblank, no control character, at most 280
+  Unicode scalars) and refuse any standalone CPF-shaped token (the portal
+  privacy shape) as unapproved sensitive personal data. A plan holds no
+  passenger name, document, contact or description, no cargo count, no
+  coordinates and no other personal field; a request carrying any other
+  field is refused by the strict body. An unknown unit or cost centre, or one
+  of another organization, is `NOT_FOUND`; an archived one is
+  `VALIDATION_FAILED`.
+- **B-BR-EMP-383 — A planning revision is separate from execution.** Each
+  accepted `PLAN` appends one insert-only planning revision bound to its
+  `PLAN` transition and command receipt: the mission revision it produced,
+  the content, the planner's account and membership and the company command
+  that authorized it, and the server time. The mission's current plan is its
+  latest planning revision and survives later assignment, response and
+  cancellation; earlier revisions stay in the history. A plan never creates,
+  starts, changes or completes a trip, reading, logbook event, review entry,
+  reservation or block, never changes an asset or its availability, and no
+  field fact changes a plan; planned and actual destinations stay distinct.
+- **B-BR-EMP-384 — Authorization and scope.** `PLAN` is a mission command
+  under fresh `trip.mission.manage` covering the mission's stored unit and
+  asset (`UNIT` and `ASSET` grants by equality; a structural grant that does
+  not cover the mission is `FORBIDDEN`), at the expected revision, in an
+  `ACTIVE` organization. A mission of another organization is `NOT_FOUND`
+  with no data. `AUDITOR` holds no mission key and is `FORBIDDEN`. The
+  current plan is returned with the mission on the planner's read and list
+  and on the assignee's own list.
+- **B-BR-EMP-385 — Receipts, replay, concurrency and audit.** An accepted
+  `PLAN` records exactly one `trip.mission.planned` audit event and one
+  receipt; the same operation identifier with the same intent replays the
+  first result, with another intent it is `OPERATION_ID_REUSED`. Two
+  commands decided on one revision resolve to one: the loser is `CONFLICT`
+  and nothing of it is stored.
+- **B-BR-EMP-386 — The database keeps plans honest.** The database refuses a
+  planning revision without its `PLAN` transition at the same revision and
+  operation, a `PLAN` transition without its planning revision at commit, a
+  `PLAN` from `ACCEPTED`, `IN_PROGRESS` or a terminal state, a `PLAN` that
+  keeps an assignee or answer, a CPF-shaped token in a plan text, an
+  archived or foreign unit or cost centre, a passenger description or cargo
+  count, and any update, delete or truncate of planning revisions. The unit
+  and cost-centre usage sources recognise the two plan keys as associations
+  without counting them.
+- **BUC-EMP-192 — Plan a mission.** A fleet manager plans a `DRAFT` mission:
+  destination "Centro de distribuição Norte" (or the organization's
+  Southern unit), reason "Entrega de peças de reposição", the client
+  contract's cost centre and cargo "Peças de reposição"; the mission becomes
+  `PLANNED` and is assigned afterwards; the driver's own list shows the plan.
+- **BUC-EMP-193 — Re-plan before acceptance.** The assigned driver declines,
+  or has not answered yet; the manager changes the destination and assigns
+  again; an answer the driver sent for the withdrawn assignment is
+  `FORBIDDEN` and stores nothing; an accepted mission's plan cannot be
+  rewritten, and a unit-scoped manager plans only missions of the unit.
+- **BUC-EMP-194 — Prove planned trips on real PostGIS.** Foreign units and
+  cost centres, structural and organization isolation, CPF-shaped and
+  unapproved fields, plans of accepted, in-progress and terminal missions,
+  replay, reuse and racing commands in both orders, the database guards, and
+  a populated upgrade from the 000229 head with injected failure and
+  recovery.
