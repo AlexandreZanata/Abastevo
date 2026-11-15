@@ -104,6 +104,22 @@ decisions from 178). Fake trip, tracking or maintenance adapters are not introdu
 reach a later task: an absent source is an explicit, tested "no source" port
 (FLEET-003 `NoOpenWork` precedent) replaced by its owning task.
 
+## Allocation (pre-allocated before behaviour)
+
+| Task | Owner worktree / branch | Rules (B-BR-EMP) | Use cases (BUC-EMP) | Decisions (EDR) | Migration |
+|---|---|---|---|---|---|
+| F4 execution decision | coordinator | — | — | EDR-196 | — |
+| EMP-TRIP-001 | `f4-trip001` / `codex/enterprise-f4-trip001` | 268..275 | 136..138 | 178..181 | none |
+| EMP-TRIP-017 | same | 276..279 | 139..141 | 182..183 | none |
+| EMP-METER-003 | `f4-meter003` / `codex/enterprise-f4-meter003` | 280..285 | 142..144 | 184..186 | 000216 if needed |
+| EMP-METER-004 | same | 286..291 | 145..147 | 187..189 | 000216 if unused by METER-003 |
+| Catalog `org-permissions-v5` | `f4-fleet007` / `codex/enterprise-f4-fleet007` | 292..293 | — | 190..191 | none |
+| EMP-FLEET-007 | same | 294..301 | 148..151 | 192..195 | 000217 |
+| EMP-OFFL-009 | `f4-offl009` / `codex/enterprise-f4-offl009` | 302..307 | 152..154 | 197..199 | 000218 if needed |
+| EMP-OFFL-012 | same | 308..311 | 155..156 | 200..201 | 000219 if needed |
+
+Unused pre-allocated IDs stay unused and are reported per task.
+
 ## Task ledger
 
 State is the source state at opening; the last column lists the open direct
