@@ -95,17 +95,23 @@
     },
     {
       "permission": "check.incident.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Checklist and incident routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/incidents/reports/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/incidents/reports/list",
+        "POST /v1/orgs/{org_id}/incidents/reports/{report_id}/decide",
+        "POST /v1/orgs/{org_id}/incidents/reports/{report_id}/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "check.incident.report",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Checklist and incident routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/incidents/reports/mine",
+      "routes": [
+        "POST /v1/orgs/{org_id}/incidents/reports/mine"
+      ],
+      "reason": ""
     },
     {
       "permission": "check.template.manage",

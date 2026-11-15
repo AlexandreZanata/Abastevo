@@ -150,6 +150,11 @@ func TestDocumentLinkMigrationPopulatedUpgradeFailureRecoveryAndPreviousCompatib
 	if err := tx.Commit(ctx); err != nil {
 		t.Fatal(err)
 	}
+	// The current store also writes the EMP-CHECK-003 typed reference
+	// (000230), so the rehearsal reaches the embedded head before linking.
+	if _, err := migrate.Apply(ctx, f.AdminDSN, dbmigrations.Files); err != nil {
+		t.Fatal("remaining embedded chain after the 209 rehearsal", err)
+	}
 	if _, err := f.Admin.Exec(ctx, "GRANT SELECT, INSERT ON org_document_links TO "+role+"; GRANT SELECT(org_id,id) ON org_employee_identities TO "+role); err != nil {
 		t.Fatal(err)
 	}

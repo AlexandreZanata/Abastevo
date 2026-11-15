@@ -146,6 +146,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, syncpg.AuditDefinitions()...)
 	definitions = append(definitions, reviewpg.PeriodAuditDefinitions()...)
 	definitions = append(definitions, maintpg.ChecklistAuditDefinitions()...)
+	definitions = append(definitions, maintpg.IncidentAuditDefinitions()...)
 	definitions = append(definitions, trippg.ReviewAuditDefinitions()...)
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
@@ -176,6 +177,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "fleet.assignment", Permissions: []string{"fleet.asset.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic driver assignments inherit identity v1 write 200/hour on each current organization/account/web axis (a command names at most 100 employees); production measurement and cleanup remain required."},
 		{Class: "fleet.reservation", Permissions: []string{"fleet.reservation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic reservations and blocks inherit identity v1 write 200/hour on each current organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "check.template", Permissions: []string{"check.template.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic checklist template and policy commands inherit identity v1 write 200/hour on each current organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "check.incident", Permissions: []string{"check.incident.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic incident and damage handling steps inherit identity v1 write 200/hour on each current organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "meter.review", Permissions: []string{"meter.reading.correct"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic held meter review decisions inherit identity v1 write200/hour on every current organization/account/web-or-device axis; production measurement and cleanup remain required."},
 		{Class: "idn.invitation", Permissions: []string{"idn.invitation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic invitation writes use the existing identity v1 write allowance on every axis; production measurement remains required."},
 		{Class: "idn.membership", Permissions: []string{"idn.membership.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic membership lifecycle uses identity v1 write200/hour on every axis; production measurement remains required."},
@@ -253,6 +255,15 @@ func Register(router chi.Router, o Options) error {
 	templateAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.ChecklistRecords{}, Now: time.Now}
 	applicableAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.ChecklistRecords{}, Structure: assetStructure, Assignee: assetAssignee, Now: time.Now}
 	if err := maintweb.RegisterChecklists(router, maintapp.ChecklistService{Enabled: true, Repository: checklists, NewID: jobs.NewUUIDv4}, cookies, gateway, templateAuthorization, applicableAuthorization); err != nil {
+		return err
+	}
+	// EMP-CHECK-003 (EDR-241): report handling and reads; structural grants
+	// resolve through the report's stored asset, unit and cost centre.
+	incidentStructure := &orgpg.ResourceStructure{Kind: orgpg.IncidentStructure, Pool: o.Pool}
+	incidents := &maintpg.IncidentStore{Pool: o.Pool, Authority: &orgpg.IncidentAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags, Structure: incidentStructure}, Audit: auditStore}
+	incidentQueue := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Now: time.Now}
+	incidentReports := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Structure: incidentStructure, Now: time.Now}
+	if err := maintweb.RegisterIncidents(router, maintapp.IncidentService{Enabled: true, Repository: incidents}, cookies, gateway, incidentQueue, incidentReports, incidentQueue); err != nil {
 		return err
 	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
@@ -353,7 +364,7 @@ func Register(router chi.Router, o Options) error {
 	if err := fleetweb.RegisterMeterReviews(router, fleetapp.MeterReviewService{Enabled: true, Repository: reviews}, cookies, gateway, reviewAuthorization); err != nil {
 		return err
 	}
-	if err := registerIntake(router, o, deviceStore, meters, assets, auditStore, auditCatalog); err != nil {
+	if err := registerIntake(router, o, deviceStore, meters, assets, incidents, auditStore, auditCatalog); err != nil {
 		return err
 	}
 
@@ -447,7 +458,7 @@ func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler,
 	// EMP-DOC-003: the closed registry of linkable kinds, each resolved by
 	// the module that owns the target record (EDR-162).
 	targets := documentapp.Targets{documentdomain.Asset: fleetpg.DocumentTargets{}, documentdomain.MeterReading: fleetpg.DocumentTargets{},
-		documentdomain.Employee: member.EmployeeDocumentTargets{}}
+		documentdomain.Employee: member.EmployeeDocumentTargets{}, documentdomain.Incident: maintpg.IncidentDocumentTargets{}}
 	store := &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore, Targets: targets}
 	// EMP-DOC-014: the ingress runs the same safety check as the queued job,
 	// over the same bucket and inspector, so STORED never skips it.

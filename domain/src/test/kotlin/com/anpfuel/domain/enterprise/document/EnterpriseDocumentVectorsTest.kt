@@ -138,14 +138,14 @@ class EnterpriseDocumentVectorsTest {
 
     @TestFactory fun allSharedDocumentVectors(): List<DynamicTest> {
         val file = File("../contracts/testdata/enterprise/document/document-v1.psv")
-        assertEquals("27eaec5e45b641ab7ee31b70681d96690560a12a655f2f43d0f2cc2f55f1e383",
+        assertEquals("47b8a29c1ed44cb2969d287813d84cdc75267ace7c39760518084843d6e9202f",
             MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it.toInt() and 255) })
         val lines = file.readLines()
         assertEquals("id|operation|args|expected", lines.first())
         val rows = lines.drop(1).map { it.split('|') }
         require(rows.all { it.size == 4 && it[0].isNotBlank() })
         assertEquals(rows.size, rows.map { it[0] }.distinct().size)
-        assertEquals(mapOf("ENUM" to 64, "ALLOWED" to 29, "SCENARIO" to 146, "REPLACE" to 12), rows.groupingBy { it[1] }.eachCount())
+        assertEquals(mapOf("ENUM" to 65, "ALLOWED" to 29, "SCENARIO" to 146, "REPLACE" to 12), rows.groupingBy { it[1] }.eachCount())
         for (row in rows) caseShape(row[1], fields(row[2]))
         val seen = rows.flatMap { row ->
             val expected = fields(row[3])

@@ -61,8 +61,8 @@ enum class DocumentState(val dimension: DocumentDimension, val token: String) {
     }
 }
 
-/** Closed link targets (EDR-135); only an expense is allocatable (EDR-013). */
-enum class DocumentTargetKind { FUELING, EXPENSE, WORK_ORDER, TRIP, ASSET, EMPLOYEE, METER_READING;
+/** Closed link targets (EDR-135, INCIDENT by EDR-239); only an expense is allocatable (EDR-013). */
+enum class DocumentTargetKind { FUELING, EXPENSE, WORK_ORDER, TRIP, ASSET, EMPLOYEE, METER_READING, INCIDENT;
     val allocatable: Boolean get() = this == EXPENSE
     companion object { fun parse(raw: String): DocumentTargetKind = entries.firstOrNull { it.name == raw } ?: fail() }
 }

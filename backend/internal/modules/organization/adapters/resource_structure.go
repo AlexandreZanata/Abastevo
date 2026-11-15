@@ -32,6 +32,10 @@ const (
 	// centre it stored at the start, and the teams whose links covered its
 	// author or driver at the start receipt (EMP-TRIP-004, EDR-222).
 	TripStructure
+	// IncidentStructure: a damage or incident report resolves to its asset
+	// and the unit and cost centre it stored at its declared instant
+	// (EMP-CHECK-003, EDR-241); no team facts yet.
+	IncidentStructure
 )
 
 // ResourceStructure is the EMP-AUTH-006 structural scope lookup for one
@@ -57,6 +61,9 @@ FROM org_sync_review_items i
 JOIN org_meter_held_readings h ON(h.org_id,h.review_item_id,h.operation_id)=(i.org_id,i.id,i.operation_id)
 JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id,a.review_item_id,a.review_proof_version)=(i.org_id,i.operation_id,i.id,i.proof_version)
 WHERE i.org_id=$1 AND i.id=$2 AND i.operation_type='meter.reading.record' AND i.operation_schema=1`
+
+// incidentStructure reads only the immutable report snapshot.
+const incidentStructure = `SELECT asset_id::text,COALESCE(unit_id::text,''),COALESCE(cost_centre_id::text,'') FROM org_incident_reports WHERE org_id=$1 AND id=$2`
 
 // tripStructure reads only the immutable start snapshot and retained team
 // link periods (half-open, at the trip's server receipt).
@@ -127,6 +134,13 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 		}
 		slices.Sort(teams)
 		out.Teams = teams
+	case r.Kind == IncidentStructure && policy.Permission == "check.incident.manage":
+		if err := tx.QueryRow(ctx, incidentStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return permissions.ResourceFacts{}, errStructureNotFound
+			}
+			return permissions.ResourceFacts{}, org.ErrUnavailable
+		}
 	case r.Kind == TripStructure && policy.Permission == "trip.trip.review":
 		var teams []string
 		if err := tx.QueryRow(ctx, tripStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {

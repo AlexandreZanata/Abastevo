@@ -1350,6 +1350,33 @@ org_trip_held_events` (with its existing trip grants, including
 `UPDATE (state) ON org_trips` for the trip row lock). No read route is added.
 Nothing here provisions live grants.
 
+### Damage and incident reports (EMP-CHECK-003)
+
+Migration230 adds forced-RLS `org_incident_reports` (one immutable report of
+an asset, its allocation at the declared instant, the reporter's trip when
+named; only `state`, `revision` and `updated_at` change, one step at a time)
+and append-only `org_incident_report_transitions` (the handling history and
+command receipt), adds the typed `incident_report_id` reference and the
+`INCIDENT` kind to `org_document_links`, and redefines
+`org_asset_current_usage`, `org_unit_current_usage` and
+`org_cost_centre_current_usage` from their latest bodies with the report keys
+as associations. The migration owner needs `REFERENCES` on `organizations`,
+`org_sync_operations`, `org_assets`, `org_units`, `org_cost_centres`,
+`org_trips`, `org_memberships`, `org_employee_identities`,
+`org_device_enrollments` and `org_audit_events`, and ownership of
+`org_document_links` and of the three usage functions. The signed intake
+principal needs `SELECT, INSERT ON org_incident_reports` and `SELECT` on
+`org_trips`, `org_trip_finishes`, `org_asset_unit_periods`,
+`org_asset_cost_centre_periods` (with its existing trip grants, including
+`UPDATE (state) ON org_trips` for the trip row lock the report guard takes);
+the company principal needs `SELECT, INSERT ON
+org_incident_report_transitions`, `SELECT` and `UPDATE (state, revision,
+updated_at) ON org_incident_reports` (the step trigger and the row lock),
+`SELECT ON org_document_links, org_documents` for the attachment states and
+the existing document link grants for the `INCIDENT` resolver; the trip
+timeline reader needs `SELECT ON org_incident_reports`. Nothing here
+provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

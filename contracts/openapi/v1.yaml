@@ -56,6 +56,8 @@ tags:
     description: Private organization trip review; submission arrives through the signed intake, decisions on the current revision.
   - name: enterprise-checklists
     description: Private organization checklist templates, their critical-item policy and the applicable template of an asset.
+  - name: enterprise-incidents
+    description: Private organization damage and incident reports; reports arrive through the signed intake, handling and reads on the company plane.
   - name: enterprise-notifications
     description: Own in-app notices and per-kind preferences of the current member; external channels stay disabled.
   - name: enterprise-reports
@@ -14884,13 +14886,19 @@ paths:
         EMP-TRIP-007. A finish whose trip is not stored is RETRY/DEPENDENCY_PENDING.
         The trip.event.record owner (EMP-TRIP-003) appends one insert-only typed logbook fact (NOTE, STOP, ARRIVAL,
         DEPARTURE) to the member's own stored trip with the ACK (entity revision 1); it never changes the trip. An event
-        before the trip's start or of an unknown type is MALFORMED; a reserved type stays RETRY/UNAVAILABLE; an event
+        before the trip's start, of an unknown type, or INCIDENT or DAMAGE (their own operation, EMP-CHECK-003) is
+        MALFORMED; another reserved type stays RETRY/UNAVAILABLE; an event
         declared after a completed trip's finish is kept ACCEPTED_FOR_REVIEW TRIP_ALREADY_CLOSED; a trip not stored here
         (undelivered, held or another organization's) is RETRY/DEPENDENCY_PENDING.
         The trip.submit owner (EMP-TRIP-004) appends the author's SUBMIT entry to a COMPLETED trip whose review case
         is DRAFT at the named expected_revision, with its ACK (entity trip_review, entity revision = review revision); a
         trip not stored or still in progress is RETRY/DEPENDENCY_PENDING, another member FORBIDDEN, and a case no longer
         a draft at that revision stores nothing and stays RETRY/UNAVAILABLE until EMP-TRIP-015.
+        The check.incident.report owner (EMP-CHECK-003) stores one damage or incident report of an asset (and, when
+        named, of the reporter's own trip containing its instant) in REPORTED at entity revision 1 with its ACK; it
+        never books a cost or stores a document. An unknown or another organization's asset is NOT_FOUND, no
+        check.incident.report FORBIDDEN, a DRAFT asset or a wrong shape MALFORMED, a trip not stored here
+        RETRY/DEPENDENCY_PENDING; changed rights and attachment declarations stay RETRY/UNAVAILABLE.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -14965,6 +14973,17 @@ paths:
           entity_type: trip_review
           payload:
             $ref: '#/components/schemas/EnterpriseTripSubmitPayload'
+          terminal_results:
+          - ACCEPTED
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+        check.incident.report:
+          schema: 1
+          entity_type: incident_report
+          payload:
+            $ref: '#/components/schemas/EnterpriseIncidentReportPayload'
           terminal_results:
           - ACCEPTED
           - REJECTED
@@ -18950,6 +18969,257 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/incidents/reports/list:
+    post:
+      tags:
+      - enterprise-incidents
+      operationId: enterpriseIncidentReportList
+      summary: List the organization's damage and incident reports
+      description: Current company cookie and exact Origin/CSRF. Fixed check.incident.manage permission on the whole
+        organization (an ORG grant; structural managers open each report through its read). Pages the reports by
+        identifier with their summary only (type, kind, asset, trip, reporter membership, blocking mark, handling
+        state and revision, declared, received and updated instants); no description, location, note or document.
+        Keyset cursor bound to the caller and the limit. Scoped filters and the panel are EMP-CHECK-004
+        (EMP-CHECK-003, B-BR-EMP-374).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.incident.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseIncidentReportListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current report page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseIncidentReportPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/incidents/reports/mine:
+    post:
+      tags:
+      - enterprise-incidents
+      operationId: enterpriseIncidentReportMine
+      summary: List the current member's own damage and incident reports
+      description: Current company cookie and exact Origin/CSRF. Fixed check.incident.report permission on the
+        member's own record (the requesting membership; a SELF or ORG grant covers it, a structural grant does
+        not). Pages the member's own reports by identifier with the summary, the description and the location;
+        never a handler's note or a document. Reports arrive through the signed check.incident.report operation
+        (EMP-CHECK-003, B-BR-EMP-374).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.incident.report
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseIncidentReportListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private page of the member's own reports.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseIncidentOwnReportPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/incidents/reports/{report_id}/read:
+    post:
+      tags:
+      - enterprise-incidents
+      operationId: enterpriseIncidentReportRead
+      summary: Read one damage or incident report
+      description: Current company cookie and exact Origin/CSRF. Fixed check.incident.manage permission covering the
+        report (ORG, or UNIT/COST_CENTRE/ASSET through the report's stored asset and the unit and cost centre the
+        asset had at the declared instant). Returns the report with its description and location, its append-only
+        handling history and its linked documents, each only with its own storage state and link instant (never
+        content, digest or locator; opening a photo stays the audited doc.document.view_content path). An unknown or
+        another organization's report is NOT_FOUND (EMP-CHECK-003, B-BR-EMP-372/374).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.incident.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseIncidentReportReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current report with its history and its documents' states.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseIncidentReportView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/incidents/reports/{report_id}/decide:
+    post:
+      tags:
+      - enterprise-incidents
+      operationId: enterpriseIncidentReportDecide
+      summary: Acknowledge, treat, resolve or dismiss one report
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization,
+        enabled capability and check.incident.manage covering the report (same structure as the read). One audited
+        handling step on the named revision - ACKNOWLEDGE (no note), TREAT (the stated action), RESOLVE (the
+        resolution note) or DISMISS (the reason, optionally duplicate_of another report of the same asset); notes have
+        1..500 scalars without control characters. A stale revision or a step not allowed from the current state is
+        CONFLICT; an invalid or missing note, a note on an acknowledgement or an invalid duplicate is
+        VALIDATION_FAILED; resolving or dismissing a blocking report by its reporter is SELF_APPROVAL. Same operation
+        and digest returns the first result with replayed=true; another digest is OPERATION_ID_REUSED. No step books
+        a cost or changes a document (EMP-CHECK-003, B-BR-EMP-373/374).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.incident.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: report_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseIncidentReportDecisionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009601
+              revision: 1
+              action: RESOLVE
+              note: Lanterna trocada na oficina interna
+      responses:
+        '200':
+          description: Private audited step or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseIncidentReportDecision'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/review/list:
     post:
       tags:
@@ -21217,8 +21487,9 @@ components:
           - RESUME
           - CANCEL
           description: The closed trip-logbook-v1 vocabulary (EDR-207). NOTE, STOP, ARRIVAL and DEPARTURE are recorded;
-            the other tokens are reserved for their owners and answered RETRY/UNAVAILABLE with no effect; any other token
-            is MALFORMED.
+            INCIDENT and DAMAGE are MALFORMED here because their facts are the check.incident.report operation and
+            appear on the timeline from it (EDR-240); the other tokens are reserved for their owners and answered
+            RETRY/UNAVAILABLE with no effect; any other token is MALFORMED.
         text:
           type:
           - string
@@ -21249,6 +21520,519 @@ components:
         at most one depends_on entry (the finish); soft_references and attachments are empty. The envelope declaration is
         the instant the author marked the trip ready to send. Only the author of a COMPLETED trip submits; the review
         state becomes SUBMITTED on acceptance (BR-REV-002).
+    EnterpriseIncidentReportPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        report_type:
+          type: string
+          enum:
+          - DAMAGE
+          - INCIDENT
+        incident_kind:
+          type:
+          - string
+          - 'null'
+          enum:
+          - BREAKDOWN
+          - ACCIDENT
+          - THEFT
+          - FINE_NOTICE
+          - OTHER
+          - null
+          description: Required for INCIDENT and null for DAMAGE.
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        trip_id:
+          description: The reporter's own trip containing the declared instant (a canonical non-nil UUID), or null.
+          type:
+          - string
+          - 'null'
+          format: uuid
+          pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+          not: {enum: ['00000000-0000-0000-0000-000000000000']}
+        description:
+          type: string
+          minLength: 1
+          maxLength: 4000
+          description: 1..1000 Unicode scalars, no control character, not only white space ("Descreva o que aconteceu
+            com o veiculo ou a carga. Nao informe dados de saude de pessoas.").
+        location:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 560
+          description: Where on the asset, or the place; 1..140 Unicode scalars of the description profile, or null.
+        blocks_use:
+          type: boolean
+          description: True when the asset should not continue in use.
+      required:
+      - report_type
+      - incident_kind
+      - asset_id
+      - trip_id
+      - description
+      - location
+      - blocks_use
+      example:
+        report_type: DAMAGE
+        incident_kind: null
+        asset_id: 7b0e2a54-0000-4000-8000-000000009201
+        trip_id: 7b0e2a54-0000-4000-8000-000000009301
+        description: Lanterna traseira trincada ao manobrar na doca
+        location: Lanterna traseira esquerda
+        blocks_use: false
+      description: Owner schema1 for check.incident.report (EMP-CHECK-003). Entity type incident_report with the device
+        report UUID; at most one depends_on entry; soft_references and attachments are empty (an attachment
+        declaration stays RETRY/UNAVAILABLE until EMP-OFFL-005). The envelope declaration is when it happened. No field
+        exists for injuries, health, third-party identity, amounts or document content; photos are EMP-DOC-003 links
+        with target kind INCIDENT. An unknown or another organization's asset is NOT_FOUND, a member without
+        check.incident.report on it FORBIDDEN; a DRAFT asset, a wrong shape or text, or a reused report identity is
+        MALFORMED. A named trip not stored here is RETRY/DEPENDENCY_PENDING; another asset's trip or an instant outside
+        the trip is MALFORMED and another member's trip FORBIDDEN. Changed rights store nothing (RETRY/UNAVAILABLE).
+        An accepted report is REPORTED at entity revision 1 and books no cost.
+    EnterpriseIncidentReportListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          minLength: 1
+      example:
+        limit: 20
+    EnterpriseIncidentReportReadRequest:
+      description: Empty body; the report is the path selector.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseIncidentReportState:
+      type: string
+      enum:
+      - REPORTED
+      - ACKNOWLEDGED
+      - IN_TREATMENT
+      - RESOLVED
+      - DISMISSED
+    EnterpriseIncidentAction:
+      type: string
+      enum:
+      - ACKNOWLEDGE
+      - TREAT
+      - RESOLVE
+      - DISMISS
+    EnterpriseIncidentReportSummary:
+      type: object
+      additionalProperties: false
+      properties:
+        report_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        report_type:
+          type: string
+          enum:
+          - DAMAGE
+          - INCIDENT
+        incident_kind:
+          type: string
+          enum:
+          - BREAKDOWN
+          - ACCIDENT
+          - THEFT
+          - FINE_NOTICE
+          - OTHER
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reporter_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        blocks_use:
+          type: boolean
+        state:
+          $ref: '#/components/schemas/EnterpriseIncidentReportState'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 4
+        occurred_at:
+          type: string
+          format: date-time
+        received_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - report_id
+      - report_type
+      - asset_id
+      - reporter_membership_id
+      - blocks_use
+      - state
+      - revision
+      - occurred_at
+      - received_at
+      - updated_at
+    EnterpriseIncidentReportPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseIncidentReportSummary'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - report_id: 7b0e2a54-0000-4000-8000-000000009101
+          report_type: INCIDENT
+          incident_kind: BREAKDOWN
+          asset_id: 7b0e2a54-0000-4000-8000-000000009201
+          reporter_membership_id: 7b0e2a54-0000-4000-8000-000000009401
+          blocks_use: true
+          state: REPORTED
+          revision: 1
+          occurred_at: '2026-11-15T10:05:00Z'
+          received_at: '2026-11-15T10:06:00.123456Z'
+          updated_at: '2026-11-15T10:06:00.123456Z'
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseIncidentOwnReport:
+      type: object
+      additionalProperties: false
+      properties:
+        report_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        report_type:
+          type: string
+          enum:
+          - DAMAGE
+          - INCIDENT
+        incident_kind:
+          type: string
+          enum:
+          - BREAKDOWN
+          - ACCIDENT
+          - THEFT
+          - FINE_NOTICE
+          - OTHER
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reporter_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        blocks_use:
+          type: boolean
+        state:
+          $ref: '#/components/schemas/EnterpriseIncidentReportState'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 4
+        occurred_at:
+          type: string
+          format: date-time
+        received_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        description:
+          type: string
+          minLength: 1
+        location:
+          type: string
+          minLength: 1
+      required:
+      - report_id
+      - report_type
+      - asset_id
+      - reporter_membership_id
+      - blocks_use
+      - state
+      - revision
+      - occurred_at
+      - received_at
+      - updated_at
+      - description
+    EnterpriseIncidentOwnReportPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseIncidentOwnReport'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - report_id: 7b0e2a54-0000-4000-8000-000000009101
+          report_type: DAMAGE
+          asset_id: 7b0e2a54-0000-4000-8000-000000009201
+          reporter_membership_id: 7b0e2a54-0000-4000-8000-000000009401
+          blocks_use: false
+          state: ACKNOWLEDGED
+          revision: 2
+          occurred_at: '2026-11-15T10:05:00Z'
+          received_at: '2026-11-15T10:06:00.123456Z'
+          updated_at: '2026-11-15T11:00:00.123456Z'
+          description: Lanterna traseira trincada ao manobrar na doca
+          location: Lanterna traseira esquerda
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseIncidentTransition:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 2
+          maximum: 4
+        action:
+          $ref: '#/components/schemas/EnterpriseIncidentAction'
+        from_state:
+          $ref: '#/components/schemas/EnterpriseIncidentReportState'
+        to_state:
+          $ref: '#/components/schemas/EnterpriseIncidentReportState'
+        note:
+          type: string
+          minLength: 1
+        duplicate_of:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        actor_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        recorded_at:
+          type: string
+          format: date-time
+      required:
+      - revision
+      - action
+      - from_state
+      - to_state
+      - actor_membership_id
+      - recorded_at
+    EnterpriseIncidentAttachment:
+      type: object
+      additionalProperties: false
+      description: One linked document with its own storage state; never content, digest or locator. Only STORED is
+        ready; UPLOADING, RECEIVED, QUARANTINED, FAILED, REPLACED and DELETED are shown as they are.
+      properties:
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        storage_state:
+          type: string
+          enum:
+          - UPLOADING
+          - RECEIVED
+          - STORED
+          - QUARANTINED
+          - FAILED
+          - REPLACED
+          - DELETED
+        linked_at:
+          type: string
+          format: date-time
+      required:
+      - document_id
+      - storage_state
+      - linked_at
+    EnterpriseIncidentReportView:
+      type: object
+      additionalProperties: false
+      properties:
+        report_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        report_type:
+          type: string
+          enum:
+          - DAMAGE
+          - INCIDENT
+        incident_kind:
+          type: string
+          enum:
+          - BREAKDOWN
+          - ACCIDENT
+          - THEFT
+          - FINE_NOTICE
+          - OTHER
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reporter_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        blocks_use:
+          type: boolean
+        state:
+          $ref: '#/components/schemas/EnterpriseIncidentReportState'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 4
+        occurred_at:
+          type: string
+          format: date-time
+        received_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        description:
+          type: string
+          minLength: 1
+        location:
+          type: string
+          minLength: 1
+        history:
+          type: array
+          maxItems: 3
+          items:
+            $ref: '#/components/schemas/EnterpriseIncidentTransition'
+        attachments:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseIncidentAttachment'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - report_id
+      - report_type
+      - asset_id
+      - reporter_membership_id
+      - blocks_use
+      - state
+      - revision
+      - occurred_at
+      - received_at
+      - updated_at
+      - description
+      - history
+      - attachments
+      - data_mode
+      example:
+        report_id: 7b0e2a54-0000-4000-8000-000000009101
+        report_type: DAMAGE
+        asset_id: 7b0e2a54-0000-4000-8000-000000009201
+        trip_id: 7b0e2a54-0000-4000-8000-000000009301
+        reporter_membership_id: 7b0e2a54-0000-4000-8000-000000009401
+        blocks_use: false
+        state: ACKNOWLEDGED
+        revision: 2
+        occurred_at: '2026-11-15T10:05:00Z'
+        received_at: '2026-11-15T10:06:00.123456Z'
+        updated_at: '2026-11-15T11:00:00.123456Z'
+        description: Lanterna traseira trincada ao manobrar na doca
+        location: Lanterna traseira esquerda
+        history:
+        - revision: 2
+          action: ACKNOWLEDGE
+          from_state: REPORTED
+          to_state: ACKNOWLEDGED
+          actor_membership_id: 7b0e2a54-0000-4000-8000-000000009501
+          recorded_at: '2026-11-15T11:00:00.123456Z'
+        attachments:
+        - document_id: 7b0e2a54-0000-4000-8000-000000009701
+          storage_state: UPLOADING
+          linked_at: '2026-11-15T10:07:00.123456Z'
+        data_mode: SYNTHETIC
+    EnterpriseIncidentReportDecisionRequest:
+      type: object
+      additionalProperties: false
+      description: The report revision handled and one step; TREAT, RESOLVE and DISMISS require a note,
+        ACKNOWLEDGE takes none; duplicate_of only on DISMISS. Absent optional fields are omitted, never null.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        action:
+          $ref: '#/components/schemas/EnterpriseIncidentAction'
+        note:
+          type: string
+          minLength: 1
+          maxLength: 2000
+        duplicate_of:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - action
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009601
+        revision: 1
+        action: RESOLVE
+        note: Lanterna trocada na oficina interna
+    EnterpriseIncidentReportDecision:
+      type: object
+      additionalProperties: false
+      properties:
+        report_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        action:
+          $ref: '#/components/schemas/EnterpriseIncidentAction'
+        state:
+          $ref: '#/components/schemas/EnterpriseIncidentReportState'
+        revision:
+          type: integer
+          minimum: 2
+          maximum: 4
+        recorded_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+      required:
+      - report_id
+      - action
+      - state
+      - revision
+      - recorded_at
+      - replayed
+      example:
+        report_id: 7b0e2a54-0000-4000-8000-000000009101
+        action: RESOLVE
+        state: RESOLVED
+        revision: 2
+        recorded_at: '2026-11-15T11:00:00.123456Z'
+        replayed: false
     EnterpriseTripReviewListRequest:
       type: object
       additionalProperties: false
@@ -39906,7 +40690,7 @@ components:
       properties:
         kind:
           type: string
-          enum: [ASSET, EMPLOYEE, METER_READING]
+          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT]
         id:
           $ref: '#/components/schemas/EnterpriseUUID'
       example:

@@ -49,7 +49,8 @@ Outputs print aliases back for known values.
   strictly after the previous one → CONFLICT. A refusal changes nothing.
   Tables are those of B-BR-EMP-187; REPLACED is reachable only by REPLACE.
 - Links: kinds FUELING, EXPENSE, WORK_ORDER, TRIP, ASSET, EMPLOYEE,
-  METER_READING; foreign organization SCOPE; same kind+id twice DUPLICATE.
+  METER_READING, INCIDENT (EMP-CHECK-003, EDR-239; one ENUM row added, not
+  allocatable); foreign organization SCOPE; same kind+id twice DUPLICATE.
 - Amount: 0..1000000000000 centavos, recorded or corrected at any time.
 - Allocation check order: amount absent → AMOUNT_MISSING; more than 1000
   lines → INVALID; then per line in order: foreign → SCOPE, centavos outside
@@ -103,6 +104,6 @@ DUPLICATE, NOT_LINKED, NOT_ALLOCATABLE, EXCEEDS_AMOUNT and AMOUNT_MISSING.
   id/digest/storage/replaced_by/conference/fiscal/reconciliation/links/
   allocations and new id/digest/storage/replaces/links.
 
-The frozen corpus contains 251 cases: ENUM 64, ALLOWED 29, SCENARIO 146,
+The frozen corpus contains 252 cases: ENUM 65, ALLOWED 29, SCENARIO 146,
 REPLACE 12. SHA256:
-`27eaec5e45b641ab7ee31b70681d96690560a12a655f2f43d0f2cc2f55f1e383`.
+`47b8a29c1ed44cb2969d287813d84cdc75267ace7c39760518084843d6e9202f`.
