@@ -281,6 +281,12 @@ func availabilityBody(v app.AvailabilityView) (map[string]any, error) {
 			}
 			item["record_id"], item["valid_from"] = c.ID, orgtime.FormatInstant(c.From)
 			optionalInstant(item, "valid_to", c.To)
+			if c.Via != "" {
+				if !canonical(c.Via) {
+					return nil, orgapi.Unavailable
+				}
+				item["powered_asset_id"] = c.Via
+			}
 			if c.Kind == d.BlockCause {
 				item["reason_kind"] = c.Block
 			}

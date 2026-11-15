@@ -11,9 +11,6 @@ INSERT INTO org_asset_reservation_commands(org_id,operation_id,actor_id,asset_id
 VALUES(CAST(sqlc.arg(org_id)::text AS uuid),CAST(sqlc.arg(operation_id)::text AS uuid),CAST(sqlc.arg(actor_id)::text AS uuid),CAST(sqlc.arg(asset_id)::text AS uuid),
  sqlc.arg(kind)::text,sqlc.arg(request_hash)::text,CAST(sqlc.arg(target_id)::text AS uuid),sqlc.arg(result_state)::text);
 
--- name: AssetReservationState :one
-SELECT state FROM org_assets WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(id)::text AS uuid);
-
 -- name: InsertReservation :exec
 -- B-BR-EMP-294: the row guard admits the asset and employee under the root
 -- lock and stamps the request (and confirmation) instants.

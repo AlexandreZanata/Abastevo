@@ -42,7 +42,8 @@ var _ app.AssetLookup = (*AssetStore)(nil)
 func AssetAuditDefinitions() []audit.Definition {
 	definitions := append([]audit.Definition{{Action: "fleet.asset.created", TargetType: "asset"}, {Action: "fleet.asset.changed", TargetType: "asset"}, {Action: "fleet.asset.discarded", TargetType: "asset"}, {Action: "fleet.asset.activated", TargetType: "asset"}}, lifecycleAuditDefinitions()...)
 	definitions = append(definitions, assignmentAuditDefinitions()...)
-	return append(definitions, reservationAuditDefinitions()...)
+	definitions = append(definitions, reservationAuditDefinitions()...)
+	return append(definitions, attachmentAuditDefinitions()...)
 }
 func validID(raw string) bool { id, e := kernel.ParseOrgID(raw); return e == nil && id.String() == raw }
 func validCall(scope kernel.OrgScope, actor app.FleetActor, member string) error {

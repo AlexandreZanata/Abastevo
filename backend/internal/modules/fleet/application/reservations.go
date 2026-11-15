@@ -371,13 +371,19 @@ type ReservationService struct {
 // guarded runs one repository call between two live decisions of exactly the
 // policy and asset (the FLEET-006 pattern).
 func (s ReservationService) guarded(ctx context.Context, scope kernel.OrgScope, actor FleetActor, decision access.Decision, asset string, policy access.Policy, call func() error) error {
-	if !s.Enabled {
+	return guardedCall(ctx, s.Enabled, s.Repository, scope, actor, decision, asset, policy, call)
+}
+
+// guardedCall is the shared surface/decision/repository guard of the
+// EMP-FLEET-007 and EMP-FLEET-011 services.
+func guardedCall(ctx context.Context, enabled bool, repository any, scope kernel.OrgScope, actor FleetActor, decision access.Decision, asset string, policy access.Policy, call func() error) error {
+	if !enabled {
 		return ErrSurfaceDisabled
 	}
 	if err := authorized(ctx, scope, actor, decision, asset, policy); err != nil {
 		return err
 	}
-	if unavailable(s.Repository) {
+	if unavailable(repository) {
 		return ErrUnavailable
 	}
 	err := call()

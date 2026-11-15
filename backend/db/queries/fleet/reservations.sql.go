@@ -11,22 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const assetReservationState = `-- name: AssetReservationState :one
-SELECT state FROM org_assets WHERE org_id=CAST($1::text AS uuid) AND id=CAST($2::text AS uuid)
-`
-
-type AssetReservationStateParams struct {
-	OrgID string `json:"org_id"`
-	ID    string `json:"id"`
-}
-
-func (q *Queries) AssetReservationState(ctx context.Context, arg AssetReservationStateParams) (string, error) {
-	row := q.db.QueryRow(ctx, assetReservationState, arg.OrgID, arg.ID)
-	var state string
-	err := row.Scan(&state)
-	return state, err
-}
-
 const availabilityBlocks = `-- name: AvailabilityBlocks :many
 SELECT id::text AS id,reason_kind,valid_from,valid_to FROM org_asset_blocks
 WHERE org_id=CAST($1::text AS uuid) AND asset_id=CAST($2::text AS uuid)

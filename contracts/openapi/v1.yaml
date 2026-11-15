@@ -17425,6 +17425,230 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/attach:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAttachmentAttach
+      summary: Attach the path implement to a powered asset
+      description: EMP-FLEET-011. Attaches the path asset, an IMPLEMENT, to a VEHICLE or MACHINE of the organization (both
+        ACTIVE or INACTIVE) for a half-open whole-microsecond period; valid_from omitted is the server instant and a
+        given one may not be earlier; valid_to is optional. An implement is attached to at most one powered asset at
+        any instant; an overlapping attachment, also a concurrent one, is CONFLICT. A powered asset that is itself
+        an implement, or an implement that is not one, is VALIDATION_FAILED; a foreign asset is NOT_FOUND.
+        Attachments fix the kind of both assets. Dedicated company cookie, exact HTTPS Origin/Host and CSRF are
+        required. The server rechecks current fleet.asset.manage with fresh company proof, the existing
+        organizations C1 capability and same-organization membership, for the path asset and, inside the
+        transaction, for the other asset of the attachment; a UNIT, COST_CENTRE or ASSET grant covers an asset
+        through its allocation at the server instant (EMP-AUTH-006). Commands take the organization root lock;
+        exactly one audit event and receipt commit with the effect; an identical retry returns the first result and
+        any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAttachRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009401
+              powered_asset_id: 7b0e2a54-0000-4000-8000-000000008202
+      responses:
+        '201':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAttachmentAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                attachment_id: 7b0e2a54-0000-4000-8000-000000009501
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/{attachment_id}/detach:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAttachmentDetach
+      summary: Detach an implement from its powered asset
+      description: EMP-FLEET-011. Ends an attachment of the path asset (as the implement or the powered asset) that is not
+        ENDED at the server instant, at valid_to or at the server instant (at its start when it has not started).
+        valid_to may not be earlier than the server instant, earlier than the attach instant or later than a planned
+        end (VALIDATION_FAILED); an ENDED attachment is CONFLICT; an attachment of another asset is NOT_FOUND.
+        Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership, for the path asset and, inside the transaction, for the other asset of the attachment; a UNIT,
+        COST_CENTRE or ASSET grant covers an asset through its allocation at the server instant (EMP-AUTH-006).
+        Commands take the organization root lock; exactly one audit event and receipt commit with the effect; an
+        identical retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private
+        no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      - name: attachment_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private attachment selector of this asset; another asset's or organization's record is NOT_FOUND.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetDetachRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009402
+              reason: Synthetic harrow returned to the shed
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAttachmentAcknowledgement'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAttachmentList
+      summary: Read the implement attachments of an organization asset
+      description: EMP-FLEET-011. Start-ordered keyset page of every attachment in which the asset is the implement or the
+        powered asset, with its state (SCHEDULED, ACTIVE or ENDED) derived at evaluated_at. Opaque 15-minute cursor
+        bound to the account, organization, membership, route, asset and limit. Dedicated company cookie, exact
+        HTTPS Origin/Host and CSRF are required. The server rechecks current fleet.asset.read and same-organization
+        membership; a SELF grant covers an asset assigned to the member at the server instant (EMP-FLEET-006).
+        Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAttachmentPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install:
     post:
       tags:
@@ -23983,6 +24207,8 @@ components:
           - ARCHIVED
         record_id:
           $ref: '#/components/schemas/EnterpriseUUID'
+        powered_asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
         reason_kind:
           type: string
           enum:
@@ -24063,6 +24289,161 @@ components:
         - MAINTENANCE_HOLD
         evaluated_at: '2026-11-14T12:30:00.5Z'
       description: Derived availability at evaluated_at (fleet.md §6.2, BR-FLEET-025), never stored.
+    EnterpriseFleetAttachRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        powered_asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond not earlier than the server instant; omitted means the server
+            instant.
+        valid_to:
+          type: string
+          format: date-time
+          description: Optional exclusive end, a whole microsecond after the start.
+      required:
+      - schema_version
+      - operation_id
+      - powered_asset_id
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009401
+        powered_asset_id: 7b0e2a54-0000-4000-8000-000000008202
+      description: Attaches the path implement (EMP-FLEET-011). No state, author or authority is caller-chosen.
+    EnterpriseFleetDetachRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        valid_to:
+          type: string
+          format: date-time
+          description: Optional end, not earlier than the server instant nor the attach instant; omitted means the server
+            instant.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - schema_version
+      - operation_id
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009402
+        reason: Synthetic harrow returned to the shed
+      description: Ends one attachment of the path asset.
+    EnterpriseFleetAttachmentAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        attachment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - asset_id
+      - attachment_id
+      - replayed
+      - data_mode
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        attachment_id: 7b0e2a54-0000-4000-8000-000000009501
+        replayed: false
+        data_mode: SYNTHETIC
+      description: Original immutable committed result.
+    EnterpriseFleetAttachment:
+      type: object
+      additionalProperties: false
+      properties:
+        attachment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        implement_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        powered_asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - SCHEDULED
+          - ACTIVE
+          - ENDED
+          description: Derived at the page's evaluated_at; never stored.
+        valid_from:
+          type: string
+          format: date-time
+        valid_to:
+          type: string
+          format: date-time
+          description: Absent while open-ended; equal to valid_from when detached before its start.
+        recorded_at:
+          type: string
+          format: date-time
+        detached_at:
+          type: string
+          format: date-time
+        detach_reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - attachment_id
+      - implement_id
+      - powered_asset_id
+      - state
+      - valid_from
+      - recorded_at
+      example:
+        attachment_id: 7b0e2a54-0000-4000-8000-000000009501
+        implement_id: 7b0e2a54-0000-4000-8000-000000008201
+        powered_asset_id: 7b0e2a54-0000-4000-8000-000000008202
+        state: ACTIVE
+        valid_from: '2026-11-15T11:00:00.000123Z'
+        recorded_at: '2026-11-15T11:00:00.000123Z'
+      description: One half-open attachment period [valid_from, valid_to) of an implement to a powered asset; rows are
+        never deleted.
+    EnterpriseFleetAttachmentPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAttachment'
+        next_cursor:
+          type: string
+        evaluated_at:
+          type: string
+          format: date-time
+      required:
+      - items
+      - next_cursor
+      - evaluated_at
+      example:
+        items: []
+        next_cursor: ''
+        evaluated_at: '2026-11-15T12:30:00.5Z'
+      description: Keyset page of attachments; next_cursor is empty on the last page.
     EnterpriseFleetAssetPage:
       type: object
       additionalProperties: false

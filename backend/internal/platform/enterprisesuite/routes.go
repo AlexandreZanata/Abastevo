@@ -230,6 +230,10 @@ func Register(router chi.Router, o Options) error {
 	if err := fleetweb.RegisterAssetAssignments(router, fleetapp.AssignmentService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
+	// EMP-FLEET-011 implement attachments under fresh fleet.asset.manage.
+	if err := fleetweb.RegisterAssetAttachments(router, fleetapp.AttachmentService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
 	// EMP-FLEET-007 reservations, blocks and the availability read.
 	if err := fleetweb.RegisterAssetReservations(router, fleetapp.ReservationService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err

@@ -656,11 +656,11 @@ func (s *AssetStore) availabilityFacts(ctx context.Context, db syncapp.DBTX, sco
 	}
 	queries := q.New(db)
 	org := scope.OrgID().String()
-	state, err := queries.AssetReservationState(ctx, q.AssetReservationStateParams{OrgID: org, ID: asset})
+	stored, err := queries.AttachmentAssetKind(ctx, q.AttachmentAssetKindParams{OrgID: org, ID: asset})
 	if err != nil {
 		return fleet.AvailabilityFacts{}, nil, err
 	}
-	lifecycle, err := fleet.ParseState(state)
+	lifecycle, err := fleet.ParseState(stored.State)
 	if err != nil {
 		return fleet.AvailabilityFacts{}, nil, app.ErrUnavailable
 	}
@@ -681,6 +681,27 @@ func (s *AssetStore) availabilityFacts(ctx context.Context, db syncapp.DBTX, sco
 		missing = append(missing, app.MaintenanceHoldSource)
 	}
 	facts.Uses, facts.Holds = append([]fleet.UseFact(nil), uses.Uses...), append([]fleet.HoldFact(nil), holds.Holds...)
+	// EMP-FLEET-011 (§6.2 row 2): an attached implement is in use through
+	// the trips of the powered asset it is attached to at the instant.
+	if fleet.Kind(stored.Kind) == fleet.Implement {
+		powered, attached, err := s.PoweredAssetDBTX(ctx, db, scope, asset, at)
+		if err != nil {
+			return fleet.AvailabilityFacts{}, nil, err
+		}
+		if attached {
+			through, err := s.ActiveUse.ActiveUseDBTX(ctx, db, scope, powered, at)
+			if err != nil {
+				return fleet.AvailabilityFacts{}, nil, app.ErrUnavailable
+			}
+			if !through.Sourced && uses.Sourced {
+				missing = append(missing, app.ActiveUseSource)
+			}
+			for _, use := range through.Uses {
+				use.Via = powered
+				facts.Uses = append(facts.Uses, use)
+			}
+		}
+	}
 	blocks, err := queries.AvailabilityBlocks(ctx, q.AvailabilityBlocksParams{OrgID: org, AssetID: asset, At: timestamp(at)})
 	if err != nil {
 		return fleet.AvailabilityFacts{}, nil, err
