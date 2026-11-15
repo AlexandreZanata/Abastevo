@@ -21,19 +21,22 @@ Proposed backend modules (names are confirmed by the first task of each; existin
 | `orgaccess` (AUTH-001/002/003/004 LOCAL_DONE) | AUTH | Code-frozen descriptors; forced-RLS ORG/SELF periods, current candidates and locked membership/owner policy; current request authorization and proof-bound context; production route composition remains owning-task work | `kernel`, owned sqlc/pgx ports, scoped membership/organization/account/billing references |
 | `companysession` (LOCAL_DONE) | PLAT | Company account cookie, CSRF, expiry and revocation | Existing `account` proof/hash/token primitives; current account/family authority |
 | `orgvalue` (LOCAL_DONE, domain only) | PLAT | Exact reconciliation and ordered allocation | Existing pure metrics/kernel bounds; shared Go/Kotlin vectors; no private repository or authority |
+| `orgamend` (LOCAL_DONE, domain only) | PLAT | Append-only amendment, void and locked-period adjustment decisions (BR-AMD) | `orgaudit` reason bound; server-side amendment-v1 vectors; consumers own persistence and recalculation |
+| `orgnotify` (in-app core LOCAL_DONE; producers, external channels and app centre pending) | NOTIF | Member inbox, preferences, de-duplication, hourly limits and delivery history (migration 000204, SELF_NOTICE routes) | `orgevent` and the existing job queue; AUTH-003 current authority |
+| `orgexport` (export infrastructure and CSV list formats LOCAL_DONE; XLSX/PDF pending) | RPT | Export jobs, private export files and audited requester-bound capabilities (migration 000207); formats declare the read permission of their data, and request, worker and delivery re-check it (EMP-AUTH-011); admits the assets, meter-reading and employee list formats (`orgexport/adapters/lists`, EMP-RPT-002): requester re-check and read-only scoped read in one transaction, ZIP package with CSV and manifest | `orgaudit` access log, private storage, job queue, AUTH-003 current authority |
 | `orgaudit` (LOCAL_DONE) | AUD | Organization audit events | `kernel`, scoped transaction helper |
 | `orgevent` (LOCAL_DONE, foundation) | PLAT | Transactional follow-up intents and consumer receipts | `orgaudit` application runner; scoped transactions; existing PostgreSQL job queue and dispatcher; source-owned catalogs/effects |
 | `orgcapability` (LOCAL_DONE) | PLAT | Registered organization capability state and audited activation | `orgaudit` application port, `kernel`, scoped transaction helper; AUTH authority port |
 | `orgmedia` (LOCAL_DONE) | PLAT | Bounded private originals and member-bound access | Existing S3/HMAC/JPEG primitives; `orgaudit` application port; AUTH/DOC authority and metadata ports |
 | `orgsync` (proposed) | OFFL | Operation intake, acknowledgements, review items, reference feed | `orgaccess`; handlers registered by each module |
-| `fleet` (pure asset/meter domains LOCAL_DONE; runtime pending) | FLEET, METER | Scoped asset/tank values; exact meter/reading evidence under EMP-METER-001; persistence, assignments, reservations and suppliers remain their owning tasks | `kernel`, accepted time/value domains; future explicit `organization`/`membership` ports |
+| `fleet` (asset/meter domains, asset persistence, meter intake, held review, asset lifecycle, allocation history and driver assignments LOCAL_DONE; reservations and suppliers pending) | FLEET, METER | Scoped asset/tank values; exact meter/reading evidence under EMP-METER-001; lifecycle commands/history (migration 201) with an explicit open-work port; unit/cost-centre allocation periods and the `UnitAndCostCentreAt` snapshot port (migration 206); driver assignments with SELF coverage and `AssignedAssetsPort` (migration 210); transfers, reservations and suppliers remain their owning tasks | `kernel`, accepted time/value domains; future explicit `organization`/`membership` ports |
 | `trip` (proposed) | TRIP | Missions, trips, stops, logbook | `fleet`, `review` |
 | `tracking` (proposed) | GPS, ROUTE | Tracking sessions, track segments, live position, geofences, route plans | `trip` |
-| `fueling` (pure domain LOCAL_DONE; runtime pending) | FUEL | Owned nine-product catalog, exact submit-ready candidates and purchased totals; intake/review/consumption remain their owning tasks | Pure `fleet` refs, accepted time/value kernels; future explicit `metrics`, `directory`/`official`/`community` read ports |
-| `document` (proposed) | DOC | Documents, extractions, fiscal documents, links, allocations | storage port; `kernel` CNPJ type (existing) |
-| `review` (proposed) | APPR | Review cases, approval policies, periods | `orgaccess` |
-| `expense` (proposed) | EXP, FIN | Expenses, allocations, payables, payments, advances | `review`, `fueling`, `document` |
-| `budget` (proposed) | BUDG | Budgets, lines, holds | `expense` |
+| `fueling` (pure domain and signed intake/persistence LOCAL_DONE; review, consumption and panel pending) | FUEL | Owned nine-product catalog, exact submit-ready candidates and purchased totals; `org_fuelings` with warnings and review entries (migration 000215) and the `fueling.submit` intake handler with the embedded FUELING reading; review/consumption/panel remain their owning tasks | Pure `fleet` refs and fleet `RecordEmbedded`/snapshot ports, accepted time/value kernels; future explicit `metrics`, `directory`/`official`/`community` read ports |
+| `document` (pure domain, `domain/fiscal` structure checks, persistence and links LOCAL_DONE; jobs and the Android producer proposed) | DOC | Documents, extractions, fiscal documents, links, allocations; `org_documents` (migration 000205), `org_document_links` (migration 000209), the `Linker` port and `TargetResolver` registry, the `org-document-safety` job (migration 000212; serial worker slot, composed only with a document bucket), company routes under `/v1/orgs/{org_id}/documents/` and the `DOCUMENT_INGRESS` boundary | `orgmedia` originals and capabilities; `orgaudit` access log; owner resolvers in `fleet` and `membership`; `kernel` CNPJ type (existing); shared Go/Kotlin document-v1 vectors |
+| `review` (pure C1 lifecycle and finance periods LOCAL_DONE; review-case persistence and policies proposed) | APPR | Review cases, approval policies, periods (migration 000203, `review/adapters`, routes `finance/periods/*`, in-transaction period gate) | `orgaccess`; shared Go/Kotlin review-v1 vectors; `orgamend` period facts |
+| `expense` (pure expense and payable domains LOCAL_DONE; runtime pending) | EXP, FIN | One cost per origin, exact paid/company amounts, competence reporting day and review-basis totals; supplier, reimbursement and card statement payables with derived settlement state and separate cost and settlement views (subpackage `domain/payable`); payments, advances, allocations and persistence remain their owning tasks | `fueling` refs, accepted time/value kernels, `review` reason bound; future `document` |
+| `budget` (pure budget domain LOCAL_DONE; runtime pending) | BUDG | One-dimension lines over half-open reporting periods with exact limits, capacity derived from approved consumption and active holds, reservation/posting decisions and the hold lifecycle; persistence, locks, reservation API, overrun policy, panel and driver/asset limits remain their owning tasks | `expense`, accepted time/value kernels |
 | `maintenance` (proposed) | MAINT, CHECK | Checklists, incidents, plans, work orders, compliance items | `fleet`, `review`, `expense` |
 | `fuelstock` (proposed) | STOCK | Internal tanks and movements | `fueling`, `expense` |
 | `insight` (proposed) | KPI, FIND, RPT | Indicator read models, findings, export jobs | read ports of the above |
@@ -732,6 +735,17 @@ SELECT and INSERT only. Root and membership schemas are introduced by their
 own tasks. EMP-ORG-002 adds the root reference in migration 000169.
 Actor references remain historical through offboarding.
 
+Sensitive reads (EMP-PRIV-005) record through `orgaudit` `AccessRecorder`/`AccessLog`.
+[Migration 000202](../../backend/db/migrations/000202_org_sensitive_access_events.sql)
+adds `org_sensitive_access_events`, one append-only detail row per sensitive
+audit event (category, stage, membership, grant), written in the same runner
+transaction, with forced RLS, a guard that matches the event's action and
+member reason and links a served capability to its member-bound issuance, and
+a deferred check that no sensitive event commits without its detail. The
+runtime role receives SELECT and INSERT only. Owners record before minting a
+capability or releasing content and serve nothing on any error.
+[Evidence](evidence/f3-priv005-sensitive-access-log.md)
+
 Reads enter through `application.Service.List`. An injected authorizer
 must check current `audit.event.read` authority covering the whole
 organization or approved live support access for the actor and organization.
@@ -823,6 +837,9 @@ No business catalog, concrete effect or production worker registration is
 activated by this foundation. Ordinary runtime login/grants and backup-role
 review remain required before activation. See
 [local evidence](evidence/f1-plat010-transactional-events.md).
+
+Export jobs run on dedicated serial slots `org-export-build` and
+`org-export-cleanup`, excluded from the general dispatcher (EMP-RPT-001).
 
 ## 8. Keeping the panel current
 
@@ -945,6 +962,13 @@ Signals that justify the next infrastructure step (measured, sustained):
 | Track table size | Above 20 GB | Monthly partitions and partition drop for retention |
 | Queue delay for exports or track processing | Above 5 minutes | Dedicated worker role |
 | Panel polling share of requests | Above half of API load | Server-sent events for the live map |
+
+EMP-RPT-001 implements the export prefix as `org/<org_id>/export/<export_id>/<sha256>`
+in module `orgexport` (migration 000207): create-only upload, read-back before
+`READY`, a requester-bound 5-minute API capability (`orgexport.access.v1`)
+recorded as `EXPORT_FILE` before minting and serving, and deletion with
+confirmed absence at expiry by the `org-export-cleanup` job.
+[Evidence](evidence/f3-rpt001-export-infrastructure.md)
 
 ## 10. Activation, flags and rollback
 

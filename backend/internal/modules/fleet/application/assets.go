@@ -226,6 +226,10 @@ type AssetView struct {
 	Revision      int64
 	UnitID        string
 	Allocation    *UnitAllocation
+	// AcquiredAt and Disposal are the current EMP-FLEET-003 lifecycle data;
+	// earlier values remain in revision snapshots and lifecycle history.
+	AcquiredAt *time.Time
+	Disposal   *AssetDisposal
 }
 
 func (v AssetView) Clone() AssetView {
@@ -233,6 +237,14 @@ func (v AssetView) Clone() AssetView {
 	if v.Allocation != nil {
 		a := *v.Allocation
 		v.Allocation = &a
+	}
+	if v.AcquiredAt != nil {
+		at := *v.AcquiredAt
+		v.AcquiredAt = &at
+	}
+	if v.Disposal != nil {
+		d := *v.Disposal
+		v.Disposal = &d
 	}
 	return v
 }
@@ -295,6 +307,12 @@ func unavailable(port any) bool {
 	return false
 }
 func current(ctx context.Context, scope kernel.OrgScope, actor FleetActor, decision access.Decision, target string, write bool) error {
+	return authorized(ctx, scope, actor, decision, target, Policy(write))
+}
+
+// authorized proves the live web decision of exactly this source policy and
+// target for the actor before and after every repository call.
+func authorized(ctx context.Context, scope kernel.OrgScope, actor FleetActor, decision access.Decision, target string, policy access.Policy) error {
 	if ctx == nil {
 		return ErrUnauthenticated
 	}
@@ -304,7 +322,6 @@ func current(ctx context.Context, scope kernel.OrgScope, actor FleetActor, decis
 	if scope.Validate() != nil {
 		return fleet.ErrScope
 	}
-	policy := Policy(write)
 	if actor.Validate() != nil || decision.Subject().Channel() != "web" || decision.Policy() != policy || decision.Check(ctx, scope, actor.AccountID, policy.Permission, target) != nil {
 		return ErrUnauthenticated
 	}
@@ -342,6 +359,10 @@ func validView(v AssetView, scope kernel.OrgScope, target string) bool {
 		return false
 	}
 	if v.State == fleet.Active && (v.UnitID == "" || v.Allocation == nil) {
+		return false
+	}
+	// B-BR-EMP-204: a current disposal exists exactly while DISPOSED/ARCHIVED.
+	if (v.State == fleet.Disposed || v.State == fleet.Archived) != (v.Disposal != nil) || v.Disposal != nil && !v.Disposal.valid() || v.AcquiredAt != nil && !validInstant(*v.AcquiredAt) {
 		return false
 	}
 	if a := v.Allocation; a != nil {

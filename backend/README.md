@@ -844,8 +844,7 @@ Use the existing `jobs.NewUUIDv4` generator for access/request IDs.
 
 Original keys are derived under `org/<org_id>/doc/<document_id>/<sha256>`.
 Conditional PUT plus a bounded verified GET refuses overwrite or substitution.
-Only the synthetic JPEG inspector is supplied; other format inspectors and
-durable ready/quarantine state stay with EMP-DOC-014/EMP-DOC-002.
+Only the synthetic JPEG inspector is supplied; it refuses trailing payloads and active content as unsafe (EMP-DOC-014). Other format inspectors stay unimplemented.
 Member-bound API access expires within five minutes, rechecks revocation and
 authority, and never returns a storage URL. A process runs at most four
 transfers, two per organization and one per member, refusing at once beyond
@@ -1126,3 +1125,182 @@ ACTIVE organization. Web installation retains real WEB_SESSION provenance,
 never a fabricated physical device. Real receipt/legal/release gates remain.
 See [current meter evidence](../docs/enterprise/evidence/f2-meter002-persistence-intake.md)
 for accepted source and still-open whole-task cases.
+
+The signed meter intake principal also needs `SELECT (org_id, employee_id,
+asset_id, valid_from, valid_to, end_cause) ON org_asset_assignments` and
+`SELECT (org_id, id, employee_id, started_at, ended_at) ON org_memberships` to
+resolve SELF (EMP-METER-002 closure, EDR-173). Nothing here provisions live
+grants.
+
+### Fueling intake (EMP-FUEL-002)
+
+Migration215 adds forced-RLS, insert-only `org_fuelings`, `org_fueling_warnings`
+and `org_fueling_review_entries`. The signed intake principal needs `SELECT,
+INSERT ON org_fuelings, org_fueling_warnings, org_fueling_review_entries` and
+`SELECT ON org_employee_identities, org_asset_tank_products,
+org_asset_unit_periods, org_asset_cost_centre_periods` besides its meter and
+sync grants; every principal that can reach the asset usage source (asset
+discard or kind change) needs `SELECT (org_id, asset_id) ON org_fuelings`. The
+migrator needs `REFERENCES` on organizations, org_sync_operations, org_assets,
+org_employee_identities, org_memberships, org_device_enrollments,
+org_fuel_products_v1, org_meter_readings, org_units and org_cost_centres and
+ownership of `org_asset_current_usage`, `org_unit_current_usage` and
+`org_cost_centre_current_usage`. The runtime registers `fueling.submit` beside
+`meter.reading.record` with `NO_ASYNC_FOLLOWUP` for ACCEPTED and REJECTED;
+changed-right and post-disposal fuelings store nothing and stay
+RETRY/UNAVAILABLE. Nothing here provisions live grants.
+
+### Asset lifecycle (EMP-FLEET-003)
+
+Migration201 adds nullable acquisition/disposal columns to `org_assets` and the
+forced-RLS, append-only `org_asset_lifecycle_events` history keyed by asset
+revision. The Fleet principal needs `SELECT, INSERT ON
+org_asset_lifecycle_events`; table-level `org_assets` grants already cover the
+new columns. Principals that insert meter readings or held readings with only
+column grants additionally need `SELECT (org_id, id, disposed_at,
+disposed_submicro) ON org_assets`. Lifecycle routes reuse the enterprise flag,
+the organizations capability and fresh company proof. The open-work port is
+answered by the explicit `NoOpenWork` adapter until trips and work orders
+exist. Nothing here provisions live grants.
+
+### Allocation history (EMP-FLEET-005)
+
+Migration206 installs the trusted `btree_gist` extension (PostgreSQL contrib,
+PostgreSQL License, shipped in the pinned `postgis/postgis:18-3.6` image; the
+migrator needs CREATE on the database, which the database owner has) and the
+forced-RLS `org_asset_unit_periods` and `org_asset_cost_centre_periods` tables,
+and moves every activated asset's initial unit into its first period. The Fleet
+principal needs `SELECT, INSERT ON org_asset_unit_periods,
+org_asset_cost_centre_periods` (activation opens the first unit period through a
+trigger). Unit-source principals additionally need `SELECT (org_id, asset_id,
+unit_id, valid_to) ON org_asset_unit_periods`; cost-centre-source principals
+need `SELECT (org_id, id, state) ON org_assets` and `SELECT (org_id, asset_id,
+cost_centre_id, valid_to) ON org_asset_cost_centre_periods`. A module calling
+the snapshot port needs `SELECT (org_id, id) ON org_assets` and `SELECT` on
+both period tables. No UPDATE grant is needed until the EMP-FLEET-008 transfer
+(`UPDATE (valid_to)`); DELETE/TRUNCATE are refused by triggers regardless.
+History routes reuse the enterprise flag, the organizations capability and
+current `fleet.asset.read`. Nothing here provisions live grants.
+
+### Structural role scopes (EMP-AUTH-006)
+
+Migration208 widens `org_role_assignments` to `UNIT`, `COST_CENTRE`, `TEAM` and
+`ASSET` scopes with generated same-organization foreign keys and an insert
+admission trigger, and lets the unit, cost-centre, team and asset usage sources
+recognise the new keys (assignments are not use). The migration owner needs
+ownership of `org_role_assignments` and of the four `*_current_usage` functions
+and `REFERENCES` on `org_units`, `org_cost_centres`, `org_teams` and
+`org_assets`. The role-management principal additionally needs `SELECT (org_id,
+id, state)` on those four tables for structural grants. The meter-review
+principal needs `SELECT (org_id, team_id, employee_id, started_at, ended_at) ON
+org_team_links`; the fleet principal reuses its FLEET-005 snapshot-port grants.
+Nothing here provisions live grants.
+
+### Driver assignments (EMP-FLEET-006)
+
+Migration210 adds the forced-RLS `org_asset_assignments` (PRIMARY periods never
+overlap: a `btree_gist` exclusion) and `org_asset_assignment_commands`, two
+`AFTER UPDATE OF state` consumers that end assignments when an employee record
+becomes `TERMINATED` or an asset `DISPOSED`, and recognises the new asset key in
+`org_asset_current_usage` (on top of the 208/209 bodies). The migration owner
+needs `TRIGGER` on `org_assets` and `org_employee_identities`, `REFERENCES` on
+`organizations`, `org_audit_events`, `org_assets` and `org_employee_identities`,
+and ownership of `org_asset_current_usage`. The Fleet principal needs `SELECT,
+INSERT, UPDATE ON org_asset_assignments`, `SELECT, INSERT ON
+org_asset_assignment_commands` and `SELECT (org_id, id, employee_id, started_at,
+ended_at) ON org_memberships` plus `SELECT (org_id, id, state, revision) ON
+org_employee_identities`. Every principal that terminates an employee record
+(offboarding, employee merge) or disposes an asset needs `SELECT (org_id,
+employee_id, asset_id, valid_from, valid_to), UPDATE (valid_to, end_cause,
+source_revision, end_operation_id, ended_by, end_reason) ON
+org_asset_assignments`. DELETE/TRUNCATE are refused by triggers regardless.
+Commands use fresh `fleet.asset.assign` (admission class `fleet.assignment`);
+reads use current `fleet.asset.read`, whose SELF grants now cover assigned
+assets. Nothing here provisions live grants.
+
+### Finance periods (EMP-APPR-006)
+
+Migration203 adds the immutable `org_finance_period_transitions` history (also
+the command receipt) and the trigger-maintained head `org_finance_periods`, both
+with forced RLS. Rollout grants (no live provisioning): `GRANT SELECT, INSERT ON
+org_finance_period_transitions` and `GRANT SELECT, INSERT, UPDATE ON
+org_finance_periods` to the runtime role (head writes are admitted only through
+the transition trigger and its guards). Owning record commands that call the
+period gate need `SELECT` on both tables, `SELECT` on `org_units` and the
+existing root row-lock privilege on `organizations`.
+
+### Organization notification core (EMP-NOTIF-001)
+
+Migration204 installs forced-RLS notification requests, recipients, notices,
+delivery history, preferences, hourly budgets and member receipts. The runtime
+principal needs `GRANT SELECT, INSERT ON org_notification_recipients,
+org_notification_deliveries, org_notification_commands` and `GRANT SELECT,
+INSERT, UPDATE ON org_notification_requests, org_notification_notices,
+org_notification_preferences, org_notification_budgets` (UPDATE only for the
+single dispatch claim, read mark, revisioned preference, budget count and row
+locks; guards refuse every other change), plus the existing AUTH-003
+current-authority reads. No kind, producer or dispatch worker is enabled;
+producers compose `notif.dispatch` in the existing Dispatcher before activation.
+
+### Organization export jobs (EMP-RPT-001)
+
+Migration207 adds the forced-RLS `org_export_jobs` table. The API and worker
+runtime roles need `GRANT SELECT, INSERT, UPDATE ON org_export_jobs`, `GRANT
+SELECT, INSERT ON org_audit_events, org_sensitive_access_events` and `GRANT
+SELECT, INSERT, UPDATE ON job_queue`; the export insert guard reads
+`org_memberships`. The worker's requester re-check needs what the company
+pipeline already uses: `SELECT` plus the row-lock privilege for `FOR SHARE` on
+`accounts` and `organizations`, and `SELECT` on `org_memberships`,
+`org_role_assignments`, `org_onboarding_commands` and `payment_billing_exits`.
+The worker must connect with an ordinary NOSUPERUSER/NOBYPASSRLS login that owns
+no RLS table. Rows are never deleted; export objects live under
+`org/<org_id>/export/` in the existing private bucket and are deleted by the
+`org-export-cleanup` job.
+
+EMP-RPT-002 list readers (worker login only; column privileges, no work contact
+or capture locator): `GRANT SELECT(org_id,id,kind,category_id,name,fleet_number,
+plate,serial_number,usage_basis,state,revision,acquired_at,acquired_submicro,
+disposal_kind,disposed_at,disposed_submicro,disposal_reason) ON org_assets`,
+`GRANT SELECT(org_id,id,label) ON org_asset_categories`, `GRANT
+SELECT(org_id,asset_id,unit_id,valid_from,valid_to) ON org_asset_unit_periods`,
+`GRANT SELECT(org_id,asset_id,cost_centre_id,valid_from,valid_to) ON
+org_asset_cost_centre_periods`, `GRANT SELECT(org_id,id,asset_id,kind) ON
+org_meters`, `GRANT SELECT(org_id,id,meter_id,value,occurred_at,
+occurred_submicro,entry_zone,device_offset_seconds,received_at,origin,method,
+state,author_membership_id,capture_kind) ON org_meter_readings`, `GRANT
+SELECT(org_id,id,state,revision,merged_into) ON org_employee_identities`, `GRANT
+SELECT(org_id,employee_id,display_name,registration_number,job_title,
+home_unit_id,revision) ON org_employee_profiles`, `GRANT
+SELECT(org_id,employee_id,state) ON org_memberships` and `GRANT
+SELECT(org_id,display_name,time_zone) ON organizations` (the last two are
+already covered where the requester re-check holds table `SELECT`). The reading
+transaction is switched to read-only after the requester re-check.
+
+### Organization document links (EMP-DOC-003)
+
+Migration209 adds the forced-RLS, insert-only `org_document_links` table and
+lists its asset reference in `org_asset_current_usage` (on top of the 208
+body). The API runtime role needs `GRANT SELECT, INSERT ON org_document_links`,
+the existing document grants (`SELECT, INSERT, UPDATE ON org_documents` —
+UPDATE only for the `FOR UPDATE` row lock that serializes link writes — and
+`SELECT, INSERT ON org_audit_events`) and the target columns the owner
+resolvers read: `GRANT SELECT(org_id,id,state) ON org_assets`, `GRANT
+SELECT(org_id,id,author_membership_id) ON org_meter_readings`, `GRANT
+SELECT(org_id,reading_id,operation_id) ON org_meter_held_readings`, `GRANT
+SELECT(org_id,operation_id,membership_id) ON org_sync_operations` and `GRANT
+SELECT(org_id,id) ON org_employee_identities`. Links are never updated or
+deleted; only ASSET, EMPLOYEE and METER_READING targets are registered.
+
+### Document upload safety (EMP-DOC-014)
+
+Migration212 adds `org_documents.storage_reason` (closed reasons fixed by their
+transition), the 24-hour upload session window and the `org-document-safety`
+closure job of pending rows. The API runtime role needs `GRANT SELECT, INSERT ON
+job_queue` for declarations and received uploads, besides the document grants.
+The worker role needs `GRANT SELECT, INSERT, UPDATE ON job_queue`, `GRANT SELECT,
+UPDATE ON org_documents` (UPDATE also for the `FOR UPDATE` row lock) and `GRANT
+SELECT, INSERT ON org_audit_events`, connects as an ordinary
+NOSUPERUSER/NOBYPASSRLS login that owns no RLS table and uses the same private
+document bucket as the API. Neither `cmd/api` nor `cmd/worker` configures that
+bucket yet, so the job is not composed and queued jobs wait without charging
+attempts.

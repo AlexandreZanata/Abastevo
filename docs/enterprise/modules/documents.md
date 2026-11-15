@@ -5,8 +5,20 @@ Recovered from the surviving enterprise requirements, shared rules and backlog.
 The accepted F0 decisions and existing release gates govern any implementation.
 
 EMP-PLAT-006 implements the [private storage/access foundation](../evidence/f1-plat006-private-document-storage.md).
-Document metadata/schema, upload-session persistence, feature routes and
-verification/lifecycle jobs retain EMP-DOC-002 and EMP-DOC-014 ownership.
+EMP-DOC-002 persists the document container (`org_documents`, migration
+000205), the creator-bound upload session with its capability-bound ingress and
+the audited content routes ([evidence](../evidence/f3-doc002-document-persistence.md));
+EMP-DOC-014 adds the upload safety check: verified bytes are `RECEIVED`, only the check over the stored object makes them `STORED`, refused content is `QUARANTINED`/`FAILED` with a closed reason, and the `org-document-safety` job converges interrupted checks and closes sessions 24 hours after the declaration ([evidence](../evidence/f3-doc014-upload-safety.md)).
+EMP-DOC-003 persists owned same-organization links (`org_document_links`,
+migration 000209) to assets, employees and stored or held meter readings
+through a closed registry of owner resolvers, with a link port for operation
+consumers and three company routes
+([evidence](../evidence/f3-doc003-document-links.md)); fueling, expense,
+work-order and trip links retain their owning tasks.
+EMP-DOC-006 adds pure structure checks for access keys, NFC-e QR codes and a
+bounded server-only XML envelope ([evidence](../evidence/f3-doc006-fiscal-structure.md));
+a STRUCTURE_OK result commands only the structure status and never fiscal
+consultation.
 The current synthetic inspector accepts JPEG; other format inspectors are
 not activated by a MIME declaration or a READY flag.
 

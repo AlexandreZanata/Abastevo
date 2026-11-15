@@ -23,6 +23,17 @@ func fleetStore(t *testing.T, fx legalFixtureState) *fleetpg.AssetStore {
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE,DELETE ON org_assets,org_asset_tanks,org_asset_tank_products,org_asset_expected TO "+role+";GRANT SELECT,INSERT ON org_asset_categories,org_asset_unit_allocations,org_asset_revisions,org_asset_commands TO "+role+";GRANT SELECT ON org_fuel_products_v1,org_sync_operations,org_sync_effects,org_team_links,org_teams TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	// EMP-FLEET-005: activation opens the first unit period in the same
+	// transaction once the period tables exist; earlier chains stay unchanged.
+	var periods bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_asset_unit_periods') IS NOT NULL`).Scan(&periods); err != nil {
+		t.Fatal(err)
+	}
+	if periods {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_asset_unit_periods,org_asset_cost_centre_periods TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 	catalog, err := audit.NewCatalog(fleetpg.AssetAuditDefinitions())
 	if err != nil {
 		t.Fatal(err)

@@ -143,5 +143,10 @@ jobs:
         # package deadline under the race detector on the shared runner. Keep
         # every case with an explicit bounded limit. organization/adapters took
         # 1121.7s (main 43b21389) after the F2 OFFL-008 review suites and timed
-        # out at 20m on PR #219 runner variance, so the bound is 30m.
-        run: cd backend && go test -race -count=1 -timeout=30m -tags=integration ./...
+        # out at 20m on PR #219 runner variance, so the bound was raised to 30m.
+        # The F3 batch adds period, document, export, notification, scope,
+        # allocation, assignment and auditor suites to that package: its local
+        # race time grew from ~620s to ~800-900s alone (1221s under load), which
+        # projects to ~27m on the shared runner, so the bound is 45m (EDR-168).
+        # No case is skipped or shortened.
+        run: cd backend && go test -race -count=1 -timeout=45m -tags=integration ./...

@@ -135,11 +135,39 @@ type CapabilityGate interface {
 type RecordGate interface {
 	Check(context.Context, kernel.OrgScope, Subject, Policy, d.ResourceFacts, []d.Rule) error
 }
+
+// StructureSource resolves the structural facts (unit, cost centre, asset,
+// teams) of the record a route protects (EMP-AUTH-006, BR-AUTH-004/005). It
+// reads server state only: the snapshot a record stored at creation or, for an
+// asset itself, its allocation at the evaluated instant. Prepare consults it
+// only when the subject holds a current structural assignment with a positive
+// rule for the policy; it may set no other field. ErrNotFound means the record
+// does not exist in the organization.
+type StructureSource interface {
+	ResolveStructure(context.Context, kernel.OrgScope, Policy, d.ResourceFacts, time.Time) (d.ResourceFacts, error)
+}
+
+// AssigneeSource answers whether the record a route protects is assigned
+// to the member at the evaluated instant (EMP-FLEET-006, B-BR-EMP-246). It
+// reads server state only. Prepare consults it only when the subject holds a
+// current SELF assignment with a positive rule for the policy and the
+// resolver supplied no own-record fact; a true answer sets AssignedTo to the
+// member and nothing else.
+type AssigneeSource interface {
+	ResolveAssignee(context.Context, kernel.OrgScope, Policy, d.ResourceFacts, string, time.Time) (bool, error)
+}
+
 type Authorization struct {
 	Source       AuthoritySource
 	Capabilities CapabilityGate
 	Records      RecordGate
-	Now          func() time.Time
+	// Structure is optional. Without it a structural assignment covers no
+	// record of the route (fail closed); ORG/SELF evaluation never uses it.
+	Structure StructureSource
+	// Assignee is optional. Without it a SELF assignment covers only records
+	// whose resolver states the member's own authorship or assignment.
+	Assignee AssigneeSource
+	Now      func() time.Time
 }
 
 type requestKey struct{}
@@ -330,12 +358,61 @@ func (s Authorization) Prepare(ctx context.Context, scope kernel.OrgScope, actor
 	if !positive {
 		return Prepared{}, d.DenyPermission(policy.Permission)
 	}
+	structural, err := d.StructuralCandidate(scope, subject.member, current.Assignments, policy.Permission, now)
+	if err != nil {
+		return Prepared{}, ErrUnavailable
+	}
 	target, err := resolver.Resolve(ctx, scope, subject)
 	if err != nil {
 		if errors.Is(err, ErrNotFound) || errors.Is(err, d.ErrResourceNotFound) {
 			return Prepared{}, d.ErrResourceNotFound
 		}
 		return Prepared{}, bounded(ctx, err)
+	}
+	// Only a current structural grant needs the record's structure; ORG/SELF
+	// requests keep their exact prior steps (EDR-161). Without a source the
+	// structural grant simply covers nothing here.
+	if structural && s.Structure != nil {
+		if err := target.Validate(scope); err != nil {
+			if errors.Is(err, d.ErrResourceNotFound) {
+				return Prepared{}, d.ErrResourceNotFound
+			}
+			return Prepared{}, ErrUnavailable
+		}
+		resolved, err := s.Structure.ResolveStructure(ctx, scope, policy, target, now)
+		if err != nil {
+			if errors.Is(err, ErrNotFound) || errors.Is(err, d.ErrResourceNotFound) {
+				return Prepared{}, d.ErrResourceNotFound
+			}
+			return Prepared{}, bounded(ctx, err)
+		}
+		if target, err = target.WithStructure(scope, resolved); err != nil {
+			return Prepared{}, ErrUnavailable
+		}
+	}
+	// A current SELF grant needs the assignee fact of a record whose resolver
+	// stated no own authorship or assignment (EDR-165); every other request
+	// keeps its exact prior steps. Without a source SELF covers nothing more.
+	if s.Assignee != nil && target.AssignedTo == "" && target.AuthoredBy != subject.member {
+		self, err := d.SelfCandidate(scope, subject.member, current.Assignments, policy.Permission, now)
+		if err != nil {
+			return Prepared{}, ErrUnavailable
+		}
+		if self {
+			if err := target.Validate(scope); err != nil {
+				if errors.Is(err, d.ErrResourceNotFound) {
+					return Prepared{}, d.ErrResourceNotFound
+				}
+				return Prepared{}, ErrUnavailable
+			}
+			assigned, err := s.Assignee.ResolveAssignee(ctx, scope, policy, target, subject.member, now)
+			if err != nil {
+				return Prepared{}, bounded(ctx, err)
+			}
+			if assigned {
+				target.AssignedTo = subject.member
+			}
+		}
 	}
 	rules, err := d.CoveringRules(scope, subject.member, current.Assignments, policy.Permission, target, now)
 	if err != nil {
@@ -384,7 +461,9 @@ func (s Authorization) Complete(ctx context.Context, p Prepared, proof ProofGate
 	if s.Records == nil {
 		return Decision{}, ErrUnavailable
 	}
-	if err := s.Records.Check(ctx, b.subject.scope, b.subject, b.policy, b.target, slices.Clone(b.rules)); err != nil {
+	facts := b.target
+	facts.Teams = slices.Clone(facts.Teams)
+	if err := s.Records.Check(ctx, b.subject.scope, b.subject, b.policy, facts, slices.Clone(b.rules)); err != nil {
 		return Decision{}, bounded(ctx, err, ErrSelfApproval, ErrPeriodLocked, d.ErrResourceNotFound)
 	}
 	if liveLease(ctx) != b.lease {

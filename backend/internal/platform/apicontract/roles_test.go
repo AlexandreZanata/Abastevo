@@ -108,3 +108,41 @@ func TestRoleActualRouterContractsAndResponseExamples(t *testing.T) {
 		t.Fatal("extra account authority in role acknowledgement accepted")
 	}
 }
+
+// EMP-AUTH-006: assign/change requests and both views name exactly the six
+// persisted scopes; invitation grants stay ORG/SELF elsewhere.
+func TestRoleContractAdmitsExactlyTheStructuralScopes(t *testing.T) {
+	doc := loadSpec(t)
+	scopes := []string{"ASSET", "COST_CENTRE", "ORG", "SELF", "TEAM", "UNIT"}
+	for name, field := range map[string]string{"EnterpriseRoleAssignRequest": "scope", "EnterpriseRoleChangeRequest": "scope", "EnterpriseRoleAssignmentView": "scope_type", "EnterpriseRoleResult": "scope_type"} {
+		schema := doc.Components.Schemas[name].Value
+		var declared []string
+		for _, value := range schema.Properties[field].Value.Enum {
+			scope, ok := value.(string)
+			if !ok {
+				t.Fatal("non-string scope", name, value)
+			}
+			declared = append(declared, scope)
+		}
+		slices.Sort(declared)
+		if !slices.Equal(declared, scopes) {
+			t.Fatal("role scope contract differs from the persisted scopes", name, declared)
+		}
+	}
+	for _, name := range []string{"EnterpriseRoleAssignRequest", "EnterpriseRoleChangeRequest"} {
+		schema := doc.Components.Schemas[name].Value
+		value := enterpriseContractObject(t, schema.Example)
+		for _, scope := range []string{"UNIT", "COST_CENTRE", "TEAM", "ASSET"} {
+			value["scope"], value["target_id"] = scope, "7b0e2a54-0000-4000-8000-000000001001"
+			if err := schema.VisitJSON(value); err != nil {
+				t.Fatal("structural scope intent rejected", name, scope, err)
+			}
+		}
+		for _, scope := range []string{"STATION", "unit", "TEAM ", ""} {
+			value["scope"] = scope
+			if schema.VisitJSON(value) == nil {
+				t.Fatal("unknown or aliased scope accepted", name, scope)
+			}
+		}
+	}
+}

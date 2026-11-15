@@ -34,7 +34,7 @@ BUC-EMP-69..72 and EDR-091..094 precede behavior. The actual owned product
 catalog is a prerequisite for runtime fleet persistence; full F3 stays queued.
 
 ### EMP-FUEL-002 — Fueling persistence, sync handlers and arithmetic consistency
-- **Meta:** module FUEL · phase F3 · cut C1 · priority P0 · type DB · size L · state TODO
+- **Meta:** module FUEL · phase F3 · cut C1 · priority P0 · type DB · size L · state LOCAL_DONE
 - **Objective:** Persist one organization fueling and its reading evidence through durable sync.
 - **Rules and use cases:** BR-FUEL-007, BR-FUEL-008, BR-FUEL-018, BR-FUEL-024, BR-MONEY-004, BR-MONEY-005, BR-OFFL-004, UC-FUEL-01, VAL-08
 - **Depends on:** EMP-FUEL-001, EMP-OFFL-002, EMP-METER-002
@@ -48,6 +48,12 @@ catalog is a prerequisite for runtime fleet persistence; full F3 stays queued.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-MONEY, V-SYNC · migration: prove additive upgrade and recovery if persistent state changes · rollback: close the new admission or projection path and preserve approved records, revisions and private data
 - **Risks and assumptions:** The owning specification supplies business rules. Keep scope, synthetic C1 evidence and the applicable phase gates explicit.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+EMP-FUEL-002 LOCAL_DONE / INTEGRATION_PENDING: signed `fueling.submit`
+persists one insert-only fueling with same-transaction reading evidence,
+stored arithmetic/product warnings and the APPR-001 `SUBMITTED` entry; exact
+replay, digest reuse, concurrency, rollback, RLS and populated upgrade on
+real PostGIS. Retained: held fuelings, receipt link, read routes, expense.
 
 ### EMP-FUEL-003 — Fueling review: check, approve, reject, return, cancel
 - **Meta:** module FUEL · phase F3 · cut C1 · priority P0 · type API · size M · state TODO

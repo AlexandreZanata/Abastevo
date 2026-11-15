@@ -147,6 +147,7 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 
 	f.GrantFleetUsage(t)
 	f.GrantMeterUsage(t)
+	f.GrantAssignmentReductions(t)
 
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -379,6 +380,34 @@ func (f *Fixture) GrantFleetUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// EMP-FLEET-005 unit and cost-centre usage read only these period columns.
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_asset_unit_periods') IS NOT NULL AND to_regclass('public.org_asset_cost_centre_periods') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,unit_id,valid_to) ON org_asset_unit_periods TO "+role+";GRANT SELECT(org_id,asset_id,cost_centre_id,valid_to) ON org_asset_cost_centre_periods TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantAssignmentReductions provisions only the columns the installed
+// EMP-FLEET-006 consumers read and write when an employee record becomes
+// TERMINATED or an asset DISPOSED: every existing producer (offboarding,
+// employee merge, disposal) runs them in its own transaction. Earlier
+// embedded migration images remain unchanged.
+func (f *Fixture) GrantAssignmentReductions(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_asset_assignments') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,employee_id,asset_id,valid_from,valid_to),UPDATE(valid_to,end_cause,source_revision,end_operation_id,ended_by,end_reason) ON org_asset_assignments TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // GrantMeterUsage adds only the actual columns read by installed asset-use and
@@ -402,6 +431,15 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 		// Asset usage counts held facts; the reading guard checks the reserved
 		// held identity. Neither exposes any held value or observation.
 		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,reading_id,operation_id) ON org_meter_held_readings TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_fuelings') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// EMP-FUEL-002: asset usage counts fuelings as accepted operations.
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id) ON org_fuelings TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 			t.Fatal(err)
 		}
 	}

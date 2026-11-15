@@ -426,7 +426,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 [Audited role management and last-owner evidence](../evidence/f1-auth005-role-management.md).
 
 ### EMP-AUTH-006 — Unit, cost-centre, team and asset scopes with resource scope resolution
-- **Meta:** module AUTH · phase F2 · cut - · priority P1 · type DB · size M · state TODO
+- **Meta:** module AUTH · phase F2 · cut - · priority P1 · type DB · size M · state LOCAL_DONE
 - **Objective:** Resolve structural scopes against the appropriate current or historical resource context.
 - **Rules and use cases:** BR-AUTH-004, BR-AUTH-005, BR-AUTH-013, BR-ORG-011, BR-TEN-005
 - **Depends on:** EMP-AUTH-003, EMP-ORG-005, EMP-ORG-006, EMP-ORG-007, EMP-FLEET-002
@@ -440,6 +440,13 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive scoped references · rollback: remove new admission while retaining assignments
 - **Risks and assumptions:** Scope calculation uses the record and applicable policy, never a caller assertion.
 - **Done when:** Documented examples and foreign-scope denials pass at the resource entry points.
+
+- 2026-11-14 LOCAL_DONE (Validation PASS, INTEGRATION_PENDING): migration 000208 admits
+  UNIT/COST_CENTRE/TEAM/ASSET role scopes with same-organization foreign keys and live-target
+  admission; coverage uses the record's stored snapshot (held meter readings) or an asset's
+  FLEET-005 allocation, TEAM = author's link at the record instant. Example 3 proven at the
+  meter review read/resolve and asset routes. Retained: other record types' structure
+  sources, scoped list filtering, assignee facts (FLEET-006). [Evidence](../evidence/f2-auth006-structural-scopes.md).
 
 ### EMP-AUTH-007 — Temporary delegation and substitutes
 - **Meta:** module AUTH · phase F3 · cut - · priority P1 · type API · size S · state TODO
@@ -508,7 +515,7 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Done when:** The custom-role matrix and rollback behavior pass without changing fixed-role semantics.
 
 ### EMP-AUTH-011 — Auditor read-only role and export permission gating
-- **Meta:** module AUTH · phase F3 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module AUTH · phase F3 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Enforce the auditor read-only role and independently gate exports.
 - **Rules and use cases:** BR-AUTH-001, BR-AUTH-003, BR-AUTH-010, BR-AUTH-011, BR-AUTH-013, BR-AUD-003
 - **Depends on:** EMP-AUTH-003
@@ -522,3 +529,11 @@ C1 uses invitations for existing accounts. Managed corporate activation and its 
 - **Validation:** V-API, V-AUTHZ, V-ISO, V-PRIV · migration: reuse role scope · rollback: disable the new access path and retain audit evidence
 - **Risks and assumptions:** Export eligibility and payload contents remain owned by their workflow.
 - **Done when:** Allowed reads and denied writes, exports and sensitive reads pass through the relevant entry points.
+
+- **Status (2026-11-14):** LOCAL_DONE in `codex/enterprise-f3-auth011`
+  ([evidence](../evidence/f3-auth011-auditor-export-gating.md)). AUDITOR
+  proven on all 103 routed normal routes (22 documented positive, 81
+  `FORBIDDEN`) without a catalog change; export kinds declare one data read
+  permission, checked at request, worker attempt and delivery. Unrouted
+  auditor reads, period read key, sensitive export columns and F6 full export
+  retained.

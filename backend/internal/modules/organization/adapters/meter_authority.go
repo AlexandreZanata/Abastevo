@@ -26,6 +26,14 @@ type MeterAuthority struct {
 	Roles        access.TransactionRepository
 	Capabilities setupCapability
 	Devices      *memberpg.DeviceStore
+	// Structure resolves the asset's current allocation for structural grants
+	// on the company (web) path only; signed intake stays ORG-only.
+	Structure *ResourceStructure
+	// Assignee resolves SELF on assigned assets on the company (web) path
+	// (EMP-FLEET-006) and, since EMP-METER-002 (EDR-173), on the signed device
+	// path and in the intake history classification. Without it SELF covers
+	// no asset and signed SELF history stays unavailable (B-BR-EMP-262).
+	Assignee *ResourceAssignee
 }
 
 var _ fleet.MeterAuthority = (*MeterAuthority)(nil)
@@ -56,7 +64,8 @@ func (g *MeterAuthority) currentMeterDevice(ctx context.Context, queries databas
 }
 
 // meterTarget reads the real scoped identity and current unit, but supplies no
-// assignment. AUTH-006 owns future unit/asset coverage; current SELF stays closed.
+// assignment. Web structural coverage comes from ResourceStructure (AUTH-006)
+// and web SELF coverage from ResourceAssignee (FLEET-006).
 func meterTarget(ctx context.Context, queries database.OrgDBTX, scope kernel.OrgScope, asset string) error {
 	var id, unit string
 	if err := queries.QueryRow(ctx, `SELECT id::text,COALESCE(unit_id::text,'') FROM org_assets WHERE org_id=$1 AND id=$2`, scope.OrgID().String(), asset).Scan(&id, &unit); err != nil {
@@ -107,7 +116,7 @@ func (g *MeterAuthority) CheckMeterTx(ctx context.Context, tx syncapp.DBTX, scop
 			return fleet.ErrUnavailable
 		}
 		actor := org.CompanyActor{AccountID: source.Web.AccountID, SessionID: source.Web.SessionID}
-		guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}
+		guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities, Structure: g.Structure, Assignee: g.Assignee}
 		if err := guard.check(ctx, retained, scope, actor, member, asset, fleet.MeterPolicy(action)); err != nil {
 			return meterAuthorityError(err)
 		}
@@ -168,6 +177,15 @@ func (g *MeterAuthority) CheckMeterTx(ctx context.Context, tx syncapp.DBTX, scop
 	if err != nil {
 		return err
 	}
-	_, err = permission.CoveringRules(scope, member, assignments, fleet.MeterPolicy(action).Permission, permission.ResourceFacts{OrgID: scope.OrgID(), ID: asset}, now)
+	facts := permission.ResourceFacts{OrgID: scope.OrgID(), ID: asset}
+	// B-BR-EMP-259 (EDR-173): the web re-check's assignee lookup, here on the
+	// borrowed intake port at the database receipt instant, only for a current
+	// SELF candidate; the root admission selector is never an assigned asset.
+	if !rootFallback {
+		if facts, err = g.Assignee.assigneeTx(ctx, tx, scope, member, assignments, fleet.MeterPolicy(action), facts, now); err != nil {
+			return meterAuthorityError(err)
+		}
+	}
+	_, err = permission.CoveringRules(scope, member, assignments, fleet.MeterPolicy(action).Permission, facts, now)
 	return err
 }

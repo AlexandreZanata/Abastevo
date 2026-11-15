@@ -12,6 +12,8 @@ import (
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	exports "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/application"
+	periods "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/application"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"time"
@@ -24,10 +26,19 @@ type companyAuthority struct {
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
 	Capabilities setupCapability
+	// Structure is set only by owners of a structural record kind
+	// (EMP-AUTH-006); without it structural grants cover nothing here.
+	Structure *ResourceStructure
+	// Assignee is set only by the asset owner (EMP-FLEET-006); without it a
+	// SELF grant covers no asset here.
+	Assignee *ResourceAssignee
+	// OwnTarget states that the target is the member's own record (the own
+	// assignment list): the target must be the membership itself.
+	OwnTarget bool
 }
 
 func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.CompanyActor, member, target string, policy access.Policy, requestedRole ...permissions.Role) error {
-	if policy != fleet.MeterReviewPolicy(false) && policy != fleet.MeterReviewPolicy(true) && policy != fleet.Policy(false) && policy != fleet.Policy(true) && policy != app.SettingsMembersPolicy() && policy != members.DevicePolicy(false) && policy != members.DevicePolicy(true) && policy != members.EmployeeMergePolicy(false) && policy != members.EmployeeMergePolicy(true) && policy != members.MembershipAccessPolicy(members.MembershipAccessRead) && policy != members.MembershipAccessPolicy(members.MembershipSuspend) && policy != members.MembershipAccessPolicy(members.MembershipReactivate) && policy != members.InvitationPolicy(members.InvitationIssue) && policy != members.InvitationPolicy(members.InvitationRead) && policy != members.InvitationPolicy(members.InvitationRevoke) && policy != access.RolePolicy(access.RoleAssignAction) && policy != access.RolePolicy(access.RoleEndAction) && policy != access.RolePolicy(access.RoleReadAction) && policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() && policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
+	if policy != exports.Policy(exports.ActionRequest) && policy != exports.Policy(exports.ActionRead) && policy != periods.PeriodPolicy(periods.PeriodRead) && policy != periods.PeriodPolicy(periods.PeriodClose) && policy != periods.PeriodPolicy(periods.PeriodReopen) && policy != fleet.MeterReviewPolicy(false) && policy != fleet.MeterReviewPolicy(true) && policy != fleet.Policy(false) && policy != fleet.Policy(true) && policy != fleet.AssignPolicy() && policy != app.SettingsMembersPolicy() && policy != members.DevicePolicy(false) && policy != members.DevicePolicy(true) && policy != members.EmployeeMergePolicy(false) && policy != members.EmployeeMergePolicy(true) && policy != members.MembershipAccessPolicy(members.MembershipAccessRead) && policy != members.MembershipAccessPolicy(members.MembershipSuspend) && policy != members.MembershipAccessPolicy(members.MembershipReactivate) && policy != members.InvitationPolicy(members.InvitationIssue) && policy != members.InvitationPolicy(members.InvitationRead) && policy != members.InvitationPolicy(members.InvitationRevoke) && policy != access.RolePolicy(access.RoleAssignAction) && policy != access.RolePolicy(access.RoleEndAction) && policy != access.RolePolicy(access.RoleReadAction) && policy != app.OwnershipTransferProposePolicy() && policy != app.OwnershipTransferReadPolicy() && policy != app.OwnershipTransferAcceptPolicy() && policy != app.OwnershipTransferCancelPolicy() && policy != app.SettingsPolicy(false) && policy != app.SettingsPolicy(true) && policy != app.LegalPolicy(false, false) && policy != app.LegalPolicy(false, true) && policy != app.LegalPolicy(true, true) && policy != app.StructurePolicy(false) && policy != app.StructurePolicy(true) && policy != members.EmployeePolicy(members.EmployeeRead) && policy != members.EmployeePolicy(members.EmployeeReview) && policy != members.EmployeePolicy(members.EmployeeManage) {
 		return app.ErrUnavailable
 	}
 	write := policy.Effect == access.ConfigurationWrite
@@ -120,6 +131,22 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 	}
 	if len(requestedRole) == 1 {
 		facts.RequestedRole = requestedRole[0]
+	}
+	// Under the retained locks and database time, the same structural lookup
+	// as Prepare (only for a current structural grant, EDR-161).
+	if facts, err = guard.Structure.structureTx(ctx, tx, scope, member, assignments, policy, facts, now.Time); err != nil {
+		return err
+	}
+	// EMP-FLEET-006: the own assignment list is the member's own record; an
+	// asset is the member's own record while it is assigned to the member.
+	if guard.OwnTarget {
+		if target != member {
+			return app.ErrUnavailable
+		}
+		facts.AssignedTo = member
+	}
+	if facts, err = guard.Assignee.assigneeTx(ctx, tx, scope, member, assignments, policy, facts, now.Time); err != nil {
+		return err
 	}
 	if _, err := permissions.CoveringRules(scope, member, assignments, policy.Permission, facts, now.Time); err != nil {
 		return err

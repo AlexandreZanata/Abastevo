@@ -146,7 +146,7 @@ Every permission used by any module is listed here. A module that needs a new ke
 | `budg.budget.read` / `budg.budget.manage` | Read / maintain budgets and holds |
 | `fin.payable.read` | Read payables and payments |
 | `fin.payment.record` | Record payments, reimbursements and advances |
-| `fin.period.close` / `fin.period.reopen` | Lock / reopen a period |
+| `fin.period.close` / `fin.period.reopen` | Lock / reopen a period. Until a period read key exists, `fin.period.close` also gates period list and read (EDR-149); period grants must cover the whole organization. |
 | `maint.request.create` | Ask for maintenance |
 | `maint.workorder.manage` / `maint.workorder.review` | Run / approve work orders |
 | `maint.plan.manage` | Maintain preventive plans and expiries |
@@ -155,7 +155,7 @@ Every permission used by any module is listed here. A module that needs a new ke
 | `stock.reconcile` | Record measurements and adjustments |
 | `kpi.dashboard.read` | Read indicators |
 | `find.finding.read` / `find.finding.resolve` | Read / decide findings |
-| `rpt.export.run` | Run exports and reports |
+| `rpt.export.run` | Run exports and reports; each export kind also needs the read permission it declares (EMP-AUTH-011) |
 | `audit.event.read` | Read the audit trail |
 | `import.batch.run` | Import files |
 | `notif.rule.manage` | Maintain organization alert rules |
@@ -283,6 +283,13 @@ Catalog lookup does not persist assignments, interpret a subscription as a
 role, evaluate current scope/time, waive self-review rules or enable the
 membership database policy. Actual authority remains AUTH-002/003 work.
 
+EMP-AUTH-011 proves the AUDITOR column on every routed organization route
+without a catalog change (EDR-166): documented reads succeed, the export request
+and the own ownership response are the only write-shaped routes it reaches, and
+every other route is `FORBIDDEN` with its key. `org.ownership.respond` stays a
+personal consent key; period reads stay under `fin.period.close` (EDR-149).
+[Evidence](evidence/f3-auth011-auditor-export-gating.md)
+
 ## 8. Offline, concurrency, idempotency and corrections
 
 EMP-AUTH-002 persistence interpretation (2026-11-11): F1 stores ORG with
@@ -294,6 +301,39 @@ Managed memberships cannot receive OWNER. All intervals are half-open UTC;
 PostgreSQL persists microsecond precision. Ending records a server timestamp
 and revision, including cancellation before a scheduled start, without
 rewriting the original validity or deleting history.
+
+EMP-AUTH-006 interpretation (2026-11-14, EDR-160/161): `UNIT`, `COST_CENTRE`,
+`TEAM` and `ASSET` assignments name one live structure of the same
+organization (foreign → `NOT_FOUND`, archived or `DRAFT` asset →
+`VALIDATION_FAILED`); archiving neither ends nor is blocked by them. Coverage
+uses the record's stored snapshot (held meter readings today) or an asset's
+FLEET-005 allocation at the evaluated instant; `TEAM` covers records whose
+author or assignee was linked to the team at the record's instant.
+Organization-level resources carry no structure. A structural
+`auth.role.assign` manages no roles; an owner may only keep or narrow an own
+assignment's scope.
+
+EMP-FLEET-006 interpretation (2026-11-14, EDR-165): a current `SELF` grant with
+a positive `fleet.asset.read` rule covers an asset while it is assigned to the
+member at the evaluated instant (membership and assignment periods both contain
+it); no other permission gains SELF coverage from an assignment, except
+`meter.reading.record` in the signed intake (EMP-METER-002).
+
+EMP-METER-002 interpretation (2026-11-14, EDR-173/174): in the signed meter
+intake a `SELF` grant with a positive `meter.reading.record` rule covers an
+asset while it is assigned to the member; a field reading applies only with
+coverage continuous from its declared instant to its receipt, is held
+`PERMISSION_CHANGED` when the coverage existed earlier, and is `FORBIDDEN` when
+it never existed. Structural grants and `ORG`-scoped own-records cells stay
+unsupported in the signed intake.
+
+EMP-FUEL-002 interpretation (2026-11-14, EDR-177): in the signed intake
+`fuel.fueling.record` (an `S` cell for every holder) is covered by an `ORG`
+grant with a positive rule (the new fueling is the member's own record), and by
+a `SELF` grant only while the asset is assigned to the member and the member is
+the responsible employee, with EDR-118 continuity; structural grants stay
+unsupported in the signed intake. A receipt replay needs current
+`fuel.fueling.read` over the stored record and its unit/cost-centre snapshot.
 
 The shared organization lock protects assignment overlap and continuous
 surviving-owner coverage through future expiry. The union of the surviving
@@ -312,6 +352,8 @@ AUTH-003/009 and onboarding own those application checks and audit.
 ## 9. Events, notifications and integrations
 
 Produced: `auth.assignment.created`, `auth.assignment.ended`, `auth.delegation.created`, `auth.delegation.ended`, `auth.access.denied` (sampled, for security review). Consumed: `idn.membership.suspended`, `idn.membership.ended`, `org.organization.suspended`, `claim.authority.suspended` (to evaluate `INEFFECTIVE`). Notifications: the affected member is told when a role is given, changed, delegated or removed. No external integration.
+
+Own inbox and notice preferences use the special SELF_NOTICE boundary (account-bound current membership, no catalog permission); a dedicated inbox permission is an AUTH-owned future decision (EDR-151).
 
 ## 10. Data, formulas and examples
 
@@ -375,8 +417,9 @@ facts bind SELF coverage to the current member; the source transaction checks
 actual participant identities under the retained root lock before returning
 private state/receipts or changing anything. Station authority requirements are
 unchanged. An ACTIVE membership with no live role remains denied until an
-ordinary authorized role grant restores coverage. Finer UNIT/COST_CENTRE/TEAM/
-ASSET grant management belongs to AUTH-006 (F2).
+ordinary authorized role grant restores coverage. UNIT/COST_CENTRE/TEAM/ASSET
+grants are managed through the same role routes since AUTH-006
+(B-BR-EMP-235..238).
 
 AUTH-005 review clarification: permission containment is literal, including
 coverage and requirements. Neither OWNER nor ADMIN receives a wildcard. Some

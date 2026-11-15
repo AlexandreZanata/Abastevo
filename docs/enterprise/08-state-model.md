@@ -106,14 +106,14 @@ Every state name below is canonical. "Kind" is O (operational), S (sync), R (rev
 | Payable | L | `OPEN`, `PARTIALLY_SETTLED`, `SETTLED`, `CANCELLED` | [expenses-finance](modules/expenses-finance.md) |
 | Advance | L | `REQUESTED`, `APPROVED`, `PAID`, `PARTIALLY_ACCOUNTED`, `ACCOUNTED`, `REJECTED`, `CANCELLED` | [expenses-finance](modules/expenses-finance.md) |
 | Budget hold | L | `ACTIVE`, `CONSUMED`, `RELEASED`, `EXPIRED` | [expenses-finance](modules/expenses-finance.md) |
-| Period | L | `OPEN`, `LOCKED`, `REOPENED` | [expenses-finance](modules/expenses-finance.md) |
+| Period | L | `OPEN`, `LOCKED`, `REOPENED` (a month without history is `OPEN` at the implicit revision 1; `LOCK`, `REOPEN` with reason and `RELOCK` append history; `LOCKED` revisions are even, EDR-148) | [expenses-finance](modules/expenses-finance.md) |
 | Work order | O | `DRAFT`, `REQUESTED`, `QUOTED`, `APPROVED`, `SCHEDULED`, `IN_EXECUTION`, `COMPLETED`, `CLOSED`, `REJECTED`, `CANCELLED` | [maintenance](modules/maintenance.md) |
 | Maintenance plan occurrence | O | `UPCOMING`, `DUE`, `OVERDUE`, `DONE`, `SKIPPED` | [maintenance](modules/maintenance.md) |
 | Stock measurement reconciliation | L | `OPEN`, `EXPLAINED`, `ADJUSTED` | [fuel-stock](modules/fuel-stock.md) |
 | Finding | R | `OPEN`, `IN_REVIEW`, `CONFIRMED`, `JUSTIFIED`, `FALSE_POSITIVE`, `DISMISSED`, `SUPERSEDED` | [intelligence](modules/intelligence.md) |
-| Export job | L | `QUEUED`, `RUNNING`, `READY`, `EXPIRED`, `FAILED` | [intelligence](modules/intelligence.md) |
+| Export job | L | `QUEUED`, `RUNNING`, `READY`, `EXPIRED`, `FAILED` (`RUNNING`→`QUEUED` is a fenced lease release; the last attempt or a lease expired on it ends `FAILED` with `EXPORT_ATTEMPTS_EXHAUSTED`) | [intelligence](modules/intelligence.md) |
 | Import batch | L | `UPLOADED`, `PARSED`, `MAPPED`, `VALIDATED`, `CONFIRMED`, `APPLYING`, `APPLIED`, `APPLIED_WITH_ERRORS`, `FAILED`, `CANCELLED`, `REVERTED` | [imports-notifications-integrations](modules/imports-notifications-integrations.md) |
-| Notification | L | `PENDING`, `DELIVERED`, `FAILED`, `SUPPRESSED` | [imports-notifications-integrations](modules/imports-notifications-integrations.md) |
+| Notification | L | `PENDING`, `DELIVERED`, `FAILED`, `SUPPRESSED` (PENDING = registered request not yet dispatched; DELIVERED/SUPPRESSED are per-recipient IN_APP history with reasons INELIGIBLE, MUTED, LIMITED; FAILED belongs to the external channels of EMP-NOTIF-002) | [imports-notifications-integrations](modules/imports-notifications-integrations.md) |
 | Integration connection | L | `CONFIGURED`, `ACTIVE`, `DEGRADED`, `DISABLED` | [imports-notifications-integrations](modules/imports-notifications-integrations.md) |
 | Station claim | R | `DRAFT`, `AWAITING_PROOF`, `CHECKING`, `NEEDS_INFORMATION`, `IN_REVIEW`, `APPROVED`, `DENIED`, `CANCELLED`, `EXPIRED` (existing, wire-frozen) | [station-claims](modules/station-claims.md) |
 | Station authority | L | `ACTIVE`, `SUSPENDED`, `REVOKED`, `EXPIRED` (existing grant states) | [station-claims](modules/station-claims.md) |

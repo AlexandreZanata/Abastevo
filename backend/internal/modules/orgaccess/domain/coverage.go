@@ -2,6 +2,7 @@ package domain
 
 import (
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
@@ -49,6 +50,130 @@ type ResourceFacts struct {
 	AgreementSide                          AgreementParty
 	RecordedTrack, StationAuthorityLive    bool
 	RequestedRole                          Role
+	// Structural snapshot (BR-AUTH-004/005), set only by a server structure
+	// source: the unit, cost centre and asset the record stored at creation
+	// (an asset itself: its allocation at the evaluated instant) and the teams
+	// whose links covered the record's author or assignee at its stored
+	// instant. Empty means "none"; nothing is derived from another field.
+	UnitID, CostCentreID, AssetID string
+	Teams                         []string
+}
+
+// WithStructure returns these facts with only the structural fields taken
+// from resolved, after proving that resolved describes the same record.
+func (r ResourceFacts) WithStructure(scope kernel.OrgScope, resolved ResourceFacts) (ResourceFacts, error) {
+	if err := r.Validate(scope); err != nil {
+		return ResourceFacts{}, err
+	}
+	if err := resolved.Validate(scope); err != nil {
+		return ResourceFacts{}, err
+	}
+	if resolved.OrgID != r.OrgID || resolved.ID != r.ID || resolved.AuthoredBy != r.AuthoredBy || resolved.AssignedTo != r.AssignedTo || resolved.TripDriver != r.TripDriver || resolved.AgreementSide != r.AgreementSide || resolved.RecordedTrack != r.RecordedTrack || resolved.StationAuthorityLive != r.StationAuthorityLive || resolved.RequestedRole != r.RequestedRole {
+		return ResourceFacts{}, ErrAssignmentInvalid
+	}
+	r.UnitID, r.CostCentreID, r.AssetID, r.Teams = resolved.UnitID, resolved.CostCentreID, resolved.AssetID, slices.Clone(resolved.Teams)
+	return r, nil
+}
+
+// StructuralCandidate reports whether the member holds, at now, a valid
+// structural assignment whose role has a positive rule for permission. Only
+// then must a structure source resolve the record's structural facts.
+func StructuralCandidate(scope kernel.OrgScope, member string, assignments []Assignment, permission Permission, now time.Time) (bool, error) {
+	if scope.Validate() != nil {
+		return false, ErrAssignmentScope
+	}
+	if !canonicalID(member) || now.IsZero() {
+		return false, ErrAssignmentInvalid
+	}
+	catalog := SystemCatalog()
+	if _, err := catalog.Lookup(Owner, permission); err != nil {
+		return false, err
+	}
+	for _, assignment := range assignments {
+		v, err := assignment.Snapshot(scope)
+		if err != nil {
+			return false, err
+		}
+		if v.MembershipID != member || !v.Scope.Structural() {
+			continue
+		}
+		valid, err := assignment.ValidAt(scope, now)
+		if err != nil {
+			return false, err
+		}
+		if !valid {
+			continue
+		}
+		rule, err := catalog.Lookup(v.Role, permission)
+		if err != nil {
+			return false, err
+		}
+		if rule.Coverage() != Denied {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// SelfCandidate reports whether the member holds, at now, a valid SELF
+// assignment whose role has a positive rule for permission. Only then must an
+// assignee source say whether the record is assigned to the member
+// (EMP-FLEET-006, B-BR-EMP-246).
+func SelfCandidate(scope kernel.OrgScope, member string, assignments []Assignment, permission Permission, now time.Time) (bool, error) {
+	if scope.Validate() != nil {
+		return false, ErrAssignmentScope
+	}
+	if !canonicalID(member) || now.IsZero() {
+		return false, ErrAssignmentInvalid
+	}
+	catalog := SystemCatalog()
+	if _, err := catalog.Lookup(Owner, permission); err != nil {
+		return false, err
+	}
+	for _, assignment := range assignments {
+		v, err := assignment.Snapshot(scope)
+		if err != nil {
+			return false, err
+		}
+		if v.MembershipID != member || v.Scope != SelfScope {
+			continue
+		}
+		valid, err := assignment.ValidAt(scope, now)
+		if err != nil {
+			return false, err
+		}
+		if !valid {
+			continue
+		}
+		rule, err := catalog.Lookup(v.Role, permission)
+		if err != nil {
+			return false, err
+		}
+		if rule.Coverage() != Denied {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// scopeCovers applies BR-AUTH-004 to server-resolved facts. A structural
+// scope never matches an empty snapshot value (B-BR-EMP-236/237).
+func scopeCovers(v AssignmentSnapshot, own bool, target ResourceFacts) bool {
+	switch v.Scope {
+	case OrgScope:
+		return true
+	case SelfScope:
+		return own
+	case UnitScope:
+		return target.UnitID != "" && target.UnitID == v.TargetID
+	case CostCentreScope:
+		return target.CostCentreID != "" && target.CostCentreID == v.TargetID
+	case AssetScope:
+		return target.AssetID != "" && target.AssetID == v.TargetID
+	case TeamScope:
+		return slices.Contains(target.Teams, v.TargetID)
+	}
+	return false
 }
 
 func (r ResourceFacts) Validate(scope kernel.OrgScope) error {
@@ -66,6 +191,16 @@ func (r ResourceFacts) Validate(scope kernel.OrgScope) error {
 			if _, err := kernel.ParseOrgID(id); err != nil {
 				return ErrAssignmentInvalid
 			}
+		}
+	}
+	for _, id := range []string{r.UnitID, r.CostCentreID, r.AssetID} {
+		if id != "" && !canonicalID(id) {
+			return ErrAssignmentInvalid
+		}
+	}
+	for i, id := range r.Teams {
+		if !canonicalID(id) || slices.Contains(r.Teams[:i], id) {
+			return ErrAssignmentInvalid
 		}
 	}
 	if r.AgreementSide != "" && r.AgreementSide != FleetParty && r.AgreementSide != StationParty {
@@ -116,7 +251,9 @@ func CoveringRules(scope kernel.OrgScope, member string, assignments []Assignmen
 			continue
 		}
 		own := target.AuthoredBy == member || target.AssignedTo == member
-		if (v.Scope == SelfScope || rule.Coverage() == OwnRecords) && !own {
+		// The assignment scope and an own-records descriptor both apply: a
+		// structural S cell needs an own record that also carries the scope.
+		if !scopeCovers(v, own, target) || rule.Coverage() == OwnRecords && !own {
 			continue
 		}
 		if !restrictionsCover(rule, member, target) {

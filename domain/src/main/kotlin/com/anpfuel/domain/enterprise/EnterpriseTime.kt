@@ -11,6 +11,9 @@ class EnterpriseTimeException : IllegalArgumentException("orgtime: invalid-time"
 data class TimeDeclaration(val occurredAt: Instant, val entryZone: String, val deviceOffsetSeconds: Long)
 data class ReportingZones(val organization: String, val unit: String? = null)
 
+/** BR-TIME-004 reporting day of one instant and the zone that decided it; no receipt, not authority evidence. */
+data class ReportingAttribution(val day: String, val zone: String, val source: String)
+
 /** Historical value snapshot; only the owning server sets receivedAt. Values are not authority proof. */
 data class EnterpriseTimeRecord(
     val occurredAt: Instant,
@@ -80,17 +83,24 @@ object EnterpriseTime {
         return declared
     }
 
+    /** Receipt-free attribution: unit zone when supplied (never falling back), else organization zone. */
+    fun attributeReportingDay(at: Instant, zones: ReportingZones): ReportingAttribution {
+        if (!validInstant(at)) throw EnterpriseTimeException()
+        val organization = zone(zones.organization)
+        val reportingZone = zones.unit?.let(::zone) ?: organization
+        val day = at.atZone(reportingZone).toLocalDate()
+        if (day.year !in 1..9999) throw EnterpriseTimeException()
+        return ReportingAttribution(day.toString(), reportingZone.id, if (zones.unit == null) "organization" else "unit")
+    }
+
     /** A trip caller supplies its start. A supplied invalid unit never falls back to organization. */
     fun capture(declared: TimeDeclaration, receivedAt: Instant, zones: ReportingZones): EnterpriseTimeRecord {
         validateDeclaration(declared)
         if (!validReceipt(receivedAt)) throw EnterpriseTimeException()
-        val organization = zone(zones.organization)
-        val reportingZone = zones.unit?.let(::zone) ?: organization
-        val day = declared.occurredAt.atZone(reportingZone).toLocalDate()
-        if (day.year !in 1..9999) throw EnterpriseTimeException()
+        val reporting = attributeReportingDay(declared.occurredAt, zones)
         return EnterpriseTimeRecord(
             declared.occurredAt, receivedAt, declared.entryZone, declared.deviceOffsetSeconds,
-            day.toString(), reportingZone.id, if (zones.unit == null) "organization" else "unit",
+            reporting.day, reporting.zone, reporting.source,
         )
     }
 

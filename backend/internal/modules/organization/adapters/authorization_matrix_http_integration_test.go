@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -44,8 +45,14 @@ var matrixRepresentatives = []matrixRoute{
 	{"org.settings.read", "/settings/read", false, false},
 	{"org.structure.manage", "/units/list", false, false},
 	{"fleet.asset.manage", "/fleet/assets/create", true, true},
+	{"fleet.asset.assign", "/fleet/assets/{asset_id}/assignments/create", true, true},
 	{"fleet.asset.read", "/fleet/assets/list", false, false},
 	{"meter.reading.correct", "/sync/reviews/meter-readings/list", false, false},
+	{"fin.period.close", "/finance/periods/list", false, false},
+	{"fin.period.reopen", "/finance/periods/{period}/reopen", true, true},
+	{"doc.document.attach", "/documents/uploads/create", false, true},
+	{"doc.document.view_content", "/documents/{document_id}/content/access", false, false},
+	{"rpt.export.run", "/reports/exports/list", true, false},
 }
 
 func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
@@ -193,6 +200,12 @@ func matrixAssign(t *testing.T, fx deviceFixtureState, actor matrixPerson, role,
 	if scope == "SELF" {
 		target = actor.member
 	}
+	if scope == "UNIT" {
+		// EMP-AUTH-006: the organization's first operating unit.
+		if err := fx.f.Admin.QueryRow(t.Context(), `SELECT id::text FROM org_units WHERE org_id=$1 ORDER BY created_at,id LIMIT 1`, org).Scan(&target); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if err := unitSchemaExec(t, fx.legalFixtureState, `INSERT INTO org_role_assignments(org_id,id,membership_id,role,scope_type,scope_target,valid_from,valid_to,assigned_by,reason) VALUES($1,$2,$3,$4,$5,$6,$7,$8,$9,'Synthetic authorization matrix')`, org, onboardingID(t), actor.member, role, scope, target, from, to, fx.member); err != nil {
 		t.Fatal(err)
 	}
@@ -221,6 +234,8 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,position) FROM org_asset_expected x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,started_at) FROM org_asset_unit_allocations x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,revision) FROM org_asset_revisions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_asset_assignments x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_assignment_commands x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_commands x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meters x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meter_segments x),
@@ -232,6 +247,12 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_sync_review_items x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,review_item_id) FROM org_meter_held_readings x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_sync_review_resolutions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,period_month) FROM org_finance_periods x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,period_month,revision) FROM org_finance_period_transitions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_documents x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,document_id,target_kind,target_id) FROM org_document_links x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_export_jobs x),
+	 (SELECT count(*) FROM org_sensitive_access_events),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),
 	 (SELECT count(*) FROM org_ownership_commands), (SELECT count(*) FROM org_role_commands))::text`).Scan(&value); err != nil {
 		t.Fatal(err)
@@ -305,8 +326,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	roles, oracle := matrixOracle(t)
 	fx := devicesFixture(t)
 	grantEmployeeTables(t, fx.legalFixtureState)
-	_ = fleetStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
+	_ = assignmentStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
 	fx.f.GrantMeterReviews(t)
+	periodGrant(t, fx.f)
+	exportGrant(t, fx)
 	roleSQL := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+roleSQL+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+roleSQL); err != nil {
 		t.Fatal(err)
@@ -333,6 +356,12 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	}
 	org, otherOrg := fx.scope.OrgID().String(), other.scope.OrgID().String()
 	base := "/v1/orgs/" + org
+	// The content representative targets one owner-authored stored document:
+	// SELF (S) content cells are refused on another member's document.
+	ownerDocument := matrixStoredDocument(t, fx, router, owner)
+	// The assignment representative targets one ACTIVE asset allocated to a
+	// second unit, so a grant scoped to the first unit never covers it.
+	matrixAsset := matrixAssignableAsset(t, fx, router, owner)
 	allowed, denied, exercised := 0, 0, 0
 	for roleIndex, role := range roles {
 		t.Run(role, func(t *testing.T) {
@@ -356,12 +385,20 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": revision, "values": json.RawMessage(values), "reason": "Synthetic authorization matrix change"}
 				case "fleet.asset.manage":
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "kind": "IMPLEMENT", "name": "Synthetic matrix implement", "fleet_number": "MATRIX-" + strconv.Itoa(roleIndex), "usage_basis": "DISTANCE", "category": map[string]any{"new_label": "Synthetic matrix implements"}}
+				case "fin.period.reopen":
+					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 2, "reason": "Synthetic matrix reopening"}
+				case "fleet.asset.assign":
+					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "kind": "ADDITIONAL", "employee_ids": []string{target.employee}}
+				case "doc.document.attach":
+					return matrixDocumentDeclaration(t)
 				default:
 					return map[string]any{}
 				}
 			}
+			// Each role reopens its own synthetic month, locked by the owner first.
+			month := fmt.Sprintf("2019-%02d", roleIndex+1)
 			path := func(entry matrixRoute, organization string) string {
-				return "/v1/orgs/" + organization + strings.ReplaceAll(entry.path, "{membership_id}", target.member)
+				return "/v1/orgs/" + organization + strings.NewReplacer("{membership_id}", target.member, "{period}", month, "{document_id}", ownerDocument, "{asset_id}", matrixAsset).Replace(entry.path)
 			}
 			for _, entry := range matrixRepresentatives {
 				if entry.permission == "org.ownership.respond" && proposalID == "" {
@@ -369,16 +406,22 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					proposalID = v["transfer"].(map[string]any)["transfer_id"].(string)
 				}
 				cell := oracle[entry.permission][role]
+				if entry.permission == "fin.period.reopen" && strings.HasPrefix(cell, "O") {
+					matrixCall(t, fx, router, owner, base+"/finance/periods/"+month+"/close", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1}, 200, "", "", nil)
+				}
 				want, code, key := 200, "", ""
-				if entry.permission == "fleet.asset.manage" {
+				if entry.permission == "fleet.asset.manage" || entry.permission == "fleet.asset.assign" || entry.permission == "doc.document.attach" {
 					want = 201
 				}
-				// Fleet's S cells remain refused until the owning assignment source
-				// exists. No creator or other record fact substitutes for SELF.
-				if cell == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(cell, "S") {
+				// Fleet's S cells cover only assets assigned to the member, never
+				// the organization list representative. No creator or other record
+				// fact substitutes for SELF. A SELF content cell is refused on
+				// another member's document.
+				if cell == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(cell, "S") || entry.permission == "doc.document.view_content" && strings.HasPrefix(cell, "S") {
 					want, code, key = 403, "FORBIDDEN", entry.permission
 					denied++
-				} else if strings.HasPrefix(cell, "O") {
+				} else if strings.HasPrefix(cell, "O") || entry.permission == "doc.document.attach" && strings.HasPrefix(cell, "S") {
+					// A SELF attach cell covers exactly the member's own new document.
 					allowed++
 				} else {
 					t.Fatal("new SELF descriptor needs explicit delivered business-resource cases")
@@ -396,10 +439,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					matrixCall(t, fx, router, actor, base+"/roles/assign", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "membership_id": target.member, "role": "OWNER", "scope": "ORG", "target_id": org, "reason": "Synthetic forbidden owner promotion"}, 403, "FORBIDDEN", "auth.role.assign", nil)
 				})
 			}
-			for _, variant := range []string{"missing-proof", "expired-proof", "bad-origin", "bad-csrf", "other-organization", "suspended-membership", "ended-assignment", "expired-assignment", "stale-authentication", "capability-off", "suspended-organization", "self-scope"} {
-				if variant == "self-scope" && role == "OWNER" {
+			for _, variant := range []string{"missing-proof", "expired-proof", "bad-origin", "bad-csrf", "other-organization", "suspended-membership", "ended-assignment", "expired-assignment", "stale-authentication", "capability-off", "suspended-organization", "self-scope", "unit-scope"} {
+				if (variant == "self-scope" || variant == "unit-scope") && role == "OWNER" {
 					continue
-				} // OWNER/SELF is not a persistable source state.
+				} // OWNER/SELF and OWNER/UNIT are not persistable source states.
 				if variant == "suspended-membership" {
 					if err := unitSchemaExec(t, fx.legalFixtureState, `UPDATE org_memberships SET state='SUSPENDED',suspension_origin='MANAGER',revision=revision+1 WHERE org_id=$1 AND id=$2`, org, actor.member); err != nil {
 						t.Fatal(err)
@@ -413,6 +456,9 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 				}
 				if variant == "self-scope" {
 					matrixAssign(t, fx, actor, role, "SELF", "ACTIVE")
+				}
+				if variant == "unit-scope" {
+					matrixAssign(t, fx, actor, role, "UNIT", "ACTIVE")
 				}
 				if variant == "stale-authentication" {
 					if _, err := fx.f.Runtime.Exec(t.Context(), `UPDATE company_web_sessions SET authenticated_at=authenticated_at-interval '20 minutes',created_at=created_at-interval '20 minutes',expires_at=expires_at-interval '20 minutes' WHERE id=$1`, actor.session); err != nil {
@@ -441,7 +487,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 				for _, entry := range matrixRepresentatives {
 					t.Run(variant+"/"+entry.permission, func(t *testing.T) {
 						want, code, key := 200, "", ""
-						if oracle[entry.permission][role] == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(oracle[entry.permission][role], "S") {
+						if entry.permission == "doc.document.attach" {
+							want = 201
+						}
+						if oracle[entry.permission][role] == "-" || (entry.permission == "fleet.asset.read" || entry.permission == "doc.document.view_content") && strings.HasPrefix(oracle[entry.permission][role], "S") {
 							want, code, key = 403, "FORBIDDEN", entry.permission
 						}
 						organization := org
@@ -472,7 +521,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 								want, code, key = 401, "FRESH_AUTH_REQUIRED", ""
 							}
 						case "capability-off":
-							if want == 200 && entry.write {
+							if want < 400 && entry.write {
 								want, code, key = 403, "ENTITLEMENT_REQUIRED", ""
 							}
 						case "suspended-organization":
@@ -480,9 +529,17 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 								want, code, key = 403, "ORG_SUSPENDED", ""
 							}
 						case "self-scope":
-							if entry.permission != "org.ownership.respond" {
+							// A SELF-scoped assignment still covers the member's own new
+							// document; every other representative needs ORG scope.
+							if entry.permission != "org.ownership.respond" && !(entry.permission == "doc.document.attach" && want == 201) {
 								want, code, key = 403, "FORBIDDEN", entry.permission
 							}
+						case "unit-scope":
+							// A structural grant covers only records that carry its unit
+							// (EMP-AUTH-006); every representative is organization-level
+							// or, for assignments, an asset of another unit, so even the
+							// ownership response and own documents are refused.
+							want, code, key = 403, "FORBIDDEN", entry.permission
 						}
 						matrixCall(t, fx, router, actor, path(entry, organization), body(entry), want, code, key, edit)
 					})
@@ -492,7 +549,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 						t.Fatal(err)
 					}
 				}
-				if variant == "ended-assignment" || variant == "expired-assignment" || variant == "self-scope" {
+				if variant == "ended-assignment" || variant == "expired-assignment" || variant == "self-scope" || variant == "unit-scope" {
 					matrixAssign(t, fx, actor, role, "ORG", "ACTIVE")
 				}
 				if variant == "stale-authentication" {
@@ -557,8 +614,24 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 150 || allowed != 55 || denied != 95 {
+	if exercised != 210 || allowed != 81 || denied != 129 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 69 permissions not yet routed; one actual signed Meter producer; Fleet S cells remain denied pending actual assignment integration", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 63 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+}
+
+// matrixAssignableAsset creates, through the owner's actual requests, one
+// ACTIVE implement allocated to a second operating unit of the organization.
+func matrixAssignableAsset(t *testing.T, fx deviceFixtureState, router chi.Router, owner matrixPerson) string {
+	t.Helper()
+	org := fx.scope.OrgID().String()
+	unit := onboardingID(t)
+	if err := unitSchemaExec(t, fx.legalFixtureState, `INSERT INTO org_units(org_id,id,name,code,time_zone,state) VALUES($1,$2,'Synthetic matrix second unit','MATRIX2','UTC','ACTIVE')`, org, unit); err != nil {
+		t.Fatal(err)
+	}
+	base := "/v1/orgs/" + org + "/fleet/assets"
+	created := matrixCall(t, fx, router, owner, base+"/create", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "kind": "IMPLEMENT", "name": "Synthetic matrix assignable implement", "fleet_number": "MATRIX-ASSIGN", "usage_basis": "HOURS", "category": map[string]any{"new_label": "Synthetic matrix implements"}, "unit_id": unit}, 201, "", "", nil)
+	asset := created["asset_id"].(string)
+	matrixCall(t, fx, router, owner, base+"/"+asset+"/activate", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1}, 200, "", "", nil)
+	return asset
 }

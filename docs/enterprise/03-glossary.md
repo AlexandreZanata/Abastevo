@@ -179,6 +179,6 @@ Status: **PLANNED**, 2026-11-10. Canonical vocabulary for `docs/enterprise/`. On
 | Received (document) | The file is stored | Its content was checked |
 | Structure checked | The key or XML is well formed | The document is authorized or not cancelled |
 | Conferred | A person compared the document with the operation | A tax authority confirmed it |
-| Reconciled | Allocated amounts agree with the document within tolerance | The cost is approved |
+| Reconciled | Allocated amounts agree exactly with the document amount (no reviewed tolerance yet, EDR-136) | The cost is approved |
 | Consulted | An authorized source was queried at a stated time | The answer is still true now |
 | Insufficient data | The method cannot produce a result from what was recorded | The result is zero |

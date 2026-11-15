@@ -17,6 +17,9 @@ import (
 // Authority verifies the current session, membership, exact record/content
 // permission and synthetic declaration/state. CheckAccess also checks individual
 // grant revocation. The owning AUTH/DOC implementations must fail closed.
+// Content needs doc.document.view_content in scope, never the record read
+// (BR-AUTH-011): a member without it gets ErrForbidden, a non-member or foreign
+// document ErrNotFound (BR-AUTH-013, BR-TEN-006).
 type Authority interface {
 	Resolve(context.Context, kernel.OrgScope, domain.Member, string, domain.Intent) (domain.Object, error)
 	CheckAccess(context.Context, kernel.OrgScope, domain.Member, domain.Object, string) error
@@ -36,8 +39,9 @@ type Tokens interface {
 	Verify(kernel.OrgScope, domain.Member, domain.Object, string, time.Time) (string, error)
 }
 
-// Audit commits the bounded access attempt before any token or bytes leave API.
-// RequestID is server-generated for each actual access, including repeated reads.
+// Audit commits the bounded sensitive-access record (EMP-PRIV-005) before a
+// capability is minted or bytes leave the API. RequestID is server-generated
+// for each actual access, including repeated reads. Any error serves nothing.
 type Audit interface {
 	Record(context.Context, kernel.OrgScope, domain.Member, domain.Object, string, string, domain.Intent) error
 }
@@ -107,8 +111,11 @@ func storageError(err error) error {
 	return domain.ErrUnavailable
 }
 func safeAuthorityError(err error) error {
-	if errors.Is(err, domain.ErrNotFound) {
+	switch {
+	case errors.Is(err, domain.ErrNotFound):
 		return domain.ErrNotFound
+	case errors.Is(err, domain.ErrForbidden):
+		return domain.ErrForbidden
 	}
 	return domain.ErrUnavailable
 }
@@ -170,6 +177,8 @@ func (service *Service) newID() (string, error) {
 
 // Upload bounds bytes. Its HTTP owner also sets the request read deadline, as in
 // the existing ingress gateway; context alone cannot interrupt an arbitrary Reader.
+// Integrity is decided first: ErrUnsupported and ErrUnsafe are returned only for
+// a snapshot whose exact size and digest matched, and nothing is stored then.
 func (service *Service) Upload(ctx context.Context, scope kernel.OrgScope, member domain.Member, id string, body io.Reader) error {
 	release, err := service.enter(scope, member)
 	if err != nil {
@@ -222,6 +231,8 @@ func (service *Service) inspect(ctx context.Context, object domain.Object, raw [
 		switch {
 		case errors.Is(err, domain.ErrUnsupported):
 			return domain.ErrUnsupported
+		case errors.Is(err, domain.ErrUnsafe):
+			return domain.ErrUnsafe
 		case errors.Is(err, domain.ErrTooLarge):
 			return domain.ErrTooLarge
 		case errors.Is(err, domain.ErrIntegrity):
@@ -255,11 +266,11 @@ func (service *Service) Issue(ctx context.Context, scope kernel.OrgScope, member
 	if err := service.config.Authority.CheckAccess(ctx, scope, member, object, accessID); err != nil {
 		return Access{}, safeAuthorityError(err)
 	}
-	access, err := service.config.Tokens.Issue(scope, member, object, accessID, service.config.Now())
-	if err != nil {
+	if err := service.config.Audit.Record(ctx, scope, member, object, accessID, accessID, domain.Issue); err != nil {
 		return Access{}, domain.ErrUnavailable
 	}
-	if err := service.config.Audit.Record(ctx, scope, member, object, accessID, accessID, domain.Issue); err != nil {
+	access, err := service.config.Tokens.Issue(scope, member, object, accessID, service.config.Now())
+	if err != nil {
 		return Access{}, domain.ErrUnavailable
 	}
 	if err := service.recheck(ctx, scope, member, object, access.Token, accessID); err != nil {

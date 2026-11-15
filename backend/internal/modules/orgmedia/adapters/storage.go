@@ -3,6 +3,7 @@ package adapters
 
 import (
 	"context"
+	"errors"
 	"net"
 	"net/http"
 	"net/url"
@@ -94,6 +95,11 @@ func (store *S3) Get(ctx context.Context, scope kernel.OrgScope, object domain.O
 		return nil, domain.ErrUnavailable
 	}
 	raw, err := storage.Get(ctx, store.client, signed.URL, object.Bytes)
+	// A stored object larger than its declaration is a substitution, not an
+	// outage: retrying can never make it match (EMP-DOC-014).
+	if errors.Is(err, storage.ErrTooLarge) {
+		return nil, domain.ErrIntegrity
+	}
 	if err != nil {
 		return nil, domain.ErrUnavailable
 	}
@@ -101,4 +107,18 @@ func (store *S3) Get(ctx context.Context, scope kernel.OrgScope, object domain.O
 		return nil, domain.ErrIntegrity
 	}
 	return raw, nil
+}
+
+// Delete removes an original under its own organization key and confirms
+// its absence with a separate authenticated read (EMP-DOC-014). Removing a
+// missing key succeeds, so repeated removals converge.
+func (store *S3) Delete(ctx context.Context, scope kernel.OrgScope, object domain.Object) error {
+	input, err := store.inputFor(scope, object)
+	if err != nil {
+		return err
+	}
+	if err := storage.DeleteConfirmed(ctx, store.client, input, store.credentials); err != nil {
+		return domain.ErrUnavailable
+	}
+	return nil
 }

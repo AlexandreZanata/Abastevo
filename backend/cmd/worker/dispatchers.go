@@ -13,7 +13,7 @@ func workerDispatchers(queue *jobs.Queue, handlers map[string]jobs.Handler, nati
 	// Fixed serial slots in this process: no per-job concurrency expansion.
 	// payment-inbox retains its dedicated slot; native imports are excluded from general work.
 	kinds := []string{"evidence-sweep", "account-erasure-reconcile", "privacy-training-reconcile", "privacy-training-sweep", "payment-inbox"}
-	fixedExcluded := []string{"quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery", "quality-enforcement-import", "quality-enforcement-discovery"}
+	fixedExcluded := []string{"quality-import", "quality-discovery", "quality-revalidate", "quality-recompute", "quality-sanctions-import", "quality-sanctions-discovery", "quality-enforcement-import", "quality-enforcement-discovery", "org-export-build", "org-export-cleanup", "org-document-safety"}
 	excluded := append(append([]string(nil), kinds...), fixedExcluded...)
 	excluded = append(excluded, nativeKinds...)
 	general := &jobs.Dispatcher{Queue: queue, Handlers: handlers, WorkerID: "worker-1-general", LeaseTTL: 5 * time.Minute, RetryDelay: time.Minute, ExcludedKinds: dedupeStrings(excluded)}
@@ -43,7 +43,8 @@ func validNativeKind(kind string) bool {
 	case "quality-import", "quality-discovery", "quality-revalidate", "quality-recompute",
 		"quality-sanctions-import", "quality-sanctions-discovery",
 		"quality-enforcement-import", "quality-enforcement-discovery",
-		"enterprise-export-build", "enterprise-portal-refresh":
+		"enterprise-export-build", "enterprise-portal-refresh",
+		"org-export-build", "org-export-cleanup", "org-document-safety":
 		return true
 	}
 	return false

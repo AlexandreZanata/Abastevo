@@ -23,9 +23,12 @@ func CanAssignRole(catalog Catalog, actorRoles []Role, requestedRole Role) bool 
 
 // CanAssignScopedRole compares the granted role's effective permissions with
 // the grantor's current organization-scoped role union. SELF narrows the new
-// assignment to own records; it never widens a grantor's descriptor.
+// assignment to own records; it never widens a grantor's descriptor. A
+// structural scope (EMP-AUTH-006) applies the role's organization coverage
+// inside one unit, cost centre, team or asset, so it is compared at that
+// coverage: it narrows where the grantor applies, never beyond its union.
 func CanAssignScopedRole(catalog Catalog, actorRoles []Role, requestedRole Role, scope ScopeType) bool {
-	if scope != OrgScope && scope != SelfScope || !knownRole(requestedRole) || stationRole(requestedRole) || requestedRole == Owner && scope != OrgScope {
+	if !scope.known() || !knownRole(requestedRole) || stationRole(requestedRole) || requestedRole == Owner && scope != OrgScope {
 		return false
 	}
 	hasAssignPerm := false

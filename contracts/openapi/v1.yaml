@@ -46,8 +46,16 @@ tags:
     description: FREE email-code signup/login plus session rotation.
   - name: enterprise-identity
     description: Private organization employee records, separate from login and membership.
+  - name: enterprise-documents
+    description: Private synthetic receipts, verified upload and audited content access.
   - name: enterprise-sync
     description: Signed current-source operation transport with independent scoped transactions and protected receipts.
+  - name: enterprise-finance
+    description: Private organization financial periods; lock, reopen and re-lock with append-only history.
+  - name: enterprise-notifications
+    description: Own in-app notices and per-kind preferences of the current member; external channels stay disabled.
+  - name: enterprise-reports
+    description: Private organization exports; asynchronous jobs with private files and short audited requester-bound capabilities.
   - name: feedback
     description: Authenticated station/fuel ratings and comments plus anonymous reads.
   - name: premium
@@ -2327,7 +2335,7 @@ paths:
       - enterprise-access
       operationId: enterpriseRoleAssign
       summary: Assign a scoped role to an active member
-      description: Assign a scoped role to a member with an active membership. Every granted permission must fit the actor's effective scope (BR-AUTH-007). Only an OWNER assigns OWNER. Self-assignment is prohibited. Dedicated company session cookie, exact HTTPS Origin/Host, CSRF, and current auth.role.assign authority are mandatory. Fresh configuration writes require the organizations capability and auth.role admission. Responses are no-store without ETag.
+      description: Assign a scoped role to a member with an active membership. Every granted permission must fit the actor's effective scope (BR-AUTH-007). Only an OWNER assigns OWNER. Self-assignment is prohibited. A structural scope (UNIT, COST_CENTRE, TEAM, ASSET) names one structure of the same organization; a missing or foreign target is NOT_FOUND and an archived target or DRAFT asset is VALIDATION_FAILED. Dedicated company session cookie, exact HTTPS Origin/Host, CSRF, and current auth.role.assign authority are mandatory. Fresh configuration writes require the organizations capability and auth.role admission. Responses are no-store without ETag.
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
@@ -14851,7 +14859,10 @@ paths:
         meter.reading.record owner commits immutable evidence, audit, effect and ACK atomically with explicit accepted/
         rejected outcomes and no artificial asynchronous consumer. Its source-owned synthetic transport allowance is
         identity v1 write200/hour per organization/account/device, weighted by attempts; production measurement and
-        cleanup remain separate. Android producers, SELF/history and F4 late/grace require their actual owners.
+        cleanup remain separate. ORG and SELF (assigned-asset) history are resolved from retained periods; Android producers and F4 late/grace require their actual owners.
+        The fueling.submit owner (EMP-FUEL-002) commits one immutable fueling, its embedded FUELING-origin reading,
+        stored warnings and first review entry with its ACK; changed rights and post-disposal fuelings store nothing
+        and stay RETRY/UNAVAILABLE until a held-fueling owner exists.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -14871,6 +14882,17 @@ paths:
             ACCEPTED: NO_ASYNC_FOLLOWUP
             REJECTED: NO_ASYNC_FOLLOWUP
             ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
+        fueling.submit:
+          schema: 1
+          entity_type: fueling
+          payload:
+            $ref: '#/components/schemas/EnterpriseFuelingSubmitPayload'
+          terminal_results:
+          - ACCEPTED
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
       security: []
       parameters:
       - $ref: '#/components/parameters/EnterpriseOrgID'
@@ -15393,7 +15415,7 @@ paths:
       operationId: enterpriseFleetAssetList
       summary: List organization assets
       description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
-        fleet.asset.read and same-organization membership; SELF remains closed without the actual assignment source.
+        fleet.asset.read and same-organization membership; SELF never covers the organization list.
         Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
         carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
         a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
@@ -15484,7 +15506,7 @@ paths:
       operationId: enterpriseFleetAssetRead
       summary: Read an organization asset
       description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
-        fleet.asset.read and same-organization membership; SELF remains closed without the actual assignment source.
+        fleet.asset.read and same-organization membership; SELF covers the asset while it is assigned to the member.
         Configuration writes require fresh company proof and the existing organizations C1 capability. Requests never
         carry account/session authority. All responses are private no-store without ETag. ASSET_IDENTIFIER_TAKEN is
         a bounded409; activation checklist refusals contain only unit_id/tanks/meters REQUIRED fields. Powered activation
@@ -15818,6 +15840,955 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/acquisition/record:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetRecordAcquisition
+      summary: Record the acquisition instant of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. Allowed in DRAFT, ACTIVE and INACTIVE without changing the state; the instant is exact to the nanosecond and may not follow the server clock. No amount, counterpart or expense is collected.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetAcquisitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 1
+              acquired_at: '2026-10-01T12:00:00.123456789Z'
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: DRAFT
+                revision: 2
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/deactivate:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetDeactivate
+      summary: Deactivate an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. ACTIVE to INACTIVE with a required reason. Open trips or work orders refuse with ASSET_HAS_OPEN_OPERATIONS naming only the open kinds (until those modules exist the runtime source answers none). Assignments and allocation periods are unchanged.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetReasonRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 3
+              reason: Synthetic seasonal idle period
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: INACTIVE
+                revision: 4
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/reactivate:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetReactivate
+      summary: Reactivate an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. INACTIVE to ACTIVE. The activation checklist is re-proved from actual sources (active unit, tank and in-service meter for powered assets); a known missing item is VALIDATION_FAILED with REQUIRED details.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 4
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: ACTIVE
+                revision: 5
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/dispose:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetDispose
+      summary: Dispose of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. ACTIVE or INACTIVE to DISPOSED with kind SALE, WRITE_OFF or RETURN_TO_HOLDER, an exact instant not later than the server clock nor earlier than the recorded acquisition, and a required reason. Open work refuses with ASSET_HAS_OPEN_OPERATIONS. Earlier records stay readable; a signed field reading declared at or after the instant is held for review as ASSET_UNAVAILABLE.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetDisposeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 5
+              kind: SALE
+              disposed_at: '2026-11-10T12:00:00Z'
+              reason: Synthetic sale to a synthetic buyer
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: DISPOSED
+                revision: 6
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/disposal/revert:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetRevertDisposal
+      summary: Revert a disposal recorded by mistake
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. DISPOSED to INACTIVE with a required reason. The current disposal is cleared; the original disposal stays in the immutable lifecycle history and the asset can be disposed again. Assignments are not restored.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetReasonRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 6
+              reason: Synthetic disposal recorded by mistake
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: INACTIVE
+                revision: 7
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/archive:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetArchive
+      summary: Archive a disposed organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.manage with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; SELF remains closed. The request names the expected current revision; a stale revision or a
+        source state outside the fleet lifecycle table is CONFLICT with no effect. Exactly one audit event, revision
+        snapshot, receipt and (for a state change) immutable lifecycle history row commit together; an identical
+        retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+        Source-pinned synthetic construction does not authorize production or legal disposal records. DISPOSED to the terminal ARCHIVED state; ACTIVE or INACTIVE assets must be disposed first. The disposal is kept, the asset leaves default lists and its plate and fleet number become free for a new asset. Open work refuses with ASSET_HAS_OPEN_OPERATIONS.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetTransitionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008111
+              revision: 6
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                state: ARCHIVED
+                revision: 7
+                discarded: false
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetLifecycleList
+      summary: Read the immutable lifecycle history of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.read and same-organization membership; SELF covers an asset assigned to the member. Revision-ordered keyset page of every
+        deactivate, reactivate, dispose, revert-disposal and archive command, including disposals that were later
+        reverted. Opaque 15-minute cursor bound to the account, organization, membership, route, asset and limit.
+        Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetLifecycleListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized history page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetLifecyclePage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetUnitAllocationList
+      summary: Read the unit allocation history of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
+        current fleet.asset.read and same-organization membership; SELF covers an asset assigned to the member. Start-ordered keyset page of
+        the half-open unit periods of the asset (EMP-FLEET-005), one gap-free chain from activation with exactly one
+        open-ended period; a DRAFT asset has none. The instant of a change belongs to the new period. Opaque 15-minute
+        cursor bound to the account, organization, membership, route, asset and limit. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetAllocationListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized history page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetUnitAllocationPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssetCostCentreAllocationList
+      summary: Read the cost-centre allocation history of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
+        current fleet.asset.read and same-organization membership; SELF covers an asset assigned to the member. Start-ordered keyset page of
+        the half-open cost-centre periods of the asset (EMP-FLEET-005). A cost centre is optional, never derived from
+        the unit, and at most one covers any instant; an empty page means no cost centre was ever allocated. Opaque
+        15-minute cursor bound to the account, organization, membership, route, asset and limit. Responses are private
+        no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetAllocationListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized history page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssetCostCentreAllocationPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/create:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssignmentCreate
+      summary: Assign an organization asset to one or several employee records
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.assign with fresh company proof, the existing organizations C1 capability and same-organization
+        membership; a UNIT, COST_CENTRE or ASSET grant covers the asset through its allocation at the server instant
+        (EMP-AUTH-006). One command names one kind (PRIMARY, ADDITIONAL or TEMPORARY with a required valid_to), 1 to
+        100 distinct ACTIVE employee records of the organization (exactly one for PRIMARY) and creates one assignment
+        per employee or none (EMP-FLEET-006). valid_from omitted is the server instant; a given valid_from must be later
+        than it. Periods are half-open whole-microsecond intervals. An overlapping PRIMARY refuses with
+        ASSIGNMENT_OVERLAP, also against a concurrent command; replace_primary ends the primary containing the new start
+        at that start in the same transaction. A non-ACTIVE employee or an asset that is DRAFT, DISPOSED or ARCHIVED is
+        VALIDATION_FAILED; a foreign employee or asset is NOT_FOUND. Exactly one audit event and receipt commit with the
+        effect; an identical retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are
+        private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.assign
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008121
+              kind: TEMPORARY
+              employee_ids:
+              - 7b0e2a54-0000-4000-8000-000000008601
+              valid_from: '2026-12-01T03:00:00Z'
+              valid_to: '2026-12-08T03:00:00Z'
+              reason: Synthetic holiday cover
+      responses:
+        '201':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssignmentAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                assignment_ids:
+                - 7b0e2a54-0000-4000-8000-000000008701
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/{assignment_id}/end:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssignmentEnd
+      summary: End an assignment of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.asset.assign with fresh company proof, the existing organizations C1 capability and same-organization
+        membership, with structural scope through the asset's allocation. An assignment of the asset that is not ENDED
+        at the server instant ends at that instant (at its start when it has not started, leaving an empty period);
+        ending an ENDED assignment is CONFLICT with no effect, and an assignment of another asset is NOT_FOUND. Exactly
+        one audit event and receipt commit with the effect; an identical retry returns the first result. A trip in
+        progress is not ended. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.assign
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      - name: assignment_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private assignment selector of the same asset.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentEndRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008122
+              reason: Synthetic return of the vehicle
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssignmentAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                assignment_ids:
+                - 7b0e2a54-0000-4000-8000-000000008701
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAssignmentList
+      summary: Read the assignments of an organization asset
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
+        current fleet.asset.read and same-organization membership; a SELF grant covers an asset assigned to the member
+        at the server instant (EMP-FLEET-006). Start-ordered keyset page of every assignment of the asset with its
+        state (SCHEDULED, ACTIVE or ENDED) derived at evaluated_at, the server instant of the page; an employee
+        termination or an asset disposal shows its end_cause. Opaque 15-minute cursor bound to the account,
+        organization, membership, route, asset and limit. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or assignment.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized assignment page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssignmentPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assignments/mine/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetOwnAssignmentList
+      summary: Read my assigned assets
+      description: Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
+        current fleet.asset.read (ORG, or SELF on the member's own list) and same-organization membership. Identifier
+        keyset page of the ACTIVE assignments of the requesting member's employee record at evaluated_at, the server
+        instant of the page, while the membership is current (EMP-FLEET-006); scheduled and ended assignments are not
+        listed and an ended membership lists nothing. No member, employee or instant is caller-chosen. Opaque 15-minute
+        cursor bound to the account, organization, membership, route and limit. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current own assignment page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAssignmentPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install:
     post:
       tags:
@@ -15908,7 +16879,7 @@ paths:
       summary: List private asset meters
       description: Dedicated current company cookie, exact Origin/CSRF and source-owned fleet asset permission. Fresh
         configuration proof is required for installation. Real forced-RLS assets/meters and immutable observation
-        order are used. SELF remains denied without actual assignments. Source-pinned synthetic construction does
+        order are used. SELF covers an asset assigned to the member. Source-pinned synthetic construction does
         not authorize production or real receipt retention.
       security:
       - CompanySessionCookie: []
@@ -15998,7 +16969,7 @@ paths:
       summary: Read the latest valid meter evidence
       description: Dedicated current company cookie, exact Origin/CSRF and source-owned fleet asset permission. Fresh
         configuration proof is required for installation. Real forced-RLS assets/meters and immutable observation
-        order are used. SELF remains denied without actual assignments. Source-pinned synthetic construction does
+        order are used. SELF covers an asset assigned to the member. Source-pinned synthetic construction does
         not authorize production or real receipt retention.
       security:
       - CompanySessionCookie: []
@@ -16342,6 +17313,312 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/finance/periods/list:
+    post:
+      tags:
+      - enterprise-finance
+      operationId: enterpriseFinancePeriodList
+      summary: List the organization periods with history, newest month first
+      description: Current company cookie and exact Origin/CSRF. Fixed fin.period.close permission on the whole organization
+        (ORG-scope grant only). Lists only months with a lock history; keyset cursor bound to the filter and caller; optional state LOCKED or REOPENED. Periods are organization-wide calendar months of reporting days, half-open;
+        an untouched month is OPEN at the implicit revision 1. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fin.period.close
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFinancePeriodListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current source-backed period result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFinancePeriodPage'
+              example:
+                items:
+                - period: '2026-10'
+                  start_day: '2026-10-01'
+                  end_day: '2026-11-01'
+                  period_id: 7b0e2a54-0000-4000-8000-000000009102
+                  state: LOCKED
+                  revision: 2
+                  time_basis: REPORTING_DAY
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/finance/periods/{period}/read:
+    post:
+      tags:
+      - enterprise-finance
+      operationId: enterpriseFinancePeriodRead
+      summary: Read one period with its append-only history
+      description: Current company cookie and exact Origin/CSRF. Fixed fin.period.close permission on the whole organization
+        (ORG-scope grant only). Returns the head and every immutable transition with permission, actor, server time and the reopening reason. Periods are organization-wide calendar months of reporting days, half-open;
+        an untouched month is OPEN at the implicit revision 1. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fin.period.close
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: period
+        in: path
+        required: true
+        description: Canonical calendar month YYYY-MM of reporting days; any other key is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFinancePeriodReadRequest'
+            example:
+              {}
+      responses:
+        '200':
+          description: Private current source-backed period result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFinancePeriodView'
+              example:
+                period: '2026-10'
+                start_day: '2026-10-01'
+                end_day: '2026-11-01'
+                period_id: 7b0e2a54-0000-4000-8000-000000009102
+                state: REOPENED
+                revision: 3
+                time_basis: REPORTING_DAY
+                data_mode: SYNTHETIC
+                history:
+                - revision: 2
+                  kind: LOCK
+                  from_state: OPEN
+                  to_state: LOCKED
+                  authority: fin.period.close
+                  reason: ''
+                  actor_account_id: 7b0e2a54-0000-4000-8000-000000009110
+                  actor_membership_id: 7b0e2a54-0000-4000-8000-000000009111
+                  operation_id: 7b0e2a54-0000-4000-8000-000000009101
+                  recorded_at: '2026-11-05T12:00:00Z'
+                - revision: 3
+                  kind: REOPEN
+                  from_state: LOCKED
+                  to_state: REOPENED
+                  authority: fin.period.reopen
+                  reason: Synthetic approved fueling volume correction
+                  actor_account_id: 7b0e2a54-0000-4000-8000-000000009110
+                  actor_membership_id: 7b0e2a54-0000-4000-8000-000000009111
+                  operation_id: 7b0e2a54-0000-4000-8000-000000009103
+                  recorded_at: '2026-11-10T09:30:00Z'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/finance/periods/{period}/close:
+    post:
+      tags:
+      - enterprise-finance
+      operationId: enterpriseFinancePeriodClose
+      summary: Lock or re-lock a period at an expected revision
+      description: Current company cookie and exact Origin/CSRF. Fixed fin.period.close permission on the whole organization
+        (ORG-scope grant only). Fresh proof, enabled capability and ACTIVE organization. OPEN to LOCKED (LOCK) or REOPENED to LOCKED (RELOCK); a LOCKED period or another revision is CONFLICT. One immutable transition and one audit event in the same transaction; an exact replay returns the original result. Periods are organization-wide calendar months of reporting days, half-open;
+        an untouched month is OPEN at the implicit revision 1. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fin.period.close
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: period
+        in: path
+        required: true
+        description: Canonical calendar month YYYY-MM of reporting days; any other key is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFinancePeriodCloseRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009101
+              revision: 1
+      responses:
+        '200':
+          description: Private current source-backed period result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFinancePeriodAcknowledgement'
+              example:
+                period: '2026-10'
+                period_id: 7b0e2a54-0000-4000-8000-000000009102
+                kind: LOCK
+                state: LOCKED
+                revision: 2
+                recorded_at: '2026-11-05T12:00:00Z'
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/finance/periods/{period}/reopen:
+    post:
+      tags:
+      - enterprise-finance
+      operationId: enterpriseFinancePeriodReopen
+      summary: Reopen a locked period with a mandatory reason
+      description: Current company cookie and exact Origin/CSRF. Fixed fin.period.reopen permission on the whole organization
+        (ORG-scope grant only). Fresh proof, enabled capability and ACTIVE organization. LOCKED to REOPENED only, with a nonblank reason of at most 280 Unicode scalars without control characters (VALIDATION_FAILED otherwise). The earlier lock is never removed; record commands then see the proven reopening. Periods are organization-wide calendar months of reporting days, half-open;
+        an untouched month is OPEN at the implicit revision 1. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fin.period.reopen
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: period
+        in: path
+        required: true
+        description: Canonical calendar month YYYY-MM of reporting days; any other key is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFinancePeriodReopenRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009103
+              revision: 2
+              reason: Synthetic approved fueling volume correction
+      responses:
+        '200':
+          description: Private current source-backed period result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFinancePeriodAcknowledgement'
+              example:
+                period: '2026-10'
+                period_id: 7b0e2a54-0000-4000-8000-000000009102
+                kind: REOPEN
+                state: REOPENED
+                revision: 3
+                recorded_at: '2026-11-05T12:00:00Z'
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/sync/review-results:
     post:
       tags:
@@ -16472,6 +17749,1202 @@ paths:
         original_author: true
         whole_body_preflight: true
         success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/list:
+    post:
+      tags:
+      - enterprise-notifications
+      operationId: enterpriseSelfNoticeList
+      summary: List own in-app notices newest first
+      description: EMP-NOTIF-001 own in-app inbox. Private no-store response without ETag. Dedicated company cookie, exact Origin/Host and CSRF are mandatory; current AUTH-003 membership authority is reloaded in the scoped transaction. Only the account-bound current membership may be selected; this is not an organization permission grant. Notices carry only references, enumerated codes, counts, dates and a relative panel link that its own route re-authorizes when opened.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: The caller's own current scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseNoticeListRequest'
+            example:
+              limit: 20
+              unread_only: false
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current own result or the original committed acknowledgement of a replayed command.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseNoticePage'
+              example:
+                notices:
+                - id: 7b0e2a54-0000-4000-8000-000000002401
+                  kind: report.export.ready
+                  template: report.export.ready.v1
+                  params:
+                    report_id: 7b0e2a54-0000-4000-8000-000000002402
+                    format: CSV
+                  link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+                  created_at: '2026-11-14T12:00:00Z'
+                  read_at: null
+                next_cursor: ''
+                data_mode: SYNTHETIC
+      x-abastevo-self-notice:
+        action: list
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/{notice_id}/read:
+    post:
+      tags:
+      - enterprise-notifications
+      operationId: enterpriseSelfNoticeRead
+      summary: Mark one own notice read
+      description: EMP-NOTIF-001 own in-app inbox. Private no-store response without ETag. Dedicated company cookie, exact Origin/Host and CSRF are mandatory; current AUTH-003 membership authority is reloaded in the scoped transaction. Only the account-bound current membership may be selected; this is not an organization permission grant. Notices carry only references, enumerated codes, counts, dates and a relative panel link that its own route re-authorizes when opened.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: The caller's own current scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      - name: notice_id
+        in: path
+        required: true
+        description: One own notice identity; another member's notice is indistinguishable from an unknown one.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseNoticeReadRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002403
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current own result or the original committed acknowledgement of a replayed command.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseNoticeReadResult'
+              example:
+                notice:
+                  id: 7b0e2a54-0000-4000-8000-000000002401
+                  kind: report.export.ready
+                  template: report.export.ready.v1
+                  params:
+                    report_id: 7b0e2a54-0000-4000-8000-000000002402
+                    format: CSV
+                  link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+                  created_at: '2026-11-14T12:00:00Z'
+                  read_at: '2026-11-14T12:05:00Z'
+                operation_id: 7b0e2a54-0000-4000-8000-000000002403
+                replayed: false
+                data_mode: SYNTHETIC
+      x-abastevo-self-notice:
+        action: read
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/read:
+    post:
+      tags:
+      - enterprise-notifications
+      operationId: enterpriseSelfNoticePreferencesRead
+      summary: Read own notice preferences per registered kind
+      description: EMP-NOTIF-001 own in-app inbox. Private no-store response without ETag. Dedicated company cookie, exact Origin/Host and CSRF are mandatory; current AUTH-003 membership authority is reloaded in the scoped transaction. Only the account-bound current membership may be selected; this is not an organization permission grant. Notices carry only references, enumerated codes, counts, dates and a relative panel link that its own route re-authorizes when opened.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: The caller's own current scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseNoticePreferencesRequest'
+            example:
+              {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current own result or the original committed acknowledgement of a replayed command.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseNoticePreferences'
+              example:
+                preferences:
+                - kind: report.export.ready
+                  muted: true
+                  mandatory: false
+                  revision: 1
+                data_mode: SYNTHETIC
+      x-abastevo-self-notice:
+        action: preferences_read
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
+  /v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/update:
+    post:
+      tags:
+      - enterprise-notifications
+      operationId: enterpriseSelfNoticePreferenceUpdate
+      summary: Mute or unmute one optional notice kind
+      description: EMP-NOTIF-001 own in-app inbox. Private no-store response without ETag. Dedicated company cookie, exact Origin/Host and CSRF are mandatory; current AUTH-003 membership authority is reloaded in the scoped transaction. Only the account-bound current membership may be selected; this is not an organization permission grant. Notices carry only references, enumerated codes, counts, dates and a relative panel link that its own route re-authorizes when opened.
+      security:
+      - CompanySessionCookie: []
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: membership_id
+        in: path
+        required: true
+        description: The caller's own current scoped membership identity.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseNoticePreferenceUpdateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002404
+              kind: report.export.ready
+              muted: true
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Current own result or the original committed acknowledgement of a replayed command.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseNoticePreferenceResult'
+              example:
+                preference:
+                  kind: report.export.ready
+                  muted: true
+                  mandatory: false
+                  revision: 1
+                operation_id: 7b0e2a54-0000-4000-8000-000000002404
+                replayed: false
+                data_mode: SYNTHETIC
+      x-abastevo-self-notice:
+        action: preferences_update
+        cookie: true
+        csrf: true
+        binding: true
+        success: 200
+  /v1/orgs/{org_id}/documents/uploads/create:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentUploadCreate
+      summary: Declare a synthetic private receipt and open its upload session
+      description: Dedicated company cookie, exact Origin/CSRF and doc.document.attach covering a document the member
+        authors (own records for SELF roles). The client-declared document UUID, SHA-256, exact size and image/jpeg
+        type are fixed; the document starts UPLOADING and is never received before verified bytes. An identical
+        retry returns the first record and a fresh upload capability while pending; the same operation with other
+        facts or actor is OPERATION_ID_REUSED and another operation naming an existing document is CONFLICT. The
+        capability expires within five minutes and is bound to the origin, organization, document, account and
+        membership. The upload session closes 24 hours after the declaration; a capability is minted only if it
+        expires by then, and a document still UPLOADING five minutes after the close becomes FAILED. Synthetic C1
+        only; real receipts and other formats remain gated.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.attach
+        write: true
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000020541
+              document_id: 7b0e2a54-0000-4000-8000-000000020542
+              kind: RECEIPT
+              original:
+                sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+                bytes: 1024
+                media_type: image/jpeg
+      responses:
+        '201':
+          description: Declared or identically replayed upload session.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentCreated'
+              example:
+                document:
+                  id: 7b0e2a54-0000-4000-8000-000000020542
+                  kind: RECEIPT
+                  data_mode: SYNTHETIC
+                  original:
+                    sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+                    bytes: 1024
+                    media_type: image/jpeg
+                  statuses:
+                    storage: UPLOADING
+                    extraction: NONE
+                    structure: NOT_APPLICABLE
+                    conference: UNCONFERRED
+                    reconciliation: UNALLOCATED
+                    fiscal: NOT_CONSULTED
+                  revisions:
+                    storage: 1
+                    extraction: 1
+                    structure: 1
+                    conference: 1
+                    fiscal: 1
+                  created_at: '2026-11-14T00:00:00.123456Z'
+                  updated_at: '2026-11-14T00:00:00.123456Z'
+                replayed: false
+                upload:
+                  capability: REDACTED
+                  expires_at: '2026-11-14T00:05:00Z'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/content/upload:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentContentUpload
+      summary: Send the declared original through the private document ingress
+      description: Capability-bound byte transport (DOCUMENT_INGRESS). The upload capability is verified before any
+        byte is read; no cookie, signed proof, query parameter or JSON body is accepted. The server rechecks that the
+        caller created the document, still holds doc.document.attach and the document is pending, then reads at most
+        the declared size plus one byte and verifies the exact digest; an oversized, mismatched, truncated or
+        interrupted transfer is VALIDATION_FAILED and leaves the document UPLOADING. Bytes that match the
+        declaration are inspected by content; a trailing payload or embedded active content makes the document
+        QUARANTINED, content that is not the declared image type makes it FAILED (both VALIDATION_FAILED, final,
+        nothing stored). Clean bytes are written under the organization prefix of private storage and the document
+        becomes RECEIVED; only the safety check over the stored object moves it to STORED, normally within this
+        request. If the check cannot finish now the response shows RECEIVED and a queued job completes it. A retry
+        while RECEIVED runs the check without reading bytes; a retry after STORED returns the stored record without
+        reading or recording again; a retry after QUARANTINED or FAILED is CONFLICT.
+      security: []
+      x-abastevo-document-ingress:
+        capability: true
+        member_bound: true
+        current_authority: true
+        verified_bytes: true
+        permission: doc.document.attach
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: The declared document. A foreign, missing or other member's document stays hidden.
+      - name: X-Abastevo-Upload-Capability
+        in: header
+        required: true
+        description: Upload capability from the declaration response; at most five minutes, single-valued.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      requestBody:
+        required: true
+        content:
+          image/jpeg:
+            schema:
+              type: string
+              format: binary
+              maxLength: 5242880
+      responses:
+        '200':
+          description: Verified and checked original stored, the received original whose safety check is still
+            pending (storage RECEIVED), or the already stored record.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentStored'
+              example:
+                document:
+                  id: 7b0e2a54-0000-4000-8000-000000020542
+                  kind: RECEIPT
+                  data_mode: SYNTHETIC
+                  original:
+                    sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+                    bytes: 1024
+                    media_type: image/jpeg
+                  statuses:
+                    storage: STORED
+                    extraction: NONE
+                    structure: NOT_APPLICABLE
+                    conference: UNCONFERRED
+                    reconciliation: UNALLOCATED
+                    fiscal: NOT_CONSULTED
+                  revisions:
+                    storage: 3
+                    extraction: 1
+                    structure: 1
+                    conference: 1
+                    fiscal: 1
+                  created_at: '2026-11-14T00:00:00.123456Z'
+                  updated_at: '2026-11-14T00:01:00.654321Z'
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/content/access:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentContentAccess
+      summary: Open an audited short-lived content capability
+      description: Dedicated company cookie, exact Origin/CSRF and doc.document.view_content covering the document
+        (own records for SELF roles); reading the record never implies content. The ISSUED access record commits
+        before the capability is minted; the capability expires within five minutes and is bound to the member and
+        the document's verified revision. A pending, foreign or missing document is NOT_FOUND, a member without the
+        permission is FORBIDDEN, and an unavailable access log mints nothing.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.view_content
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Private document selector. Foreign, missing and pending documents remain hidden; a selector is
+          not proof of content permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentContentAccessRequest'
+            example: {}
+      responses:
+        '200':
+          description: Audited member-bound content capability.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentContentAccess'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/content/read:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentContentRead
+      summary: Read the private original through its audited capability
+      description: Same session, membership and doc.document.view_content as the access route, plus the caller's own
+        unexpired capability for this document in the body. The SERVED access record commits before the original is
+        returned base64-encoded in this no-store JSON body; no storage URL, file name or conditional cache response
+        is emitted. Another member's, organization's or document's capability, an expired capability, a changed
+        document and an unavailable access log serve nothing.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.view_content
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Private document selector. Foreign, missing and pending documents remain hidden; a selector is
+          not proof of content permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentContentReadRequest'
+            example:
+              capability: REDACTED
+      responses:
+        '200':
+          description: Audited original content.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentContent'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/links/create:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentLinkCreate
+      summary: Link a private document to a same-organization record
+      description: Dedicated company cookie, exact Origin/CSRF and doc.document.attach covering the document (own
+        documents for SELF roles), plus, in the same transaction, the target owner's own permission covering the
+        target record (fleet.asset.manage for ASSET, meter.reading.record for METER_READING with own readings for
+        SELF roles, idn.employee.manage for EMPLOYEE). Only kinds with a registered owner resolver are accepted;
+        FUELING, EXPENSE, WORK_ORDER and TRIP are VALIDATION_FAILED until their owners register. A foreign, missing
+        or wrong-table target is NOT_FOUND; a DRAFT asset or a FAILED, REPLACED or DELETED document is CONFLICT. A
+        pending (UPLOADING) document can be linked and stays pending. The operation UUID replays the first link,
+        the same operation with other facts or member is OPERATION_ID_REUSED, and another operation naming an
+        existing link returns it with no new row or audit event. A link grants no content and allocates no money.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.attach
+        write: true
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Private document selector. Foreign and missing documents remain hidden; a selector is not
+          proof of attach permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentLinkCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000020901
+              target:
+                kind: METER_READING
+                id: 7b0e2a54-0000-4000-8000-000000020902
+      responses:
+        '201':
+          description: Created, replayed or already existing link.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentLinked'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/{document_id}/links/list:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentLinkList
+      summary: List the records a private document is linked to
+      description: Dedicated company cookie, exact Origin/CSRF and doc.document.attach (read) covering the document
+        (own documents for SELF roles). Keyset page ordered by target kind and target UUID; an opaque 15-minute
+        cursor is bound to the account, organization, membership, route, document and limit. Items carry link
+        metadata and the document's storage status only; content still requires doc.document.view_content.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.attach
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: document_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Private document selector. Foreign and missing documents remain hidden.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentLinkListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private page of the document's links.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentLinkPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/documents/links/by-target:
+    post:
+      tags:
+      - enterprise-documents
+      operationId: enterpriseDocumentLinkByTarget
+      summary: List the documents linked to one same-organization record
+      description: Dedicated company cookie, exact Origin/CSRF, a current doc.document.attach permission and, in the
+        same transaction, the target owner's own permission covering the target record (the same owner permission
+        as link creation, read-only). Keyset page ordered by document UUID; an opaque 15-minute cursor is bound to
+        the account, organization, membership, route, target and limit. Items carry link metadata and the document's
+        storage status only; seeing a link never grants content, which still requires doc.document.view_content.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: doc.document.attach
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDocumentLinkByTargetRequest'
+            example:
+              target:
+                kind: ASSET
+                id: 7b0e2a54-0000-4000-8000-000000020903
+              limit: 20
+      responses:
+        '200':
+          description: Private page of the target's links.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDocumentLinkPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/request:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportRequest
+      summary: Request an asynchronous export of an admitted kind
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Write admission, enabled capability and ACTIVE organization. The kind must have an admitted format (else EXPORT_FORMAT_UNAVAILABLE 422), and the same membership must also hold, for the whole organization, the read permission declared by the kind; neither permission implies the other, and a missing data permission is FORBIDDEN with that key before anything is written. Every worker attempt re-checks both, and losing either ends the job FAILED with EXPORT_RIGHTS_LOST; parameters are a canonical JSON object of at most 4096 bytes. One QUEUED job, one audit event and one reference-only worker job commit together; the operation ID replays the stored job. A requester with three QUEUED or RUNNING jobs gets EXPORT_QUEUE_FULL (429). Admitted kinds (EMP-RPT-002) are fleet.asset_list.csv and fleet.meter_reading_list.csv (data permission fleet.asset.read) and idn.employee_list.csv (idn.employee.read); their parameters are the closed filter objects EnterpriseAssetListExportParameters, EnterpriseMeterReadingListExportParameters and EnterpriseEmployeeListExportParameters, and an unknown key, an empty or non-canonical value or a reversed period is VALIDATION_FAILED (422) before anything is written. Spreadsheet kinds (*.xlsx) are not admitted and stay EXPORT_FORMAT_UNAVAILABLE. The worker re-checks the requester inside its read-only reading transaction, reads only this organization and writes an application/zip package holding the CSV and manifest.json (exact base-unit integers, inert text, deterministic order, omitted sensitive columns reported without values). Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 202
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009200
+              kind: test.synthetic_rows
+              parameters:
+                rows: 3
+      responses:
+        '202':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportAcknowledgement'
+              example:
+                export:
+                  export_id: 7b0e2a54-0000-4000-8000-000000009201
+                  kind: test.synthetic_rows
+                  parameters:
+                    rows: 3
+                  parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+                  state: QUEUED
+                  attempts: 0
+                  max_attempts: 3
+                  failure_code: null
+                  row_count: null
+                  byte_count: null
+                  sha256: null
+                  media_type: null
+                  requested_at: '2026-11-14T12:00:00Z'
+                  as_of: '2026-11-14T12:00:00Z'
+                  ready_at: null
+                  expires_at: null
+                  failed_at: null
+                  expired_at: null
+                  data_mode: SYNTHETIC
+                replayed: false
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/list:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportList
+      summary: List the calling member's exports, newest first
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Lists only jobs requested by the calling membership; keyset cursor bound to the filter and caller; optional state filter. Expired jobs keep their metadata without a download. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportPage'
+              example:
+                items:
+                - export_id: 7b0e2a54-0000-4000-8000-000000009201
+                  kind: test.synthetic_rows
+                  parameters:
+                    rows: 3
+                  parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+                  state: READY
+                  attempts: 1
+                  max_attempts: 3
+                  failure_code: null
+                  row_count: 3
+                  byte_count: 40
+                  sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+                  media_type: text/csv
+                  requested_at: '2026-11-14T12:00:00Z'
+                  as_of: '2026-11-14T12:00:00Z'
+                  ready_at: '2026-11-14T12:00:05Z'
+                  expires_at: '2026-11-21T12:00:05Z'
+                  failed_at: null
+                  expired_at: null
+                  data_mode: SYNTHETIC
+                next_cursor: ''
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/{export_id}/read:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportRead
+      summary: Read one of the calling member's exports
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Returns state, attempts, failure code, and for a published file its row count, size, SHA-256, media type, ready and expiry instants. No storage address is ever returned. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: export_id
+        in: path
+        required: true
+        description: Export job of the calling membership; any other job, including another member's, is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportReadRequest'
+            example:
+              {}
+      responses:
+        '200':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportView'
+              example:
+                export_id: 7b0e2a54-0000-4000-8000-000000009201
+                kind: test.synthetic_rows
+                parameters:
+                  rows: 3
+                parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+                state: READY
+                attempts: 1
+                max_attempts: 3
+                failure_code: null
+                row_count: 3
+                byte_count: 40
+                sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+                media_type: text/csv
+                requested_at: '2026-11-14T12:00:00Z'
+                as_of: '2026-11-14T12:00:00Z'
+                ready_at: '2026-11-14T12:00:05Z'
+                expires_at: '2026-11-21T12:00:05Z'
+                failed_at: null
+                expired_at: null
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '410':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/{export_id}/access:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportAccess
+      summary: Obtain a short-lived capability for a ready export
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. The read permission declared by the kind is re-checked first (FORBIDDEN with that key; a kind no longer admitted is EXPORT_FORMAT_UNAVAILABLE 422). Requires a READY job before its expiry (EXPORT_NOT_READY 409, EXPORT_EXPIRED 410). Records EXPORT_FILE ISSUED in the sensitive-access log before minting a capability bound to the API origin, organization, account, membership, job and file, valid for at most five minutes. An audit failure issues nothing. Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: export_id
+        in: path
+        required: true
+        description: Export job of the calling membership; any other job, including another member's, is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportReadRequest'
+            example:
+              {}
+      responses:
+        '200':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportCapability'
+              example:
+                export_id: 7b0e2a54-0000-4000-8000-000000009201
+                capability: v1.synthetic-export-capability
+                expires_at: '2026-11-14T12:05:00Z'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '410':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/reports/exports/{export_id}/content:
+    post:
+      tags:
+      - enterprise-reports
+      operationId: enterpriseReportExportContent
+      summary: Download a ready export with its capability
+      description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. The read permission declared by the kind is re-checked as on access (FORBIDDEN with that key; a kind no longer admitted is EXPORT_FORMAT_UNAVAILABLE 422). The capability travels in the body. The server verifies it, re-checks authority, state and expiry, reads and verifies the private file, records EXPORT_FILE SERVED and only then returns the exact bytes base64-encoded. A foreign, changed or expired capability is NOT_FOUND; an audit failure serves nothing. An admitted list kind serves media type application/zip holding <list>.csv (UTF-8 with byte-order mark, comma, LF, RFC 4180 quoting; a text cell that begins with =, +, -, @, tab, CR, LF or an apostrophe gains one leading apostrophe so it stays inert; integers are exact in the unit named by the column) and manifest.json (schema orgexport.list.v1 with organization, requester membership, as_of, generated_at, filters, review basis, ordering, row count, the CSV SHA-256, columns with units and omitted columns with reasons). Synthetic construction does not authorize real data or release.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: rpt.export.run
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: export_id
+        in: path
+        required: true
+        description: Export job of the calling membership; any other job, including another member's, is NOT_FOUND.
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseExportContentRequest'
+            example:
+              capability: v1.synthetic-export-capability
+      responses:
+        '200':
+          description: Private current source-backed export result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseExportContent'
+              example:
+                export_id: 7b0e2a54-0000-4000-8000-000000009201
+                media_type: text/csv
+                sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+                row_count: 3
+                byte_count: 8
+                content_base64: YSxiCjEsMgo=
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '410':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -16613,6 +19086,189 @@ components:
         document/import/integration and cross-record reference producers are required before their otherwise recognized
         forms can execute. Nonempty attachments/depends_on/soft_references stay unavailable; missing/foreign actual
         target coverage never becomes an accepted effect.
+    EnterpriseFuelingSubmitPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        responsible_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        product:
+          type: string
+          enum:
+          - ETHANOL
+          - GASOLINE_REGULAR
+          - GASOLINE_ADDITIVED
+          - GASOLINE_PREMIUM_GRADE
+          - DIESEL_S10
+          - DIESEL_S500
+          - CNG
+          - ELECTRICITY
+          - ARLA_32
+        unit:
+          type: string
+          enum:
+          - L
+          - M3
+          - KWH
+        quantity:
+          type: string
+          description: Milli-units of the product unit (mL, milli-m3 or Wh).
+          pattern: ^(1000000000|[1-9][0-9]{0,8})$
+        paid_total:
+          type: string
+          description: Centavos as entered; never recomputed.
+          pattern: ^(0|[1-9][0-9]{0,11}|1000000000000)$
+        discount:
+          type:
+          - string
+          - 'null'
+          pattern: ^(0|[1-9][0-9]{0,11}|1000000000000)$
+        unit_price:
+          type:
+          - string
+          - 'null'
+          description: Milli-BRL per product unit.
+          pattern: ^(1000000|[1-9][0-9]{0,5})$
+        unit_price_text:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 8192
+        fill:
+          type: string
+          enum:
+          - FULL
+          - PARTIAL
+          - UNKNOWN
+        payer:
+          type: string
+          enum:
+          - COMPANY
+          - EMPLOYEE
+        payment_method:
+          type: string
+          enum:
+          - CASH
+          - PIX
+          - DEBIT_CARD
+          - CREDIT_CARD
+          - FUEL_CARD
+          - SUPPLIER_ACCOUNT
+          - AGREEMENT_VOUCHER
+          - INTERNAL_STOCK
+          - OTHER
+        reading:
+          type:
+          - object
+          - 'null'
+          additionalProperties: false
+          properties:
+            meter_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            segment_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            reading_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            kind:
+              type: string
+              enum:
+              - ODOMETER
+              - HOUR_METER
+            value:
+              type: string
+              pattern: ^(0|[1-9][0-9]*)$
+              maxLength: 13
+          required:
+          - meter_id
+          - segment_id
+          - reading_id
+          - kind
+          - value
+        missing_reading_reason:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 280
+        place:
+          type:
+          - object
+          - 'null'
+          properties:
+            kind:
+              type: string
+              enum:
+              - NOT_FOUND
+              - CATALOG_STATION
+              - ORG_SUPPLIER
+              - INTERNAL_TANK
+            name:
+              type: string
+              minLength: 1
+          required:
+          - kind
+        trip_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        contracted_supplier_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      required:
+      - asset_id
+      - responsible_employee_id
+      - product
+      - unit
+      - quantity
+      - paid_total
+      - discount
+      - unit_price
+      - unit_price_text
+      - fill
+      - payer
+      - payment_method
+      - reading
+      - missing_reading_reason
+      - place
+      - trip_id
+      - contracted_supplier_id
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        responsible_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+        product: DIESEL_S10
+        unit: L
+        quantity: '150000'
+        paid_total: '97000'
+        discount: null
+        unit_price: '6490'
+        unit_price_text: '6,490'
+        fill: FULL
+        payer: COMPANY
+        payment_method: FUEL_CARD
+        reading:
+          meter_id: 7b0e2a54-0000-4000-8000-000000008401
+          segment_id: 7b0e2a54-0000-4000-8000-000000008402
+          reading_id: 7b0e2a54-0000-4000-8000-000000008403
+          kind: ODOMETER
+          value: '184190000'
+        missing_reading_reason: null
+        place: null
+        trip_id: null
+        contracted_supplier_id: null
+      description: Owner schema1 for fueling.submit (EMP-FUEL-002). Fueling identity is envelope entity.type=fueling/entity.id;
+        expected_revision is null. Declaration belongs only to envelope occurred_at/entry_zone/device_offset_seconds and
+        is also the embedded reading's instant. The unit must be the product's catalog unit. Exactly one of reading or
+        missing_reading_reason is non-null; a reading is recorded through the fleet intake with origin FUELING in the same
+        transaction. Server fixes origin APP, author, enrollment, receipt, review state SUBMITTED, the unit/cost-centre
+        snapshot at the declared instant and the stored warnings; the paid total is never recomputed and ARITHMETIC_MISMATCH
+        or PRODUCT_NOT_ACCEPTED never refuse the fact. Only a NOT_FOUND typed place is stored; other place kinds, non-null
+        trip_id/contracted_supplier_id and nonempty attachments/depends_on/soft_references stay unavailable until their owners exist.
     EnterpriseMeterInstallRequest:
       type: object
       additionalProperties: false
@@ -16915,6 +19571,9 @@ components:
           type: string
           enum:
           - PERMISSION_CHANGED
+          - ASSET_UNAVAILABLE
+          description: PERMISSION_CHANGED for retained authority; ASSET_UNAVAILABLE for a reading declared at or after
+            the asset's current disposal instant.
         state:
           type: string
           enum:
@@ -17177,6 +19836,682 @@ components:
           entity_revision: 1
         replayed: false
         data_mode: SYNTHETIC
+    EnterpriseFinancePeriodMonth:
+      description: Canonical calendar month YYYY-MM from 0001-01 to 9999-12.
+      type: string
+      pattern: '^(000[1-9]|00[1-9][0-9]|0[1-9][0-9]{2}|[1-9][0-9]{3})-(0[1-9]|1[0-2])$'
+      example: '2026-10'
+    EnterpriseFinancePeriodListRequest:
+      description: Keyset page of months with lock history, optionally filtered by current state.
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+        state:
+          type: string
+          enum:
+          - LOCKED
+          - REOPENED
+      required: []
+      example:
+        limit: 20
+    EnterpriseFinancePeriodReadRequest:
+      description: Empty body; the month is the path selector.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseFinancePeriodCloseRequest:
+      description: Lock an OPEN or re-lock a REOPENED month at the revision the caller saw.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: The current revision the caller saw; an untouched month is 1.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009101
+        revision: 1
+    EnterpriseFinancePeriodReopenRequest:
+      description: Reopen a LOCKED month at the revision the caller saw, with a mandatory reason.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+          description: The current revision the caller saw; only a LOCKED (even) revision can be reopened.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          pattern: '\S'
+          description: Exact Unicode scalar text kept verbatim, nonblank, no controls.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009103
+        revision: 2
+        reason: Synthetic approved fueling volume correction
+    EnterpriseFinancePeriodAcknowledgement:
+      description: Recorded result of one accepted period command; replays return it unchanged.
+      type: object
+      additionalProperties: false
+      properties:
+        period:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+        period_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - LOCK
+          - REOPEN
+          - RELOCK
+        state:
+          type: string
+          enum:
+          - LOCKED
+          - REOPENED
+        revision:
+          type: integer
+          minimum: 2
+        recorded_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - period
+      - period_id
+      - kind
+      - state
+      - revision
+      - recorded_at
+      - replayed
+      - data_mode
+      example:
+        period: '2026-10'
+        period_id: 7b0e2a54-0000-4000-8000-000000009102
+        kind: LOCK
+        state: LOCKED
+        revision: 2
+        recorded_at: '2026-11-05T12:00:00Z'
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseFinancePeriodTransition:
+      description: One immutable period transition with its authorizing permission and actor.
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 2
+        kind:
+          type: string
+          enum:
+          - LOCK
+          - REOPEN
+          - RELOCK
+        from_state:
+          type: string
+          enum:
+          - OPEN
+          - LOCKED
+          - REOPENED
+        to_state:
+          type: string
+          enum:
+          - LOCKED
+          - REOPENED
+        authority:
+          type: string
+          enum:
+          - fin.period.close
+          - fin.period.reopen
+        reason:
+          type: string
+          maxLength: 280
+          description: Empty for LOCK and RELOCK; the verbatim reopening reason for REOPEN.
+        actor_account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        actor_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        recorded_at:
+          type: string
+          format: date-time
+      required:
+      - revision
+      - kind
+      - from_state
+      - to_state
+      - authority
+      - reason
+      - actor_account_id
+      - actor_membership_id
+      - operation_id
+      - recorded_at
+      example:
+        revision: 3
+        kind: REOPEN
+        from_state: LOCKED
+        to_state: REOPENED
+        authority: fin.period.reopen
+        reason: Synthetic approved fueling volume correction
+        actor_account_id: 7b0e2a54-0000-4000-8000-000000009110
+        actor_membership_id: 7b0e2a54-0000-4000-8000-000000009111
+        operation_id: 7b0e2a54-0000-4000-8000-000000009103
+        recorded_at: '2026-11-10T09:30:00Z'
+    EnterpriseFinancePeriodView:
+      description: Current head of one organization month; history only on read.
+      type: object
+      additionalProperties: false
+      properties:
+        period:
+          $ref: '#/components/schemas/EnterpriseFinancePeriodMonth'
+        start_day:
+          type: string
+          format: date
+          description: First reporting day, inclusive.
+        end_day:
+          type: string
+          pattern: '^[0-9]{4,5}-[0-9]{2}-01$'
+          description: First day of the next month, exclusive.
+        period_id:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        state:
+          type: string
+          enum:
+          - OPEN
+          - LOCKED
+          - REOPENED
+        revision:
+          type: integer
+          minimum: 1
+        time_basis:
+          type: string
+          enum:
+          - REPORTING_DAY
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        history:
+          type: array
+          description: Present on read only; the complete append-only transition chain.
+          items:
+            $ref: '#/components/schemas/EnterpriseFinancePeriodTransition'
+      required:
+      - period
+      - start_day
+      - end_day
+      - period_id
+      - state
+      - revision
+      - time_basis
+      - data_mode
+      example:
+        period: '2026-10'
+        start_day: '2026-10-01'
+        end_day: '2026-11-01'
+        period_id: 7b0e2a54-0000-4000-8000-000000009102
+        state: LOCKED
+        revision: 2
+        time_basis: REPORTING_DAY
+        data_mode: SYNTHETIC
+        history:
+        - revision: 2
+          kind: LOCK
+          from_state: OPEN
+          to_state: LOCKED
+          authority: fin.period.close
+          reason: ''
+          actor_account_id: 7b0e2a54-0000-4000-8000-000000009110
+          actor_membership_id: 7b0e2a54-0000-4000-8000-000000009111
+          operation_id: 7b0e2a54-0000-4000-8000-000000009101
+          recorded_at: '2026-11-05T12:00:00Z'
+    EnterpriseFinancePeriodPage:
+      description: Months with lock history, newest first.
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFinancePeriodView'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - period: '2026-10'
+          start_day: '2026-10-01'
+          end_day: '2026-11-01'
+          period_id: 7b0e2a54-0000-4000-8000-000000009102
+          state: LOCKED
+          revision: 2
+          time_basis: REPORTING_DAY
+          data_mode: SYNTHETIC
+        next_cursor: ''
+    EnterpriseExportKind:
+      description: Kind of an admitted export format; a kind without an admitted format is EXPORT_FORMAT_UNAVAILABLE. Admitted
+        kinds are fleet.asset_list.csv, fleet.meter_reading_list.csv and idn.employee_list.csv (EMP-RPT-002); spreadsheet kinds
+        such as fleet.asset_list.xlsx are not admitted until a reviewed writer exists and answer EXPORT_FORMAT_UNAVAILABLE. No enum
+        is declared so that an unadmitted kind reaches that answer.
+      type: string
+      maxLength: 64
+      pattern: '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$'
+      example: test.synthetic_rows
+    EnterpriseExportRequest:
+      description: Request one export job. The operation ID is the idempotency key; parameters are canonicalized and digested by the server.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          $ref: '#/components/schemas/EnterpriseExportKind'
+        parameters:
+          type: object
+          description: Filters of the format, lower-snake keys, no null, at most 4096 canonical bytes. Each admitted list kind accepts
+            only its closed filter object (EnterpriseAssetListExportParameters, EnterpriseMeterReadingListExportParameters,
+            EnterpriseEmployeeListExportParameters).
+      required:
+      - schema_version
+      - operation_id
+      - kind
+      - parameters
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009200
+        kind: test.synthetic_rows
+        parameters:
+          rows: 3
+    EnterpriseAssetListExportParameters:
+      description: Filters of fleet.asset_list.csv (EMP-RPT-002). Both optional; without state every state except ARCHIVED is
+        listed, as on the asset list. Rows are ordered by asset identifier.
+      type: object
+      additionalProperties: false
+      properties:
+        state:
+          type: string
+          enum: [DRAFT, ACTIVE, INACTIVE, DISPOSED, ARCHIVED]
+        kind:
+          type: string
+          enum: [VEHICLE, MACHINE, IMPLEMENT]
+      example:
+        state: ACTIVE
+        kind: VEHICLE
+    EnterpriseMeterReadingListExportParameters:
+      description: Filters of fleet.meter_reading_list.csv (EMP-RPT-002), all optional. The period is half-open
+        [occurred_from, occurred_to) over the exact occurrence instant, both canonical UTC RFC 3339 instants with from before
+        to. Only readings the server received at or before the job's as_of instant are listed; readings held for review are
+        not. Rows are ordered by occurrence instant, then reading identifier.
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        meter_kind:
+          type: string
+          enum: [ODOMETER, HOUR_METER]
+        state:
+          type: string
+          enum: [VALID, SUSPECT]
+        occurred_from:
+          type: string
+          format: date-time
+          maxLength: 35
+        occurred_to:
+          type: string
+          format: date-time
+          maxLength: 35
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000009301
+        meter_kind: ODOMETER
+        occurred_from: '2026-10-01T00:00:00Z'
+        occurred_to: '2026-11-01T00:00:00Z'
+    EnterpriseEmployeeListExportParameters:
+      description: Filters of idn.employee_list.csv (EMP-RPT-002). Optional state; work e-mail and phone are never exported and
+        are reported in the manifest as omitted (PURPOSE_LIMITED). Rows are ordered by employee identifier.
+      type: object
+      additionalProperties: false
+      properties:
+        state:
+          type: string
+          enum: [ACTIVE, INACTIVE, TERMINATED]
+      example:
+        state: ACTIVE
+    EnterpriseExportListRequest:
+      description: Keyset page of the calling member's exports, optionally filtered by state.
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+        state:
+          $ref: '#/components/schemas/EnterpriseExportState'
+      required: []
+      example:
+        limit: 20
+    EnterpriseExportReadRequest:
+      description: Empty body; the export is the path selector.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseExportContentRequest:
+      description: The capability issued by the access operation, carried in the authenticated body.
+      type: object
+      additionalProperties: false
+      properties:
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 2048
+      required:
+      - capability
+      example:
+        capability: v1.synthetic-export-capability
+    EnterpriseExportState:
+      description: Export job lifecycle; RUNNING returns to QUEUED only when a worker lease is released.
+      type: string
+      enum:
+      - QUEUED
+      - RUNNING
+      - READY
+      - EXPIRED
+      - FAILED
+      example: READY
+    EnterpriseExportView:
+      description: One export job of the calling member. File facts are present from READY on; nothing here is content, a storage address or a capability.
+      type: object
+      additionalProperties: false
+      properties:
+        export_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          $ref: '#/components/schemas/EnterpriseExportKind'
+        parameters:
+          type: object
+        parameters_digest:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        state:
+          $ref: '#/components/schemas/EnterpriseExportState'
+        attempts:
+          type: integer
+          minimum: 0
+          maximum: 3
+        max_attempts:
+          type: integer
+          minimum: 1
+          maximum: 3
+        failure_code:
+          type: [string, 'null']
+          enum: [EXPORT_TOO_LARGE, EXPORT_RIGHTS_LOST, EXPORT_FORMAT_UNAVAILABLE, EXPORT_ATTEMPTS_EXHAUSTED, null]
+        row_count:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 500000
+        byte_count:
+          type: [integer, 'null']
+          minimum: 1
+          maximum: 16777216
+        sha256:
+          type: [string, 'null']
+          pattern: '^[0-9a-f]{64}$'
+        media_type:
+          type: [string, 'null']
+          maxLength: 128
+        requested_at:
+          type: string
+          format: date-time
+        as_of:
+          type: string
+          format: date-time
+        ready_at:
+          type: [string, 'null']
+          format: date-time
+        expires_at:
+          type: [string, 'null']
+          format: date-time
+        failed_at:
+          type: [string, 'null']
+          format: date-time
+        expired_at:
+          type: [string, 'null']
+          format: date-time
+        data_mode:
+          type: string
+          const: SYNTHETIC
+      required:
+      - export_id
+      - kind
+      - parameters
+      - parameters_digest
+      - state
+      - attempts
+      - max_attempts
+      - failure_code
+      - row_count
+      - byte_count
+      - sha256
+      - media_type
+      - requested_at
+      - as_of
+      - ready_at
+      - expires_at
+      - failed_at
+      - expired_at
+      - data_mode
+      example:
+        export_id: 7b0e2a54-0000-4000-8000-000000009201
+        kind: test.synthetic_rows
+        parameters:
+          rows: 3
+        parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+        state: READY
+        attempts: 1
+        max_attempts: 3
+        failure_code: null
+        row_count: 3
+        byte_count: 40
+        sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+        media_type: text/csv
+        requested_at: '2026-11-14T12:00:00Z'
+        as_of: '2026-11-14T12:00:00Z'
+        ready_at: '2026-11-14T12:00:05Z'
+        expires_at: '2026-11-21T12:00:05Z'
+        failed_at: null
+        expired_at: null
+        data_mode: SYNTHETIC
+    EnterpriseExportAcknowledgement:
+      description: The stored job of a request; an exact replay returns it with replayed true.
+      type: object
+      additionalProperties: false
+      properties:
+        export:
+          $ref: '#/components/schemas/EnterpriseExportView'
+        replayed:
+          type: boolean
+      required:
+      - export
+      - replayed
+      example:
+        export:
+          export_id: 7b0e2a54-0000-4000-8000-000000009201
+          kind: test.synthetic_rows
+          parameters:
+            rows: 3
+          parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+          state: QUEUED
+          attempts: 0
+          max_attempts: 3
+          failure_code: null
+          row_count: null
+          byte_count: null
+          sha256: null
+          media_type: null
+          requested_at: '2026-11-14T12:00:00Z'
+          as_of: '2026-11-14T12:00:00Z'
+          ready_at: null
+          expires_at: null
+          failed_at: null
+          expired_at: null
+          data_mode: SYNTHETIC
+        replayed: false
+    EnterpriseExportPage:
+      description: The calling member's exports, newest first.
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseExportView'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - export_id: 7b0e2a54-0000-4000-8000-000000009201
+          kind: test.synthetic_rows
+          parameters:
+            rows: 3
+          parameters_digest: 1f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a79881f2e3d4c5b6a7988
+          state: READY
+          attempts: 1
+          max_attempts: 3
+          failure_code: null
+          row_count: 3
+          byte_count: 40
+          sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+          media_type: text/csv
+          requested_at: '2026-11-14T12:00:00Z'
+          as_of: '2026-11-14T12:00:00Z'
+          ready_at: '2026-11-14T12:00:05Z'
+          expires_at: '2026-11-21T12:00:05Z'
+          failed_at: null
+          expired_at: null
+          data_mode: SYNTHETIC
+        next_cursor: ''
+    EnterpriseExportCapability:
+      description: Requester-bound download capability valid for at most five minutes; it is not a storage URL.
+      type: object
+      additionalProperties: false
+      properties:
+        export_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        expires_at:
+          type: string
+          format: date-time
+      required:
+      - export_id
+      - capability
+      - expires_at
+      example:
+        export_id: 7b0e2a54-0000-4000-8000-000000009201
+        capability: v1.synthetic-export-capability
+        expires_at: '2026-11-14T12:05:00Z'
+    EnterpriseExportContent:
+      description: The verified export bytes, base64-encoded, with their identity.
+      type: object
+      additionalProperties: false
+      properties:
+        export_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        media_type:
+          type: string
+          maxLength: 128
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        row_count:
+          type: integer
+          minimum: 0
+          maximum: 500000
+        byte_count:
+          type: integer
+          minimum: 1
+          maximum: 16777216
+        content_base64:
+          type: string
+          minLength: 4
+          maxLength: 22369624
+          pattern: '^[A-Za-z0-9+/]+={0,2}$'
+      required:
+      - export_id
+      - media_type
+      - sha256
+      - row_count
+      - byte_count
+      - content_base64
+      example:
+        export_id: 7b0e2a54-0000-4000-8000-000000009201
+        media_type: text/csv
+        sha256: 0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+        row_count: 3
+        byte_count: 8
+        content_base64: YSxiCjEsMgo=
     EnterpriseReviewSelector:
       type: object
       additionalProperties: false
@@ -18245,6 +21580,12 @@ components:
           example:
             unit_id: 7b0e2a54-0000-4000-8000-000000000801
             started_at: '2026-11-14T12:00:00Z'
+        acquired_at:
+          type: string
+          format: date-time
+          description: Current recorded acquisition instant; absent when none was recorded.
+        disposal:
+          $ref: '#/components/schemas/EnterpriseFleetAssetDisposal'
         data_mode:
           type: string
           enum:
@@ -18294,6 +21635,606 @@ components:
         data_mode: SYNTHETIC
       description: Stored private asset state and source-owned category/unit facts. Initial allocation is present only
         when actually created. No assignment, availability, public vehicle identity or source authority is inferred.
+    EnterpriseFleetAssetAcquisitionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        acquired_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 35
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$
+          description: Exact RFC 3339 instant with up to nine fraction digits; not later than the server clock.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - acquired_at
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008111
+        revision: 1
+        acquired_at: '2026-10-01T12:00:00.123456789Z'
+      description: Records the current acquisition instant; earlier values remain in revision snapshots. No amount,
+        counterpart or acquisition kind is collected.
+    EnterpriseFleetAssetReasonRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          pattern: \S
+          description: 1 to 280 Unicode scalars, not blank, without control characters (fleet §10.1, BR-PRIV-007).
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008111
+        revision: 3
+        reason: Synthetic seasonal idle period
+      description: Deactivate or revert-disposal command; the reason is required by the fleet lifecycle table.
+    EnterpriseFleetAssetDisposeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 9223372036854775806
+        kind:
+          type: string
+          enum:
+          - SALE
+          - WRITE_OFF
+          - RETURN_TO_HOLDER
+        disposed_at:
+          type: string
+          format: date-time
+          minLength: 20
+          maxLength: 35
+          pattern: ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}(\.[0-9]{1,9})?(Z|[+-][0-9]{2}:[0-9]{2})$
+          description: Exact disposal instant; not later than the server clock nor earlier than the recorded acquisition.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          pattern: \S
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - kind
+      - disposed_at
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008111
+        revision: 5
+        kind: SALE
+        disposed_at: '2026-11-10T12:00:00Z'
+        reason: Synthetic sale to a synthetic buyer
+      description: No amount, buyer, revenue or expense is collected; sale finance belongs to expenses-finance.
+    EnterpriseFleetAssetDisposal:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum:
+          - SALE
+          - WRITE_OFF
+          - RETURN_TO_HOLDER
+        disposed_at:
+          type: string
+          format: date-time
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - kind
+      - disposed_at
+      - reason
+      example:
+        kind: SALE
+        disposed_at: '2026-11-10T12:00:00Z'
+        reason: Synthetic sale to a synthetic buyer
+      description: The current disposal; present exactly while the asset is DISPOSED or ARCHIVED.
+    EnterpriseFleetAssetLifecycleListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+      description: Revision keyset page of the immutable lifecycle history.
+    EnterpriseFleetAssetLifecycleEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 2
+          maximum: 9223372036854775807
+        command:
+          type: string
+          enum:
+          - DEACTIVATE
+          - REACTIVATE
+          - DISPOSE
+          - REVERT_DISPOSAL
+          - ARCHIVE
+        from_state:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - DISPOSED
+        to_state:
+          type: string
+          enum:
+          - ACTIVE
+          - INACTIVE
+          - DISPOSED
+          - ARCHIVED
+        reason:
+          type: string
+          maxLength: 280
+          description: Required reason of deactivate, dispose and revert-disposal; empty otherwise.
+        disposal_kind:
+          type: string
+          enum:
+          - SALE
+          - WRITE_OFF
+          - RETURN_TO_HOLDER
+        disposed_at:
+          type: string
+          format: date-time
+        recorded_at:
+          type: string
+          format: date-time
+      required:
+      - revision
+      - command
+      - from_state
+      - to_state
+      - reason
+      - recorded_at
+      example:
+        revision: 6
+        command: DISPOSE
+        from_state: INACTIVE
+        to_state: DISPOSED
+        reason: Synthetic sale to a synthetic buyer
+        disposal_kind: SALE
+        disposed_at: '2026-11-10T12:00:00Z'
+        recorded_at: '2026-11-14T12:00:00Z'
+      description: One immutable lifecycle transition. disposal_kind and disposed_at are present only on DISPOSE rows.
+        Actor identities stay in the audit log.
+    EnterpriseFleetAssetLifecyclePage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetLifecycleEntry'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - revision: 6
+          command: DISPOSE
+          from_state: INACTIVE
+          to_state: DISPOSED
+          reason: Synthetic sale to a synthetic buyer
+          disposal_kind: SALE
+          disposed_at: '2026-11-10T12:00:00Z'
+          recorded_at: '2026-11-14T12:00:00Z'
+        next_cursor: ''
+      description: Revision-ordered page of immutable lifecycle history; next_cursor is empty on the last page.
+    EnterpriseFleetAssetAllocationListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+      description: Start keyset page of one allocation history. No instant, unit, cost centre or history selector is
+        caller-chosen.
+    EnterpriseFleetAssetUnitAllocation:
+      type: object
+      additionalProperties: false
+      properties:
+        unit_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond.
+        valid_to:
+          type: string
+          format: date-time
+          description: Exclusive end, a whole microsecond; absent while the period is open-ended.
+        recorded_at:
+          type: string
+          format: date-time
+          description: Database instant at which the period was recorded.
+      required:
+      - unit_id
+      - valid_from
+      - recorded_at
+      example:
+        unit_id: 7b0e2a54-0000-4000-8000-000000008301
+        valid_from: '2026-03-01T12:00:00Z'
+        valid_to: '2026-04-01T03:00:00.123456Z'
+        recorded_at: '2026-03-01T12:00:00Z'
+      description: One half-open unit period [valid_from, valid_to) of the asset. Same-organization unit; history rows
+        are never deleted and an open period is closed at most once.
+    EnterpriseFleetAssetUnitAllocationPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetUnitAllocation'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - unit_id: 7b0e2a54-0000-4000-8000-000000008301
+          valid_from: '2026-03-01T12:00:00Z'
+          valid_to: '2026-04-01T03:00:00.123456Z'
+          recorded_at: '2026-03-01T12:00:00Z'
+        - unit_id: 7b0e2a54-0000-4000-8000-000000008302
+          valid_from: '2026-04-01T03:00:00.123456Z'
+          recorded_at: '2026-03-20T10:00:00.000005Z'
+        next_cursor: ''
+      description: Start-ordered page of the unit history; next_cursor is empty on the last page.
+    EnterpriseFleetAssetCostCentreAllocation:
+      type: object
+      additionalProperties: false
+      properties:
+        cost_centre_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond.
+        valid_to:
+          type: string
+          format: date-time
+          description: Exclusive end, a whole microsecond; absent while the period is open-ended.
+        recorded_at:
+          type: string
+          format: date-time
+          description: Database instant at which the period was recorded.
+      required:
+      - cost_centre_id
+      - valid_from
+      - recorded_at
+      example:
+        cost_centre_id: 7b0e2a54-0000-4000-8000-000000008301
+        valid_from: '2026-03-01T12:00:00Z'
+        recorded_at: '2026-03-01T12:00:00Z'
+      description: One half-open cost-centre period [valid_from, valid_to) of the asset. Same-organization cost
+        centre; never invented.
+    EnterpriseFleetAssetCostCentreAllocationPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssetCostCentreAllocation'
+        next_cursor:
+          type: string
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - cost_centre_id: 7b0e2a54-0000-4000-8000-000000008301
+          valid_from: '2026-03-01T12:00:00Z'
+          valid_to: '2026-04-01T03:00:00.123456Z'
+          recorded_at: '2026-03-01T12:00:00Z'
+        - cost_centre_id: 7b0e2a54-0000-4000-8000-000000008302
+          valid_from: '2026-04-01T03:00:00.123456Z'
+          recorded_at: '2026-03-20T10:00:00.000005Z'
+        next_cursor: ''
+      description: Start-ordered page of the cost-centre history; next_cursor is empty on the last page.
+    EnterpriseFleetAssignmentCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - PRIMARY
+          - ADDITIONAL
+          - TEMPORARY
+        employee_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+          description: Employee records of the organization, one assignment each; exactly one for PRIMARY.
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond later than the server instant; omitted means the server
+            instant.
+        valid_to:
+          type: string
+          format: date-time
+          description: Exclusive end, a whole microsecond after the start; required for TEMPORARY.
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+        replace_primary:
+          type: boolean
+          description: Only for PRIMARY; ends the primary containing the new start at that start in the same
+            transaction.
+      required:
+      - schema_version
+      - operation_id
+      - kind
+      - employee_ids
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008121
+        kind: PRIMARY
+        employee_ids:
+        - 7b0e2a54-0000-4000-8000-000000008601
+        replace_primary: true
+      description: One assignment command (EMP-FLEET-006). No state, recording instant, unit or authority is
+        caller-chosen.
+    EnterpriseFleetAssignmentEndRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - schema_version
+      - operation_id
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008122
+        reason: Synthetic return of the vehicle
+      description: Ends one assignment at the server instant; no end instant is caller-chosen.
+    EnterpriseFleetAssignmentAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        assignment_ids:
+          type: array
+          minItems: 1
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+          description: Created assignments in command order, or the one ended assignment.
+        replaced_assignment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - asset_id
+      - assignment_ids
+      - replayed
+      - data_mode
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        assignment_ids:
+        - 7b0e2a54-0000-4000-8000-000000008702
+        replaced_assignment_id: 7b0e2a54-0000-4000-8000-000000008701
+        replayed: false
+        data_mode: SYNTHETIC
+      description: Original immutable committed result; replaced_assignment_id is present only when a replace ended
+        a previous primary.
+    EnterpriseFleetAssignmentListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+      description: Keyset page of assignments. No instant, state, employee or member is caller-chosen.
+    EnterpriseFleetAssignment:
+      type: object
+      additionalProperties: false
+      properties:
+        assignment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum:
+          - PRIMARY
+          - ADDITIONAL
+          - TEMPORARY
+        state:
+          type: string
+          enum:
+          - SCHEDULED
+          - ACTIVE
+          - ENDED
+          description: Derived at the page's evaluated_at; never stored.
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond.
+        valid_to:
+          type: string
+          format: date-time
+          description: Exclusive end, a whole microsecond; absent while open-ended; equal to valid_from when ended
+            before its start.
+        reason:
+          type: string
+          maxLength: 280
+        recorded_at:
+          type: string
+          format: date-time
+          description: Database instant at which the assignment was recorded.
+        end_cause:
+          type: string
+          enum:
+          - ENDED
+          - REPLACED
+          - EMPLOYEE_TERMINATED
+          - ASSET_DISPOSED
+          description: Present when the assignment was ended before its planned end.
+        ended_at:
+          type: string
+          format: date-time
+          description: Database instant of that ending; present exactly with end_cause.
+      required:
+      - assignment_id
+      - asset_id
+      - employee_id
+      - kind
+      - state
+      - valid_from
+      - reason
+      - recorded_at
+      example:
+        assignment_id: 7b0e2a54-0000-4000-8000-000000008701
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        employee_id: 7b0e2a54-0000-4000-8000-000000008601
+        kind: PRIMARY
+        state: ENDED
+        valid_from: '2026-11-01T03:00:00Z'
+        valid_to: '2026-11-10T03:00:00.123456Z'
+        reason: Synthetic primary driver
+        recorded_at: '2026-11-01T03:00:00Z'
+        end_cause: EMPLOYEE_TERMINATED
+        ended_at: '2026-11-10T03:00:00.123456Z'
+      description: One half-open assignment period [valid_from, valid_to) of one employee record on one asset.
+        Same-organization references; rows are never deleted.
+    EnterpriseFleetAssignmentPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAssignment'
+        next_cursor:
+          type: string
+        evaluated_at:
+          type: string
+          format: date-time
+          description: Server instant at which every state of the page was derived.
+      required:
+      - items
+      - next_cursor
+      - evaluated_at
+      example:
+        items:
+        - assignment_id: 7b0e2a54-0000-4000-8000-000000008702
+          asset_id: 7b0e2a54-0000-4000-8000-000000008201
+          employee_id: 7b0e2a54-0000-4000-8000-000000008602
+          kind: ADDITIONAL
+          state: ACTIVE
+          valid_from: '2026-11-14T12:00:00.000123Z'
+          reason: ''
+          recorded_at: '2026-11-14T12:00:00.000123Z'
+        next_cursor: ''
+        evaluated_at: '2026-11-14T12:30:00.5Z'
+      description: Keyset page of assignments; next_cursor is empty on the last page.
     EnterpriseFleetAssetPage:
       type: object
       additionalProperties: false
@@ -19639,8 +23580,8 @@ components:
           example: ADMIN
         scope:
           type: string
-          enum: [ORG, SELF]
-          description: Scope level for the assignment.
+          enum: [ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET]
+          description: Scope level for the assignment. ORG targets the organization and SELF the target membership; UNIT, COST_CENTRE, TEAM and ASSET target one live unit, cost centre, team or asset of the same organization and cover only records that stored it (BR-AUTH-004/005). OWNER is ORG only.
           example: ORG
         target_id:
           $ref: '#/components/schemas/EnterpriseUUID'
@@ -19733,8 +23674,8 @@ components:
           example: FINANCE
         scope:
           type: string
-          enum: [ORG, SELF]
-          description: Scope level for the new assignment.
+          enum: [ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET]
+          description: Scope level for the new assignment; structural scopes target one live unit, cost centre, team or asset of the same organization. An owner changing an own assignment may only keep or narrow its scope.
           example: ORG
         target_id:
           $ref: '#/components/schemas/EnterpriseUUID'
@@ -19792,7 +23733,8 @@ components:
           example: ADMIN
         scope_type:
           type: string
-          description: Scope level (ORG, SELF).
+          enum: [ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET]
+          description: Scope level (ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET).
           example: ORG
         scope_target:
           $ref: '#/components/schemas/EnterpriseUUID'
@@ -19864,7 +23806,8 @@ components:
           example: ADMIN
         scope_type:
           type: string
-          description: Scope level (ORG, SELF).
+          enum: [ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET]
+          description: Scope level (ORG, SELF, UNIT, COST_CENTRE, TEAM, ASSET).
           example: ORG
         scope_target:
           $ref: '#/components/schemas/EnterpriseUUID'
@@ -22468,7 +26411,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false
@@ -31117,6 +35060,661 @@ components:
           state: PENDING_SETUP
           root_revision: 2
         next_after_org_id: ''
+    EnterpriseNoticeListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+        unread_only:
+          type: boolean
+          default: false
+      required: []
+      example:
+        limit: 20
+        unread_only: false
+      description: Own inbox page; the cursor is bound to organization, account, membership, route, limit and filter.
+    EnterpriseNoticeView:
+      type: object
+      additionalProperties: false
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$
+        template:
+          type: string
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$
+        params:
+          type: object
+          maxProperties: 8
+          additionalProperties:
+            type: string
+            maxLength: 64
+            pattern: ^([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}|[A-Z][A-Z0-9_]{0,63}|0|[1-9][0-9]{0,9}|[0-9]{4}-[0-9]{2}-[0-9]{2})$
+          description: Typed references only (UUID, enumerated code, count or calendar date); never free text.
+        link_path:
+          anyOf:
+          - type: string
+            minLength: 2
+            maxLength: 256
+            pattern: ^(/[a-z0-9][a-z0-9-]*)+$
+          - type: 'null'
+          description: Relative panel path rendered from the kind's registered template; never a capability.
+        created_at:
+          type: string
+          format: date-time
+        read_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+      required:
+      - id
+      - kind
+      - template
+      - params
+      - link_path
+      - created_at
+      - read_at
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000002401
+        kind: report.export.ready
+        template: report.export.ready.v1
+        params:
+          report_id: 7b0e2a54-0000-4000-8000-000000002402
+          format: CSV
+        link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+        created_at: '2026-11-14T12:00:00Z'
+        read_at: null
+      description: One own in-app notice. Clients render localized text from the template key; no title, body,
+        attachment, document, coordinate, contact or token is stored or returned.
+    EnterpriseNoticePage:
+      type: object
+      additionalProperties: false
+      properties:
+        notices:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseNoticeView'
+        next_cursor:
+          type: string
+          maxLength: 2048
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - notices
+      - next_cursor
+      - data_mode
+      example:
+        notices:
+        - id: 7b0e2a54-0000-4000-8000-000000002401
+          kind: report.export.ready
+          template: report.export.ready.v1
+          params:
+            report_id: 7b0e2a54-0000-4000-8000-000000002402
+            format: CSV
+          link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+          created_at: '2026-11-14T12:00:00Z'
+          read_at: null
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseNoticeReadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - schema_version
+      - operation_id
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000002403
+      description: Idempotent own read mark; the same operation and notice replays, another target is OPERATION_ID_REUSED.
+    EnterpriseNoticeReadResult:
+      type: object
+      additionalProperties: false
+      properties:
+        notice:
+          $ref: '#/components/schemas/EnterpriseNoticeView'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - notice
+      - operation_id
+      - replayed
+      - data_mode
+      example:
+        notice:
+          id: 7b0e2a54-0000-4000-8000-000000002401
+          kind: report.export.ready
+          template: report.export.ready.v1
+          params:
+            report_id: 7b0e2a54-0000-4000-8000-000000002402
+            format: CSV
+          link_path: /reports/7b0e2a54-0000-4000-8000-000000002402
+          created_at: '2026-11-14T12:00:00Z'
+          read_at: '2026-11-14T12:05:00Z'
+        operation_id: 7b0e2a54-0000-4000-8000-000000002403
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseNoticePreferencesRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+      description: Empty body; the selected own membership comes from the path.
+    EnterpriseNoticePreference:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$
+        muted:
+          type: boolean
+        mandatory:
+          type: boolean
+          description: A mandatory kind is always delivered in-app and cannot be muted.
+        revision:
+          type: integer
+          minimum: 0
+          description: Current preference revision; 0 means no stored preference (default unmuted).
+      required:
+      - kind
+      - muted
+      - mandatory
+      - revision
+      example:
+        kind: report.export.ready
+        muted: true
+        mandatory: false
+        revision: 1
+    EnterpriseNoticePreferences:
+      type: object
+      additionalProperties: false
+      properties:
+        preferences:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/EnterpriseNoticePreference'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - preferences
+      - data_mode
+      example:
+        preferences:
+        - kind: report.export.ready
+          muted: true
+          mandatory: false
+          revision: 1
+        data_mode: SYNTHETIC
+      description: Every registered kind with the member's IN_APP preference; external channels are not available.
+    EnterpriseNoticePreferenceUpdateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          maxLength: 64
+          pattern: ^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$
+        muted:
+          type: boolean
+        revision:
+          type: integer
+          minimum: 1
+          description: Expected current revision; omit only when no preference is stored yet.
+      required:
+      - schema_version
+      - operation_id
+      - kind
+      - muted
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000002404
+        kind: report.export.ready
+        muted: true
+      description: Revisioned own preference change. Unknown or mandatory kinds are VALIDATION_FAILED; a stale revision is
+        CONFLICT; the same operation with other content is OPERATION_ID_REUSED.
+    EnterpriseNoticePreferenceResult:
+      type: object
+      additionalProperties: false
+      properties:
+        preference:
+          $ref: '#/components/schemas/EnterpriseNoticePreference'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - preference
+      - operation_id
+      - replayed
+      - data_mode
+      example:
+        preference:
+          kind: report.export.ready
+          muted: true
+          mandatory: false
+          revision: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000002404
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseDocumentOriginal:
+      type: object
+      additionalProperties: false
+      description: Declared private original. Only a verified upload proves it; a digest match proves no fiscal fact.
+      required: [sha256, bytes, media_type]
+      properties:
+        sha256:
+          type: string
+          pattern: '^[0-9a-f]{64}$'
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 5242880
+        media_type:
+          type: string
+          enum: [image/jpeg]
+      example:
+        sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+        bytes: 1024
+        media_type: image/jpeg
+    EnterpriseDocumentCreateRequest:
+      type: object
+      additionalProperties: false
+      description: Synthetic C1 receipt declaration. Authority comes only from the company session.
+      required: [schema_version, operation_id, document_id, kind, original]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum: [RECEIPT]
+        original:
+          $ref: '#/components/schemas/EnterpriseDocumentOriginal'
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000020541
+        document_id: 7b0e2a54-0000-4000-8000-000000020542
+        kind: RECEIPT
+        original:
+          sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+          bytes: 1024
+          media_type: image/jpeg
+    EnterpriseDocumentStatuses:
+      type: object
+      additionalProperties: false
+      description: Six independent answers; none is derived from another and reconciliation alone is computed.
+      required: [storage, extraction, structure, conference, reconciliation, fiscal]
+      properties:
+        storage:
+          type: string
+          enum: [UPLOADING, RECEIVED, STORED, QUARANTINED, FAILED, REPLACED, DELETED]
+        extraction:
+          type: string
+          enum: [NONE, PENDING, DONE, FAILED]
+        structure:
+          type: string
+          enum: [NOT_APPLICABLE, UNCHECKED, STRUCTURE_OK, STRUCTURE_INVALID]
+        conference:
+          type: string
+          enum: [UNCONFERRED, CONFERRED_OK, DIVERGENT, ILLEGIBLE]
+        reconciliation:
+          type: string
+          enum: [UNALLOCATED, PARTIALLY_ALLOCATED, RECONCILED, OVER_ALLOCATED]
+        fiscal:
+          type: string
+          enum: [NOT_CONSULTED, AUTHORIZED_AS_OF, CANCELLED_AS_OF, UNAVAILABLE]
+    EnterpriseDocumentRevisions:
+      type: object
+      additionalProperties: false
+      description: Independent revision of each commanded dimension.
+      required: [storage, extraction, structure, conference, fiscal]
+      properties:
+        storage: {type: integer, format: int64, minimum: 1}
+        extraction: {type: integer, format: int64, minimum: 1}
+        structure: {type: integer, format: int64, minimum: 1}
+        conference: {type: integer, format: int64, minimum: 1}
+        fiscal: {type: integer, format: int64, minimum: 1}
+    EnterpriseDocumentView:
+      type: object
+      additionalProperties: false
+      description: Private document container returned to its authorized creator. It carries no storage key, URL or content.
+      required: [id, kind, data_mode, original, statuses, revisions, created_at, updated_at]
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        kind:
+          type: string
+          enum: [RECEIPT]
+        data_mode:
+          type: string
+          enum: [SYNTHETIC]
+        original:
+          $ref: '#/components/schemas/EnterpriseDocumentOriginal'
+        statuses:
+          $ref: '#/components/schemas/EnterpriseDocumentStatuses'
+        revisions:
+          $ref: '#/components/schemas/EnterpriseDocumentRevisions'
+        fiscal_consulted_at:
+          type: string
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      example:
+        id: 7b0e2a54-0000-4000-8000-000000020542
+        kind: RECEIPT
+        data_mode: SYNTHETIC
+        original:
+          sha256: f116935c2e2a3b64a8c45a692d7a1f45f9f837bc2751cea3a2c60ee9c59d2fc5
+          bytes: 1024
+          media_type: image/jpeg
+        statuses:
+          storage: UPLOADING
+          extraction: NONE
+          structure: NOT_APPLICABLE
+          conference: UNCONFERRED
+          reconciliation: UNALLOCATED
+          fiscal: NOT_CONSULTED
+        revisions:
+          storage: 1
+          extraction: 1
+          structure: 1
+          conference: 1
+          fiscal: 1
+        created_at: '2026-11-14T00:00:00.123456Z'
+        updated_at: '2026-11-14T00:00:00.123456Z'
+    EnterpriseDocumentUploadCapability:
+      type: object
+      additionalProperties: false
+      description: Upload capability for the document ingress header; expires within five minutes.
+      required: [capability, expires_at]
+      properties:
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 4096
+        expires_at:
+          type: string
+          format: date-time
+    EnterpriseDocumentCreated:
+      type: object
+      additionalProperties: false
+      description: Declared (or identically replayed) document; an upload capability only while storage is UPLOADING
+        and the upload session is open.
+      required: [document, replayed]
+      properties:
+        document:
+          $ref: '#/components/schemas/EnterpriseDocumentView'
+        replayed:
+          type: boolean
+        upload:
+          $ref: '#/components/schemas/EnterpriseDocumentUploadCapability'
+    EnterpriseDocumentStored:
+      type: object
+      additionalProperties: false
+      description: Verified stored document, or the already stored record of a retry.
+      required: [document, replayed]
+      properties:
+        document:
+          $ref: '#/components/schemas/EnterpriseDocumentView'
+        replayed:
+          type: boolean
+    EnterpriseDocumentContentAccessRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      required: []
+      example: {}
+      description: No client authority, record or storage selector is accepted.
+    EnterpriseDocumentContentAccess:
+      type: object
+      additionalProperties: false
+      description: Audited member- and document-bound content capability.
+      required: [document_id, capability, expires_at]
+      properties:
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 2048
+        expires_at:
+          type: string
+          format: date-time
+      example:
+        document_id: 7b0e2a54-0000-4000-8000-000000020542
+        capability: REDACTED
+        expires_at: '2026-11-14T00:05:00Z'
+    EnterpriseDocumentContentReadRequest:
+      type: object
+      additionalProperties: false
+      description: The caller's own content capability for this document.
+      required: [capability]
+      properties:
+        capability:
+          type: string
+          minLength: 1
+          maxLength: 2048
+      example:
+        capability: REDACTED
+    EnterpriseDocumentContent:
+      type: object
+      additionalProperties: false
+      description: Audited original bytes, base64-encoded; never a storage URL or file name.
+      required: [document_id, data_mode, media_type, bytes, content_base64]
+      properties:
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        data_mode:
+          type: string
+          enum: [SYNTHETIC]
+        media_type:
+          type: string
+          enum: [image/jpeg]
+        bytes:
+          type: integer
+          format: int64
+          minimum: 1
+          maximum: 5242880
+        content_base64:
+          type: string
+          format: byte
+          minLength: 4
+          maxLength: 6990508
+      example:
+        document_id: 7b0e2a54-0000-4000-8000-000000020542
+        data_mode: SYNTHETIC
+        media_type: image/jpeg
+        bytes: 4
+        content_base64: /9j/2Q==
+    EnterpriseDocumentLinkTarget:
+      type: object
+      additionalProperties: false
+      description: One same-organization target record. Only kinds whose owning module registered a resolver are
+        accepted; a selector is not proof of the record or of any permission over it.
+      required: [kind, id]
+      properties:
+        kind:
+          type: string
+          enum: [ASSET, EMPLOYEE, METER_READING]
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      example:
+        kind: METER_READING
+        id: 7b0e2a54-0000-4000-8000-000000020902
+    EnterpriseDocumentLinkCreateRequest:
+      type: object
+      additionalProperties: false
+      description: Associate the path document with one target. Authority comes only from the company session; no
+        amount, allocation, status or content field exists.
+      required: [schema_version, operation_id, target]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        target:
+          $ref: '#/components/schemas/EnterpriseDocumentLinkTarget'
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000020901
+        target:
+          kind: METER_READING
+          id: 7b0e2a54-0000-4000-8000-000000020902
+    EnterpriseDocumentLinkListRequest:
+      type: object
+      additionalProperties: false
+      description: Keyset page of one document's links. No target, member or content selector is caller-chosen.
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+    EnterpriseDocumentLinkByTargetRequest:
+      type: object
+      additionalProperties: false
+      description: Keyset page of one target's links.
+      required: [target]
+      properties:
+        target:
+          $ref: '#/components/schemas/EnterpriseDocumentLinkTarget'
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      example:
+        target:
+          kind: ASSET
+          id: 7b0e2a54-0000-4000-8000-000000020903
+        limit: 20
+    EnterpriseDocumentLink:
+      type: object
+      additionalProperties: false
+      description: Link metadata only. The document's storage status says whether the original is still pending;
+        no content, digest, storage locator, creator, amount or allocation is exposed.
+      required: [document_id, target, document_storage, created_at]
+      properties:
+        document_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        target:
+          $ref: '#/components/schemas/EnterpriseDocumentLinkTarget'
+        document_storage:
+          type: string
+          enum: [UPLOADING, RECEIVED, STORED, QUARANTINED, FAILED, REPLACED, DELETED]
+        created_at:
+          type: string
+          format: date-time
+      example:
+        document_id: 7b0e2a54-0000-4000-8000-000000020542
+        target:
+          kind: METER_READING
+          id: 7b0e2a54-0000-4000-8000-000000020902
+        document_storage: UPLOADING
+        created_at: '2026-11-14T00:00:00.123456Z'
+    EnterpriseDocumentLinked:
+      type: object
+      additionalProperties: false
+      description: The created link, or the first link of an identical replay or of an existing association
+        (replayed is true when no row was written).
+      required: [link, replayed]
+      properties:
+        link:
+          $ref: '#/components/schemas/EnterpriseDocumentLink'
+        replayed:
+          type: boolean
+      example:
+        link:
+          document_id: 7b0e2a54-0000-4000-8000-000000020542
+          target:
+            kind: METER_READING
+            id: 7b0e2a54-0000-4000-8000-000000020902
+          document_storage: UPLOADING
+          created_at: '2026-11-14T00:00:00.123456Z'
+        replayed: false
+    EnterpriseDocumentLinkPage:
+      type: object
+      additionalProperties: false
+      description: Keyset page of links; next_cursor is empty on the last page.
+      required: [items, next_cursor]
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseDocumentLink'
+        next_cursor:
+          type: string
+      example:
+        items:
+        - document_id: 7b0e2a54-0000-4000-8000-000000020542
+          target:
+            kind: ASSET
+            id: 7b0e2a54-0000-4000-8000-000000020903
+          document_storage: STORED
+          created_at: '2026-11-14T00:00:00.123456Z'
+        next_cursor: ''
   responses:
     EnterprisePrivateError:
       description: Safe registered organization error, with no existence hint for foreign resources. Rate-limited write admission includes a positive Retry-After.

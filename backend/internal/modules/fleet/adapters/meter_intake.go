@@ -19,6 +19,17 @@ import (
 
 const MeterReadingOperationType = "meter.reading.record"
 
+// The only held codes this producer owns: retained authority (OFFL-008) and a
+// declared instant at or after the asset's disposal (EMP-FLEET-003).
+const (
+	meterHeldPermissionChanged = "PERMISSION_CHANGED"
+	meterHeldAssetUnavailable  = "ASSET_UNAVAILABLE"
+)
+
+func meterHeldCode(code string) bool {
+	return code == meterHeldPermissionChanged || code == meterHeldAssetUnavailable
+}
+
 type meterIntakeHandler struct {
 	authority  app.MeterAuthority
 	classifier app.MeterIntakeAuthority
@@ -26,6 +37,7 @@ type meterIntakeHandler struct {
 	lookup     app.MeterIntakeLookup
 	held       app.MeterHeldRepository
 	proof      syncapp.ReviewProof
+	lifecycle  app.MeterAssetLifecycle
 }
 
 func NewMeterIntakeHandler(authority app.MeterAuthority, repository app.EmbeddedMeterRepository) (syncapp.Handler, error) {
@@ -33,10 +45,11 @@ func NewMeterIntakeHandler(authority app.MeterAuthority, repository app.Embedded
 	classifier, classifies := authority.(app.MeterIntakeAuthority)
 	held, holds := repository.(app.MeterHeldRepository)
 	proof, proves := repository.(syncapp.ReviewProof)
-	if meterIntakeAbsent(authority) || meterIntakeAbsent(repository) || !ok || meterIntakeAbsent(lookup) || !classifies || meterIntakeAbsent(classifier) || !holds || meterIntakeAbsent(held) || !proves || meterIntakeAbsent(proof) {
+	lifecycle, disposes := repository.(app.MeterAssetLifecycle)
+	if meterIntakeAbsent(authority) || meterIntakeAbsent(repository) || !ok || meterIntakeAbsent(lookup) || !classifies || meterIntakeAbsent(classifier) || !holds || meterIntakeAbsent(held) || !proves || meterIntakeAbsent(proof) || !disposes || meterIntakeAbsent(lifecycle) {
 		return nil, syncapp.ErrUnavailable
 	}
-	return &meterIntakeHandler{authority: authority, classifier: classifier, repository: repository, lookup: lookup, held: held, proof: proof}, nil
+	return &meterIntakeHandler{authority: authority, classifier: classifier, repository: repository, lookup: lookup, held: held, proof: proof, lifecycle: lifecycle}, nil
 }
 
 func (h *meterIntakeHandler) ReviewProof() syncapp.ReviewProof { return h.proof }
@@ -183,7 +196,7 @@ func (h *meterIntakeHandler) commandAuthority(ctx context.Context, db syncapp.DB
 	if err != nil {
 		return "", meterIntakeSourceDenied(err)
 	}
-	if disposition != app.MeterApply && disposition != app.MeterHoldPermissionChanged {
+	if disposition != app.MeterApply && disposition != app.MeterHoldPermissionChanged && disposition != app.MeterHoldDisposalEnded {
 		return "", syncapp.SourceDenied(syncapp.ErrUnavailable)
 	}
 	return disposition, nil
@@ -231,8 +244,31 @@ func (h *meterIntakeHandler) Apply(ctx context.Context, db syncapp.DBTX, source 
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
+	held := ""
 	if disposition == app.MeterHoldPermissionChanged {
-		reference, err := h.held.HoldMeterReadingTx(ctx, syncapp.Borrow(db), source, op, command, "PERMISSION_CHANGED")
+		held = meterHeldPermissionChanged
+	} else {
+		// B-BR-EMP-206: decided under the root and asset row locks; a reading
+		// declared at or after the current disposal instant is held, never
+		// refused or applied. Before that instant handling is unchanged.
+		disposed, err := h.lifecycle.MeterAssetDisposalTx(ctx, syncapp.Borrow(db), source.Scope, in.AssetID)
+		if err != nil {
+			if errors.Is(err, syncapp.ErrSourceDenied) {
+				return syncapp.Outcome{}, err
+			}
+			return syncapp.Outcome{}, syncapp.ErrUnavailable
+		}
+		if disposed != nil && !in.Declared.OccurredAt.Before(*disposed) {
+			held = meterHeldAssetUnavailable
+		} else if disposition == app.MeterHoldDisposalEnded {
+			// B-BR-EMP-261: an assignment ended by the disposal is still a
+			// changed right for a reading declared before the current
+			// disposal instant, or when there is no current disposal.
+			held = meterHeldPermissionChanged
+		}
+	}
+	if held != "" {
+		reference, err := h.held.HoldMeterReadingTx(ctx, syncapp.Borrow(db), source, op, command, held)
 		if err != nil {
 			return syncapp.Outcome{}, syncapp.ErrUnavailable
 		}
@@ -240,7 +276,7 @@ func (h *meterIntakeHandler) Apply(ctx context.Context, db syncapp.DBTX, source 
 		if err != nil || id.String() != reference.ReviewItemID || reference.Revision != 1 {
 			return syncapp.Outcome{}, syncapp.ErrUnavailable
 		}
-		return syncapp.Outcome{Result: protocol.AcceptedForReview, Code: "PERMISSION_CHANGED", ReviewItemID: reference.ReviewItemID}, nil
+		return syncapp.Outcome{Result: protocol.AcceptedForReview, Code: held, ReviewItemID: reference.ReviewItemID}, nil
 	}
 	copy := source
 	recorded, _, recordErr := h.repository.RecordEmbedded(ctx, syncapp.Borrow(db), source.Scope, app.MeterSource{Device: &copy}, source.MembershipID, command)
@@ -295,7 +331,7 @@ func (h *meterIntakeHandler) Confirm(ctx context.Context, db syncapp.DBTX, sourc
 		return err
 	}
 	if outcome.Result == protocol.AcceptedForReview {
-		if outcome.Code != "PERMISSION_CHANGED" || outcome.EntityRevision != nil {
+		if !meterHeldCode(outcome.Code) || outcome.EntityRevision != nil {
 			return syncapp.ErrUnavailable
 		}
 		// Same classification as the Store's own proof checks: a failed REVIEW

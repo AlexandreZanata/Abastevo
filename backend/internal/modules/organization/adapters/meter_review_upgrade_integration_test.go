@@ -161,11 +161,10 @@ func TestMeterReviewPopulatedLegacyUpgradeFailureRecoveryKeepsUnprovenHistory(t 
 	if err != nil {
 		t.Fatal(err)
 	}
-	meters := meterStore(t, fx.legalFixtureState)
-	installed, _, err := meterInstall(t, fx.legalFixtureState, meters, meterInstallCommand(t, meterInstallInput(t, asset.AssetID, time.Now().UTC().Add(-2*time.Hour))))
-	if err != nil {
-		t.Fatal(err)
-	}
+	_ = meterStore(t, fx.legalFixtureState)
+	// The current store reads 201 lifecycle columns; the schema198 meter is
+	// written with exactly the InstallMeter effects through the 198 guards.
+	installed := pre201InstallMeter(t, fx.legalFixtureState, asset.AssetID, time.Now().UTC().Add(-2*time.Hour))
 	snapshot := func() string {
 		t.Helper()
 		var out string

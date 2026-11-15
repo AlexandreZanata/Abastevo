@@ -107,7 +107,7 @@ func realMedia(t *testing.T) *mediaFixture {
 	f.objectB.OrgID = f.scopeB.OrgID().String()
 	f.policy = &mediaPolicy{objects: map[string]domain.Object{f.objectA.OrgID: f.objectA, f.objectB.OrgID: f.objectB},
 		members: map[string]domain.Member{f.objectA.OrgID: f.memberA, f.objectB.OrgID: f.memberB}, revoked: map[string]bool{}}
-	if _, err := f.db.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_audit_events TO "+pgx.Identifier{f.db.RuntimeRole}.Sanitize()); err != nil {
+	if _, err := f.db.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_audit_events, org_sensitive_access_events TO "+pgx.Identifier{f.db.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
 	catalog, err := audit.NewCatalog(adapters.AuditDefinitions())

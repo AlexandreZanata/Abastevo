@@ -218,3 +218,88 @@ Fresh-ID uniqueness and cross-record truth remain owning-command/DB work.
 ```sh
 (cd backend && go test -race ./internal/modules/organization/domain -count=1)
 ```
+
+## Amendment kernel v1
+
+EMP-PLAT-016 executes all 193 rows of
+[amendment-v1.psv](amendment/amendment-v1.psv) (DECIDE 165, RESOLVE 28) in Go.
+The [oracle README](amendment/README.md) fixes the grammar, defaults, decision
+order and outputs. It is server-side only: no client mirror exists; any future
+client must consume the same file.
+
+```sh
+(cd backend && go test -race ./internal/modules/orgamend/domain -count=1)
+```
+
+## Expense vectors v1
+
+EMP-EXP-001 executes all 222 rows of
+[expense/expense-v1.psv](expense/expense-v1.psv) in Go and Kotlin (ENUM 40,
+AMOUNTS 36, CATEGORY 24, PERIOD 17, EXPENSE 57, TOTALS 48). The oracle pins
+cost-origin kinds and refused settlement kinds, exact paid/company amounts
+without a false zero, the category key profile, competence reporting days
+and approved-versus-pending totals. See [expense/README.md](expense/README.md).
+No persistence, review, settlement or runtime acceptance is claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/expense/domain -count=1)
+```
+
+## Document vectors v1
+
+EMP-DOC-001 executes all 251 rows of
+[document/document-v1.psv](document/document-v1.psv) in Go and Kotlin (ENUM 64,
+ALLOWED 29, SCENARIO 146, REPLACE 12): six independent status dimensions,
+original identity and replacement, same-organization links and exact
+allocations with derived reconciliation. See
+[document/README.md](document/README.md). No persistence, upload, fiscal
+consultation or runtime acceptance is claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/document/domain -count=1)
+```
+
+## Budget vectors v1
+
+EMP-BUDG-001 executes all 261 rows of
+[budget/budget-v1.psv](budget/budget-v1.psv) in Go (ENUM 24, LINE 44,
+CAPACITY 94, RESERVE 40, POST 35, SEQUENCE 24). The oracle pins closed
+dimensions and hold states, required exact limits, exact dimension and
+period matching, capacity derived from approved consumption and active
+holds, claimed-available comparison, reservation and posting decisions and
+serialized hold sequences including VAL-14. See
+[budget/README.md](budget/README.md). It is server-side only: no client
+mirror exists; any future client must consume the same file. No
+persistence, concurrency proof, overrun policy or runtime acceptance is
+claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/budget/domain -count=1)
+```
+
+## Payables vectors v1
+
+EMP-FIN-001 executes all 275 rows of
+[payable/payable-v1.psv](payable/payable-v1.psv) in Go (ENUM 27,
+SETTLEMENT 25, PAYABLE 183, LEDGER 40). The oracle pins supplier,
+reimbursement and card statement obligations from approved expenses, exact
+line and settlement amounts, the derived settlement state, cancellation and
+separate cost and settlement views in which obligations and payments never
+become a cost. It is server-side only: no client mirror exists; any future
+client must consume the same file. See [payable/README.md](payable/README.md).
+
+```sh
+(cd backend && go test -race ./internal/modules/expense/domain/payable -count=1)
+```
+
+## Fiscal structure vectors v1
+
+EMP-DOC-006 executes all 307 rows of [fiscal/fiscal-v1.psv](fiscal/fiscal-v1.psv)
+(KEY 64, QR 110, XML 111, COMPARE 13, FEED 9) in Go; the 189 key, QR and
+comparison rows also run in Kotlin, while the XML rows are server-only
+(EDR-159). Results are STRUCTURE_OK, STRUCTURE_INVALID or UNSUPPORTED and never
+a fiscal authorization. See [fiscal/README.md](fiscal/README.md).
+
+```sh
+(cd backend && go test -race ./internal/modules/document/domain/fiscal -count=1)
+```

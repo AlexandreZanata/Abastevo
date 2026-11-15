@@ -1,4 +1,20 @@
 # Current execution state
+- Enterprise F3, 2026-11-14: IN_PROGRESS on owned `codex/enterprise-f3` from
+  merged main/dev `43b21389` (Claude Code). [F3 ledger](../enterprise/evidence/f3-execution.md)
+  reconciles 67 tasks: FUEL-001 consumed, 10 ready, 56 blocked mostly behind
+  the open F2 chain FLEET-003/005, AUTH-006, FLEET-006, METER-002 closure →
+  FUEL-002. EDR-127: ready pure domains first (APPR-001, EXP-001, DOC-001,
+  PLAT-016, then FIN-001/BUDG-001); no persistence before METER-002 closes.
+  No M3/F3 acceptance is claimed; cumulative dev → main PR at batch end.
+  Batch checkpoint: 17 F3 tasks (FUEL-002, PLAT-016, APPR-001/006, EXP-001, DOC-001/
+  002/003/006/014, BUDG-001, FIN-001, PRIV-005, NOTIF-001, RPT-001/002,
+  AUTH-011) and the F2 chain FLEET-003/005, AUTH-006, FLEET-006 and full
+  METER-002 are LOCAL_DONE / INTEGRATION_PENDING; EXP-002/FUEL-003 next. CI race
+  integration bound 45m (EDR-168). Final local (`868daf9a`): untagged 214
+  packages green; full race/integration 226 packages green except 15
+  Rust-CLI-gated tests in untouched packages; quick-verify green. Delivered through the cumulative dev → main PR.
+  [Batch checkpoint](../enterprise/evidence/f3-execution.md#batch-checkpoint--2026-11-14).
+
 - Supplemental OpenTatu audit publication, 2026-11-14: LOCAL_DONE /
   INTEGRATION_PENDING; bounded documentation task on maintained `dev`.
   [Engine evidence and source follow-up](../security/opentatu/2026-11-14/ENGINE_REVIEW.md)

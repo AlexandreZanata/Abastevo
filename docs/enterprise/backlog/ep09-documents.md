@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 The [document specification](../modules/documents.md) now records the recovered design. This backlog uses the surviving shared rules and approved synthetic C1 scope. Real-receipt intake, retention and fiscal consultation retain their separate gates.
 
 ### EMP-DOC-001 — Document domain: container, independent statuses, links and allocations
-- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Represent a private document independently of its links, review and fiscal outcomes.
 - **Rules and use cases:** EDR-014, BR-TRUTH-001, BR-TRUTH-002, BR-TEN-001, BR-MONEY-007
 - **Depends on:** EMP-PLAT-001
@@ -28,8 +28,16 @@ The [document specification](../modules/documents.md) now records the recovered 
 - **Risks and assumptions:** The [document specification](../modules/documents.md) supplies the detailed boundary and states.
 - **Done when:** Independent status and allocation vectors pass with synthetic data.
 
+[F3 pure document domain](../evidence/f3-doc001-document-domain.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Go and Kotlin consume all 251
+shared document-v1 vectors (Go race 99.5% statements; Kotlin 260 tests, 98.57%
+instructions). Six independent closed status dimensions, expected-state
+transitions, original-preserving replacement, same-organization links and
+exact expense-only allocations with derived reconciliation (EDR-134..136).
+Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DOC-002..014.
+
 ### EMP-DOC-002 — Document persistence, upload session and audited private access
-- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Persist scoped documents and deliver private originals through authorized access.
 - **Rules and use cases:** BR-TEN-006, BR-PRIV-004, BR-PRIV-008, BR-PRIV-020, BR-AUD-003, OQ-04, UC-PRIV-05
 - **Depends on:** EMP-DOC-001, EMP-PLAT-006, EMP-AUTH-003, EMP-PRIV-005
@@ -44,8 +52,16 @@ The [document specification](../modules/documents.md) now records the recovered 
 - **Risks and assumptions:** The approved C1 path uses synthetic receipts. Real intake requires legal and release gates.
 - **Done when:** Real PostGIS and isolated storage prove authorization, audit, failure and replay behavior.
 
+- **Status (2026-11-14):** LOCAL_DONE in `codex/enterprise-f3-doc002`
+  ([evidence](../evidence/f3-doc002-document-persistence.md)). Migration
+  000205 `org_documents`, creator-bound upload session with a capability-bound
+  `DOCUMENT_INGRESS`, and audited content access/read over EMP-PLAT-006 and
+  EMP-PRIV-005; real PostGIS and disposable S3 prove authorization, audit,
+  refusal, replay and concurrency. Synthetic JPEG only; Android producer
+  (DOC-004), safety job (DOC-014) and storage provider configuration retained.
+
 ### EMP-DOC-003 — Links between documents and operations
-- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size S · state TODO
+- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type API · size S · state LOCAL_DONE
 - **Objective:** Associate documents with same-organization operations and records without granting new access.
 - **Rules and use cases:** BR-TEN-003, BR-TEN-005, BR-TEN-006, BR-TEN-007, BR-PRIV-004, BR-AUD-001, BR-OFFL-015, REQ-10.1, REQ-10.4
 - **Depends on:** EMP-DOC-002
@@ -59,6 +75,14 @@ The [document specification](../modules/documents.md) now records the recovered 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive scoped relationships · rollback: close the write path without removing accepted evidence
 - **Risks and assumptions:** Each consumer owns the target record's permissions. An association and a financial allocation are separate.
 - **Done when:** Same-organization link, pending upload, duplicate retry and foreign-target denials pass through normal consumer entry points.
+
+- **Status (2026-11-14):** LOCAL_DONE in `codex/enterprise-f3-doc003`
+  ([evidence](../evidence/f3-doc003-document-links.md)). Migration 000209
+  `org_document_links` with real same-organization foreign keys to assets,
+  employees and stored or held readings; both endpoints checked through
+  orgaccess in the link transaction; `Linker.LinkTx` port and three company
+  routes. FUELING, EXPENSE, WORK_ORDER and TRIP resolvers, unlink and owner
+  read surfaces retained.
 
 ### EMP-DOC-004 — App: capture and import with offline queue and legibility check
 - **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type APP · size M · state TODO
@@ -93,7 +117,7 @@ The [document specification](../modules/documents.md) now records the recovered 
 - **Done when:** Authorized and denied reviews pass with one auditable outcome per accepted decision.
 
 ### EMP-DOC-006 — Fiscal structure: access key, NFC-e QR code and XML structural validation
-- **Meta:** module DOC · phase F3 · cut - · priority P1 · type DOM · size M · state TODO
+- **Meta:** module DOC · phase F3 · cut - · priority P1 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Distinguish locally checked fiscal structure from authorized fiscal status.
 - **Rules and use cases:** EDR-014, BR-TRUTH-001, BR-TRUTH-002, BR-PRIV-020, REQ-10.2, REQ-10.4
 - **Depends on:** EMP-DOC-002
@@ -107,6 +131,13 @@ The [document specification](../modules/documents.md) now records the recovered 
 - **Validation:** V-DOM, V-PRIV · migration: none · rollback: disable optional structure checks while preserving originals
 - **Risks and assumptions:** Review any new parser dependency and the applicable formats separately.
 - **Done when:** Synthetic structural and rejection vectors pass without provider contact.
+
+- **Result (2026-11-14, LOCAL_DONE):** pure Go `document/domain/fiscal` and Kotlin
+  `enterprise.document.fiscal` (key, QR, comparison; XML envelope server-only)
+  report STRUCTURE_OK/STRUCTURE_INVALID/UNSUPPORTED with closed reasons and the
+  checks run, feeding only Structure (EDR-158..159); oracle `fiscal-v1.psv`
+  (307 cases). No provider contact, persistence, route, job or app surface.
+  [Evidence](../evidence/f3-doc006-fiscal-structure.md).
 
 ### EMP-DOC-007 — Fiscal items and allocations without double counting
 - **Meta:** module DOC · phase F3 · cut - · priority P1 · type DB · size M · state TODO
@@ -221,7 +252,7 @@ The [document specification](../modules/documents.md) now records the recovered 
 - **Done when:** Company panel role, scope, accessibility and conflict cases pass.
 
 ### EMP-DOC-014 — Upload safety checks: type, size and active content
-- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type JOB · size S · state TODO
+- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type JOB · size S · state LOCAL_DONE
 - **Objective:** Inspect uploads before allowing storage state to reach ready.
 - **Rules and use cases:** BR-PRIV-020, BR-PRIV-004, BR-PRIV-008, BR-OFFL-015, UC-OFFL-03
 - **Depends on:** EMP-DOC-002
@@ -235,6 +266,14 @@ The [document specification](../modules/documents.md) now records the recovered 
 - **Validation:** V-JOB, V-ISO, V-IDEM, V-PRIV · migration: preserve existing metadata and test restart · rollback: close access to unverified objects
 - **Risks and assumptions:** Use synthetic fixtures and reuse approved bounded primitives.
 - **Done when:** Pass and refusal cases converge across worker retry and storage failure.
+
+- **Result (2026-11-14, LOCAL_DONE):** the ingress stores only verified,
+  inspected bytes as `RECEIVED`; `STORED` comes only from the check over the
+  stored object; refused content is `QUARANTINED`/`FAILED` with a closed,
+  database-enforced reason (migration `000212`); the `org-document-safety`
+  job converges interrupted checks and closes sessions after 24 h
+  (EDR-169..170). C1 stays JPEG-only.
+  [Evidence](../evidence/f3-doc014-upload-safety.md).
 
 ### EMP-DOC-015 — Panel: receipt viewer inside fueling review
 - **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type WEB · size S · state TODO

@@ -105,3 +105,14 @@ type OwnedSetupsRule struct {
 	Success int  `json:"success"`
 }
 type OwnedSetupsDescriptor interface{ OwnedSetupsRule() OwnedSetupsRule }
+
+// SelfNoticeRule admits only the account-bound current member's own inbox and
+// notice preferences. It is not an organization permission grant.
+type SelfNoticeRule struct {
+	Action  string `json:"action"`
+	Cookie  bool   `json:"cookie"`
+	CSRF    bool   `json:"csrf"`
+	Binding bool   `json:"binding"`
+	Success int    `json:"success"`
+}
+type SelfNoticeDescriptor interface{ SelfNoticeRule() SelfNoticeRule }

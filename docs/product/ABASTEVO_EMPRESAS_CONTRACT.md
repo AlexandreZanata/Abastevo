@@ -2527,8 +2527,9 @@ the owning business producers and OFFL-004 pending screen remain separate work.
   the client clock cannot prove historical absence. Complete server history
   proving no ever-effective ORG grant by receipt is FORBIDDEN. Scheduled grants
   never grant present authority; missing/unknown history is unavailable.
-  A declared clock never grants a write. SELF/structural and F4 late/grace
-  sources remain closed until their actual owners integrate.
+  A declared clock never grants a write. SELF follows B-BR-EMP-259..262;
+  structural and F4 late/grace sources remain closed until their actual owners
+  integrate.
 - **B-BR-EMP-161 — Store actual review before acknowledging it.** Persist an
   immutable review item and typed Meter held fact in the original retained
   transaction, with exact IDs/value/declaration/capture and actual server source
@@ -2714,3 +2715,1893 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   ends the invitee's reservation after scope restore; scheduled-owner propose and
   repeated accept return 409 without changes; expired admissions unblock reissue,
   list and acceptance while an admission before its deadline stays intact.
+
+## EMP-PLAT-016 — Amendment kernel for approved records (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-plat016-amendment-kernel.md).
+
+- **B-BR-EMP-190 — Classify a correction by approval, never in place.**
+  A pure server-side kernel decides one correction from supplied facts: the
+  effective approved revision (0 when never approved), the latest revision,
+  the latest revision's BR-REV review state or `VOIDED`, the reporting day and
+  that day's period state. `EDIT` applies only while the latest revision is
+  `DRAFT` or `RETURNED` (BR-AMD-006), including a draft or returned pending
+  amendment, and appends latest+1 linked to latest. An `EDIT` of an approved
+  record without an editable pending amendment is `APPROVED_IMMUTABLE`; a
+  record under review, or a never-approved terminal one, is `NOT_EDITABLE`.
+  `AMEND`, `VOID` and `ADJUST` need an approved record, otherwise
+  `NOT_APPROVED`. Every command names the latest revision it saw; any other
+  latest is `CONFLICT` and changes nothing. The consumer states its append
+  plan: revision latest+1 for `EDIT`/`AMEND` and none for `VOID`/`ADJUST`,
+  linked to latest for `EDIT` and to the effective approved revision
+  otherwise. A plan that would overwrite a retained revision or link anywhere
+  else is `LOST_ORIGINAL`; a gap or malformed fact is `INVALID`.
+- **B-BR-EMP-191 — One reviewed amendment keeps the effective revision.**
+  `AMEND` appends latest+1 with author, server receipt time and reason, linked
+  to the effective approved revision, which stays effective. At most one
+  amendment is pending (latest above effective in `DRAFT`, `SUBMITTED`,
+  `IN_REVIEW` or `RETURNED`); another `AMEND`, a `VOID` or an `ADJUST` is
+  `AMENDMENT_PENDING` until it is decided or cancelled, and its draft or
+  returned revision changes only by `EDIT`. A review result names the pending
+  revision: `APPROVED` makes it effective and supersedes, never deletes, the
+  previous one; `RETURNED` keeps it pending; `REJECTED` and `CANCELLED` close
+  it; in those three the previous approved revision stays effective. A result
+  on any other revision, or without a pending amendment, is `CONFLICT`.
+  Review transitions, reviewer authority and self-approval stay with the
+  review lifecycle (BR-REV-003/004).
+- **B-BR-EMP-192 — Void and locked periods preserve history.** `VOID` marks
+  the approved record voided from its server receipt and retains the effective
+  revision; voiding again, and any later correction or review result of a
+  voided record, is `ALREADY_VOIDED`. A record whose reporting day is in a
+  `LOCKED` period cannot be amended, voided or have an amendment approved:
+  `PERIOD_LOCKED`. A `REOPENED` period qualifies only with a supplied reopening
+  whose authority was proven at its server receipt and which has a valid
+  reason; otherwise `REOPEN_UNAUTHORIZED` or the reason codes. Without a
+  reopening, `ADJUST` posts a correction linked to the original record and its
+  effective revision on a strictly later posting day whose period is writable
+  (`OPEN` or a qualifying `REOPENED`). `ADJUST` while the record's period is
+  writable is `PERIOD_NOT_LOCKED` (amend instead); a locked posting period is
+  `PERIOD_LOCKED`. Unknown intent, review, period or result tokens are
+  `INVALID`, never mapped to a known one.
+- **B-BR-EMP-193 — Reasons, receipt authority and derived-data markers.**
+  `AMEND`, `VOID` and `ADJUST` require a reason and `EDIT` may carry one. A
+  reason is valid UTF-8, nonblank, control-free and at most 280 code points,
+  the existing free-text bound; absent or blank is `REASON_REQUIRED`, otherwise
+  malformed is `REASON_INVALID`. The consumer evaluates authority at server
+  receipt (BR-TIME-003) and supplies it as facts: Edit for a never-approved
+  record, Amend for an amendment, an edit of a pending amendment and an
+  adjustment, Void for a void; a missing one is `UNAUTHORIZED`. An approved
+  amendment, a void and an adjustment each return one deterministic marker
+  naming the record, the revision derived data must now use or exclude, the
+  superseded revision, the cause (`AMENDED`, `VOIDED`, `ADJUSTED`), the day and
+  the time; consumers own recalculation jobs (BR-AMD-005). The kernel writes no
+  audit event: each consumer records one per decision with its registered
+  action and reason code, keeping the free-text reason on the revision
+  (BR-AUD-001/004).
+- **BUC-EMP-98 — Prove correction, conflict and review effect.** Shared
+  vectors cover edits before approval and of a returned amendment, amendment
+  of an approved record, in-place update, stale revision, lost original
+  (overwrite, detached base, gap), pending amendment, never-approved amendment,
+  approved/returned/rejected/cancelled results, replays after an applied
+  decision, the reason profile and every authority fact.
+- **BUC-EMP-99 — Prove void, locked-period and adjustment paths.** Shared
+  vectors cover void and void of a void, `LOCKED` refusal, qualifying,
+  unproven and reasonless reopenings, an adjustment linked to the original on a
+  later writable day, adjustment refused in a writable record period, a locked
+  posting period or an earlier posting day, approval refused after a relock,
+  unknown period and review tokens, and every derived-data marker.
+
+## EMP-APPR-001 — Review lifecycle component (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-appr001-review-lifecycle.md).
+
+- **B-BR-EMP-175 — Keep one closed single-level review lifecycle.**
+  review-v1 owns exactly DRAFT, SUBMITTED, IN_REVIEW, APPROVED, RETURNED,
+  REJECTED and CANCELLED, and the commands SUBMIT, CANCEL, RESUBMIT (author)
+  and OPEN, APPROVE, RETURN, REJECT (reviewer). Allowed transitions are the
+  BR-REV diagram for one C1 level: DRAFT to SUBMITTED or CANCELLED, SUBMITTED
+  to IN_REVIEW or CANCELLED, IN_REVIEW to APPROVED, RETURNED or REJECTED, and
+  RETURNED to SUBMITTED or CANCELLED. A decision is accepted only from
+  IN_REVIEW. APPROVED, REJECTED and CANCELLED refuse every command. Any other
+  pair is INVALID_TRANSITION. Tokens are exact uppercase; unknown, padded,
+  lowercase, sync (SAVED_ON_DEVICE, ACCEPTED), local (READY_TO_SEND),
+  approval-step (PENDING) or owner-extension (VOIDED) tokens are INVALID. A
+  case starts as DRAFT revision 1 and is the fold of its history. Levels,
+  partial amounts, substitutes, period locks, amendments and void stay with
+  their owners.
+- **B-BR-EMP-176 — Bind every command to the current revision, append-only.**
+  Each command names a positive revision. A revision different from the
+  case's current one is CONFLICT and yields no new case; the input case is
+  unchanged. RESUBMIT names the RETURNED revision n and creates revision n+1;
+  no other command changes the revision. Every accepted command appends one
+  entry (command, resulting revision, resulting state, exact reason); earlier
+  entries, including the decision on revision n and its reason, are never
+  changed or removed. Replaying a stored history starts from DRAFT revision 1
+  and must reproduce every entry exactly. An unreachable state, a skipped
+  OPEN, a wrong revision or state label, or a reason breaking the reason rule
+  is INVALID, so APPROVED cannot be restored without its server path.
+- **B-BR-EMP-177 — Decide only with current permission and independence.**
+  Every command receives server facts at receipt: the actor, the record
+  author and an optional beneficiary as canonical person identities (sets of
+  canonical lowercase non-nil account, membership and employee UUIDs, at
+  least one, already resolved through the actual employee merge chain), plus
+  the permission fact from the server authority port. An absent or false
+  permission is FORBIDDEN. An author command whose actor shares no identifier
+  with the author is FORBIDDEN. A reviewer command, OPEN included, whose actor
+  shares any identifier of any kind with the author or the beneficiary is
+  SELF_APPROVAL, whatever role or permission that person holds. The first
+  failure wins in the order INVALID, REASON_REQUIRED, FORBIDDEN,
+  SELF_APPROVAL, CONFLICT, INVALID_TRANSITION.
+- **B-BR-EMP-178 — Require a bounded reason to return or reject.**
+  RETURN and REJECT require a reason; APPROVE and CANCEL accept an optional
+  one; SUBMIT, RESUBMIT and OPEN carry none. Reasons reuse the existing
+  private 280-Unicode-scalar control-free rule of B-BR-EMP-163 and are
+  preserved exactly, including surrounding spaces. An empty or
+  whitespace-only reason is REASON_REQUIRED when required and INVALID when
+  optional or not accepted. Invalid UTF-8, any control scalar or more than
+  280 scalars is INVALID.
+- **B-BR-EMP-179 — Never present local readiness as a server review state.**
+  The review state shown to a person comes only from a server-confirmed
+  case. Without one, the record shows DRAFT, not server-confirmed, and
+  "ready to send" only for a pending local SUBMIT. With one, it shows that
+  server state and flags any pending local author command as ready to send
+  without advancing it. A local OPEN, APPROVE, RETURN or REJECT, or a local
+  RESUBMIT or CANCEL without a server case, is INVALID: decisions are
+  online-only and a device never holds SUBMITTED or APPROVED by itself. The
+  BR-REV-009 counting basis is COUNTED for APPROVED, PENDING for SUBMITTED
+  and IN_REVIEW (labelled as pending wherever included) and EXCLUDED for
+  DRAFT, RETURNED, REJECTED and CANCELLED.
+- **BUC-EMP-92 — Prove the lifecycle, revisions and reasons.**
+  Shared Go/Kotlin review-v1 vectors cover every token, every allowed and
+  every refused state/command pair (all seven commands from each terminal
+  state), the return loop to revisions 2 and 3 with retained history, stale
+  and future revisions, replay of valid and forged histories, and required,
+  blank, over-bound, control and multi-byte reasons.
+- **BUC-EMP-93 — Prove independence, permission and honest presentation.**
+  Vectors cover the author or the beneficiary deciding (sharing only an
+  account, only a membership or only a canonical employee), an author who
+  holds the review permission, absent or false permission, author commands by
+  someone else, malformed identities, the first-failure order and local
+  readiness that is never presented as SUBMITTED or APPROVED.
+
+## EMP-EXP-001 — Expense domain: origin, competence and company amount (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-exp001-expense-domain.md).
+
+## Enterprise pure expense (EMP-EXP-001)
+
+- **B-BR-EMP-180 — One cost origin with one source identity.**
+  An expense records exactly one origin from the closed cost-origin kinds
+  FUELING, WORK_ORDER and DIRECT. FUELING references the scoped FUEL-001
+  FuelingRef and WORK_ORDER a scoped work-order reference, both in the
+  expense's organization; DIRECT is its own source, carries no separate source
+  and is keyed by the expense identity. The origin key (organization, kind,
+  source or expense identity) is the one-origin-one-cost identity of EDR-013
+  and BR-EXP-001. The settlement, evidence and stock-movement kinds PAYMENT,
+  REIMBURSEMENT, CARD_STATEMENT, ADVANCE, PAYABLE, DOCUMENT, STOCK_PURCHASE and
+  STOCK_TRANSFER are recognized only to be refused as NOT_COST_ORIGIN; unknown,
+  empty, padded or differently cased tokens are INVALID. A missing origin is
+  INVALID, never defaulted. A source reference does not prove that the fueling
+  or work order exists, was accepted or was approved.
+- **B-BR-EMP-181 — Exact paid and company amounts without a false zero.**
+  The paid amount (the actual amount, authoritative) and the company amount
+  (the part the organization bears) are both required canonical integer
+  centavos parsed by the accepted exact-value kernel: 0..1000000000000, with
+  no sign, decimal point, exponent, grouping, whitespace or redundant leading
+  zero. Decimal or otherwise non-canonical text is INVALID and never rounded.
+  The company amount is at most the paid amount (COMPANY_EXCEEDS_PAID
+  otherwise). Neither is recomputed from quantity and unit price nor defaulted
+  from the other. An absent amount is INVALID and never becomes 0; a present
+  known 0 is a recorded fact (a zero-paid fueling still has its one expense).
+- **B-BR-EMP-182 — Structural category code now, configured catalogue later.**
+  The category is a required code matching the repository key profile
+  `^[A-Z][A-Z0-9_]{0,63}$`. It is validated structurally only, without
+  normalization or case folding. Membership in the organization's configured
+  catalogue, retirement, labels and origin-to-category consistency belong to
+  EMP-EXP-003; the REQ-11.1 default names are not hard-coded here.
+- **B-BR-EMP-183 — Competence instant and its reporting day.**
+  The competence instant is a declaration validated by the accepted
+  declaration-only time entry (bounded instant, IANA entry zone, integral
+  device offset, UTC normalization). Its reporting day is the local calendar
+  day of that instant in the supplied operating-unit zone, otherwise the
+  organization zone (BR-TIME-004), computed by a receipt-free attribution entry
+  extracted from the time kernel and reused unchanged by Capture. Zones come
+  from the resolved operating context; an invalid unit zone never falls back
+  to the organization; no server receipt, clock read or entry-zone
+  substitution occurs. A cost belongs to its competence day, never to a
+  payment or settlement date.
+- **B-BR-EMP-184 — Approved cost basis with a separately identified pending part.**
+  A pure totals function takes one organization scope, one half-open
+  reporting-day period [start, end), an explicit basis and expenses that each
+  carry a closed review state (the BR-REV states plus VOIDED). APPROVED company
+  amounts form the approved cost; SUBMITTED and IN_REVIEW form the separately
+  identified pending part; DRAFT, RETURNED, REJECTED, CANCELLED and VOIDED are
+  excluded and only counted. The figure equals the approved cost under basis
+  APPROVED and approved plus pending under INCLUDES_PENDING, which alone sets
+  the "includes pending" flag. Sums are exact widened integers without a total
+  or count cap. A foreign-organization entry is SCOPE, an entry outside the
+  period is OUT_OF_PERIOD and a repeated expense identity or origin key is
+  DUPLICATE_COST whatever its state; the first failing entry in input order
+  decides and no partial total is returned. Settlement never enters the basis.
+- **BUC-EMP-94 — Prove one exact expense per cost origin.**
+  Shared Go/Kotlin vectors cover each cost-origin kind, each refused
+  settlement/evidence/stock kind, missing, foreign and malformed origins and
+  identities, exact amount bounds and non-canonical decimals, absent versus
+  known zero, a company amount above the paid amount, the category profile,
+  competence validation and reporting-day attribution by unit or organization
+  zone across local midnight (VAL-19's 2026-10-31).
+- **BUC-EMP-95 — Prove the reporting basis.**
+  Shared vectors cover VAL-13's single 97 350 fueling cost with no second cost
+  from a reimbursement or payment, VAL-25's pending exclusion and "includes
+  pending" figure, all eight review states and their exclusion counts, exact
+  sums above the single-record ceiling, an empty selection, a foreign
+  organization, entries at and beyond both period bounds and duplicate origin
+  keys or identities across states.
+
+## EMP-DOC-001 — Document domain: container, independent statuses, links and allocations (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc001-document-domain.md).
+
+## Enterprise pure document domain (EMP-DOC-001)
+
+- **B-BR-EMP-185 — Keep the original identity immutable.**
+  A document is one organization's container identified by its scoped
+  canonical document UUID and the original content digest, exactly 64
+  lowercase hexadecimal characters (the EMP-PLAT-006 private object SHA-256
+  format). No command changes the organization, identifier or digest. A
+  replacement is a new document: it must belong to the same organization,
+  have a different identifier and already be STORED; the replaced document
+  must be STORED or QUARANTINED. The old document becomes REPLACED and records
+  its successor, the successor records what it replaces, and both originals,
+  links and allocations are retained. A digest match answers only whether a
+  supplied digest equals the original. Content bytes, file names, MIME/size,
+  storage keys and personal data never enter the domain; storage, limits and
+  integrity stay with EMP-PLAT-006/EMP-DOC-002.
+- **B-BR-EMP-186 — Six independent closed status dimensions.**
+  Storage (UPLOADING, RECEIVED, STORED, QUARANTINED, FAILED, REPLACED,
+  DELETED), extraction (NONE, PENDING, DONE, FAILED), structure
+  (NOT_APPLICABLE, UNCHECKED, STRUCTURE_OK, STRUCTURE_INVALID), conference
+  (UNCONFERRED, CONFERRED_OK, DIVERGENT, ILLEGIBLE), reconciliation
+  (UNALLOCATED, PARTIALLY_ALLOCATED, RECONCILED, OVER_ALLOCATED) and fiscal
+  consultation (NOT_CONSULTED, AUTHORIZED_AS_OF, CANCELLED_AS_OF, UNAVAILABLE)
+  are closed exact token sets; a new document starts at UPLOADING, NONE,
+  NOT_APPLICABLE, UNCONFERRED, UNALLOCATED and NOT_CONSULTED. Unknown,
+  lowercase, padded, cross-dimension or "VALIDATED" tokens are INVALID.
+  A command changes at most one dimension. No dimension is derived from
+  another: a digest match, extraction, structure check, storage outcome,
+  allocation or conference never sets conference or fiscal consultation
+  (BR-TRUTH-001/002). Reconciliation alone is derived, from exact amounts.
+- **B-BR-EMP-187 — Explicit transition commands with the expected state.**
+  Each command names its dimension, expected current state and target state;
+  a different current state is CONFLICT and changes nothing; a pair outside
+  the table is INVALID_TRANSITION. Storage: UPLOADING→RECEIVED|FAILED,
+  RECEIVED→STORED|QUARANTINED|FAILED, STORED→DELETED, QUARANTINED→DELETED,
+  REPLACED→DELETED; REPLACED is entered only through replacement; FAILED and
+  DELETED are terminal. Extraction: NONE→PENDING, PENDING→DONE|FAILED,
+  FAILED→PENDING. Structure: NOT_APPLICABLE→UNCHECKED,
+  UNCHECKED→STRUCTURE_OK|STRUCTURE_INVALID, STRUCTURE_INVALID→UNCHECKED.
+  Conference: any state to any different state (decisions and explicit
+  reversal to UNCONFERRED). Fiscal: any state to AUTHORIZED_AS_OF,
+  CANCELLED_AS_OF or UNAVAILABLE, never back to NOT_CONSULTED; each fiscal
+  result requires its consultation instant (shared bounded time profile),
+  strictly later than the previous one (otherwise CONFLICT); other dimensions
+  refuse an instant. A direct reconciliation transition is DERIVED.
+  Self-transitions are refused except a later fiscal re-consultation.
+- **B-BR-EMP-188 — Owned same-organization links.**
+  A link targets one closed kind: FUELING, EXPENSE, WORK_ORDER, TRIP, ASSET,
+  EMPLOYEE or METER_READING, with a canonical identifier of the document's
+  own organization (BR-TEN-001); a foreign target is SCOPE, an unknown kind or
+  malformed identifier INVALID, and the same kind and identifier twice
+  DUPLICATE. Links keep insertion order. A link grants no content access,
+  recognizes no cost and changes no status (BR-DOC-002/003).
+- **B-BR-EMP-189 — Exact allocations bounded by the document amount.**
+  The document amount is integer centavos 0..1 000 000 000 000 (financial-v1)
+  and may be recorded or corrected without touching allocations. An
+  allocation set replaces the previous one; it needs a recorded amount
+  (AMOUNT_MISSING), at most 1 000 lines, and lines in order whose target is
+  same-organization (SCOPE), allocatable (only EXPENSE, NOT_ALLOCATABLE
+  otherwise), linked (NOT_LINKED), distinct (DUPLICATE) and 1..1 000 000 000 000
+  centavos (INVALID). A set whose exact sum exceeds the amount is
+  EXCEEDS_AMOUNT and changes nothing. Reconciliation derives from exact sums
+  with zero tolerance: 0 → UNALLOCATED, below → PARTIALLY_ALLOCATED, equal →
+  RECONCILED, above → OVER_ALLOCATED, which is reachable only when a later
+  amount correction falls below recorded allocations. An even split uses the
+  BR-MONEY-007 largest-remainder allocator with equal weights in target order
+  and omits zero shares, so parts always sum to the amount.
+- **BUC-EMP-96 — Track an original through independent checks.**
+  Actor: the owning document workflow (intake, extraction, structure,
+  conference, consultation). Flow: create the container from a scoped
+  identifier and original digest → apply one named transition at a time with
+  its expected state (and consultation instant for fiscal results) → read six
+  separate statuses. Alternatives: stale expected state → CONFLICT, nothing
+  changes; pair outside the table or terminal storage → INVALID_TRANSITION;
+  digest match → only a boolean; a corrected file → a new stored successor
+  replaces the old document, both retained. Result: each status says only
+  what its own check established.
+- **BUC-EMP-97 — Allocate a document amount to linked expenses.**
+  Actor: the owning allocation workflow (reviewer authority and locking stay
+  with EMP-DOC-007). Flow: record the exact amount → link same-organization
+  targets → submit an explicit allocation set or an even split over linked
+  expenses → read the derived reconciliation and remaining centavos.
+  Alternatives: foreign, unlinked, non-expense, duplicate, zero, negative or
+  overflowing line → refused; sum above the amount → EXCEEDS_AMOUNT with the
+  previous set intact; amount corrected below allocations → OVER_ALLOCATED
+  until a fitting set is recorded. Result: allocations never exceed their
+  source when recorded, and the document example 97 350 = 60 000 + 30 000 +
+  7 350 reconciles while an extra 8 000 is refused.
+
+## EMP-BUDG-001 — Budget domain: lines, periods, dimensions and capacity (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-budg001-budget-domain.md).
+
+- **B-BR-EMP-198 — One line: organization, half-open period, one dimension and a required exact limit.**
+  A budget line is a scoped line identity in one organization with an
+  explicit half-open reporting-day period [start, end) built by the
+  EMP-EXP-001 reporting period (any whole-day span; VAL-14's November 2026 is
+  2026-11-01 to 2026-12-01), exactly one dimension and a limit. The limit is a
+  required canonical integer number of centavos parsed by the accepted
+  exact-value kernel (0..1000000000000). An absent, empty, signed, decimal,
+  grouped, padded, "unlimited" or above-ceiling limit is INVALID. A present 0
+  is a known zero limit under which no positive amount fits. There is no
+  implicit unlimited budget and no default limit: without a constructed line
+  there is no capacity and no decision, never ACTIVATE or POST. Overlapping
+  lines of one dimension, line versions and limit changes are persistence and
+  configuration concerns (EMP-BUDG-002/005).
+- **B-BR-EMP-199 — Closed dimensions matched exactly against recorded tags.**
+  Dimension kinds are exactly ORGANIZATION, UNIT, COST_CENTRE, ASSET and
+  EMPLOYEE (the driver); unknown, empty, padded or differently cased tokens
+  are INVALID. A line has exactly one kind: ORGANIZATION carries no target;
+  every other kind requires one scoped target of the same kind in the line's
+  organization; any kind may add one optional category filter (the EMP-EXP-001
+  category code). Multi-target intersections are not representable in v1. A
+  fact carries tags: the unit, cost centre, asset and employee stored on its
+  record when it was created (BR-AUTH-005), at most one per kind, supplied by
+  the caller; an expense's category is its own and a hold names one required
+  category. A fact matches a line when it belongs to the line's organization
+  (SCOPE otherwise, including any foreign tag or target), its reporting day is
+  inside the period (OUT_OF_PERIOD otherwise) and, unless the line is
+  ORGANIZATION, its tag of the line's kind equals the target exactly, while
+  with a filter its category equals the filter (DIMENSION_MISMATCH otherwise;
+  an absent tag or a same identifier under another kind never matches). A
+  hold must also name the line itself (DIMENSION_MISMATCH otherwise). One fact
+  may match several lines, such as the organization line and its cost-centre
+  line; each line is computed on its own.
+- **B-BR-EMP-200 — Available capacity derived only from authoritative facts.**
+  Capacity is computed for one organization scope and one line from the
+  caller's facts: consumption entries (an EMP-EXP-001 expense, its review
+  state and its tags) and stored holds. Committed consumption is the sum of
+  APPROVED company amounts (BR-BUDG-001, BR-EXP-002, BR-REV-009). SUBMITTED and
+  IN_REVIEW company amounts form a separately identified pending part that is
+  never deducted; DRAFT, RETURNED, REJECTED, CANCELLED and VOIDED are only
+  counted. Held is the sum of ACTIVE hold amounts; CONSUMED, RELEASED and
+  EXPIRED holds contribute nothing. Available equals limit minus consumed
+  minus held in exact widened integers; a negative result is reported as
+  over-commitment and is never wrapped or clamped. Consumption entries and
+  then holds are checked in input order: INVALID (unconstructed value or
+  unknown state), SCOPE, OUT_OF_PERIOD, DIMENSION_MISMATCH, then DUPLICATE (a
+  repeated expense identity or origin key, or a repeated hold identity); the
+  first failure decides and no partial capacity is returned. No operation
+  takes an available, held or consumed number as input. A claimed (stored,
+  cached or displayed) available is only compared: an equal canonical signed
+  integer is current, a different one is STALE_AVAILABLE and a malformed one
+  is INVALID.
+- **B-BR-EMP-201 — Reservation and posting decisions; each hold closes once.**
+  A reservation request (hold identity, named line, amount
+  1..1000000000000, a nonzero reservation instant attributed to its reporting
+  day by the accepted time kernel, category and tags) is checked against a
+  computed capacity like a stored hold, plus DUPLICATE when its identity is
+  already among the line's holds whatever their state, and is then decided:
+  ACTIVATE with one new ACTIVE hold when amount ≤ available, otherwise EXCEEDS
+  with shortfall = amount − available and no hold. A consumption posting
+  takes one APPROVED expense entry of the line (NOT_APPROVED otherwise) that is
+  not already among the facts (DUPLICATE) and optionally one ACTIVE hold of
+  the capacity to convert (HOLD_NOT_ACTIVE when unknown or not ACTIVE).
+  Headroom is available plus that hold's amount; the result is POST when the
+  company amount is zero or at most the headroom, converting the hold to
+  CONSUMED linked to that expense, otherwise EXCEEDS with the shortfall and no
+  change. Neither decision applies an overrun policy or exception
+  (EMP-BUDG-004): EXCEEDS never approves. Hold states are exactly ACTIVE,
+  CONSUMED, RELEASED and EXPIRED. Only ACTIVE → CONSUMED (through a posting),
+  ACTIVE → RELEASED and ACTIVE → EXPIRED exist; any transition from another
+  state is HOLD_NOT_ACTIVE, so a double release or expiry, consuming a
+  released, expired or consumed hold and reviving a hold are impossible. A
+  stored CONSUMED hold requires its consuming expense and other states refuse
+  one. The caller runs these pure decisions under the line's row lock
+  (EMP-BUDG-002), so concurrent requests serialize against one capacity.
+- **BUC-EMP-102 — Prove derived budget capacity.**
+  Shared vectors cover line construction (period, every dimension kind and
+  target, the category filter, the limit bounds, absent, empty, unlimited,
+  negative, decimal and overflowing limits and the known zero), exact matching
+  over every kind with absent, wrong, other-kind and foreign tags and
+  categories, reporting-day bounds in organization and unit zones, all eight
+  review states, every hold state and its consuming expense, duplicate facts,
+  over-commitment above the single-record ceiling, VAL-14's
+  500 000 − 450 000 = 50 000 and current, stale and malformed claimed
+  available numbers.
+- **BUC-EMP-103 — Prove serialized reservations and the hold lifecycle.**
+  Shared vectors replay serialized sequences: VAL-14's two 30 000 holds (one
+  ACTIVATE leaving 20 000, one EXCEEDS by 10 000), release and expiry restoring
+  50 000 once, a retry after release, holds that do not fit, postings with and
+  without a converted hold, zero postings on an over-committed line,
+  non-approved and repeated postings, double release or expiry, consuming
+  released, expired or consumed holds and a late retry that cannot revive a
+  released hold.
+
+## EMP-FIN-001 — Payables domain: supplier, reimbursement and card statement obligations (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-fin001-payables-domain.md).
+
+## Enterprise payables domain (EMP-FIN-001)
+
+- **B-BR-EMP-194 — Closed obligation kinds with one counterparty and approved expense sources.**
+  A payable is an amount the organization owes, recorded with exactly one kind
+  from the closed list SUPPLIER, REIMBURSEMENT and CARD_STATEMENT; ADVANCE,
+  PAYMENT, PAYABLE and every unknown, empty, padded or differently cased
+  token are INVALID (advances belong to EMP-FIN-003). Each kind names exactly
+  its own counterparty and no other: REIMBURSEMENT the beneficiary employee,
+  SUPPLIER the supplier plus an optional supplier document, CARD_STATEMENT the
+  statement; a missing or extra counterparty is INVALID. A payable has 1..1000
+  source lines (REIMBURSEMENT exactly one); each line attributes an amount to
+  one EMP-EXP-001 expense (its identity, origin key and company amount)
+  together with the server-resolved facts the owning command supplies: the
+  current review state and the explicit payer, COMPANY or EMPLOYEE with the
+  paying employee present exactly for EMPLOYEE. The payable, its counterparty,
+  every source expense and every paying employee belong to the scoped
+  organization; any other organization, including a mix within one payable,
+  is SCOPE. A repeated expense identity or origin key within one payable is
+  DUPLICATE_SOURCE. A source is eligible only when APPROVED; REIMBURSEMENT
+  requires an EMPLOYEE payer who is the beneficiary, and SUPPLIER and
+  CARD_STATEMENT require a COMPANY payer (NOT_ELIGIBLE otherwise). References
+  prove no existence, authority, supplier consistency or payment.
+- **B-BR-EMP-195 — Exact obligation bounded by its sources.**
+  Each line amount is a required canonical integer number of centavos parsed
+  by the accepted exact-value kernel and at least 1; an absent, zero, signed,
+  decimal, padded or out-of-range amount is INVALID and never rounded or
+  defaulted. A line never exceeds its source's company amount
+  (EXCEEDS_SOURCE). A REIMBURSEMENT equals the approved company amount exactly
+  (PARTIAL_REIMBURSEMENT below it): the review decision, including a partial
+  approval, already fixed what the company bears, and installments are
+  partial settlements, not partial obligations. SUPPLIER and CARD_STATEMENT
+  lines may be smaller than their source. The obligation amount is the exact
+  sum of its lines, never an independent input, and at most the financial-v1
+  total ceiling of 1000000000000 centavos (INVALID above). Checks run in this
+  order, lines in input order within each: INVALID (shape, tokens, presence,
+  amounts, ceiling), SCOPE, NOT_COST_ORIGIN, DUPLICATE_SOURCE, NOT_ELIGIBLE,
+  then EXCEEDS_SOURCE or PARTIAL_REIMBURSEMENT. Recognizing an obligation never
+  changes, re-recognizes or replaces its source expense.
+- **B-BR-EMP-196 — Settlement state derived from exact settlement entries.**
+  A settlement entry has a scoped identity and a positive canonical amount
+  (INVALID otherwise) and belongs to one payable. Recording one checks, in
+  order, scope and shape, NOT_COST_ORIGIN (its identity equals the payable,
+  statement, a source expense or that expense's origin source), CANCELLED (the
+  payable is cancelled), DUPLICATE_ENTRY (its identity is already recorded)
+  and EXCEEDS_REMAINING (overpayment, including any amount on a SETTLED
+  payable); a refusal leaves the payable unchanged. The state is derived,
+  never stored as truth: no settlement is OPEN, a positive sum below the
+  obligation PARTIALLY_SETTLED and a sum equal to it SETTLED. CANCELLED is the
+  only state set by a command: an explicit cancellation with a nonblank,
+  control-free reason of at most 280 Unicode scalars (the B-BR-EMP-163 bound,
+  INVALID otherwise) moves an OPEN payable to CANCELLED; it is CANCELLED for
+  an already cancelled payable and HAS_SETTLEMENT once any settlement exists
+  (reversal is not modelled). The remaining amount is derived as obligation
+  minus settled, and 0 for a CANCELLED payable. A stored or displayed state
+  asserted against the facts must equal the derived state (STATE_MISMATCH;
+  an unknown token is INVALID).
+- **B-BR-EMP-197 — Obligations and settlements never become a cost.**
+  A pure views function computes the cost view with the unchanged EMP-EXP-001
+  totals over the cost entries alone (their own failures returned unchanged)
+  and, separately, the settlement view over the payables alone: payable count,
+  counts per state and exact widened sums of the obligation of non-cancelled
+  payables, the settled amount and the remaining amount. Any number of
+  payables and settlements leaves every cost figure identical, and no cost
+  figure includes an obligation or a payment. A payable, settlement or
+  statement identity used as a cost entry's expense identity or origin source
+  is NOT_COST_ORIGIN, as are the settlement-side kinds already refused by
+  EMP-EXP-001. Each expense is the source of at most one non-cancelled payable
+  in a selection (DUPLICATE_SOURCE), a payable or settlement identity appears
+  once (DUPLICATE_ENTRY) and every payable belongs to the scope (SCOPE). Cost
+  failures come first, then payables in input order, then identity
+  separation.
+- **BUC-EMP-100 — Recognize and settle one obligation.**
+  Shared vectors cover each kind with its counterparty and source rules,
+  ADVANCE and PAYMENT refused as kinds, every review state and both payers,
+  a wrong beneficiary, mixed organizations, duplicate sources, exact amount
+  grammar, the source bound and total ceiling, partial reimbursement, partial
+  and exact settlement, overpayment, settlement on a cancelled payable,
+  cancellation with and without settlements, reason bounds, identities posing
+  as costs and asserted states that contradict the derived state.
+- **BUC-EMP-101 — Prove one cost with its settlement view.**
+  Shared vectors cover VAL-13's 97 350 fueling with a matching reimbursement
+  and payment (cost 97 350, payable SETTLED, never 194 700), a replayed
+  payment, many payables of every kind and many settlements leaving the cost
+  unchanged, a source outside the cost period, a second expense of the same
+  fueling, payable/settlement/statement identities posing as costs,
+  settlement kinds refused as cost origins, two live obligations of one source
+  and a cancelled obligation releasing its source.
+
+## EMP-PRIV-005 — Sensitive-access log for documents, exports and location (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-priv005-sensitive-access-log.md).
+
+- **B-BR-EMP-207 — Four closed sensitive categories, each with its own
+  permission.** A sensitive read is exactly one of `DOCUMENT_CONTENT`
+  (`doc.document.view_content`, target `document`), `EXPORT_FILE`
+  (`rpt.export.run`, target `export`), `LOCATION_LIVE`
+  (`gps.location.read_live`, target `trip`) or `LOCATION_TRACK`
+  (`gps.track.read`, target `trip`). A capability-delivered category records
+  `ISSUED` when it grants a short-lived capability and `SERVED` when content
+  leaves the API; a live position is served directly, so `LOCATION_LIVE` has
+  only `SERVED`. Registered actions are `document.access.issued` and
+  `document.content.accessed` (the existing EMP-PLAT-006 actions, unchanged),
+  `export.access.issued`, `export.content.accessed`, `location.track.issued`,
+  `location.track.accessed` and `location.live.accessed`, all with reason
+  `member.authorized`. Reading the owning trip, expense or document record
+  never implies these permissions (BR-AUTH-011).
+- **B-BR-EMP-208 — Check, record, then serve; fail closed.** The owning read
+  first resolves the organization scope, current session, membership, target
+  and the category's own permission. Only then does it record the access, and
+  only after a committed record does it mint and return a capability or
+  release content. A foreign or non-member request is `NOT_FOUND` and a member
+  without the category permission is `FORBIDDEN` (BR-AUTH-013); neither
+  writes a record. An expired session, an expired or revoked capability or a
+  changed target serves nothing and writes no `SERVED` record. Any failure to
+  record (invalid facts, unavailable storage, conflict or replay) serves
+  nothing.
+- **B-BR-EMP-209 — References and a digest only.** A record holds the
+  organization, the verified actor account and its membership, the category,
+  the stage (also implied by its action), target type and UUID, the server-generated
+  request UUID, the capability (grant) UUID, reason `member.authorized`, a
+  SHA-256 digest of these facts and of the owner's bounded binding digest,
+  and server time. It never holds content bytes, file names, MIME types,
+  storage keys, URLs, capability tokens, coordinates, filters or free text
+  (BR-AUD-004, BR-PRIV-008, BR-GPS-039). Every field is a UUID, a registered
+  code or a 64-hex digest, so such values cannot be stored.
+- **B-BR-EMP-210 — One record per request, linked to its grant, append-only
+  and isolated.** An organization holds one record per request UUID: an
+  identical retry is stored once and refused as a replay, the same request
+  UUID with other facts is a conflict, and neither serves. `ISSUED` and
+  `LOCATION_LIVE` use the request UUID as the grant UUID; a `SERVED` record of
+  a capability category must reference an `ISSUED` record of the same
+  organization, category, target, actor account and membership. Records are
+  append-only under forced organization row-level security. Organization
+  roles with `audit.event.read` over the whole organization read them through
+  the existing audit read service. No platform-operator or support-session
+  reason is registered, so operator access stays impossible until
+  EMP-BACK-003 adds approved support sessions (BR-AUD-006, BR-PRIV-021).
+- **BUC-EMP-106 — Prove audited private document access.** On real PostGIS,
+  the private document service issues a capability and serves content to a
+  member holding `doc.document.view_content`, writing exactly one `ISSUED` and
+  one `SERVED` record with the expected references. A foreign document or
+  organization, a member whose role lacks the permission (also after a role
+  change), an expired session, an expired or revoked capability and a refused
+  record write serve nothing and leave no new record in either organization.
+- **BUC-EMP-107 — Prove the log itself.** On real PostGIS, prove replay and
+  concurrent duplicates store one record, conflicting reuse is refused,
+  two organizations are isolated, rows are append-only, the database refuses a
+  category that does not match its action, a served record without its
+  member-bound grant, a sensitive event without its detail and a
+  foreign-organization insert, a failed detail write
+  leaves no audit event, the stored rows carry no content-shaped value, the
+  audit read service lists only in-scope records for an authorized reader and
+  refuses others, and the additive migration upgrades and recovers.
+
+## EMP-FLEET-003 — Asset lifecycle: acquisition, deactivation, disposal and archive (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-fleet003-asset-lifecycle.md).
+
+## Enterprise asset lifecycle (EMP-FLEET-003)
+
+- **B-BR-EMP-202 — Move the asset lifecycle only by named, audited commands.**
+  Six private company commands change lifecycle data, each naming the asset
+  and its expected current revision: record acquisition (`DRAFT`, `ACTIVE`,
+  `INACTIVE`; state unchanged), deactivate (`ACTIVE → INACTIVE`), reactivate
+  (`INACTIVE → ACTIVE`, BR-FLEET-004 checklist and unit admission re-proved
+  from actual sources), dispose (`ACTIVE`/`INACTIVE → DISPOSED`), revert
+  disposal (`DISPOSED → INACTIVE`) and archive (`DISPOSED → ARCHIVED`;
+  `ARCHIVED` is terminal and accepts no further update). A stale revision or
+  any other source state is `CONFLICT` with no effect. Each command requires
+  current fresh `fleet.asset.manage` through the existing company pipeline,
+  is serialized by the organization root lock and commits exactly one audit
+  event, one immutable revision snapshot, one immutable command receipt and,
+  for a state change, one immutable lifecycle history row in one transaction.
+  The same operation from the same actor with the same canonical intent
+  returns the first result (`replayed`) without a live source state; any other
+  reuse is `OPERATION_ID_REUSED`. No field edit can set the state.
+- **B-BR-EMP-203 — Validate reasons, instants and disposal data exactly.**
+  Deactivate, dispose and revert disposal require a reason of 1..280 Unicode
+  scalars, valid UTF-8, without control characters and not blank; reactivate,
+  archive and record acquisition carry no reason field. Dispose names exactly
+  one kind `SALE`, `WRITE_OFF` or `RETURN_TO_HOLDER` and an exact instant
+  (RFC 3339 UTC, nanoseconds preserved as microsecond timestamp plus
+  sub-microsecond digits); acquisition names one exact instant. Neither
+  instant may be later than the server clock at the command; a disposal may
+  not precede the recorded acquisition. Amounts, counterparts and expenses
+  are not collected (BR-FLEET-007; sale revenue stays with expenses-finance).
+  Any refusal here is `VALIDATION_FAILED` with no effect.
+- **B-BR-EMP-204 — Keep disposal history; archive frees identifiers only.**
+  The current disposal (kind, instant, reason) lives on the asset row only
+  while `DISPOSED` or `ARCHIVED`. Revert disposal returns `INACTIVE`, clears
+  the current disposal and keeps the original disposal row in the immutable
+  lifecycle history, together with the revert reason; the asset can be
+  disposed again. Archive keeps the disposal data, removes the asset from
+  default lists and frees its plate and fleet number for a new asset (the
+  existing non-archived partial unique indexes); it never deletes, renames or
+  moves earlier records. Assets, revisions, meters, readings, held reviews and
+  history of a disposed or archived asset remain readable by current
+  `fleet.asset.read` holders. Unit allocation periods are not closed here
+  (EMP-FLEET-005), assignments are not ended (EMP-FLEET-006 consumes the
+  disposal) and reservations do not exist yet (EMP-FLEET-007).
+- **B-BR-EMP-205 — Refuse removal from service with open work through a port.**
+  Deactivate, dispose and archive ask an explicit open-work port, inside the
+  command transaction after the revision/state check, which kinds of work are
+  open (`TRIP` for a trip `IN_PROGRESS`/`PAUSED`, `WORK_ORDER` for an open
+  maintenance work order). A non-empty answer refuses the command with
+  `ASSET_HAS_OPEN_OPERATIONS` (409) whose details name each open kind once
+  (`field=open_operations`, `code=<kind>`) and nothing else. Until the trip and
+  maintenance epics exist the runtime wires the named `NoOpenWork` adapter,
+  which answers "none" because no such records can exist; each epic replaces
+  it with its real adapter and test. A missing port fails closed
+  (`UNAVAILABLE`). A test-only adapter proves the refusal; it is never wired.
+- **B-BR-EMP-206 — Hold a field reading declared at or after the disposal.**
+  The signed `meter.reading.record` intake, after retained authority yields
+  APPLY, reads the asset's current disposal under the organization root and
+  asset row locks. A reading whose declared instant is at or after the
+  disposal instant (exact to the nanosecond) is accepted for review with code
+  `ASSET_UNAVAILABLE` through the existing OFFL-008 held mechanism: one review
+  item, one held reading, a version-1 review ACK, no applied reading and no
+  effect; replay returns the original ACK. A reading declared before the
+  instant is handled exactly as before. `PERMISSION_CHANGED` keeps precedence
+  when both apply. The database refuses a live reading at or after the
+  disposal (23514) and an `ASSET_UNAVAILABLE` held fact without an actual
+  disposal at or before its instant. After revert disposal there is no current
+  disposal and readings return to normal handling; items already held stay
+  held until reviewed. Readings on `DRAFT`/`INACTIVE` assets keep their
+  current normal handling until derived availability (BR-FLEET-025/027)
+  exists.
+- **BUC-EMP-104 — Take an asset out of service or dispose of it (UC-FLEET-02).**
+  A manager with fresh `fleet.asset.manage` records the acquisition instant,
+  deactivates with a reason, reactivates, disposes with kind/instant/reason,
+  reverts a mistaken disposal with a reason or archives a disposed asset,
+  each through `/v1/orgs/{org_id}/fleet/assets/{asset_id}/…` with the asset
+  revision; reads the asset (current acquisition/disposal) and its paged
+  lifecycle history with `fleet.asset.read`. Every §6.1 row is proved from its
+  source state and refused with `CONFLICT` from every other state, on real
+  PostGIS with forced RLS, two organizations and ordinary runtime roles.
+- **BUC-EMP-105 — Hold a post-disposal field reading for review.**
+  A device reading for a disposed asset arrives through the signed intake:
+  declared one nanosecond before the disposal it is applied; declared at or
+  after it is held `ASSET_UNAVAILABLE` and appears in the existing meter
+  review list for `meter.reading.correct`, whose accept/refuse decision is
+  unchanged; after a revert a new reading is applied again.
+
+## EMP-APPR-006 — Period closing, lock and reopening (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-appr006-period-lock.md).
+
+- **B-BR-EMP-211 — A period is one organization calendar month of reporting
+  days.** A period is the calendar month `YYYY-MM` of one organization,
+  covering the half-open reporting-day range from its first day inclusive to
+  the first day of the next month exclusive. A record belongs to the period
+  that holds its BR-TIME-004 reporting day: the local calendar day of its
+  `occurred_at` in the time zone of its operating unit, or of the organization
+  when it has none. In this task a period is organization-wide; unit or
+  cost-centre scoped periods are not modelled. A month without history is
+  `OPEN` at the implicit revision 1, which is never stored; only a canonical
+  month from `0001-01` to `9999-12` is a period, any other key is not found.
+- **B-BR-EMP-212 — Lock, reopen and re-lock append history.** Close
+  (`fin.period.close`) moves `OPEN` to `LOCKED` (kind `LOCK`) or `REOPENED` to
+  `LOCKED` (kind `RELOCK`). Reopen (`fin.period.reopen`) moves `LOCKED` to
+  `REOPENED` and requires a reason of 1 to 280 Unicode scalars that is not
+  blank and has no control character (the B-BR-EMP-163 profile, kept
+  verbatim); close carries no reason. Every command names the revision it
+  saw: another current revision is `CONFLICT`; closing a `LOCKED` period or
+  reopening an `OPEN` or `REOPENED` one is `CONFLICT`; a missing reason is
+  `REASON_REQUIRED` and a malformed one `REASON_INVALID`; a refusal changes
+  nothing. An accepted command appends exactly one immutable transition at
+  revision+1 with its kind, previous and new state, the permission that
+  authorized it, the reason, the acting account and membership and the
+  server receipt time, and writes exactly one audit event in the same
+  transaction. Transitions are never updated or deleted, so a reopening never
+  removes the earlier lock and a re-lock never removes the reopening.
+- **B-BR-EMP-213 — Authority at receipt and idempotent replay.** Period
+  commands and reads are decided at server receipt by the existing company
+  pipeline: current company proof, enabled `organizations` capability, the
+  organization root, the current membership and a current role covering the
+  whole organization. Close and reopen need fresh authentication and an
+  `ACTIVE` organization; list and read need `fin.period.close`. A role without
+  the permission is `FORBIDDEN`; another organization or an ended membership
+  is `NOT_FOUND`; a suspended membership or organization keeps its existing
+  code. Replaying the same operation ID by the same account with the same
+  canonical command returns the original result with `replayed=true` and
+  writes no second transition or audit event; any other command or account
+  under that operation ID is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-214 — The period gate runs inside the owning record
+  transaction.** A record command obtains the period fact of a reporting day
+  from a server port inside its own transaction: the gate first takes a
+  key-share lock on the organization root, which every period command holds
+  exclusively until it commits, then reads the current state. A concurrent
+  close and record write therefore serialize: either the write commits while
+  the period is not `LOCKED`, or the close commits first and the write sees
+  `LOCKED`; a write never commits into a period that was `LOCKED` when it
+  committed. The gate can attribute an `occurred_at` itself with the current
+  organization zone or the zone of a unit of the same organization (an
+  unknown unit never falls back). A `REOPENED` fact carries the proven
+  reopening (permission, reason, actor and time). Mapped to the amendment
+  kernel, `LOCKED` refuses an in-place amendment or void with
+  `PERIOD_LOCKED`, a proven reopening allows it, and an adjustment posts into
+  a later writable period.
+- **BUC-EMP-108 — Finance closes, reopens and re-locks a month.** An OWNER or
+  FINANCE member lists the organization's periods and reads October 2026
+  (`OPEN`, revision 1), closes it naming revision 1 (`LOCKED`, revision 2),
+  reopens it naming revision 2 with a reason (`REOPENED`, revision 3) and
+  re-locks it naming revision 3 (`LOCKED`, revision 4). The read shows the
+  three transitions with their actors, permissions, times and the reopening
+  reason; the audit trail holds exactly three events. A stale, repeated or
+  unauthorized command changes nothing.
+- **BUC-EMP-109 — A record command consults the period at receipt.** For the
+  VAL-19 fueling (`occurred_at` `2026-11-01T02:30:00Z`, zone
+  `America/Sao_Paulo`) the gate attributes reporting day `2026-10-31`. With
+  October `LOCKED` an in-place amendment is `PERIOD_LOCKED` and an adjustment
+  posts into the open November; after an authorized reopening with a reason
+  the amendment is allowed; after a re-lock it is refused again. A close that
+  races the record write admits exactly one ordering.
+
+## EMP-NOTIF-001 — Notification core: inbox, preferences, de-duplication, limits and history (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-notif001-notification-core.md).
+
+- **B-BR-EMP-215 — Register bounded reference-only notices in the producer transaction.**
+  A producer registers notice requests through the orgnotify producer port
+  inside its own audited orgevent transaction, bound to that source event and
+  target. A request names a kind from the closed composition-registered
+  catalog, one of the kind's template keys, exactly the kind's declared
+  parameters and 1..50 distinct recipient memberships of the same
+  organization; at most 10 requests per source event. Parameters are typed
+  references only: canonical UUID, a code from the kind's enumerated list, a
+  canonical count 0..1000000000 or a calendar date. No free text, attachment,
+  document bytes, coordinates, contact data or token can be expressed; any
+  undeclared, missing, malformed or oversized field is refused before writes.
+  The optional panel link is rendered only from the kind's relative link
+  template and its UUID parameters (no scheme, host, query or fragment); it is
+  never a capability and its own route re-authorizes it when opened. A
+  producer-supplied idempotency key de-duplicates: the same key with the same
+  canonical content returns the first request; the same key with different
+  content is refused as a reused operation; concurrent duplicates leave one
+  request.
+- **B-BR-EMP-216 — Dispatch once with current authority.**
+  The `notif.dispatch` consumer runs from the existing job queue through
+  orgevent (one receipt per event and consumer) and claims the event's
+  PENDING requests atomically, so concurrent dispatch creates no second
+  notice. Each recipient is evaluated at dispatch with current AUTH-003
+  authority at database time: a non-ended membership bound to an active
+  account, ACTIVE membership and employee, an organization that is not
+  CLOSED and, when the kind names a permission, a live assignment whose role
+  grants it. An ineligible recipient receives nothing. At most one notice
+  exists per request and recipient, and a foreign recipient or organization
+  is never addressed.
+- **B-BR-EMP-217 — Respect preferences and bounds and keep delivery history.**
+  A member may mute a non-mandatory kind for IN_APP; a mandatory kind cannot
+  be muted and ignores preferences. Delivery is bounded to 20 notices per
+  recipient and kind per UTC hour. Every evaluated recipient gets exactly one
+  IN_APP history row: DELIVERED with its notice, or SUPPRESSED with
+  INELIGIBLE, MUTED or LIMITED; nothing is silently dropped. IN_APP is the
+  only active channel; Android local, push and e-mail stay disabled and are
+  never contacted or recorded until EMP-NOTIF-002 and its delivery decision.
+  FAILED is reserved for those external channels.
+- **B-BR-EMP-218 — Read and change only the own current inbox.**
+  Self routes use the dedicated company cookie, exact Origin and CSRF, and
+  admit only the account-bound membership in the path when it is current
+  (ACTIVE membership and employee, web-capable access model, organization not
+  CLOSED); a foreign organization, another member or an ended membership gets
+  the same NOT_FOUND, a suspended member MEMBERSHIP_SUSPENDED. The inbox is a
+  newest-first keyset page bound to organization, account, membership, route
+  and filter. Marking read is idempotent and preference changes use the
+  expected revision. Each command carries an operation ID: the same ID and
+  content replays the original result without a second change; a different
+  content is OPERATION_ID_REUSED. Responses are no-store and carry only
+  references, codes, counts, dates and the link path.
+- **BUC-EMP-110 — Prove scoped once-only dispatch end to end.**
+  With real PostGIS, ordinary roles and forced RLS, a test-only producer
+  publishes through orgevent and the queue; the real handler dispatches to an
+  authorized recipient with a panel link. Prove two-organization isolation,
+  RLS without a scope, producer-port privacy refusals, idempotency-key replay
+  and conflict, concurrent duplicate producers and dispatchers, ended
+  membership and lost permission, muted and mandatory kinds, the hourly bound
+  and exact history rows.
+- **BUC-EMP-111 — Prove the member routes and the upgrade.**
+  Through the real cookie plane, list, mark read and manage preferences as the
+  current member; deny another member, another organization, an ended member
+  and a missing CSRF; replay and reuse operation IDs. Rehearse the populated
+  upgrade from the previous chain to 000204 with failure, recovery, retry,
+  previous-chain compatibility and no seeded work. Keep the route/contract
+  gate and authorization inventory exact.
+
+## EMP-DOC-002 — Document persistence, upload session and audited private access (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc002-document-persistence.md).
+
+- **B-BR-EMP-219 — The document record owns the original identity.** One
+  organization-scoped row persists each EMP-DOC-001 container: a
+  client-declared document UUID, kind `RECEIPT`, data mode `SYNTHETIC`, the
+  declared original (lower-case SHA-256, exact byte count, media type), the
+  creating membership and operation, timestamps and the six status dimensions
+  as independent columns. Storage, extraction, structure, conference and
+  fiscal each carry their own revision, which grows by exactly one per change
+  of that dimension and only along the EMP-DOC-001 transition graph from its
+  current state; reconciliation is derived and stays `UNALLOCATED` until
+  allocations exist. The private original's `orgmedia` identity is this row:
+  its document UUID, digest, size and type come only from the row, its
+  revision is the storage revision and it is ready only when storage is
+  `STORED`. Rows start at the initial states, keep their identity, are never
+  deleted and live under forced organization row-level security, so a session
+  without the organization setting sees and writes nothing.
+- **B-BR-EMP-220 — Upload session: declare, then verified bytes.** A member
+  whose current `doc.document.attach` covers a record they author creates the
+  session with an operation UUID, the document UUID and the declared original;
+  C1 accepts only `image/jpeg` up to the 5 MiB budget. The document starts
+  `UPLOADING` and the response carries an upload capability that expires
+  within five minutes and is bound to the canonical origin, organization,
+  document, account and membership. Repeating the same operation with
+  identical facts returns the first record and a fresh capability while it is
+  pending; the same operation with other facts or another actor is
+  `OPERATION_ID_REUSED`, another operation naming an existing document UUID is
+  `CONFLICT`, and concurrent duplicates write one row and one audit event.
+  Bytes reach the document ingress with the capability; the server rechecks
+  the creator, the current authority and the pending state, then runs the
+  existing bounded `orgmedia` upload (declared size plus one, exact digest,
+  type by content, conditional private write and verified read). Only after that does storage move `UPLOADING → RECEIVED`, and only the EMP-DOC-014 safety check makes it `STORED` (B-BR-EMP-251..253). A refused, interrupted, oversized or mismatched transfer leaves the document `UPLOADING` with no event; content refused for bytes that match the declaration closes it (B-BR-EMP-252); a retry after `STORED` returns the stored record and writes nothing.
+- **B-BR-EMP-221 — Content only through an audited, member-bound
+  capability.** Opening content requires the current session, membership and
+  `doc.document.view_content` covering the document (own records for `S`
+  roles) on a `STORED` document. The `ISSUED` access record (EMP-PRIV-005)
+  commits before a capability is minted; it expires within five minutes and is
+  bound to the member and the document's verified revision. Reading presents
+  that capability in the request body together with the same session and
+  authority, and the `SERVED` record commits before the original is returned,
+  base64-encoded in a no-store JSON body. Another organization's document,
+  a non-member, another member's or organization's capability, an expired
+  capability, a pending document and a refused or unavailable audit record all
+  serve nothing and write no `SERVED` record; a member lacking the permission
+  is `FORBIDDEN`, an unavailable access log is `UNAVAILABLE`, and every
+  other refusal of a document is `NOT_FOUND` (BR-TEN-006, BR-AUTH-013).
+- **B-BR-EMP-222 — Telemetry never carries content.** Logs, metric labels,
+  error bodies, audit rows and redacted value formatting carry route
+  templates, bounded codes and UUIDs only: never original bytes or their
+  encoding, content digests, storage keys or URLs, or capability tokens
+  (BR-PRIV-008). The declared digest is returned only to the authorized
+  creator in its own no-store session response.
+- **BUC-EMP-112 — Prove the upload session on real PostGIS and isolated
+  storage.** A member declares a synthetic JPEG, uploads it through the
+  capability and observes `STORED` with exactly one creation and one stored
+  event; the object exists only under the organization prefix. Retried and
+  concurrent creates keep one row, a replayed upload writes nothing, and
+  unverified, oversized, mismatched or wrong-type bytes, a foreign or expired
+  capability and another member's capability leave the document `UPLOADING`.
+  Forced row-level security, the transition guard (equal to the domain graph),
+  immutable identity and a populated upgrade from the previous head with
+  failure recovery are proven.
+- **BUC-EMP-113 — Prove audited private reads over the company API.** Through
+  the composed enterprise routes with real sessions and roles, a permitted
+  member receives a capability and reads the exact original with one `ISSUED`
+  and one `SERVED` record, while foreign organizations, members without the
+  permission, `S` roles on another member's document, expired or foreign
+  capabilities and an unavailable audit serve nothing. Captured logs and
+  metrics contain no bytes, digest, storage key or capability.
+
+## EMP-FLEET-005 — Unit and cost-centre allocation history (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-fleet005-allocation-history.md).
+
+## Enterprise asset allocation history (EMP-FLEET-005)
+
+- **B-BR-EMP-223 — Keep unit and cost-centre allocations as half-open,
+  non-overlapping periods.** Each organization asset has two append-only
+  period histories, one of operating units and one of cost centres. A period
+  names one unit (or cost centre) of the same organization, a start and an
+  optional end, and covers `[start, end)`: the instant of a change belongs to
+  the new period. Boundaries are whole microseconds. Two periods of one asset
+  in the same history never overlap; the database enforces this with an
+  exclusion constraint, so of two concurrent overlapping writes at most one
+  commits. A new period must reference a unit or cost centre that is `ACTIVE`
+  at the write, of an asset that has left `DRAFT`, and may not start before
+  the asset's first unit period. A period is never deleted or truncated; the
+  only change is closing an open period once, with an end later than its
+  start. Rows are private to the organization under forced row-level
+  security; a session without the organization setting sees none and writes
+  none.
+- **B-BR-EMP-224 — An activated asset has exactly one unit at every instant
+  from its activation.** The unit history of an asset that has left `DRAFT`
+  starts at its activation instant (the instant of its FLEET-002 initial
+  allocation), has no gap and ends in exactly one open-ended period; a
+  `DRAFT` asset has none. Activation opens the first period in the same
+  transaction, at exactly the initial allocation instant and with the
+  asset's unit. Deactivation, reactivation, disposal, revert and archive
+  neither open nor close a period: an out-of-service asset keeps its unit and
+  reactivation keeps the one open period. A transaction that would leave the
+  chain broken (closing the only open period without a successor starting at
+  the same instant, a gap, a second open period, a first period not starting
+  at activation) is refused at commit with no effect. The cost-centre history
+  is optional: an asset may have no cost centre, or gaps, but at most one at
+  any instant, and none is ever derived from the unit or invented. Archiving
+  a unit or cost centre stays refused while an `ACTIVE` asset has a current or
+  future period referencing it; ended periods and out-of-service assets do
+  not block it (unchanged FLEET-002/003 semantics for units).
+- **B-BR-EMP-225 — Move the existing single unit into the first period
+  without inventing data.** Migration 000206 gives every asset that has left
+  `DRAFT` exactly one open unit period whose unit is its single FLEET-002
+  unit (the initial allocation row, which must equal the asset's unit column)
+  and whose start and recording instant are the database instant at which
+  that initial allocation was recorded at activation. `DRAFT` assets receive
+  none (their unit is only a proposal) and no cost-centre period is created
+  (no asset stores a cost centre). If any asset is inconsistent — a
+  non-`DRAFT` asset without exactly one open initial allocation equal to its
+  unit column, or a `DRAFT` asset with one — the migration fails as a whole
+  and changes nothing. The original unit column and the initial allocation
+  table stay unchanged until the next phase; the previous binary keeps
+  working because activation still records the initial allocation, from which
+  the database opens the first period. Rollback is the capability flag on the
+  history routes.
+- **B-BR-EMP-226 — Answer "unit and cost centre of this asset at this
+  instant" from the periods.** The snapshot port
+  `UnitAndCostCentreAt(organization, asset, instant)` (also offered inside the
+  caller's transaction) returns the unit of the unit period containing the
+  instant and the cost centre of the cost-centre period containing it, or no
+  cost centre when none does. The instant is floored to the microsecond,
+  which keeps the half-open rule exact because every boundary is a whole
+  microsecond. A missing asset or an asset of another organization is not
+  found; an instant not covered by a unit period (a `DRAFT` asset, or before
+  activation) is unallocated, never a guessed unit. A later period change
+  never changes the answer for an instant inside an unchanged period
+  (BR-FLEET-016); the calling module stores the answer on its record at
+  creation and coverage uses that stored value (BR-AUTH-005). The history
+  reads list each history in start order with unit or cost centre, start,
+  end when present and recording instant, under current `fleet.asset.read`
+  covering the asset; `SELF` stays closed until assignments exist.
+- **BUC-EMP-114 — Read the allocation history of an asset.** Actor: member
+  with current `fleet.asset.read` covering the asset. Main flow: open the unit
+  or the cost-centre allocation history of one asset → the server rechecks
+  membership, permission and organization → a start-ordered keyset page
+  (limit 1..100, default 20; opaque cursor bound to account, organization,
+  membership, route, asset and limit). Alternatives: foreign or missing asset
+  → `NOT_FOUND`; missing permission → `FORBIDDEN` naming `fleet.asset.read`;
+  `DRAFT` asset → empty unit history; no cost centre ever → empty page;
+  tampered or foreign cursor → `MALFORMED_REQUEST`. Result: read only, no
+  effect.
+- **BUC-EMP-115 — Snapshot the allocation when a record is created.** Actor:
+  the owning module (trip, fueling, expense, reading, document) inside its
+  own creating transaction. Main flow: call the port with the record's
+  authoritative instant → store the returned unit and optional cost centre
+  on the record. Alternatives: unallocated → the caller applies its own
+  refusal or review rule and never stores a guessed unit; no cost centre →
+  the record stores none. Example (07-permissions §10 example 3): vehicle V
+  is in unit Norte until the change instant and in unit Sul from it; a
+  fueling at an instant before the change stores Norte, the port still
+  answers Norte for that instant after the change, and answers Sul at the
+  change instant and later. Result: the stored snapshot never moves.
+
+## EMP-RPT-001 — Asynchronous export infrastructure: job, private file and expiring link (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-rpt001-export-infrastructure.md).
+
+- **B-BR-EMP-227 — An export is one organization job, requested once.** A
+  member whose current role covers `rpt.export.run` for the whole
+  organization requests an export with fresh company proof, an `ACTIVE`
+  organization and the `organizations` capability on. The kind must be
+  registered in the closed format registry; a kind without an admitted format
+  is `EXPORT_FORMAT_UNAVAILABLE` (422) and creates nothing. Parameters are a
+  JSON object of at most 4 096 canonical bytes with lower-snake keys and no
+  null. In one transaction the server stores one `QUEUED` job (requester
+  account and membership, kind, canonical parameters and their SHA-256
+  digest, the receipt instant as the "as of" instant, the format's row, byte
+  and time ceilings capped by the infrastructure ceilings of 500 000 rows,
+  16 MiB and 120 seconds, three attempts and a retention of 7 days), writes
+  one `rpt.export.requested` audit event holding references and digests only,
+  and enqueues one reference-only worker job carrying the organization and the
+  job. The operation ID is the idempotency key: the same requester and
+  command returns the stored job with `replayed=true` and writes no second
+  job, event or queue entry; another command or account under it is
+  `OPERATION_ID_REUSED`. A requester who already holds three `QUEUED` or
+  `RUNNING` jobs gets `EXPORT_QUEUE_FULL` (429).
+- **B-BR-EMP-228 — The worker rechecks authority and fails loudly.** Export
+  work runs on its own serial dispatcher. The worker claims a job with a
+  fenced lease, so exactly one holder works on it; a concurrent claimer finds
+  it busy and retries later, and a `READY` or terminal job is left untouched.
+  Before producing anything it re-evaluates the requester's current authority
+  without a session: an active account, the same `ACTIVE` membership, an
+  `ACTIVE` organization and a current role covering `rpt.export.run` at
+  organization scope. Lost authority ends the job
+  `FAILED` with `EXPORT_RIGHTS_LOST` and no file; a kind whose format is no
+  longer registered ends `FAILED` with `EXPORT_FORMAT_UNAVAILABLE`. The format
+  writes through a bounded sink: exceeding the row, byte or time ceiling ends
+  `FAILED` with `EXPORT_TOO_LARGE` and never yields a truncated file. A
+  transient failure releases the lease (`RUNNING` back to `QUEUED`) and is
+  retried; a failure on the third attempt, or a lease that expired on the
+  third attempt, ends `FAILED` with `EXPORT_ATTEMPTS_EXHAUSTED`.
+- **B-BR-EMP-229 — Only a complete, verified private object becomes ready.**
+  The file is stored create-only in private storage under
+  `org/<org_id>/export/<export_id>/<sha256>`. Its digest, size and row count
+  are recorded on the job as provisional under the lease before the upload;
+  the media type is the admitted format's, fixed at request. The job becomes `READY`, with ready and expiry instants, only
+  after the stored object has been read back and matches that digest and
+  size, and only while the same lease still holds it. A failed, partial or
+  substituted upload or a lost lease leaves the job not `READY`, a stored
+  copy that does not match is deleted before the retry, and nothing that is
+  not `READY` is ever served. Content is deterministic for the same
+  parameters and "as of" instant, so a re-run converges on the same object;
+  a different provisional object is deleted before another is recorded, so a
+  job never publishes two files. The provisional object of a failed job is
+  deleted.
+- **B-BR-EMP-230 — Download is requester-bound, audited, short-lived and
+  expires.** Only the requester's own membership can list, read or download
+  a job; anybody else, including another member or organization, gets
+  `NOT_FOUND`. Delivery goes through the API in two steps, each re-checking
+  fresh current `rpt.export.run` authority and the same membership. Access
+  requires a `READY` job before its expiry (`EXPORT_NOT_READY` 409,
+  `EXPORT_EXPIRED` 410), records `EXPORT_FILE`/`ISSUED` through the
+  sensitive-access log and only then returns a capability bound to the API
+  origin, organization, account, membership, job and file identity that
+  expires after at most 5 minutes. Content verifies that capability, re-checks
+  authority and state, reads and verifies the private object, records
+  `EXPORT_FILE`/`SERVED` and only then returns the bytes. Any audit failure
+  serves nothing. No storage address or key reaches a client, a log or the
+  audit trail, and no capability appears outside the access response. After
+  the retention window the job becomes `EXPIRED` (also enforced at read time),
+  keeps its metadata, is never downloadable again, and a scheduled cleanup
+  deletes its object and confirms its absence before recording the deletion.
+- **BUC-EMP-116 — A finance member exports and downloads a list.** A
+  FINANCE member requests a synthetic export with an operation ID; the
+  response is the `QUEUED` job and a retry returns the same job. The worker
+  re-checks the member's authority, produces the file within its ceilings,
+  stores and verifies the private object and marks the job `READY` with row
+  count, size, SHA-256 and expiry. The member lists and reads the job, asks
+  for access (one `ISSUED` record and a capability valid for at most 5
+  minutes) and opens the content (one `SERVED` record and the exact bytes).
+  Another member and another organization see nothing. After expiry the job
+  is `EXPIRED`, the capability and the content are refused and the object is
+  deleted.
+- **BUC-EMP-117 — A failed or unsafe export publishes nothing.** The
+  requester loses the role before the worker starts: the job ends `FAILED`
+  with `EXPORT_RIGHTS_LOST` and no object. A format exceeds its row ceiling:
+  `FAILED` with `EXPORT_TOO_LARGE`, no file. Storage refuses or corrupts the
+  upload: the job is retried and stays not `READY` until a verified object
+  exists, or ends `FAILED` after three attempts with its provisional object
+  deleted. Two workers claim the same job concurrently: one produces, one
+  object. An audit outage at access or content issues no capability and
+  returns no byte.
+
+## EMP-DOC-006 — Fiscal structure: access key, NFC-e QR code and XML structural validation (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc006-fiscal-structure.md).
+
+- **B-BR-EMP-231 — A structure check says only what it checked.**
+  A fiscal structure check is pure and offline: it never contacts a provider
+  or tax authority, never fetches the QR URL, never verifies a signature,
+  authorization protocol, QR hash or CSC and never reads protNFe status codes.
+  Its result has exactly one outcome — STRUCTURE_OK, STRUCTURE_INVALID (a
+  pinned layout or bound is violated) or UNSUPPORTED (the input is not
+  identified as a handled layout, version, variant, host or model; never
+  reported as invalid) — one closed reason for a non-OK outcome, and the
+  ordered checks that ran, the last one deciding a non-OK outcome. A non-OK
+  result exposes no extracted value. The result has no authorization,
+  cancellation, consultation or "validated" field. It feeds only the document
+  Structure dimension, through the EMP-DOC-001 command
+  UNCHECKED→STRUCTURE_OK or UNCHECKED→STRUCTURE_INVALID; UNSUPPORTED commands
+  nothing (Structure stays UNCHECKED); fiscal consultation is never touched
+  (BR-TRUTH-001/002, EDR-014, EDR-134). Comparing two STRUCTURE_OK results
+  that carry keys gives STRUCTURE_OK on equal keys or STRUCTURE_INVALID
+  KEY_MISMATCH (check KEY_MATCH); any other operand is NOT_COMPARABLE.
+  String, log and JSON forms of keys and results are redacted.
+- **B-BR-EMP-232 — Access key profile.**
+  Exactly 44 ASCII characters: positions 1–6 digits, 7–18 digits or
+  uppercase A–Z, 19–44 digits (the NT 2025.001 alphanumeric-CNPJ layout of
+  18-references §3, AS-10). Check order (KEY_FORMAT): a character outside
+  0–9/A–Z → KEY_CHARACTER; length other than 44 → KEY_LENGTH; position
+  profile → KEY_CHARACTER. KEY_CHECK_DIGIT: modulo 11 over the first 43
+  characters, each valued as its ASCII code minus 48, weights 2..9 repeating
+  from the right; the digit is 11 − remainder, or 0 when the remainder is 0 or
+  1; a different 44th character → KEY_CHECK_DIGIT. KEY_FIELDS: UF code outside
+  the 27 IBGE state codes → KEY_STATE; month outside 01..12 → KEY_MONTH; model
+  other than 55 or 65 → UNSUPPORTED KEY_MODEL_UNSUPPORTED (another document
+  type sharing the layout). Nothing is trimmed, case-folded or reformatted. A
+  STRUCTURE_OK key exposes UF, year-month, issuer field, model, series,
+  number, emission type, numeric code and check digit as text. The issuer
+  field's own CNPJ/CPF check digits, the emission type and the series/number
+  ranges are not checked in a key. Because remainders 0 and 1 both give digit
+  0, a key whose digit is 0 can collide with a mistyped key; a structure
+  check is never identity or authenticity.
+- **B-BR-EMP-233 — NFC-e QR code reference.**
+  QR_SIZE: more than 2953 UTF-8 bytes (QR symbol capacity) → QR_TOO_LARGE.
+  QR_URL: not starting with `http://` or `https://` (scheme ASCII
+  case-insensitive) → UNSUPPORTED QR_NOT_URL; an authority (up to the first
+  `/` or `?`) that is not a plain DNS host name ending in `.gov.br` with at
+  least one label before it (ASCII case-insensitive; labels of 1–63 letters,
+  digits or inner hyphens; at most 253 characters; no user info, port, IP
+  literal or trailing dot) → UNSUPPORTED QR_HOST_UNSUPPORTED; then any
+  character outside visible ASCII, a `#` fragment or a `%` escape that is not
+  two hex digits decoding to visible ASCII → QR_MALFORMED. QR_PARAMETERS: no query parameter named exactly `p`
+  (including the legacy version-1 `chNFe` query) → UNSUPPORTED
+  QR_FORMAT_UNSUPPORTED; any other or repeated parameter →
+  QR_UNEXPECTED_PARAMETER. The `p` value is percent-decoded once and split at
+  `|`. QR_VERSION: fewer than two fields or a version other than `2` or `3` →
+  UNSUPPORTED QR_VERSION_UNSUPPORTED; version 3 with other than three fields
+  (its contingency variant) → UNSUPPORTED QR_VARIANT_UNSUPPORTED. QR_FIELDS
+  (→ QR_FIELDS): version 2 online is key|2|environment|CSC id|hash and
+  version 2 offline is key|2|environment|day|total|digest|CSC id|hash; any
+  other version-2 field count is invalid; version 3 online is
+  key|3|environment; environment is `1` (PRODUCTION) or `2` (HOMOLOGATION);
+  CSC id 1–6 digits; hash 40 hex digits; day 01–31; digest 1–128 hex digits;
+  total in the exact decimal profile of B-BR-EMP-234. Then the key rules of
+  B-BR-EMP-232 on the first field, then QR_MODEL: model other than 65 →
+  UNSUPPORTED QR_MODEL_UNSUPPORTED. A STRUCTURE_OK reference exposes key,
+  version, environment, layout (ONLINE/OFFLINE) and, offline, the exact total
+  text and its centavos. The hash, digest and day are never verified against
+  anything and the URL is never opened.
+- **B-BR-EMP-234 — Bounded NF-e/NFC-e XML envelope (server only).**
+  XML_SIZE: more than 1 MiB (BR-PRIV-020) → XML_TOO_LARGE before any parsing;
+  a leading UTF-8 byte-order mark is skipped. XML_PARSE is one strict
+  streaming pass with no entity map and no charset conversion that stops at
+  the first offending token: any `<!` declaration (DOCTYPE, ENTITY, external
+  or internal subset, anywhere) → XML_DOCTYPE, never expanded; a processing
+  instruction other than an XML declaration as the very first token →
+  XML_INSTRUCTION; nesting deeper than 32 → XML_DEPTH; more than 100 000
+  elements → XML_ELEMENTS; input not well formed, not UTF-8, with an
+  undefined entity reference, non-blank text outside the root, no root or a
+  second root → XML_MALFORMED. Then XML_ROOT: a root other than `NFe` or
+  `nfeProc` in namespace `http://www.portalfiscal.inf.br/nfe` → UNSUPPORTED
+  XML_ROOT_UNSUPPORTED. XML_ENVELOPE: `NFe` exactly once under `nfeProc`, and
+  `infNFe` exactly once with exactly one `Id` starting `NFe` and one `versao`
+  → XML_ENVELOPE. XML_VERSION: `versao` other than `4.00` → UNSUPPORTED
+  XML_VERSION_UNSUPPORTED. The rest of `Id` follows B-BR-EMP-232. XML_FIELDS:
+  exactly one leaf each of ide/cUF, cNF, mod, serie, nNF, dhEmi, tpEmis, cDV,
+  exactly one ide, emit, total, total/ICMSTot and total/ICMSTot/vNF, at most
+  one emit/CNPJ, emit/CPF and `protNFe`, and exactly one protNFe/infProt/chNFe when
+  `protNFe` exists; a watched leaf containing an element → XML_FIELDS.
+  XML_ISSUER: emit/CNPJ not exactly 14 characters accepted by the kernel CNPJ
+  type → XML_ISSUER; emit/CPF without emit/CNPJ → UNSUPPORTED
+  XML_ISSUER_UNSUPPORTED; neither → XML_ISSUER. XML_KEY_CONSISTENCY: the key
+  differs from cUF, the dhEmi year-month (`YYYY-MM-` prefix), emit/CNPJ, mod,
+  the canonical serie (`0|[1-9][0-9]{0,2}`) and nNF (`[1-9][0-9]{0,8}`)
+  zero-padded to 3 and 9, tpEmis, cNF, cDV or protNFe chNFe →
+  XML_KEY_MISMATCH. XML_ITEMS: `det` count outside 1..990 → XML_ITEMS.
+  XML_TOTAL: vNF not exactly matching `0|0\.[0-9]{2}|[1-9][0-9]{0,12}(\.[0-9]{2})?`
+  → XML_TOTAL. Values are compared as exact text, never trimmed. A
+  STRUCTURE_OK document exposes the key, the item count and the exact total
+  text; centavos come only from the existing exact parser within
+  0..1 000 000 000 000 and are otherwise absent, never rounded. Signatures,
+  protocol status, items, taxes and any other element are not checked.
+- **BUC-EMP-118 — Read a scanned NFC-e QR code during capture.**
+  Actor: the app capture flow (EMP-DOC-009) of an authorized field member.
+  Flow: the scanned payload is checked on the device → STRUCTURE_OK offers
+  the key, environment and, for an offline code, the exact total as
+  suggestions labelled as structure checked → the member confirms or types
+  the key, and a typed key is compared with the QR key. Alternatives:
+  UNSUPPORTED says the code is not a handled NFC-e reference and keeps manual
+  entry; STRUCTURE_INVALID names the failed check and keeps manual entry; a
+  HOMOLOGATION environment is shown as a test document. Nothing is fetched
+  and no fiscal status is shown. Result: a structure-checked suggestion or
+  manual entry; the document fiscal consultation stays NOT_CONSULTED.
+- **BUC-EMP-119 — Check a stored NF-e/NFC-e XML on the server.**
+  Actor: server-side document processing (EMP-DOC-014 job; consumers
+  EMP-DOC-007/008). Flow: a STORED XML original is moved
+  NOT_APPLICABLE→UNCHECKED, checked within its bounds, and the result
+  commands Structure → STRUCTURE_OK keeps the key (duplicate signal,
+  EMP-DOC-008), item count and exact total (EMP-DOC-007) and may be compared
+  with a captured QR or typed key. Alternatives: STRUCTURE_INVALID records
+  the reason while the original stays preserved; UNSUPPORTED leaves
+  Structure UNCHECKED; unsafe XML is refused without expansion. Result: the
+  Structure status states only what was checked; fiscal consultation remains
+  with its authorized port (EMP-INTEG-004).
+
+## EMP-AUTH-006 — Unit, cost-centre, team and asset scopes with resource scope resolution (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-auth006-structural-scopes.md).
+
+- **B-BR-EMP-235 — Store unit, cost-centre, team and asset role scopes as
+  same-organization references admitted only while the target is live.** A
+  role assignment may be scoped to `ORG`, `SELF`, `UNIT`, `COST_CENTRE`,
+  `TEAM` or `ASSET`. A structural scope names exactly one unit, cost centre,
+  team or asset of the assignment's own organization; the database enforces
+  this with a composite foreign key per type, so a target of another
+  organization or an identifier of another kind is refused (`NOT_FOUND`). A
+  new structural assignment needs an `ACTIVE` unit, cost centre or team, or an
+  asset that is `ACTIVE`, `INACTIVE` or `DISPOSED`; a `DRAFT` asset (still
+  discardable) or any `ARCHIVED` target is refused (`VALIDATION_FAILED`,
+  BR-ORG-008). `OWNER` stays `ORG` only and station roles stay unavailable.
+  Scope type and target never change after creation; a change is a new
+  assignment (UC-AUTH-02). Overlap is refused per (membership, role, scope
+  type, target) exactly as for `ORG`/`SELF`, and admission, archiving and
+  overlap are serialized on the organization root lock. Archiving a unit,
+  cost centre, team or asset neither ends nor is blocked by structural
+  assignments (they are not "use" under BR-ORG-009); such an assignment keeps
+  covering records that carry the archived structure (BR-ORG-012) and no new
+  assignment can name it. Rows remain private under forced row-level
+  security.
+- **B-BR-EMP-236 — Decide structural coverage from the record's stored
+  snapshot.** `UNIT`, `COST_CENTRE` and `ASSET` cover a record only when the
+  unit, cost centre or asset that the server resolves for that record equals
+  the assignment's target; a missing value never matches and a cost centre is
+  never derived from a unit. A record that stores a snapshot is resolved from
+  what it stored at creation, never from the asset's or person's current
+  allocation (BR-AUTH-005): a held meter reading resolves its stored asset and
+  unit and no cost centre. An asset itself resolves to itself and to the unit
+  and cost centre the FLEET-005 port answers at the evaluated instant (a
+  `DRAFT` asset has no unit). Organization-level resources (lists, roots,
+  settings, role management, ownership, documents and periods today) carry no
+  structure, so a structural assignment does not cover them. An own-records
+  (`S`) descriptor under a structural scope requires both conditions: the
+  record is the member's own and it carries the scope. Example 3 holds at a
+  real entry point: a reading held while asset V was in unit Norte stays
+  readable by a Norte-scoped role and not by a Sul-scoped role after V moves
+  to Sul, while the asset itself becomes readable by the Sul-scoped role.
+- **B-BR-EMP-237 — A team scope covers records of the team's employees at
+  the record's instant; team membership alone grants nothing.** A `TEAM`
+  assignment covers a record when the record's author or assignee employee had
+  a link to that team containing the record's stored instant (half-open,
+  server instants). Joining a team gives the joining member no access
+  (BR-ORG-011); only an assignment naming the team does. A later link change
+  never moves history: the old team keeps covering the records created while
+  the link was current and the new team does not gain them. A record type
+  that stores no author/assignee instant (assets today; assignments arrive
+  with EMP-FLEET-006) is covered by no team; assets "assigned to a team" are
+  not inferred.
+- **B-BR-EMP-238 — Grant structural scopes without escalation.** Assigning or
+  changing to a structural scope follows UC-AUTH-01/02 and BR-AUTH-007: the
+  grantor needs a current `ORG`-scoped `auth.role.assign` and its current
+  `ORG`-scoped role union must contain every descriptor of the granted role at
+  organization coverage (a structural scope only narrows); a structurally
+  scoped `auth.role.assign` covers no role management. An owner reducing an
+  own assignment may only keep or narrow its scope (`ORG` contains every
+  scope; any other scope contains only itself), never widen it. Commands keep
+  the AUTH-002 idempotency: an exact retry returns the original result and a
+  changed target under the same operation is `OPERATION_ID_REUSED`.
+  Invitation grants and context hints stay `ORG`/`SELF`, and signed offline
+  intake keeps treating any non-`ORG` assignment as unsupported (held for
+  review), so no offline path is widened.
+- **BUC-EMP-120 — Grant or change a structurally scoped role.** Actor: member
+  with current `ORG`-scoped `auth.role.assign` and a fresh session. Main flow:
+  choose member, role, scope (`UNIT`, `COST_CENTRE`, `TEAM` or `ASSET`),
+  target, optional period and reason → the server rechecks proof,
+  organization, permission and BR-AUTH-007, then the database admits the
+  target under the root lock → assignment and audit event committed → the
+  member's next request sees it. Alternatives: target missing or of another
+  organization → `NOT_FOUND`; archived target or `DRAFT` asset →
+  `VALIDATION_FAILED`; `OWNER` with a structural scope → `FORBIDDEN`;
+  overlapping identical assignment → `CONFLICT`; replay → original result;
+  same operation with another target → `OPERATION_ID_REUSED`. Result: an
+  assignment that covers only records carrying its target.
+- **BUC-EMP-121 — Read a protected record under a structural scope.** Actor:
+  member whose only covering assignment is structural. Main flow: request a
+  record → `Prepare` loads current authority; because a current structural
+  assignment carries the permission, the route's structure source resolves
+  the record's stored (or, for an asset, current) unit, cost centre, asset and
+  team facts → coverage is decided on those facts → the owning transaction
+  re-resolves them under its locks with database time before reading.
+  Alternatives: no matching snapshot → `FORBIDDEN` naming the permission and
+  no record data; record of another organization → `NOT_FOUND`; an
+  organization-level list → `FORBIDDEN`. Result: the record is served only to
+  holders whose scope matches what the record stored.
+
+## EMP-DOC-003 — Links between documents and operations (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc003-document-links.md).
+
+- **B-BR-EMP-239 — A link is an owned same-organization reference.** One
+  organization-scoped, insert-only row associates one existing document with
+  one target record, identified by the EMP-DOC-001 target kind and the
+  record's UUID; at most one row exists per document, kind and target. Only a
+  kind whose owning module registered a target resolver is accepted — in C1
+  `ASSET`, `EMPLOYEE` and `METER_READING` (a stored or a held reading, which
+  share one identity); `FUELING`, `EXPENSE`, `WORK_ORDER`, `TRIP` and any other
+  token are `VALIDATION_FAILED` and are never stored as dangling references.
+  Each reference is a real same-organization foreign key to the record's own
+  table, so a document or target of another organization, a missing record,
+  or an identifier of another table presented under a kind is `NOT_FOUND`
+  (BR-TEN-006) with no row and no event. A `DRAFT` asset, which may still be
+  discarded, and a document whose storage is `FAILED`, `REPLACED` or
+  `DELETED` refuse new links as `CONFLICT`. Links are never updated or
+  deleted by a product flow and live under forced organization row-level
+  security, so a session without the organization setting sees and writes
+  nothing.
+- **B-BR-EMP-240 — Authority is checked on both endpoints at receipt.**
+  Creating a link requires, in the same transaction and from current server
+  facts: the member's current `doc.document.attach` covering the document
+  (own documents for `S` roles) and the target owner's own permission covering
+  the target record, which the owning module declares and resolves —
+  `fleet.asset.manage` for an asset, `meter.reading.record` for a reading
+  (own readings for `S` roles, the author being the stored reading's member or
+  the held operation's member) and `idn.employee.manage` for an employee. A
+  positive owner permission is required before the target is resolved, so a
+  member without it learns nothing about the record. A missing permission is
+  `FORBIDDEN` with that permission's key. Listing a document's links requires
+  `doc.document.attach` covering the document; listing a target's links
+  requires `doc.document.attach` and the owner's permission covering the
+  target. Neither list is filtered into a content grant.
+- **B-BR-EMP-241 — Link creation is idempotent, audited and transactional.**
+  The operation UUID is the idempotency key: an identical replay returns the
+  first link; the same operation with another document, target or member is
+  `OPERATION_ID_REUSED`; another operation naming an existing link returns
+  that link with no new row or event; concurrent duplicates write one row and
+  one audit event. Every new link writes exactly one `document.link.created`
+  event targeting the document (BR-AUD-001). The document link port runs inside
+  the consumer's own scoped transaction, so a fueling or reading and its
+  receipt link commit or roll back together.
+- **B-BR-EMP-242 — A link conveys neither content nor cost.** A document that
+  is still `UPLOADING` can be linked and stays pending (BR-OFFL-015); a link
+  shows only the document's storage status. Opening content still requires
+  `doc.document.view_content` through the audited EMP-DOC-002 capability
+  (BR-PRIV-004, BR-AUTH-011): the target permission never grants content, and
+  a pending document has no content. A link carries no amount: it never
+  allocates money, changes reconciliation, fiscal or any other status or
+  revision of the document, or creates an expense (BR-DOC-003, EDR-013).
+- **BUC-EMP-122 — Prove links against real records on PostGIS.** With real
+  assets, stored and held meter readings, employees, documents and current
+  role assignments, a member links a pending receipt to each registered kind
+  through the store and through the port inside a consumer transaction; the
+  replay, the duplicate under another operation and twelve concurrent
+  duplicates keep one row and one event; foreign, missing, forged-kind,
+  unregistered-kind and draft-asset references and members lacking either
+  endpoint's permission leave no row; the schema refuses unscoped, foreign,
+  mismatched-binding, eventless and mutated rows, and a populated upgrade from
+  the previous head recovers from a failed migration.
+- **BUC-EMP-123 — Prove the link routes over the company API.** Through the
+  composed enterprise routes with real sessions and roles, a member links an own
+  pending receipt to an own reading and a manager links an own receipt to an
+  asset; the lists by document and by target page through sealed cursors;
+  refusals carry the bounded envelope and change nothing; a member who can see
+  the link but lacks content permission over the document, and anyone asking
+  for a pending document's content, read nothing; the document's statuses and
+  revisions are unchanged by linking.
+
+## EMP-AUTH-011 — Auditor read-only role and export permission gating (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-auth011-auditor-export-gating.md).
+
+- **B-BR-EMP-247 — The auditor reads and never writes.** The fixed `AUDITOR`
+  role holds exactly the documented set of `org-permissions-v4`:
+  `idn.employee.read`, `org.settings.read`, `fleet.asset.read`,
+  `trip.trip.read`, `fuel.fueling.read`, `exp.expense.read`,
+  `kpi.dashboard.read`, `audit.event.read`, `gps.track.read` (recorded tracks
+  only, never `gps.location.read_live`), `doc.document.view_content`,
+  `rpt.export.run` and the personal consent key `org.ownership.respond`; every
+  other key is denied. On every routed organization route an AUDITOR request
+  is one of: a documented read (success, nothing changed); an audited
+  sensitive or export read under its own permission (B-BR-EMP-248..250); a
+  consent attempt that the transaction participant check confines to a
+  proposal addressed to the auditor (any other proposal `NOT_FOUND`); or
+  `FORBIDDEN` with the route's permission key, no record read and no private
+  state changed. Every write route other than the export request and the own
+  ownership response is refused. A record of another organization, or an
+  organization without the auditor's membership, is `NOT_FOUND`
+  (BR-TEN-006). Finance period list and read stay under `fin.period.close`
+  (EDR-149), so the auditor has no period read until a matrix revision adds
+  a read key.
+- **B-BR-EMP-248 — An export needs both its own and the data's permission.**
+  Requesting an export needs fresh `rpt.export.run` covering the whole
+  organization and, in the same transaction, the read permission declared by
+  the export kind, held now by the same ACTIVE membership for the whole
+  organization; neither implies the other, and a structural or own-records
+  read grant does not cover an organization-level export. Every admitted kind
+  declares exactly one registered `<module>.<resource>.read` key outside
+  location (`gps.*`); a kind that declares `rpt.export.run`, any non-read key
+  (including `doc.document.view_content`), a location key or an unknown key
+  is not admitted. A missing data permission is `FORBIDDEN` with that key,
+  and no job, audit event or queue job is written.
+- **B-BR-EMP-249 — The data permission is re-checked at every later step.**
+  Each worker attempt re-evaluates the recorded requester's `rpt.export.run`
+  and the kind's declared read permission; losing either (role ended or
+  changed, membership suspended or ended, organization not ACTIVE) ends the
+  job `FAILED` with `EXPORT_RIGHTS_LOST` and no file. Issuing a download
+  capability and serving the file re-check both in the delivery transaction
+  (BR-AUTH-014): a requester who lost the data permission is `FORBIDDEN` with
+  that key and no `EXPORT_FILE` record is written; a ready job whose kind is
+  no longer admitted is `EXPORT_FORMAT_UNAVAILABLE`. Job metadata (list and
+  read of the requester's own jobs) needs `rpt.export.run` only.
+- **B-BR-EMP-250 — Sensitive bytes need their own permission whatever else is
+  held.** Document content is served only by the content routes under
+  `doc.document.view_content` and is recorded as `DOCUMENT_CONTENT`
+  `ISSUED`/`SERVED` (EMP-PRIV-005) for every holder, AUDITOR included. A
+  member with broad read permissions but without that key (for example
+  SUPERVISOR) is `FORBIDDEN` with `doc.document.view_content` and no access
+  record is written. Because no export kind may declare content or location
+  (B-BR-EMP-248), no general read or export path reaches document bytes, live
+  positions or tracks.
+- **BUC-EMP-126 — Audit an organization read-only.** Actor: member with an
+  organization-scoped AUDITOR assignment. Main flow: read employees,
+  settings and assets → open a document's content (recorded) → request an
+  export of an admitted kind whose read permission the auditor holds →
+  download it (recorded). Alternatives: any other write route → `FORBIDDEN`
+  with its key and nothing changes; a record or organization outside the
+  membership → `NOT_FOUND`; an ownership proposal addressed to someone else →
+  `NOT_FOUND`; period list/read → `FORBIDDEN` `fin.period.close`; a
+  UNIT-scoped auditor → `FORBIDDEN` `rpt.export.run` for exports. Result: the
+  auditor sees what the matrix grants and changes nothing.
+- **BUC-EMP-127 — Gate an export by the data's permission (system).** Actor:
+  requester and export worker. Main flow: request → `rpt.export.run` and the
+  kind's read permission checked in the request transaction → job `QUEUED` →
+  each worker attempt re-checks both → `READY` → access and content re-check
+  both and record `EXPORT_FILE`. Alternatives: no `rpt.export.run` (a
+  read-only role or a UNIT-scoped grant) → `FORBIDDEN` `rpt.export.run`; no
+  data permission → `FORBIDDEN` with that key, nothing written; role or data
+  permission lost before the attempt → `FAILED` `EXPORT_RIGHTS_LOST`, no
+  file; data permission lost after `READY` → `FORBIDDEN` on access/content,
+  nothing recorded. Result: an export never widens what its requester may
+  read now.
+
+## EMP-FLEET-006 — Driver assignments: primary, temporary and multiple drivers (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-fleet006-driver-assignments.md).
+
+- **B-BR-EMP-243 — An assignment names one asset and one active employee
+  record for a half-open period with a derived state.** An assignment belongs
+  to one organization and names one of its assets, one of its employee
+  records and a kind: `PRIMARY` (the responsible), `ADDITIONAL` (another
+  allowed user) or `TEMPORARY` (a substitute; it requires an end). Its period
+  `[start, end)` has whole-microsecond bounds; the end is optional except for
+  `TEMPORARY`. A start omitted by the command is the server instant of the
+  command; a start given by the command must be later than that instant; an
+  end must be later than the start. The state is never stored: at a server
+  instant it is `SCHEDULED` before the start, `ACTIVE` inside the period and
+  `ENDED` from the end on; an assignment ended before it started keeps an
+  empty period (`end = start`) and is `ENDED`. Only an `ACTIVE` employee record
+  and an asset in `ACTIVE` or `INACTIVE` can be named when the assignment is
+  created; a `DRAFT`, `DISPOSED` or `ARCHIVED` asset or a non-`ACTIVE`
+  employee is refused with `VALIDATION_FAILED`, and an asset or employee of
+  another organization (or unknown) is not found. An optional reason has at
+  most 280 characters. Rows are private to the organization under forced
+  row-level security (a session without the organization setting sees and
+  writes none) and are never deleted; the only change is ending an assignment
+  that is not `ENDED`, which moves its end earlier (never later, and never
+  before the change except to an asset's disposal instant) and records the
+  cause of that ending. Driver-profile
+  eligibility (EMP-IDN-014), reservations and team pools are not part of an
+  assignment; an assignment reserves nothing and ending it does not end a trip.
+- **B-BR-EMP-244 — One primary at a time; a command creates all or nothing;
+  replacing and ending are atomic and idempotent.** Two `PRIMARY` periods of
+  one asset never overlap: the database enforces it with an exclusion
+  constraint, so of two concurrent overlapping primaries exactly one commits
+  and the other is refused with `ASSIGNMENT_OVERLAP` and leaves nothing. A
+  create command names one asset, one kind, one period and 1 to 100 distinct
+  employee records and creates one assignment per employee or none; a
+  `PRIMARY` command names exactly one employee. A `PRIMARY` command marked
+  "replace" ends, in the same transaction, the primary whose period contains
+  the new start, at the new start (cause `REPLACED`); a primary that starts
+  later still refuses with `ASSIGNMENT_OVERLAP`, and with nothing to replace
+  the command simply creates. An end command ends one assignment of the asset
+  that is not `ENDED` at the server instant at that instant (at its start when
+  it has not started), with cause `ENDED`; ending an `ENDED` assignment is
+  refused with `CONFLICT` and changes nothing. Every write records exactly one
+  audit event and one receipt bound to the operation identifier; the same
+  intent replayed returns the first result, another intent under the same
+  identifier is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-245 — Assignments end with the employee record or the asset, in
+  the same transaction.** When an employee record becomes `TERMINATED`
+  (offboarding with termination, the source record of an employee merge or any
+  later producer), every assignment of that employee that is not `ENDED` at
+  the database instant is ended at that instant (at its start when it has not
+  started) with cause `EMPLOYEE_TERMINATED` and the employee record revision.
+  When an asset becomes `DISPOSED`, every assignment of that asset that is not
+  `ENDED` at the database instant is ended at the disposal instant (its
+  microsecond floor; at the assignment's start when that is later) with cause
+  `ASSET_DISPOSED` and the asset revision. Both happen inside the source
+  change's transaction, so the source change and the endings commit or fail
+  together. An `INACTIVE` employee, a deactivated asset, a reverted disposal,
+  a rehire and a reactivation neither end nor restore assignments.
+- **B-BR-EMP-246 — The assets assigned to a member at an instant drive the
+  `SELF` scope on assets.** The assets assigned to membership M at instant T
+  are the assets of the assignments of M's employee record whose period
+  contains T, while M's membership period contains T (started at or before T
+  and not ended at T); an ended or not yet started membership lists nothing
+  even when its employee record keeps assignments. A current `SELF` grant
+  whose role has a positive `fleet.asset.read` rule covers an asset exactly
+  while that asset is assigned to the member at the server instant (asset
+  read, lifecycle, allocation and assignment history, meter reads); it never
+  covers the organization list nor any other permission (assignment commands,
+  asset management), and `ORG` and structural coverage are unchanged. The member's own assigned-asset read lists the assignments that
+  are `ACTIVE` at the server instant. Changing an assignment never changes a
+  stored record; the signed meter intake adopts this query for
+  `meter.reading.record` (EMP-METER-002, B-BR-EMP-259).
+- **BUC-EMP-124 — Assign, replace and end assignments of an asset.** Actor:
+  member with fresh `fleet.asset.assign` covering the asset (`ORG`, or a
+  `UNIT`, `COST_CENTRE` or `ASSET` grant matching the asset's FLEET-005
+  allocation at the server instant). Main flow: choose the asset, the kind, one
+  or several employee records, the optional start, end and reason → the server
+  checks B-BR-EMP-243/244 under the organization root lock → assignments
+  created, one audit event and receipt → the asset enters each assignee's
+  `SELF` scope from the start. Alternatives: overlapping primary →
+  `ASSIGNMENT_OVERLAP`, or "replace" ends the previous primary at the new
+  start; employee not `ACTIVE` or asset not assignable → `VALIDATION_FAILED`;
+  `TEMPORARY` without end → `VALIDATION_FAILED`; end of an ended assignment →
+  `CONFLICT`; supervisor scoped to another unit → `FORBIDDEN`; replay → first
+  result. Result: assignments with periods; history kept.
+- **BUC-EMP-125 — Read the assignments of an asset and my assigned assets.**
+  Actor: member with current `fleet.asset.read` covering the asset (including
+  `SELF` on an asset assigned to the member), or any member for the own list
+  (`ORG` or `SELF` grant with `fleet.asset.read`). Main flow: the asset's
+  assignments in start order with kind, employee record, period, derived state
+  at the server instant, recording and end data; or the requesting member's
+  `ACTIVE` assignments with asset, kind and period. Alternatives: foreign or
+  unknown asset → `NOT_FOUND`; a member without a covering grant →
+  `FORBIDDEN`. Result: read only; no notification is sent in this task.
+
+## EMP-DOC-014 — Upload safety checks: type, size and active content (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-doc014-upload-safety.md).
+
+- **B-BR-EMP-251 — Verified bytes are received, then checked before they are
+  ready.** The ingress keeps the EMP-DOC-002 integrity gate: a body whose size
+  or SHA-256 differs from the declaration, and an oversized, truncated,
+  interrupted or empty body, are refused (`VALIDATION_FAILED`) and leave the
+  document `UPLOADING` with no object and no event, so the device can retry
+  from its stored file (BR-OFFL-015, UC-OFFL-03). Bytes that match the
+  declaration exactly are inspected by content; clean bytes are written
+  create-only under `org/<org>/doc/<document>/<sha256>` and verified by
+  read-back, then one creator-bound transaction moves storage
+  `UPLOADING → RECEIVED`, records `document.upload.received` and queues the
+  safety job. `STORED` is reached only by the safety check over the stored
+  object: a bounded read of at most the declared size plus one byte, the exact
+  size and digest, the type decided by content equal to the declared type, the
+  active-content rules (B-BR-EMP-252) and an unchanged snapshot after
+  inspection; it records `document.upload.stored`. The upload request runs the
+  check at once and normally answers `STORED`; if the check cannot complete it
+  answers `RECEIVED` and the job finishes it. This amends the single
+  `UPLOADING → RECEIVED → STORED` transaction and the "wrong-type stays
+  `UPLOADING`" sentence of B-BR-EMP-220.
+- **B-BR-EMP-252 — Refused content keeps a truthful terminal state and stays
+  inaccessible.** The declared digest pins the bytes, so content that matches
+  the declaration but is refused can never succeed on retry and is closed at
+  once, passing through `RECEIVED`: bytes after the JPEG end-of-image marker,
+  or a markup, script, entity, document, archive or executable signature
+  inside the image (metadata segments for every signature, the whole stream
+  for the long markup ones) make it `QUARANTINED` with reason `UNSAFE_CONTENT`;
+  content that is not an admissible image of the declared type (magic, marker
+  structure, pixel caps, decoding, inspected type different from the declared
+  one) makes it `FAILED` with `UNSUPPORTED_CONTENT`; a stored object whose
+  size or digest differs from the declaration makes it `FAILED` with
+  `INTEGRITY_MISMATCH`. Every `QUARANTINED` or `FAILED` row entered after this
+  change carries exactly one closed reason that matches its transition, never
+  changes and is enforced by the database; each terminal step records one
+  `document.upload.quarantined` or `document.upload.failed` event with the
+  reason code. The ingress never writes refused bytes; an object that the
+  check finds unsafe is retained, isolated and never served, until the
+  reviewed retention workflow (EMP-DOC-012); the object of a `FAILED` document
+  is removed and its absence confirmed. Only `STORED` documents are served:
+  content access and reads refuse `UPLOADING`, `RECEIVED`, `QUARANTINED` and
+  `FAILED` documents as `NOT_FOUND`, also from a freshly started process over
+  the same database and bucket, and orgmedia's read-time re-inspection
+  refuses unsafe bytes even on a `STORED` row. An upload retry after a
+  terminal refusal is `CONFLICT` and reads no byte. C1 stays JPEG-only.
+- **B-BR-EMP-253 — The safety job is retry-safe and converges.** Queue kind
+  `org-document-safety` carries only `{version, org_id, document_id}` and is
+  queued twice per document under separate de-duplication keys: at
+  `RECEIVED` (check, one minute later) and at declaration (session close plus
+  grace, B-BR-EMP-254). It acts on the current row only: `RECEIVED` runs the
+  check; `UPLOADING` closes an expired session; `FAILED` removes the object;
+  every other state, a missing document and another organization's document
+  are no-ops. The verdict is a pure function of the immutable declaration and
+  the create-only object, and every settlement is a compare-and-set on the
+  expected state and storage revision under the row lock, so the inline
+  check, upload retries and repeated or concurrent jobs commit exactly one
+  outcome and one event while the others observe it. A storage, database or
+  inspection outage leaves the document `RECEIVED` with nothing written and is
+  retried; the job's final attempt settles `FAILED` with
+  `CHECK_ATTEMPTS_EXHAUSTED`. A failed object removal leaves `FAILED` and is
+  retried. No partial, unverified or refused object ever becomes `STORED`.
+- **B-BR-EMP-254 — Upload sessions close.** An upload session is open for 24
+  hours after its declaration (database clock): a declaration replay mints an
+  upload capability only if it expires by then. A document still `UPLOADING`
+  five minutes after the close is closed `FAILED` with reason
+  `UPLOAD_ABANDONED` by the job, and any object under its key is removed; the
+  database refuses that closure earlier. Documents declared before this
+  change keep their state and metadata; the migration queues their closure
+  job.
+- **BUC-EMP-128 — Prove pass and refusal paths on real PostGIS and isolated
+  storage.** Through the service and the stored-object check on the
+  disposable S3 bucket: digest-mismatched, oversized, truncated, interrupted
+  and empty bodies leave `UPLOADING` with no object; content with a matching
+  digest that is not a JPEG becomes `FAILED UNSUPPORTED_CONTENT`, a JPEG with
+  a trailing payload or embedded script becomes `QUARANTINED UNSAFE_CONTENT`,
+  neither writes an object and a retry is `CONFLICT`; a clean JPEG becomes
+  `STORED` at revision 3 with one received and one stored event; substituted,
+  truncated or unsafe stored objects under `RECEIVED` become `FAILED
+  INTEGRITY_MISMATCH` (object removed) or `QUARANTINED` (object kept) and are
+  never served; another organization's job or key reaches nothing; the schema
+  enforces closed reasons per transition and forced row-level security.
+- **BUC-EMP-129 — Prove convergence under retry, concurrency, storage failure
+  and restart.** Concurrent checks of one received document commit one
+  outcome and one event; a fault-injected object store leaves `RECEIVED` with
+  no event, a fresh process over the same database and bucket serves nothing
+  until the queued job, claimed through the real queue and dispatcher, stores
+  it; the final attempt settles `CHECK_ATTEMPTS_EXHAUSTED`; a failed removal
+  keeps `FAILED` and is retried; an expired session closes only after the
+  window; a populated database upgrades with preserved metadata and queued
+  closure jobs.
+
+## EMP-RPT-002 — CSV exports for operational lists (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-rpt002-list-exports.md).
+
+- **B-BR-EMP-255 — Three operational lists are admitted, scoped and
+  re-authorized in the reading transaction.** The export registry admits
+  exactly three list kinds: `fleet.asset_list.csv` (asset register, data
+  permission `fleet.asset.read`; optional filters `state` — one asset state,
+  absent meaning every state except `ARCHIVED` as on the asset list — and
+  `kind`), `fleet.meter_reading_list.csv` (server-accepted meter readings,
+  `fleet.asset.read` as every meter read; optional `asset_id`, `meter_kind`,
+  `state` `VALID`/`SUSPECT` and a half-open period `occurred_from`/
+  `occurred_to` of canonical UTC instants with from before to) and
+  `idn.employee_list.csv` (employee register, `idn.employee.read`; optional
+  `state`). Parameters are a closed object: an unknown key, an empty or
+  non-canonical value or a reversed period is `VALIDATION_FAILED` at request
+  and nothing is written. Each kind keeps the infrastructure ceilings (500 000
+  rows, 16 MiB, 120 s). The worker reads in one scoped transaction of the
+  job's organization under forced row-level security: it first re-checks the
+  recorded requester's `rpt.export.run` and the kind's permission for the whole
+  organization (only organization-wide grants export; unit, cost-centre, team
+  and own-records row scoping is retained), then switches the transaction to
+  read-only and reads the rows in one parametrized statement bound to the
+  organization. Authority lost at that point ends the job `FAILED` with
+  `EXPORT_RIGHTS_LOST` and no file, exactly as at the worker's earlier check.
+  Every other kind — including the spreadsheet kinds `*.xlsx` — stays
+  `EXPORT_FORMAT_UNAVAILABLE` (BR-RPT-011).
+- **B-BR-EMP-256 — The table is exact, inert and deterministic.** The CSV is
+  UTF-8 with a byte-order mark, comma separated, with LF line ends, written by
+  Go `encoding/csv` (a field holding a separator, quote, line break or leading
+  space is quoted and embedded quotes are doubled), with one header row of
+  stable lower-snake column names. Integer cells carry the server's own exact
+  integers in canonical decimal, in the base unit named by the column
+  (`_m` metres, `_s` seconds) or as plain counts, and are never altered, a
+  negative offset included. Every other cell is text: a text cell that begins
+  with `=`, `+`, `-`, `@`, tab, carriage return, line feed or an apostrophe is
+  written with one extra leading apostrophe, so no cell can start a formula,
+  and a reader recovers the stored value by removing exactly one leading
+  apostrophe from a text cell that has one. Text must be valid UTF-8. Instants
+  are canonical RFC 3339 UTC with the stored sub-microsecond digits. An absent
+  value is an empty cell, never 0. Rows are ordered deterministically: assets
+  and employees by identifier, readings by exact occurrence instant and then
+  identifier. Registers are read as stored at the generation instant (the
+  reading transaction's start); readings include only those the server
+  received at or before the job's "as of" instant. The same stored data and job
+  produce byte-identical CSV content; between two runs only the manifest's
+  `generated_at` (and, across jobs, the job's own identifier and "as of")
+  differs.
+- **B-BR-EMP-257 — The manifest states the basis and the omissions, never
+  omitted values.** Each file is a ZIP package (`application/zip`, deflated
+  entries timed at the "as of" instant) holding exactly `<list>.csv` and
+  `manifest.json`. The manifest (schema `orgexport.list.v1`) states the kind,
+  export, organization identifier, name and time zone, requester membership,
+  declared read permission, "as of" and generation instants, the canonical
+  filters, the review basis (readings `APPROVED_ONLY`, "somente aprovados":
+  readings held for review are not included; registers `NOT_APPLICABLE`), the
+  content basis, the ordering, the row count, the CSV's name, rows, bytes and
+  SHA-256, every column with its type and unit, the encoding rules (UTF-8,
+  byte-order mark, separator, line end, inert prefix) and every omitted
+  sensitive column with a reason code and a note, never a value. The employee
+  list omits the work e-mail and phone (`PURPOSE_LIMITED`: collected only to
+  hand over invitations, BR-PRIV-005); the reading list omits the capture
+  session or device-enrolment locator (`CAPTURE_LOCATOR`, BR-PRIV-008).
+  Location and document-content columns belong to no admitted list.
+- **B-BR-EMP-258 — A ceiling or a failure never yields a partial file.** Data
+  rows count against the job's row ceiling and packaged bytes against its byte
+  ceiling as they are written; reaching either fails the whole production with
+  `EXPORT_TOO_LARGE` and stores nothing. A read failure, invalid stored text or
+  an unfinished package is a retryable failure that publishes nothing; the
+  last attempt ends `EXPORT_ATTEMPTS_EXHAUSTED`. Only a complete, closed
+  package is stored, read back and made `READY` (B-BR-EMP-229).
+- **BUC-EMP-130 — Export an operational list.** Actor: a member whose current
+  organization-wide roles cover `rpt.export.run` and the list's read
+  permission (today OWNER, ADMIN, FLEET_MANAGER, FINANCE and AUDITOR for the
+  three lists). Main flow: on the list choose "Exportar" with the current
+  filters → the server validates the filters and creates the `QUEUED` job → the
+  worker re-checks authority and reads the organization's rows in one
+  read-only transaction → writes the CSV and its manifest into the package
+  under the ceilings → stores, verifies and publishes it `READY` → the member
+  takes a capability and downloads the package. Alternatives: an unknown or
+  invalid filter → `VALIDATION_FAILED`; a spreadsheet kind →
+  `EXPORT_FORMAT_UNAVAILABLE`; no data permission → `FORBIDDEN` naming the key;
+  authority lost before or while reading → `FAILED`/`EXPORT_RIGHTS_LOST`, no
+  file; over a ceiling → `FAILED`/`EXPORT_TOO_LARGE` with advice to narrow the
+  filter. Result: a private, expiring package with only the organization's
+  rows the member may read.
+- **BUC-EMP-131 — Read and verify an exported list.** Actor: the member who
+  downloaded the package. Main flow: open `manifest.json` → compare the CSV's
+  SHA-256, bytes and row count → read the basis (organization, filters, "as
+  of", generation instant, review basis, ordering, units) and the omitted
+  columns with their reasons → parse the CSV with any RFC 4180 reader after the
+  byte-order mark → remove one leading apostrophe from a text cell that has one
+  → read integers in the unit named by the column. Alternatives: a digest or
+  count mismatch → the file is not the published one and is discarded.
+  Result: values identical to the stored records, with nothing a spreadsheet
+  can execute.
+
+## EMP-METER-002 — Full closure: assignment-backed SELF intake (2026-11-14)
+
+[Evidence](../enterprise/evidence/f2-meter002-persistence-intake.md).
+
+- **B-BR-EMP-259 — A SELF grant records a field reading only on an asset
+  assigned to the member, continuously.** In the signed `meter.reading.record`
+  intake a role assignment with scope `SELF` whose role has a positive
+  `meter.reading.record` rule covers an asset at the instants where (a) the
+  grant is effective (its recorded period: from the later of its start and its
+  server recording to the earlier of its end and its ending), (b) an
+  assignment of the member's employee record to that asset contains the
+  instant (B-BR-EMP-243 half-open periods of any kind) and (c) the member's
+  membership period contains it (B-BR-EMP-246). `ORG` grants with an `O` cell
+  keep their B-BR-EMP-160 coverage unchanged; a reading's coverage is the
+  union of both. A reading is applied only when that union covers without a
+  gap every instant from the earlier to the later of its declared instant and
+  its server receipt, and the current source check at receipt confirms it: for
+  a SELF grant the assigned-asset port answers that the asset is assigned to
+  the member at the database receipt instant. Assignment history comes only
+  from the retained assignment periods of the membership's employee record,
+  never from current candidates, current assignments or the client. The replay
+  of an accepted reading reads it under current `fleet.asset.read` coverage,
+  where a SELF grant covers the asset while it is assigned to the member
+  (B-BR-EMP-246); a held receipt replays from its review proof without a
+  business read. Web meter commands are unchanged: the panel records no
+  reading, installs under `fleet.asset.manage` (no SELF cell) and reads under
+  B-BR-EMP-246.
+- **B-BR-EMP-260 — Never covered is a final FORBIDDEN; formerly covered is
+  held PERMISSION_CHANGED.** When no `ORG` grant and no SELF grant with an
+  assignment of that asset covered it at any instant up to the receipt, the
+  operation is refused `FORBIDDEN`: the signed response is withheld and
+  nothing is claimed, stored, audited or held. This includes a member never
+  assigned to the asset, a member assigned only to another asset, an
+  assignment that starts after the receipt and a SELF grant that was never
+  effective while an assignment existed. When coverage existed at some instant
+  up to the receipt but does not cover the whole span between the declared
+  instant and the receipt, the reading is held for review with
+  `PERMISSION_CHANGED` through the existing OFFL-008 mechanism (one review
+  item, one held reading, a version-1 review ACK, no applied reading, no
+  effect): an assignment or grant ended before the receipt, coverage that
+  started after the declared instant, a gap between two assignments, and an
+  assignment that ended before the declared instant (the declared instant is a
+  client claim and cannot prove that the member never held the right,
+  EDR-118). Boundaries are half-open: a reading declared exactly at an
+  assignment's start is covered and one declared exactly at its end is not.
+  An assignment command and an intake serialize on the organization root
+  lock: an intake that holds it first decides on the still-active assignment
+  and the end is recorded after its receipt; an intake that waits decides on
+  the ended period.
+- **B-BR-EMP-261 — A hold caused only by the asset's disposal stays
+  ASSET_UNAVAILABLE.** A disposal ends the asset's assignments at the disposal
+  instant (B-BR-EMP-245). When a reading would be applied if the member's
+  assignments ended by the asset's disposal (cause `ASSET_DISPOSED`) were not
+  ended, it is held `ASSET_UNAVAILABLE` when declared at or after the asset's
+  current disposal instant (B-BR-EMP-206, exact to the nanosecond) and
+  `PERMISSION_CHANGED` otherwise, including after the disposal is reverted
+  (reverting restores no assignment). A real change of the member's right (a
+  grant ended, an assignment ended by a command, a replacement or a
+  termination) keeps the `PERMISSION_CHANGED` precedence of B-BR-EMP-206, and
+  `ORG` handling is unchanged.
+- **B-BR-EMP-262 — SELF is resolvable; unsupported grants stay unavailable.**
+  With the assigned-asset source composed (the default runtime), a SELF-only
+  member is no longer unavailable: the outcome is `FORBIDDEN`, held or applied
+  by B-BR-EMP-259/260. Grants the intake cannot resolve stay unsupported:
+  `UNIT`, `COST_CENTRE`, `TEAM` and `ASSET` grants (EDR-161 resolves them for
+  web records only), an `ORG` grant whose `meter.reading.record` cell is
+  own-records (`S`: `DRIVER` or `OPERATIONS_STAFF` granted at `ORG`), and SELF
+  when no assigned-asset source is composed. An unsupported grant never
+  applies a reading; when one was effective at or before the receipt and no
+  `ORG` or SELF coverage ever was, the request is unavailable (503, whole
+  response withheld, nothing stored) because the server cannot prove absence.
+  The malformed-payload admission keeps using `ORG` grants only.
+- **BUC-EMP-132 — Record a reading on my assigned asset from the field.**
+  Actor: member with a current SELF grant for `meter.reading.record`
+  (`DRIVER`, `OPERATIONS_STAFF` or another role granted at SELF) on an
+  enrolled device. Main flow: the app records the typed reading with the
+  device's declared instant and sends the signed `meter.reading.record` → the
+  server checks the current device proof, the asset and meter, the retained
+  grant and assignment periods (B-BR-EMP-259) and the asset's disposal →
+  coverage continuous from the declared instant to the receipt → one reading,
+  one audit event, one effect and one `ACCEPTED` ACK; a replay returns the
+  same ACK while the asset stays assigned. Alternatives: never assigned to
+  that asset, or only to another one → `FORBIDDEN`, nothing stored; the
+  assignment ended (command, replacement, termination) or started after the
+  declared instant → `ACCEPTED_FOR_REVIEW` `PERMISSION_CHANGED`; declared at
+  or after the asset's disposal → `ACCEPTED_FOR_REVIEW` `ASSET_UNAVAILABLE`;
+  declared outside the meter's service → `REJECTED` `MALFORMED`. Result: an
+  applied reading or a held review item, never a silent drop.
+- **BUC-EMP-133 — Hold a field reading after the member's assignment changed
+  (system).** Actor: the signed intake, then an existing reviewer. Main flow:
+  a reading arrives whose author had SELF coverage of the asset at some
+  instant up to the receipt but not across the declared instant and the
+  receipt → the reading is held with `PERMISSION_CHANGED` (or
+  `ASSET_UNAVAILABLE` under B-BR-EMP-261) in the original transaction → the
+  existing OFFL-008 reviewer reads it and accepts or rejects it. Alternatives:
+  an assignment end racing the intake → whichever holds the organization root
+  lock first decides, consistently with the end instant; replay → the first
+  ACK; an asset or assignment of another organization → `NOT_FOUND` or no
+  coverage, never a cross-organization effect. Result: one held item and no
+  reading until a reviewer accepts it.
+
+## EMP-FUEL-002 — Fueling persistence, sync handler and arithmetic consistency (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-fuel002-fueling-persistence.md).
+
+- **B-BR-EMP-263 — One immutable fueling per signed `fueling.submit`.**
+  The operation `fueling.submit` schema 1 (entity `fueling`, id = the
+  device fueling UUID, no expected revision) creates exactly one
+  organization-scoped, forced-RLS, insert-only fueling holding its original
+  revision-1 fact as the FUEL-001 candidate validated it: asset, responsible
+  employee, author membership and its employee record, capture enrollment,
+  the envelope declaration (microsecond floor plus 0..999 remainder, entry
+  zone, device offset), product and unit from `fuel-products-v1`, quantity in
+  milli-units, paid total and optional discount in centavos, optional unit
+  price in milli-BRL with its optional original text, fill, payer, payment
+  method, origin `APP`, an optional `NOT_FOUND` typed place, the server
+  receipt instant and the operation's payload digest. The stored unit and
+  cost centre are the FLEET-005 snapshot of the asset at the declared
+  instant (none when unallocated), never the current allocation
+  (BR-AUTH-005). The review state is `SUBMITTED` at revision 1, produced by
+  the APPR-001 lifecycle and kept as an append-only first review entry;
+  later decisions and revisions belong to FUEL-003/015. No expense, document
+  link, price snapshot or duplicate signal is created here.
+- **B-BR-EMP-264 — Arithmetic is a stored warning, never a correction.**
+  At acceptance the server reconciles with the accepted `orgvalue` rule
+  (BR-MONEY-005): gross = paid + discount, where an absent discount
+  reconciles as zero but stays absent in the record; with a unit price,
+  expected = round-half-up(quantity × unit price / 10 000) and the absolute
+  difference are stored, and a difference above one centavo stores the
+  warning `ARITHMETIC_MISMATCH`; without a unit price only the exact derived
+  price rational is stored, labelled derived. `KWH` uses the same integer
+  formula. The paid total is stored exactly as entered and never recomputed
+  (BR-MONEY-004). A product that no configured tank of the asset accepts
+  stores `PRODUCT_NOT_ACCEPTED` (BR-FUEL-016). Warnings never refuse a fact:
+  the ACK stays `ACCEPTED`; ACK warnings keep the OFFL-001 vocabulary and the
+  fueling warnings live on the record.
+- **B-BR-EMP-265 — Reading evidence commits with the fueling.** Exactly one
+  of a reading or a missing-reading reason is required. A reading (meter,
+  segment, reading id, base value of the meter kind) is recorded through the
+  fleet embedded-reading port with origin `FUELING`, the fueling's operation
+  id, the envelope declaration and method `TYPED`, in the same transaction
+  as the fueling; a rollback leaves neither. A reason is non-blank,
+  control-free and at most 280 characters. Neither, both, a reading of
+  another kind or outside the meter's service interval, an unknown or
+  non-active responsible employee, a `DRAFT` asset, a payload unit that is
+  not the product's unit, or a fueling id already used by another operation
+  is `MALFORMED` with nothing stored; a meter or segment not found on the
+  asset is `DEPENDENCY_PENDING` like the fleet reading intake. The database
+  proves at commit that a stored fueling has its accepted receipt and that
+  its reading has origin `FUELING`, the same operation, author, instant and
+  asset.
+- **B-BR-EMP-266 — Authority at receipt.** Only a current enrolled
+  operational device of the author records. History of
+  `fuel.fueling.record` follows EDR-118 continuity from the declared instant
+  to the receipt: an `ORG` grant with a positive rule covers the asset (the
+  new fueling is the member's own record in that scope); a `SELF` grant
+  covers it only while the asset is assigned to the member (FLEET-006
+  periods) and only when the member's own employee record is the
+  responsible employee; structural grants stay unsupported in the signed
+  intake (unavailable when alone, as B-BR-EMP-262). Never covered is
+  `FORBIDDEN` and a missing or foreign asset `NOT_FOUND`, both refusing the
+  whole response with nothing stored. Formerly covered (changed rights) or a
+  declared instant at or after the asset's disposal stores nothing and is
+  `RETRY`/`UNAVAILABLE` until a held-fueling review owner exists. The
+  embedded reading also needs current `meter.reading.record` through the
+  fleet port. A receipt replay needs current `fuel.fueling.read` over the
+  stored record (author, asset, stored unit and cost centre). Intake never
+  consults the APPR-006 period gate: an accepted field fact is not blocked by
+  a locked reporting day; locked-period edits belong to FUEL-015.
+- **B-BR-EMP-267 — Exact replay and concurrency.** The intake ledger decides
+  by operation id: the same id and digest returns the stored ACK byte for
+  byte and creates no second fueling, reading, warning, review entry or
+  audit; the same id with another digest is `REJECTED`
+  `OPERATION_ID_REUSED` and changes nothing; concurrent identical
+  operations leave exactly one fueling. The receipt replay re-proves that the
+  stored fueling equals the operation (identity, author, enrollment, digest,
+  amounts and reading). Optional references whose owners do not exist yet
+  (trip, contracted supplier, catalog-station/supplier/internal-tank place,
+  attachments, dependencies, soft references) are recognised and stay
+  `RETRY`/`UNAVAILABLE` with nothing stored; an unknown payload key is
+  `MALFORMED`.
+- **BUC-EMP-134 — Record a fueling through the signed intake.** A covered
+  member's device sends `fueling.submit` with a reading or a missing reason;
+  the server stores the fueling, its reading, warnings and first review
+  entry with one ACCEPTED ACK in one transaction; resends return the same
+  ACK; a mismatching paid total is accepted with `ARITHMETIC_MISMATCH`.
+- **BUC-EMP-135 — Prove the fueling store on real PostGIS.** Replay,
+  digest reuse, 12-way concurrency, embedded-reading rollback in both
+  directions, foreign asset, FORBIDDEN/held SELF history, malformed and
+  unavailable forms, forced RLS without an organization setting,
+  insert-only history and a populated 000212 → 000215 upgrade with injected
+  failure, recovery, no-op replay and previous-image compatibility.

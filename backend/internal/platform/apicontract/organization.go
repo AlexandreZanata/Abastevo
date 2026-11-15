@@ -36,13 +36,18 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		contact, contactGuarded := handler.(orgapi.DeviceContactDescriptor)
 		batch, batchGuarded := handler.(orgapi.SignedBatchDescriptor)
 		reviewResults, reviewResultsGuarded := handler.(orgapi.SignedReviewResultsDescriptor)
+		selfNotice, selfNoticeGuarded := handler.(orgapi.SelfNoticeDescriptor)
+		ingress, ingressGuarded := handler.(orgapi.DocumentIngressDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded && !reviewResultsGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded && !reviewResultsGuarded && !selfNoticeGuarded && !ingressGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
 		if operation == nil {
 			return fmt.Errorf("missing organization operation %s %s", method, path)
+		}
+		if !selfNoticeGuarded && operation.Extensions["x-abastevo-self-notice"] != nil {
+			return fmt.Errorf("unexpected self notice metadata for %s", path)
 		}
 		if !setupsGuarded && operation.Extensions["x-abastevo-owned-setups"] != nil {
 			return fmt.Errorf("unexpected owned setups metadata for %s", path)
@@ -69,7 +74,40 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		if !reviewResultsGuarded && operation.Extensions["x-abastevo-signed-review-results"] != nil {
 			return fmt.Errorf("unexpected author result authority metadata for %s", path)
 		}
-		if reviewResultsGuarded {
+		if !ingressGuarded && operation.Extensions["x-abastevo-document-ingress"] != nil {
+			return fmt.Errorf("unexpected document ingress metadata for %s", path)
+		}
+		bodyType := "application/json"
+		if ingressGuarded {
+			if e := validateDocumentIngress(operation, path, ingress.DocumentIngressRule(), guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || reviewResultsGuarded || selfNoticeGuarded); e != nil {
+				return e
+			}
+			bodyType = "image/jpeg"
+			declared.Success = 200
+		} else if selfNoticeGuarded {
+			rule := selfNotice.SelfNoticeRule()
+			expected := orgapi.SelfNoticeRule{Action: rule.Action, Cookie: true, CSRF: true, Binding: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || reviewResultsGuarded || ingressGuarded ||
+				selfNoticePaths[rule.Action] == "" || path != selfNoticePaths[rule.Action] || rule != expected {
+				return fmt.Errorf("invalid self notice guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context", "x-abastevo-owned-setups", "x-abastevo-device-contact", "x-abastevo-signed-batch", "x-abastevo-signed-review-results"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for self notice %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-self-notice"])
+			var recorded orgapi.SelfNoticeRule
+			decoder := json.NewDecoder(strings.NewReader(string(raw)))
+			decoder.DisallowUnknownFields()
+			if e != nil || decoder.Decode(&recorded) != nil || recorded != expected {
+				return fmt.Errorf("self notice metadata differs for %s", path)
+			}
+			if e := validateCompanySecurity(document, operation, path, orgapi.CompanySessionRule{Cookie: true, CSRF: true, Success: 200}); e != nil {
+				return e
+			}
+			declared.Success = 200
+		} else if reviewResultsGuarded {
 			expected := orgapi.SignedReviewResultsRule{AccountProof: true, Signed: true, ExactEnrollment: true, OriginalAuthor: true, WholeBodyPreflight: true, Success: 200}
 			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || path != "/v1/orgs/{org_id}/sync/review-results" || reviewResults.SignedReviewResultsRule() != expected {
 				return fmt.Errorf("invalid signed original-author result guard for %s", path)
@@ -322,7 +360,7 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 			}
 		}
 		if operation.OperationID == "" || operation.RequestBody == nil || operation.RequestBody.Value == nil ||
-			!operation.RequestBody.Value.Required || operation.RequestBody.Value.Content.Get("application/json") == nil {
+			!operation.RequestBody.Value.Required || operation.RequestBody.Value.Content.Get(bodyType) == nil {
 			return fmt.Errorf("missing organization body contract for %s", path)
 		}
 		// Every target selector belongs to the contract, including nested parent
@@ -386,6 +424,14 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		}
 	}
 	return nil
+}
+
+// selfNoticePaths pins each own-inbox action to its only allowed route.
+var selfNoticePaths = map[string]string{
+	"list":               "/v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/list",
+	"read":               "/v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/{notice_id}/read",
+	"preferences_read":   "/v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/read",
+	"preferences_update": "/v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/update",
 }
 
 func exactReviewObject(schema *openapi3.Schema, names ...string) bool {
@@ -473,6 +519,49 @@ func validateCompanySecurity(document *openapi3.T, operation *openapi3.Operation
 		if !found {
 			return fmt.Errorf("missing company session header %s", header)
 		}
+	}
+	return nil
+}
+
+// validateDocumentIngress pins the single capability-bound byte boundary: no
+// cookie, signed proof or JSON body, one required capability header and one
+// exact binary JPEG body (EMP-DOC-002, EDR-153).
+func validateDocumentIngress(operation *openapi3.Operation, path string, rule orgapi.DocumentIngressRule, other bool) error {
+	expected := orgapi.DocumentIngressRule{Capability: true, MemberBound: true, CurrentAuthority: true, VerifiedBytes: true, Permission: "doc.document.attach", Success: 200}
+	if other || path != "/v1/orgs/{org_id}/documents/{document_id}/content/upload" || rule != expected {
+		return fmt.Errorf("invalid document ingress guard for %s", path)
+	}
+	for key := range operation.Extensions {
+		if strings.HasPrefix(key, "x-abastevo-") && key != "x-abastevo-document-ingress" {
+			return fmt.Errorf("unexpected authority metadata for document ingress %s", path)
+		}
+	}
+	raw, e := json.Marshal(operation.Extensions["x-abastevo-document-ingress"])
+	var recorded orgapi.DocumentIngressRule
+	decoder := json.NewDecoder(strings.NewReader(string(raw)))
+	decoder.DisallowUnknownFields()
+	if e != nil || decoder.Decode(&recorded) != nil || recorded != expected {
+		return fmt.Errorf("document ingress metadata differs for %s", path)
+	}
+	if operation.Security == nil || len(*operation.Security) != 0 {
+		return fmt.Errorf("unexpected cookie authority for document ingress %s", path)
+	}
+	found := false
+	for _, parameter := range operation.Parameters {
+		if parameter.Value != nil && parameter.Value.In == "header" && parameter.Value.Name == orgapi.DocumentCapabilityHeader && parameter.Value.Required {
+			found = true
+		}
+		if parameter.Value != nil && parameter.Value.In == "query" {
+			return fmt.Errorf("document ingress query parameter for %s", path)
+		}
+	}
+	if !found || operation.RequestBody == nil || operation.RequestBody.Value == nil || len(operation.RequestBody.Value.Content) != 1 {
+		return fmt.Errorf("missing document ingress capability or body for %s", path)
+	}
+	media := operation.RequestBody.Value.Content.Get("image/jpeg")
+	if media == nil || media.Schema == nil || media.Schema.Value == nil || !media.Schema.Value.Type.Is("string") || media.Schema.Value.Format != "binary" ||
+		media.Schema.Value.MaxLength == nil || *media.Schema.Value.MaxLength != 5<<20 {
+		return fmt.Errorf("invalid document ingress body for %s", path)
 	}
 	return nil
 }

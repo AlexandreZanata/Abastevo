@@ -52,12 +52,41 @@ func TestFullProductionRouterEnterpriseContractAndDefaultOff(t *testing.T) {
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/change",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/discard",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/activate",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/acquisition/record",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/deactivate",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/reactivate",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/dispose",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/disposal/revert",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/archive",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/create",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/{assignment_id}/end",
+						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list",
+						"/v1/orgs/{org_id}/fleet/assignments/mine/list",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
 						"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
+						"/v1/orgs/{org_id}/finance/periods/list",
+						"/v1/orgs/{org_id}/finance/periods/{period}/read",
+						"/v1/orgs/{org_id}/finance/periods/{period}/close",
+						"/v1/orgs/{org_id}/finance/periods/{period}/reopen",
+						"/v1/orgs/{org_id}/documents/uploads/create",
+						"/v1/orgs/{org_id}/documents/{document_id}/content/upload",
+						"/v1/orgs/{org_id}/documents/{document_id}/content/access",
+						"/v1/orgs/{org_id}/documents/{document_id}/content/read",
+						"/v1/orgs/{org_id}/documents/{document_id}/links/create",
+						"/v1/orgs/{org_id}/documents/{document_id}/links/list",
+						"/v1/orgs/{org_id}/documents/links/by-target",
+						"/v1/orgs/{org_id}/reports/exports/request",
+						"/v1/orgs/{org_id}/reports/exports/list",
+						"/v1/orgs/{org_id}/reports/exports/{export_id}/read",
+						"/v1/orgs/{org_id}/reports/exports/{export_id}/access",
+						"/v1/orgs/{org_id}/reports/exports/{export_id}/content",
 					} {
 						if !mounted[http.MethodPost+" "+path] {
-							t.Fatal("fleet contract route missing from complete production router", path)
+							t.Fatal("fleet or document contract route missing from complete production router", path)
 						}
 					}
 					if err := apicontract.ValidateOrganizationRoutes(router, document); err != nil {

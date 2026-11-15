@@ -255,6 +255,10 @@ BUC-EMP-56/57 and [OFFL-002 evidence](evidence/f2-offl002-intake-ledger.md).
 | Plan limit reached after a downgrade; declared before the change | `ACCEPTED_FOR_REVIEW` | `PLAN_CHANGED` |
 | Server or database unavailable | `RETRY` | `UNAVAILABLE` |
 
+A driver reading whose assignment changed between its declared instant and its receipt is held `PERMISSION_CHANGED`; one declared at or after the asset's disposal is held `ASSET_UNAVAILABLE` (B-BR-EMP-261, EMP-METER-002).
+
+A fueling whose rights changed between its declared instant and its receipt, or declared at or after the asset's disposal, is not stored and stays `RETRY`/`UNAVAILABLE` until the held-fueling review owner exists (EMP-FUEL-002, EDR-177).
+
 ### 10.3 Offline matrix
 
 OFFL-003's construction contract extends the accepted generation-backed Android

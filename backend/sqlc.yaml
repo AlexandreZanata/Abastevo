@@ -97,6 +97,21 @@ sql:
         emit_json_tags: true
         omit_unused_structs: true
   - engine: postgresql
+    queries: db/queries/orgnotify
+    schema:
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000170_membership_periods.sql
+      - db/migrations/000204_org_notifications.sql
+    gen:
+      go:
+        package: orgnotify
+        out: db/queries/orgnotify
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/companysession
     schema:
       - db/migrations/000020_accounts.sql
@@ -567,12 +582,29 @@ sql:
     queries: db/queries/orgaudit
     schema:
       - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000202_org_sensitive_access_events.sql
     gen:
       go:
         package: orgaudit
         out: db/queries/orgaudit
         sql_package: pgx/v5
         emit_json_tags: true
+
+  - engine: postgresql
+    queries: db/queries/document
+    schema:
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000205_org_documents.sql
+      - db/migrations/000209_org_document_links.sql
+      - db/migrations/000212_org_document_upload_safety.sql
+    gen:
+      go:
+        package: document
+        out: db/queries/document
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
 
   - engine: postgresql
     queries: db/queries/orgcapability
@@ -604,6 +636,38 @@ sql:
         omit_unused_structs: true
 
   - engine: postgresql
+    queries: db/queries/orgexport
+    schema:
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000170_membership_periods.sql
+      - db/migrations/000207_org_export_jobs.sql
+    gen:
+      go:
+        package: orgexport
+        out: db/queries/orgexport
+        sql_package: pgx/v5
+        emit_json_tags: true
+  - engine: postgresql
+    queries: db/queries/review
+    schema:
+      - db/migrations/000004_identity.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000170_membership_periods.sql
+      - db/migrations/000172_organization_onboarding.sql
+      - db/migrations/000203_finance_periods.sql
+    gen:
+      go:
+        package: review
+        out: db/queries/review
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+
+  - engine: postgresql
     queries: db/queries/fleet
     schema:
       - db/migrations/000004_identity.sql
@@ -617,10 +681,38 @@ sql:
       - db/migrations/000197_organization_assets.sql
       - db/migrations/000198_organization_meters.sql
       - db/migrations/000199_organization_meter_reviews.sql
+      - db/migrations/000201_organization_asset_lifecycle.sql
+      - db/migrations/000206_organization_asset_allocation_history.sql
+      - db/migrations/000210_organization_asset_assignments.sql
     gen:
       go:
         package: fleet
         out: db/queries/fleet
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+
+  - engine: postgresql
+    queries: db/queries/fueling
+    schema:
+      - db/migrations/000004_identity.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000170_membership_periods.sql
+      - db/migrations/000172_organization_onboarding.sql
+      - db/migrations/000174_operating_units.sql
+      - db/migrations/000175_cost_centres.sql
+      - db/migrations/000194_organization_devices.sql
+      - db/migrations/000196_organization_sync_intake.sql
+      - db/migrations/000197_organization_assets.sql
+      - db/migrations/000198_organization_meters.sql
+      - db/migrations/000201_organization_asset_lifecycle.sql
+      - db/migrations/000215_organization_fuelings.sql
+    gen:
+      go:
+        package: fueling
+        out: db/queries/fueling
         sql_package: pgx/v5
         emit_json_tags: true
         omit_unused_structs: true

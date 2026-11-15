@@ -84,6 +84,40 @@ type ReportingZones struct {
 	Unit         *string
 }
 
+// ReportingAttribution is the BR-TIME-004 reporting day of one instant, with the
+// zone that decided it. It carries no receipt and is not evidence of authority.
+type ReportingAttribution struct {
+	Day    string
+	Zone   string
+	Source string
+}
+
+// AttributeReportingDay attributes an instant to the local day of the unit zone,
+// or of the organization zone without a unit, without inventing a receipt.
+// The organization zone is always validated; an invalid unit never falls back.
+func AttributeReportingDay(at time.Time, zones ReportingZones) (ReportingAttribution, error) {
+	if !validInstant(at) {
+		return ReportingAttribution{}, ErrInvalid
+	}
+	loc, err := location(zones.Organization)
+	if err != nil {
+		return ReportingAttribution{}, err
+	}
+	zone, source := zones.Organization, "organization"
+	if zones.Unit != nil {
+		zone, source = *zones.Unit, "unit"
+		loc, err = location(zone)
+		if err != nil {
+			return ReportingAttribution{}, err
+		}
+	}
+	local := at.In(loc)
+	if local.Year() < 1 || local.Year() > 9999 {
+		return ReportingAttribution{}, ErrInvalid
+	}
+	return ReportingAttribution{Day: local.Format("2006-01-02"), Zone: zone, Source: source}, nil
+}
+
 // Record is a historical value snapshot. Persist all fields together.
 // A value alone is not evidence of authority; only the owning server sets ReceivedAt.
 type Record struct {
@@ -109,26 +143,14 @@ func Capture(d Declaration, receivedAt time.Time, zones ReportingZones) (Record,
 		return Record{}, ErrInvalid
 	}
 	d = validated
-	loc, err := location(zones.Organization)
+	reporting, err := AttributeReportingDay(d.OccurredAt, zones)
 	if err != nil {
 		return Record{}, err
 	}
-	zone, source := zones.Organization, "organization"
-	if zones.Unit != nil {
-		zone, source = *zones.Unit, "unit"
-		loc, err = location(zone)
-		if err != nil {
-			return Record{}, err
-		}
-	}
-	local := d.OccurredAt.In(loc)
-	if local.Year() < 1 || local.Year() > 9999 {
-		return Record{}, ErrInvalid
-	}
 	return Record{
 		OccurredAt: d.OccurredAt.UTC(), ReceivedAt: receivedAt.UTC(), EntryZone: d.EntryZone,
-		DeviceOffsetSeconds: d.DeviceOffsetSeconds, ReportingDay: local.Format("2006-01-02"),
-		ReportingZone: zone, ReportingSource: source,
+		DeviceOffsetSeconds: d.DeviceOffsetSeconds, ReportingDay: reporting.Day,
+		ReportingZone: reporting.Zone, ReportingSource: reporting.Source,
 	}, nil
 }
 

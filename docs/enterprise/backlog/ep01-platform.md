@@ -278,7 +278,7 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 [Local UTC, reporting-day and clock-skew evidence](../evidence/f1-plat015-operation-time.md).
 
 ### EMP-PLAT-016 — Amendment kernel: append-only corrections for approved records
-- **Meta:** module PLAT · phase F3 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module PLAT · phase F3 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Preserve approved records through traceable corrections.
 - **Rules and use cases:** BR-AMD-001, BR-AMD-002, BR-AMD-003, BR-AMD-004, BR-AMD-005
 - **Depends on:** EMP-PLAT-003
@@ -292,6 +292,13 @@ ADR-019 construction batch. See the [sequencing decision](../evidence/f0-m0-deci
 - **Validation:** V-DOM, V-IDEM · migration: none · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** Each consuming module owns its derived-data invalidation and transactional application.
 - **Done when:** The domain proves correction, conflict and locked-period invariants.
+
+[F3 amendment kernel](../evidence/f3-plat016-amendment-kernel.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Pure server-side `orgamend/domain`
+and the shared 193-case amendment oracle pass under race with 100% statement
+coverage. B-BR-EMP-190..193, BUC-EMP-98..99 and EDR-137/138 precede behaviour.
+Review binding (EMP-APPR-001), period commands (EMP-APPR-006), consumer
+persistence, recalculation jobs and routes (EMP-FUEL-015) remain open.
 
 ### EMP-PRIV-001 — Enterprise data inventory and retention schedule enforcement
 - **Meta:** module PRIV · phase F6 · cut - · priority P1 · type JOB · size M · state TODO
@@ -366,7 +373,7 @@ production acceptance remain separate obligations; no sync/business activation.
 - **Done when:** An isolated restore proves replay, failure recovery and access gating.
 
 ### EMP-PRIV-005 — Access log for sensitive reads: documents, location and exports
-- **Meta:** module PRIV · phase F3 · cut C1 · priority P0 · type API · size S · state TODO
+- **Meta:** module PRIV · phase F3 · cut C1 · priority P0 · type API · size S · state LOCAL_DONE
 - **Objective:** Record permission-checked access to sensitive organization content.
 - **Rules and use cases:** BR-AUD-003, BR-AUD-004, BR-AUTH-011, BR-PRIV-004, UC-PRIV-05
 - **Depends on:** EMP-PLAT-003
@@ -380,3 +387,11 @@ production acceptance remain separate obligations; no sync/business activation.
 - **Validation:** V-API, V-AUTHZ, V-PRIV, V-ISO, V-SQL · migration: additive under the audit module · rollback: preserve data and follow the relevant scoped rollback in the architecture.
 - **Risks and assumptions:** A support session must explicitly cover the requested content category.
 - **Done when:** Each affected protected read proves denial, audit and successful scoped access.
+
+- **Status (2026-11-14):** LOCAL_DONE on `codex/enterprise-f3-priv005`. The
+  `orgaudit` sensitive-access contract (four categories, `AccessRecorder`,
+  `AccessLog`, migration 000202) is in place and private document issue/read
+  records through it; real-PostGIS tests prove audit, denial, isolation and
+  no leakage. Export (EMP-RPT-001), location (EMP-GPS-012), live document
+  authority (EMP-DOC-002), support sessions (EMP-BACK-003) and the audit read
+  route remain retained. [Evidence](../evidence/f3-priv005-sensitive-access-log.md)

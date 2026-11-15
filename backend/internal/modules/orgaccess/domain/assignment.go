@@ -27,7 +27,28 @@ type ScopeType string
 const (
 	OrgScope  ScopeType = "ORG"
 	SelfScope ScopeType = "SELF"
+	// Structural scopes (EMP-AUTH-006, BR-AUTH-004) name one unit, cost
+	// centre, team or asset of the assignment's own organization.
+	UnitScope       ScopeType = "UNIT"
+	CostCentreScope ScopeType = "COST_CENTRE"
+	TeamScope       ScopeType = "TEAM"
+	AssetScope      ScopeType = "ASSET"
 )
+
+// Structural reports UNIT, COST_CENTRE, TEAM and ASSET.
+func (s ScopeType) Structural() bool {
+	return s == UnitScope || s == CostCentreScope || s == TeamScope || s == AssetScope
+}
+func (s ScopeType) known() bool { return s == OrgScope || s == SelfScope || s.Structural() }
+
+// ScopeWithin reports whether the inner (scope, target) is contained in the
+// outer one: ORG contains every scope; any other scope contains only itself.
+func ScopeWithin(outer ScopeType, outerTarget string, inner ScopeType, innerTarget string) bool {
+	if !outer.known() || !inner.known() {
+		return false
+	}
+	return outer == OrgScope || outer == inner && outerTarget == innerTarget
+}
 
 type privateAssignment struct{}
 
@@ -69,10 +90,16 @@ func RehydrateAssignment(scope kernel.OrgScope, v AssignmentSnapshot) (Assignmen
 	if _, err := SystemCatalog().Rules(v.Role); err != nil {
 		return Assignment{}, ErrUnknownRole
 	}
-	if v.Scope != OrgScope && v.Scope != SelfScope {
+	if !v.Scope.known() {
 		return Assignment{}, ErrAssignmentScope
 	}
-	if (v.Scope == OrgScope && v.TargetID != scope.OrgID().String()) || (v.Scope == SelfScope && v.TargetID != v.MembershipID) || (v.Role == Owner && v.Scope != OrgScope) {
+	if v.Scope.Structural() && !canonicalID(v.TargetID) {
+		return Assignment{}, ErrAssignmentInvalid
+	}
+	// A structural target is one unit, cost centre, team or asset; storage
+	// proves its kind and organization. It is never the organization itself
+	// or the assignment's own membership.
+	if (v.Scope == OrgScope && v.TargetID != scope.OrgID().String()) || (v.Scope == SelfScope && v.TargetID != v.MembershipID) || (v.Scope.Structural() && (v.TargetID == scope.OrgID().String() || v.TargetID == v.MembershipID)) || (v.Role == Owner && v.Scope != OrgScope) {
 		return Assignment{}, ErrAssignmentScope
 	}
 	if v.Role == StationAdmin || v.Role == StationManager || v.Role == StationAttendant {
@@ -94,6 +121,10 @@ func RehydrateAssignment(scope kernel.OrgScope, v AssignmentSnapshot) (Assignmen
 		v.EndedAt = v.EndedAt.UTC()
 	}
 	return Assignment{value: v}, nil
+}
+func canonicalID(raw string) bool {
+	id, err := kernel.ParseOrgID(raw)
+	return err == nil && id.String() == raw
 }
 func (a Assignment) Snapshot(scope kernel.OrgScope) (AssignmentSnapshot, error) {
 	if _, err := RehydrateAssignment(scope, a.value); err != nil {

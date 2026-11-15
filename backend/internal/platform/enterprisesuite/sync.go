@@ -3,6 +3,8 @@ package enterprisesuite
 import (
 	"context"
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
+	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
+	fuelapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/application"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"net/url"
 	"sort"
@@ -10,6 +12,7 @@ import (
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	member "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
+	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
 	auditing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	eventpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/adapters"
@@ -57,15 +60,25 @@ func IntakeEvents(pool *pgxpool.Pool, consumers map[string]eventpg.Effect) (even
 	return catalog, handler, nil
 }
 
-func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, meters *fleetpg.MeterStore, auditor auditing.TransactionRunner, auditCatalog audit.Catalog) error {
-	if meters == nil {
+func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, meters *fleetpg.MeterStore, assets *fleetpg.AssetStore, auditor auditing.TransactionRunner, auditCatalog audit.Catalog) error {
+	if meters == nil || assets == nil {
 		return app.ErrUnavailable
 	}
 	meterHandler, err := fleetpg.NewMeterIntakeHandler(meters.Authority, meters)
 	if err != nil {
 		return err
 	}
-	handlers := append([]app.Handler{meterHandler}, o.IntakeHandlers...)
+	// EMP-FUEL-002: the fueling owner shares the meter authority's real
+	// sources and records its reading through the same fleet store.
+	meterAuthority, ok := meters.Authority.(*orgpg.MeterAuthority)
+	if !ok || meterAuthority == nil {
+		return app.ErrUnavailable
+	}
+	fuelingHandler, err := fuelpg.NewIntakeHandler((*orgpg.FuelingAuthority)(meterAuthority), meters, &fuelpg.Store{Allocations: assets})
+	if err != nil {
+		return err
+	}
+	handlers := append([]app.Handler{meterHandler, fuelingHandler}, o.IntakeHandlers...)
 	registry, err := app.NewRegistry(handlers...)
 	if err != nil {
 		return err
@@ -75,7 +88,7 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	definition := orgquota.TransportDefinition{Class: "org.sync", Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic immutable meter intake inherits identity v1 write200/hour per organization/account/device, weighted by attempts; production measurement and cleanup remain required."}
+	definition := orgquota.TransportDefinition{Class: "org.sync", Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic immutable meter and fueling intake inherits identity v1 write200/hour per organization/account/device, weighted by attempts; production measurement and cleanup remain required."}
 	if o.IntakeBudget != nil {
 		definition = *o.IntakeBudget
 	}
@@ -96,6 +109,12 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[meterKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup, protocol.AcceptedForReview: app.AtomicReview}
+	// EDR-175: no consumer exists until EXP-002 owns the expense projection.
+	fuelingKey := app.OperationKey{Type: fuelapp.OperationType, Schema: 1}
+	if _, exists := noAsync[fuelingKey]; exists {
+		return app.ErrUnavailable
+	}
+	noAsync[fuelingKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
 	catalog, _, err := IntakeEvents(o.Pool, o.IntakeConsumers)
 	if err != nil {
 		return err

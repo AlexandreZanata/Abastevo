@@ -16,6 +16,7 @@ import (
 	accountpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/adapters"
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	fleetdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/go-chi/chi/v5"
@@ -49,6 +50,11 @@ func meterIntakeHTTP(t *testing.T) meterIntakeHTTPFixture {
 		t.Fatal("actual installed service window unavailable", err)
 	}
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	// The signed SELF classification reads exactly these assignment columns
+	// (EDR-173); every other assignment privilege stays with its owners.
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,employee_id,asset_id,valid_from,valid_to,end_cause) ON org_asset_assignments TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
 	accounts := *fx.accounts
@@ -189,13 +195,44 @@ func TestMeterIntakeDefaultRuntimeSignedTLSAuthorizationMatrix(t *testing.T) {
 			}
 		})
 	}
-	// SELF-only retained history cannot prove absence (EDR-118): unavailable,
-	// with the whole signed response withheld and no private state change.
-	t.Run("actual-self-only-unavailable", func(t *testing.T) {
+	// EMP-METER-002 closure (B-BR-EMP-259/260/262, EDR-173): the default
+	// runtime resolves SELF from the actual assignment periods. A SELF-only
+	// member never assigned to the asset is FORBIDDEN with the whole signed
+	// response withheld and no private state change; once the real assignment
+	// command assigns the asset, the same member's reading is accepted.
+	t.Run("actual-self-only-assignment", func(t *testing.T) {
 		self := fx
 		self.person = deviceNewPerson(t, fx.deviceFixtureState)
 		self.source = meterHistoricalSource(t, fx.deviceFixtureState, self.person)
-		self.dispatch(t, self.operation(t, "184190000", nil), http.StatusServiceUnavailable)
+		self.dispatch(t, self.operation(t, "184190000", nil), http.StatusForbidden)
+		// An assignable (unit-allocated, ACTIVE) asset with its own real meter.
+		assets := assignmentStore(t, fx.legalFixtureState)
+		input := fleetCreateInput()
+		if err := fx.f.Admin.QueryRow(t.Context(), `SELECT id::text FROM org_units WHERE org_id=$1`, fx.scope.OrgID().String()).Scan(&input.UnitID); err != nil {
+			t.Fatal(err)
+		}
+		created, _, err := fleetWrite(t, fx.legalFixtureState, assets, fleetCommand(t, input))
+		if err != nil {
+			t.Fatal(err)
+		}
+		installed, _, err := meterInstall(t, fx.legalFixtureState, meterStore(t, fx.legalFixtureState), meterInstallCommand(t, meterInstallInput(t, created.AssetID, time.Now().UTC().Add(-time.Hour))))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, _, err := fleetWrite(t, fx.legalFixtureState, assets, fleetCommand(t, app.AssetWriteInput{Kind: app.ActivateAsset, AssetID: created.AssetID, ExpectedRevision: installed.AssetRevision})); err != nil {
+			t.Fatal("actual asset activation for assignment", err)
+		}
+		if _, _, err := assignmentWrite(t, fx.legalFixtureState, assets, assignmentCreate(t, app.AssignmentCreateInput{AssetID: created.AssetID, Kind: fleetdomain.PrimaryAssignment, EmployeeIDs: []string{self.person.employee}})); err != nil {
+			t.Fatal("actual assignment command", err)
+		}
+		assigned := self.operation(t, "184190000", func(raw map[string]any) {
+			raw["payload"] = map[string]any{"asset_id": created.AssetID, "meter_id": installed.MeterID, "segment_id": installed.SegmentID, "kind": "ODOMETER", "value": "184190000", "method": "TYPED"}
+		})
+		if ack := self.dispatch(t, assigned, http.StatusOK); ack.Result() != protocol.Accepted || ack.Snapshot().EntityRevision == nil {
+			t.Fatal("assigned SELF member's signed reading was not accepted", ack.Result(), ack.Code())
+		}
+		// The original fixture asset was never assigned to this member.
+		self.dispatch(t, self.operation(t, "184190000", nil), http.StatusForbidden)
 	})
 	matrixAssign(t, fx.deviceFixtureState, matrixPerson{member: fx.person.member}, "ADMIN", "ORG", "ACTIVE")
 	replay := fx.dispatch(t, first, http.StatusOK)
@@ -204,14 +241,14 @@ func TestMeterIntakeDefaultRuntimeSignedTLSAuthorizationMatrix(t *testing.T) {
 	}
 	var exact bool
 	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT
- (SELECT count(*) FROM org_meter_readings WHERE org_id=$1)=5 AND
- (SELECT count(*) FROM org_sync_operations WHERE org_id=$1)=12 AND
- (SELECT count(*) FROM org_sync_acknowledgements WHERE org_id=$1 AND result='ACCEPTED')=4 AND
+ (SELECT count(*) FROM org_meter_readings WHERE org_id=$1)=7 AND
+ (SELECT count(*) FROM org_sync_operations WHERE org_id=$1)=13 AND
+ (SELECT count(*) FROM org_sync_acknowledgements WHERE org_id=$1 AND result='ACCEPTED')=5 AND
  (SELECT count(*) FROM org_sync_acknowledgements WHERE org_id=$1 AND result='ACCEPTED_FOR_REVIEW' AND review_proof_version=1)=8 AND
  (SELECT count(*) FROM org_sync_review_items WHERE org_id=$1)=8 AND
  (SELECT count(*) FROM org_meter_held_readings WHERE org_id=$1)=8 AND
- (SELECT count(*) FROM org_sync_effects WHERE org_id=$1)=4 AND
- (SELECT count(*) FROM org_audit_events WHERE org_id=$1 AND action='offl.operation.accepted')=4 AND
+ (SELECT count(*) FROM org_sync_effects WHERE org_id=$1)=5 AND
+ (SELECT count(*) FROM org_audit_events WHERE org_id=$1 AND action='offl.operation.accepted')=5 AND
  (SELECT count(*) FROM org_audit_events WHERE org_id=$1 AND action='offl.operation.review')=8 AND
  (SELECT count(*) FROM org_event_intents WHERE org_id=$1)=0`, fx.scope.OrgID().String()).Scan(&exact); err != nil || !exact {
 		t.Fatal("actual signed role requests duplicated/lost reading/audit/ACK/effect or invented async work", err)

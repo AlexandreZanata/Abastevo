@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
@@ -33,6 +34,12 @@ func (r *intakeRepository) CheckHeldTx(context.Context, syncapp.DBTX, syncapp.So
 }
 func (r *intakeRepository) CheckOwnReceiptTx(context.Context, syncapp.DBTX, syncapp.Source, protocol.Operation) (bool, error) {
 	return false, nil
+}
+
+// The ordinary unit asset has no current disposal; disposal cases use the
+// explicit disposalIntakeRepository producer.
+func (r *intakeRepository) MeterAssetDisposalTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) (*time.Time, error) {
+	return nil, nil
 }
 
 type authorityWithoutClassifier struct{ app.MeterAuthority }

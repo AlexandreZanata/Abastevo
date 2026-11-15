@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 The [expense and finance specification](../modules/expenses-finance.md) records the recovered design. This recovery preserves the approved and documented one-cost rule, scoped review, synthetic fixtures and the separation of accounting records from actual payment.
 
 ### EMP-APPR-001 — Review lifecycle component: submit, approve, return, reject, no self-approval
-- **Meta:** module APPR · phase F3 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module APPR · phase F3 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Share a revision-bound review lifecycle with an explicit separation-of-duties guard.
 - **Rules and use cases:** BR-REV-001, BR-REV-002, BR-REV-003, BR-REV-004, BR-REV-005, BR-REV-006, BR-REV-007, BR-REV-009, EDR-012
 - **Depends on:** EMP-AUTH-003, EMP-PLAT-003
@@ -27,6 +27,13 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Validation:** V-DOM, V-AUTHZ · migration: none in this task · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F3 pure review lifecycle](../evidence/f3-appr001-review-lifecycle.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Go `review/domain` and the
+Kotlin `enterprise.review` mirror pass the same 232-case review-v1 oracle:
+C1 transitions, revision binding, append-only return loop, bounded reasons,
+canonical no self-approval, permission at receipt and honest local
+presentation. Persistence, routes, panel/app, levels and amounts remain open.
 
 ### EMP-APPR-002 — Approval policies: thresholds, levels and routing by scope
 - **Meta:** module APPR · phase F3 · cut - · priority P1 · type API · size M · state TODO
@@ -93,7 +100,7 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-APPR-006 — Period closing, lock and reopening
-- **Meta:** module APPR · phase F3 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module APPR · phase F3 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Enforce period locking and authorized reopening without rewriting approved records.
 - **Rules and use cases:** BR-AMD-001, BR-AMD-004, BR-TIME-003, BR-TIME-004, BR-AUD-001, REQ-11.4
 - **Depends on:** EMP-APPR-001
@@ -107,6 +114,13 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: prove additive upgrade and recovery if persistent state changes · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F3 period lock](../evidence/f3-appr006-period-lock.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-14. Organization-wide calendar-month periods with
+append-only lock/reopen/re-lock history (migration 000203), fresh
+`fin.period.close`/`fin.period.reopen` routes, idempotent replay, one audit per
+write and an in-transaction gate proven against the close race and the
+amendment kernel on real PostGIS. Real consumers, scoped periods and F3 remain open.
 
 ### EMP-APPR-007 — App: my submissions and returned items
 - **Meta:** module APPR · phase F3 · cut - · priority P1 · type APP · size S · state TODO
@@ -125,7 +139,7 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-EXP-001 — Expense domain: categories, origin, competence date and company amount
-- **Meta:** module EXP · phase F3 · cut - · priority P1 · type DOM · size M · state TODO
+- **Meta:** module EXP · phase F3 · cut - · priority P1 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Represent a distinct organization economic cost with its recorded source and competence date.
 - **Rules and use cases:** EDR-013, BR-MONEY-001, BR-MONEY-004, BR-TIME-004, BR-REV-009, REQ-11.1
 - **Depends on:** EMP-PLAT-009, EMP-PLAT-015
@@ -139,6 +153,13 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Validation:** V-DOM, V-MONEY · migration: none in this task · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F3 pure expense domain](../evidence/f3-exp001-expense-domain.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. One cost per closed origin
+(FUELING/WORK_ORDER/DIRECT; settlement kinds refused), exact paid/company
+centavos without a false zero, category key profile, receipt-free reporting
+day and approved-versus-pending totals pass all 222 shared Go/Kotlin vectors
+with 100% Go statements. Persistence, projection, review binding and F3 remain open.
 
 ### EMP-EXP-002 — Expense persistence, sync handlers and the fueling-to-expense projection
 - **Meta:** module EXP · phase F3 · cut - · priority P1 · type DB · size M · state TODO
@@ -237,7 +258,7 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-FIN-001 — Payables domain: supplier, reimbursement and card statement obligations
-- **Meta:** module FIN · phase F3 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module FIN · phase F3 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Model financial obligations independently of recognized cost.
 - **Rules and use cases:** EDR-013, BR-MONEY-001, BR-TRUTH-001, REQ-11.1, REQ-11.2
 - **Depends on:** EMP-EXP-001
@@ -251,6 +272,13 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Validation:** V-DOM, V-MONEY · migration: none in this task · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F3 pure payables domain](../evidence/f3-fin001-payables-domain.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Supplier, reimbursement and card
+statement obligations from approved expenses, exact bounded lines, derived
+settlement state, reasoned cancellation and separate cost/settlement views
+pass all 275 server-only Go vectors with 100% statements. Persistence,
+reimbursement API, payments, advances, panel and F3 remain open.
 
 ### EMP-FIN-002 — Reimbursements for out-of-pocket expenses
 - **Meta:** module FIN · phase F3 · cut - · priority P1 · type API · size M · state TODO
@@ -349,7 +377,7 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-BUDG-001 — Budget domain: lines, periods, dimensions and amounts
-- **Meta:** module BUDG · phase F3 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module BUDG · phase F3 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Define exact budgets over scoped dimensions and reporting periods.
 - **Rules and use cases:** BR-MONEY-001, BR-TIME-004, BR-AUTH-001, REQ-11.3, VAL-14
 - **Depends on:** EMP-EXP-001
@@ -363,6 +391,14 @@ The [expense and finance specification](../modules/expenses-finance.md) records 
 - **Validation:** V-DOM, V-MONEY · migration: none in this task · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+- **Status (2026-11-14):** LOCAL_DONE / INTEGRATION_PENDING — pure Go
+  `budget/domain` with the 261-case `budget-v1` oracle (no Kotlin mirror,
+  EDR-141): exact one-dimension lines, capacity = limit − approved
+  consumption − active holds (pending identified, never deducted), compared
+  claims, ACTIVATE/EXCEEDS and POST/EXCEEDS decisions and holds that close
+  once. Persistence, locks and the VAL-14 race proof remain EMP-BUDG-002;
+  reservation API/expiry EMP-BUDG-003; overrun policy EMP-BUDG-004.
 
 ### EMP-BUDG-002 — Budget persistence and concurrent consumption posting
 - **Meta:** module BUDG · phase F3 · cut - · priority P1 · type DB · size M · state TODO

@@ -46,7 +46,7 @@ Full METER-002 history/assignment/review remains its own open task. EDR-109
 continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccepted.
 
 ### EMP-FLEET-003 — Asset lifecycle: acquisition, active, sale, write-off, return, archive
-- **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Record how an asset enters and leaves service without losing its history, replacing the habit of deleting or renaming a row when a vehicle is sold.
 - **Rules and use cases:** BR-FLEET-008, BR-FLEET-009, BR-FLEET-010, BR-FLEET-011, UC-FLEET-02
 - **Depends on:** EMP-FLEET-002
@@ -60,6 +60,13 @@ continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccept
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: additive columns · rollback: capability flag off; columns remain
 - **Risks and assumptions:** The open-work check is only as complete as its adapters; the trip epic and the maintenance epic each replace a "none" adapter and add their own test.
 - **Done when:** Every row of the lifecycle table in the specification has a passing transition test and a passing refusal test.
+
+EMP-FLEET-003 — state LOCAL_DONE / INTEGRATION_PENDING (evidence
+`docs/enterprise/evidence/f2-fleet003-asset-lifecycle.md`). Migration 201,
+six lifecycle commands + history read, NoOpenWork port, ASSET_UNAVAILABLE intake
+hold through OFFL-008; every §6.1 row has a PostGIS transition and refusal test.
+Retained: real trip/work-order adapters, FLEET-005/006/007 effects, derived
+availability holds for DRAFT/INACTIVE. Next in the EDR-109 chain: EMP-FLEET-005.
 
 ### EMP-FLEET-004 — Tenure kinds: owned, leased, rented, third-party, loaned
 - **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state TODO
@@ -78,7 +85,7 @@ continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccept
 - **Done when:** The invariant test passes after random sequences of tenure changes.
 
 ### EMP-FLEET-005 — Unit and cost-centre allocation history
-- **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module FLEET · phase F2 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Keep the history of the unit and cost centre of each asset, so that access scope and cost attribution of past records never move when the asset does.
 - **Rules and use cases:** BR-FLEET-015, BR-FLEET-016, BR-AUTH-005
 - **Depends on:** EMP-FLEET-002, EMP-ORG-005, EMP-ORG-006
@@ -93,8 +100,15 @@ continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccept
 - **Risks and assumptions:** Records created in cut C1 before this task already store their own snapshot, so no historical record depends on this migration.
 - **Done when:** The snapshot port answers the permissions example correctly before and after a change of unit.
 
+EMP-FLEET-005 LOCAL_DONE (pending integration): migration 000206 adds the
+unit and cost-centre period tables (btree_gist exclusion, forced RLS), moves
+every activated asset's initial unit into its first period, and adds the
+snapshot port and the two history routes. FLEET-008 owns the transfer command,
+scheduling/cancellation, the asset view's current allocation and the legacy
+`unit_id` retirement; AUTH-006 consumes the port for historical scope.
+
 ### EMP-FLEET-006 — Driver assignments: primary, temporary and multiple drivers
-- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Let supervisors say who is responsible for and who may use each asset, with periods, so that the app knows which assets a driver can choose and history shows who had the asset at any moment.
 - **Rules and use cases:** BR-FLEET-018, BR-FLEET-019, BR-FLEET-020, BR-FLEET-021, BR-FLEET-022, BR-FLEET-023, BR-FLEET-024, UC-FLEET-05
 - **Depends on:** EMP-FLEET-002, EMP-IDN-002
@@ -108,6 +122,14 @@ continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccept
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API, V-JOB · migration: additive table · rollback: capability flag off; table remains
 - **Risks and assumptions:** Fleets where everybody uses every vehicle need many rows; the bulk command is the answer in this cut and a pool is a later decision.
 - **Done when:** The concurrency test for primary periods and the event-driven ending tests pass.
+
+EMP-FLEET-006 LOCAL_DONE (pending integration): migration 000210 adds forced-RLS
+assignments (PRIMARY exclusion, half-open periods, derived state) and receipts,
+ends assignments in the same transaction as an employee termination or an asset
+disposal, and four routes (create/replace, end, asset list, my assigned assets);
+SELF on `fleet.asset.read` now covers assigned assets. Retained: notifications to
+assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
+(EMP-OFFL-006), the app picker (EMP-FLEET-013) and driver eligibility (EMP-IDN-014).
 
 ### EMP-FLEET-007 — Reservations, blocks and derived availability
 - **Meta:** module FLEET · phase F4 · cut - · priority P1 · type API · size M · state TODO
@@ -138,7 +160,7 @@ continues real OFFL-008 review before lifecycle; full F2/M1/M2/C1/F3 is unaccept
 - **Acceptance:** AC1 after a transfer with a past effective instant, records created before it keep their stored unit; AC2 a future transfer changes nothing until its instant and then applies without a job having to run, because allocation is read by period; AC3 a trip in progress at the effective instant keeps the unit it started with; AC4 the event carries identifiers only.
 - **Negative cases:** destination unit archived or of another organization; actor whose scope covers only the destination; an effective instant before the asset's first allocation; two concurrent transfers; cancelling a transfer already in effect.
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: none beyond EMP-FLEET-005 · rollback: capability flag off
-- **Risks and assumptions:** A past effective instant can surprise finance; the screen and the audit event state plainly that earlier records do not move.
+- **Risks and assumptions:** A past effective instant can surprise finance; the screen and the audit event state plainly that earlier records do not move. FLEET-005 period guards allow only closing an open period once and never delete; a scheduled-transfer cancellation needs an additive guard change here.
 - **Done when:** The past-instant and trip-in-progress tests pass and the audit event names the reason.
 
 ### EMP-FLEET-009 — Supplier registry
@@ -243,7 +265,7 @@ BUC-EMP-65..68 and EDR-087..090 precede behavior; persistence, plausibility
 and meter replacement remain their owning tasks.
 
 ### EMP-METER-002 — Meter persistence and reading intake
-- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DB · size M · state IN_PROGRESS
+- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DB · size M · state LOCAL_DONE
 - **Objective:** Store meters and readings as insert-only rows and accept readings from the field exactly once, so that trips and fuelings can attach readings that survive retries and corrections.
 - **Rules and use cases:** BR-METER-001, BR-METER-002, BR-METER-005, BR-METER-006, BR-METER-008, BR-METER-024, BR-OFFL-004, BR-TIME-002, UC-METER-01
 - **Depends on:** EMP-METER-001, EMP-FLEET-002, EMP-OFFL-002
@@ -255,13 +277,20 @@ and meter replacement remain their owning tasks.
 - **Acceptance:** AC1 the same reading operation sent three times creates one row and three identical acknowledgements; AC2 an attempt to update or delete a reading as the application role fails in the database; AC3 the latest-valid query orders by `occurred_at`, not by arrival; AC4 two readings with the same value from different operations are both stored; AC5 a second meter of the same kind in service receives `METER_ALREADY_IN_SERVICE`.
 - **Negative cases:** a reading for a meter of another organization; a member without an assignment recording on an asset (`FORBIDDEN` when never allowed, held when the right changed); two devices recording at once on one meter; an embedded reading whose parent transaction rolls back leaves no row; a reading declared when the meter was not in service.
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-SYNC, V-API · migration: additive tables with insert-only protection, applied on a populated database · rollback: capability flag off; tables remain
-- **Risks and assumptions:** Insert-only protection must also hold for maintenance jobs; any repair runs through a documented operator role and is audited.
+- **Risks and assumptions:** Insert-only protection must also hold for maintenance jobs; any repair runs through a documented operator role and is audited. FLEET-006 delivers `AssignedAssetsPort` (`AssignedAtDBTX` on the borrowed intake transaction); the signed SELF adoption and historical HELD classification remain here.
 - **Done when:** The replay, insert-only and isolation tests pass on real PostGIS.
 
 [F2 meter persistence/intake construction](../evidence/f2-meter002-persistence-intake.md)
 consumes the tested/pushed Fleet source foundation6e3dde65 while keeping full
 FLEET-002 powered acceptance open. B-BR-EMP-152..159, BUC-EMP-78..82 and
 EDR-100..104 precede behavior; no assignment/history/review producer is faked.
+
+Full closure (2026-11-14): the signed intake adopts SELF from the FLEET-006
+assignment periods (B-BR-EMP-259..262, BUC-EMP-132/133, EDR-173/174): never
+covered → `FORBIDDEN`, formerly covered → held `PERMISSION_CHANGED`,
+disposal-only → `ASSET_UNAVAILABLE`; AC1–AC5 and every negative pass on real
+PostGIS. Retained: review on a later-closed segment (EMP-METER-005),
+structural grants in signed intake, native client confirmation of SELF 403.
 
 ### EMP-METER-003 — Reading validation: monotonicity, retroactive inserts and suspect flags
 - **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size S · state TODO
