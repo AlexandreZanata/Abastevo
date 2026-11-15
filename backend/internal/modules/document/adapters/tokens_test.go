@@ -145,10 +145,20 @@ func TestUploadCapabilityRefusesLongInnerDeadlinesAndInvalidInputs(t *testing.T)
 		}
 	}
 	var logs bytes.Buffer
-	slog.New(slog.NewJSONHandler(&logs, nil)).Info("synthetic", "tokens", tokens)
+	slog.New(slog.NewJSONHandler(&logs, untimedLog)).Info("synthetic", "tokens", tokens)
 	for _, out := range []string{fmt.Sprint(tokens), fmt.Sprintf("%#v", tokens), logs.String()} {
 		if strings.Contains(out, "synthetic-") {
 			t.Fatal("token handle leaked its key")
 		}
 	}
 }
+
+// untimedLog drops the record time so that a numeric private marker cannot
+// match digits of the timestamp by chance (a 4-digit marker did, about once in
+// 200 runs).
+var untimedLog = &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey {
+		return slog.Attr{}
+	}
+	return a
+}}

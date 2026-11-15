@@ -505,7 +505,7 @@ func TestPrivateValuesNeverFormatIdentifiersDigestsOrCapabilities(t *testing.T) 
 	values := []any{actor(), command(), command().Original, view(domain.Stored), upload, app.Created{View: view(domain.Uploading), Upload: &upload}, app.Stored{View: view(domain.Stored)},
 		app.Subject{Object: media.Object{OrgID: orgID, DocumentID: docID, SHA256: digest, MIME: app.MediaTypeJPEG, Bytes: 1024, Revision: 2, Synthetic: true}, State: domain.Received, Revision: 2}}
 	var logs bytes.Buffer
-	logger := slog.New(slog.NewJSONHandler(&logs, nil))
+	logger := slog.New(slog.NewJSONHandler(&logs, untimedLog))
 	for _, value := range values {
 		raw, _ := json.Marshal(value)
 		logger.Info("synthetic", "value", value)

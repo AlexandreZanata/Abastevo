@@ -99,7 +99,7 @@ func assetMapped(err error) error {
 type FleetRecords struct{}
 
 func (FleetRecords) Check(_ context.Context, scope kernel.OrgScope, subject access.Subject, policy access.Policy, facts permissions.ResourceFacts, rules []permissions.Rule) error {
-	if scope.Validate() != nil || subject.Scope() != scope || facts.Validate(scope) != nil || facts.OrgID != scope.OrgID() || len(rules) == 0 || policy != app.Policy(false) && policy != app.Policy(true) && policy != app.AssignPolicy() {
+	if scope.Validate() != nil || subject.Scope() != scope || facts.Validate(scope) != nil || facts.OrgID != scope.OrgID() || len(rules) == 0 || policy != app.Policy(false) && policy != app.Policy(true) && policy != app.AssignPolicy() && policy != app.ReservePolicy() {
 		return access.ErrUnavailable
 	}
 	return nil

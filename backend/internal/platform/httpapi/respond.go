@@ -22,6 +22,9 @@ type Detail struct {
 	Code  string `json:"code"`
 	// Count is an optional exact decimal category count from a source-owned error.
 	Count string `json:"count,omitempty"`
+	// Instant is an optional exact RFC 3339 UTC instant from a source-owned
+	// error (a reservation conflict window bound, EMP-FLEET-007).
+	Instant string `json:"instant,omitempty"`
 }
 
 // WriteError renders the ApiError envelope with a safe display message.

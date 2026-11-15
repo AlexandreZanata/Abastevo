@@ -51,7 +51,7 @@ func (syntheticPlanRows) ReadPermission() permissions.Permission { return "subs.
 func auditorRouter(t *testing.T, fx deviceFixtureState) (chi.Router, *jobs.Dispatcher) {
 	t.Helper()
 	grantEmployeeTables(t, fx.legalFixtureState)
-	_ = assignmentStore(t, fx.legalFixtureState)
+	_ = reservationStore(t, fx.legalFixtureState)
 	_ = meterStore(t, fx.legalFixtureState)
 	fx.f.GrantMeterReviews(t)
 	fx.f.GrantMembershipAccessCommands(t)
@@ -235,11 +235,14 @@ var auditorPositiveRoutes = []string{
 	"/v1/orgs/{org_id}/employees/{employee_id}/read",
 	"/v1/orgs/{org_id}/fleet/assets/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list",
+	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read",
+	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/read",
+	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list",
 	"/v1/orgs/{org_id}/fleet/assignments/mine/list",
 	"/v1/orgs/{org_id}/ownership-transfer/accept",
@@ -326,8 +329,11 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if read := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/read", map[string]any{}, 200, "", ""); read["id"] != asset {
 		t.Fatal("auditor asset read", read["id"])
 	}
-	for _, template := range []string{"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list", "/v1/orgs/{org_id}/fleet/assignments/mine/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list"} {
+	for _, template := range []string{"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list", "/v1/orgs/{org_id}/fleet/assignments/mine/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/list"} {
 		call(template, map[string]any{"limit": 20}, 200, "", "")
+	}
+	if availability := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read", map[string]any{}, 200, "", ""); availability["availability"] != "UNAVAILABLE" {
+		t.Fatal("auditor availability of the draft asset", availability)
 	}
 	if latest, _ := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest", map[string]any{}, 200, "", "")["latest"].(map[string]any); latest["value"] != "123456" {
 		t.Fatal("auditor latest reading", latest)
@@ -438,7 +444,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 110 || positive != 24 || denied != 86 {
+	if len(routes) != 118 || positive != 27 || denied != 91 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 
