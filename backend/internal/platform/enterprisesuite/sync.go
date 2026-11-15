@@ -2,6 +2,8 @@ package enterprisesuite
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
 	"errors"
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
@@ -23,6 +25,7 @@ import (
 	syncweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters/http"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgquota"
 	"github.com/go-chi/chi/v5"
@@ -158,5 +161,31 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err := syncweb.RegisterReviewResults(router, syncweb.ReviewResultsOptions{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Repository: meters.Reviews}); err != nil {
 		return err
 	}
+	// EMP-OFFL-006: the member's purpose-bound reference feed (EDR-216..218).
+	roles, ok := meterAuthority.Roles.(syncpg.ReferenceAuthority)
+	if !ok || roles == nil {
+		return app.ErrUnavailable
+	}
+	secret := referenceFeedKey(o.CursorSecret)
+	reference := &syncpg.ReferenceStore{Pool: o.Pool, Authority: roles, Assets: assets, Secret: secret, NewEpoch: jobs.NewUUIDv4,
+		Confirm: func(ctx context.Context, tx pgx.Tx, s app.Source) (time.Time, error) {
+			_, now, err := devices.CheckCurrentDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
+			if err != nil {
+				return time.Time{}, app.SourceDenied(err)
+			}
+			return now, nil
+		},
+	}
+	if err := syncweb.RegisterReference(router, syncweb.ReferenceOptions{Enabled: true, Origin: o.Origin, Secret: secret, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Repository: reference}); err != nil {
+		return err
+	}
 	return syncweb.Register(router, syncweb.Options{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Late: devices, State: devices, Service: app.Service{Store: store, Admission: intakeAdmission{budget}, Registry: registry}, Limits: protocol.DefaultLimits()})
+}
+
+// referenceFeedKey separates the reference cursor key from other uses of the
+// deployment cursor secret.
+func referenceFeedKey(secret []byte) []byte {
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte("abastevo/reference-feed/v1"))
+	return mac.Sum(nil)
 }

@@ -840,6 +840,10 @@
       "boundary": "SIGNED_BATCH"
     },
     {
+      "route": "POST /v1/orgs/{org_id}/sync/reference",
+      "boundary": "SIGNED_REFERENCE_FEED"
+    },
+    {
       "route": "POST /v1/orgs/{org_id}/sync/review-results",
       "boundary": "SIGNED_REVIEW_RESULTS"
     }

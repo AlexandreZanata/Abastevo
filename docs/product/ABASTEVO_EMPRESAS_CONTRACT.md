@@ -5224,3 +5224,57 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   declared before the capability was turned off is held `PLAN_CHANGED`; one
   declared after it is refused `ENTITLEMENT_REQUIRED`; no role, membership or
   enrollment changed; held work is never counted until a reviewer decides.
+
+## EMP-OFFL-006 — Reference data pull for the active organization: versioned deltas (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-offl006-reference-feed.md).
+
+- **B-BR-EMP-336 — Purpose-bound reference content.** The reference feed of
+  a selected organization contains only the assets currently assigned to the
+  requesting member (EMP-FLEET-006 periods at the server instant) that the
+  member's current `fleet.asset.read` grants cover (ORG; SELF through the
+  assignment; UNIT and ASSET through the asset's current allocation). Each is
+  one minimised `asset` entity: identifier, revision, kind, usage basis,
+  state, name, fleet number, plate, the products its tanks accept under the
+  `fuel-products-v1` catalog name, its in-service meters (identifier, kind,
+  modulus, installation instant, open segment) and the covering assignment's
+  kind and end. Nothing else is cached: no serial number, unit, cost centre,
+  acquisition, value, other drivers, reservations or readings (BR-PRIV-003).
+- **B-BR-EMP-337 — Cached data is a read copy, never authority.** Every
+  response carries `confirmed_at`, the database clock after the final source
+  check; the client shows that age and replaces nothing on its own clock.
+  Every choice made from cached data is checked again at intake exactly as if
+  no cache existed (BR-OFFL-016).
+- **B-BR-EMP-338 — One scoped, signed cursor.** The feed is pulled on the
+  signed device route with the current exact enrollment. The cursor is opaque
+  and server-signed, and binds organization, membership, enrollment, feed
+  epoch and revision; a cursor that does not verify for the exact requesting
+  period is `NOT_FOUND` and reveals nothing.
+- **B-BR-EMP-339 — Monotonic revisions with durable tombstones.** Each member
+  has one feed whose revision only grows. A pull appends one revision per
+  changed entity (an upsert when its minimised content changed, a `DELETE`
+  tombstone when it left the authorized set, whatever the reason: unassigned,
+  reassigned, disposed, archived or no longer covered). A delta answers every
+  entity changed after the cursor with its latest state, ordered by revision,
+  with `from_revision` and `revision` so a client can detect any gap; a
+  tombstone is delivered even after its source row is gone.
+- **B-BR-EMP-340 — Reset instead of stale authority.** No cursor, a cursor of
+  another feed epoch or a revision ahead of the feed answers `RESET` with the
+  complete current set; a member who no longer holds any covering
+  `fleet.asset.read` grant gets `RESET` with reason `FORBIDDEN` and no
+  entities, so the client must drop every cached entity of that partition and
+  never keeps the old data.
+- **B-BR-EMP-341 — Closed, versioned entity set.** Entity types are a closed
+  set versioned with the response (`asset` today). Checklist templates
+  (EMP-CHECK-001) and availability join only as new entity types through their
+  owners; a client refuses an unknown type instead of guessing.
+- **BUC-EMP-169 — Refresh reference data (UC-OFFL-08).** The app pulls with
+  its last cursor, applies the ordered changes and tombstones, stores the new
+  cursor and shows "confirmed at" from the server.
+- **BUC-EMP-170 — A reassignment reaches the cache.** After a reassignment
+  the next pull removes the asset with a tombstone; a reading already queued
+  for it is decided at intake as before (held or refused), never by the cache.
+- **BUC-EMP-171 — Prove the feed on real PostGIS.** Foreign and tampered
+  cursors, tombstones after the cursor, monotonic gap-detectable revisions,
+  revoked grants, server-clock confirmation, concurrent pulls, database
+  guards and a populated upgrade.
