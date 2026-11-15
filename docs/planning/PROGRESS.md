@@ -15,6 +15,23 @@
   untouched packages. Delivered through the cumulative dev → main PR.
   [Batch checkpoint](../enterprise/evidence/f3-execution.md#batch-checkpoint--2026-11-14).
 
+- Supplemental OpenTatu audit publication, 2026-11-14: LOCAL_DONE /
+  INTEGRATION_PENDING; bounded documentation task on maintained `dev`.
+  [Engine evidence and source follow-up](../security/opentatu/2026-11-14/ENGINE_REVIEW.md)
+  records source `018f2df18c8b029ec3e665fc98ba7318e6f076bc`, engine `7df5899c`,
+  native PARTIAL result (7 hypotheses: 0 confirmed, 1 dismissed, 6 inconclusive),
+  0 native findings/tasks and US$ 0.12783331 recorded model consumption.
+  The independent static candidate and ten-case patch remain unexecuted;
+  source follow-up does not rewrite native verdicts or certify a correction.
+  Final artifact identities, JSON projection/privacy and patch-format checks
+  are recorded in the bundle; the complete OpenTatu check passed 410 tests.
+  [Publication PR #220](https://github.com/AlexandreZanata/Abastevo/pull/220) follows maintained `dev` -> protected `main`;
+  required current-head `Quick verification` is reported by the PR checks.
+  Next: owner review of the evidence/handoff and required checks before integration.
+  Existing implementation-stage, integration, release and operational obligations
+  remain unchanged. Engine implementation review is separate in
+  [OpenTatu PR #1](https://github.com/AlexandreZanata/OpenTatu/pull/1).
+
 - Registry daily sync restored, 2026-11-14: PR #219 merged at `018f2df1`
   (source-owned locality corrections, B-BR-SYNC05 amended; race integration
   bound 30m). Host-path registry release `018f2df1` installed on the new VPS
