@@ -748,3 +748,42 @@ Integration (`3a5497e9`): clean merge (the branch already contained
 `3345865b`); build, vet, gofmt, `sqlc diff` green; the trip review, period and
 amendment grants are added to the backend README. TRIP-002's production
 grants are not yet written in the README (retained).
+
+### Sync with dev/main after PR #222 — 2026-11-15
+
+PR #221 merged at `b9d64281` and PR #222 (storage replay fix `82a5f97e`) at
+`a0b72533`; `origin/dev` = `82a5f97e`, and the trees of `origin/main` and
+`origin/dev` are identical. Both were merged into the F4 batch with normal
+merges (`509c22a9`, `25e8b6d6`), no conflicts; build, vet and gofmt green.
+The storage fix addresses the `orgmedia` flake seen in the `3345865b` union.
+
+### EMP-CHECK-003 — damage and incident reports with photos: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-check003-incident-reports.md), commit `680505b3`, migration
+000230 (redefines the asset and unit usage functions from their 000227 bodies
+and the cost-centre one from 000220, keeping every line). Pure
+`maintenance/domain/incident` and Kotlin `enterprise/maintenance/incident`
+over the 98-case `checklist/incident-v1.psv`; `document-v1.psv` extended to
+252 cases for the new link target. Reports are recorded offline through the
+signed intake and are accepted independently of their photo upload, whose
+storage state stays the document's own; photos link through the DOC-002/003
+chain (synthetic data only, real photos legally gated by OQ-04); a report never
+books a cost; inside a trip it appears on the timeline through a read join;
+handling (acknowledge, resolve with a note, dismiss with a reason) under
+`check.incident.manage` with revision CAS and audit (EDR-238..241). RED Go
+4/6 top-level and 98/98 vectors, Kotlin 101/103, cmd/api 3, contract 3/3,
+trip codec 1, PostGIS 10/10 schema and 10/10 behaviour → GREEN; union 33
+packages 1119/8681, 0 failures; untagged 223 packages; storage/document/
+orgmedia rerun after the #222 merge 9 packages 124/622. Counts: 145 normal
+routes (28 routed / 56 not routed), auditor walk 145 / 30 / 115, matrix 280
+cells (112/168), 8 signed operation owners. Retained: `blocks_use` blocking
+and release (CHECK-002/004), held reports and late intake, device attachments
+and the signed link path (OFFL-005/DOC-004), unlink/retention (DOC-011/012),
+work orders from reports (MAINT-003), events/notifications, Android screens,
+panel timeline (TRIP-006), team-scope facts, production grants; a report on a
+submitted/decided/amended trip is accepted and shown on the timeline but never
+joins a TRIP-015 review revision.
+
+Integration (`cb3a23d6`): the branch already contained the F4 head
+`25e8b6d6`, so the merge was conflict-free; build, vet (both tags), gofmt,
+`sqlc diff` and check_plan green.
