@@ -4,8 +4,8 @@
   `93f3a88d`; Claude Code). compileSdk/targetSdk 36 (Play requirement since
   2026-08-31), share link moved off the GitHub APK, listing rewritten, store
   screenshots/cards/feature graphic/icon with generator under `docs/store/`.
-  Verdict NOT READY: UGC report/block users, AAB + Play App Signing channel,
-  Console declarations and developer-account path stay open.
+  Verdict NOT READY: UGC report/block users, the owner-signed AAB upload
+  (organization account, new upload key) and Console declarations stay open.
   [Readiness checklist](../store/PLAY_STORE_READINESS.md).
 
 - Enterprise F4, 2026-11-15: batch checkpoint LOCAL_DONE / INTEGRATION_PENDING

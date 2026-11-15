@@ -7,10 +7,10 @@ them at submission time; Play policy changes often.
 
 **Overall verdict: NOT READY for a production Play submission.** The store
 listing assets, privacy/deletion URLs, 16 KB alignment and the API 36 target
-are in place. Four items still block a first submission: user-generated-content
-reporting/blocking, an AAB release channel with Play App Signing, the Play
-Console declarations (Data safety, foreground services, content rating), and the
-developer-account/testing path. None of these can be completed by code in this
+are in place. Three items still block a first submission: user-generated-content
+reporting/blocking, a signed AAB (release channel or a manual upload signed
+with the owner's upload key), and the Play Console declarations (Data safety,
+foreground services, content rating). None of these can be completed by code in this
 branch alone.
 
 Legend: **VALID** — meets the requirement with evidence; **FIXED** — was
@@ -29,8 +29,8 @@ this checklist does not repeat it. Apple asset specs for a future iOS release:
 | 1.1 | Target API level: new apps and updates must target **API 36** since 2026-08-31; the extension window closed 2026-11-01 [S1][S2] | **FIXED** | Was `targetSdk = 35` (submission would be rejected). Now `compileSdk = 36`, `targetSdk = 36` in `gradle/libs.versions.toml`. `:app:assembleDebug` and `:app:bundleRelease` (R8, resource shrinking, lint vital) pass offline; `aapt2 dump badging` reports `targetSdkVersion:'36'`. The API 36 build was installed on the API 36 emulator and driven through the tablet captures (home, map, forum, history, stations, week sheet) without crashes. |
 | 1.2 | Android 16 behavior changes that apply at targetSdk 36 [S3] | **VALID** (TO CONFIRM on a physical Android 16 device) | No `onBackPressed` override, no `KEYCODE_BACK`, no `screenOrientation`/`setRequestedOrientation`, no `resizeableActivity`, no `windowOptOutEdgeToEdgeEnforcement`, no `elegantTextHeight`, no `scheduleAtFixedRate`. Back handling is Compose `BackHandler`; edge-to-edge is already enabled in `MainActivity`. Predictive back on a real device was not exercised. |
 | 1.3 | Android Gradle Plugin support for compileSdk 36 | **TO CONFIRM** | AGP 8.7.3 builds with compileSdk 36 but prints *"We recommend using a newer Android Gradle plugin to use compileSdk = 36"*. Upgrade AGP (≥ 8.9, Gradle wrapper ≥ 8.11) as its own task with the full Android gate; it is not needed to produce a valid API 36 artifact. |
-| 1.4 | New apps must be published as an **Android App Bundle**, enrolled in Play App Signing [S30][S31] | **BLOCKING** | The automated channel (`android-release`, [release-build.md](../release-build.md)) builds and signs an APK only. `:app:bundleRelease` builds locally (unsigned, 53.9 MB `app-release.aab`). Needed: a release job that builds/signs the AAB with an upload key, and an owner decision on the app signing key — see 1.5. |
-| 1.5 | Signing continuity with the existing sideloaded APK | **TO CONFIRM** (owner) | GitHub-release users have APKs signed by the pinned release key in `release/android/`. If Play generates a new app signing key, Play builds cannot update those installs (signature mismatch). To keep one update path, upload the **existing** key as the Play app signing key (Play Console "use existing key", PEPK export) and use a separate upload key. Never commit either key. |
+| 1.4 | New apps must be published as an **Android App Bundle**, enrolled in Play App Signing [S30][S31] | **TO CONFIRM** (owner signs) | `:app:bundleRelease` builds locally (unsigned, 53.9 MB `app-release.aab`, versionName/versionCode passed as `-PandroidReleaseVersionName`/`-PandroidReleaseVersionCode`). The owner signs it with their upload key and uploads it manually. The automated channel (`android-release`, [release-build.md](../release-build.md)) still signs an APK only; an AAB job is a follow-up. |
+| 1.5 | Signing continuity with the existing sideloaded APK | **VALID** (owner decision) | Owner decided on 2026-11-15 to use Play App Signing with a **new upload key** instead of the GitHub-release key. Consequence: APKs installed from GitHub releases (signed by the pinned key in `release/android/`) cannot be updated by the Play build; those users uninstall once to move to Play. The upload key and its password stay with the owner, outside Git. |
 | 1.6 | 16 KB memory page size for native libraries [S32][S33] | **VALID** | Every `.so` in the APK (arm64-v8a and armeabi-v7a: `liborganicmaps`, `libmonocypher_ed25519`, AndroidX/CameraX libs) has ELF `LOAD` alignment 16384, and `zipalign -c -P 16 -v 4` reports *Verification successful*. |
 | 1.7 | Size limits: 500 MB base module, warning above 200 MB on mobile data [S34] | **VALID** | AAB 53.9 MB; Play serves per-ABI splits. The existing 80 MiB APK ceiling stays enforced for the sideload channel. |
 | 1.8 | ABIs | **VALID** (note) | arm64-v8a and armeabi-v7a only. x86_64 devices (some Chromebooks) cannot install. Acceptable for a phone-first launch. |
@@ -66,8 +66,8 @@ this checklist does not repeat it. Apple asset specs for a future iOS release:
 
 | # | Requirement | Verdict | Evidence / action |
 |---|---|---|---|
-| 3.1 | Account type: organization accounts need a **D-U-N-S number** [S26] | **TO CONFIRM** (owner) | The controller is ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93. An organization account needs its D-U-N-S (free, up to ~28 days). |
-| 3.2 | New personal accounts: closed test with **≥ 12 opted-in testers for 14 consecutive days** before production [S25] | **TO CONFIRM** (owner) | Applies only to a personal account created after 2023-11-13. Plan the closed test early. |
+| 3.1 | Account type: organization accounts need a **D-U-N-S number** [S26] | **VALID** (owner report) | The owner reported on 2026-11-15 that the organization developer account already exists (controller ZAFLAS INOVA SIMPLES (I.S.), CNPJ 67.852.667/0001-93). Not verified from here. |
+| 3.2 | New personal accounts: closed test with **≥ 12 opted-in testers for 14 consecutive days** before production [S25] | **n/a** | Applies only to personal accounts; the app is published from an organization account. An internal or closed test before production is still advisable. |
 | 3.3 | Android developer verification, enforced in Brazil since 2026-09-30 [S27][S28][S29] | **TO CONFIRM** (owner) | Play-distributed apps are registered through Play App Signing. Direct APK sideloads are not enforced yet (global rollout planned for 2027) and ADB installs are exempt, but register the package and the existing signing key in the Android Developer Console to keep the GitHub APK installable later. |
 | 3.4 | Store listing contact email (required) and website | **TO CONFIRM** (owner) | Website: `https://abastevo.com.br`. No public contact email is documented, and the project rules forbid inventing one — the owner must supply it. |
 
@@ -126,12 +126,12 @@ advertising ID, payment card data (no in-app sale is enabled).
 
 1. **UGC compliance** — report users, block users, report forum topics, and make
    the Terms list of objectionable content explicit (backend + app, B-BR/BUC first).
-2. **AAB release channel** — `bundleRelease` signing with an upload key, Play App
-   Signing with the existing key (1.5), artifact checks on the AAB-generated APKs.
+2. **AAB release channel** — automate `bundleRelease` signing with the owner's
+   upload key (CI secret) and run the artifact checks on the AAB-generated APKs.
 3. **Console declarations** — Data safety (§5), foreground-service videos (2.7),
    content rating, target audience, government apps, financial features, ads,
    app access.
-4. **Account path** — D-U-N-S or closed testing, developer verification, contact email.
+4. **Account path** — developer verification for the GitHub APK channel and the public contact email (the organization account exists).
 5. **Nominatim precision** — round or proxy coordinates before reverse geocoding.
 6. **AGP upgrade** to a version that supports compileSdk 36 without the warning.
 
