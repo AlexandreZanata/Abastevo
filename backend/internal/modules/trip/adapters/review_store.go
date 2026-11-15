@@ -9,6 +9,7 @@ import (
 	auditing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
+	reviewapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/application"
 	review "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
 	trip "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/domain"
@@ -116,17 +117,20 @@ type ReviewAuthority interface {
 	CheckTripReviewTx(context.Context, pgx.Tx, kernel.OrgScope, app.ReviewActor, string, string, bool) (app.Reviewer, error)
 }
 
-// ReviewStore is the company-session review owner (EDR-222).
+// ReviewStore is the company-session review owner (EDR-222). Periods is the
+// APPR-006 gate read inside the decision transaction (EMP-TRIP-016,
+// EDR-232).
 type ReviewStore struct {
 	Pool      *pgxpool.Pool
 	Authority ReviewAuthority
 	Audit     auditing.TransactionRunner
+	Periods   reviewapp.PeriodGate
 }
 
 var _ app.ReviewRepository = (*ReviewStore)(nil)
 
 func (s *ReviewStore) ready() bool {
-	return s != nil && s.Pool != nil && !absent(s.Authority) && !absent(s.Audit)
+	return s != nil && s.Pool != nil && !absent(s.Authority) && !absent(s.Audit) && !absent(s.Periods)
 }
 
 // reviewFailure keeps domain, authority and application refusals and turns
@@ -275,6 +279,15 @@ func (s *ReviewStore) DecideTripReview(ctx context.Context, scope kernel.OrgScop
 		}
 		next, err := app.Decide(current, v, self, author, driver)
 		if err != nil {
+			return err
+		}
+		// B-BR-EMP-359: the period of the stored start reporting day, read
+		// under the root lock the authority already holds (EDR-232).
+		fact, err := s.Periods.StateForDayTx(ctx, tx, scope, facts.ReportingDay)
+		if err != nil {
+			return app.ErrUnavailable
+		}
+		if err := app.DecisionPeriod(facts.ReportingDay, fact); err != nil {
 			return err
 		}
 		added := next.History()[len(entries):]

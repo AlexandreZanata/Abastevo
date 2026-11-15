@@ -46,6 +46,8 @@ func TestReviewRequestsRefusalsAndRecords(t *testing.T) {
 		{review.ErrSelfApproval, orgapi.SelfApproval}, {review.ErrConflict, orgapi.Conflict}, {review.ErrInvalidTransition, orgapi.Conflict},
 		{review.ErrReasonRequired, orgapi.ValidationFailed}, {review.ErrInvalid, orgapi.ValidationFailed}, {app.ErrNotFound, orgapi.NotFound},
 		{app.ErrOperationReused, orgapi.OperationReused}, {access.ErrFreshAuthRequired, orgapi.FreshAuthRequired}, {errors.New("private provider failure"), orgapi.Unavailable},
+		{app.ErrPeriodLocked, orgapi.PeriodLocked}, // EMP-TRIP-016, B-BR-EMP-359
+		{app.ErrUnavailable, orgapi.Unavailable},
 	} {
 		if got := reviewMapped(c.in); !errors.Is(got, c.want) {
 			t.Fatal("refusal mapping", c.in, got)

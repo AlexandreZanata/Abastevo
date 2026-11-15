@@ -5758,3 +5758,58 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   organization's trip, an uncovering structural grant, an AUDITOR, a race in
   both orders, forced RLS and the history guards, and a populated upgrade
   with injected failure and recovery.
+
+## EMP-TRIP-016 — Period lock and authorised reopening for trips (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip016-trip-period-lock.md).
+
+- **B-BR-EMP-359 — Trip decisions follow the period of the start reporting
+  day.** A review decision on a trip (`POST
+  /v1/orgs/{org_id}/trips/{trip_id}/review/decide`: the opening composed
+  with `APPROVE`, `RETURN` or `REJECT`) is admitted only when the APPR-006
+  period (the organization calendar month) holding the trip's stored start
+  reporting day is `OPEN`, or `REOPENED` with its stored, reasoned
+  `fin.period.reopen` transition. The day is the one attributed at the start
+  receipt in the stored unit or organization zone (BR-TIME-004, EDR-182) and
+  never the device entry zone or offset, the UTC day of the start, the finish
+  day or the day the decision is received. The period is read at receipt
+  inside the decision transaction after the organization root lock and after
+  every lifecycle check (`SELF_APPROVAL`, `CONFLICT`, `VALIDATION_FAILED`
+  win first). A `LOCKED` period refuses the decision `PERIOD_LOCKED` (409)
+  and writes no entry and no audit event. A replay of a decision recorded
+  before the lock returns its stored result; reads are not gated.
+- **B-BR-EMP-360 — Field intake is not gated by a locked period.**
+  `trip.start`, `trip.finish`, `trip.event.record` and `trip.submit` are
+  accepted, held or refused exactly as before whatever the period of their
+  reporting day (the B-BR-EMP-266 precedent): a late field fact whose trip
+  lies in a locked month is an accepted fact, never a held `PERIOD_LOCKED`
+  intake item. A trip submitted in a locked month stays `SUBMITTED` or
+  `IN_REVIEW` in the review queue, which is its review; deciding it needs an
+  authorised reopening of the month.
+- **B-BR-EMP-361 — Reopening is the only path for trips; no adjustment.**
+  A trip carries no amount posted to a period, so the adjustment branch of
+  BR-AMD-004 does not apply to it now: a decision or correction of a trip in
+  a `LOCKED` month is refused `PERIOD_LOCKED`; after an authorised
+  reopening (`fin.period.reopen`, fresh proof, reason) decisions are
+  admitted; a re-lock refuses later decisions again and keeps every
+  decision already recorded. A locked month keeps its approved trips
+  unchanged.
+- **B-BR-EMP-362 — The database refuses a decision in a locked month and
+  keeps history.** Under the organization root lock that every period
+  command and review entry takes, the database refuses an opening or a
+  decision entry whose trip's start reporting month is `LOCKED`, so a
+  defective handler cannot decide in a locked period. Review entries, trips,
+  finishes and period transitions stay insert-only (update, delete and
+  truncate refused); the lock, the reopening with its actor and reason, the
+  re-lock and the decisions remain in their append-only histories in the
+  order the root lock serialised them.
+- **BUC-EMP-181 — Decide a trip of a closed month (JRN-09 for trips).**
+  Finance locks October; the approval of a submitted October trip is
+  refused `PERIOD_LOCKED`; finance reopens October with a reason; the
+  reviewer approves; finance re-locks October and the approval stays.
+- **BUC-EMP-182 — Prove the trip period lock on real PostGIS.** A trip
+  whose stored reporting day is in another month than its UTC, device and
+  receipt days; a reopening withdrawn by a re-lock before receipt; lock and
+  decision racing in both orders; a direct decision insert and in-place
+  rewrites refused by the database; a populated upgrade with injected
+  failure and recovery.

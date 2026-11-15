@@ -366,7 +366,9 @@ func Register(router chi.Router, o Options) error {
 	// EMP-TRIP-004 (EDR-222): the reviewer read and decision on a stored
 	// trip, structural grants through the trip's stored snapshot.
 	tripStructure := &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: o.Pool}
-	tripReviews := &trippg.ReviewStore{Pool: o.Pool, Authority: &orgpg.TripReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure}, Audit: auditStore}
+	// EMP-TRIP-016 (EDR-232): decisions read the period of the stored start
+	// reporting day through the APPR-006 gate.
+	tripReviews := &trippg.ReviewStore{Pool: o.Pool, Authority: &orgpg.TripReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure}, Audit: auditStore, Periods: reviewpg.PeriodGate{}}
 	tripReviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ReviewRecords{}, Structure: tripStructure, Now: time.Now}
 	if err := tripweb.RegisterReview(router, tripapp.ReviewService{Enabled: true, Repository: tripReviews}, cookies, gateway, tripReviewAuthorization); err != nil {
 		return err

@@ -255,7 +255,7 @@ func reviewMapped(err error) error {
 		{review.ErrSelfApproval, orgapi.SelfApproval}, {review.ErrConflict, orgapi.Conflict}, {review.ErrInvalidTransition, orgapi.Conflict},
 		{review.ErrReasonRequired, orgapi.ValidationFailed}, {review.ErrInvalid, orgapi.ValidationFailed}, {review.ErrForbidden, orgapi.Forbidden},
 		{app.ErrReviewDisabled, orgapi.NotFound}, {app.ErrNotFound, orgapi.NotFound}, {app.ErrReviewUnauthorized, orgapi.Unauthenticated},
-		{app.ErrOperationReused, orgapi.OperationReused},
+		{app.ErrOperationReused, orgapi.OperationReused}, {app.ErrPeriodLocked, orgapi.PeriodLocked},
 		{access.ErrNoMembership, orgapi.NotFound}, {access.ErrNotFound, orgapi.NotFound}, {access.ErrUnauthenticated, orgapi.Unauthenticated},
 		{access.ErrFreshAuthRequired, orgapi.FreshAuthRequired}, {access.ErrMembershipSuspended, orgapi.MembershipSuspended}, {access.ErrOrgSuspended, orgapi.OrgSuspended},
 		{access.ErrOrgArchived, orgapi.OrgArchived}, {access.ErrSetupIncomplete, orgapi.OrgSetupIncomplete}, {access.ErrEntitlementRequired, orgapi.EntitlementRequired},

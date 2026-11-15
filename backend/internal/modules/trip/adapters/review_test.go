@@ -9,9 +9,11 @@ import (
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
+	reviewapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/application"
 	review "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // EDR-220: the submission owner exists only with real ports and declares
@@ -86,5 +88,35 @@ func TestReviewStoreFailsClosedAndMapsFailures(t *testing.T) {
 	}
 	if len(ReviewAuditDefinitions()) != 3 {
 		t.Fatal("decision audit actions drift")
+	}
+}
+
+type periodlessAuthority struct{}
+
+func (periodlessAuthority) CheckTripReviewTx(context.Context, pgx.Tx, kernel.OrgScope, app.ReviewActor, string, string, bool) (app.Reviewer, error) {
+	return app.Reviewer{}, nil
+}
+
+type periodlessAudit struct{}
+
+func (periodlessAudit) RecordChangeTx(context.Context, pgx.Tx, kernel.OrgScope, audit.Event, func(context.Context, pgx.Tx) error) (bool, error) {
+	return false, nil
+}
+
+type periodGateStub struct{ reviewapp.PeriodGate }
+
+// EMP-TRIP-016 (EDR-232): a review store without the period gate is not
+// composed, so no decision can skip the lock of its reporting month.
+func TestReviewStoreNeedsThePeriodGate(t *testing.T) {
+	s := &ReviewStore{Pool: &pgxpool.Pool{}, Authority: periodlessAuthority{}, Audit: periodlessAudit{}}
+	if s.ready() {
+		t.Fatal("a review store without the period gate is ready")
+	}
+	if _, _, err := s.DecideTripReview(context.Background(), kernel.OrgScope{}, app.ReviewActor{}, "", app.DecisionCommand{}); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("a store without the period gate decided", err)
+	}
+	s.Periods = periodGateStub{}
+	if !s.ready() {
+		t.Fatal("a fully composed review store is not ready")
 	}
 }

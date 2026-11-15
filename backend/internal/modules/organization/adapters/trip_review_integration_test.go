@@ -19,6 +19,7 @@ import (
 	syncpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
+	reviewpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters"
 	review "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/domain"
 	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
 	tripapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
@@ -37,7 +38,9 @@ func tripReviewGrants(t *testing.T, f *orgtest.Fixture) {
 	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
 	if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_review_entries TO "+role+
 		";GRANT SELECT ON org_trips,org_trip_finishes,org_team_links,org_memberships,org_employee_identities,org_audit_events,org_sync_operations,org_sync_acknowledgements,org_sync_effects,org_device_enrollments TO "+role+
-		";GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role); err != nil {
+		";GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role+
+		// EMP-TRIP-016: the decision reads the period head (gate and guard).
+		";GRANT SELECT ON org_finance_periods,org_finance_period_transitions TO "+role); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -69,7 +72,7 @@ func tripReviewStoreOf(t *testing.T, fx legalFixtureState) *trippg.ReviewStore {
 		t.Fatal(err)
 	}
 	return &trippg.ReviewStore{Pool: fx.f.Runtime, Authority: &orgpg.TripReviewAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles, Capabilities: fx.flags,
-		Structure: &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: fx.f.Runtime}}, Audit: auditpg.NewStore(fx.f.Runtime, catalog)}
+		Structure: &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: fx.f.Runtime}}, Audit: auditpg.NewStore(fx.f.Runtime, catalog), Periods: reviewpg.PeriodGate{}}
 }
 
 func tripReviewFixture(t *testing.T) tripReviewState {

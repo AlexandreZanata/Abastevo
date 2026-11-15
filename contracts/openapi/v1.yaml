@@ -19085,7 +19085,10 @@ paths:
         an account, membership or canonical employee with the trip's author or driver is SELF_APPROVAL; a stale
         revision or a case not SUBMITTED/IN_REVIEW is CONFLICT; a missing reason VALIDATION_FAILED. Same operation
         and digest returns the first result with replayed=true and no second audit event; another digest is
-        OPERATION_ID_REUSED. Operational completion never approves (EMP-TRIP-004, B-BR-EMP-344/345).
+        OPERATION_ID_REUSED. Operational completion never approves (EMP-TRIP-004, B-BR-EMP-344/345). After those
+        checks, a trip whose stored start reporting day lies in a LOCKED finance period is PERIOD_LOCKED (409) with
+        nothing written; OPEN or an authorised REOPENED period admits the decision; replays are not gated
+        (EMP-TRIP-016, B-BR-EMP-359..361).
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
