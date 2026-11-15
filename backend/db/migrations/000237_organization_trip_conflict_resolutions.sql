@@ -4,9 +4,10 @@
 -- row; this migration widens its outcome check and replaces, keeping every
 -- check of their latest bodies, the guards that must recognise a trip owner:
 -- the 199 resolution source and publication guards, the 216 observation
--- guard (a reviewed TRIP_START reading), the 199 effect source and the 220
--- trip source and publication (a held start accepted as its own trip, never
--- overlapping another trip of the asset). Usage sources are unchanged.
+-- guard (a reviewed TRIP_START reading), the 199 effect source, the 220 trip
+-- source and the 000233 (EMP-TRIP-011) trip publication: a held start
+-- accepted as its own trip never overlaps another trip of the asset. Usage
+-- sources are unchanged.
 
 -- 1. The 199 outcome check: an accepted resolution names entity revision 1.
 -- The meter branch of the source guard still requires the held reading; an
@@ -21,7 +22,8 @@ ALTER TABLE org_sync_review_resolutions ADD CONSTRAINT org_sync_review_resolutio
 
 -- 2. The 199 resolution source with one branch per owner. Meter: unchanged.
 -- trip.start: its held start; an acceptance names exactly its held reading
--- (or none). trip.finish, trip.event.record and trip.submit: refusal only.
+-- (or none). trip.finish, trip.event.record, trip.submit and the EMP-TRIP-011
+-- lifecycle commands (trip.pause, trip.resume, trip.cancel): refusal only.
 -- Self-review also refuses a held start's declared driver (BR-REV-003).
 CREATE OR REPLACE FUNCTION org_sync_review_resolution_source() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 DECLARE i public.org_sync_review_items%ROWTYPE;o public.org_sync_operations%ROWTYPE;h public.org_meter_held_readings%ROWTYPE;s public.org_trip_held_starts%ROWTYPE;
@@ -43,10 +45,11 @@ BEGIN
   IF NEW.outcome='ACCEPTED' AND NEW.reading_id IS DISTINCT FROM s.reading_id THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='review applied reading unavailable';END IF;
   driver=public.org_sync_review_employee_canonical(s.org_id,s.driver_employee_id);
   IF driver IS NULL THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='reviewer source unavailable';END IF;
- ELSIF i.operation_type IN('trip.finish','trip.event.record','trip.submit') THEN
+ ELSIF i.operation_type IN('trip.finish','trip.event.record','trip.submit','trip.pause','trip.resume','trip.cancel') THEN
   IF NOT((i.operation_type='trip.finish' AND EXISTS(SELECT 1 FROM public.org_trip_held_finishes x WHERE x.org_id=i.org_id AND x.review_item_id=i.id AND x.operation_id=i.operation_id))
   OR(i.operation_type='trip.event.record' AND EXISTS(SELECT 1 FROM public.org_trip_held_events x WHERE x.org_id=i.org_id AND x.review_item_id=i.id AND x.operation_id=i.operation_id))
-  OR(i.operation_type='trip.submit' AND EXISTS(SELECT 1 FROM public.org_trip_held_submissions x WHERE x.org_id=i.org_id AND x.review_item_id=i.id AND x.operation_id=i.operation_id)))
+  OR(i.operation_type='trip.submit' AND EXISTS(SELECT 1 FROM public.org_trip_held_submissions x WHERE x.org_id=i.org_id AND x.review_item_id=i.id AND x.operation_id=i.operation_id))
+  OR(i.operation_type IN('trip.pause','trip.resume','trip.cancel') AND EXISTS(SELECT 1 FROM public.org_trip_held_transitions x WHERE x.org_id=i.org_id AND x.review_item_id=i.id AND x.operation_id=i.operation_id)))
   THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='actual held review source unavailable';END IF;
   IF NEW.outcome<>'REFUSED' OR NEW.reading_id IS NOT NULL THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='held trip fact can only be refused';END IF;
  ELSE
@@ -177,7 +180,8 @@ END $$;
 -- 6. The 220 trip source. A held start's identity stays reserved except for
 -- the accepted resolution of exactly that held start: every held fact equal,
 -- received at its original receipt, and never overlapping a stored trip of
--- the asset (none in progress or finished after the declared start, VAL-07).
+-- the asset (none in progress or paused, finished or cancelled after the
+-- declared start, VAL-07).
 CREATE OR REPLACE FUNCTION org_trip_source() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 DECLARE a public.org_assets%ROWTYPE;actual_unit UUID;actual_centre UUID;zone TEXT;held public.org_trip_held_starts%ROWTYPE;original TIMESTAMPTZ;
 BEGIN
@@ -200,8 +204,11 @@ BEGIN
   AND NEW.meter_id IS NOT DISTINCT FROM held.meter_id AND NEW.segment_id IS NOT DISTINCT FROM held.segment_id AND NEW.reading_id IS NOT DISTINCT FROM held.reading_id
   AND NEW.missing_reading_reason IS NOT DISTINCT FROM held.missing_reading_reason AND NEW.author_employee_id=i.author_employee_id;
   IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='23505',CONSTRAINT='org_trips_pkey',MESSAGE='trip identity unavailable';END IF;
+  -- EMP-TRIP-011: a paused trip holds the asset; a cancelled one until its cancellation.
   IF EXISTS(SELECT 1 FROM public.org_trips t2 LEFT JOIN public.org_trip_finishes f2 ON(f2.org_id,f2.trip_id)=(t2.org_id,t2.id)
-   WHERE t2.org_id=NEW.org_id AND t2.asset_id=NEW.asset_id AND t2.id<>NEW.id AND(t2.state<>'COMPLETED' OR(f2.occurred_at,f2.occurred_submicro)>(NEW.occurred_at,NEW.occurred_submicro)))
+   LEFT JOIN public.org_trip_transitions c2 ON(c2.org_id,c2.trip_id,c2.command)=(t2.org_id,t2.id,'CANCEL')
+   WHERE t2.org_id=NEW.org_id AND t2.asset_id=NEW.asset_id AND t2.id<>NEW.id AND(t2.state NOT IN('COMPLETED','CANCELLED')
+   OR(COALESCE(f2.occurred_at,c2.occurred_at),COALESCE(f2.occurred_submicro,c2.occurred_submicro))>(NEW.occurred_at,NEW.occurred_submicro)))
   THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='accepted trip overlaps another trip of the asset';END IF;
  END IF;
  IF NOT EXISTS(SELECT 1 FROM public.org_employee_identities WHERE org_id=NEW.org_id AND id=NEW.driver_employee_id AND state='ACTIVE' AND merged_into IS NULL)
@@ -220,9 +227,10 @@ BEGIN
  NEW.received_at=COALESCE(original,clock_timestamp());RETURN NEW;
 END $$;
 
--- 7. The 220 trip publication: an accepted start receipt, else the reviewed
--- publication of an accepted held start (its resolution and readiness),
--- checked in that order; the finish branch is unchanged.
+-- 7. The trip publication (the 000233 body of EMP-TRIP-011): an accepted
+-- start receipt, else the reviewed publication of an accepted held start
+-- (its resolution and readiness), checked in that order; the finish branch
+-- is the 000233 one unchanged.
 CREATE FUNCTION org_trip_review_published(p_org UUID,p_trip UUID,p_op UUID) RETURNS BOOLEAN LANGUAGE SQL STABLE SET search_path=pg_catalog AS $$
  SELECT EXISTS(SELECT 1 FROM public.org_trip_held_starts h JOIN public.org_sync_review_resolutions z ON(z.org_id,z.review_item_id)=(h.org_id,h.review_item_id)
   JOIN public.org_sync_effects e ON(e.org_id,e.operation_id)=(h.org_id,h.operation_id)
@@ -243,7 +251,7 @@ BEGIN
  ELSE
   SELECT * INTO f FROM public.org_trip_finishes WHERE org_id=NEW.org_id AND trip_id=NEW.trip_id;
   SELECT * INTO t FROM public.org_trips WHERE org_id=NEW.org_id AND id=NEW.trip_id;
-  IF f.operation_id IS NULL OR t.state IS DISTINCT FROM 'COMPLETED' OR NOT public.org_trip_published(f.org_id,f.operation_id,2)
+  IF f.operation_id IS NULL OR t.state IS DISTINCT FROM 'COMPLETED' OR NOT public.org_trip_published(f.org_id,f.operation_id,public.org_trip_revision(f.org_id,f.trip_id))
   OR NOT public.org_trip_reading_valid(f.org_id,t.asset_id,f.meter_id,f.segment_id,f.reading_id,'TRIP_END',f.operation_id,f.author_membership_id,f.enrollment_id,f.occurred_at,f.occurred_submicro,f.entry_zone,f.device_offset_seconds)
   THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='trip finish publication unavailable';END IF;
  END IF;

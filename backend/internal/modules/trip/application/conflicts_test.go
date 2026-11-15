@@ -27,6 +27,8 @@ func heldStartView(trips ...app.ConflictTrip) app.ConflictView {
 			MeterID: id(78), SegmentID: id(79), ReadingID: id(80), ReadingKind: "ODOMETER", ReadingValue: &value}}, Trips: trips}
 }
 
+func ptr(t time.Time) *time.Time { return &t }
+
 func finished(id string, from, to time.Time) app.ConflictTrip {
 	return app.ConflictTrip{TripID: id, State: trip.Completed, StartedAt: from, FinishedAt: &to}
 }
@@ -64,6 +66,8 @@ func TestConflictAcceptancePreservesOneActiveTripPerAsset(t *testing.T) {
 		"started later, still running":        {[]app.ConflictTrip{{TripID: id(85), State: trip.InProgress, StartedAt: conflictAt.Add(5 * time.Minute)}}, app.ErrConflictUnacceptable},
 		"started later and finished (VAL-07)": {[]app.ConflictTrip{before, finished(id(86), conflictAt.Add(5*time.Minute), conflictAt.Add(4*time.Hour))}, app.ErrConflictUnacceptable},
 		"paused trip":                         {[]app.ConflictTrip{{TripID: id(87), State: trip.Paused, StartedAt: conflictAt.Add(-time.Hour)}}, app.ErrConflictUnacceptable},
+		"cancelled before the start":          {[]app.ConflictTrip{{TripID: id(91), State: trip.Cancelled, StartedAt: conflictAt.Add(-2 * time.Hour), FinishedAt: ptr(conflictAt.Add(-time.Hour))}}, nil},
+		"cancelled after the start":           {[]app.ConflictTrip{{TripID: id(92), State: trip.Cancelled, StartedAt: conflictAt.Add(-2 * time.Hour), FinishedAt: ptr(conflictAt.Add(time.Minute))}}, app.ErrConflictUnacceptable},
 	} {
 		t.Run(name, func(t *testing.T) {
 			err := app.DecideConflict(heldStartView(c.trips...), accept, currentFacts)
@@ -98,7 +102,7 @@ func TestConflictDecisionRulesFollowTheItemAndTheFacts(t *testing.T) {
 	if err := app.DecideConflict(heldStartView(), accept, app.ConflictFacts{AssetActive: true, DisposedAt: &disposedAfter, AuthorCurrent: true, DriverActive: true}); err != nil {
 		t.Fatal("a disposal after the declaration refused the acceptance", err)
 	}
-	for _, kind := range []string{app.FinishOperationType, app.EventOperationType, app.SubmitOperationType} {
+	for _, kind := range []string{app.FinishOperationType, app.EventOperationType, app.SubmitOperationType, app.PauseOperationType, app.ResumeOperationType, app.CancelOperationType} {
 		view := heldStartView()
 		view.OperationType, view.Fact.Start = kind, nil
 		if err := app.DecideConflict(view, accept, currentFacts); !errors.Is(err, app.ErrConflictUnacceptable) {
@@ -196,6 +200,8 @@ func TestConflictViewValidationAndHeldCodes(t *testing.T) {
 		{app.StartOperationType, app.TripAlreadyClosed, false}, {app.FinishOperationType, app.TripAlreadyClosed, true}, {app.FinishOperationType, app.AssetBusy, false},
 		{app.EventOperationType, app.TripAlreadyClosed, true}, {app.EventOperationType, app.StaleRevision, true}, {app.SubmitOperationType, app.StaleRevision, true},
 		{app.SubmitOperationType, app.TripAlreadyClosed, false}, {"meter.reading.record", app.PermissionChanged, false},
+		{app.PauseOperationType, app.TripAlreadyClosed, true}, {app.ResumeOperationType, app.StaleRevision, true}, {app.CancelOperationType, app.StaleRevision, true},
+		{app.CancelOperationType, app.AssetBusy, false},
 	} {
 		if app.HeldCode(c.kind, c.code) != c.ok {
 			t.Fatal("held code", c.kind, c.code)
@@ -237,7 +243,11 @@ func TestConflictViewValidationAndHeldCodes(t *testing.T) {
 			v.Trips = []app.ConflictTrip{{TripID: id(81), State: trip.Completed, StartedAt: conflictAt}}
 		},
 		"duplicate trip": func(v *app.ConflictView) { v.Trips = append(v.Trips, v.Trips[0]) },
-		"bad digest":     func(v *app.ConflictView) { v.PayloadDigest = "sha256:" + strings.Repeat("A", 64) },
+		"cancelled without end": func(v *app.ConflictView) {
+			v.Trips = []app.ConflictTrip{{TripID: id(81), State: trip.Cancelled, StartedAt: conflictAt}}
+		},
+		"pause without transition": func(v *app.ConflictView) { v.OperationType, v.Code = app.PauseOperationType, app.StaleRevision },
+		"bad digest":               func(v *app.ConflictView) { v.PayloadDigest = "sha256:" + strings.Repeat("A", 64) },
 	} {
 		v := done.Clone()
 		change(&v)
@@ -252,6 +262,22 @@ func TestConflictViewValidationAndHeldCodes(t *testing.T) {
 	}
 	if (app.ConflictFilter{Limit: 100, State: app.ConflictExpired, AfterID: id(1)}).Validate() != nil {
 		t.Fatal("valid filter refused")
+	}
+	// EMP-TRIP-011: a held cancellation names its trip, revision and reason.
+	reason := "Viagem cancelada"
+	held := heldStartView()
+	held.OperationType, held.Code, held.Fact.Start = app.CancelOperationType, app.TripAlreadyClosed, nil
+	held.Fact.Transition = &app.HeldTransitionFact{Command: "CANCEL", ExpectedRevision: 3, Reason: &reason}
+	if held.Validate() != nil {
+		t.Fatal("valid held cancellation refused")
+	}
+	held.Fact.Transition = &app.HeldTransitionFact{Command: "CANCEL", ExpectedRevision: 3}
+	if held.Validate() == nil {
+		t.Fatal("a held cancellation without its reason was admitted")
+	}
+	held.Fact.Transition = &app.HeldTransitionFact{Command: "PAUSE", ExpectedRevision: 3}
+	if held.Validate() == nil {
+		t.Fatal("a held cancellation carrying a pause was admitted")
 	}
 }
 

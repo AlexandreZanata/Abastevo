@@ -63,12 +63,13 @@ func TestTripConflictContractShapesAndGuards(t *testing.T) {
 		return v
 	}
 	for name, bad := range map[string]map[string]any{
-		"meter owner":          edit(func(v map[string]any) { v["operation_type"] = "meter.reading.record" }),
-		"meter code":           edit(func(v map[string]any) { v["code"] = "ACCESS_ENDED_BEFORE_RECEIPT" }),
-		"third revision":       edit(func(v map[string]any) { v["revision"] = float64(3) }),
-		"no conflicting trips": edit(func(v map[string]any) { delete(v, "conflicting_trips") }),
-		"fact without reading": edit(func(v map[string]any) { delete(v["fact"].(map[string]any), "reading") }),
-		"open fact":            edit(func(v map[string]any) { v["fact"].(map[string]any)["preview"] = "x" }),
+		"meter owner":             edit(func(v map[string]any) { v["operation_type"] = "meter.reading.record" }),
+		"meter code":              edit(func(v map[string]any) { v["code"] = "ACCESS_ENDED_BEFORE_RECEIPT" }),
+		"third revision":          edit(func(v map[string]any) { v["revision"] = float64(3) }),
+		"no conflicting trips":    edit(func(v map[string]any) { delete(v, "conflicting_trips") }),
+		"fact without reading":    edit(func(v map[string]any) { delete(v["fact"].(map[string]any), "reading") }),
+		"fact without transition": edit(func(v map[string]any) { delete(v["fact"].(map[string]any), "transition") }),
+		"open fact":               edit(func(v map[string]any) { v["fact"].(map[string]any)["preview"] = "x" }),
 		"unknown trip state": edit(func(v map[string]any) {
 			v["conflicting_trips"].([]any)[0].(map[string]any)["operational_state"] = "PLANNED"
 		}),

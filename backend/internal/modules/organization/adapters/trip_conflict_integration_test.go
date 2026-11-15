@@ -34,6 +34,7 @@ import (
 type conflictState struct {
 	tripReviewState
 	event     syncapp.Handler
+	lifecycle map[string]syncapp.Handler
 	conflicts *trippg.ConflictStore
 }
 
@@ -45,7 +46,7 @@ func conflictGrants(t *testing.T, f *orgtest.Fixture) {
 	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
 	if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sync_review_resolutions,org_sync_effects,org_trips,org_meter_readings TO "+role+
 		";GRANT SELECT ON org_sync_review_items,org_trip_held_starts,org_trip_held_finishes,org_trip_held_events,org_trip_held_submissions,org_trip_finishes,org_team_links,"+
-		"org_asset_unit_periods,org_asset_cost_centre_periods,org_units,org_meters,org_meter_segments,org_device_enrollments,company_web_sessions TO "+role); err != nil {
+		"org_asset_unit_periods,org_asset_cost_centre_periods,org_units,org_meters,org_meter_segments,org_device_enrollments,company_web_sessions,org_trip_transitions,org_trip_held_transitions TO "+role); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -72,6 +73,15 @@ func conflictFixture(t *testing.T) conflictState {
 	if x.event, err = trippg.NewEventHandler(r.authority, r.meters, r.store, events); err != nil {
 		t.Fatal(err)
 	}
+	// EMP-TRIP-011: the lifecycle owners on the same intake.
+	x.lifecycle = map[string]syncapp.Handler{}
+	for _, kind := range tripapp.LifecycleOperationTypes {
+		handler, err := trippg.NewTransitionHandler(kind, r.authority, r.meters, r.store, r.store)
+		if err != nil {
+			t.Fatal(err)
+		}
+		x.lifecycle[kind] = handler
+	}
 	config := tripReviewIntakeConfig(r.syncFixtureState)
 	config.NoAsyncPlans[syncapp.OperationKey{Type: tripapp.EventOperationType, Schema: 1}] = map[string]syncapp.FollowupMode{protocol.Accepted: syncapp.NoAsyncFollowup,
 		protocol.Rejected: syncapp.NoAsyncFollowup, protocol.AcceptedForReview: syncapp.AtomicReview}
@@ -84,6 +94,9 @@ func (x conflictState) process(t *testing.T, d syncFixtureState, op protocol.Ope
 	t.Helper()
 	if op.Snapshot().Type == tripapp.EventOperationType {
 		return x.intake.Process(t.Context(), d.source, op, protocol.DefaultLimits(), x.event)
+	}
+	if handler, ok := x.lifecycle[op.Snapshot().Type]; ok {
+		return x.intake.Process(t.Context(), d.source, op, protocol.DefaultLimits(), handler)
 	}
 	return x.tripReviewState.process(t, d, op)
 }
@@ -196,9 +209,14 @@ func TestTripConflictQueueListsAndReadsEveryHeldTripFact(t *testing.T) {
 	x.submitted(t, diego, diegoTrip, at.Add(6*time.Hour))
 	stale := x.submitOp(t, diego, diegoTrip, 1, at.Add(7*time.Hour), nil)
 	x.deliver(t, diego, stale, protocol.AcceptedForReview, tripapp.StaleRevision)
+	// EMP-TRIP-011: a pause of the completed trip is held TRIP_ALREADY_CLOSED.
+	pause := x.operation(t, diego, tripapp.PauseOperationType, diegoTrip, at.Add(8*time.Hour), map[string]any{"reason": nil}, func(raw, _ map[string]any) {
+		raw["entity"] = map[string]any{"type": tripapp.EntityType, "id": diegoTrip, "expected_revision": 2}
+	})
+	x.deliver(t, diego, pause, protocol.AcceptedForReview, tripapp.TripAlreadyClosed)
 
 	page, err := x.conflicts.ListTripConflicts(context.Background(), x.scope, owner.actor, owner.member, tripapp.ConflictFilter{Limit: 10})
-	if err != nil || len(page.Items) != 4 || page.NextID != "" {
+	if err != nil || len(page.Items) != 5 || page.NextID != "" {
 		t.Fatal("conflict queue", err, len(page.Items))
 	}
 	kinds := map[string]tripapp.ConflictView{}
@@ -221,16 +239,21 @@ func TestTripConflictQueueListsAndReadsEveryHeldTripFact(t *testing.T) {
 		submission.Code != tripapp.StaleRevision || submission.Fact.SubmittedRevision == nil || *submission.Fact.SubmittedRevision != 1 || submission.Fact.TripID != diegoTrip {
 		t.Fatal("held finish, event or submission view drift", finish.Fact, event.Fact, submission.Fact)
 	}
+	paused := kinds[tripapp.PauseOperationType]
+	if paused.Code != tripapp.TripAlreadyClosed || paused.Fact.Transition == nil || paused.Fact.Transition.Command != "PAUSE" || paused.Fact.Transition.ExpectedRevision != 2 ||
+		paused.Fact.Transition.Reason != nil || len(paused.Trips) != 1 || paused.Trips[0].TripID != diegoTrip || paused.Trips[0].State != tripdomain.Completed {
+		t.Fatal("held lifecycle command view drift", paused.Fact.Transition, paused.Trips)
+	}
 	// Keyset pages and the state filter.
 	first, err := x.conflicts.ListTripConflicts(context.Background(), x.scope, owner.actor, owner.member, tripapp.ConflictFilter{Limit: 3})
 	if err != nil || len(first.Items) != 3 || first.NextID != first.Items[2].ReviewItemID {
 		t.Fatal("first page", err)
 	}
 	rest, err := x.conflicts.ListTripConflicts(context.Background(), x.scope, owner.actor, owner.member, tripapp.ConflictFilter{Limit: 3, AfterID: first.NextID})
-	if err != nil || len(rest.Items) != 1 || rest.Items[0].ReviewItemID != page.Items[3].ReviewItemID || rest.NextID != "" {
+	if err != nil || len(rest.Items) != 2 || rest.Items[0].ReviewItemID != page.Items[3].ReviewItemID || rest.Items[1].ReviewItemID != page.Items[4].ReviewItemID || rest.NextID != "" {
 		t.Fatal("second page", err)
 	}
-	for state, want := range map[string]int{tripapp.ConflictOpen: 4, tripapp.ConflictExpired: 0, tripapp.ConflictAccepted: 0, tripapp.ConflictRefused: 0} {
+	for state, want := range map[string]int{tripapp.ConflictOpen: 5, tripapp.ConflictExpired: 0, tripapp.ConflictAccepted: 0, tripapp.ConflictRefused: 0} {
 		if p, err := x.conflicts.ListTripConflicts(context.Background(), x.scope, owner.actor, owner.member, tripapp.ConflictFilter{Limit: 10, State: state}); err != nil || len(p.Items) != want {
 			t.Fatal("state filter", state, err)
 		}
@@ -267,6 +290,25 @@ func TestTripConflictQueueListsAndReadsEveryHeldTripFact(t *testing.T) {
 	if c := x.conflictCount(t, brunoStart); c != (conflictCounts{}) {
 		t.Fatalf("a read or list wrote state: %+v", c)
 	}
+	// A held lifecycle command is only refused (B-BR-EMP-408).
+	if _, _, err := x.resolve(owner, paused.ReviewItemID, 1, tripapp.ConflictAccept, "", onboardingID(t)); !errors.Is(err, tripapp.ErrConflictUnacceptable) {
+		t.Fatal("a held pause was accepted", err)
+	}
+	if r, _, err := x.resolve(owner, paused.ReviewItemID, 1, tripapp.ConflictRefuse, "Viagem já encerrada", onboardingID(t)); err != nil || r.Snapshot().Outcome != protocol.ReviewRefused {
+		t.Fatal("refusal of a held pause", err)
+	}
+	if x.stateOf(t, diegoTrip) != "COMPLETED" {
+		t.Fatal("a refused lifecycle command changed the trip")
+	}
+}
+
+func (x conflictState) stateOf(t *testing.T, trip string) string {
+	t.Helper()
+	var state string
+	if err := x.f.Admin.QueryRow(t.Context(), `SELECT state FROM org_trips WHERE org_id=$1 AND id=$2`, x.scope.OrgID().String(), trip).Scan(&state); err != nil {
+		t.Fatal(err)
+	}
+	return state
 }
 
 // BUC-EMP-206 / VAL-07 and B-BR-EMP-408..411: an overlapping held start is
@@ -777,5 +819,45 @@ func TestTripConflictSchemaGuardsReproveEveryAcceptance(t *testing.T) {
 	}
 	if _, _, err := x.resolve(owner, item, 1, tripapp.ConflictAccept, "", onboardingID(t)); !errors.Is(err, tripapp.ErrConflictUnacceptable) {
 		t.Fatal("the overlapping held start was accepted through the store", err)
+	}
+}
+
+// B-BR-EMP-409 with EMP-TRIP-011: a cancelled trip holds the asset until its
+// cancellation, so a held start after it is acceptable and one before it is
+// not; a paused trip still holds the asset.
+func TestTripConflictCancelledTripEndsAtItsCancellation(t *testing.T) {
+	x := conflictFixture(t)
+	a := x.syncFixtureState
+	b, _ := x.assignedDriver(t)
+	at := x.declaredNow(t)
+	running := x.startOp(t, a, at, absentReading)
+	x.deliver(t, a, running, protocol.Accepted, "")
+	early := x.startOp(t, b, at.Add(30*time.Minute), absentReading)
+	earlyItem := x.deliver(t, b, early, protocol.AcceptedForReview, tripapp.AssetBusy).Snapshot().ReviewItemID
+	pause := x.operation(t, a, tripapp.PauseOperationType, tripOf(running), at.Add(40*time.Minute), map[string]any{"reason": nil}, func(raw, _ map[string]any) {
+		raw["entity"] = map[string]any{"type": tripapp.EntityType, "id": tripOf(running), "expected_revision": 1}
+	})
+	x.deliver(t, a, pause, protocol.Accepted, "")
+	late := x.startOp(t, b, at.Add(2*time.Hour), absentReading)
+	lateItem := x.deliver(t, b, late, protocol.AcceptedForReview, tripapp.AssetBusy).Snapshot().ReviewItemID
+	if _, _, err := x.resolve(x.owner(), lateItem, 1, tripapp.ConflictAccept, "", onboardingID(t)); !errors.Is(err, tripapp.ErrConflictUnacceptable) {
+		t.Fatal("a held start was accepted while the asset's trip is paused", err)
+	}
+	cancel := x.operation(t, a, tripapp.CancelOperationType, tripOf(running), at.Add(time.Hour), map[string]any{"reason": "Viagem cancelada"}, func(raw, _ map[string]any) {
+		raw["entity"] = map[string]any{"type": tripapp.EntityType, "id": tripOf(running), "expected_revision": 2}
+	})
+	x.deliver(t, a, cancel, protocol.Accepted, "")
+	view, err := x.readConflict(x.owner(), earlyItem)
+	if err != nil || len(view.Trips) != 1 || view.Trips[0].State != tripdomain.Cancelled || view.Trips[0].FinishedAt == nil || !view.Trips[0].FinishedAt.Equal(at.Add(time.Hour)) {
+		t.Fatal("the cancelled trip is not shown ending at its cancellation", err, view.Trips)
+	}
+	if _, _, err := x.resolve(x.owner(), earlyItem, 1, tripapp.ConflictAccept, "", onboardingID(t)); !errors.Is(err, tripapp.ErrConflictUnacceptable) {
+		t.Fatal("a held start inside the cancelled trip was accepted", err)
+	}
+	if r, _, err := x.resolve(x.owner(), lateItem, 1, tripapp.ConflictAccept, "", onboardingID(t)); err != nil || r.Snapshot().Outcome != protocol.ReviewAccepted {
+		t.Fatal("a held start after the cancellation was not accepted", err)
+	}
+	if x.inProgress(t) != 1 || x.stateOf(t, tripOf(late)) != "IN_PROGRESS" || x.stateOf(t, tripOf(running)) != "CANCELLED" {
+		t.Fatal("acceptance after the cancellation")
 	}
 }

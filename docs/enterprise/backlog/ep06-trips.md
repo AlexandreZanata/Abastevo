@@ -171,12 +171,13 @@ physical devices (OWED), visual/TalkBack review.
 
 [F4 conflict resolution](../evidence/f4-trip007-conflict-resolution.md) is
 LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Held trip starts, finishes,
-events and submissions are listed, read and resolved once under
+events, submissions and EMP-TRIP-011 lifecycle commands are listed, read and resolved once under
 `trip.trip.review` (`/v1/orgs/{org_id}/sync/reviews/trips/…`, structure
 through the held fact): refuse with a reason, or accept a held start as the
 trip it declared (in progress, its reading at the original receipt, its
 pending finish then accepted) only when no trip of the asset is in progress
-or finished after its declared start; migration 000237 re-proves every
+or paused, or finished or cancelled after its declared start; migration
+000237 re-proves every
 acceptance; the held evidence stays and the author's review-results read
 answers trip items. Accept with another asset and the Android presentation
 of trip resolutions remain retained.

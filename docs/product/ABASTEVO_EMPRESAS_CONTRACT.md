@@ -6812,7 +6812,9 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   holding `trip.trip.review`: a held `trip.start` (`ASSET_BUSY`,
   `ASSET_UNAVAILABLE`, `PERMISSION_CHANGED`), a held `trip.finish`
   (`TRIP_ALREADY_CLOSED`), a held `trip.event.record` (`TRIP_ALREADY_CLOSED`,
-  `STALE_REVISION`) and a held `trip.submit` (`STALE_REVISION`). The queue is
+  `STALE_REVISION`), a held `trip.submit` (`STALE_REVISION`) and, since
+  EMP-TRIP-011, a held `trip.pause`, `trip.resume` or `trip.cancel`
+  (`TRIP_ALREADY_CLOSED`, `STALE_REVISION`). The queue is
   an organization-level list (only an `ORG` grant covers it, as the trip
   review queue) filtered by state (`OPEN`, `EXPIRED_UNRESOLVED` after the
   60-day review-expiry-v1 period, `RESOLVED_ACCEPTED`, `RESOLVED_REFUSED`) in
@@ -6823,10 +6825,11 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   names. A read shows the item (operation, type, payload digest, code, state,
   revision 1 or 2, author account, membership, employee record, enrollment,
   receipt and expiry), the exact held fact (declaration, asset, driver,
-  reading or stated absence, run clock, event, submitted revision) and the
-  trips it conflicts with: for a held start every trip of the asset in
-  progress or finished after its declared start, otherwise the trip it names
-  with its operational state. Another organization's item, an unknown item
+  reading or stated absence, run clock, event, submitted revision, lifecycle
+  command with its named revision and reason) and the trips it conflicts
+  with: for a held start every trip of the asset in progress or paused, or
+  ended (finished or cancelled) after its declared start, otherwise the trip
+  it names with its operational state and end. Another organization's item, an unknown item
   and a meter item are `NOT_FOUND`; a member without the permission or whose
   structural grant does not cover the item is `FORBIDDEN`; `AUDITOR` is
   `FORBIDDEN`. A held fact is never a trip, active use, cost or indicator.
@@ -6843,7 +6846,9 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   `trip.finish` is accepted on its next delivery. Accepting a held finish,
   event or submission is `CONFLICT`: the trip already has its finish, its
   logbook is closed after the finish and a submitted or decided revision is
-  never rewritten (BR-TRIP-003); a late correction is an amendment. Accepting
+  never rewritten (BR-TRIP-003); a late correction is an amendment.
+  Accepting a held lifecycle command is `CONFLICT` too: its trip is closed or
+  its named revision is stale, and the author records the command again. Accepting
   with another asset is not offered (the held reading belongs to the declared
   asset's meter). No resolution changes the winning trip, its readings, its
   logbook or its review history.
@@ -6853,7 +6858,9 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   enrolled device, the driver is an `ACTIVE` unmerged employee record, and no
   stored trip of the asset is in progress or finished after the declared
   start (the accepted trip is in progress from its declared start, so at no
-  instant do two trips of the asset count as in progress, VAL-07);
+  instant do two trips of the asset count as in progress, VAL-07; a paused
+  trip still holds the asset and a cancelled one holds it until its
+  cancellation, EMP-TRIP-011);
   otherwise the resolution is `CONFLICT` and writes nothing, and the item
   stays `OPEN`. The database re-proves every condition in the same
   transaction, including against a concurrent start or a concurrent

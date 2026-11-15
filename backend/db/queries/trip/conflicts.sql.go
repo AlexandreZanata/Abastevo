@@ -76,7 +76,7 @@ const listTripConflictIDs = `-- name: ListTripConflictIDs :many
 SELECT i.id::text AS id FROM org_sync_review_items i
 JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id,a.review_item_id,a.review_proof_version)=(i.org_id,i.operation_id,i.id,i.proof_version)
 LEFT JOIN org_sync_review_resolutions z ON(z.org_id,z.review_item_id)=(i.org_id,i.id)
-WHERE i.org_id=CAST($1::text AS uuid) AND i.operation_schema=1 AND i.operation_type IN('trip.start','trip.finish','trip.event.record','trip.submit')
+WHERE i.org_id=CAST($1::text AS uuid) AND i.operation_schema=1 AND i.operation_type IN('trip.start','trip.finish','trip.event.record','trip.submit','trip.pause','trip.resume','trip.cancel')
 AND($2::text='' OR i.id>CAST(NULLIF($2::text,'') AS uuid))
 AND($3::text='' OR CASE WHEN z.outcome='ACCEPTED' THEN 'RESOLVED_ACCEPTED' WHEN z.outcome='REFUSED' THEN 'RESOLVED_REFUSED' WHEN a.received_at+make_interval(secs=>i.expiry_days::int*86400)<=$4::timestamptz THEN 'EXPIRED_UNRESOLVED' ELSE 'OPEN' END=$3::text)
 ORDER BY i.id LIMIT $5::int
@@ -231,7 +231,7 @@ FROM org_sync_review_items i JOIN org_sync_operations o ON(o.org_id,o.operation_
 JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id,a.review_item_id,a.review_proof_version)=(i.org_id,i.operation_id,i.id,i.proof_version)
 LEFT JOIN org_sync_review_resolutions z ON(z.org_id,z.review_item_id)=(i.org_id,i.id)
 WHERE i.org_id=CAST($1::text AS uuid) AND i.id=CAST($2::text AS uuid) AND i.operation_schema=1
-AND i.operation_type IN('trip.start','trip.finish','trip.event.record','trip.submit')
+AND i.operation_type IN('trip.start','trip.finish','trip.event.record','trip.submit','trip.pause','trip.resume','trip.cancel')
 `
 
 type ReadTripConflictItemParams struct {
@@ -363,6 +363,44 @@ func (q *Queries) ReadTripConflictSubmission(ctx context.Context, arg ReadTripCo
 	return i, err
 }
 
+const readTripConflictTransition = `-- name: ReadTripConflictTransition :one
+SELECT h.trip_id::text AS trip_id,h.command,h.expected_revision,h.reason,h.occurred_at,h.occurred_submicro,h.entry_zone,h.device_offset_seconds
+FROM org_trip_held_transitions h WHERE h.org_id=CAST($1::text AS uuid) AND h.review_item_id=CAST($2::text AS uuid)
+`
+
+type ReadTripConflictTransitionParams struct {
+	OrgID        string `json:"org_id"`
+	ReviewItemID string `json:"review_item_id"`
+}
+
+type ReadTripConflictTransitionRow struct {
+	TripID              string             `json:"trip_id"`
+	Command             string             `json:"command"`
+	ExpectedRevision    int64              `json:"expected_revision"`
+	Reason              pgtype.Text        `json:"reason"`
+	OccurredAt          pgtype.Timestamptz `json:"occurred_at"`
+	OccurredSubmicro    int16              `json:"occurred_submicro"`
+	EntryZone           string             `json:"entry_zone"`
+	DeviceOffsetSeconds int64              `json:"device_offset_seconds"`
+}
+
+// A held EMP-TRIP-011 lifecycle command.
+func (q *Queries) ReadTripConflictTransition(ctx context.Context, arg ReadTripConflictTransitionParams) (ReadTripConflictTransitionRow, error) {
+	row := q.db.QueryRow(ctx, readTripConflictTransition, arg.OrgID, arg.ReviewItemID)
+	var i ReadTripConflictTransitionRow
+	err := row.Scan(
+		&i.TripID,
+		&i.Command,
+		&i.ExpectedRevision,
+		&i.Reason,
+		&i.OccurredAt,
+		&i.OccurredSubmicro,
+		&i.EntryZone,
+		&i.DeviceOffsetSeconds,
+	)
+	return i, err
+}
+
 const tripConflictDecisionReceipt = `-- name: TripConflictDecisionReceipt :one
 SELECT review_item_id::text AS review_item_id,reviewer_account_id::text AS reviewer_account_id,request_hash,canonical_resolution
 FROM org_sync_review_resolutions WHERE org_id=CAST($1::text AS uuid) AND id=CAST($2::text AS uuid)
@@ -454,8 +492,9 @@ func (q *Queries) TripConflictNow(ctx context.Context) (pgtype.Timestamptz, erro
 }
 
 const tripConflictTrip = `-- name: TripConflictTrip :one
-SELECT t.id::text AS id,t.state,t.occurred_at,t.occurred_submicro,f.occurred_at AS finished_at,COALESCE(f.occurred_submicro,0)::smallint AS finished_submicro
+SELECT t.id::text AS id,t.state,t.occurred_at,t.occurred_submicro,COALESCE(f.occurred_at,c.occurred_at)::timestamptz AS finished_at,COALESCE(f.occurred_submicro,c.occurred_submicro,0)::smallint AS finished_submicro
 FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+LEFT JOIN org_trip_transitions c ON(c.org_id,c.trip_id,c.command)=(t.org_id,t.id,'CANCEL')
 WHERE t.org_id=CAST($1::text AS uuid) AND t.id=CAST($2::text AS uuid)
 `
 
@@ -473,6 +512,7 @@ type TripConflictTripRow struct {
 	FinishedSubmicro int16              `json:"finished_submicro"`
 }
 
+// One trip with its end: its finish, or its cancellation (EMP-TRIP-011).
 func (q *Queries) TripConflictTrip(ctx context.Context, arg TripConflictTripParams) (TripConflictTripRow, error) {
 	row := q.db.QueryRow(ctx, tripConflictTrip, arg.OrgID, arg.ID)
 	var i TripConflictTripRow
@@ -488,10 +528,11 @@ func (q *Queries) TripConflictTrip(ctx context.Context, arg TripConflictTripPara
 }
 
 const tripConflictTripsOfAsset = `-- name: TripConflictTripsOfAsset :many
-SELECT t.id::text AS id,t.state,t.occurred_at,t.occurred_submicro,f.occurred_at AS finished_at,COALESCE(f.occurred_submicro,0)::smallint AS finished_submicro
+SELECT t.id::text AS id,t.state,t.occurred_at,t.occurred_submicro,COALESCE(f.occurred_at,c.occurred_at)::timestamptz AS finished_at,COALESCE(f.occurred_submicro,c.occurred_submicro,0)::smallint AS finished_submicro
 FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+LEFT JOIN org_trip_transitions c ON(c.org_id,c.trip_id,c.command)=(t.org_id,t.id,'CANCEL')
 WHERE t.org_id=CAST($1::text AS uuid) AND t.asset_id=CAST($2::text AS uuid) AND t.id<>CAST($3::text AS uuid)
-AND(t.state<>'COMPLETED' OR(f.occurred_at,f.occurred_submicro)>($4::timestamptz,$5::smallint))
+AND(t.state NOT IN('COMPLETED','CANCELLED') OR(COALESCE(f.occurred_at,c.occurred_at),COALESCE(f.occurred_submicro,c.occurred_submicro))>($4::timestamptz,$5::smallint))
 ORDER BY t.occurred_at,t.occurred_submicro,t.id
 `
 
@@ -512,7 +553,8 @@ type TripConflictTripsOfAssetRow struct {
 	FinishedSubmicro int16              `json:"finished_submicro"`
 }
 
-// B-BR-EMP-409: the other trips of the asset in progress or finished after
+// B-BR-EMP-409: the other trips of the asset in progress or paused, or
+// whose end (its finish, or its cancellation under EMP-TRIP-011) is after
 // the held start's declared instant, in start order.
 func (q *Queries) TripConflictTripsOfAsset(ctx context.Context, arg TripConflictTripsOfAssetParams) ([]TripConflictTripsOfAssetRow, error) {
 	rows, err := q.db.Query(ctx, tripConflictTripsOfAsset,

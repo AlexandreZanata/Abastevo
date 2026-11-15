@@ -64,6 +64,10 @@ var heldCodes = map[string][]string{
 	FinishOperationType: {TripAlreadyClosed},
 	EventOperationType:  {TripAlreadyClosed, StaleRevision},
 	SubmitOperationType: {StaleRevision},
+	// EMP-TRIP-011 lifecycle commands on a closed trip or a stale revision.
+	PauseOperationType:  {TripAlreadyClosed, StaleRevision},
+	ResumeOperationType: {TripAlreadyClosed, StaleRevision},
+	CancelOperationType: {TripAlreadyClosed, StaleRevision},
 }
 
 // HeldCode reports whether an owner keeps a held fact under the code.
@@ -72,7 +76,8 @@ func HeldCode(operationType, code string) bool {
 }
 
 // ConflictTrip is one stored trip the held fact conflicts with: for a held
-// start a trip of its asset, otherwise the trip the fact names.
+// start a trip of its asset, otherwise the trip the fact names. FinishedAt is
+// the end of a terminal trip: its finish, or its cancellation (EMP-TRIP-011).
 type ConflictTrip struct {
 	private
 	TripID     string
@@ -81,9 +86,9 @@ type ConflictTrip struct {
 	FinishedAt *time.Time
 }
 
-// Overlaps is the B-BR-EMP-409 rule: a trip that is not finished, or finished
-// after the held start's declared instant, would be in progress at an instant
-// the accepted trip is in progress too.
+// Overlaps is the B-BR-EMP-409 rule: a trip that has not ended (in progress
+// or paused), or ended after the held start's declared instant, would hold
+// the asset at an instant the accepted trip is in progress too.
 func (t ConflictTrip) Overlaps(declared time.Time) bool {
 	return t.FinishedAt == nil || t.FinishedAt.After(declared)
 }
@@ -107,9 +112,18 @@ type HeldEventFact struct {
 	Text               *string
 }
 
+// HeldTransitionFact is an exact held EMP-TRIP-011 lifecycle command.
+type HeldTransitionFact struct {
+	private
+	Command          string
+	ExpectedRevision int64
+	Reason           *string
+}
+
 // ConflictFact is the exact held fact of one item: Start for a held start,
-// Event for a held event, SubmittedRevision for a held submission; Finish
-// facts reuse Start's declaration, reading and clock fields with no asset.
+// Event for a held event, SubmittedRevision for a held submission,
+// Transition for a held lifecycle command; Finish facts reuse Start's
+// declaration, reading and clock fields with no asset.
 type ConflictFact struct {
 	private
 	TripID            string
@@ -118,6 +132,7 @@ type ConflictFact struct {
 	Finish            *HeldStartFact
 	Event             *HeldEventFact
 	SubmittedRevision *int64
+	Transition        *HeldTransitionFact
 }
 
 // ConflictView is the reviewer's read of one held trip item.
@@ -163,18 +178,24 @@ func validConflictView(v ConflictView) bool {
 		return false
 	}
 	f := v.Fact
+	lifecycle := map[string]string{PauseOperationType: "PAUSE", ResumeOperationType: "RESUME", CancelOperationType: "CANCEL"}
 	shape := map[string]bool{
-		StartOperationType:  f.Start != nil && f.Finish == nil && f.Event == nil && f.SubmittedRevision == nil && f.Start.TripID == f.TripID && canonicalID(f.Start.AssetID) && canonicalID(f.Start.DriverID),
-		FinishOperationType: f.Start == nil && f.Finish != nil && f.Event == nil && f.SubmittedRevision == nil,
-		EventOperationType:  f.Start == nil && f.Finish == nil && f.Event != nil && f.SubmittedRevision == nil && canonicalID(f.Event.EventID),
-		SubmitOperationType: f.Start == nil && f.Finish == nil && f.Event == nil && f.SubmittedRevision != nil && *f.SubmittedRevision >= 1,
+		StartOperationType:  f.Start != nil && f.Finish == nil && f.Event == nil && f.SubmittedRevision == nil && f.Transition == nil && f.Start.TripID == f.TripID && canonicalID(f.Start.AssetID) && canonicalID(f.Start.DriverID),
+		FinishOperationType: f.Start == nil && f.Finish != nil && f.Event == nil && f.SubmittedRevision == nil && f.Transition == nil,
+		EventOperationType:  f.Start == nil && f.Finish == nil && f.Event != nil && f.SubmittedRevision == nil && f.Transition == nil && canonicalID(f.Event.EventID),
+		SubmitOperationType: f.Start == nil && f.Finish == nil && f.Event == nil && f.SubmittedRevision != nil && f.Transition == nil && *f.SubmittedRevision >= 1,
+	}
+	if command, ok := lifecycle[v.OperationType]; ok {
+		t := f.Transition
+		shape[v.OperationType] = f.Start == nil && f.Finish == nil && f.Event == nil && f.SubmittedRevision == nil && t != nil && t.Command == command && t.ExpectedRevision >= 1 &&
+			(command != "CANCEL" || t.Reason != nil)
 	}
 	if !shape[v.OperationType] || f.Declared.OccurredAt.IsZero() || f.Declared.EntryZone == "" {
 		return false
 	}
 	seen := map[string]bool{}
 	for _, t := range v.Trips {
-		if !canonicalID(t.TripID) || seen[t.TripID] || t.StartedAt.IsZero() || (t.State == trip.Completed) != (t.FinishedAt != nil) {
+		if !canonicalID(t.TripID) || seen[t.TripID] || t.StartedAt.IsZero() || t.State.Terminal() != (t.FinishedAt != nil) {
 			return false
 		}
 		seen[t.TripID] = true

@@ -42,8 +42,9 @@ const (
 	// HeldTripStructure: a held trip fact (EMP-TRIP-007, EDR-263). A held
 	// start resolves to the asset it declared, that asset's FLEET-005 unit
 	// and cost centre at the declared instant and the teams covering its
-	// author or driver at the receipt; a held finish, event or submission to
-	// the stored structure of the trip it names (as TripStructure).
+	// author or driver at the receipt; a held finish, event, submission or
+	// EMP-TRIP-011 lifecycle command to the stored structure of the trip it
+	// names (as TripStructure).
 	HeldTripStructure
 )
 
@@ -95,8 +96,9 @@ FROM(SELECT h.asset_id,u.unit_id,CASE WHEN u.unit_id IS NULL THEN NULL ELSE c.co
  UNION ALL
  SELECT t.asset_id,t.unit_id,t.cost_centre_id,t.author_employee_id,t.driver_employee_id,t.received_at
  FROM org_sync_review_items i JOIN org_trips t ON t.org_id=i.org_id AND t.id=COALESCE((SELECT f.trip_id FROM org_trip_held_finishes f WHERE f.org_id=i.org_id AND f.review_item_id=i.id),
-  (SELECT e.trip_id FROM org_trip_held_events e WHERE e.org_id=i.org_id AND e.review_item_id=i.id),(SELECT s.trip_id FROM org_trip_held_submissions s WHERE s.org_id=i.org_id AND s.review_item_id=i.id))
- WHERE i.org_id=$1 AND i.id=$2 AND i.operation_type IN('trip.finish','trip.event.record','trip.submit')) x`
+  (SELECT e.trip_id FROM org_trip_held_events e WHERE e.org_id=i.org_id AND e.review_item_id=i.id),(SELECT s.trip_id FROM org_trip_held_submissions s WHERE s.org_id=i.org_id AND s.review_item_id=i.id),
+  (SELECT h.trip_id FROM org_trip_held_transitions h WHERE h.org_id=i.org_id AND h.review_item_id=i.id))
+ WHERE i.org_id=$1 AND i.id=$2 AND i.operation_type IN('trip.finish','trip.event.record','trip.submit','trip.pause','trip.resume','trip.cancel')) x`
 
 // missionStructure reads the mission's immutable unit and asset.
 const missionStructure = `SELECT unit_id::text,COALESCE(asset_id::text,'') FROM org_trip_missions WHERE org_id=$1 AND id=$2`

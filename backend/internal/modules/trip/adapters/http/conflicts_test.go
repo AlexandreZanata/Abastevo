@@ -68,6 +68,9 @@ func TestConflictRequestsRecordsAndProjection(t *testing.T) {
 		app.EventOperationType: func(v *app.ConflictView) {
 			v.Code, v.Fact = app.StaleRevision, app.ConflictFact{TripID: conflictID(8), Declared: declared, Event: &app.HeldEventFact{EventID: conflictID(9), EventType: "STOP", Text: &text}}
 		},
+		app.PauseOperationType: func(v *app.ConflictView) {
+			v.Code, v.Fact = app.StaleRevision, app.ConflictFact{TripID: conflictID(8), Declared: declared, Transition: &app.HeldTransitionFact{Command: "PAUSE", ExpectedRevision: 2}}
+		},
 		app.SubmitOperationType: func(v *app.ConflictView) {
 			v.Code, v.Fact = app.StaleRevision, app.ConflictFact{TripID: conflictID(8), Declared: declared, SubmittedRevision: &revision}
 		},
@@ -80,7 +83,7 @@ func TestConflictRequestsRecordsAndProjection(t *testing.T) {
 			t.Fatal("projection", kind, err)
 		}
 		fact := out["fact"].(map[string]any)
-		if len(fact) != 11 || fact["asset_id"] != nil || fact["driver_employee_id"] != nil || out["resolution"] != nil || out["operation_type"] != kind {
+		if len(fact) != 12 || fact["asset_id"] != nil || fact["driver_employee_id"] != nil || out["resolution"] != nil || out["operation_type"] != kind {
 			t.Fatal("projection shape", kind, fact)
 		}
 		switch kind {
@@ -91,6 +94,10 @@ func TestConflictRequestsRecordsAndProjection(t *testing.T) {
 		case app.EventOperationType:
 			if fact["event"].(map[string]any)["text"] != text || fact["missing_reading_reason"] != nil {
 				t.Fatal("event fact", fact)
+			}
+		case app.PauseOperationType:
+			if tr := fact["transition"].(map[string]any); tr["command"] != "PAUSE" || tr["expected_revision"] != int64(2) || tr["reason"] != nil || fact["event"] != nil {
+				t.Fatal("pause fact", fact)
 			}
 		case app.SubmitOperationType:
 			if fact["submitted_revision"] != revision || fact["event"] != nil {

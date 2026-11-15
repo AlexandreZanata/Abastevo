@@ -6,7 +6,7 @@
 SELECT i.id::text AS id FROM org_sync_review_items i
 JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id,a.review_item_id,a.review_proof_version)=(i.org_id,i.operation_id,i.id,i.proof_version)
 LEFT JOIN org_sync_review_resolutions z ON(z.org_id,z.review_item_id)=(i.org_id,i.id)
-WHERE i.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND i.operation_schema=1 AND i.operation_type IN('trip.start','trip.finish','trip.event.record','trip.submit')
+WHERE i.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND i.operation_schema=1 AND i.operation_type IN('trip.start','trip.finish','trip.event.record','trip.submit','trip.pause','trip.resume','trip.cancel')
 AND(sqlc.arg(after_id)::text='' OR i.id>CAST(NULLIF(sqlc.arg(after_id)::text,'') AS uuid))
 AND(sqlc.arg(state)::text='' OR CASE WHEN z.outcome='ACCEPTED' THEN 'RESOLVED_ACCEPTED' WHEN z.outcome='REFUSED' THEN 'RESOLVED_REFUSED' WHEN a.received_at+make_interval(secs=>i.expiry_days::int*86400)<=sqlc.arg(at)::timestamptz THEN 'EXPIRED_UNRESOLVED' ELSE 'OPEN' END=sqlc.arg(state)::text)
 ORDER BY i.id LIMIT sqlc.arg(row_limit)::int;
@@ -20,7 +20,7 @@ FROM org_sync_review_items i JOIN org_sync_operations o ON(o.org_id,o.operation_
 JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id,a.review_item_id,a.review_proof_version)=(i.org_id,i.operation_id,i.id,i.proof_version)
 LEFT JOIN org_sync_review_resolutions z ON(z.org_id,z.review_item_id)=(i.org_id,i.id)
 WHERE i.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND i.id=CAST(sqlc.arg(id)::text AS uuid) AND i.operation_schema=1
-AND i.operation_type IN('trip.start','trip.finish','trip.event.record','trip.submit');
+AND i.operation_type IN('trip.start','trip.finish','trip.event.record','trip.submit','trip.pause','trip.resume','trip.cancel');
 
 -- name: ReadTripConflictStart :one
 SELECT h.trip_id::text AS trip_id,h.asset_id::text AS asset_id,h.driver_employee_id::text AS driver_employee_id,h.occurred_at,h.occurred_submicro,h.entry_zone,h.device_offset_seconds,
@@ -45,18 +45,27 @@ SELECT h.trip_id::text AS trip_id,h.revision,h.occurred_at,h.occurred_submicro,h
 FROM org_trip_held_submissions h WHERE h.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND h.review_item_id=CAST(sqlc.arg(review_item_id)::text AS uuid);
 
 -- name: TripConflictTripsOfAsset :many
--- B-BR-EMP-409: the other trips of the asset in progress or finished after
+-- B-BR-EMP-409: the other trips of the asset in progress or paused, or
+-- whose end (its finish, or its cancellation under EMP-TRIP-011) is after
 -- the held start's declared instant, in start order.
-SELECT t.id::text AS id,t.state,t.occurred_at,t.occurred_submicro,f.occurred_at AS finished_at,COALESCE(f.occurred_submicro,0)::smallint AS finished_submicro
+SELECT t.id::text AS id,t.state,t.occurred_at,t.occurred_submicro,COALESCE(f.occurred_at,c.occurred_at)::timestamptz AS finished_at,COALESCE(f.occurred_submicro,c.occurred_submicro,0)::smallint AS finished_submicro
 FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+LEFT JOIN org_trip_transitions c ON(c.org_id,c.trip_id,c.command)=(t.org_id,t.id,'CANCEL')
 WHERE t.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND t.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND t.id<>CAST(sqlc.arg(trip_id)::text AS uuid)
-AND(t.state<>'COMPLETED' OR(f.occurred_at,f.occurred_submicro)>(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint))
+AND(t.state NOT IN('COMPLETED','CANCELLED') OR(COALESCE(f.occurred_at,c.occurred_at),COALESCE(f.occurred_submicro,c.occurred_submicro))>(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint))
 ORDER BY t.occurred_at,t.occurred_submicro,t.id;
 
 -- name: TripConflictTrip :one
-SELECT t.id::text AS id,t.state,t.occurred_at,t.occurred_submicro,f.occurred_at AS finished_at,COALESCE(f.occurred_submicro,0)::smallint AS finished_submicro
+-- One trip with its end: its finish, or its cancellation (EMP-TRIP-011).
+SELECT t.id::text AS id,t.state,t.occurred_at,t.occurred_submicro,COALESCE(f.occurred_at,c.occurred_at)::timestamptz AS finished_at,COALESCE(f.occurred_submicro,c.occurred_submicro,0)::smallint AS finished_submicro
 FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+LEFT JOIN org_trip_transitions c ON(c.org_id,c.trip_id,c.command)=(t.org_id,t.id,'CANCEL')
 WHERE t.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND t.id=CAST(sqlc.arg(id)::text AS uuid);
+
+-- name: ReadTripConflictTransition :one
+-- A held EMP-TRIP-011 lifecycle command.
+SELECT h.trip_id::text AS trip_id,h.command,h.expected_revision,h.reason,h.occurred_at,h.occurred_submicro,h.entry_zone,h.device_offset_seconds
+FROM org_trip_held_transitions h WHERE h.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND h.review_item_id=CAST(sqlc.arg(review_item_id)::text AS uuid);
 
 -- name: LockTripConflict :one
 SELECT operation_type FROM org_sync_review_items WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(id)::text AS uuid) FOR UPDATE;

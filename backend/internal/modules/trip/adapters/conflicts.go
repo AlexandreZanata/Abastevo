@@ -192,6 +192,18 @@ func conflictView(ctx context.Context, queries *q.Queries, scope kernel.OrgScope
 		}
 		revision := h.Revision
 		view.Fact, named = app.ConflictFact{TripID: h.TripID, Declared: declared, SubmittedRevision: &revision}, h.TripID
+	case app.PauseOperationType, app.ResumeOperationType, app.CancelOperationType:
+		// EMP-TRIP-011: a held lifecycle command names its trip.
+		h, err := queries.ReadTripConflictTransition(ctx, q.ReadTripConflictTransitionParams{OrgID: org, ReviewItemID: id})
+		if err != nil {
+			return app.ConflictView{}, err
+		}
+		declared, ok := conflictDeclaration(h.OccurredAt, h.OccurredSubmicro, h.EntryZone, h.DeviceOffsetSeconds)
+		if !ok {
+			return app.ConflictView{}, app.ErrUnavailable
+		}
+		view.Fact = app.ConflictFact{TripID: h.TripID, Declared: declared, Transition: &app.HeldTransitionFact{Command: h.Command, ExpectedRevision: h.ExpectedRevision, Reason: optionalText(h.Reason)}}
+		named = h.TripID
 	default:
 		return app.ConflictView{}, app.ErrNotFound
 	}

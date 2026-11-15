@@ -8,7 +8,8 @@ Integration: INTEGRATION_PENDING
 One bounded F4 API task on `codex/enterprise-f4-trip007` (worktree
 `/data/dev/worktrees/f4-trip007`) based on the F4 head `fe7ec66d` (main
 `93f3a88d` with PR #223, EMP-TRIP-009/013 and the origin/dev Play Store
-work). Real dependencies used: the OFFL-008 review items, resolutions,
+work), then merged with the F4 head `45c3baf3` (EMP-OFFL-005 and
+EMP-TRIP-011) before its final gates. Real dependencies used: the OFFL-008 review items, resolutions,
 own-result read and audit (migration 000199, `fleet/adapters/meter_review*`);
 the EMP-TRIP-002 trips and held starts/finishes, EMP-TRIP-003 held events,
 EMP-TRIP-015 held submissions (STALE_REVISION); the EMP-TRIP-004 trip review
@@ -165,8 +166,9 @@ the migration and the contract and running them against stub bodies.
 - Application: `go test -race ./internal/modules/trip/application/`
   (`trip007-app-green.jsonl`): the five conflict tests and their 8 subtests
   pass; trip and fleet unit packages pass under `-race`.
-- PostGIS (`-race -tags=integration`, real ordinary NOSUPERUSER/NOBYPASSRLS
-  runtime role through `orgtest`) → `trip007-db-green.jsonl`: 8/8 top-level
+- PostGIS before the merge (`-race -tags=integration`, real ordinary
+  NOSUPERUSER/NOBYPASSRLS runtime role through `orgtest`) →
+  `trip007-db-green.jsonl`: 8/8 top-level
   and 6/6 subtests pass. The first GREEN run failed every test with
   `unavailable`: the held fact reader inverted its "exactly one of reading
   and stated absence" check (`(reading == "") == reason`), a store defect
@@ -184,6 +186,37 @@ the migration and the contract and running them against stub bodies.
   application 61.1%, trip HTTP 21.6% (the store and routes are covered by
   the PostGIS tests).
 
+## Merge with EMP-TRIP-011 (second commit)
+
+After the first commit `e81d6364` the coordinator integrated EMP-TRIP-011
+(pause, resume and cancellation; migration 000233 redefining nine trip and
+review functions, `PAUSED`/`CANCELLED` trips, insert-only
+`org_trip_transitions` and held `org_trip_held_transitions` with
+`TRIP_ALREADY_CLOSED`/`STALE_REVISION`) on `codex/enterprise-f4`
+(`45c3baf3`). The branch merged it normally (only the append-only contract,
+EDR table and README sections conflicted; resolved by union, theirs first)
+and the second commit aligns TRIP-007 with it:
+
+1. 000237 redefines the trip publication from its 000233 body (every line
+   kept: the finish published at `org_trip_revision`), adding only the
+   reviewed start publication; 000237 redefines no other 000233 function.
+2. The trip source's overlap re-proof and the conflict queries treat a
+   `PAUSED` trip as holding the asset and a `CANCELLED` trip as ending at its
+   cancellation (the 000233 held-source rule), and a conflicting trip's
+   `finished_at` is its finish or its cancellation.
+3. The held lifecycle commands are queue owners: listed and read with their
+   command, named revision and reason (`fact.transition`), structure through
+   the trip they name, refusal only (the resolution source admits
+   `REFUSED` for them; acceptance is `CONFLICT`).
+4. OpenAPI (`operation_type` +3, `fact.transition`), the application view,
+   the store, the HTTP projection, `HeldTripStructure` and the README grants
+   follow; new tests: a held pause in the queue test (listed, read, refused,
+   acceptance `CONFLICT`, the trip unchanged),
+   `TestTripConflictCancelledTripEndsAtItsCancellation` (a paused trip blocks
+   an acceptance; after the cancellation a start inside the cancelled trip is
+   still `CONFLICT` and one after it is accepted), and pure cases for
+   cancelled and paused trips and lifecycle views.
+
 ## Acceptance and negatives mapped to tests
 
 | Item | Evidence |
@@ -197,7 +230,8 @@ the migration and the contract and running them against stub bodies.
 | Loss of the conflict evidence | refusal test: review item, held row and original ACK bytes unchanged after the decision; UPDATE/DELETE of the held start, the resolution and the item refused to the runtime role (42501 or 55000 accepted; the role holds no UPDATE/DELETE and the tables keep their 199/220 immutability triggers); acceptance test: held evidence unchanged after acceptance |
 | Foreign organization, unknown and meter items | queue test: another organization's owner gets `NOT_FOUND` for read and resolve and an empty queue; an unknown item `NOT_FOUND`; HTTP foreign path and unknown item `NOT_FOUND`. A meter item on these routes (and a trip item on the meter routes) is excluded by the owner-type filters of the queries and the structure lookup; no test seeds a meter item in the trip fixture |
 | Uncovered structural scope, AUDITOR | scope test: AUDITOR, FINANCE, DRIVER, a SUPERVISOR of another unit and a FLEET_MANAGER of another asset `FORBIDDEN` on read and resolve (held start and held finish); a UNIT grant cannot list the organization queue; covering UNIT and ASSET grants read, refuse and accept; HTTP AUDITOR `FORBIDDEN` on the three routes; AUTH-011 walk |
-| Accepting a finish, event or submission | scope test (`CONFLICT` for finish and event); pure rule for all three; database `23514` for an accepted held finish |
+| Accepting a finish, event, submission or lifecycle command | scope test (`CONFLICT` for finish and event); queue test (held pause: acceptance `CONFLICT`, refusal recorded, trip unchanged); pure rule for all six owners; database `23514` for an accepted held finish |
+| Paused and cancelled trips (EMP-TRIP-011) | `TestTripConflictCancelledTripEndsAtItsCancellation` (paused trip blocks an acceptance; a start inside the cancelled trip `CONFLICT`, one after its cancellation accepted, exactly one trip in progress); pure cases for cancelled and paused trips |
 | Author's own result | refusal and acceptance tests: `OwnMeterReviewResults` returns the exact resolution to the author's source and refuses another member |
 | Database re-proof | schema test: accepted finish (23514), accepted resolution without trip/reading/readiness (23514 at commit), effect without resolution (23514), held trip identity without its resolution (23505), overlap (23514) |
 | Populated upgrade 000232 → 000237 | `TestTripConflictPopulatedUpgradeFailureRecoveryAndPreviousImage` (completed trip, held start, held finish; injected failure leaves functions, constraints and data unchanged; ordinary migrator owning the table and six functions; recovery once; no-op replay; previous image compatible; usage answers unchanged; the new outcome check present; receipts replay; refusal and acceptance on the upgraded schema) |
@@ -217,14 +251,14 @@ gofmt -l ./internal ./cmd ./db                                    # empty (toolc
 go build ./... && go vet ./... && go vet -tags=integration ./...  # clean
 GOTOOLCHAIN=go1.27.1 staticcheck [-tags=integration] ./internal/modules/{trip,fleet,organization}/... ./internal/platform/{enterprisesuite,apicontract}/... ./db/queries/{trip,fleet}/... ./cmd/api/...   # clean
 sqlc vet && sqlc generate && sqlc diff                            # clean (new review_owners.sql and conflicts.sql only)
-vacuum lint -r contracts/openapi/vacuum-rules.yaml contracts/openapi/v1.yaml   # 0 errors; 1,071 warnings / 660 informs vs 1,064 / 660 at HEAD
+vacuum lint -r contracts/openapi/vacuum-rules.yaml contracts/openapi/v1.yaml   # 0 errors (warnings below)
 python3 docs/enterprise/tools/check_plan.py                       # 348 tasks, 545 rules, 167 use cases, 145 screens, 0 problems
 git diff --check                                                  # clean
 go test -json -race -tags=integration -timeout=90m -p 2 -count=1 ./internal/modules/organization/adapters ./internal/modules/trip/... ./internal/modules/fleet/... ./internal/modules/orgsync/... ./internal/modules/review/... ./internal/platform/... ./cmd/api/...
 go test -count=1 -timeout=45m ./...
 ```
 
-First union (`trip007-db-union.jsonl`, 45 min, organization adapters
+First union, before the merge (`trip007-db-union.jsonl`, 45 min, organization adapters
 2,724 s while other agents' suites shared the machine): 34 packages passed,
 2 without tests, 1,217 top-level / 8,504 subtests passed and 4 failed.
 
@@ -247,9 +281,28 @@ First union (`trip007-db-union.jsonl`, 45 min, organization adapters
   machine load; untouched public code, they pass alone
   (`trip007-cmd-public-rerun.jsonl`, 3/3 top-level, 2/2 subtests).
 
-UNION2_PLACEHOLDER
+Final gates on the merged tree (after the EMP-TRIP-011 merge and the
+second commit's alignment):
 
-Untagged whole module (`trip007-untagged-all.log`): exit 0, 223 packages
+- `TestTripConflict*` on PostGIS (`trip007-db-green-merged.jsonl`): 9/9
+  top-level and 6/6 subtests pass (the new cancellation test included).
+- Race/integration union (`trip007-db-union3.jsonl`, 35.6 min,
+  organization adapters 2,135 s): 38 packages, 36 passed and 2 without
+  tests; 1,249 top-level and 8,614 subtests passed; 0 failures, 0 skips
+  (the matrix 280 cells 112 / 168, the AUTH-011 walk 150 / 30 / 120 and the
+  three public-process tests included).
+- Untagged whole module (`trip007-untagged-merged.log`): exit 0, 224
+  packages ok, 81 without tests.
+- Static (`trip007-static-merged.log`): toolchain gofmt empty, build and
+  vet (both tags) clean, staticcheck plain and integration clean, `sqlc vet`
+  and `sqlc diff` clean; vacuum 0 errors, 1,074 warnings / 665 informs vs
+  1,067 / 665 on the F4 head `45c3baf3` (the existing route patterns of the
+  three routes); `check_plan.py` 0 problems; `git diff --check` clean.
+- A pre-merge union run on the corrected migration was stopped (my own
+  process) when the coordinator asked for the merge; its partial results
+  are not counted.
+
+Pre-merge untagged whole module (`trip007-untagged-all.log`): exit 0, 223 packages
 ok, 81 without tests (run before the effect-source correction, which
 changes SQL only); after it, the untagged packages that read the embedded
 migrations (`platform/migrate`, `db/...`, quality, privacy and account
@@ -261,7 +314,9 @@ only in the uncommitted log environment file.
 
 ## Retained
 
-- **EMP-TRIP-023 and the mission link** are not part of this task.
+- **EMP-TRIP-023 and the mission link** are not part of this task (not
+  started in this worktree). Held starts of a later mission-linked start
+  form will need their owner type in the queue.
 - **Accept with another asset** (VAL-07, UC-OFFL-04 "accept with a change"):
   not offered (EDR-262); the held reading belongs to the declared asset's
   meter. Its owner is a later amendment-style decision.
@@ -272,11 +327,11 @@ only in the uncommitted log environment file.
   accepted start): the Android poller already receives the resolution through
   the unchanged OFFL-008 wire; the trip-book projection is EMP-TRIP-005/021
   (no Kotlin change here).
-- **States added by EMP-TRIP-011** (`PAUSED`, `CANCELLED`): a trip that is
-  not `COMPLETED` counts as overlapping (fail closed) in both the store and
-  the database; a cancelled trip's end instant needs that task's integration.
-- **Held starts of a later `trip.start` form** (a mission-linked start of
-  EMP-TRIP-023/021): the queue reads operation schema 1 owners only.
+- **EMP-TRIP-011 integration** is done in the second commit (paused trips
+  hold the asset, a cancelled trip ends at its cancellation, held lifecycle
+  commands are refusal-only queue items). A resolution of a held lifecycle
+  command never applies the command.
+- The queue reads operation schema 1 owners only (the only protocol schema).
 - **Notifications** (the author on a resolution, reviewers on new items) and
   the 60-day expiry escalation: OFFL-008/NOTIF retained obligations.
 - **Existing meter resolutions across the upgrade**: the populated upgrade

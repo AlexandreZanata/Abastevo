@@ -1500,7 +1500,8 @@ org_trips, org_meter_readings`; `SELECT ON org_sync_review_items,
 org_trip_held_starts, org_trip_held_finishes, org_trip_held_events,
 org_trip_held_submissions, org_trip_finishes, org_team_links,
 org_asset_unit_periods, org_asset_cost_centre_periods, org_units, org_meters,
-org_meter_segments, org_device_enrollments, company_web_sessions` plus the
+org_meter_segments, org_device_enrollments, company_web_sessions,
+org_trip_transitions, org_trip_held_transitions` plus the
 EMP-TRIP-004 review grants, the OFFL-008 item row-lock privilege
 (`UPDATE(id) ON org_sync_review_items`) and the existing asset row-lock
 privilege. The migrator needs ownership of `org_sync_review_resolutions`

@@ -18519,8 +18519,9 @@ paths:
       operationId: enterpriseTripConflictList
       summary: List held trip facts awaiting or after a resolution
       description: EMP-TRIP-007. The organization queue of held trip.start (ASSET_BUSY, ASSET_UNAVAILABLE,
-        PERMISSION_CHANGED), trip.finish (TRIP_ALREADY_CLOSED), trip.event.record (TRIP_ALREADY_CLOSED, STALE_REVISION)
-        and trip.submit (STALE_REVISION) items in item order, filtered by state (expiry is the elapsed 60-day
+        PERMISSION_CHANGED), trip.finish (TRIP_ALREADY_CLOSED), trip.event.record (TRIP_ALREADY_CLOSED, STALE_REVISION),
+        trip.submit (STALE_REVISION) and the EMP-TRIP-011 trip.pause, trip.resume and trip.cancel (TRIP_ALREADY_CLOSED,
+        STALE_REVISION) items in item order, filtered by state (expiry is the elapsed 60-day
         review-expiry-v1 period). Current company cookie and exact Origin/CSRF; trip.trip.review read; the queue is
         organization-level, so only an ORG grant covers it. Each item carries its exact held fact and the trips it
         conflicts with. Responses are private no-store; synthetic construction does not authorize real data.
@@ -18588,6 +18589,7 @@ paths:
                     missing_reading_reason: null
                     event: null
                     submitted_revision: null
+                    transition: null
                   conflicting_trips:
                   - trip_id: 7b0e2a54-0000-4000-8000-000000009740
                     operational_state: IN_PROGRESS
@@ -18686,6 +18688,7 @@ paths:
                   missing_reading_reason: Painel apagado
                   event: null
                   submitted_revision: null
+                  transition: null
                 conflicting_trips:
                 - trip_id: 7b0e2a54-0000-4000-8000-000000009740
                   operational_state: COMPLETED
@@ -25013,7 +25016,8 @@ components:
       additionalProperties: false
       description: EMP-TRIP-007. The exact held fact. asset_id and driver_employee_id only for trip.start; run_clock,
         reading and missing_reading_reason for trip.start and trip.finish (exactly one of reading and reason);
-        event for trip.event.record; submitted_revision for trip.submit; every other field is null.
+        event for trip.event.record; submitted_revision for trip.submit; transition for trip.pause, trip.resume and
+        trip.cancel; every other field is null.
       properties:
         trip_id:
           $ref: '#/components/schemas/EnterpriseUUID'
@@ -25114,6 +25118,34 @@ components:
             minimum: 1
             maximum: 1000000
           - type: 'null'
+        transition:
+          description: EMP-TRIP-011 held trip.pause, trip.resume or trip.cancel (the command, the trip revision it
+            named and the cancellation reason).
+          anyOf:
+          - type: object
+            additionalProperties: false
+            properties:
+              command:
+                type: string
+                enum:
+                - PAUSE
+                - RESUME
+                - CANCEL
+              expected_revision:
+                type: integer
+                minimum: 1
+                maximum: 1000000
+              reason:
+                anyOf:
+                - type: string
+                  minLength: 1
+                  maxLength: 280
+                - type: 'null'
+            required:
+            - command
+            - expected_revision
+            - reason
+          - type: 'null'
       required:
       - trip_id
       - occurred_at
@@ -25126,11 +25158,13 @@ components:
       - missing_reading_reason
       - event
       - submitted_revision
+      - transition
     EnterpriseTripConflictView:
       type: object
       additionalProperties: false
       description: EMP-TRIP-007. One held trip item; conflicting_trips lists, for a held start, every trip of the
-        asset in progress or finished after its declared start, otherwise the trip the fact names.
+        asset in progress or paused, or finished or cancelled after its declared start (finished_at is the finish or
+        the cancellation), otherwise the trip the fact names.
       properties:
         review_item_id:
           $ref: '#/components/schemas/EnterpriseUUID'
@@ -25143,6 +25177,9 @@ components:
           - trip.finish
           - trip.event.record
           - trip.submit
+          - trip.pause
+          - trip.resume
+          - trip.cancel
         payload_digest:
           type: string
           pattern: ^sha256:[0-9a-f]{64}$

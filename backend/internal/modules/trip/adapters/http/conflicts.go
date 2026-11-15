@@ -131,7 +131,7 @@ func projectConflict(v app.ConflictView) (map[string]any, error) {
 	}
 	f := v.Fact
 	fact := map[string]any{"trip_id": f.TripID, "occurred_at": orgtime.FormatInstant(f.Declared.OccurredAt), "entry_zone": f.Declared.EntryZone, "device_offset_seconds": f.Declared.DeviceOffsetSeconds,
-		"asset_id": nil, "driver_employee_id": nil, "run_clock": nil, "reading": nil, "missing_reading_reason": nil, "event": nil, "submitted_revision": nil}
+		"asset_id": nil, "driver_employee_id": nil, "run_clock": nil, "reading": nil, "missing_reading_reason": nil, "event": nil, "submitted_revision": nil, "transition": nil}
 	held := f.Start
 	if held == nil {
 		held = f.Finish
@@ -148,6 +148,9 @@ func projectConflict(v app.ConflictView) (map[string]any, error) {
 	}
 	if f.SubmittedRevision != nil {
 		fact["submitted_revision"] = *f.SubmittedRevision
+	}
+	if f.Transition != nil {
+		fact["transition"] = map[string]any{"command": f.Transition.Command, "expected_revision": f.Transition.ExpectedRevision, "reason": optionalString(f.Transition.Reason)}
 	}
 	trips := make([]map[string]any, 0, len(v.Trips))
 	for _, t := range v.Trips {
