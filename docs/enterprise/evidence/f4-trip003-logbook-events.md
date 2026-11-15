@@ -2,7 +2,7 @@
 
 Date: 2026-11-15.
 Status: LOCAL_DONE
-Validation: PENDING (merged-tree union and untagged suite)
+Validation: PASS
 Integration: INTEGRATION_PENDING
 
 Bounded F2/C1 DB task (module TRIP, P0, size M) on
@@ -210,6 +210,37 @@ EMP-CHECK-001: the union and the untagged suite run on the merged tree
 
 `git diff --check` is clean; the staged diff was reviewed for secrets and
 personal data (synthetic identifiers and Portuguese sample texts only).
+
+## Merged-tree validation
+
+The integration head `08b3e37c` (EMP-CHECK-001, migration 000223) was merged
+into this branch (the merge commit after `b80de813`, normal merge; only the product contract and the
+backend README conflicted, by appended sections, kept both). 000225 does not
+redefine `org_asset_current_usage`, so the 000223 allow-list body stays as
+integrated. On the merged tree:
+
+- gofmt, build, vet (both tags), `sqlc vet`/`diff` and staticcheck (plain and
+  integration on trip, `db/queries/trip`, organization adapters,
+  enterprisesuite, apicontract) are clean (`trip003-merged-static.log`).
+- Race/integration union with PostGIS and the coordinator MinIO over
+  organization adapters, trip, fleet, orgsync, enterprisesuite, apicontract,
+  migrate, orgtest, orgapi and cmd/api (`trip003-merged-db-union.jsonl`, 40
+  min, organization adapters 2360 s): 17 packages pass, orgtest has no tests,
+  910 top-level / 6615 subtests pass, 0 skips, and one failure outside this
+  task: `TestReferenceFeedSignedRouteRefusesForeignCursors` (EMP-OFFL-006)
+  reported "tampered cursor accepted". The test changes the last character of
+  the unpadded base64url HMAC (43 characters, the last one carries two unused
+  bits) to `A`/`B`, which decodes to the same bytes whenever the original last
+  character is `A`–`D` (about 1 run in 16) under the non-strict decoder; it
+  passed 3/3 on rerun (`trip003-merged-reference-rerun.log`). No trip code is
+  involved; reported to the coordinator for its owner (strict decoding or a
+  tamper that changes a significant bit), not changed here.
+- Untagged backend suite `GOFLAGS=-p=2 go test -count=1 -timeout=45m ./...`:
+  exit 0, 221 packages ok, 80 without tests
+  (`trip003-merged-untagged-all.log`).
+- Kotlin enterprise suite: 2918 tests, 0 failures, 0 skipped
+  (`trip003-merged-kotlin.log`).
+- `check_plan.py`: 0 problems; `git diff --check` clean.
 
 ## Retained
 

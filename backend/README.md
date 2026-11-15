@@ -1307,6 +1307,32 @@ org_asset_implement_attachments`. Attach and detach use fresh
 `fleet.asset.manage` on both assets (admission class `fleet.asset`); the list
 uses current `fleet.asset.read`. Nothing here provisions live grants.
 
+### Checklist templates (EMP-CHECK-001)
+
+Migration223 adds the new `maintenance` module's forced-RLS checklist template
+tables: the head `org_checklist_templates` (fixed context; state, current
+version and current policy revision move only through its row guard, revision
++1 per command), and the insert-only `org_checklist_template_versions`,
+`org_checklist_template_items`, `org_checklist_template_targets` (composite
+same-organization keys to `org_asset_categories` and `org_assets`),
+`org_checklist_policy_revisions` and the receipts
+`org_checklist_template_commands`. A deferred completeness check closes each
+committed version and refuses a target already named by another ACTIVE template
+of the context; the asset target key joins `org_asset_current_usage` (on top of
+the 217 body). The migration owner needs `REFERENCES` on `organizations`,
+`org_audit_events`, `org_assets` and `org_asset_categories`, and ownership of
+`org_asset_current_usage`. The template principal needs `SELECT, INSERT, UPDATE
+ON org_checklist_templates` and `SELECT, INSERT ON
+org_checklist_template_commands, org_checklist_template_versions,
+org_checklist_template_items, org_checklist_template_targets,
+org_checklist_policy_revisions`, plus `SELECT` on `org_assets` and
+`org_asset_categories` (target checks and the applicable read). Template
+commands use fresh `check.template.manage` with ORG coverage
+(org-permissions-v5, admission class `check.template`); template reads use
+current `check.template.manage`; the applicable template of an asset uses
+current `fleet.asset.read` (structural and SELF grants). Nothing here
+provisions live grants.
+
 ### Trip logbook events (EMP-TRIP-003)
 
 Migration225 adds forced-RLS, insert-only `org_trip_events` (accepted logbook

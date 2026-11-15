@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 The existing maintenance specification owns the threshold, state and evidence rules.
 
 ### EMP-CHECK-001 — Checklist templates per asset category
-- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Publish immutable checklist templates by category and approved scope.
 - **Rules and use cases:** BR-CHECK-001, BR-CHECK-002, BR-CHECK-003, BR-CHECK-005
 - **Depends on:** EMP-FLEET-002
@@ -27,6 +27,18 @@ The existing maintenance specification owns the threshold, state and evidence ru
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Detailed rules and exact thresholds come from the maintenance specification. Attachments and real-data activation retain their own gates.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+EMP-CHECK-001 LOCAL_DONE (pending integration): org-permissions-v5 grants
+`check.template.manage` (EDR-190); the new `maintenance` module stores immutable
+template versions, items, targets and per-template policy revisions (migration
+000223, forced RLS, guarded head, closed committed versions, one ACTIVE target
+per context) behind six organization-level routes and the applicable read of an
+asset under `fleet.asset.read`, which answers the version and policy revision a
+run pins. The pure answer/outcome rule, the resolution and the policy-in-force
+lookup are shared by Go and Kotlin through `checklist-v1.psv` for EMP-CHECK-002.
+Retained: runs and their server recheck (EMP-CHECK-002), the reference-feed
+extension (EMP-OFFL-006), template events and policy history reads, the panel
+(EMP-CHECK-004). [Evidence](../evidence/f4-check001-checklist-templates.md).
 
 ### EMP-CHECK-002 — Checklist execution offline with the critical-item policy
 - **Meta:** module CHECK · phase F4 · cut - · priority P1 · type APP · size M · state TODO
