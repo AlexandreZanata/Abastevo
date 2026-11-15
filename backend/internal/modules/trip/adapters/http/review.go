@@ -9,17 +9,22 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"unicode/utf8"
 
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
+	meter "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	guarded "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/adapters/http"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
+	amend "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgamend/domain"
 	organization "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters/http"
 	orgtime "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgtime/domain"
 	review "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/domain"
+	period "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/domain/period"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
+	trip "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/go-chi/chi/v5"
@@ -30,14 +35,17 @@ const (
 	ReviewListPath   = TripPrefix + "/review/list"
 	ReviewReadPath   = TripPrefix + "/{trip_id}/review/read"
 	ReviewDecidePath = TripPrefix + "/{trip_id}/review/decide"
+	// AmendPath is the EMP-TRIP-015 amendment proposal (EDR-236).
+	AmendPath = TripPrefix + "/{trip_id}/amendments/propose"
 )
 
-// ReviewRecords accepts only this module's two review policies.
+// ReviewRecords accepts only this module's two review policies and the
+// amendment policy (EMP-TRIP-015).
 type ReviewRecords struct{}
 
 func (ReviewRecords) Check(_ context.Context, scope kernel.OrgScope, subject access.Subject, policy access.Policy, facts permissions.ResourceFacts, rules []permissions.Rule) error {
 	if scope.Validate() != nil || subject.Scope() != scope || facts.Validate(scope) != nil || facts.OrgID != scope.OrgID() || len(rules) == 0 ||
-		policy != app.ReviewPolicy(app.ReviewReadAction) && policy != app.ReviewPolicy(app.ReviewDecideAction) {
+		policy != app.ReviewPolicy(app.ReviewReadAction) && policy != app.ReviewPolicy(app.ReviewDecideAction) && policy != app.AmendPolicy() {
 		return access.ErrUnavailable
 	}
 	return nil
@@ -99,6 +107,60 @@ type reviewDecideRequest struct {
 
 func (v reviewDecideRequest) CommandFields() orgapi.Command {
 	return orgapi.Command{SchemaVersion: v.SchemaVersion, OperationID: v.OperationID, Revision: v.Revision}
+}
+
+// amendReading is one corrected reading: the meter kind and the exact base
+// units as a canonical decimal string (EDR-236).
+type amendReading struct {
+	Kind  string `json:"kind"`
+	Value string `json:"value"`
+}
+
+type amendRequest struct {
+	companyRequest
+	SchemaVersion int           `json:"schema_version"`
+	OperationID   string        `json:"operation_id"`
+	Revision      *int64        `json:"revision"`
+	Reason        string        `json:"reason"`
+	StartReading  *amendReading `json:"start_reading"`
+	EndReading    *amendReading `json:"end_reading"`
+}
+
+func (v amendRequest) CommandFields() orgapi.Command {
+	return orgapi.Command{SchemaVersion: v.SchemaVersion, OperationID: v.OperationID, Revision: v.Revision}
+}
+
+func (v *amendRequest) UnmarshalJSON(raw []byte) error {
+	type plain amendRequest
+	var in plain
+	if err := decodeStrict(raw, &in); err != nil {
+		return err
+	}
+	*v = amendRequest(in)
+	return nil
+}
+
+// correction parses a canonical non-negative decimal of exact base units;
+// the kind and range are the command's to judge.
+func correction(r *amendReading) (*app.Correction, error) {
+	if r == nil {
+		return nil, nil
+	}
+	if r.Value == "" || len(r.Value) > 19 || r.Value[0] == '0' && len(r.Value) > 1 {
+		return nil, orgapi.Malformed
+	}
+	var n int64
+	for _, b := range []byte(r.Value) {
+		if b < '0' || b > '9' {
+			return nil, orgapi.Malformed
+		}
+		d := int64(b - '0')
+		if n > (1<<63-1-d)/10 {
+			return nil, orgapi.Malformed
+		}
+		n = n*10 + d
+	}
+	return &app.Correction{Kind: meter.Kind(r.Kind), Value: n}, nil
 }
 
 func (v *reviewReadRequest) UnmarshalJSON(raw []byte) error {
@@ -254,8 +316,12 @@ func reviewMapped(err error) error {
 	}{
 		{review.ErrSelfApproval, orgapi.SelfApproval}, {review.ErrConflict, orgapi.Conflict}, {review.ErrInvalidTransition, orgapi.Conflict},
 		{review.ErrReasonRequired, orgapi.ValidationFailed}, {review.ErrInvalid, orgapi.ValidationFailed}, {review.ErrForbidden, orgapi.Forbidden},
+		// EMP-TRIP-015 amendment refusals of the orgamend kernel (EDR-236).
+		{amend.ErrConflict, orgapi.Conflict}, {amend.ErrNotApproved, orgapi.Conflict}, {amend.ErrAmendmentPending, orgapi.Conflict}, {amend.ErrAlreadyVoided, orgapi.Conflict},
+		{amend.ErrReasonRequired, orgapi.ValidationFailed}, {amend.ErrReasonInvalid, orgapi.ValidationFailed}, {period.ErrReasonRequired, orgapi.ValidationFailed},
+		{period.ErrReasonInvalid, orgapi.ValidationFailed}, {app.ErrInvalidAmendment, orgapi.ValidationFailed}, {amend.ErrPeriodLocked, orgapi.PeriodLocked},
 		{app.ErrReviewDisabled, orgapi.NotFound}, {app.ErrNotFound, orgapi.NotFound}, {app.ErrReviewUnauthorized, orgapi.Unauthenticated},
-		{app.ErrOperationReused, orgapi.OperationReused},
+		{app.ErrOperationReused, orgapi.OperationReused}, {app.ErrPeriodLocked, orgapi.PeriodLocked},
 		{access.ErrNoMembership, orgapi.NotFound}, {access.ErrNotFound, orgapi.NotFound}, {access.ErrUnauthenticated, orgapi.Unauthenticated},
 		{access.ErrFreshAuthRequired, orgapi.FreshAuthRequired}, {access.ErrMembershipSuspended, orgapi.MembershipSuspended}, {access.ErrOrgSuspended, orgapi.OrgSuspended},
 		{access.ErrOrgArchived, orgapi.OrgArchived}, {access.ErrSetupIncomplete, orgapi.OrgSetupIncomplete}, {access.ErrEntitlementRequired, orgapi.EntitlementRequired},
@@ -293,6 +359,23 @@ func missing(port any) bool {
 	return false
 }
 
+func projectUsage(u app.RevisionUsage) map[string]any {
+	out := map[string]any{"revision": u.Revision, "status": u.Status, "kind": nil, "distance": nil, "reason": nil}
+	if u.Status == trip.Measured {
+		out["kind"], out["distance"] = u.Kind, strconv.FormatInt(u.Delta, 10)
+	} else {
+		out["reason"] = u.Reason
+	}
+	return out
+}
+
+func projectCorrection(c *app.CorrectionRecord) any {
+	if c == nil {
+		return nil
+	}
+	return map[string]any{"meter_id": c.MeterID, "reading_id": c.ReadingID, "from": strconv.FormatInt(c.From, 10), "to": strconv.FormatInt(c.To, 10), "new_reading_id": c.NewReadingID}
+}
+
 func projectEntry(e app.ReviewEntry) map[string]any {
 	return map[string]any{"sequence": e.Sequence, "kind": e.Kind, "revision": e.Revision, "state": e.State, "reason": e.Reason,
 		"actor_membership_id": e.ActorMembershipID, "recorded_at": orgtime.FormatInstant(e.RecordedAt)}
@@ -307,9 +390,19 @@ func projectView(v app.ReviewView) map[string]any {
 	if v.FinishedAt != nil {
 		finished = orgtime.FormatInstant(*v.FinishedAt)
 	}
+	var effective any
+	if v.EffectiveUsage != nil {
+		effective = projectUsage(*v.EffectiveUsage)
+	}
+	amendments := make([]map[string]any, 0, len(v.Amendments))
+	for _, a := range v.Amendments {
+		amendments = append(amendments, map[string]any{"revision": a.Revision, "base_revision": a.Base, "intent": a.Intent, "review_state": a.State, "reason": a.Reason,
+			"author_membership_id": a.AuthorMembershipID, "recorded_at": orgtime.FormatInstant(a.RecordedAt), "start_reading": projectCorrection(a.Start),
+			"end_reading": projectCorrection(a.End), "usage": projectUsage(a.Usage)})
+	}
 	return map[string]any{"trip_id": v.TripID, "asset_id": v.AssetID, "driver_employee_id": v.DriverEmployeeID, "operational_state": v.Operational,
 		"started_at": orgtime.FormatInstant(v.StartedAt), "finished_at": finished, "reporting_day": v.ReportingDay, "review_state": v.Review,
-		"revision": v.Revision, "history": history, "data_mode": "SYNTHETIC"}
+		"revision": v.Revision, "history": history, "effective_revision": v.EffectiveRevision, "effective_usage": effective, "amendments": amendments, "data_mode": "SYNTHETIC"}
 }
 
 // RegisterReview mounts the review queue, the reviewer read and the decision.
@@ -375,7 +468,7 @@ func RegisterReview(router chi.Router, service app.ReviewService, cookies compan
 	}); err != nil {
 		return err
 	}
-	return guarded.Register(owned, ReviewDecidePath, gateway, reviewRule(app.ReviewDecideAction), authorization, app.ReviewPolicy(app.ReviewDecideAction), resource, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input reviewDecideRequest) (any, error) {
+	if err := guarded.Register(owned, ReviewDecidePath, gateway, reviewRule(app.ReviewDecideAction), authorization, app.ReviewPolicy(app.ReviewDecideAction), resource, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input reviewDecideRequest) (any, error) {
 		actor, err := currentActor(ctx)
 		if err != nil {
 			return nil, err
@@ -396,6 +489,42 @@ func RegisterReview(router chi.Router, service app.ReviewService, cookies compan
 			return nil, reviewMapped(err)
 		}
 		return map[string]any{"trip_id": result.TripID, "decision": result.Decision, "review_state": result.State, "revision": result.Revision, "reason": result.Reason,
+			"recorded_at": orgtime.FormatInstant(result.RecordedAt), "replayed": replayed, "data_mode": "SYNTHETIC"}, nil
+	}); err != nil {
+		return err
+	}
+	// EMP-TRIP-015 (EDR-236): the amendment proposal under meter.reading.correct.
+	policy := app.AmendPolicy()
+	rule := orgapi.Rule{Permission: string(policy.Permission), Write: true, Fresh: policy.Fresh, RequireRevision: true, CompanyOnly: true, Success: 200}
+	return guarded.Register(owned, AmendPath, gateway, rule, authorization, policy, resource, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input amendRequest) (any, error) {
+		actor, err := currentActor(ctx)
+		if err != nil {
+			return nil, err
+		}
+		tripID, err := tripPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if input.SchemaVersion != 1 || input.Revision == nil {
+			return nil, orgapi.Malformed
+		}
+		start, err := correction(input.StartReading)
+		if err != nil {
+			return nil, err
+		}
+		end, err := correction(input.EndReading)
+		if err != nil {
+			return nil, err
+		}
+		command, err := app.NewAmendmentCommand(app.AmendmentInput{OperationID: input.OperationID, TripID: tripID, ExpectedRevision: *input.Revision, Reason: input.Reason, Start: start, End: end})
+		if err != nil {
+			return nil, reviewMapped(err)
+		}
+		result, replayed, err := service.Propose(ctx, p.Scope, actor, decision, command)
+		if err != nil {
+			return nil, reviewMapped(err)
+		}
+		return map[string]any{"trip_id": result.TripID, "revision": result.Revision, "base_revision": result.Base, "intent": result.Intent, "review_state": result.State,
 			"recorded_at": orgtime.FormatInstant(result.RecordedAt), "replayed": replayed, "data_mode": "SYNTHETIC"}, nil
 	})
 }

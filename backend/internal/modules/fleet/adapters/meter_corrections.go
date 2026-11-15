@@ -467,3 +467,85 @@ func validNeighbours(members []seriesMember) map[string][2]string {
 	}
 	return out
 }
+
+// MeterParentSet answers for every composed parent owner: a reading belongs
+// to an APPROVED parent record when any owner says so (B-BR-EMP-290,
+// EMP-TRIP-015 B-BR-EMP-368).
+type MeterParentSet []MeterParentRecords
+
+func (set MeterParentSet) ApprovedParentTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, reading string) (bool, error) {
+	if len(set) == 0 {
+		return false, app.ErrUnavailable
+	}
+	for _, owner := range set {
+		if owner == nil {
+			return false, app.ErrUnavailable
+		}
+		approved, err := owner.ApprovedParentTx(ctx, db, scope, reading)
+		if err != nil {
+			return false, err
+		}
+		if approved {
+			return true, nil
+		}
+	}
+	return false, nil
+}
+
+// SupersedeApprovedTx applies an approved amendment's corrected reading
+// inside the parent owner's transaction (EMP-TRIP-015, B-BR-EMP-366): the
+// METER-004 supersession under the asset and meter locks with the same
+// classification and segment re-evaluation. It has no authority, audit event
+// or approved-parent refusal of its own: the parent owner proved the review
+// decision and records its audit event in the same transaction.
+func (s *MeterStore) SupersedeApprovedTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.FleetActor, member string, in app.AmendmentSupersession) error {
+	if s == nil || tx == nil {
+		return app.ErrUnavailable
+	}
+	if err := validCall(scope, actor, member); err != nil {
+		return err
+	}
+	if !validID(in.NewReadingID) || in.NewReadingID == in.ReadingID || in.Value < 0 || len(in.RequestHash) != 64 {
+		return meter.ErrInvalid
+	}
+	if database.ValidateOrgTx(ctx, tx, scope) != nil {
+		return app.ErrUnavailable
+	}
+	queries := q.New(tx)
+	org := scope.OrgID().String()
+	if _, err := queries.LockMeterAsset(ctx, q.LockMeterAssetParams{OrgID: org, AssetID: in.AssetID}); err != nil {
+		return err
+	}
+	if _, err := queries.LockMeter(ctx, q.LockMeterParams{OrgID: org, AssetID: in.AssetID, ID: in.MeterID}); err != nil {
+		return err
+	}
+	view, err := loadMeter(ctx, tx, scope, in.AssetID, in.MeterID, false)
+	if err != nil {
+		return err
+	}
+	target, err := queries.MeterReadingCurrent(ctx, q.MeterReadingCurrentParams{OrgID: org, MeterID: in.MeterID, SegmentID: view.Segment.ID(), ID: in.ReadingID})
+	if err != nil {
+		return err
+	}
+	if target.State == string(meter.Voided) {
+		return app.ErrReadingAlreadySuperseded
+	}
+	if target.Origin == string(meter.Installation) {
+		return meter.ErrInvalid
+	}
+	value, err := meter.NewValue(view.Reference.Kind(), in.Value, view.Reference.Modulus())
+	if err != nil {
+		return meter.ErrInvalid
+	}
+	// The METER-004 command validation (identifiers, reason, value).
+	command, err := app.NewMeterDecisionCommand(app.MeterDecisionInput{OperationID: in.OperationID, AssetID: in.AssetID, MeterID: in.MeterID, ReadingID: in.ReadingID,
+		ExpectedRevision: int64(target.Revision), Decision: app.MeterSupersede, Reason: in.Reason, Value: value})
+	if err != nil {
+		return err
+	}
+	v, err := command.Snapshot()
+	if err != nil {
+		return err
+	}
+	return s.applyDecision(ctx, tx, scope, view, app.MeterSource{Web: &actor}, member, in.NewReadingID, v, in.RequestHash, target)
+}

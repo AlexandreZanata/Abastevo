@@ -6066,3 +6066,166 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
 - **BUC-EMP-180 — Read missions.** A scoped planner lists the organization's
   missions and reads one mission with its current assignee and response; an
   assigned member lists the missions currently assigned to the membership.
+
+## EMP-TRIP-016 — Period lock and authorised reopening for trips (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip016-trip-period-lock.md).
+
+- **B-BR-EMP-359 — Trip decisions follow the period of the start reporting
+  day.** A review decision on a trip (`POST
+  /v1/orgs/{org_id}/trips/{trip_id}/review/decide`: the opening composed
+  with `APPROVE`, `RETURN` or `REJECT`) is admitted only when the APPR-006
+  period (the organization calendar month) holding the trip's stored start
+  reporting day is `OPEN`, or `REOPENED` with its stored, reasoned
+  `fin.period.reopen` transition. The day is the one attributed at the start
+  receipt in the stored unit or organization zone (BR-TIME-004, EDR-182) and
+  never the device entry zone or offset, the UTC day of the start, the finish
+  day or the day the decision is received. The period is read at receipt
+  inside the decision transaction after the organization root lock and after
+  every lifecycle check (`SELF_APPROVAL`, `CONFLICT`, `VALIDATION_FAILED`
+  win first). A `LOCKED` period refuses the decision `PERIOD_LOCKED` (409)
+  and writes no entry and no audit event. A replay of a decision recorded
+  before the lock returns its stored result; reads are not gated.
+- **B-BR-EMP-360 — Field intake is not gated by a locked period.**
+  `trip.start`, `trip.finish`, `trip.event.record` and `trip.submit` are
+  accepted, held or refused exactly as before whatever the period of their
+  reporting day (the B-BR-EMP-266 precedent): a late field fact whose trip
+  lies in a locked month is an accepted fact, never a held `PERIOD_LOCKED`
+  intake item. A trip submitted in a locked month stays `SUBMITTED` or
+  `IN_REVIEW` in the review queue, which is its review; deciding it needs an
+  authorised reopening of the month.
+- **B-BR-EMP-361 — Reopening is the only path for trips; no adjustment.**
+  A trip carries no amount posted to a period, so the adjustment branch of
+  BR-AMD-004 does not apply to it now: a decision or correction of a trip in
+  a `LOCKED` month is refused `PERIOD_LOCKED`; after an authorised
+  reopening (`fin.period.reopen`, fresh proof, reason) decisions are
+  admitted; a re-lock refuses later decisions again and keeps every
+  decision already recorded. A locked month keeps its approved trips
+  unchanged.
+- **B-BR-EMP-362 — The database refuses a decision in a locked month and
+  keeps history.** Under the organization root lock that every period
+  command and review entry takes, the database refuses an opening or a
+  decision entry whose trip's start reporting month is `LOCKED`, so a
+  defective handler cannot decide in a locked period. Review entries, trips,
+  finishes and period transitions stay insert-only (update, delete and
+  truncate refused); the lock, the reopening with its actor and reason, the
+  re-lock and the decisions remain in their append-only histories in the
+  order the root lock serialised them.
+- **BUC-EMP-181 — Decide a trip of a closed month (JRN-09 for trips).**
+  Finance locks October; the approval of a submitted October trip is
+  refused `PERIOD_LOCKED`; finance reopens October with a reason; the
+  reviewer approves; finance re-locks October and the approval stays.
+- **BUC-EMP-182 — Prove the trip period lock on real PostGIS.** A trip
+  whose stored reporting day is in another month than its UTC, device and
+  receipt days; a reopening withdrawn by a re-lock before receipt; lock and
+  decision racing in both orders; a direct decision insert and in-place
+  rewrites refused by the database; a populated upgrade with injected
+  failure and recovery.
+
+## EMP-TRIP-015 — Late and duplicate events, and amendments after closure (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip015-late-events-amendments.md).
+
+- **B-BR-EMP-363 — Revisions and resubmission after a return.** A trip's
+  review revisions are its record revisions: revision 1 is the submitted
+  field record. While the case is `DRAFT`, or a field revision is
+  `RETURNED` and the trip was never approved, the author's logbook events
+  declared at or before the finish are ordinary edits of the revision being
+  prepared (BR-AMD-006; events after the finish stay `TRIP_ALREADY_CLOSED`).
+  The author's signed `trip.submit` whose `expected_revision` names the
+  returned revision appends `RESUBMIT` (RETURNED → SUBMITTED, revision + 1)
+  with its `ACCEPTED` acknowledgement at the new revision (BR-REV-005); the
+  returned revision, its reason and its decision are kept, and a decision
+  that names the returned revision is `CONFLICT`. An approved or rejected
+  field record is never resubmitted.
+- **B-BR-EMP-364 — Late and duplicate field facts after submission are kept
+  for review, never applied.** A supported `trip.event.record` declared at
+  or after the start and at or before the finish of a trip whose latest
+  revision is `SUBMITTED`, `IN_REVIEW`, `APPROVED` or `REJECTED`, or that
+  has an amendment, is `ACCEPTED_FOR_REVIEW` `STALE_REVISION`: an OFFL-008
+  held fact that belongs to no revision and changes no figure. A
+  `trip.submit` by the author whose `expected_revision` is no longer the
+  current `DRAFT` or returned field revision (submitted by another
+  operation, decided, superseded by a resubmission or an amendment) is
+  `ACCEPTED_FOR_REVIEW` `STALE_REVISION` (a held submission; the case is
+  unchanged). An identical resend returns the stored acknowledgement, the
+  same identifier with another digest is `OPERATION_ID_REUSED`, and an event
+  identity used by another operation stays `MALFORMED`, so a repeat has
+  exactly one effect. The database refuses a direct logbook fact on a
+  submitted, decided or amended revision. Held items are resolved by
+  EMP-TRIP-007; changed rights on an event or submission still store nothing
+  (`RETRY`/`UNAVAILABLE`) until that owner exists.
+- **B-BR-EMP-365 — An approved trip is amended through a new reviewed
+  revision.** `POST /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose`
+  (`meter.reading.correct` covering the trip's stored structure — asset,
+  stored unit and cost centre, start teams —, configuration write, fresh
+  proof, ACTIVE organization, `revision` = the latest review revision the
+  actor saw) carries a reason (1..280 scalars, no control character) and a
+  corrected start and/or end reading (meter kind and exact base units). The
+  orgamend kernel decides it on server facts: `AMEND` from the approved
+  revision in effect (base = that revision) or after a rejected amendment,
+  `EDIT` of a returned pending amendment (base = that revision); the next
+  revision is appended `SUBMITTED` as one `AMEND` history entry with the
+  reason, the amendment record (intent, base, each corrected reading of the
+  effective revision with its value there, the corrected value and the
+  pre-allocated superseding reading) and one `trip.trip.amended` audit event
+  (digest, no value or reason). A never-approved trip (`NOT_APPROVED`), a
+  pending amendment (`AMENDMENT_PENDING`) and a stale `revision` are
+  `CONFLICT`; a missing or invalid reason, a correction of a reading the
+  trip does not have, of another meter kind, out of range or equal to the
+  current value is `VALIDATION_FAILED`; a locked month `PERIOD_LOCKED`;
+  another organization's trip `NOT_FOUND`; a role or grant that does not
+  cover it `FORBIDDEN`. The same operation and digest replays the first
+  result; another digest is `OPERATION_ID_REUSED`. Until the amendment is
+  approved the previous approved revision stays in effect (BR-AMD-002).
+- **B-BR-EMP-366 — Amendment review and its effect.** The amendment revision
+  is decided on the existing decide route (`trip.trip.review`, B-BR-EMP-344)
+  by a reviewer who is neither the trip's author nor its driver nor the
+  amendment's author (BR-REV-003), under the EMP-TRIP-016 period gate. The
+  orgamend kernel resolves the result: `APPROVE` makes the amendment the
+  effective revision only in a writable period, `RETURN` keeps it pending
+  for an `EDIT`, `REJECT` leaves the previous revision in effect. On
+  approval, in the same transaction, each corrected reading is superseded
+  through the METER-004 path (a new reading with the corrected value, the
+  original declaration, origin and segment, method `TYPED`, the reviewer as
+  author and its company session as capture, the decision's operation; the
+  original `VOIDED` with cause `SUPERSEDED`, the link and the amendment
+  reason, and kept; the segment re-evaluated). Nothing changes before the
+  approval and nothing is edited in place (BR-AMD-001).
+- **B-BR-EMP-367 — Derived usage names its revision.** The trip's meter
+  usage is derived from the readings of one named revision with the
+  EMP-TRIP-001 rule (measured only for two non-decreasing readings of one
+  segment; otherwise `NOT_MEASURED` with its reason, never invented). The
+  decision context returns the effective revision with its usage and every
+  amendment with its corrections (original and corrected value), state,
+  author, reason and usage; before approval the effective usage stays that
+  of the previous revision (290 000 m in the trips §10 example) and after
+  approval it is the amendment's (280 000 m). No stored figure is
+  rewritten; the original readings stay readable with their supersession.
+- **B-BR-EMP-368 — Readings of an approved trip need an amendment.** A
+  METER-004 decision on a trip's start or finish reading, or on a reading
+  that an approved trip amendment created, of a trip with an approved
+  revision is refused `AMENDMENT_REQUIRED` (B-BR-EMP-290 extended to trips),
+  so an approved trip's usage never changes in place; readings of a
+  never-approved trip are decided directly. The database keeps amendments
+  insert-only and forced-RLS, re-proves the amendment lineage, the current
+  readings and values, the period lock, the reviewer's separation from the
+  amendment's author and, at commit, that an approved amendment superseded
+  exactly its readings in its decision operation.
+- **BUC-EMP-183 — Correct and resubmit a returned trip (VAL-01 step 6).**
+  The reviewer returns the trip with "Informe o motivo da parada"; the
+  driver adds a note offline and resubmits; the trip becomes `SUBMITTED` at
+  revision 2 and is approved; revision 1 and its return stay in the history.
+- **BUC-EMP-184 — Amend an approved trip's final reading (VAL-26, trips
+  §10).** A fleet manager corrects the final reading from 184 610 000 m to
+  184 600 000 m with a reason; until an independent reviewer approves, the
+  effective usage stays 290 000 m; after the approval revision 2 is in
+  effect with 280 000 m, the original reading is `VOIDED` and superseded by
+  the corrected one, and the audit trail holds the amendment and the
+  decision.
+- **BUC-EMP-185 — Prove late, duplicate and amended trips on real PostGIS.**
+  A late event after submission and after approval (held, resent once), a
+  duplicate and a stale submission, the resubmission loop, the amendment
+  with self-approval, stale and locked refusals, two proposals racing in
+  both orders, the METER-004 refusal, the database guards and a populated
+  upgrade with injected failure and recovery.

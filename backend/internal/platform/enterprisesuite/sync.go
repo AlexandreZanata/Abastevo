@@ -168,12 +168,13 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		}
 		noAsync[key] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup, protocol.AcceptedForReview: app.AtomicReview}
 	}
-	// EMP-TRIP-004: a submission has no consumer and no held path.
+	// EMP-TRIP-004/015: a submission has no consumer; a stale or duplicate
+	// one is a same-transaction held review item (EDR-235).
 	submitKey := app.OperationKey{Type: tripapp.SubmitOperationType, Schema: 1}
 	if _, exists := noAsync[submitKey]; exists {
 		return app.ErrUnavailable
 	}
-	noAsync[submitKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	noAsync[submitKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup, protocol.AcceptedForReview: app.AtomicReview}
 	// EMP-TRIP-008 (EDR-229): no mission consumer exists; nothing is held.
 	missionKey := app.OperationKey{Type: tripapp.MissionRespondOperationType, Schema: 1}
 	if _, exists := noAsync[missionKey]; exists {

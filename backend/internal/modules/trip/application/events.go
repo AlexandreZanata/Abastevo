@@ -190,5 +190,8 @@ type EventStore interface {
 	InsertEventTx(context.Context, syncapp.DBTX, kernel.OrgScope, syncapp.Source, EventCommand, string) error
 	HoldEventTx(context.Context, syncapp.DBTX, syncapp.Source, protocol.Operation, EventCommand, string) (string, error)
 	ReadEventTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) (EventRecord, error)
+	// ReviewEntriesTx reads the trip's review history: a late fact on a
+	// submitted, decided or amended revision is held (EMP-TRIP-015).
+	ReviewEntriesTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) ([]ReviewEntry, error)
 	syncapp.ReviewProof
 }

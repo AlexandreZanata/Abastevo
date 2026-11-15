@@ -286,7 +286,7 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-015 — Late and duplicate events, and amendments after closure
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Preserve late logbook facts and amend approved work through a new reviewed revision.
 - **Rules and use cases:** REQ-07.5, REQ-07.6, BR-OFFL-004, BR-AMD-001, BR-AMD-005, VAL-26
 - **Depends on:** EMP-TRIP-004, EMP-PLAT-016
@@ -301,8 +301,19 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 late events and amendments](../evidence/f4-trip015-late-events-amendments.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. The author resubmits a
+returned field revision with `trip.submit` (revision + 1); an event inside a
+submitted, decided or amended trip and a stale or duplicate submission are
+held once `STALE_REVISION` (migration 000229); an approved trip is amended
+under `meter.reading.correct` as a new reviewed revision through the
+orgamend kernel, whose approval supersedes the corrected readings through
+the METER-004 path (290 000 m until approval, 280 000 m after, usage
+derived per named revision), and METER-004 refuses readings of approved
+trips `AMENDMENT_REQUIRED`. Held-item resolution stays with EMP-TRIP-007.
+
 ### EMP-TRIP-016 — Period lock and authorised reopening for trips
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Apply period locks and permitted reopen or adjustment to trip changes.
 - **Rules and use cases:** REQ-07.5, BR-AMD-004, BR-TIME-003, BR-TIME-004, JRN-09
 - **Depends on:** EMP-TRIP-004, EMP-APPR-006
@@ -316,6 +327,16 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 trip period lock](../evidence/f4-trip016-trip-period-lock.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. A trip review decision reads
+the APPR-006 period of the trip's stored start reporting day inside its
+transaction after the lifecycle checks: `OPEN` or an authorised `REOPENED`
+month admits it, a `LOCKED` one is `PERIOD_LOCKED` with nothing written;
+replays, reads, the queue and field intake are not gated and trips have no
+adjustment form; migration 000228 makes the database refuse an opening or
+decision in a locked month. Wrong zone, stale reopening, both race orders,
+in-place rewrites and the populated upgrade are proven on PostGIS.
 
 ### EMP-TRIP-017 — Midnight and time-zone crossing rules
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE

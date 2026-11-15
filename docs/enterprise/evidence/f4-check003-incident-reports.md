@@ -9,8 +9,8 @@ One bounded F4 API task (module CHECK, P1, size M) on
 `codex/enterprise-f4-check003` (worktree `/data/dev/worktrees/f4-check003`),
 based on the F4 integration head `22c521b2` (CHECK-001 `maintenance` module,
 TRIP-001..004, DOC-002/003/014, PRIV-005, catalog v5) and then merged with the
-F4 head carrying EMP-FLEET-013 and EMP-TRIP-008 (section "Merged-tree
-validation"). The coordinator integrates it into `codex/enterprise-f4` and owns
+F4 heads carrying EMP-FLEET-013 and EMP-TRIP-008, then EMP-TRIP-016 and
+EMP-TRIP-015 (section "Merged-tree validation"). The coordinator integrates it into `codex/enterprise-f4` and owns
 PROGRESS, the F4 ledger, pushes and the PR. Synthetic data only; no real photo,
 person, plate or place.
 
@@ -311,6 +311,47 @@ On the merged tree:
   (`check003-untagged-all.log`): exit 0, 223 packages ok, 81 without tests, 0 FAIL.
 - `check_plan.py` 0 problems; `git diff --check` clean; gitleaks on the task
   diff: no leaks.
+
+### Second merge: F4 head `95c0e389` (EMP-TRIP-016, EMP-TRIP-015)
+
+The F4 head then advanced with migrations 000228 (trip period lock) and 000229
+(late events and amendments) and was merged again (merge commit "Merge
+codex/enterprise-f4 (TRIP-016, TRIP-015) into EMP-CHECK-003"). 000228/000229
+redefine only the trip review and event sources, not the asset, unit or
+cost-centre usage sources or `org_document_links`, so 000230 is unchanged.
+Conflicts were resolved as unions: EDR-232..237 before EDR-238..241; the
+OpenAPI `trip.submit` description takes the TRIP-015 resubmission text ahead
+of the incident schemas (duplicate-key YAML check clean); the resource
+structure keeps the `IncidentStructure` case and the `TripStructure` case
+widened to `meter.reading.correct`. Counts: 145 normal routes (28 routed / 56
+not routed), AUTH-011 walk 145 / 30 positive / 115 FORBIDDEN; the matrix stays
+280 cells (112 allowed / 168 denied) because the amendment route reuses a
+routed permission. A report naming a trip that is already submitted, decided
+or amended is still a separate `incident_report` (EDR-240 read join): it is
+shown on the timeline and never joins a TRIP-015 review revision.
+
+On this merged tree:
+
+- Toolchain gofmt empty; `go build ./...`, `go vet` (both tags), `sqlc vet`
+  and `sqlc diff` clean; staticcheck plain and `-tags=integration` on
+  maintenance, document, trip, fleet, organization, enterprisesuite,
+  apicontract, cmd/api and the touched query packages clean
+  (`check003-staticcheck-merged2.log`).
+- OpenAPI vacuum: 0 errors, 1,057 warnings / 660 informs vs 1,041 / 660 at the
+  F4 head (the same 16 house-style description warnings;
+  `check003-vacuum-merged2.log`).
+- Race/integration union (same command and packages as above;
+  `check003-db-union2.jsonl`): 33 packages, 32 pass and `orgtest` has no
+  tests; 1,119 top-level / 8,681 subtests pass, 0 failures, 0 skips; 34 min
+  wall, `organization/adapters` 2,022 s, `cmd/api` 126 s.
+- Untagged `GOFLAGS=-p=2 go test -count=1 -timeout=45m ./...`
+  (`check003-untagged-all2.log`): exit 0, 223 packages ok, 81 without tests, 0 FAIL.
+- Kotlin not rerun: the F4 delta changes no Kotlin source, oracle or test
+  input (only the backend, the OpenAPI file and the route inventory, which no
+  Kotlin test reads), so the 3398 / 0 result above stands for this tree.
+- `check_plan.py` 0 problems (348 tasks, 545 rules, 167 use cases, 145
+  screens); `git diff --check` clean; gitleaks over the branch commits since
+  `22c521b2`: no leaks.
 
 ## Retained
 

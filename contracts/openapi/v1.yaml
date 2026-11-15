@@ -14889,11 +14889,13 @@ paths:
         before the trip's start, of an unknown type, or INCIDENT or DAMAGE (their own operation, EMP-CHECK-003) is
         MALFORMED; another reserved type stays RETRY/UNAVAILABLE; an event
         declared after a completed trip's finish is kept ACCEPTED_FOR_REVIEW TRIP_ALREADY_CLOSED; a trip not stored here
-        (undelivered, held or another organization's) is RETRY/DEPENDENCY_PENDING.
-        The trip.submit owner (EMP-TRIP-004) appends the author's SUBMIT entry to a COMPLETED trip whose review case
-        is DRAFT at the named expected_revision, with its ACK (entity trip_review, entity revision = review revision); a
-        trip not stored or still in progress is RETRY/DEPENDENCY_PENDING, another member FORBIDDEN, and a case no longer
-        a draft at that revision stores nothing and stays RETRY/UNAVAILABLE until EMP-TRIP-015.
+        (undelivered, held or another organization's) is RETRY/DEPENDENCY_PENDING. An event inside a trip whose revision
+        is submitted, decided or amended is kept ACCEPTED_FOR_REVIEW STALE_REVISION and joins no revision (EMP-TRIP-015).
+        The trip.submit owner (EMP-TRIP-004/015) appends the author's SUBMIT entry to a COMPLETED trip whose review case
+        is DRAFT at the named expected_revision, or RESUBMIT (revision + 1) of a returned never-approved field revision,
+        with its ACK (entity trip_review, entity revision = the resulting review revision); a trip not stored or still in
+        progress is RETRY/DEPENDENCY_PENDING, another member FORBIDDEN, and a named revision that is no longer the current
+        draft or returned field revision (a stale or duplicate submission) is kept ACCEPTED_FOR_REVIEW STALE_REVISION.
         The trip.mission.respond owner (EMP-TRIP-008) records the current assignee's ACCEPT or DECLINE (with a reason)
         on the mission at the named expected_revision with its ACK (entity mission, entity revision = the new mission
         revision), decided on current facts at receipt only. Another member or an ended assignment is FORBIDDEN, a
@@ -14981,9 +14983,11 @@ paths:
           terminal_results:
           - ACCEPTED
           - REJECTED
+          - ACCEPTED_FOR_REVIEW
           followup_by_result:
             ACCEPTED: NO_ASYNC_FOLLOWUP
             REJECTED: NO_ASYNC_FOLLOWUP
+            ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
         trip.mission.respond:
           schema: 1
           entity_type: mission
@@ -19371,7 +19375,11 @@ paths:
         an account, membership or canonical employee with the trip's author or driver is SELF_APPROVAL; a stale
         revision or a case not SUBMITTED/IN_REVIEW is CONFLICT; a missing reason VALIDATION_FAILED. Same operation
         and digest returns the first result with replayed=true and no second audit event; another digest is
-        OPERATION_ID_REUSED. Operational completion never approves (EMP-TRIP-004, B-BR-EMP-344/345).
+        OPERATION_ID_REUSED. Operational completion never approves (EMP-TRIP-004, B-BR-EMP-344/345). After those
+        checks, a trip whose stored start reporting day lies in a LOCKED finance period is PERIOD_LOCKED (409) with
+        nothing written; OPEN or an authorised REOPENED period admits the decision; replays are not gated
+        (EMP-TRIP-016, B-BR-EMP-359..361). An amendment revision is decided the same way; its author cannot decide it,
+        and its approval supersedes exactly its corrected readings in the same transaction (EMP-TRIP-015, B-BR-EMP-366).
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
@@ -19793,6 +19801,80 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseMissionAck'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripAmendmentPropose
+      summary: Propose a reviewed amendment of an approved trip's readings
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization,
+        enabled capability and meter.reading.correct covering the trip's stored structure (asset, stored unit and cost
+        centre, start teams). Corrects the start and/or end reading of the approved revision in effect (meter kind and
+        exact base units) with a required reason; the orgamend kernel appends the next revision SUBMITTED (AMEND from the
+        approved or a rejected amendment, EDIT of a returned amendment) with one trip.trip.amended audit event. The
+        previous approved revision stays in effect until an independent reviewer approves on the decide route. A
+        never-approved trip, a pending amendment or a stale revision is CONFLICT; a missing reason or a correction that
+        changes no reading of the trip in its kind VALIDATION_FAILED; a locked month PERIOD_LOCKED. Same operation and
+        digest returns the first result with replayed=true; another digest is OPERATION_ID_REUSED (EMP-TRIP-015,
+        B-BR-EMP-365).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: meter.reading.correct
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripAmendmentRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008801
+              revision: 1
+              reason: Leitura final digitada errada
+              end_reading:
+                kind: ODOMETER
+                value: '184600000'
+      responses:
+        '200':
+          description: Private recorded amendment revision or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripAmendment'
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
         '401':
@@ -21916,7 +21998,8 @@ components:
         entity.type=trip_review, entity.id = the trip, expected_revision = the review revision submitted (1..1000000);
         at most one depends_on entry (the finish); soft_references and attachments are empty. The envelope declaration is
         the instant the author marked the trip ready to send. Only the author of a COMPLETED trip submits; the review
-        state becomes SUBMITTED on acceptance (BR-REV-002).
+        state becomes SUBMITTED on acceptance (BR-REV-002). Naming the returned revision resubmits it as the next
+        revision; a stale or duplicate submission is held STALE_REVISION (EMP-TRIP-015).
     EnterpriseIncidentReportPayload:
       type: object
       additionalProperties: false
@@ -22615,6 +22698,8 @@ components:
           type: string
           enum:
           - SUBMIT
+          - RESUBMIT
+          - AMEND
           - OPEN
           - APPROVE
           - RETURN
@@ -22679,6 +22764,18 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EnterpriseTripReviewEntry'
+        effective_revision:
+          type: integer
+          minimum: 0
+          description: The approved revision in effect; 0 when the trip was never approved.
+        effective_usage:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripRevisionUsage'
+          - type: 'null'
+        amendments:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseTripAmendmentView'
         data_mode:
           type: string
           enum:
@@ -22694,6 +22791,9 @@ components:
       - review_state
       - revision
       - history
+      - effective_revision
+      - effective_usage
+      - amendments
       - data_mode
       example:
         trip_id: 7b0e2a54-0000-4000-8000-000000008701
@@ -22713,6 +22813,232 @@ components:
           reason: ''
           actor_membership_id: 7b0e2a54-0000-4000-8000-000000008302
           recorded_at: '2026-11-15T11:05:00Z'
+        effective_revision: 0
+        effective_usage: null
+        amendments: []
+        data_mode: SYNTHETIC
+    EnterpriseTripRevisionUsage:
+      type: object
+      additionalProperties: false
+      description: The meter usage derived from one named revision with the EMP-TRIP-001 rule; MEASURED only for two
+        non-decreasing readings of one segment (distance in exact base units), otherwise NOT_MEASURED with its reason.
+        Never stored, never invented (B-BR-EMP-367).
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        status:
+          type: string
+          enum:
+          - MEASURED
+          - NOT_MEASURED
+        kind:
+          type:
+          - string
+          - 'null'
+          enum:
+          - ODOMETER
+          - HOUR_METER
+          - null
+        distance:
+          type:
+          - string
+          - 'null'
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        reason:
+          type:
+          - string
+          - 'null'
+          enum:
+          - NOT_FINISHED
+          - READING_ABSENT
+          - DIFFERENT_SEGMENT
+          - DECREASING
+          - null
+      required:
+      - revision
+      - status
+      - kind
+      - distance
+      - reason
+      example:
+        revision: 1
+        status: MEASURED
+        kind: ODOMETER
+        distance: '290000'
+        reason: null
+    EnterpriseTripReadingCorrectionView:
+      type: object
+      additionalProperties: false
+      description: One corrected reading of an amendment; from is its value in the effective revision, to the corrected
+        value, new_reading_id the reading that supersedes it once the amendment is approved.
+      properties:
+        meter_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        from:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        to:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+        new_reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - meter_id
+      - reading_id
+      - from
+      - to
+      - new_reading_id
+    EnterpriseTripAmendmentView:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 2
+        base_revision:
+          type: integer
+          minimum: 1
+        intent:
+          type: string
+          enum:
+          - AMEND
+          - EDIT
+        review_state:
+          $ref: '#/components/schemas/EnterpriseTripReviewState'
+        reason:
+          type: string
+        author_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        recorded_at:
+          type: string
+          format: date-time
+        start_reading:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripReadingCorrectionView'
+          - type: 'null'
+        end_reading:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripReadingCorrectionView'
+          - type: 'null'
+        usage:
+          $ref: '#/components/schemas/EnterpriseTripRevisionUsage'
+      required:
+      - revision
+      - base_revision
+      - intent
+      - review_state
+      - reason
+      - author_membership_id
+      - recorded_at
+      - start_reading
+      - end_reading
+      - usage
+    EnterpriseTripReadingCorrection:
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          enum:
+          - ODOMETER
+          - HOUR_METER
+        value:
+          type: string
+          pattern: ^(0|[1-9][0-9]{0,18})$
+      required:
+      - kind
+      - value
+    EnterpriseTripAmendmentRequest:
+      type: object
+      additionalProperties: false
+      description: The latest review revision the actor saw, a required reason and at least one corrected reading of the
+        trip in exact base units of its meter kind.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1120
+        start_reading:
+          $ref: '#/components/schemas/EnterpriseTripReadingCorrection'
+        end_reading:
+          $ref: '#/components/schemas/EnterpriseTripReadingCorrection'
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      anyOf:
+      - required:
+        - start_reading
+      - required:
+        - end_reading
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008801
+        revision: 1
+        reason: Leitura final digitada errada
+        end_reading:
+          kind: ODOMETER
+          value: '184600000'
+    EnterpriseTripAmendment:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 2
+        base_revision:
+          type: integer
+          minimum: 1
+        intent:
+          type: string
+          enum:
+          - AMEND
+          - EDIT
+        review_state:
+          type: string
+          enum:
+          - SUBMITTED
+        recorded_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - trip_id
+      - revision
+      - base_revision
+      - intent
+      - review_state
+      - recorded_at
+      - replayed
+      - data_mode
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000008701
+        revision: 2
+        base_revision: 1
+        intent: AMEND
+        review_state: SUBMITTED
+        recorded_at: '2026-11-16T09:00:00.123456Z'
+        replayed: false
         data_mode: SYNTHETIC
     EnterpriseMissionState:
       type: string

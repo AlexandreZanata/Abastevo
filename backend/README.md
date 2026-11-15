@@ -1407,6 +1407,27 @@ intake principal needs the same three. Commands use fresh `trip.mission.manage`
 (admission class `trip.mission`); reads current `trip.mission.manage`; the own
 list current `trip.trip.start`. Nothing here provisions live grants.
 
+### Trip review, period lock and amendments (EMP-TRIP-004, EMP-TRIP-016, EMP-TRIP-015)
+
+Migration 226 adds forced-RLS, append-only `org_trip_review_entries`; 228
+replaces its guard so the database refuses an opening or decision in a locked
+month; 229 adds `org_trip_amendments` and `org_trip_held_submissions`.
+Production runtime grants (not provisioned here): `SELECT, INSERT ON
+org_trip_review_entries, org_trip_amendments, org_trip_held_submissions`;
+`SELECT ON org_trips, org_trip_finishes, org_team_links, org_memberships,
+org_employee_identities, org_audit_events, org_sync_operations,
+org_sync_acknowledgements, org_sync_effects, org_device_enrollments` for the
+guards and the trip structure source; `SELECT ON org_finance_periods,
+org_finance_period_transitions` (and the existing root row-lock privilege) for
+the period-gated decision; for an approved amendment's supersession `SELECT,
+INSERT ON org_meter_readings, org_meter_reading_states` and `SELECT ON
+org_meters, org_meter_segments, company_web_sessions`, and for the METER-004
+approved-parent check `SELECT ON org_trips, org_trip_finishes,
+org_trip_amendments, org_trip_review_entries`. The migrator needs `REFERENCES
+ON org_trips, org_memberships, org_employee_identities, org_meter_readings,
+org_sync_review_items` and ownership of the replaced functions and of
+`org_trip_review_entries`. Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

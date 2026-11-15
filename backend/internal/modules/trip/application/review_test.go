@@ -107,43 +107,52 @@ func sealed(t *testing.T, change func(e, p map[string]any)) (protocol.Operation,
 	return op, err == nil
 }
 
-// EDR-223: the trip's review state is the APPR-001 case of its stored
-// history; only a COMPLETED trip whose case is DRAFT at the named revision
-// is submitted, and completion alone never approves.
-func TestReviewCaseBindsTheStoredHistoryToTheTripStanding(t *testing.T) {
+// EDR-223/234: the trip's review state is the latest revision of its stored
+// history; only a COMPLETED trip whose current field revision is DRAFT
+// (SUBMIT) or RETURNED (RESUBMIT, EMP-TRIP-015) is submitted, and completion
+// alone never approves.
+func TestTripRevisionsBindTheStoredHistoryToTheTripStanding(t *testing.T) {
 	at := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
 	entry := func(seq int64, kind review.Kind, state review.State, reason string) app.ReviewEntry {
 		return app.ReviewEntry{Sequence: seq, Kind: kind, Revision: 1, State: state, Reason: reason, ActorMembershipID: id(3), ActorEmployeeID: id(30), OperationID: id(50 + int(seq)), RecordedAt: at}
 	}
-	draft, err := app.ReviewCase(nil)
-	if err != nil || draft.State() != review.Draft || draft.Revision() != 1 {
+	draft, err := app.TripRevisions(nil)
+	if err != nil || draft.State() != review.Draft || draft.Latest() != 1 || draft.Effective() != 0 || !draft.FieldOpen() {
 		t.Fatal("a trip without entries is not a DRAFT revision 1", err)
 	}
 	standing, err := app.Standing(trip.Completed, draft)
 	if err != nil || !standing.Completed() || standing.Approved() || standing.Review() != trip.ReviewDraft {
 		t.Fatal("operational completion mistaken for approval", err)
 	}
-	if err := app.SubmitGate(trip.Completed, draft, 1); err != nil {
+	if kind, err := app.SubmitKind(trip.Completed, draft, 1); err != nil || kind != review.Submit {
 		t.Fatal("a completed draft is not submittable", err)
 	}
 	for _, state := range []trip.State{trip.InProgress, trip.Planned, trip.Paused} {
-		if err := app.SubmitGate(state, draft, 1); !errors.Is(err, app.ErrSubmitPending) {
+		if _, err := app.SubmitKind(state, draft, 1); !errors.Is(err, app.ErrSubmitPending) {
 			t.Fatal("a non-completed trip is submittable", state, err)
 		}
 	}
-	if err := app.SubmitGate(trip.Completed, draft, 2); !errors.Is(err, app.ErrSubmitStale) {
+	if _, err := app.SubmitKind(trip.Completed, draft, 2); !errors.Is(err, app.ErrSubmitStale) {
 		t.Fatal("a stale revision is submittable", err)
 	}
 	history := []app.ReviewEntry{entry(1, review.Submit, review.Submitted, ""), entry(2, review.Open, review.InReview, ""), entry(3, review.Return, review.Returned, "Informe o motivo da parada")}
-	returned, err := app.ReviewCase(history)
-	if err != nil || returned.State() != review.Returned || returned.Revision() != 1 {
+	returned, err := app.TripRevisions(history)
+	if err != nil || returned.State() != review.Returned || returned.Latest() != 1 || !returned.FieldOpen() {
 		t.Fatal("stored history replay", err)
 	}
 	if standing, _ := app.Standing(trip.Completed, returned); standing.Review() != trip.ReviewReturned || standing.Approved() {
 		t.Fatal("returned standing")
 	}
-	if err := app.SubmitGate(trip.Completed, returned, 1); !errors.Is(err, app.ErrSubmitStale) {
-		t.Fatal("a returned case is submittable before EMP-TRIP-015", err)
+	if kind, err := app.SubmitKind(trip.Completed, returned, 1); err != nil || kind != review.Resubmit {
+		t.Fatal("a returned field revision is not resubmitted (B-BR-EMP-363)", err)
+	}
+	if _, err := app.SubmitKind(trip.Completed, returned, 2); !errors.Is(err, app.ErrSubmitStale) {
+		t.Fatal("a revision the case does not have is submittable", err)
+	}
+	if submitted, _ := app.TripRevisions(history[:1]); submitted.FieldOpen() {
+		t.Fatal("a submitted revision takes field facts")
+	} else if _, err := app.SubmitKind(trip.Completed, submitted, 1); !errors.Is(err, app.ErrSubmitStale) {
+		t.Fatal("a submitted revision is submitted again", err)
 	}
 	for name, broken := range map[string][]app.ReviewEntry{
 		"gap":               {entry(2, review.Submit, review.Submitted, "")},
@@ -152,17 +161,19 @@ func TestReviewCaseBindsTheStoredHistoryToTheTripStanding(t *testing.T) {
 		"no actor":          {{Sequence: 1, Kind: review.Submit, Revision: 1, State: review.Submitted, OperationID: id(51), RecordedAt: at}},
 		"no receipt":        {{Sequence: 1, Kind: review.Submit, Revision: 1, State: review.Submitted, ActorMembershipID: id(3), ActorEmployeeID: id(30), OperationID: id(51)}},
 		"reasonless return": {entry(1, review.Submit, review.Submitted, ""), entry(2, review.Open, review.InReview, ""), entry(3, review.Return, review.Returned, "")},
+		"amend a draft":     {{Sequence: 1, Kind: app.Amend, Revision: 2, State: review.Submitted, Reason: "x", ActorMembershipID: id(3), ActorEmployeeID: id(30), OperationID: id(51), RecordedAt: at}},
 	} {
-		if _, err := app.ReviewCase(broken); !errors.Is(err, app.ErrUnavailable) {
+		if _, err := app.TripRevisions(broken); !errors.Is(err, app.ErrUnavailable) {
 			t.Fatal("impossible stored history accepted", name, err)
 		}
 	}
 }
 
 // B-BR-EMP-344/345: the reviewer decides one named revision; a SUBMITTED
-// case is opened first; author and beneficiary never decide.
-func TestDecideAppliesTheLifecycleWithSeparationOfDuties(t *testing.T) {
-	submitted, err := review.Replay([]review.Entry{{Kind: review.Submit, Revision: 1, State: review.Submitted}})
+// revision is opened first; author and beneficiary never decide.
+func TestDecideRevisionAppliesTheLifecycleWithSeparationOfDuties(t *testing.T) {
+	at := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
+	submitted, err := app.TripRevisions([]app.ReviewEntry{{Sequence: 1, Kind: review.Submit, Revision: 1, State: review.Submitted, ActorMembershipID: id(3), ActorEmployeeID: id(30), OperationID: id(51), RecordedAt: at}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,16 +181,13 @@ func TestDecideAppliesTheLifecycleWithSeparationOfDuties(t *testing.T) {
 	driver := app.Person{Employees: []string{id(31), id(32)}}
 	reviewer := app.Person{AccountID: id(5), MembershipID: id(6), Employees: []string{id(60)}}
 	in := app.DecisionInput{OperationID: id(70), TripID: id(40), ExpectedRevision: 1, Decision: review.Return, Reason: "Informe o motivo da parada"}
-	next, err := app.Decide(submitted, in, reviewer, author, driver)
-	if err != nil || next.State() != review.Returned || len(next.History()) != 3 || next.History()[1].Kind != review.Open || next.History()[2].Reason != in.Reason {
-		t.Fatal("a SUBMITTED case was not opened and returned", err)
-	}
-	if again, err := app.Decide(next, in, reviewer, author, driver); !errors.Is(err, review.ErrInvalidTransition) || again.State() != "" {
-		t.Fatal("a decided revision was decided again", err)
+	added, err := app.DecideRevision(submitted, in, reviewer, author, driver, nil)
+	if err != nil || len(added) != 2 || added[0].Kind != review.Open || added[1].State != review.Returned || added[1].Reason != in.Reason || added[1].Revision != 1 {
+		t.Fatal("a SUBMITTED revision was not opened and returned", err)
 	}
 	stale := in
 	stale.ExpectedRevision = 2
-	if _, err := app.Decide(submitted, stale, reviewer, author, driver); !errors.Is(err, review.ErrConflict) {
+	if _, err := app.DecideRevision(submitted, stale, reviewer, author, driver, nil); !errors.Is(err, review.ErrConflict) {
 		t.Fatal("a stale revision was decided", err)
 	}
 	for name, self := range map[string]app.Person{
@@ -188,19 +196,18 @@ func TestDecideAppliesTheLifecycleWithSeparationOfDuties(t *testing.T) {
 		"author employee":    {AccountID: id(9), MembershipID: id(8), Employees: []string{id(30)}},
 		"driver merge chain": {AccountID: id(9), MembershipID: id(8), Employees: []string{id(81), id(32)}},
 	} {
-		if _, err := app.Decide(submitted, in, self, author, driver); !errors.Is(err, review.ErrSelfApproval) {
+		if _, err := app.DecideRevision(submitted, in, self, author, driver, nil); !errors.Is(err, review.ErrSelfApproval) {
 			t.Fatal("self-approval was not refused", name, err)
 		}
 	}
-	draft := review.NewDraft()
-	if _, err := app.Decide(draft, in, reviewer, author, driver); !errors.Is(err, review.ErrInvalidTransition) {
+	draft, _ := app.TripRevisions(nil)
+	if _, err := app.DecideRevision(draft, in, reviewer, author, driver, nil); !errors.Is(err, review.ErrInvalidTransition) {
 		t.Fatal("a draft was decided", err)
 	}
-	submittedNext, err := app.Submit(draft, 1, author, author)
-	if err != nil || submittedNext.State() != review.Submitted {
+	if e, err := app.SubmitEntry(draft, review.Submit, 1, author, author); err != nil || e.State != review.Submitted || e.Revision != 1 || e.Kind != review.Submit {
 		t.Fatal("the author's submission", err)
 	}
-	if _, err := app.Submit(draft, 1, reviewer, author); !errors.Is(err, review.ErrForbidden) {
+	if _, err := app.SubmitEntry(draft, review.Submit, 1, reviewer, author); !errors.Is(err, review.ErrForbidden) {
 		t.Fatal("another member submitted", err)
 	}
 }

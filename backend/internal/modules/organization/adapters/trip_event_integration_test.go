@@ -36,7 +36,8 @@ type eventState struct {
 func eventGrants(t *testing.T, x tripState) {
 	t.Helper()
 	role := pgx.Identifier{x.f.RuntimeRole}.Sanitize()
-	if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_events,org_trip_held_events TO "+role); err != nil {
+	// EMP-TRIP-015: the owner and the logbook guard read the review history.
+	if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_events,org_trip_held_events TO "+role+";GRANT SELECT ON org_trip_review_entries TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	// EMP-CHECK-003 (EDR-240): the timeline reads the trip's reports once the

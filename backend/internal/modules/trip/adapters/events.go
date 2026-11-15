@@ -158,6 +158,20 @@ func (h *eventHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 	if err != nil {
 		return eventRefusal(err)
 	}
+	// B-BR-EMP-364: within the trip but after its submission, the fact is
+	// held STALE_REVISION and never joins a submitted or approved revision.
+	entries, err := h.events.ReviewEntriesTx(ctx, syncapp.Borrow(db), source.Scope, v.TripID)
+	if err != nil {
+		return syncapp.Outcome{}, syncapp.ErrUnavailable
+	}
+	revisions, err := app.TripRevisions(entries)
+	if err != nil {
+		return syncapp.Outcome{}, syncapp.ErrUnavailable
+	}
+	if !revisions.FieldOpen() {
+		review, err := h.events.HoldEventTx(ctx, syncapp.Borrow(db), source, op, command, app.StaleRevision)
+		return held(review, app.StaleRevision, err)
+	}
 	// Changed rights on an event store nothing until a held owner exists.
 	if disposition != app.Apply {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
@@ -218,7 +232,7 @@ func (h *eventHandler) Confirm(ctx context.Context, db syncapp.DBTX, source sync
 	}
 	switch outcome.Result {
 	case protocol.AcceptedForReview:
-		if outcome.Code != app.TripAlreadyClosed || outcome.EntityRevision != nil {
+		if outcome.Code != app.TripAlreadyClosed && outcome.Code != app.StaleRevision || outcome.EntityRevision != nil {
 			return syncapp.ErrUnavailable
 		}
 		if err := h.events.CheckHeldTx(ctx, syncapp.Borrow(db), source, op, outcome.Copy()); err != nil {
@@ -374,7 +388,7 @@ func heldEventProof(source syncapp.Source, op protocol.Operation, row q.ReadTrip
 		row.OperationType == app.EventOperationType && row.OperationSchema == e.OperationSchema && row.PayloadDigest == op.PayloadDigest() &&
 		row.OwnerAccountID == source.Actor.AccountID && row.ApiOrigin == source.Origin && row.MembershipID == source.MembershipID &&
 		row.EnrollmentID == source.EnrollmentID && row.EntityType == app.EventEntityType && row.EntityID == v.EventID && row.EventID == v.EventID &&
-		row.TripID == v.TripID && row.EventType == string(v.Type) && sameText(optionalText(row.EventText), v.Text) && row.Code == app.TripAlreadyClosed &&
+		row.TripID == v.TripID && row.EventType == string(v.Type) && sameText(optionalText(row.EventText), v.Text) && (row.Code == app.TripAlreadyClosed || row.Code == app.StaleRevision) &&
 		at.Equal(v.Declared.OccurredAt) && row.EntryZone == v.Declared.EntryZone && row.DeviceOffsetSeconds == v.Declared.DeviceOffsetSeconds
 }
 
@@ -390,13 +404,13 @@ func parsedEvent(op protocol.Operation) (app.EventInput, error) {
 func (s *EventStore) HoldEventTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, command app.EventCommand, code string) (string, error) {
 	queries, err := s.port(ctx, db, source.Scope)
 	v, errCommand := command.Snapshot()
-	if err != nil || errCommand != nil || s.NewID == nil || code != app.TripAlreadyClosed || op.Snapshot().Type != app.EventOperationType || v.OperationID != op.ID() || !heldBinding(source, op) {
+	if err != nil || errCommand != nil || s.NewID == nil || code != app.TripAlreadyClosed && code != app.StaleRevision || op.Snapshot().Type != app.EventOperationType || v.OperationID != op.ID() || !heldBinding(source, op) {
 		return "", app.ErrUnavailable
 	}
 	org := source.Scope.OrgID().String()
 	row, err := queries.ReadTripEventHeldProof(ctx, q.ReadTripEventHeldProofParams{OrgID: org, OperationID: op.ID()})
 	if err == nil {
-		if !heldEventProof(source, op, row, v) {
+		if !heldEventProof(source, op, row, v) || row.Code != code {
 			return "", app.ErrUnavailable
 		}
 		return row.ID, nil
@@ -474,4 +488,14 @@ func (s *EventStore) CheckOwnReceiptTx(ctx context.Context, db syncapp.DBTX, sou
 		return false, err
 	}
 	return true, nil
+}
+
+// ReviewEntriesTx reads one trip's review history for the late-fact rule
+// (EMP-TRIP-015).
+func (s *EventStore) ReviewEntriesTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, tripID string) ([]app.ReviewEntry, error) {
+	queries, err := s.port(ctx, db, scope)
+	if err != nil {
+		return nil, err
+	}
+	return reviewEntries(ctx, queries, scope, tripID)
 }

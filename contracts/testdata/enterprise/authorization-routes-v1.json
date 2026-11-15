@@ -513,7 +513,8 @@
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/{reading_id}/decide",
         "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
         "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/read",
-        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve"
+        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose"
       ],
       "reason": ""
     },
