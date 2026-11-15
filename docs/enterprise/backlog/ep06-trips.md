@@ -115,7 +115,7 @@ FORBIDDEN proven on PostGIS. Resubmission after return, cancel, amendments
 and the panel remain EMP-TRIP-015/006.
 
 ### EMP-TRIP-005 — App: start a trip, log events and finish, offline first
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type APP · size L · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type APP · size L · state LOCAL_DONE
 - **Objective:** Let the assigned driver record a trip offline in the approved partition.
 - **Rules and use cases:** REQ-07.2, BR-OFFL-002, BR-OFFL-003, UC-OFFL-01, JRN-06
 - **Depends on:** EMP-TRIP-002, EMP-TRIP-003, EMP-OFFL-003, EMP-FLEET-013
@@ -129,6 +129,13 @@ and the panel remain EMP-TRIP-015/006.
 - **Validation:** V-APP, V-SYNC, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 app trip](../evidence/f4-trip005-app-trip.md) is LOCAL_DONE /
+INTEGRATION_PENDING: B-BR-EMP-375..380, BUC-EMP-189..191 and EDR-242..245
+precede behaviour; native acceptance on the owned API36 emulator against a
+real local backend. Retained: the author's own review-result read, held-start
+resolution (TRIP-007), the current-activity card and driving layout, two
+physical devices (OWED), visual/TalkBack review.
 
 ### EMP-TRIP-006 — Panel: trips list, timeline detail and review
 - **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type WEB · size M · state TODO

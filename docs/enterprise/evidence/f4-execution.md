@@ -787,3 +787,53 @@ joins a TRIP-015 review revision.
 Integration (`cb3a23d6`): the branch already contained the F4 head
 `25e8b6d6`, so the merge was conflict-free; build, vet (both tags), gofmt,
 `sqlc diff` and check_plan green.
+
+### EMP-TRIP-005 (F2/C1 prerequisite) — app: start a trip, log events and finish offline: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip005-app-trip.md), commit `c14b8367`, no migration.
+Kotlin builders and a strict decoder for `trip.start`, `trip.event.record`,
+`trip.finish` and `trip.submit` (`TripOperations.kt`), the versioned
+`trip-book` v1 local index and its rules (`TripBook.kt`, the device refuses a
+second unfinished trip on the same asset in the same organization), and a
+presentation in which each record's sync state comes only from its own
+receipt (`TripPresentation.kt`); application producers, `EnterpriseTripService`
+and `TripFlow`; `ProtectedTripStore` writes one sealed RECORD per partition in
+the same protected write as each operation; the four trip producers are the
+first business producers in the production queue registry; `TripViewModel`,
+`TripPanel` and `TripsHomeCard` (start through the FLEET-013 picker, event
+grid, finish, ready to send, send now, one status chip and reason per record),
+rollback flag `ENTERPRISE_TRIP_UI_ENABLED`, 75 strings in eight locales
+(EDR-242..245). New 54-row `trip/trip-operations-v1.psv` from an independent
+oracle: the Kotlin builders must produce the exact bytes and the Go parsers
+must accept or refuse each row identically. Two backend changes (EDR-244):
+`/v1/org-access/contexts/read` now returns the requesting membership's own
+`employee_id` (needed by `trip.start`; no SQL, route or permission change),
+and a defect found by the native run is fixed — the trip intake accepted only
+VALID embedded readings, so a start or finish whose reading METER-003 stored
+SUSPECT stayed RETRY/UNAVAILABLE forever (PostGIS RED → GREEN). RED domain
+62/63, application 12/12, data 6/14, ViewModel 4/4, Go 2 → GREEN; host suites
+domain 3118, application 120, data 183, app 23; union 20 packages 959/8082.
+Native acceptance on `emulator-5588` only, against a real local backend in
+five processes with force-stop between stages: offline start and STOP,
+process death, NOTE, finish and ready to send; organization B sees nothing;
+on reconnect each record reaches "Aceito pela empresa" only with its own
+receipt and a second send sends nothing; a second member's earlier start on
+the same vehicle makes the device's start `ACCEPTED_FOR_REVIEW ASSET_BUSY`,
+shown as "Precisa de revisão"; server counts exact (1 completed trip, 1
+finish, 2 events, 1 submission, 1 held start, 6 operations and receipts).
+Retained/OWED: the author's own review-result read (no server read exists),
+held-start resolution (TRIP-007), offline organization re-selection after
+process death through the context screen, the current-activity card and
+driving layout, event corrections/photos, two physical devices (OWED),
+native other-account and 24 h checks of the trip book, departure-reading
+plausibility warning, retention of the trip book, the FLEET-013 intermittent,
+visual/TalkBack review.
+
+Integration (`4c346a13`): contract, EDR table and trip testdata README
+conflicted (appended sections); build and vet with the integration and
+`nativefixture` tags, gofmt, `sqlc diff` green; cmd/api, apicontract, trip and
+organization unit tests and the focused `Trip|Context|Incident` PostGIS race
+tests green; Android host suites domain 3461, application 656, data 183, app
+23 tests, 0 failures, and `:app:assembleDebug`
+(`f4-logs/coord-android-trip005-merged.log`); the proposed 10-offline-sync
+§10.3 and data README text is applied.

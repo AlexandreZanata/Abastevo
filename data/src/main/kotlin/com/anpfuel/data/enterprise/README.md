@@ -123,6 +123,11 @@ EMP-FLEET-013 stores the signed reference feed as one sealed `CACHE` entry per
 partition (versioned canonical JSON, bound to membership and enrollment,
 replaced by compare-and-set); no plaintext table exists.
 
+EMP-TRIP-005 registers the first business producers (`trip.start`,
+`trip.event.record`, `trip.finish`, `trip.submit`); their projection is one sealed
+`RECORD` per partition (`trip-book` v1, bound to membership and enrollment)
+written in the same protected write as each operation; no plaintext table exists.
+
 The separate operation WorkManager uses empty system input and discovers only
 the current account/origin through authenticated protected descriptors. The
 actual Android provider accepts exact scoped normal/denial/lock prefixes;
