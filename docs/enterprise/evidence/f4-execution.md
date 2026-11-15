@@ -946,3 +946,15 @@ Integration (`4a7c211d`): `origin/main` `93f3a88d` merged (no file change),
 then the TRIP-009/013 branch (already merged with `bff5a788`) without
 conflicts; build, vet (both tags), gofmt, `sqlc diff`, check_plan, cmd/api and
 trip unit tests green. Not delivered: the next cumulative `dev → main` PR.
+
+## Owner decisions for the rest of F4 (2026-11-15)
+
+Relayed request (finish the whole F4 stage, merge it to main and deploy every
+app change) and the owner's direct answers in this session: EMP-GOV-005 is
+declared reviewed and the tracking features will be in the terms of use, so
+EMP-GPS-001..015 are implemented for real (EDR-271; real-device acceptance
+OWED, emulator only); PR #224 is merged alone first, then the F4 continuation
+in its own PR with valid CI; the enterprise routes are enabled on the VPS only
+after the automatic deploy, with a rollback plan and a final confirmation
+(EDR-272). The second batch started on `fe7ec66d` (main `93f3a88d` +
+TRIP-009/013 + `origin/dev` `db43e949`).
