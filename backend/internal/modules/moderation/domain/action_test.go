@@ -140,3 +140,18 @@ func TestContributionActionEligibility(t *testing.T) {
 		t.Error("BLOCK accepted for CONTRIBUTION; blocking applies to contributors")
 	}
 }
+
+// B-BR-SAFE-04: user reports are triaged and closed, never auto-decided;
+// operators act on the referenced content through its own case.
+func TestCommunityAccountTargetActions(t *testing.T) {
+	for _, a := range []string{ActionReview, ActionResolve, ActionDismiss} {
+		if !AllowedForTarget(a, TargetCommunityAccount) {
+			t.Errorf("%s on community account refused", a)
+		}
+	}
+	for _, a := range []string{ActionInvalidate, ActionBlock} {
+		if AllowedForTarget(a, TargetCommunityAccount) {
+			t.Errorf("%s on community account allowed", a)
+		}
+	}
+}
