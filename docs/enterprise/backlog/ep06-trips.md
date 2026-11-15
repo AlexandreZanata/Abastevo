@@ -37,7 +37,7 @@ never-invented meter usage pass all 207 shared Go/Kotlin vectors with 100% Go
 statements. Persistence, intake, authority and review binding remain open.
 
 ### EMP-TRIP-002 — Trip persistence and sync handlers with the one-active-trip-per-asset rule
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size L · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size L · state LOCAL_DONE
 - **Objective:** Persist trips and serialize active use of one asset.
 - **Rules and use cases:** REQ-07.1, BR-TEN-005, BR-OFFL-004, BR-OFFL-006, VAL-07
 - **Depends on:** EMP-TRIP-001, EMP-OFFL-002, EMP-METER-002, EMP-FLEET-006
@@ -51,6 +51,15 @@ statements. Persistence, intake, authority and review binding remain open.
 - **Validation:** V-SQL, V-API, V-ISO, V-IDEM, V-SYNC · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 trip persistence](../evidence/f4-trip002-trip-persistence.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Signed `trip.start` and
+`trip.finish` (migration 000220) store one trip and its one completion with
+TRIP_START/TRIP_END readings; at most one trip per asset is in progress; a
+second admissible start is held `ASSET_BUSY` (both race orders on PostGIS) and
+a second finish `TRIP_ALREADY_CLOSED`; FLEET-003 open work and the FLEET-007
+active use are trip-backed and the FLEET-007 start decision holds blocked or
+reserved starts. Held-item resolution stays with EMP-TRIP-007.
 
 ### EMP-TRIP-003 — Logbook events: the typed timeline
 - **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size M · state TODO

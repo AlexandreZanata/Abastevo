@@ -7,6 +7,9 @@ import (
 	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
 	fuelapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/application"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
+	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
+	tripapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"net/url"
 	"sort"
 	"time"
@@ -80,7 +83,18 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	handlers := append([]app.Handler{meterHandler, fuelingHandler}, o.IntakeHandlers...)
+	// EMP-TRIP-002: the trip owners share the same authority sources, fleet
+	// readings and allocation port; held facts use the OFFL-008 review items.
+	tripStore := &trippg.Store{Allocations: assets, NewID: jobs.NewUUIDv4}
+	tripStart, err := trippg.NewStartHandler((*orgpg.TripAuthority)(meterAuthority), meters, assets, tripStore)
+	if err != nil {
+		return err
+	}
+	tripFinish, err := trippg.NewFinishHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore)
+	if err != nil {
+		return err
+	}
+	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish}, o.IntakeHandlers...)
 	registry, err := app.NewRegistry(handlers...)
 	if err != nil {
 		return err
@@ -117,6 +131,15 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[fuelingKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	// EMP-TRIP-002 (B-BR-EMP-319): no trip consumer exists yet; held facts
+	// are same-transaction review items.
+	for _, kind := range []string{tripapp.StartOperationType, tripapp.FinishOperationType} {
+		key := app.OperationKey{Type: kind, Schema: 1}
+		if _, exists := noAsync[key]; exists {
+			return app.ErrUnavailable
+		}
+		noAsync[key] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup, protocol.AcceptedForReview: app.AtomicReview}
+	}
 	catalog, _, err := IntakeEvents(o.Pool, o.IntakeConsumers)
 	if err != nil {
 		return err

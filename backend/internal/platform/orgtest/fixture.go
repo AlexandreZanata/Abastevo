@@ -461,6 +461,19 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trips') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// EMP-TRIP-002: asset usage counts trips and held starts; FLEET-003
+		// open work reads whether a trip of the asset is in progress; the
+		// FLEET-007 active-use source reads which trips hold it at an instant.
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,asset_id,state,occurred_at,occurred_submicro) ON org_trips TO "+role+
+			";GRANT SELECT(org_id,trip_id,occurred_at,occurred_submicro) ON org_trip_finishes TO "+role+";GRANT SELECT(org_id,asset_id) ON org_trip_held_starts TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // GrantLateIntake provisions the disposable ordinary role for the EMP-OFFL-009

@@ -722,3 +722,29 @@ sql:
         sql_package: pgx/v5
         emit_json_tags: true
         omit_unused_structs: true
+
+  - engine: postgresql
+    queries: db/queries/trip
+    schema:
+      - db/migrations/000004_identity.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000170_membership_periods.sql
+      - db/migrations/000172_organization_onboarding.sql
+      - db/migrations/000174_operating_units.sql
+      - db/migrations/000175_cost_centres.sql
+      - db/migrations/000194_organization_devices.sql
+      - db/migrations/000196_organization_sync_intake.sql
+      - db/migrations/000197_organization_assets.sql
+      - db/migrations/000198_organization_meters.sql
+      - db/migrations/000199_organization_meter_reviews.sql
+      - db/migrations/000201_organization_asset_lifecycle.sql
+      - db/migrations/000220_organization_trips.sql
+    gen:
+      go:
+        package: trip
+        out: db/queries/trip
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
