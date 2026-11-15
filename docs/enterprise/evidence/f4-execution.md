@@ -491,3 +491,57 @@ load); the only failures are the 5 known Rust-preparer-gated `cmd/worker`
 tests (`f4-logs/coord-union-08b3e37c.jsonl`); untagged `go test ./...` and
 whole-backend staticcheck clean (`coord-untagged-08b3e37c.log`,
 `coord-staticcheck-08b3e37c.log`).
+
+### Implement × trip wiring (EMP-FLEET-011 × EMP-TRIP-002): LOCAL_DONE / INTEGRATION_PENDING
+
+Commit `6d62c502` (EDR-219, no migration). The start intake reads the asset
+kind and applies `fleet.MainAssetAllowed` next to the DRAFT check, before any
+held condition: an IMPLEMENT start is a final `MALFORMED` with nothing stored
+(FLEET-011 AC4). `trippg.StartImplements.ImplementsAtStartDBTX` lists the
+implements attached at the trip's start through `AttachedImplementsDBTX`,
+derived at read time because attachment periods never change toward the past
+(AC2). AC3 is proven with real signed trips: an attached implement reads
+IN_USE with `powered_asset_id` while the powered asset's trip runs and
+AVAILABLE after `trip.finish`. RED 2/2 (implement start ACCEPTED, listing
+empty; the AC3 assertions already passed against the composed ports) → GREEN
+21/21 trip and attachment PostGIS tests; union 19 packages 889/6296. Retained:
+an optional database guard against an implement trip and a consumer of the
+start-implements listing.
+
+### EMP-TRIP-003 (F2/C1 prerequisite) — logbook events: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip003-logbook-events.md), commit `b80de813`, migration 000225
+(000221 stays unused because 000222/000224 already existed). Signed
+`trip.event.record` schema 1 (entity `trip_event`, exact payload `trip_id`,
+`type`, `text`): supported NOTE (text required), STOP, ARRIVAL, DEPARTURE;
+reserved FUELING, TOLL, PARKING, INCIDENT, DAMAGE, HANDOVER, PAUSE, RESUME,
+CANCEL answered RETRY/UNAVAILABLE with no effect until their owners; anything
+else MALFORMED. An event before the start is MALFORMED; on a completed trip at
+or before the finish it is a late delivery and accepted; after the finish it
+is held `TRIP_ALREADY_CLOSED` (the OFFL-008 review hook extended from the
+000220 body); another member's event FORBIDDEN; another organization's trip
+RETRY `DEPENDENCY_PENDING` like `trip.finish` (forced RLS cannot tell it from
+an undelivered trip, EDR-202) (EDR-207..209). Insert-only forced-RLS
+`org_trip_events`/`org_trip_held_events` keyed only to trip, operation, author
+and enrollment (no usage-source change); no read route (the timeline is the
+store read; panel reads are TRIP-006). New 103-case `trip/logbook-v1.psv`
+consumed by Go and Kotlin `TripLogbook.kt`. RED Go 101/103 vectors, Kotlin
+101, application 3/8, contract 2, PostGIS 6/6 → GREEN domain 16/376 (99.7%),
+application 8/27, PostGIS 6/16; Kotlin enterprise 2918, 0 failures; merged
+union 910/6615 with one OFFL-006 flake (below). Retained: panel timeline
+(TRIP-006), Android producer (TRIP-005), resolution of held events and late
+events after approval (TRIP-007/015), reserved types for their owners,
+corrections and photos, events with changed rights (RETRY), production grants.
+
+Integration (`20bc047e`): the branch had already merged `08b3e37c`; the merge
+into the F4 head was clean (EDR rows re-sorted).
+
+### Reference-cursor flake fixed (EMP-OFFL-006)
+
+The TRIP-003 union saw `TestReferenceFeedSignedRouteRefusesForeignCursors`
+fail once: it tampers the last character of an unpadded base64url segment,
+and the lenient decoder ignored the two unused bits, so about one run in 16
+the tampered cursor opened. Cursor segments are now decoded strictly (only the
+canonical spelling opens). RED unit test (a non-canonical MAC spelling opened)
+→ GREEN; the route test passed 12/12 repeated race runs; orgsync unit tests
+and staticcheck clean.
