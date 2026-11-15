@@ -34,7 +34,7 @@ Out of scope: fuelings paid with an agreement voucher (created by [station-comme
 
 ## 3. Entities and ownership
 
-Every entity belongs to one organization (BR-TEN-001). Names are proposed; the first persistence task freezes them.
+Every entity belongs to one organization (BR-TEN-001). Names are proposed; the first persistence task freezes them. EMP-FUEL-002 froze `org_fuelings`, `org_fueling_warnings` and `org_fueling_review_entries` (EDR-176).
 
 | Entity | Owner | Content | Invariants |
 |---|---|---|---|
@@ -207,7 +207,7 @@ Which role holds each key is the matrix in [07-permissions](../07-permissions.md
 ## 8. Offline, concurrency, idempotency and corrections
 
 - **Offline.** Recording, correcting a returned fueling and cancelling work offline; review, amendment and void are online ([10-offline-sync](../10-offline-sync.md) §10.3). Capacity, duplicate and price reference checks run on the server at receipt; the device shows the arithmetic and capacity warnings it can compute from cached data.
-- **Operations.** `fueling.submit` carries the whole record and the reading; it lists the trip's start operation as a dependency only when the trip was created on the same device and not yet accepted. The trip reference is a soft reference (BR-OFFL-007). Receipt attachments are declared in the operation and their bytes follow.
+- **Operations.** `fueling.submit` carries the whole record and the reading; it lists the trip's start operation as a dependency only when the trip was created on the same device and not yet accepted. The trip reference is a soft reference (BR-OFFL-007). Receipt attachments are declared in the operation and their bytes follow. Schema 1 of `fueling.submit` (EDR-175) carries the exact 17-key payload of `EnterpriseFuelingSubmitPayload`; a reading is recorded with origin `FUELING` in the same transaction; trip, contracted supplier, place references other than a typed `NOT_FOUND` name and attachments stay unavailable until their owners exist.
 - **Idempotency.** One acknowledgement per operation identifier (BR-OFFL-004). The record identifier is the device UUID (BR-OFFL-001), so a resend after a lost answer can never create a second fueling.
 - **Concurrency.** A review decision and an amendment name the revision they act on; the loser of a race receives `CONFLICT`. The submit handler locks the asset's fueling sequence while it checks duplicates, so two similar fuelings arriving together are both stored and both flagged.
 - **Recalculation.** One job per asset and tank group, de-duplicated by that key, rebuilds intervals from the earliest changed position. It is safe to re-run: an interval gets a new revision only when its input digest changes.

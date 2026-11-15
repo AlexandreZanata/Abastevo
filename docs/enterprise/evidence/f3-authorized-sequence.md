@@ -60,8 +60,8 @@ every F3 persistence task.
 
 ## Batch checkpoint — 2026-11-14
 
-The F2 chain (FLEET-003/005, AUTH-006, FLEET-006, full METER-002) and 16 F3
-tasks are LOCAL_DONE / INTEGRATION_PENDING on `codex/enterprise-f3`; see the
-[batch checkpoint](f3-execution.md#batch-checkpoint--2026-11-14). FUEL-002 is
-the next dependency-ready persistence task. M3/F3 remain unaccepted; the
+The F2 chain (FLEET-003/005, AUTH-006, FLEET-006, full METER-002) and 17 F3
+tasks (including FUEL-002) are LOCAL_DONE / INTEGRATION_PENDING on `codex/enterprise-f3`; see the
+[batch checkpoint](f3-execution.md#batch-checkpoint--2026-11-14). EXP-002 and
+FUEL-003 are the next dependency-ready persistence tasks. M3/F3 remain unaccepted; the
 cumulative protected dev → main PR carries this batch.

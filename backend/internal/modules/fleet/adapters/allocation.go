@@ -9,6 +9,7 @@ import (
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -153,14 +154,28 @@ func (s *AssetStore) UnitAndCostCentreAt(ctx context.Context, scope kernel.OrgSc
 // or foreign asset is not found, an uncovered instant is ErrUnallocated and a
 // missing cost-centre period yields no cost centre.
 func (s *AssetStore) UnitAndCostCentreAtTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, asset string, at time.Time) (app.AllocationSnapshot, error) {
+	if tx == nil {
+		if _, err := fleet.AllocationInstant(at); err != nil || !validID(asset) {
+			return app.AllocationSnapshot{}, fleet.ErrInvalid
+		}
+		return app.AllocationSnapshot{}, app.ErrUnavailable
+	}
+	return s.UnitAndCostCentreAtDBTX(ctx, tx, scope, asset, at)
+}
+
+// UnitAndCostCentreAtDBTX is the same lock-free snapshot statement on a
+// borrowed organization port (EMP-FUEL-002, EDR-176): the signed intake
+// never exposes a pgx.Tx to the owning record module (EDR-106).
+func (s *AssetStore) UnitAndCostCentreAtDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) (app.AllocationSnapshot, error) {
 	instant, err := fleet.AllocationInstant(at)
 	if err != nil || !validID(asset) {
 		return app.AllocationSnapshot{}, fleet.ErrInvalid
 	}
-	if s == nil || tx == nil || database.ValidateOrgTx(ctx, tx, scope) != nil {
+	db = syncapp.Borrow(db)
+	if s == nil || db == nil || database.ValidateOrgDBTX(ctx, db, scope) != nil {
 		return app.AllocationSnapshot{}, app.ErrUnavailable
 	}
-	row, err := q.New(tx).AllocationAt(ctx, q.AllocationAtParams{At: pgtype.Timestamptz{Time: instant, Valid: true}, OrgID: scope.OrgID().String(), AssetID: asset})
+	row, err := q.New(db).AllocationAt(ctx, q.AllocationAtParams{At: pgtype.Timestamptz{Time: instant, Valid: true}, OrgID: scope.OrgID().String(), AssetID: asset})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return app.AllocationSnapshot{}, app.ErrNotFound
 	}

@@ -1132,6 +1132,24 @@ asset_id, valid_from, valid_to, end_cause) ON org_asset_assignments` and
 resolve SELF (EMP-METER-002 closure, EDR-173). Nothing here provisions live
 grants.
 
+### Fueling intake (EMP-FUEL-002)
+
+Migration215 adds forced-RLS, insert-only `org_fuelings`, `org_fueling_warnings`
+and `org_fueling_review_entries`. The signed intake principal needs `SELECT,
+INSERT ON org_fuelings, org_fueling_warnings, org_fueling_review_entries` and
+`SELECT ON org_employee_identities, org_asset_tank_products,
+org_asset_unit_periods, org_asset_cost_centre_periods` besides its meter and
+sync grants; every principal that can reach the asset usage source (asset
+discard or kind change) needs `SELECT (org_id, asset_id) ON org_fuelings`. The
+migrator needs `REFERENCES` on organizations, org_sync_operations, org_assets,
+org_employee_identities, org_memberships, org_device_enrollments,
+org_fuel_products_v1, org_meter_readings, org_units and org_cost_centres and
+ownership of `org_asset_current_usage`, `org_unit_current_usage` and
+`org_cost_centre_current_usage`. The runtime registers `fueling.submit` beside
+`meter.reading.record` with `NO_ASYNC_FOLLOWUP` for ACCEPTED and REJECTED;
+changed-right and post-disposal fuelings store nothing and stay
+RETRY/UNAVAILABLE. Nothing here provisions live grants.
+
 ### Asset lifecycle (EMP-FLEET-003)
 
 Migration201 adds nullable acquisition/disposal columns to `org_assets` and the

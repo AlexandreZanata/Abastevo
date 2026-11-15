@@ -309,7 +309,7 @@ func Register(router chi.Router, o Options) error {
 	if err := fleetweb.RegisterMeterReviews(router, fleetapp.MeterReviewService{Enabled: true, Repository: reviews}, cookies, gateway, reviewAuthorization); err != nil {
 		return err
 	}
-	if err := registerIntake(router, o, deviceStore, meters, auditStore, auditCatalog); err != nil {
+	if err := registerIntake(router, o, deviceStore, meters, assets, auditStore, auditCatalog); err != nil {
 		return err
 	}
 

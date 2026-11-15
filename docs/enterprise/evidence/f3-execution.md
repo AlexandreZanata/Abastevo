@@ -609,20 +609,47 @@ malformed operation stays batch-level FORBIDDEN (§10.2), native Android
 confirmation of SELF 403/held outcomes, OFFL-008 PENDING_SETUP 503 and
 review-results budget, production grants.
 
+### EMP-FUEL-002 — fueling persistence and signed intake: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-fuel002-fueling-persistence.md). Built on the batch head
+`80b0327c` while PR #220 held `dev`. Migration 000215 adds insert-only,
+forced-RLS `org_fuelings` (original fact, exact integers, unit/cost-centre
+snapshot at the declared instant, review SUBMITTED; CHECKs re-prove
+BR-MONEY-005), `org_fueling_warnings` and `org_fueling_review_entries`; a
+deferred trigger refuses a fueling without its ACCEPTED receipt, first review
+entry, exact warning row and a FUELING-origin reading. Usage sources are
+redefined from their latest bodies (000210 asset, 000208 unit/cost centre)
+keeping every allow-list line. The `fueling.submit` schema-1 handler (exact
+17-key payload) records the reading through fleet `RecordEmbedded` in the same
+transaction, replays byte-for-byte, keeps the paid total and stores
+ARITHMETIC_MISMATCH / PRODUCT_NOT_ACCEPTED as warnings; authority at receipt
+reuses the meter history classifier (ORG own-record; SELF only on an assigned
+asset as the responsible employee; EDR-118 continuity) (EDR-175..177). RED
+12/29 top-level and 74/329 named, contract 2/2 failing → GREEN 34/392 under
+`-race`; affected union 24 packages 731/6659 (6 usage-function fixture copies
+updated, then organization adapters 414/3998, 664 s); untagged 214 packages;
+whole-backend staticcheck clean on this branch. Retained: held fuelings with a
+real review item (changed rights and post-disposal store nothing and RETRY
+today; FUEL-003 + OFFL-008 review-source extension), receipt link and bytes
+(DOC-004; FUELING link target), panel reads (FUEL-012), expense projection
+(EXP-002), capacity tolerance/duplicates/late entry/price snapshot
+(FUEL-005/006/014), trip/supplier/place references, structural grants in
+signed intake, Android producer (FUEL-011), production grants.
+
 ## Batch checkpoint — 2026-11-14
 
 Status of this construction batch (all **LOCAL_DONE / INTEGRATION_PENDING**;
 none is INTEGRATED, RELEASE_CERTIFIED or an M3 acceptance):
 
-- F3 tasks done here (16): EMP-PLAT-016, EMP-APPR-001, EMP-EXP-001, EMP-DOC-001, EMP-BUDG-001, EMP-FIN-001, EMP-PRIV-005, EMP-APPR-006, EMP-NOTIF-001, EMP-DOC-002, EMP-RPT-001, EMP-DOC-006, EMP-DOC-003, EMP-AUTH-011, EMP-DOC-014, EMP-RPT-002.
-  With EMP-FUEL-001 (earlier), 17 of the 67 F3 tasks are local.
+- F3 tasks done here (17): EMP-FUEL-002, EMP-PLAT-016, EMP-APPR-001, EMP-EXP-001, EMP-DOC-001, EMP-BUDG-001, EMP-FIN-001, EMP-PRIV-005, EMP-APPR-006, EMP-NOTIF-001, EMP-DOC-002, EMP-RPT-001, EMP-DOC-006, EMP-DOC-003, EMP-AUTH-011, EMP-DOC-014, EMP-RPT-002.
+  With EMP-FUEL-001 (earlier), 18 of the 67 F3 tasks are local.
 - F2 prerequisites closed here (5): EMP-FLEET-003, EMP-FLEET-005, EMP-AUTH-006, EMP-FLEET-006, EMP-METER-002.
-  The EDR-109 chain is complete, so EMP-FUEL-002 — the gate of every F3
-  fueling/expense/budget/payable persistence task — is now dependency-ready.
+  The EDR-109 chain is complete and EMP-FUEL-002 — the gate of every F3
+  fueling/expense/budget/payable persistence task — is LOCAL_DONE, so
+  EXP-002, FUEL-003/005/006 and their dependants are next.
 - CI: race integration package bound 30 → 45 minutes (EDR-168).
 
-Not done and retained (50 F3 tasks): the persistence chain FUEL-002 (L) →
-FUEL-003/004/005/006/011/012/014/015, EXP-002..006 → BUDG-002..006,
+Not done and retained (49 F3 tasks): FUEL-003/004/005/006/011/012/014/015, EXP-002..006 → BUDG-002..006,
 FIN-002/003/004/007, DOC-007/010; APPR-002/003/004/005/007; FUEL-007/008/013
 (also need METER-003/005/006); AUTH-007; FLEET-009; OFFL-005 (Android) →
 DOC-004/009, FUEL-011; DOC-005/008/011/013/015; NOTIF-002/003/004 (002 needs

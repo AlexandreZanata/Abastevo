@@ -4513,3 +4513,95 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   ACK; an asset or assignment of another organization → `NOT_FOUND` or no
   coverage, never a cross-organization effect. Result: one held item and no
   reading until a reviewer accepts it.
+
+## EMP-FUEL-002 — Fueling persistence, sync handler and arithmetic consistency (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-fuel002-fueling-persistence.md).
+
+- **B-BR-EMP-263 — One immutable fueling per signed `fueling.submit`.**
+  The operation `fueling.submit` schema 1 (entity `fueling`, id = the
+  device fueling UUID, no expected revision) creates exactly one
+  organization-scoped, forced-RLS, insert-only fueling holding its original
+  revision-1 fact as the FUEL-001 candidate validated it: asset, responsible
+  employee, author membership and its employee record, capture enrollment,
+  the envelope declaration (microsecond floor plus 0..999 remainder, entry
+  zone, device offset), product and unit from `fuel-products-v1`, quantity in
+  milli-units, paid total and optional discount in centavos, optional unit
+  price in milli-BRL with its optional original text, fill, payer, payment
+  method, origin `APP`, an optional `NOT_FOUND` typed place, the server
+  receipt instant and the operation's payload digest. The stored unit and
+  cost centre are the FLEET-005 snapshot of the asset at the declared
+  instant (none when unallocated), never the current allocation
+  (BR-AUTH-005). The review state is `SUBMITTED` at revision 1, produced by
+  the APPR-001 lifecycle and kept as an append-only first review entry;
+  later decisions and revisions belong to FUEL-003/015. No expense, document
+  link, price snapshot or duplicate signal is created here.
+- **B-BR-EMP-264 — Arithmetic is a stored warning, never a correction.**
+  At acceptance the server reconciles with the accepted `orgvalue` rule
+  (BR-MONEY-005): gross = paid + discount, where an absent discount
+  reconciles as zero but stays absent in the record; with a unit price,
+  expected = round-half-up(quantity × unit price / 10 000) and the absolute
+  difference are stored, and a difference above one centavo stores the
+  warning `ARITHMETIC_MISMATCH`; without a unit price only the exact derived
+  price rational is stored, labelled derived. `KWH` uses the same integer
+  formula. The paid total is stored exactly as entered and never recomputed
+  (BR-MONEY-004). A product that no configured tank of the asset accepts
+  stores `PRODUCT_NOT_ACCEPTED` (BR-FUEL-016). Warnings never refuse a fact:
+  the ACK stays `ACCEPTED`; ACK warnings keep the OFFL-001 vocabulary and the
+  fueling warnings live on the record.
+- **B-BR-EMP-265 — Reading evidence commits with the fueling.** Exactly one
+  of a reading or a missing-reading reason is required. A reading (meter,
+  segment, reading id, base value of the meter kind) is recorded through the
+  fleet embedded-reading port with origin `FUELING`, the fueling's operation
+  id, the envelope declaration and method `TYPED`, in the same transaction
+  as the fueling; a rollback leaves neither. A reason is non-blank,
+  control-free and at most 280 characters. Neither, both, a reading of
+  another kind or outside the meter's service interval, an unknown or
+  non-active responsible employee, a `DRAFT` asset, a payload unit that is
+  not the product's unit, or a fueling id already used by another operation
+  is `MALFORMED` with nothing stored; a meter or segment not found on the
+  asset is `DEPENDENCY_PENDING` like the fleet reading intake. The database
+  proves at commit that a stored fueling has its accepted receipt and that
+  its reading has origin `FUELING`, the same operation, author, instant and
+  asset.
+- **B-BR-EMP-266 — Authority at receipt.** Only a current enrolled
+  operational device of the author records. History of
+  `fuel.fueling.record` follows EDR-118 continuity from the declared instant
+  to the receipt: an `ORG` grant with a positive rule covers the asset (the
+  new fueling is the member's own record in that scope); a `SELF` grant
+  covers it only while the asset is assigned to the member (FLEET-006
+  periods) and only when the member's own employee record is the
+  responsible employee; structural grants stay unsupported in the signed
+  intake (unavailable when alone, as B-BR-EMP-262). Never covered is
+  `FORBIDDEN` and a missing or foreign asset `NOT_FOUND`, both refusing the
+  whole response with nothing stored. Formerly covered (changed rights) or a
+  declared instant at or after the asset's disposal stores nothing and is
+  `RETRY`/`UNAVAILABLE` until a held-fueling review owner exists. The
+  embedded reading also needs current `meter.reading.record` through the
+  fleet port. A receipt replay needs current `fuel.fueling.read` over the
+  stored record (author, asset, stored unit and cost centre). Intake never
+  consults the APPR-006 period gate: an accepted field fact is not blocked by
+  a locked reporting day; locked-period edits belong to FUEL-015.
+- **B-BR-EMP-267 — Exact replay and concurrency.** The intake ledger decides
+  by operation id: the same id and digest returns the stored ACK byte for
+  byte and creates no second fueling, reading, warning, review entry or
+  audit; the same id with another digest is `REJECTED`
+  `OPERATION_ID_REUSED` and changes nothing; concurrent identical
+  operations leave exactly one fueling. The receipt replay re-proves that the
+  stored fueling equals the operation (identity, author, enrollment, digest,
+  amounts and reading). Optional references whose owners do not exist yet
+  (trip, contracted supplier, catalog-station/supplier/internal-tank place,
+  attachments, dependencies, soft references) are recognised and stay
+  `RETRY`/`UNAVAILABLE` with nothing stored; an unknown payload key is
+  `MALFORMED`.
+- **BUC-EMP-134 — Record a fueling through the signed intake.** A covered
+  member's device sends `fueling.submit` with a reading or a missing reason;
+  the server stores the fueling, its reading, warnings and first review
+  entry with one ACCEPTED ACK in one transaction; resends return the same
+  ACK; a mismatching paid total is accepted with `ARITHMETIC_MISMATCH`.
+- **BUC-EMP-135 — Prove the fueling store on real PostGIS.** Replay,
+  digest reuse, 12-way concurrency, embedded-reading rollback in both
+  directions, foreign asset, FORBIDDEN/held SELF history, malformed and
+  unavailable forms, forced RLS without an organization setting,
+  insert-only history and a populated 000212 → 000215 upgrade with injected
+  failure, recovery, no-op replay and previous-image compatibility.

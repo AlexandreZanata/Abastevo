@@ -327,6 +327,14 @@ coverage continuous from its declared instant to its receipt, is held
 it never existed. Structural grants and `ORG`-scoped own-records cells stay
 unsupported in the signed intake.
 
+EMP-FUEL-002 interpretation (2026-11-14, EDR-177): in the signed intake
+`fuel.fueling.record` (an `S` cell for every holder) is covered by an `ORG`
+grant with a positive rule (the new fueling is the member's own record), and by
+a `SELF` grant only while the asset is assigned to the member and the member is
+the responsible employee, with EDR-118 continuity; structural grants stay
+unsupported in the signed intake. A receipt replay needs current
+`fuel.fueling.read` over the stored record and its unit/cost-centre snapshot.
+
 The shared organization lock protects assignment overlap and continuous
 surviving-owner coverage through future expiry. The union of the surviving
 active owners' periods must cover the remaining time without gaps; adjacent

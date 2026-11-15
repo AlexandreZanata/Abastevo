@@ -434,6 +434,15 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_fuelings') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// EMP-FUEL-002: asset usage counts fuelings as accepted operations.
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id) ON org_fuelings TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // GrantMeterReviews enables current read projections only. The owning command

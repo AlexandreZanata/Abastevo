@@ -14860,6 +14860,9 @@ paths:
         rejected outcomes and no artificial asynchronous consumer. Its source-owned synthetic transport allowance is
         identity v1 write200/hour per organization/account/device, weighted by attempts; production measurement and
         cleanup remain separate. ORG and SELF (assigned-asset) history are resolved from retained periods; Android producers and F4 late/grace require their actual owners.
+        The fueling.submit owner (EMP-FUEL-002) commits one immutable fueling, its embedded FUELING-origin reading,
+        stored warnings and first review entry with its ACK; changed rights and post-disposal fuelings store nothing
+        and stay RETRY/UNAVAILABLE until a held-fueling owner exists.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -14879,6 +14882,17 @@ paths:
             ACCEPTED: NO_ASYNC_FOLLOWUP
             REJECTED: NO_ASYNC_FOLLOWUP
             ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
+        fueling.submit:
+          schema: 1
+          entity_type: fueling
+          payload:
+            $ref: '#/components/schemas/EnterpriseFuelingSubmitPayload'
+          terminal_results:
+          - ACCEPTED
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
       security: []
       parameters:
       - $ref: '#/components/parameters/EnterpriseOrgID'
@@ -19072,6 +19086,189 @@ components:
         document/import/integration and cross-record reference producers are required before their otherwise recognized
         forms can execute. Nonempty attachments/depends_on/soft_references stay unavailable; missing/foreign actual
         target coverage never becomes an accepted effect.
+    EnterpriseFuelingSubmitPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        responsible_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        product:
+          type: string
+          enum:
+          - ETHANOL
+          - GASOLINE_REGULAR
+          - GASOLINE_ADDITIVED
+          - GASOLINE_PREMIUM_GRADE
+          - DIESEL_S10
+          - DIESEL_S500
+          - CNG
+          - ELECTRICITY
+          - ARLA_32
+        unit:
+          type: string
+          enum:
+          - L
+          - M3
+          - KWH
+        quantity:
+          type: string
+          description: Milli-units of the product unit (mL, milli-m3 or Wh).
+          pattern: ^(1000000000|[1-9][0-9]{0,8})$
+        paid_total:
+          type: string
+          description: Centavos as entered; never recomputed.
+          pattern: ^(0|[1-9][0-9]{0,11}|1000000000000)$
+        discount:
+          type:
+          - string
+          - 'null'
+          pattern: ^(0|[1-9][0-9]{0,11}|1000000000000)$
+        unit_price:
+          type:
+          - string
+          - 'null'
+          description: Milli-BRL per product unit.
+          pattern: ^(1000000|[1-9][0-9]{0,5})$
+        unit_price_text:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 8192
+        fill:
+          type: string
+          enum:
+          - FULL
+          - PARTIAL
+          - UNKNOWN
+        payer:
+          type: string
+          enum:
+          - COMPANY
+          - EMPLOYEE
+        payment_method:
+          type: string
+          enum:
+          - CASH
+          - PIX
+          - DEBIT_CARD
+          - CREDIT_CARD
+          - FUEL_CARD
+          - SUPPLIER_ACCOUNT
+          - AGREEMENT_VOUCHER
+          - INTERNAL_STOCK
+          - OTHER
+        reading:
+          type:
+          - object
+          - 'null'
+          additionalProperties: false
+          properties:
+            meter_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            segment_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            reading_id:
+              $ref: '#/components/schemas/EnterpriseUUID'
+            kind:
+              type: string
+              enum:
+              - ODOMETER
+              - HOUR_METER
+            value:
+              type: string
+              pattern: ^(0|[1-9][0-9]*)$
+              maxLength: 13
+          required:
+          - meter_id
+          - segment_id
+          - reading_id
+          - kind
+          - value
+        missing_reading_reason:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 280
+        place:
+          type:
+          - object
+          - 'null'
+          properties:
+            kind:
+              type: string
+              enum:
+              - NOT_FOUND
+              - CATALOG_STATION
+              - ORG_SUPPLIER
+              - INTERNAL_TANK
+            name:
+              type: string
+              minLength: 1
+          required:
+          - kind
+        trip_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        contracted_supplier_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      required:
+      - asset_id
+      - responsible_employee_id
+      - product
+      - unit
+      - quantity
+      - paid_total
+      - discount
+      - unit_price
+      - unit_price_text
+      - fill
+      - payer
+      - payment_method
+      - reading
+      - missing_reading_reason
+      - place
+      - trip_id
+      - contracted_supplier_id
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        responsible_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+        product: DIESEL_S10
+        unit: L
+        quantity: '150000'
+        paid_total: '97000'
+        discount: null
+        unit_price: '6490'
+        unit_price_text: '6,490'
+        fill: FULL
+        payer: COMPANY
+        payment_method: FUEL_CARD
+        reading:
+          meter_id: 7b0e2a54-0000-4000-8000-000000008401
+          segment_id: 7b0e2a54-0000-4000-8000-000000008402
+          reading_id: 7b0e2a54-0000-4000-8000-000000008403
+          kind: ODOMETER
+          value: '184190000'
+        missing_reading_reason: null
+        place: null
+        trip_id: null
+        contracted_supplier_id: null
+      description: Owner schema1 for fueling.submit (EMP-FUEL-002). Fueling identity is envelope entity.type=fueling/entity.id;
+        expected_revision is null. Declaration belongs only to envelope occurred_at/entry_zone/device_offset_seconds and
+        is also the embedded reading's instant. The unit must be the product's catalog unit. Exactly one of reading or
+        missing_reading_reason is non-null; a reading is recorded through the fleet intake with origin FUELING in the same
+        transaction. Server fixes origin APP, author, enrollment, receipt, review state SUBMITTED, the unit/cost-centre
+        snapshot at the declared instant and the stored warnings; the paid total is never recomputed and ARITHMETIC_MISMATCH
+        or PRODUCT_NOT_ACCEPTED never refuse the fact. Only a NOT_FOUND typed place is stored; other place kinds, non-null
+        trip_id/contracted_supplier_id and nonempty attachments/depends_on/soft_references stay unavailable until their owners exist.
     EnterpriseMeterInstallRequest:
       type: object
       additionalProperties: false

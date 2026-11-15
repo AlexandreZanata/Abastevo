@@ -8,6 +8,7 @@ import (
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
+	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -173,4 +174,7 @@ func NewAllocationSnapshot(asset string, at time.Time, unit, costCentre string) 
 type AllocationSnapshotPort interface {
 	UnitAndCostCentreAt(context.Context, kernel.OrgScope, string, time.Time) (AllocationSnapshot, error)
 	UnitAndCostCentreAtTx(context.Context, pgx.Tx, kernel.OrgScope, string, time.Time) (AllocationSnapshot, error)
+	// UnitAndCostCentreAtDBTX is the same answer on a borrowed organization
+	// port, for signed intake owners that never hold a pgx.Tx (EMP-FUEL-002).
+	UnitAndCostCentreAtDBTX(context.Context, syncapp.DBTX, kernel.OrgScope, string, time.Time) (AllocationSnapshot, error)
 }

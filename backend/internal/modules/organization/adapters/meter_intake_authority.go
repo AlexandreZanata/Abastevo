@@ -37,7 +37,26 @@ type meterAssignedPeriod struct {
 // their recorded period (B-BR-EMP-160); SELF grants cover it where their
 // recorded period meets a retained assignment period (B-BR-EMP-259).
 func meterHistoryDisposition(scope kernel.OrgScope, member, asset string, declared, received time.Time, periods []meterPermissionPeriod, assigned []meterAssignedPeriod) (fleet.MeterDisposition, error) {
-	if scope.Validate() != nil || periods == nil || received.IsZero() || received.UTC().Year() < 1 || received.UTC().Year() > 9999 || declared.UTC().Year() < 1 || declared.UTC().Year() > 9999 {
+	return historyDisposition(meterHistoryRule, scope, member, asset, declared, received, periods, assigned)
+}
+
+// historyRule is the owning permission of one signed producer and how its
+// ORG and SELF grants cover a record (EMP-FUEL-002, EDR-177). The meter keeps
+// its METER-002 rule: ORG grants with an O cell, SELF on assigned periods.
+type historyRule struct {
+	permission permission.Permission
+	orgCovers  func(permission.Coverage) bool
+	// selfCovers false makes a positive SELF grant cover nothing (never
+	// unsupported): a fueling naming another responsible is not own.
+	selfCovers bool
+}
+
+var meterHistoryRule = historyRule{permission: "meter.reading.record", orgCovers: func(c permission.Coverage) bool { return c == permission.AssignedScope }, selfCovers: true}
+
+// historyDisposition is the METER-002 classification of one record from
+// complete retained evidence, parameterized by its owning rule.
+func historyDisposition(owner historyRule, scope kernel.OrgScope, member, asset string, declared, received time.Time, periods []meterPermissionPeriod, assigned []meterAssignedPeriod) (fleet.MeterDisposition, error) {
+	if owner.permission == "" || owner.orgCovers == nil || scope.Validate() != nil || periods == nil || received.IsZero() || received.UTC().Year() < 1 || received.UTC().Year() > 9999 || declared.UTC().Year() < 1 || declared.UTC().Year() > 9999 {
 		return "", fleet.ErrUnavailable
 	}
 	for _, id := range []string{member, asset} {
@@ -62,11 +81,11 @@ func meterHistoryDisposition(scope kernel.OrgScope, member, asset string, declar
 		if err != nil || value.MembershipID != member || period.createdAt.IsZero() || period.createdAt.After(received) {
 			return "", fleet.ErrUnavailable
 		}
-		rule, err := permission.SystemCatalog().Lookup(value.Role, "meter.reading.record")
+		rule, err := permission.SystemCatalog().Lookup(value.Role, owner.permission)
 		if err != nil {
 			return "", fleet.ErrUnavailable
 		}
-		if rule.Coverage() == permission.Denied {
+		if rule.Coverage() == permission.Denied || value.Scope == permission.SelfScope && !owner.selfCovers {
 			continue
 		}
 		from := value.ValidFrom
@@ -89,7 +108,7 @@ func meterHistoryDisposition(scope kernel.OrgScope, member, asset string, declar
 			}
 		}
 		switch {
-		case known && value.Scope == permission.OrgScope && rule.Coverage() == permission.AssignedScope:
+		case known && value.Scope == permission.OrgScope && owner.orgCovers(rule.Coverage()):
 			interval := meterCoverageInterval{from: from.UTC(), to: to.UTC()}
 			intervals, opened = append(intervals, interval), append(opened, interval)
 		case known && value.Scope == permission.SelfScope && assigned != nil:
@@ -112,11 +131,11 @@ func meterHistoryDisposition(scope kernel.OrgScope, member, asset string, declar
 			}
 		}
 	}
-	disposition, err := meterCoverageDisposition(declared, received, intervals, unsupported)
+	disposition, err := coverageDisposition(owner.permission, declared, received, intervals, unsupported)
 	if err != nil || disposition != fleet.MeterHoldPermissionChanged {
 		return disposition, err
 	}
-	if label, err := meterCoverageDisposition(declared, received, opened, unsupported); err == nil && label == fleet.MeterApply {
+	if label, err := coverageDisposition(owner.permission, declared, received, opened, unsupported); err == nil && label == fleet.MeterApply {
 		return fleet.MeterHoldDisposalEnded, nil
 	}
 	return disposition, nil
@@ -126,6 +145,11 @@ func meterHistoryDisposition(scope kernel.OrgScope, member, asset string, declar
 // role has a positive meter.reading.record rule. Invalid evidence is left to
 // meterHistoryDisposition, which refuses it as unavailable.
 func meterSelfRecorded(scope kernel.OrgScope, recorded []access.RecordedRolePeriod) bool {
+	return selfRecorded(scope, recorded, "meter.reading.record")
+}
+
+// selfRecorded is meterSelfRecorded for any owning permission.
+func selfRecorded(scope kernel.OrgScope, recorded []access.RecordedRolePeriod, key permission.Permission) bool {
 	for _, period := range recorded {
 		value, err := period.Assignment.Snapshot(scope)
 		if err != nil {
@@ -134,7 +158,7 @@ func meterSelfRecorded(scope kernel.OrgScope, recorded []access.RecordedRolePeri
 		if value.Scope != permission.SelfScope {
 			continue
 		}
-		if rule, err := permission.SystemCatalog().Lookup(value.Role, "meter.reading.record"); err != nil || rule.Coverage() != permission.Denied {
+		if rule, err := permission.SystemCatalog().Lookup(value.Role, key); err != nil || rule.Coverage() != permission.Denied {
 			return true
 		}
 	}
@@ -153,11 +177,12 @@ func meterIntersect(aFrom, aTo, bFrom, bTo time.Time) (meterCoverageInterval, bo
 	return meterCoverageInterval{from: from, to: to}, to.IsZero() || from.Before(to)
 }
 
-// meterCoverageDisposition applies the EDR-118 rule to coverage intervals:
+// coverageDisposition applies the EDR-118 rule to coverage intervals:
 // never effective by receipt is FORBIDDEN (or unavailable when an unsupported
 // grant was effective), current coverage continuous across the declared
-// instant and the receipt applies, anything else is held.
-func meterCoverageDisposition(declared, received time.Time, intervals []meterCoverageInterval, unsupported bool) (fleet.MeterDisposition, error) {
+// instant and the receipt applies, anything else is held. Never covered
+// denies the owning key.
+func coverageDisposition(key permission.Permission, declared, received time.Time, intervals []meterCoverageInterval, unsupported bool) (fleet.MeterDisposition, error) {
 	current, past := false, false
 	for _, interval := range intervals {
 		if !interval.from.After(received) {
@@ -171,7 +196,7 @@ func meterCoverageDisposition(declared, received time.Time, intervals []meterCov
 		if unsupported {
 			return "", fleet.ErrUnavailable
 		}
-		return "", permission.DenyPermission("meter.reading.record")
+		return "", permission.DenyPermission(key)
 	}
 	if !current {
 		return fleet.MeterHoldPermissionChanged, nil

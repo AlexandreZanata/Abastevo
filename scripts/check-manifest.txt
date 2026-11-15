@@ -26,6 +26,8 @@ backend/internal/modules/fleet/application
 backend/internal/modules/fleet/adapters
 backend/internal/modules/fleet/adapters/http
 backend/internal/modules/fueling/domain
+backend/internal/modules/fueling/application
+backend/internal/modules/fueling/adapters
 backend/internal/modules/expense/domain
 backend/internal/modules/expense/domain/payable
 backend/internal/modules/budget/domain
