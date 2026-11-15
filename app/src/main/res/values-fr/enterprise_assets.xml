@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-FLEET-013 "Meus ativos" and the asset picker (SCR-FLEET-08/09/10). -->
+    <string name="enterprise_assets_title">Mes équipements</string>
+    <string name="enterprise_assets_home_copy">Équipements que l’entreprise vous a attribués, même sans internet.</string>
+    <string name="enterprise_assets_open">Ouvrir mes équipements</string>
+    <string name="enterprise_assets_back_home">Retour à l’accueil de l’entreprise</string>
+    <string name="enterprise_assets_back_list">Retour à mes équipements</string>
+    <string name="enterprise_assets_refresh">Mettre à jour la liste</string>
+    <string name="enterprise_assets_loading">Chargement</string>
+    <string name="enterprise_assets_confirmed_at">Mis à jour le %1$s</string>
+    <string name="enterprise_assets_not_confirmed">Non confirmé : plus de 24 heures sans contact avec l’entreprise.</string>
+    <string name="enterprise_assets_refresh_failed">La liste n’a pas pu être confirmée maintenant. Elle montre la dernière version confirmée.</string>
+    <string name="enterprise_assets_refresh_failed_empty">La liste n’a pas pu être chargée maintenant. Réessayez.</string>
+    <string name="enterprise_assets_offline">Pas d’internet. La liste affichée est la dernière confirmée.</string>
+    <string name="enterprise_assets_needs_connection">Pas d’internet. La liste des équipements a besoin d’une connexion une fois.</string>
+    <string name="enterprise_assets_unavailable">La liste des équipements est indisponible maintenant. Les données enregistrées sont en sécurité.</string>
+    <string name="enterprise_assets_retry">Réessayer</string>
+    <string name="enterprise_assets_empty">Aucun équipement ne vous est attribué</string>
+    <string name="enterprise_assets_empty_who">Un gestionnaire de flotte de l’entreprise autorisé à attribuer des équipements peut vous en attribuer un.</string>
+    <string name="enterprise_assets_forbidden_title">Sans autorisation</string>
+    <string name="enterprise_assets_forbidden">Vous ne pouvez pas voir les équipements de cette entreprise. Un administrateur de l’entreprise peut accorder l’accès.</string>
+    <string name="enterprise_assets_fleet_number">Numéro de flotte %1$s</string>
+    <string name="enterprise_assets_plate">Plaque %1$s</string>
+    <string name="enterprise_assets_kind_vehicle">Véhicule</string>
+    <string name="enterprise_assets_kind_machine">Machine</string>
+    <string name="enterprise_assets_kind_implement">Outil attelé</string>
+    <string name="enterprise_assets_assignment_primary">Attribution principale</string>
+    <string name="enterprise_assets_assignment_additional">Attribution supplémentaire</string>
+    <string name="enterprise_assets_assignment_temporary">Attribution temporaire</string>
+    <string name="enterprise_assets_assignment_until">Jusqu’au %1$s</string>
+    <string name="enterprise_assets_assignment_ended">La période attribuée s’est terminée le %1$s ; l’entreprise le confirme à l’arrivée de vos enregistrements.</string>
+    <string name="enterprise_assets_unavailable_state">Indisponible : %1$s</string>
+    <string name="enterprise_assets_state">Situation : %1$s</string>
+    <string name="enterprise_assets_state_draft">brouillon</string>
+    <string name="enterprise_assets_state_active">actif</string>
+    <string name="enterprise_assets_state_inactive">inactif</string>
+    <string name="enterprise_assets_state_disposed">cédé</string>
+    <string name="enterprise_assets_state_archived">archivé</string>
+    <string name="enterprise_assets_row_not_confirmed">Non confirmé</string>
+    <string name="enterprise_assets_detail_title">Détails de l’équipement</string>
+    <string name="enterprise_assets_usage_distance">Usage compté en kilomètres</string>
+    <string name="enterprise_assets_usage_hours">Usage compté en heures</string>
+    <string name="enterprise_assets_products">Produits acceptés : %1$s</string>
+    <string name="enterprise_assets_products_none">Aucun produit accepté enregistré</string>
+    <string name="enterprise_assets_product_electricity">Électricité</string>
+    <string name="enterprise_assets_product_arla">AdBlue (ARLA 32)</string>
+    <string name="enterprise_assets_meter_odometer">Odomètre installé le %1$s</string>
+    <string name="enterprise_assets_meter_hour">Horamètre installé le %1$s</string>
+    <string name="enterprise_assets_meters_none">Aucun compteur en service</string>
+    <string name="enterprise_assets_offline_limits">Les relevés et la capacité des réservoirs ne font pas partie de cette liste hors ligne.</string>
+    <string name="enterprise_assets_pick_title">Choisir un équipement</string>
+    <string name="enterprise_assets_pick_cancel">Annuler</string>
+    <string name="enterprise_assets_warning_title">L’entreprise examinera ce choix</string>
+    <string name="enterprise_assets_warning_copy">Cet équipement n’est pas disponible ou ses données ne sont pas confirmées. Vous pouvez le choisir ; l’entreprise décide à l’arrivée de votre enregistrement.</string>
+    <string name="enterprise_assets_warning_confirm">Choisir quand même</string>
+</resources>

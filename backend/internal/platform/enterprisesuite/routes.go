@@ -147,6 +147,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, reviewpg.PeriodAuditDefinitions()...)
 	definitions = append(definitions, maintpg.ChecklistAuditDefinitions()...)
 	definitions = append(definitions, trippg.ReviewAuditDefinitions()...)
+	definitions = append(definitions, trippg.MissionAuditDefinitions()...)
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
 	definitions = append(definitions, exportpg.AuditDefinitions()...)
@@ -182,6 +183,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "idn.device", Permissions: []string{"idn.credential.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic scoped device enrollment and revocation inherit identity v1 write200/hour on every axis; current source membership precedes admission and production measurement remains required."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "trip.mission", Permissions: []string{"trip.mission.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic mission create, assign and cancel commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "trip.review", Permissions: []string{"trip.trip.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic trip review decisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
@@ -376,6 +378,16 @@ func Register(router chi.Router, o Options) error {
 	tripReviews := &trippg.ReviewStore{Pool: o.Pool, Authority: tripReviewAuthority, Audit: auditStore, Periods: reviewpg.PeriodGate{}, Amenders: tripReviewAuthority, Readings: meters}
 	tripReviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ReviewRecords{}, Structure: tripStructure, Now: time.Now}
 	if err := tripweb.RegisterReview(router, tripapp.ReviewService{Enabled: true, Repository: tripReviews, NewID: jobs.NewUUIDv4}, cookies, gateway, tripReviewAuthorization); err != nil {
+		return err
+	}
+
+	// EMP-TRIP-008 (EDR-231): mission planning under trip.mission.manage
+	// (structure: the mission's stored unit and asset) and the assignee's own
+	// list under trip.trip.start; the FLEET-007 start decision is a warning.
+	missionStructure := &orgpg.ResourceStructure{Kind: orgpg.MissionStructure, Pool: o.Pool}
+	missions := &trippg.MissionStore{Pool: o.Pool, Authority: &orgpg.MissionAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: missionStructure}, Audit: auditStore, Availability: assets}
+	missionAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.MissionRecords{}, Structure: missionStructure, Now: time.Now}
+	if err := tripweb.RegisterMissions(router, tripapp.MissionService{Enabled: true, Repository: missions, NewID: jobs.NewUUIDv4}, cookies, gateway, missionAuthorization); err != nil {
 		return err
 	}
 
