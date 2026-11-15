@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -286,5 +287,35 @@ func TestSafetyHiddenListUnblock(t *testing.T) {
 	w = post(r, "/v1/community/blocks/"+blockID+"/remove", session(""))
 	if w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != `{"removed":true}` || store.unblocks[0].BlockID != blockID {
 		t.Fatalf("remove = %d %s", w.Code, w.Body.String())
+	}
+}
+
+// B-BR-SAFE-03: the request proof covers the exact body bytes, so the
+// signature verifier must still read the body after JSON decoding.
+func TestSafetySignedOwnerSeesExactBody(t *testing.T) {
+	body := session(`"content_kind":"FORUM_COMMENT","content_id":"` + content + `"`)
+	var seen string
+	h := Handler{
+		Service: application.Service{Store: &fakeStore{}},
+		Sessions: func(context.Context, string, string) (string, error) {
+			return account, nil
+		},
+		SignedOwner: func(r *http.Request, _ string) (string, string, error) {
+			raw, err := io.ReadAll(r.Body)
+			if err != nil {
+				return "", "", err
+			}
+			seen = string(raw)
+			if seen != body {
+				return "", "", errors.New("digest mismatch")
+			}
+			return "c1c1c1c1-0000-4000-8000-000000000001", "k1k1k1k1-0000-4000-8000-000000000001", nil
+		},
+	}
+	r := chi.NewRouter()
+	h.RegisterRoutes(r)
+	w := post(r, "/v1/community/blocks", body)
+	if w.Code != http.StatusOK || seen != body {
+		t.Fatalf("signed block = %d, verifier saw %q", w.Code, seen)
 	}
 }

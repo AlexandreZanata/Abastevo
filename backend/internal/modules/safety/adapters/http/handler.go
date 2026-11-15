@@ -3,9 +3,11 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"mime"
 	"net/http"
 	"strconv"
@@ -110,7 +112,9 @@ func (h Handler) guard(p principal) application.Guard {
 	}
 }
 
-// readBody accepts only bounded application/json with strict decoding.
+// readBody accepts only bounded application/json with strict decoding,
+// then restores the exact bytes: the request proof verified afterwards
+// covers the body digest (B-BR-SAFE-03).
 func readBody(r *http.Request, dst any) error {
 	mediaType, _, err := mime.ParseMediaType(r.Header.Get("Content-Type"))
 	if err != nil || mediaType != "application/json" {
@@ -120,6 +124,8 @@ func readBody(r *http.Request, dst any) error {
 	if err != nil {
 		return domain.ErrInvalid
 	}
+	r.Body = io.NopCloser(bytes.NewReader(raw))
+	r.ContentLength = int64(len(raw))
 	if err := httpapi.DecodeJSON(raw, dst); err != nil {
 		return domain.ErrInvalid
 	}
