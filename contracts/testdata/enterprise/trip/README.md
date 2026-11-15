@@ -252,3 +252,102 @@ The frozen corpus contains 103 cases: TYPE 27, RECORD 66, ORDER 10. SHA256:
 (cd backend && go test -race -count=1 -run 'Logbook' ./internal/modules/trip/domain)
 ./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.trip.EnterpriseTripLogbook*'
 ```
+
+# Mission oracle v1
+
+EMP-TRIP-008 / B-BR-EMP-353..356, BUC-EMP-178..180, EDR-228. `mission-v1.psv`
+covers the pure mission: the closed state, command and response vocabularies,
+the complete 8×7 transition table, the new mission, the stored invariants of a
+restored mission and the assign, respond and cancel commands on a restored
+mission with their fixed failure order. It does not cover persistence, the
+signed intake, authority, the eligible-assignee check, the availability
+warning, structural scope or any runtime producer; those are proven on real
+PostGIS.
+
+## Format
+
+Same grammar as `trip-v1.psv`: header `id|operation|args|expected`,
+semicolon-separated `key=value` fields split at the first equals sign, text
+inputs as lowercase even-length UTF-8 hex, the question mark as fixture-only
+absence, no skipped rows. Aliases use the trip-v1 prefix: A=1, B=2
+(organizations); V=21 (asset); D=31, D2=32 (employees); M=41, M2=42
+(memberships); MI=91 (mission); U=95 (unit). An unknown alias is literal
+input; a malformed or non-canonical organization is an empty scope the domain
+refuses. Consumers assert the exact hash, the counts, unique IDs, allowed
+argument names per operation, complete result maps, that all 56
+state/command pairs appear in TRANSITION and that every operation and error
+code has a vector.
+
+## Fixed semantics
+
+- States are exactly DRAFT, PLANNED, ASSIGNED, ACCEPTED, DECLINED,
+  IN_PROGRESS, COMPLETED and CANCELLED (COMPLETED and CANCELLED terminal);
+  commands exactly PLAN, ASSIGN, ACCEPT, DECLINE, START, COMPLETE and CANCEL;
+  responses exactly ACCEPT and DECLINE. Any other token is `INVALID`.
+- TRANSITION, first failure first: a terminal state `INVALID_TRANSITION`;
+  PLAN, START, COMPLETE or an IN_PROGRESS state `UNSUPPORTED_COMMAND`; ACCEPT
+  or DECLINE from a state other than ASSIGNED `INVALID_TRANSITION`; ACCEPT →
+  ACCEPTED, DECLINE → DECLINED, ASSIGN → ASSIGNED, CANCEL → CANCELLED.
+- Titles and reasons are nonblank, free of control characters and at most 280
+  Unicode scalars. The window is `[starts, ends)` with whole-microsecond
+  bounds and `ends` after `starts`; it has no maximum span.
+- CREATE checks the scope (`SCOPE`), then the mission identity, the unit and
+  the optional asset (absent `INVALID`, another organization `SCOPE`,
+  non-canonical `INVALID`), then the title, then the window; the result is
+  DRAFT at revision 1 without assignee or answer.
+- RESTORE checks scope, identity, unit, asset, title, window, the state token,
+  a positive revision, the assignee (both employee and membership, or
+  neither), the answer, then the stored invariants: DRAFT only at revision 1
+  and the other states at revision 2 or more; DRAFT and PLANNED without
+  assignee or answer; ASSIGNED with an assignee and no answer; ACCEPTED,
+  IN_PROGRESS and COMPLETED with the assignee's own ACCEPT without reason;
+  DECLINED with the assignee's own DECLINE with a reason; CANCELLED with any
+  consistent pair (an answer needs the assignee and must be theirs).
+- ASSIGN checks the scope, the new employee and membership, a positive
+  expected revision, then `CONFLICT` for a stale revision, then the table,
+  then `INVALID_TRANSITION` for the current membership again while ASSIGNED
+  or ACCEPTED; the result is ASSIGNED at revision + 1 with the new assignee
+  and no answer; unit, asset, title and window are unchanged.
+- RESPOND checks the scope, the responding membership, the response token,
+  the reason (none for ACCEPT, required for DECLINE), a positive expected
+  revision, then `FORBIDDEN` unless the membership is the current assignee's,
+  then `CONFLICT` for a stale revision, then the table; the result is ACCEPTED
+  or DECLINED at revision + 1 with the answer.
+- CANCEL checks the scope, the reason, a positive expected revision, then
+  `CONFLICT`, then the table; the result is CANCELLED at revision + 1 keeping
+  the assignee and answer.
+
+## Operations and defaults
+
+Errors are exactly `error=INVALID`, `SCOPE`, `FORBIDDEN`, `CONFLICT`,
+`INVALID_TRANSITION` or `UNSUPPORTED_COMMAND`.
+
+- STATE, COMMAND and RESPONSE (`value_hex`) return `state` (and `terminal`),
+  `command` or `response`.
+- TRANSITION (`state;command`, literal tokens) returns the next `state`.
+- CREATE defaults: scope A, identity MI, unit U, asset V (`?` none), all of
+  organization A, title "Entrega no cliente", window
+  2026-11-20T11:00:00Z → 2026-11-20T15:00:00Z. Overrides: `scope`, `id`,
+  `id_org`, `unit`, `unit_org`, `asset`, `asset_org`, `title_hex`, `starts`,
+  `ends`; `omit` is a comma list from id, unit.
+- RESTORE, ASSIGN, RESPOND and CANCEL restore one mission with the CREATE
+  content defaults and `state` ASSIGNED, `revision` 2, assignee employee D
+  with membership M (`assignee`, `assignee_org`, `member`, `member_org`; `?`
+  none), `answer` (`?` none, else ACCEPT or DECLINE), `answer_member`
+  (default M), `answer_reason_hex` (`?` none). ASSIGN adds `to` (D2), `to_org`,
+  `to_member` (M2), `to_member_org` and `expected` (2); RESPOND adds `by` (M),
+  `by_org`, `kind_hex` ("ACCEPT"), `reason_hex` (`?`) and `expected` (2);
+  CANCEL adds `reason_hex` ("Cliente cancelou") and `expected` (2).
+- Mission output: `id`, `unit`, `asset`, `title_hex`, `starts`, `ends`
+  (canonical UTC), `state`, `revision`, `assignee`, `member`, `answer`,
+  `answer_member`, `answer_reason_hex` (`?` for absent values). Consumers
+  assert that a command never changes its input mission.
+
+The frozen corpus contains 238 cases: STATE 20, COMMAND 15, RESPONSE 8,
+TRANSITION 62, CREATE 29, RESTORE 34, ASSIGN 23, RESPOND 32, CANCEL 15.
+SHA256: `d591d9e496cb686e24658f59f91896892e323afaa35f1d5ba4bf2c752021c21f`.
+
+```sh
+(cd backend && go test -race -count=1 -run 'Mission' ./internal/modules/trip/domain)
+./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.trip.EnterpriseTripMission*'
+```

@@ -268,6 +268,50 @@ Pre-merge tree (task commit):
   (synthetic identifiers and Portuguese sample texts only; the disposable
   MinIO credentials live only in the log environment file).
 
+## Merged-tree validation
+
+The F4 head `3345865b` (EMP-FLEET-013, EMP-TRIP-008 with migration 000227 and
+the `trip.mission.respond` owner) was merged into this branch after the task
+commit `680505b3` (merge commit "Merge codex/enterprise-f4 (FLEET-013,
+TRIP-008) into EMP-CHECK-003"). Conflicts were resolved as unions: EDR rows by
+number, contract sections and backend README subsections, the OpenAPI sync
+description and operation owners structurally (8 owners), the company
+authority allow-list, the structure kinds (`MissionStructure`,
+`IncidentStructure`), the intake handlers and no-async plans, the unit
+fixture copy. Counts on the union: 144 normal routes (28 routed / 56 not
+routed / 25 special), AUTH-011 walk 144 / 30 positive / 114 FORBIDDEN,
+matrix 280 cells (112 allowed / 168 denied), operation owners 8. 000230 now
+redefines `org_asset_current_usage` and `org_unit_current_usage` from the
+000227 bodies (every mission line kept, diffed line by line) plus the report
+key; the cost-centre source keeps the 000220 body (000227 does not redefine
+it); the upgrade test also asserts the mission lines.
+
+On the merged tree:
+
+- Toolchain gofmt empty; `go build ./...`, `go vet` (both tags), `sqlc vet`
+  and `sqlc diff` clean; staticcheck plain and `-tags=integration` on the
+  touched packages clean (`check003-staticcheck-merged.log`).
+- Unit: `cmd/api`, maintenance, trip, document, enterprisesuite and the
+  incident/meter/mission/logbook/document-link/checklist apicontract tests
+  pass.
+- OpenAPI vacuum: 0 errors, 1,052 warnings / 660 informs vs 1,036 / 660 at the
+  F4 head (the same 16 house-style description warnings;
+  `check003-vacuum-merged.log`).
+- Kotlin `:domain:test --tests 'com.anpfuel.domain.enterprise.*'`: 3398
+  tests, 0 failures, 0 skipped (`check003-kotlin-merged.log`).
+- Race/integration union `go test -json -race -tags=integration -count=1
+  -timeout=90m -p 2 ./internal/modules/organization/adapters
+  ./internal/modules/{maintenance,document,trip,fleet,orgsync,orgmedia}/...
+  ./internal/platform/{enterprisesuite,apicontract,migrate,orgtest,orgapi}/...
+  ./cmd/api/...` with PostGIS and the coordinator MinIO
+  (`check003-db-union.jsonl`): 33 packages, 32 pass and `orgtest` has no
+  tests; 1,099 top-level / 8,674 subtests pass, 0 failures, 0 skips; 38 min
+  wall, `organization/adapters` 2,258 s under load.
+- Untagged `GOFLAGS=-p=2 go test -count=1 -timeout=45m ./...`
+  (`check003-untagged-all.log`): exit 0, 223 packages ok, 81 without tests, 0 FAIL.
+- `check_plan.py` 0 problems; `git diff --check` clean; gitleaks on the task
+  diff: no leaks.
+
 ## Retained
 
 - The asset block from `blocks_use` and its release (BR-CHECK-010/011,

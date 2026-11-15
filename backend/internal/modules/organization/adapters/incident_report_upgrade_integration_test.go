@@ -163,6 +163,7 @@ VALUES($1,$2,'RECEIPT','SYNTHETIC',$3,$4,repeat('ab',32),1024,'image/jpeg','UPLO
 	var kept bool
 	if err := f.Admin.QueryRow(t.Context(), `SELECT a LIKE '%org_trips_asset_fkey%' AND a LIKE '%org_trip_held_starts_asset_fkey%' AND a LIKE '%org_asset_implement_attachments_powered_fkey%'
  AND a LIKE '%org_checklist_template_targets_asset_fkey%' AND a LIKE '%org_document_links_asset_fkey%' AND a LIKE '%org_fuelings_asset_fkey%' AND a LIKE '%org_incident_reports_asset_fkey%'
+ AND a LIKE '%org_trip_missions_asset_fkey%' AND u LIKE '%org_trip_missions_unit_fkey%'
  AND u LIKE '%org_trips_unit_fkey%' AND u LIKE '%org_fuelings_unit_fkey%' AND u LIKE '%org_incident_reports_unit_fkey%'
  AND c LIKE '%org_trips_cost_centre_fkey%' AND c LIKE '%org_fuelings_cost_centre_fkey%' AND c LIKE '%org_incident_reports_cost_centre_fkey%'
  AND b LIKE '%INCIDENT%incident_report_id%'

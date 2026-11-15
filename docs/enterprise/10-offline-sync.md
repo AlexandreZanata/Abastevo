@@ -263,6 +263,8 @@ A device whose exact sealed period was revoked `ACCESS_ENDED` delivers it intake
 
 Before any owner, the organization's recorded suspension history holds work declared before a suspension and received inside its grace (`ORG_SUSPENDED_GRACE`), refuses later work (`ORG_SUSPENDED`), and keeps reviewing work declared during a resolved suspension; work declared before its capability was turned off is held `PLAN_CHANGED` (EMP-OFFL-012, EDR-200/201).
 
+A mission response (`trip.mission.respond`, EMP-TRIP-008, EDR-229) is not a field fact: it is decided on current facts at receipt only (current assignee, current `trip.trip.start` coverage, current revision), never on the declared instant. Another member or an ended assignment is a whole-response `FORBIDDEN`, a mission not stored here `NOT_FOUND`, a stale or already answered mission `CONFLICT` (08-state-model §4.7), each a transport denial that stores nothing; it has no held form and no late holder.
+
 ### 10.3 Offline matrix
 
 OFFL-003's construction contract extends the accepted generation-backed Android
@@ -309,6 +311,8 @@ explicit policy exists. See B-BR-EMP-115..122, EDR-076..080 and
 | People, roles, assets, missions planning (panel) | Online | Online | Online | Online | Everything |
 | Exports, reports, indicators | Online | Online | — | Online | Everything |
 | Station portal, Data portal, plan and billing | Online | Online | Online | Online | Everything |
+
+The reference feed (EMP-OFFL-006) is a signed per-member versioned delta of the member's assigned assets with durable tombstones, a server confirmation instant and RESET on lost authority (EDR-216..218). The app keeps it as one versioned cache sealed in the protected partition and shows its server confirmation (EMP-FLEET-013, EDR-224..226).
 
 ### 10.4 Protected status presentation (EMP-OFFL-004, in construction)
 

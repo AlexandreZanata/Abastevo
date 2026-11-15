@@ -1377,6 +1377,36 @@ the existing document link grants for the `INCIDENT` resolver; the trip
 timeline reader needs `SELECT ON org_incident_reports`. Nothing here
 provisions live grants.
 
+### Reference feed (EMP-OFFL-006)
+
+Migration 224 adds forced-RLS `org_reference_feed_heads`/`org_reference_feed_entries`.
+The signed intake principal needs `SELECT, INSERT, UPDATE ON
+org_reference_feed_heads`, `SELECT, INSERT ON org_reference_feed_entries` and
+SELECT on the listed columns of org_assets, org_asset_assignments, org_meters,
+org_meter_segments and org_asset_tank_products; the migrator needs
+`REFERENCES ON org_memberships`. Nothing here provisions live grants.
+
+### Missions (EMP-TRIP-008)
+
+Migration227 adds forced-RLS `org_trip_missions` (head: unit, optional asset,
+title, window, state, revision, current assignee and answer; changed only by
+the guarded +1 update that matches the transition of its new revision),
+insert-only `org_trip_mission_transitions` (one per revision; a response is the
+exact signed `trip.mission.respond` of the current assignee and is published
+only with its ACCEPTED receipt) and insert-only receipts
+`org_trip_mission_commands`, and redefines `org_asset_current_usage` (223 body)
+and `org_unit_current_usage` (220 body) keeping every line and recognising the
+two mission keys as associations. The migration owner needs `REFERENCES` on
+`accounts`, `org_units`, `org_assets`, `org_employee_identities`,
+`org_memberships`, `org_sync_operations` and `org_device_enrollments`, and
+ownership of the two usage functions. The company principal needs `SELECT,
+INSERT, UPDATE ON org_trip_missions` and `SELECT, INSERT ON
+org_trip_mission_transitions, org_trip_mission_commands` (plus its existing
+unit, asset, membership, employee and FLEET-007 availability reads); the signed
+intake principal needs the same three. Commands use fresh `trip.mission.manage`
+(admission class `trip.mission`); reads current `trip.mission.manage`; the own
+list current `trip.trip.start`. Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

@@ -224,7 +224,7 @@ ALTER TABLE org_document_links ADD CONSTRAINT org_document_links_incident_fkey F
   WHEN 'INCIDENT' THEN incident_report_id IS NOT NULL AND incident_report_id=target_id AND num_nonnulls(asset_id,employee_id,reading_id,held_reading_id)=0
   ELSE false END);
 
--- The 223 asset-use source with the report key recognised as an
+-- The 227 asset-use source (every line kept) with the report key recognised as an
 -- association: a report never names a DRAFT asset (the source trigger), so
 -- it cannot block a discard, and it does not fix the asset kind.
 CREATE OR REPLACE FUNCTION org_asset_current_usage(selected_org UUID,selected_asset UUID) RETURNS JSONB
@@ -253,12 +253,13 @@ BEGIN
  OR(c.conrelid='public.org_asset_implement_attachments'::regclass AND c.conname='org_asset_implement_attachments_implement_fkey')
  OR(c.conrelid='public.org_asset_implement_attachments'::regclass AND c.conname='org_asset_implement_attachments_powered_fkey')
  OR(c.conrelid='public.org_checklist_template_targets'::regclass AND c.conname='org_checklist_template_targets_asset_fkey')
+ OR(c.conrelid='public.org_trip_missions'::regclass AND c.conname='org_trip_missions_asset_fkey')
  OR(c.conrelid='public.org_incident_reports'::regclass AND c.conname='org_incident_reports_asset_fkey'))) THEN RAISE EXCEPTION USING ERRCODE='P7904',MESSAGE='asset usage source unavailable';END IF;
  RETURN jsonb_build_object('readings',(SELECT count(*) FROM public.org_meter_readings r JOIN public.org_meters m ON(m.org_id,m.id)=(r.org_id,r.meter_id) WHERE m.org_id=selected_org AND m.asset_id=selected_asset),'operations',(SELECT count(*) FROM public.org_sync_operations o JOIN public.org_sync_effects e USING(org_id,operation_id) WHERE o.org_id=selected_org AND o.entity_id=selected_asset AND o.entity_type='fleet_asset')+(SELECT count(*) FROM public.org_meter_held_readings h WHERE h.org_id=selected_org AND h.asset_id=selected_asset)+(SELECT count(*) FROM public.org_fuelings f WHERE f.org_id=selected_org AND f.asset_id=selected_asset)+(SELECT count(*) FROM public.org_trips t WHERE t.org_id=selected_org AND t.asset_id=selected_asset)+(SELECT count(*) FROM public.org_trip_held_starts h WHERE h.org_id=selected_org AND h.asset_id=selected_asset)
  +(SELECT count(*) FROM public.org_asset_implement_attachments i WHERE i.org_id=selected_org AND(i.implement_id=selected_asset OR i.powered_asset_id=selected_asset)));
 END $$;
 
--- The 220 unit-use source with the report's historical snapshot recognised
+-- The 227 unit-use source (every line kept) with the report's historical snapshot recognised
 -- as an association, never as current use.
 CREATE OR REPLACE FUNCTION org_unit_current_usage(selected_org UUID,selected_unit UUID) RETURNS JSONB LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 DECLARE employee_count BIGINT;asset_count BIGINT;
@@ -278,6 +279,7 @@ BEGIN
  OR(c.conrelid='public.org_role_assignments'::regclass AND c.conname='org_role_assignments_scope_unit_fkey')
  OR(c.conrelid='public.org_fuelings'::regclass AND c.conname='org_fuelings_unit_fkey')
  OR(c.conrelid='public.org_trips'::regclass AND c.conname='org_trips_unit_fkey')
+ OR(c.conrelid='public.org_trip_missions'::regclass AND c.conname='org_trip_missions_unit_fkey')
  OR(c.conrelid='public.org_incident_reports'::regclass AND c.conname='org_incident_reports_unit_fkey'))) THEN RAISE EXCEPTION USING ERRCODE='P7704',MESSAGE='unit usage source unavailable';END IF;
  SELECT count(DISTINCT employee_id) INTO employee_count FROM(
  SELECT e.id AS employee_id FROM public.org_employee_profiles p JOIN public.org_employee_identities e ON(e.org_id,e.id)=(p.org_id,p.employee_id)

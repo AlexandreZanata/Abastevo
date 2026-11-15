@@ -729,10 +729,16 @@
     },
     {
       "permission": "trip.mission.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Mission and trip-operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/missions/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/missions/create",
+        "POST /v1/orgs/{org_id}/missions/list",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/assign",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/cancel",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "trip.trip.close_for_other",
@@ -761,10 +767,12 @@
     },
     {
       "permission": "trip.trip.start",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Mission and trip-operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/missions/mine/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/missions/mine/list"
+      ],
+      "reason": ""
     }
   ],
   "special_routes": [
