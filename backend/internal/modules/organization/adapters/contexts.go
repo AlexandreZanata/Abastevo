@@ -157,7 +157,7 @@ func (s *AccountContextStore) current(ctx context.Context, tx pgx.Tx, actor app.
 	if meta.State != root.State.String {
 		return empty, app.ErrUnavailable
 	}
-	result := app.AccountContextView{Organization: app.AccountContext{ID: scope.OrgID().String(), Name: meta.DisplayName, MembershipID: member, State: meta.State, SuspensionReason: meta.SuspensionReason}, Permissions: []permissions.Permission{}, InvitationGrants: []permissions.ContextGrant{}}
+	result := app.AccountContextView{Organization: app.AccountContext{ID: scope.OrgID().String(), Name: meta.DisplayName, MembershipID: member, State: meta.State, SuspensionReason: meta.SuspensionReason}, EmployeeID: m.EmployeeID, Permissions: []permissions.Permission{}, InvitationGrants: []permissions.ContextGrant{}}
 	if !details {
 		if _, e := contextProof(ctx, tx, actor); e != nil {
 			return empty, e

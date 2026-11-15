@@ -21,7 +21,7 @@ func TestSettingsReadV3GrantsOnlyTheRecordedRoles(t *testing.T) {
 		}
 	}
 	_, version := d.SystemCatalog().Versions()
-	if version != "org-permissions-v4" {
+	if version != "org-permissions-v5" {
 		t.Fatal("unversioned read amendment")
 	}
 }

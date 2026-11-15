@@ -11,7 +11,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/domain"
 )
 
-// exportableReads is an independent literal of every org-permissions-v4 key a
+// exportableReads is an independent literal of every org-permissions-v5 key a
 // kind may declare as its data permission: the registered read keys outside
 // location. Content, location, export and every write key are absent.
 var exportableReads = []permissions.Permission{
@@ -22,7 +22,7 @@ var exportableReads = []permissions.Permission{
 // B-BR-EMP-248, EDR-167: the closed declaration rule over the whole catalog.
 func TestExportableReadAdmitsOnlyRegisteredDataReads(t *testing.T) {
 	catalog := permissions.SystemCatalog()
-	if _, version := catalog.Versions(); version != "org-permissions-v4" || len(catalog.Permissions()) != 85 {
+	if _, version := catalog.Versions(); version != "org-permissions-v5" || len(catalog.Permissions()) != 85 {
 		t.Fatal("catalog drift: revisit the exportable read literal", version)
 	}
 	admitted := 0

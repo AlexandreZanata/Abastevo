@@ -336,7 +336,7 @@ func TestPrivateValuesRedactEveryDiagnosticSurface(t *testing.T) {
 			t.Fatal(err)
 		}
 		var log strings.Builder
-		slog.New(slog.NewJSONHandler(&log, nil)).Info("value", "value", value)
+		slog.New(slog.NewJSONHandler(&log, untimedLog)).Info("value", "value", value)
 		for _, out := range []string{fmt.Sprint(value), fmt.Sprintf("%+v", value), fmt.Sprintf("%#v", value), string(raw), log.String()} {
 			if !strings.Contains(out, "redacted") || strings.Contains(out, uuid(20)) || strings.Contains(out, "synthetic") || strings.Contains(out, "Cuiaba") {
 				t.Fatalf("private diagnostic leaked for %T", value)
@@ -344,3 +344,13 @@ func TestPrivateValuesRedactEveryDiagnosticSurface(t *testing.T) {
 		}
 	}
 }
+
+// untimedLog drops the record time so that a numeric private marker cannot
+// match digits of the timestamp by chance (a 4-digit marker did, about once in
+// 200 runs).
+var untimedLog = &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey {
+		return slog.Attr{}
+	}
+	return a
+}}

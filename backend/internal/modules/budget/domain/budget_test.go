@@ -530,7 +530,7 @@ func TestPrivateValuesAreRedacted(t *testing.T) {
 		budget.LineInput{Reference: l.Reference(), Limit: str("500000")}, budget.HoldInput{Amount: str("30000"), Tags: tags}}
 	for _, v := range values {
 		var logged bytes.Buffer
-		slog.New(slog.NewJSONHandler(&logged, nil)).Info("budget", "value", v)
+		slog.New(slog.NewJSONHandler(&logged, untimedLog)).Info("budget", "value", v)
 		encoded, e := json.Marshal(v)
 		if e != nil {
 			t.Fatal(e)
@@ -557,3 +557,13 @@ func TestInputsCarryNoDerivedNumber(t *testing.T) {
 		}
 	}
 }
+
+// untimedLog drops the record time so that a numeric private marker cannot
+// match digits of the timestamp by chance (a 4-digit marker did, about once in
+// 200 runs).
+var untimedLog = &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey {
+		return slog.Attr{}
+	}
+	return a
+}}

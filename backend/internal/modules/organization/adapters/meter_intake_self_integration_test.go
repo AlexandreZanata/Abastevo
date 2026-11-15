@@ -40,7 +40,14 @@ type selfIntakeState struct {
 
 func selfIntakeFixture(t *testing.T) selfIntakeState {
 	t.Helper()
-	fx, _, meters, installed, _, revision := lifecycleIntakeFixture(t)
+	return selfIntakeFixtureOn(t, syncFixture(t))
+}
+
+// selfIntakeFixtureOn builds the SELF intake fixture on a given sync fixture,
+// for example one whose database stops at an earlier migration image.
+func selfIntakeFixtureOn(t *testing.T, sync syncFixtureState) selfIntakeState {
+	t.Helper()
+	fx, _, meters, installed, _, revision := lifecycleIntakeFixtureOn(t, sync)
 	assets := assignmentStore(t, fx.legalFixtureState)
 	meters.Authority = &orgpg.MeterAuthority{Memberships: fx.legalFixtureState.store.Memberships, Roles: fx.legalFixtureState.store.Roles, Capabilities: fx.flags, Devices: fx.devices, Assignee: &orgpg.ResourceAssignee{Pool: fx.f.Runtime, Assignments: assets}}
 	handler, err := fleetpg.NewMeterIntakeHandler(meters.Authority, meters)

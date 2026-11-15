@@ -40,7 +40,7 @@ func validReviewView(v MeterReviewView) bool {
 	if _, e := hex.DecodeString(v.PayloadDigest[7:]); e != nil {
 		return false
 	}
-	if v.Code != "PERMISSION_CHANGED" && v.Code != "ASSET_UNAVAILABLE" || v.Fact.OperationID != v.OperationID || v.Fact.Origin != meter.Standalone || v.Fact.Method != meter.Typed || v.ReceivedAt.IsZero() {
+	if v.Code != "PERMISSION_CHANGED" && v.Code != "ASSET_UNAVAILABLE" && v.Code != "ACCESS_ENDED_BEFORE_RECEIPT" && v.Code != "ORG_SUSPENDED_GRACE" && v.Code != "PLAN_CHANGED" || v.Fact.OperationID != v.OperationID || v.Fact.Origin != meter.Standalone || v.Fact.Method != meter.Typed || v.ReceivedAt.IsZero() {
 		return false
 	}
 	if _, e := NewMeterReadingCommand(v.Fact); e != nil {

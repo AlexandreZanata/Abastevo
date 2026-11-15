@@ -79,7 +79,7 @@ func (r *fakeLinks) TargetLinks(_ context.Context, _ kernel.OrgScope, _ app.Acto
 
 func TestBindingsBelongToExactlyOneRegisteredKind(t *testing.T) {
 	for binding, want := range map[app.Binding]domain.TargetKind{app.BindAsset: domain.Asset, app.BindEmployee: domain.Employee,
-		app.BindMeterReading: domain.MeterReading, app.BindHeldMeterReading: domain.MeterReading} {
+		app.BindMeterReading: domain.MeterReading, app.BindHeldMeterReading: domain.MeterReading, app.BindIncident: domain.Incident} {
 		if kind, ok := binding.Kind(); !ok || kind != want {
 			t.Fatal("binding kind", binding, kind)
 		}
@@ -302,7 +302,7 @@ func TestLinkListsBoundPagesAndCursors(t *testing.T) {
 func TestLinkValuesNeverFormatIdentifiers(t *testing.T) {
 	view := app.LinkView{DocumentID: docID, Target: link().Target, DocumentStorage: domain.Uploading, OperationID: linkOp, CreatedBy: memberID}
 	var logs bytes.Buffer
-	logger := slog.New(slog.NewJSONHandler(&logs, nil))
+	logger := slog.New(slog.NewJSONHandler(&logs, untimedLog))
 	for _, value := range []any{link(), view, app.Linked{View: view}, app.LinkPage{Items: []app.LinkView{view}}} {
 		raw, _ := json.Marshal(value)
 		logger.Info("synthetic", "value", value)
@@ -315,3 +315,13 @@ func TestLinkValuesNeverFormatIdentifiers(t *testing.T) {
 		}
 	}
 }
+
+// untimedLog drops the record time so that a numeric private marker cannot
+// match digits of the timestamp by chance (a 4-digit marker did, about once in
+// 200 runs).
+var untimedLog = &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey {
+		return slog.Attr{}
+	}
+	return a
+}}

@@ -2,16 +2,24 @@ package enterprisesuite
 
 import (
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"errors"
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
 	fuelapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/application"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
+	maintpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters"
+	maintapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/application"
+	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
+	tripapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
 	"net/url"
 	"sort"
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	member "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
+	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
 	auditing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
@@ -21,6 +29,7 @@ import (
 	syncweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters/http"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgquota"
 	"github.com/go-chi/chi/v5"
@@ -60,8 +69,8 @@ func IntakeEvents(pool *pgxpool.Pool, consumers map[string]eventpg.Effect) (even
 	return catalog, handler, nil
 }
 
-func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, meters *fleetpg.MeterStore, assets *fleetpg.AssetStore, auditor auditing.TransactionRunner, auditCatalog audit.Catalog) error {
-	if meters == nil || assets == nil {
+func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, meters *fleetpg.MeterStore, assets *fleetpg.AssetStore, incidents *maintpg.IncidentStore, auditor auditing.TransactionRunner, auditCatalog audit.Catalog) error {
+	if meters == nil || assets == nil || incidents == nil {
 		return app.ErrUnavailable
 	}
 	meterHandler, err := fleetpg.NewMeterIntakeHandler(meters.Authority, meters)
@@ -78,7 +87,42 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	handlers := append([]app.Handler{meterHandler, fuelingHandler}, o.IntakeHandlers...)
+	// EMP-TRIP-002: the trip owners share the same authority sources, fleet
+	// readings and allocation port; held facts use the OFFL-008 review items.
+	tripStore := &trippg.Store{Allocations: assets, NewID: jobs.NewUUIDv4}
+	tripStart, err := trippg.NewStartHandler((*orgpg.TripAuthority)(meterAuthority), meters, assets, tripStore)
+	if err != nil {
+		return err
+	}
+	tripFinish, err := trippg.NewFinishHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore)
+	if err != nil {
+		return err
+	}
+	// EMP-TRIP-003: typed logbook events append to the member's own stored
+	// trip; held events use the same OFFL-008 review items.
+	// EMP-CHECK-003 (EDR-240): reports made inside a trip are timeline facts.
+	tripEvent, err := trippg.NewEventHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore, &trippg.EventStore{NewID: jobs.NewUUIDv4, Reports: incidents})
+	if err != nil {
+		return err
+	}
+	// EMP-TRIP-004 (EDR-220): the author's signed submission of a completed trip.
+	tripSubmit, err := trippg.NewSubmitHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore, tripStore)
+	if err != nil {
+		return err
+	}
+	// EMP-TRIP-008 (EDR-229): the assignee's mission response, decided on
+	// current facts at receipt; no held fact and no late holder.
+	missionResponse, err := trippg.NewMissionResponseHandler((*orgpg.TripAuthority)(meterAuthority), &trippg.MissionStore{})
+	if err != nil {
+		return err
+	}
+	// EMP-CHECK-003 (EDR-238): the reporter's signed damage or incident report
+	// shares the trip owners' authority sources, locks, allocation and trips.
+	report, err := maintpg.NewReportHandler((*orgpg.ReportAuthority)(meterAuthority), meters, assets, tripStore, incidents)
+	if err != nil {
+		return err
+	}
+	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse, report}, o.IntakeHandlers...)
 	registry, err := app.NewRegistry(handlers...)
 	if err != nil {
 		return err
@@ -115,17 +159,65 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[fuelingKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	// EMP-TRIP-002/003 (B-BR-EMP-319, EDR-209): no trip consumer exists yet;
+	// held facts are same-transaction review items.
+	for _, kind := range []string{tripapp.StartOperationType, tripapp.FinishOperationType, tripapp.EventOperationType} {
+		key := app.OperationKey{Type: kind, Schema: 1}
+		if _, exists := noAsync[key]; exists {
+			return app.ErrUnavailable
+		}
+		noAsync[key] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup, protocol.AcceptedForReview: app.AtomicReview}
+	}
+	// EMP-TRIP-004/015: a submission has no consumer; a stale or duplicate
+	// one is a same-transaction held review item (EDR-235).
+	submitKey := app.OperationKey{Type: tripapp.SubmitOperationType, Schema: 1}
+	if _, exists := noAsync[submitKey]; exists {
+		return app.ErrUnavailable
+	}
+	noAsync[submitKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup, protocol.AcceptedForReview: app.AtomicReview}
+	// EMP-TRIP-008 (EDR-229): no mission consumer exists; nothing is held.
+	missionKey := app.OperationKey{Type: tripapp.MissionRespondOperationType, Schema: 1}
+	if _, exists := noAsync[missionKey]; exists {
+		return app.ErrUnavailable
+	}
+	noAsync[missionKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	// EMP-CHECK-003: a report has no consumer and no held path.
+	reportKey := app.OperationKey{Type: maintapp.ReportOperationType, Schema: 1}
+	if _, exists := noAsync[reportKey]; exists {
+		return app.ErrUnavailable
+	}
+	noAsync[reportKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
 	catalog, _, err := IntakeEvents(o.Pool, o.IntakeConsumers)
 	if err != nil {
 		return err
 	}
+	// EMP-OFFL-012: ORG-009's suspension assessment and the capability row
+	// decide organization state before every owner.
+	plans, ok := devices.Capabilities.(orgpg.IntakePlanStates)
+	if !ok || plans == nil {
+		return app.ErrUnavailable
+	}
+	assessor := orgpg.IntakeStateAssessor{Suspensions: &orgpg.SuspensionStore{Roots: orgpg.NewStore(o.Pool)}, Plans: plans}
 	store := syncpg.NewStore(syncpg.Config{Pool: o.Pool, Audit: auditor, AuditCatalog: auditCatalog, EventCatalog: catalog, EventWriter: eventpg.NewStore(o.Pool), Plans: o.IntakePlans, NoAsyncPlans: noAsync,
 		ConfirmSource: func(ctx context.Context, tx pgx.Tx, s app.Source) (time.Time, error) {
 			_, now, err := devices.CheckCurrentIntakeDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
+			if errors.Is(err, access.ErrOrgSuspended) {
+				// Assessed before any owner; never owner write or read authority.
+				_, now, err = devices.CheckSuspendedIntakeDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
+			}
 			if err != nil {
 				return time.Time{}, app.SourceDenied(err)
 			}
 			return now, nil
+		},
+		AssessState: assessor.AssessStateTx,
+		// EMP-OFFL-009: the intake-only source of one exact ended period.
+		ConfirmLate: func(ctx context.Context, tx pgx.Tx, s app.Source) (app.LateAccess, time.Time, error) {
+			v, now, err := devices.CheckLateIntakeDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
+			if err != nil {
+				return app.LateAccess{}, time.Time{}, app.SourceDenied(err)
+			}
+			return app.LateAccess{End: app.LateEnd(v.End), EndedAt: v.EndedAt}, now, nil
 		},
 	})
 	origin, err := url.Parse(o.Origin)
@@ -136,5 +228,31 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err := syncweb.RegisterReviewResults(router, syncweb.ReviewResultsOptions{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Repository: meters.Reviews}); err != nil {
 		return err
 	}
-	return syncweb.Register(router, syncweb.Options{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Service: app.Service{Store: store, Admission: intakeAdmission{budget}, Registry: registry}, Limits: protocol.DefaultLimits()})
+	// EMP-OFFL-006: the member's purpose-bound reference feed (EDR-216..218).
+	roles, ok := meterAuthority.Roles.(syncpg.ReferenceAuthority)
+	if !ok || roles == nil {
+		return app.ErrUnavailable
+	}
+	secret := referenceFeedKey(o.CursorSecret)
+	reference := &syncpg.ReferenceStore{Pool: o.Pool, Authority: roles, Assets: assets, Secret: secret, NewEpoch: jobs.NewUUIDv4,
+		Confirm: func(ctx context.Context, tx pgx.Tx, s app.Source) (time.Time, error) {
+			_, now, err := devices.CheckCurrentDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
+			if err != nil {
+				return time.Time{}, app.SourceDenied(err)
+			}
+			return now, nil
+		},
+	}
+	if err := syncweb.RegisterReference(router, syncweb.ReferenceOptions{Enabled: true, Origin: o.Origin, Secret: secret, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Repository: reference}); err != nil {
+		return err
+	}
+	return syncweb.Register(router, syncweb.Options{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Late: devices, State: devices, Service: app.Service{Store: store, Admission: intakeAdmission{budget}, Registry: registry}, Limits: protocol.DefaultLimits()})
+}
+
+// referenceFeedKey separates the reference cursor key from other uses of the
+// deployment cursor secret.
+func referenceFeedKey(secret []byte) []byte {
+	mac := hmac.New(sha256.New, secret)
+	mac.Write([]byte("abastevo/reference-feed/v1"))
+	return mac.Sum(nil)
 }

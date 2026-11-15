@@ -1150,6 +1150,33 @@ ownership of `org_asset_current_usage`, `org_unit_current_usage` and
 changed-right and post-disposal fuelings store nothing and stay
 RETRY/UNAVAILABLE. Nothing here provisions live grants.
 
+### Meter reading validation (EMP-METER-003)
+
+Migration216 adds the forced-RLS, append-only `org_meter_reading_states`
+history (revision, state, canonical flags, `RETROACTIVE` note, cause,
+operation) and admits a `SUSPECT` classification for an accepted held
+reading. Every principal that records, applies or reads meter readings needs
+`SELECT, INSERT ON org_meter_reading_states` (the latest-valid read and the
+series check read it). The migrator needs `REFERENCES ON org_meter_readings,
+org_memberships` and ownership of `org_meter_observation_guard()`.
+`ANPFUEL_ENTERPRISE_METER_PLAUSIBILITY` (boolean, default `true`) is the
+rollback switch: `false` stores field readings `VALID` without flags or history,
+exactly as before the migration (EDR-185). Nothing here provisions live grants.
+
+### Meter reading decisions (EMP-METER-004)
+
+`POST …/fleet/assets/{asset_id}/meters/{meter_id}/readings/list` (history,
+`fleet.asset.read`), `…/readings/suspect/list` and
+`…/readings/{reading_id}/decide` (`meter.reading.correct`, fresh proof) reuse
+the meter principal and its `org_meter_reading_states` grants; no migration is
+added. The decision's approved-parent port additionally needs `SELECT
+(org_id, reading_id, review_state) ON org_fuelings`, and the reading-list
+export worker needs `SELECT (org_id, meter_id, reading_id, revision, state,
+recorded_at) ON org_meter_reading_states` to export the state as of its
+`as_of`. `meter.usage.recalculated` is published only when a composition
+supplies its consumers; production composes none (EDR-189). Nothing here
+provisions live grants.
+
 ### Asset lifecycle (EMP-FLEET-003)
 
 Migration201 adds nullable acquisition/disposal columns to `org_assets` and the
@@ -1217,6 +1244,189 @@ org_asset_assignments`. DELETE/TRUNCATE are refused by triggers regardless.
 Commands use fresh `fleet.asset.assign` (admission class `fleet.assignment`);
 reads use current `fleet.asset.read`, whose SELF grants now cover assigned
 assets. Nothing here provisions live grants.
+
+### Reservations, blocks and availability (EMP-FLEET-007)
+
+Migration217 adds forced-RLS `org_asset_reservations` (stored state moved only
+by the guarded fleet.md §6.4 rows; CONFIRMED windows never overlap: a
+`btree_gist` exclusion; a confirmation over a block is refused),
+`org_asset_blocks` (append-only; removal sets the end with a reason) and the
+receipts `org_asset_reservation_commands`, one `AFTER UPDATE OF state` consumer
+that cancels open reservations when an asset leaves service, and recognises the
+two new asset keys in `org_asset_current_usage` (on top of the 215 body). The
+migration owner needs `TRIGGER` on `org_assets`, `REFERENCES` on
+`organizations`, `org_audit_events`, `org_assets` and `org_employee_identities`,
+and ownership of `org_asset_current_usage`. The Fleet principal needs `SELECT,
+INSERT, UPDATE ON org_asset_reservations, org_asset_blocks`, `SELECT, INSERT ON
+org_asset_reservation_commands` and `SELECT, INSERT ON job_queue` (the
+per-reservation `org-asset-reservation-outcome` job is queued in the command
+transaction). Every principal that deactivates or disposes an asset needs
+`SELECT (org_id, asset_id, state, revision, starts_at, ends_at,
+no_show_tolerance), UPDATE (state, revision, end_cause, source_revision) ON
+org_asset_reservations`.
+The worker composes the outcome handler on the general dispatcher with the same
+Fleet grants; it settles `EXPIRED`/`NO_SHOW` once (compare-and-set), and every
+read derives the same outcome at its own instant when no job has run. Commands
+use fresh `fleet.reservation.manage` (org-permissions-v5, admission class
+`fleet.reservation`); reservation, block and availability reads use current
+`fleet.asset.read`. Trips and maintenance holds are answered "no source" and
+listed in `missing_sources`. Nothing here provisions live grants.
+
+### Late intake after revocation (EMP-OFFL-009)
+
+Migration 218 adds forced-RLS, append-only `org_sync_late_intakes`. The signed
+intake principal needs `SELECT, INSERT ON org_sync_late_intakes` and `SELECT ON
+org_settings_versions`; the migrator needs `REFERENCES` on org_sync_operations,
+org_sync_acknowledgements, org_memberships, org_device_enrollments and
+org_settings_versions, `TRIGGER` on org_sync_acknowledgements and ownership of
+`org_meter_held_source()`. Nothing here provisions live grants.
+
+### Organization-state intake (EMP-OFFL-012)
+
+Migration 219 adds forced-RLS, append-only `org_sync_state_intakes`. The signed
+intake principal needs `SELECT, INSERT ON org_sync_state_intakes` and `SELECT
+ON org_suspension_periods` (read before every owner); the migrator needs
+`REFERENCES` on org_sync_operations, org_sync_acknowledgements and
+org_capabilities and `TRIGGER` on org_sync_acknowledgements. Nothing here
+provisions live grants.
+
+### Implement attachments (EMP-FLEET-011)
+
+Migration222 adds forced-RLS `org_asset_implement_attachments` (an implement
+is attached to at most one powered asset at any instant: a `btree_gist`
+exclusion; kinds and states checked by the row guard) and the receipts
+`org_asset_attachment_commands`, and redefines `org_asset_current_usage` from
+the 217 body with the two attachment keys allow-listed and attachments counted
+as operations of both assets (their kinds are then fixed). The migration owner
+needs `REFERENCES` on `organizations`, `org_audit_events` and `org_assets`, and
+ownership of `org_asset_current_usage`. The Fleet principal needs `SELECT,
+INSERT, UPDATE ON org_asset_implement_attachments` and `SELECT, INSERT ON
+org_asset_attachment_commands`; every principal that discards an asset or
+changes its kind needs `SELECT (org_id, implement_id, powered_asset_id) ON
+org_asset_implement_attachments`. Attach and detach use fresh
+`fleet.asset.manage` on both assets (admission class `fleet.asset`); the list
+uses current `fleet.asset.read`. Nothing here provisions live grants.
+
+### Checklist templates (EMP-CHECK-001)
+
+Migration223 adds the new `maintenance` module's forced-RLS checklist template
+tables: the head `org_checklist_templates` (fixed context; state, current
+version and current policy revision move only through its row guard, revision
++1 per command), and the insert-only `org_checklist_template_versions`,
+`org_checklist_template_items`, `org_checklist_template_targets` (composite
+same-organization keys to `org_asset_categories` and `org_assets`),
+`org_checklist_policy_revisions` and the receipts
+`org_checklist_template_commands`. A deferred completeness check closes each
+committed version and refuses a target already named by another ACTIVE template
+of the context; the asset target key joins `org_asset_current_usage` (on top of
+the 217 body). The migration owner needs `REFERENCES` on `organizations`,
+`org_audit_events`, `org_assets` and `org_asset_categories`, and ownership of
+`org_asset_current_usage`. The template principal needs `SELECT, INSERT, UPDATE
+ON org_checklist_templates` and `SELECT, INSERT ON
+org_checklist_template_commands, org_checklist_template_versions,
+org_checklist_template_items, org_checklist_template_targets,
+org_checklist_policy_revisions`, plus `SELECT` on `org_assets` and
+`org_asset_categories` (target checks and the applicable read). Template
+commands use fresh `check.template.manage` with ORG coverage
+(org-permissions-v5, admission class `check.template`); template reads use
+current `check.template.manage`; the applicable template of an asset uses
+current `fleet.asset.read` (structural and SELF grants). Nothing here
+provisions live grants.
+
+### Trip logbook events (EMP-TRIP-003)
+
+Migration225 adds forced-RLS, insert-only `org_trip_events` (accepted logbook
+facts: identity, trip, type, text, author, enrollment, declaration, receipt)
+and `org_trip_held_events` (events declared after a completed trip's finish,
+held `TRIP_ALREADY_CLOSED` with an OFFL-008 review item), and redefines
+`org_sync_review_source_valid` from the 220 body with a `trip.event.record`
+branch. Events key only the trip, operation, author records and enrollment,
+so no usage source changes. The migration owner needs `REFERENCES` on
+`org_trips`, `org_sync_operations`, `org_memberships`,
+`org_employee_identities`, `org_device_enrollments` and
+`org_sync_review_items`, and ownership of `org_sync_review_source_valid`. The
+signed intake principal needs `SELECT, INSERT ON org_trip_events,
+org_trip_held_events` (with its existing trip grants, including
+`UPDATE (state) ON org_trips` for the trip row lock). No read route is added.
+Nothing here provisions live grants.
+
+### Damage and incident reports (EMP-CHECK-003)
+
+Migration230 adds forced-RLS `org_incident_reports` (one immutable report of
+an asset, its allocation at the declared instant, the reporter's trip when
+named; only `state`, `revision` and `updated_at` change, one step at a time)
+and append-only `org_incident_report_transitions` (the handling history and
+command receipt), adds the typed `incident_report_id` reference and the
+`INCIDENT` kind to `org_document_links`, and redefines
+`org_asset_current_usage`, `org_unit_current_usage` and
+`org_cost_centre_current_usage` from their latest bodies with the report keys
+as associations. The migration owner needs `REFERENCES` on `organizations`,
+`org_sync_operations`, `org_assets`, `org_units`, `org_cost_centres`,
+`org_trips`, `org_memberships`, `org_employee_identities`,
+`org_device_enrollments` and `org_audit_events`, and ownership of
+`org_document_links` and of the three usage functions. The signed intake
+principal needs `SELECT, INSERT ON org_incident_reports` and `SELECT` on
+`org_trips`, `org_trip_finishes`, `org_asset_unit_periods`,
+`org_asset_cost_centre_periods` (with its existing trip grants, including
+`UPDATE (state) ON org_trips` for the trip row lock the report guard takes);
+the company principal needs `SELECT, INSERT ON
+org_incident_report_transitions`, `SELECT` and `UPDATE (state, revision,
+updated_at) ON org_incident_reports` (the step trigger and the row lock),
+`SELECT ON org_document_links, org_documents` for the attachment states and
+the existing document link grants for the `INCIDENT` resolver; the trip
+timeline reader needs `SELECT ON org_incident_reports`. Nothing here
+provisions live grants.
+
+### Reference feed (EMP-OFFL-006)
+
+Migration 224 adds forced-RLS `org_reference_feed_heads`/`org_reference_feed_entries`.
+The signed intake principal needs `SELECT, INSERT, UPDATE ON
+org_reference_feed_heads`, `SELECT, INSERT ON org_reference_feed_entries` and
+SELECT on the listed columns of org_assets, org_asset_assignments, org_meters,
+org_meter_segments and org_asset_tank_products; the migrator needs
+`REFERENCES ON org_memberships`. Nothing here provisions live grants.
+
+### Missions (EMP-TRIP-008)
+
+Migration227 adds forced-RLS `org_trip_missions` (head: unit, optional asset,
+title, window, state, revision, current assignee and answer; changed only by
+the guarded +1 update that matches the transition of its new revision),
+insert-only `org_trip_mission_transitions` (one per revision; a response is the
+exact signed `trip.mission.respond` of the current assignee and is published
+only with its ACCEPTED receipt) and insert-only receipts
+`org_trip_mission_commands`, and redefines `org_asset_current_usage` (223 body)
+and `org_unit_current_usage` (220 body) keeping every line and recognising the
+two mission keys as associations. The migration owner needs `REFERENCES` on
+`accounts`, `org_units`, `org_assets`, `org_employee_identities`,
+`org_memberships`, `org_sync_operations` and `org_device_enrollments`, and
+ownership of the two usage functions. The company principal needs `SELECT,
+INSERT, UPDATE ON org_trip_missions` and `SELECT, INSERT ON
+org_trip_mission_transitions, org_trip_mission_commands` (plus its existing
+unit, asset, membership, employee and FLEET-007 availability reads); the signed
+intake principal needs the same three. Commands use fresh `trip.mission.manage`
+(admission class `trip.mission`); reads current `trip.mission.manage`; the own
+list current `trip.trip.start`. Nothing here provisions live grants.
+
+### Trip review, period lock and amendments (EMP-TRIP-004, EMP-TRIP-016, EMP-TRIP-015)
+
+Migration 226 adds forced-RLS, append-only `org_trip_review_entries`; 228
+replaces its guard so the database refuses an opening or decision in a locked
+month; 229 adds `org_trip_amendments` and `org_trip_held_submissions`.
+Production runtime grants (not provisioned here): `SELECT, INSERT ON
+org_trip_review_entries, org_trip_amendments, org_trip_held_submissions`;
+`SELECT ON org_trips, org_trip_finishes, org_team_links, org_memberships,
+org_employee_identities, org_audit_events, org_sync_operations,
+org_sync_acknowledgements, org_sync_effects, org_device_enrollments` for the
+guards and the trip structure source; `SELECT ON org_finance_periods,
+org_finance_period_transitions` (and the existing root row-lock privilege) for
+the period-gated decision; for an approved amendment's supersession `SELECT,
+INSERT ON org_meter_readings, org_meter_reading_states` and `SELECT ON
+org_meters, org_meter_segments, company_web_sessions`, and for the METER-004
+approved-parent check `SELECT ON org_trips, org_trip_finishes,
+org_trip_amendments, org_trip_review_entries`. The migrator needs `REFERENCES
+ON org_trips, org_memberships, org_employee_identities, org_meter_readings,
+org_sync_review_items` and ownership of the replaced functions and of
+`org_trip_review_entries`. Nothing here provisions live grants.
 
 ### Finance periods (EMP-APPR-006)
 

@@ -57,3 +57,14 @@ FROM org_device_commands WHERE org_id=CAST(@org_id::text AS uuid) AND operation_
 INSERT INTO org_device_commands(org_id,operation_id,actor_id,actor_key_id,device_id,kind,request_hash,reason,result)
 VALUES(CAST(@org_id::text AS uuid),CAST(@operation_id::text AS uuid),CAST(@actor_id::text AS uuid),NULLIF(@actor_key_id::text,'')::uuid,CAST(@device_id::text AS uuid),@kind::text,@request_hash::text,@reason::text,@result::jsonb)
 RETURNING occurred_at;
+-- EMP-OFFL-009: the exact owned period of the signing key, its end evidence and
+-- whether the key was ever revoked LOST_OR_COMPROMISED in this organization.
+-- name: LateIntakeEnrollment :one
+SELECT e.state,e.revocation_class,e.source_type,e.enrolled_at,e.revoked_at,m.state AS membership_state,m.ended_at,
+ EXISTS(SELECT 1 FROM org_device_enrollments x WHERE x.org_id=e.org_id AND x.key_id=e.key_id AND x.state='REVOKED' AND x.revocation_class='LOST_OR_COMPROMISED') AS barred
+FROM org_device_enrollments e JOIN org_memberships m ON(m.org_id,m.id)=(e.org_id,e.membership_id)
+WHERE e.org_id=CAST(@org_id::text AS uuid) AND e.id=CAST(@enrollment_id::text AS uuid)
+ AND e.membership_id=CAST(@membership_id::text AS uuid) AND m.account_id=CAST(@account_id::text AS uuid)
+ AND m.access_model='EXISTING_ACCOUNT' AND e.key_id=CAST(@key_id::text AS uuid)
+ AND e.contributor_id=CAST(@contributor_id::text AS uuid) AND e.fingerprint= @fingerprint::text
+FOR SHARE OF e,m;

@@ -148,6 +148,7 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 	f.GrantFleetUsage(t)
 	f.GrantMeterUsage(t)
 	f.GrantAssignmentReductions(t)
+	f.GrantReservationReductions(t)
 
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -410,6 +411,23 @@ func (f *Fixture) GrantAssignmentReductions(t *testing.T) {
 	}
 }
 
+// GrantReservationReductions provisions only the columns the installed
+// EMP-FLEET-007 consumer reads and writes when an asset leaves service:
+// every existing deactivation and disposal producer runs it in its own
+// transaction. Earlier embedded migration images remain unchanged.
+func (f *Fixture) GrantReservationReductions(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_asset_reservations') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,state,revision,starts_at,ends_at,no_show_tolerance),UPDATE(state,revision,end_cause,source_revision) ON org_asset_reservations TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 // GrantMeterUsage adds only the actual columns read by installed asset-use and
 // meter-presence guards. It does not authorize reading observation evidence.
 func (f *Fixture) GrantMeterUsage(t *testing.T) {
@@ -440,6 +458,81 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 	if installed {
 		// EMP-FUEL-002: asset usage counts fuelings as accepted operations.
 		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id) ON org_fuelings TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trips') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// EMP-TRIP-002: asset usage counts trips and held starts; FLEET-003
+		// open work reads whether a trip of the asset is in progress; the
+		// FLEET-007 active-use source reads which trips hold it at an instant.
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,asset_id,state,occurred_at,occurred_submicro) ON org_trips TO "+role+
+			";GRANT SELECT(org_id,trip_id,occurred_at,occurred_submicro) ON org_trip_finishes TO "+role+";GRANT SELECT(org_id,asset_id) ON org_trip_held_starts TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_asset_implement_attachments') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// EMP-FLEET-011: asset usage counts attachments of either asset.
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,implement_id,powered_asset_id) ON org_asset_implement_attachments TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantLateIntake provisions the disposable ordinary role for the EMP-OFFL-009
+// late decision row and the settings history its window is read from. Earlier
+// embedded migration images remain unchanged.
+func (f *Fixture) GrantLateIntake(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_sync_late_intakes') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sync_late_intakes TO "+role+";GRANT SELECT ON org_settings_versions TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantStateIntake provisions the disposable ordinary role for the EMP-OFFL-012
+// state decision row and the suspension history its assessment reads.
+func (f *Fixture) GrantStateIntake(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_sync_state_intakes') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sync_state_intakes TO "+role+";GRANT SELECT ON org_suspension_periods TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantReferenceFeed provisions the disposable ordinary role for the
+// EMP-OFFL-006 feed log and exactly the fleet columns its projection reads.
+func (f *Fixture) GrantReferenceFeed(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_reference_feed_heads') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON org_reference_feed_heads TO "+role+";GRANT SELECT,INSERT ON org_reference_feed_entries TO "+role+
+			";GRANT SELECT(org_id,id,revision,kind,usage_basis,state,name,fleet_number,plate,unit_id) ON org_assets TO "+role+
+			";GRANT SELECT(org_id,id,asset_id,employee_id,kind,valid_from,valid_to) ON org_asset_assignments TO "+role+
+			";GRANT SELECT(org_id,id,asset_id,kind,modulus,installed_at,installed_submicro,removed_at) ON org_meters TO "+role+
+			";GRANT SELECT(org_id,id,meter_id,closed_at) ON org_meter_segments TO "+role+";GRANT SELECT(org_id,asset_id,product) ON org_asset_tank_products TO "+role); err != nil {
 			t.Fatal(err)
 		}
 	}

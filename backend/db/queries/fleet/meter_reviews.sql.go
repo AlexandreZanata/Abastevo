@@ -159,18 +159,19 @@ func (q *Queries) InsertMeterReviewResolution(ctx context.Context, arg InsertMet
 
 const insertReviewedMeterReading = `-- name: InsertReviewedMeterReading :exec
 INSERT INTO org_meter_readings(org_id,id,meter_id,segment_id,value,occurred_at,occurred_submicro,entry_zone,device_offset_seconds,author_membership_id,capture_kind,enrollment_id,operation_id,request_hash,origin,method,state,review_resolution_id)
-SELECT h.org_id,h.reading_id,h.meter_id,h.segment_id,h.value,h.occurred_at,h.occurred_submicro,h.entry_zone,h.device_offset_seconds,o.membership_id,'ENROLLED_DEVICE',o.enrollment_id,o.operation_id,h.request_hash,h.origin,h.method,'VALID',z.id
+SELECT h.org_id,h.reading_id,h.meter_id,h.segment_id,h.value,h.occurred_at,h.occurred_submicro,h.entry_zone,h.device_offset_seconds,o.membership_id,'ENROLLED_DEVICE',o.enrollment_id,o.operation_id,h.request_hash,h.origin,h.method,$1::text,z.id
 FROM org_sync_review_resolutions z JOIN org_sync_review_items i ON(i.org_id,i.id)=(z.org_id,z.review_item_id) JOIN org_meter_held_readings h ON(h.org_id,h.review_item_id)=(i.org_id,i.id) JOIN org_sync_operations o ON(o.org_id,o.operation_id)=(i.org_id,i.operation_id)
-WHERE z.org_id=CAST($1::text AS uuid) AND z.id=CAST($2::text AS uuid) AND z.outcome='ACCEPTED'
+WHERE z.org_id=CAST($2::text AS uuid) AND z.id=CAST($3::text AS uuid) AND z.outcome='ACCEPTED'
 `
 
 type InsertReviewedMeterReadingParams struct {
+	State string `json:"state"`
 	OrgID string `json:"org_id"`
 	ID    string `json:"id"`
 }
 
 func (q *Queries) InsertReviewedMeterReading(ctx context.Context, arg InsertReviewedMeterReadingParams) error {
-	_, err := q.db.Exec(ctx, insertReviewedMeterReading, arg.OrgID, arg.ID)
+	_, err := q.db.Exec(ctx, insertReviewedMeterReading, arg.State, arg.OrgID, arg.ID)
 	return err
 }
 
@@ -451,8 +452,10 @@ func (q *Queries) ReadMeterReview(ctx context.Context, arg ReadMeterReviewParams
 }
 
 const readMeterReviewResolution = `-- name: ReadMeterReviewResolution :one
-SELECT z.review_item_id::text AS review_item_id,z.outcome,z.canonical_resolution,i.operation_id::text AS operation_id,h.asset_id::text AS asset_id,h.meter_id::text AS meter_id,h.segment_id::text AS segment_id,h.reading_id::text AS reading_id
+SELECT z.review_item_id::text AS review_item_id,z.outcome,z.canonical_resolution,i.operation_id::text AS operation_id,h.asset_id::text AS asset_id,h.meter_id::text AS meter_id,h.segment_id::text AS segment_id,h.reading_id::text AS reading_id,
+ h.value,h.occurred_at,h.occurred_submicro,a.received_at AS original_received_at
 FROM org_sync_review_resolutions z JOIN org_sync_review_items i ON(i.org_id,i.id)=(z.org_id,z.review_item_id) JOIN org_meter_held_readings h ON(h.org_id,h.review_item_id)=(i.org_id,i.id)
+JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id,a.review_item_id,a.review_proof_version)=(i.org_id,i.operation_id,i.id,i.proof_version)
 WHERE z.org_id=CAST($1::text AS uuid) AND z.id=CAST($2::text AS uuid)
 `
 
@@ -462,14 +465,18 @@ type ReadMeterReviewResolutionParams struct {
 }
 
 type ReadMeterReviewResolutionRow struct {
-	ReviewItemID        string `json:"review_item_id"`
-	Outcome             string `json:"outcome"`
-	CanonicalResolution []byte `json:"canonical_resolution"`
-	OperationID         string `json:"operation_id"`
-	AssetID             string `json:"asset_id"`
-	MeterID             string `json:"meter_id"`
-	SegmentID           string `json:"segment_id"`
-	ReadingID           string `json:"reading_id"`
+	ReviewItemID        string             `json:"review_item_id"`
+	Outcome             string             `json:"outcome"`
+	CanonicalResolution []byte             `json:"canonical_resolution"`
+	OperationID         string             `json:"operation_id"`
+	AssetID             string             `json:"asset_id"`
+	MeterID             string             `json:"meter_id"`
+	SegmentID           string             `json:"segment_id"`
+	ReadingID           string             `json:"reading_id"`
+	Value               int64              `json:"value"`
+	OccurredAt          pgtype.Timestamptz `json:"occurred_at"`
+	OccurredSubmicro    int16              `json:"occurred_submicro"`
+	OriginalReceivedAt  pgtype.Timestamptz `json:"original_received_at"`
 }
 
 func (q *Queries) ReadMeterReviewResolution(ctx context.Context, arg ReadMeterReviewResolutionParams) (ReadMeterReviewResolutionRow, error) {
@@ -484,6 +491,10 @@ func (q *Queries) ReadMeterReviewResolution(ctx context.Context, arg ReadMeterRe
 		&i.MeterID,
 		&i.SegmentID,
 		&i.ReadingID,
+		&i.Value,
+		&i.OccurredAt,
+		&i.OccurredSubmicro,
+		&i.OriginalReceivedAt,
 	)
 	return i, err
 }

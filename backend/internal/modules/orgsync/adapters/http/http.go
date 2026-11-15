@@ -31,12 +31,26 @@ const Path = "/v1/orgs/{org_id}/sync/operations"
 type DeviceSource interface {
 	CheckDevice(context.Context, kernel.OrgScope, member.DeviceActor) (member.DeviceRecord, error)
 }
+
+// LateDeviceSource proves the intake-only source of one exact owned period
+// whose access ended (EMP-OFFL-009). Nil keeps late intake unmounted.
+type LateDeviceSource interface {
+	CheckLateIntakeDevice(context.Context, kernel.OrgScope, member.DeviceActor, string, string) (member.LateIntakeDevice, error)
+}
+
+// StateDeviceSource proves the current member's enrolled device of a
+// SUSPENDED organization for the EMP-OFFL-012 state assessment only.
+type StateDeviceSource interface {
+	CheckSuspendedIntakeDevice(context.Context, kernel.OrgScope, member.DeviceActor) (member.DeviceRecord, error)
+}
 type Options struct {
 	Enabled  bool
 	Origin   string
 	Accounts *account.Service
 	Verifier auth.Verifier
 	Devices  DeviceSource
+	Late     LateDeviceSource
+	State    StateDeviceSource
 	Service  app.Service
 	Limits   protocol.Limits
 }
@@ -71,6 +85,7 @@ func mapped(e error) error {
 		{member.ErrEmployeeNotFound, orgapi.NotFound}, {access.ErrNoMembership, orgapi.NotFound},
 		{member.ErrDeviceRevoked, orgapi.DeviceRevoked}, {member.ErrManagedRestricted, orgapi.ManagedAccountRestricted},
 		{access.ErrMembershipSuspended, orgapi.MembershipSuspended}, {access.ErrOrgSuspended, orgapi.OrgSuspended}, {access.ErrOrgArchived, orgapi.OrgArchived},
+		{access.ErrEntitlementRequired, orgapi.EntitlementRequired},
 	} {
 		if errors.Is(e, pair.from) {
 			return pair.to
@@ -95,6 +110,44 @@ func confirmCurrentDevice(ctx context.Context, devices DeviceSource, s app.Sourc
 	}
 	return nil
 }
+
+// confirmSuspendedDevice reconfirms the suspended-organization source before
+// exposing any buffered private result (EMP-OFFL-012).
+func confirmSuspendedDevice(ctx context.Context, devices StateDeviceSource, s app.Source) error {
+	v, e := devices.CheckSuspendedIntakeDevice(ctx, s.Scope, s.Actor)
+	if e != nil {
+		return e
+	}
+	state, e := v.Enrollment.Snapshot(s.Scope)
+	if e != nil || v.Validate(s.Scope) != nil {
+		return app.ErrUnavailable
+	}
+	if state.State != d.DeviceEnrolled || state.ID != s.EnrollmentID || state.MembershipID != s.MembershipID || state.DeviceID != s.Actor.KeyID || state.Fingerprint != s.Actor.Fingerprint {
+		return member.ErrEmployeeNotFound
+	}
+	return nil
+}
+
+// sealedPeriod reads the membership and enrollment sealed into the batch's
+// first operation with the complete frozen parser; Preflight later requires
+// every operation to carry the same period.
+func sealedPeriod(batch protocol.Batch, account, origin string, scope kernel.OrgScope) (string, string, bool) {
+	candidates := batch.Candidates()
+	if len(candidates) == 0 {
+		return "", "", false
+	}
+	binding, err := protocol.NewBinding(account, origin, scope.OrgID().String())
+	if err != nil {
+		return "", "", false
+	}
+	op, err := candidates[0].Parse(binding)
+	if err != nil {
+		return "", "", false
+	}
+	v := op.Snapshot()
+	return v.MembershipID, v.EnrollmentID, true
+}
+
 func (e endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "no-store")
 	w.Header().Set("Referrer-Policy", "no-referrer")
@@ -180,18 +233,59 @@ func (e endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		orgapi.WriteError(w, r, orgapi.Unauthenticated)
 		return
 	}
+	sealedMember, sealedEnrollment, sealed := sealedPeriod(batch, accountID, e.Origin, scope)
 	device, err := e.Devices.CheckDevice(r.Context(), scope, actor)
+	// EMP-OFFL-012: while SUSPENDED, a batch with operations from the current
+	// member's enrolled device reaches only the per-operation state assessment.
+	suspended := false
+	if errors.Is(err, access.ErrOrgSuspended) && sealed && e.State != nil {
+		if device, err = e.State.CheckSuspendedIntakeDevice(r.Context(), scope, actor); err == nil {
+			suspended = true
+		}
+	}
+	late := false
+	var source app.Source
 	if err != nil {
-		fail(err)
-		return
+		// EMP-OFFL-009: a revoked or ended device may deliver its own sealed
+		// period intake-only; any other late refusal keeps the current one.
+		if !sealed || e.Late == nil || !errors.Is(err, member.ErrDeviceRevoked) && !errors.Is(err, member.ErrEmployeeNotFound) {
+			fail(err)
+			return
+		}
+		if _, lateErr := e.Late.CheckLateIntakeDevice(r.Context(), scope, actor, sealedMember, sealedEnrollment); lateErr != nil {
+			if errors.Is(lateErr, member.ErrEmployeeNotFound) {
+				fail(err)
+			} else {
+				fail(lateErr)
+			}
+			return
+		}
+		late = true
+		source = app.Source{Scope: scope, Origin: e.Origin, Actor: actor, MembershipID: sealedMember, EnrollmentID: sealedEnrollment}
+	} else {
+		state, err := device.Enrollment.Snapshot(scope)
+		if err != nil || device.Validate(scope) != nil || state.State != d.DeviceEnrolled || state.DeviceID != actor.KeyID || state.Fingerprint != actor.Fingerprint {
+			orgapi.WriteError(w, r, orgapi.Unavailable)
+			return
+		}
+		source = app.Source{Scope: scope, Origin: e.Origin, Actor: actor, MembershipID: state.MembershipID, EnrollmentID: state.ID}
+		// A rehired member's device may still hold an earlier, ended period.
+		if sealed && e.Late != nil && (sealedMember != state.MembershipID || sealedEnrollment != state.ID) {
+			if _, lateErr := e.Late.CheckLateIntakeDevice(r.Context(), scope, actor, sealedMember, sealedEnrollment); lateErr == nil {
+				late = true
+				source = app.Source{Scope: scope, Origin: e.Origin, Actor: actor, MembershipID: sealedMember, EnrollmentID: sealedEnrollment}
+			} else if !errors.Is(lateErr, member.ErrEmployeeNotFound) {
+				fail(lateErr)
+				return
+			}
+		}
 	}
-	state, err := device.Enrollment.Snapshot(scope)
-	if err != nil || device.Validate(scope) != nil || state.State != d.DeviceEnrolled || state.DeviceID != actor.KeyID || state.Fingerprint != actor.Fingerprint {
-		orgapi.WriteError(w, r, orgapi.Unavailable)
-		return
+	var acks []protocol.Acknowledgement
+	if late {
+		acks, err = e.Service.IntakeLate(r.Context(), source, batch)
+	} else {
+		acks, err = e.Service.Intake(r.Context(), source, batch)
 	}
-	source := app.Source{Scope: scope, Origin: e.Origin, Actor: actor, MembershipID: state.MembershipID, EnrollmentID: state.ID}
-	acks, err := e.Service.Intake(r.Context(), source, batch)
 	if err != nil {
 		fail(err)
 		return
@@ -200,7 +294,17 @@ func (e endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		orgapi.WriteError(w, r, orgapi.Unavailable)
 		return
 	}
-	if err := confirmCurrentDevice(r.Context(), e.Devices, source); err != nil {
+	if late {
+		if _, err := e.Late.CheckLateIntakeDevice(r.Context(), scope, actor, sealedMember, sealedEnrollment); err != nil {
+			fail(err)
+			return
+		}
+	} else if suspended {
+		if err := confirmSuspendedDevice(r.Context(), e.State, source); err != nil {
+			fail(err)
+			return
+		}
+	} else if err := confirmCurrentDevice(r.Context(), e.Devices, source); err != nil {
 		fail(err)
 		return
 	}

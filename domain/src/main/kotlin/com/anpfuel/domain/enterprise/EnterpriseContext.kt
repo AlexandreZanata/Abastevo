@@ -5,9 +5,15 @@ data class EnterpriseContextSummary(
     val partition: EnterprisePartition,
     val membershipId: String,
     val organizationName: String,
+    /**
+     * The membership's own employee record from the selected context's read (EMP-TRIP-005, B-BR-EMP-380); memory only,
+     * written only as the driver of the member's own trip start. Lists never carry it.
+     */
+    val employeeId: String? = null,
 ) {
     init {
         EnterprisePartition.requireId(membershipId)
+        employeeId?.let(EnterprisePartition::requireId)
         require(organizationName.isNotBlank() && organizationName.codePointCount(0, organizationName.length) <= 120 &&
             organizationName.none { it.isISOControl() }) { "Invalid enterprise context metadata" }
     }

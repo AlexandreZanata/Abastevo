@@ -97,10 +97,21 @@ func TestAccountContextsThroughActualCompanyHTTP(t *testing.T) {
 	if len(organizations) != 1 || organizations[0].(map[string]any)["id"] != org || page["next_after_org_id"] != "" {
 		t.Fatal("current own-account context not discovered")
 	}
+	// EMP-TRIP-005 (B-BR-EMP-380, EDR-244): only the read names the member's own employee record.
+	if _, listed := organizations[0].(map[string]any)["employee_id"]; listed {
+		t.Fatal("the context list disclosed an employee record")
+	}
+	var ownEmployee string
+	if e := fx.f.Admin.QueryRow(t.Context(), `SELECT employee_id::text FROM org_memberships WHERE org_id=$1 AND id=$2`, org, member).Scan(&ownEmployee); e != nil {
+		t.Fatal(e)
+	}
 	selected := map[string]any{"organization_id": org, "membership_id": member}
 	view := call("/v1/org-access/contexts/read", selected, 200, nil)
 	if view["account_id"] != auth.Account.ID || view["organization"].(map[string]any)["membership_id"] != member || len(view["invitation_grants"].([]any)) == 0 || view["invitation_validity_days"] != float64(7) {
 		t.Fatal("selected context controls")
+	}
+	if view["employee_id"] != ownEmployee {
+		t.Fatal("the context read did not name the requesting membership's own employee record")
 	}
 	for _, tc := range []struct {
 		edit func(*http.Request)
@@ -123,6 +134,9 @@ func TestAccountContextsThroughActualCompanyHTTP(t *testing.T) {
 	view = call("/v1/org-access/contexts/read", selected, 200, nil)
 	if len(view["permissions"].([]any)) != 1 || view["permissions"].([]any)[0] != "idn.employee.read" || len(view["invitation_grants"].([]any)) != 0 {
 		t.Fatal("stale proof enabled private management")
+	}
+	if view["employee_id"] != ownEmployee {
+		t.Fatal("a stale-proof read lost the member's own employee record")
 	}
 	if _, e := fx.f.Admin.Exec(t.Context(), `UPDATE account_session_families SET revoked_at=clock_timestamp() WHERE id=$1`, auth.Session.FamilyID); e != nil {
 		t.Fatal(e)

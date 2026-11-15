@@ -28,6 +28,8 @@ const (
 	BindEmployee         Binding = "EMPLOYEE"
 	BindMeterReading     Binding = "METER_READING"
 	BindHeldMeterReading Binding = "HELD_METER_READING"
+	// BindIncident carries an EMP-CHECK-003 report (EDR-239).
+	BindIncident Binding = "INCIDENT"
 )
 
 // Kind reports the target kind a binding may carry.
@@ -39,6 +41,8 @@ func (b Binding) Kind() (domain.TargetKind, bool) {
 		return domain.Employee, true
 	case BindMeterReading, BindHeldMeterReading:
 		return domain.MeterReading, true
+	case BindIncident:
+		return domain.Incident, true
 	}
 	return "", false
 }

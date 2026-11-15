@@ -21,7 +21,10 @@ type AccountContextPage struct {
 }
 type AccountContextView struct {
 	privateOnboarding
-	Organization           AccountContext
+	Organization AccountContext
+	// EmployeeID is the requesting membership's own employee record, immutable
+	// for that membership (EDR-054); only the read names it (EDR-244).
+	EmployeeID             string
 	Permissions            []permissions.Permission
 	InvitationGrants       []permissions.ContextGrant
 	InvitationValidityDays int

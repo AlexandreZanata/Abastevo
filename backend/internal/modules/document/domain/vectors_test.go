@@ -18,7 +18,7 @@ import (
 	orgtime "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgtime/domain"
 )
 
-const corpusHash = "27eaec5e45b641ab7ee31b70681d96690560a12a655f2f43d0f2cc2f55f1e383"
+const corpusHash = "47b8a29c1ed44cb2969d287813d84cdc75267ace7c39760518084843d6e9202f"
 
 type fields map[string]string
 
@@ -424,7 +424,7 @@ func TestSharedDocumentVectors(t *testing.T) {
 		t.Fatal("invalid shared corpus header")
 	}
 	allowed := map[string]string{"ENUM": "kind value", "ALLOWED": "dimension from", "SCENARIO": "org id digest steps", "REPLACE": "old_steps new new_org new_digest new_steps"}
-	wantCounts := map[string]int{"ENUM": 64, "ALLOWED": 29, "SCENARIO": 146, "REPLACE": 12}
+	wantCounts := map[string]int{"ENUM": 65, "ALLOWED": 29, "SCENARIO": 146, "REPLACE": 12}
 	counts, ids, seenCodes := map[string]int{}, map[string]bool{}, map[string]bool{}
 	for scanner.Scan() {
 		p := strings.Split(scanner.Text(), "|")

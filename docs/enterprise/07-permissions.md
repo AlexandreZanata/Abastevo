@@ -94,7 +94,7 @@ Role assignment:
 
 `STATION_ADMIN` and `STATION_MANAGER` map to the existing representation roles `administrator` and `manager` (STATION_PROFILE_CONTRACT_FREEZE). No generic account role `OWNER` is created outside an organization; the existing freeze ("No `OWNER` role exists anywhere in this scope") keeps applying to station representation.
 
-### 7.2 Permission registry (`org-permissions-v4`)
+### 7.2 Permission registry (`org-permissions-v5`)
 
 Every permission used by any module is listed here. A module that needs a new key adds it here first.
 
@@ -195,6 +195,7 @@ Cell values: `O` allowed in the whole assigned scope; `S` allowed on own records
 | Manage assets (`fleet.asset.manage`) | O | O | O | — | — | — | — | — | — |
 | Read assets (`fleet.asset.read`) | O | O | O | O | O | O | S | S | O |
 | Assign vehicle (`fleet.asset.assign`) | O | O | O | O | — | — | — | — | — |
+| Reserve and block assets (`fleet.reservation.manage`) | O | O | O | O | — | — | — | — | — |
 | Record reading (`meter.reading.record`) | O | O | O | O | — | — | S | S | — |
 | Correct reading (`meter.reading.correct`) | O | O | O | O | — | — | — | — | — |
 | Plan missions (`trip.mission.manage`) | O | O | O | O | — | — | — | — | — |
@@ -204,6 +205,8 @@ Cell values: `O` allowed in the whole assigned scope; `S` allowed on own records
 | Review trips (`trip.trip.review`) | O | O | O | O | — | O | — | — | — |
 | Fill checklist (`check.checklist.execute`) | S | S | S | S | — | — | S | S | — |
 | Report incident (`check.incident.report`) | S | S | S | S | — | — | S | S | — |
+| Handle incidents, release blocks (`check.incident.manage`) | O | O | O | O | — | — | — | — | — |
+| Maintain checklist templates (`check.template.manage`) | O | O | O | — | — | — | — | — | — |
 | See live location (`gps.location.read_live`) | O | O | O | O | — | — | S² | — | — |
 | See recorded track (`gps.track.read`) | O | O | O | O | — | — | S² | — | O³ |
 | Record fueling (`fuel.fueling.record`) | S | S | S | S | — | — | S | S | — |
@@ -432,10 +435,26 @@ or `auth.role.list` aliases. Archived reads and access reductions remain allowed
 under current proof; new grants/changes do not.
 
 
-Authorization-conformance checkpoint (EMP-AUTH-009, EDR-063): the current
-independent v4 fixture covers85 keys × 13 roles (1,105 descriptor cells). The
+Authorization-conformance checkpoint (EMP-AUTH-009, EDR-063): the
+independent v4 fixture covered85 keys × 13 roles (1,105 descriptor cells); the
+current v5 fixture keeps that shape. The
 [route inventory](../../contracts/testdata/enterprise/authorization-routes-v1.json)
 and [current acceptance profile](15-validation.md#5-authorization-sampling)
 distinguish current-source request coverage from future permissions/scopes.
 The complete production-router gate already exists in cmd/api; this checkpoint
 does not introduce a second runtime registry or expand the fixed policy.
+
+Reservation and checklist amendment (EDR-190, EDR-191; B-BR-EMP-292/293):
+`org-permissions-v5` grants three keys that were registered but unassigned.
+`fleet.reservation.manage` takes exactly the `fleet.asset.assign` column
+(OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR), as [fleet](modules/fleet.md) §7
+assumed; `check.template.manage` (OWNER, ADMIN, FLEET_MANAGER) and
+`check.incident.manage` (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR) adopt the
+[maintenance](modules/maintenance.md) §7 proposals. All eleven new cells are `O`
+with only the four BR-AUTH-001 conditions; every other v4 cell is preserved,
+AUDITOR gains nothing and 18 keys stay unassigned. Role assignments store role
+keys, not permissions or a catalog version, so no migration is needed and a
+current assignment gains the grants at its next evaluation. A grant is not a
+route: each key stays `NOT_YET_ROUTED` until its owning task routes it, and
+record rules such as the BR-CHECK-011 author exclusion remain that task's.
+[Evidence](evidence/f4-auth-catalog-v5.md)

@@ -257,8 +257,8 @@ Keys are the ones in [07-permissions](../07-permissions.md) §7.2. Where §7.3 o
 |---|---|---|
 | `check.checklist.execute` | Fill a run (UC-CHECK-01, 02) | §7.3: `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `DRIVER`, `OPERATIONS_STAFF`, own records and assigned assets |
 | `check.incident.report` | Report a damage or an incident (UC-CHECK-03) | §7.3: same roles and scope |
-| `check.incident.manage` | Handle reports, release a block, open claim records | Proposal: `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` in scope |
-| `check.template.manage` | Templates and the critical-item policy | Proposal: `OWNER`, `ADMIN`, `FLEET_MANAGER` |
+| `check.incident.manage` | Handle reports, release a block, open claim records | §7.3: `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` in scope (org-permissions-v5; EDR-190) |
+| `check.template.manage` | Templates and the critical-item policy | §7.3: `OWNER`, `ADMIN`, `FLEET_MANAGER` (org-permissions-v5; EDR-190) |
 | `maint.request.create` | Ask for maintenance | §7.3: `FLEET_MANAGER` and `SUPERVISOR` in scope; `OWNER`, `ADMIN`, `DRIVER`, `OPERATIONS_STAFF` for assigned assets |
 | `maint.workorder.manage` | Quotes, scheduling, execution, holds, closing | §7.3: `OWNER`, `ADMIN`, `FLEET_MANAGER` |
 | `maint.workorder.review` | Approve, return or reject a quote or an overrun | Proposal: `OWNER`, `ADMIN`, `FINANCE`, `APPROVER` in scope |

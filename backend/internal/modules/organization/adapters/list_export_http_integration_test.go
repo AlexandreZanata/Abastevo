@@ -33,6 +33,7 @@ func listReaderGrant(t *testing.T, fx deviceFixtureState) {
 		"GRANT SELECT(org_id,asset_id,cost_centre_id,valid_from,valid_to) ON org_asset_cost_centre_periods TO ",
 		"GRANT SELECT(org_id,id,asset_id,kind) ON org_meters TO ",
 		"GRANT SELECT(org_id,id,meter_id,value,occurred_at,occurred_submicro,entry_zone,device_offset_seconds,received_at,origin,method,state,author_membership_id,capture_kind) ON org_meter_readings TO ",
+		"GRANT SELECT(org_id,meter_id,reading_id,revision,state,recorded_at) ON org_meter_reading_states TO ",
 		"GRANT SELECT(org_id,id,state,revision,merged_into) ON org_employee_identities TO ",
 		"GRANT SELECT(org_id,employee_id,display_name,registration_number,job_title,home_unit_id,revision) ON org_employee_profiles TO ",
 		"GRANT SELECT(org_id,employee_id,state) ON org_memberships TO ",

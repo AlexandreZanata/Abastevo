@@ -4605,3 +4605,1734 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   unavailable forms, forced RLS without an organization setting,
   insert-only history and a populated 000212 → 000215 upgrade with injected
   failure, recovery, no-op replay and previous-image compatibility.
+
+## EMP-TRIP-001 — Trip domain core: operational states and the driver-initiated trip (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip001-trip-domain.md).
+
+- **B-BR-EMP-268 — Closed operational vocabulary and the C1 lifecycle.**
+  Trip operational states are exactly PLANNED, ASSIGNED, ACCEPTED,
+  IN_PROGRESS, PAUSED, COMPLETED and CANCELLED (08-state-model §3);
+  COMPLETED and CANCELLED are terminal. Operational commands are exactly
+  START, FINISH, PAUSE, RESUME and CANCEL. A C1 driver-initiated trip is
+  created by START directly in IN_PROGRESS (it never passes through the
+  mission or manager-planned states) and FINISH moves IN_PROGRESS to
+  COMPLETED. The transition table answers, first failure first: an unknown
+  state or command token is `INVALID`; any command on a terminal state is
+  `INVALID_TRANSITION` (a new attempt is a new trip, 08-state-model §4.3);
+  PAUSE, RESUME and CANCEL, and any command on PLANNED, ASSIGNED, ACCEPTED or
+  PAUSED, are `UNSUPPORTED_COMMAND` until their owners (EMP-TRIP-011 for
+  pause, resume and cancellation; EMP-TRIP-008/009/021 for missions and
+  planned trips) define them; START on an existing trip is
+  `INVALID_TRANSITION`. Approval words (APPROVED, APPROVE, SUBMIT) are not
+  operational tokens.
+- **B-BR-EMP-269 — A start needs an eligible context.** START takes the
+  scoped trip identity and the author membership (absent or malformed
+  `INVALID`, another organization `SCOPE`) and the eligible context: the
+  asset, the driver's employee record, the departure meter evidence and the
+  validated time-kernel declaration (instant, entry zone, device offset).
+  Departure evidence is exactly one of a reading of the trip's asset with
+  its exact typed meter value (the METER-001 reading reference and value of
+  that meter's kind, within its modulus) or a nonblank, control-free missing
+  reason of at most 280 characters (the METER-001 profile). Present parts
+  are checked in the order asset, driver, departure evidence, declaration:
+  another organization, or a reading of another asset, is `SCOPE`; a
+  malformed declaration is `INVALID`. Absent parts are then reported
+  together as `INCOMPLETE` with the ordered list ASSET, DRIVER,
+  DEPARTURE_EVIDENCE, DECLARATION. Membership, permission, assignment, asset
+  availability and the one-active-trip rule are not decided by this pure
+  value; their owners check them at receipt or from cached grants.
+- **B-BR-EMP-270 — A trip belongs to the day it started.** The start
+  attributes the reporting day of its instant with the accepted
+  `orgtime.AttributeReportingDay` (operating-unit zone when supplied,
+  otherwise the organization zone; an invalid unit zone never falls back;
+  the device entry zone never decides) and keeps day, zone and source. An
+  unusable zone is `INVALID`. No server receipt is required or invented, so a
+  trip starts and finishes offline.
+- **B-BR-EMP-271 — Transitions preserve the trip.** FINISH takes only its
+  actor, its declaration and its final evidence. It cannot change the trip
+  identity, organization, asset, driver, start event or start reporting
+  attribution; a refused command returns no trip and leaves the input value
+  unchanged.
+- **B-BR-EMP-272 — Operational completion.** FINISH on a trip of another
+  organization is `SCOPE`. Its actor is validated like the author, then the
+  final evidence (a reading of another organization or asset is `SCOPE`; a
+  reading identity equal to the departure reading is `INVALID`) and the
+  declaration (`INVALID` when malformed); absent parts are `INCOMPLETE` with
+  FINAL_EVIDENCE, DECLARATION. In C1 only the member who started the trip
+  finishes it (`FORBIDDEN` otherwise; handover and supervisor closure are
+  EMP-TRIP-012/014). A command the lifecycle refuses is
+  `INVALID_TRANSITION`. A finish instant strictly before the start instant
+  is `FINISH_BEFORE_START`; an equal instant is accepted.
+- **B-BR-EMP-273 — Meter evidence is never invented (BR-TRIP-004).** A trip
+  reports usage `MEASURED` only when it is COMPLETED and both readings exist
+  on the same meter and segment with a final value not below the departure
+  value; the usage is then the exact difference in the meter's base unit
+  (184 320 000 m to 184 610 000 m gives 290 000 m). Otherwise it is
+  `NOT_MEASURED` with the reason NOT_FINISHED, READING_ABSENT,
+  DIFFERENT_SEGMENT or DECREASING, never zero, interpolated, GPS, planned or
+  provider distance. A decreasing or cross-segment final reading does not
+  refuse the finish: the field fact is kept and final-reading plausibility
+  stays with the server and review (10-offline-sync matrix).
+- **B-BR-EMP-274 — Operational state is not review or delivery.** The trip
+  holds no review or sync state and needs no receipt; completion never sets
+  or implies a review state. The trip review vocabulary is the closed input
+  DRAFT, SUBMITTED, IN_REVIEW, APPROVED, RETURNED, REJECTED, CANCELLED and
+  VOIDED; a standing of one operational and one review state is completed
+  only for COMPLETED and approved only for APPROVED, so a COMPLETED trip is
+  never approved by itself (BR-REV-001).
+- **B-BR-EMP-275 — Pure, redacted and shared.** The domain lives in Go
+  `trip/domain` and its Kotlin mirror `com.anpfuel.domain.enterprise.trip`,
+  both executing the one synthetic `trip/trip-v1.psv` oracle. Identities,
+  readings, reasons and inputs print as redacted values in fmt, slog, JSON
+  and `toString`. No persistence, intake, route, OpenAPI, app or panel
+  screen, job, producer or dependency is added.
+- **BUC-EMP-136 — Start a driver-initiated trip offline.** The driver's
+  device supplies the trip identity, its membership, the asset, the driver
+  record, the departure reading 184 320 000 m (or a stated absence) and the
+  start declaration; the trip is IN_PROGRESS with its start reporting day and
+  no usage yet. Missing parts are named together.
+- **BUC-EMP-137 — Finish it operationally without approving it.** The same
+  member finishes with the final reading 184 610 000 m or a stated absence;
+  the trip is COMPLETED with 290 000 m of meter evidence (or NOT_MEASURED
+  with its reason), keeps its asset, driver and start day, and its standing
+  with review DRAFT, SUBMITTED or RETURNED is not approved.
+- **BUC-EMP-138 — Prove the lifecycle and its denials in both languages.**
+  Go and Kotlin load the same oracle, assert its hash, counts, unique IDs and
+  the complete state and command table, and cover start without an eligible
+  context, invalid and terminal transitions, unsupported pause, resume and
+  cancel, completion mistaken for approval, foreign asset, driver, actor or
+  reading, and a finish before its start.
+
+## EMP-TRIP-017 — Midnight and time-zone crossing rules (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip017-time-crossing.md).
+
+- **B-BR-EMP-276 — One trip keeps its start reporting day.** A trip
+  belongs to the reporting day of its start (BR-TIME-004) for its whole
+  life. FINISH takes no zone and never re-attributes: the stored day, zone
+  and source are unchanged when the trip crosses local midnight, several
+  days, a device entry zone or a device offset. The end day is informational
+  only: the local day of the finish instant in the stored reporting zone, so
+  crossing midnight means the end day differs from the start day. Nothing
+  splits the trip identity or adds a second trip day. A finish whose local
+  day in the stored zone falls outside years 0001..9999 is `INVALID`,
+  checked after `FINISH_BEFORE_START`.
+- **B-BR-EMP-277 — Every event keeps its source time context.** Start and
+  finish each retain their own UTC instant with nanoseconds, device entry
+  zone and device offset exactly as declared, even when the offset
+  disagrees with the zone's rules. The crossing view reports
+  `entry_zone_changed` (the entry zones differ) and `offset_changed` (the
+  device offsets differ) separately: a daylight-saving change in one zone is
+  an offset change, a zone with the same offset is an entry-zone change.
+  Neither decides the reporting day.
+- **B-BR-EMP-278 — Elapsed time comes only from instants.** The elapsed
+  time of a finished trip is the exact difference of its finish and start
+  instants in seconds and non-negative nanoseconds, computed without a
+  saturating duration and never from local wall times, entry zones, offsets
+  or zone rules: daylight-saving gaps and folds and zone crossings neither
+  add nor remove time. An unfinished trip reports `NOT_FINISHED` with no
+  value. No working hours, wage or time-clock result is derived (EDR-028).
+- **B-BR-EMP-279 — A wall-clock change or reboot is a flagged gap
+  (BR-TIME-005).** Each event may carry a device run clock: a boot identity
+  of 1 to 64 characters from `A-Z a-z 0-9 . _ -` and a non-negative
+  monotonic count in milliseconds (validated after the declaration; a
+  malformed one is `INVALID`). With both witnesses on one boot, a
+  non-negative monotonic difference within the caller's explicit
+  non-negative tolerance in milliseconds (no domain default; negative is
+  `INVALID`) of the instant difference, the elapsed time is `CONFIRMED`; a
+  different boot is a `GAP` with `BOOT_CHANGED`; a negative monotonic
+  difference or one beyond the tolerance is a `GAP` with
+  `CLOCK_DISCONTINUITY`; a witness missing on either event gives `DECLARED`
+  (instants only, unconfirmed). A gap carries no elapsed value, so no
+  duration is invented; the facts are kept and the finish is never refused
+  for clock reasons.
+- **BUC-EMP-139 — Finish after midnight in another zone.** A trip started
+  at 23:30 in Cuiabá on 2026-11-14 and finished at 01:10 São Paulo time
+  keeps the day 2026-11-14 and its reporting zone, reports its end day,
+  the midnight crossing and the entry-zone and offset changes, and remains
+  one trip with one identity.
+- **BUC-EMP-140 — Measure elapsed time honestly.** Daylight-saving
+  spring-forward and fall-back and zone crossings give the instant
+  difference whatever the local clock faces show; a device clock moved
+  against its monotonic clock, or a reboot, gives a gap for review instead
+  of a duration.
+- **BUC-EMP-141 — Prove the time crossing in both languages.** Go and
+  Kotlin load the same `trip/trip-time-v1.psv` oracle, assert its hash,
+  counts and error codes, and cover the full 0001..9999 instant range, the
+  largest monotonic counts and tolerances without overflow, and the named
+  negatives: a local clock change inventing duration, midnight splitting
+  one trip and a lost reporting basis.
+
+## AUTH catalog amendment org-permissions-v5 — reservation and checklist grants (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-auth-catalog-v5.md).
+
+- **B-BR-EMP-292 — Reservations and checklist handling have named roles.**
+  The permission catalog `org-permissions-v5` grants, with organization or
+  assigned-scope coverage (`O`) and only the four standing conditions (active
+  membership, live scoped assignment, organization and plan, record rules):
+  `fleet.reservation.manage` (request, confirm and cancel reservations; block
+  and unblock assets) to `OWNER`, `ADMIN`, `FLEET_MANAGER` and `SUPERVISOR`,
+  exactly the roles of `fleet.asset.assign`; `check.template.manage`
+  (checklist templates and the critical-item policy) to `OWNER`, `ADMIN` and
+  `FLEET_MANAGER`, exactly the roles of `maint.workorder.manage`;
+  `check.incident.manage` (handle reports, release a blocked asset, open claim
+  records) to `OWNER`, `ADMIN`, `FLEET_MANAGER` and `SUPERVISOR`. Every other
+  cell of `org-permissions-v4` is unchanged: `AUDITOR`, `FINANCE`, `APPROVER`,
+  `DRIVER`, `OPERATIONS_STAFF` and the station and data roles gain nothing, and
+  the 18 other unassigned keys stay denied to every role. A role assigned to a
+  unit, cost centre, team or asset applies these grants inside that scope only.
+- **B-BR-EMP-293 — A catalog version changes grants, not stored data or
+  routes.** Role assignments store the role and its scope, never a permission
+  set or a catalog version, so a current assignment holds the new grants at
+  its next request evaluation and nothing is migrated. Each earlier oracle
+  (`v1`–`v4`) stays unchanged beside the new one, and every consumer that pins
+  the version (route inventory, authorization matrix, export gating) moves to
+  `v5` in the same change. A granted key admits no request until its owning
+  task routes it; separation-of-duty record rules (for example a release by
+  someone other than the author, BR-CHECK-011) remain obligations of that task.
+
+## EMP-FLEET-007 — Reservations, blocks and derived availability (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-fleet007-reservations-availability.md).
+
+- **B-BR-EMP-294 — A reservation names one active asset, a future window, a
+  purpose and optionally one employee record.** A reservation belongs to one
+  organization and names one of its assets in `ACTIVE`, a half-open window
+  `[start, end)` with whole-microsecond bounds that starts later than the
+  server instant of the request and ends after its start, a purpose of 1 to 280
+  characters and, when known, one `ACTIVE` employee record of the organization
+  as the reserved employee. Its state is one of `REQUESTED`, `CONFIRMED`,
+  `FULFILLED`, `CANCELLED`, `NO_SHOW`, `EXPIRED`; it is created `REQUESTED`,
+  or `CONFIRMED` when the request says so. `FULFILLED` has no source until a
+  trip intake exists (EMP-TRIP-023): no command or job reaches it. The no-show
+  tolerance is the 60-minute default of fleet.md §6.4, stored with the
+  reservation. An asset in another state is refused with `VALIDATION_FAILED`;
+  an asset or employee of another organization (or unknown) is not found.
+  Rows are private under forced row-level security and never deleted; the
+  state changes only through the rows of fleet.md §6.4.
+- **B-BR-EMP-295 — Confirmed windows never overlap; a conflict reveals only
+  the window.** A request or a confirmation whose window overlaps a
+  `CONFIRMED` reservation of the asset, or a block of the asset whose period
+  overlaps it, changes nothing and answers `RESERVATION_CONFLICT` (409) whose
+  details carry only the conflicting window — its start and, when it has one,
+  its end — never the other record's identifier, requester, employee,
+  purpose, note or kind. `REQUESTED` windows may overlap each other until one
+  is confirmed. The database enforces non-overlap with an exclusion
+  constraint and refuses a confirmation over a block; commands are serialised
+  under the organization root lock, so of two concurrent overlapping
+  confirmations exactly one commits and the other receives the winner's window.
+- **B-BR-EMP-296 — Time-driven outcomes are derived at read time, settled by a
+  job and before any reservation command.** A `REQUESTED` reservation is
+  `EXPIRED` from its start; a `CONFIRMED` one is `NO_SHOW` from its no-show
+  deadline, the earlier of start plus tolerance and its end, because no
+  qualifying trip can start in this cut. Every read reports the effective state
+  at its own server instant, with the instant at which the outcome happened,
+  even when nothing was stored yet. A per-reservation job queued in the
+  command transaction for the due instant stores the outcome once
+  (compare-and-set: a second run changes nothing), and every reservation
+  command first settles the due outcomes of the asset, so a stopped job never
+  keeps a stale window. Each stored outcome records one audit event
+  (`fleet.reservation.expired`, `fleet.reservation.missed`) with the requesting
+  account as actor.
+- **B-BR-EMP-297 — Cancelling releases the window; leaving service cancels.**
+  A reservation that is `REQUESTED` or `CONFIRMED` and has not reached its
+  time-driven outcome can be cancelled; a reason of 1 to 280 characters is
+  required unless the requesting account cancels. A cancelled, expired or
+  missed reservation refuses confirmation and cancellation with `CONFLICT` and
+  changes nothing. When an asset becomes `INACTIVE` or `DISPOSED`, every
+  reservation of it that is `REQUESTED` or `CONFIRMED` and has not reached its
+  time-driven outcome is `CANCELLED` in the same transaction, with the cause
+  `ASSET_LEFT_SERVICE` and the asset revision.
+- **B-BR-EMP-298 — Blocks state a reason kind and a period and are removed
+  only with a reason.** A block names an asset in `ACTIVE` or `INACTIVE`, a
+  reason kind (`ADMINISTRATIVE`, `SAFETY`, `DOCUMENT`, `INVESTIGATION`,
+  `LENT_OUT`), an optional note of up to 280 characters and a half-open period
+  whose start is the server instant when omitted or a later instant when
+  given, with an optional end. Removing a block requires a reason of 1 to 280
+  characters (its absence is `VALIDATION_FAILED`) and ends it at the server
+  instant, or at its start when it has not started; removing a removed or
+  ended block is `CONFLICT`. Blocks are never deleted. Creating a block never
+  cancels or changes a reservation nor interrupts an operation in progress.
+- **B-BR-EMP-299 — Availability is derived on read and lists every cause.**
+  At the server instant, availability is the first applying row of fleet.md
+  §6.2 — `UNAVAILABLE` (lifecycle not `ACTIVE`), `IN_USE` (a trip in progress
+  or paused), `IN_MAINTENANCE` (an open hold), `BLOCKED` (a block covering the
+  instant), `RESERVED` (a confirmed reservation holding the asset at the
+  instant), otherwise `AVAILABLE` — and the answer lists every applying cause
+  in that order with its kind, record identifier and period (and the block
+  reason kind), never a person, purpose or note. A reservation holds the asset
+  from its start until the earliest of its end, its no-show deadline and its
+  cancellation (only if it was confirmed). Trips and maintenance holds are
+  answered by ports that, until their owners exist, answer "no source"; the
+  answer then names them as missing sources and never claims their absence.
+  Availability is never stored.
+- **B-BR-EMP-300 — A start is admitted or held with a precise code.** The
+  intake decision for a start of an asset by a member at a declared instant
+  holds the start for review with `ASSET_UNAVAILABLE` when the asset is not
+  `ACTIVE`, in maintenance, blocked, held by a reservation that does not name
+  the member's employee record, or available but not assigned to the member,
+  and with `ASSET_BUSY` when another trip holds it; a reservation naming the
+  member admits the start without an assignment. A trip already in progress
+  is never re-decided, so a block added during a trip applies to the next
+  start. The decision is exposed for the trip-start intake (EMP-TRIP-002); no
+  start intake exists yet.
+- **B-BR-EMP-301 — Reservation and block commands need fresh
+  `fleet.reservation.manage` on the asset; reads need `fleet.asset.read`.**
+  Request, confirm, cancel, block and unblock require fresh
+  `fleet.reservation.manage` covering the asset (`ORG`, or a `UNIT`,
+  `COST_CENTRE` or `ASSET` grant matching the asset's allocation at the server
+  instant); the reservation list, block list and availability read require
+  current `fleet.asset.read` covering the asset, including `SELF` on an asset
+  assigned to the member. Every write records exactly one audit event and one
+  receipt bound to its operation identifier; the same intent replayed returns
+  the first result, another intent under the same identifier is
+  `OPERATION_ID_REUSED`.
+- **BUC-EMP-148 — Request and confirm a reservation.** Actor: member with
+  fresh `fleet.reservation.manage` covering the asset. Main flow: choose the
+  window, the purpose, optionally the reserved employee and whether to confirm
+  → the server settles due outcomes of the asset, checks B-BR-EMP-294/295
+  under the organization root lock → reservation `REQUESTED` or `CONFIRMED`,
+  one audit event and receipt, its time-driven outcome queued; a `REQUESTED`
+  reservation is confirmed by a later command. Alternatives: overlap with a
+  confirmed reservation or a block → `RESERVATION_CONFLICT` with only the
+  window; asset not `ACTIVE`, employee not `ACTIVE` or window not in the
+  future → `VALIDATION_FAILED`; supervisor scoped to another unit →
+  `FORBIDDEN`; replay → first result. Result: the asset is held for the
+  window against others only.
+- **BUC-EMP-149 — Cancel a reservation; outcomes follow the clock.** Actor:
+  member with fresh `fleet.reservation.manage`; time. Main flow: cancel with a
+  reason (none needed by the requester) → `CANCELLED`, window released; or the
+  start passes unconfirmed → `EXPIRED`; or the deadline passes → `NO_SHOW`,
+  window released. Alternatives: ended reservation → `CONFLICT`; job stopped →
+  reads still show the outcome; job run twice → one stored outcome. Result:
+  every reservation reaches a terminal state with its cause.
+- **BUC-EMP-150 — Block and unblock an asset.** Actor: member with fresh
+  `fleet.reservation.manage`. Main flow: choose reason kind, optional note,
+  start and end → block recorded, the asset is `BLOCKED` for new starts →
+  remove with a reason. Alternatives: removal without reason →
+  `VALIDATION_FAILED`; already removed → `CONFLICT`; lending the asset out →
+  `LENT_OUT` with the expected return as end; trip in progress → it continues.
+  Result: block recorded and audited.
+- **BUC-EMP-151 — Read availability, reservations and blocks.** Actor: member
+  with current `fleet.asset.read` covering the asset. Main flow: the
+  availability with every cause and the missing sources at the server
+  instant; the reservations with their effective states; the blocks with
+  their removal facts. Alternatives: foreign or unknown asset → `NOT_FOUND`;
+  no covering grant → `FORBIDDEN`. Result: read only; nothing is stored.
+
+## EMP-METER-003 — Reading validation: monotonicity, retroactive inserts and suspect flags (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-meter003-reading-validation.md).
+
+- **B-BR-EMP-280 — A reading is checked against its valid neighbours in
+  its segment.** The series of a segment is ordered by `occurred_at`, then
+  server `received_at`, then reading identifier (BR-METER-008). The
+  predecessor of a candidate is the last reading ordered before it whose
+  current state is `VALID`; the successor is the first `VALID` reading
+  ordered after it. `SUSPECT` and `VOIDED` readings are never neighbours (a
+  suspect reading does not contaminate the check of the next one). The
+  segment's opening reading is its first reading; a candidate ordered before
+  it is outside the segment and is refused exactly as a reading outside the
+  meter's service interval already is (signed intake `MALFORMED`, embedded
+  path `VALIDATION_FAILED`), never stored.
+- **B-BR-EMP-281 — Monotonicity flags.** A candidate whose value is lower
+  than its predecessor's is flagged `READING_BELOW_PREVIOUS`; one higher than
+  its successor's is flagged `READING_ABOVE_NEXT`; a value equal to a
+  neighbour's passes. A meter with a modulus gets no rollover verdict here
+  (`POSSIBLE_ROLLOVER` belongs to EMP-METER-005); a lower value is
+  `READING_BELOW_PREVIOUS`.
+- **B-BR-EMP-282 — Plausible rate with exact integers.** For each new pair of
+  consecutive valid readings that the candidate forms (predecessor →
+  candidate and candidate → successor) whose values do not decrease, with
+  value difference `Δv` in base units and elapsed time `Δt` in nanoseconds
+  between the two `occurred_at` instants, an odometer pair is plausible when
+  `Δv × 3 600 × 10⁹ ≤ L × Δt + 3 600 000 × 10⁹` (`L` the maximum average
+  distance in metres per hour: default 150 000, configurable from 20 000 to
+  200 000, a hypothesis per category; the constant allows 1 000 m of display
+  rounding) and an hour-meter pair is plausible when
+  `Δv × 10⁹ ≤ Δt + 300 × 10⁹`. Equal instants are a pair with `Δt = 0`, so
+  two readings declared at the same instant may differ by at most 1 000 m
+  or 300 s. An implausible pair flags the candidate `IMPLAUSIBLE_RATE` once.
+  The comparison uses exact integers of unbounded width (no floating point,
+  no rounding, no overflow).
+- **B-BR-EMP-283 — Future instants.** A candidate whose `occurred_at` is
+  later than its receipt instant plus the clock-skew limit (default 300 s,
+  any non-negative number of whole seconds) is flagged `FUTURE_INSTANT`;
+  exactly the limit passes. The receipt instant is the server clock read
+  under the meter lock immediately before the insertion; for a held reading
+  applied by an accepted review it is the original receipt. The flag is
+  decided once, at intake: re-evaluation keeps it, and only a confirmation,
+  correction or void (EMP-METER-004) removes it.
+- **B-BR-EMP-284 — Classification, storage and the current value.** A
+  candidate with at least one flag is `SUSPECT`, otherwise `VALID`; a
+  candidate that has a successor carries the note `RETROACTIVE` (it was
+  placed before a later valid reading), which is never a reason for
+  `SUSPECT`. A failing reading is never refused for its flags: it is stored,
+  its signed operation is answered `ACCEPTED` with entity revision 1, and the
+  trip or fueling that carries it is not held. The reading row keeps its
+  recorded classification (`VALID` or `SUSPECT`) and an append-only state
+  history keeps revision 1 (`INTAKE`, flags in canonical order
+  `READING_BELOW_PREVIOUS`, `READING_ABOVE_NEXT`, `IMPLAUSIBLE_RATE`,
+  `FUTURE_INSTANT`, note, operation) and every later revision; the current
+  state of a reading is its latest revision, or its recorded classification
+  when it has no history (readings recorded before this rule). The
+  latest-valid reading, the current value and every usage read use only
+  readings whose current state is `VALID`, so a suspect reading never moves
+  the current value. The opening reading recorded with a meter installation
+  is the segment's anchor and is recorded `VALID` without checks and without
+  history. The validation is a server configuration that is on by default;
+  turned off, readings are stored `VALID` without flags and without history,
+  exactly as before this rule, and nothing is re-evaluated.
+- **B-BR-EMP-285 — Re-evaluation of suspect neighbours.** When a `VALID`
+  reading enters a segment, in the same transaction and under the same meter
+  lock every `SUSPECT` reading of the segment is checked again in series
+  order against the then-valid neighbours, repeating until a full pass
+  promotes nothing: a reading that now passes becomes `VALID` (cause
+  `REEVALUATION`, the triggering operation), a reading whose flags changed
+  gets a new `SUSPECT` revision with the new flags, `FUTURE_INSTANT` is kept,
+  and a `VALID` reading is never demoted by the system. The device uses the
+  same validator on its last known readings to warn the person; the warning
+  never blocks saving or sending, and the server decides.
+- **BUC-EMP-142 — Record a field reading that is validated.** A covered
+  member's device sends a standalone reading (or a fueling with its reading);
+  the server orders it in its segment, checks it against the valid
+  neighbours, stores it `VALID` or `SUSPECT` with its flags and note, answers
+  `ACCEPTED`, and the current value moves only for a `VALID` reading.
+- **BUC-EMP-143 — Insert a retroactive reading.** A reading recorded offline
+  earlier arrives after later readings; it is placed by `occurred_at`, is
+  `VALID` with `RETROACTIVE` when it lies between its neighbours (the two new
+  intervals sum to the previous one) or `SUSPECT` otherwise, and suspect
+  readings that it makes consistent return to `VALID`.
+- **BUC-EMP-144 — Warn on the device without blocking.** The app checks a
+  typed value with the shared validator against the last known readings and
+  shows the flags as a warning; the person can still save and send it.
+
+## EMP-METER-004 — Reading correction and void with audit (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-meter004-reading-correction.md).
+
+- **B-BR-EMP-286 — One decision command per reading.** A member with
+  `meter.reading.correct` covering the reading's asset decides one reading of
+  a meter's open segment through one company command naming the reading, the
+  expected current history revision of that reading (0 when it has none), a
+  decision `SUPERSEDE`, `VOID` or `CONFIRM`, and a reason (1 to 280
+  characters, no control characters). A `SUPERSEDE` also states the meter
+  kind and the corrected value in exact base units, and optionally a corrected
+  declaration (instant, zone and offset together). The command needs fresh company proof,
+  the enabled organizations capability and an `ACTIVE` organization. A
+  `VOIDED` target is refused `READING_ALREADY_SUPERSEDED` before any other
+  state check; a stale expected revision is `CONFLICT`; the segment's
+  installation opening reading is its anchor and is refused
+  `VALIDATION_FAILED` (replacement and reset belong to EMP-METER-005). A
+  reading of another organization, asset or meter is `NOT_FOUND`.
+- **B-BR-EMP-287 — Supersession and void.** `SUPERSEDE` records a new
+  reading with the corrected value and either the original declaration or a
+  corrected one (instant, zone, offset), the deciding member as author, the
+  company web session as capture, the original's origin, method `TYPED` and
+  the command's operation; the original becomes `VOIDED` (cause
+  `SUPERSEDED`, linked to the new reading, actor and reason) and is never
+  changed otherwise; the new reading is classified by the EMP-METER-003
+  validator against the series without the original, so a correction that
+  still breaks monotonicity is stored `SUSPECT` and its flags are returned.
+  `VOID` makes a `VALID` or `SUSPECT` reading `VOIDED` (cause `VOIDED`) with
+  actor and reason. `VOIDED` is terminal; a reading is superseded at most
+  once.
+- **B-BR-EMP-288 — Confirmation.** `CONFIRM` makes a `SUSPECT` reading
+  `VALID` (cause `CONFIRMED`) only when its flags are `IMPLAUSIBLE_RATE` and/or
+  `FUTURE_INSTANT`; a reading flagged `READING_BELOW_PREVIOUS` or
+  `READING_ABOVE_NEXT` cannot be confirmed (`VALIDATION_FAILED`), and a
+  reading that is not `SUSPECT` cannot be confirmed (`CONFLICT`). Monotonicity
+  flags clear only when a neighbour is corrected or voided (BR-METER-012).
+- **B-BR-EMP-289 — Recalculation in the same transaction.** Every decision
+  re-evaluates the segment's `SUSPECT` readings exactly as B-BR-EMP-285, under
+  the root, asset and meter locks, in the command's transaction and under its
+  operation, so correcting one reading returns its now consistent suspect
+  neighbours to `VALID`. The decision, the new reading, every new history
+  revision, one audit event (`meter.reading.corrected`, `meter.reading.voided`
+  or `meter.reading.confirmed`; actor, target reading, command digest; no
+  value, instant or reason) and, when a consumer is configured, one
+  `meter.usage.recalculated` intent per consumer (identifiers and the target
+  reading's new revision only) commit together or not at all. The same
+  operation with the same digest returns the first result; with another
+  digest it is `OPERATION_ID_REUSED`. Concurrent decisions on one reading
+  serialise: the first wins, the second sees the result
+  (`READING_ALREADY_SUPERSEDED` or `CONFLICT`).
+- **B-BR-EMP-290 — Approved parent records need an amendment.** When the
+  reading belongs to a parent record that is `APPROVED` (today a fueling, by
+  its review state), the decision is refused `AMENDMENT_REQUIRED` and nothing
+  changes, because no amendment consumer can apply it yet (EMP-PLAT-016 owns
+  the kernel); a parent in any other review state is decided directly.
+- **B-BR-EMP-291 — History and suspect list.** The history of a meter lists
+  every reading of its open segment in series order with value, both
+  instants, origin, method, author, capture, recorded and current state,
+  flags, note, current revision, the supersession links in both directions
+  and the reason of a person decision, filterable by current state, keyset
+  paginated, under `fleet.asset.read` (SELF on an assigned asset included).
+  The suspect list returns the meter's `SUSPECT` readings with their flags and
+  their current valid neighbours, under `meter.reading.correct`.
+- **BUC-EMP-145 — Correct a typing error.** A supervisor opens the suspect
+  list, supersedes the wrong reading with the right value and a reason; the
+  original stays visible as `VOIDED`, the correction becomes current, and
+  readings that were suspect because of the error return to `VALID`.
+- **BUC-EMP-146 — Void a reading.** A supervisor voids a reading recorded for
+  the wrong asset with a reason; it leaves the current value and usage and
+  stays visible.
+- **BUC-EMP-147 — Confirm a rate or future flag.** A supervisor confirms an
+  implausible-rate or future-instant reading with a reason; a monotonicity
+  flag cannot be confirmed away.
+
+## EMP-OFFL-009 — Post-revocation intake window and quarantine (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-offl009-post-revocation-window.md).
+
+- **B-BR-EMP-302 — Intake-only late source.** A device whose exact
+  enrollment period was revoked `ACCESS_ENDED` — by the end of its membership
+  (EMP-IDN-010) or by an `ACCESS_ENDED` revocation command (EMP-IDN-015) —
+  keeps an intake-only source for operations sealed to that period, through
+  the existing signed route only. The source needs current personal proof
+  (active, non-managed account, live family and token, signing key bound to
+  the account), the same organization root `ACTIVE` with its base capability
+  enabled, the period still owned by the same account and key, and no
+  `LOST_OR_COMPROMISED` revocation of that key anywhere in the organization.
+  It confers no permission, role, record read, receipt read or review-result
+  read: every current route, including the signed review-results read, keeps
+  refusing the ended member. A key revoked `LOST_OR_COMPROMISED` is refused as
+  a whole with `DEVICE_REVOKED` before any claim, receipt, audit or fact; an
+  unknown, foreign or still-enrolled period keeps its existing refusal.
+- **B-BR-EMP-303 — Server history decides; device time is evidence.** The
+  access end instant E is the membership's `ended_at` when the enrollment was
+  revoked by the membership end, else the enrollment's `revoked_at`. The
+  window W is `policies.intake_window_days` of the settings version in force
+  at E (latest `effective_at ≤ E`, ties by revision), 15 days when no version
+  exists; a later settings change neither reopens nor shortens it. Receipt R
+  is the database clock of the final acknowledgement. When R > E + W × 86 400
+  seconds the operation is `REJECTED` `INTAKE_WINDOW_CLOSED` (the window
+  includes its end instant). Otherwise it is eligible for review when the
+  server already holds its claim from before E (`claimed_at < E`) or, failing
+  that, when its declared instant is before E; else it is `REJECTED`
+  `MEMBERSHIP_ENDED` (membership end) or `DEVICE_REVOKED` (device command
+  end). The declared instant can only choose review over refusal: it never
+  applies an operation, never moves the window and never opens a read. The
+  enrollment's last contact is not recorded and is not evidence.
+- **B-BR-EMP-304 — Quarantine, never application.** An eligible operation is
+  `ACCEPTED_FOR_REVIEW` with `ACCESS_ENDED_BEFORE_RECEIPT` only when its
+  installed owner retains a typed held fact with a resolution path. The meter
+  owner holds the reading as an OFFL-008 review item and held reading with
+  version-1 proof after validating the payload and the target in the
+  organization without current authority; a malformed payload, a target that
+  does not exist in the organization or a declaration outside the meter's
+  service window is `REJECTED` `MALFORMED`. A held fact creates no reading,
+  effect, cost or dependency readiness until a reviewer who is not the author
+  resolves it (OFFL-008). An owner without a held path answers eligible work
+  `RETRY`/`UNAVAILABLE` with no claim — fuelings until FUEL-003 (EDR-177) —
+  while its `MEMBERSHIP_ENDED`, `DEVICE_REVOKED` and `INTAKE_WINDOW_CLOSED`
+  refusals are final. An eligible operation with unaccepted hard dependencies
+  is `RETRY`/`DEPENDENCY_PENDING` with its claim kept (BR-OFFL-007).
+- **B-BR-EMP-305 — One recorded decision per late operation.** Every final
+  late acknowledgement commits with one immutable, forced-RLS
+  `org_sync_late_intakes` row holding its evidence: end source and instant,
+  window and settings revision, declared instant, receipt, disposition,
+  result, code and policy `late-intake-v1`. The database re-derives E, W and
+  the disposition from history and refuses a mismatching row; the codes
+  `ACCESS_ENDED_BEFORE_RECEIPT`, `MEMBERSHIP_ENDED`, `INTAKE_WINDOW_CLOSED` and
+  `DEVICE_REVOKED` are stored only with their decision row; a late held meter
+  reading is stored only for an `ACCESS_ENDED` period whose declaration or
+  earlier claim precedes E.
+- **B-BR-EMP-306 — Replay never restores access.** A late resend of an
+  operation with a late decision returns its stored acknowledgement byte for
+  byte, also after the window closed or the review was resolved, and applies
+  nothing; the same identifier with another digest is `REJECTED`
+  `OPERATION_ID_REUSED` without storage; a resend of an operation finalized
+  through the normal path before the end is `RETRY`/`UNAVAILABLE` and its
+  stored acknowledgement is unchanged. Concurrent identical late deliveries
+  leave one claim, one decision and one held fact.
+- **B-BR-EMP-307 — Late routing and isolation.** The signed route enters the
+  late path only when the current device check refuses the signing key as
+  revoked or ended, or when the batch's sealed period differs from the
+  current one; the period is read from the batch's operations with the full
+  frozen parser and must be the exact owned period of the signing key in the
+  URL organization (another organization's period is `NOT_FOUND`). The late
+  source is confirmed again inside every operation transaction and once more
+  before the response; a failure withholds the whole response (OFFL-002).
+- **BUC-EMP-152 — Deliver after offboarding (UC-OFFL-07).** A driver
+  offboarded while offline reconnects inside the window: readings declared
+  before the end are held `ACCESS_ENDED_BEFORE_RECEIPT` and wait for a
+  manager, a reading declared after the end is `MEMBERSHIP_ENDED`, resends
+  return the same acknowledgements, and the driver can read nothing.
+- **BUC-EMP-153 — Closed window and lost device.** After the window every
+  late operation is `INTAKE_WINDOW_CLOSED`, whatever its declared time; a
+  device revoked as lost or compromised is refused as a whole with nothing
+  stored.
+- **BUC-EMP-154 — Prove late intake on real PostGIS.** Server-history
+  evidence, a forged declared time, the window in force at the end instant,
+  earlier-claim evidence, exact replay, 12-way concurrency, intake racing the
+  membership end in both orders, foreign organization, database guards and a
+  populated upgrade with injected failure and recovery.
+
+## EMP-OFFL-012 — Organization-state and plan-change handling for queued operations (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-offl012-org-state-queued-operations.md).
+
+- **B-BR-EMP-308 — Organization state decides before the owner.** Every new
+  signed operation of a current member's enrolled device is first assessed
+  against the organization's recorded suspension history (EMP-ORG-009
+  `AssessSuspension`: server-recorded periods, the database receipt, a 7-day
+  grace that includes its end instant) and, when that allows it, against the
+  plan rule (B-BR-EMP-309); only then does the owning handler run. A
+  suspension `REVIEW` is `ACCEPTED_FOR_REVIEW` `ORG_SUSPENDED_GRACE`; a
+  `REFUSE` `ORG_SUSPENDED` is a final `REJECTED` `ORG_SUSPENDED` with nothing
+  stored; archived, setup and closed refusals keep their whole-response codes.
+  While the organization is `SUSPENDED` the signed route admits a non-empty
+  batch from the current member's enrolled device to this assessment only: it
+  never reaches an owner's write or read authority, and an empty batch keeps
+  `ORG_SUSPENDED`. After reactivation the same history still holds work
+  declared during the resolved interval and refuses work that missed its grace.
+- **B-BR-EMP-309 — A plan change is the capability's recorded state.** No
+  billing exists: the plan is the operation's write capability
+  (`organizations` for meter and fueling). Enabled at receipt, the owner
+  decides as before. Disabled at receipt after a change, the instant the
+  current state was set is the downgrade instant: work declared before it is
+  `ACCEPTED_FOR_REVIEW` `PLAN_CHANGED`; work declared at or after it, or under
+  a capability created disabled or absent, is new forbidden work and the owner
+  keeps refusing it with `ENTITLEMENT_REQUIRED`. A plan change never changes a
+  membership, role or enrollment (BR-AUTH-009).
+- **B-BR-EMP-310 — State work is quarantined, recorded and replayed.** A held
+  state decision uses the owner's typed held path (the meter's OFFL-008 review
+  with the given code); an owner without one answers `RETRY`/`UNAVAILABLE`
+  with no claim (fuelings until FUEL-003). Every final state acknowledgement
+  commits with one immutable forced-RLS `org_sync_state_intakes` row
+  (condition, its server instant, declaration, receipt, result and code); the
+  database re-derives the condition from history and stores
+  `ORG_SUSPENDED_GRACE`, `ORG_SUSPENDED` and `PLAN_CHANGED` only with such a
+  row. A resend returns the stored acknowledgement byte for byte through that
+  row, also while suspended, and never applies, re-decides or adds a cost; the
+  same identifier with another digest is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-311 — Device time never bypasses a block.** The declared instant
+  only chooses review over refusal: work declared before a suspension or a
+  downgrade is reviewed, never applied; a declaration cannot extend the grace;
+  current permission never certifies work recorded while a suspension was
+  open. Another organization's history never decides, and its member, device
+  or operation is not found.
+- **BUC-EMP-155 — Deliver into a suspended organization (VAL-22 part 2).** A
+  reading declared before the suspension and delivered inside the grace is
+  held `ORG_SUSPENDED_GRACE`; one declared after the suspension is
+  `ORG_SUSPENDED` and stays visible with its reason; after reactivation new
+  readings apply, resends replay, and nothing was deleted or reassigned.
+- **BUC-EMP-156 — Deliver across a plan downgrade (VAL-24/35).** A reading
+  declared before the capability was turned off is held `PLAN_CHANGED`; one
+  declared after it is refused `ENTITLEMENT_REQUIRED`; no role, membership or
+  enrollment changed; held work is never counted until a reviewer decides.
+
+## EMP-TRIP-002 — Trip persistence and sync handlers with the one-active-trip-per-asset rule (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip002-trip-persistence.md).
+
+- **B-BR-EMP-312 — One trip per signed `trip.start`.** The operation
+  `trip.start` schema 1 (entity `trip`, id = the device trip UUID, no
+  expected revision, dependency, soft reference or attachment) carries the
+  exact payload `asset_id`, `driver_employee_id`, `reading` (`meter_id`,
+  `segment_id`, `reading_id`, `kind`, `value`, or null),
+  `missing_reading_reason` (or null) and `run_clock` (`boot_id`,
+  `elapsed_millis`, or null) of canonical strings; the envelope declaration
+  is the start declaration. It is validated through the EMP-TRIP-001
+  `Start` and stores one organization-scoped, forced-RLS trip: identity,
+  operation and digest, asset, driver, author membership and its employee
+  record, capture enrollment, the declaration (microsecond floor plus
+  0..999 remainder, entry zone, device offset), the optional run clock, the
+  FLEET-005 unit and cost-centre snapshot at the declared instant, the start
+  reporting day attributed in that unit's zone or else the organization's
+  zone, the departure reading or missing reason and the server receipt;
+  state IN_PROGRESS. A trip identity already used by another operation is
+  `MALFORMED`; a `DRAFT` asset or a driver that is not an active, unmerged
+  employee is `MALFORMED`.
+- **B-BR-EMP-313 — One active trip per asset (VAL-07).** At most one
+  IN_PROGRESS trip per asset is a database invariant. The intake decides
+  under the organization root and asset row locks: the first admissible
+  start received is `ACCEPTED`; a later admissible start on an asset with a
+  trip in progress is kept as a held start `ACCEPTED_FOR_REVIEW`
+  `ASSET_BUSY`; an asset that is not ACTIVE at receipt, or a start declared
+  at or after its disposal, is held `ASSET_UNAVAILABLE`; a start whose right
+  changed after its declaration (EDR-118 continuity) is held
+  `PERMISSION_CHANGED`. The FLEET-007 start decision is consulted in the
+  same transaction after those checks: a block, a confirmed reservation of
+  another employee, maintenance, a missing assignment or a trip holding the
+  declared instant holds the start `ASSET_UNAVAILABLE` or `ASSET_BUSY`. A
+  held start stores its whole fact, its reading values and a version-1
+  review item in the same transaction as its acknowledgement; it creates no
+  trip and no reading and is never active use. Its resolution belongs to
+  EMP-TRIP-007.
+- **B-BR-EMP-314 — Reading evidence commits with its event.** Exactly one
+  of a reading or a missing reason (the METER-001 profile) is required. A
+  departure reading is recorded through the fleet embedded-reading port with
+  origin `TRIP_START`, a final reading with `TRIP_END`, the event's
+  operation, its declaration and method `TYPED`, in the same transaction as
+  the event; a rollback leaves neither. A reading of another kind, of a
+  meter of another asset or outside the meter's service interval is
+  `MALFORMED`; an unknown meter or segment is `RETRY` `DEPENDENCY_PENDING`
+  with nothing stored. Plausibility never refuses an event (B-BR-EMP-273).
+- **B-BR-EMP-315 — One operational completion per trip through
+  `trip.finish`.** The operation `trip.finish` schema 1 (entity `trip`, id =
+  the trip UUID, no expected revision, at most one dependency, no soft
+  reference or attachment) carries the exact payload `reading`,
+  `missing_reading_reason` and `run_clock`. It stores one insert-only finish
+  fact (operation, digest, author, enrollment, declaration, run clock, the
+  informational end day in the stored reporting zone, final evidence,
+  receipt) and moves the trip from IN_PROGRESS to COMPLETED in the same
+  transaction, the only update a trip ever receives. Only the member who
+  started the trip finishes it (another member is a whole-response
+  `FORBIDDEN`); a finish declared before the start instant is `REJECTED`
+  `MALFORMED`; a trip that is not stored in this organization (missing,
+  held or another organization's) is `RETRY` `DEPENDENCY_PENDING` with
+  nothing stored; a trip already completed by another finish operation
+  keeps the new finish fact as `ACCEPTED_FOR_REVIEW` `TRIP_ALREADY_CLOSED`.
+- **B-BR-EMP-316 — Authority at receipt.** Both operations need current
+  `trip.trip.start` on the enrolled device. History follows EDR-118
+  continuity through the generalised classifier (EDR-177): a positive `ORG`
+  rule covers the member's own trip; `SELF` covers it only while the asset
+  is assigned to the member (FLEET-006 periods) and the member's own employee
+  record is the driver. Never covered is `FORBIDDEN` and a missing or
+  foreign asset `NOT_FOUND`, both refusing the whole response with nothing
+  stored. A receipt replay needs current `trip.trip.read` over the stored
+  trip (author, asset, stored unit and cost centre), except the author's own
+  held receipt.
+- **B-BR-EMP-317 — Exact replay and concurrency.** The intake ledger
+  decides by operation id: the same id and digest returns the stored
+  acknowledgement byte for byte and creates nothing; the same id with
+  another digest is `REJECTED` `OPERATION_ID_REUSED`; concurrent identical
+  operations leave one fact. Concurrent admissible starts from two devices
+  on one asset leave exactly one IN_PROGRESS trip and one held `ASSET_BUSY`
+  start in either order, and a replay of the held start returns its held
+  acknowledgement.
+- **B-BR-EMP-318 — Review state and active use.** A stored trip begins its
+  review case as the APPR-001 draft (DRAFT, revision 1, no entry); neither
+  start nor finish submits it (EMP-TRIP-004 owns submission). An IN_PROGRESS
+  trip is open work: FLEET-003 deactivation and disposal of its asset are
+  refused with the `TRIP` open-work kind. Stored trips are the FLEET-007
+  active-use source: a trip started at or before an instant and not finished
+  at or before it holds the asset then, so availability reads `IN_USE` and no
+  longer lists active use among its missing sources. A block added during a
+  trip never interrupts it and applies to the next start.
+- **B-BR-EMP-319 — Bounded sources.** Trips, finishes and held starts and
+  finishes are asset operations in the asset usage source (they fix the kind
+  and keep a draft from being discarded); unit and cost-centre snapshots are
+  associations, never current use. The owners declare no asynchronous
+  follow-up for `ACCEPTED`/`REJECTED` and an atomic review for
+  `ACCEPTED_FOR_REVIEW`. No route, panel read, OpenAPI path, review
+  decision, own-result read for trips or Android change is added.
+- **BUC-EMP-157 — Record a driver-initiated trip through the signed
+  intake.** A covered driver's device sends `trip.start` with the departure
+  reading 184 320 000 m and later `trip.finish` with 184 610 000 m; the
+  server stores one IN_PROGRESS trip, then completes it with 290 000 m of
+  meter evidence, each with one ACK in one transaction; resends return the
+  same ACKs.
+- **BUC-EMP-158 — Two devices start one vehicle (VAL-07).** Two drivers
+  start the same vehicle offline; whichever arrives first is the active
+  trip and the other is kept for review with `ASSET_BUSY`, never dropped or
+  retried.
+- **BUC-EMP-159 — Keep a second completion.** A second finish operation for
+  a trip already completed is kept for review with `TRIP_ALREADY_CLOSED`.
+- **BUC-EMP-160 — Prove the trip store on real PostGIS.** Replay, digest
+  reuse, races with barriers in both orders, reading rollback in both
+  directions, foreign asset, authority history, open work, forced RLS, the
+  guarded state update and a populated 000215 → 000220 upgrade with injected
+  failure, recovery and previous-image compatibility.
+
+## EMP-FLEET-011 — Implements: attach to and detach from a powered asset (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-fleet011-implement-attachments.md).
+
+- **B-BR-EMP-325 — An implement works with at most one powered asset at a
+  time.** An attachment belongs to one organization and names one of its
+  assets of kind `IMPLEMENT` and one of kind `VEHICLE` or `MACHINE`, both in
+  `ACTIVE` or `INACTIVE`, for a half-open period `[start, end)` with
+  whole-microsecond bounds; the start is the server instant when omitted and
+  may not be earlier when given; the end is optional. An implement is
+  attached to at most one powered asset at any instant: the database
+  enforces it with an exclusion constraint, so of two concurrent overlapping
+  attachments of one implement exactly one commits and the other is refused
+  with `CONFLICT` and leaves nothing. A powered asset may carry several
+  implements at once. Attaching to an implement, or attaching an asset that is
+  not an implement, is `VALIDATION_FAILED`; an asset of another organization
+  (or unknown) is not found. Rows are private under forced row-level security
+  and never deleted.
+- **B-BR-EMP-326 — Detaching ends the period, never before it began.** A
+  detach ends an attachment that is not `ENDED` at the server instant, at the
+  end the command states or at the server instant (at its start when it has
+  not started, leaving an empty period). A stated end earlier than the server
+  instant, earlier than the attach instant or later than a planned end is
+  `VALIDATION_FAILED`; detaching an ended attachment is `CONFLICT`; an
+  optional reason has 1 to 280 characters. The command names the attachment
+  through either of its assets; through another asset it is not found.
+- **B-BR-EMP-327 — An attached implement follows its powered asset's trips.**
+  The implements attached to a powered asset at an instant, and the powered
+  asset an implement is attached to at an instant, are answered by a port on
+  the caller's organization transaction (half-open periods). An attached
+  implement's availability lists, as `IN_USE` causes naming the powered
+  asset, the trips in progress or paused of its powered asset at that instant;
+  maintenance holds, blocks and reservations of the powered asset do not
+  transfer to the implement. Without a trip source the answer names the
+  missing source instead of claiming the implement is free of trips.
+- **B-BR-EMP-328 — An implement is never a trip's main asset; an attachment
+  fixes both kinds.** The trip-start eligibility check refuses an `IMPLEMENT`
+  as the main asset of a trip (the trip intake applies it). An attachment
+  counts as an operation of both assets, so neither asset's kind can change
+  once an attachment names it (BR-FLEET-002).
+- **B-BR-EMP-329 — Attachments are managed with `fleet.asset.manage` on both
+  assets.** Attach and detach require fresh `fleet.asset.manage` covering the
+  asset in the path and, inside the transaction, the other asset of the
+  attachment (`ORG`, or a `UNIT`, `COST_CENTRE` or `ASSET` grant matching each
+  asset's allocation); the list requires current `fleet.asset.read` covering
+  the asset. Every write records exactly one audit event
+  (`fleet.implement.attached` or `fleet.implement.detached`) and one receipt
+  bound to its operation identifier; the same intent replayed returns the
+  first result, another intent under the same identifier is
+  `OPERATION_ID_REUSED`.
+- **BUC-EMP-164 — Attach and detach an implement.** Actor: member with fresh
+  `fleet.asset.manage` covering both assets. Main flow: choose the implement,
+  the powered asset and the optional start and end → the server checks
+  kinds, states and overlap under the organization root lock → attachment
+  recorded with one audit event and receipt; later, detach with an optional
+  end and reason. Alternatives: implement already attached in an overlapping
+  period → `CONFLICT`; powered asset is an implement → `VALIDATION_FAILED`;
+  detach before the attach instant → `VALIDATION_FAILED`; ended →
+  `CONFLICT`; a grant scoped to another unit on either asset → `FORBIDDEN`.
+  Result: the implement's history of powered assets by period.
+- **BUC-EMP-165 — Read attachments and the implements of a trip start.**
+  Actor: member with current `fleet.asset.read` covering the asset; the trip
+  intake (system). Main flow: the attachments in which the asset is the
+  implement or the powered asset, in start order with their state at the
+  server instant; the trip start asks the port for the implements attached
+  to the powered asset at its instant. Alternatives: foreign or unknown asset
+  → `NOT_FOUND`. Result: read only.
+
+## EMP-OFFL-006 — Reference data pull for the active organization: versioned deltas (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-offl006-reference-feed.md).
+
+- **B-BR-EMP-336 — Purpose-bound reference content.** The reference feed of
+  a selected organization contains only the assets currently assigned to the
+  requesting member (EMP-FLEET-006 periods at the server instant) that the
+  member's current `fleet.asset.read` grants cover (ORG; SELF through the
+  assignment; UNIT and ASSET through the asset's current allocation). Each is
+  one minimised `asset` entity: identifier, revision, kind, usage basis,
+  state, name, fleet number, plate, the products its tanks accept under the
+  `fuel-products-v1` catalog name, its in-service meters (identifier, kind,
+  modulus, installation instant, open segment) and the covering assignment's
+  kind and end. Nothing else is cached: no serial number, unit, cost centre,
+  acquisition, value, other drivers, reservations or readings (BR-PRIV-003).
+- **B-BR-EMP-337 — Cached data is a read copy, never authority.** Every
+  response carries `confirmed_at`, the database clock after the final source
+  check; the client shows that age and replaces nothing on its own clock.
+  Every choice made from cached data is checked again at intake exactly as if
+  no cache existed (BR-OFFL-016).
+- **B-BR-EMP-338 — One scoped, signed cursor.** The feed is pulled on the
+  signed device route with the current exact enrollment. The cursor is opaque
+  and server-signed, and binds organization, membership, enrollment, feed
+  epoch and revision; a cursor that does not verify for the exact requesting
+  period is `NOT_FOUND` and reveals nothing.
+- **B-BR-EMP-339 — Monotonic revisions with durable tombstones.** Each member
+  has one feed whose revision only grows. A pull appends one revision per
+  changed entity (an upsert when its minimised content changed, a `DELETE`
+  tombstone when it left the authorized set, whatever the reason: unassigned,
+  reassigned, disposed, archived or no longer covered). A delta answers every
+  entity changed after the cursor with its latest state, ordered by revision,
+  with `from_revision` and `revision` so a client can detect any gap; a
+  tombstone is delivered even after its source row is gone.
+- **B-BR-EMP-340 — Reset instead of stale authority.** No cursor, a cursor of
+  another feed epoch or a revision ahead of the feed answers `RESET` with the
+  complete current set; a member who no longer holds any covering
+  `fleet.asset.read` grant gets `RESET` with reason `FORBIDDEN` and no
+  entities, so the client must drop every cached entity of that partition and
+  never keeps the old data.
+- **B-BR-EMP-341 — Closed, versioned entity set.** Entity types are a closed
+  set versioned with the response (`asset` today). Checklist templates
+  (EMP-CHECK-001) and availability join only as new entity types through their
+  owners; a client refuses an unknown type instead of guessing.
+- **BUC-EMP-169 — Refresh reference data (UC-OFFL-08).** The app pulls with
+  its last cursor, applies the ordered changes and tombstones, stores the new
+  cursor and shows "confirmed at" from the server.
+- **BUC-EMP-170 — A reassignment reaches the cache.** After a reassignment
+  the next pull removes the asset with a tombstone; a reading already queued
+  for it is decided at intake as before (held or refused), never by the cache.
+- **BUC-EMP-171 — Prove the feed on real PostGIS.** Foreign and tampered
+  cursors, tombstones after the cursor, monotonic gap-detectable revisions,
+  revoked grants, server-clock confirmation, concurrent pulls, database
+  guards and a populated upgrade.
+
+## EMP-CHECK-001 — Checklist templates per asset category (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-check001-checklist-templates.md).
+
+- **B-BR-EMP-330 — A template version is one immutable, bounded
+  definition.** A checklist template belongs to one organization and has a
+  fixed context, `DEPARTURE`, `RETURN` or `AD_HOC`. Each version states a name
+  of 1 to 80 characters, exactly one target — the organization default
+  (`ORGANIZATION`), 1 to 100 distinct asset categories (`CATEGORIES`) or 1 to
+  100 distinct assets (`ASSETS`) of the organization — and 1 to 40 ordered
+  items, each with a label of 1 to 120 characters and three flags: critical,
+  optional (`NOT_APPLICABLE` accepted) and photo required when not OK. A
+  critical item is never optional. Names and labels are valid UTF-8, free of
+  control characters and not blank. An item is identified by its position
+  1..n inside its version. Any other shape is `VALIDATION_FAILED`; a category
+  or asset of another organization, or unknown, is `NOT_FOUND`; an asset
+  target must be `ACTIVE` or `INACTIVE` when the version is published (a
+  draft, disposed or archived asset is `VALIDATION_FAILED`).
+- **B-BR-EMP-331 — Publication appends and never rewrites.** Creating a
+  template publishes version 1 with policy revision 1 and leaves the template
+  `ACTIVE` at template revision 1. Publishing a change appends version n+1,
+  changing the critical-item policy appends a policy revision, and archiving
+  moves the template to `ARCHIVED`, which is terminal; each of these commands
+  names the expected template revision and increments it by one. A stale
+  revision or an archived template is `CONFLICT` and changes nothing.
+  Versions with their items and targets, and policy revisions, are
+  insert-only: the database refuses their update, delete or truncate, a gap
+  or a repeated version or revision number, and an item or a target added to
+  a committed version. A run of EMP-CHECK-002 names the version and the policy
+  revision it used, so a later publication never changes a completed run
+  (BR-CHECK-001).
+- **B-BR-EMP-332 — One applicable template per asset and context.** Among the
+  `ACTIVE` templates of one context, a category, an asset and the organization
+  default are each named by at most one template's current version; a
+  publication that would name a taken target is `CONFLICT`, decided under the
+  organization root lock so that two concurrent publications cannot both take
+  it. For an asset and a context, the applicable template is the `ACTIVE` one
+  whose current version names the asset, else the one naming the asset's
+  category, else the organization default, else none, and then no checklist
+  is required (BR-CHECK-002). The applicable read answers, at its server
+  instant, the template identifier, name, current version with its items, the
+  match kind (`ASSET`, `CATEGORY`, `ORGANIZATION` or `NONE`) and the current
+  policy revision with its mode, validity and effective instant — exactly what
+  a run pins — and never the template's other targets.
+- **B-BR-EMP-333 — The critical-item policy is revisioned per template.** A
+  policy revision states the mode `BLOCK` (default) or `WARN` and the run
+  validity in seconds from 3 600 to 259 200 (1 to 72 hours), default 43 200
+  (12 hours) (BR-CHECK-005, BR-CHECK-012); any other value is
+  `VALIDATION_FAILED`. Revisions are numbered from 1 and carry the server
+  instant at which they took effect. The policy in force at an instant is the
+  revision with the latest effective instant not after it, ties by the higher
+  revision; before the first revision none is in force. Changing the policy
+  creates no template version and rewrites no earlier revision.
+- **B-BR-EMP-334 — Answers are checked and the outcome is computed by one
+  shared rule.** For the items of a version and a policy, an answer set has
+  exactly one entry per item: `OK`, `NOT_OK`, `NOT_APPLICABLE` or unanswered,
+  each with an optional note of at most 140 control-free characters and an
+  optional photo declaration. In this order: a malformed set (wrong count,
+  unknown answer, invalid note) is `INVALID`; `NOT_APPLICABLE` on an item that
+  is not optional is `ANSWER_NOT_ALLOWED`; `NOT_OK` without a photo on an
+  item that requires one is `PHOTO_REQUIRED`; an unanswered item is
+  `INCOMPLETE` (BR-CHECK-003, BR-CHECK-015). The outcome is `COMPLETED_OK`
+  when no answer is `NOT_OK`, `BLOCKING` when a critical item is `NOT_OK`
+  under `BLOCK`, and `COMPLETED_WITH_ISSUES` otherwise (BR-CHECK-004); the
+  result lists the positions answered `NOT_OK` and the critical ones among
+  them, and requires the author's acknowledgement exactly when a critical item
+  is `NOT_OK` under `WARN` (BR-CHECK-005). Go and Kotlin share this rule, the
+  target resolution and the policy-in-force lookup through one oracle; no
+  route evaluates a run before EMP-CHECK-002.
+- **B-BR-EMP-335 — Template commands need fresh `check.template.manage`; the
+  applicable read needs `fleet.asset.read` on the asset.** Templates are
+  organization-level resources: create, publish, policy and archive require
+  fresh `check.template.manage` with `ORG` coverage (a `UNIT`, `COST_CENTRE`,
+  `ASSET`, `TEAM` or `SELF` grant covers none), an `ACTIVE` organization and
+  the organizations capability; the template list and read require current
+  `check.template.manage` with `ORG` coverage. The applicable read requires
+  current `fleet.asset.read` covering the asset (`ORG`, a `UNIT`,
+  `COST_CENTRE` or `ASSET` grant matching its allocation at the server
+  instant, or `SELF` on an asset assigned to the member). A template, category
+  or asset of another organization is `NOT_FOUND` with no data. Rows are
+  private under forced row-level security. Every write records exactly one
+  audit event and one receipt bound to its operation identifier; the same
+  intent replayed returns the first result, another intent under the same
+  identifier is `OPERATION_ID_REUSED`.
+- **BUC-EMP-166 — Create, publish and archive a template.** Actor: member
+  with fresh `check.template.manage` at `ORG`. Main flow: choose the context,
+  name, target and items, and optionally the policy → the server validates
+  B-BR-EMP-330 and that the target is free under the organization root lock →
+  template `ACTIVE`, version 1, policy revision 1, one audit event and
+  receipt → later, publish a change with the revision read → version n+1, the
+  earlier versions still readable; archive with the revision read →
+  `ARCHIVED`, its targets free and no checklist required by it from then on.
+  Alternatives: target taken by another `ACTIVE` template of the context →
+  `CONFLICT`; stale revision or archived template → `CONFLICT`; a critical
+  optional item, 41 items or a blank label → `VALIDATION_FAILED`; foreign or
+  unknown category or asset → `NOT_FOUND`; supervisor or driver →
+  `FORBIDDEN`; replay → first result. Result: an append-only version history.
+- **BUC-EMP-167 — Set the critical-item policy.** Actor: member with fresh
+  `check.template.manage` at `ORG`. Main flow: choose `BLOCK` or `WARN` and
+  the run validity with the revision read → policy revision m+1 effective at
+  the server instant; versions unchanged. Alternatives: validity outside 1 to
+  72 hours or an unknown mode → `VALIDATION_FAILED`; stale revision or
+  archived template → `CONFLICT`. Result: the policy history answers which
+  revision was in force at any instant (the EMP-CHECK-002 server recheck).
+- **BUC-EMP-168 — Read the applicable template of an asset.** Actor: member
+  with current `fleet.asset.read` covering the asset, such as a driver on an
+  assigned asset. Main flow: choose the context → the server resolves asset →
+  category → organization default at its instant → the template version with
+  its items and the current policy revision, or "no checklist required".
+  Alternatives: foreign or unknown asset → `NOT_FOUND`; an unassigned asset
+  for a `SELF` driver or another unit's asset for a `UNIT` supervisor →
+  `FORBIDDEN`. Result: the run of EMP-CHECK-002 pins the version and the
+  policy revision; nothing is stored by the read.
+
+## EMP-TRIP-003 — Logbook events: the typed timeline (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip003-logbook-events.md).
+
+- **B-BR-EMP-320 — Closed logbook vocabulary.** A logbook event has exactly
+  one type from the closed `trip-logbook-v1` set. Supported now: `NOTE`
+  (text required), `STOP`, `ARRIVAL` and `DEPARTURE` (text optional), each an
+  instantaneous fact of the trip. Reserved for their owners and never
+  recorded here: `FUELING`, `TOLL` and `PARKING` (the fueling and expense
+  links of EMP-FUEL-011, EMP-EXP-004 and EMP-TRIP-020), `INCIDENT` and
+  `DAMAGE` (EMP-CHECK-003), `HANDOVER` (EMP-TRIP-012), `PAUSE`, `RESUME` and
+  `CANCEL` (EMP-TRIP-011). Any other token — empty, padded, lowercase,
+  `START`, `END`, `FINISH` — is unknown. A text is nonblank, free of control
+  characters and at most 280 Unicode scalars. A planned-stop link and legs
+  (EMP-TRIP-010), photos, amounts and corrections (EMP-TRIP-015) are not part
+  of v1. No logbook event changes the trip's state, meter evidence, asset
+  availability, open work, reporting day or review case, and none computes
+  working time (EDR-028).
+- **B-BR-EMP-321 — One logbook fact per signed `trip.event.record`.** The
+  operation `trip.event.record` schema 1 (entity `trip_event`, id = the
+  device event UUID, no expected revision, at most one dependency, no soft
+  reference or attachment) carries the exact payload `trip_id`, `type` and
+  `text` (a string or null) of canonical strings; the envelope declaration is
+  the event's original instant, entry zone and device offset (BR-TIME-001/002).
+  An accepted event stores one insert-only, forced-RLS logbook fact: its
+  stable identity (BR-OFFL-001), trip, type, text, operation and digest,
+  author membership and employee record, capture enrollment, the declaration
+  (microsecond floor plus 0..999 remainder, entry zone, device offset) and
+  the server receipt; the acknowledgement is `ACCEPTED` at revision 1. An
+  event identity already used by another operation is `MALFORMED`.
+- **B-BR-EMP-322 — Authority and target at receipt.** The operation needs
+  current `trip.trip.start` on the enrolled device. Only the member who
+  started the trip appends to it (another member is a whole-response
+  `FORBIDDEN` with nothing stored); history follows EDR-118 continuity on the
+  trip's asset at the event's instant, and a right changed after the
+  declaration stores nothing and stays `RETRY`/`UNAVAILABLE`, as for a
+  finish. A trip that is not stored in this organization — not yet delivered,
+  held, or another organization's, which forced RLS makes indistinguishable —
+  is `RETRY` `DEPENDENCY_PENDING` with nothing stored or revealed. A receipt
+  replay needs current `trip.trip.read` over the trip (author, asset, stored
+  unit and cost centre), except the author's own held receipt.
+- **B-BR-EMP-323 — The event's time against its trip.** An event declared
+  before its trip's start instant cannot be a fact of that trip and is
+  `REJECTED` `MALFORMED`. While the trip is IN_PROGRESS any instant at or
+  after its start is accepted; on a COMPLETED trip an event at or before the
+  finish instant is accepted as a late delivery of a fact recorded during
+  the trip, and the trip stays COMPLETED. An event declared after the finish
+  of a completed trip is kept as a held event `ACCEPTED_FOR_REVIEW`
+  `TRIP_ALREADY_CLOSED` with its whole fact and a version-1 review item in
+  the same transaction as its acknowledgement; it is not a logbook fact and
+  its resolution is retained (EMP-TRIP-007/015). An unknown type is
+  `REJECTED` `MALFORMED`; a reserved type is `RETRY` `UNAVAILABLE` (a
+  recognised future form: nothing is stored, nothing changes, the device
+  keeps it queued).
+- **B-BR-EMP-324 — Exact replay, concurrency and the timeline.** The same
+  operation id and digest returns the stored acknowledgement byte for byte;
+  the same id with another digest is `REJECTED` `OPERATION_ID_REUSED`;
+  concurrent identical deliveries leave one fact. An event and the finish of
+  its trip are serialized under the organization root and asset locks and the
+  trip row: an event at or before the finish instant is accepted in either
+  order and the finish completes the trip in either order, never a lost or
+  duplicated fact; the receipt order decides only an event declared after a
+  finish (accepted while the trip is still in progress, held once it is
+  completed), which device dependencies (BR-OFFL-007) keep in order. A trip's timeline is its
+  start, its logbook facts and its finish ordered by original instant (equal
+  instants: start, then events by identity, then finish); each item keeps its
+  fact type, actor, declared instant and entry zone, and server receipt, so
+  type and receipt stay distinguishable. Held events are not timeline facts.
+  No read route is added (panel reads belong to EMP-TRIP-006).
+- **BUC-EMP-161 — Log a trip's facts offline.** During the VAL-01 trip the
+  driver records an arrival, a note and a departure; each is delivered as its
+  own `trip.event.record`, accepted once with one acknowledgement, and the
+  timeline shows start, the three events and finish in order of occurrence
+  with their receipts.
+- **BUC-EMP-162 — Keep what cannot be appended.** An event declared after
+  the trip's finish is held `TRIP_ALREADY_CLOSED`; a reserved type (`PAUSE`)
+  stays queued with `RETRY` `UNAVAILABLE` and changes nothing; an unknown
+  type is refused `MALFORMED`.
+- **BUC-EMP-163 — Prove the logbook on real PostGIS and the shared oracle.**
+  Replay, digest reuse, concurrent duplicates, an event racing the finish
+  with barriers in both orders, another member, another organization's
+  trip, forced RLS, insert-only facts, deferred publication guards and a
+  populated 000224 → 000225 upgrade with injected failure and recovery; Go and
+  Kotlin consume the same `logbook-v1.psv` oracle.
+
+## EMP-TRIP-004 — Trip submission and administrative review (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip004-trip-review.md).
+
+- **B-BR-EMP-342 — Submission is the author's signed `trip.submit`.** The
+  operation `trip.submit` schema 1 (entity `trip_review`, id = the trip
+  UUID, `expected_revision` = the review revision being submitted, at most
+  one dependency — the trip's finish —, no soft reference or attachment)
+  carries the exact empty payload `{}`; its envelope declaration is the
+  instant the author marked the trip ready to send. The device keeps it
+  queued as "ready to send" until the server answers; the case becomes
+  `SUBMITTED` only when the server accepts it (BR-REV-002). Acceptance
+  appends one APPR-001 `SUBMIT` entry (DRAFT → SUBMITTED, revision kept)
+  with the operation, the author membership and its employee record in the
+  same transaction as the `ACCEPTED` acknowledgement, the audit event and
+  the effect, whose entity revision is the submitted review revision.
+- **B-BR-EMP-343 — Only a completed trip, only by its author.** Only the
+  member who started the trip submits it, with current `trip.trip.start`
+  over the stored trip and the EDR-118 history continuity of the finish
+  (another member is a whole-response `FORBIDDEN`). Only an operationally
+  `COMPLETED` trip whose review case is `DRAFT` at the named revision is
+  submitted. A trip that is not stored in this organization (missing, held
+  or another organization's) or still `IN_PROGRESS` is `RETRY`
+  `DEPENDENCY_PENDING` with nothing stored; an absent, non-positive or
+  out-of-range expected revision, any payload key, a soft reference, an
+  attachment or more than one dependency is `REJECTED` `MALFORMED`; a case
+  that is no longer `DRAFT` at the named revision (submitted by another
+  operation, returned, decided) and a submission whose right changed after
+  its declaration store nothing and stay `RETRY` `UNAVAILABLE` until
+  EMP-TRIP-015 owns resubmission, late duplicates and their held review.
+  Same id and digest replays the stored acknowledgement byte for byte; the
+  same id with another digest is `OPERATION_ID_REUSED`. Operational
+  completion alone never submits or approves a trip.
+- **B-BR-EMP-344 — One decision per revision by an independent scoped
+  reviewer.** `POST /v1/orgs/{org_id}/trips/{trip_id}/review/decide`
+  (`trip.trip.review`, configuration write, fresh proof, `revision` =
+  the review revision judged) decides `APPROVE` (optional reason), `RETURN`
+  or `REJECT` (reason required) with the B-BR-EMP-163 reason profile (1..280
+  scalars, no control character, blank is missing). Under the organization
+  root and the trip row lock the stored history is replayed through the
+  APPR-001 lifecycle; a `SUBMITTED` case is opened (`OPEN`, SUBMITTED →
+  IN_REVIEW) and decided in the same transaction, an `IN_REVIEW` case is
+  decided directly. The entries carry the reviewer's membership and employee
+  record and the command operation; one audit event
+  `trip.trip.approved|returned|rejected` (target `trip`, command digest, no
+  reason text) commits with them. The reviewer's permission is checked at
+  receipt over the trip's stored structure: its asset, the unit and cost
+  centre stored at the start, and the teams of its author and driver at the
+  start receipt (EMP-AUTH-006 `UNIT`, `COST_CENTRE`, `TEAM`, `ASSET`).
+- **B-BR-EMP-345 — Refusals change nothing.** A reviewer who shares an
+  account, a membership or a canonical employee record (merge chain) with
+  the trip's author or driver is `SELF_APPROVAL`, whatever roles that person
+  holds (BR-REV-003); an expected revision other than the current one, or a
+  case that is not `SUBMITTED` or `IN_REVIEW` (draft, already decided), is
+  `CONFLICT` (BR-REV-007); a missing, blank or invalid reason is
+  `VALIDATION_FAILED`; an unknown or another organization's trip is
+  `NOT_FOUND`; a member without `trip.trip.review` (DRIVER, FINANCE,
+  AUDITOR) or whose grant does not cover the trip's structure is
+  `FORBIDDEN`. Two decisions racing on one revision leave exactly one
+  decision; the other is `CONFLICT`. The same operation and digest returns
+  the stored result with `replayed=true` and writes no second entry or
+  audit event; the same operation with another digest is
+  `OPERATION_ID_REUSED`. The history is append-only and forced-RLS; the
+  database re-proves the transition, the separation of reviewer and author
+  and, at commit, the receipt or audit event of every entry.
+- **B-BR-EMP-346 — Minimal reviewer reads.** `POST
+  /v1/orgs/{org_id}/trips/{trip_id}/review/read` (`trip.trip.review`, read,
+  same structural coverage) returns only the decision context: trip, asset,
+  driver employee, operational state, start and finish instants, start
+  reporting day, review state and revision, and the entry history (kind,
+  revision, resulting state, reason, actor membership, recorded instant). No
+  reading value, run clock, coordinate or document content. `POST
+  /v1/orgs/{org_id}/trips/review/list` (`trip.trip.review`, read, an
+  organization-level resource that only an `ORG` grant covers) pages the
+  trips whose latest entry is `SUBMITTED` or `IN_REVIEW` in submission order
+  with the same minimal fields and the submission instant. Lists filtered by
+  structural scope, the timeline and the panel screens remain EMP-TRIP-006.
+- **B-BR-EMP-347 — What return and rejection mean now.** `RETURNED` records
+  what to fix for the author and is not terminal; the correction loop — a
+  new revision through events and amendments, then `RESUBMIT` — belongs to
+  EMP-TRIP-015, so until then a `trip.submit` on a returned case stays
+  `RETRY` `UNAVAILABLE`. `APPROVED` and `REJECTED` are terminal (BR-REV-006).
+  No decision changes the trip's operational state, readings, meter usage
+  or any time or wage figure; nothing approves automatically, and the author
+  has no cancel command yet.
+- **BUC-EMP-172 — Submit a finished trip (VAL-01 steps 4–5).** The driver
+  finishes the trip offline and marks it ready to send; the queued
+  `trip.submit` waits for its finish, is accepted on receipt and the trip
+  becomes `SUBMITTED`; a resend returns the same acknowledgement.
+- **BUC-EMP-173 — Review a submitted trip (VAL-01 step 6).** A scoped
+  reviewer reads the decision context and approves, returns with a reason or
+  rejects the current revision; the decision, its reviewer, its reason and
+  one audit event are kept, and the previous entries remain.
+- **BUC-EMP-174 — Prove the review on real PostGIS.** Self-approval, stale
+  revision, missing reason, a repeated and a second decision, another
+  organization's trip, an uncovering structural grant, an AUDITOR, a race in
+  both orders, forced RLS and the history guards, and a populated upgrade
+  with injected failure and recovery.
+
+## EMP-CHECK-003 — Damage and incident reports with photos (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-check003-incident-reports.md).
+
+- **B-BR-EMP-369 — A report is the reporter's signed
+  `check.incident.report`.** The operation `check.incident.report` schema 1
+  on the OFFL-002 intake (entity `incident_report`, id = the device report
+  UUID, no expected revision, at most one dependency, no soft reference)
+  carries exactly `report_type` (`DAMAGE` or `INCIDENT`), `incident_kind`
+  (`BREAKDOWN`, `ACCIDENT`, `THEFT`, `FINE_NOTICE` or `OTHER` for an
+  incident, `null` for a damage), `asset_id`, `trip_id` (UUID or `null`),
+  `description` (1..1000 Unicode scalars, no control character, not only
+  white space, under the BR-CHECK-015 hint), `location` (1..140 scalars of
+  the same profile, or `null`: where on the asset, or the place) and
+  `blocks_use` (the answer "no" to "O veículo pode continuar em uso?"). The
+  envelope declaration is when it happened. No field exists for injuries,
+  health, third-party identity, amounts, costs, notice numbers or document
+  content. An envelope attachment declaration stays `RETRY` `UNAVAILABLE`
+  until EMP-OFFL-005/EMP-DOC-004 own the device attachment path.
+  Acceptance stores one report in `REPORTED` at revision 1 with the asset,
+  the unit and cost centre the asset had at the declared instant
+  (BR-AUTH-005), the trip when named, the reporter's account, membership,
+  employee record and enrollment, the declaration and the server receipt,
+  in the same transaction as the `ACCEPTED` acknowledgement (entity revision
+  1), the intake audit event and the effect.
+- **B-BR-EMP-370 — Who reports, and what is refused.** The report needs the
+  current enrolled device and `check.incident.report` from retained role
+  history at the declared instant (EDR-118 continuity): an `ORG` grant
+  covers every asset of the organization; a `SELF` grant covers only an
+  asset assigned to the member at that instant; a structural grant is not
+  yet an intake source. An unknown or another organization's asset is a
+  whole-response `NOT_FOUND`; a member without the permission is
+  `FORBIDDEN`; a `DRAFT` asset, an unknown token, a wrong shape, an incident
+  kind on a damage or none on an incident, an invalid description or
+  location, more than one dependency or a report identity already held by
+  another operation is `REJECTED` `MALFORMED`; a right that changed after
+  the declaration stores nothing and stays `RETRY` `UNAVAILABLE` (no held
+  owner yet). The same id and digest replays the stored acknowledgement
+  byte for byte; the same id with another digest is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-371 — Inside a trip the report is a timeline fact.** A named
+  trip must be stored in this organization (else `RETRY`
+  `DEPENDENCY_PENDING`, nothing stored or revealed), be on the report's
+  asset (else `MALFORMED`), have been started by the reporter (else
+  `FORBIDDEN`) and contain the declared instant — from its start, up to the
+  finish of a completed trip — (else `MALFORMED`); the check runs under the
+  organization root and asset locks that the trip finish also takes. An
+  accepted report with a trip is an `INCIDENT` or `DAMAGE` fact of that
+  trip's timeline with its identity, reporter, declaration and receipt and
+  without its description, in the shared order (B-BR-EMP-324); it is read
+  from the report, never copied into the logbook. `trip.event.record` with
+  `INCIDENT` or `DAMAGE` is therefore a final `MALFORMED`: those facts are
+  their own operation, as the start and the finish are.
+- **B-BR-EMP-372 — Photos are linked documents with their own state.** A
+  report stores no byte, file name, digest or locator. Photos are EMP-DOC-002
+  synthetic documents linked through EMP-DOC-003 with the target kind
+  `INCIDENT`, resolved by the maintenance module: a link needs
+  `doc.document.attach` on the member's own document and
+  `check.incident.report` on the member's own report (the reporter alone);
+  another member's document or report is `FORBIDDEN`, another organization's
+  or an unknown one `NOT_FOUND`. A report is accepted, read and handled
+  whatever the state of its photos: every read shows each linked document
+  only with its own storage state (`UPLOADING`, `RECEIVED`, `STORED`,
+  `QUARANTINED`, `FAILED`, …) and its link instant, never as ready unless it
+  is `STORED`, and never with content; opening a photo stays the
+  `doc.document.view_content` path audited by EMP-PRIV-005 (BR-CHECK-016,
+  BR-PRIV-004). Real photos stay legally gated (OQ-04).
+- **B-BR-EMP-373 — Handling is a recorded, scoped state change.** `POST
+  /v1/orgs/{org_id}/incidents/reports/{report_id}/decide`
+  (`check.incident.manage`, configuration write, fresh proof, `revision`)
+  applies `ACKNOWLEDGE` (`REPORTED` → `ACKNOWLEDGED`, no note), `TREAT`
+  (`REPORTED` or `ACKNOWLEDGED` → `IN_TREATMENT`, the stated action),
+  `RESOLVE` (any open state → `RESOLVED`, the resolution note) or `DISMISS`
+  (any open state → `DISMISSED`, the reason and optionally `duplicate_of`,
+  another report of the same asset). Notes have 1..500 scalars of the
+  description profile. Each step adds one append-only history row with the
+  handler's account, membership and employee record, the operation and the
+  command digest, and one audit event
+  `check.report.acknowledged|treated|resolved|dismissed` (target
+  `incident_report`, no text) in the same transaction as the report's next
+  revision. A stale revision or a step not allowed from the current state is
+  `CONFLICT`; a missing or invalid note, a note on an acknowledgement, a
+  duplicate on another action, the report itself or a report of another
+  asset is `VALIDATION_FAILED`; resolving or dismissing a report with
+  `blocks_use` by its reporter (shared account, membership or employee
+  record) is `SELF_APPROVAL` (BR-CHECK-011); an unknown or another
+  organization's report (or duplicate) is `NOT_FOUND`; a member without the
+  key, or whose grant does not cover the report's stored asset, unit or cost
+  centre, is `FORBIDDEN`. Two handlers racing on one revision leave one
+  step; the other is `CONFLICT`. The same operation and digest returns the
+  stored step with `replayed=true`; another digest is
+  `OPERATION_ID_REUSED`. Nothing is ever deleted.
+- **B-BR-EMP-374 — A report books no cost; minimal reads.** No report,
+  link or handling step creates or changes an expense, payable, budget,
+  allocation, fueling, trip, reading, availability or document state
+  (BR-CHECK-018); the asset block and the release of a blocking checklist
+  run (BR-CHECK-010/011) remain EMP-CHECK-002/004. `POST
+  /v1/orgs/{org_id}/incidents/reports/list` (`check.incident.manage`, read,
+  an organization-level resource that only an `ORG` grant covers) pages the
+  reports by identifier with their summary; `…/{report_id}/read` (same key,
+  structural coverage over the stored asset, unit and cost centre) returns
+  the report, its handling history and its linked documents' states; `POST
+  /v1/orgs/{org_id}/incidents/reports/mine` (`check.incident.report`, read,
+  the member's own record) pages the member's own reports. AUDITOR holds
+  neither key and is `FORBIDDEN` on all of them.
+- **BUC-EMP-186 — Report a damage or an incident offline.** A driver
+  answers "Relatar problema" without signal; the queued
+  `check.incident.report` is accepted on receipt (also inside the trip in
+  progress, where it appears on the trip timeline), a resend returns the
+  same acknowledgement, and nothing waits for the photos.
+- **BUC-EMP-187 — Attach photos to one's own report.** The reporter links
+  own synthetic documents to the report; the report and every read show each
+  photo's own storage state, a failed upload stays visibly failed, and
+  nobody obtains content without `doc.document.view_content`.
+- **BUC-EMP-188 — Handle a report.** A scoped manager reads the queue and
+  one report, acknowledges it, records an action, resolves it with a note or
+  dismisses it with a reason (or as a duplicate); every step is in the
+  history and the audit trail, and no cost appears.
+
+## EMP-FLEET-013 — App: my assets and asset selection (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-fleet013-my-assets.md).
+
+- **B-BR-EMP-348 — The asset cache lives in the protected partition.** The
+  app keeps the reference feed of one organization as one versioned cache
+  inside the accepted protected generation of its exact account, API origin
+  and organization (EMP-PRIV-003), bound to the membership and enrollment it
+  was pulled with: the minimised `asset` entities of B-BR-EMP-336, the opaque
+  cursor, the feed revision, the server `confirmed_at` and the device clock of
+  the commit. A cache bound to another membership or enrollment, or written in
+  an unknown cache version, reads as absent and is replaced by the next full
+  pull; it is never shown. No plaintext table, journal or file holds it, it is
+  never read under another account, origin or organization, and nothing here
+  reads or writes the personal `vehicle` table.
+- **B-BR-EMP-349 — A response is applied whole or not at all.** The app
+  parses the frozen wire strictly (exact keys, closed enums including the
+  entity type `asset`, OpenAPI bounds, canonical UTC instants) and binds it
+  to its own request: request, membership and enrollment identifiers equal
+  the request; a request without a cursor accepts only `RESET` with
+  `NEW_CURSOR` or `FORBIDDEN`; a request with a cursor accepts `DELTA` only
+  when `from_revision` equals the revision held with that cursor, or `RESET`
+  with `CURSOR_EXPIRED`, `CURSOR_AHEAD` or `FORBIDDEN`. Changes are strictly
+  increasing revisions not above `revision` (and above `from_revision` in a
+  delta), one per entity; an upsert carries its asset with the same
+  identifier and a tombstone carries none; a reset holds only upserts and
+  `FORBIDDEN` holds none. `RESET` replaces the whole cached set (empty and
+  marked forbidden for `FORBIDDEN`); `DELTA` replaces or removes only the
+  named entities, and a tombstone for an entity the app never held changes
+  nothing. Any violation leaves the cache untouched. The new set, cursor,
+  revision and confirmation commit in one protected write and only when the
+  cache is still the one the pull started from, so a process death or a
+  concurrent refresh never leaves a mixed state. A `NOT_FOUND` answer to a
+  request with a cursor is retried once without a cursor; nothing else is
+  retried within one refresh.
+- **B-BR-EMP-350 — Confirmation is shown, never invented.** The list shows
+  the server `confirmed_at` of the last applied response. It is "não
+  confirmado" when 24 hours have passed since that commit, measured by the
+  device's elapsed time within one boot or by its wall clock after a reboot,
+  or when the wall clock after a reboot is earlier than the commit. An asset
+  whose cached assignment end has passed on the device clock is marked not
+  confirmed on its own. A refresh that fails says that the list could not be
+  confirmed now. The device clock never removes, hides or disables an asset:
+  only an applied response does (BR-OFFL-016, B-BR-EMP-337).
+- **B-BR-EMP-351 — "Meus ativos" shows exactly the cached set.** The list
+  holds exactly the entities of the last applied response — the assets with
+  an active assignment covered by the member's `fleet.asset.read` at that
+  server instant — one per row with name, fleet number, plate, kind, the
+  assignment kind and end, and the state; an asset whose state is not
+  `ACTIVE` is shown as not available with its state (§6.2 row 1); no other
+  availability is claimed because the feed carries none. The read-only
+  detail adds the usage basis, the accepted products and each in-service
+  meter with its kind and installation instant; it shows no reading or tank
+  capacity because the feed carries none. With no cached entity the list says
+  that no asset is assigned and that a company manager who assigns assets
+  can do it; after `FORBIDDEN` it shows the no-permission pattern and no
+  asset. Reading needs no network; refreshing does.
+- **B-BR-EMP-352 — The picker returns a hint, the server decides.** The
+  picker lists the same cached assets, optionally narrowed by the calling
+  operation to what it accepts, one per row with large targets, and returns
+  to the calling screen the organization, the asset identifier and revision,
+  its kind, usage basis and in-service meters and the confirmation instant,
+  with no network. Choosing an asset that is not `ACTIVE`, not confirmed or
+  whose assignment end has passed first shows a warning that the company
+  will review the choice; after it the asset is returned with the warning
+  recorded (BR-FLEET-027). The returned value grants nothing: the operation
+  carries the asset identifier and intake decides as if no cache existed.
+- **BUC-EMP-175 — See my assets (UC-FLEET-08, SCR-FLEET-08/10).** Actor:
+  member with an enrollment in the selected organization. Main flow: open
+  "Meus ativos" → the protected cache is shown at once with its confirmation
+  instant → when connected, a signed pull with the held cursor applies the
+  changes and the list and its instant update → open an asset for its
+  read-only detail. Alternatives: no cache yet and offline → unavailable
+  state saying a connection is needed once; no assigned asset → empty state
+  naming who can assign; `FORBIDDEN` → no-permission state; pull failure →
+  the cached list stays with "não foi possível confirmar agora"; 24 hours
+  without a pull → "não confirmado"; organization switch → only the newly
+  selected organization's cache; another account → nothing.
+- **BUC-EMP-176 — Choose an asset for an operation (SCR-FLEET-09).** Actor:
+  member starting an operation. Main flow: the calling screen opens the
+  picker → the member chooses a row → the picker returns the choice to the
+  calling screen without network. Alternatives: a not available or not
+  confirmed asset → review warning, then returned; cancel → nothing returned;
+  no asset → the empty state of BUC-EMP-175.
+- **BUC-EMP-177 — Prove the client against the feed.** One shared wire
+  oracle consumed by the Go server parser/encoder and the Kotlin client, host
+  tests for application, cache, process death and partition isolation, and
+  native acceptance on the owned API 36 emulator against an ordinary PostGIS
+  signed feed: online pull, process death, server unassignment while
+  offline, reconnection tombstones and two organizations kept apart.
+
+## EMP-TRIP-008 — Missions: create, assign, accept and decline (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip008-missions.md).
+
+- **B-BR-EMP-353 — Closed mission lifecycle.** A mission has exactly one
+  operational state from the 08-state-model catalog: `DRAFT`, `PLANNED`,
+  `ASSIGNED`, `ACCEPTED`, `DECLINED`, `IN_PROGRESS`, `COMPLETED`,
+  `CANCELLED`; `COMPLETED` and `CANCELLED` are terminal. Its commands are
+  exactly `PLAN`, `ASSIGN`, `ACCEPT`, `DECLINE`, `START`, `COMPLETE` and
+  `CANCEL`. A created mission is `DRAFT` at revision 1. The table answers,
+  first failure first: a terminal state `INVALID_TRANSITION`; `PLAN`
+  (EMP-TRIP-009), `START` and `COMPLETE` (the trip link of EMP-TRIP-021/023)
+  and every change of an `IN_PROGRESS` mission `UNSUPPORTED_COMMAND`;
+  `ACCEPT` and `DECLINE` only from `ASSIGNED` (else `INVALID_TRANSITION`);
+  `ASSIGN` from `DRAFT`, `PLANNED`, `ASSIGNED`, `ACCEPTED` and `DECLINED` to
+  `ASSIGNED`; `CANCEL` from the same five states to `CANCELLED`. Every command
+  on a stored mission names the revision it was decided on: a stale revision
+  is `CONFLICT` and changes nothing; an accepted transition increments the
+  revision by exactly one and appends exactly one transition record. Planning
+  or assignment never starts a trip, and no mission state is reached from a
+  trip in this task.
+- **B-BR-EMP-354 — Mission content.** A mission belongs to one organization
+  and names an operating unit (`ACTIVE` at creation), a title (nonblank, free
+  of control characters, at most 280 Unicode scalars), a planned window
+  `[starts_at, ends_at)` with whole-microsecond bounds and `ends_at` after
+  `starts_at`, and optionally an asset, which must be an `ACTIVE` main asset of
+  the organization (never an `IMPLEMENT`, EDR-219). A unit, asset
+  or employee of another organization is not found. Unit, asset, title and
+  window never change in this task (planning edits belong to EMP-TRIP-009,
+  vehicle change to EMP-TRIP-013).
+- **B-BR-EMP-355 — Assignment.** `ASSIGN` names an employee record of the
+  organization that is `ACTIVE`, not merged, and whose live membership is
+  `ACTIVE` and currently holds `trip.trip.start` covering the mission as the
+  member's own record (the same coverage the response needs); otherwise it is
+  a validation failure. The mission stores the employee and that membership as
+  its current assignee. From `ASSIGNED` or `ACCEPTED` the assignee must change
+  (a reassignment; the previous assignment and response stay in the
+  transition history); from `DRAFT`, `PLANNED` or `DECLINED` any eligible
+  member may be named, including the one who declined. When the mission names
+  an asset, the EMP-FLEET-007 start decision for the new assignee at the
+  planned start is returned once as a warning (`ASSET_BUSY` or
+  `ASSET_UNAVAILABLE` with the derived availability) and kept with the command
+  receipt; it never refuses the assignment, reserves, blocks or starts
+  anything.
+- **B-BR-EMP-356 — The assignee's response, decided at receipt.** Only the
+  member who is the mission's current assignee responds, with `ACCEPT`
+  (`ASSIGNED` → `ACCEPTED`, no reason) or `DECLINE` (`ASSIGNED` → `DECLINED`,
+  reason required, same text profile). The response travels offline as the
+  signed operation `trip.mission.respond` schema 1 (entity `mission`, id the
+  mission, expected revision the revision the member answered; payload exactly
+  `response` and `reason`) and is decided on the server only from current
+  facts at receipt: the current device, membership and organization, current
+  `trip.trip.start` covering the mission as the member's own (stored unit and
+  asset as its structure), the current assignee and the current revision. The
+  declared instant is evidence and never grants a response. Another member, or
+  a member whose assignment or coverage ended, is a whole-response `FORBIDDEN`;
+  a mission not stored in this organization is `NOT_FOUND`; a stale revision
+  or a mission no longer awaiting the response (already answered, reassigned,
+  cancelled) is `CONFLICT`; all three store nothing and change nothing. A
+  malformed payload is `REJECTED` `MALFORMED`. An accepted response is
+  `ACCEPTED` with the new mission revision. A response never starts a trip,
+  reserves or blocks the asset, changes its availability, creates a trip or a
+  review entry, or changes any review state (BR-REV-001).
+- **B-BR-EMP-357 — Authorization and scope.** Mission creation and the
+  organization mission list are organization-level actions under
+  `trip.mission.manage` (only `ORG` grants cover them, EDR-161); reading,
+  assigning and cancelling one mission need `trip.mission.manage` covering
+  the mission's stored unit and asset (`UNIT` and `ASSET` grants by equality).
+  Commands require fresh proof. The assignee's own mission list targets the
+  membership itself under `trip.trip.start`. A mission of another
+  organization is `NOT_FOUND` with no data. `AUDITOR` holds neither key and is
+  `FORBIDDEN` on every mission route; reads of missions by auditors belong to
+  the trip panel reads (EMP-TRIP-006/022).
+- **B-BR-EMP-358 — History, receipts and audit.** The mission head, its
+  insert-only transitions and insert-only command receipts are forced-RLS and
+  never deleted; the head changes only together with the transition of its
+  new revision. A company command records exactly one audit event
+  (`trip.mission.created`, `trip.mission.assigned`, `trip.mission.cancelled`)
+  and one receipt; the same operation identifier with the same intent replays
+  the first result (with its warning), with another intent it is
+  `OPERATION_ID_REUSED`. A response is audited by its intake receipt; the same
+  operation id and digest replays the stored acknowledgement byte for byte and
+  another digest is `REJECTED` `OPERATION_ID_REUSED`.
+- **BUC-EMP-178 — Plan and assign a mission.** A fleet manager creates a
+  mission for a unit, a title and a window, optionally naming a vehicle,
+  assigns a driver (receiving an availability warning when the driver could
+  not start the vehicle at the planned start), reassigns it after a decline,
+  or cancels it with a reason; a stale revision or another manager's earlier
+  change is `CONFLICT`; a unit-scoped manager acts only on missions of the
+  unit.
+- **BUC-EMP-179 — Accept or decline offline.** The assigned driver answers
+  the mission on the device without signal; when the response reaches the
+  server it is applied only if the driver is still the assignee with current
+  coverage and the mission is still at the answered revision; the mission
+  shows `ACCEPTED` or `DECLINED` and nothing starts.
+- **BUC-EMP-180 — Read missions.** A scoped planner lists the organization's
+  missions and reads one mission with its current assignee and response; an
+  assigned member lists the missions currently assigned to the membership.
+
+## EMP-TRIP-016 — Period lock and authorised reopening for trips (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip016-trip-period-lock.md).
+
+- **B-BR-EMP-359 — Trip decisions follow the period of the start reporting
+  day.** A review decision on a trip (`POST
+  /v1/orgs/{org_id}/trips/{trip_id}/review/decide`: the opening composed
+  with `APPROVE`, `RETURN` or `REJECT`) is admitted only when the APPR-006
+  period (the organization calendar month) holding the trip's stored start
+  reporting day is `OPEN`, or `REOPENED` with its stored, reasoned
+  `fin.period.reopen` transition. The day is the one attributed at the start
+  receipt in the stored unit or organization zone (BR-TIME-004, EDR-182) and
+  never the device entry zone or offset, the UTC day of the start, the finish
+  day or the day the decision is received. The period is read at receipt
+  inside the decision transaction after the organization root lock and after
+  every lifecycle check (`SELF_APPROVAL`, `CONFLICT`, `VALIDATION_FAILED`
+  win first). A `LOCKED` period refuses the decision `PERIOD_LOCKED` (409)
+  and writes no entry and no audit event. A replay of a decision recorded
+  before the lock returns its stored result; reads are not gated.
+- **B-BR-EMP-360 — Field intake is not gated by a locked period.**
+  `trip.start`, `trip.finish`, `trip.event.record` and `trip.submit` are
+  accepted, held or refused exactly as before whatever the period of their
+  reporting day (the B-BR-EMP-266 precedent): a late field fact whose trip
+  lies in a locked month is an accepted fact, never a held `PERIOD_LOCKED`
+  intake item. A trip submitted in a locked month stays `SUBMITTED` or
+  `IN_REVIEW` in the review queue, which is its review; deciding it needs an
+  authorised reopening of the month.
+- **B-BR-EMP-361 — Reopening is the only path for trips; no adjustment.**
+  A trip carries no amount posted to a period, so the adjustment branch of
+  BR-AMD-004 does not apply to it now: a decision or correction of a trip in
+  a `LOCKED` month is refused `PERIOD_LOCKED`; after an authorised
+  reopening (`fin.period.reopen`, fresh proof, reason) decisions are
+  admitted; a re-lock refuses later decisions again and keeps every
+  decision already recorded. A locked month keeps its approved trips
+  unchanged.
+- **B-BR-EMP-362 — The database refuses a decision in a locked month and
+  keeps history.** Under the organization root lock that every period
+  command and review entry takes, the database refuses an opening or a
+  decision entry whose trip's start reporting month is `LOCKED`, so a
+  defective handler cannot decide in a locked period. Review entries, trips,
+  finishes and period transitions stay insert-only (update, delete and
+  truncate refused); the lock, the reopening with its actor and reason, the
+  re-lock and the decisions remain in their append-only histories in the
+  order the root lock serialised them.
+- **BUC-EMP-181 — Decide a trip of a closed month (JRN-09 for trips).**
+  Finance locks October; the approval of a submitted October trip is
+  refused `PERIOD_LOCKED`; finance reopens October with a reason; the
+  reviewer approves; finance re-locks October and the approval stays.
+- **BUC-EMP-182 — Prove the trip period lock on real PostGIS.** A trip
+  whose stored reporting day is in another month than its UTC, device and
+  receipt days; a reopening withdrawn by a re-lock before receipt; lock and
+  decision racing in both orders; a direct decision insert and in-place
+  rewrites refused by the database; a populated upgrade with injected
+  failure and recovery.
+
+## EMP-TRIP-015 — Late and duplicate events, and amendments after closure (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip015-late-events-amendments.md).
+
+- **B-BR-EMP-363 — Revisions and resubmission after a return.** A trip's
+  review revisions are its record revisions: revision 1 is the submitted
+  field record. While the case is `DRAFT`, or a field revision is
+  `RETURNED` and the trip was never approved, the author's logbook events
+  declared at or before the finish are ordinary edits of the revision being
+  prepared (BR-AMD-006; events after the finish stay `TRIP_ALREADY_CLOSED`).
+  The author's signed `trip.submit` whose `expected_revision` names the
+  returned revision appends `RESUBMIT` (RETURNED → SUBMITTED, revision + 1)
+  with its `ACCEPTED` acknowledgement at the new revision (BR-REV-005); the
+  returned revision, its reason and its decision are kept, and a decision
+  that names the returned revision is `CONFLICT`. An approved or rejected
+  field record is never resubmitted.
+- **B-BR-EMP-364 — Late and duplicate field facts after submission are kept
+  for review, never applied.** A supported `trip.event.record` declared at
+  or after the start and at or before the finish of a trip whose latest
+  revision is `SUBMITTED`, `IN_REVIEW`, `APPROVED` or `REJECTED`, or that
+  has an amendment, is `ACCEPTED_FOR_REVIEW` `STALE_REVISION`: an OFFL-008
+  held fact that belongs to no revision and changes no figure. A
+  `trip.submit` by the author whose `expected_revision` is no longer the
+  current `DRAFT` or returned field revision (submitted by another
+  operation, decided, superseded by a resubmission or an amendment) is
+  `ACCEPTED_FOR_REVIEW` `STALE_REVISION` (a held submission; the case is
+  unchanged). An identical resend returns the stored acknowledgement, the
+  same identifier with another digest is `OPERATION_ID_REUSED`, and an event
+  identity used by another operation stays `MALFORMED`, so a repeat has
+  exactly one effect. The database refuses a direct logbook fact on a
+  submitted, decided or amended revision. Held items are resolved by
+  EMP-TRIP-007; changed rights on an event or submission still store nothing
+  (`RETRY`/`UNAVAILABLE`) until that owner exists.
+- **B-BR-EMP-365 — An approved trip is amended through a new reviewed
+  revision.** `POST /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose`
+  (`meter.reading.correct` covering the trip's stored structure — asset,
+  stored unit and cost centre, start teams —, configuration write, fresh
+  proof, ACTIVE organization, `revision` = the latest review revision the
+  actor saw) carries a reason (1..280 scalars, no control character) and a
+  corrected start and/or end reading (meter kind and exact base units). The
+  orgamend kernel decides it on server facts: `AMEND` from the approved
+  revision in effect (base = that revision) or after a rejected amendment,
+  `EDIT` of a returned pending amendment (base = that revision); the next
+  revision is appended `SUBMITTED` as one `AMEND` history entry with the
+  reason, the amendment record (intent, base, each corrected reading of the
+  effective revision with its value there, the corrected value and the
+  pre-allocated superseding reading) and one `trip.trip.amended` audit event
+  (digest, no value or reason). A never-approved trip (`NOT_APPROVED`), a
+  pending amendment (`AMENDMENT_PENDING`) and a stale `revision` are
+  `CONFLICT`; a missing or invalid reason, a correction of a reading the
+  trip does not have, of another meter kind, out of range or equal to the
+  current value is `VALIDATION_FAILED`; a locked month `PERIOD_LOCKED`;
+  another organization's trip `NOT_FOUND`; a role or grant that does not
+  cover it `FORBIDDEN`. The same operation and digest replays the first
+  result; another digest is `OPERATION_ID_REUSED`. Until the amendment is
+  approved the previous approved revision stays in effect (BR-AMD-002).
+- **B-BR-EMP-366 — Amendment review and its effect.** The amendment revision
+  is decided on the existing decide route (`trip.trip.review`, B-BR-EMP-344)
+  by a reviewer who is neither the trip's author nor its driver nor the
+  amendment's author (BR-REV-003), under the EMP-TRIP-016 period gate. The
+  orgamend kernel resolves the result: `APPROVE` makes the amendment the
+  effective revision only in a writable period, `RETURN` keeps it pending
+  for an `EDIT`, `REJECT` leaves the previous revision in effect. On
+  approval, in the same transaction, each corrected reading is superseded
+  through the METER-004 path (a new reading with the corrected value, the
+  original declaration, origin and segment, method `TYPED`, the reviewer as
+  author and its company session as capture, the decision's operation; the
+  original `VOIDED` with cause `SUPERSEDED`, the link and the amendment
+  reason, and kept; the segment re-evaluated). Nothing changes before the
+  approval and nothing is edited in place (BR-AMD-001).
+- **B-BR-EMP-367 — Derived usage names its revision.** The trip's meter
+  usage is derived from the readings of one named revision with the
+  EMP-TRIP-001 rule (measured only for two non-decreasing readings of one
+  segment; otherwise `NOT_MEASURED` with its reason, never invented). The
+  decision context returns the effective revision with its usage and every
+  amendment with its corrections (original and corrected value), state,
+  author, reason and usage; before approval the effective usage stays that
+  of the previous revision (290 000 m in the trips §10 example) and after
+  approval it is the amendment's (280 000 m). No stored figure is
+  rewritten; the original readings stay readable with their supersession.
+- **B-BR-EMP-368 — Readings of an approved trip need an amendment.** A
+  METER-004 decision on a trip's start or finish reading, or on a reading
+  that an approved trip amendment created, of a trip with an approved
+  revision is refused `AMENDMENT_REQUIRED` (B-BR-EMP-290 extended to trips),
+  so an approved trip's usage never changes in place; readings of a
+  never-approved trip are decided directly. The database keeps amendments
+  insert-only and forced-RLS, re-proves the amendment lineage, the current
+  readings and values, the period lock, the reviewer's separation from the
+  amendment's author and, at commit, that an approved amendment superseded
+  exactly its readings in its decision operation.
+- **BUC-EMP-183 — Correct and resubmit a returned trip (VAL-01 step 6).**
+  The reviewer returns the trip with "Informe o motivo da parada"; the
+  driver adds a note offline and resubmits; the trip becomes `SUBMITTED` at
+  revision 2 and is approved; revision 1 and its return stay in the history.
+- **BUC-EMP-184 — Amend an approved trip's final reading (VAL-26, trips
+  §10).** A fleet manager corrects the final reading from 184 610 000 m to
+  184 600 000 m with a reason; until an independent reviewer approves, the
+  effective usage stays 290 000 m; after the approval revision 2 is in
+  effect with 280 000 m, the original reading is `VOIDED` and superseded by
+  the corrected one, and the audit trail holds the amendment and the
+  decision.
+- **BUC-EMP-185 — Prove late, duplicate and amended trips on real PostGIS.**
+  A late event after submission and after approval (held, resent once), a
+  duplicate and a stale submission, the resubmission loop, the amendment
+  with self-approval, stale and locked refusals, two proposals racing in
+  both orders, the METER-004 refusal, the database guards and a populated
+  upgrade with injected failure and recovery.
+
+## EMP-TRIP-005 — App: start a trip, log events and finish, offline first (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip005-app-trip.md).
+
+- **B-BR-EMP-375 — A trip is four signed operations sealed to their creation
+  partition.** The app records a driver-initiated trip only as the frozen
+  schema 1 operations of EMP-TRIP-002/003/004 with their exact payloads:
+  `trip.start` (entity `trip`, the device trip UUID; the asset chosen in the
+  FLEET-013 picker, the member's own employee record as driver, the departure
+  reading — meter, its open segment, a new reading UUID, kind and exact value
+  in base units — or a stated absence reason, and the run clock; no
+  dependency), `trip.event.record` (entity `trip_event`; `NOTE` with a text,
+  `STOP`, `ARRIVAL` or `DEPARTURE` with an optional text; depends on the
+  start), `trip.finish` (the final reading or a stated absence and the run
+  clock; depends on the start) and `trip.submit` (entity `trip_review` with
+  `expected_revision` 1 and the empty payload; depends on the finish). Each
+  envelope carries the account, API origin, organization, membership and
+  enrollment of the exact enrollment that created it (BR-OFFL-003); switching
+  to personal mode or another organization never rewrites, moves or hides
+  them, and they keep being delivered to their own organization in the
+  background. Reserved logbook types, attachments and soft references are
+  never produced.
+- **B-BR-EMP-376 — "Salvo no aparelho" only after a durable write.** The
+  operation and the trip's local index are committed together in one
+  protected write of the creation partition (EMP-PRIV-003 generation) before
+  the screen reports the record as saved; when the write fails the screen
+  says that nothing was saved and shows no new record. The local index is one
+  sealed record per partition (versioned `trip-book` format) listing each
+  trip's asset label, departure instant, the identifiers of its start,
+  events, finish and submission, and whether the start was finally refused;
+  a process death leaves either both or neither. After a restart the
+  creation partition shows the same trips and records; another account,
+  origin or organization never reads them.
+- **B-BR-EMP-377 — Local eligibility is checked on the device and decides
+  nothing on the server.** Before queueing, the app refuses: a start for an
+  asset that already has an unfinished trip of this partition on this device
+  (the first one must be finished; a trip whose start the server finally
+  refused no longer counts); an event, a finish or "ready to send" on a trip
+  that is not in the required local state (events and the finish only while
+  unfinished and not refused, the finish once, "ready to send" once and only
+  after the finish); and an event or finish declared before the trip's start
+  instant (the device clock went back; the EMP-TRIP-001/003 order rules).
+  The server still decides every fact as if no device rule existed:
+  `ASSET_BUSY` between devices, availability and permissions are its
+  outcomes.
+- **B-BR-EMP-378 — Declaration and run clock come from the device, never
+  invented.** Each record declares the device wall instant, the device time
+  zone when it is an accepted zone identifier (otherwise `UTC`) and the
+  device offset at that instant. The start and the finish carry the run clock
+  read from the same source as the protected lease clock: the boot identity
+  and the elapsed real time in milliseconds since that boot. When the clock
+  cannot be read the run clock is absent; nothing is estimated.
+- **B-BR-EMP-379 — Acceptance follows each record's own receipt.** The
+  timeline shows the start, each event in occurrence order and the finish,
+  each with its own sync state from its own retained queue entry: "Salvo no
+  aparelho" without a final receipt, "Aceito pela empresa" only after an
+  `ACCEPTED` receipt (or an accepted review resolution), "Precisa de revisão"
+  with the reason for an `ACCEPTED_FOR_REVIEW` receipt (`ASSET_BUSY`,
+  `ASSET_UNAVAILABLE`, `TRIP_ALREADY_CLOSED`, `PERMISSION_CHANGED` and the
+  other review codes) and "Não aceito" with the reason for a refusal. The
+  trip's operational line is local ("Em andamento", "Encerrada no aparelho")
+  and never claims a server state. The review line shows only what a receipt
+  proves: "Pronto para enviar" while the submission waits, "Aguardando
+  aprovação" after its `ACCEPTED` receipt; approval, return or rejection are
+  never shown or inferred. When the start needs review or was refused, the
+  trip says that its other records wait for, or depend on, that outcome. A
+  start or finish whose reading the METER-003 validator keeps aside as
+  `SUSPECT` is accepted like any other: the warning belongs to the reading
+  (B-BR-EMP-280..285) and never holds the trip's own record back.
+- **B-BR-EMP-380 — The member's own employee record identifier.** The
+  context read of the selected organization (`/v1/org-access/contexts/read`)
+  also returns `employee_id`, the employee record of the requesting
+  membership, which never changes for that membership (EDR-054). The app
+  keeps it only in memory with the selected context and writes it only as
+  the driver of its own `trip.start`; it is never displayed and grants
+  nothing. Without it the start is unavailable and the app asks to confirm
+  the organization again.
+- **BUC-EMP-189 — Start a trip offline (UC-TRIP-01, UC-OFFL-01, JRN-06,
+  SCR-TRIP-01).** Actor: assigned driver in the selected organization. Main
+  flow: "Iniciar viagem" → choose the asset in the picker (cached assets,
+  warning for a not available or not confirmed one) → enter the departure
+  reading of an in-service meter or state why it is missing → save → the
+  trip appears in progress with its start "Salvo no aparelho".
+  Alternatives: the asset already has an unfinished trip here → refused with
+  the reason, nothing saved; the protected write fails → error, nothing
+  saved; the employee identifier is unknown → confirm the organization
+  again.
+- **BUC-EMP-190 — Log events, finish and mark ready to send.** Actor: the
+  same driver. Main flow: add `STOP`, `ARRIVAL`, `DEPARTURE` or a `NOTE` with
+  text → each appears in the timeline "Salvo no aparelho" → "Encerrar
+  viagem" with the final reading or its absence (a reading below the
+  departure or an implausible rate is warned, never blocked) → "Marcar
+  pronta para enviar" → when a connection exists the queue sends in
+  dependency order and each record changes only with its own receipt.
+  Alternatives: a held start (`ASSET_BUSY` from another member's device)
+  shows "Precisa de revisão" with the reason while its children wait;
+  process death at any step → the same timeline after restart.
+- **BUC-EMP-191 — Prove the producer.** One shared operation oracle
+  (`trip/trip-operations-v1.psv`) whose exact bytes the Kotlin builders
+  produce and the Go intake parsers accept or refuse identically; host tests
+  for the trip book, producers, service and flow, the protected store
+  format, partition isolation and process death; and native acceptance on
+  the owned API 36 emulator against an ordinary PostGIS signed intake:
+  offline start, events, finish and submission, process death, reconnection
+  with each record accepted exactly once, and a held start against another
+  member's earlier start on the same asset.

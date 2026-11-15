@@ -22,14 +22,25 @@ type MeterStore struct {
 	Authority app.MeterAuthority
 	Audit     auditing.TransactionRunner
 	Reviews   *MeterReviewStore
+	// Plausibility classifies field readings (EMP-METER-003); nil stores
+	// them VALID without flags (the configured rollback, EDR-185).
+	Plausibility *meter.Plausibility
+	// Parents answers whether a reading belongs to an APPROVED parent record
+	// (EMP-METER-004, B-BR-EMP-290); decisions are unavailable without it.
+	Parents MeterParentRecords
+	// Recalculation publishes meter.usage.recalculated with real consumers;
+	// nil publishes nothing (EDR-189).
+	Recalculation *MeterRecalculation
 }
 
 var _ app.MeterRepository = (*MeterStore)(nil)
 var _ app.EmbeddedMeterRepository = (*MeterStore)(nil)
 var _ app.MeterIntakeLookup = (*MeterStore)(nil)
+var _ app.MeterCorrectionRepository = (*MeterStore)(nil)
 
 func MeterAuditDefinitions() []audit.Definition {
-	return []audit.Definition{{Action: "meter.installed", TargetType: "meter"}}
+	return []audit.Definition{{Action: "meter.installed", TargetType: "meter"},
+		{Action: "meter.reading.corrected", TargetType: meterReadingTarget}, {Action: "meter.reading.voided", TargetType: meterReadingTarget}, {Action: "meter.reading.confirmed", TargetType: meterReadingTarget}}
 }
 func meterError(ctx context.Context, err error) error {
 	if err == nil {
@@ -42,6 +53,11 @@ func meterError(ctx context.Context, err error) error {
 	}
 	if errors.Is(err, meter.ErrOperationReused) {
 		return app.ErrOperationReused
+	}
+	for _, known := range []error{app.ErrReadingAlreadySuperseded, app.ErrAmendmentRequired} {
+		if errors.Is(err, known) {
+			return known
+		}
 	}
 	var pe *pgconn.PgError
 	// All supported input validation happens before writes. A deferred SQL
@@ -143,7 +159,7 @@ func (s *MeterStore) InstallMeter(ctx context.Context, scope kernel.OrgScope, ac
 			if err != nil {
 				return err
 			}
-			if _, err := insertObservation(ctx, tx, scope, view, source, member, app.MeterReadingInput{OperationID: v.OperationID, AssetID: v.AssetID, MeterID: newID, SegmentID: newSegment, ReadingID: v.OpeningReadingID, Value: v.Value, Declared: v.Declared, Origin: meter.Installation, Method: v.Method}, digest); err != nil {
+			if _, err := insertObservation(ctx, tx, scope, view, source, member, app.MeterReadingInput{OperationID: v.OperationID, AssetID: v.AssetID, MeterID: newID, SegmentID: newSegment, ReadingID: v.OpeningReadingID, Value: v.Value, Declared: v.Declared, Origin: meter.Installation, Method: v.Method}, digest, nil, false); err != nil {
 				return err
 			}
 			checked, err := validated(scope, v.AssetID, current.Profile)
@@ -308,7 +324,7 @@ func (s *MeterStore) RecordEmbedded(ctx context.Context, db syncapp.DBTX, scope 
 		if v.Method != meter.Typed {
 			return app.MeterReadingResult{}, false, app.ErrUnavailable
 		}
-		reading, err = insertObservation(ctx, db, scope, view, source, member, v, digest)
+		reading, err = insertObservation(ctx, db, scope, view, source, member, v, digest, s.Plausibility, true)
 	}
 	if err != nil {
 		return app.MeterReadingResult{}, false, meterError(ctx, err)

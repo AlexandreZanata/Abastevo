@@ -47,7 +47,7 @@ func (s *MeterReviewStore) HoldMeterReadingTx(ctx context.Context, db syncapp.DB
 	if err != nil {
 		return app.ReviewReference{}, err
 	}
-	if !meterHeldCode(code) {
+	if !meterHeldCode(code) && !meterRestrictedHeld(code) {
 		return app.ReviewReference{}, app.ErrUnavailable
 	}
 	queries := q.New(db)

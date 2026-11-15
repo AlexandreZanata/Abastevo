@@ -302,7 +302,7 @@ func meterIntakeReading(source syncapp.Source, op protocol.Operation, command ap
 		return false
 	}
 	actual := reading.Snapshot()
-	if actual.Reference.ID() != in.ReadingID || actual.Reference.Segment() != view.Segment || actual.Value.Kind() != in.Value.Kind() || actual.Value.Count() != in.Value.Count() || actual.Declared == nil || !actual.Declared.OccurredAt.Equal(in.Declared.OccurredAt) || actual.Declared.EntryZone != in.Declared.EntryZone || actual.Declared.DeviceOffsetSeconds != in.Declared.DeviceOffsetSeconds || actual.Author.OrganizationID() != source.Scope.OrgID() || actual.Author.ID() != source.MembershipID || actual.Operation.OrganizationID() != source.Scope.OrgID() || actual.Operation.ID() != op.ID() || actual.Origin != meter.Standalone || actual.Method != meter.Typed || actual.Photo != nil || actual.State != meter.Valid || actual.ReceivedAt.IsZero() {
+	if actual.Reference.ID() != in.ReadingID || actual.Reference.Segment() != view.Segment || actual.Value.Kind() != in.Value.Kind() || actual.Value.Count() != in.Value.Count() || actual.Declared == nil || !actual.Declared.OccurredAt.Equal(in.Declared.OccurredAt) || actual.Declared.EntryZone != in.Declared.EntryZone || actual.Declared.DeviceOffsetSeconds != in.Declared.DeviceOffsetSeconds || actual.Author.OrganizationID() != source.Scope.OrgID() || actual.Author.ID() != source.MembershipID || actual.Operation.OrganizationID() != source.Scope.OrgID() || actual.Operation.ID() != op.ID() || actual.Origin != meter.Standalone || actual.Method != meter.Typed || actual.Photo != nil || actual.State != meter.Valid && actual.State != meter.Suspect || actual.ReceivedAt.IsZero() {
 		return false
 	}
 	capture := reading.CaptureSource()

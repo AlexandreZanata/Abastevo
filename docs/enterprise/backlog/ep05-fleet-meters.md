@@ -132,7 +132,7 @@ assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
 (EMP-OFFL-006), the app picker (EMP-FLEET-013) and driver eligibility (EMP-IDN-014).
 
 ### EMP-FLEET-007 — Reservations, blocks and derived availability
-- **Meta:** module FLEET · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module FLEET · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Let managers hold an asset for planned work or block it, and give every screen one derived answer to "can this asset start an operation now", instead of a typed status that goes stale.
 - **Rules and use cases:** BR-FLEET-014, BR-FLEET-025, BR-FLEET-027, BR-FLEET-028, BR-FLEET-029, BR-FLEET-030, BR-FLEET-031, BR-FLEET-032, UC-FLEET-06, UC-FLEET-07
 - **Depends on:** EMP-FLEET-006
@@ -146,6 +146,18 @@ assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API, V-JOB · migration: additive tables · rollback: capability flag off; starts are then checked against lifecycle and active trips only
 - **Risks and assumptions:** The matrix in the permissions document has no row for `fleet.reservation.manage`; the roles assumed in the specification must be confirmed first. Port adapters for trips and maintenance decide how complete the answer is.
 - **Done when:** Every row of the availability table and of the reservation transition table has a passing test.
+
+EMP-FLEET-007 LOCAL_DONE (pending integration): org-permissions-v5 grants
+`fleet.reservation.manage` (EDR-190); migration 000217 adds forced-RLS
+reservations (guarded §6.4 transitions, CONFIRMED exclusion, block overlap
+refused), blocks and receipts, cancels open reservations when an asset leaves
+service, and eight routes (request/confirm/cancel, block/remove, lists and the
+availability read). Outcomes are derived at read time, settled by a
+per-reservation job and before every reservation command. Trips and maintenance
+holds answer "no source" (`missing_sources`); the start decision and port are
+ready for EMP-TRIP-002. Retained: mission linkage and FULFILLED (EMP-TRIP-023),
+notifications, configurable tolerance, the calendar (EMP-TRIP-022).
+[Evidence](../evidence/f4-fleet007-reservations-availability.md).
 
 ### EMP-FLEET-008 — Transfer between units with an effective date
 - **Meta:** module FLEET · phase F2 · cut - · priority P2 · type API · size S · state TODO
@@ -196,7 +208,7 @@ assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
 - **Done when:** The maintenance module's port test reads an asset's expiry dates and the content-permission test passes.
 
 ### EMP-FLEET-011 — Implements: attach to and detach from a powered asset
-- **Meta:** module FLEET · phase F4 · cut - · priority P2 · type API · size S · state TODO
+- **Meta:** module FLEET · phase F4 · cut - · priority P2 · type API · size S · state LOCAL_DONE
 - **Objective:** Record which implement was working with which tractor or truck and when, so that trips list the implements used and an implement is never counted as working in two places.
 - **Rules and use cases:** BR-FLEET-033, BR-FLEET-002, UC-FLEET-10
 - **Depends on:** EMP-FLEET-002
@@ -210,6 +222,15 @@ assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: additive table · rollback: capability flag off
 - **Risks and assumptions:** Farms may swap implements several times a day; if panel entry proves too slow, an app action is a later evolution.
 - **Done when:** The overlap test and the trip-port test pass.
+
+EMP-FLEET-011 LOCAL_DONE (pending integration): migration 000222 adds forced-RLS
+implement attachments (one powered asset per implement at any instant, a gist
+exclusion) and receipts; attach/detach under fresh `fleet.asset.manage` on both
+assets and a list under `fleet.asset.read`; the attached-implements port for
+trip starts; an attached implement is `IN_USE` through its powered asset's
+trips; attachments fix both assets' kinds. Retained for EMP-TRIP-002: the trip
+listing of attached implements and the `IMPLEMENT`-as-main-asset refusal call
+site. [Evidence](../evidence/f4-fleet011-implement-attachments.md).
 
 ### EMP-FLEET-012 — Panel: fleet list, detail and assignments
 - **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type WEB · size M · state TODO
@@ -228,7 +249,7 @@ assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
 - **Done when:** The cut C1 setup steps for a vehicle and its driver can be completed in the panel, with state tests passing.
 
 ### EMP-FLEET-013 — App: my assets and asset selection
-- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type APP · size S · state TODO
+- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type APP · size S · state LOCAL_DONE
 - **Objective:** Show a driver the assets they may use and let them choose one for an operation, online or offline, so that a trip or fueling starts from a known asset.
 - **Rules and use cases:** UC-FLEET-08, BR-FLEET-024, BR-FLEET-027, BR-OFFL-016, BR-TEN-004, SCR-FLEET-08, SCR-FLEET-09, SCR-FLEET-10
 - **Depends on:** EMP-FLEET-006, EMP-OFFL-006, EMP-IDN-018
@@ -242,6 +263,17 @@ assignees, signed-intake SELF adoption (EMP-METER-002), the reference feed
 - **Validation:** V-APP, V-SYNC, V-PRIV · migration: new Room tables in the enterprise partition with a schema migration test · rollback: capability flag off hides enterprise fleet screens; local tables are left unused
 - **Risks and assumptions:** Depends on the partition decision (EMP-GOV-008) through its foundations. Content cards follow the container guidelines of the app.
 - **Done when:** The state tests pass and the picker returns an asset to a calling screen with no network.
+
+EMP-FLEET-013 LOCAL_DONE (pending integration): a strict Kotlin client of the
+signed reference feed (EMP-OFFL-006) applies RESET/DELTA/tombstones/FORBIDDEN
+whole into one versioned cache sealed in the PRIV-003 protected generation —
+not plaintext Room tables (EDR-224); "Meus ativos", the read-only detail and
+the reusable picker (review warning, no network) sit behind the
+`enterpriseFleetUiEnabled` flag. Shared wire oracle
+`sync/reference-feed-v1.psv` is consumed by Go and Kotlin; native acceptance
+ran on `emulator-5588` against an ordinary-PostGIS signed fixture. The feed
+carries no readings, tank capacity or availability beyond lifecycle: retained
+with their owners. [Evidence](../evidence/f4-fleet013-my-assets.md).
 
 ### EMP-METER-001 — Meter and reading domain: append-only evidence, sources and corrections
 - **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
@@ -293,7 +325,7 @@ PostGIS. Retained: review on a later-closed segment (EMP-METER-005),
 structural grants in signed intake, native client confirmation of SELF 403.
 
 ### EMP-METER-003 — Reading validation: monotonicity, retroactive inserts and suspect flags
-- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size S · state TODO
+- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Detect readings that contradict their neighbours or are implausible and keep them aside as suspect, so that one typing error does not corrupt distance, consumption or maintenance figures and no reading is refused in the field.
 - **Rules and use cases:** BR-METER-008, BR-METER-009, BR-METER-010, BR-METER-011, BR-METER-012, BR-METER-017, BR-OFFL-006, UC-METER-02
 - **Depends on:** EMP-METER-002
@@ -308,8 +340,14 @@ structural grants in signed intake, native client confirmation of SELF 403.
 - **Risks and assumptions:** Default rate limits are hypotheses per category and are configuration; a limit that is too tight fills the queue, one too loose hides errors.
 - **Done when:** The shared vectors pass in both languages and the intake test shows a suspect reading excluded from the current value.
 
+[F4 reading validation](../evidence/f4-meter003-reading-validation.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-280..285, BUC-EMP-142..144 and
+EDR-184..186 precede behaviour; migration 000216 keeps the classification
+history. Retained: the app warning screen, the review-ACK form for suspect
+readings, per-category limits and rollover (EMP-METER-005).
+
 ### EMP-METER-004 — Reading correction and void with audit
-- **Meta:** module METER · phase F2 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module METER · phase F2 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Let an authorised person correct or void a reading by supersession with a reason, so that errors are fixed without losing what was originally recorded.
 - **Rules and use cases:** BR-METER-011, BR-METER-012, BR-METER-013, BR-METER-014, BR-METER-015, BR-METER-016, BR-METER-026, BR-AUD-001, UC-METER-03, UC-METER-04, UC-METER-07
 - **Depends on:** EMP-METER-003, EMP-PLAT-003
@@ -323,6 +361,13 @@ structural grants in signed intake, native client confirmation of SELF 403.
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: none · rollback: capability flag off; existing corrections stay
 - **Risks and assumptions:** Until the amendment component exists, corrections of readings that belong to approved records are refused with a clear message rather than applied in place.
 - **Done when:** Example B of the specification runs end to end through the routes with the stated states.
+
+[F4 reading correction](../evidence/f4-meter004-reading-correction.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-286..291, BUC-EMP-145..147 and
+EDR-187..189 precede behaviour; no migration (000216 of EMP-METER-003 holds
+the decisions). Retained: the amendment consumer (approved parents are
+refused `AMENDMENT_REQUIRED`), the recalculation consumers, the
+organization-wide suspect queue and the panel (EMP-METER-007).
 
 ### EMP-METER-005 — Meter replacement, reset and rollover with cumulative usage
 - **Meta:** module METER · phase F2 · cut - · priority P1 · type DOM · size M · state TODO

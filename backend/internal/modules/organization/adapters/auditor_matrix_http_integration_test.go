@@ -51,7 +51,9 @@ func (syntheticPlanRows) ReadPermission() permissions.Permission { return "subs.
 func auditorRouter(t *testing.T, fx deviceFixtureState) (chi.Router, *jobs.Dispatcher) {
 	t.Helper()
 	grantEmployeeTables(t, fx.legalFixtureState)
-	_ = assignmentStore(t, fx.legalFixtureState)
+	_ = attachmentStore(t, fx.legalFixtureState)
+	grantChecklistTables(t, fx.legalFixtureState)
+	grantMissionTables(t, fx.legalFixtureState)
 	_ = meterStore(t, fx.legalFixtureState)
 	fx.f.GrantMeterReviews(t)
 	fx.f.GrantMembershipAccessCommands(t)
@@ -229,17 +231,23 @@ var auditorTemplateParam = regexp.MustCompile(`\{[a-z_]+\}`)
 // auditorPositiveRoutes is the independent literal of the routes the
 // documented AUDITOR column grants at this head (B-BR-EMP-247).
 var auditorPositiveRoutes = []string{
+	"/v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable",
 	"/v1/orgs/{org_id}/documents/{document_id}/content/access",
 	"/v1/orgs/{org_id}/documents/{document_id}/content/read",
 	"/v1/orgs/{org_id}/employees/list",
 	"/v1/orgs/{org_id}/employees/{employee_id}/read",
 	"/v1/orgs/{org_id}/fleet/assets/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list",
+	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/list",
+	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read",
+	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
+	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/read",
+	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list",
 	"/v1/orgs/{org_id}/fleet/assignments/mine/list",
 	"/v1/orgs/{org_id}/ownership-transfer/accept",
@@ -295,7 +303,8 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if asset == "" || meter == "" {
 		t.Fatal("owner fixtures missing")
 	}
-	values := map[string]string{"{org_id}": org, "{membership_id}": target.member, "{employee_id}": target.employee, "{asset_id}": asset, "{meter_id}": meter, "{document_id}": document, "{period}": "2019-03"}
+	reading, _ := installed["opening_reading_id"].(string)
+	values := map[string]string{"{org_id}": org, "{membership_id}": target.member, "{employee_id}": target.employee, "{asset_id}": asset, "{meter_id}": meter, "{reading_id}": reading, "{document_id}": document, "{period}": "2019-03"}
 	fill := func(template string) string {
 		return auditorTemplateParam.ReplaceAllStringFunc(template, func(name string) string {
 			if value, ok := values[name]; ok {
@@ -326,11 +335,23 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if read := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/read", map[string]any{}, 200, "", ""); read["id"] != asset {
 		t.Fatal("auditor asset read", read["id"])
 	}
-	for _, template := range []string{"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list", "/v1/orgs/{org_id}/fleet/assignments/mine/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list"} {
+	for _, template := range []string{"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list", "/v1/orgs/{org_id}/fleet/assignments/mine/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/list"} {
 		call(template, map[string]any{"limit": 20}, 200, "", "")
+	}
+	// EMP-CHECK-001: the applicable template read is a fleet.asset.read; no
+	// template exists, so no checklist is required.
+	if applicable := call("/v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable", map[string]any{"context": "DEPARTURE"}, 200, "", ""); applicable["required"] != false || applicable["match"] != "NONE" {
+		t.Fatal("auditor applicable checklist read", applicable)
+	}
+	if availability := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read", map[string]any{}, 200, "", ""); availability["availability"] != "UNAVAILABLE" {
+		t.Fatal("auditor availability of the draft asset", availability)
 	}
 	if latest, _ := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest", map[string]any{}, 200, "", "")["latest"].(map[string]any); latest["value"] != "123456" {
 		t.Fatal("auditor latest reading", latest)
+	}
+	// EMP-METER-004: the reading history is a documented fleet.asset.read.
+	if items, _ := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/list", map[string]any{"limit": 20}, 200, "", "")["items"].([]any); len(items) != 1 || items[0].(map[string]any)["id"] != reading || items[0].(map[string]any)["state"] != "VALID" {
+		t.Fatal("auditor reading history", items)
 	}
 	if matrixPrivateState(t, fx) != before || auditorExtraState(t, fx) != beforeExtra {
 		t.Fatal("a documented auditor read changed private source state")
@@ -438,7 +459,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 110 || positive != 24 || denied != 86 {
+	if len(routes) != 145 || positive != 30 || denied != 115 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 

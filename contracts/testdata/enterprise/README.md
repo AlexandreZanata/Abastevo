@@ -44,6 +44,24 @@ two amendments; this declaration permission conveys no verification or
 station authority. Current membership, proof, capability and record checks
 remain mandatory at runtime.
 
+## Authorization catalog v5
+
+The reservation and checklist amendment (EDR-190/191) keeps v1–v4 as
+historical evidence and pins the [version 5 oracle](authorization-catalog-v5.psv):
+the v4 shape (85 keys × 13 roles = 1,105 cells, same row order) with exactly
+eleven cells changed from dash to O. fleet.reservation.manage takes the
+fleet.asset.assign column (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR);
+check.template.manage the maint.workorder.manage column (OWNER, ADMIN,
+FLEET_MANAGER); check.incident.manage OWNER, ADMIN, FLEET_MANAGER and
+SUPERVISOR. No restriction is added; AUDITOR and the station/data roles gain
+nothing; 18 keys stay unassigned. The regression compares both files, the
+compiled source and the v1 retention test; consumers (route inventory, HTTP
+matrix, export gating) read v5. Granting a key routes nothing.
+
+```sh
+(cd backend && go test -race ./internal/modules/orgaccess/domain -count=1)
+```
+
 ## Identity lifecycle v1
 
 EMP-IDN-001 executes all 29 rows of identity-lifecycle-v1.psv in Go. The
@@ -302,4 +320,46 @@ a fiscal authorization. See [fiscal/README.md](fiscal/README.md).
 
 ```sh
 (cd backend && go test -race ./internal/modules/document/domain/fiscal -count=1)
+```
+
+## Trip vectors v1
+
+EMP-TRIP-001 executes all 207 rows of [trip/trip-v1.psv](trip/trip-v1.psv) in
+Go and Kotlin (ENUM 49, TRANSITION 40, STANDING 14, START 57, FINISH 47). The
+oracle pins the closed operational, command and review vocabularies, the C1
+transition table (pause, resume and cancel refused as unsupported), the
+eligible start context with its ordered missing list, the start reporting
+day, the operational completion by the starting member and meter usage that
+is never invented. See [trip/README.md](trip/README.md). No persistence,
+intake, authority, review decision or runtime acceptance is claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/trip/domain -count=1)
+```
+
+## Trip time-crossing vectors v1
+
+EMP-TRIP-017 executes all 66 rows of
+[trip/trip-time-v1.psv](trip/trip-time-v1.psv) in Go and Kotlin (CLOCK 12,
+CROSSING 17, ELAPSED 37). The oracle pins the device run-clock profile, the
+start reporting day kept across midnight and zones with an informational end
+day, separate entry-zone and offset changes, and elapsed time derived only
+from instants, confirmed by a monotonic witness or flagged as a gap. No
+paid-hours, time-clock, persistence or runtime acceptance is claimed.
+
+## Checklist template vectors v1
+
+EMP-CHECK-001 executes all 127 rows of
+[checklist/checklist-v1.psv](checklist/checklist-v1.psv) in Go and Kotlin
+(TEMPLATE 40, POLICY 11, EVALUATE 38, RESOLVE 22, POLICY_AT 16). The oracle
+pins the bounded immutable template definition (a critical item is never
+optional), the critical-item policy values, the answer check with its fixed
+error order (`INVALID`, `ANSWER_NOT_ALLOWED`, `PHOTO_REQUIRED`, `INCOMPLETE`)
+and the computed outcome with the WARN acknowledgement, the asset → category
+→ organization default resolution and the policy in force at an instant. See
+[checklist/README.md](checklist/README.md). No run, intake or runtime
+acceptance is claimed; EMP-CHECK-002 consumes the rule.
+
+```sh
+(cd backend && go test -race ./internal/modules/maintenance/domain/checklist -count=1)
 ```

@@ -118,6 +118,8 @@ const (
 	keyForumEnabled          = "ANPFUEL_FORUM_ENABLED"
 	keyEnterpriseEnabled     = "ANPFUEL_ENTERPRISE_ENABLED"
 	keyEnterpriseDeviceLimit = "ANPFUEL_ENTERPRISE_DEVICE_LIMIT"
+	// EMP-METER-003 rollback switch (EDR-185); default on.
+	keyEnterpriseMeterPlausibility = "ANPFUEL_ENTERPRISE_METER_PLAUSIBILITY"
 )
 
 // Defaults. devDatabaseURL is loopback-only and valid for local development;
@@ -176,6 +178,10 @@ type Config struct {
 	// EnterpriseDeviceLimit is the server-owned existing-account enrollment
 	// ceiling per membership; clients never supply a limit. Default3, range1..5.
 	EnterpriseDeviceLimit int64
+	// EnterpriseMeterPlausibility classifies field meter readings as VALID or
+	// SUSPECT (EMP-METER-003). Default true; false stores them VALID without
+	// flags (the configured rollback).
+	EnterpriseMeterPlausibility bool
 	// QualityReadsEnabled gates /v1/quality/* (FQ-08 recovery switch).
 	QualityReadsEnabled        bool
 	QualityCompanyReadsEnabled bool
@@ -264,6 +270,7 @@ func (c Config) LogValue() slog.Value {
 		slog.Bool("admin_configured", len(c.AdminKeyHashes) > 0),
 		slog.Bool("forum_enabled", c.ForumEnabled),
 		slog.Bool("enterprise_enabled", c.EnterpriseEnabled),
+		slog.Bool("enterprise_meter_plausibility", c.EnterpriseMeterPlausibility),
 		slog.String("github_repo", c.GitHubRepo),
 		slog.Bool("github_token_configured", c.GitHubToken != ""),
 		slog.Int("public_web_origins", len(c.PublicWebOrigins)),
@@ -442,6 +449,14 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("%s: expected integer from1 to5", keyEnterpriseDeviceLimit)
 		}
 		cfg.EnterpriseDeviceLimit = limit
+	}
+	cfg.EnterpriseMeterPlausibility = true
+	if raw, present := getenv(keyEnterpriseMeterPlausibility); present {
+		enabled, err := strconv.ParseBool(raw)
+		if err != nil {
+			return Config{}, fmt.Errorf("%s must be boolean", keyEnterpriseMeterPlausibility)
+		}
+		cfg.EnterpriseMeterPlausibility = enabled
 	}
 
 	cfg.PriceRankingEnabled = true

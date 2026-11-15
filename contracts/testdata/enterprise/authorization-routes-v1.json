@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "roles_version": "org-roles-v1",
-  "permissions_version": "org-permissions-v4",
+  "permissions_version": "org-permissions-v5",
   "permissions": [
     {
       "permission": "agree.agreement.manage",
@@ -95,24 +95,37 @@
     },
     {
       "permission": "check.incident.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Checklist and incident routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/incidents/reports/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/incidents/reports/list",
+        "POST /v1/orgs/{org_id}/incidents/reports/{report_id}/decide",
+        "POST /v1/orgs/{org_id}/incidents/reports/{report_id}/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "check.incident.report",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Checklist and incident routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/incidents/reports/mine",
+      "routes": [
+        "POST /v1/orgs/{org_id}/incidents/reports/mine"
+      ],
+      "reason": ""
     },
     {
       "permission": "check.template.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Checklist and incident routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/checklists/templates/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/checklists/templates/create",
+        "POST /v1/orgs/{org_id}/checklists/templates/list",
+        "POST /v1/orgs/{org_id}/checklists/templates/{template_id}/archive",
+        "POST /v1/orgs/{org_id}/checklists/templates/{template_id}/policy",
+        "POST /v1/orgs/{org_id}/checklists/templates/{template_id}/publish",
+        "POST /v1/orgs/{org_id}/checklists/templates/{template_id}/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "claim.claim.submit",
@@ -273,6 +286,8 @@
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/acquisition/record",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/activate",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/archive",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/attach",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/{attachment_id}/detach",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/change",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/deactivate",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/discard",
@@ -288,13 +303,19 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable",
         "POST /v1/orgs/{org_id}/fleet/assets/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/read",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list",
         "POST /v1/orgs/{org_id}/fleet/assignments/mine/list"
       ],
@@ -302,10 +323,16 @@
     },
     {
       "permission": "fleet.reservation.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Fleet domain values exist; fleet storage and operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/request",
+      "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/create",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/{block_id}/remove",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/request",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/{reservation_id}/cancel",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/{reservation_id}/confirm"
+      ],
+      "reason": ""
     },
     {
       "permission": "fleet.supplier.manage",
@@ -482,9 +509,12 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/suspect/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/{reading_id}/decide",
         "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
         "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/read",
-        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve"
+        "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose"
       ],
       "reason": ""
     },
@@ -700,10 +730,16 @@
     },
     {
       "permission": "trip.mission.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Mission and trip-operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/missions/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/missions/create",
+        "POST /v1/orgs/{org_id}/missions/list",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/assign",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/cancel",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "trip.trip.close_for_other",
@@ -721,17 +757,23 @@
     },
     {
       "permission": "trip.trip.review",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Mission and trip-operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/trips/review/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/trips/review/list",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/review/decide",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/review/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "trip.trip.start",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Mission and trip-operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/missions/mine/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/missions/mine/list"
+      ],
+      "reason": ""
     }
   ],
   "special_routes": [
@@ -826,6 +868,10 @@
     {
       "route": "POST /v1/orgs/{org_id}/sync/operations",
       "boundary": "SIGNED_BATCH"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/sync/reference",
+      "boundary": "SIGNED_REFERENCE_FEED"
     },
     {
       "route": "POST /v1/orgs/{org_id}/sync/review-results",

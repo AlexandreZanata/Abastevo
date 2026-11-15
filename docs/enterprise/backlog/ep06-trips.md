@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 Recovered scope follows the surviving requirements and acceptance scenarios. Detailed trip rules are in [the recovered trip design](../modules/trips.md).
 
 ### EMP-TRIP-001 — Trip domain core: operational states and the driver-initiated trip
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Define the pure driver-initiated trip lifecycle.
 - **Rules and use cases:** REQ-07.1, REQ-07.4, BR-REV-001, BR-TEN-004
 - **Depends on:** EMP-FLEET-001, EMP-METER-001, EMP-PLAT-015
@@ -28,8 +28,16 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 pure trip domain](../evidence/f4-trip001-trip-domain.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. The closed operational lifecycle (START
+creates IN_PROGRESS, FINISH completes; pause, resume and cancel refused as
+unsupported until EMP-TRIP-011), the eligible start context with its ordered
+missing list, the start reporting day, completion by the starting member and
+never-invented meter usage pass all 207 shared Go/Kotlin vectors with 100% Go
+statements. Persistence, intake, authority and review binding remain open.
+
 ### EMP-TRIP-002 — Trip persistence and sync handlers with the one-active-trip-per-asset rule
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size L · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size L · state LOCAL_DONE
 - **Objective:** Persist trips and serialize active use of one asset.
 - **Rules and use cases:** REQ-07.1, BR-TEN-005, BR-OFFL-004, BR-OFFL-006, VAL-07
 - **Depends on:** EMP-TRIP-001, EMP-OFFL-002, EMP-METER-002, EMP-FLEET-006
@@ -44,8 +52,17 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 trip persistence](../evidence/f4-trip002-trip-persistence.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Signed `trip.start` and
+`trip.finish` (migration 000220) store one trip and its one completion with
+TRIP_START/TRIP_END readings; at most one trip per asset is in progress; a
+second admissible start is held `ASSET_BUSY` (both race orders on PostGIS) and
+a second finish `TRIP_ALREADY_CLOSED`; FLEET-003 open work and the FLEET-007
+active use are trip-backed and the FLEET-007 start decision holds blocked or
+reserved starts. Held-item resolution stays with EMP-TRIP-007.
+
 ### EMP-TRIP-003 — Logbook events: the typed timeline
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size M · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size M · state LOCAL_DONE
 - **Objective:** Append typed logbook facts with an understandable time-ordered history.
 - **Rules and use cases:** REQ-07.3, BR-OFFL-001, BR-TIME-002, EDR-028
 - **Depends on:** EMP-TRIP-002
@@ -60,8 +77,17 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 logbook events](../evidence/f4-trip003-logbook-events.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Signed `trip.event.record`
+(migration 000225) appends one insert-only typed fact (NOTE, STOP, ARRIVAL,
+DEPARTURE) with its identity, author, original instant and zone and server
+receipt to the member's own trip and never changes the trip; reserved types
+stay queued, an event before the start is `MALFORMED`, one after a completed
+trip's finish is held `TRIP_ALREADY_CLOSED`; the timeline order and vocabulary
+are shared with Kotlin through `logbook-v1.psv`. No read route (EMP-TRIP-006).
+
 ### EMP-TRIP-004 — Trip submission and administrative review
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Submit and review the operational trip without changing source facts.
 - **Rules and use cases:** REQ-07.2, BR-REV-001, BR-REV-003, BR-REV-005, BR-REV-007, VAL-01
 - **Depends on:** EMP-TRIP-002, EMP-APPR-001
@@ -76,8 +102,20 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 trip review](../evidence/f4-trip004-trip-review.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. The author's signed `trip.submit` (entity
+`trip_review`, expected revision, empty payload, migration 000226) appends
+the APPR-001 SUBMIT entry to a COMPLETED trip; an in-progress or undelivered
+trip is `DEPENDENCY_PENDING`, another member `FORBIDDEN`, a non-draft case
+stays `RETRY`. Company routes under `trip.trip.review` list the queue (ORG),
+read the decision context and decide one revision (fresh proof; OPEN and
+APPROVE/RETURN/REJECT in one audited transaction) with SELF_APPROVAL,
+CONFLICT, VALIDATION_FAILED, OPERATION_ID_REUSED, NOT_FOUND and structural
+FORBIDDEN proven on PostGIS. Resubmission after return, cancel, amendments
+and the panel remain EMP-TRIP-015/006.
+
 ### EMP-TRIP-005 — App: start a trip, log events and finish, offline first
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type APP · size L · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type APP · size L · state LOCAL_DONE
 - **Objective:** Let the assigned driver record a trip offline in the approved partition.
 - **Rules and use cases:** REQ-07.2, BR-OFFL-002, BR-OFFL-003, UC-OFFL-01, JRN-06
 - **Depends on:** EMP-TRIP-002, EMP-TRIP-003, EMP-OFFL-003, EMP-FLEET-013
@@ -91,6 +129,13 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Validation:** V-APP, V-SYNC, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 app trip](../evidence/f4-trip005-app-trip.md) is LOCAL_DONE /
+INTEGRATION_PENDING: B-BR-EMP-375..380, BUC-EMP-189..191 and EDR-242..245
+precede behaviour; native acceptance on the owned API36 emulator against a
+real local backend. Retained: the author's own review-result read, held-start
+resolution (TRIP-007), the current-activity card and driving layout, two
+physical devices (OWED), visual/TalkBack review.
 
 ### EMP-TRIP-006 — Panel: trips list, timeline detail and review
 - **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type WEB · size M · state TODO
@@ -125,7 +170,7 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-008 — Missions: create, assign, accept and decline
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Create and assign missions with a clear accept or decline outcome.
 - **Rules and use cases:** REQ-07.1, REQ-07.2, BR-AUTH-001, BR-REV-001
 - **Depends on:** EMP-TRIP-002
@@ -139,6 +184,17 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 missions](../evidence/f4-trip008-missions.md) are LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. Pure mission domain shared with Kotlin
+through `mission-v1.psv`; migration 000227 (guarded head, insert-only
+transitions and receipts). Company routes under `trip.mission.manage` create
+(DRAFT), list, read, assign (eligible `trip.trip.start` member, FLEET-007
+start decision as a warning only) and cancel with revision CAS; the own list
+under `trip.trip.start`; the assignee answers offline through the signed
+`trip.mission.respond`, decided on current facts at receipt (FORBIDDEN,
+NOT_FOUND, CONFLICT store nothing). No response starts a trip; the trip link,
+planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 
 ### EMP-TRIP-009 — Manager-planned trips: destination, reason, customer or project, cargo or passengers
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
@@ -237,7 +293,7 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-015 — Late and duplicate events, and amendments after closure
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Preserve late logbook facts and amend approved work through a new reviewed revision.
 - **Rules and use cases:** REQ-07.5, REQ-07.6, BR-OFFL-004, BR-AMD-001, BR-AMD-005, VAL-26
 - **Depends on:** EMP-TRIP-004, EMP-PLAT-016
@@ -252,8 +308,19 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 late events and amendments](../evidence/f4-trip015-late-events-amendments.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. The author resubmits a
+returned field revision with `trip.submit` (revision + 1); an event inside a
+submitted, decided or amended trip and a stale or duplicate submission are
+held once `STALE_REVISION` (migration 000229); an approved trip is amended
+under `meter.reading.correct` as a new reviewed revision through the
+orgamend kernel, whose approval supersedes the corrected readings through
+the METER-004 path (290 000 m until approval, 280 000 m after, usage
+derived per named revision), and METER-004 refuses readings of approved
+trips `AMENDMENT_REQUIRED`. Held-item resolution stays with EMP-TRIP-007.
+
 ### EMP-TRIP-016 — Period lock and authorised reopening for trips
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Apply period locks and permitted reopen or adjustment to trip changes.
 - **Rules and use cases:** REQ-07.5, BR-AMD-004, BR-TIME-003, BR-TIME-004, JRN-09
 - **Depends on:** EMP-TRIP-004, EMP-APPR-006
@@ -268,8 +335,18 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 trip period lock](../evidence/f4-trip016-trip-period-lock.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. A trip review decision reads
+the APPR-006 period of the trip's stored start reporting day inside its
+transaction after the lifecycle checks: `OPEN` or an authorised `REOPENED`
+month admits it, a `LOCKED` one is `PERIOD_LOCKED` with nothing written;
+replays, reads, the queue and field intake are not gated and trips have no
+adjustment form; migration 000228 makes the database refuse an opening or
+decision in a locked month. Wrong zone, stale reopening, both race orders,
+in-place rewrites and the populated upgrade are proven on PostGIS.
+
 ### EMP-TRIP-017 — Midnight and time-zone crossing rules
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Attribute cross-midnight and cross-zone trips consistently.
 - **Rules and use cases:** REQ-07.6, BR-TIME-001, BR-TIME-002, BR-TIME-004, BR-TIME-005
 - **Depends on:** EMP-TRIP-001
@@ -283,6 +360,14 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Validation:** V-DOM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 trip time crossing](../evidence/f4-trip017-time-crossing.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. A trip keeps its start
+reporting day across midnight and zones (informational end day in the stored
+zone), every event keeps its own instant, entry zone and offset, and elapsed
+time comes only from instants, confirmed by an optional monotonic run clock
+or flagged as a gap; all 66 shared Go/Kotlin vectors pass with 100% Go
+statements. The Android clock source and persistence remain open.
 
 ### EMP-TRIP-018 — Open trips when a membership ends
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state TODO

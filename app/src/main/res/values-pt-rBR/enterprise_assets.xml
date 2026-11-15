@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-FLEET-013 "Meus ativos" and the asset picker (SCR-FLEET-08/09/10). -->
+    <string name="enterprise_assets_title">Meus ativos</string>
+    <string name="enterprise_assets_home_copy">Ativos que a empresa atribuiu a você, também sem internet.</string>
+    <string name="enterprise_assets_open">Abrir meus ativos</string>
+    <string name="enterprise_assets_back_home">Voltar ao início da empresa</string>
+    <string name="enterprise_assets_back_list">Voltar para meus ativos</string>
+    <string name="enterprise_assets_refresh">Atualizar lista</string>
+    <string name="enterprise_assets_loading">Carregando</string>
+    <string name="enterprise_assets_confirmed_at">Atualizado em %1$s</string>
+    <string name="enterprise_assets_not_confirmed">Não confirmado: mais de 24 horas sem contato com a empresa.</string>
+    <string name="enterprise_assets_refresh_failed">Não foi possível confirmar a lista agora. Ela mostra a última versão confirmada.</string>
+    <string name="enterprise_assets_refresh_failed_empty">Não foi possível carregar a lista agora. Tente de novo.</string>
+    <string name="enterprise_assets_offline">Sem internet. A lista mostrada é a última confirmada.</string>
+    <string name="enterprise_assets_needs_connection">Sem internet. A lista de ativos precisa de conexão uma vez.</string>
+    <string name="enterprise_assets_unavailable">A lista de ativos está indisponível agora. Os dados salvos estão seguros.</string>
+    <string name="enterprise_assets_retry">Tentar de novo</string>
+    <string name="enterprise_assets_empty">Nenhum ativo atribuído a você</string>
+    <string name="enterprise_assets_empty_who">Um gestor da frota da empresa, com permissão para atribuir ativos, pode atribuir um ativo a você.</string>
+    <string name="enterprise_assets_forbidden_title">Sem permissão</string>
+    <string name="enterprise_assets_forbidden">Você não pode ver ativos nesta empresa. Um administrador da empresa pode conceder o acesso.</string>
+    <string name="enterprise_assets_fleet_number">Frota %1$s</string>
+    <string name="enterprise_assets_plate">Placa %1$s</string>
+    <string name="enterprise_assets_kind_vehicle">Veículo</string>
+    <string name="enterprise_assets_kind_machine">Máquina</string>
+    <string name="enterprise_assets_kind_implement">Implemento</string>
+    <string name="enterprise_assets_assignment_primary">Atribuição principal</string>
+    <string name="enterprise_assets_assignment_additional">Atribuição adicional</string>
+    <string name="enterprise_assets_assignment_temporary">Atribuição temporária</string>
+    <string name="enterprise_assets_assignment_until">Até %1$s</string>
+    <string name="enterprise_assets_assignment_ended">O período atribuído terminou em %1$s; a empresa confirma quando seus registros chegarem.</string>
+    <string name="enterprise_assets_unavailable_state">Indisponível: %1$s</string>
+    <string name="enterprise_assets_state">Situação: %1$s</string>
+    <string name="enterprise_assets_state_draft">rascunho</string>
+    <string name="enterprise_assets_state_active">ativo</string>
+    <string name="enterprise_assets_state_inactive">inativo</string>
+    <string name="enterprise_assets_state_disposed">baixado</string>
+    <string name="enterprise_assets_state_archived">arquivado</string>
+    <string name="enterprise_assets_row_not_confirmed">Não confirmado</string>
+    <string name="enterprise_assets_detail_title">Detalhes do ativo</string>
+    <string name="enterprise_assets_usage_distance">Uso contado em quilômetros</string>
+    <string name="enterprise_assets_usage_hours">Uso contado em horas</string>
+    <string name="enterprise_assets_products">Produtos aceitos: %1$s</string>
+    <string name="enterprise_assets_products_none">Nenhum produto aceito cadastrado</string>
+    <string name="enterprise_assets_product_electricity">Eletricidade</string>
+    <string name="enterprise_assets_product_arla">ARLA 32</string>
+    <string name="enterprise_assets_meter_odometer">Hodômetro instalado em %1$s</string>
+    <string name="enterprise_assets_meter_hour">Horímetro instalado em %1$s</string>
+    <string name="enterprise_assets_meters_none">Nenhum medidor em uso</string>
+    <string name="enterprise_assets_offline_limits">Leituras e capacidade dos tanques não fazem parte desta lista offline.</string>
+    <string name="enterprise_assets_pick_title">Escolher ativo</string>
+    <string name="enterprise_assets_pick_cancel">Cancelar</string>
+    <string name="enterprise_assets_warning_title">A empresa vai revisar esta escolha</string>
+    <string name="enterprise_assets_warning_copy">Este ativo não está disponível ou seus dados não estão confirmados. Você pode escolhê-lo; a empresa decide quando o registro chegar.</string>
+    <string name="enterprise_assets_warning_confirm">Escolher mesmo assim</string>
+</resources>

@@ -93,13 +93,14 @@ func assetMapped(err error) error {
 	return orgapi.Unavailable
 }
 
-// FleetRecords accepts only this module's fixed source policies. No creator
+// FleetRecords accepts only this module's fixed source policies (including
+// meter.reading.correct on an asset, EMP-METER-004). No creator
 // fact is manufactured; the only assignee fact is the EMP-FLEET-006 one set
 // by the authorization's assignee source or the own assignment list.
 type FleetRecords struct{}
 
 func (FleetRecords) Check(_ context.Context, scope kernel.OrgScope, subject access.Subject, policy access.Policy, facts permissions.ResourceFacts, rules []permissions.Rule) error {
-	if scope.Validate() != nil || subject.Scope() != scope || facts.Validate(scope) != nil || facts.OrgID != scope.OrgID() || len(rules) == 0 || policy != app.Policy(false) && policy != app.Policy(true) && policy != app.AssignPolicy() {
+	if scope.Validate() != nil || subject.Scope() != scope || facts.Validate(scope) != nil || facts.OrgID != scope.OrgID() || len(rules) == 0 || policy != app.Policy(false) && policy != app.Policy(true) && policy != app.AssignPolicy() && policy != app.ReservePolicy() && policy != app.MeterReviewPolicy(false) && policy != app.MeterReviewPolicy(true) {
 		return access.ErrUnavailable
 	}
 	return nil

@@ -24,10 +24,15 @@ import (
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	fleetweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters/http"
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	meterdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
+	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
 	identitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	proofauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	maintpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters"
+	maintweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters/http"
+	maintapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/application"
 	member "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
 	memberweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters/http"
 	memberapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/application"
@@ -55,6 +60,9 @@ import (
 	reviewpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters"
 	reviewweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters/http"
 	reviewapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/application"
+	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
+	tripweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters/http"
+	tripapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgquota"
@@ -93,6 +101,9 @@ type Options struct {
 	// composes the operational list kinds of EMP-RPT-002; tests may add
 	// synthetic kinds.
 	ExportFormats []exportapp.Format
+	// MeterPlausibilityOff stores field readings VALID without flags (the
+	// EMP-METER-003 rollback, EDR-185). The zero value validates.
+	MeterPlausibilityOff bool
 }
 
 // Register performs no I/O or provisioning. The default mounts no private
@@ -134,6 +145,10 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	definitions = append(definitions, syncpg.AuditDefinitions()...)
 	definitions = append(definitions, reviewpg.PeriodAuditDefinitions()...)
+	definitions = append(definitions, maintpg.ChecklistAuditDefinitions()...)
+	definitions = append(definitions, maintpg.IncidentAuditDefinitions()...)
+	definitions = append(definitions, trippg.ReviewAuditDefinitions()...)
+	definitions = append(definitions, trippg.MissionAuditDefinitions()...)
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
 	definitions = append(definitions, exportpg.AuditDefinitions()...)
@@ -161,12 +176,17 @@ func Register(router chi.Router, o Options) error {
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "fleet.asset", Permissions: []string{"fleet.asset.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic fleet configuration inherits identity v1 write 200/hour on each current organization/account/web-or-device axis; production measurement and cleanup remain required."},
 		{Class: "fleet.assignment", Permissions: []string{"fleet.asset.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic driver assignments inherit identity v1 write 200/hour on each current organization/account/web axis (a command names at most 100 employees); production measurement and cleanup remain required."},
+		{Class: "fleet.reservation", Permissions: []string{"fleet.reservation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic reservations and blocks inherit identity v1 write 200/hour on each current organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "check.template", Permissions: []string{"check.template.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic checklist template and policy commands inherit identity v1 write 200/hour on each current organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "check.incident", Permissions: []string{"check.incident.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic incident and damage handling steps inherit identity v1 write 200/hour on each current organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "meter.review", Permissions: []string{"meter.reading.correct"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic held meter review decisions inherit identity v1 write200/hour on every current organization/account/web-or-device axis; production measurement and cleanup remain required."},
 		{Class: "idn.invitation", Permissions: []string{"idn.invitation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic invitation writes use the existing identity v1 write allowance on every axis; production measurement remains required."},
 		{Class: "idn.membership", Permissions: []string{"idn.membership.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic membership lifecycle uses identity v1 write200/hour on every axis; production measurement remains required."},
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "idn.device", Permissions: []string{"idn.credential.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic scoped device enrollment and revocation inherit identity v1 write200/hour on every axis; current source membership precedes admission and production measurement remains required."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "trip.mission", Permissions: []string{"trip.mission.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic mission create, assign and cancel commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "trip.review", Permissions: []string{"trip.trip.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic trip review decisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -194,9 +214,11 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	fleetAuthority := &orgpg.FleetAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
-	// NoOpenWork is the explicit BR-FLEET-010 "none" source until the trip and
-	// maintenance epics deliver open trips and work orders (EDR-144).
-	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: fleetpg.NoOpenWork{}}
+	// EMP-TRIP-002 (EDR-206): an IN_PROGRESS trip is BR-FLEET-010 open work;
+	// work orders join this source when the maintenance epic delivers them.
+	// Trips are the FLEET-007 active-use source (EDR-206); NoMaintenanceHolds
+	// stays the explicit "no source" answer until maintenance holds exist.
+	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}
@@ -219,6 +241,31 @@ func Register(router chi.Router, o Options) error {
 	}
 	// EMP-FLEET-006 assignment commands and reads on the same store.
 	if err := fleetweb.RegisterAssetAssignments(router, fleetapp.AssignmentService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	// EMP-FLEET-011 implement attachments under fresh fleet.asset.manage.
+	if err := fleetweb.RegisterAssetAttachments(router, fleetapp.AttachmentService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	// EMP-FLEET-007 reservations, blocks and the availability read.
+	if err := fleetweb.RegisterAssetReservations(router, fleetapp.ReservationService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	// EMP-CHECK-001 checklist templates (organization target) and the
+	// applicable template of an asset (fleet.asset.read on the asset).
+	checklists := &maintpg.ChecklistStore{Pool: o.Pool, Authority: &orgpg.ChecklistAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags, Structure: assetStructure, Assignee: assetAssignee}, Audit: auditStore}
+	templateAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.ChecklistRecords{}, Now: time.Now}
+	applicableAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.ChecklistRecords{}, Structure: assetStructure, Assignee: assetAssignee, Now: time.Now}
+	if err := maintweb.RegisterChecklists(router, maintapp.ChecklistService{Enabled: true, Repository: checklists, NewID: jobs.NewUUIDv4}, cookies, gateway, templateAuthorization, applicableAuthorization); err != nil {
+		return err
+	}
+	// EMP-CHECK-003 (EDR-241): report handling and reads; structural grants
+	// resolve through the report's stored asset, unit and cost centre.
+	incidentStructure := &orgpg.ResourceStructure{Kind: orgpg.IncidentStructure, Pool: o.Pool}
+	incidents := &maintpg.IncidentStore{Pool: o.Pool, Authority: &orgpg.IncidentAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags, Structure: incidentStructure}, Audit: auditStore}
+	incidentQueue := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Now: time.Now}
+	incidentReports := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Structure: incidentStructure, Now: time.Now}
+	if err := maintweb.RegisterIncidents(router, maintapp.IncidentService{Enabled: true, Repository: incidents}, cookies, gateway, incidentQueue, incidentReports, incidentQueue); err != nil {
 		return err
 	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
@@ -295,27 +342,63 @@ func Register(router chi.Router, o Options) error {
 	meterAuthority := &orgpg.MeterAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Devices: deviceStore, Structure: assetStructure, Assignee: assetAssignee}
 	// Held readings resolve their stored asset/unit snapshot (07-permissions example 3).
 	heldStructure := &orgpg.ResourceStructure{Kind: orgpg.HeldMeterReadingStructure, Pool: o.Pool}
-	reviews := &fleetpg.MeterReviewStore{Pool: o.Pool, Authority: &orgpg.MeterReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: heldStructure}, Audit: auditStore, NewID: jobs.NewUUIDv4,
+	var plausibility *meterdomain.Plausibility
+	if !o.MeterPlausibilityOff {
+		policy := meterdomain.DefaultPlausibility()
+		plausibility = &policy
+	}
+	reviews := &fleetpg.MeterReviewStore{Pool: o.Pool, Plausibility: plausibility, Authority: &orgpg.MeterReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: heldStructure}, Audit: auditStore, NewID: jobs.NewUUIDv4,
 		ConfirmSource: func(ctx context.Context, tx pgx.Tx, s syncapp.Source) (time.Time, error) {
 			_, now, err := deviceStore.CheckCurrentDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
 			return now, err
 		},
 	}
-	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore, Reviews: reviews}
+	// EMP-METER-004: the fueling and trip stores answer the approved-parent
+	// port (EMP-TRIP-015, B-BR-EMP-368); no recalculation consumer exists, so
+	// nothing is published (EDR-189).
+	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore, Reviews: reviews, Plausibility: plausibility,
+		Parents: fleetpg.MeterParentSet{&fuelpg.Store{Allocations: assets}, &trippg.Store{}}}
 	if err := fleetweb.RegisterMeters(router, fleetapp.MeterService{Enabled: true, Repository: meters, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	if err := fleetweb.RegisterMeterCorrections(router, fleetapp.MeterCorrectionService{Enabled: true, Repository: meters, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
 	reviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.MeterReviewRecords{}, Structure: heldStructure, Now: time.Now}
 	if err := fleetweb.RegisterMeterReviews(router, fleetapp.MeterReviewService{Enabled: true, Repository: reviews}, cookies, gateway, reviewAuthorization); err != nil {
 		return err
 	}
-	if err := registerIntake(router, o, deviceStore, meters, assets, auditStore, auditCatalog); err != nil {
+	if err := registerIntake(router, o, deviceStore, meters, assets, incidents, auditStore, auditCatalog); err != nil {
 		return err
 	}
 
 	periods := &reviewpg.PeriodStore{Pool: o.Pool, Authority: &orgpg.PeriodAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}, Audit: auditStore}
 	periodAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: reviewweb.PeriodRecords{}, Now: time.Now}
 	if err := reviewweb.RegisterPeriods(router, reviewapp.PeriodService{Enabled: true, Repository: periods, NewID: jobs.NewUUIDv4}, cookies, gateway, periodAuthorization); err != nil {
+		return err
+	}
+
+	// EMP-TRIP-004 (EDR-222): the reviewer read and decision on a stored
+	// trip, structural grants through the trip's stored snapshot.
+	tripStructure := &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: o.Pool}
+	// EMP-TRIP-016 (EDR-232): decisions read the period of the stored start
+	// reporting day through the APPR-006 gate.
+	// EMP-TRIP-015 (EDR-236/237): the same authority proves amendments and the
+	// meter store supersedes an approved amendment's readings.
+	tripReviewAuthority := &orgpg.TripReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure}
+	tripReviews := &trippg.ReviewStore{Pool: o.Pool, Authority: tripReviewAuthority, Audit: auditStore, Periods: reviewpg.PeriodGate{}, Amenders: tripReviewAuthority, Readings: meters}
+	tripReviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ReviewRecords{}, Structure: tripStructure, Now: time.Now}
+	if err := tripweb.RegisterReview(router, tripapp.ReviewService{Enabled: true, Repository: tripReviews, NewID: jobs.NewUUIDv4}, cookies, gateway, tripReviewAuthorization); err != nil {
+		return err
+	}
+
+	// EMP-TRIP-008 (EDR-231): mission planning under trip.mission.manage
+	// (structure: the mission's stored unit and asset) and the assignee's own
+	// list under trip.trip.start; the FLEET-007 start decision is a warning.
+	missionStructure := &orgpg.ResourceStructure{Kind: orgpg.MissionStructure, Pool: o.Pool}
+	missions := &trippg.MissionStore{Pool: o.Pool, Authority: &orgpg.MissionAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: missionStructure}, Audit: auditStore, Availability: assets}
+	missionAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.MissionRecords{}, Structure: missionStructure, Now: time.Now}
+	if err := tripweb.RegisterMissions(router, tripapp.MissionService{Enabled: true, Repository: missions, NewID: jobs.NewUUIDv4}, cookies, gateway, missionAuthorization); err != nil {
 		return err
 	}
 
@@ -394,7 +477,7 @@ func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler,
 	// EMP-DOC-003: the closed registry of linkable kinds, each resolved by
 	// the module that owns the target record (EDR-162).
 	targets := documentapp.Targets{documentdomain.Asset: fleetpg.DocumentTargets{}, documentdomain.MeterReading: fleetpg.DocumentTargets{},
-		documentdomain.Employee: member.EmployeeDocumentTargets{}}
+		documentdomain.Employee: member.EmployeeDocumentTargets{}, documentdomain.Incident: maintpg.IncidentDocumentTargets{}}
 	store := &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore, Targets: targets}
 	// EMP-DOC-014: the ingress runs the same safety check as the queued job,
 	// over the same bucket and inspector, so STORED never skips it.

@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -23,7 +24,7 @@ func TestLegalManagementV2GrantsOnlyTheRecordedRoles(t *testing.T) {
 		}
 	}
 	_, version := d.SystemCatalog().Versions()
-	if version != "org-permissions-v4" {
+	if version != "org-permissions-v5" {
 		t.Fatal("matrix amendment did not change its version")
 	}
 }
@@ -51,6 +52,11 @@ func TestCatalogV3RetainsEveryOtherV1Cell(t *testing.T) {
 				expected = "O"
 				changes++
 			}
+			// org-permissions-v5 (EDR-190/191) grants the recorded rows.
+			if slices.Contains(v5Amendments[row[0]], name) {
+				expected = "O"
+				changes++
+			}
 
 			rule, err := d.SystemCatalog().Lookup(d.Role(name), d.Permission(row[0]))
 			if err != nil {
@@ -68,7 +74,7 @@ func TestCatalogV3RetainsEveryOtherV1Cell(t *testing.T) {
 			}
 		}
 	}
-	if changes != 9 {
-		t.Fatal("expected exactly nine explicit amendments")
+	if changes != 20 {
+		t.Fatal("expected exactly twenty explicit amendments (v2, v3 and v5)")
 	}
 }

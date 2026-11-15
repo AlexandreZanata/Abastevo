@@ -119,6 +119,15 @@ Network never holds a vault/fence lock. Retry metadata uses structural CAS,
 monotonic timing and retained server floors; no send attempt becomes acceptance.
 The production producer registry stays empty until real owning integrations.
 
+EMP-FLEET-013 stores the signed reference feed as one sealed `CACHE` entry per
+partition (versioned canonical JSON, bound to membership and enrollment,
+replaced by compare-and-set); no plaintext table exists.
+
+EMP-TRIP-005 registers the first business producers (`trip.start`,
+`trip.event.record`, `trip.finish`, `trip.submit`); their projection is one sealed
+`RECORD` per partition (`trip-book` v1, bound to membership and enrollment)
+written in the same protected write as each operation; no plaintext table exists.
+
 The separate operation WorkManager uses empty system input and discovers only
 the current account/origin through authenticated protected descriptors. The
 actual Android provider accepts exact scoped normal/denial/lock prefixes;

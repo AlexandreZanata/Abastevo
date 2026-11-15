@@ -14,10 +14,12 @@ import (
 // the structural DTOs and result catalog agree with the shared wire oracle.
 func TestEnterpriseSyncComponents(t *testing.T) {
 	doc := loadSpec(t)
-	// Exactly the delivered sync routes: the OFFL-002 batch plus the OFFL-008
-	// company Meter review and signed own-result endpoints.
+	// Exactly the delivered sync routes: the OFFL-002 batch, the OFFL-008
+	// company Meter review and signed own-result endpoints and the OFFL-006
+	// signed reference feed.
 	delivered := map[string]bool{
 		"/v1/orgs/{org_id}/sync/operations":                                      false,
+		"/v1/orgs/{org_id}/sync/reference":                                       false,
 		"/v1/orgs/{org_id}/sync/review-results":                                  false,
 		"/v1/orgs/{org_id}/sync/reviews/meter-readings/list":                     false,
 		"/v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/read":    false,

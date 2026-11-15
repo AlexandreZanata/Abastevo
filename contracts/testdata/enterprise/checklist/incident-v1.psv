@@ -1,0 +1,99 @@
+id|operation|args|expected
+report-damage-defaults|REPORT||type=DAMAGE;kind=?;state=REPORTED;revision=1;blocks=false
+report-incident-breakdown|REPORT|type=INCIDENT;kind=BREAKDOWN;description=Synthetic incident|type=INCIDENT;kind=BREAKDOWN;state=REPORTED;revision=1;blocks=false
+report-incident-accident|REPORT|type=INCIDENT;kind=ACCIDENT;description=Synthetic incident|type=INCIDENT;kind=ACCIDENT;state=REPORTED;revision=1;blocks=false
+report-incident-theft|REPORT|type=INCIDENT;kind=THEFT;description=Synthetic incident|type=INCIDENT;kind=THEFT;state=REPORTED;revision=1;blocks=false
+report-incident-fine-notice|REPORT|type=INCIDENT;kind=FINE_NOTICE;description=Synthetic incident|type=INCIDENT;kind=FINE_NOTICE;state=REPORTED;revision=1;blocks=false
+report-incident-other|REPORT|type=INCIDENT;kind=OTHER;description=Synthetic incident|type=INCIDENT;kind=OTHER;state=REPORTED;revision=1;blocks=false
+report-damage-blocking|REPORT|blocks=true;location=Para-choque traseiro|type=DAMAGE;kind=?;state=REPORTED;revision=1;blocks=true
+report-incident-blocking-place|REPORT|type=INCIDENT;kind=ACCIDENT;blocks=true;location=Rodovia sintetica km 12|type=INCIDENT;kind=ACCIDENT;state=REPORTED;revision=1;blocks=true
+report-damage-with-kind|REPORT|kind=ACCIDENT|error=INVALID
+report-incident-without-kind|REPORT|type=INCIDENT|error=INVALID
+report-type-unknown|REPORT|type=FIRE|error=INVALID
+report-type-lowercase|REPORT|type=damage|error=INVALID
+report-type-empty|REPORT|type=|error=INVALID
+report-kind-unknown|REPORT|type=INCIDENT;kind=FLOOD|error=INVALID
+report-kind-lowercase|REPORT|type=INCIDENT;kind=theft|error=INVALID
+report-kind-padded|REPORT|type=INCIDENT;kind=hex:205448454654|error=INVALID
+report-description-1000|REPORT|description=rep:1000:a|type=DAMAGE;kind=?;state=REPORTED;revision=1;blocks=false
+report-description-1001|REPORT|description=rep:1001:a|error=INVALID
+report-description-1000-multibyte|REPORT|description=rep:1000:hex:c3a3|type=DAMAGE;kind=?;state=REPORTED;revision=1;blocks=false
+report-description-1001-multibyte|REPORT|description=rep:1001:hex:c3a3|error=INVALID
+report-description-empty|REPORT|description=|error=INVALID
+report-description-spaces|REPORT|description=hex:202020|error=INVALID
+report-description-ideographic-space|REPORT|description=hex:e38080|error=INVALID
+report-description-no-break-space|REPORT|description=hex:c2a0|error=INVALID
+report-description-newline|REPORT|description=hex:4c696e68610a32|error=INVALID
+report-description-tab|REPORT|description=hex:4c0961|error=INVALID
+report-description-c1-control|REPORT|description=hex:41c285|error=INVALID
+report-description-delete|REPORT|description=hex:417f|error=INVALID
+report-description-invalid-utf8|REPORT|description=hex:41ff|error=INVALID
+report-description-padded-content|REPORT|description=hex:2020416d617373616461202020|type=DAMAGE;kind=?;state=REPORTED;revision=1;blocks=false
+report-location-140|REPORT|location=rep:140:b|type=DAMAGE;kind=?;state=REPORTED;revision=1;blocks=false
+report-location-141|REPORT|location=rep:141:b|error=INVALID
+report-location-empty|REPORT|location=|error=INVALID
+report-location-blank|REPORT|location=hex:20|error=INVALID
+report-location-control|REPORT|location=hex:41004142|error=INVALID
+decide-acknowledge-reported|DECIDE|action=ACKNOWLEDGE|from=REPORTED;to=ACKNOWLEDGED;revision=2;action=ACKNOWLEDGE
+decide-treat-reported|DECIDE|action=TREAT;note=Oficina agendada|from=REPORTED;to=IN_TREATMENT;revision=2;action=TREAT
+decide-treat-acknowledged|DECIDE|state=ACKNOWLEDGED;revision=2;action=TREAT;note=Oficina agendada|from=ACKNOWLEDGED;to=IN_TREATMENT;revision=3;action=TREAT
+decide-resolve-reported|DECIDE|action=RESOLVE;note=Lanterna trocada|from=REPORTED;to=RESOLVED;revision=2;action=RESOLVE
+decide-resolve-acknowledged|DECIDE|state=ACKNOWLEDGED;revision=2;action=RESOLVE;note=Lanterna trocada|from=ACKNOWLEDGED;to=RESOLVED;revision=3;action=RESOLVE
+decide-resolve-in-treatment|DECIDE|state=IN_TREATMENT;revision=3;action=RESOLVE;note=Lanterna trocada|from=IN_TREATMENT;to=RESOLVED;revision=4;action=RESOLVE
+decide-dismiss-reported|DECIDE|action=DISMISS;note=Relato sem dano|from=REPORTED;to=DISMISSED;revision=2;action=DISMISS
+decide-dismiss-acknowledged|DECIDE|state=ACKNOWLEDGED;revision=2;action=DISMISS;note=Relato sem dano|from=ACKNOWLEDGED;to=DISMISSED;revision=3;action=DISMISS
+decide-dismiss-in-treatment|DECIDE|state=IN_TREATMENT;revision=2;action=DISMISS;note=Relato sem dano|from=IN_TREATMENT;to=DISMISSED;revision=3;action=DISMISS
+decide-dismiss-duplicate|DECIDE|action=DISMISS;note=Repete o relato anterior;duplicate=R2|from=REPORTED;to=DISMISSED;revision=2;action=DISMISS
+decide-note-500|DECIDE|action=RESOLVE;note=rep:500:n|from=REPORTED;to=RESOLVED;revision=2;action=RESOLVE
+decide-note-500-multibyte|DECIDE|action=TREAT;note=rep:500:hex:c3a7|from=REPORTED;to=IN_TREATMENT;revision=2;action=TREAT
+decide-acknowledge-from-acknowledged|DECIDE|state=ACKNOWLEDGED;revision=2;action=ACKNOWLEDGE|error=TRANSITION
+decide-acknowledge-from-in-treatment|DECIDE|state=IN_TREATMENT;revision=3;action=ACKNOWLEDGE|error=TRANSITION
+decide-acknowledge-from-resolved|DECIDE|state=RESOLVED;revision=3;action=ACKNOWLEDGE|error=TRANSITION
+decide-acknowledge-from-dismissed|DECIDE|state=DISMISSED;revision=2;action=ACKNOWLEDGE|error=TRANSITION
+decide-treat-from-in-treatment|DECIDE|state=IN_TREATMENT;revision=2;action=TREAT;note=Nova acao|error=TRANSITION
+decide-treat-from-resolved|DECIDE|state=RESOLVED;revision=4;action=TREAT;note=Nova acao|error=TRANSITION
+decide-treat-from-dismissed|DECIDE|state=DISMISSED;revision=3;action=TREAT;note=Nova acao|error=TRANSITION
+decide-resolve-from-resolved|DECIDE|state=RESOLVED;revision=2;action=RESOLVE;note=Encerrar|error=TRANSITION
+decide-resolve-from-dismissed|DECIDE|state=DISMISSED;revision=4;action=RESOLVE;note=Encerrar|error=TRANSITION
+decide-dismiss-from-resolved|DECIDE|state=RESOLVED;revision=2;action=DISMISS;note=Encerrar|error=TRANSITION
+decide-dismiss-from-dismissed|DECIDE|state=DISMISSED;revision=4;action=DISMISS;note=Encerrar|error=TRANSITION
+decide-stale-revision|DECIDE|state=ACKNOWLEDGED;revision=2;expected=1;action=RESOLVE;note=Resolvido|error=CONFLICT
+decide-future-revision|DECIDE|expected=2;action=ACKNOWLEDGE|error=CONFLICT
+decide-conflict-before-transition|DECIDE|state=RESOLVED;revision=3;expected=2;action=RESOLVE;note=Resolvido|error=CONFLICT
+decide-action-unknown|DECIDE|action=OPEN|error=INVALID
+decide-action-lowercase|DECIDE|action=acknowledge|error=INVALID
+decide-action-empty|DECIDE|action=|error=INVALID
+decide-acknowledge-with-note|DECIDE|action=ACKNOWLEDGE;note=Ciente|error=INVALID
+decide-treat-without-note|DECIDE|action=TREAT|error=INVALID
+decide-resolve-without-note|DECIDE|action=RESOLVE|error=INVALID
+decide-dismiss-without-note|DECIDE|action=DISMISS|error=INVALID
+decide-note-empty|DECIDE|action=RESOLVE;note=|error=INVALID
+decide-note-blank|DECIDE|action=RESOLVE;note=hex:e38080|error=INVALID
+decide-note-501|DECIDE|action=RESOLVE;note=rep:501:n|error=INVALID
+decide-note-control|DECIDE|action=DISMISS;note=hex:4f6b0a|error=INVALID
+decide-duplicate-on-resolve|DECIDE|action=RESOLVE;note=Resolvido;duplicate=R2|error=INVALID
+decide-duplicate-itself|DECIDE|action=DISMISS;note=Duplicado;duplicate=R1|error=INVALID
+decide-duplicate-malformed|DECIDE|action=DISMISS;note=Duplicado;duplicate=not-a-uuid|error=INVALID
+decide-duplicate-uppercase|DECIDE|action=DISMISS;note=Duplicado;duplicate=9C000000-0000-4000-8000-000000004002|error=INVALID
+decide-duplicate-nil|DECIDE|action=DISMISS;note=Duplicado;duplicate=00000000-0000-0000-0000-000000000000|error=INVALID
+decide-expected-zero|DECIDE|expected=0;action=ACKNOWLEDGE|error=INVALID
+decide-expected-negative|DECIDE|expected=-1;action=ACKNOWLEDGE|error=INVALID
+decide-current-state-unknown|DECIDE|state=CLOSED;revision=2;action=ACKNOWLEDGE|error=INVALID
+decide-current-revision-zero|DECIDE|revision=0;action=ACKNOWLEDGE|error=INVALID
+decide-current-reported-revision-two|DECIDE|revision=2;action=ACKNOWLEDGE|error=INVALID
+decide-current-acknowledged-revision-one|DECIDE|state=ACKNOWLEDGED;revision=1;action=TREAT;note=Agendado|error=INVALID
+decide-current-revision-five|DECIDE|state=DISMISSED;revision=5;action=ACKNOWLEDGE|error=INVALID
+decide-current-report-malformed|DECIDE|report=not-a-uuid;action=ACKNOWLEDGE|error=INVALID
+decide-reporter-empty|DECIDE|reporter=;action=ACKNOWLEDGE|error=INVALID
+decide-handler-empty|DECIDE|handler=;action=ACKNOWLEDGE|error=INVALID
+decide-handler-malformed|DECIDE|handler=A2,not-a-uuid;action=ACKNOWLEDGE|error=INVALID
+decide-invalid-before-conflict|DECIDE|expected=2;action=RESOLVE|error=INVALID
+decide-transition-before-self-approval|DECIDE|state=RESOLVED;revision=2;blocks=true;handler=A1,M1,E1;action=RESOLVE;note=Resolvido|error=TRANSITION
+decide-self-resolve-blocking-membership|DECIDE|blocks=true;handler=A9,M1,E9;action=RESOLVE;note=Resolvido|error=SELF_APPROVAL
+decide-self-dismiss-blocking-account|DECIDE|blocks=true;handler=A1,M9,E9;action=DISMISS;note=Descartado|error=SELF_APPROVAL
+decide-self-resolve-blocking-employee|DECIDE|state=IN_TREATMENT;revision=3;blocks=true;handler=A9,M9,E1;action=RESOLVE;note=Resolvido|error=SELF_APPROVAL
+decide-self-resolve-not-blocking|DECIDE|handler=A1,M1,E1;action=RESOLVE;note=Resolvido|from=REPORTED;to=RESOLVED;revision=2;action=RESOLVE
+decide-self-acknowledge-blocking|DECIDE|blocks=true;handler=A1,M1,E1;action=ACKNOWLEDGE|from=REPORTED;to=ACKNOWLEDGED;revision=2;action=ACKNOWLEDGE
+decide-self-treat-blocking|DECIDE|blocks=true;handler=A1,M1,E1;action=TREAT;note=Oficina agendada|from=REPORTED;to=IN_TREATMENT;revision=2;action=TREAT
+decide-other-resolves-blocking|DECIDE|blocks=true;action=RESOLVE;note=Resolvido|from=REPORTED;to=RESOLVED;revision=2;action=RESOLVE
+decide-other-dismisses-blocking-duplicate|DECIDE|blocks=true;action=DISMISS;note=Duplicado;duplicate=R3|from=REPORTED;to=DISMISSED;revision=2;action=DISMISS

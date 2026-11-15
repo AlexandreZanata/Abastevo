@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-FLEET-013 "Meus ativos" and the asset picker (SCR-FLEET-08/09/10). -->
+    <string name="enterprise_assets_title">我的资产</string>
+    <string name="enterprise_assets_home_copy">公司分配给你的资产，无网络时也可查看。</string>
+    <string name="enterprise_assets_open">打开我的资产</string>
+    <string name="enterprise_assets_back_home">返回公司首页</string>
+    <string name="enterprise_assets_back_list">返回我的资产</string>
+    <string name="enterprise_assets_refresh">更新列表</string>
+    <string name="enterprise_assets_loading">正在加载</string>
+    <string name="enterprise_assets_confirmed_at">更新于 %1$s</string>
+    <string name="enterprise_assets_not_confirmed">未确认：已超过 24 小时未与公司联系。</string>
+    <string name="enterprise_assets_refresh_failed">目前无法确认列表。显示的是最近一次确认的版本。</string>
+    <string name="enterprise_assets_refresh_failed_empty">目前无法加载列表。请重试。</string>
+    <string name="enterprise_assets_offline">无网络。显示的是最近一次确认的列表。</string>
+    <string name="enterprise_assets_needs_connection">无网络。资产列表需要联网一次。</string>
+    <string name="enterprise_assets_unavailable">资产列表目前不可用。已保存的数据是安全的。</string>
+    <string name="enterprise_assets_retry">重试</string>
+    <string name="enterprise_assets_empty">没有分配给你的资产</string>
+    <string name="enterprise_assets_empty_who">有权分配资产的公司车队管理员可以为你分配资产。</string>
+    <string name="enterprise_assets_forbidden_title">无权限</string>
+    <string name="enterprise_assets_forbidden">你无法查看该公司的资产。公司管理员可以授予访问权限。</string>
+    <string name="enterprise_assets_fleet_number">车队编号 %1$s</string>
+    <string name="enterprise_assets_plate">车牌 %1$s</string>
+    <string name="enterprise_assets_kind_vehicle">车辆</string>
+    <string name="enterprise_assets_kind_machine">机械</string>
+    <string name="enterprise_assets_kind_implement">机具</string>
+    <string name="enterprise_assets_assignment_primary">主要分配</string>
+    <string name="enterprise_assets_assignment_additional">附加分配</string>
+    <string name="enterprise_assets_assignment_temporary">临时分配</string>
+    <string name="enterprise_assets_assignment_until">至 %1$s</string>
+    <string name="enterprise_assets_assignment_ended">分配期已于 %1$s 结束；公司会在收到你的记录时确认。</string>
+    <string name="enterprise_assets_unavailable_state">不可用：%1$s</string>
+    <string name="enterprise_assets_state">状态：%1$s</string>
+    <string name="enterprise_assets_state_draft">草稿</string>
+    <string name="enterprise_assets_state_active">在用</string>
+    <string name="enterprise_assets_state_inactive">停用</string>
+    <string name="enterprise_assets_state_disposed">已处置</string>
+    <string name="enterprise_assets_state_archived">已归档</string>
+    <string name="enterprise_assets_row_not_confirmed">未确认</string>
+    <string name="enterprise_assets_detail_title">资产详情</string>
+    <string name="enterprise_assets_usage_distance">按公里计算使用量</string>
+    <string name="enterprise_assets_usage_hours">按小时计算使用量</string>
+    <string name="enterprise_assets_products">可用产品：%1$s</string>
+    <string name="enterprise_assets_products_none">未登记可用产品</string>
+    <string name="enterprise_assets_product_electricity">电力</string>
+    <string name="enterprise_assets_product_arla">AdBlue（ARLA 32）</string>
+    <string name="enterprise_assets_meter_odometer">里程表安装于 %1$s</string>
+    <string name="enterprise_assets_meter_hour">工时表安装于 %1$s</string>
+    <string name="enterprise_assets_meters_none">没有在用的计量表</string>
+    <string name="enterprise_assets_offline_limits">读数和油箱容量不在此离线列表中。</string>
+    <string name="enterprise_assets_pick_title">选择资产</string>
+    <string name="enterprise_assets_pick_cancel">取消</string>
+    <string name="enterprise_assets_warning_title">公司将审核此选择</string>
+    <string name="enterprise_assets_warning_copy">此资产不可用或其数据未确认。你可以选择它；公司会在收到你的记录时决定。</string>
+    <string name="enterprise_assets_warning_confirm">仍然选择</string>
+</resources>

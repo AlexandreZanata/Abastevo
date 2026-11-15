@@ -30,7 +30,7 @@ type matrixRoute struct {
 }
 
 // These expectations are literal policy examples, independent of the catalog
-// implementation. The independent v4 PSV supplies every role's cell outcome.
+// implementation. The independent v5 PSV supplies every role's cell outcome.
 var matrixRepresentatives = []matrixRoute{
 	{"org.ownership.transfer", "/ownership-transfer/propose", true, true},
 	{"org.ownership.respond", "/ownership-transfer/read", true, false},
@@ -46,8 +46,15 @@ var matrixRepresentatives = []matrixRoute{
 	{"org.structure.manage", "/units/list", false, false},
 	{"fleet.asset.manage", "/fleet/assets/create", true, true},
 	{"fleet.asset.assign", "/fleet/assets/{asset_id}/assignments/create", true, true},
+	{"fleet.reservation.manage", "/fleet/assets/{asset_id}/reservations/request", true, true},
 	{"fleet.asset.read", "/fleet/assets/list", false, false},
 	{"meter.reading.correct", "/sync/reviews/meter-readings/list", false, false},
+	{"check.template.manage", "/checklists/templates/list", false, false},
+	{"trip.trip.review", "/trips/review/list", false, false},
+	{"trip.mission.manage", "/missions/list", false, false},
+	{"trip.trip.start", "/missions/mine/list", false, false},
+	{"check.incident.manage", "/incidents/reports/list", false, false},
+	{"check.incident.report", "/incidents/reports/mine", false, false},
 	{"fin.period.close", "/finance/periods/list", false, false},
 	{"fin.period.reopen", "/finance/periods/{period}/reopen", true, true},
 	{"doc.document.attach", "/documents/uploads/create", false, true},
@@ -62,7 +69,7 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		t.Fatal("authorization test location unavailable")
 	}
 	directory := filepath.Join(filepath.Dir(source), "../../../../../contracts/testdata/enterprise")
-	file, err := os.Open(filepath.Join(directory, "authorization-catalog-v4.psv"))
+	file, err := os.Open(filepath.Join(directory, "authorization-catalog-v5.psv"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +113,7 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		} `json:"permissions"`
 	}
 	raw, err := os.ReadFile(filepath.Join(directory, "authorization-routes-v1.json"))
-	if err != nil || json.Unmarshal(raw, &inventory) != nil || inventory.Version != 1 || inventory.Roles != "org-roles-v1" || inventory.PermissionsVersion != "org-permissions-v4" || len(inventory.Permissions) != 85 {
+	if err != nil || json.Unmarshal(raw, &inventory) != nil || inventory.Version != 1 || inventory.Roles != "org-roles-v1" || inventory.PermissionsVersion != "org-permissions-v5" || len(inventory.Permissions) != 85 {
 		t.Fatal("independent route inventory unavailable or invalid")
 	}
 	routed := map[string]string{}
@@ -236,7 +243,18 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,asset_id,revision) FROM org_asset_revisions x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_asset_assignments x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_assignment_commands x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_asset_reservations x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_asset_blocks x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_reservation_commands x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_asset_implement_attachments x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_attachment_commands x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_commands x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_checklist_templates x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,template_id,version) FROM org_checklist_template_versions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,template_id,version,position) FROM org_checklist_template_items x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,template_id,version,category_id,asset_id) FROM org_checklist_template_targets x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,template_id,revision) FROM org_checklist_policy_revisions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_checklist_template_commands x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meters x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meter_segments x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meter_readings x),
@@ -252,6 +270,13 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_documents x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,document_id,target_kind,target_id) FROM org_document_links x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_export_jobs x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,trip_id,sequence) FROM org_trip_review_entries x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,trip_id,revision) FROM org_trip_amendments x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_trip_missions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,mission_id,revision) FROM org_trip_mission_transitions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_trip_mission_commands x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_incident_reports x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,report_id,revision) FROM org_incident_report_transitions x),
 	 (SELECT count(*) FROM org_sensitive_access_events),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),
 	 (SELECT count(*) FROM org_ownership_commands), (SELECT count(*) FROM org_role_commands))::text`).Scan(&value); err != nil {
@@ -326,10 +351,14 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	roles, oracle := matrixOracle(t)
 	fx := devicesFixture(t)
 	grantEmployeeTables(t, fx.legalFixtureState)
-	_ = assignmentStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
+	_ = attachmentStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
+	grantChecklistTables(t, fx.legalFixtureState)
+	grantMissionTables(t, fx.legalFixtureState)
 	fx.f.GrantMeterReviews(t)
 	periodGrant(t, fx.f)
 	exportGrant(t, fx)
+	tripReviewGrants(t, fx.f)
+	incidentGrants(t, fx.f)
 	roleSQL := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+roleSQL+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+roleSQL); err != nil {
 		t.Fatal(err)
@@ -389,6 +418,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 2, "reason": "Synthetic matrix reopening"}
 				case "fleet.asset.assign":
 					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "kind": "ADDITIONAL", "employee_ids": []string{target.employee}}
+				case "fleet.reservation.manage":
+					// REQUESTED windows may overlap: every allowed role requests one.
+					start := time.Now().UTC().Add(48 * time.Hour).Truncate(time.Second)
+					return map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "starts_at": start.Format(time.RFC3339Nano), "ends_at": start.Add(time.Hour).Format(time.RFC3339Nano), "purpose": "Synthetic matrix reservation"}
 				case "doc.document.attach":
 					return matrixDocumentDeclaration(t)
 				default:
@@ -410,7 +443,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 					matrixCall(t, fx, router, owner, base+"/finance/periods/"+month+"/close", map[string]any{"schema_version": 1, "operation_id": onboardingID(t), "revision": 1}, 200, "", "", nil)
 				}
 				want, code, key := 200, "", ""
-				if entry.permission == "fleet.asset.manage" || entry.permission == "fleet.asset.assign" || entry.permission == "doc.document.attach" {
+				if entry.permission == "fleet.asset.manage" || entry.permission == "fleet.asset.assign" || entry.permission == "fleet.reservation.manage" || entry.permission == "doc.document.attach" {
 					want = 201
 				}
 				// Fleet's S cells cover only assets assigned to the member, never
@@ -420,8 +453,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 				if cell == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(cell, "S") || entry.permission == "doc.document.view_content" && strings.HasPrefix(cell, "S") {
 					want, code, key = 403, "FORBIDDEN", entry.permission
 					denied++
-				} else if strings.HasPrefix(cell, "O") || entry.permission == "doc.document.attach" && strings.HasPrefix(cell, "S") {
-					// A SELF attach cell covers exactly the member's own new document.
+				} else if strings.HasPrefix(cell, "O") || (entry.permission == "doc.document.attach" || entry.permission == "trip.trip.start" || entry.permission == "check.incident.report") && strings.HasPrefix(cell, "S") {
+					// A SELF attach cell covers exactly the member's own new document;
+					// a trip.trip.start cell covers the member's own mission list; a
+					// SELF report cell the member's own report list (EMP-CHECK-003).
 					allowed++
 				} else {
 					t.Fatal("new SELF descriptor needs explicit delivered business-resource cases")
@@ -531,7 +566,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 						case "self-scope":
 							// A SELF-scoped assignment still covers the member's own new
 							// document; every other representative needs ORG scope.
-							if entry.permission != "org.ownership.respond" && !(entry.permission == "doc.document.attach" && want == 201) {
+							if entry.permission != "org.ownership.respond" && !(entry.permission == "doc.document.attach" && want == 201) && !(entry.permission == "trip.trip.start" && want == 200) && !(entry.permission == "check.incident.report" && want == 200) {
 								want, code, key = 403, "FORBIDDEN", entry.permission
 							}
 						case "unit-scope":
@@ -614,10 +649,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 210 || allowed != 81 || denied != 129 {
+	if exercised != 280 || allowed != 112 || denied != 168 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 63 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 58 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident report S cells cover only the own report list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
 }
 
 // matrixAssignableAsset creates, through the owner's actual requests, one

@@ -4,8 +4,10 @@ package adapters
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	qcap "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgcapability"
@@ -188,6 +190,27 @@ func (store *Store) LockSnapshotDBTX(ctx context.Context, queries database.OrgDB
 		return domain.State{}, domain.ErrUnavailable
 	}
 	return domain.State{Enabled: row.Enabled, Revision: row.Revision}, nil
+}
+
+// PlanStateDBTX reads the capability row's state, revision and the instant
+// that state was set, for the EMP-OFFL-012 plan rule (EDR-201). An absent row
+// reports present=false. It grants nothing; owners still check the state.
+func (store *Store) PlanStateDBTX(ctx context.Context, queries database.OrgDBTX, scope kernel.OrgScope, code string) (present, enabled bool, revision int64, changedAt time.Time, err error) {
+	if err := store.validate(scope, code); err != nil {
+		return false, false, 0, time.Time{}, err
+	}
+	if err := database.ValidateOrgDBTX(ctx, queries, scope); err != nil {
+		return false, false, 0, time.Time{}, domain.ErrUnavailable
+	}
+	var at pgtype.Timestamptz
+	err = queries.QueryRow(ctx, `SELECT enabled,revision,updated_at FROM org_capabilities WHERE org_id=$1 AND capability=$2`, scope.OrgID().String(), code).Scan(&enabled, &revision, &at)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return false, false, 0, time.Time{}, nil
+	}
+	if err != nil || revision < 1 || !at.Valid || at.InfinityModifier != pgtype.Finite {
+		return false, false, 0, time.Time{}, domain.ErrUnavailable
+	}
+	return true, enabled, revision, at.Time.UTC(), nil
 }
 
 func (store *Store) Run(ctx context.Context, scope kernel.OrgScope, code string, intent domain.Intent, work func(context.Context, pgx.Tx) error) error {

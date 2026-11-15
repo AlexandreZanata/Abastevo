@@ -251,7 +251,7 @@ func TestDocumentValuesAreRedacted(t *testing.T) {
 	d = ok(d.Allocate([]doc.AllocationLine{{Target: expense(t, 1, 211), Centavos: 97350}}))(t)
 	secrets := []string{uuid(201), uuid(211), uuid(1), digest(201 % 256), "97350"}
 	var logged bytes.Buffer
-	slog.New(slog.NewJSONHandler(&logged, nil)).Info("document", "doc", d, "target", d.Links()[0], "line", d.Allocations()[0].Target)
+	slog.New(slog.NewJSONHandler(&logged, untimedLog)).Info("document", "doc", d, "target", d.Links()[0], "line", d.Allocations()[0].Target)
 	encoded, e := json.Marshal(struct {
 		D doc.Document
 		T doc.Target
@@ -267,3 +267,13 @@ func TestDocumentValuesAreRedacted(t *testing.T) {
 		}
 	}
 }
+
+// untimedLog drops the record time so that a numeric private marker cannot
+// match digits of the timestamp by chance (a 4-digit marker did, about once in
+// 200 runs).
+var untimedLog = &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey {
+		return slog.Attr{}
+	}
+	return a
+}}

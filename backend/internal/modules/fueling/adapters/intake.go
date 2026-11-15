@@ -288,7 +288,7 @@ func readingFits(v app.CommandInput, view *fleetapp.MeterView) bool {
 
 func readingRecorded(source syncapp.Source, v app.CommandInput, view fleetapp.MeterView, reading meter.Reading) bool {
 	actual := reading.Snapshot()
-	if v.Reading == nil || actual.Reference.ID() != v.Reading.ReadingID || actual.Reference.Segment() != view.Segment || actual.Value.Kind() != v.Reading.Value.Kind() || actual.Value.Count() != v.Reading.Value.Count() || actual.Declared == nil || !actual.Declared.OccurredAt.Equal(v.Declared.OccurredAt) || actual.Declared.EntryZone != v.Declared.EntryZone || actual.Declared.DeviceOffsetSeconds != v.Declared.DeviceOffsetSeconds || actual.Author.OrganizationID() != source.Scope.OrgID() || actual.Author.ID() != source.MembershipID || actual.Operation.ID() != v.OperationID || actual.Origin != meter.Fueling || actual.Method != meter.Typed || actual.Photo != nil || actual.State != meter.Valid || actual.ReceivedAt.IsZero() {
+	if v.Reading == nil || actual.Reference.ID() != v.Reading.ReadingID || actual.Reference.Segment() != view.Segment || actual.Value.Kind() != v.Reading.Value.Kind() || actual.Value.Count() != v.Reading.Value.Count() || actual.Declared == nil || !actual.Declared.OccurredAt.Equal(v.Declared.OccurredAt) || actual.Declared.EntryZone != v.Declared.EntryZone || actual.Declared.DeviceOffsetSeconds != v.Declared.DeviceOffsetSeconds || actual.Author.OrganizationID() != source.Scope.OrgID() || actual.Author.ID() != source.MembershipID || actual.Operation.ID() != v.OperationID || actual.Origin != meter.Fueling || actual.Method != meter.Typed || actual.Photo != nil || actual.State != meter.Valid && actual.State != meter.Suspect || actual.ReceivedAt.IsZero() {
 		return false
 	}
 	capture := reading.CaptureSource()

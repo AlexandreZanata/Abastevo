@@ -68,6 +68,12 @@ android {
             providers.gradleProperty("qualityUiEnabled").orElse("true").get().toBooleanStrict().toString())
         buildConfigField("boolean", "OCCURRENCE_UI_ENABLED",
             providers.gradleProperty("occurrenceUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-FLEET-013 rollback switch (EDR-226): off hides "Meus ativos"; its protected cache stays unused.
+        buildConfigField("boolean", "ENTERPRISE_FLEET_UI_ENABLED",
+            providers.gradleProperty("enterpriseFleetUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-TRIP-005 rollback switch (EDR-242): hides the trip entry; queued trip work keeps its delivery.
+        buildConfigField("boolean", "ENTERPRISE_TRIP_UI_ENABLED",
+            providers.gradleProperty("enterpriseTripUiEnabled").orElse("true").get().toBooleanStrict().toString())
         testInstrumentationRunner = if (enterpriseDeviceValidation) {
             "com.anpfuel.app.ui.enterprise.EnterpriseDeviceTestRunner"
         } else {

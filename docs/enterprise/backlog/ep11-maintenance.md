@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 The existing maintenance specification owns the threshold, state and evidence rules.
 
 ### EMP-CHECK-001 — Checklist templates per asset category
-- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Publish immutable checklist templates by category and approved scope.
 - **Rules and use cases:** BR-CHECK-001, BR-CHECK-002, BR-CHECK-003, BR-CHECK-005
 - **Depends on:** EMP-FLEET-002
@@ -27,6 +27,18 @@ The existing maintenance specification owns the threshold, state and evidence ru
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Detailed rules and exact thresholds come from the maintenance specification. Attachments and real-data activation retain their own gates.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+EMP-CHECK-001 LOCAL_DONE (pending integration): org-permissions-v5 grants
+`check.template.manage` (EDR-190); the new `maintenance` module stores immutable
+template versions, items, targets and per-template policy revisions (migration
+000223, forced RLS, guarded head, closed committed versions, one ACTIVE target
+per context) behind six organization-level routes and the applicable read of an
+asset under `fleet.asset.read`, which answers the version and policy revision a
+run pins. The pure answer/outcome rule, the resolution and the policy-in-force
+lookup are shared by Go and Kotlin through `checklist-v1.psv` for EMP-CHECK-002.
+Retained: runs and their server recheck (EMP-CHECK-002), the reference-feed
+extension (EMP-OFFL-006), template events and policy history reads, the panel
+(EMP-CHECK-004). [Evidence](../evidence/f4-check001-checklist-templates.md).
 
 ### EMP-CHECK-002 — Checklist execution offline with the critical-item policy
 - **Meta:** module CHECK · phase F4 · cut - · priority P1 · type APP · size M · state TODO
@@ -59,6 +71,24 @@ The existing maintenance specification owns the threshold, state and evidence ru
 - **Validation:** V-API, V-SQL, V-APP, V-ISO, V-PRIV, V-SYNC · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Detailed rules and exact thresholds come from the maintenance specification. Attachments and real-data activation retain their own gates.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+EMP-CHECK-003 LOCAL_DONE (pending integration): damages and incidents are the
+reporter's signed `check.incident.report` (EDR-238; migration 000230, forced
+RLS, guarded report and append-only handling history), durable offline and
+accepted whatever the state of their photos; photos are EMP-DOC-002 documents
+linked through EMP-DOC-003 with the new `INCIDENT` kind and shown only with
+their own storage state (EDR-239); a report made inside a trip is an
+`INCIDENT`/`DAMAGE` fact of the trip timeline by read join, and
+`trip.event.record` refuses those two types as `MALFORMED` (EDR-240);
+acknowledge, treat, resolve and dismiss under fresh `check.incident.manage`
+with revision CAS, `SELF_APPROVAL` for a blocking report and one audit event
+per step, plus the organization queue, the scoped read and the reporter's own
+list (EDR-241). The pure rule is shared by Go and Kotlin through
+`incident-v1.psv`. No report books a cost. Retained: the asset block and its
+release (EMP-CHECK-002/004), held reports for changed rights, the device
+attachment path (EMP-OFFL-005/EMP-DOC-004), notifications, the panel
+(EMP-CHECK-004), work orders (EMP-MAINT-003).
+[Evidence](../evidence/f4-check003-incident-reports.md).
 
 ### EMP-CHECK-004 — Panel: checklists, damages and incidents
 - **Meta:** module CHECK · phase F4 · cut - · priority P1 · type WEB · size M · state TODO

@@ -118,7 +118,7 @@ func (e accountContextEndpoint) ServeHTTP(w http.ResponseWriter, r *http.Request
 				orgapi.WriteError(w, r, mapped(err))
 				return
 			}
-			response = map[string]any{"account_id": session.AccountID, "organization": contextMetadata(v.Organization), "permissions": v.Permissions, "invitation_grants": v.InvitationGrants, "invitation_validity_days": v.InvitationValidityDays}
+			response = map[string]any{"account_id": session.AccountID, "organization": contextMetadata(v.Organization), "employee_id": v.EmployeeID, "permissions": v.Permissions, "invitation_grants": v.InvitationGrants, "invitation_validity_days": v.InvitationValidityDays}
 		}
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(response)
