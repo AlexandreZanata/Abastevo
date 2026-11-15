@@ -563,6 +563,167 @@ func (q *Queries) MeterCurrentDBTime(ctx context.Context) (pgtype.Timestamptz, e
 	return at, err
 }
 
+const meterOperationStateCount = `-- name: MeterOperationStateCount :one
+SELECT count(*)::bigint AS n FROM org_meter_reading_states WHERE org_id=CAST($1::text AS uuid) AND operation_id=CAST($2::text AS uuid)
+`
+
+type MeterOperationStateCountParams struct {
+	OrgID       string `json:"org_id"`
+	OperationID string `json:"operation_id"`
+}
+
+func (q *Queries) MeterOperationStateCount(ctx context.Context, arg MeterOperationStateCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, meterOperationStateCount, arg.OrgID, arg.OperationID)
+	var n int64
+	err := row.Scan(&n)
+	return n, err
+}
+
+const meterReadingCurrent = `-- name: MeterReadingCurrent :one
+SELECT r.id::text AS id,r.origin,r.operation_id::text AS operation_id,COALESCE(c.state,r.state)::text AS state,COALESCE(c.flags,'{}'::text[])::text[] AS flags,COALESCE(c.revision,0)::int AS revision
+FROM org_meter_readings r LEFT JOIN LATERAL(SELECT s.state,s.flags,s.revision FROM org_meter_reading_states s WHERE(s.org_id,s.meter_id,s.reading_id)=(r.org_id,r.meter_id,r.id) ORDER BY s.revision DESC LIMIT 1) c ON true
+WHERE r.org_id=CAST($1::text AS uuid) AND r.meter_id=CAST($2::text AS uuid) AND r.segment_id=CAST($3::text AS uuid) AND r.id=CAST($4::text AS uuid)
+`
+
+type MeterReadingCurrentParams struct {
+	OrgID     string `json:"org_id"`
+	MeterID   string `json:"meter_id"`
+	SegmentID string `json:"segment_id"`
+	ID        string `json:"id"`
+}
+
+type MeterReadingCurrentRow struct {
+	ID          string   `json:"id"`
+	Origin      string   `json:"origin"`
+	OperationID string   `json:"operation_id"`
+	State       string   `json:"state"`
+	Flags       []string `json:"flags"`
+	Revision    int32    `json:"revision"`
+}
+
+// EMP-METER-004: one reading of an open segment with its current state.
+func (q *Queries) MeterReadingCurrent(ctx context.Context, arg MeterReadingCurrentParams) (MeterReadingCurrentRow, error) {
+	row := q.db.QueryRow(ctx, meterReadingCurrent,
+		arg.OrgID,
+		arg.MeterID,
+		arg.SegmentID,
+		arg.ID,
+	)
+	var i MeterReadingCurrentRow
+	err := row.Scan(
+		&i.ID,
+		&i.Origin,
+		&i.OperationID,
+		&i.State,
+		&i.Flags,
+		&i.Revision,
+	)
+	return i, err
+}
+
+const meterReadingHistoryPage = `-- name: MeterReadingHistoryPage :many
+SELECT r.id::text AS id,r.meter_id::text AS meter_id,r.segment_id::text AS segment_id,r.value,r.occurred_at,r.occurred_submicro,r.received_at,r.entry_zone,r.device_offset_seconds,r.author_membership_id::text AS author_membership_id,r.capture_kind,COALESCE(r.enrollment_id::text,r.web_session_id::text)::text AS capture_id,r.operation_id::text AS operation_id,r.request_hash,r.origin,r.method,r.state,
+ COALESCE(c.state,r.state)::text AS current_state,COALESCE(c.flags,'{}'::text[])::text[] AS flags,COALESCE(c.retroactive,false)::boolean AS retroactive,COALESCE(c.revision,0)::int AS revision,
+ COALESCE((SELECT v.superseded_by::text FROM org_meter_reading_states v WHERE(v.org_id,v.meter_id,v.reading_id)=(r.org_id,r.meter_id,r.id) AND v.superseded_by IS NOT NULL),'')::text AS superseded_by,
+ COALESCE((SELECT v.reading_id::text FROM org_meter_reading_states v WHERE(v.org_id,v.meter_id,v.superseded_by)=(r.org_id,r.meter_id,r.id)),'')::text AS supersedes,
+ COALESCE((SELECT v.reason FROM org_meter_reading_states v WHERE(v.org_id,v.meter_id,v.reading_id)=(r.org_id,r.meter_id,r.id) AND v.reason IS NOT NULL ORDER BY v.revision DESC LIMIT 1),'')::text AS reason
+FROM org_meter_readings r LEFT JOIN LATERAL(SELECT s.state,s.flags,s.retroactive,s.revision FROM org_meter_reading_states s WHERE(s.org_id,s.meter_id,s.reading_id)=(r.org_id,r.meter_id,r.id) ORDER BY s.revision DESC LIMIT 1) c ON true
+WHERE r.org_id=CAST($1::text AS uuid) AND r.meter_id=CAST($2::text AS uuid) AND r.segment_id=CAST($3::text AS uuid)
+AND($4::text='' OR COALESCE(c.state,r.state)=$4::text)
+AND($5::text='' OR(r.occurred_at,r.occurred_submicro,r.received_at,r.id)>(SELECT a.occurred_at,a.occurred_submicro,a.received_at,a.id FROM org_meter_readings a WHERE a.org_id=r.org_id AND a.meter_id=r.meter_id AND a.id=CAST(NULLIF($5::text,'') AS uuid)))
+ORDER BY r.occurred_at,r.occurred_submicro,r.received_at,r.id LIMIT $6::int
+`
+
+type MeterReadingHistoryPageParams struct {
+	OrgID     string `json:"org_id"`
+	MeterID   string `json:"meter_id"`
+	SegmentID string `json:"segment_id"`
+	State     string `json:"state"`
+	AfterID   string `json:"after_id"`
+	RowLimit  int32  `json:"row_limit"`
+}
+
+type MeterReadingHistoryPageRow struct {
+	ID                  string             `json:"id"`
+	MeterID             string             `json:"meter_id"`
+	SegmentID           string             `json:"segment_id"`
+	Value               int64              `json:"value"`
+	OccurredAt          pgtype.Timestamptz `json:"occurred_at"`
+	OccurredSubmicro    int16              `json:"occurred_submicro"`
+	ReceivedAt          pgtype.Timestamptz `json:"received_at"`
+	EntryZone           string             `json:"entry_zone"`
+	DeviceOffsetSeconds int64              `json:"device_offset_seconds"`
+	AuthorMembershipID  string             `json:"author_membership_id"`
+	CaptureKind         string             `json:"capture_kind"`
+	CaptureID           string             `json:"capture_id"`
+	OperationID         string             `json:"operation_id"`
+	RequestHash         string             `json:"request_hash"`
+	Origin              string             `json:"origin"`
+	Method              string             `json:"method"`
+	State               string             `json:"state"`
+	CurrentState        string             `json:"current_state"`
+	Flags               []string           `json:"flags"`
+	Retroactive         bool               `json:"retroactive"`
+	Revision            int32              `json:"revision"`
+	SupersededBy        string             `json:"superseded_by"`
+	Supersedes          string             `json:"supersedes"`
+	Reason              string             `json:"reason"`
+}
+
+// B-BR-EMP-291: the open segment in series order with each reading's current
+// state, its supersession links and the reason of its latest person decision.
+func (q *Queries) MeterReadingHistoryPage(ctx context.Context, arg MeterReadingHistoryPageParams) ([]MeterReadingHistoryPageRow, error) {
+	rows, err := q.db.Query(ctx, meterReadingHistoryPage,
+		arg.OrgID,
+		arg.MeterID,
+		arg.SegmentID,
+		arg.State,
+		arg.AfterID,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MeterReadingHistoryPageRow
+	for rows.Next() {
+		var i MeterReadingHistoryPageRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.MeterID,
+			&i.SegmentID,
+			&i.Value,
+			&i.OccurredAt,
+			&i.OccurredSubmicro,
+			&i.ReceivedAt,
+			&i.EntryZone,
+			&i.DeviceOffsetSeconds,
+			&i.AuthorMembershipID,
+			&i.CaptureKind,
+			&i.CaptureID,
+			&i.OperationID,
+			&i.RequestHash,
+			&i.Origin,
+			&i.Method,
+			&i.State,
+			&i.CurrentState,
+			&i.Flags,
+			&i.Retroactive,
+			&i.Revision,
+			&i.SupersededBy,
+			&i.Supersedes,
+			&i.Reason,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const meterSegmentSeries = `-- name: MeterSegmentSeries :many
 SELECT r.id::text AS id,r.value,r.occurred_at,r.occurred_submicro,r.received_at,
  COALESCE(c.state,r.state)::text AS state,COALESCE(c.flags,'{}'::text[])::text[] AS flags,COALESCE(c.revision,0)::int AS revision
@@ -607,6 +768,54 @@ func (q *Queries) MeterSegmentSeries(ctx context.Context, arg MeterSegmentSeries
 			&i.State,
 			&i.Flags,
 			&i.Revision,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const meterStatesByOperation = `-- name: MeterStatesByOperation :many
+SELECT reading_id::text AS reading_id,revision,state,flags::text[] AS flags,cause,COALESCE(superseded_by::text,'')::text AS superseded_by
+FROM org_meter_reading_states WHERE org_id=CAST($1::text AS uuid) AND meter_id=CAST($2::text AS uuid) AND operation_id=CAST($3::text AS uuid)
+ORDER BY reading_id,revision
+`
+
+type MeterStatesByOperationParams struct {
+	OrgID       string `json:"org_id"`
+	MeterID     string `json:"meter_id"`
+	OperationID string `json:"operation_id"`
+}
+
+type MeterStatesByOperationRow struct {
+	ReadingID    string   `json:"reading_id"`
+	Revision     int32    `json:"revision"`
+	State        string   `json:"state"`
+	Flags        []string `json:"flags"`
+	Cause        string   `json:"cause"`
+	SupersededBy string   `json:"superseded_by"`
+}
+
+func (q *Queries) MeterStatesByOperation(ctx context.Context, arg MeterStatesByOperationParams) ([]MeterStatesByOperationRow, error) {
+	rows, err := q.db.Query(ctx, meterStatesByOperation, arg.OrgID, arg.MeterID, arg.OperationID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MeterStatesByOperationRow
+	for rows.Next() {
+		var i MeterStatesByOperationRow
+		if err := rows.Scan(
+			&i.ReadingID,
+			&i.Revision,
+			&i.State,
+			&i.Flags,
+			&i.Cause,
+			&i.SupersededBy,
 		); err != nil {
 			return nil, err
 		}

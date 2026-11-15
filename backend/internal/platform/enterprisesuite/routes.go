@@ -25,6 +25,7 @@ import (
 	fleetweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters/http"
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	meterdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
+	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
 	identitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	proofauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
@@ -310,8 +311,13 @@ func Register(router chi.Router, o Options) error {
 			return now, err
 		},
 	}
-	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore, Reviews: reviews, Plausibility: plausibility}
+	// EMP-METER-004: the fueling store answers the approved-parent port; no
+	// recalculation consumer exists, so nothing is published (EDR-189).
+	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore, Reviews: reviews, Plausibility: plausibility, Parents: &fuelpg.Store{Allocations: assets}}
 	if err := fleetweb.RegisterMeters(router, fleetapp.MeterService{Enabled: true, Repository: meters, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	if err := fleetweb.RegisterMeterCorrections(router, fleetapp.MeterCorrectionService{Enabled: true, Repository: meters, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
 	reviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.MeterReviewRecords{}, Structure: heldStructure, Now: time.Now}

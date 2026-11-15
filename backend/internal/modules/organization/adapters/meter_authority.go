@@ -101,7 +101,7 @@ func (g *MeterAuthority) CheckMeterTx(ctx context.Context, tx syncapp.DBTX, scop
 	if source.Validate(scope) != nil || legalIdentity(scope, member) != nil || legalIdentity(scope, asset) != nil {
 		return fleet.ErrUnauthenticated
 	}
-	if action != fleet.MeterInstallAction && action != fleet.MeterRecordAction && action != fleet.MeterReadAction {
+	if action != fleet.MeterInstallAction && action != fleet.MeterRecordAction && action != fleet.MeterReadAction && action != fleet.MeterCorrectAction && action != fleet.MeterCorrectReadAction {
 		return fleet.ErrUnavailable
 	}
 	if source.Web != nil {

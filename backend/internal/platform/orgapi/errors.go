@@ -54,6 +54,9 @@ const (
 	ExportNotReady          Code = "EXPORT_NOT_READY"
 	ExportExpired           Code = "EXPORT_EXPIRED"
 	ExportFormatUnavailable Code = "EXPORT_FORMAT_UNAVAILABLE"
+	// Meter decision refusals (EMP-METER-004, fleet §10.5, EDR-187/189).
+	ReadingAlreadySuperseded Code = "READING_ALREADY_SUPERSEDED"
+	AmendmentRequired        Code = "AMENDMENT_REQUIRED"
 )
 
 func (code Code) Error() string { return string(code) }
@@ -72,6 +75,7 @@ var statuses = map[Code]int{
 	EmployeeHasAccess:     409,
 	TokenInvalid:          404, AlreadyMember: 409, ManagedAccountRestricted: 403,
 	ExportQueueFull: 429, ExportNotReady: 409, ExportExpired: 410, ExportFormatUnavailable: 422,
+	ReadingAlreadySuperseded: 409, AmendmentRequired: 409,
 }
 
 type permissionFailure struct{ key string }

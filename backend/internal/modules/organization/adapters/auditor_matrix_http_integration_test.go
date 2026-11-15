@@ -239,6 +239,7 @@ var auditorPositiveRoutes = []string{
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest",
+	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/read",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list",
 	"/v1/orgs/{org_id}/fleet/assignments/mine/list",
@@ -295,7 +296,8 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if asset == "" || meter == "" {
 		t.Fatal("owner fixtures missing")
 	}
-	values := map[string]string{"{org_id}": org, "{membership_id}": target.member, "{employee_id}": target.employee, "{asset_id}": asset, "{meter_id}": meter, "{document_id}": document, "{period}": "2019-03"}
+	reading, _ := installed["opening_reading_id"].(string)
+	values := map[string]string{"{org_id}": org, "{membership_id}": target.member, "{employee_id}": target.employee, "{asset_id}": asset, "{meter_id}": meter, "{reading_id}": reading, "{document_id}": document, "{period}": "2019-03"}
 	fill := func(template string) string {
 		return auditorTemplateParam.ReplaceAllStringFunc(template, func(name string) string {
 			if value, ok := values[name]; ok {
@@ -331,6 +333,10 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	}
 	if latest, _ := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/latest", map[string]any{}, 200, "", "")["latest"].(map[string]any); latest["value"] != "123456" {
 		t.Fatal("auditor latest reading", latest)
+	}
+	// EMP-METER-004: the reading history is a documented fleet.asset.read.
+	if items, _ := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/list", map[string]any{"limit": 20}, 200, "", "")["items"].([]any); len(items) != 1 || items[0].(map[string]any)["id"] != reading || items[0].(map[string]any)["state"] != "VALID" {
+		t.Fatal("auditor reading history", items)
 	}
 	if matrixPrivateState(t, fx) != before || auditorExtraState(t, fx) != beforeExtra {
 		t.Fatal("a documented auditor read changed private source state")
@@ -438,7 +444,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 110 || positive != 24 || denied != 86 {
+	if len(routes) != 113 || positive != 25 || denied != 88 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 

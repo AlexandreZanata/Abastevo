@@ -315,7 +315,7 @@ history. Retained: the app warning screen, the review-ACK form for suspect
 readings, per-category limits and rollover (EMP-METER-005).
 
 ### EMP-METER-004 — Reading correction and void with audit
-- **Meta:** module METER · phase F2 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module METER · phase F2 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Let an authorised person correct or void a reading by supersession with a reason, so that errors are fixed without losing what was originally recorded.
 - **Rules and use cases:** BR-METER-011, BR-METER-012, BR-METER-013, BR-METER-014, BR-METER-015, BR-METER-016, BR-METER-026, BR-AUD-001, UC-METER-03, UC-METER-04, UC-METER-07
 - **Depends on:** EMP-METER-003, EMP-PLAT-003
@@ -329,6 +329,13 @@ readings, per-category limits and rollover (EMP-METER-005).
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: none · rollback: capability flag off; existing corrections stay
 - **Risks and assumptions:** Until the amendment component exists, corrections of readings that belong to approved records are refused with a clear message rather than applied in place.
 - **Done when:** Example B of the specification runs end to end through the routes with the stated states.
+
+[F4 reading correction](../evidence/f4-meter004-reading-correction.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-286..291, BUC-EMP-145..147 and
+EDR-187..189 precede behaviour; no migration (000216 of EMP-METER-003 holds
+the decisions). Retained: the amendment consumer (approved parents are
+refused `AMENDMENT_REQUIRED`), the recalculation consumers, the
+organization-wide suspect queue and the panel (EMP-METER-007).
 
 ### EMP-METER-005 — Meter replacement, reset and rollover with cumulative usage
 - **Meta:** module METER · phase F2 · cut - · priority P1 · type DOM · size M · state TODO

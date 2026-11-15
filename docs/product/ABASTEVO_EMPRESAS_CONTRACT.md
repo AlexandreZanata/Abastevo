@@ -4692,3 +4692,77 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
 - **BUC-EMP-144 — Warn on the device without blocking.** The app checks a
   typed value with the shared validator against the last known readings and
   shows the flags as a warning; the person can still save and send it.
+
+## EMP-METER-004 — Reading correction and void with audit (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-meter004-reading-correction.md).
+
+- **B-BR-EMP-286 — One decision command per reading.** A member with
+  `meter.reading.correct` covering the reading's asset decides one reading of
+  a meter's open segment through one company command naming the reading, the
+  expected current history revision of that reading (0 when it has none), a
+  decision `SUPERSEDE`, `VOID` or `CONFIRM`, and a reason (1 to 280
+  characters, no control characters). A `SUPERSEDE` also states the meter
+  kind and the corrected value in exact base units, and optionally a corrected
+  declaration (instant, zone and offset together). The command needs fresh company proof,
+  the enabled organizations capability and an `ACTIVE` organization. A
+  `VOIDED` target is refused `READING_ALREADY_SUPERSEDED` before any other
+  state check; a stale expected revision is `CONFLICT`; the segment's
+  installation opening reading is its anchor and is refused
+  `VALIDATION_FAILED` (replacement and reset belong to EMP-METER-005). A
+  reading of another organization, asset or meter is `NOT_FOUND`.
+- **B-BR-EMP-287 — Supersession and void.** `SUPERSEDE` records a new
+  reading with the corrected value and either the original declaration or a
+  corrected one (instant, zone, offset), the deciding member as author, the
+  company web session as capture, the original's origin, method `TYPED` and
+  the command's operation; the original becomes `VOIDED` (cause
+  `SUPERSEDED`, linked to the new reading, actor and reason) and is never
+  changed otherwise; the new reading is classified by the EMP-METER-003
+  validator against the series without the original, so a correction that
+  still breaks monotonicity is stored `SUSPECT` and its flags are returned.
+  `VOID` makes a `VALID` or `SUSPECT` reading `VOIDED` (cause `VOIDED`) with
+  actor and reason. `VOIDED` is terminal; a reading is superseded at most
+  once.
+- **B-BR-EMP-288 — Confirmation.** `CONFIRM` makes a `SUSPECT` reading
+  `VALID` (cause `CONFIRMED`) only when its flags are `IMPLAUSIBLE_RATE` and/or
+  `FUTURE_INSTANT`; a reading flagged `READING_BELOW_PREVIOUS` or
+  `READING_ABOVE_NEXT` cannot be confirmed (`VALIDATION_FAILED`), and a
+  reading that is not `SUSPECT` cannot be confirmed (`CONFLICT`). Monotonicity
+  flags clear only when a neighbour is corrected or voided (BR-METER-012).
+- **B-BR-EMP-289 — Recalculation in the same transaction.** Every decision
+  re-evaluates the segment's `SUSPECT` readings exactly as B-BR-EMP-285, under
+  the root, asset and meter locks, in the command's transaction and under its
+  operation, so correcting one reading returns its now consistent suspect
+  neighbours to `VALID`. The decision, the new reading, every new history
+  revision, one audit event (`meter.reading.corrected`, `meter.reading.voided`
+  or `meter.reading.confirmed`; actor, target reading, command digest; no
+  value, instant or reason) and, when a consumer is configured, one
+  `meter.usage.recalculated` intent per consumer (identifiers and the target
+  reading's new revision only) commit together or not at all. The same
+  operation with the same digest returns the first result; with another
+  digest it is `OPERATION_ID_REUSED`. Concurrent decisions on one reading
+  serialise: the first wins, the second sees the result
+  (`READING_ALREADY_SUPERSEDED` or `CONFLICT`).
+- **B-BR-EMP-290 — Approved parent records need an amendment.** When the
+  reading belongs to a parent record that is `APPROVED` (today a fueling, by
+  its review state), the decision is refused `AMENDMENT_REQUIRED` and nothing
+  changes, because no amendment consumer can apply it yet (EMP-PLAT-016 owns
+  the kernel); a parent in any other review state is decided directly.
+- **B-BR-EMP-291 — History and suspect list.** The history of a meter lists
+  every reading of its open segment in series order with value, both
+  instants, origin, method, author, capture, recorded and current state,
+  flags, note, current revision, the supersession links in both directions
+  and the reason of a person decision, filterable by current state, keyset
+  paginated, under `fleet.asset.read` (SELF on an assigned asset included).
+  The suspect list returns the meter's `SUSPECT` readings with their flags and
+  their current valid neighbours, under `meter.reading.correct`.
+- **BUC-EMP-145 — Correct a typing error.** A supervisor opens the suspect
+  list, supersedes the wrong reading with the right value and a reason; the
+  original stays visible as `VOIDED`, the correction becomes current, and
+  readings that were suspect because of the error return to `VALID`.
+- **BUC-EMP-146 — Void a reading.** A supervisor voids a reading recorded for
+  the wrong asset with a reason; it leaves the current value and usage and
+  stays visible.
+- **BUC-EMP-147 — Confirm a rate or future flag.** A supervisor confirms an
+  implausible-rate or future-instant reading with a reason; a monotonicity
+  flag cannot be confirmed away.
