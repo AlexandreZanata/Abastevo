@@ -25,7 +25,10 @@ import (
 // the real signed intake store and the actual held-review owner.
 func lifecycleIntakeFixture(t *testing.T) (syncFixtureState, *fleetpg.AssetStore, *fleetpg.MeterStore, app.MeterInstallResult, syncapp.Handler, int64) {
 	t.Helper()
-	fx := syncFixture(t)
+	return lifecycleIntakeFixtureOn(t, syncFixture(t))
+}
+func lifecycleIntakeFixtureOn(t *testing.T, fx syncFixtureState) (syncFixtureState, *fleetpg.AssetStore, *fleetpg.MeterStore, app.MeterInstallResult, syncapp.Handler, int64) {
+	t.Helper()
 	assets := lifecycleStore(t, fx.legalFixtureState)
 	var unit string
 	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT id::text FROM org_units WHERE org_id=$1`, fx.scope.OrgID().String()).Scan(&unit); err != nil {

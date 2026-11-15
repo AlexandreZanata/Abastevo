@@ -86,7 +86,9 @@ func TestFleetLifecycleContractExamplesAndExactShapes(t *testing.T) {
 		t.Fatal("disposal view accepted an undeclared amount")
 	}
 	review := document.Components.Schemas["EnterpriseMeterReviewView"].Value.Properties["code"].Value
-	if len(review.Enum) != 2 || review.Enum[0] != "PERMISSION_CHANGED" || review.Enum[1] != "ASSET_UNAVAILABLE" {
+	// EMP-OFFL-009/012 add the late-intake and organization-state holds to the
+	// same held producer.
+	if len(review.Enum) != 5 || review.Enum[0] != "PERMISSION_CHANGED" || review.Enum[1] != "ASSET_UNAVAILABLE" || review.Enum[2] != "ACCESS_ENDED_BEFORE_RECEIPT" || review.Enum[3] != "ORG_SUSPENDED_GRACE" || review.Enum[4] != "PLAN_CHANGED" {
 		t.Fatal("meter review codes drifted from the held producer", review.Enum)
 	}
 }

@@ -1,5 +1,5 @@
 -- name: ReadOperation :one
-SELECT org_id::text AS org_id,operation_id::text AS operation_id,owner_account_id::text AS owner_account_id,api_origin,membership_id::text AS membership_id,enrollment_id::text AS enrollment_id,operation_type,operation_schema,entity_type,entity_id::text AS entity_id,payload_digest
+SELECT org_id::text AS org_id,operation_id::text AS operation_id,owner_account_id::text AS owner_account_id,api_origin,membership_id::text AS membership_id,enrollment_id::text AS enrollment_id,operation_type,operation_schema,entity_type,entity_id::text AS entity_id,payload_digest,claimed_at
 FROM org_sync_operations WHERE org_id=CAST(@org_id::text AS uuid) AND operation_id=CAST(@operation_id::text AS uuid) FOR UPDATE;
 -- name: ReserveOperation :execrows
 INSERT INTO org_sync_operations(org_id,operation_id,owner_account_id,api_origin,membership_id,enrollment_id,operation_type,operation_schema,entity_type,entity_id,payload_digest)

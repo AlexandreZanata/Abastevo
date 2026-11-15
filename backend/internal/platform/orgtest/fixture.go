@@ -463,6 +463,39 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 	}
 }
 
+// GrantLateIntake provisions the disposable ordinary role for the EMP-OFFL-009
+// late decision row and the settings history its window is read from. Earlier
+// embedded migration images remain unchanged.
+func (f *Fixture) GrantLateIntake(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_sync_late_intakes') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sync_late_intakes TO "+role+";GRANT SELECT ON org_settings_versions TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantStateIntake provisions the disposable ordinary role for the EMP-OFFL-012
+// state decision row and the suspension history its assessment reads.
+func (f *Fixture) GrantStateIntake(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_sync_state_intakes') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sync_state_intakes TO "+role+";GRANT SELECT ON org_suspension_periods TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 // GrantMeterReviews enables current read projections only. The owning command
 // fixture must explicitly grant inserts and the item-row lock for decisions.
 func (f *Fixture) GrantMeterReviews(t *testing.T) {

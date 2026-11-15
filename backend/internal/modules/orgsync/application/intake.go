@@ -211,6 +211,7 @@ type registeredHandler struct {
 	descriptor Descriptor
 	source     Handler
 	proof      ReviewProof
+	late       LateHolder
 }
 
 func (handler registeredHandler) Descriptor() Descriptor { return handler.descriptor.Copy() }
@@ -239,7 +240,7 @@ func NewRegistry(handlers ...Handler) (Registry, error) {
 		if err != nil {
 			return Registry{}, err
 		}
-		registry.handlers[descriptor.Type] = registeredHandler{descriptor: descriptor, source: handler, proof: proof}
+		registry.handlers[descriptor.Type] = registeredHandler{descriptor: descriptor, source: handler, proof: proof, late: captureLateHolder(handler)}
 	}
 	return registry, nil
 }
@@ -256,6 +257,16 @@ type Service struct {
 }
 
 func (service Service) Intake(ctx context.Context, source Source, batch protocol.Batch) ([]protocol.Acknowledgement, error) {
+	return service.intake(ctx, source, batch, false)
+}
+
+// IntakeLate runs the restricted late source (EMP-OFFL-009). The caller has
+// proven the exact ended period; the store confirms it inside every operation.
+func (service Service) IntakeLate(ctx context.Context, source Source, batch protocol.Batch) ([]protocol.Acknowledgement, error) {
+	return service.intake(ctx, source, batch, true)
+}
+
+func (service Service) intake(ctx context.Context, source Source, batch protocol.Batch, late bool) ([]protocol.Acknowledgement, error) {
 	if ctx == nil {
 		return nil, ErrUnavailable
 	}
@@ -277,6 +288,14 @@ func (service Service) Intake(ctx context.Context, source Source, batch protocol
 	if nilPort(service.Store) || nilPort(service.Admission) {
 		return nil, ErrUnavailable
 	}
+	process := service.Store.Process
+	if late {
+		store, ok := service.Store.(LateStore)
+		if !ok || nilPort(store) {
+			return nil, ErrUnavailable
+		}
+		process = store.ProcessLate
+	}
 	operations := prepared.Operations()
 	if err := service.Admission.AdmitBatch(ctx, source, max(1, len(operations))); err != nil {
 		return nil, err
@@ -292,7 +311,7 @@ func (service Service) Intake(ctx context.Context, source Source, batch protocol
 		handler, installed := service.Registry.Lookup(operation.Snapshot().Type)
 		var acknowledgement protocol.Acknowledgement
 		if installed {
-			acknowledgement, err = service.Store.Process(ctx, source, operation, prepared.Limits(), handler)
+			acknowledgement, err = process(ctx, source, operation, prepared.Limits(), handler)
 			if errors.Is(err, ErrSourceDenied) {
 				return nil, err
 			}

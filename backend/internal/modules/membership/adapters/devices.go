@@ -176,6 +176,12 @@ func (s *DeviceStore) signed(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 // source-owned operational write to lock capability before the root without
 // imposing enrollment's fresh15-minute rule or exposing transaction lifecycle.
 func (s *DeviceStore) signedFor(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, a app.DeviceActor, enroll, required, operationalWrite bool, capabilityGuard func() error) (d.Membership, error) {
+	return s.signedForState(ctx, tx, scope, a, enroll, required, operationalWrite, false, capabilityGuard)
+}
+
+// signedForState admits a SUSPENDED root only for the EMP-OFFL-012 state
+// assessment (allowSuspended); every other check is unchanged.
+func (s *DeviceStore) signedForState(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, a app.DeviceActor, enroll, required, operationalWrite, allowSuspended bool, capabilityGuard func() error) (d.Membership, error) {
 	if scope.Validate() != nil || a.Validate() != nil {
 		return d.Membership{}, app.ErrEmployeeUnauthenticated
 	}
@@ -244,7 +250,9 @@ func (s *DeviceStore) signedFor(ctx context.Context, tx database.OrgDBTX, scope 
 			return d.Membership{}, access.ErrSetupIncomplete
 		}
 	case org.Suspended:
-		return d.Membership{}, access.ErrOrgSuspended
+		if !allowSuspended {
+			return d.Membership{}, access.ErrOrgSuspended
+		}
 	case org.Archived:
 		return d.Membership{}, access.ErrOrgArchived
 	default:

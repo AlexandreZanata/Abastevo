@@ -316,6 +316,64 @@ func (q *Queries) InsertDeviceCommand(ctx context.Context, arg InsertDeviceComma
 	return occurred_at, err
 }
 
+const lateIntakeEnrollment = `-- name: LateIntakeEnrollment :one
+SELECT e.state,e.revocation_class,e.source_type,e.enrolled_at,e.revoked_at,m.state AS membership_state,m.ended_at,
+ EXISTS(SELECT 1 FROM org_device_enrollments x WHERE x.org_id=e.org_id AND x.key_id=e.key_id AND x.state='REVOKED' AND x.revocation_class='LOST_OR_COMPROMISED') AS barred
+FROM org_device_enrollments e JOIN org_memberships m ON(m.org_id,m.id)=(e.org_id,e.membership_id)
+WHERE e.org_id=CAST($1::text AS uuid) AND e.id=CAST($2::text AS uuid)
+ AND e.membership_id=CAST($3::text AS uuid) AND m.account_id=CAST($4::text AS uuid)
+ AND m.access_model='EXISTING_ACCOUNT' AND e.key_id=CAST($5::text AS uuid)
+ AND e.contributor_id=CAST($6::text AS uuid) AND e.fingerprint= $7::text
+FOR SHARE OF e,m
+`
+
+type LateIntakeEnrollmentParams struct {
+	OrgID         string `json:"org_id"`
+	EnrollmentID  string `json:"enrollment_id"`
+	MembershipID  string `json:"membership_id"`
+	AccountID     string `json:"account_id"`
+	KeyID         string `json:"key_id"`
+	ContributorID string `json:"contributor_id"`
+	Fingerprint   string `json:"fingerprint"`
+}
+
+type LateIntakeEnrollmentRow struct {
+	State           string             `json:"state"`
+	RevocationClass string             `json:"revocation_class"`
+	SourceType      string             `json:"source_type"`
+	EnrolledAt      pgtype.Timestamptz `json:"enrolled_at"`
+	RevokedAt       pgtype.Timestamptz `json:"revoked_at"`
+	MembershipState string             `json:"membership_state"`
+	EndedAt         pgtype.Timestamptz `json:"ended_at"`
+	Barred          bool               `json:"barred"`
+}
+
+// EMP-OFFL-009: the exact owned period of the signing key, its end evidence and
+// whether the key was ever revoked LOST_OR_COMPROMISED in this organization.
+func (q *Queries) LateIntakeEnrollment(ctx context.Context, arg LateIntakeEnrollmentParams) (LateIntakeEnrollmentRow, error) {
+	row := q.db.QueryRow(ctx, lateIntakeEnrollment,
+		arg.OrgID,
+		arg.EnrollmentID,
+		arg.MembershipID,
+		arg.AccountID,
+		arg.KeyID,
+		arg.ContributorID,
+		arg.Fingerprint,
+	)
+	var i LateIntakeEnrollmentRow
+	err := row.Scan(
+		&i.State,
+		&i.RevocationClass,
+		&i.SourceType,
+		&i.EnrolledAt,
+		&i.RevokedAt,
+		&i.MembershipState,
+		&i.EndedAt,
+		&i.Barred,
+	)
+	return i, err
+}
+
 const listDeviceRows = `-- name: ListDeviceRows :many
 SELECT org_id::text AS org_id,id::text AS id,membership_id::text AS membership_id,key_id::text AS key_id,
  contributor_id::text AS contributor_id,fingerprint,label,state,revision,enrollment_limit,enrolled_at,last_sync_at,revoked_at,revocation_class,

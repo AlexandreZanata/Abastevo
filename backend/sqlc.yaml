@@ -626,7 +626,11 @@ sql:
       - db/migrations/000169_organization_roots.sql
       - db/migrations/000170_membership_periods.sql
       - db/migrations/000194_organization_devices.sql
+      - db/migrations/000178_organization_settings.sql
       - db/migrations/000196_organization_sync_intake.sql
+      - db/migrations/000218_organization_late_intake.sql
+      - db/migrations/000166_org_capabilities.sql
+      - db/migrations/000219_organization_state_intake.sql
     gen:
       go:
         package: orgsync

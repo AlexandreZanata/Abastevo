@@ -187,7 +187,10 @@ func (h *syncSQLHandler) Apply(ctx context.Context, tx syncapp.DBTX, s syncapp.S
 }
 func syncFixture(t *testing.T) syncFixtureState {
 	t.Helper()
-	fx := devicesFixture(t)
+	return syncFixtureOn(t, devicesFixture(t))
+}
+func syncFixtureOn(t *testing.T, fx deviceFixtureState) syncFixtureState {
+	t.Helper()
 	matrixAssign(t, fx, matrixPerson{member: fx.person.member}, "ADMIN", "ORG", "ACTIVE")
 	enrolled, e := fx.devices.EnrollDevice(t.Context(), fx.scope, fx.person.actor, deviceEnrollCommand(t, "Synthetic SQL intake"))
 	if e != nil {
@@ -211,6 +214,9 @@ func syncFixture(t *testing.T) syncFixtureState {
 		t.Fatal(e)
 	}
 	syncInstallReviewSource(t, fx)
+	// EMP-OFFL-012: the composed intake reads suspension history and records
+	// state decisions before every owner (test role only; no live grants).
+	fx.f.GrantStateIntake(t)
 	// Migration199's shared effect guard plans its reviewed-Meter branch for
 	// every effect, so the generic intake role needs exactly the reading columns
 	// that guard compares. It still cannot read any Meter value or observation.
