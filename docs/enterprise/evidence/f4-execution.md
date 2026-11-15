@@ -958,3 +958,12 @@ in its own PR with valid CI; the enterprise routes are enabled on the VPS only
 after the automatic deploy, with a rollback plan and a final confirmation
 (EDR-272). The second batch started on `fe7ec66d` (main `93f3a88d` +
 TRIP-009/013 + `origin/dev` `db43e949`).
+
+PR #224 (Play Store readiness, head `db43e949`) was merged alone by the
+coordinator at 18:33Z as `7ab0b477` under EDR-272: both checks
+(`Quick verification`, `test`) completed successfully on the exact head,
+`make quick-verify` passed locally on it
+(`f4-logs/pr224-quick-verify-db43e949.log`), and the merge used
+`gh pr merge --merge --match-head-commit db43e949…`. The F4 branch already
+contained that head; `origin/main` was merged for ancestry with no file
+change.
