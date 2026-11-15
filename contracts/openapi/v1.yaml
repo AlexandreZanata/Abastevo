@@ -70,6 +70,8 @@ tags:
     description: Owner administrative session surface; unmounted unless a key hash is configured.
   - name: forum
     description: Public editorial reading, categories, feeds, and future community discussion.
+  - name: community-safety
+    description: Signed report and block of the author of public forum and station content (B-BR-SAFE-01..09); account identifiers never leave the server.
 paths:
   /v1/orgs/{org_id}/employees/{employee_id}/merge/preview:
     post:
@@ -12606,6 +12608,181 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/community/user-reports:
+    post:
+      summary: Report the author of public forum or station content.
+      description: "Signed account command (B-BR-SAFE-03/04). The server derives the author from a public content reference; own content refuses with safety.self-target, non-public content answers 404. One report per reporter and reported account (repeats replay the first receipt); 10 new reports per 24 hours. Opens or joins one COMMUNITY_ACCOUNT moderation case with fixed PII-free detail; never hides content by itself."
+      operationId: reportCommunityUser
+      tags: [community-safety]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SafetyUserReportRequest'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyUserReportResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/community/blocks:
+    post:
+      summary: Block the author of public forum or station content.
+      description: "Signed account command (B-BR-SAFE-03/05). Hides the author's topics, comments, replies and station comments for the caller only; the blocked account is not notified. Repeats replay the existing block; at most 500 active blocks (409 safety.block-limit) and 50 new blocks per 24 hours (429)."
+      operationId: blockCommunityUser
+      tags: [community-safety]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SafetyContentRequest'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyBlockResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/community/blocks/list:
+    post:
+      summary: List the caller's blocks.
+      description: "Signed private owner read (B-BR-SAFE-07): label (the public alias shown on the referenced content, possibly empty), source kind and date, newest first, at most 500. Never returns account identifiers."
+      operationId: listCommunityBlocks
+      tags: [community-safety]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SafetySessionRequest'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyBlockListResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/community/blocks/hidden:
+    post:
+      summary: Ask which listed content the caller hid by blocking its author.
+      description: "Signed private owner read (B-BR-SAFE-06). Accepts 1..100 content references and returns only the subset written by accounts the caller blocked; unknown references are ignored. Never returns authors or which block matched."
+      operationId: hiddenCommunityContent
+      tags: [community-safety]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SafetyHiddenRequest'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyHiddenResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '503':
+          $ref: '#/components/responses/Unavailable'
+  /v1/community/blocks/{block_id}/remove:
+    post:
+      summary: Remove one of the caller's blocks.
+      description: "Signed account command (B-BR-SAFE-07). Foreign, unknown and malformed block ids answer 404 alike."
+      operationId: removeCommunityBlock
+      tags: [community-safety]
+      security: []
+      parameters:
+        - name: block_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+          description: Block identifier from the caller's block list.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SafetySessionRequest'
+      responses:
+        '200':
+          description: Success.
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                const: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SafetyRemoveBlockResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
         '503':
           $ref: '#/components/responses/Unavailable'
   /v1/forum/posts/{post_id}/stream:
@@ -39861,6 +40038,205 @@ components:
         replayed:
           type: boolean
           description: Indicates whether this response is an idempotent replay of an existing report.
+    SafetySessionRequest:
+      type: object
+      description: Signed session envelope.
+      additionalProperties: false
+      required: [family_id, access_token]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+    SafetyContentRequest:
+      type: object
+      description: Signed session envelope plus one public content reference.
+      additionalProperties: false
+      required: [family_id, access_token, content_kind, content_id]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        content_kind:
+          type: string
+          enum: [FORUM_POST, FORUM_COMMENT, STATION_COMMENT]
+          description: Public content kind; FORUM_POST names topics only.
+        content_id:
+          type: string
+          format: uuid
+          description: Public content identifier.
+    SafetyUserReportRequest:
+      type: object
+      description: Signed user report naming the author through public content.
+      additionalProperties: false
+      required: [family_id, access_token, content_kind, content_id, reason]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        content_kind:
+          type: string
+          enum: [FORUM_POST, FORUM_COMMENT, STATION_COMMENT]
+          description: Public content kind; FORUM_POST names topics only.
+        content_id:
+          type: string
+          format: uuid
+          description: Public content identifier.
+        reason:
+          type: string
+          enum: [SPAM, HARASSMENT, HATE, IMPERSONATION, ILLEGAL, OTHER]
+          description: User report reason.
+        detail:
+          type: string
+          maxLength: 200
+          description: Optional private plain-text detail, at most 200 Unicode scalar values; never copied to the moderation case.
+    SafetyUserReportResponse:
+      type: object
+      description: User report receipt.
+      additionalProperties: false
+      required: [receipt]
+      properties:
+        receipt:
+          type: object
+          description: Receipt of the first report of this reporter about this account.
+          additionalProperties: false
+          required: [report_id, reason, created_at, replayed]
+          properties:
+            report_id:
+              type: string
+              format: uuid
+              description: Report identifier.
+            reason:
+              type: string
+              enum: [SPAM, HARASSMENT, HATE, IMPERSONATION, ILLEGAL, OTHER]
+              description: Reason of the first report.
+            created_at:
+              type: string
+              format: date-time
+              description: RFC3339 time of the first report.
+            replayed:
+              type: boolean
+              description: True when an earlier report of the same account was returned.
+    SafetyBlock:
+      type: object
+      description: One active block as its owner sees it; never the blocked account id.
+      additionalProperties: false
+      required: [block_id, label, source_kind, created_at]
+      properties:
+        block_id:
+          type: string
+          format: uuid
+          description: Block identifier.
+        label:
+          type: string
+          maxLength: 64
+          description: Public alias shown on the referenced content when the block was made; may be empty.
+        source_kind:
+          type: string
+          enum: [FORUM_POST, FORUM_COMMENT, STATION_COMMENT]
+          description: Kind of content the block was made from.
+        created_at:
+          type: string
+          format: date-time
+          description: RFC3339 block time.
+    SafetyBlockResponse:
+      type: object
+      description: Block command outcome.
+      additionalProperties: false
+      required: [block, replayed]
+      properties:
+        block:
+          $ref: '#/components/schemas/SafetyBlock'
+        replayed:
+          type: boolean
+          description: True when the caller had already blocked this account.
+    SafetyBlockListResponse:
+      type: object
+      description: The caller's blocks, newest first.
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          maxItems: 500
+          description: Active blocks.
+          items:
+            $ref: '#/components/schemas/SafetyBlock'
+    SafetyContentRef:
+      type: object
+      description: One public content reference.
+      additionalProperties: false
+      required: [content_kind, content_id]
+      properties:
+        content_kind:
+          type: string
+          enum: [FORUM_POST, FORUM_COMMENT, STATION_COMMENT]
+          description: Public content kind; FORUM_POST names topics only.
+        content_id:
+          type: string
+          format: uuid
+          description: Public content identifier.
+    SafetyHiddenRequest:
+      type: object
+      description: Signed session envelope plus the content references on screen.
+      additionalProperties: false
+      required: [family_id, access_token, items]
+      properties:
+        family_id:
+          type: string
+          format: uuid
+          description: Session family UUID.
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Session access token.
+        items:
+          type: array
+          minItems: 1
+          maxItems: 100
+          description: Content references to check.
+          items:
+            $ref: '#/components/schemas/SafetyContentRef'
+    SafetyHiddenResponse:
+      type: object
+      description: Subset of the request written by accounts the caller blocked.
+      additionalProperties: false
+      required: [hidden]
+      properties:
+        hidden:
+          type: array
+          maxItems: 100
+          description: References to hide.
+          items:
+            $ref: '#/components/schemas/SafetyContentRef'
+    SafetyRemoveBlockResponse:
+      type: object
+      description: Unblock outcome.
+      additionalProperties: false
+      required: [removed]
+      properties:
+        removed:
+          type: boolean
+          const: true
+          description: Always true on success.
     ForumReportResponse:
       type: object
       description: Wrapper envelope for forum report receipt.

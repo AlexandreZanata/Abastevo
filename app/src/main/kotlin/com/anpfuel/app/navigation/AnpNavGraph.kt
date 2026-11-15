@@ -604,6 +604,15 @@ fun AnpNavGraph(
                 onOpenPremium = {
                     navController.navigate(Routes.PREMIUM) { launchSingleTop = true }
                 },
+                onOpenBlockedUsers = {
+                    navController.navigate(Routes.BLOCKED_USERS) { launchSingleTop = true }
+                },
+            )
+        }
+        composable(Routes.BLOCKED_USERS) {
+            com.anpfuel.app.ui.safety.BlockedUsersScreen(
+                onNavigateBack = { navController.popBackStack() },
+                onSignIn = { navController.navigate(Routes.AUTH) },
             )
         }
         composable(Routes.ENTERPRISE_INVITATION) {

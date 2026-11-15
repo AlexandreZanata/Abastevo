@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Community safety: report and block users (COMMUNITY_SAFETY_CONTRACT, B-BR-SAFE-01..09). -->
+<resources>
+    <string name="safety_more_actions">その他の操作</string>
+    <string name="safety_report_topic">トピックを報告</string>
+    <string name="safety_report_comment">コメントを報告</string>
+    <string name="safety_report_user">ユーザーを報告</string>
+    <string name="safety_block_user">ユーザーをブロック</string>
+    <string name="safety_report_user_title">ユーザーを報告</string>
+    <string name="safety_report_user_prompt">このユーザーを報告する理由を選んでください。報告は非公開で、モデレーターが確認します。確認が終わるまでコンテンツは表示されたままです。</string>
+    <string name="safety_reason_spam">スパムまたは宣伝</string>
+    <string name="safety_reason_harassment">嫌がらせやいじめ</string>
+    <string name="safety_reason_hate">ヘイトスピーチや差別</string>
+    <string name="safety_reason_impersonation">なりすまし</string>
+    <string name="safety_reason_illegal">違法なコンテンツや行為</string>
+    <string name="safety_reason_other">その他の理由</string>
+    <string name="safety_report_detail_hint">詳細（任意）</string>
+    <string name="safety_report_detail_counter">%1$d / %2$d</string>
+    <string name="safety_report_send">報告を送信</string>
+    <string name="safety_report_user_received">報告を受け付けました。モデレーターが確認します。</string>
+    <string name="safety_report_user_replayed">このユーザーはすでに報告済みです。現在確認中です。</string>
+    <string name="safety_block_title">このユーザーをブロックしますか？</string>
+    <string name="safety_block_message">このユーザーのフォーラムのトピック、コメント、返信、およびスタンドへのコメントが非表示になります。相手には通知されず、ほかの人には引き続き表示されます。「プロフィール → アカウントを管理 → ブロックしたユーザー」からいつでも解除できます。</string>
+    <string name="safety_block_confirm">ブロック</string>
+    <string name="safety_block_done">ユーザーをブロックしました。このユーザーのコンテンツは非表示になりました。</string>
+    <string name="safety_error_self_target">これはあなた自身のコンテンツです。自分を報告またはブロックすることはできません。</string>
+    <string name="safety_error_block_limit">ブロックできるユーザー数の上限に達しました。先に「プロフィール → アカウントを管理 → ブロックしたユーザー」で誰かのブロックを解除してください。</string>
+    <string name="safety_error_rate_limited">試行回数が多すぎます。%1$d 秒後にもう一度お試しください。</string>
+    <string name="safety_error_offline">オフラインです。接続後にもう一度お試しください。</string>
+    <string name="safety_error_not_found">このコンテンツはもう利用できません。</string>
+    <string name="safety_error_generic">操作を完了できませんでした。もう一度お試しください。</string>
+    <string name="safety_topic_hidden_title">非表示のコンテンツ</string>
+    <string name="safety_topic_hidden_message">このトピックはあなたがブロックしたユーザーのものです。「プロフィール → アカウントを管理 → ブロックしたユーザー」から解除できます。</string>
+    <string name="blocked_users_title">ブロックしたユーザー</string>
+    <string name="blocked_users_entry_subtitle">コンテンツが非表示になっている人</string>
+    <string name="blocked_users_intro">ブロックしたユーザーのコンテンツは、フォーラムとスタンドのページで非表示になります。相手には通知されません。</string>
+    <string name="blocked_users_empty_title">ブロックしたユーザーはいません</string>
+    <string name="blocked_users_empty_message">誰かをブロックするとここに表示され、いつでも解除できます。</string>
+    <string name="blocked_users_fallback_forum">フォーラム参加者</string>
+    <string name="blocked_users_fallback_station">スタンドへのコメント投稿者</string>
+    <string name="blocked_users_fallback_generic">コミュニティメンバー</string>
+    <string name="blocked_users_since">%1$s にブロック</string>
+    <string name="blocked_users_unblock">ブロック解除</string>
+    <string name="blocked_users_unblock_title">%1$s のブロックを解除しますか？</string>
+    <string name="blocked_users_unblock_message">次回の読み込みから、このユーザーのコンテンツが再び表示されます。</string>
+    <string name="blocked_users_unblocked">ブロックを解除しました。</string>
+    <string name="blocked_users_load_error">ブロックしたユーザーを読み込めませんでした。</string>
+    <string name="blocked_users_sign_in">ブロックしたユーザーを管理するにはログインしてください。</string>
+</resources>

@@ -307,4 +307,23 @@ class FeedbackHttpClientTest {
         } finally { server.shutdown(); http.connectionPool.evictAll(); http.dispatcher.executorService.shutdown() }
     }
 
+
+    // Top-level comments arrive with "parent_id": null. Android's org.json
+    // reads that through optString as the text "null" (the JVM library used
+    // here does not), which hid every station comment on devices; the client
+    // checks isNull so both runtimes agree.
+    @Test
+    fun `top-level comments keep an empty parent id`() = runTest {
+        val server = MockWebServer()
+        try {
+            server.enqueue(MockResponse().setResponseCode(200).setBody(
+                """{"comments":[{"id":"c-1","public_alias":"adore-fox-42","station_id":"s-1","product":"GASOLINE","parent_id":null,"depth":0,"text":"good fuel","revision":1,"created_at":"2026-10-01T00:00:00Z","updated_at":"2026-10-01T00:00:00Z"},""" +
+                    """{"id":"c-2","public_alias":"calm-owl-7","station_id":"s-1","product":"GASOLINE","parent_id":"c-1","depth":1,"text":"agreed","revision":1,"created_at":"2026-10-01T00:00:00Z","updated_at":"2026-10-01T00:00:00Z"}]}""",
+            ))
+            val gateway = FeedbackHttpClient(OkHttpClient(), server.url("/").toString(), FakeSessions(null))
+            val page = gateway.listComments("s-1", "GASOLINE", "", 20)
+            assertEquals("", page.items[0].parentId)
+            assertEquals("c-1", page.items[1].parentId)
+        } finally { server.shutdown() }
+    }
 }

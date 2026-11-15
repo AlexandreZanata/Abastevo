@@ -118,7 +118,8 @@ func AllowedForTarget(action, targetType string) bool {
 			targetType == TargetContributor || targetType == TargetEvidence ||
 			targetType == TargetComment || targetType == TargetStationClaim ||
 			targetType == TargetContribution || targetType == TargetQualityReport ||
-			targetType == TargetForumPost || targetType == TargetForumComment
+			targetType == TargetForumPost || targetType == TargetForumComment ||
+			targetType == TargetCommunityAccount
 	default:
 		return false
 	}

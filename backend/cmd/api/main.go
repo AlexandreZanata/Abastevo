@@ -896,6 +896,18 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 	}
 	forumDiscussionHandler.RegisterRoutes(router)
 
+	// Google Play UGC policy (B-BR-SAFE-01…09): report and block the author
+	// of public forum and station content. Signed like forum social writes;
+	// independent of the forum switch because station comments use it too.
+	safetyDeps := safetyDeps{
+		Pool: pool.Underlying(), Forum: forumStore, Feedback: feedbackStore,
+		Moderation: moderationStore, Accounts: accountService, AccountRows: accountStore,
+		SignedOwner: func(r *http.Request, owner string) (string, string, error) {
+			return premiumHTTP.SignedOwner(r, owner)
+		},
+	}
+	registerCommunitySafety(router, safetyDeps, newSafetyStore(safetyDeps))
+
 	// B-BR-FOR-18 live conversations: one LISTEN connection per process feeds
 	// the open SSE streams; no websocket, broker or polling (B-BR-FOR-16).
 	forumHub := forumstream.NewHub(5000, 1000, 32)

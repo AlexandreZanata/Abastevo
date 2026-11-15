@@ -5,11 +5,15 @@ import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.usecase.forum.GetForumCategoriesUseCase
 import com.anpfuel.application.usecase.forum.GetForumFeedUseCase
 import com.anpfuel.application.usecase.forum.SubmitForumTopicUseCase
+import com.anpfuel.application.usecase.safety.FilterHiddenContentUseCase
 import com.anpfuel.domain.forum.ForumCategory
 import com.anpfuel.domain.forum.ForumCategoryItem
 import com.anpfuel.domain.forum.ForumException
 import com.anpfuel.domain.forum.ForumFeedFilters
+import com.anpfuel.domain.forum.ForumPostKind
 import com.anpfuel.domain.forum.ForumPostSummary
+import com.anpfuel.domain.safety.SafetyContentKind
+import com.anpfuel.domain.safety.SafetyContentRef
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.CancellationException
@@ -17,6 +21,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -48,6 +53,7 @@ enum class ForumUiError {
 class ForumFeedViewModel @Inject constructor(
     private val getForumCategories: GetForumCategoriesUseCase,
     private val getForumFeed: GetForumFeedUseCase,
+    private val filterHiddenContent: FilterHiddenContentUseCase? = null,
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(
@@ -63,6 +69,39 @@ class ForumFeedViewModel @Inject constructor(
 
     init {
         loadInitial()
+        // A block made anywhere (e.g. from an opened topic) drops that
+        // author's topics already listed here at once (BUC-SAFE-03).
+        filterHiddenContent?.let { filter ->
+            viewModelScope.launch {
+                filter.blockRevisions.drop(1).collect { refilterShown() }
+            }
+        }
+    }
+
+    /**
+     * Removes topics written by accounts the viewer blocked (B-BR-SAFE-06).
+     * Only topics are user-attributed here; the lookup fails open.
+     */
+    private suspend fun withoutHidden(items: List<ForumPostSummary>): List<ForumPostSummary> {
+        val filter = filterHiddenContent ?: return items
+        val refs = items.mapNotNull { it.safetyRef() }
+        if (refs.isEmpty()) return items
+        val hidden = try {
+            filter(refs)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            emptySet()
+        }
+        if (hidden.isEmpty()) return items
+        return items.filterNot { it.safetyRef() in hidden }
+    }
+
+    private suspend fun refilterShown() {
+        val shown = _state.value.items
+        val kept = withoutHidden(shown).map { it.id }.toSet()
+        if (kept.size == shown.size) return
+        _state.update { state -> state.copy(items = state.items.filter { it.id in kept || it !in shown }) }
     }
 
     fun loadInitial() {
@@ -84,10 +123,11 @@ class ForumFeedViewModel @Inject constructor(
 
             try {
                 val page = getForumFeed(category = _state.value.selectedCategory, kind = null, limit = 20, cursor = null, filters = _state.value.filters)
+                val visible = withoutHidden(page.items)
                 _state.update {
                     it.copy(
                         categories = if (categoryItems.isNotEmpty()) categoryItems else it.categories,
-                        items = page.items,
+                        items = visible,
                         nextCursor = page.nextCursor,
                         loading = false,
                         refreshing = false,
@@ -139,9 +179,10 @@ class ForumFeedViewModel @Inject constructor(
         feedJob = viewModelScope.launch {
             try {
                 val page = getForumFeed(category = category, kind = null, limit = 20, cursor = null, filters = _state.value.filters)
+                val visible = withoutHidden(page.items)
                 _state.update {
                     it.copy(
-                        items = page.items,
+                        items = visible,
                         nextCursor = page.nextCursor,
                         loading = false,
                         error = null,
@@ -194,9 +235,10 @@ class ForumFeedViewModel @Inject constructor(
                     cursor = null,
                     filters = filters,
                 )
+                val visible = withoutHidden(page.items)
                 _state.update {
                     it.copy(
-                        items = page.items,
+                        items = visible,
                         nextCursor = page.nextCursor,
                         loading = false,
                         error = null,
@@ -242,10 +284,11 @@ class ForumFeedViewModel @Inject constructor(
             }
             try {
                 val page = getForumFeed(category = _state.value.selectedCategory, kind = null, limit = 20, cursor = null, filters = _state.value.filters)
+                val visible = withoutHidden(page.items)
                 _state.update {
                     it.copy(
                         categories = if (categoryItems.isNotEmpty()) categoryItems else it.categories,
-                        items = page.items,
+                        items = visible,
                         nextCursor = page.nextCursor,
                         loading = false,
                         refreshing = false,
@@ -292,7 +335,7 @@ class ForumFeedViewModel @Inject constructor(
                     cursor = cursor,
                     filters = _state.value.filters,
                 )
-                val merged = (_state.value.items + page.items).distinctBy { it.id }
+                val merged = (_state.value.items + withoutHidden(page.items)).distinctBy { it.id }
                 _state.update {
                     it.copy(
                         items = merged,
@@ -315,3 +358,7 @@ class ForumFeedViewModel @Inject constructor(
  */
 internal fun List<ForumCategoryItem>.selectable(): List<ForumCategoryItem> =
     filter { it.code != ForumCategory.UNKNOWN }.distinctBy { it.code }
+
+/** Topics are the only feed items a user report or block names (B-BR-SAFE-01). */
+internal fun ForumPostSummary.safetyRef(): SafetyContentRef? =
+    if (kind == ForumPostKind.TOPIC) SafetyContentRef(SafetyContentKind.FORUM_POST, id) else null

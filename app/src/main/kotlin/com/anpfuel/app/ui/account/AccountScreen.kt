@@ -12,6 +12,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Logout
 import androidx.compose.material.icons.filled.PersonOutline
+import androidx.compose.material.icons.outlined.Block
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -66,6 +67,7 @@ fun AccountScreen(
     onOpenPremium: () -> Unit,
     modifier: Modifier = Modifier,
     onNavigateToLedgerSync: () -> Unit = {},
+    onOpenBlockedUsers: () -> Unit = {},
     authViewModel: AuthViewModel = hiltViewModel(),
 ) {
     val authState by authViewModel.uiState.collectAsStateWithLifecycle()
@@ -151,6 +153,21 @@ fun AccountScreen(
                     title = stringResource(R.string.ledger_sync_title),
                     subtitle = stringResource(R.string.ledger_sync_explanation),
                     onClick = onNavigateToLedgerSync)
+            }
+            // BUC-SAFE-04: the account manages its own blocks.
+            val blockedUsersContainer = MaterialTheme.colorScheme.surface
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = AnpContainerDefaults.containerShape(),
+                colors = CardDefaults.cardColors(containerColor = blockedUsersContainer),
+                border = AnpContainerDefaults.borderStroke(blockedUsersContainer),
+            ) {
+                ProfileActionRow(
+                    icon = Icons.Outlined.Block,
+                    title = stringResource(R.string.blocked_users_title),
+                    subtitle = stringResource(R.string.blocked_users_entry_subtitle),
+                    onClick = onOpenBlockedUsers,
+                )
             }
             SignedInAccountContent(
                 state = authState,

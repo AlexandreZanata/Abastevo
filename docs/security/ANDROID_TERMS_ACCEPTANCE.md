@@ -27,7 +27,9 @@ its confirmation step is refined here.
   than the current ones is refused.
 - **B-BR-TA03 — Versions.** The accepted versions are the identifiers published
   on the public documents: the Terms of Use "Última atualização" month
-  (`2026-10`) and the Privacy Policy version (`1.0`). When either public
+  (`2026-11` since the 2026-11-15 objectionable-content and report/block
+  update, B-BR-SAFE-09; `2026-10` before) and the Privacy Policy version
+  (`1.0`). When either public
   document changes, the constant changes with it and every earlier record stops
   being current: the terms screen returns and says the documents changed. A
   unit test compares the constants with `landing/static/termos/index.html` and
