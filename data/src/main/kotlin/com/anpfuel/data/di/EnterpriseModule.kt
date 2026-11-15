@@ -7,6 +7,9 @@ import com.anpfuel.application.enterprise.EnterpriseLocalIdentity
 import com.anpfuel.application.enterprise.EnterpriseContextProtection
 import com.anpfuel.application.enterprise.EnterprisePersistence
 import com.anpfuel.application.enterprise.EnterpriseSessionFence
+import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentService
+import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentStore
+import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentTransport
 import com.anpfuel.application.enterprise.fleet.EnterpriseReferenceCacheStore
 import com.anpfuel.application.enterprise.fleet.EnterpriseReferenceService
 import com.anpfuel.application.enterprise.fleet.EnterpriseReferenceTransport
@@ -29,7 +32,10 @@ import com.anpfuel.application.enterprise.trip.EnterpriseTripStore
 import com.anpfuel.application.enterprise.trip.TripFlow
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
+import com.anpfuel.data.BuildConfig
 import com.anpfuel.data.enterprise.*
+import com.anpfuel.data.enterprise.attachment.EnterpriseAttachmentHttpClient
+import com.anpfuel.data.enterprise.attachment.ProtectedAttachmentStore
 import com.anpfuel.data.enterprise.fleet.EnterpriseReferenceHttpClient
 import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
@@ -44,7 +50,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import java.io.File
+import java.time.Instant
 import java.time.ZoneId
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
@@ -269,12 +277,40 @@ object EnterpriseModule {
         entropy = { bound -> Random.Default.nextLong(bound) }, limits = limits, activity = activity,
     )
 
+    /** EMP-OFFL-005: attachment bytes on the device proof plane and the capability-bound ingress (EDR-270). */
+    @Provides
+    @Singleton
+    fun attachmentClient(source: EnterpriseOperationSessionSource, signer: EnterpriseDeviceSigner): EnterpriseAttachmentHttpClient =
+        EnterpriseAttachmentHttpClient(
+            OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS).writeTimeout(30, TimeUnit.SECONDS).build(),
+            source, signer,
+        )
+
+    @Provides
+    @Singleton
+    fun attachmentTransport(client: EnterpriseAttachmentHttpClient): EnterpriseAttachmentTransport = client
+
+    @Provides
+    @Singleton
+    fun attachmentStore(store: ProtectedEnterprisePersistence): EnterpriseAttachmentStore = ProtectedAttachmentStore(store)
+
+    /** Off unless `ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED` (EDR-267): real receipts stay legally gated (OQ-04). */
+    @Provides
+    @Singleton
+    fun attachmentService(@ApplicationContext context: Context, source: EnterpriseQueueSource, store: EnterpriseAttachmentStore,
+        transport: EnterpriseAttachmentTransport): EnterpriseAttachmentService = EnterpriseAttachmentService(
+        source, store, transport, AndroidEnterpriseDeviceClock(context)::read, Instant::now,
+        entropy = { bound -> Random.Default.nextLong(bound) }, newId = { UUID.randomUUID().toString() },
+        enabled = BuildConfig.ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED,
+    )
+
     @Provides
     @Singleton
     fun operationRunner(source: EnterpriseQueueSource, store: ProtectedEnterprisePersistence,
-        service: EnterpriseQueueService, reviews: EnterpriseReviewService): EnterpriseOperationWorkRunner = EnterpriseOperationWorkRunner(
+        service: EnterpriseQueueService, reviews: EnterpriseReviewService, attachments: EnterpriseAttachmentService): EnterpriseOperationWorkRunner = EnterpriseOperationWorkRunner(
         source, store::discover, { account, partition -> service.dispatch(account, partition) },
         { account, partition -> reviews.poll(account, partition) },
+        if (BuildConfig.ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED) { account, partition -> attachments.deliver(account, partition) } else null,
     )
 
     @Provides
