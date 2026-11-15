@@ -239,3 +239,34 @@ git diff --check
   org_memberships, org_employee_identities, org_audit_events` and ownership of
   the four replaced functions.
 - No C1, M4 or F4 acceptance, deployment or real data is claimed.
+
+## Merge with EMP-TRIP-011 (pause, resume, cancel) — merged-tree validation
+
+At the coordinator's request the branch merged `codex/enterprise-f4`
+(`45c3baf3`: EMP-TRIP-011 with migration 000233, EMP-OFFL-005, EMP-GPS-001
+and the PR #224 merge) in merge commit `cc5b5985`, after the two task
+commits. Conflicts were resolved as unions (contract sections, EDR table by
+number, sqlc schema list, `Record` fields, trip domain fields, logbook and
+usage clauses, the finish hold, `ReadTripTx`, intake fixture grants). The
+closure was rebased on the trip lifecycle, keeping every 000233 line:
+
+- 000235 now starts from the 233 bodies of `org_trip_completion_guard`,
+  `org_trip_event_source` and `org_trip_held_event_source` and redefines
+  `org_trip_revision` (233 body) to count the closure like a finish; the
+  review-entry source keeps its 229 body (000233 did not redefine it).
+- A `PAUSED` trip is open: closable at its current operational revision
+  (stale revision `CONFLICT`), completed at the next revision, listed with
+  its state and revision; a `CANCELLED` trip is closed (`CONFLICT`, nothing
+  written); a resume after the closure is held `TRIP_ALREADY_CLOSED`.
+- `Trip.Close` admits `PAUSED` and moves the revision; `Record.Revision()`
+  counts the closure; the active-use query keeps the lifecycle rule and
+  counts a trip without a finish or cancellation only while open.
+- New tests: domain `TestTripCloseTreatsPausedAsOpenAndCancelledAsClosed`,
+  PostGIS `TestTripClosureTreatsPausedTripsAsOpenAndCancelledAsClosed`; the
+  closure upgrade migrator also owns `org_trip_revision`.
+
+Merged-tree gates: toolchain gofmt empty, vet (both tags), `sqlc vet`/`diff`,
+staticcheck plain and integration clean (`trip014-merged-staticcheck.log`);
+focused PostGIS `^(TestTrip|TestOffboarding)` 87/87 top-level pass
+(`trip014-merged-focused.jsonl`, including every TRIP-011 lifecycle test);
+MERGED_UNION_PLACEHOLDER

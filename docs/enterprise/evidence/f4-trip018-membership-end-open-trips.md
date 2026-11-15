@@ -197,3 +197,13 @@ git diff --check
   principal keeps the OFFL-009 late grants; the migrator owns
   `org_offboarding_guard()` and `org_trip_held_source()`.
 - No C1, M4 or F4 acceptance, deployment or real data is claimed.
+
+## Merge with EMP-TRIP-011 — merged-tree validation
+
+See the EMP-TRIP-014 evidence (merge commit `cc5b5985`). For this task: a
+`PAUSED` trip is an open responsibility (port, guard flag and completeness
+check use `IN_PROGRESS` or `PAUSED`); `TRIP:<id>` keeps the fixed item
+revision 1 (the trip's own revision is not a source of the flag, so a pause
+during the review does not change it); 000236 takes the 233 body of
+`org_trip_held_source`, keeping every line, plus the late-finish branch. The
+merged-tree gates and union are recorded in the EMP-TRIP-014 evidence.
