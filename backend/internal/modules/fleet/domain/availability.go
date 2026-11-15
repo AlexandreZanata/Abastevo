@@ -41,8 +41,10 @@ type Cause struct {
 	Lifecycle State
 	// Block is set only for a BLOCK cause.
 	Block BlockReason
-	From  time.Time
-	To    *time.Time
+	// Via is the powered asset of an attached implement's ACTIVE_USE cause.
+	Via  string
+	From time.Time
+	To   *time.Time
 }
 
 // UseFact is a trip in progress or paused naming the asset as main asset or
@@ -50,6 +52,9 @@ type Cause struct {
 type UseFact struct {
 	ID   string
 	From time.Time
+	// Via is the powered asset whose trip uses an attached implement
+	// (EMP-FLEET-011); empty for the asset's own use.
+	Via string
 }
 
 // HoldFact is an open maintenance hold (row 3), answered by the
@@ -122,10 +127,10 @@ func Assess(f AvailabilityFacts, at, now time.Time) (Assessment, error) {
 	}
 	var uses, holds, blocks, reservations []Cause
 	for _, use := range f.Uses {
-		if !validFactID(use.ID) || use.From.IsZero() {
+		if !validFactID(use.ID) || use.From.IsZero() || use.Via != "" && !validFactID(use.Via) {
 			return Assessment{}, ErrInvalid
 		}
-		uses = append(uses, Cause{Availability: InUse, Kind: ActiveUseCause, ID: use.ID, From: use.From.UTC()})
+		uses = append(uses, Cause{Availability: InUse, Kind: ActiveUseCause, ID: use.ID, From: use.From.UTC(), Via: use.Via})
 	}
 	for _, hold := range f.Holds {
 		if !validFactID(hold.ID) || hold.From.IsZero() || hold.To != nil && !hold.To.After(hold.From) {

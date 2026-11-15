@@ -4921,3 +4921,71 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   instant; the reservations with their effective states; the blocks with
   their removal facts. Alternatives: foreign or unknown asset → `NOT_FOUND`;
   no covering grant → `FORBIDDEN`. Result: read only; nothing is stored.
+
+## EMP-FLEET-011 — Implements: attach to and detach from a powered asset (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-fleet011-implement-attachments.md).
+
+- **B-BR-EMP-325 — An implement works with at most one powered asset at a
+  time.** An attachment belongs to one organization and names one of its
+  assets of kind `IMPLEMENT` and one of kind `VEHICLE` or `MACHINE`, both in
+  `ACTIVE` or `INACTIVE`, for a half-open period `[start, end)` with
+  whole-microsecond bounds; the start is the server instant when omitted and
+  may not be earlier when given; the end is optional. An implement is
+  attached to at most one powered asset at any instant: the database
+  enforces it with an exclusion constraint, so of two concurrent overlapping
+  attachments of one implement exactly one commits and the other is refused
+  with `CONFLICT` and leaves nothing. A powered asset may carry several
+  implements at once. Attaching to an implement, or attaching an asset that is
+  not an implement, is `VALIDATION_FAILED`; an asset of another organization
+  (or unknown) is not found. Rows are private under forced row-level security
+  and never deleted.
+- **B-BR-EMP-326 — Detaching ends the period, never before it began.** A
+  detach ends an attachment that is not `ENDED` at the server instant, at the
+  end the command states or at the server instant (at its start when it has
+  not started, leaving an empty period). A stated end earlier than the server
+  instant, earlier than the attach instant or later than a planned end is
+  `VALIDATION_FAILED`; detaching an ended attachment is `CONFLICT`; an
+  optional reason has 1 to 280 characters. The command names the attachment
+  through either of its assets; through another asset it is not found.
+- **B-BR-EMP-327 — An attached implement follows its powered asset's trips.**
+  The implements attached to a powered asset at an instant, and the powered
+  asset an implement is attached to at an instant, are answered by a port on
+  the caller's organization transaction (half-open periods). An attached
+  implement's availability lists, as `IN_USE` causes naming the powered
+  asset, the trips in progress or paused of its powered asset at that instant;
+  maintenance holds, blocks and reservations of the powered asset do not
+  transfer to the implement. Without a trip source the answer names the
+  missing source instead of claiming the implement is free of trips.
+- **B-BR-EMP-328 — An implement is never a trip's main asset; an attachment
+  fixes both kinds.** The trip-start eligibility check refuses an `IMPLEMENT`
+  as the main asset of a trip (the trip intake applies it). An attachment
+  counts as an operation of both assets, so neither asset's kind can change
+  once an attachment names it (BR-FLEET-002).
+- **B-BR-EMP-329 — Attachments are managed with `fleet.asset.manage` on both
+  assets.** Attach and detach require fresh `fleet.asset.manage` covering the
+  asset in the path and, inside the transaction, the other asset of the
+  attachment (`ORG`, or a `UNIT`, `COST_CENTRE` or `ASSET` grant matching each
+  asset's allocation); the list requires current `fleet.asset.read` covering
+  the asset. Every write records exactly one audit event
+  (`fleet.implement.attached` or `fleet.implement.detached`) and one receipt
+  bound to its operation identifier; the same intent replayed returns the
+  first result, another intent under the same identifier is
+  `OPERATION_ID_REUSED`.
+- **BUC-EMP-164 — Attach and detach an implement.** Actor: member with fresh
+  `fleet.asset.manage` covering both assets. Main flow: choose the implement,
+  the powered asset and the optional start and end → the server checks
+  kinds, states and overlap under the organization root lock → attachment
+  recorded with one audit event and receipt; later, detach with an optional
+  end and reason. Alternatives: implement already attached in an overlapping
+  period → `CONFLICT`; powered asset is an implement → `VALIDATION_FAILED`;
+  detach before the attach instant → `VALIDATION_FAILED`; ended →
+  `CONFLICT`; a grant scoped to another unit on either asset → `FORBIDDEN`.
+  Result: the implement's history of powered assets by period.
+- **BUC-EMP-165 — Read attachments and the implements of a trip start.**
+  Actor: member with current `fleet.asset.read` covering the asset; the trip
+  intake (system). Main flow: the attachments in which the asset is the
+  implement or the powered asset, in start order with their state at the
+  server instant; the trip start asks the port for the implements attached
+  to the powered asset at its instant. Alternatives: foreign or unknown asset
+  → `NOT_FOUND`. Result: read only.

@@ -208,7 +208,7 @@ notifications, configurable tolerance, the calendar (EMP-TRIP-022).
 - **Done when:** The maintenance module's port test reads an asset's expiry dates and the content-permission test passes.
 
 ### EMP-FLEET-011 — Implements: attach to and detach from a powered asset
-- **Meta:** module FLEET · phase F4 · cut - · priority P2 · type API · size S · state TODO
+- **Meta:** module FLEET · phase F4 · cut - · priority P2 · type API · size S · state LOCAL_DONE
 - **Objective:** Record which implement was working with which tractor or truck and when, so that trips list the implements used and an implement is never counted as working in two places.
 - **Rules and use cases:** BR-FLEET-033, BR-FLEET-002, UC-FLEET-10
 - **Depends on:** EMP-FLEET-002
@@ -222,6 +222,15 @@ notifications, configurable tolerance, the calendar (EMP-TRIP-022).
 - **Validation:** V-SQL, V-ISO, V-AUTHZ, V-IDEM, V-API · migration: additive table · rollback: capability flag off
 - **Risks and assumptions:** Farms may swap implements several times a day; if panel entry proves too slow, an app action is a later evolution.
 - **Done when:** The overlap test and the trip-port test pass.
+
+EMP-FLEET-011 LOCAL_DONE (pending integration): migration 000222 adds forced-RLS
+implement attachments (one powered asset per implement at any instant, a gist
+exclusion) and receipts; attach/detach under fresh `fleet.asset.manage` on both
+assets and a list under `fleet.asset.read`; the attached-implements port for
+trip starts; an attached implement is `IN_USE` through its powered asset's
+trips; attachments fix both assets' kinds. Retained for EMP-TRIP-002: the trip
+listing of attached implements and the `IMPLEMENT`-as-main-asset refusal call
+site. [Evidence](../evidence/f4-fleet011-implement-attachments.md).
 
 ### EMP-FLEET-012 — Panel: fleet list, detail and assignments
 - **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type WEB · size M · state TODO

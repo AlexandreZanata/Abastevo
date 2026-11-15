@@ -1245,6 +1245,23 @@ use fresh `fleet.reservation.manage` (org-permissions-v5, admission class
 `fleet.asset.read`. Trips and maintenance holds are answered "no source" and
 listed in `missing_sources`. Nothing here provisions live grants.
 
+### Implement attachments (EMP-FLEET-011)
+
+Migration222 adds forced-RLS `org_asset_implement_attachments` (an implement
+is attached to at most one powered asset at any instant: a `btree_gist`
+exclusion; kinds and states checked by the row guard) and the receipts
+`org_asset_attachment_commands`, and redefines `org_asset_current_usage` from
+the 217 body with the two attachment keys allow-listed and attachments counted
+as operations of both assets (their kinds are then fixed). The migration owner
+needs `REFERENCES` on `organizations`, `org_audit_events` and `org_assets`, and
+ownership of `org_asset_current_usage`. The Fleet principal needs `SELECT,
+INSERT, UPDATE ON org_asset_implement_attachments` and `SELECT, INSERT ON
+org_asset_attachment_commands`; every principal that discards an asset or
+changes its kind needs `SELECT (org_id, implement_id, powered_asset_id) ON
+org_asset_implement_attachments`. Attach and detach use fresh
+`fleet.asset.manage` on both assets (admission class `fleet.asset`); the list
+uses current `fleet.asset.read`. Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

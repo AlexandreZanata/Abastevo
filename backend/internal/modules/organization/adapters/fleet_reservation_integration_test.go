@@ -27,6 +27,17 @@ func reservationStore(t *testing.T, fx legalFixtureState) *fleetpg.AssetStore {
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON org_asset_reservations,org_asset_blocks TO "+role+";GRANT SELECT,INSERT ON org_asset_reservation_commands TO "+role+";GRANT SELECT,INSERT ON job_queue TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	// EMP-FLEET-011: once installed, the availability read follows an
+	// implement's attachment, so the Fleet principal reads that table too.
+	var attachments bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_asset_implement_attachments') IS NOT NULL`).Scan(&attachments); err != nil {
+		t.Fatal(err)
+	}
+	if attachments {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_asset_implement_attachments TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 	s.ActiveUse, s.MaintenanceHolds = fleetpg.NoActiveUse{}, fleetpg.NoMaintenanceHolds{}
 	return s
 }

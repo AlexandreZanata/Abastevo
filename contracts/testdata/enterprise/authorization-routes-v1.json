@@ -273,6 +273,8 @@
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/acquisition/record",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/activate",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/archive",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/attach",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/{attachment_id}/detach",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/change",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/deactivate",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/discard",
@@ -290,6 +292,7 @@
       "routes": [
         "POST /v1/orgs/{org_id}/fleet/assets/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list",
