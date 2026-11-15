@@ -592,3 +592,8 @@ Merged-tree verification of `75c18421` (wiring, TRIP-003, cursor fix):
 untagged `go test ./...` 221 packages ok; race/integration union 57 packages,
 56 pass, 1378 top-level / 10642 named, 27.7 min; only the 5 known
 Rust-preparer-gated `cmd/worker` tests fail (`f4-logs/coord-union-75c18421.jsonl`).
+
+Merged-tree verification of `cbf68c67` (adds TRIP-004): untagged
+`go test ./...` 222 packages ok; race/integration union 58 packages, 57 pass,
+1396 top-level / 10823 named, 26.8 min; only the 5 known Rust-preparer-gated
+`cmd/worker` tests fail (`f4-logs/coord-union-cbf68c67.jsonl`).
