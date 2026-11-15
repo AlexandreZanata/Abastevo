@@ -293,7 +293,7 @@ PostGIS. Retained: review on a later-closed segment (EMP-METER-005),
 structural grants in signed intake, native client confirmation of SELF 403.
 
 ### EMP-METER-003 — Reading validation: monotonicity, retroactive inserts and suspect flags
-- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size S · state TODO
+- **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Detect readings that contradict their neighbours or are implausible and keep them aside as suspect, so that one typing error does not corrupt distance, consumption or maintenance figures and no reading is refused in the field.
 - **Rules and use cases:** BR-METER-008, BR-METER-009, BR-METER-010, BR-METER-011, BR-METER-012, BR-METER-017, BR-OFFL-006, UC-METER-02
 - **Depends on:** EMP-METER-002
@@ -307,6 +307,12 @@ structural grants in signed intake, native client confirmation of SELF 403.
 - **Validation:** V-DOM, V-MONEY, V-SQL, V-SYNC · migration: none · rollback: disable the wiring by configuration; readings are then stored without flags
 - **Risks and assumptions:** Default rate limits are hypotheses per category and are configuration; a limit that is too tight fills the queue, one too loose hides errors.
 - **Done when:** The shared vectors pass in both languages and the intake test shows a suspect reading excluded from the current value.
+
+[F4 reading validation](../evidence/f4-meter003-reading-validation.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-280..285, BUC-EMP-142..144 and
+EDR-184..186 precede behaviour; migration 000216 keeps the classification
+history. Retained: the app warning screen, the review-ACK form for suspect
+readings, per-category limits and rollover (EMP-METER-005).
 
 ### EMP-METER-004 — Reading correction and void with audit
 - **Meta:** module METER · phase F2 · cut - · priority P1 · type API · size S · state TODO

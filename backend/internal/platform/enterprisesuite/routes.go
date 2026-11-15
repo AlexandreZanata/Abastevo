@@ -24,6 +24,7 @@ import (
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	fleetweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters/http"
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	meterdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
 	identitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	proofauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
@@ -93,6 +94,9 @@ type Options struct {
 	// composes the operational list kinds of EMP-RPT-002; tests may add
 	// synthetic kinds.
 	ExportFormats []exportapp.Format
+	// MeterPlausibilityOff stores field readings VALID without flags (the
+	// EMP-METER-003 rollback, EDR-185). The zero value validates.
+	MeterPlausibilityOff bool
 }
 
 // Register performs no I/O or provisioning. The default mounts no private
@@ -295,13 +299,18 @@ func Register(router chi.Router, o Options) error {
 	meterAuthority := &orgpg.MeterAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Devices: deviceStore, Structure: assetStructure, Assignee: assetAssignee}
 	// Held readings resolve their stored asset/unit snapshot (07-permissions example 3).
 	heldStructure := &orgpg.ResourceStructure{Kind: orgpg.HeldMeterReadingStructure, Pool: o.Pool}
-	reviews := &fleetpg.MeterReviewStore{Pool: o.Pool, Authority: &orgpg.MeterReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: heldStructure}, Audit: auditStore, NewID: jobs.NewUUIDv4,
+	var plausibility *meterdomain.Plausibility
+	if !o.MeterPlausibilityOff {
+		policy := meterdomain.DefaultPlausibility()
+		plausibility = &policy
+	}
+	reviews := &fleetpg.MeterReviewStore{Pool: o.Pool, Plausibility: plausibility, Authority: &orgpg.MeterReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: heldStructure}, Audit: auditStore, NewID: jobs.NewUUIDv4,
 		ConfirmSource: func(ctx context.Context, tx pgx.Tx, s syncapp.Source) (time.Time, error) {
 			_, now, err := deviceStore.CheckCurrentDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
 			return now, err
 		},
 	}
-	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore, Reviews: reviews}
+	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore, Reviews: reviews, Plausibility: plausibility}
 	if err := fleetweb.RegisterMeters(router, fleetapp.MeterService{Enabled: true, Repository: meters, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}

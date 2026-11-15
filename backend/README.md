@@ -1150,6 +1150,19 @@ ownership of `org_asset_current_usage`, `org_unit_current_usage` and
 changed-right and post-disposal fuelings store nothing and stay
 RETRY/UNAVAILABLE. Nothing here provisions live grants.
 
+### Meter reading validation (EMP-METER-003)
+
+Migration216 adds the forced-RLS, append-only `org_meter_reading_states`
+history (revision, state, canonical flags, `RETROACTIVE` note, cause,
+operation) and admits a `SUSPECT` classification for an accepted held
+reading. Every principal that records, applies or reads meter readings needs
+`SELECT, INSERT ON org_meter_reading_states` (the latest-valid read and the
+series check read it). The migrator needs `REFERENCES ON org_meter_readings,
+org_memberships` and ownership of `org_meter_observation_guard()`.
+`ANPFUEL_ENTERPRISE_METER_PLAUSIBILITY` (boolean, default `true`) is the
+rollback switch: `false` stores field readings `VALID` without flags or history,
+exactly as before the migration (EDR-185). Nothing here provisions live grants.
+
 ### Asset lifecycle (EMP-FLEET-003)
 
 Migration201 adds nullable acquisition/disposal columns to `org_assets` and the

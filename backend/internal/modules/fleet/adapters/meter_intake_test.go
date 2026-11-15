@@ -509,7 +509,9 @@ func TestMeterIntakeActualServiceWindowIsExactBeforeRecording(t *testing.T) {
 }
 
 func TestMeterIntakeRejectsMismatchedActualEvidenceAndLateDenial(t *testing.T) {
-	for _, name := range []string{"value", "declared", "author", "capture", "operation", "origin", "method", "state"} {
+	// Since EMP-METER-003 a SUSPECT recorded classification is legitimate
+	// evidence (B-BR-EMP-284), proven separately below; it is no mismatch.
+	for _, name := range []string{"value", "declared", "author", "capture", "operation", "origin", "method"} {
 		t.Run(name, func(t *testing.T) {
 			source, _, repository, handler := intakeFixture(t)
 			op := intakeOperation(t, source, nil)
@@ -532,8 +534,6 @@ func TestMeterIntakeRejectsMismatchedActualEvidenceAndLateDenial(t *testing.T) {
 					in.Origin = meter.Fueling
 				case "method":
 					in.Method = meter.Integration
-				case "state":
-					in.State = meter.Suspect
 				}
 				return in
 			}
@@ -556,5 +556,23 @@ func TestMeterIntakeRejectsMismatchedActualEvidenceAndLateDenial(t *testing.T) {
 	after, _ := json.Marshal(repository.reading.Snapshot().Declared)
 	if !bytes.Equal(before, after) {
 		t.Fatal("refused confirmation rewrote immutable evidence")
+	}
+}
+
+// B-BR-EMP-284: a reading stored SUSPECT is answered ACCEPTED with entity
+// revision 1, and its receipt replays; the flag never holds or refuses it.
+func TestMeterIntakeAcceptsASuspectRecordedClassification(t *testing.T) {
+	source, _, repository, handler := intakeFixture(t)
+	op := intakeOperation(t, source, nil)
+	repository.transform = func(in meter.ReadingInput) meter.ReadingInput {
+		in.State = meter.Suspect
+		return in
+	}
+	outcome, err := handler.Apply(t.Context(), &intakeTx{}, source, op)
+	if err != nil || outcome.Result != protocol.Accepted || outcome.Code != "" || outcome.ReviewItemID != "" || outcome.EntityRevision == nil || *outcome.EntityRevision != 1 || repository.recorded != 1 {
+		t.Fatal("suspect reading was not accepted as evidence", err, outcome)
+	}
+	if err := handler.Confirm(t.Context(), &intakeTx{}, source, op, syncapp.ReadReceipt, outcome); err != nil {
+		t.Fatal("suspect receipt replay refused", err)
 	}
 }

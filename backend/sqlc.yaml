@@ -684,6 +684,7 @@ sql:
       - db/migrations/000201_organization_asset_lifecycle.sql
       - db/migrations/000206_organization_asset_allocation_history.sql
       - db/migrations/000210_organization_asset_assignments.sql
+      - db/migrations/000216_organization_meter_reading_states.sql
     gen:
       go:
         package: fleet

@@ -4605,3 +4605,90 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   unavailable forms, forced RLS without an organization setting,
   insert-only history and a populated 000212 → 000215 upgrade with injected
   failure, recovery, no-op replay and previous-image compatibility.
+
+## EMP-METER-003 — Reading validation: monotonicity, retroactive inserts and suspect flags (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-meter003-reading-validation.md).
+
+- **B-BR-EMP-280 — A reading is checked against its valid neighbours in
+  its segment.** The series of a segment is ordered by `occurred_at`, then
+  server `received_at`, then reading identifier (BR-METER-008). The
+  predecessor of a candidate is the last reading ordered before it whose
+  current state is `VALID`; the successor is the first `VALID` reading
+  ordered after it. `SUSPECT` and `VOIDED` readings are never neighbours (a
+  suspect reading does not contaminate the check of the next one). The
+  segment's opening reading is its first reading; a candidate ordered before
+  it is outside the segment and is refused exactly as a reading outside the
+  meter's service interval already is (signed intake `MALFORMED`, embedded
+  path `VALIDATION_FAILED`), never stored.
+- **B-BR-EMP-281 — Monotonicity flags.** A candidate whose value is lower
+  than its predecessor's is flagged `READING_BELOW_PREVIOUS`; one higher than
+  its successor's is flagged `READING_ABOVE_NEXT`; a value equal to a
+  neighbour's passes. A meter with a modulus gets no rollover verdict here
+  (`POSSIBLE_ROLLOVER` belongs to EMP-METER-005); a lower value is
+  `READING_BELOW_PREVIOUS`.
+- **B-BR-EMP-282 — Plausible rate with exact integers.** For each new pair of
+  consecutive valid readings that the candidate forms (predecessor →
+  candidate and candidate → successor) whose values do not decrease, with
+  value difference `Δv` in base units and elapsed time `Δt` in nanoseconds
+  between the two `occurred_at` instants, an odometer pair is plausible when
+  `Δv × 3 600 × 10⁹ ≤ L × Δt + 3 600 000 × 10⁹` (`L` the maximum average
+  distance in metres per hour: default 150 000, configurable from 20 000 to
+  200 000, a hypothesis per category; the constant allows 1 000 m of display
+  rounding) and an hour-meter pair is plausible when
+  `Δv × 10⁹ ≤ Δt + 300 × 10⁹`. Equal instants are a pair with `Δt = 0`, so
+  two readings declared at the same instant may differ by at most 1 000 m
+  or 300 s. An implausible pair flags the candidate `IMPLAUSIBLE_RATE` once.
+  The comparison uses exact integers of unbounded width (no floating point,
+  no rounding, no overflow).
+- **B-BR-EMP-283 — Future instants.** A candidate whose `occurred_at` is
+  later than its receipt instant plus the clock-skew limit (default 300 s,
+  any non-negative number of whole seconds) is flagged `FUTURE_INSTANT`;
+  exactly the limit passes. The receipt instant is the server clock read
+  under the meter lock immediately before the insertion; for a held reading
+  applied by an accepted review it is the original receipt. The flag is
+  decided once, at intake: re-evaluation keeps it, and only a confirmation,
+  correction or void (EMP-METER-004) removes it.
+- **B-BR-EMP-284 — Classification, storage and the current value.** A
+  candidate with at least one flag is `SUSPECT`, otherwise `VALID`; a
+  candidate that has a successor carries the note `RETROACTIVE` (it was
+  placed before a later valid reading), which is never a reason for
+  `SUSPECT`. A failing reading is never refused for its flags: it is stored,
+  its signed operation is answered `ACCEPTED` with entity revision 1, and the
+  trip or fueling that carries it is not held. The reading row keeps its
+  recorded classification (`VALID` or `SUSPECT`) and an append-only state
+  history keeps revision 1 (`INTAKE`, flags in canonical order
+  `READING_BELOW_PREVIOUS`, `READING_ABOVE_NEXT`, `IMPLAUSIBLE_RATE`,
+  `FUTURE_INSTANT`, note, operation) and every later revision; the current
+  state of a reading is its latest revision, or its recorded classification
+  when it has no history (readings recorded before this rule). The
+  latest-valid reading, the current value and every usage read use only
+  readings whose current state is `VALID`, so a suspect reading never moves
+  the current value. The opening reading recorded with a meter installation
+  is the segment's anchor and is recorded `VALID` without checks and without
+  history. The validation is a server configuration that is on by default;
+  turned off, readings are stored `VALID` without flags and without history,
+  exactly as before this rule, and nothing is re-evaluated.
+- **B-BR-EMP-285 — Re-evaluation of suspect neighbours.** When a `VALID`
+  reading enters a segment, in the same transaction and under the same meter
+  lock every `SUSPECT` reading of the segment is checked again in series
+  order against the then-valid neighbours, repeating until a full pass
+  promotes nothing: a reading that now passes becomes `VALID` (cause
+  `REEVALUATION`, the triggering operation), a reading whose flags changed
+  gets a new `SUSPECT` revision with the new flags, `FUTURE_INSTANT` is kept,
+  and a `VALID` reading is never demoted by the system. The device uses the
+  same validator on its last known readings to warn the person; the warning
+  never blocks saving or sending, and the server decides.
+- **BUC-EMP-142 — Record a field reading that is validated.** A covered
+  member's device sends a standalone reading (or a fueling with its reading);
+  the server orders it in its segment, checks it against the valid
+  neighbours, stores it `VALID` or `SUSPECT` with its flags and note, answers
+  `ACCEPTED`, and the current value moves only for a `VALID` reading.
+- **BUC-EMP-143 — Insert a retroactive reading.** A reading recorded offline
+  earlier arrives after later readings; it is placed by `occurred_at`, is
+  `VALID` with `RETROACTIVE` when it lies between its neighbours (the two new
+  intervals sum to the previous one) or `SUSPECT` otherwise, and suspect
+  readings that it makes consistent return to `VALID`.
+- **BUC-EMP-144 — Warn on the device without blocking.** The app checks a
+  typed value with the shared validator against the last known readings and
+  shows the flags as a warning; the person can still save and send it.

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	meter "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
 	auditing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
@@ -19,6 +20,9 @@ type MeterReviewStore struct {
 	Audit         auditing.TransactionRunner
 	NewID         func() (string, error)
 	ConfirmSource func(context.Context, pgx.Tx, syncapp.Source) (time.Time, error)
+	// Plausibility classifies an accepted held reading at its original
+	// receipt (EMP-METER-003); nil applies it VALID without flags.
+	Plausibility *meter.Plausibility
 }
 
 func MeterReviewAuditDefinitions() []audit.Definition {

@@ -324,6 +324,45 @@ func (q *Queries) InsertMeterReading(ctx context.Context, arg InsertMeterReading
 	return err
 }
 
+const insertMeterReadingState = `-- name: InsertMeterReadingState :exec
+INSERT INTO org_meter_reading_states(org_id,meter_id,reading_id,revision,state,flags,retroactive,cause,operation_id,actor_membership_id,reason,superseded_by)
+VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),CAST($3::text AS uuid),$4::int,$5::text,$6::text[],$7::boolean,$8::text,CAST($9::text AS uuid),
+ CAST(NULLIF($10::text,'') AS uuid),NULLIF($11::text,''),CAST(NULLIF($12::text,'') AS uuid))
+`
+
+type InsertMeterReadingStateParams struct {
+	OrgID             string   `json:"org_id"`
+	MeterID           string   `json:"meter_id"`
+	ReadingID         string   `json:"reading_id"`
+	Revision          int32    `json:"revision"`
+	State             string   `json:"state"`
+	Flags             []string `json:"flags"`
+	Retroactive       bool     `json:"retroactive"`
+	Cause             string   `json:"cause"`
+	OperationID       string   `json:"operation_id"`
+	ActorMembershipID string   `json:"actor_membership_id"`
+	Reason            string   `json:"reason"`
+	SupersededBy      string   `json:"superseded_by"`
+}
+
+func (q *Queries) InsertMeterReadingState(ctx context.Context, arg InsertMeterReadingStateParams) error {
+	_, err := q.db.Exec(ctx, insertMeterReadingState,
+		arg.OrgID,
+		arg.MeterID,
+		arg.ReadingID,
+		arg.Revision,
+		arg.State,
+		arg.Flags,
+		arg.Retroactive,
+		arg.Cause,
+		arg.OperationID,
+		arg.ActorMembershipID,
+		arg.Reason,
+		arg.SupersededBy,
+	)
+	return err
+}
+
 const insertMeterSegment = `-- name: InsertMeterSegment :exec
 INSERT INTO org_meter_segments(org_id,id,meter_id,kind,opened_at,opened_submicro,opening_reading_id)
 VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),CAST($3::text AS uuid),'INSTALLATION',$4::timestamptz,$5::smallint,CAST($6::text AS uuid))
@@ -351,8 +390,9 @@ func (q *Queries) InsertMeterSegment(ctx context.Context, arg InsertMeterSegment
 }
 
 const latestValidMeterReading = `-- name: LatestValidMeterReading :one
-SELECT r.id::text AS id,r.meter_id::text AS meter_id,r.segment_id::text AS segment_id,r.value,r.occurred_at,r.occurred_submicro,r.received_at,r.entry_zone,r.device_offset_seconds,r.author_membership_id::text AS author_membership_id,r.capture_kind,COALESCE(r.enrollment_id::text,r.web_session_id::text)::text AS capture_id,r.operation_id::text AS operation_id,r.request_hash,r.origin,r.method,r.state
-FROM org_meter_readings r WHERE r.org_id=CAST($1::text AS uuid) AND r.meter_id=CAST($2::text AS uuid) AND r.segment_id=CAST($3::text AS uuid) AND r.state='VALID'
+SELECT r.id::text AS id,r.meter_id::text AS meter_id,r.segment_id::text AS segment_id,r.value,r.occurred_at,r.occurred_submicro,r.received_at,r.entry_zone,r.device_offset_seconds,r.author_membership_id::text AS author_membership_id,r.capture_kind,COALESCE(r.enrollment_id::text,r.web_session_id::text)::text AS capture_id,r.operation_id::text AS operation_id,r.request_hash,r.origin,r.method,'VALID'::text AS state
+FROM org_meter_readings r WHERE r.org_id=CAST($1::text AS uuid) AND r.meter_id=CAST($2::text AS uuid) AND r.segment_id=CAST($3::text AS uuid)
+AND COALESCE((SELECT s.state FROM org_meter_reading_states s WHERE(s.org_id,s.meter_id,s.reading_id)=(r.org_id,r.meter_id,r.id) ORDER BY s.revision DESC LIMIT 1),r.state)='VALID'
 ORDER BY r.occurred_at DESC,r.occurred_submicro DESC,r.received_at DESC,r.id DESC LIMIT 1
 `
 
@@ -382,6 +422,8 @@ type LatestValidMeterReadingRow struct {
 	State               string             `json:"state"`
 }
 
+// B-BR-EMP-284: the current state is the latest history revision, else the
+// recorded classification; only a currently VALID reading is the current value.
 func (q *Queries) LatestValidMeterReading(ctx context.Context, arg LatestValidMeterReadingParams) (LatestValidMeterReadingRow, error) {
 	row := q.db.QueryRow(ctx, latestValidMeterReading, arg.OrgID, arg.MeterID, arg.SegmentID)
 	var i LatestValidMeterReadingRow
@@ -519,4 +561,59 @@ func (q *Queries) MeterCurrentDBTime(ctx context.Context) (pgtype.Timestamptz, e
 	var at pgtype.Timestamptz
 	err := row.Scan(&at)
 	return at, err
+}
+
+const meterSegmentSeries = `-- name: MeterSegmentSeries :many
+SELECT r.id::text AS id,r.value,r.occurred_at,r.occurred_submicro,r.received_at,
+ COALESCE(c.state,r.state)::text AS state,COALESCE(c.flags,'{}'::text[])::text[] AS flags,COALESCE(c.revision,0)::int AS revision
+FROM org_meter_readings r LEFT JOIN LATERAL(SELECT s.state,s.flags,s.revision FROM org_meter_reading_states s WHERE(s.org_id,s.meter_id,s.reading_id)=(r.org_id,r.meter_id,r.id) ORDER BY s.revision DESC LIMIT 1) c ON true
+WHERE r.org_id=CAST($1::text AS uuid) AND r.meter_id=CAST($2::text AS uuid) AND r.segment_id=CAST($3::text AS uuid)
+ORDER BY r.occurred_at,r.occurred_submicro,r.received_at,r.id
+`
+
+type MeterSegmentSeriesParams struct {
+	OrgID     string `json:"org_id"`
+	MeterID   string `json:"meter_id"`
+	SegmentID string `json:"segment_id"`
+}
+
+type MeterSegmentSeriesRow struct {
+	ID               string             `json:"id"`
+	Value            int64              `json:"value"`
+	OccurredAt       pgtype.Timestamptz `json:"occurred_at"`
+	OccurredSubmicro int16              `json:"occurred_submicro"`
+	ReceivedAt       pgtype.Timestamptz `json:"received_at"`
+	State            string             `json:"state"`
+	Flags            []string           `json:"flags"`
+	Revision         int32              `json:"revision"`
+}
+
+// The whole segment in BR-METER-008 order with each reading's current state.
+func (q *Queries) MeterSegmentSeries(ctx context.Context, arg MeterSegmentSeriesParams) ([]MeterSegmentSeriesRow, error) {
+	rows, err := q.db.Query(ctx, meterSegmentSeries, arg.OrgID, arg.MeterID, arg.SegmentID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MeterSegmentSeriesRow
+	for rows.Next() {
+		var i MeterSegmentSeriesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Value,
+			&i.OccurredAt,
+			&i.OccurredSubmicro,
+			&i.ReceivedAt,
+			&i.State,
+			&i.Flags,
+			&i.Revision,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

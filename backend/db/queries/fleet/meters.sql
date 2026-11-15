@@ -32,8 +32,11 @@ SELECT r.id::text AS id,r.meter_id::text AS meter_id,r.segment_id::text AS segme
 FROM org_meter_readings r WHERE r.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND r.meter_id=CAST(sqlc.arg(meter_id)::text AS uuid) AND r.operation_id=CAST(sqlc.arg(operation_id)::text AS uuid);
 
 -- name: LatestValidMeterReading :one
-SELECT r.id::text AS id,r.meter_id::text AS meter_id,r.segment_id::text AS segment_id,r.value,r.occurred_at,r.occurred_submicro,r.received_at,r.entry_zone,r.device_offset_seconds,r.author_membership_id::text AS author_membership_id,r.capture_kind,COALESCE(r.enrollment_id::text,r.web_session_id::text)::text AS capture_id,r.operation_id::text AS operation_id,r.request_hash,r.origin,r.method,r.state
-FROM org_meter_readings r WHERE r.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND r.meter_id=CAST(sqlc.arg(meter_id)::text AS uuid) AND r.segment_id=CAST(sqlc.arg(segment_id)::text AS uuid) AND r.state='VALID'
+-- B-BR-EMP-284: the current state is the latest history revision, else the
+-- recorded classification; only a currently VALID reading is the current value.
+SELECT r.id::text AS id,r.meter_id::text AS meter_id,r.segment_id::text AS segment_id,r.value,r.occurred_at,r.occurred_submicro,r.received_at,r.entry_zone,r.device_offset_seconds,r.author_membership_id::text AS author_membership_id,r.capture_kind,COALESCE(r.enrollment_id::text,r.web_session_id::text)::text AS capture_id,r.operation_id::text AS operation_id,r.request_hash,r.origin,r.method,'VALID'::text AS state
+FROM org_meter_readings r WHERE r.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND r.meter_id=CAST(sqlc.arg(meter_id)::text AS uuid) AND r.segment_id=CAST(sqlc.arg(segment_id)::text AS uuid)
+AND COALESCE((SELECT s.state FROM org_meter_reading_states s WHERE(s.org_id,s.meter_id,s.reading_id)=(r.org_id,r.meter_id,r.id) ORDER BY s.revision DESC LIMIT 1),r.state)='VALID'
 ORDER BY r.occurred_at DESC,r.occurred_submicro DESC,r.received_at DESC,r.id DESC LIMIT 1;
 
 -- name: MeterCommandReceipt :one
@@ -49,3 +52,16 @@ SELECT id::text AS id FROM org_assets WHERE org_id=CAST(sqlc.arg(org_id)::text A
 -- name: GetMeterReading :one
 SELECT r.id::text AS id,r.meter_id::text AS meter_id,r.segment_id::text AS segment_id,r.value,r.occurred_at,r.occurred_submicro,r.received_at,r.entry_zone,r.device_offset_seconds,r.author_membership_id::text AS author_membership_id,r.capture_kind,COALESCE(r.enrollment_id::text,r.web_session_id::text)::text AS capture_id,r.operation_id::text AS operation_id,r.request_hash,r.origin,r.method,r.state
 FROM org_meter_readings r WHERE r.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND r.meter_id=CAST(sqlc.arg(meter_id)::text AS uuid) AND r.segment_id=CAST(sqlc.arg(segment_id)::text AS uuid) AND r.id=CAST(sqlc.arg(id)::text AS uuid);
+
+-- name: MeterSegmentSeries :many
+-- The whole segment in BR-METER-008 order with each reading's current state.
+SELECT r.id::text AS id,r.value,r.occurred_at,r.occurred_submicro,r.received_at,
+ COALESCE(c.state,r.state)::text AS state,COALESCE(c.flags,'{}'::text[])::text[] AS flags,COALESCE(c.revision,0)::int AS revision
+FROM org_meter_readings r LEFT JOIN LATERAL(SELECT s.state,s.flags,s.revision FROM org_meter_reading_states s WHERE(s.org_id,s.meter_id,s.reading_id)=(r.org_id,r.meter_id,r.id) ORDER BY s.revision DESC LIMIT 1) c ON true
+WHERE r.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND r.meter_id=CAST(sqlc.arg(meter_id)::text AS uuid) AND r.segment_id=CAST(sqlc.arg(segment_id)::text AS uuid)
+ORDER BY r.occurred_at,r.occurred_submicro,r.received_at,r.id;
+
+-- name: InsertMeterReadingState :exec
+INSERT INTO org_meter_reading_states(org_id,meter_id,reading_id,revision,state,flags,retroactive,cause,operation_id,actor_membership_id,reason,superseded_by)
+VALUES(CAST(sqlc.arg(org_id)::text AS uuid),CAST(sqlc.arg(meter_id)::text AS uuid),CAST(sqlc.arg(reading_id)::text AS uuid),sqlc.arg(revision)::int,sqlc.arg(state)::text,sqlc.arg(flags)::text[],sqlc.arg(retroactive)::boolean,sqlc.arg(cause)::text,CAST(sqlc.arg(operation_id)::text AS uuid),
+ CAST(NULLIF(sqlc.arg(actor_membership_id)::text,'') AS uuid),NULLIF(sqlc.arg(reason)::text,''),CAST(NULLIF(sqlc.arg(superseded_by)::text,'') AS uuid));

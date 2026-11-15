@@ -22,6 +22,9 @@ type MeterStore struct {
 	Authority app.MeterAuthority
 	Audit     auditing.TransactionRunner
 	Reviews   *MeterReviewStore
+	// Plausibility classifies field readings (EMP-METER-003); nil stores
+	// them VALID without flags (the configured rollback, EDR-185).
+	Plausibility *meter.Plausibility
 }
 
 var _ app.MeterRepository = (*MeterStore)(nil)
@@ -143,7 +146,7 @@ func (s *MeterStore) InstallMeter(ctx context.Context, scope kernel.OrgScope, ac
 			if err != nil {
 				return err
 			}
-			if _, err := insertObservation(ctx, tx, scope, view, source, member, app.MeterReadingInput{OperationID: v.OperationID, AssetID: v.AssetID, MeterID: newID, SegmentID: newSegment, ReadingID: v.OpeningReadingID, Value: v.Value, Declared: v.Declared, Origin: meter.Installation, Method: v.Method}, digest); err != nil {
+			if _, err := insertObservation(ctx, tx, scope, view, source, member, app.MeterReadingInput{OperationID: v.OperationID, AssetID: v.AssetID, MeterID: newID, SegmentID: newSegment, ReadingID: v.OpeningReadingID, Value: v.Value, Declared: v.Declared, Origin: meter.Installation, Method: v.Method}, digest, nil, false); err != nil {
 				return err
 			}
 			checked, err := validated(scope, v.AssetID, current.Profile)
@@ -308,7 +311,7 @@ func (s *MeterStore) RecordEmbedded(ctx context.Context, db syncapp.DBTX, scope 
 		if v.Method != meter.Typed {
 			return app.MeterReadingResult{}, false, app.ErrUnavailable
 		}
-		reading, err = insertObservation(ctx, db, scope, view, source, member, v, digest)
+		reading, err = insertObservation(ctx, db, scope, view, source, member, v, digest, s.Plausibility, true)
 	}
 	if err != nil {
 		return app.MeterReadingResult{}, false, meterError(ctx, err)

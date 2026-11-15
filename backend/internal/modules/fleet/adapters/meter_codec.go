@@ -134,7 +134,11 @@ func loadMeter(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asse
 	}
 	return view, nil
 }
-func insertObservation(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, view app.MeterView, source app.MeterSource, member string, in app.MeterReadingInput, digest string) (meter.Reading, error) {
+
+// insertObservation records one new reading. validate selects the
+// EMP-METER-003 classification (signed intake and embedded path); the
+// installation opening reading is the segment's anchor and is VALID.
+func insertObservation(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, view app.MeterView, source app.MeterSource, member string, in app.MeterReadingInput, digest string, policy *meter.Plausibility, validate bool) (meter.Reading, error) {
 	// Existing-operation replay is resolved by the caller before this new
 	// observation path. Validate the real service interval before any insert.
 	if in.Declared.OccurredAt.Before(view.InstalledAt) || view.RemovedAt != nil && !in.Declared.OccurredAt.Before(*view.RemovedAt) {
@@ -170,8 +174,17 @@ func insertObservation(ctx context.Context, db syncapp.DBTX, scope kernel.OrgSco
 	if _, err := meter.NewReading(scope, meter.ReadingInput{Reference: ref, Value: value, Declared: &in.Declared, ReceivedAt: now, Author: author, Capture: &capture, Operation: operation, Origin: in.Origin, Method: in.Method, State: meter.Valid}); err != nil {
 		return meter.Reading{}, err
 	}
+	if !validate {
+		policy = nil
+	}
+	// The receipt instant of the classification is this database clock read
+	// under the meter lock, just before the guard stamps received_at (EDR-185).
+	verdict, err := classifyCandidate(ctx, db, scope, policy, view, candidatePoint(in.ReadingID, value.Count(), in.Declared.OccurredAt, now))
+	if err != nil {
+		return meter.Reading{}, err
+	}
 	at, sub := meterTime(in.Declared.OccurredAt)
-	params := q.InsertMeterReadingParams{OrgID: scope.OrgID().String(), ID: in.ReadingID, MeterID: in.MeterID, SegmentID: in.SegmentID, Value: value.Count(), OccurredAt: at, OccurredSubmicro: sub, EntryZone: in.Declared.EntryZone, DeviceOffsetSeconds: in.Declared.DeviceOffsetSeconds, AuthorMembershipID: member, CaptureKind: string(capture.Kind()), OperationID: in.OperationID, RequestHash: digest, Origin: string(in.Origin), Method: string(in.Method), State: string(meter.Valid)}
+	params := q.InsertMeterReadingParams{OrgID: scope.OrgID().String(), ID: in.ReadingID, MeterID: in.MeterID, SegmentID: in.SegmentID, Value: value.Count(), OccurredAt: at, OccurredSubmicro: sub, EntryZone: in.Declared.EntryZone, DeviceOffsetSeconds: in.Declared.DeviceOffsetSeconds, AuthorMembershipID: member, CaptureKind: string(capture.Kind()), OperationID: in.OperationID, RequestHash: digest, Origin: string(in.Origin), Method: string(in.Method), State: string(verdict.State)}
 	if capture.Kind() == meter.CaptureWebSession {
 		params.WebSessionID = capture.ID()
 	} else {
@@ -182,6 +195,9 @@ func insertObservation(ctx context.Context, db syncapp.DBTX, scope kernel.OrgSco
 	}
 	row, err := q.New(db).GetMeterReadingByOperation(ctx, q.GetMeterReadingByOperationParams{OrgID: params.OrgID, MeterID: in.MeterID, OperationID: in.OperationID})
 	if err != nil {
+		return meter.Reading{}, err
+	}
+	if err := recordClassification(ctx, db, scope, policy, view, in.ReadingID, in.OperationID, verdict); err != nil {
 		return meter.Reading{}, err
 	}
 	return meterReading(scope, view, row)
