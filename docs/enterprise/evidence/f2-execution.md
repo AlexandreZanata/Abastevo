@@ -173,3 +173,14 @@ assignment/history/held review. Next sole implementation OFFL-008, then actual
 lifecycle/temporal scopes/assignments before full Meter closure. Current66-file
 source hash and exact required test discovery are retained in the linked Meter
 evidence; no phase/production/PR/CI acceptance is inferred from this checkpoint.
+
+## F2 prerequisites closed in the F3 batch — 2026-11-14
+
+EMP-FLEET-003 (asset lifecycle), EMP-FLEET-005 (allocation history),
+EMP-AUTH-006 (structural role scopes), EMP-FLEET-006 (driver assignments) and
+the full EMP-METER-002 closure (assignment-backed SELF intake) are LOCAL_DONE /
+INTEGRATION_PENDING on `codex/enterprise-f3`, each with its own evidence and
+the merged-tree verification recorded in the
+[F3 ledger](f3-execution.md#execution-log). Full F2/M1/M2/C1 remain unaccepted:
+FLEET-004/008/012/013, OFFL-006/014, METER-003..007, TRIP-001..006, IMPORT-*,
+PUB-003, IDN-014, REL-001/002 and the formal M1 chain stay open.

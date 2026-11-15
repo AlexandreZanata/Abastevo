@@ -6,11 +6,14 @@
   FUEL-002. EDR-127: ready pure domains first (APPR-001, EXP-001, DOC-001,
   PLAT-016, then FIN-001/BUDG-001); no persistence before METER-002 closes.
   No M3/F3 acceptance is claimed; cumulative dev → main PR at batch end.
-  Current: 12 tasks LOCAL_DONE / INTEGRATION_PENDING on the branch
-  (PLAT-016, APPR-001, EXP-001, DOC-001, BUDG-001, FIN-001, PRIV-005,
-  APPR-006, NOTIF-001, DOC-002 and F2 prerequisites FLEET-003/005), synced
-  with dev `018f2df1`. In progress: AUTH-006 (chain), RPT-001, DOC-006.
-  [Ledger log](../enterprise/evidence/f3-execution.md#execution-log).
+  Batch checkpoint: 16 F3 tasks (PLAT-016, APPR-001/006, EXP-001, DOC-001/
+  002/003/006/014, BUDG-001, FIN-001, PRIV-005, NOTIF-001, RPT-001/002,
+  AUTH-011) and the F2 chain FLEET-003/005, AUTH-006, FLEET-006 and full
+  METER-002 are LOCAL_DONE / INTEGRATION_PENDING; FUEL-002 is next. CI race
+  integration bound 45m (EDR-168). Final local: untagged 212 packages green;
+  full race/integration 224 packages green except 15 Rust-CLI-gated tests in
+  untouched packages. Delivered through the cumulative dev → main PR.
+  [Batch checkpoint](../enterprise/evidence/f3-execution.md#batch-checkpoint--2026-11-14).
 
 - Registry daily sync restored, 2026-11-14: PR #219 merged at `018f2df1`
   (source-owned locality corrections, B-BR-SYNC05 amended; race integration

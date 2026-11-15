@@ -57,3 +57,11 @@ tasks are dependency-ready and 56 are blocked, mostly behind the open F2 chain
 FLEET-003 → FLEET-005 → AUTH-006 → FLEET-006 → METER-002 closure → FUEL-002.
 EDR-127 starts with the ready pure domains and keeps that chain as the gate of
 every F3 persistence task.
+
+## Batch checkpoint — 2026-11-14
+
+The F2 chain (FLEET-003/005, AUTH-006, FLEET-006, full METER-002) and 16 F3
+tasks are LOCAL_DONE / INTEGRATION_PENDING on `codex/enterprise-f3`; see the
+[batch checkpoint](f3-execution.md#batch-checkpoint--2026-11-14). FUEL-002 is
+the next dependency-ready persistence task. M3/F3 remain unaccepted; the
+cumulative protected dev → main PR carries this batch.

@@ -1,8 +1,8 @@
 # F3 — Execution ledger: fuelings, documents, expenses and approvals
 
 Date: 2026-11-14.
-Status: IN_PROGRESS
-Validation: PENDING
+Status: IN_PROGRESS (batch checkpoint LOCAL_DONE)
+Validation: LOCAL_PASS (batch checkpoint)
 Integration: INTEGRATION_PENDING
 
 Opened by Claude Code from the coordinator session after PR203 merged
@@ -609,16 +609,38 @@ malformed operation stays batch-level FORBIDDEN (§10.2), native Android
 confirmation of SELF 403/held outcomes, OFFL-008 PENDING_SETUP 503 and
 review-results budget, production grants.
 
-## Interruption — 2026-11-14 (resumed)
+## Batch checkpoint — 2026-11-14
 
-Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,
-BUDG-001, FIN-001, PRIV-005, FLEET-003 (F2), APPR-006, NOTIF-001, DOC-002.
-Not integrated: EMP-FLEET-005 is LOCAL_DONE on branch
-`codex/enterprise-f3-fleet005` (`dc83111e`, migration 000206, backed up to
-origin) and must be cherry-picked with its route-count/usage-guard merges;
-EMP-RPT-001 was stopped mid-work in `/data/dev/worktrees/enterprise-f3-rpt001`
-(uncommitted, unvalidated). Not started: AUTH-006, FLEET-006, METER-002
-closure, FUEL-002 and everything downstream, DOC-003/006/008/014, AUTH-007/011,
-FLEET-009, OFFL-005, RPT-002 and REL-004. M3/F3 are not accepted. The branch
-is not yet merged with origin/dev `018f2df1`, not pushed to `dev`, and no PR
-is open. The disposable MinIO project `f3-s3-20261114` is still running.
+Status of this construction batch (all **LOCAL_DONE / INTEGRATION_PENDING**;
+none is INTEGRATED, RELEASE_CERTIFIED or an M3 acceptance):
+
+- F3 tasks done here (16): EMP-PLAT-016, EMP-APPR-001, EMP-EXP-001, EMP-DOC-001, EMP-BUDG-001, EMP-FIN-001, EMP-PRIV-005, EMP-APPR-006, EMP-NOTIF-001, EMP-DOC-002, EMP-RPT-001, EMP-DOC-006, EMP-DOC-003, EMP-AUTH-011, EMP-DOC-014, EMP-RPT-002.
+  With EMP-FUEL-001 (earlier), 17 of the 67 F3 tasks are local.
+- F2 prerequisites closed here (5): EMP-FLEET-003, EMP-FLEET-005, EMP-AUTH-006, EMP-FLEET-006, EMP-METER-002.
+  The EDR-109 chain is complete, so EMP-FUEL-002 — the gate of every F3
+  fueling/expense/budget/payable persistence task — is now dependency-ready.
+- CI: race integration package bound 30 → 45 minutes (EDR-168).
+
+Not done and retained (50 F3 tasks): the persistence chain FUEL-002 (L) →
+FUEL-003/004/005/006/011/012/014/015, EXP-002..006 → BUDG-002..006,
+FIN-002/003/004/007, DOC-007/010; APPR-002/003/004/005/007; FUEL-007/008/013
+(also need METER-003/005/006); AUTH-007; FLEET-009; OFFL-005 (Android) →
+DOC-004/009, FUEL-011; DOC-005/008/011/013/015; NOTIF-002/003/004 (002 needs
+GOV-014/PLAT-012); BACK-003 (needs GOV-004/BACK-001); IMPORT-004 (needs
+IMPORT-001); REL-004 (M3 gate: allocation/no-double-counting, budget race,
+partial approval and return loop, corrected consumption — none provable before
+FUEL-002/EXP-002/BUDG-002/APPR-004/FUEL-008 exist). Each task's evidence lists
+its own retained obligations (production grants, storage provider, Android
+producers, panel screens). A pure-domain checkpoint is never counted as M3.
+
+Environment notes: the root volume briefly filled up during the batch (other
+sessions' /tmp); F3 caches and worktrees moved to /data. A disposable MinIO
+(`f3-s3-20261114`, from `infra/compose.validation.yml`) ran the S3 suites and
+is torn down at the end. The 15 integration tests that need pinned Rust
+preparer CLIs were not run locally (untouched packages; CI builds the CLIs).
+
+Final repository gates on the batch head: `scripts/check-backend-fast.sh` and
+`make quick-verify` both exit 0 (gofmt, build/vet/unit tests, whole-backend
+staticcheck, sqlc vet/diff, OpenAPI lint, tracked/changed/PR-diff secret
+scans, govulncheck "No vulnerabilities found", deploy-agent harness 229/0,
+mobile static guards). Logs: `/data/dev/worktrees/f3-logs/final-*`.
