@@ -222,6 +222,8 @@ type Record struct {
 	Reporting                                                                                             orgtime.ReportingAttribution
 	State                                                                                                 trip.State
 	Finish                                                                                                *FinishRecord
+	// Transitions are the trip's lifecycle rows in revision order (EMP-TRIP-011).
+	Transitions []TransitionRecord
 }
 
 // Store persists trips, finishes and held facts in the intake transaction.

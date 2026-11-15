@@ -16,8 +16,9 @@ func TestEnterpriseSyncComponents(t *testing.T) {
 	doc := loadSpec(t)
 	// Exactly the delivered sync routes: the OFFL-002 batch, the OFFL-008
 	// company Meter review and signed own-result endpoints and the OFFL-006
-	// signed reference feed.
+	// signed reference feed and the OFFL-005 signed attachment session.
 	delivered := map[string]bool{
+		"/v1/orgs/{org_id}/sync/attachments":                                     false,
 		"/v1/orgs/{org_id}/sync/operations":                                      false,
 		"/v1/orgs/{org_id}/sync/reference":                                       false,
 		"/v1/orgs/{org_id}/sync/review-results":                                  false,

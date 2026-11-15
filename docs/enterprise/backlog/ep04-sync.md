@@ -102,7 +102,7 @@ execution. Eight localized catalogs retain identical keys. Runtime feature and
 upload producers remain separate; protected integration is pending.
 
 ### EMP-OFFL-005 — Attachment upload: offline queue, retry and resume, linkage to operations
-- **Meta:** module OFFL · phase F3 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module OFFL · phase F3 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Deliver private synthetic C1 attachments independently of operation acknowledgement.
 - **Rules and use cases:** BR-OFFL-003, BR-OFFL-013, BR-OFFL-015, BR-PRIV-004, BR-PRIV-020, OQ-04, UC-OFFL-03
 - **Depends on:** EMP-OFFL-002, EMP-OFFL-003, EMP-PLAT-006
@@ -116,6 +116,15 @@ upload producers remain separate; protected integration is pending.
 - **Validation:** V-APP, V-SYNC, V-IDEM, V-ISO, V-PRIV · migration: rehearse any attachment queue upgrade · rollback: stop new uploads and preserve pending references
 - **Risks and assumptions:** Synthetic receipts are the approved C1 validation scope. Keep private bytes out of diagnostics and backups.
 - **Done when:** Interrupted uploads converge under retry and the accepted file matches its declaration.
+
+[F4 attachment upload](../evidence/f4-offl005-attachment-upload.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-415..420, BUC-EMP-211..213 and
+EDR-267..270 precede behaviour; no migration. Attachments are sealed beside
+their operation in the protected generation and delivered after it through the
+signed attachment session and the capability-bound ingress; native acceptance
+ran on `emulator-5588` only. Retained: capture screens (DOC-004), producers
+(FUEL-011, CHECK-003 Android), an encrypted blob store for real receipts,
+dismissal and retention, production bucket and grants.
 
 ### EMP-OFFL-006 — Reference data pull for the active organization: versioned deltas
 - **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE

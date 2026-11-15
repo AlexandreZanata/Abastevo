@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 The existing tracking specification governs detailed defaults, quality and platform behavior.
 
 ### EMP-GPS-001 — Tracking session domain: trip-bound lifecycle, permission and quality states
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type DOM · size M · state TODO
+- **Meta:** module GPS · phase F4 · cut - · priority P1 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Define trip-bound tracking, permission and quality state.
 - **Rules and use cases:** BR-GPS-001, BR-GPS-005, BR-GPS-008, BR-GPS-009, BR-GPS-010
 - **Depends on:** EMP-TRIP-001, EMP-GOV-005, EMP-GOV-006
@@ -27,6 +27,17 @@ The existing tracking specification governs detailed defaults, quality and platf
 - **Validation:** V-DOM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 tracking session domain](../evidence/f4-gps001-tracking-session-domain.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. A session opens only for an
+`IN_PROGRESS` organization trip of its driver from the visible trip screen
+(personal, implicit, duplicate, foreign and policy-off openings refused);
+start and resume carry the device permission explicitly and record a denied
+permission or a blocked notification as a visible cause; pause suspends,
+interruptions and reduced precision are typed causes, end is terminal, the
+trip never depends on the session, and track quality has one classification;
+all 359 shared Go/Kotlin vectors pass with 100% Go statements. The Android
+service, intake, processing and real-device acceptance remain open (EDR-271).
 
 ### EMP-GPS-002 — Organization trip tracking service: explicit start from the trip screen, visible notification, location-guard update
 - **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size L · state TODO

@@ -92,12 +92,12 @@ func ParseEvent(op protocol.Operation) (EventCommand, error) {
 		AuthorMembershipID: v.MembershipID, Type: kind, Text: note, Declared: declared, DependsOn: v.DependsOn}}, nil
 }
 
-// StoredDomain rebuilds a stored trip, with its finish when completed,
-// through the pure EMP-TRIP-001 domain.
+// StoredDomain rebuilds a stored trip, with its lifecycle rows and its finish
+// when completed, through the pure EMP-TRIP-001/011 domain.
 func StoredDomain(scope kernel.OrgScope, record Record) (trip.Trip, error) {
 	f := record.Finish
 	if f == nil {
-		return startedDomain(scope, record)
+		return replayDomain(scope, record, false)
 	}
 	in := FinishInput{Event: Event{OperationID: f.OperationID, PayloadDigest: f.PayloadDigest, TripID: record.ID, AuthorMembershipID: f.AuthorMembershipID,
 		Declared: f.Declared, MissingReason: copyPointer(f.MissingReason), Clock: copyPointer(f.Clock)}}

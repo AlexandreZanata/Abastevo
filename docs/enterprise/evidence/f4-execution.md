@@ -946,3 +946,124 @@ Integration (`4a7c211d`): `origin/main` `93f3a88d` merged (no file change),
 then the TRIP-009/013 branch (already merged with `bff5a788`) without
 conflicts; build, vet (both tags), gofmt, `sqlc diff`, check_plan, cmd/api and
 trip unit tests green. Not delivered: the next cumulative `dev → main` PR.
+
+## Owner decisions for the rest of F4 (2026-11-15)
+
+Relayed request (finish the whole F4 stage, merge it to main and deploy every
+app change) and the owner's direct answers in this session: EMP-GOV-005 is
+declared reviewed and the tracking features will be in the terms of use, so
+EMP-GPS-001..015 are implemented for real (EDR-271; real-device acceptance
+OWED, emulator only); PR #224 is merged alone first, then the F4 continuation
+in its own PR with valid CI; the enterprise routes are enabled on the VPS only
+after the automatic deploy, with a rollback plan and a final confirmation
+(EDR-272). The second batch started on `fe7ec66d` (main `93f3a88d` +
+TRIP-009/013 + `origin/dev` `db43e949`).
+
+PR #224 (Play Store readiness, head `db43e949`) was merged alone by the
+coordinator at 18:33Z as `7ab0b477` under EDR-272: both checks
+(`Quick verification`, `test`) completed successfully on the exact head,
+`make quick-verify` passed locally on it
+(`f4-logs/pr224-quick-verify-db43e949.log`), and the merge used
+`gh pr merge --merge --match-head-commit db43e949…`. The F4 branch already
+contained that head; `origin/main` was merged for ancestry with no file
+change.
+
+### EMP-GPS-001 — tracking session domain: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps001-tracking-session-domain.md), commit `dbf02b88`, under
+the owner decision EDR-271. Pure Go `tracking/domain` and Kotlin
+`enterprise.tracking` over the 359-case `tracking/session-v1.psv` oracle: a
+session opens only for an IN_PROGRESS organization trip, by that trip's driver,
+from the visible trip screen, while the tracking policy is OPTIONAL or
+EXPECTED (personal origin, implicit/boot/worker/push/geofence/server origins,
+another member, policy OFF — which also covers an inactive capability or an
+employee notice not in force — a trip not in progress, a second session for
+the trip and another organization are refused with closed codes); start and
+resume carry the device permission and notification visibility explicitly
+(NONE or a hidden notification keeps the state and records the visible cause);
+pause, typed interruptions, reduced precision and terminal END; FOLLOW applies
+the trip's state and never refuses the trip (the trip packages do not import
+tracking, checked structurally in both languages); a fix is collectable only
+while the bound trip is IN_PROGRESS, driven by the owner and RECORDING; one
+quality classification function (EDR-273..276). No coordinates are held. RED
+Go 5/7 and 359/359 vectors, Kotlin 363/364 → GREEN Go 7/359 under `-race`
+(100%), Kotlin enterprise 3905 tests. Retained: Android service and notice
+(GPS-002/015), sampling/buffer and per-fix filter (GPS-003), persistence and
+intake (GPS-004), processing/distance (GPS-005/006), session ownership after
+handover or supervisor closure (TRIP-012/014), the application policy layer,
+real-device acceptance (OWED).
+
+Integration: merged into the F4 branch with only shared docs (EDR table,
+contract, manifest) touched; build, vet and the tracking race tests green.
+
+### EMP-OFFL-005 (F3/C1 prerequisite) — attachment upload: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-offl005-attachment-upload.md), commit `cbd24fcc`, no migration.
+Photo bytes are sealed `ATTACHMENT` entries in the PRIV-003 protected store
+with one sealed `attachment-book` v1 index per partition written in the same
+write; capture only beside an operation already queued in that partition;
+16 MiB of unsent bytes and 500 entries without eviction; bytes are removed in
+the write that records `STORED`; flag `ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED`
+off by default (EDR-267). Whole-file retry with the OFFL-003 backoff; local
+states `WAITING_FOR_RECORD` → `DECLARED` → `RECEIVED` → `STORED`, `REFUSED`
+with a closed code or `FILE_MISSING`; only server answers advance a photo
+(EDR-268). The operation's final receipt gates the upload; the DOC-003 link
+target is fixed at capture and the server links with the real device actor
+(C1 targets INCIDENT and METER_READING) (EDR-269). One signed special route
+`POST /v1/orgs/{org_id}/sync/attachments` (`SIGNED_ATTACHMENT_SESSION`)
+declares, links and returns a fresh 5-minute capability; bytes go to the
+existing capability ingress (EDR-270). New 89-row
+`sync/attachment-session-v1.psv`. RED Go 14/16, cmd/api 2/4, PostGIS+MinIO
+3/3, Kotlin domain 96/97, application 8/8, data 11/11 → GREEN; union 17
+packages 884/7026 (organization adapters 2700 s). Native acceptance on
+`emulator-5588` against a real local backend and a throwaway MinIO: offline
+trip start with two synthetic JPEGs of its departure reading surviving a
+process kill sealed; on reconnect a truncated and a byte-flipped upload are
+refused (422) while the record already shows accepted, then reach `STORED` on
+retry; a process kill during a held upload resumes with a new session; server
+counts exact (3 documents, 3 STORED, 3 links); organization B sees nothing.
+Retained/OWED: capture/import screens and producers (DOC-004, FUEL-011,
+CHECK-003 Android, TRIP-020), real receipts (OQ-04; no production document
+bucket), an encrypted blob store, re-declaration after a closed 24 h session,
+TRIP/FUELING/EXPENSE/WORK_ORDER link kinds, OFFL-013, two physical devices.
+
+Integration (`62ed58fd`): contract and EDR table conflicted (appended
+sections); build/vet including the `nativefixture` tag, gofmt, cmd/api,
+apicontract, orgsync and document unit tests green; Android host suites on the
+merged tree domain 4002, application 664, data 195, app 23 tests, 0 failures,
+`:app:assembleDebug` (`f4-logs/coord-android-offl005-merged.log`); proposed
+shared text applied (10-offline-sync §10.3, data and backend READMEs,
+documents.md, 09-architecture).
+
+### EMP-TRIP-011 — pause, resume and cancellation: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip011-pause-resume-cancel.md), commit `4bc35660`, migration
+000233 (redefines nine trip/mission functions from their latest bodies:
+the 000220 completion guard, finish source/apply, publication and held
+source; the 000229 logbook, held-logbook and review-source functions; the
+000232 mission-vehicle source). Signed `trip.pause`, `trip.resume` and
+`trip.cancel` name the expected trip revision (1 after start, +1 per pause,
+resume, cancel or finish) and carry only a `reason` (required for cancel);
+IN_PROGRESS ↔ PAUSED, either → CANCELLED (reason) or COMPLETED; a closed trip
+holds `TRIP_ALREADY_CLOSED`, a stale revision or disallowed state holds
+`STALE_REVISION`, wrong shape / cancel without reason / instant before start
+is `MALFORMED`, another member `FORBIDDEN`, an undelivered or foreign trip
+`RETRY`/`DEPENDENCY_PENDING`; replay byte for byte. A paused trip keeps its
+asset; a cancelled trip frees it at the cancellation, keeps prior facts,
+reports `NOT_MEASURED`/`CANCELLED` (no fabricated distance) and closes its
+logbook (EDR-252/253). The logbook PAUSE/RESUME/CANCEL types still answer
+RETRY/UNAVAILABLE (device vectors unchanged). New 297-case `trip-v2.psv`
+replaces `trip-v1` for both languages. RED Go 5/26 top-level and 96/297
+vectors, Kotlin 99/865, PostGIS 6/6 → GREEN Go 26/809 (100%), Kotlin 865,
+PostGIS 6/16; union 33 packages 1193/8331. Pre-233 upgrade rehearsals use an
+opt-out `PreLifecycleImage` flag (production default false). Retained:
+Android builders (TRIP-021), supervisor cancel/close (TRIP-014), held-command
+resolution (TRIP-007), panel timeline (TRIP-006), production grants.
+EMP-TRIP-012 was not attempted (context); its IDs (394..398 / 199..201 /
+254..256, migration 000234) stay reserved with the agent's design notes in
+the coordinator notes.
+
+Integration (`bc438c2b`): contract and EDR table conflicted; build, vet (both
+tags), gofmt, `sqlc diff`, cmd/api, apicontract (11 signed owners), trip,
+tracking and orgsync unit tests and the Kotlin enterprise domain suite (4094
+tests) green.

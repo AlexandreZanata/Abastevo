@@ -312,7 +312,7 @@ explicit policy exists. See B-BR-EMP-115..122, EDR-076..080 and
 | Exports, reports, indicators | Online | Online | — | Online | Everything |
 | Station portal, Data portal, plan and billing | Online | Online | Online | Online | Everything |
 
-The reference feed (EMP-OFFL-006) is a signed per-member versioned delta of the member's assigned assets with durable tombstones, a server confirmation instant and RESET on lost authority (EDR-216..218). The app keeps it as one versioned cache sealed in the protected partition and shows its server confirmation (EMP-FLEET-013, EDR-224..226). Trips are recorded offline as signed `trip.*` operations whose sealed per-partition index commits with each operation (EMP-TRIP-005, EDR-242..245).
+The reference feed (EMP-OFFL-006) is a signed per-member versioned delta of the member's assigned assets with durable tombstones, a server confirmation instant and RESET on lost authority (EDR-216..218). The app keeps it as one versioned cache sealed in the protected partition and shows its server confirmation (EMP-FLEET-013, EDR-224..226). Trips are recorded offline as signed `trip.*` operations whose sealed per-partition index commits with each operation (EMP-TRIP-005, EDR-242..245). Attachments are sealed beside their operation in the same partition and delivered after it: a signed session declares, links and grants the upload, the bytes go to the capability-bound ingress, and only a `STORED` answer verifies them (EMP-OFFL-005, EDR-267..270).
 
 ### 10.4 Protected status presentation (EMP-OFFL-004, in construction)
 

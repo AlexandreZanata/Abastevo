@@ -513,7 +513,7 @@ func (q *Queries) TripAuthorEmployee(ctx context.Context, arg TripAuthorEmployee
 }
 
 const tripInProgressOnAsset = `-- name: TripInProgressOnAsset :one
-SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST($1::text AS uuid) AND asset_id=CAST($2::text AS uuid) AND state='IN_PROGRESS')::boolean AS open
+SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST($1::text AS uuid) AND asset_id=CAST($2::text AS uuid) AND state IN('IN_PROGRESS','PAUSED'))::boolean AS open
 `
 
 type TripInProgressOnAssetParams struct {
@@ -521,7 +521,7 @@ type TripInProgressOnAssetParams struct {
 	AssetID string `json:"asset_id"`
 }
 
-// FLEET-003 open work: an IN_PROGRESS trip of the asset (B-BR-EMP-318).
+// FLEET-003 open work: an IN_PROGRESS or PAUSED trip of the asset (B-BR-EMP-318/392).
 func (q *Queries) TripInProgressOnAsset(ctx context.Context, arg TripInProgressOnAssetParams) (bool, error) {
 	row := q.db.QueryRow(ctx, tripInProgressOnAsset, arg.OrgID, arg.AssetID)
 	var open bool
@@ -534,7 +534,7 @@ SELECT a.state AS asset_state,a.kind AS asset_kind,a.disposed_at,a.disposed_subm
  EXISTS(SELECT 1 FROM org_employee_identities e WHERE e.org_id=a.org_id AND e.id=CAST($1::text AS uuid) AND e.state='ACTIVE' AND e.merged_into IS NULL)::boolean AS driver_active,
  COALESCE((SELECT t.operation_id::text FROM org_trips t WHERE t.org_id=a.org_id AND t.id=CAST($2::text AS uuid)),'')::text AS existing_operation,
  COALESCE((SELECT h.operation_id::text FROM org_trip_held_starts h WHERE h.org_id=a.org_id AND h.trip_id=CAST($2::text AS uuid)),'')::text AS held_operation,
- COALESCE((SELECT t.id::text FROM org_trips t WHERE t.org_id=a.org_id AND t.asset_id=a.id AND t.state='IN_PROGRESS'),'')::text AS active_trip,
+ COALESCE((SELECT t.id::text FROM org_trips t WHERE t.org_id=a.org_id AND t.asset_id=a.id AND t.state IN('IN_PROGRESS','PAUSED')),'')::text AS active_trip,
  COALESCE(o.time_zone,'')::text AS organization_zone
 FROM org_assets a JOIN organizations o ON o.org_id=a.org_id
 WHERE a.org_id=CAST($3::text AS uuid) AND a.id=CAST($4::text AS uuid)
@@ -600,9 +600,11 @@ func (q *Queries) TripUnitZone(ctx context.Context, arg TripUnitZoneParams) (str
 
 const tripUsesOfAssetAt = `-- name: TripUsesOfAssetAt :many
 SELECT t.id::text AS id,t.occurred_at,t.occurred_submicro FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+LEFT JOIN org_trip_transitions c ON(c.org_id,c.trip_id,c.command)=(t.org_id,t.id,'CANCEL')
 WHERE t.org_id=CAST($1::text AS uuid) AND t.asset_id=CAST($2::text AS uuid)
 AND(t.occurred_at,t.occurred_submicro)<=($3::timestamptz,$4::smallint)
 AND(f.trip_id IS NULL OR(f.occurred_at,f.occurred_submicro)>($3::timestamptz,$4::smallint))
+AND(c.trip_id IS NULL OR(c.occurred_at,c.occurred_submicro)>($3::timestamptz,$4::smallint))
 ORDER BY t.occurred_at,t.occurred_submicro,t.id
 `
 
@@ -619,7 +621,8 @@ type TripUsesOfAssetAtRow struct {
 	OccurredSubmicro int16              `json:"occurred_submicro"`
 }
 
-// FLEET-007 active use (EDR-206): trips holding the asset at the instant.
+// FLEET-007 active use (EDR-206): trips holding the asset at the instant,
+// from the start until the finish or the cancellation (B-BR-EMP-392).
 func (q *Queries) TripUsesOfAssetAt(ctx context.Context, arg TripUsesOfAssetAtParams) ([]TripUsesOfAssetAtRow, error) {
 	rows, err := q.db.Query(ctx, tripUsesOfAssetAt,
 		arg.OrgID,
@@ -634,6 +637,54 @@ func (q *Queries) TripUsesOfAssetAt(ctx context.Context, arg TripUsesOfAssetAtPa
 	var items []TripUsesOfAssetAtRow
 	for rows.Next() {
 		var i TripUsesOfAssetAtRow
+		if err := rows.Scan(&i.ID, &i.OccurredAt, &i.OccurredSubmicro); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const tripUsesOfAssetAtBeforeLifecycle = `-- name: TripUsesOfAssetAtBeforeLifecycle :many
+SELECT t.id::text AS id,t.occurred_at,t.occurred_submicro FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+WHERE t.org_id=CAST($1::text AS uuid) AND t.asset_id=CAST($2::text AS uuid)
+AND(t.occurred_at,t.occurred_submicro)<=($3::timestamptz,$4::smallint)
+AND(f.trip_id IS NULL OR(f.occurred_at,f.occurred_submicro)>($3::timestamptz,$4::smallint))
+ORDER BY t.occurred_at,t.occurred_submicro,t.id
+`
+
+type TripUsesOfAssetAtBeforeLifecycleParams struct {
+	OrgID      string             `json:"org_id"`
+	AssetID    string             `json:"asset_id"`
+	At         pgtype.Timestamptz `json:"at"`
+	AtSubmicro int16              `json:"at_submicro"`
+}
+
+type TripUsesOfAssetAtBeforeLifecycleRow struct {
+	ID               string             `json:"id"`
+	OccurredAt       pgtype.Timestamptz `json:"occurred_at"`
+	OccurredSubmicro int16              `json:"occurred_submicro"`
+}
+
+// The same answer on a schema image before 000233, where no trip is
+// cancelled (rehearsals of earlier upgrades only).
+func (q *Queries) TripUsesOfAssetAtBeforeLifecycle(ctx context.Context, arg TripUsesOfAssetAtBeforeLifecycleParams) ([]TripUsesOfAssetAtBeforeLifecycleRow, error) {
+	rows, err := q.db.Query(ctx, tripUsesOfAssetAtBeforeLifecycle,
+		arg.OrgID,
+		arg.AssetID,
+		arg.At,
+		arg.AtSubmicro,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TripUsesOfAssetAtBeforeLifecycleRow
+	for rows.Next() {
+		var i TripUsesOfAssetAtBeforeLifecycleRow
 		if err := rows.Scan(&i.ID, &i.OccurredAt, &i.OccurredSubmicro); err != nil {
 			return nil, err
 		}

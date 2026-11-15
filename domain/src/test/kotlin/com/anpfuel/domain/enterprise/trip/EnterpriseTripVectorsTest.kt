@@ -10,17 +10,20 @@ import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
 
-/** Loads the same trip-v1 oracle as Go; expectations are never computed here. */
+/** Loads the same trip-v2 oracle as Go (it supersedes trip-v1, EDR-252); expectations are never computed here. */
 class EnterpriseTripVectorsTest {
-    private val corpusHash = "068f9dbb8a7a994fdb1c424365d2c45b06655ec01a84b29b874253ea86c6d295"
-    private val wantCounts = mapOf("ENUM" to 49, "TRANSITION" to 40, "STANDING" to 14, "START" to 57, "FINISH" to 47)
+    private val corpusHash = "43aecf00903fffaff2ab17c3530595c3647e4040953fe2ff5e28b104b0bef41e"
+    private val wantCounts = mapOf("ENUM" to 49, "TRANSITION" to 40, "STANDING" to 14, "START" to 57, "FINISH" to 47, "PAUSE" to 40,
+        "RESUME" to 16, "CANCEL" to 22, "HISTORY" to 12)
     private val errorCodes = TripFailure.entries.map { it.name }.toSet()
     private val startKeys = ("scope org id id_org author author_org asset asset_org driver driver_org dep dep_org dep_asset " +
         "dep_meter dep_segment dep_reading dep_kind dep_value_kind dep_value dep_modulus dep_reason_hex at entry offset zone unit_zone omit")
     private val finishKeys = "$startKeys fin_scope fin_author fin_author_org fin fin_org fin_asset fin_meter fin_segment fin_reading " +
         "fin_kind fin_value_kind fin_value fin_modulus fin_reason_hex fin_at fin_entry fin_offset fin_omit again"
+    private val commandKeys = "$startKeys history cmd_scope by by_org expected reason_hex cmd_at cmd_entry cmd_offset cmd_omit again"
     private val allowedArgs = mapOf("ENUM" to "kind value_hex", "TRANSITION" to "state command", "STANDING" to "operational review",
-        "START" to startKeys, "FINISH" to finishKeys).mapValues { it.value.split(' ').toSet() }
+        "START" to startKeys, "FINISH" to finishKeys, "PAUSE" to commandKeys, "RESUME" to commandKeys, "CANCEL" to commandKeys,
+        "HISTORY" to "$startKeys history").mapValues { it.value.split(' ').toSet() }
     private val enumSelectors = setOf("STATE", "COMMAND", "REVIEW")
 
     private fun caseShape(operation: String, args: Map<String, String>) {
@@ -63,12 +66,14 @@ class EnterpriseTripVectorsTest {
         }
         "START" -> TripFixture.tripFields(TripFixture.start(TripFixture.startFields(a)))
         "FINISH" -> TripFixture.tripFields(TripFixture.finish(a))
+        "PAUSE", "RESUME", "CANCEL" -> TripFixture.command(TripCommand.parse(operation), a)
+        "HISTORY" -> TripFixture.history(a)
         else -> error("Unknown fixture operation")
     }
 
     @TestFactory fun allSharedTripVectors(): List<DynamicTest> {
-        val rows = TripFixture.corpus("trip-v1.psv", corpusHash)
-        assertEquals(207, rows.size)
+        val rows = TripFixture.corpus("trip-v2.psv", corpusHash)
+        assertEquals(297, rows.size)
         assertEquals(wantCounts, rows.groupingBy { it[1] }.eachCount())
         val codes = mutableSetOf<String>()
         val pairs = mutableSetOf<String>()

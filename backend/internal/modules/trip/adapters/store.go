@@ -29,6 +29,10 @@ import (
 type Store struct {
 	Allocations fleetapp.AllocationSnapshotPort
 	NewID       func() (string, error)
+	// PreLifecycleImage is set only by rehearsals that populate a schema image
+	// before migration 000233, where no lifecycle row (EMP-TRIP-011) can
+	// exist; every production store reads a trip's lifecycle rows.
+	PreLifecycleImage bool
 }
 
 var _ app.Store = (*Store)(nil)
@@ -219,7 +223,7 @@ func (s *Store) InsertTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.
 	return nil
 }
 
-// ReadTripTx reads one stored trip of the scope with its finish.
+// ReadTripTx reads one stored trip of the scope with its lifecycle rows and finish.
 func (s *Store) ReadTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, tripID string) (app.Record, error) {
 	queries, _, err := s.port(ctx, db, scope)
 	if err != nil {
@@ -245,11 +249,31 @@ func (s *Store) ReadTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.Or
 		n := row.ReadingValue.Int64
 		record.ReadingValue = &n
 	}
+	// EMP-TRIP-011: the lifecycle rows, in revision order.
+	if !s.PreLifecycleImage {
+		transitions, err := queries.ListTripTransitions(ctx, q.ListTripTransitionsParams{OrgID: scope.OrgID().String(), TripID: tripID})
+		if err != nil {
+			return app.Record{}, storeError(err)
+		}
+		if record.Transitions, err = transitionRecords(transitions); err != nil {
+			return app.Record{}, err
+		}
+	}
+	current := trip.InProgress
+	for i, x := range record.Transitions {
+		if x.Revision != int64(i+2) || x.From != current {
+			return app.Record{}, app.ErrUnavailable
+		}
+		current = x.To
+	}
 	if row.FinishOperationID == "" {
-		if state != trip.InProgress {
+		if state != current {
 			return app.Record{}, app.ErrUnavailable
 		}
 		return record, nil
+	}
+	if current != trip.InProgress && current != trip.Paused {
+		return app.Record{}, app.ErrUnavailable
 	}
 	finishAt, ok := exact(row.FinishOccurredAt, row.FinishOccurredSubmicro.Int16)
 	finishClock, okClock := clockOf(row.FinishBootID, row.FinishElapsedMillis)
@@ -411,9 +435,9 @@ func (s *Store) HoldFinishTx(ctx context.Context, db syncapp.DBTX, source syncap
 	return s.hold(ctx, db, source, op, v.Event, "", "", code)
 }
 
-// CheckHeldTx proves a held outcome against the stored held fact and, once
-// written, its exact receipt (OFFL-008 ReviewProof).
-func (s *Store) CheckHeldTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, outcome syncapp.Outcome) error {
+// checkHeldStartOrFinish proves a held start or finish outcome against the
+// stored held fact and, once written, its exact receipt (OFFL-008).
+func (s *Store) checkHeldStartOrFinish(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, outcome syncapp.Outcome) error {
 	db = syncapp.Borrow(db)
 	if s == nil || db == nil || database.ValidateOrgDBTX(ctx, db, source.Scope) != nil || !heldBinding(source, op) {
 		return app.ErrUnavailable
@@ -451,9 +475,10 @@ func heldReceipt(op protocol.Operation, row q.ReadTripHeldProofRow) error {
 	return nil
 }
 
-// CheckOwnReceiptTx lets the author re-read its own held receipt without the
-// record read permission (OFFL-008); anything else is not an own receipt.
-func (s *Store) CheckOwnReceiptTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation) (bool, error) {
+// checkOwnStartOrFinish lets the author re-read its own held start or finish
+// receipt without the record read permission (OFFL-008); anything else is not
+// an own receipt.
+func (s *Store) checkOwnStartOrFinish(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation) (bool, error) {
 	db = syncapp.Borrow(db)
 	if s == nil || db == nil || source.Validate() != nil || database.ValidateOrgDBTX(ctx, db, source.Scope) != nil {
 		return false, app.ErrUnavailable
@@ -500,18 +525,30 @@ func (OpenWork) OpenAssetWorkTx(ctx context.Context, tx pgx.Tx, scope kernel.Org
 
 // ActiveUse is the trip-backed FLEET-007 active-use source (EDR-206): the
 // stored trips holding the asset at an instant (started at or before it and
-// not finished at or before it).
-type ActiveUse struct{}
+// neither finished nor cancelled at or before it, B-BR-EMP-392).
+// PreLifecycleImage is set only by rehearsals that populate a schema image
+// before migration 000233, where no trip is cancelled.
+type ActiveUse struct{ PreLifecycleImage bool }
 
 var _ fleetapp.ActiveUsePort = ActiveUse{}
 
-func (ActiveUse) ActiveUseDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) (fleetapp.UseAnswer, error) {
+func (u ActiveUse) ActiveUseDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) (fleetapp.UseAnswer, error) {
 	db = syncapp.Borrow(db)
 	if db == nil || scope.Validate() != nil || !canonicalID(asset) || at.IsZero() || database.ValidateOrgDBTX(ctx, db, scope) != nil {
 		return fleetapp.UseAnswer{}, fleetapp.ErrUnavailable
 	}
 	stamp, sub := instant(at)
-	rows, err := q.New(db).TripUsesOfAssetAt(ctx, q.TripUsesOfAssetAtParams{OrgID: scope.OrgID().String(), AssetID: asset, At: stamp, AtSubmicro: sub})
+	var rows []q.TripUsesOfAssetAtRow
+	var err error
+	if u.PreLifecycleImage {
+		var before []q.TripUsesOfAssetAtBeforeLifecycleRow
+		before, err = q.New(db).TripUsesOfAssetAtBeforeLifecycle(ctx, q.TripUsesOfAssetAtBeforeLifecycleParams{OrgID: scope.OrgID().String(), AssetID: asset, At: stamp, AtSubmicro: sub})
+		for _, row := range before {
+			rows = append(rows, q.TripUsesOfAssetAtRow(row))
+		}
+	} else {
+		rows, err = q.New(db).TripUsesOfAssetAt(ctx, q.TripUsesOfAssetAtParams{OrgID: scope.OrgID().String(), AssetID: asset, At: stamp, AtSubmicro: sub})
+	}
 	if err != nil {
 		return fleetapp.UseAnswer{}, fleetapp.ErrUnavailable
 	}

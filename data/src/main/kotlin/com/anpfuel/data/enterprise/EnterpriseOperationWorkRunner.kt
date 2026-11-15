@@ -1,6 +1,7 @@
 package com.anpfuel.data.enterprise
 
 import com.anpfuel.application.enterprise.EnterpriseLocalDenied
+import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentDeliveryResult
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueAccountLease
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueDispatchResult
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueDeliveryFailure
@@ -48,6 +49,10 @@ class EnterpriseOperationWorkResult(
     val nextAttemptMillis: Long? = null,
     /** A failure without an authenticated floor or a stalled batch; use system backoff. */
     val backoff: Boolean = false,
+    /** Attachment uploads keep separate counts (EMP-OFFL-005); they never decide operation delivery. */
+    val attachmentsStored: Int = 0,
+    val attachmentsPending: Int = 0,
+    val attachmentsFailed: Int = 0,
 ) {
     init { require(nextAttemptMillis == null || nextAttemptMillis >= 0) }
 
@@ -69,6 +74,8 @@ class EnterpriseOperationWorkRunner(
     private val discover: suspend (EnterpriseQueueAccountLease, String?, Int) -> EnterpriseQueueDiscoveryPage,
     private val dispatch: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> EnterpriseQueueDispatchResult,
     private val review: (suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> EnterpriseReviewPollResult)? = null,
+    /** EMP-OFFL-005: attachments of the partition, after its operations and review lookups (EDR-268). */
+    private val attachments: (suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> EnterpriseAttachmentDeliveryResult)? = null,
 ) {
     private val invocation = Mutex()
 
@@ -84,6 +91,9 @@ class EnterpriseOperationWorkRunner(
         var reviewUnresolved = 0
         var reviewFailed = 0
         var signedOut = false
+        var attachmentsStored = 0
+        var attachmentsPending = 0
+        var attachmentsFailed = 0
         var nextAttempt: Long? = null
         var backoff = false
         fun observeRetryAfter(value: Long?) {
@@ -182,6 +192,26 @@ class EnterpriseOperationWorkRunner(
                             reviewFailed = add(reviewFailed, 1)
                         }
                     }
+                    val upload = attachments
+                    if (upload != null) {
+                        // Attachments follow their operations under the same account lease; their counts and
+                        // failures never alter operation delivery, only a known due time schedules a continuation.
+                        try {
+                            currentCoroutineContext().ensureActive()
+                            account.assertCurrent()
+                            val delivered = upload(account, partition)
+                            account.assertCurrent()
+                            require(delivered.attempted >= 0 && delivered.stored >= 0 && delivered.pending >= 0)
+                            attachmentsStored = add(attachmentsStored, delivered.stored)
+                            attachmentsPending = add(attachmentsPending, delivered.pending)
+                            delivered.nextAttemptMillis?.let { observeNext(it.coerceIn(0, EnterpriseRetryAfter.MAX_MILLIS)) }
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            account.assertCurrent()
+                            attachmentsFailed = add(attachmentsFailed, 1)
+                        }
+                    }
                     yield()
                 }
                 account.assertCurrent()
@@ -206,7 +236,8 @@ class EnterpriseOperationWorkRunner(
         }
         return EnterpriseOperationWorkResult(attempted, completed, retryable, attention, failed, retryAfter,
             reviewResolved = reviewResolved, reviewUnresolved = reviewUnresolved, reviewFailed = reviewFailed,
-            signedOut = signedOut, nextAttemptMillis = nextAttempt, backoff = backoff)
+            signedOut = signedOut, nextAttemptMillis = nextAttempt, backoff = backoff,
+            attachmentsStored = attachmentsStored, attachmentsPending = attachmentsPending, attachmentsFailed = attachmentsFailed)
     }
     override fun toString(): String = "EnterpriseOperationWorkRunner(redacted)"
 

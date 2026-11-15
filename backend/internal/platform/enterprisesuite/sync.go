@@ -122,7 +122,18 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse, report}, o.IntakeHandlers...)
+	handlers := []app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse, report}
+	// EMP-TRIP-011 (EDR-253): pause, resume and cancellation of the member's
+	// own trip at the expected revision; held commands use the same OFFL-008
+	// review items.
+	for _, kind := range tripapp.LifecycleOperationTypes {
+		lifecycle, err := trippg.NewTransitionHandler(kind, (*orgpg.TripAuthority)(meterAuthority), meters, tripStore, tripStore)
+		if err != nil {
+			return err
+		}
+		handlers = append(handlers, lifecycle)
+	}
+	handlers = append(handlers, o.IntakeHandlers...)
 	registry, err := app.NewRegistry(handlers...)
 	if err != nil {
 		return err
@@ -159,9 +170,9 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[fuelingKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
-	// EMP-TRIP-002/003 (B-BR-EMP-319, EDR-209): no trip consumer exists yet;
-	// held facts are same-transaction review items.
-	for _, kind := range []string{tripapp.StartOperationType, tripapp.FinishOperationType, tripapp.EventOperationType} {
+	// EMP-TRIP-002/003/011 (B-BR-EMP-319, EDR-209, EDR-253): no trip consumer
+	// exists yet; held facts are same-transaction review items.
+	for _, kind := range append([]string{tripapp.StartOperationType, tripapp.FinishOperationType, tripapp.EventOperationType}, tripapp.LifecycleOperationTypes...) {
 		key := app.OperationKey{Type: kind, Schema: 1}
 		if _, exists := noAsync[key]; exists {
 			return app.ErrUnavailable

@@ -489,7 +489,7 @@ func (q *Queries) MissionAssigneeFacts(ctx context.Context, arg MissionAssigneeF
 const missionAssigneeTripRunning = `-- name: MissionAssigneeTripRunning :one
 
 SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST($1::text AS uuid) AND asset_id=CAST($2::text AS uuid)
- AND driver_employee_id=CAST($3::text AS uuid) AND state='IN_PROGRESS')::boolean AS running
+ AND driver_employee_id=CAST($3::text AS uuid) AND state IN('IN_PROGRESS','PAUSED'))::boolean AS running
 `
 
 type MissionAssigneeTripRunningParams struct {
