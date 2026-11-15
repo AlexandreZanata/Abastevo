@@ -392,6 +392,16 @@ func Register(router chi.Router, o Options) error {
 	if err := tripweb.RegisterReview(router, tripapp.ReviewService{Enabled: true, Repository: tripReviews, NewID: jobs.NewUUIDv4}, cookies, gateway, tripReviewAuthorization); err != nil {
 		return err
 	}
+	// EMP-TRIP-007 (EDR-263): held trip facts resolved once under
+	// trip.trip.review; structure through the held fact (HeldTripStructure);
+	// an accepted start's reading through the meter review store.
+	heldTripStructure := &orgpg.ResourceStructure{Kind: orgpg.HeldTripStructure, Pool: o.Pool}
+	conflicts := &trippg.ConflictStore{Pool: o.Pool, Authority: &orgpg.TripConflictAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: heldTripStructure},
+		Audit: auditStore, Allocations: assets, Readings: reviews}
+	conflictAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ConflictRecords{}, Structure: heldTripStructure, Now: time.Now}
+	if err := tripweb.RegisterConflicts(router, tripapp.ConflictService{Enabled: true, Repository: conflicts}, cookies, gateway, conflictAuthorization); err != nil {
+		return err
+	}
 
 	// EMP-TRIP-008 (EDR-231): mission planning under trip.mission.manage
 	// (structure: the mission's stored unit and asset) and the assignee's own

@@ -18512,6 +18512,301 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/sync/reviews/trips/list:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseTripConflictList
+      summary: List held trip facts awaiting or after a resolution
+      description: EMP-TRIP-007. The organization queue of held trip.start (ASSET_BUSY, ASSET_UNAVAILABLE,
+        PERMISSION_CHANGED), trip.finish (TRIP_ALREADY_CLOSED), trip.event.record (TRIP_ALREADY_CLOSED, STALE_REVISION),
+        trip.submit (STALE_REVISION) and the EMP-TRIP-011 trip.pause, trip.resume and trip.cancel (TRIP_ALREADY_CLOSED,
+        STALE_REVISION) items in item order, filtered by state (expiry is the elapsed 60-day
+        review-expiry-v1 period). Current company cookie and exact Origin/CSRF; trip.trip.review read; the queue is
+        organization-level, so only an ORG grant covers it. Each item carries its exact held fact and the trips it
+        conflicts with. Responses are private no-store; synthetic construction does not authorize real data.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.review
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterReviewListRequest'
+            example:
+              limit: 20
+              state: OPEN
+      responses:
+        '200':
+          description: Private held trip items of the organization.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripConflictPage'
+              example:
+                items:
+                - review_item_id: 7b0e2a54-0000-4000-8000-000000009702
+                  operation_id: 7b0e2a54-0000-4000-8000-000000009701
+                  operation_type: trip.start
+                  payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                  code: ASSET_BUSY
+                  state: OPEN
+                  revision: 1
+                  author_account_id: 7b0e2a54-0000-4000-8000-000000009710
+                  author_membership_id: 7b0e2a54-0000-4000-8000-000000009711
+                  author_employee_id: 7b0e2a54-0000-4000-8000-000000009712
+                  enrollment_id: 7b0e2a54-0000-4000-8000-000000009713
+                  received_at: '2026-11-15T13:02:00Z'
+                  expires_at: '2027-01-14T13:02:00Z'
+                  fact:
+                    trip_id: 7b0e2a54-0000-4000-8000-000000009720
+                    occurred_at: '2026-11-15T12:00:00.123456789Z'
+                    entry_zone: America/Cuiaba
+                    device_offset_seconds: -14400
+                    asset_id: 7b0e2a54-0000-4000-8000-000000009730
+                    driver_employee_id: 7b0e2a54-0000-4000-8000-000000009712
+                    run_clock: null
+                    reading:
+                      meter_id: 7b0e2a54-0000-4000-8000-000000009731
+                      segment_id: 7b0e2a54-0000-4000-8000-000000009732
+                      reading_id: 7b0e2a54-0000-4000-8000-000000009733
+                      kind: ODOMETER
+                      value: '184320000'
+                    missing_reading_reason: null
+                    event: null
+                    submitted_revision: null
+                    transition: null
+                  conflicting_trips:
+                  - trip_id: 7b0e2a54-0000-4000-8000-000000009740
+                    operational_state: IN_PROGRESS
+                    started_at: '2026-11-15T12:05:00Z'
+                    finished_at: null
+                  resolution: null
+                next_cursor: ''
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/read:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseTripConflictRead
+      summary: Read one held trip fact with the trips it conflicts with
+      description: EMP-TRIP-007. trip.trip.review read covering the item's structure (a held start the asset it
+        declared, that asset's unit and cost centre at the declared instant and the teams covering its author or
+        driver at the receipt; another held fact the stored structure of the trip it names). The held fact is never
+        a trip, active use or cost. Another organization's, an unknown or a meter item is NOT_FOUND; an uncovering
+        grant and AUDITOR are FORBIDDEN.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.review
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: review_item_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private held trip item.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripConflictView'
+              example:
+                review_item_id: 7b0e2a54-0000-4000-8000-000000009702
+                operation_id: 7b0e2a54-0000-4000-8000-000000009701
+                operation_type: trip.start
+                payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                code: ASSET_BUSY
+                state: RESOLVED_REFUSED
+                revision: 2
+                author_account_id: 7b0e2a54-0000-4000-8000-000000009710
+                author_membership_id: 7b0e2a54-0000-4000-8000-000000009711
+                author_employee_id: 7b0e2a54-0000-4000-8000-000000009712
+                enrollment_id: 7b0e2a54-0000-4000-8000-000000009713
+                received_at: '2026-11-15T13:02:00Z'
+                expires_at: '2027-01-14T13:02:00Z'
+                fact:
+                  trip_id: 7b0e2a54-0000-4000-8000-000000009720
+                  occurred_at: '2026-11-15T12:00:00.123456789Z'
+                  entry_zone: America/Cuiaba
+                  device_offset_seconds: -14400
+                  asset_id: 7b0e2a54-0000-4000-8000-000000009730
+                  driver_employee_id: 7b0e2a54-0000-4000-8000-000000009712
+                  run_clock:
+                    boot_id: boot-a1
+                    elapsed_millis: '3600000'
+                  reading: null
+                  missing_reading_reason: Painel apagado
+                  event: null
+                  submitted_revision: null
+                  transition: null
+                conflicting_trips:
+                - trip_id: 7b0e2a54-0000-4000-8000-000000009740
+                  operational_state: COMPLETED
+                  started_at: '2026-11-15T12:05:00Z'
+                  finished_at: '2026-11-15T16:00:00Z'
+                resolution:
+                  schema_version: 1
+                  operation_id: 7b0e2a54-0000-4000-8000-000000009701
+                  payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                  review_item_id: 7b0e2a54-0000-4000-8000-000000009702
+                  resolution_id: 7b0e2a54-0000-4000-8000-000000009703
+                  review_revision: 2
+                  outcome: REFUSED
+                  reason: Veículo em uso por outra viagem
+                  resolved_at: '2026-11-15T17:00:00Z'
+                  entity_revision: null
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/resolve:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseTripConflictResolve
+      summary: Resolve one held trip fact once
+      description: EMP-TRIP-007. Fresh trip.trip.review covering the item, ACTIVE organization, revision 1. REFUSE
+        with a nonblank reason for every held trip fact; ACCEPT only a held trip.start, stored as the trip it
+        declared (in progress, entity revision 1, its TRIP_START reading received at the original receipt, ready
+        for its pending finish) when the asset is ACTIVE and not disposed at the declaration, the author's
+        membership, enrolled device and the driver are current and no trip of the asset is in progress or finished
+        after the declared start; anything else is CONFLICT. The reviewer is never the author or a held start's
+        declared driver (SELF_APPROVAL). One immutable resolution and one offl.review.resolved audit event; replay
+        returns the stored resolution (replayed true), reuse is OPERATION_ID_REUSED, a resolved item or another
+        revision CONFLICT. The held fact and its original acknowledgement stay readable.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.review
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: review_item_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterReviewResolveRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009703
+              revision: 1
+              decision: REFUSE
+              reason: Veículo em uso por outra viagem
+      responses:
+        '200':
+          description: The immutable resolution.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMeterReviewResolveResult'
+              example:
+                resolution:
+                  schema_version: 1
+                  operation_id: 7b0e2a54-0000-4000-8000-000000009701
+                  payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+                  review_item_id: 7b0e2a54-0000-4000-8000-000000009702
+                  resolution_id: 7b0e2a54-0000-4000-8000-000000009703
+                  review_revision: 2
+                  outcome: REFUSED
+                  reason: Veículo em uso por outra viagem
+                  resolved_at: '2026-11-15T17:00:00Z'
+                  entity_revision: null
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/checklists/templates/create:
     post:
       tags:
@@ -24689,6 +24984,291 @@ components:
           entity_revision: 1
         replayed: false
         data_mode: SYNTHETIC
+    EnterpriseTripConflictTrip:
+      type: object
+      additionalProperties: false
+      description: EMP-TRIP-007. A stored trip the held fact conflicts with.
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operational_state:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - PAUSED
+          - COMPLETED
+          - CANCELLED
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          anyOf:
+          - type: string
+            format: date-time
+          - type: 'null'
+      required:
+      - trip_id
+      - operational_state
+      - started_at
+      - finished_at
+    EnterpriseTripConflictFact:
+      type: object
+      additionalProperties: false
+      description: EMP-TRIP-007. The exact held fact. asset_id and driver_employee_id only for trip.start; run_clock,
+        reading and missing_reading_reason for trip.start and trip.finish (exactly one of reading and reason);
+        event for trip.event.record; submitted_revision for trip.submit; transition for trip.pause, trip.resume and
+        trip.cancel; every other field is null.
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+          maxLength: 64
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        asset_id:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        driver_employee_id:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        run_clock:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            properties:
+              boot_id:
+                type: string
+                pattern: ^[A-Za-z0-9._-]{1,64}$
+              elapsed_millis:
+                type: string
+                pattern: ^(0|[1-9][0-9]{0,18})$
+            required:
+            - boot_id
+            - elapsed_millis
+          - type: 'null'
+        reading:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            properties:
+              meter_id:
+                $ref: '#/components/schemas/EnterpriseUUID'
+              segment_id:
+                $ref: '#/components/schemas/EnterpriseUUID'
+              reading_id:
+                $ref: '#/components/schemas/EnterpriseUUID'
+              kind:
+                type: string
+                enum:
+                - ODOMETER
+                - HOUR_METER
+              value:
+                type: string
+                pattern: ^(0|[1-9][0-9]{0,18})$
+            required:
+            - meter_id
+            - segment_id
+            - reading_id
+            - kind
+            - value
+          - type: 'null'
+        missing_reading_reason:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 280
+          - type: 'null'
+        event:
+          anyOf:
+          - type: object
+            additionalProperties: false
+            properties:
+              event_id:
+                $ref: '#/components/schemas/EnterpriseUUID'
+              event_type:
+                type: string
+                enum:
+                - NOTE
+                - STOP
+                - ARRIVAL
+                - DEPARTURE
+              text:
+                anyOf:
+                - type: string
+                  minLength: 1
+                  maxLength: 280
+                - type: 'null'
+            required:
+            - event_id
+            - event_type
+            - text
+          - type: 'null'
+        submitted_revision:
+          anyOf:
+          - type: integer
+            minimum: 1
+            maximum: 1000000
+          - type: 'null'
+        transition:
+          description: EMP-TRIP-011 held trip.pause, trip.resume or trip.cancel (the command, the trip revision it
+            named and the cancellation reason).
+          anyOf:
+          - type: object
+            additionalProperties: false
+            properties:
+              command:
+                type: string
+                enum:
+                - PAUSE
+                - RESUME
+                - CANCEL
+              expected_revision:
+                type: integer
+                minimum: 1
+                maximum: 1000000
+              reason:
+                anyOf:
+                - type: string
+                  minLength: 1
+                  maxLength: 280
+                - type: 'null'
+            required:
+            - command
+            - expected_revision
+            - reason
+          - type: 'null'
+      required:
+      - trip_id
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      - asset_id
+      - driver_employee_id
+      - run_clock
+      - reading
+      - missing_reading_reason
+      - event
+      - submitted_revision
+      - transition
+    EnterpriseTripConflictView:
+      type: object
+      additionalProperties: false
+      description: EMP-TRIP-007. One held trip item; conflicting_trips lists, for a held start, every trip of the
+        asset in progress or paused, or finished or cancelled after its declared start (finished_at is the finish or
+        the cancellation), otherwise the trip the fact names.
+      properties:
+        review_item_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operation_type:
+          type: string
+          enum:
+          - trip.start
+          - trip.finish
+          - trip.event.record
+          - trip.submit
+          - trip.pause
+          - trip.resume
+          - trip.cancel
+        payload_digest:
+          type: string
+          pattern: ^sha256:[0-9a-f]{64}$
+        code:
+          type: string
+          enum:
+          - ASSET_BUSY
+          - ASSET_UNAVAILABLE
+          - PERMISSION_CHANGED
+          - TRIP_ALREADY_CLOSED
+          - STALE_REVISION
+        state:
+          type: string
+          enum:
+          - OPEN
+          - EXPIRED_UNRESOLVED
+          - RESOLVED_ACCEPTED
+          - RESOLVED_REFUSED
+        revision:
+          type: integer
+          enum:
+          - 1
+          - 2
+        author_account_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        author_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        author_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        received_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        fact:
+          $ref: '#/components/schemas/EnterpriseTripConflictFact'
+        conflicting_trips:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseTripConflictTrip'
+        resolution:
+          anyOf:
+          - $ref: '#/components/schemas/EnterpriseReviewResolution'
+          - type: 'null'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - review_item_id
+      - operation_id
+      - operation_type
+      - payload_digest
+      - code
+      - state
+      - revision
+      - author_account_id
+      - author_membership_id
+      - author_employee_id
+      - enrollment_id
+      - received_at
+      - expires_at
+      - fact
+      - conflicting_trips
+      - resolution
+    EnterpriseTripConflictPage:
+      type: object
+      additionalProperties: false
+      description: EMP-TRIP-007. One keyset page of the organization's held trip items.
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseTripConflictView'
+        next_cursor:
+          type: string
+          maxLength: 2048
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
     EnterpriseFinancePeriodMonth:
       description: Canonical calendar month YYYY-MM from 0001-01 to 9999-12.
       type: string

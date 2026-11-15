@@ -6802,3 +6802,111 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   trip holding its asset and a cancelled one releasing it; the database
   guards and a populated upgrade from 000232 with injected failure and
   recovery.
+
+## EMP-TRIP-007 — Asset-overlap conflict resolution (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip007-conflict-resolution.md).
+
+- **B-BR-EMP-407 — The held trip facts are a company review queue.** Every
+  trip fact the intake keeps for review is listable and readable by a member
+  holding `trip.trip.review`: a held `trip.start` (`ASSET_BUSY`,
+  `ASSET_UNAVAILABLE`, `PERMISSION_CHANGED`), a held `trip.finish`
+  (`TRIP_ALREADY_CLOSED`), a held `trip.event.record` (`TRIP_ALREADY_CLOSED`,
+  `STALE_REVISION`), a held `trip.submit` (`STALE_REVISION`) and, since
+  EMP-TRIP-011, a held `trip.pause`, `trip.resume` or `trip.cancel`
+  (`TRIP_ALREADY_CLOSED`, `STALE_REVISION`). The queue is
+  an organization-level list (only an `ORG` grant covers it, as the trip
+  review queue) filtered by state (`OPEN`, `EXPIRED_UNRESOLVED` after the
+  60-day review-expiry-v1 period, `RESOLVED_ACCEPTED`, `RESOLVED_REFUSED`) in
+  item order; one item is read through a structural grant covering its
+  structure: a held start the asset it declared, that asset's FLEET-005 unit
+  and cost centre at the declared instant and the teams covering its author
+  or driver at the receipt; any other held fact the structure of the trip it
+  names. A read shows the item (operation, type, payload digest, code, state,
+  revision 1 or 2, author account, membership, employee record, enrollment,
+  receipt and expiry), the exact held fact (declaration, asset, driver,
+  reading or stated absence, run clock, event, submitted revision, lifecycle
+  command with its named revision and reason) and the trips it conflicts
+  with: for a held start every trip of the asset in progress or paused, or
+  ended (finished or cancelled) after its declared start, otherwise the trip
+  it names with its operational state and end. Another organization's item, an unknown item
+  and a meter item are `NOT_FOUND`; a member without the permission or whose
+  structural grant does not cover the item is `FORBIDDEN`; `AUDITOR` is
+  `FORBIDDEN`. A held fact is never a trip, active use, cost or indicator.
+- **B-BR-EMP-408 — Two outcomes, accept only as the declared trip.** A
+  resolution is `ACCEPT` or `REFUSE` with a reason (METER-001 text profile,
+  280 characters) and names the item revision 1. `ACCEPT` exists only for a
+  held start: the start is stored as the trip it declared (its identity,
+  asset, driver, declaration, run clock and reading or stated absence; the
+  FLEET-005 unit and cost centre and the start reporting day of its declared
+  instant; the author's membership and enrollment) in progress at entity
+  revision 1, its departure reading becomes a `TRIP_START` reading of the
+  same operation received at the original receipt and classified there
+  (EMP-METER-003), and the operation becomes ready, so the author's pending
+  `trip.finish` is accepted on its next delivery. Accepting a held finish,
+  event or submission is `CONFLICT`: the trip already has its finish, its
+  logbook is closed after the finish and a submitted or decided revision is
+  never rewritten (BR-TRIP-003); a late correction is an amendment.
+  Accepting a held lifecycle command is `CONFLICT` too: its trip is closed or
+  its named revision is stale, and the author records the command again. Accepting
+  with another asset is not offered (the held reading belongs to the declared
+  asset's meter). No resolution changes the winning trip, its readings, its
+  logbook or its review history.
+- **B-BR-EMP-409 — A resolution never makes two trips active.** A held start
+  is accepted only when the asset is still `ACTIVE` and was not disposed at
+  the declared instant, the author's membership is `ACTIVE` with the same
+  enrolled device, the driver is an `ACTIVE` unmerged employee record, and no
+  stored trip of the asset is in progress or finished after the declared
+  start (the accepted trip is in progress from its declared start, so at no
+  instant do two trips of the asset count as in progress, VAL-07; a paused
+  trip still holds the asset and a cancelled one holds it until its
+  cancellation, EMP-TRIP-011);
+  otherwise the resolution is `CONFLICT` and writes nothing, and the item
+  stays `OPEN`. The database re-proves every condition in the same
+  transaction, including against a concurrent start or a concurrent
+  acceptance of another held start of the asset.
+- **B-BR-EMP-410 — One audited decision, once.** Resolving needs fresh
+  `trip.trip.review` covering the item and an `ACTIVE` organization; the
+  reviewer is never the author (account, membership or canonical employee
+  record after merges) nor, for a held start, the declared driver
+  (`SELF_APPROVAL`, BR-REV-003). The decision names revision 1; a resolved
+  item or another revision is `CONFLICT` (BR-REV-007), so of two reviewers
+  deciding at once exactly one resolution applies and the other gets
+  `CONFLICT`. One resolution, its audit event `offl.review.resolved`
+  (target `offl.review`, carrying the command digest, never the reason) and
+  for an accepted start the trip, reading and readiness are written in one
+  transaction; the same operation identifier and body replays the stored
+  resolution (`replayed`), the same identifier with another body is
+  `OPERATION_ID_REUSED`.
+- **B-BR-EMP-411 — The conflict evidence is kept and the author learns the
+  outcome.** No resolution deletes, rewrites or detaches the held fact: the
+  review item, the held row, the original `ACCEPTED_FOR_REVIEW`
+  acknowledgement bytes and the resolution stay stored and readable after
+  either outcome, and the database refuses any update or delete of them. The
+  author's signed review-results read (EMP-OFFL-008) answers the held trip
+  items like the meter ones: the immutable resolution (`ACCEPTED` with entity
+  revision 1, or `REFUSED` with the reviewer's reason) or none while open,
+  only to the original author, organization, membership and enrolled device.
+- **BUC-EMP-206 — Resolve two starts on one vehicle (VAL-07).** Bruno and
+  Diego start FR-001 offline at 08:00 and 08:05; Diego's start is received
+  first and runs; Bruno's is held `ASSET_BUSY`. The reviewer opens the queue,
+  reads Bruno's held start beside Diego's trip, and cannot accept it (it
+  would overlap Diego's trip): Bruno's start is refused with the reason
+  "Veículo em uso por outra viagem". Two reviewers deciding at once leave one
+  resolution; the other sees `CONFLICT`. Bruno's phone receives the refusal
+  at its next review-results poll; the held start stays readable.
+- **BUC-EMP-207 — Accept a start held while the asset was blocked.** A driver
+  starts a vehicle offline while a document block was registered by mistake;
+  the start is held `ASSET_UNAVAILABLE`. With no trip of the vehicle after
+  that instant, the fleet manager accepts it: the trip runs from its declared
+  start with its departure reading at the original receipt, and the
+  driver's finish, waiting as a pending dependency, is accepted on the next
+  delivery.
+- **BUC-EMP-208 — Prove conflict resolution on real PostGIS.** Self-review
+  and the declared driver, a second active trip produced by a resolution
+  (racing a new start and another acceptance, both orders), repeated
+  resolution (replay, reuse, two reviewers racing), loss of the conflict
+  evidence, another organization's item, an uncovering structural grant,
+  `AUDITOR`, accepting a finish, event or submission, the author's own
+  result read, the database guards and a populated upgrade from 000232 with
+  injected failure and recovery.
