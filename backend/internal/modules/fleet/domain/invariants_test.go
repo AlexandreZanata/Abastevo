@@ -78,7 +78,7 @@ func TestPrivateValuesRedactEveryFormattingAndSerializationSurface(t *testing.T)
 		}
 		check(string(encoded))
 		var out bytes.Buffer
-		logger := slog.New(slog.NewJSONHandler(&out, nil))
+		logger := slog.New(slog.NewJSONHandler(&out, untimedLog))
 		logger.Info("synthetic", "value", value, "nested", map[string]any{"value": value})
 		check(out.String())
 	}
@@ -302,3 +302,13 @@ func TestOneProductCannotHaveConflictingCapturedUnitsAcrossTanks(t *testing.T) {
 		t.Fatal("one product acquired conflicting units during validation")
 	}
 }
+
+// untimedLog drops the record time so that a numeric private marker cannot
+// match digits of the timestamp by chance (a 4-digit marker did, about once in
+// 200 runs).
+var untimedLog = &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey {
+		return slog.Attr{}
+	}
+	return a
+}}

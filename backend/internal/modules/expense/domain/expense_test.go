@@ -294,7 +294,7 @@ func TestExpenseSnapshotsAreImmutableAndRedacted(t *testing.T) {
 		t.Fatal("origin source accessor shares state")
 	}
 	var buf bytes.Buffer
-	logger := slog.New(slog.NewTextHandler(&buf, nil))
+	logger := slog.New(slog.NewTextHandler(&buf, untimedLog))
 	logger.Info("x", "expense", e, "input", in, "key", e.OriginKey(), "amounts", e.Amounts(), "origin", e.Origin())
 	encoded, _ := json.Marshal(map[string]any{"e": e, "in": in, "k": e.OriginKey(), "c": e.Category()})
 	text := fmt.Sprintf("%v %+v %#v %s", e, in, e.OriginKey(), e.Amounts()) + buf.String() + string(encoded)
@@ -456,3 +456,13 @@ func TestTotalsAreSafeForConcurrentReaders(t *testing.T) {
 	}
 	wg.Wait()
 }
+
+// untimedLog drops the record time so that a numeric private marker cannot
+// match digits of the timestamp by chance (a 4-digit marker did, about once in
+// 200 runs).
+var untimedLog = &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey {
+		return slog.Attr{}
+	}
+	return a
+}}

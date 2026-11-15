@@ -206,3 +206,62 @@ Integration (`7a071b04`): normal merge, only the EDR table conflicted (union
 by number); `go build ./...` and `go test -race ./internal/modules/trip/...`
 green on the merged tree; agent gates: untagged backend 215 packages, Kotlin
 enterprise suite 2571/0/0, staticcheck/vet/gofmt clean, check_plan 0 problems.
+
+### Catalog amendment `org-permissions-v5`: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-auth-catalog-v5.md), commit `2030aad2` (AUTH prerequisite of
+FLEET-007, CHECK-001 and CHECK-003/004). Adds 11 `O` cells with standard
+requirements only: `fleet.reservation.manage` takes the `fleet.asset.assign`
+roles (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR), `check.template.manage` the
+`maint.workorder.manage` roles (OWNER, ADMIN, FLEET_MANAGER) and
+`check.incident.manage` OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR, as
+maintenance.md §7 proposed (EDR-190/191). Every v4 cell is preserved, AUDITOR
+gains nothing, 18 keys stay unassigned; no migration (assignments store role
+and scope only) and no Kotlin consumer. RED 10 top-level / 11 subtests →
+GREEN 128/1291 race; PostGIS matrix and auditor walk 4/4; union 16 packages
+736/5641, 0 failures.
+
+### EMP-FLEET-007 — reservations, blocks and derived availability: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-fleet007-reservations-availability.md), commit `82573cad`.
+Migration 000217: forced-RLS reservations moving only through the guarded
+transition rows, CONFIRMED windows excluded from overlapping, confirmation over
+a block refused, append-only blocks removed only with a reason, command
+receipts, an `AFTER UPDATE OF state` trigger cancelling open reservations when
+an asset leaves service (`ASSET_LEFT_SERVICE`), and the asset usage allow-list
+extended from the 000215 body. EXPIRED/NO_SHOW are derived at read time and
+stored once by the `org-asset-reservation-outcome` job; commands settle due
+outcomes first. Explicit `NoActiveUse`/`NoMaintenanceHolds` ports are listed in
+the availability read's `missing_sources`; pure `DecideStart` and
+`StartDecisionDBTX` wait for the trip-start intake (EDR-192..195). Eight routes
+(five commands under fresh `fleet.reservation.manage`, three reads under
+`fleet.asset.read`); `RESERVATION_CONFLICT` reveals only the window; requests
+through `trip.mission.manage` alone are retained for TRIP-023. RED domain 7,
+application 6, cmd/api 3, apicontract 1/12, PostGIS 8/8 (no migration) and 8/8
+(stubbed store) → GREEN: 8 PostGIS tests (confirmation races both orders with
+barriers, confirm/cancel race, job stopped and run twice, foreign asset, unit
+scope denial, unreasoned removal, asset leaving service, RLS/guards, populated
+215 → 217 upgrade with injected failure and recovery, HTTP 46 assertions);
+matrix 220 cells (85/135); auditor walk 118 routes (27/91); race/integration
+union 39 packages 1091/7401, 0 failures, 0 skips; untagged 214 packages.
+Retained: trip-start intake wiring and `NoActiveUse` replacement (TRIP-002),
+mission linkage/FULFILLED (TRIP-023), maintenance holds, notifications, a
+configurable no-show tolerance (60 min default), SCR-FLEET-06 (TRIP-022),
+Android picker/feed, production grants.
+
+Integration (`59b04947`): normal merge; contract and EDR table conflicts
+resolved by union; `go build`/`go vet`, trip/fleet/orgaccess/cmd/api/apicontract
+unit tests green on the merged tree.
+
+### Flaky redaction checks fixed (batch hygiene)
+
+FLEET-007's union reported `fleet/domain`
+`TestPrivateValuesRedactEveryFormattingAndSerializationSurface` failing once
+and passing on reruns. Reproduced on the merged tree: 14 failures in 3000 runs,
+all at the slog check. Cause: the test looks for short numeric private markers
+(`8500`, `275000`) in slog JSON output whose record time carries nanoseconds,
+which contain those digits by chance. Ten redaction tests in fleet, meter,
+fueling, expense, trip, document and budget used a timed handler with numeric
+markers; they now drop the record time (the `untimed` option DOC-006 already
+used). No marker or expectation changed. After the fix: 3000/3000 runs pass;
+the affected packages' untagged tests, vet (both tags) and staticcheck pass.

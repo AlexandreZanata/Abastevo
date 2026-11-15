@@ -356,7 +356,7 @@ func TestPrivateValuesAreRedacted(t *testing.T) {
 	values := []any{in, finishInput(t, s, started), started, done, done.Started(), end, end.Evidence(), absent, done.MeterUsage(),
 		in.Reference, in.Author, in.Driver}
 	var logs bytes.Buffer
-	logger := slog.New(slog.NewJSONHandler(&logs, nil))
+	logger := slog.New(slog.NewJSONHandler(&logs, untimedLog))
 	for _, v := range values {
 		for _, format := range []string{"%v", "%+v", "%#v", "%s", "%q"} {
 			assertRedacted(t, fmt.Sprintf(format, v))
@@ -382,3 +382,13 @@ func assertRedacted(t *testing.T, out string) {
 		}
 	}
 }
+
+// untimedLog drops the record time so that a numeric private marker cannot
+// match digits of the timestamp by chance (a 4-digit marker did, about once in
+// 200 runs).
+var untimedLog = &slog.HandlerOptions{ReplaceAttr: func(_ []string, a slog.Attr) slog.Attr {
+	if a.Key == slog.TimeKey {
+		return slog.Attr{}
+	}
+	return a
+}}
