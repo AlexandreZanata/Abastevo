@@ -361,3 +361,87 @@ the pinned Rust preparer CLIs (untouched package; CI builds them)
 (`f4-logs/coord-union-942af96b.jsonl`). The OFFL evidence's proposed shared
 text is applied (10-offline-sync §10.2, backend README grants, BR-IDN-029 and
 BR-ORG-031 references, ep04 states).
+
+### EMP-TRIP-002 (F2/C1 prerequisite) — trip persistence and signed intake: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip002-trip-persistence.md), commits `f12558a2` (task) and
+`ad60b1c8` (wiring into FLEET-007 availability, after a normal merge of the
+F4 head). Migration 000220: forced-RLS trips, insert-only completions (the
+IN_PROGRESS → COMPLETED move is the only update a trip row receives), one
+active trip per asset enforced by a unique index, held starts/finishes in the
+OFFL-008 review mechanism (`org_sync_review_source_valid` gains two trip
+branches and keeps the meter one), asset/unit/cost-centre usage sources
+redefined from their latest bodies. Signed `trip.start`/`trip.finish` with the
+reading recorded in the same transaction; a later admissible start is held
+`ASSET_BUSY`/`ASSET_UNAVAILABLE`/`PERMISSION_CHANGED`, a second finish
+`TRIP_ALREADY_CLOSED`; finish of an unknown trip `RETRY`/`DEPENDENCY_PENDING`,
+finish before start `MALFORMED`, another member's finish `FORBIDDEN`;
+`TripAuthority` on the shared history classifier (`trip.trip.start`); a stored
+trip is `DRAFT` with no review entry (EDR-202..206). Trips replace FLEET-003's
+`NoOpenWork` and FLEET-007's `NoActiveUse`; the start intake calls
+`StartDecisionDBTX`. The agent drafted handlers before the integration tests
+(recorded in the evidence); RED was run with the frozen tests and migration
+against stubbed handler bodies: 9/11 top-level failing → GREEN 13/21 under
+race on PostGIS, including concurrent starts in both orders with two devices
+and the loser observed waiting on the lock in `pg_stat_activity`. Retained:
+resolving and listing held trip items (TRIP-007), finish with changed rights
+(stores nothing, RETRY), submission (TRIP-004), Android producer (TRIP-005),
+panel reads (TRIP-006), maintenance holds.
+
+### EMP-FLEET-011 — implement attachments: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-fleet011-implement-attachments.md), commit `c76007af`.
+Migration 000222: forced-RLS attachment periods with composite FKs to both
+assets and a gist exclusion per implement, row guard (IMPLEMENT onto
+VEHICLE/MACHINE, ACTIVE/INACTIVE, no retroactive start, detach-only updates, no
+deletes), command receipts; attachments count as operations of both assets.
+Attach/detach under fresh `fleet.asset.manage` on both assets (EDR-211, UC-FLEET-10
+names it), list under `fleet.asset.read`; ports `AttachedImplementsDBTX` /
+`PoweredAssetDBTX`; availability makes an attached implement IN_USE through its
+powered asset's trips; pure `MainAssetAllowed` (EDR-210..212). RED domain 3,
+application 3, router 3, contract, PostGIS 5/5 twice → GREEN 5 PostGIS tests
+(race both orders, guards/RLS, populated 217 → 222 upgrade with recovery, HTTP
+33 assertions); union 39 packages 1107/7403. Retained (in progress in the
+wiring commit of `f4-trip003`): `MainAssetAllowed` at trip start and AC2/AC3
+with real trips.
+
+### EMP-OFFL-006 (F2/C1 prerequisite) — reference data feed: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-offl006-reference-feed.md), commit `f3485407`. Signed device
+route `POST /v1/orgs/{org_id}/sync/reference` (boundary
+`SIGNED_REFERENCE_FEED`, same proof model as the OFFL-008 review results,
+EDR-217) returning, for the selected organization only, the member's currently
+assigned assets covered by current `fleet.asset.read` as minimised `asset`
+entities (identity, revision, kind, usage basis, state, name, fleet number,
+plate, accepted products, in-service meters with their open segment, the
+covering assignment's kind and end; no serial, unit, cost centre, value, other
+drivers, readings or reservations — EDR-216, BR-PRIV-003). Migration 000224:
+per-membership append-only change log of digests built on each pull, so
+revisions only grow and tombstones reach every older cursor (EDR-218); HMAC
+cursors bound to organization, membership, enrollment, epoch and revision; a
+foreign or tampered cursor is 404, an unknown epoch or a future revision
+`RESET`, a lost grant `RESET FORBIDDEN` with no entities; `confirmed_at` is the
+database clock. RED pure 3/3, PostGIS 5/5 → GREEN; 12 concurrent pulls produce
+one revision; populated 219 → 224 upgrade with recovery; union 19 packages
+906/6030. Retained: Kotlin client and shared wire vectors (FLEET-013),
+checklist templates and availability as entity types, paging beyond 200,
+read budget, log retention, production grants.
+
+### Merged-tree verification — `6a843325` (adds TRIP-002, FLEET-011, OFFL-006)
+
+Merge fixes made by the coordinator: 000222 redefined `org_asset_current_usage`
+from the 000217 body and would have dropped TRIP-002's two allow-list lines and
+count terms (000220 runs first) — 000222 now carries the 000220 body plus the
+attachment lines; the normal route count and the auditor walk were changed to
+121 by both branches and auto-merged, but the union is 124 normal routes and
+124 / 29 positive / 95 FORBIDDEN; the `orgtest` grant helper and a duplicated
+`jobs` import in `enterprisesuite/sync.go` were merged structurally; the
+FLEET-011 HTTP assertion that availability lacks a trip source is obsolete
+once TRIP-002 supplies trips and now expects only `MAINTENANCE_HOLD` missing
+(no other expectation changed). On `6a843325`: build, vet (both tags),
+toolchain gofmt, `sqlc diff`, whole-backend staticcheck clean; untagged
+`go test ./...` 217 packages ok; race/integration union with PostGIS and the
+disposable MinIO over 20 package roots: 53 packages, 52 pass, 1336 top-level /
+10152 named, 25.7 min (`organization/adapters` 1393 s); the only failures are
+the 5 known Rust-preparer-gated `cmd/worker` tests
+(`f4-logs/coord-union-6a843325.jsonl`).
