@@ -4605,3 +4605,161 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   unavailable forms, forced RLS without an organization setting,
   insert-only history and a populated 000212 → 000215 upgrade with injected
   failure, recovery, no-op replay and previous-image compatibility.
+
+## EMP-TRIP-001 — Trip domain core: operational states and the driver-initiated trip (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip001-trip-domain.md).
+
+- **B-BR-EMP-268 — Closed operational vocabulary and the C1 lifecycle.**
+  Trip operational states are exactly PLANNED, ASSIGNED, ACCEPTED,
+  IN_PROGRESS, PAUSED, COMPLETED and CANCELLED (08-state-model §3);
+  COMPLETED and CANCELLED are terminal. Operational commands are exactly
+  START, FINISH, PAUSE, RESUME and CANCEL. A C1 driver-initiated trip is
+  created by START directly in IN_PROGRESS (it never passes through the
+  mission or manager-planned states) and FINISH moves IN_PROGRESS to
+  COMPLETED. The transition table answers, first failure first: an unknown
+  state or command token is `INVALID`; any command on a terminal state is
+  `INVALID_TRANSITION` (a new attempt is a new trip, 08-state-model §4.3);
+  PAUSE, RESUME and CANCEL, and any command on PLANNED, ASSIGNED, ACCEPTED or
+  PAUSED, are `UNSUPPORTED_COMMAND` until their owners (EMP-TRIP-011 for
+  pause, resume and cancellation; EMP-TRIP-008/009/021 for missions and
+  planned trips) define them; START on an existing trip is
+  `INVALID_TRANSITION`. Approval words (APPROVED, APPROVE, SUBMIT) are not
+  operational tokens.
+- **B-BR-EMP-269 — A start needs an eligible context.** START takes the
+  scoped trip identity and the author membership (absent or malformed
+  `INVALID`, another organization `SCOPE`) and the eligible context: the
+  asset, the driver's employee record, the departure meter evidence and the
+  validated time-kernel declaration (instant, entry zone, device offset).
+  Departure evidence is exactly one of a reading of the trip's asset with
+  its exact typed meter value (the METER-001 reading reference and value of
+  that meter's kind, within its modulus) or a nonblank, control-free missing
+  reason of at most 280 characters (the METER-001 profile). Present parts
+  are checked in the order asset, driver, departure evidence, declaration:
+  another organization, or a reading of another asset, is `SCOPE`; a
+  malformed declaration is `INVALID`. Absent parts are then reported
+  together as `INCOMPLETE` with the ordered list ASSET, DRIVER,
+  DEPARTURE_EVIDENCE, DECLARATION. Membership, permission, assignment, asset
+  availability and the one-active-trip rule are not decided by this pure
+  value; their owners check them at receipt or from cached grants.
+- **B-BR-EMP-270 — A trip belongs to the day it started.** The start
+  attributes the reporting day of its instant with the accepted
+  `orgtime.AttributeReportingDay` (operating-unit zone when supplied,
+  otherwise the organization zone; an invalid unit zone never falls back;
+  the device entry zone never decides) and keeps day, zone and source. An
+  unusable zone is `INVALID`. No server receipt is required or invented, so a
+  trip starts and finishes offline.
+- **B-BR-EMP-271 — Transitions preserve the trip.** FINISH takes only its
+  actor, its declaration and its final evidence. It cannot change the trip
+  identity, organization, asset, driver, start event or start reporting
+  attribution; a refused command returns no trip and leaves the input value
+  unchanged.
+- **B-BR-EMP-272 — Operational completion.** FINISH on a trip of another
+  organization is `SCOPE`. Its actor is validated like the author, then the
+  final evidence (a reading of another organization or asset is `SCOPE`; a
+  reading identity equal to the departure reading is `INVALID`) and the
+  declaration (`INVALID` when malformed); absent parts are `INCOMPLETE` with
+  FINAL_EVIDENCE, DECLARATION. In C1 only the member who started the trip
+  finishes it (`FORBIDDEN` otherwise; handover and supervisor closure are
+  EMP-TRIP-012/014). A command the lifecycle refuses is
+  `INVALID_TRANSITION`. A finish instant strictly before the start instant
+  is `FINISH_BEFORE_START`; an equal instant is accepted.
+- **B-BR-EMP-273 — Meter evidence is never invented (BR-TRIP-004).** A trip
+  reports usage `MEASURED` only when it is COMPLETED and both readings exist
+  on the same meter and segment with a final value not below the departure
+  value; the usage is then the exact difference in the meter's base unit
+  (184 320 000 m to 184 610 000 m gives 290 000 m). Otherwise it is
+  `NOT_MEASURED` with the reason NOT_FINISHED, READING_ABSENT,
+  DIFFERENT_SEGMENT or DECREASING, never zero, interpolated, GPS, planned or
+  provider distance. A decreasing or cross-segment final reading does not
+  refuse the finish: the field fact is kept and final-reading plausibility
+  stays with the server and review (10-offline-sync matrix).
+- **B-BR-EMP-274 — Operational state is not review or delivery.** The trip
+  holds no review or sync state and needs no receipt; completion never sets
+  or implies a review state. The trip review vocabulary is the closed input
+  DRAFT, SUBMITTED, IN_REVIEW, APPROVED, RETURNED, REJECTED, CANCELLED and
+  VOIDED; a standing of one operational and one review state is completed
+  only for COMPLETED and approved only for APPROVED, so a COMPLETED trip is
+  never approved by itself (BR-REV-001).
+- **B-BR-EMP-275 — Pure, redacted and shared.** The domain lives in Go
+  `trip/domain` and its Kotlin mirror `com.anpfuel.domain.enterprise.trip`,
+  both executing the one synthetic `trip/trip-v1.psv` oracle. Identities,
+  readings, reasons and inputs print as redacted values in fmt, slog, JSON
+  and `toString`. No persistence, intake, route, OpenAPI, app or panel
+  screen, job, producer or dependency is added.
+- **BUC-EMP-136 — Start a driver-initiated trip offline.** The driver's
+  device supplies the trip identity, its membership, the asset, the driver
+  record, the departure reading 184 320 000 m (or a stated absence) and the
+  start declaration; the trip is IN_PROGRESS with its start reporting day and
+  no usage yet. Missing parts are named together.
+- **BUC-EMP-137 — Finish it operationally without approving it.** The same
+  member finishes with the final reading 184 610 000 m or a stated absence;
+  the trip is COMPLETED with 290 000 m of meter evidence (or NOT_MEASURED
+  with its reason), keeps its asset, driver and start day, and its standing
+  with review DRAFT, SUBMITTED or RETURNED is not approved.
+- **BUC-EMP-138 — Prove the lifecycle and its denials in both languages.**
+  Go and Kotlin load the same oracle, assert its hash, counts, unique IDs and
+  the complete state and command table, and cover start without an eligible
+  context, invalid and terminal transitions, unsupported pause, resume and
+  cancel, completion mistaken for approval, foreign asset, driver, actor or
+  reading, and a finish before its start.
+
+## EMP-TRIP-017 — Midnight and time-zone crossing rules (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip017-time-crossing.md).
+
+- **B-BR-EMP-276 — One trip keeps its start reporting day.** A trip
+  belongs to the reporting day of its start (BR-TIME-004) for its whole
+  life. FINISH takes no zone and never re-attributes: the stored day, zone
+  and source are unchanged when the trip crosses local midnight, several
+  days, a device entry zone or a device offset. The end day is informational
+  only: the local day of the finish instant in the stored reporting zone, so
+  crossing midnight means the end day differs from the start day. Nothing
+  splits the trip identity or adds a second trip day. A finish whose local
+  day in the stored zone falls outside years 0001..9999 is `INVALID`,
+  checked after `FINISH_BEFORE_START`.
+- **B-BR-EMP-277 — Every event keeps its source time context.** Start and
+  finish each retain their own UTC instant with nanoseconds, device entry
+  zone and device offset exactly as declared, even when the offset
+  disagrees with the zone's rules. The crossing view reports
+  `entry_zone_changed` (the entry zones differ) and `offset_changed` (the
+  device offsets differ) separately: a daylight-saving change in one zone is
+  an offset change, a zone with the same offset is an entry-zone change.
+  Neither decides the reporting day.
+- **B-BR-EMP-278 — Elapsed time comes only from instants.** The elapsed
+  time of a finished trip is the exact difference of its finish and start
+  instants in seconds and non-negative nanoseconds, computed without a
+  saturating duration and never from local wall times, entry zones, offsets
+  or zone rules: daylight-saving gaps and folds and zone crossings neither
+  add nor remove time. An unfinished trip reports `NOT_FINISHED` with no
+  value. No working hours, wage or time-clock result is derived (EDR-028).
+- **B-BR-EMP-279 — A wall-clock change or reboot is a flagged gap
+  (BR-TIME-005).** Each event may carry a device run clock: a boot identity
+  of 1 to 64 characters from `A-Z a-z 0-9 . _ -` and a non-negative
+  monotonic count in milliseconds (validated after the declaration; a
+  malformed one is `INVALID`). With both witnesses on one boot, a
+  non-negative monotonic difference within the caller's explicit
+  non-negative tolerance in milliseconds (no domain default; negative is
+  `INVALID`) of the instant difference, the elapsed time is `CONFIRMED`; a
+  different boot is a `GAP` with `BOOT_CHANGED`; a negative monotonic
+  difference or one beyond the tolerance is a `GAP` with
+  `CLOCK_DISCONTINUITY`; a witness missing on either event gives `DECLARED`
+  (instants only, unconfirmed). A gap carries no elapsed value, so no
+  duration is invented; the facts are kept and the finish is never refused
+  for clock reasons.
+- **BUC-EMP-139 — Finish after midnight in another zone.** A trip started
+  at 23:30 in Cuiabá on 2026-11-14 and finished at 01:10 São Paulo time
+  keeps the day 2026-11-14 and its reporting zone, reports its end day,
+  the midnight crossing and the entry-zone and offset changes, and remains
+  one trip with one identity.
+- **BUC-EMP-140 — Measure elapsed time honestly.** Daylight-saving
+  spring-forward and fall-back and zone crossings give the instant
+  difference whatever the local clock faces show; a device clock moved
+  against its monotonic clock, or a reboot, gives a gap for review instead
+  of a duration.
+- **BUC-EMP-141 — Prove the time crossing in both languages.** Go and
+  Kotlin load the same `trip/trip-time-v1.psv` oracle, assert its hash,
+  counts and error codes, and cover the full 0001..9999 instant range, the
+  largest monotonic counts and tolerances without overflow, and the named
+  negatives: a local clock change inventing duration, midnight splitting
+  one trip and a lost reporting basis.

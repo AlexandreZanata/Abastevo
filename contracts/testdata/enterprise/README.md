@@ -303,3 +303,28 @@ a fiscal authorization. See [fiscal/README.md](fiscal/README.md).
 ```sh
 (cd backend && go test -race ./internal/modules/document/domain/fiscal -count=1)
 ```
+
+## Trip vectors v1
+
+EMP-TRIP-001 executes all 207 rows of [trip/trip-v1.psv](trip/trip-v1.psv) in
+Go and Kotlin (ENUM 49, TRANSITION 40, STANDING 14, START 57, FINISH 47). The
+oracle pins the closed operational, command and review vocabularies, the C1
+transition table (pause, resume and cancel refused as unsupported), the
+eligible start context with its ordered missing list, the start reporting
+day, the operational completion by the starting member and meter usage that
+is never invented. See [trip/README.md](trip/README.md). No persistence,
+intake, authority, review decision or runtime acceptance is claimed.
+
+```sh
+(cd backend && go test -race ./internal/modules/trip/domain -count=1)
+```
+
+## Trip time-crossing vectors v1
+
+EMP-TRIP-017 executes all 66 rows of
+[trip/trip-time-v1.psv](trip/trip-time-v1.psv) in Go and Kotlin (CLOCK 12,
+CROSSING 17, ELAPSED 37). The oracle pins the device run-clock profile, the
+start reporting day kept across midnight and zones with an informational end
+day, separate entry-zone and offset changes, and elapsed time derived only
+from instants, confirmed by a monotonic witness or flagged as a gap. No
+paid-hours, time-clock, persistence or runtime acceptance is claimed.
