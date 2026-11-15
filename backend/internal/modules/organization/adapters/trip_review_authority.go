@@ -38,18 +38,20 @@ func (g *TripReviewAuthority) CheckTripReviewTx(ctx context.Context, tx pgx.Tx, 
 	if write {
 		policy = tripapp.ReviewPolicy(tripapp.ReviewDecideAction)
 	}
-	return g.check(ctx, tx, scope, actor, member, target, policy, write)
+	return g.check(ctx, tx, scope, actor, member, target, policy, write, TripStructure)
 }
 
 // CheckTripAmendTx proves meter.reading.correct over the stored trip with the
 // same company proof, ACTIVE organization and structure, and returns the
 // amendment's author (EMP-TRIP-015, EDR-236).
 func (g *TripReviewAuthority) CheckTripAmendTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string) (tripapp.Reviewer, error) {
-	return g.check(ctx, tx, scope, actor, member, target, tripapp.AmendPolicy(), true)
+	return g.check(ctx, tx, scope, actor, member, target, tripapp.AmendPolicy(), true, TripStructure)
 }
 
-func (g *TripReviewAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string, policy access.Policy, write bool) (tripapp.Reviewer, error) {
-	if g == nil || meterMissing(tx) || meterMissing(g.Memberships) || meterMissing(g.Roles) || meterMissing(g.Capabilities) || g.Structure != nil && g.Structure.Kind != TripStructure {
+// check proves the policy with the structure kind the caller protects
+// (TripStructure, or HeldTripStructure for EMP-TRIP-007).
+func (g *TripReviewAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string, policy access.Policy, write bool, kind StructureKind) (tripapp.Reviewer, error) {
+	if g == nil || meterMissing(tx) || meterMissing(g.Memberships) || meterMissing(g.Roles) || meterMissing(g.Capabilities) || g.Structure != nil && g.Structure.Kind != kind {
 		return tripapp.Reviewer{}, tripapp.ErrUnavailable
 	}
 	if actor.Validate() != nil || legalIdentity(scope, member) != nil || legalIdentity(scope, target) != nil {

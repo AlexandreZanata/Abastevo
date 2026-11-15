@@ -1467,6 +1467,26 @@ ON org_trips, org_memberships, org_employee_identities, org_meter_readings,
 org_sync_review_items` and ownership of the replaced functions and of
 `org_trip_review_entries`. Nothing here provisions live grants.
 
+### Trip conflict resolution (EMP-TRIP-007)
+
+Migration 237 adds no table: it widens the `org_sync_review_resolutions`
+outcome check and replaces the resolution source and publication guards, the
+observation guard, the effect source and the trip source and publication so a
+held trip fact is resolved once and an accepted held start becomes its trip.
+Production runtime grants for the company conflict routes (not provisioned
+here): `SELECT, INSERT ON org_sync_review_resolutions, org_sync_effects,
+org_trips, org_meter_readings`; `SELECT ON org_sync_review_items,
+org_trip_held_starts, org_trip_held_finishes, org_trip_held_events,
+org_trip_held_submissions, org_trip_finishes, org_team_links,
+org_asset_unit_periods, org_asset_cost_centre_periods, org_units, org_meters,
+org_meter_segments, org_device_enrollments, company_web_sessions` plus the
+EMP-TRIP-004 review grants, the OFFL-008 item row-lock privilege
+(`UPDATE(id) ON org_sync_review_items`) and the existing asset row-lock
+privilege. The migrator needs ownership of `org_sync_review_resolutions`
+and of the six replaced functions. `/v1/orgs/{org_id}/sync/reviews/trips/{list,
+{review_item_id}/read, {review_item_id}/resolve}` use `trip.trip.review`
+(fresh for the resolution). Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

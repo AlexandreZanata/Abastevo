@@ -154,7 +154,7 @@ physical devices (OWED), visual/TalkBack review.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-007 — Asset-overlap conflict resolution
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Resolve overlapping asset claims through the review queue.
 - **Rules and use cases:** REQ-07.5, BR-OFFL-006, BR-REV-003, BR-REV-007, VAL-07
 - **Depends on:** EMP-TRIP-002, EMP-OFFL-008
@@ -168,6 +168,18 @@ physical devices (OWED), visual/TalkBack review.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 conflict resolution](../evidence/f4-trip007-conflict-resolution.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Held trip starts, finishes,
+events and submissions are listed, read and resolved once under
+`trip.trip.review` (`/v1/orgs/{org_id}/sync/reviews/trips/…`, structure
+through the held fact): refuse with a reason, or accept a held start as the
+trip it declared (in progress, its reading at the original receipt, its
+pending finish then accepted) only when no trip of the asset is in progress
+or finished after its declared start; migration 000237 re-proves every
+acceptance; the held evidence stays and the author's review-results read
+answers trip items. Accept with another asset and the Android presentation
+of trip resolutions remain retained.
 
 ### EMP-TRIP-008 — Missions: create, assign, accept and decline
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE

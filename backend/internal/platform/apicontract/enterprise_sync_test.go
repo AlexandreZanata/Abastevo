@@ -24,6 +24,10 @@ func TestEnterpriseSyncComponents(t *testing.T) {
 		"/v1/orgs/{org_id}/sync/reviews/meter-readings/list":                     false,
 		"/v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/read":    false,
 		"/v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve": false,
+		// EMP-TRIP-007: the trip conflict queue of the same mechanism.
+		"/v1/orgs/{org_id}/sync/reviews/trips/list":                     false,
+		"/v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/read":    false,
+		"/v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/resolve": false,
 	}
 	for path := range doc.Paths.Map() {
 		if strings.Contains(path, "/sync") && strings.Contains(path, "/orgs/") {
