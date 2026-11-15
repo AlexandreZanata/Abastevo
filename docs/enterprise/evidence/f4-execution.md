@@ -967,3 +967,31 @@ coordinator at 18:33Z as `7ab0b477` under EDR-272: both checks
 `gh pr merge --merge --match-head-commit db43e949…`. The F4 branch already
 contained that head; `origin/main` was merged for ancestry with no file
 change.
+
+### EMP-GPS-001 — tracking session domain: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps001-tracking-session-domain.md), commit `dbf02b88`, under
+the owner decision EDR-271. Pure Go `tracking/domain` and Kotlin
+`enterprise.tracking` over the 359-case `tracking/session-v1.psv` oracle: a
+session opens only for an IN_PROGRESS organization trip, by that trip's driver,
+from the visible trip screen, while the tracking policy is OPTIONAL or
+EXPECTED (personal origin, implicit/boot/worker/push/geofence/server origins,
+another member, policy OFF — which also covers an inactive capability or an
+employee notice not in force — a trip not in progress, a second session for
+the trip and another organization are refused with closed codes); start and
+resume carry the device permission and notification visibility explicitly
+(NONE or a hidden notification keeps the state and records the visible cause);
+pause, typed interruptions, reduced precision and terminal END; FOLLOW applies
+the trip's state and never refuses the trip (the trip packages do not import
+tracking, checked structurally in both languages); a fix is collectable only
+while the bound trip is IN_PROGRESS, driven by the owner and RECORDING; one
+quality classification function (EDR-273..276). No coordinates are held. RED
+Go 5/7 and 359/359 vectors, Kotlin 363/364 → GREEN Go 7/359 under `-race`
+(100%), Kotlin enterprise 3905 tests. Retained: Android service and notice
+(GPS-002/015), sampling/buffer and per-fix filter (GPS-003), persistence and
+intake (GPS-004), processing/distance (GPS-005/006), session ownership after
+handover or supervisor closure (TRIP-012/014), the application policy layer,
+real-device acceptance (OWED).
+
+Integration: merged into the F4 branch with only shared docs (EDR table,
+contract, manifest) touched; build, vet and the tracking race tests green.
