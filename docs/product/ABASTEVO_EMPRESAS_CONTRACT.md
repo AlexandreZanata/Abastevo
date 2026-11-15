@@ -6485,3 +6485,109 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   stale revisions and racing commands in both orders; a reading or trip moved
   to another asset; the database guards and a populated upgrade with injected
   failure and recovery.
+
+## EMP-GPS-001 — Tracking session domain: trip-bound lifecycle, permission and quality states (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps001-tracking-session-domain.md).
+
+- **B-BR-EMP-421 — A session belongs to one organization trip of its
+  driver.** A tracking session is opened only for an organization trip of the
+  scope that is `IN_PROGRESS`, by the member who runs that trip, from the
+  visible trip screen (origin `TRIP_SCREEN`), while the organization's
+  tracking policy is `OPTIONAL` or `EXPECTED`. It opens `NOT_STARTED` with
+  cause `NOT_STARTED` and binds the organization, the session identity, the
+  trip and the owning membership for its whole life; nothing is collected.
+  Opening fails first on scope (`SCOPE`), then on the session identity, the
+  trip facts (trip, driver, operational state), the author, the origin,
+  policy and instant tokens (absent or malformed `INVALID`, another
+  organization `SCOPE`), then on the supplied existing session (another
+  organization or another trip `SCOPE`), then `PERSONAL_TRIP` for a personal
+  origin, `IMPLICIT_START` for any origin other than the trip screen,
+  `FORBIDDEN` when the author is not the trip's driver, `TRACKING_OFF` for
+  policy `OFF` (an inactive capability or an organization whose employee
+  notice is not in force resolves to `OFF`, EDR-271), `TRIP_STATE` for a trip
+  that is not `IN_PROGRESS`, and `SESSION_EXISTS` when the trip already has a
+  session in any state, ended included.
+- **B-BR-EMP-422 — Recording starts and resumes only by the driver's visible
+  action, with the permission stated.** `START` (from `NOT_STARTED`) and
+  `RESUME` (from `SUSPENDED` or `INTERRUPTED`) are the owner's own actions on
+  the visible trip screen while the trip is `IN_PROGRESS` and still driven by
+  the owner. Each carries the device's location permission (`PRECISE`,
+  `APPROXIMATE` or `NONE`) and whether the tracking notification is visible;
+  an absent permission is `INVALID`, never assumed. `PRECISE` or
+  `APPROXIMATE` with a visible notification gives `RECORDING` with that
+  precision and opens a recording period. `NONE` keeps the state and records
+  the attempt with cause `PERMISSION_DENIED`; a hidden notification keeps the
+  state and records `NOTIFICATION_BLOCKED`; the refusal is the session's
+  visible cause, never hidden and never an error that drops the attempt.
+  Notification, boot, worker, push, geofence and server origins are
+  `IMPLICIT_START`; a personal origin is `PERSONAL_TRIP`; another member is
+  `FORBIDDEN`; any other state is `INVALID_TRANSITION`; a trip that is not
+  `IN_PROGRESS` is `TRIP_STATE`.
+- **B-BR-EMP-423 — Pause suspends; interruptions and reduced precision are
+  typed causes.** `SUSPEND` moves `RECORDING` to `SUSPENDED` with
+  `TRIP_PAUSED` (the trip is `PAUSED`) or `LONG_STATIONARY` (the trip is
+  `IN_PROGRESS`). `INTERRUPT` moves `RECORDING` to `INTERRUPTED` while the
+  trip is `IN_PROGRESS` with exactly one of `PERMISSION_REVOKED`,
+  `NOTIFICATION_BLOCKED`, `PROCESS_STOPPED`, `DEVICE_RESTARTED`,
+  `STOPPED_BY_DRIVER` (only the owner) or `OWNER_CHANGED`. `REDUCE` keeps
+  `RECORDING` with cause `PRECISION_REDUCED`: it closes the precise period and
+  opens an approximate one at the same instant; a raise of precision takes
+  effect only at the driver's next start or resume. A cause that does not
+  belong to its command is `INVALID`. No command resumes recording by itself:
+  only `RESUME` leaves `SUSPENDED` or `INTERRUPTED`.
+- **B-BR-EMP-424 — End ends, for good.** `END` moves any open state to
+  `ENDED` with `TRIP_COMPLETED` (the trip is `COMPLETED`), `TRIP_CANCELLED`
+  (the trip is `CANCELLED`), `MEMBERSHIP_ENDED` or `DEVICE_REVOKED` (any
+  started trip state). `ENDED` is terminal: every command on it is
+  `INVALID_TRANSITION`, a session never restarts and its trip never receives
+  a second session.
+- **B-BR-EMP-425 — The trip never depends on the session.** No trip
+  transition reads tracking. `FOLLOW` maps the trip's current state onto the
+  session and never refuses with `INVALID_TRANSITION`: `PAUSED` suspends a
+  `RECORDING` session with `TRIP_PAUSED`; `COMPLETED` and `CANCELLED` end any
+  open session; `IN_PROGRESS` changes nothing, because recording returns only
+  through `RESUME`; a trip state that a started trip cannot have is
+  `TRIP_STATE`. A fix may be collected only while the bound trip is
+  `IN_PROGRESS` and the session is `RECORDING`, and it carries the precision
+  of the current period (`APPROXIMATE` fixes are the coarse ones); a session
+  that has not followed an ended trip collects nothing.
+- **B-BR-EMP-426 — Every transition is recorded and values stay private.**
+  Opening, every transition and every refused attempt append one history
+  entry with the resulting state, the cause, the actor kind (`DRIVER`,
+  `DEVICE`, `TRIP`, `SERVER`, fixed by the command and cause), the permission
+  observed at a start, resume or reduction, and the instant. An instant
+  before the last entry is `OUT_OF_ORDER` (an equal one is accepted); an
+  unset instant is `INVALID`. Recording periods are derived from the history
+  as half-open intervals with their precision. Commands return a new value
+  and never change their input; another trip of the organization is `SCOPE`.
+  Sessions, inputs, history, periods and references print redacted in fmt,
+  slog and JSON; the domain holds no coordinates.
+- **B-BR-EMP-427 — Track quality has one classification.** Coverage is
+  `floor((expected − gap) × 1000 / expected)` permille over whole seconds of
+  the trip's `IN_PROGRESS` time. Quality is `INSUFFICIENT` when expected time
+  is zero (coverage unknown), with fewer than two accepted fixes, or below 500;
+  otherwise `APPROXIMATE` when any recording period was approximate or
+  coverage is below 900; otherwise `PRECISE`. Negative values, a gap longer
+  than the expected time or an expected time above 10¹² seconds are
+  `INVALID`. The worked example (20 400 s expected, 1 020 s of gaps,
+  precise) is 950 permille and `PRECISE`.
+- **BUC-EMP-214 — Track a trip, pause, resume and finish.** The driver starts
+  a trip with tracking on the trip screen: the session opens, starts
+  `RECORDING` with precise permission, is `SUSPENDED` when the trip pauses,
+  records again only after the driver resumes on the trip screen, and is
+  `ENDED` when the trip completes; its history names every step and its two
+  recording periods. With approximate permission only, the same trip records
+  coarse fixes and its quality can never be better than `APPROXIMATE`.
+- **BUC-EMP-215 — Missing permission and interruptions stay visible.** A
+  driver who denies location still runs the trip; the session stays
+  `NOT_STARTED` with `PERMISSION_DENIED`. A process death, a reboot or a
+  revoked permission makes a recording session `INTERRUPTED` with its cause,
+  nothing resumes it except the driver's `RESUME` on the trip screen, and a
+  boot, worker, push or notification origin is refused.
+- **BUC-EMP-216 — Prove the session domain in Go and Kotlin.** One shared
+  oracle checks every vocabulary, opening, command, trip follow, collection
+  and quality rule, with the negatives: a personal trip, an implicit start, a
+  duplicate session, another member, another trip or organization, a hidden
+  or absent permission, a session continuing after its trip ended, a
+  terminal session and an out-of-order instant.
