@@ -107,7 +107,13 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit}, o.IntakeHandlers...)
+	// EMP-TRIP-008 (EDR-229): the assignee's mission response, decided on
+	// current facts at receipt; no held fact and no late holder.
+	missionResponse, err := trippg.NewMissionResponseHandler((*orgpg.TripAuthority)(meterAuthority), &trippg.MissionStore{})
+	if err != nil {
+		return err
+	}
+	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse}, o.IntakeHandlers...)
 	registry, err := app.NewRegistry(handlers...)
 	if err != nil {
 		return err
@@ -159,6 +165,12 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[submitKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	// EMP-TRIP-008 (EDR-229): no mission consumer exists; nothing is held.
+	missionKey := app.OperationKey{Type: tripapp.MissionRespondOperationType, Schema: 1}
+	if _, exists := noAsync[missionKey]; exists {
+		return app.ErrUnavailable
+	}
+	noAsync[missionKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
 	catalog, _, err := IntakeEvents(o.Pool, o.IntakeConsumers)
 	if err != nil {
 		return err

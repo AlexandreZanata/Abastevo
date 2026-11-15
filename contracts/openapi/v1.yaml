@@ -14891,6 +14891,11 @@ paths:
         is DRAFT at the named expected_revision, with its ACK (entity trip_review, entity revision = review revision); a
         trip not stored or still in progress is RETRY/DEPENDENCY_PENDING, another member FORBIDDEN, and a case no longer
         a draft at that revision stores nothing and stays RETRY/UNAVAILABLE until EMP-TRIP-015.
+        The trip.mission.respond owner (EMP-TRIP-008) records the current assignee's ACCEPT or DECLINE (with a reason)
+        on the mission at the named expected_revision with its ACK (entity mission, entity revision = the new mission
+        revision), decided on current facts at receipt only. Another member or an ended assignment is FORBIDDEN, a
+        mission not stored here NOT_FOUND, a stale or answered mission CONFLICT, each a transport denial storing
+        nothing; there is no held form and no late holder. A response never starts a trip.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -14965,6 +14970,17 @@ paths:
           entity_type: trip_review
           payload:
             $ref: '#/components/schemas/EnterpriseTripSubmitPayload'
+          terminal_results:
+          - ACCEPTED
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+        trip.mission.respond:
+          schema: 1
+          entity_type: mission
+          payload:
+            $ref: '#/components/schemas/EnterpriseTripMissionRespondPayload'
           terminal_results:
           - ACCEPTED
           - REJECTED
@@ -19142,6 +19158,387 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/create:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionCreate
+      summary: Create a mission in DRAFT
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        capability and trip.mission.manage on the whole organization (an ORG grant; structural grants cover no
+        organization-level action, EDR-161). Creates one DRAFT mission at revision 1 for an ACTIVE operating unit, with a
+        title (1..280 scalars, no control character), a planned window [starts_at, ends_at) with whole-microsecond bounds
+        and ends_at after starts_at, and optionally an ACTIVE main asset (never an IMPLEMENT). An unknown or another
+        organization's unit or asset is NOT_FOUND; an archived unit, an inactive, draft or implement asset or invalid
+        content is VALIDATION_FAILED. Same operation and digest returns the first result with replayed=true and no
+        second audit event; another digest is OPERATION_ID_REUSED. Planning never starts a trip (EMP-TRIP-008,
+        B-BR-EMP-353/354).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008801
+              unit_id: 7b0e2a54-0000-4000-8000-000000008101
+              asset_id: 7b0e2a54-0000-4000-8000-000000008201
+              title: Entrega no cliente Norte
+              starts_at: '2026-11-20T11:00:00Z'
+              ends_at: '2026-11-20T15:00:00Z'
+      responses:
+        '201':
+          description: Private audited creation or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAck'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionList
+      summary: List the organization missions
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.mission.manage permission on the whole organization (an
+        ORG grant; unit-scoped planners open each mission through its read). Returns the missions in identifier order
+        with their unit, optional asset, title, window, state, revision, current assignee employee and answer; keyset
+        cursor bound to the caller, the route and the limit. Board views and filters are EMP-TRIP-022 (EMP-TRIP-008,
+        B-BR-EMP-357).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current mission page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/mine/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionMineList
+      summary: List the missions currently assigned to the member
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.start permission on the requesting membership
+        itself (the member's own record, like the FLEET-006 own assignment list). It returns the missions whose current assignee is
+        the membership, in identifier order, with the same items as the organization list. The member answers them
+        offline through the signed trip.mission.respond operation; the app inbox is EMP-TRIP-021 (EMP-TRIP-008,
+        B-BR-EMP-357).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.start
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current page of the member's own missions.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/read:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionRead
+      summary: Read one mission
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.mission.manage permission covering the mission (ORG, or
+        UNIT/ASSET through the mission's stored unit and asset). Returns the mission with its current assignee employee
+        and answer; the transition history stays stored. An unknown or another organization's mission is NOT_FOUND
+        (EMP-TRIP-008, B-BR-EMP-357).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current mission.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/assign:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionAssign
+      summary: Assign or reassign a mission
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        capability and trip.mission.manage covering the mission (same structure as the read). Names an ACTIVE, unmerged
+        employee whose live membership is ACTIVE and currently holds trip.trip.start covering the mission as its own
+        record (else VALIDATION_FAILED; an unknown employee NOT_FOUND). From DRAFT, PLANNED or DECLINED any eligible member
+        may be named; from ASSIGNED or ACCEPTED the member must change (a reassignment; the previous answer stays in the
+        history). A stale revision, a terminal or in-progress mission or the same member again is CONFLICT. When the
+        mission names an asset, the EMP-FLEET-007 start decision of the new assignee at the planned start is returned as
+        asset_warning (ASSET_BUSY or ASSET_UNAVAILABLE with the derived availability); it never refuses, reserves or
+        starts anything (EMP-TRIP-008, B-BR-EMP-355).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionAssignRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008802
+              revision: 1
+              assignee_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+      responses:
+        '200':
+          description: Private audited assignment or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAck'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/cancel:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionCancel
+      summary: Cancel a mission with a reason
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        capability and trip.mission.manage covering the mission. Cancels a DRAFT, PLANNED, ASSIGNED, ACCEPTED or DECLINED
+        mission at the named revision with a reason (1..280 scalars, no control character), keeping the assignee and
+        answer; CANCELLED is terminal. A stale revision or a terminal or in-progress mission is CONFLICT; a missing reason
+        VALIDATION_FAILED (EMP-TRIP-008, B-BR-EMP-353).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionCancelRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008803
+              revision: 2
+              reason: Cliente cancelou a entrega
+      responses:
+        '200':
+          description: Private audited cancellation or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAck'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/finance/periods/list:
     post:
       tags:
@@ -21533,6 +21930,370 @@ components:
           actor_membership_id: 7b0e2a54-0000-4000-8000-000000008302
           recorded_at: '2026-11-15T11:05:00Z'
         data_mode: SYNTHETIC
+    EnterpriseMissionState:
+      type: string
+      enum:
+      - DRAFT
+      - PLANNED
+      - ASSIGNED
+      - ACCEPTED
+      - DECLINED
+      - IN_PROGRESS
+      - COMPLETED
+      - CANCELLED
+      description: The closed mission state catalog (08-state-model §3); IN_PROGRESS and COMPLETED are reached only by
+        the trip link of EMP-TRIP-021/023.
+    EnterpriseMissionCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        unit_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        title:
+          type: string
+          minLength: 1
+          maxLength: 1120
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+      required:
+      - schema_version
+      - operation_id
+      - unit_id
+      - title
+      - starts_at
+      - ends_at
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008801
+        unit_id: 7b0e2a54-0000-4000-8000-000000008101
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        title: Entrega no cliente Norte
+        starts_at: '2026-11-20T11:00:00Z'
+        ends_at: '2026-11-20T15:00:00Z'
+    EnterpriseMissionAssignRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        assignee_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - assignee_employee_id
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008802
+        revision: 1
+        assignee_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+    EnterpriseMissionCancelRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        reason:
+          type: string
+          maxLength: 1120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008803
+        revision: 2
+        reason: Cliente cancelou a entrega
+    EnterpriseMissionListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          minLength: 1
+      example:
+        limit: 20
+    EnterpriseMissionReadRequest:
+      description: Empty body; the mission is the path selector.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseMissionWarning:
+      type: object
+      additionalProperties: false
+      description: The EMP-FLEET-007 start decision of the new assignee at the planned start; a warning only.
+      properties:
+        code:
+          type: string
+          enum:
+          - ASSET_BUSY
+          - ASSET_UNAVAILABLE
+        availability:
+          type: string
+          enum:
+          - AVAILABLE
+          - RESERVED
+          - IN_USE
+          - IN_MAINTENANCE
+          - BLOCKED
+          - UNAVAILABLE
+      required:
+      - code
+      - availability
+    EnterpriseMissionAck:
+      type: object
+      additionalProperties: false
+      properties:
+        mission_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        state:
+          $ref: '#/components/schemas/EnterpriseMissionState'
+        assignee_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_warning:
+          $ref: '#/components/schemas/EnterpriseMissionWarning'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - mission_id
+      - revision
+      - state
+      - replayed
+      - data_mode
+      example:
+        mission_id: 7b0e2a54-0000-4000-8000-000000008901
+        revision: 2
+        state: ASSIGNED
+        assignee_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+        asset_warning:
+          code: ASSET_UNAVAILABLE
+          availability: AVAILABLE
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseMissionAnswer:
+      type: object
+      additionalProperties: false
+      properties:
+        response:
+          type: string
+          enum:
+          - ACCEPT
+          - DECLINE
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1120
+      required:
+      - response
+    EnterpriseMissionItem:
+      type: object
+      additionalProperties: false
+      properties:
+        mission_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        unit_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        title:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/EnterpriseMissionState'
+        revision:
+          type: integer
+          minimum: 1
+        assignee_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        answer:
+          $ref: '#/components/schemas/EnterpriseMissionAnswer'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+      required:
+      - mission_id
+      - unit_id
+      - title
+      - starts_at
+      - ends_at
+      - state
+      - revision
+      - created_at
+      - updated_at
+    EnterpriseMissionPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionItem'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - mission_id: 7b0e2a54-0000-4000-8000-000000008901
+          unit_id: 7b0e2a54-0000-4000-8000-000000008101
+          asset_id: 7b0e2a54-0000-4000-8000-000000008201
+          title: Entrega no cliente Norte
+          starts_at: '2026-11-20T11:00:00Z'
+          ends_at: '2026-11-20T15:00:00Z'
+          state: ACCEPTED
+          revision: 3
+          assignee_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+          answer:
+            response: ACCEPT
+          created_at: '2026-11-15T10:00:00.123456Z'
+          updated_at: '2026-11-15T10:30:00.123456Z'
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseMissionView:
+      type: object
+      additionalProperties: false
+      properties:
+        mission_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        unit_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        title:
+          type: string
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        state:
+          $ref: '#/components/schemas/EnterpriseMissionState'
+        revision:
+          type: integer
+          minimum: 1
+        assignee_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        answer:
+          $ref: '#/components/schemas/EnterpriseMissionAnswer'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - mission_id
+      - unit_id
+      - title
+      - starts_at
+      - ends_at
+      - state
+      - revision
+      - created_at
+      - updated_at
+      - data_mode
+      example:
+        mission_id: 7b0e2a54-0000-4000-8000-000000008901
+        unit_id: 7b0e2a54-0000-4000-8000-000000008101
+        title: Entrega no cliente Norte
+        starts_at: '2026-11-20T11:00:00Z'
+        ends_at: '2026-11-20T15:00:00Z'
+        state: DECLINED
+        revision: 3
+        assignee_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+        answer:
+          response: DECLINE
+          reason: Veiculo em manutencao
+        created_at: '2026-11-15T10:00:00.123456Z'
+        updated_at: '2026-11-15T10:30:00.123456Z'
+        data_mode: SYNTHETIC
+    EnterpriseTripMissionRespondPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        response:
+          type: string
+          enum:
+          - ACCEPT
+          - DECLINE
+        reason:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 1120
+          description: Null for ACCEPT; required for DECLINE (1..280 scalars, nonblank, no control character).
+      required:
+      - response
+      - reason
+      example:
+        response: DECLINE
+        reason: Veiculo em manutencao
+      description: Owner schema1 for trip.mission.respond (EMP-TRIP-008, EDR-229). Envelope entity.type=mission,
+        entity.id = the mission, expected_revision = the mission revision the member answers (required); depends_on,
+        soft_references and attachments are empty. Decided on current facts at receipt only. Only the current
+        assignee with current trip.trip.start covering the mission responds; another member or an ended assignment is a
+        whole-response FORBIDDEN, a mission not stored here NOT_FOUND, a stale revision or a mission no longer ASSIGNED
+        CONFLICT, all storing nothing; a malformed payload is REJECTED MALFORMED. ACCEPTED carries the new mission
+        revision. A response never starts a trip, reserves the asset or changes any review state.
     EnterpriseFuelingSubmitPayload:
       type: object
       additionalProperties: false

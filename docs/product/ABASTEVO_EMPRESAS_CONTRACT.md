@@ -5758,3 +5758,101 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   organization's trip, an uncovering structural grant, an AUDITOR, a race in
   both orders, forced RLS and the history guards, and a populated upgrade
   with injected failure and recovery.
+## EMP-TRIP-008 — Missions: create, assign, accept and decline (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip008-missions.md).
+
+- **B-BR-EMP-353 — Closed mission lifecycle.** A mission has exactly one
+  operational state from the 08-state-model catalog: `DRAFT`, `PLANNED`,
+  `ASSIGNED`, `ACCEPTED`, `DECLINED`, `IN_PROGRESS`, `COMPLETED`,
+  `CANCELLED`; `COMPLETED` and `CANCELLED` are terminal. Its commands are
+  exactly `PLAN`, `ASSIGN`, `ACCEPT`, `DECLINE`, `START`, `COMPLETE` and
+  `CANCEL`. A created mission is `DRAFT` at revision 1. The table answers,
+  first failure first: a terminal state `INVALID_TRANSITION`; `PLAN`
+  (EMP-TRIP-009), `START` and `COMPLETE` (the trip link of EMP-TRIP-021/023)
+  and every change of an `IN_PROGRESS` mission `UNSUPPORTED_COMMAND`;
+  `ACCEPT` and `DECLINE` only from `ASSIGNED` (else `INVALID_TRANSITION`);
+  `ASSIGN` from `DRAFT`, `PLANNED`, `ASSIGNED`, `ACCEPTED` and `DECLINED` to
+  `ASSIGNED`; `CANCEL` from the same five states to `CANCELLED`. Every command
+  on a stored mission names the revision it was decided on: a stale revision
+  is `CONFLICT` and changes nothing; an accepted transition increments the
+  revision by exactly one and appends exactly one transition record. Planning
+  or assignment never starts a trip, and no mission state is reached from a
+  trip in this task.
+- **B-BR-EMP-354 — Mission content.** A mission belongs to one organization
+  and names an operating unit (`ACTIVE` at creation), a title (nonblank, free
+  of control characters, at most 280 Unicode scalars), a planned window
+  `[starts_at, ends_at)` with whole-microsecond bounds and `ends_at` after
+  `starts_at`, and optionally an asset, which must be an `ACTIVE` main asset of
+  the organization (never an `IMPLEMENT`, EDR-219). A unit, asset
+  or employee of another organization is not found. Unit, asset, title and
+  window never change in this task (planning edits belong to EMP-TRIP-009,
+  vehicle change to EMP-TRIP-013).
+- **B-BR-EMP-355 — Assignment.** `ASSIGN` names an employee record of the
+  organization that is `ACTIVE`, not merged, and whose live membership is
+  `ACTIVE` and currently holds `trip.trip.start` covering the mission as the
+  member's own record (the same coverage the response needs); otherwise it is
+  a validation failure. The mission stores the employee and that membership as
+  its current assignee. From `ASSIGNED` or `ACCEPTED` the assignee must change
+  (a reassignment; the previous assignment and response stay in the
+  transition history); from `DRAFT`, `PLANNED` or `DECLINED` any eligible
+  member may be named, including the one who declined. When the mission names
+  an asset, the EMP-FLEET-007 start decision for the new assignee at the
+  planned start is returned once as a warning (`ASSET_BUSY` or
+  `ASSET_UNAVAILABLE` with the derived availability) and kept with the command
+  receipt; it never refuses the assignment, reserves, blocks or starts
+  anything.
+- **B-BR-EMP-356 — The assignee's response, decided at receipt.** Only the
+  member who is the mission's current assignee responds, with `ACCEPT`
+  (`ASSIGNED` → `ACCEPTED`, no reason) or `DECLINE` (`ASSIGNED` → `DECLINED`,
+  reason required, same text profile). The response travels offline as the
+  signed operation `trip.mission.respond` schema 1 (entity `mission`, id the
+  mission, expected revision the revision the member answered; payload exactly
+  `response` and `reason`) and is decided on the server only from current
+  facts at receipt: the current device, membership and organization, current
+  `trip.trip.start` covering the mission as the member's own (stored unit and
+  asset as its structure), the current assignee and the current revision. The
+  declared instant is evidence and never grants a response. Another member, or
+  a member whose assignment or coverage ended, is a whole-response `FORBIDDEN`;
+  a mission not stored in this organization is `NOT_FOUND`; a stale revision
+  or a mission no longer awaiting the response (already answered, reassigned,
+  cancelled) is `CONFLICT`; all three store nothing and change nothing. A
+  malformed payload is `REJECTED` `MALFORMED`. An accepted response is
+  `ACCEPTED` with the new mission revision. A response never starts a trip,
+  reserves or blocks the asset, changes its availability, creates a trip or a
+  review entry, or changes any review state (BR-REV-001).
+- **B-BR-EMP-357 — Authorization and scope.** Mission creation and the
+  organization mission list are organization-level actions under
+  `trip.mission.manage` (only `ORG` grants cover them, EDR-161); reading,
+  assigning and cancelling one mission need `trip.mission.manage` covering
+  the mission's stored unit and asset (`UNIT` and `ASSET` grants by equality).
+  Commands require fresh proof. The assignee's own mission list targets the
+  membership itself under `trip.trip.start`. A mission of another
+  organization is `NOT_FOUND` with no data. `AUDITOR` holds neither key and is
+  `FORBIDDEN` on every mission route; reads of missions by auditors belong to
+  the trip panel reads (EMP-TRIP-006/022).
+- **B-BR-EMP-358 — History, receipts and audit.** The mission head, its
+  insert-only transitions and insert-only command receipts are forced-RLS and
+  never deleted; the head changes only together with the transition of its
+  new revision. A company command records exactly one audit event
+  (`trip.mission.created`, `trip.mission.assigned`, `trip.mission.cancelled`)
+  and one receipt; the same operation identifier with the same intent replays
+  the first result (with its warning), with another intent it is
+  `OPERATION_ID_REUSED`. A response is audited by its intake receipt; the same
+  operation id and digest replays the stored acknowledgement byte for byte and
+  another digest is `REJECTED` `OPERATION_ID_REUSED`.
+- **BUC-EMP-178 — Plan and assign a mission.** A fleet manager creates a
+  mission for a unit, a title and a window, optionally naming a vehicle,
+  assigns a driver (receiving an availability warning when the driver could
+  not start the vehicle at the planned start), reassigns it after a decline,
+  or cancels it with a reason; a stale revision or another manager's earlier
+  change is `CONFLICT`; a unit-scoped manager acts only on missions of the
+  unit.
+- **BUC-EMP-179 — Accept or decline offline.** The assigned driver answers
+  the mission on the device without signal; when the response reaches the
+  server it is applied only if the driver is still the assignee with current
+  coverage and the mission is still at the answered revision; the mission
+  shows `ACCEPTED` or `DECLINED` and nothing starts.
+- **BUC-EMP-180 — Read missions.** A scoped planner lists the organization's
+  missions and reads one mission with its current assignee and response; an
+  assigned member lists the missions currently assigned to the membership.
