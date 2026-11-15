@@ -156,6 +156,12 @@ deferred extensions. Their absence is not a reason to delay editorial reading.
   text. Hidden, removed and rejected posts leave the next export and release.
   News, bulletins, topics and comments are not projected until SEO-13.
 
+- **User safety.** Reporting a topic in the app, reporting a user and
+  blocking a user follow the
+  [community safety contract](COMMUNITY_SAFETY_CONTRACT.md)
+  (B-BR-SAFE-01…09); a block hides content for the blocker only and never
+  changes moderation outcome (B-BR-FOR-08).
+
 ## Use cases and observable acceptance
 
 1. **BUC-FOR-01 Discover/read.** Visitor taps the card, sees real published
