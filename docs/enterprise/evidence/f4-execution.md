@@ -587,3 +587,8 @@ TRIP-004 side: 134 normal routes (24 routed / 60 not routed / 25 special),
 auditor walk 134 / 30 / 104, matrix 240 cells (93/147). Build, vet, gofmt,
 `sqlc diff`, cmd/api, apicontract and trip unit tests green; focused PostGIS
 `Trip|Auditor|AuthorizationMatrix` race tests green.
+
+Merged-tree verification of `75c18421` (wiring, TRIP-003, cursor fix):
+untagged `go test ./...` 221 packages ok; race/integration union 57 packages,
+56 pass, 1378 top-level / 10642 named, 27.7 min; only the 5 known
+Rust-preparer-gated `cmd/worker` tests fail (`f4-logs/coord-union-75c18421.jsonl`).
