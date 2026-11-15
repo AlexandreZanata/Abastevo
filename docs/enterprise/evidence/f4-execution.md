@@ -681,3 +681,14 @@ Integration (`022b66c1`): only the contract, EDR table and backend README
 conflicted (appended sections). Build, vet, gofmt, `sqlc diff`, cmd/api,
 apicontract, trip and orgsync unit tests green; Kotlin enterprise domain suite
 3294 tests, 0 failures (`f4-logs/coord-kotlin-trip008.log`).
+
+Merged-tree verification of `3345865b` (FLEET-013, TRIP-008): untagged
+`go test ./...` 222 packages ok; race/integration union 58 packages, 56 pass,
+1413 top-level / 11554 named, 50 min under load. Failures: the 5 known
+Rust-preparer-gated `cmd/worker` tests and one run of the pre-existing
+`orgmedia` flake `TestPrivateS3OriginalAndMemberBoundAuditedAccess`
+("private upload failed orgmedia: unavailable"); that package passed 3/3 on an
+immediate `-count=3` race rerun. Its root cause (a conditional PUT on a
+keep-alive connection the provider had just closed) is fixed on `dev` by
+`82a5f97e` (PR #222), which F4 will merge before delivery
+(`f4-logs/coord-union-3345865b.jsonl`).
