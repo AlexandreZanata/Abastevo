@@ -55,6 +55,7 @@ import (
 	reviewpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters"
 	reviewweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters/http"
 	reviewapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/application"
+	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgquota"
@@ -194,9 +195,9 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	fleetAuthority := &orgpg.FleetAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
-	// NoOpenWork is the explicit BR-FLEET-010 "none" source until the trip and
-	// maintenance epics deliver open trips and work orders (EDR-144).
-	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: fleetpg.NoOpenWork{}}
+	// EMP-TRIP-002 (EDR-206): an IN_PROGRESS trip is BR-FLEET-010 open work;
+	// work orders join this source when the maintenance epic delivers them.
+	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}

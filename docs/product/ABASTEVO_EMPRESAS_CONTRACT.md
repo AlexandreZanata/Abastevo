@@ -4763,3 +4763,110 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   largest monotonic counts and tolerances without overflow, and the named
   negatives: a local clock change inventing duration, midnight splitting
   one trip and a lost reporting basis.
+
+## EMP-TRIP-002 — Trip persistence and sync handlers with the one-active-trip-per-asset rule (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip002-trip-persistence.md).
+
+- **B-BR-EMP-312 — One trip per signed `trip.start`.** The operation
+  `trip.start` schema 1 (entity `trip`, id = the device trip UUID, no
+  expected revision, dependency, soft reference or attachment) carries the
+  exact payload `asset_id`, `driver_employee_id`, `reading` (`meter_id`,
+  `segment_id`, `reading_id`, `kind`, `value`, or null),
+  `missing_reading_reason` (or null) and `run_clock` (`boot_id`,
+  `elapsed_millis`, or null) of canonical strings; the envelope declaration
+  is the start declaration. It is validated through the EMP-TRIP-001
+  `Start` and stores one organization-scoped, forced-RLS trip: identity,
+  operation and digest, asset, driver, author membership and its employee
+  record, capture enrollment, the declaration (microsecond floor plus
+  0..999 remainder, entry zone, device offset), the optional run clock, the
+  FLEET-005 unit and cost-centre snapshot at the declared instant, the start
+  reporting day attributed in that unit's zone or else the organization's
+  zone, the departure reading or missing reason and the server receipt;
+  state IN_PROGRESS. A trip identity already used by another operation is
+  `MALFORMED`; a `DRAFT` asset or a driver that is not an active, unmerged
+  employee is `MALFORMED`.
+- **B-BR-EMP-313 — One active trip per asset (VAL-07).** At most one
+  IN_PROGRESS trip per asset is a database invariant. The intake decides
+  under the organization root and asset row locks: the first admissible
+  start received is `ACCEPTED`; a later admissible start on an asset with a
+  trip in progress is kept as a held start `ACCEPTED_FOR_REVIEW`
+  `ASSET_BUSY`; an asset that is not ACTIVE at receipt, or a start declared
+  at or after its disposal, is held `ASSET_UNAVAILABLE`; a start whose right
+  changed after its declaration (EDR-118 continuity) is held
+  `PERMISSION_CHANGED`. A held start stores its whole fact, its reading
+  values and a version-1 review item in the same transaction as its
+  acknowledgement; it creates no trip and no reading and is never active
+  use. Its resolution belongs to EMP-TRIP-007.
+- **B-BR-EMP-314 — Reading evidence commits with its event.** Exactly one
+  of a reading or a missing reason (the METER-001 profile) is required. A
+  departure reading is recorded through the fleet embedded-reading port with
+  origin `TRIP_START`, a final reading with `TRIP_END`, the event's
+  operation, its declaration and method `TYPED`, in the same transaction as
+  the event; a rollback leaves neither. A reading of another kind, of a
+  meter of another asset or outside the meter's service interval is
+  `MALFORMED`; an unknown meter or segment is `RETRY` `DEPENDENCY_PENDING`
+  with nothing stored. Plausibility never refuses an event (B-BR-EMP-273).
+- **B-BR-EMP-315 — One operational completion per trip through
+  `trip.finish`.** The operation `trip.finish` schema 1 (entity `trip`, id =
+  the trip UUID, no expected revision, at most one dependency, no soft
+  reference or attachment) carries the exact payload `reading`,
+  `missing_reading_reason` and `run_clock`. It stores one insert-only finish
+  fact (operation, digest, author, enrollment, declaration, run clock, the
+  informational end day in the stored reporting zone, final evidence,
+  receipt) and moves the trip from IN_PROGRESS to COMPLETED in the same
+  transaction, the only update a trip ever receives. Only the member who
+  started the trip finishes it (another member is a whole-response
+  `FORBIDDEN`); a finish declared before the start instant is `REJECTED`
+  `MALFORMED`; a trip that is not stored in this organization (missing,
+  held or another organization's) is `RETRY` `DEPENDENCY_PENDING` with
+  nothing stored; a trip already completed by another finish operation
+  keeps the new finish fact as `ACCEPTED_FOR_REVIEW` `TRIP_ALREADY_CLOSED`.
+- **B-BR-EMP-316 — Authority at receipt.** Both operations need current
+  `trip.trip.start` on the enrolled device. History follows EDR-118
+  continuity through the generalised classifier (EDR-177): a positive `ORG`
+  rule covers the member's own trip; `SELF` covers it only while the asset
+  is assigned to the member (FLEET-006 periods) and the member's own employee
+  record is the driver. Never covered is `FORBIDDEN` and a missing or
+  foreign asset `NOT_FOUND`, both refusing the whole response with nothing
+  stored. A receipt replay needs current `trip.trip.read` over the stored
+  trip (author, asset, stored unit and cost centre), except the author's own
+  held receipt.
+- **B-BR-EMP-317 — Exact replay and concurrency.** The intake ledger
+  decides by operation id: the same id and digest returns the stored
+  acknowledgement byte for byte and creates nothing; the same id with
+  another digest is `REJECTED` `OPERATION_ID_REUSED`; concurrent identical
+  operations leave one fact. Concurrent admissible starts from two devices
+  on one asset leave exactly one IN_PROGRESS trip and one held `ASSET_BUSY`
+  start in either order, and a replay of the held start returns its held
+  acknowledgement.
+- **B-BR-EMP-318 — Review state and active use.** A stored trip begins its
+  review case as the APPR-001 draft (DRAFT, revision 1, no entry); neither
+  start nor finish submits it (EMP-TRIP-004 owns submission). An IN_PROGRESS
+  trip is open work: FLEET-003 deactivation and disposal of its asset are
+  refused with the `TRIP` open-work kind. One query answers the active trip
+  of an asset at an instant for the reservation and availability owner.
+- **B-BR-EMP-319 — Bounded sources.** Trips, finishes and held starts and
+  finishes are asset operations in the asset usage source (they fix the kind
+  and keep a draft from being discarded); unit and cost-centre snapshots are
+  associations, never current use. The owners declare no asynchronous
+  follow-up for `ACCEPTED`/`REJECTED` and an atomic review for
+  `ACCEPTED_FOR_REVIEW`. No route, panel read, OpenAPI path, review
+  decision, own-result read for trips or Android change is added.
+- **BUC-EMP-157 — Record a driver-initiated trip through the signed
+  intake.** A covered driver's device sends `trip.start` with the departure
+  reading 184 320 000 m and later `trip.finish` with 184 610 000 m; the
+  server stores one IN_PROGRESS trip, then completes it with 290 000 m of
+  meter evidence, each with one ACK in one transaction; resends return the
+  same ACKs.
+- **BUC-EMP-158 — Two devices start one vehicle (VAL-07).** Two drivers
+  start the same vehicle offline; whichever arrives first is the active
+  trip and the other is kept for review with `ASSET_BUSY`, never dropped or
+  retried.
+- **BUC-EMP-159 — Keep a second completion.** A second finish operation for
+  a trip already completed is kept for review with `TRIP_ALREADY_CLOSED`.
+- **BUC-EMP-160 — Prove the trip store on real PostGIS.** Replay, digest
+  reuse, races with barriers in both orders, reading rollback in both
+  directions, foreign asset, authority history, open work, forced RLS, the
+  guarded state update and a populated 000215 → 000220 upgrade with injected
+  failure, recovery and previous-image compatibility.

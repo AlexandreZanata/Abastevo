@@ -443,6 +443,16 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trips') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// EMP-TRIP-002: asset usage counts trips and held starts; FLEET-003
+		// open work reads whether a trip of the asset is in progress.
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,state) ON org_trips TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+";GRANT SELECT(org_id,asset_id) ON org_trip_held_starts TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // GrantMeterReviews enables current read projections only. The owning command

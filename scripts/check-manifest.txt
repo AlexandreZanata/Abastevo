@@ -42,6 +42,8 @@ backend/internal/modules/review/application
 backend/internal/modules/review/adapters
 backend/internal/modules/review/adapters/http
 backend/internal/modules/trip/domain
+backend/internal/modules/trip/application
+backend/internal/modules/trip/adapters
 backend/internal/modules/organization/domain
 backend/internal/modules/organization/application
 backend/internal/modules/organization/adapters
