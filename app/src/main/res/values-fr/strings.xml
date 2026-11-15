@@ -495,7 +495,7 @@
     <!-- Share -->
     <string name="settings_share_section">Partager</string>
     <string name="settings_share_app">Partager l\'application</string>
-    <string name="settings_share_app_message">Découvrez ANP Fuel Prices — prix hebdomadaires des carburants de l\'ANP, gratuit : %1$s</string>
+    <string name="settings_share_app_message">Découvrez Abastevo — prix hebdomadaires des carburants de votre ville, avec les données de l\'ANP et de la communauté : %1$s</string>
 
     <!-- Accessibility (Phase 9.3) -->
     <string name="a11y_loading">Chargement du contenu</string>

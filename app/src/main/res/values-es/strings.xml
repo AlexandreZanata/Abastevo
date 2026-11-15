@@ -495,7 +495,7 @@
     <!-- Share -->
     <string name="settings_share_section">Compartir</string>
     <string name="settings_share_app">Compartir app</string>
-    <string name="settings_share_app_message">Mira ANP Fuel Prices — precios semanales de combustible de la ANP, gratis: %1$s</string>
+    <string name="settings_share_app_message">Mira Abastevo — precios semanales de combustible de tu ciudad, con datos de la ANP y de la comunidad: %1$s</string>
 
     <!-- Accessibility (Phase 9.3) -->
     <string name="a11y_loading">Cargando contenido</string>
