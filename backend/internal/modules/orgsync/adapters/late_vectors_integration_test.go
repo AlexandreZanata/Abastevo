@@ -99,3 +99,64 @@ func TestLateIntakeSQLDispositionMatchesTheSharedOracle(t *testing.T) {
 		t.Fatal("SQL consumer did not decide every DECIDE row in every zone", decided)
 	}
 }
+
+const (
+	stateSQLCorpus = "../../../../../contracts/testdata/enterprise/sync/state-intake-v1.psv"
+	stateSQLHash   = "ecb5ec152d738be26caa644abe1c2f3700b3445e4c6e8a969084a4cdb5004d5c"
+)
+
+// org_sync_plan_disposition is the second consumer of the plan oracle
+// (EDR-201): every row agrees with Go DecidePlan, NULL for invalid evidence.
+func TestStateIntakeSQLPlanDispositionMatchesTheSharedOracle(t *testing.T) {
+	raw, err := os.ReadFile(stateSQLCorpus)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sum := sha256.Sum256(raw); hex.EncodeToString(sum[:]) != stateSQLHash {
+		t.Fatal("state-intake oracle changed without updating its pinned hash")
+	}
+	f := orgtest.New(t)
+	lines := strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
+	decided := 0
+	for _, line := range lines[1:] {
+		cols := strings.Split(line, "|")
+		args, expected := map[string]string{}, map[string]string{}
+		for _, part := range strings.Split(cols[2], ";") {
+			k, v, _ := strings.Cut(part, "=")
+			args[k] = v
+		}
+		for _, part := range strings.Split(cols[3], ";") {
+			k, v, _ := strings.Cut(part, "=")
+			expected[k] = v
+		}
+		instant := func(key string) *time.Time {
+			if args[key] == "?" {
+				return nil
+			}
+			at, err := orgtime.ParseInstant(args[key])
+			if err != nil {
+				t.Fatal("oracle instant", line)
+			}
+			return &at
+		}
+		revision, err := strconv.ParseInt(args["revision"], 10, 64)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got *string
+		if err := f.Admin.QueryRow(t.Context(), `SELECT org_sync_plan_disposition($1,$2,$3,$4,$5)`, args["state"], revision, instant("changed"), instant("declared"), instant("received")).Scan(&got); err != nil {
+			t.Fatal(cols[0], err)
+		}
+		if expected["error"] == "INVALID" {
+			if got != nil {
+				t.Fatal("SQL decided invalid plan evidence", cols[0], *got)
+			}
+		} else if got == nil || *got != expected["disposition"] {
+			t.Fatal("SQL plan disposition disagrees with the shared oracle", cols[0], got)
+		}
+		decided++
+	}
+	if decided != 20 {
+		t.Fatal("SQL plan consumer did not decide every row", decided)
+	}
+}

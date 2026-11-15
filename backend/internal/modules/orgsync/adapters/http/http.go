@@ -37,6 +37,12 @@ type DeviceSource interface {
 type LateDeviceSource interface {
 	CheckLateIntakeDevice(context.Context, kernel.OrgScope, member.DeviceActor, string, string) (member.LateIntakeDevice, error)
 }
+
+// StateDeviceSource proves the current member's enrolled device of a
+// SUSPENDED organization for the EMP-OFFL-012 state assessment only.
+type StateDeviceSource interface {
+	CheckSuspendedIntakeDevice(context.Context, kernel.OrgScope, member.DeviceActor) (member.DeviceRecord, error)
+}
 type Options struct {
 	Enabled  bool
 	Origin   string
@@ -44,6 +50,7 @@ type Options struct {
 	Verifier auth.Verifier
 	Devices  DeviceSource
 	Late     LateDeviceSource
+	State    StateDeviceSource
 	Service  app.Service
 	Limits   protocol.Limits
 }
@@ -91,6 +98,23 @@ func mapped(e error) error {
 // Reconfirm the captured period before exposing any buffered private result.
 func confirmCurrentDevice(ctx context.Context, devices DeviceSource, s app.Source) error {
 	v, e := devices.CheckDevice(ctx, s.Scope, s.Actor)
+	if e != nil {
+		return e
+	}
+	state, e := v.Enrollment.Snapshot(s.Scope)
+	if e != nil || v.Validate(s.Scope) != nil {
+		return app.ErrUnavailable
+	}
+	if state.State != d.DeviceEnrolled || state.ID != s.EnrollmentID || state.MembershipID != s.MembershipID || state.DeviceID != s.Actor.KeyID || state.Fingerprint != s.Actor.Fingerprint {
+		return member.ErrEmployeeNotFound
+	}
+	return nil
+}
+
+// confirmSuspendedDevice reconfirms the suspended-organization source before
+// exposing any buffered private result (EMP-OFFL-012).
+func confirmSuspendedDevice(ctx context.Context, devices StateDeviceSource, s app.Source) error {
+	v, e := devices.CheckSuspendedIntakeDevice(ctx, s.Scope, s.Actor)
 	if e != nil {
 		return e
 	}
@@ -211,6 +235,14 @@ func (e endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	sealedMember, sealedEnrollment, sealed := sealedPeriod(batch, accountID, e.Origin, scope)
 	device, err := e.Devices.CheckDevice(r.Context(), scope, actor)
+	// EMP-OFFL-012: while SUSPENDED, a batch with operations from the current
+	// member's enrolled device reaches only the per-operation state assessment.
+	suspended := false
+	if errors.Is(err, access.ErrOrgSuspended) && sealed && e.State != nil {
+		if device, err = e.State.CheckSuspendedIntakeDevice(r.Context(), scope, actor); err == nil {
+			suspended = true
+		}
+	}
 	late := false
 	var source app.Source
 	if err != nil {
@@ -264,6 +296,11 @@ func (e endpoint) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if late {
 		if _, err := e.Late.CheckLateIntakeDevice(r.Context(), scope, actor, sealedMember, sealedEnrollment); err != nil {
+			fail(err)
+			return
+		}
+	} else if suspended {
+		if err := confirmSuspendedDevice(r.Context(), e.State, source); err != nil {
 			fail(err)
 			return
 		}

@@ -4693,3 +4693,57 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   earlier-claim evidence, exact replay, 12-way concurrency, intake racing the
   membership end in both orders, foreign organization, database guards and a
   populated upgrade with injected failure and recovery.
+
+## EMP-OFFL-012 — Organization-state and plan-change handling for queued operations (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-offl012-org-state-queued-operations.md).
+
+- **B-BR-EMP-308 — Organization state decides before the owner.** Every new
+  signed operation of a current member's enrolled device is first assessed
+  against the organization's recorded suspension history (EMP-ORG-009
+  `AssessSuspension`: server-recorded periods, the database receipt, a 7-day
+  grace that includes its end instant) and, when that allows it, against the
+  plan rule (B-BR-EMP-309); only then does the owning handler run. A
+  suspension `REVIEW` is `ACCEPTED_FOR_REVIEW` `ORG_SUSPENDED_GRACE`; a
+  `REFUSE` `ORG_SUSPENDED` is a final `REJECTED` `ORG_SUSPENDED` with nothing
+  stored; archived, setup and closed refusals keep their whole-response codes.
+  While the organization is `SUSPENDED` the signed route admits a non-empty
+  batch from the current member's enrolled device to this assessment only: it
+  never reaches an owner's write or read authority, and an empty batch keeps
+  `ORG_SUSPENDED`. After reactivation the same history still holds work
+  declared during the resolved interval and refuses work that missed its grace.
+- **B-BR-EMP-309 — A plan change is the capability's recorded state.** No
+  billing exists: the plan is the operation's write capability
+  (`organizations` for meter and fueling). Enabled at receipt, the owner
+  decides as before. Disabled at receipt after a change, the instant the
+  current state was set is the downgrade instant: work declared before it is
+  `ACCEPTED_FOR_REVIEW` `PLAN_CHANGED`; work declared at or after it, or under
+  a capability created disabled or absent, is new forbidden work and the owner
+  keeps refusing it with `ENTITLEMENT_REQUIRED`. A plan change never changes a
+  membership, role or enrollment (BR-AUTH-009).
+- **B-BR-EMP-310 — State work is quarantined, recorded and replayed.** A held
+  state decision uses the owner's typed held path (the meter's OFFL-008 review
+  with the given code); an owner without one answers `RETRY`/`UNAVAILABLE`
+  with no claim (fuelings until FUEL-003). Every final state acknowledgement
+  commits with one immutable forced-RLS `org_sync_state_intakes` row
+  (condition, its server instant, declaration, receipt, result and code); the
+  database re-derives the condition from history and stores
+  `ORG_SUSPENDED_GRACE`, `ORG_SUSPENDED` and `PLAN_CHANGED` only with such a
+  row. A resend returns the stored acknowledgement byte for byte through that
+  row, also while suspended, and never applies, re-decides or adds a cost; the
+  same identifier with another digest is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-311 — Device time never bypasses a block.** The declared instant
+  only chooses review over refusal: work declared before a suspension or a
+  downgrade is reviewed, never applied; a declaration cannot extend the grace;
+  current permission never certifies work recorded while a suspension was
+  open. Another organization's history never decides, and its member, device
+  or operation is not found.
+- **BUC-EMP-155 — Deliver into a suspended organization (VAL-22 part 2).** A
+  reading declared before the suspension and delivered inside the grace is
+  held `ORG_SUSPENDED_GRACE`; one declared after the suspension is
+  `ORG_SUSPENDED` and stays visible with its reason; after reactivation new
+  readings apply, resends replay, and nothing was deleted or reassigned.
+- **BUC-EMP-156 — Deliver across a plan downgrade (VAL-24/35).** A reading
+  declared before the capability was turned off is held `PLAN_CHANGED`; one
+  declared after it is refused `ENTITLEMENT_REQUIRED`; no role, membership or
+  enrollment changed; held work is never counted until a reviewer decides.

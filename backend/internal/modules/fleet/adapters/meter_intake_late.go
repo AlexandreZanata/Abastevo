@@ -14,6 +14,13 @@ import (
 // meterLateHeld is the only code a late source can hold (EMP-OFFL-009).
 const meterLateHeld = syncapp.LateHeldCode
 
+// meterRestrictedHeld lists the codes a restricted source holds without
+// current owner authority: late intake and organization state/plan
+// (EMP-OFFL-009/012).
+func meterRestrictedHeld(code string) bool {
+	return code == meterLateHeld || code == syncapp.StateGraceCode || code == syncapp.StatePlanCode
+}
+
 // HoldLate retains one pre-end reading of an exact ended enrollment period for
 // review (EMP-OFFL-009, B-BR-EMP-304). It needs no current authority, reads no
 // record for the source and never applies a reading: it validates the payload
@@ -21,7 +28,7 @@ const meterLateHeld = syncapp.LateHeldCode
 // target unknown in the organization cannot be a pending dependency of a
 // reading declared before the end, so it is MALFORMED (EDR-198).
 func (h *meterIntakeHandler) HoldLate(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, code string) (syncapp.Outcome, error) {
-	if code != meterLateHeld || h == nil || meterIntakeAbsent(h.lookup) || meterIntakeAbsent(h.held) {
+	if !meterRestrictedHeld(code) || h == nil || meterIntakeAbsent(h.lookup) || meterIntakeAbsent(h.held) {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	command, err := h.request(ctx, db, source, op, syncapp.Write)

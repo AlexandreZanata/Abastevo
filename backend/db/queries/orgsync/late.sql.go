@@ -54,6 +54,45 @@ func (q *Queries) InsertLateIntake(ctx context.Context, arg InsertLateIntakePara
 	return err
 }
 
+const insertStateIntake = `-- name: InsertStateIntake :exec
+INSERT INTO org_sync_state_intakes(org_id,operation_id,condition,disposition,capability,capability_revision,plan_changed_at,declared_at,declared_submicro,received_at,result,code)
+VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),$3::text,$4::text,NULLIF($5::text,''),NULLIF($6::bigint,0),
+ $7::timestamptz,$8::timestamptz,$9::smallint,$10::timestamptz,$11::text,$12::text)
+`
+
+type InsertStateIntakeParams struct {
+	OrgID              string             `json:"org_id"`
+	OperationID        string             `json:"operation_id"`
+	Condition          string             `json:"condition"`
+	Disposition        string             `json:"disposition"`
+	Capability         string             `json:"capability"`
+	CapabilityRevision int64              `json:"capability_revision"`
+	PlanChangedAt      pgtype.Timestamptz `json:"plan_changed_at"`
+	DeclaredAt         pgtype.Timestamptz `json:"declared_at"`
+	DeclaredSubmicro   int16              `json:"declared_submicro"`
+	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
+	Result             string             `json:"result"`
+	Code               string             `json:"code"`
+}
+
+func (q *Queries) InsertStateIntake(ctx context.Context, arg InsertStateIntakeParams) error {
+	_, err := q.db.Exec(ctx, insertStateIntake,
+		arg.OrgID,
+		arg.OperationID,
+		arg.Condition,
+		arg.Disposition,
+		arg.Capability,
+		arg.CapabilityRevision,
+		arg.PlanChangedAt,
+		arg.DeclaredAt,
+		arg.DeclaredSubmicro,
+		arg.ReceivedAt,
+		arg.Result,
+		arg.Code,
+	)
+	return err
+}
+
 const readLateIntake = `-- name: ReadLateIntake :one
 SELECT membership_id::text AS membership_id,enrollment_id::text AS enrollment_id,end_source,ended_at,window_days,COALESCE(settings_revision,0)::bigint AS settings_revision,
  declared_at,declared_submicro,received_at,disposition,result,code,policy
@@ -96,6 +135,51 @@ func (q *Queries) ReadLateIntake(ctx context.Context, arg ReadLateIntakeParams) 
 		&i.DeclaredSubmicro,
 		&i.ReceivedAt,
 		&i.Disposition,
+		&i.Result,
+		&i.Code,
+		&i.Policy,
+	)
+	return i, err
+}
+
+const readStateIntake = `-- name: ReadStateIntake :one
+SELECT condition,disposition,COALESCE(capability,'')::text AS capability,COALESCE(capability_revision,0)::bigint AS capability_revision,plan_changed_at,
+ declared_at,declared_submicro,received_at,result,code,policy
+FROM org_sync_state_intakes WHERE org_id=CAST($1::text AS uuid) AND operation_id=CAST($2::text AS uuid)
+`
+
+type ReadStateIntakeParams struct {
+	OrgID       string `json:"org_id"`
+	OperationID string `json:"operation_id"`
+}
+
+type ReadStateIntakeRow struct {
+	Condition          string             `json:"condition"`
+	Disposition        string             `json:"disposition"`
+	Capability         string             `json:"capability"`
+	CapabilityRevision int64              `json:"capability_revision"`
+	PlanChangedAt      pgtype.Timestamptz `json:"plan_changed_at"`
+	DeclaredAt         pgtype.Timestamptz `json:"declared_at"`
+	DeclaredSubmicro   int16              `json:"declared_submicro"`
+	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
+	Result             string             `json:"result"`
+	Code               string             `json:"code"`
+	Policy             string             `json:"policy"`
+}
+
+// EMP-OFFL-012. One immutable state decision per state acknowledgement.
+func (q *Queries) ReadStateIntake(ctx context.Context, arg ReadStateIntakeParams) (ReadStateIntakeRow, error) {
+	row := q.db.QueryRow(ctx, readStateIntake, arg.OrgID, arg.OperationID)
+	var i ReadStateIntakeRow
+	err := row.Scan(
+		&i.Condition,
+		&i.Disposition,
+		&i.Capability,
+		&i.CapabilityRevision,
+		&i.PlanChangedAt,
+		&i.DeclaredAt,
+		&i.DeclaredSubmicro,
+		&i.ReceivedAt,
 		&i.Result,
 		&i.Code,
 		&i.Policy,

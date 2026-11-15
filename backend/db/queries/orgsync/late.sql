@@ -7,3 +7,12 @@ FROM org_sync_late_intakes WHERE org_id=CAST(@org_id::text AS uuid) AND operatio
 INSERT INTO org_sync_late_intakes(org_id,operation_id,membership_id,enrollment_id,end_source,ended_at,window_days,settings_revision,declared_at,declared_submicro,received_at,disposition,result,code)
 VALUES(CAST(@org_id::text AS uuid),CAST(@operation_id::text AS uuid),CAST(@membership_id::text AS uuid),CAST(@enrollment_id::text AS uuid),@end_source::text,@ended_at::timestamptz,@window_days::smallint,
  NULLIF(@settings_revision::bigint,0),@declared_at::timestamptz,@declared_submicro::smallint,@received_at::timestamptz,@disposition::text,@result::text,@code::text);
+-- EMP-OFFL-012. One immutable state decision per state acknowledgement.
+-- name: ReadStateIntake :one
+SELECT condition,disposition,COALESCE(capability,'')::text AS capability,COALESCE(capability_revision,0)::bigint AS capability_revision,plan_changed_at,
+ declared_at,declared_submicro,received_at,result,code,policy
+FROM org_sync_state_intakes WHERE org_id=CAST(@org_id::text AS uuid) AND operation_id=CAST(@operation_id::text AS uuid);
+-- name: InsertStateIntake :exec
+INSERT INTO org_sync_state_intakes(org_id,operation_id,condition,disposition,capability,capability_revision,plan_changed_at,declared_at,declared_submicro,received_at,result,code)
+VALUES(CAST(@org_id::text AS uuid),CAST(@operation_id::text AS uuid),@condition::text,@disposition::text,NULLIF(@capability::text,''),NULLIF(@capability_revision::bigint,0),
+ sqlc.narg('plan_changed_at')::timestamptz,@declared_at::timestamptz,@declared_submicro::smallint,@received_at::timestamptz,@result::text,@code::text);

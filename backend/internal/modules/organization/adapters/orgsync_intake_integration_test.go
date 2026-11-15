@@ -214,6 +214,9 @@ func syncFixtureOn(t *testing.T, fx deviceFixtureState) syncFixtureState {
 		t.Fatal(e)
 	}
 	syncInstallReviewSource(t, fx)
+	// EMP-OFFL-012: the composed intake reads suspension history and records
+	// state decisions before every owner (test role only; no live grants).
+	fx.f.GrantStateIntake(t)
 	// Migration199's shared effect guard plans its reviewed-Meter branch for
 	// every effect, so the generic intake role needs exactly the reading columns
 	// that guard compares. It still cannot read any Meter value or observation.

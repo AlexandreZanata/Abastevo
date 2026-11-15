@@ -45,7 +45,11 @@ type Config struct {
 	// ConfirmLate proves the exact ended period of a late source and returns
 	// its server end evidence and the database clock (EMP-OFFL-009). Nil
 	// leaves late intake unavailable.
-	ConfirmLate  func(context.Context, pgx.Tx, app.Source) (app.LateAccess, time.Time, error)
+	ConfirmLate func(context.Context, pgx.Tx, app.Source) (app.LateAccess, time.Time, error)
+	// AssessState decides organization state and plan before the owner for a
+	// new operation from its declared instant (EMP-OFFL-012). The zero
+	// decision lets the owner decide. Nil keeps the previous behaviour.
+	AssessState  func(context.Context, pgx.Tx, app.Source, app.Descriptor, time.Time) (app.StateDecision, error)
 	Audit        auditing.TransactionRunner
 	AuditCatalog audit.Catalog
 	EventCatalog event.Catalog
@@ -258,6 +262,18 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 			return app.SourceDenied(orgapi.NotFound)
 		}
 		if exists && original.PayloadDigest != op.PayloadDigest() {
+			// EMP-OFFL-012: a state decision's identifier is refused without
+			// owner authority, which a suspension denies.
+			if recorded, e := s.stateRecorded(ctx, queries, v.OrgID, op.ID()); e != nil {
+				return e
+			} else if recorded {
+				at, e := fresh()
+				if e != nil {
+					return e
+				}
+				result, e = ackFor(op, app.Outcome{Result: protocol.Rejected, Code: "OPERATION_ID_REUSED"}, at, limits)
+				return e
+			}
 			if e := handler.Admit(ctx, db, source, op, app.Write); e != nil {
 				return guardError(e)
 			}
@@ -278,6 +294,10 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 			}
 			stored, e := queries.ReadAcknowledgement(ctx, q.ReadAcknowledgementParams{OrgID: v.OrgID, OperationID: op.ID()})
 			if e == nil {
+				if replayed, done, e := s.replayState(ctx, tx, source, op, limits, descriptor, proof, stored, fresh); done || e != nil {
+					result = replayed
+					return e
+				}
 				ownReview := false
 				if proof != nil {
 					ownReview, e = proof.CheckOwnReceiptTx(ctx, app.Borrow(db), source, op)
@@ -322,6 +342,24 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 				return nil
 			}
 			if !errors.Is(e, pgx.ErrNoRows) {
+				return e
+			}
+		}
+		// EMP-OFFL-012: organization state and plan decide before the owner.
+		if s.config.AssessState != nil {
+			declared, e := orgtime.ParseInstant(v.OccurredAt)
+			if e != nil {
+				return app.ErrUnavailable
+			}
+			decision, e := s.config.AssessState(ctx, tx, source, descriptor, declared)
+			if e != nil {
+				return proofError(e)
+			}
+			if decision.Validate() != nil {
+				return app.ErrUnavailable
+			}
+			if decision.Restricts() {
+				result, e = s.processState(ctx, tx, source, op, limits, descriptor, proof, handler, decision, declared, exists, fresh)
 				return e
 			}
 		}

@@ -28,18 +28,18 @@ func (s *DeviceStore) CheckCurrentIntakeDeviceTx(ctx context.Context, tx pgx.Tx,
 	return s.CheckCurrentIntakeDeviceDBTX(ctx, tx, scope, a, member, enrollment)
 }
 func (s *DeviceStore) CheckCurrentIntakeDeviceDBTX(ctx context.Context, queries database.OrgDBTX, scope kernel.OrgScope, a app.DeviceActor, member, enrollment string) (app.DeviceRecord, time.Time, error) {
-	return s.checkCurrentDeviceDBTX(ctx, queries, scope, a, member, enrollment, false, true)
+	return s.checkCurrentDeviceDBTX(ctx, queries, scope, a, member, enrollment, false, true, false)
 }
 
 func (s *DeviceStore) CheckCurrentDeviceDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, a app.DeviceActor, member, enrollment string) (app.DeviceRecord, time.Time, error) {
-	return s.checkCurrentDeviceDBTX(ctx, tx, scope, a, member, enrollment, false, false)
+	return s.checkCurrentDeviceDBTX(ctx, tx, scope, a, member, enrollment, false, false, false)
 }
 
 // CheckCurrentOperationalDeviceDBTX is reserved for current source-owned
 // operational writes. It adds the actual base-capability write lock while
 // keeping normal enrolled proof, not enrollment freshness, under borrowed IO.
 func (s *DeviceStore) CheckCurrentOperationalDeviceDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, a app.DeviceActor, member, enrollment string) (app.DeviceRecord, time.Time, error) {
-	return s.checkCurrentDeviceDBTX(ctx, tx, scope, a, member, enrollment, true, false)
+	return s.checkCurrentDeviceDBTX(ctx, tx, scope, a, member, enrollment, true, false, false)
 }
 
 type deviceQueryCapabilities interface {
@@ -49,7 +49,7 @@ type deviceSnapshotCapabilities interface {
 	LockSnapshotDBTX(context.Context, database.OrgDBTX, kernel.OrgScope, string) (capability.State, error)
 }
 
-func (s *DeviceStore) checkCurrentDeviceDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, a app.DeviceActor, member, enrollment string, operationalWrite, snapshot bool) (app.DeviceRecord, time.Time, error) {
+func (s *DeviceStore) checkCurrentDeviceDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, a app.DeviceActor, member, enrollment string, operationalWrite, snapshot, allowSuspended bool) (app.DeviceRecord, time.Time, error) {
 	if !s.ready() {
 		return app.DeviceRecord{}, time.Time{}, app.ErrRegisterUnavailable
 	}
@@ -79,7 +79,7 @@ func (s *DeviceStore) checkCurrentDeviceDBTX(ctx context.Context, tx database.Or
 		}
 		guard = func() error { _, err := capabilities.LockSnapshotDBTX(ctx, tx, scope, "organizations"); return err }
 	}
-	current, e := s.signedFor(ctx, tx, scope, a, false, true, operationalWrite, guard)
+	current, e := s.signedForState(ctx, tx, scope, a, false, true, operationalWrite, allowSuspended, guard)
 	if e != nil {
 		return app.DeviceRecord{}, time.Time{}, deviceError(ctx, e)
 	}
