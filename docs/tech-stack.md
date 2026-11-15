@@ -32,8 +32,8 @@ This document is the **single source of truth** for all technology choices in th
 | Setting | Value | Rationale |
 |---------|-------|-----------|
 | `minSdk` | 26 (Android 8.0) | Room FTS5, WorkManager, modern TLS |
-| `targetSdk` | 35 | Current Google Play requirement |
-| `compileSdk` | 35 | Latest stable APIs |
+| `targetSdk` | 36 | Google Play requirement for new apps and updates since 2026-08-31 ([readiness](store/PLAY_STORE_READINESS.md)) |
+| `compileSdk` | 36 | Required to target API 36 (AGP 8.7.3 warns; upgrade tracked in the readiness doc) |
 | JVM target | 17 | Kotlin 2.x default |
 
 ---
