@@ -11,48 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const activeTripsOfAssetAt = `-- name: ActiveTripsOfAssetAt :many
-SELECT t.id::text AS id FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
-WHERE t.org_id=CAST($1::text AS uuid) AND t.asset_id=CAST($2::text AS uuid)
-AND(t.occurred_at,t.occurred_submicro)<=($3::timestamptz,$4::smallint)
-AND(f.trip_id IS NULL OR(f.occurred_at,f.occurred_submicro)>($3::timestamptz,$4::smallint))
-ORDER BY t.occurred_at,t.occurred_submicro,t.id
-`
-
-type ActiveTripsOfAssetAtParams struct {
-	OrgID      string             `json:"org_id"`
-	AssetID    string             `json:"asset_id"`
-	At         pgtype.Timestamptz `json:"at"`
-	AtSubmicro int16              `json:"at_submicro"`
-}
-
-// Trips whose declared operation covers the instant: started at or before it
-// and not finished at or before it (half-open; overlaps are reported).
-func (q *Queries) ActiveTripsOfAssetAt(ctx context.Context, arg ActiveTripsOfAssetAtParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, activeTripsOfAssetAt,
-		arg.OrgID,
-		arg.AssetID,
-		arg.At,
-		arg.AtSubmicro,
-	)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []string
-	for rows.Next() {
-		var id string
-		if err := rows.Scan(&id); err != nil {
-			return nil, err
-		}
-		items = append(items, id)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getTrip = `-- name: GetTrip :one
 SELECT t.id::text AS id,t.operation_id::text AS operation_id,t.payload_digest,t.asset_id::text AS asset_id,t.driver_employee_id::text AS driver_employee_id,
  t.author_membership_id::text AS author_membership_id,t.author_employee_id::text AS author_employee_id,t.enrollment_id::text AS enrollment_id,
@@ -629,4 +587,51 @@ func (q *Queries) TripUnitZone(ctx context.Context, arg TripUnitZoneParams) (str
 	var time_zone string
 	err := row.Scan(&time_zone)
 	return time_zone, err
+}
+
+const tripUsesOfAssetAt = `-- name: TripUsesOfAssetAt :many
+SELECT t.id::text AS id,t.occurred_at,t.occurred_submicro FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+WHERE t.org_id=CAST($1::text AS uuid) AND t.asset_id=CAST($2::text AS uuid)
+AND(t.occurred_at,t.occurred_submicro)<=($3::timestamptz,$4::smallint)
+AND(f.trip_id IS NULL OR(f.occurred_at,f.occurred_submicro)>($3::timestamptz,$4::smallint))
+ORDER BY t.occurred_at,t.occurred_submicro,t.id
+`
+
+type TripUsesOfAssetAtParams struct {
+	OrgID      string             `json:"org_id"`
+	AssetID    string             `json:"asset_id"`
+	At         pgtype.Timestamptz `json:"at"`
+	AtSubmicro int16              `json:"at_submicro"`
+}
+
+type TripUsesOfAssetAtRow struct {
+	ID               string             `json:"id"`
+	OccurredAt       pgtype.Timestamptz `json:"occurred_at"`
+	OccurredSubmicro int16              `json:"occurred_submicro"`
+}
+
+// FLEET-007 active use (EDR-206): trips holding the asset at the instant.
+func (q *Queries) TripUsesOfAssetAt(ctx context.Context, arg TripUsesOfAssetAtParams) ([]TripUsesOfAssetAtRow, error) {
+	rows, err := q.db.Query(ctx, tripUsesOfAssetAt,
+		arg.OrgID,
+		arg.AssetID,
+		arg.At,
+		arg.AtSubmicro,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []TripUsesOfAssetAtRow
+	for rows.Next() {
+		var i TripUsesOfAssetAtRow
+		if err := rows.Scan(&i.ID, &i.OccurredAt, &i.OccurredSubmicro); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

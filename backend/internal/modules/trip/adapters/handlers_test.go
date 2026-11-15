@@ -7,6 +7,7 @@ import (
 	"time"
 
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	meter "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
@@ -26,26 +27,31 @@ func TestStartHoldOrderIsPermissionThenAvailabilityThenBusy(t *testing.T) {
 	at := time.Date(2026, 11, 14, 12, 0, 0, 0, time.UTC)
 	v := app.StartInput{Event: app.Event{Declared: orgtimeDeclaration(at)}}
 	disposed := at
+	admitted := fleet.StartDecision{Admitted: true}
 	cases := []struct {
 		name        string
 		disposition app.Disposition
 		facts       app.StartFacts
+		decision    fleet.StartDecision
 		want        string
 	}{
-		{"apply", app.Apply, app.StartFacts{AssetState: "ACTIVE"}, ""},
-		{"busy", app.Apply, app.StartFacts{AssetState: "ACTIVE", ActiveTripID: "x"}, app.AssetBusy},
-		{"inactive", app.Apply, app.StartFacts{AssetState: "INACTIVE", ActiveTripID: "x"}, app.AssetUnavailable},
-		{"disposed-at-instant", app.Apply, app.StartFacts{AssetState: "ACTIVE", DisposedAt: &disposed}, app.AssetUnavailable},
-		{"changed-right-first", app.HoldPermissionChanged, app.StartFacts{AssetState: "DISPOSED", ActiveTripID: "x"}, app.PermissionChanged},
-		{"disposal-ended-assignment", app.HoldDisposalEnded, app.StartFacts{AssetState: "ACTIVE", ActiveTripID: "x"}, app.PermissionChanged},
+		{"apply", app.Apply, app.StartFacts{AssetState: "ACTIVE"}, admitted, ""},
+		{"busy", app.Apply, app.StartFacts{AssetState: "ACTIVE", ActiveTripID: "x"}, admitted, app.AssetBusy},
+		{"inactive", app.Apply, app.StartFacts{AssetState: "INACTIVE", ActiveTripID: "x"}, admitted, app.AssetUnavailable},
+		{"disposed-at-instant", app.Apply, app.StartFacts{AssetState: "ACTIVE", DisposedAt: &disposed}, admitted, app.AssetUnavailable},
+		{"changed-right-first", app.HoldPermissionChanged, app.StartFacts{AssetState: "DISPOSED", ActiveTripID: "x"}, admitted, app.PermissionChanged},
+		{"disposal-ended-assignment", app.HoldDisposalEnded, app.StartFacts{AssetState: "ACTIVE", ActiveTripID: "x"}, admitted, app.PermissionChanged},
+		{"blocked-or-reserved", app.Apply, app.StartFacts{AssetState: "ACTIVE"}, fleet.StartDecision{Code: fleet.AssetUnavailable}, app.AssetUnavailable},
+		{"held-instant-busy", app.Apply, app.StartFacts{AssetState: "ACTIVE"}, fleet.StartDecision{Code: fleet.AssetBusy}, app.AssetBusy},
+		{"decision-before-current-busy", app.Apply, app.StartFacts{AssetState: "ACTIVE", ActiveTripID: "x"}, fleet.StartDecision{Code: fleet.AssetUnavailable}, app.AssetUnavailable},
 	}
 	for _, tc := range cases {
-		if got := startHold(tc.disposition, tc.facts, v); got != tc.want {
+		if got := startHold(tc.disposition, tc.facts, tc.decision, v); got != tc.want {
 			t.Fatal(tc.name, got)
 		}
 	}
 	before := at.Add(time.Nanosecond)
-	if got := startHold(app.Apply, app.StartFacts{AssetState: "ACTIVE", DisposedAt: &before}, v); got != "" {
+	if got := startHold(app.Apply, app.StartFacts{AssetState: "ACTIVE", DisposedAt: &before}, admitted, v); got != "" {
 		t.Fatal("a start declared before the disposal was held", got)
 	}
 }
@@ -68,7 +74,7 @@ func TestFinishRefusalsUseTheFrozenVocabulary(t *testing.T) {
 }
 
 func TestOwnersNeedRealPortsAndDeclareTheirResults(t *testing.T) {
-	if _, err := NewStartHandler(nil, nil, nil); !errors.Is(err, syncapp.ErrUnavailable) {
+	if _, err := NewStartHandler(nil, nil, nil, nil); !errors.Is(err, syncapp.ErrUnavailable) {
 		t.Fatal("start owner without ports")
 	}
 	if _, err := NewFinishHandler(nil, nil, (*Store)(nil)); !errors.Is(err, syncapp.ErrUnavailable) {
@@ -91,6 +97,9 @@ func TestQueriesRefuseUnboundInputs(t *testing.T) {
 	}
 	if _, err := ActiveTripsOfAssetAtDBTX(ctx, nil, kernel.OrgScope{}, "x", time.Now()); !errors.Is(err, app.ErrUnavailable) {
 		t.Fatal("active trips without a transaction", err)
+	}
+	if _, err := (ActiveUse{}).ActiveUseDBTX(ctx, nil, kernel.OrgScope{}, "x", time.Now()); !errors.Is(err, fleetapp.ErrUnavailable) {
+		t.Fatal("active use without a transaction", err)
 	}
 	var s *Store
 	if _, err := s.AuthorEmployeeTx(ctx, nil, kernel.OrgScope{}, "x"); !errors.Is(err, app.ErrUnavailable) {

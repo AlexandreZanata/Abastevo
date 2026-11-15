@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	fa "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	fuel "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/domain"
@@ -43,7 +44,8 @@ func tripGrants(t *testing.T, fx legalFixtureState) {
 	t.Helper()
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trips,org_trip_finishes,org_trip_held_starts,org_trip_held_finishes,org_sync_review_items TO "+role+
-		";GRANT UPDATE(state) ON org_trips TO "+role+";GRANT SELECT ON org_employee_identities,org_asset_unit_periods,org_asset_cost_centre_periods,org_meters,org_meter_readings,org_units,org_meter_segments TO "+role); err != nil {
+		";GRANT UPDATE(state) ON org_trips TO "+role+";GRANT SELECT ON org_employee_identities,org_asset_unit_periods,org_asset_cost_centre_periods,org_meters,org_meter_readings,org_units,org_meter_segments TO "+role+
+		";GRANT SELECT,INSERT,UPDATE ON org_asset_reservations,org_asset_blocks TO "+role+";GRANT SELECT,INSERT ON org_asset_reservation_commands TO "+role+";GRANT SELECT,INSERT ON job_queue TO "+role); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -58,7 +60,7 @@ func tripIntakeConfig(fx syncFixtureState) syncpg.Config {
 
 func (x *tripState) handlers(t *testing.T, readings tripapp.Readings, store tripapp.Store) (syncapp.Handler, syncapp.Handler) {
 	t.Helper()
-	start, err := trippg.NewStartHandler(x.authority, readings, store)
+	start, err := trippg.NewStartHandler(x.authority, readings, x.assets, store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -79,9 +81,9 @@ func tripFixture(t *testing.T) tripState {
 	}
 	x.authority = (*orgpg.TripAuthority)(meterAuthority)
 	x.store = &trippg.Store{Allocations: x.assets, NewID: func() (string, error) { return onboardingID(t), nil }}
+	x.assets.OpenWork, x.assets.ActiveUse, x.assets.MaintenanceHolds = trippg.OpenWork{}, trippg.ActiveUse{}, fleetpg.NoMaintenanceHolds{}
 	x.start, x.finish = x.handlers(t, x.meters, x.store)
 	x.trips = syncpg.NewStore(tripIntakeConfig(x.syncFixtureState))
-	x.assets.OpenWork = trippg.OpenWork{}
 	input := fleetCreateInput()
 	input.Profile.Kind, input.Profile.UsageBasis, input.UnitID = fleet.Vehicle, fleet.Distance, x.unit
 	tank, err := fleet.NewTank(fuel.Catalog{}, fleet.Main, "100000", []string{"DIESEL_S10"})
@@ -102,6 +104,8 @@ func tripFixture(t *testing.T) tripState {
 		t.Fatal("tanked vehicle not active", err)
 	}
 	x.vehicleAt = active.Revision
+	// FLEET-007 admits a start only for an assigned driver or the reserved one.
+	x.assign(t, x.person.employee, x.vehicle.AssetID, fleet.PrimaryAssignment, nil, nil)
 	return x
 }
 
@@ -677,4 +681,50 @@ func TestTripSchemaIsForcedRLSGuardedAndInsertOnly(t *testing.T) {
 	if err := x.f.Admin.QueryRow(t.Context(), `SELECT bool_and(relrowsecurity AND relforcerowsecurity) FROM pg_class WHERE relname IN('org_trips','org_trip_finishes','org_trip_held_starts','org_trip_held_finishes')`).Scan(&forced); err != nil || !forced {
 		t.Fatal("trip tables are not forced RLS", err)
 	}
+}
+
+// FLEET-007 AC4 through the trip intake: a start inside a confirmed
+// reservation of another employee is held ASSET_UNAVAILABLE; the reserved
+// driver's start is accepted; availability reads IN_USE from the trip source.
+func TestTripIntakeHoldsAStartInsideAnotherEmployeesReservation(t *testing.T) {
+	x := tripFixture(t)
+	d := x.driver(t)
+	_, row := x.assign(t, d.person.employee, x.vehicle.AssetID, fleet.AdditionalAssignment, nil, nil)
+	from := row.from.Add(time.Second)
+	if _, _, err := reserve(t, x.legalFixtureState, x.assets, fa.ReservationRequestInput{AssetID: x.vehicle.AssetID, Start: from, End: from.Add(2 * time.Hour), EmployeeID: x.person.employee, Confirm: true}); err != nil {
+		t.Fatal("reservation fixture", err)
+	}
+	waitDBClock(t, x.legalFixtureState, from.Add(time.Millisecond))
+	outsider := x.startOp(t, d, from.Add(time.Millisecond), nil)
+	ack, err := x.process(t, d, outsider)
+	x.held(t, outsider, ack, err, tripapp.AssetUnavailable)
+	reserved := x.startOp(t, x.syncFixtureState, from.Add(2*time.Millisecond), nil)
+	ack, err = x.process(t, x.syncFixtureState, reserved)
+	x.accepted(t, reserved, ack, err, 1, 1)
+	view, err := x.assets.ReadAvailability(t.Context(), x.scope, fleetActor(x.legalFixtureState), x.member, x.vehicle.AssetID)
+	if err != nil || view.Assessment.Availability != fleet.InUse || len(view.MissingSources) != 1 || view.MissingSources[0] != fa.MaintenanceHoldSource {
+		t.Fatal("the trip source does not answer active use", view, err)
+	}
+}
+
+// FLEET-007 AC5 through the trip intake: a block added during a trip does
+// not interrupt it (the finish is accepted) and holds the next start.
+func TestTripIntakeBlockDuringATripAppliesToTheNextStart(t *testing.T) {
+	x := tripFixture(t)
+	d := x.syncFixtureState
+	started := x.declaredNow(t)
+	op := x.startOp(t, d, started, nil)
+	ack, err := x.process(t, d, op)
+	x.accepted(t, op, ack, err, 1, 1)
+	if _, err := blockAsset(t, x.legalFixtureState, x.assets, fa.BlockCreateInput{AssetID: x.vehicle.AssetID, Reason: fleet.SafetyBlock}); err != nil {
+		t.Fatal("block during the trip", err)
+	}
+	after := exactNow(t, x.legalFixtureState).Add(time.Second)
+	waitDBClock(t, x.legalFixtureState, after)
+	end := x.finishOp(t, d, tripOf(op), after, nil)
+	endAck, err := x.process(t, d, end)
+	x.accepted(t, end, endAck, err, 2, 1)
+	next := x.startOp(t, d, after.Add(time.Millisecond), nil)
+	nextAck, err := x.process(t, d, next)
+	x.held(t, next, nextAck, err, tripapp.AssetUnavailable)
 }

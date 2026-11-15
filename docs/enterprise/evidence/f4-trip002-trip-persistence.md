@@ -66,8 +66,8 @@ decisions, taken unattended.
   (ASSET_BUSY needs a trip in progress, ASSET_UNAVAILABLE a non-ACTIVE or
   disposed asset, TRIP_ALREADY_CLOSED a COMPLETED trip of the same author).
   `org_sync_review_source_valid` keeps its meter branch and adds the two trip
-  owners; the 000215 asset, unit and cost-centre usage sources are redefined
-  keeping every line and adding the trip keys.
+  owners; the asset (000217 body), unit and cost-centre (000215 bodies)
+  usage sources are redefined keeping every line and adding the trip keys.
 - Application (`trip/application`): the `trip.start`/`trip.finish` codecs
   (exact payloads, METER-001 reasons and values, TRIP-017 run clock, the
   EMP-TRIP-001 `Start`/`Finish` re-proved at parse and at receipt through
@@ -171,6 +171,61 @@ throwaway MinIO. The untagged suite passes (exit 0, 217 packages ok, log
 The FLEET-007 availability wiring and the merged-tree validation are the
 second TRIP-002 commit (section "FLEET-007 wiring" below).
 
+## FLEET-007 wiring (second TRIP-002 commit)
+
+After the first commit (`f12558a2`) the branch merged `codex/enterprise-f4`
+(`5a206693`: `org-permissions-v5`, EMP-FLEET-007 migration 000217 with
+reservations, blocks, the derived availability, `NoActiveUse`,
+`StartDecisionDBTX`) in a normal merge commit (`c196ac5a`; the contract and
+runtime conflicts kept both sides). The second commit then:
+
+1. rebuilds the 000220 asset usage source from the 000217 body, so it keeps
+   the reservation and block keys beside the trip keys (the upgrade test now
+   asserts both);
+2. consults the FLEET-007 `StartDecisionDBTX` in the start intake after the
+   history and lifecycle checks: a block, another employee's confirmed
+   reservation, maintenance, a missing assignment or a trip holding the
+   declared instant holds the start `ASSET_UNAVAILABLE` / `ASSET_BUSY`; the
+   held-start trigger now re-proves only `ASSET_BUSY` (a trip in progress or
+   one holding the declared instant) and leaves the other codes to their
+   owning ports in the same transaction;
+3. replaces `NoActiveUse` with the trip-backed `ActiveUse` (stored trips
+   holding the asset at the instant) in the runtime, so availability reads
+   `IN_USE` and lists only `MAINTENANCE_HOLD` as missing;
+4. found no `org-permissions-v4` pin in the trip code or tests (none added).
+
+The trip fixture now assigns the ADMIN member to the vehicle (FLEET-007
+admits a start only for an assigned or the reserved driver). New PostGIS
+tests: `TestTripIntakeHoldsAStartInsideAnotherEmployeesReservation` (FLEET-007
+AC4: an assigned driver outside the confirmed reservation is held
+ASSET_UNAVAILABLE, the reserved driver is accepted, availability reads
+IN_USE from the trip source) and `TestTripIntakeBlockDuringATripAppliesToTheNextStart`
+(AC5: a SAFETY block during the trip does not refuse its finish and holds the
+next start). The first run of those two failed RETRY/UNAVAILABLE because the
+held-start trigger still required a non-ACTIVE asset for ASSET_UNAVAILABLE;
+the trigger was corrected (the migration is not yet applied anywhere), no
+expectation changed. Trip tests: 13/13 top-level, 21/21 subtests (34.5 s,
+race), log `trip002-go-green-wiring.jsonl`.
+
+Merged-tree validation (commit 2, same commands plus a throwaway MinIO
+project `f4-trip002-s3` from `infra/compose.validation.yml`, removed with
+`down -v` afterwards): gofmt, build, vet (plain and integration), staticcheck
+(plain and integration on trip, organization, fleet, enterprisesuite, orgtest,
+apicontract) and `sqlc vet`/`generate` are clean (log
+`trip002-merged-static.log`). The race/integration union over organization,
+fleet, orgsync, fueling, trip, membership, orgaccess, document, migrate,
+enterprisesuite, apicontract and orgtest (log
+`trip002-merged-db-union.jsonl`; organization/adapters 1209 s) passed 34
+packages and failed two organization/adapters tests that the wiring itself
+caused: the runtime availability read now queries trips, so
+`orgtest.GrantMeterUsage` also grants the trip identity, instant and finish
+columns, and the FLEET-007 HTTP test now expects only `MAINTENANCE_HOLD`
+among the missing sources (OpenAPI description and example updated). Both
+tests, the auditor export gates, every `TestTrip*` and `TestFleetAvailability*`
+then pass (51.4 s, race, MinIO), and apicontract passes. The untagged suite
+passes (exit 0, 217 packages ok, `trip002-merged-untagged-all.log`);
+`check_plan.py` reports 0 problems.
+
 ## Retained obligations
 
 - EMP-TRIP-007: resolution of held starts and finishes (accept with this or
@@ -182,6 +237,6 @@ second TRIP-002 commit (section "FLEET-007 wiring" below).
   stays `RETRY`/`UNAVAILABLE` (no held-finish owner for PERMISSION_CHANGED).
 - EMP-TRIP-004 appends SUBMIT and the review decisions (EDR-205);
   EMP-TRIP-005 is the Android producer; EMP-TRIP-006 the panel reads;
-  EMP-TRIP-011/012/014 pause, handover and supervisor closure; FLEET-007
-  wiring of the active-use and start-decision ports (second commit below).
+  EMP-TRIP-011/012/014 pause, handover and supervisor closure; the
+  maintenance epic replaces `NoMaintenanceHolds`.
 - No route, panel read, Android or job change; no C1, M4 or F4 acceptance.

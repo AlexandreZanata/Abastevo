@@ -11,6 +11,7 @@ import (
 
 	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/trip"
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
@@ -490,18 +491,44 @@ func (OpenWork) OpenAssetWorkTx(ctx context.Context, tx pgx.Tx, scope kernel.Org
 	return nil, nil
 }
 
-// ActiveTripsOfAssetAtDBTX answers which stored trips of an asset cover an
-// instant (started at or before it and not finished at or before it). It is
-// the active-use answer the reservation owner wires at integration (EDR-206).
-func ActiveTripsOfAssetAtDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) ([]string, error) {
+// ActiveUse is the trip-backed FLEET-007 active-use source (EDR-206): the
+// stored trips holding the asset at an instant (started at or before it and
+// not finished at or before it).
+type ActiveUse struct{}
+
+var _ fleetapp.ActiveUsePort = ActiveUse{}
+
+func (ActiveUse) ActiveUseDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) (fleetapp.UseAnswer, error) {
 	db = syncapp.Borrow(db)
 	if db == nil || scope.Validate() != nil || !canonicalID(asset) || at.IsZero() || database.ValidateOrgDBTX(ctx, db, scope) != nil {
-		return nil, app.ErrUnavailable
+		return fleetapp.UseAnswer{}, fleetapp.ErrUnavailable
 	}
 	stamp, sub := instant(at)
-	ids, err := q.New(db).ActiveTripsOfAssetAt(ctx, q.ActiveTripsOfAssetAtParams{OrgID: scope.OrgID().String(), AssetID: asset, At: stamp, AtSubmicro: sub})
+	rows, err := q.New(db).TripUsesOfAssetAt(ctx, q.TripUsesOfAssetAtParams{OrgID: scope.OrgID().String(), AssetID: asset, At: stamp, AtSubmicro: sub})
 	if err != nil {
-		return nil, storeError(err)
+		return fleetapp.UseAnswer{}, fleetapp.ErrUnavailable
+	}
+	answer := fleetapp.UseAnswer{Sourced: true, Uses: make([]fleet.UseFact, 0, len(rows))}
+	for _, row := range rows {
+		from, ok := exact(row.OccurredAt, row.OccurredSubmicro)
+		if !ok {
+			return fleetapp.UseAnswer{}, fleetapp.ErrUnavailable
+		}
+		answer.Uses = append(answer.Uses, fleet.UseFact{ID: row.ID, From: from})
+	}
+	return answer, nil
+}
+
+// ActiveTripsOfAssetAtDBTX lists the identities of the trips holding the
+// asset at an instant (the ActiveUse answer).
+func ActiveTripsOfAssetAtDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) ([]string, error) {
+	answer, err := ActiveUse{}.ActiveUseDBTX(ctx, db, scope, asset, at)
+	if err != nil {
+		return nil, app.ErrUnavailable
+	}
+	ids := make([]string, 0, len(answer.Uses))
+	for _, use := range answer.Uses {
+		ids = append(ids, use.ID)
 	}
 	return ids, nil
 }

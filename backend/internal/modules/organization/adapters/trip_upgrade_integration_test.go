@@ -179,6 +179,7 @@ func TestTripPopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing.T) {
 	if err := f.Admin.QueryRow(t.Context(), `SELECT pg_get_functiondef('org_asset_current_usage(uuid,uuid)'::regprocedure) LIKE '%org_trips_asset_fkey%' AND pg_get_functiondef('org_asset_current_usage(uuid,uuid)'::regprocedure) LIKE '%org_trip_held_starts_asset_fkey%' AND pg_get_functiondef('org_asset_current_usage(uuid,uuid)'::regprocedure) LIKE '%org_fuelings_asset_fkey%'
  AND pg_get_functiondef('org_unit_current_usage(uuid,uuid)'::regprocedure) LIKE '%org_trips_unit_fkey%' AND pg_get_functiondef('org_unit_current_usage(uuid,uuid)'::regprocedure) LIKE '%org_fuelings_unit_fkey%'
  AND pg_get_functiondef('org_cost_centre_current_usage(uuid,uuid)'::regprocedure) LIKE '%org_trips_cost_centre_fkey%' AND pg_get_functiondef('org_cost_centre_current_usage(uuid,uuid)'::regprocedure) LIKE '%org_fuelings_cost_centre_fkey%'
+ AND pg_get_functiondef('org_asset_current_usage(uuid,uuid)'::regprocedure) LIKE '%org_asset_reservations_asset_fkey%' AND pg_get_functiondef('org_asset_current_usage(uuid,uuid)'::regprocedure) LIKE '%org_asset_blocks_asset_fkey%'
  AND pg_get_functiondef('org_sync_review_source_valid(uuid,uuid,text,bigint)'::regprocedure) LIKE '%meter.reading.record%' AND pg_get_functiondef('org_sync_review_source_valid(uuid,uuid,text,bigint)'::regprocedure) LIKE '%org_meter_held_readings%'`).Scan(&listed); err != nil || !listed {
 		t.Fatal("redefined sources lost an existing key or miss the trip key", err)
 	}

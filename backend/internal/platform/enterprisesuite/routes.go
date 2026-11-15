@@ -198,9 +198,9 @@ func Register(router chi.Router, o Options) error {
 	fleetAuthority := &orgpg.FleetAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
 	// EMP-TRIP-002 (EDR-206): an IN_PROGRESS trip is BR-FLEET-010 open work;
 	// work orders join this source when the maintenance epic delivers them.
-	// NoActiveUse and NoMaintenanceHolds are the explicit availability "no
-	// source" answers until trips and maintenance holds exist (EDR-194).
-	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: fleetpg.NoActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}}
+	// Trips are the FLEET-007 active-use source (EDR-206); NoMaintenanceHolds
+	// stays the explicit "no source" answer until maintenance holds exist.
+	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}

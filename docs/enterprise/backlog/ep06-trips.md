@@ -57,8 +57,9 @@ LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Signed `trip.start` and
 `trip.finish` (migration 000220) store one trip and its one completion with
 TRIP_START/TRIP_END readings; at most one trip per asset is in progress; a
 second admissible start is held `ASSET_BUSY` (both race orders on PostGIS) and
-a second finish `TRIP_ALREADY_CLOSED`; FLEET-003 open work is trip-backed.
-Held-item resolution stays with EMP-TRIP-007.
+a second finish `TRIP_ALREADY_CLOSED`; FLEET-003 open work and the FLEET-007
+active use are trip-backed and the FLEET-007 start decision holds blocked or
+reserved starts. Held-item resolution stays with EMP-TRIP-007.
 
 ### EMP-TRIP-003 — Logbook events: the typed timeline
 - **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size M · state TODO

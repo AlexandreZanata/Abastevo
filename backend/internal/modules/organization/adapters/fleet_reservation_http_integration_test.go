@@ -216,7 +216,7 @@ func TestFleetReservationsThroughComposedCompanyHTTP(t *testing.T) {
 		t.Fatal("reservation page", page)
 	}
 	available := call("availability", base+"/"+v+"/availability/read", map[string]any{}, 200)
-	if available["availability"] != "AVAILABLE" || len(available["causes"].([]any)) != 0 || len(available["missing_sources"].([]any)) != 2 {
+	if available["availability"] != "AVAILABLE" || len(available["causes"].([]any)) != 0 || len(available["missing_sources"].([]any)) != 1 || available["missing_sources"].([]any)[0] != "MAINTENANCE_HOLD" {
 		t.Fatal("availability before the window", available)
 	}
 

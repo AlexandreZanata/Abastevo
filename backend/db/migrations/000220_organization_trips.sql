@@ -240,7 +240,7 @@ CREATE CONSTRAINT TRIGGER org_trip_finish_complete AFTER INSERT ON org_trip_fini
 
 -- Held facts re-prove their source and the condition that holds them.
 CREATE FUNCTION org_trip_held_source() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
-DECLARE i public.org_sync_review_items%ROWTYPE;a public.org_assets%ROWTYPE;t public.org_trips%ROWTYPE;
+DECLARE i public.org_sync_review_items%ROWTYPE;t public.org_trips%ROWTYPE;
 BEGIN
  IF NEW.org_id IS DISTINCT FROM NULLIF(current_setting('anpfuel.org_id',true),'')::uuid THEN RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='organization scope denied';END IF;
  PERFORM 1 FROM public.organizations WHERE org_id=NEW.org_id AND has_snapshot FOR UPDATE;
@@ -252,10 +252,15 @@ BEGIN
   OR NOT public.org_trip_operation_valid(NEW.org_id,NEW.operation_id,'trip.start',NEW.trip_id,i.payload_digest,NULL,NULL,i.author_employee_id)
   THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='held trip source unavailable';END IF;
   IF EXISTS(SELECT 1 FROM public.org_trips WHERE org_id=NEW.org_id AND id=NEW.trip_id) THEN RAISE EXCEPTION USING ERRCODE='23505',CONSTRAINT='org_trips_pkey',MESSAGE='trip identity unavailable';END IF;
-  SELECT * INTO a FROM public.org_assets WHERE org_id=NEW.org_id AND id=NEW.asset_id FOR UPDATE;
+  PERFORM 1 FROM public.org_assets WHERE org_id=NEW.org_id AND id=NEW.asset_id FOR UPDATE;
   IF NOT FOUND THEN RAISE EXCEPTION USING ERRCODE='23503',MESSAGE='private reference not found';END IF;
-  IF(i.code='ASSET_BUSY' AND NOT EXISTS(SELECT 1 FROM public.org_trips t2 WHERE t2.org_id=NEW.org_id AND t2.asset_id=NEW.asset_id AND t2.state='IN_PROGRESS'))
-  OR(i.code='ASSET_UNAVAILABLE' AND a.state='ACTIVE' AND(a.disposed_at IS NULL OR(NEW.occurred_at,NEW.occurred_submicro)<(a.disposed_at,a.disposed_submicro)))
+  -- ASSET_BUSY needs a trip in progress or one holding the declared instant;
+  -- ASSET_UNAVAILABLE (lifecycle, block, reservation, maintenance, missing
+  -- assignment) and PERMISSION_CHANGED are decided by their owning ports in
+  -- this transaction and are not re-derived here.
+  IF i.code='ASSET_BUSY' AND NOT EXISTS(SELECT 1 FROM public.org_trips t2 LEFT JOIN public.org_trip_finishes f2 ON(f2.org_id,f2.trip_id)=(t2.org_id,t2.id)
+   WHERE t2.org_id=NEW.org_id AND t2.asset_id=NEW.asset_id AND(t2.state='IN_PROGRESS' OR((t2.occurred_at,t2.occurred_submicro)<=(NEW.occurred_at,NEW.occurred_submicro)
+   AND(f2.occurred_at,f2.occurred_submicro)>(NEW.occurred_at,NEW.occurred_submicro))))
   THEN RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='held trip condition unavailable';END IF;
  ELSE
   SELECT * INTO t FROM public.org_trips WHERE org_id=NEW.org_id AND id=NEW.trip_id FOR UPDATE;
@@ -313,8 +318,9 @@ DO $$DECLARE name TEXT;BEGIN
  END LOOP;
 END $$;
 
--- The 215 asset-use source with trips and held trip facts recognised as
--- accepted operations on the asset (they fix its kind and keep a draft).
+-- The 217 asset-use source (the 215 body plus the FLEET-007 reservation and
+-- block keys) with trips and held trip facts recognised as accepted
+-- operations on the asset (they fix its kind and keep a draft).
 CREATE OR REPLACE FUNCTION org_asset_current_usage(selected_org UUID,selected_asset UUID) RETURNS JSONB
  LANGUAGE plpgsql SET search_path=pg_catalog AS $$
 BEGIN
@@ -334,6 +340,8 @@ BEGIN
  OR(c.conrelid=to_regclass('public.org_document_links') AND c.conname='org_document_links_asset_fkey')
  OR(c.conrelid='public.org_asset_assignments'::regclass AND c.conname='org_asset_assignments_asset_fkey')
  OR(c.conrelid='public.org_fuelings'::regclass AND c.conname='org_fuelings_asset_fkey')
+ OR(c.conrelid='public.org_asset_reservations'::regclass AND c.conname='org_asset_reservations_asset_fkey')
+ OR(c.conrelid='public.org_asset_blocks'::regclass AND c.conname='org_asset_blocks_asset_fkey')
  OR(c.conrelid='public.org_trips'::regclass AND c.conname='org_trips_asset_fkey')
  OR(c.conrelid='public.org_trip_held_starts'::regclass AND c.conname='org_trip_held_starts_asset_fkey'))) THEN RAISE EXCEPTION USING ERRCODE='P7904',MESSAGE='asset usage source unavailable';END IF;
  RETURN jsonb_build_object('readings',(SELECT count(*) FROM public.org_meter_readings r JOIN public.org_meters m ON(m.org_id,m.id)=(r.org_id,r.meter_id) WHERE m.org_id=selected_org AND m.asset_id=selected_asset),'operations',(SELECT count(*) FROM public.org_sync_operations o JOIN public.org_sync_effects e USING(org_id,operation_id) WHERE o.org_id=selected_org AND o.entity_id=selected_asset AND o.entity_type='fleet_asset')+(SELECT count(*) FROM public.org_meter_held_readings h WHERE h.org_id=selected_org AND h.asset_id=selected_asset)+(SELECT count(*) FROM public.org_fuelings f WHERE f.org_id=selected_org AND f.asset_id=selected_asset)+(SELECT count(*) FROM public.org_trips t WHERE t.org_id=selected_org AND t.asset_id=selected_asset)+(SELECT count(*) FROM public.org_trip_held_starts h WHERE h.org_id=selected_org AND h.asset_id=selected_asset));

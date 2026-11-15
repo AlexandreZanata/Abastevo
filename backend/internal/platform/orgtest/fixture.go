@@ -466,8 +466,11 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 	}
 	if installed {
 		// EMP-TRIP-002: asset usage counts trips and held starts; FLEET-003
-		// open work reads whether a trip of the asset is in progress.
-		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,state) ON org_trips TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()+";GRANT SELECT(org_id,asset_id) ON org_trip_held_starts TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+		// open work reads whether a trip of the asset is in progress; the
+		// FLEET-007 active-use source reads which trips hold it at an instant.
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,asset_id,state,occurred_at,occurred_submicro) ON org_trips TO "+role+
+			";GRANT SELECT(org_id,trip_id,occurred_at,occurred_submicro) ON org_trip_finishes TO "+role+";GRANT SELECT(org_id,asset_id) ON org_trip_held_starts TO "+role); err != nil {
 			t.Fatal(err)
 		}
 	}

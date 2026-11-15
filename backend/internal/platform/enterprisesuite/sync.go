@@ -84,7 +84,7 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	// EMP-TRIP-002: the trip owners share the same authority sources, fleet
 	// readings and allocation port; held facts use the OFFL-008 review items.
 	tripStore := &trippg.Store{Allocations: assets, NewID: jobs.NewUUIDv4}
-	tripStart, err := trippg.NewStartHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore)
+	tripStart, err := trippg.NewStartHandler((*orgpg.TripAuthority)(meterAuthority), meters, assets, tripStore)
 	if err != nil {
 		return err
 	}

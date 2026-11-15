@@ -104,10 +104,9 @@ WHERE i.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND i.operation_id=CAST(sqlc
 -- FLEET-003 open work: an IN_PROGRESS trip of the asset (B-BR-EMP-318).
 SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND state='IN_PROGRESS')::boolean AS open;
 
--- name: ActiveTripsOfAssetAt :many
--- Trips whose declared operation covers the instant: started at or before it
--- and not finished at or before it (half-open; overlaps are reported).
-SELECT t.id::text AS id FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+-- name: TripUsesOfAssetAt :many
+-- FLEET-007 active use (EDR-206): trips holding the asset at the instant.
+SELECT t.id::text AS id,t.occurred_at,t.occurred_submicro FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
 WHERE t.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND t.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
 AND(t.occurred_at,t.occurred_submicro)<=(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint)
 AND(f.trip_id IS NULL OR(f.occurred_at,f.occurred_submicro)>(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint))

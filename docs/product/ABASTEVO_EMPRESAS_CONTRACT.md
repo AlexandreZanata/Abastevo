@@ -4952,10 +4952,14 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   `ASSET_BUSY`; an asset that is not ACTIVE at receipt, or a start declared
   at or after its disposal, is held `ASSET_UNAVAILABLE`; a start whose right
   changed after its declaration (EDR-118 continuity) is held
-  `PERMISSION_CHANGED`. A held start stores its whole fact, its reading
-  values and a version-1 review item in the same transaction as its
-  acknowledgement; it creates no trip and no reading and is never active
-  use. Its resolution belongs to EMP-TRIP-007.
+  `PERMISSION_CHANGED`. The FLEET-007 start decision is consulted in the
+  same transaction after those checks: a block, a confirmed reservation of
+  another employee, maintenance, a missing assignment or a trip holding the
+  declared instant holds the start `ASSET_UNAVAILABLE` or `ASSET_BUSY`. A
+  held start stores its whole fact, its reading values and a version-1
+  review item in the same transaction as its acknowledgement; it creates no
+  trip and no reading and is never active use. Its resolution belongs to
+  EMP-TRIP-007.
 - **B-BR-EMP-314 — Reading evidence commits with its event.** Exactly one
   of a reading or a missing reason (the METER-001 profile) is required. A
   departure reading is recorded through the fleet embedded-reading port with
@@ -5002,8 +5006,11 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   review case as the APPR-001 draft (DRAFT, revision 1, no entry); neither
   start nor finish submits it (EMP-TRIP-004 owns submission). An IN_PROGRESS
   trip is open work: FLEET-003 deactivation and disposal of its asset are
-  refused with the `TRIP` open-work kind. One query answers the active trip
-  of an asset at an instant for the reservation and availability owner.
+  refused with the `TRIP` open-work kind. Stored trips are the FLEET-007
+  active-use source: a trip started at or before an instant and not finished
+  at or before it holds the asset then, so availability reads `IN_USE` and no
+  longer lists active use among its missing sources. A block added during a
+  trip never interrupts it and applies to the next start.
 - **B-BR-EMP-319 — Bounded sources.** Trips, finishes and held starts and
   finishes are asset operations in the asset usage source (they fix the kind
   and keep a draft from being discarded); unit and cost-centre snapshots are

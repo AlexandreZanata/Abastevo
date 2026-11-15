@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	meter "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
@@ -13,16 +14,20 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 )
 
-type startHandler struct{ ports }
+type startHandler struct {
+	ports
+	availability fleetapp.StartAvailabilityPort
+}
 type finishHandler struct{ ports }
 
-// NewStartHandler composes the trip.start owner from real ports only.
-func NewStartHandler(authority app.Authority, readings app.Readings, store app.Store) (syncapp.Handler, error) {
+// NewStartHandler composes the trip.start owner from real ports only; the
+// FLEET-007 start decision is consulted under the asset lock.
+func NewStartHandler(authority app.Authority, readings app.Readings, availability fleetapp.StartAvailabilityPort, store app.Store) (syncapp.Handler, error) {
 	p := ports{authority: authority, readings: readings, store: store}
-	if !p.ready() {
+	if !p.ready() || absent(availability) {
 		return nil, syncapp.ErrUnavailable
 	}
-	return &startHandler{p}, nil
+	return &startHandler{ports: p, availability: availability}, nil
 }
 
 // NewFinishHandler composes the trip.finish owner from real ports only.
@@ -49,7 +54,7 @@ func (h *finishHandler) ReviewProof() syncapp.ReviewProof { return h.store }
 // ---- trip.start (B-BR-EMP-312/313) ----
 
 func (h *startHandler) request(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, mode syncapp.Mode) (app.StartCommand, app.StartInput, error) {
-	if h == nil || !h.ready() {
+	if h == nil || !h.ready() || absent(h.availability) {
 		return app.StartCommand{}, app.StartInput{}, syncapp.ErrUnavailable
 	}
 	if err := bound(ctx, db, source, op, mode, app.StartOperationType); err != nil {
@@ -103,9 +108,12 @@ func (h *startHandler) Admit(ctx context.Context, db syncapp.DBTX, source syncap
 	return err
 }
 
-// heldCode decides the held condition of an admissible start under the root
-// and asset locks; "" applies it (B-BR-EMP-313).
-func startHold(disposition app.Disposition, facts app.StartFacts, v app.StartInput) string {
+// startHold decides the held condition of an admissible start under the
+// root and asset locks; "" applies it (B-BR-EMP-313). The FLEET-007 start
+// decision (block, reservation for someone else, lifecycle, maintenance,
+// missing assignment, a trip holding the declared instant) follows the
+// lifecycle and history checks; a trip in progress now is always busy.
+func startHold(disposition app.Disposition, facts app.StartFacts, decision fleet.StartDecision, v app.StartInput) string {
 	switch {
 	case disposition == app.HoldPermissionChanged:
 		return app.PermissionChanged
@@ -113,6 +121,10 @@ func startHold(disposition app.Disposition, facts app.StartFacts, v app.StartInp
 		return app.AssetUnavailable
 	case disposition == app.HoldDisposalEnded:
 		return app.PermissionChanged
+	case !decision.Admitted && decision.Code == fleet.AssetBusy:
+		return app.AssetBusy
+	case !decision.Admitted:
+		return app.AssetUnavailable
 	case facts.ActiveTripID != "":
 		return app.AssetBusy
 	}
@@ -153,7 +165,14 @@ func (h *startHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 	if facts.AssetState == "DRAFT" || !facts.DriverActive || facts.ExistingOperation != "" || facts.HeldOperation != "" || !readingFits(v.Event, view) {
 		return malformed(), nil
 	}
-	if code := startHold(disposition, facts, v); code != "" {
+	decision, err := h.availability.StartDecisionDBTX(ctx, syncapp.Borrow(db), source.Scope, v.AssetID, source.MembershipID, v.Declared.OccurredAt)
+	if err != nil {
+		if errors.Is(err, syncapp.ErrSourceDenied) {
+			return syncapp.Outcome{}, err
+		}
+		return syncapp.Outcome{}, syncapp.ErrUnavailable
+	}
+	if code := startHold(disposition, facts, decision, v); code != "" {
 		review, err := h.store.HoldStartTx(ctx, syncapp.Borrow(db), source, op, command, code)
 		return held(review, code, err)
 	}

@@ -17358,8 +17358,8 @@ paths:
         ACTIVE), IN_USE (a trip in progress), IN_MAINTENANCE (an open hold), BLOCKED, RESERVED (a confirmed
         reservation holding the asset) or AVAILABLE, and every applying cause in that order with its kind, record
         identifier and period (no person, purpose or note). missing_sources names the sources that could not be
-        consulted; until trips and maintenance holds exist, ACTIVE_USE and MAINTENANCE_HOLD, so the answer never
-        claims their absence. Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server
+        consulted; until maintenance holds exist, MAINTENANCE_HOLD, so the answer never claims their absence (trips
+        are the ACTIVE_USE source since EMP-TRIP-002). Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server
         rechecks current fleet.asset.read and same-organization membership; a SELF grant covers an asset assigned to
         the member at the server instant (EMP-FLEET-006). Responses are private no-store.
       security:
@@ -23480,7 +23480,6 @@ components:
           valid_from: '2026-11-14T12:00:00Z'
           valid_to: '2026-11-14T16:00:00Z'
         missing_sources:
-        - ACTIVE_USE
         - MAINTENANCE_HOLD
         evaluated_at: '2026-11-14T12:30:00.5Z'
       description: Derived availability at evaluated_at (fleet.md §6.2, BR-FLEET-025), never stored.
