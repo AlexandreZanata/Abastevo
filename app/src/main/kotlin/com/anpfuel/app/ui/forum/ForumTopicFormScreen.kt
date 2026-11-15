@@ -216,6 +216,9 @@ internal fun ForumTopicFormContent(
                                 is ForumActionError.Offline -> stringResource(R.string.forum_offline_notice)
                                 is ForumActionError.TargetMissing -> stringResource(R.string.forum_post_not_found_title)
                                 is ForumActionError.Generic -> error.message ?: stringResource(R.string.forum_unavailable_title)
+                                // Safety refusals come only from the conversation screen.
+                                is ForumActionError.SelfTarget -> stringResource(R.string.safety_error_self_target)
+                                is ForumActionError.BlockLimit -> stringResource(R.string.safety_error_block_limit)
                             }
                             Text(
                                 text = errorMessage,

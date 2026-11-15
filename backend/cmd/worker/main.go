@@ -62,6 +62,7 @@ import (
 	qualityadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters"
 	qualityjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/jobs"
 	qualityread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/quality/adapters/read"
+	safetyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/safety/adapters"
 	subscriptionadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters"
 	subscriptionjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/adapters/jobs"
 	subscriptionapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/subscription/application"
@@ -376,6 +377,7 @@ func run() error {
 	feedbackStore := feedbackadapters.NewPGStore(pool.Underlying())
 	qualityReportStore := &qualityadapters.ReportStore{Pool: raw, Now: time.Now}
 	forumStore := forumadapters.NewStore(pool.Underlying())
+	safetyStore := safetyadapters.NewStore(pool.Underlying())
 	accountRecovery := accountapp.ErasureRecovery{
 		Store: accountadapters.NewPGStore(pool.Underlying()), NewNonce: jobs.NewUUIDv4, Now: time.Now,
 		EraseFeedback: func(ctx context.Context, id string) error {
@@ -400,6 +402,15 @@ func run() error {
 				return forumErr
 			}
 			if !forumDone {
+				return accountapp.ErrErasurePending
+			}
+
+			// B-BR-SAFE-08: blocks made or received and report detail.
+			safetyDone, safetyErr := safetyStore.EraseAccountBatch(ctx, id, 200)
+			if safetyErr != nil {
+				return safetyErr
+			}
+			if !safetyDone {
 				return accountapp.ErrErasurePending
 			}
 			return nil

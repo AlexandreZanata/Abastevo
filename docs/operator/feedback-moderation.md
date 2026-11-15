@@ -25,6 +25,25 @@ export/erasure (P14-T05B). Device evidence stays deferred to release.
    targets the comment as COMMENT. Author tombstones win over
    later un-hides (deletion is terminal for display).
 
+## User reports and blocks (B-BR-SAFE-01…09)
+
+1. Signed accounts report the *author* of a public forum topic, comment,
+   reply or station comment: `POST /v1/community/user-reports`. The first
+   report about an account opens one `COMMUNITY_ACCOUNT` case (target = the
+   reported account UUID, P2); later reports join it. The case detail is
+   fixed text naming the content reference (`community user report via
+   <KIND> <uuid>`); the reporter's optional detail stays in
+   `community_user_reports` and is never copied to the case.
+2. Review the referenced content and the account's other public content,
+   then close the case with `ops moderation act --case <id> --action
+   REVIEW|RESOLVE|DISMISS --reason <text> --operator <id>`. INVALIDATE and
+   BLOCK refuse `COMMUNITY_ACCOUNT`: hide content through that content's own
+   case (forum: FORUM_POST/FORUM_COMMENT; station: COMMENT and
+   `ops feedback hide`).
+3. Blocks (`/v1/community/blocks…`) are private per-account preferences.
+   They never open cases, never hide content for other readers and are not
+   a moderation signal.
+
 ## Visibility semantics
 
 - `visible`: default, reads normally.

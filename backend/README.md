@@ -130,6 +130,23 @@ ANPFUEL_CANONICAL_HOST=127.0.0.1:18080 ANPFUEL_FORUM_ENABLED=true go run ./cmd/a
 
 Staging and production keep refusing anything but a bare public hostname.
 
+### Community safety: report and block users (B-BR-SAFE-01…09)
+
+`internal/modules/safety` owns `community_user_blocks` and
+`community_user_reports` (migration 000239) behind five signed routes under
+`/v1/community/` ([contract](../docs/product/COMMUNITY_SAFETY_CONTRACT.md)).
+Authors come from forum and feedback lookups wired in `cmd/api/safety.go`;
+account erasure runs `safety.EraseAccountBatch` after Forum. Unit tests need no
+database; the store suite needs disposable PostGIS:
+
+```sh
+go test -race -count=1 ./internal/modules/safety/...
+go test -race -count=1 ./cmd/api/ -run 'Safety'
+ANPFUEL_TEST_DATABASE_URL=postgres://...disposable... \
+  go test -race -count=1 -tags=integration ./internal/modules/safety/... \
+  ./internal/modules/forum/... ./internal/modules/feedback/... ./internal/modules/moderation/...
+```
+
 ### Private Empresas activation (EMP-PLAT-005)
 
 `ANPFUEL_ENTERPRISE_ENABLED` defaults to false. Future organization-route

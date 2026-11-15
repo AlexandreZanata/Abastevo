@@ -36,6 +36,10 @@ const (
 	TargetQualityReport = "QUALITY_REPORT"
 	TargetForumPost     = "FORUM_POST"
 	TargetForumComment  = "FORUM_COMMENT"
+	// TargetCommunityAccount names a reported account by UUID
+	// (B-BR-SAFE-04). User reports are triaged and closed only; actions
+	// on content go through that content's own case.
+	TargetCommunityAccount = "COMMUNITY_ACCOUNT"
 )
 
 // Case statuses. T01 opens OPEN only; IN_REVIEW/RESOLVED/REJECTED arrive
@@ -143,7 +147,7 @@ func NewCase(p CaseParams) (Case, ModerationCaseOpened, error) {
 		return Case{}, ModerationCaseOpened{}, ErrInvalidCase
 	}
 	switch p.TargetType {
-	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim, TargetContribution, TargetQualityReport, TargetForumPost, TargetForumComment:
+	case TargetObservation, TargetDispute, TargetContributor, TargetEvidence, TargetComment, TargetStationClaim, TargetContribution, TargetQualityReport, TargetForumPost, TargetForumComment, TargetCommunityAccount:
 	default:
 		return Case{}, ModerationCaseOpened{}, ErrUnknownTarget
 	}

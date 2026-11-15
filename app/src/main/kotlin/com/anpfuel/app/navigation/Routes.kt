@@ -6,6 +6,9 @@ object Routes {
     const val ONBOARDING = "onboarding"
     const val AUTH = "auth"
     const val ACCOUNT = "account"
+
+    /** Account > Blocked users (BUC-SAFE-04); carries no account or block identifier. */
+    const val BLOCKED_USERS = "account/blocked-users"
     const val ENTERPRISE_INVITATION = "enterprise/invitation"
     const val ENTERPRISE_CONTEXT = "enterprise/context"
     const val ENTERPRISE_REAUTH = "enterprise/reauth"

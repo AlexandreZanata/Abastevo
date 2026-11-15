@@ -56,6 +56,13 @@ class RoutesTest {
     }
 
     @Test
+    fun blockedUsersRouteLivesUnderAccountWithoutArguments() {
+        assertEquals("account/blocked-users", Routes.BLOCKED_USERS)
+        assertFalse(Routes.BLOCKED_USERS.contains("{"))
+        assertFalse(Routes.BLOCKED_USERS.contains("?"))
+    }
+
+    @Test
     fun premiumRoutesCarryNoAccountOrPurchaseArguments() {
         assertEquals("premium", Routes.PREMIUM)
         assertEquals("premium-management", Routes.PREMIUM_MANAGEMENT)

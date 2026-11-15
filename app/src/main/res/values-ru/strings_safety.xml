@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Community safety: report and block users (COMMUNITY_SAFETY_CONTRACT, B-BR-SAFE-01..09). -->
+<resources>
+    <string name="safety_more_actions">Другие действия</string>
+    <string name="safety_report_topic">Пожаловаться на тему</string>
+    <string name="safety_report_comment">Пожаловаться на комментарий</string>
+    <string name="safety_report_user">Пожаловаться на пользователя</string>
+    <string name="safety_block_user">Заблокировать пользователя</string>
+    <string name="safety_report_user_title">Жалоба на пользователя</string>
+    <string name="safety_report_user_prompt">Почему вы жалуетесь на этого пользователя? Жалобы конфиденциальны и проверяются модерацией. До проверки контент остаётся видимым.</string>
+    <string name="safety_reason_spam">Спам или реклама</string>
+    <string name="safety_reason_harassment">Преследование или травля</string>
+    <string name="safety_reason_hate">Разжигание ненависти или дискриминация</string>
+    <string name="safety_reason_impersonation">Выдача себя за другого</string>
+    <string name="safety_reason_illegal">Незаконный контент или деятельность</string>
+    <string name="safety_reason_other">Другая причина</string>
+    <string name="safety_report_detail_hint">Подробности (необязательно)</string>
+    <string name="safety_report_detail_counter">%1$d / %2$d</string>
+    <string name="safety_report_send">Отправить жалобу</string>
+    <string name="safety_report_user_received">Жалоба получена. Команда модерации её рассмотрит.</string>
+    <string name="safety_report_user_replayed">Вы уже пожаловались на этого пользователя. Жалоба на рассмотрении.</string>
+    <string name="safety_block_title">Заблокировать этого пользователя?</string>
+    <string name="safety_block_message">Его темы, комментарии и ответы на форуме, а также комментарии к заправкам будут скрыты для вас. Он не получит уведомления, а другие по-прежнему будут видеть его контент. Разблокировать можно в разделе «Профиль → Управлять аккаунтом → Заблокированные пользователи».</string>
+    <string name="safety_block_confirm">Заблокировать</string>
+    <string name="safety_block_done">Пользователь заблокирован. Его контент теперь скрыт для вас.</string>
+    <string name="safety_error_self_target">Это ваш собственный контент. Нельзя пожаловаться на себя или заблокировать себя.</string>
+    <string name="safety_error_block_limit">Достигнут лимит заблокированных пользователей. Сначала разблокируйте кого-нибудь в разделе «Профиль → Управлять аккаунтом → Заблокированные пользователи».</string>
+    <string name="safety_error_rate_limited">Слишком много попыток. Повторите через %1$d с.</string>
+    <string name="safety_error_offline">Нет подключения к сети. Повторите попытку, когда появится связь.</string>
+    <string name="safety_error_not_found">Этот контент больше недоступен.</string>
+    <string name="safety_error_generic">Не удалось выполнить действие. Повторите попытку.</string>
+    <string name="safety_topic_hidden_title">Контент скрыт</string>
+    <string name="safety_topic_hidden_message">Эта тема от пользователя, которого вы заблокировали. Разблокировать его можно в разделе «Профиль → Управлять аккаунтом → Заблокированные пользователи».</string>
+    <string name="blocked_users_title">Заблокированные пользователи</string>
+    <string name="blocked_users_entry_subtitle">Люди, чей контент скрыт для вас</string>
+    <string name="blocked_users_intro">Контент заблокированных пользователей скрыт для вас на форуме и на страницах заправок. Они не получают уведомлений.</string>
+    <string name="blocked_users_empty_title">Нет заблокированных пользователей</string>
+    <string name="blocked_users_empty_message">Когда вы кого-то заблокируете, он появится здесь, и его можно будет разблокировать в любой момент.</string>
+    <string name="blocked_users_fallback_forum">Участник форума</string>
+    <string name="blocked_users_fallback_station">Автор комментариев к заправкам</string>
+    <string name="blocked_users_fallback_generic">Участник сообщества</string>
+    <string name="blocked_users_since">Заблокирован %1$s</string>
+    <string name="blocked_users_unblock">Разблокировать</string>
+    <string name="blocked_users_unblock_title">Разблокировать %1$s?</string>
+    <string name="blocked_users_unblock_message">Его контент снова будет виден вам при следующей загрузке.</string>
+    <string name="blocked_users_unblocked">Пользователь разблокирован.</string>
+    <string name="blocked_users_load_error">Не удалось загрузить список заблокированных пользователей.</string>
+    <string name="blocked_users_sign_in">Войдите, чтобы управлять заблокированными пользователями.</string>
+</resources>
