@@ -885,3 +885,64 @@ the 5 `cmd/worker` tests needing pinned Rust preparer CLIs (CI builds them)
 and the `orgmedia` S3 flake fixed by PR #222. Android host suites on the final
 code: domain 3461, application 656, data 183, app enterprise 23 tests, 0
 failures; native acceptance only on `emulator-5588`.
+
+## Integration — PR #223 merged (2026-11-15)
+
+[PR #223](https://github.com/AlexandreZanata/Abastevo/pull/223) (`dev` →
+`main`, head `f17f57ec`) was merged by the maintainer at 16:31Z as
+`93f3a88d`, whose tree is identical to the delivered head. At the last read
+before the merge the PR checks `fast`, `test` and `Quick verification`
+passed and `integration` was in progress; `release-staging` and `Android
+release` then completed successfully on `main` at `93f3a88d`. The final local
+race/integration union on `f17f57ec` (71 packages, 70 pass, 1637 top-level /
+12618 named; only the 5 Rust-preparer-gated `cmd/worker` tests fail) is
+recorded here because no commit could be pushed to `dev` while the PR ran
+(`f4-logs/coord-union-final-f17f57ec.jsonl`).
+
+The 19 tasks of the batch checkpoint (9 F2/C1 prerequisites, 10 F4 tasks) and
+the catalog amendment are therefore **INTEGRATED** at `93f3a88d`; none is
+RELEASE_CERTIFIED, no deployment or production grant is part of the merge, and
+M4/F4 remain open with the retained obligations listed in the checkpoint.
+
+## Next batch on `codex/enterprise-f4` (after `93f3a88d`)
+
+### EMP-TRIP-009 — manager-planned missions: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip009-planned-trips.md), commit `b854e4ad`, migration 000231
+(rebuilds the unit and cost-centre usage functions from the 000230 bodies).
+`PLAN` moves a DRAFT, PLANNED, ASSIGNED or DECLINED mission to PLANNED and
+clears the assignee and answer (refused on ACCEPTED, IN_PROGRESS and terminal
+missions); a plan holds a destination (free text or an ACTIVE unit), a reason,
+an optional ACTIVE cost centre as the customer/project reference and a load
+(NONE, CARGO with a description, PASSENGERS with only a count 1..999; free
+texts refuse CPF-shaped numbers; no passenger identities); plans are
+insert-only rows in `org_trip_mission_plans` and never touch trips, readings or
+reviews; new `mission-v2.psv` (317 cases, Go and Kotlin hash-checked) replaces
+`mission-v1.psv` for the tests; route `POST /missions/{id}/plan`; reads return
+the current plan (EDR-246..249). RED Go/Kotlin 82/317 vectors, router 3,
+contract 2/2, PostGIS 4/4 twice → GREEN 317/317, PostGIS 13/13; union 1084 /
+9251, 0 failures.
+
+### EMP-TRIP-013 — vehicle change within a mission: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip013-vehicle-change.md), commit `e836412e`, migration 000232
+(rebuilds the asset usage function from the 000230 body). Server-only change
+on PLANNED, ASSIGNED, ACCEPTED or DECLINED missions, refused while the
+assignee has a trip running on the current vehicle (it must finish on its own
+vehicle first); the new vehicle must be ACTIVE, not an implement, not running
+another trip and not unavailable, in maintenance or blocked at the planned
+start; the planner must cover the mission before and after, and a current
+assignee must still cover it; each change is an insert-only row in
+`org_trip_mission_vehicles` and the database refuses moving a reading or a
+trip to another vehicle (EDR-250/251). RED domain 25/25, router 3, contract
+1/2, PostGIS 6/6 and 5/6 → GREEN domain 26/26, PostGIS 21/21; union 1092 /
+9310, 0 failures; Kotlin enterprise 3541, 0 failures. Counts: 147 normal
+routes, auditor walk 147 / 30 / 117, matrix 280 cells (112/168), 8 signed
+owners. Retained: app/panel display (TRIP-021/022), vehicle change on
+IN_PROGRESS missions once trips link to missions (TRIP-021/023), planned stops
+(TRIP-010), re-planning accepted missions, history reads, production grants.
+
+Integration (`4a7c211d`): `origin/main` `93f3a88d` merged (no file change),
+then the TRIP-009/013 branch (already merged with `bff5a788`) without
+conflicts; build, vet (both tags), gofmt, `sqlc diff`, check_plan, cmd/api and
+trip unit tests green. Not delivered: the next cumulative `dev → main` PR.

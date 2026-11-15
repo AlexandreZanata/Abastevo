@@ -11,7 +11,9 @@
   OFFL-011/013, ROUTE-004, CHECK-002/004 open. No M4/F4 acceptance is claimed.
   Final local gates on `bff5a788`: `check-backend-fast.sh` and `make
   quick-verify` pass; merged-tree unions green except the 5 known Rust-CLI
-  `cmd/worker` tests. Delivered through one cumulative dev → main PR.
+  `cmd/worker` tests. PR #223 merged by the maintainer at `93f3a88d`
+  (2026-11-15): these 19 tasks are INTEGRATED, not RELEASE_CERTIFIED. Next
+  batch on the branch: TRIP-009/013 LOCAL_DONE (`4a7c211d`, 000231/000232).
   [Batch checkpoint](../enterprise/evidence/f4-execution.md#batch-checkpoint--2026-11-15).
 
 - Enterprise F3, 2026-11-14: IN_PROGRESS on owned `codex/enterprise-f3` from
