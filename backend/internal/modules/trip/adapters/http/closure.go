@@ -134,7 +134,8 @@ func RegisterClosure(router chi.Router, service app.ClosureService, cookies comp
 		items := make([]map[string]any, 0, len(result.Items))
 		for _, v := range result.Items {
 			items = append(items, map[string]any{"trip_id": v.TripID, "asset_id": v.AssetID, "driver_employee_id": v.DriverEmployeeID, "author_membership_id": v.AuthorMembershipID,
-				"started_at": orgtime.FormatInstant(v.StartedAt), "reporting_day": v.ReportingDay, "operational_state": trip.InProgress, "revision": v.Revision})
+				"started_at": orgtime.FormatInstant(v.StartedAt), "reporting_day": v.ReportingDay, "operational_state": trip.InProgress, "revision": v.Revision,
+				"author_membership_state": v.AuthorState})
 		}
 		next := ""
 		if result.NextID != "" {

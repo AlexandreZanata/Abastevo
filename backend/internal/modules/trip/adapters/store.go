@@ -313,7 +313,8 @@ func heldCode(kind, code string) bool {
 	if kind == app.StartOperationType {
 		return code == app.AssetBusy || code == app.AssetUnavailable || code == app.PermissionChanged
 	}
-	return kind == app.FinishOperationType && code == app.TripAlreadyClosed
+	// EMP-TRIP-018: a late finish of an ended period (EMP-OFFL-009).
+	return kind == app.FinishOperationType && (code == app.TripAlreadyClosed || code == syncapp.LateHeldCode)
 }
 
 // sameHeld compares a stored held fact with the operation's parsed event.

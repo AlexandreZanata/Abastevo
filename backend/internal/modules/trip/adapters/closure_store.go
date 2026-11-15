@@ -242,7 +242,7 @@ func (s *ClosureStore) ListOpenTrips(ctx context.Context, scope kernel.OrgScope,
 				return app.ErrUnavailable
 			}
 			page.Items = append(page.Items, app.OpenTrip{TripID: row.ID, AssetID: row.AssetID, DriverEmployeeID: row.DriverEmployeeID, AuthorMembershipID: row.AuthorMembershipID,
-				ReportingDay: row.ReportingDay, StartedAt: started, Revision: app.OpenRevision})
+				ReportingDay: row.ReportingDay, StartedAt: started, Revision: app.OpenRevision, AuthorState: row.AuthorMembershipState})
 		}
 		again, err := s.Authority.CheckTripCloseTx(ctx, tx, scope, actor, member, org, false)
 		if err != nil {

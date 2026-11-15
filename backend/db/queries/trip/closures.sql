@@ -21,11 +21,21 @@ FROM org_trip_closures WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND ope
 
 -- name: OpenTrips :many
 -- Trips in progress, oldest start first, after one trip (keyset).
+-- EMP-TRIP-018: the author's membership state shows trips left open by an
+-- ended or suspended member.
 SELECT t.id::text AS id,t.asset_id::text AS asset_id,t.driver_employee_id::text AS driver_employee_id,t.author_membership_id::text AS author_membership_id,
- t.occurred_at,t.occurred_submicro,t.reporting_day::text AS reporting_day
+ t.occurred_at,t.occurred_submicro,t.reporting_day::text AS reporting_day,m.state AS author_membership_state
 FROM org_trips t
+JOIN org_memberships m ON(m.org_id,m.id)=(t.org_id,t.author_membership_id)
 WHERE t.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND t.state='IN_PROGRESS'
  AND(sqlc.arg(after_id)::text='' OR(t.occurred_at,t.occurred_submicro,t.id)>(SELECT a.occurred_at,a.occurred_submicro,a.id FROM org_trips a
   WHERE a.org_id=t.org_id AND a.id=CAST(NULLIF(sqlc.arg(after_id)::text,'') AS uuid)))
 ORDER BY t.occurred_at,t.occurred_submicro,t.id
 LIMIT sqlc.arg(row_limit)::integer;
+
+-- name: OpenTripsOfAuthor :many
+-- EMP-TRIP-018: the trips in progress a membership started (offboarding
+-- handover items), bounded like the offboarding review.
+SELECT id::text AS id FROM org_trips
+WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND author_membership_id=CAST(sqlc.arg(membership_id)::text AS uuid) AND state='IN_PROGRESS'
+ORDER BY id LIMIT 501;

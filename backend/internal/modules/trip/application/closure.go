@@ -133,6 +133,9 @@ type OpenTrip struct {
 	TripID, AssetID, DriverEmployeeID, AuthorMembershipID, ReportingDay string
 	StartedAt                                                           time.Time
 	Revision                                                            int64
+	// AuthorState is the author's membership state (EMP-TRIP-018): ENDED or
+	// SUSPENDED shows a trip left open by a member who lost access.
+	AuthorState string
 }
 
 type OpenTripPage struct {
@@ -215,7 +218,7 @@ func (s ClosureService) ListOpen(ctx context.Context, scope kernel.OrgScope, act
 	seen := map[string]bool{}
 	for _, v := range page.Items {
 		if !canonicalID(v.TripID) || seen[v.TripID] || !canonicalID(v.AssetID) || !canonicalID(v.DriverEmployeeID) || !canonicalID(v.AuthorMembershipID) ||
-			v.ReportingDay == "" || v.StartedAt.IsZero() || v.Revision != OpenRevision {
+			v.ReportingDay == "" || v.StartedAt.IsZero() || v.Revision != OpenRevision || v.AuthorState != "ACTIVE" && v.AuthorState != "SUSPENDED" && v.AuthorState != "ENDED" {
 			return OpenTripPage{}, ErrUnavailable
 		}
 		seen[v.TripID] = true

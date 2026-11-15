@@ -317,7 +317,8 @@ func Register(router chi.Router, o Options) error {
 		return e
 	}
 
-	offboarding := &member.OffboardingStore{Pool: o.Pool, Authority: &orgpg.OffboardingAuthority{MembershipAccessAuthority: orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}, Memberships: memberStore, Audit: auditStore}
+	// EMP-TRIP-018 (EDR-260): trips in progress are open responsibilities.
+	offboarding := &member.OffboardingStore{Pool: o.Pool, Authority: &orgpg.OffboardingAuthority{MembershipAccessAuthority: orgpg.MembershipAccessAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}, Memberships: memberStore, Audit: auditStore, Work: trippg.MembershipOpenWork{}}
 	if e := memberweb.RegisterOffboarding(router, memberapp.OffboardingService{Enabled: true, Repository: offboarding}, cookies, gateway, membershipAccessAuthorization, roots); e != nil {
 		return e
 	}

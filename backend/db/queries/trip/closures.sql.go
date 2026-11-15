@@ -90,8 +90,9 @@ func (q *Queries) InsertTripClosure(ctx context.Context, arg InsertTripClosurePa
 
 const openTrips = `-- name: OpenTrips :many
 SELECT t.id::text AS id,t.asset_id::text AS asset_id,t.driver_employee_id::text AS driver_employee_id,t.author_membership_id::text AS author_membership_id,
- t.occurred_at,t.occurred_submicro,t.reporting_day::text AS reporting_day
+ t.occurred_at,t.occurred_submicro,t.reporting_day::text AS reporting_day,m.state AS author_membership_state
 FROM org_trips t
+JOIN org_memberships m ON(m.org_id,m.id)=(t.org_id,t.author_membership_id)
 WHERE t.org_id=CAST($1::text AS uuid) AND t.state='IN_PROGRESS'
  AND($2::text='' OR(t.occurred_at,t.occurred_submicro,t.id)>(SELECT a.occurred_at,a.occurred_submicro,a.id FROM org_trips a
   WHERE a.org_id=t.org_id AND a.id=CAST(NULLIF($2::text,'') AS uuid)))
@@ -106,16 +107,19 @@ type OpenTripsParams struct {
 }
 
 type OpenTripsRow struct {
-	ID                 string             `json:"id"`
-	AssetID            string             `json:"asset_id"`
-	DriverEmployeeID   string             `json:"driver_employee_id"`
-	AuthorMembershipID string             `json:"author_membership_id"`
-	OccurredAt         pgtype.Timestamptz `json:"occurred_at"`
-	OccurredSubmicro   int16              `json:"occurred_submicro"`
-	ReportingDay       string             `json:"reporting_day"`
+	ID                    string             `json:"id"`
+	AssetID               string             `json:"asset_id"`
+	DriverEmployeeID      string             `json:"driver_employee_id"`
+	AuthorMembershipID    string             `json:"author_membership_id"`
+	OccurredAt            pgtype.Timestamptz `json:"occurred_at"`
+	OccurredSubmicro      int16              `json:"occurred_submicro"`
+	ReportingDay          string             `json:"reporting_day"`
+	AuthorMembershipState string             `json:"author_membership_state"`
 }
 
 // Trips in progress, oldest start first, after one trip (keyset).
+// EMP-TRIP-018: the author's membership state shows trips left open by an
+// ended or suspended member.
 func (q *Queries) OpenTrips(ctx context.Context, arg OpenTripsParams) ([]OpenTripsRow, error) {
 	rows, err := q.db.Query(ctx, openTrips, arg.OrgID, arg.AfterID, arg.RowLimit)
 	if err != nil {
@@ -133,10 +137,44 @@ func (q *Queries) OpenTrips(ctx context.Context, arg OpenTripsParams) ([]OpenTri
 			&i.OccurredAt,
 			&i.OccurredSubmicro,
 			&i.ReportingDay,
+			&i.AuthorMembershipState,
 		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const openTripsOfAuthor = `-- name: OpenTripsOfAuthor :many
+SELECT id::text AS id FROM org_trips
+WHERE org_id=CAST($1::text AS uuid) AND author_membership_id=CAST($2::text AS uuid) AND state='IN_PROGRESS'
+ORDER BY id LIMIT 501
+`
+
+type OpenTripsOfAuthorParams struct {
+	OrgID        string `json:"org_id"`
+	MembershipID string `json:"membership_id"`
+}
+
+// EMP-TRIP-018: the trips in progress a membership started (offboarding
+// handover items), bounded like the offboarding review.
+func (q *Queries) OpenTripsOfAuthor(ctx context.Context, arg OpenTripsOfAuthorParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, openTripsOfAuthor, arg.OrgID, arg.MembershipID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

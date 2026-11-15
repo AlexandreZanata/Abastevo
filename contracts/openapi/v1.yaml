@@ -23151,6 +23151,14 @@ components:
         revision:
           type: integer
           const: 1
+        author_membership_state:
+          description: The author's membership state; ENDED or SUSPENDED marks a trip left open by a member who lost
+            access (EMP-TRIP-018).
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - ENDED
       required:
       - trip_id
       - asset_id
@@ -23160,6 +23168,7 @@ components:
       - reporting_day
       - operational_state
       - revision
+      - author_membership_state
     EnterpriseTripOpenPage:
       type: object
       additionalProperties: false
@@ -23189,6 +23198,7 @@ components:
           reporting_day: '2026-11-14'
           operational_state: IN_PROGRESS
           revision: 1
+          author_membership_state: ENDED
         next_cursor: ''
         data_mode: SYNTHETIC
     EnterpriseTripCloseRequest:
@@ -29566,7 +29576,7 @@ components:
         key:
           type: string
           maxLength: 100
-          pattern: ^(SETTING:(review_fallback|platform_notices|data_protection|billing):(primary|substitute)|TEAM_LINK:[a-f0-9-]{36})$
+          pattern: ^(SETTING:(review_fallback|platform_notices|data_protection|billing):(primary|substitute)|TEAM_LINK:[a-f0-9-]{36}|TRIP:[a-f0-9-]{36})$
         source_revision:
           type: integer
           format: int64

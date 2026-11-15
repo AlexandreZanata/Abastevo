@@ -6567,3 +6567,53 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   closure; a driver finish and a supervisor closure racing in both orders;
   replay and operation reuse; the database guards and a populated upgrade
   with injected failure and recovery.
+
+## EMP-TRIP-018 — Open trips when a membership ends (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip018-membership-end-open-trips.md).
+
+- **B-BR-EMP-404 — A trip in progress is an open responsibility of its
+  member.** The EMP-IDN-010 offboarding review lists every trip still
+  `IN_PROGRESS` that the ending membership started as the handover item
+  `TRIP:<trip id>` at source revision 1 (its operational revision), beside the
+  team and settings items, inside the reviewed digest. Completing the
+  offboarding needs an explicit pending-manager flag for it
+  (`OPEN_RESPONSIBILITIES` otherwise); a trip started, finished or closed
+  between the review and the completion changes the digest
+  (`OPEN_RESPONSIBILITIES`). The database refuses an offboarding that leaves a
+  trip in progress of that membership unflagged or flags anything else as a
+  trip. The flag stays readable after the end. Another member's trips and
+  another organization's trips are never listed.
+- **B-BR-EMP-405 — Offboarding never closes, hands over or deletes the
+  trip.** The trip stays `IN_PROGRESS` with every stored fact unchanged
+  (rows remain insert-only; a delete is refused) and keeps holding its asset.
+  It is resolved under scoped authority: the open-trip list shows it with the
+  author membership state `ENDED`, and a member holding
+  `trip.trip.close_for_other` covering it closes it with the
+  EMP-TRIP-014 closure (the successor responsible for the trip in this
+  phase); a successor driver taking over a running trip is EMP-TRIP-012's.
+  The ended member can neither finish nor close it as normal work.
+- **B-BR-EMP-406 — Late intake follows EMP-OFFL-009.** From the exact
+  enrollment period that the membership end revoked `ACCESS_ENDED`: a
+  `trip.finish` of the member's own trip declared (or claimed) before the
+  end and received inside the intake window is held
+  `ACCESS_ENDED_BEFORE_RECEIPT` with its declared reading as an OFFL-008 held
+  finish, never applied (the trip stays in progress; a reviewer or the
+  closure decides); a finish of an unknown trip, of another member's trip or
+  declared before the trip's start is `MALFORMED`; anything declared after
+  the end is `MEMBERSHIP_ENDED`, after the window `INTAKE_WINDOW_CLOSED`,
+  and a key revoked lost or compromised is refused as a whole
+  (`DEVICE_REVOKED`). Late starts, events and submissions keep the OFFL-009
+  default for owners without a held path (`RETRY`/`UNAVAILABLE`, never
+  dropped) until their owners add one.
+- **BUC-EMP-204 — Offboard a driver with a trip in progress (JRN-04).** The
+  manager offboards Bruno on Friday; the review lists his open trip, which
+  is flagged for the manager; his access ends at once; Ana finds the trip in
+  the open-trip list marked `ENDED` and closes it without a final reading;
+  on Monday his phone delivers the finish he recorded before 18:00, which is
+  held for review, while a stop recorded on Saturday is refused.
+- **BUC-EMP-205 — Prove the membership end on real PostGIS.** An offboarding
+  that omits the trip flag or whose source omits the trip; the ended
+  member's later operations; a lost device; another organization; the trip
+  never deleted or closed by the offboarding; a populated upgrade with
+  injected failure and recovery.

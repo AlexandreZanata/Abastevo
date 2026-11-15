@@ -392,7 +392,7 @@ or flagged as a gap; all 66 shared Go/Kotlin vectors pass with 100% Go
 statements. The Android clock source and persistence remain open.
 
 ### EMP-TRIP-018 — Open trips when a membership ends
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Hand over open trips when access ends.
 - **Rules and use cases:** REQ-18.4, BR-IDN-027, BR-IDN-028, BR-OFFL-011, JRN-04
 - **Depends on:** EMP-TRIP-014, EMP-IDN-010

@@ -121,3 +121,42 @@ func TestTripClosureContractShapesAndGuards(t *testing.T) {
 		}
 	}
 }
+
+// EMP-TRIP-018: a trip in progress is an offboarding handover item and the
+// open-trip list names the author's membership state, closed vocabularies.
+func TestTripMembershipEndContractShapes(t *testing.T) {
+	doc := loadSpec(t)
+	item := doc.Components.Schemas["EnterpriseHandoverItem"].Value
+	for key, ok := range map[string]bool{
+		"TRIP:7b0e2a54-0000-4000-8000-000000008701":      true,
+		"TEAM_LINK:7b0e2a54-0000-4000-8000-000000008701": true,
+		"SETTING:billing:primary":                        true,
+		"TRIPS:7b0e2a54-0000-4000-8000-000000008701":     false,
+		"TRIP:": false,
+		"TRIP:7b0e2a54-0000-4000-8000-000000008701:x": false,
+	} {
+		if err := item.VisitJSON(map[string]any{"key": key, "source_revision": float64(1)}); (err == nil) != ok {
+			t.Fatal("handover item key vocabulary drift", key, err)
+		}
+	}
+	page := doc.Components.Schemas["EnterpriseTripOpenPage"].Value
+	raw, _ := json.Marshal(page.Example)
+	var example map[string]any
+	if json.Unmarshal(raw, &example) != nil || page.VisitJSON(example) != nil {
+		t.Fatal("open-trip page example")
+	}
+	entry := example["items"].([]any)[0].(map[string]any)
+	if entry["author_membership_state"] != "ENDED" {
+		t.Fatal("the example does not show a trip left open by an ended member")
+	}
+	for _, bad := range []any{"INVITED", "REMOVED", nil} {
+		entry["author_membership_state"] = bad
+		if page.VisitJSON(example) == nil {
+			t.Fatal("an unknown author membership state was admitted", bad)
+		}
+	}
+	delete(entry, "author_membership_state")
+	if page.VisitJSON(example) == nil {
+		t.Fatal("the author membership state is optional")
+	}
+}
