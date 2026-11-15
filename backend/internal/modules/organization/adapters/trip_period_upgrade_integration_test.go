@@ -52,7 +52,7 @@ func TestTripPeriodPopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing.T)
 	}
 	f := orgtest.NewWithMigrations(t, previous)
 	base := tripStateOn(t, f)
-	tripReviewGrants(t, f)
+	tripReviewGrantsBefore229(t, f)
 	periodGrant(t, f)
 	x := tripPeriodState{tripReviewState: tripReviewState{tripState: base}, periods: periodStoreFor(t, base.legalFixtureState)}
 	submit, err := trippg.NewSubmitHandler(x.authority, x.meters, x.store, x.store)
@@ -146,6 +146,7 @@ func TestTripPeriodPopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing.T)
 	if _, err := migrate.Apply(t.Context(), f.AdminDSN, migrations.Files); err != nil {
 		t.Fatal("remaining embedded chain after the 228 rehearsal", err)
 	}
+	tripReviewGrants(t, f)
 	// The pre-existing submitted trip of the locked month: the handler gate
 	// and the database guard both refuse; the approved trip stays approved.
 	if _, _, err := x.decideBy(t, owner, pending, 1, review.Approve, ""); !errors.Is(err, tripapp.ErrPeriodLocked) {

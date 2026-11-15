@@ -275,7 +275,7 @@ and the panel remain EMP-TRIP-015/006.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-015 — Late and duplicate events, and amendments after closure
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Preserve late logbook facts and amend approved work through a new reviewed revision.
 - **Rules and use cases:** REQ-07.5, REQ-07.6, BR-OFFL-004, BR-AMD-001, BR-AMD-005, VAL-26
 - **Depends on:** EMP-TRIP-004, EMP-PLAT-016
@@ -289,6 +289,17 @@ and the panel remain EMP-TRIP-015/006.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-SYNC · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 late events and amendments](../evidence/f4-trip015-late-events-amendments.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. The author resubmits a
+returned field revision with `trip.submit` (revision + 1); an event inside a
+submitted, decided or amended trip and a stale or duplicate submission are
+held once `STALE_REVISION` (migration 000229); an approved trip is amended
+under `meter.reading.correct` as a new reviewed revision through the
+orgamend kernel, whose approval supersedes the corrected readings through
+the METER-004 path (290 000 m until approval, 280 000 m after, usage
+derived per named revision), and METER-004 refuses readings of approved
+trips `AMENDMENT_REQUIRED`. Held-item resolution stays with EMP-TRIP-007.
 
 ### EMP-TRIP-016 — Period lock and authorised reopening for trips
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE

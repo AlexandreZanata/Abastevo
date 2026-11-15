@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/trip"
+	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	auditing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/application"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
@@ -25,17 +26,22 @@ const ReviewTargetType = "trip"
 
 var reviewActions = map[review.Kind]string{review.Approve: "trip.trip.approved", review.Return: "trip.trip.returned", review.Reject: "trip.trip.rejected"}
 
-// ReviewAuditDefinitions are the decision audit actions on target type trip;
-// they carry the command digest and no reason text (BR-AUD-004).
+// ReviewAuditDefinitions are the decision and amendment audit actions on
+// target type trip; they carry the command digest and no reason text or
+// reading value (BR-AUD-004, EMP-TRIP-015).
 func ReviewAuditDefinitions() []audit.Definition {
 	return []audit.Definition{{Action: reviewActions[review.Approve], TargetType: ReviewTargetType}, {Action: reviewActions[review.Return], TargetType: ReviewTargetType},
-		{Action: reviewActions[review.Reject], TargetType: ReviewTargetType}}
+		{Action: reviewActions[review.Reject], TargetType: ReviewTargetType}, {Action: app.AmendAuditAction, TargetType: ReviewTargetType}}
 }
 
 var _ app.SubmitStore = (*Store)(nil)
 
 func entryOf(sequence, revision int64, kind, state, reason, member, employee, operation string, recorded pgtype.Timestamptz) (app.ReviewEntry, error) {
 	k, err := review.ParseKind(kind)
+	if kind == string(app.Amend) {
+		// The trip history kind that opens an amendment (EDR-234).
+		k, err = app.Amend, nil
+	}
 	if err != nil {
 		return app.ReviewEntry{}, app.ErrUnavailable
 	}
@@ -93,19 +99,21 @@ func reviewEntries(ctx context.Context, queries *q.Queries, scope kernel.OrgScop
 	return entries, nil
 }
 
-// InsertSubmitTx appends the author's SUBMIT entry (B-BR-EMP-342); the
-// database re-proves the transition, the author and, at commit, the receipt.
-func (s *Store) InsertSubmitTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, source syncapp.Source, command app.SubmitCommand, authorEmployee string) error {
+// InsertSubmitTx appends the author's SUBMIT or RESUBMIT entry at the given
+// sequence (B-BR-EMP-342/363); the database re-proves the transition, the
+// author and, at commit, the receipt.
+func (s *Store) InsertSubmitTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, source syncapp.Source, command app.SubmitCommand, entry review.Entry, sequence int64, authorEmployee string) error {
 	queries, _, err := s.port(ctx, db, scope)
 	if err != nil {
 		return err
 	}
 	v, err := command.Snapshot()
-	if err != nil || source.MembershipID != v.AuthorMembershipID || !canonicalID(authorEmployee) {
+	if err != nil || source.MembershipID != v.AuthorMembershipID || !canonicalID(authorEmployee) || sequence < 1 || entry.State != review.Submitted || entry.Reason != "" ||
+		entry.Kind != review.Submit && entry.Kind != review.Resubmit {
 		return app.ErrUnavailable
 	}
-	if err := queries.InsertTripReviewEntry(ctx, q.InsertTripReviewEntryParams{OrgID: scope.OrgID().String(), TripID: v.TripID, Sequence: 1, Kind: string(review.Submit),
-		Revision: v.Revision, State: string(review.Submitted), Reason: "", ActorMembershipID: source.MembershipID, ActorEmployeeID: authorEmployee, OperationID: v.OperationID}); err != nil {
+	if err := queries.InsertTripReviewEntry(ctx, q.InsertTripReviewEntryParams{OrgID: scope.OrgID().String(), TripID: v.TripID, Sequence: sequence, Kind: string(entry.Kind),
+		Revision: entry.Revision, State: string(review.Submitted), Reason: "", ActorMembershipID: source.MembershipID, ActorEmployeeID: authorEmployee, OperationID: v.OperationID}); err != nil {
 		return storeError(err)
 	}
 	return nil
@@ -119,12 +127,16 @@ type ReviewAuthority interface {
 
 // ReviewStore is the company-session review owner (EDR-222). Periods is the
 // APPR-006 gate read inside the decision transaction (EMP-TRIP-016,
-// EDR-232).
+// EDR-232). Amenders proves amendment proposals and Readings applies an
+// approved amendment's reading corrections (EMP-TRIP-015, EDR-236/237);
+// without them amendments are unavailable and every other path works.
 type ReviewStore struct {
 	Pool      *pgxpool.Pool
 	Authority ReviewAuthority
 	Audit     auditing.TransactionRunner
 	Periods   reviewapp.PeriodGate
+	Amenders  AmendAuthority
+	Readings  AmendmentReadings
 }
 
 var _ app.ReviewRepository = (*ReviewStore)(nil)
@@ -258,7 +270,7 @@ func (s *ReviewStore) DecideTripReview(ctx context.Context, scope kernel.OrgScop
 		if err != nil {
 			return err
 		}
-		current, err := app.ReviewCase(entries)
+		revisions, err := app.TripRevisions(entries)
 		if err != nil {
 			return err
 		}
@@ -277,7 +289,11 @@ func (s *ReviewStore) DecideTripReview(ctx context.Context, scope kernel.OrgScop
 		if err != nil {
 			return err
 		}
-		next, err := app.Decide(current, v, self, author, driver)
+		amender, err := amendmentPerson(ctx, queries, org, revisions)
+		if err != nil {
+			return err
+		}
+		added, err := app.DecideRevision(revisions, v, self, author, driver, amender)
 		if err != nil {
 			return err
 		}
@@ -290,8 +306,41 @@ func (s *ReviewStore) DecideTripReview(ctx context.Context, scope kernel.OrgScop
 		if err := app.DecisionPeriod(facts.ReportingDay, fact); err != nil {
 			return err
 		}
-		added := next.History()[len(entries):]
+		// B-BR-EMP-366: an amendment's result goes through the kernel; an
+		// approval supersedes exactly its readings in this transaction.
+		var corrections []*app.CorrectionRecord
+		reason := ""
+		if amendment, ok := revisions.Amendment(); ok {
+			p, err := fact.Amendment()
+			if err != nil {
+				return app.ErrUnavailable
+			}
+			result := map[review.Kind]review.State{review.Approve: review.Approved, review.Return: review.Returned, review.Reject: review.Rejected}[v.Decision]
+			if _, err := app.ResolveAmendment(revisions, v.TripID, facts.ReportingDay, p, result, fact.CheckedAt); err != nil {
+				return err
+			}
+			if v.Decision == review.Approve {
+				record, err := amendmentAt(ctx, queries, scope, v.TripID, amendment.Revision)
+				if err != nil {
+					return err
+				}
+				if absent(s.Readings) {
+					return app.ErrUnavailable
+				}
+				corrections, reason = []*app.CorrectionRecord{record.Start, record.End}, amendment.Reason
+			}
+		}
 		repeated, err := s.Audit.RecordChangeTx(ctx, tx, scope, bound, func(ctx context.Context, tx pgx.Tx) error {
+			for _, c := range corrections {
+				if c == nil {
+					continue
+				}
+				if err := s.Readings.SupersedeApprovedTx(ctx, tx, scope, fleetapp.FleetActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, reviewer.MembershipID,
+					fleetapp.AmendmentSupersession{AssetID: facts.AssetID, MeterID: c.MeterID, ReadingID: c.ReadingID, NewReadingID: c.NewReadingID, Value: c.To,
+						Reason: reason, OperationID: v.OperationID, RequestHash: digest}); err != nil {
+					return err
+				}
+			}
 			queries := q.New(tx)
 			for i, e := range added {
 				if err := queries.InsertTripReviewEntry(ctx, q.InsertTripReviewEntryParams{OrgID: org, TripID: v.TripID, Sequence: int64(len(entries) + i + 1), Kind: string(e.Kind),
@@ -347,7 +396,7 @@ func (s *ReviewStore) ReadTripReview(ctx context.Context, scope kernel.OrgScope,
 		if err != nil {
 			return err
 		}
-		current, err := app.ReviewCase(entries)
+		revisions, err := app.TripRevisions(entries)
 		if err != nil {
 			return err
 		}
@@ -357,7 +406,11 @@ func (s *ReviewStore) ReadTripReview(ctx context.Context, scope kernel.OrgScope,
 			return app.ErrUnavailable
 		}
 		view = app.ReviewView{TripID: facts.ID, AssetID: facts.AssetID, DriverEmployeeID: facts.DriverEmployeeID, ReportingDay: facts.ReportingDay, Operational: operational,
-			StartedAt: started, Review: trip.ReviewState(current.State()), Revision: current.Revision(), History: entries}
+			StartedAt: started, Review: trip.ReviewState(revisions.State()), Revision: revisions.Latest(), History: entries, EffectiveRevision: revisions.Effective()}
+		// B-BR-EMP-367: usage derived per named revision, never stored.
+		if err := revisionUsage(ctx, tx, queries, scope, tripID, entries, revisions, &view); err != nil {
+			return err
+		}
 		if facts.FinishedAt.Valid {
 			finished, ok := exact(facts.FinishedAt, facts.FinishedSubmicro.Int16)
 			if !ok {

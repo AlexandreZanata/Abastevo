@@ -27,8 +27,10 @@ func TestTripReviewContractOwnerShapesAndGuards(t *testing.T) {
 		t.Fatal("owners unreadable")
 	}
 	owner, ok := owners["trip.submit"]
-	if !ok || owner.Schema != 1 || owner.Entity != "trip_review" || owner.Payload.Ref != "#/components/schemas/EnterpriseTripSubmitPayload" || len(owner.Results) != 2 ||
-		owner.Results[0] != "ACCEPTED" || owner.Results[1] != "REJECTED" || len(owner.Followups) != 2 || owner.Followups["ACCEPTED"] != "NO_ASYNC_FOLLOWUP" || owner.Followups["REJECTED"] != "NO_ASYNC_FOLLOWUP" {
+	// EMP-TRIP-015: a stale or duplicate submission is a held review item.
+	if !ok || owner.Schema != 1 || owner.Entity != "trip_review" || owner.Payload.Ref != "#/components/schemas/EnterpriseTripSubmitPayload" || len(owner.Results) != 3 ||
+		owner.Results[0] != "ACCEPTED" || owner.Results[1] != "REJECTED" || owner.Results[2] != "ACCEPTED_FOR_REVIEW" || len(owner.Followups) != 3 || owner.Followups["ACCEPTED"] != "NO_ASYNC_FOLLOWUP" ||
+		owner.Followups["REJECTED"] != "NO_ASYNC_FOLLOWUP" || owner.Followups["ACCEPTED_FOR_REVIEW"] != "ATOMIC_REVIEW" {
 		t.Fatal("trip.submit owner/outcome drift")
 	}
 	payload := doc.Components.Schemas["EnterpriseTripSubmitPayload"]
@@ -41,7 +43,8 @@ func TestTripReviewContractOwnerShapesAndGuards(t *testing.T) {
 		}
 	}
 	examples := map[string]map[string]any{}
-	for _, name := range []string{"EnterpriseTripReviewReadRequest", "EnterpriseTripReviewDecisionRequest", "EnterpriseTripReviewDecision", "EnterpriseTripReviewView"} {
+	for _, name := range []string{"EnterpriseTripReviewReadRequest", "EnterpriseTripReviewDecisionRequest", "EnterpriseTripReviewDecision", "EnterpriseTripReviewView",
+		"EnterpriseTripAmendmentRequest", "EnterpriseTripAmendment", "EnterpriseTripRevisionUsage"} {
 		schema := doc.Components.Schemas[name]
 		if schema == nil || schema.Value == nil || schema.Value.Example == nil {
 			t.Fatal("missing review schema or explicit example", name)
@@ -86,6 +89,39 @@ func TestTripReviewContractOwnerShapesAndGuards(t *testing.T) {
 	if request.VisitJSON(clone(func(v map[string]any) { v["decision"], v["reason"] = "APPROVE", "" })) != nil {
 		t.Fatal("an approval without a reason is refused by the shape")
 	}
+	// EMP-TRIP-015: an amendment states a reason and at least one reading in
+	// exact base units of a known kind; nothing else.
+	amendment := doc.Components.Schemas["EnterpriseTripAmendmentRequest"].Value
+	amendClone := func(edit func(map[string]any)) map[string]any {
+		v := map[string]any{}
+		for k, x := range examples["EnterpriseTripAmendmentRequest"] {
+			v[k] = x
+		}
+		edit(v)
+		return v
+	}
+	for name, bad := range map[string]map[string]any{
+		"no reading":   amendClone(func(v map[string]any) { delete(v, "end_reading") }),
+		"empty reason": amendClone(func(v map[string]any) { v["reason"] = "" }),
+		"leading zero": amendClone(func(v map[string]any) { v["end_reading"] = map[string]any{"kind": "ODOMETER", "value": "0184"} }),
+		"numeric value": amendClone(func(v map[string]any) {
+			v["end_reading"] = map[string]any{"kind": "ODOMETER", "value": float64(184600000)}
+		}),
+		"unknown kind":      amendClone(func(v map[string]any) { v["end_reading"] = map[string]any{"kind": "KILOMETRE", "value": "1"} }),
+		"caller-set state":  amendClone(func(v map[string]any) { v["review_state"] = "APPROVED" }),
+		"revision key gone": amendClone(func(v map[string]any) { delete(v, "revision") }),
+		"another schema":    amendClone(func(v map[string]any) { v["schema_version"] = float64(2) }),
+	} {
+		if amendment.VisitJSON(bad) == nil {
+			t.Fatal("invalid amendment request admitted", name)
+		}
+	}
+	if amendment.VisitJSON(amendClone(func(v map[string]any) {
+		delete(v, "end_reading")
+		v["start_reading"] = map[string]any{"kind": "ODOMETER", "value": "184310000"}
+	})) != nil {
+		t.Fatal("a start-only amendment is refused by the shape")
+	}
 	view := doc.Components.Schemas["EnterpriseTripReviewView"].Value
 	withValues := func(key string, value any) map[string]any {
 		v := map[string]any{}
@@ -109,9 +145,10 @@ func TestTripReviewContractOwnerShapesAndGuards(t *testing.T) {
 	}
 	prefix := "/v1/orgs/{org_id}/trips/{trip_id}/review/"
 	for path, want := range map[string]map[string]any{
-		"/v1/orgs/{org_id}/trips/review/list": {"permission": "trip.trip.review", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
-		prefix + "read":                       {"permission": "trip.trip.review", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
-		prefix + "decide":                     {"permission": "trip.trip.review", "write": true, "fresh": true, "require_revision": true, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/trips/review/list":                  {"permission": "trip.trip.review", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		prefix + "read":                                        {"permission": "trip.trip.review", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		prefix + "decide":                                      {"permission": "trip.trip.review", "write": true, "fresh": true, "require_revision": true, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/trips/{trip_id}/amendments/propose": {"permission": "meter.reading.correct", "write": true, "fresh": true, "require_revision": true, "company_only": true, "success": 200},
 	} {
 		operation := doc.Paths.Value(path).Post
 		if operation == nil {

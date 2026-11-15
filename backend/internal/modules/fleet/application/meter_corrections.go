@@ -303,3 +303,14 @@ func (s MeterCorrectionService) History(ctx context.Context, scope kernel.OrgSco
 func (s MeterCorrectionService) Suspects(ctx context.Context, scope kernel.OrgScope, actor FleetActor, decision access.Decision, assetID, meterID string, filter MeterHistoryFilter) (MeterHistoryPage, error) {
 	return s.read(ctx, scope, actor, decision, assetID, meterID, filter, true)
 }
+
+// AmendmentSupersession is one corrected reading of an approved parent
+// record's amendment (EMP-TRIP-015, B-BR-EMP-366): the reading superseded,
+// the pre-allocated superseding reading, the corrected count in the meter's
+// own kind, and the parent decision's reason, operation and digest.
+type AmendmentSupersession struct {
+	private
+	AssetID, MeterID, ReadingID, NewReadingID string
+	Value                                     int64
+	Reason, OperationID, RequestHash          string
+}

@@ -31,8 +31,10 @@ func TestMeterCorrectionExampleBThroughComposedCompanyHTTP(t *testing.T) {
 	_ = assignmentStore(t, fx)
 	_ = meterStore(t, fx)
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
-	// The decision's approved-parent port reads the fueling review state.
-	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role+";GRANT SELECT(org_id,reading_id,review_state) ON org_fuelings TO "+role); err != nil {
+	// The decision's approved-parent port reads the fueling review state and,
+	// since EMP-TRIP-015, the trips that carry the reading.
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role+";GRANT SELECT(org_id,reading_id,review_state) ON org_fuelings TO "+role+
+		";GRANT SELECT ON org_trips,org_trip_finishes,org_trip_amendments,org_trip_review_entries TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	accounts := &account.Service{Clock: onboardingClock{time.Now().UTC().Truncate(time.Second)}, Store: accountpg.NewPGStore(fx.f.Admin), Hasher: accountdomain.SHA256Hasher{}, IDGen: jobs.NewUUIDv4, TokenGen: accountdomain.GenerateToken, KeyGen: accountdomain.GenerateAccountKey}

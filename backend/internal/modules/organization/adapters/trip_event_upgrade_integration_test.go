@@ -154,7 +154,11 @@ func TestTripEventPopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing.T) 
  AND def LIKE '%trip.event.record%' AND def LIKE '%org_trip_held_events%' FROM(SELECT pg_get_functiondef('org_sync_review_source_valid(uuid,uuid,text,bigint)'::regprocedure) AS def) h`).Scan(&hook); err != nil || !hook {
 		t.Fatal("the review-source hook lost a branch or misses the logbook owner", err)
 	}
-	// The pre-existing trips take logbook events on the upgraded schema.
+	// The current owners need the whole chain (EMP-TRIP-015 reads the review
+	// history); the pre-existing trips then take logbook events.
+	if _, err := migrate.Apply(t.Context(), f.AdminDSN, migrations.Files); err != nil {
+		t.Fatal("remaining embedded chain after the 225 rehearsal", err)
+	}
 	e := eventFixtureOn(t, x)
 	inProgress := e.eventOp(t, d, tripOf(ongoing), "ARRIVAL", "Cliente Norte", ongoingAt.Add(time.Minute), nil)
 	ack, err = e.process(t, d, inProgress)
@@ -165,7 +169,4 @@ func TestTripEventPopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing.T) 
 	after := e.eventOp(t, d, tripOf(first), "STOP", nil, firstFinish.Add(time.Nanosecond), nil)
 	ack, err = e.process(t, d, after)
 	e.held(t, after, ack, err)
-	if _, err := migrate.Apply(t.Context(), f.AdminDSN, migrations.Files); err != nil {
-		t.Fatal("remaining embedded chain after the 225 rehearsal", err)
-	}
 }

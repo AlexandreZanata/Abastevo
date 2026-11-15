@@ -267,6 +267,7 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,document_id,target_kind,target_id) FROM org_document_links x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_export_jobs x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,trip_id,sequence) FROM org_trip_review_entries x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,trip_id,revision) FROM org_trip_amendments x),
 	 (SELECT count(*) FROM org_sensitive_access_events),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),
 	 (SELECT count(*) FROM org_ownership_commands), (SELECT count(*) FROM org_role_commands))::text`).Scan(&value); err != nil {
