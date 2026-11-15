@@ -14880,6 +14880,11 @@ paths:
         unavailable or changed-right asset and a finish of an already completed trip are kept as ACCEPTED_FOR_REVIEW
         held facts (ASSET_BUSY, ASSET_UNAVAILABLE, PERMISSION_CHANGED, TRIP_ALREADY_CLOSED); their resolution is
         EMP-TRIP-007. A finish whose trip is not stored is RETRY/DEPENDENCY_PENDING.
+        The trip.event.record owner (EMP-TRIP-003) appends one insert-only typed logbook fact (NOTE, STOP, ARRIVAL,
+        DEPARTURE) to the member's own stored trip with the ACK (entity revision 1); it never changes the trip. An event
+        before the trip's start or of an unknown type is MALFORMED; a reserved type stays RETRY/UNAVAILABLE; an event
+        declared after a completed trip's finish is kept ACCEPTED_FOR_REVIEW TRIP_ALREADY_CLOSED; a trip not stored here
+        (undelivered, held or another organization's) is RETRY/DEPENDENCY_PENDING.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -14928,6 +14933,19 @@ paths:
           entity_type: trip
           payload:
             $ref: '#/components/schemas/EnterpriseTripFinishPayload'
+          terminal_results:
+          - ACCEPTED
+          - ACCEPTED_FOR_REVIEW
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+            ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
+        trip.event.record:
+          schema: 1
+          entity_type: trip_event
+          payload:
+            $ref: '#/components/schemas/EnterpriseTripEventPayload'
           terminal_results:
           - ACCEPTED
           - ACCEPTED_FOR_REVIEW
@@ -20967,6 +20985,51 @@ components:
         soft_references and attachments are empty. Only the member who started the trip finishes it; a finish before the
         start instant is MALFORMED; a reading of the trip's asset is recorded with origin TRIP_END in the same transaction
         and the trip becomes COMPLETED (entity revision 2). Plausibility never refuses the finish.
+    EnterpriseTripEventPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        type:
+          type: string
+          enum:
+          - NOTE
+          - STOP
+          - ARRIVAL
+          - DEPARTURE
+          - FUELING
+          - TOLL
+          - PARKING
+          - INCIDENT
+          - DAMAGE
+          - HANDOVER
+          - PAUSE
+          - RESUME
+          - CANCEL
+          description: The closed trip-logbook-v1 vocabulary (EDR-207). NOTE, STOP, ARRIVAL and DEPARTURE are recorded;
+            the other tokens are reserved for their owners and answered RETRY/UNAVAILABLE with no effect; any other token
+            is MALFORMED.
+        text:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 280
+          description: Required for NOTE and optional otherwise; nonblank and free of control characters.
+      required:
+      - trip_id
+      - type
+      - text
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000008410
+        type: ARRIVAL
+        text: Cliente Norte, doca 3
+      description: Owner schema1 for trip.event.record (EMP-TRIP-003). Entity type trip_event with the device event
+        UUID; at most one depends_on entry; soft_references and attachments are empty. The envelope declaration is the
+        event's original instant, entry zone and offset. Only the member who started the trip appends to it; an event
+        before the trip start is MALFORMED and one after a completed trip's finish is held TRIP_ALREADY_CLOSED. The
+        event never changes the trip, its readings, availability or review case and computes no working time.
     EnterpriseFuelingSubmitPayload:
       type: object
       additionalProperties: false

@@ -24,11 +24,14 @@ SELECT t.id::text AS id,t.operation_id::text AS operation_id,t.payload_digest,t.
  f.occurred_at AS finish_occurred_at,f.occurred_submicro AS finish_occurred_submicro,f.entry_zone AS finish_entry_zone,f.device_offset_seconds AS finish_device_offset_seconds,
  f.boot_id AS finish_boot_id,f.elapsed_millis AS finish_elapsed_millis,f.received_at AS finish_received_at,
  COALESCE(f.meter_id::text,'')::text AS finish_meter_id,COALESCE(f.segment_id::text,'')::text AS finish_segment_id,COALESCE(f.reading_id::text,'')::text AS finish_reading_id,
+ COALESCE(fm.kind,'')::text AS finish_reading_kind,fr.value AS finish_reading_value,
  f.missing_reading_reason AS finish_missing_reading_reason,COALESCE(f.end_day::text,'')::text AS finish_end_day
 FROM org_trips t
 LEFT JOIN org_meters m ON(m.org_id,m.id)=(t.org_id,t.meter_id)
 LEFT JOIN org_meter_readings r ON(r.org_id,r.meter_id,r.id)=(t.org_id,t.meter_id,t.reading_id)
 LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+LEFT JOIN org_meters fm ON(fm.org_id,fm.id)=(f.org_id,f.meter_id)
+LEFT JOIN org_meter_readings fr ON(fr.org_id,fr.meter_id,fr.id)=(f.org_id,f.meter_id,f.reading_id)
 WHERE t.org_id=CAST($1::text AS uuid) AND t.id=CAST($2::text AS uuid)
 `
 
@@ -79,6 +82,8 @@ type GetTripRow struct {
 	FinishMeterID              string             `json:"finish_meter_id"`
 	FinishSegmentID            string             `json:"finish_segment_id"`
 	FinishReadingID            string             `json:"finish_reading_id"`
+	FinishReadingKind          string             `json:"finish_reading_kind"`
+	FinishReadingValue         pgtype.Int8        `json:"finish_reading_value"`
 	FinishMissingReadingReason pgtype.Text        `json:"finish_missing_reading_reason"`
 	FinishEndDay               string             `json:"finish_end_day"`
 }
@@ -128,6 +133,8 @@ func (q *Queries) GetTrip(ctx context.Context, arg GetTripParams) (GetTripRow, e
 		&i.FinishMeterID,
 		&i.FinishSegmentID,
 		&i.FinishReadingID,
+		&i.FinishReadingKind,
+		&i.FinishReadingValue,
 		&i.FinishMissingReadingReason,
 		&i.FinishEndDay,
 	)
@@ -523,7 +530,7 @@ func (q *Queries) TripInProgressOnAsset(ctx context.Context, arg TripInProgressO
 }
 
 const tripStartFacts = `-- name: TripStartFacts :one
-SELECT a.state AS asset_state,a.disposed_at,a.disposed_submicro,
+SELECT a.state AS asset_state,a.kind AS asset_kind,a.disposed_at,a.disposed_submicro,
  EXISTS(SELECT 1 FROM org_employee_identities e WHERE e.org_id=a.org_id AND e.id=CAST($1::text AS uuid) AND e.state='ACTIVE' AND e.merged_into IS NULL)::boolean AS driver_active,
  COALESCE((SELECT t.operation_id::text FROM org_trips t WHERE t.org_id=a.org_id AND t.id=CAST($2::text AS uuid)),'')::text AS existing_operation,
  COALESCE((SELECT h.operation_id::text FROM org_trip_held_starts h WHERE h.org_id=a.org_id AND h.trip_id=CAST($2::text AS uuid)),'')::text AS held_operation,
@@ -542,6 +549,7 @@ type TripStartFactsParams struct {
 
 type TripStartFactsRow struct {
 	AssetState        string             `json:"asset_state"`
+	AssetKind         string             `json:"asset_kind"`
 	DisposedAt        pgtype.Timestamptz `json:"disposed_at"`
 	DisposedSubmicro  int16              `json:"disposed_submicro"`
 	DriverActive      bool               `json:"driver_active"`
@@ -562,6 +570,7 @@ func (q *Queries) TripStartFacts(ctx context.Context, arg TripStartFactsParams) 
 	var i TripStartFactsRow
 	err := row.Scan(
 		&i.AssetState,
+		&i.AssetKind,
 		&i.DisposedAt,
 		&i.DisposedSubmicro,
 		&i.DriverActive,

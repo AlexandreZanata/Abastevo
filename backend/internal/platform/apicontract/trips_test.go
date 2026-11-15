@@ -2,6 +2,7 @@ package apicontract
 
 import (
 	"encoding/json"
+	"strings"
 	"testing"
 )
 
@@ -71,6 +72,87 @@ func TestTripOwnersAreExplicitAtomicReviewOwnersWithExactPayloads(t *testing.T) 
 			if schema.Value.VisitJSON(v) == nil {
 				t.Fatal("malformed run clock admitted", kind, bad)
 			}
+		}
+	}
+}
+
+// EMP-TRIP-003 (EDR-207): the trip.event.record owner and its exact payload.
+func TestTripEventOwnerIsAnAtomicReviewOwnerWithAnExactPayload(t *testing.T) {
+	doc := loadSpec(t)
+	raw, err := json.Marshal(doc.Paths.Value("/v1/orgs/{org_id}/sync/operations").Post.Extensions["x-abastevo-operation-owners"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var owners map[string]struct {
+		Schema  int    `json:"schema"`
+		Entity  string `json:"entity_type"`
+		Payload struct {
+			Ref string `json:"$ref"`
+		} `json:"payload"`
+		Results   []string          `json:"terminal_results"`
+		Followups map[string]string `json:"followup_by_result"`
+	}
+	if json.Unmarshal(raw, &owners) != nil {
+		t.Fatal("owners unreadable")
+	}
+	owner, ok := owners["trip.event.record"]
+	if !ok || owner.Schema != 1 || owner.Entity != "trip_event" || owner.Payload.Ref != "#/components/schemas/EnterpriseTripEventPayload" || len(owner.Results) != 3 ||
+		owner.Results[0] != "ACCEPTED" || owner.Results[1] != "ACCEPTED_FOR_REVIEW" || owner.Results[2] != "REJECTED" || len(owner.Followups) != 3 ||
+		owner.Followups["ACCEPTED"] != "NO_ASYNC_FOLLOWUP" || owner.Followups["REJECTED"] != "NO_ASYNC_FOLLOWUP" || owner.Followups["ACCEPTED_FOR_REVIEW"] != "ATOMIC_REVIEW" {
+		t.Fatal("trip event owner/outcome drift")
+	}
+	schema := doc.Components.Schemas["EnterpriseTripEventPayload"]
+	if schema == nil || schema.Value == nil || schema.Value.Example == nil {
+		t.Fatal("missing trip event payload contract/example")
+	}
+	example := func() map[string]any {
+		raw, _ := json.Marshal(schema.Value.Example)
+		var v map[string]any
+		if json.Unmarshal(raw, &v) != nil {
+			t.Fatal("invalid example")
+		}
+		return v
+	}
+	if err := schema.Value.VisitJSON(example()); err != nil {
+		t.Fatal("invalid example", err)
+	}
+	vocabulary := []string{"NOTE", "STOP", "ARRIVAL", "DEPARTURE", "FUELING", "TOLL", "PARKING", "INCIDENT", "DAMAGE", "HANDOVER", "PAUSE", "RESUME", "CANCEL"}
+	if enum := schema.Value.Properties["type"].Value.Enum; len(enum) != len(vocabulary) {
+		t.Fatal("logbook vocabulary drift", enum)
+	}
+	for _, kind := range vocabulary {
+		v := example()
+		v["type"], v["text"] = kind, nil
+		if err := schema.Value.VisitJSON(v); err != nil {
+			t.Fatal("closed logbook type refused", kind, err)
+		}
+	}
+	for _, kind := range []string{"note", "START", "END", "FINISH", " NOTE", ""} {
+		v := example()
+		v["type"] = kind
+		if schema.Value.VisitJSON(v) == nil {
+			t.Fatal("unknown logbook type admitted", kind)
+		}
+	}
+	for _, field := range []string{"asset_id", "author_membership_id", "enrollment_id", "received_at", "state", "operation_id", "occurred_at", "event_id", "reporting_day"} {
+		v := example()
+		v[field] = "private"
+		if schema.Value.VisitJSON(v) == nil {
+			t.Fatal("payload authority or server field admitted", field)
+		}
+	}
+	for _, field := range []string{"trip_id", "type", "text"} {
+		v := example()
+		delete(v, field)
+		if schema.Value.VisitJSON(v) == nil {
+			t.Fatal("payload key may not be omitted", field)
+		}
+	}
+	for _, bad := range []any{"", strings.Repeat("a", 281), float64(1)} {
+		v := example()
+		v["text"] = bad
+		if schema.Value.VisitJSON(v) == nil {
+			t.Fatal("malformed text admitted", bad)
 		}
 	}
 }

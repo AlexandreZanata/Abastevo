@@ -226,6 +226,69 @@ then pass (51.4 s, race, MinIO), and apicontract passes. The untagged suite
 passes (exit 0, 217 packages ok, `trip002-merged-untagged-all.log`);
 `check_plan.py` reports 0 problems.
 
+## FLEET-011 integration (EDR-219)
+
+Third TRIP-002 change, made on `codex/enterprise-f4-trip003` from the F4 head
+`6a843325` (TRIP-002 and EMP-FLEET-011 both merged), closing the items both
+evidence files retained. No migration, route, OpenAPI or Kotlin change.
+
+1. **AC4 — an implement is never the main asset.** `TripStartFacts` now
+   also reads the asset kind under the root and asset locks; the start
+   intake applies the pure `fleet.MainAssetAllowed` next to the `DRAFT`
+   check and before every held condition: an `IMPLEMENT` start is a final
+   `REJECTED` `MALFORMED` with nothing stored (no trip, reading, held start,
+   review item or effect), replayed byte for byte.
+2. **AC2 — implements attached at the start.** `trippg.StartImplements`
+   (`ImplementsAtStartDBTX(trip)`) reads the stored trip's asset and declared
+   start instant and lists the implements through Fleet's
+   `AttachedImplementsDBTX`. No snapshot is stored: attachment periods never
+   change toward the past (no retroactive attach; a detach never ends before
+   its transaction instant), so the set at a past start is stable and a copy
+   would duplicate the Fleet-owned fact. A trip not stored in the
+   organization answers `ErrNotFound`.
+3. **AC3 — implement in use through a real trip.** No code: the runtime
+   active-use source is already the trip-backed `ActiveUse` (EDR-206) and the
+   availability read already follows an implement's attachment (EDR-212).
+
+Tests (PostGIS, `-race -tags=integration`, written before the change):
+`TestTripIntakeRefusesAnImplementAsTheMainAsset` (the fixture's ACTIVE
+IMPLEMENT with an observed odometer, assigned to the member: with a reading
+and with a missing reason, both `MALFORMED`, replays, no trip on the
+implement; the same member's vehicle start is then accepted) and
+`TestTripStartListsAttachedImplementsAndCarriesThemInUse` (two implements
+attached before the start are listed in identifier order; one detached before
+the start, one attached only from an hour after it and one never attached are
+not; an unknown trip is `ErrNotFound`; while the trip is IN_PROGRESS each
+attached implement reads `IN_USE` with the trip as cause and the vehicle as
+`powered_asset_id`, the vehicle its own cause without `Via`, the others
+`AVAILABLE`; after `trip.finish` the attached implements read `AVAILABLE`
+and the start listing is unchanged). The trip fixture now grants the
+FLEET-011 attachment tables (the availability facts of an implement read
+them).
+
+RED (`/data/dev/worktrees/f4-logs/wiring-red.jsonl`, against the unwired
+code with a zero-value `StartImplements` stub): 2/2 top-level and 2/2
+subtests failed for the right reasons — the implement start was `ACCEPTED`
+(and the second subtest held `ASSET_BUSY` behind it, one trip stored on the
+implement) and the listing was empty (three listing assertions). The AC3
+assertions, ordered before the listing checks, passed against the unwired
+code, which is the evidence that AC3 needed no wiring. A first RED attempt
+failed for the wrong reason (`RETRY`/`UNAVAILABLE`: the fixture lacked the
+attachment `SELECT` grant that the FLEET-007 facts of an implement need); the
+fixture grant was added and the RED rerun, no expectation changed.
+
+GREEN (`wiring-green.jsonl`): every `TestTrip*`, `TestFleetImplement*` and
+`TestFleetAttachment*` PostGIS test, 21/21 top-level and 23/23 subtests
+(race). Unit tests of trip, fleet and enterprisesuite pass; `sqlc
+generate`/`vet`/`diff` (the regenerated query adds `asset_kind`), toolchain
+gofmt, `go vet` (both tags) and staticcheck (plain and integration on trip,
+`db/queries/trip` and organization adapters) are clean. Race/integration
+union with PostGIS and the coordinator MinIO over organization adapters,
+trip, fleet, orgsync, enterprisesuite, apicontract, migrate, orgtest, orgapi
+and cmd/api (`wiring-union.jsonl`, 21 min, organization adapters 1306 s): 18
+packages pass (orgtest has no tests), 889 top-level / 6296 subtests, 0
+failures, 0 skips. `check_plan.py` reports 0 problems.
+
 ## Retained obligations
 
 - EMP-TRIP-007: resolution of held starts and finishes (accept with this or
@@ -239,4 +302,10 @@ passes (exit 0, 217 packages ok, `trip002-merged-untagged-all.log`);
   EMP-TRIP-005 is the Android producer; EMP-TRIP-006 the panel reads;
   EMP-TRIP-011/012/014 pause, handover and supervisor closure; the
   maintenance epic replaces `NoMaintenanceHolds`.
+- EMP-FLEET-011 integration (closed by EDR-219, section above): the
+  start applies `MainAssetAllowed` and the implements attached at a start are
+  listed through `AttachedImplementsDBTX` (derived at read time, no
+  snapshot); the attached implement is `IN_USE` through a real trip. Still
+  retained: a consumer of the start listing (EMP-TRIP-006) and an optional
+  database guard against an implement trip.
 - No route, panel read, Android or job change; no C1, M4 or F4 acceptance.

@@ -191,3 +191,64 @@ SHA256:
 (cd backend && go test -race -count=1 -run 'Time|Clock|Elapsed' ./internal/modules/trip/domain)
 ./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.trip.EnterpriseTripTime*'
 ```
+
+# Trip logbook oracle v1
+
+EMP-TRIP-003 / B-BR-EMP-320..324, BUC-EMP-161..163, EDR-207..209.
+`logbook-v1.psv` uses the same header, field, hex and alias grammar as
+`trip-v1.psv` and covers the closed logbook vocabulary, the validation of one
+logbook event against its trip and the shared timeline order. It does not
+cover persistence, intake, authority at receipt, held events, receipts, the
+Android producer or any working-time result (EDR-028).
+
+Additional aliases: E1=81, E2=82, E3=83 (logbook events).
+
+## Fixed semantics
+
+- The vocabulary is exactly NOTE, STOP, ARRIVAL and DEPARTURE (supported)
+  and FUELING, TOLL, PARKING, INCIDENT, DAMAGE, HANDOVER, PAUSE, RESUME and
+  CANCEL (reserved for their owners). Any other token — empty, padded,
+  lowercase, mixed case, START, END, FINISH, a homoglyph, a NUL suffix — is
+  `INVALID`.
+- RECORD checks, first failure first: the scope and the trip's organization
+  (`SCOPE`), the event identity and the author (absent `INVALID`, another
+  organization `SCOPE`, a non-canonical or nil identity `INVALID`), the type
+  (unknown `INVALID`, reserved `UNSUPPORTED_EVENT`), the text (required for
+  NOTE; when present nonblank, control-free, at most 280 Unicode scalars,
+  otherwise `INVALID`; padding is kept), the declaration (`INVALID`), the
+  starting member (`FORBIDDEN`), then time: strictly before the start
+  instant `EVENT_BEFORE_START`; on a COMPLETED trip strictly after the finish
+  instant `EVENT_AFTER_FINISH`. Equal instants are inside the trip; instants
+  compare across zones. Recording never changes the trip.
+- ORDER sorts timeline items by original instant; at equal instants START,
+  then EVENT by identity, then FINISH. The receipt is never an ordering key
+  and the order does not depend on the input order.
+
+## Operations and defaults
+
+Errors are exactly `error=INVALID`, `SCOPE`, `FORBIDDEN`,
+`UNSUPPORTED_EVENT`, `EVENT_BEFORE_START` or `EVENT_AFTER_FINISH`.
+
+- TYPE (`value_hex`) returns `type` and `status` (`SUPPORTED` or
+  `RESERVED`).
+- RECORD builds the trip-v1 START with every default, and FINISH when
+  `finished=true` (default `false`); only `at` and `fin_at` override the trip.
+  Event defaults: scope A, identity E1 of organization A, author M of
+  organization A, `ev_type_hex` "NOTE", `ev_text_hex` "Cliente ausente" (`?`
+  is absent, an empty value is the empty text), at 2026-11-14T13:00:00Z,
+  entry America/Cuiaba, offset -14400. Overrides: `ev_scope`, `ev_id`,
+  `ev_id_org`, `ev_author`, `ev_author_org`, `ev_type_hex`, `ev_text_hex`,
+  `ev_at`, `ev_entry`, `ev_offset`; `ev_omit` is a comma list from id,
+  author, declaration. Output: `trip`, `id`, `type`, `text_hex`, `author`,
+  `at` (canonical UTC), `entry`, `offset`, `trip_state`.
+- ORDER (`items`, a comma list of `KIND/ALIAS/INSTANT` with KIND START, EVENT
+  or FINISH) returns `order` as `KIND/ALIAS` in timeline order. Consumers also
+  sort the reversed input and assert the same order.
+
+The frozen corpus contains 103 cases: TYPE 27, RECORD 66, ORDER 10. SHA256:
+`051b1a3a6947d8b7b620be5316ca6747b6f4fed86cde3ce7f7c9eb19171ef614`.
+
+```sh
+(cd backend && go test -race -count=1 -run 'Logbook' ./internal/modules/trip/domain)
+./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.trip.EnterpriseTripLogbook*'
+```

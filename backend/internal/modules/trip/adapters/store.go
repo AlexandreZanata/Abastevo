@@ -158,7 +158,7 @@ func (s *Store) PrepareStartTx(ctx context.Context, db syncapp.DBTX, scope kerne
 	if err != nil {
 		return app.StartFacts{}, storeError(err)
 	}
-	facts := app.StartFacts{AuthorEmployeeID: employee, AssetState: row.AssetState, ExistingOperation: row.ExistingOperation, HeldOperation: row.HeldOperation,
+	facts := app.StartFacts{AuthorEmployeeID: employee, AssetState: row.AssetState, AssetKind: row.AssetKind, ExistingOperation: row.ExistingOperation, HeldOperation: row.HeldOperation,
 		ActiveTripID: row.ActiveTrip, DriverActive: row.DriverActive, Zones: orgtime.ReportingZones{Organization: row.OrganizationZone}}
 	if row.DisposedAt.Valid {
 		at, ok := exact(row.DisposedAt, row.DisposedSubmicro)
@@ -256,10 +256,17 @@ func (s *Store) ReadTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.Or
 	if !ok || !okClock || state != trip.Completed || !row.FinishOccurredSubmicro.Valid || !row.FinishEntryZone.Valid || !row.FinishDeviceOffsetSeconds.Valid || !row.FinishReceivedAt.Valid {
 		return app.Record{}, app.ErrUnavailable
 	}
+	if (row.FinishReadingID != "") != row.FinishReadingValue.Valid {
+		return app.Record{}, app.ErrUnavailable
+	}
 	record.Finish = &app.FinishRecord{OperationID: row.FinishOperationID, PayloadDigest: row.FinishPayloadDigest, AuthorMembershipID: row.FinishAuthorMembershipID,
 		EnrollmentID: row.FinishEnrollmentID, Declared: orgtime.Declaration{OccurredAt: finishAt, EntryZone: row.FinishEntryZone.String, DeviceOffsetSeconds: row.FinishDeviceOffsetSeconds.Int64},
 		Clock: finishClock, ReceivedAt: row.FinishReceivedAt.Time.UTC(), MeterID: row.FinishMeterID, SegmentID: row.FinishSegmentID, ReadingID: row.FinishReadingID,
-		MissingReason: optionalText(row.FinishMissingReadingReason), EndDay: row.FinishEndDay}
+		ReadingKind: row.FinishReadingKind, MissingReason: optionalText(row.FinishMissingReadingReason), EndDay: row.FinishEndDay}
+	if row.FinishReadingValue.Valid {
+		n := row.FinishReadingValue.Int64
+		record.Finish.ReadingValue = &n
+	}
 	return record, nil
 }
 
@@ -529,6 +536,33 @@ func ActiveTripsOfAssetAtDBTX(ctx context.Context, db syncapp.DBTX, scope kernel
 	ids := make([]string, 0, len(answer.Uses))
 	for _, use := range answer.Uses {
 		ids = append(ids, use.ID)
+	}
+	return ids, nil
+}
+
+// StartImplements derives the implements attached to a stored trip's main
+// asset at its start instant through the Fleet attachment port (EMP-FLEET-011
+// AC2, EDR-219). Nothing is copied into the trip: attachment periods are never
+// rewritten into the past, so the answer for a past start never changes.
+type StartImplements struct {
+	Trips       app.Store
+	Attachments fleetapp.AttachedImplementsPort
+}
+
+// ImplementsAtStartDBTX lists, in identifier order, the implements attached to
+// the trip's asset at its declared start instant; a trip that is not stored in
+// the organization is app.ErrNotFound.
+func (s StartImplements) ImplementsAtStartDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, tripID string) ([]string, error) {
+	if absent(s.Trips) || absent(s.Attachments) || !canonicalID(tripID) {
+		return nil, app.ErrUnavailable
+	}
+	record, err := s.Trips.ReadTripTx(ctx, db, scope, tripID)
+	if err != nil {
+		return nil, err
+	}
+	ids, err := s.Attachments.AttachedImplementsDBTX(ctx, db, scope, record.AssetID, record.Declared.OccurredAt)
+	if err != nil {
+		return nil, app.ErrUnavailable
 	}
 	return ids, nil
 }

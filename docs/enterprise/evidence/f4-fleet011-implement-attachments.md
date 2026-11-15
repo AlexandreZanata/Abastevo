@@ -120,9 +120,9 @@ Logs `/data/dev/worktrees/f4-logs/fleet011-*`.
 | Item | Evidence |
 |---|---|
 | AC1 overlapping attachment → `CONFLICT` | store (refused whole: no row, receipt or audit; overlap with a planned end; attach from the switch instant allowed); concurrent, both orders with barriers (`TestFleetImplementAttachmentConcurrentRace`: the first queued wins, the second `ErrAttachmentOverlap`); SQL 23P01; HTTP 409 |
-| AC2 trip start lists attached implements | through the port `AttachedImplementsDBTX` (both implements on the tractor at the instant; the truck's implement only from the switch instant; half-open boundary); the trip-side listing is retained for EMP-TRIP-002 |
-| AC3 implement `IN_USE` with its powered asset's trip | domain `TestAttachedImplementFollowsItsPoweredAsset`; PostGIS availability read with a test active-use source answering a trip on the tractor: the attached implement `IN_USE` naming the tractor, an unattached implement `AVAILABLE`, the tractor's own cause without `Via`; with `NoActiveUse` both missing sources are listed |
-| AC4 `IMPLEMENT` refused as main asset | domain `TestAttachmentKindsAndMainAssetEligibility` (`MainAssetAllowed`); call site retained for EMP-TRIP-002 |
+| AC2 trip start lists attached implements | through the port `AttachedImplementsDBTX` (both implements on the tractor at the instant; the truck's implement only from the switch instant; half-open boundary); integration (EDR-219): a real signed `trip.start` lists exactly the implements attached at its declared instant through `trippg.StartImplements` → `AttachedImplementsDBTX` (`TestTripStartListsAttachedImplementsAndCarriesThemInUse`) |
+| AC3 implement `IN_USE` with its powered asset's trip | domain `TestAttachedImplementFollowsItsPoweredAsset`; PostGIS availability read with a test active-use source answering a trip on the tractor: the attached implement `IN_USE` naming the tractor, an unattached implement `AVAILABLE`, the tractor's own cause without `Via`; with `NoActiveUse` both missing sources are listed; integration (EDR-219): with a real signed trip the attached implements read `IN_USE` (cause = the trip, `powered_asset_id` = the vehicle) while it is IN_PROGRESS and `AVAILABLE` after `trip.finish` |
+| AC4 `IMPLEMENT` refused as main asset | domain `TestAttachmentKindsAndMainAssetEligibility` (`MainAssetAllowed`); integration (EDR-219): the trip start intake applies it, an implement start is `MALFORMED` with nothing stored (`TestTripIntakeRefusesAnImplementAsTheMainAsset`) |
 | Attaching to an implement | store and HTTP `VALIDATION_FAILED`; SQL 23514 |
 | Another organization's asset | store `NOT_FOUND` for a foreign implement and a foreign powered asset; HTTP 404; cross-org insert 42501; RLS without the setting sees nothing |
 | Two concurrent attachments | race test above |
@@ -158,9 +158,14 @@ Logs `/data/dev/worktrees/f4-logs/fleet011-*`.
 
 ## Retained
 
-- EMP-TRIP-002: record the implements attached at a trip start through
+- ~~EMP-TRIP-002: record the implements attached at a trip start through
   `AttachedImplementsDBTX`, apply `MainAssetAllowed` in the start eligibility,
-  and replace `NoActiveUse` (which also makes AC3 live end to end).
+  and replace `NoActiveUse` (which also makes AC3 live end to end).~~
+  Closed by the FLEET-011 × TRIP-002 integration (EDR-219, section below):
+  `NoActiveUse` was already replaced by TRIP-002; the start applies
+  `MainAssetAllowed`; the start's implements are derived at read time (no
+  snapshot). Still retained: a consumer of the listing (EMP-TRIP-006 panel)
+  and an optional database guard against an implement trip.
 - No automatic detach on deactivation/disposal (no rule; EDR-210).
 - Implement-specific meters and checklists per implement (task scope out);
   an app action for frequent swaps (task risk note); panel screens.
@@ -170,3 +175,13 @@ Logs `/data/dev/worktrees/f4-logs/fleet011-*`.
   changes its kind needs `SELECT (org_id, implement_id, powered_asset_id)` on
   the attachments table.
 - No milestone, phase or gate is claimed.
+
+## Integration with EMP-TRIP-002 (EDR-219, 2026-11-15)
+
+Integration commit on `codex/enterprise-f4-trip003` (based on the F4 head
+`6a843325`, where TRIP-002 and FLEET-011 are both merged); no migration, no
+route. Evidence and RED/GREEN logs are in the
+[TRIP-002 evidence](f4-trip002-trip-persistence.md#fleet-011-integration-edr-219)
+(`/data/dev/worktrees/f4-logs/wiring-*`). AC2, AC3 and AC4 are now proven
+through real signed trips; AC3 needed no code (TRIP-002's trip-backed
+`ActiveUse` and this task's `Via` derivation were already composed).

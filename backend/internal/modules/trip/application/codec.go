@@ -244,6 +244,22 @@ func ParseFinish(op protocol.Operation) (FinishCommand, error) {
 // FinishDomain rebuilds the stored trip through the pure domain and finishes
 // it with this event (EMP-TRIP-001 rules at receipt).
 func FinishDomain(scope kernel.OrgScope, record Record, in FinishInput) (trip.Trip, error) {
+	started, err := startedDomain(scope, record)
+	if err != nil {
+		return trip.Trip{}, err
+	}
+	finish := trip.FinishInput{Declared: &in.Declared, Clock: in.Clock}
+	if finish.Author, err = trip.NewMembershipRef(scope, in.AuthorMembershipID); err != nil {
+		return trip.Trip{}, err
+	}
+	if finish.Final, err = observation(scope, started.Asset(), in.Event); err != nil {
+		return trip.Trip{}, err
+	}
+	return started.Finish(scope, finish)
+}
+
+// startedDomain rebuilds the stored start through the pure domain.
+func startedDomain(scope kernel.OrgScope, record Record) (trip.Trip, error) {
 	start := StartInput{Event: Event{OperationID: record.OperationID, TripID: record.ID, AuthorMembershipID: record.AuthorMembershipID, Declared: record.Declared,
 		MissingReason: copyPointer(record.MissingReason), Clock: copyPointer(record.Clock)}, AssetID: record.AssetID, DriverID: record.DriverID}
 	if record.ReadingID != "" {
@@ -265,14 +281,7 @@ func FinishDomain(scope kernel.OrgScope, record Record, in FinishInput) (trip.Tr
 	if err != nil || started.Reporting().Day != record.Reporting.Day {
 		return trip.Trip{}, ErrUnavailable
 	}
-	finish := trip.FinishInput{Declared: &in.Declared, Clock: in.Clock}
-	if finish.Author, err = trip.NewMembershipRef(scope, in.AuthorMembershipID); err != nil {
-		return trip.Trip{}, err
-	}
-	if finish.Final, err = observation(scope, started.Asset(), in.Event); err != nil {
-		return trip.Trip{}, err
-	}
-	return started.Finish(scope, finish)
+	return started, nil
 }
 
 // meterKindOf is the stored departure kind, carried by the record's value kind.

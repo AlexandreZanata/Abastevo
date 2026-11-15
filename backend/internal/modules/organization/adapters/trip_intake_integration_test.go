@@ -73,7 +73,13 @@ func (x *tripState) handlers(t *testing.T, readings tripapp.Readings, store trip
 
 func tripFixture(t *testing.T) tripState {
 	t.Helper()
-	x := tripState{selfIntakeState: selfIntakeFixture(t)}
+	return tripFixtureOn(t, selfIntakeFixture(t))
+}
+
+// tripFixtureOn builds the trip fixture on a given SELF intake fixture.
+func tripFixtureOn(t *testing.T, base selfIntakeState) tripState {
+	t.Helper()
+	x := tripState{selfIntakeState: base}
 	tripGrants(t, x.legalFixtureState)
 	meterAuthority, ok := x.meters.Authority.(*orgpg.MeterAuthority)
 	if !ok {

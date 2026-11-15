@@ -5574,3 +5574,88 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   for a `SELF` driver or another unit's asset for a `UNIT` supervisor →
   `FORBIDDEN`. Result: the run of EMP-CHECK-002 pins the version and the
   policy revision; nothing is stored by the read.
+
+## EMP-TRIP-003 — Logbook events: the typed timeline (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip003-logbook-events.md).
+
+- **B-BR-EMP-320 — Closed logbook vocabulary.** A logbook event has exactly
+  one type from the closed `trip-logbook-v1` set. Supported now: `NOTE`
+  (text required), `STOP`, `ARRIVAL` and `DEPARTURE` (text optional), each an
+  instantaneous fact of the trip. Reserved for their owners and never
+  recorded here: `FUELING`, `TOLL` and `PARKING` (the fueling and expense
+  links of EMP-FUEL-011, EMP-EXP-004 and EMP-TRIP-020), `INCIDENT` and
+  `DAMAGE` (EMP-CHECK-003), `HANDOVER` (EMP-TRIP-012), `PAUSE`, `RESUME` and
+  `CANCEL` (EMP-TRIP-011). Any other token — empty, padded, lowercase,
+  `START`, `END`, `FINISH` — is unknown. A text is nonblank, free of control
+  characters and at most 280 Unicode scalars. A planned-stop link and legs
+  (EMP-TRIP-010), photos, amounts and corrections (EMP-TRIP-015) are not part
+  of v1. No logbook event changes the trip's state, meter evidence, asset
+  availability, open work, reporting day or review case, and none computes
+  working time (EDR-028).
+- **B-BR-EMP-321 — One logbook fact per signed `trip.event.record`.** The
+  operation `trip.event.record` schema 1 (entity `trip_event`, id = the
+  device event UUID, no expected revision, at most one dependency, no soft
+  reference or attachment) carries the exact payload `trip_id`, `type` and
+  `text` (a string or null) of canonical strings; the envelope declaration is
+  the event's original instant, entry zone and device offset (BR-TIME-001/002).
+  An accepted event stores one insert-only, forced-RLS logbook fact: its
+  stable identity (BR-OFFL-001), trip, type, text, operation and digest,
+  author membership and employee record, capture enrollment, the declaration
+  (microsecond floor plus 0..999 remainder, entry zone, device offset) and
+  the server receipt; the acknowledgement is `ACCEPTED` at revision 1. An
+  event identity already used by another operation is `MALFORMED`.
+- **B-BR-EMP-322 — Authority and target at receipt.** The operation needs
+  current `trip.trip.start` on the enrolled device. Only the member who
+  started the trip appends to it (another member is a whole-response
+  `FORBIDDEN` with nothing stored); history follows EDR-118 continuity on the
+  trip's asset at the event's instant, and a right changed after the
+  declaration stores nothing and stays `RETRY`/`UNAVAILABLE`, as for a
+  finish. A trip that is not stored in this organization — not yet delivered,
+  held, or another organization's, which forced RLS makes indistinguishable —
+  is `RETRY` `DEPENDENCY_PENDING` with nothing stored or revealed. A receipt
+  replay needs current `trip.trip.read` over the trip (author, asset, stored
+  unit and cost centre), except the author's own held receipt.
+- **B-BR-EMP-323 — The event's time against its trip.** An event declared
+  before its trip's start instant cannot be a fact of that trip and is
+  `REJECTED` `MALFORMED`. While the trip is IN_PROGRESS any instant at or
+  after its start is accepted; on a COMPLETED trip an event at or before the
+  finish instant is accepted as a late delivery of a fact recorded during
+  the trip, and the trip stays COMPLETED. An event declared after the finish
+  of a completed trip is kept as a held event `ACCEPTED_FOR_REVIEW`
+  `TRIP_ALREADY_CLOSED` with its whole fact and a version-1 review item in
+  the same transaction as its acknowledgement; it is not a logbook fact and
+  its resolution is retained (EMP-TRIP-007/015). An unknown type is
+  `REJECTED` `MALFORMED`; a reserved type is `RETRY` `UNAVAILABLE` (a
+  recognised future form: nothing is stored, nothing changes, the device
+  keeps it queued).
+- **B-BR-EMP-324 — Exact replay, concurrency and the timeline.** The same
+  operation id and digest returns the stored acknowledgement byte for byte;
+  the same id with another digest is `REJECTED` `OPERATION_ID_REUSED`;
+  concurrent identical deliveries leave one fact. An event and the finish of
+  its trip are serialized under the organization root and asset locks and the
+  trip row: an event at or before the finish instant is accepted in either
+  order and the finish completes the trip in either order, never a lost or
+  duplicated fact; the receipt order decides only an event declared after a
+  finish (accepted while the trip is still in progress, held once it is
+  completed), which device dependencies (BR-OFFL-007) keep in order. A trip's timeline is its
+  start, its logbook facts and its finish ordered by original instant (equal
+  instants: start, then events by identity, then finish); each item keeps its
+  fact type, actor, declared instant and entry zone, and server receipt, so
+  type and receipt stay distinguishable. Held events are not timeline facts.
+  No read route is added (panel reads belong to EMP-TRIP-006).
+- **BUC-EMP-161 — Log a trip's facts offline.** During the VAL-01 trip the
+  driver records an arrival, a note and a departure; each is delivered as its
+  own `trip.event.record`, accepted once with one acknowledgement, and the
+  timeline shows start, the three events and finish in order of occurrence
+  with their receipts.
+- **BUC-EMP-162 — Keep what cannot be appended.** An event declared after
+  the trip's finish is held `TRIP_ALREADY_CLOSED`; a reserved type (`PAUSE`)
+  stays queued with `RETRY` `UNAVAILABLE` and changes nothing; an unknown
+  type is refused `MALFORMED`.
+- **BUC-EMP-163 — Prove the logbook on real PostGIS and the shared oracle.**
+  Replay, digest reuse, concurrent duplicates, an event racing the finish
+  with barriers in both orders, another member, another organization's
+  trip, forced RLS, insert-only facts, deferred publication guards and a
+  populated 000224 → 000225 upgrade with injected failure and recovery; Go and
+  Kotlin consume the same `logbook-v1.psv` oracle.
