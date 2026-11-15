@@ -554,6 +554,28 @@ QUARANTINED documents still allowed by the 209 guard, reason display
 (DOC-013/015), Android capability path (DOC-004), bucket/provider/grants
 (operator gate); real receipts stay legally gated.
 
+### EMP-RPT-002 — CSV list exports: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f3-rpt002-list-exports.md). Three admitted kinds composed for API
+and worker: `fleet.asset_list.csv` and `fleet.meter_reading_list.csv`
+(`fleet.asset.read`; no `meter.reading.read` key exists) and
+`idn.employee_list.csv` (`idn.employee.read`), with closed validated filters.
+Each job delivers a ZIP holding the CSV (UTF-8 BOM, LF, exact integers with
+units, reversible apostrophe neutralisation of formula-leading text) and a
+`manifest.json` basis (organization, requester, as-of, filters, review basis,
+ordering, row count, CSV SHA-256, columns and omitted sensitive columns with
+reasons). Readers run the requester re-check, then a read-only scoped
+transaction with one streamed statement (EDR-171/172). XLSX stays
+EXPORT_FORMAT_UNAVAILABLE (no reviewed writer, no dependency). RED unit 13/49,
+integration 4+15 failing → GREEN unit 49/54, integration 67/141; agent race
+union 19 packages 758/4959, untagged 212 packages. Merged-tree verification:
+cmd/api, apicontract and orgexport unit green; race/integration union over
+orgexport, organization adapters and enterprisesuite: 7 packages, 459/3575,
+0 failures, 0 skips. Retained: XLSX (CX-10 review), UNIT/COST_CENTRE/TEAM/
+ASSET/SELF row scoping, per-column permissions for location/document
+columns, a document list (no role holds `doc.document.read`), inline CSV,
+cancel, schedules, PDF, full organization export, screens, runtime grants.
+
 ## Interruption — 2026-11-14 (resumed)
 
 Integrated here: opening ledger, PLAT-016, APPR-001, EXP-001, DOC-001,

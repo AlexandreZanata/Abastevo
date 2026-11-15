@@ -89,8 +89,9 @@ type Options struct {
 	// ExportStorage is the private bucket for export files; nil keeps every
 	// export transfer unavailable (EMP-RPT-001).
 	ExportStorage *exportpg.StorageConfig
-	// ExportFormats are the admitted export formats. Production composes
-	// none until EMP-RPT-002 admits one; tests add a synthetic kind.
+	// ExportFormats are additional admitted export formats. The suite always
+	// composes the operational list kinds of EMP-RPT-002; tests may add
+	// synthetic kinds.
 	ExportFormats []exportapp.Format
 }
 

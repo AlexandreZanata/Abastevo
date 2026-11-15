@@ -213,7 +213,7 @@ requester-bound downloads, on real PostGIS and MinIO. Real formats (RPT-002),
 the export matrix (AUTH-011), notifications and F3 remain open.
 
 ### EMP-RPT-002 — CSV and spreadsheet exports for operational lists
-- **Meta:** module RPT · phase F3 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module RPT · phase F3 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Export operational lists using scoped, exact and non-executable CSV or spreadsheet data.
 - **Rules and use cases:** BR-RPT-002, BR-RPT-003, BR-RPT-006, BR-RPT-007, BR-RPT-008, BR-RPT-010, BR-RPT-011, UC-RPT-01
 - **Depends on:** EMP-RPT-001, EMP-AUTH-011
@@ -227,6 +227,13 @@ the export matrix (AUTH-011), notifications and F3 remain open.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-MONEY, V-PRIV · migration: none beyond export infrastructure · rollback: disable new formats
 - **Risks and assumptions:** A format that has not been admitted stays unavailable. Prefer existing standard-library options. Each format implements `Format.ReadPermission()` with the list's read key (EMP-AUTH-011); sensitive columns keep their own per-column permission and omission note.
 - **Done when:** Exact, scoped and inert output passes round-trip fixtures.
+
+- 2026-11-14 LOCAL_DONE (Validation PASS, INTEGRATION_PENDING): admits
+  `fleet.asset_list.csv`, `fleet.meter_reading_list.csv` and `idn.employee_list.csv` as ZIP
+  packages (`<list>.csv` + `manifest.json`): exact integers, apostrophe-inert text, deterministic
+  order, omitted contact/capture columns reported with reasons, re-check and read-only read in one
+  scoped transaction. Retained: XLSX (CX-10 review), document list, row scoping for structural
+  grants, inline small CSV. [Evidence](../evidence/f3-rpt002-list-exports.md).
 
 ### EMP-RPT-003 — PDF reports: trip logbook, fueling statement and period summary
 - **Meta:** module RPT · phase F6 · cut - · priority P1 · type JOB · size M · state TODO

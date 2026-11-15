@@ -351,6 +351,10 @@ func (s *Sink) Write(p []byte) (int, error) {
 // Row appends one data row and counts it.
 func (s *Sink) Row(p []byte) error { return s.append(p, true) }
 
+// CountRow counts one data row whose bytes reach the sink through Write, as
+// in a packaged file (EMP-RPT-002); the row ceiling applies as for Row.
+func (s *Sink) CountRow() error { return s.append(nil, true) }
+
 func (s *Sink) Rows() int64  { return s.rows }
 func (s *Sink) Bytes() int64 { return int64(len(s.buf)) }
 

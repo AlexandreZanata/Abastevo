@@ -333,3 +333,26 @@ func TestCleanupDeletesBeforeRecording(t *testing.T) {
 		t.Fatal("malformed reference must settle", err)
 	}
 }
+
+// B-BR-EMP-255 (EMP-RPT-002): a format that finds the requester's authority
+// lost inside its own reading transaction ends the job FAILED with
+// EXPORT_RIGHTS_LOST at once, with nothing stored and no retry.
+func TestBuildFailsRightsLostFoundWhileReading(t *testing.T) {
+	s, e, store, objects, format, w := workerFixture(t, `{}`)
+	format.err = app.ErrRightsLost
+	if err := w.Build(t.Context(), s, id(50)); err != nil {
+		t.Fatal("a settled rights loss was retried", err)
+	}
+	if store.state != domain.Failed || store.failure != domain.RightsLost || store.claim.Attempts != 1 || store.published != nil || store.provisional != nil || objects.puts != 0 || format.calls != 1 {
+		t.Fatal("rights lost while reading did not fail the job at once", e, store.failure)
+	}
+	if strings.Contains(e.String(), "put") || strings.Contains(e.String(), "release") {
+		t.Fatal("a refused export reached storage or was released", e)
+	}
+	// A wrapped loss is recognised too.
+	s, _, store, _, format, w = workerFixture(t, `{}`)
+	format.err = errors.Join(errors.New("synthetic reader context"), app.ErrRightsLost)
+	if err := w.Build(t.Context(), s, id(50)); err != nil || store.failure != domain.RightsLost {
+		t.Fatal("wrapped rights loss", err, store.failure)
+	}
+}

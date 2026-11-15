@@ -70,6 +70,7 @@ backend/internal/modules/orgexport/domain
 backend/internal/modules/orgexport/application
 backend/internal/modules/orgexport/adapters
 backend/internal/modules/orgexport/adapters/http
+backend/internal/modules/orgexport/adapters/lists
 backend/internal/modules/companysession/domain
 backend/internal/modules/companysession/application
 backend/internal/modules/companysession/adapters

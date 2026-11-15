@@ -118,6 +118,11 @@ func (w Worker) Build(ctx context.Context, scope kernel.OrgScope, exportID strin
 	if errors.Is(err, domain.ErrTooLarge) {
 		return w.Store.Fail(ctx, scope, claim, domain.TooLarge)
 	}
+	// A format re-checks the requester inside its reading transaction
+	// (EMP-RPT-002); a loss found there is settled like the check above.
+	if errors.Is(err, ErrRightsLost) {
+		return w.Store.Fail(ctx, scope, claim, domain.RightsLost)
+	}
 	if err != nil {
 		return w.retry(ctx, scope, claim, err)
 	}
@@ -173,6 +178,8 @@ func (w Worker) produce(ctx context.Context, scope kernel.OrgScope, claim Claim,
 		return domain.File{}, ctx.Err()
 	case errors.Is(err, domain.ErrTooLarge), errors.Is(limited.Err(), context.DeadlineExceeded):
 		return domain.File{}, domain.ErrTooLarge
+	case errors.Is(err, ErrRightsLost):
+		return domain.File{}, ErrRightsLost
 	case err != nil:
 		return domain.File{}, errRetry
 	}

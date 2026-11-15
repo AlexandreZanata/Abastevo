@@ -4314,3 +4314,100 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   keeps `FAILED` and is retried; an expired session closes only after the
   window; a populated database upgrades with preserved metadata and queued
   closure jobs.
+
+## EMP-RPT-002 — CSV exports for operational lists (2026-11-14)
+
+[Evidence](../enterprise/evidence/f3-rpt002-list-exports.md).
+
+- **B-BR-EMP-255 — Three operational lists are admitted, scoped and
+  re-authorized in the reading transaction.** The export registry admits
+  exactly three list kinds: `fleet.asset_list.csv` (asset register, data
+  permission `fleet.asset.read`; optional filters `state` — one asset state,
+  absent meaning every state except `ARCHIVED` as on the asset list — and
+  `kind`), `fleet.meter_reading_list.csv` (server-accepted meter readings,
+  `fleet.asset.read` as every meter read; optional `asset_id`, `meter_kind`,
+  `state` `VALID`/`SUSPECT` and a half-open period `occurred_from`/
+  `occurred_to` of canonical UTC instants with from before to) and
+  `idn.employee_list.csv` (employee register, `idn.employee.read`; optional
+  `state`). Parameters are a closed object: an unknown key, an empty or
+  non-canonical value or a reversed period is `VALIDATION_FAILED` at request
+  and nothing is written. Each kind keeps the infrastructure ceilings (500 000
+  rows, 16 MiB, 120 s). The worker reads in one scoped transaction of the
+  job's organization under forced row-level security: it first re-checks the
+  recorded requester's `rpt.export.run` and the kind's permission for the whole
+  organization (only organization-wide grants export; unit, cost-centre, team
+  and own-records row scoping is retained), then switches the transaction to
+  read-only and reads the rows in one parametrized statement bound to the
+  organization. Authority lost at that point ends the job `FAILED` with
+  `EXPORT_RIGHTS_LOST` and no file, exactly as at the worker's earlier check.
+  Every other kind — including the spreadsheet kinds `*.xlsx` — stays
+  `EXPORT_FORMAT_UNAVAILABLE` (BR-RPT-011).
+- **B-BR-EMP-256 — The table is exact, inert and deterministic.** The CSV is
+  UTF-8 with a byte-order mark, comma separated, with LF line ends, written by
+  Go `encoding/csv` (a field holding a separator, quote, line break or leading
+  space is quoted and embedded quotes are doubled), with one header row of
+  stable lower-snake column names. Integer cells carry the server's own exact
+  integers in canonical decimal, in the base unit named by the column
+  (`_m` metres, `_s` seconds) or as plain counts, and are never altered, a
+  negative offset included. Every other cell is text: a text cell that begins
+  with `=`, `+`, `-`, `@`, tab, carriage return, line feed or an apostrophe is
+  written with one extra leading apostrophe, so no cell can start a formula,
+  and a reader recovers the stored value by removing exactly one leading
+  apostrophe from a text cell that has one. Text must be valid UTF-8. Instants
+  are canonical RFC 3339 UTC with the stored sub-microsecond digits. An absent
+  value is an empty cell, never 0. Rows are ordered deterministically: assets
+  and employees by identifier, readings by exact occurrence instant and then
+  identifier. Registers are read as stored at the generation instant (the
+  reading transaction's start); readings include only those the server
+  received at or before the job's "as of" instant. The same stored data and job
+  produce byte-identical CSV content; between two runs only the manifest's
+  `generated_at` (and, across jobs, the job's own identifier and "as of")
+  differs.
+- **B-BR-EMP-257 — The manifest states the basis and the omissions, never
+  omitted values.** Each file is a ZIP package (`application/zip`, deflated
+  entries timed at the "as of" instant) holding exactly `<list>.csv` and
+  `manifest.json`. The manifest (schema `orgexport.list.v1`) states the kind,
+  export, organization identifier, name and time zone, requester membership,
+  declared read permission, "as of" and generation instants, the canonical
+  filters, the review basis (readings `APPROVED_ONLY`, "somente aprovados":
+  readings held for review are not included; registers `NOT_APPLICABLE`), the
+  content basis, the ordering, the row count, the CSV's name, rows, bytes and
+  SHA-256, every column with its type and unit, the encoding rules (UTF-8,
+  byte-order mark, separator, line end, inert prefix) and every omitted
+  sensitive column with a reason code and a note, never a value. The employee
+  list omits the work e-mail and phone (`PURPOSE_LIMITED`: collected only to
+  hand over invitations, BR-PRIV-005); the reading list omits the capture
+  session or device-enrolment locator (`CAPTURE_LOCATOR`, BR-PRIV-008).
+  Location and document-content columns belong to no admitted list.
+- **B-BR-EMP-258 — A ceiling or a failure never yields a partial file.** Data
+  rows count against the job's row ceiling and packaged bytes against its byte
+  ceiling as they are written; reaching either fails the whole production with
+  `EXPORT_TOO_LARGE` and stores nothing. A read failure, invalid stored text or
+  an unfinished package is a retryable failure that publishes nothing; the
+  last attempt ends `EXPORT_ATTEMPTS_EXHAUSTED`. Only a complete, closed
+  package is stored, read back and made `READY` (B-BR-EMP-229).
+- **BUC-EMP-130 — Export an operational list.** Actor: a member whose current
+  organization-wide roles cover `rpt.export.run` and the list's read
+  permission (today OWNER, ADMIN, FLEET_MANAGER, FINANCE and AUDITOR for the
+  three lists). Main flow: on the list choose "Exportar" with the current
+  filters → the server validates the filters and creates the `QUEUED` job → the
+  worker re-checks authority and reads the organization's rows in one
+  read-only transaction → writes the CSV and its manifest into the package
+  under the ceilings → stores, verifies and publishes it `READY` → the member
+  takes a capability and downloads the package. Alternatives: an unknown or
+  invalid filter → `VALIDATION_FAILED`; a spreadsheet kind →
+  `EXPORT_FORMAT_UNAVAILABLE`; no data permission → `FORBIDDEN` naming the key;
+  authority lost before or while reading → `FAILED`/`EXPORT_RIGHTS_LOST`, no
+  file; over a ceiling → `FAILED`/`EXPORT_TOO_LARGE` with advice to narrow the
+  filter. Result: a private, expiring package with only the organization's
+  rows the member may read.
+- **BUC-EMP-131 — Read and verify an exported list.** Actor: the member who
+  downloaded the package. Main flow: open `manifest.json` → compare the CSV's
+  SHA-256, bytes and row count → read the basis (organization, filters, "as
+  of", generation instant, review basis, ordering, units) and the omitted
+  columns with their reasons → parse the CSV with any RFC 4180 reader after the
+  byte-order mark → remove one leading apostrophe from a text cell that has one
+  → read integers in the unit named by the column. Alternatives: a digest or
+  count mismatch → the file is not the published one and is discarded.
+  Result: values identical to the stored records, with nothing a spreadsheet
+  can execute.

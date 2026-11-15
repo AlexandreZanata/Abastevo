@@ -18557,7 +18557,7 @@ paths:
       operationId: enterpriseReportExportRequest
       summary: Request an asynchronous export of an admitted kind
       description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
-        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Write admission, enabled capability and ACTIVE organization. The kind must have an admitted format (else EXPORT_FORMAT_UNAVAILABLE 422), and the same membership must also hold, for the whole organization, the read permission declared by the kind; neither permission implies the other, and a missing data permission is FORBIDDEN with that key before anything is written. Every worker attempt re-checks both, and losing either ends the job FAILED with EXPORT_RIGHTS_LOST; parameters are a canonical JSON object of at most 4096 bytes. One QUEUED job, one audit event and one reference-only worker job commit together; the operation ID replays the stored job. A requester with three QUEUED or RUNNING jobs gets EXPORT_QUEUE_FULL (429). Synthetic construction admits no real export format and does not authorize real data or release.
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Write admission, enabled capability and ACTIVE organization. The kind must have an admitted format (else EXPORT_FORMAT_UNAVAILABLE 422), and the same membership must also hold, for the whole organization, the read permission declared by the kind; neither permission implies the other, and a missing data permission is FORBIDDEN with that key before anything is written. Every worker attempt re-checks both, and losing either ends the job FAILED with EXPORT_RIGHTS_LOST; parameters are a canonical JSON object of at most 4096 bytes. One QUEUED job, one audit event and one reference-only worker job commit together; the operation ID replays the stored job. A requester with three QUEUED or RUNNING jobs gets EXPORT_QUEUE_FULL (429). Admitted kinds (EMP-RPT-002) are fleet.asset_list.csv and fleet.meter_reading_list.csv (data permission fleet.asset.read) and idn.employee_list.csv (idn.employee.read); their parameters are the closed filter objects EnterpriseAssetListExportParameters, EnterpriseMeterReadingListExportParameters and EnterpriseEmployeeListExportParameters, and an unknown key, an empty or non-canonical value or a reversed period is VALIDATION_FAILED (422) before anything is written. Spreadsheet kinds (*.xlsx) are not admitted and stay EXPORT_FORMAT_UNAVAILABLE. The worker re-checks the requester inside its read-only reading transaction, reads only this organization and writes an application/zip package holding the CSV and manifest.json (exact base-unit integers, inert text, deterministic order, omitted sensitive columns reported without values). Synthetic construction does not authorize real data or release.
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
@@ -18639,7 +18639,7 @@ paths:
       operationId: enterpriseReportExportList
       summary: List the calling member's exports, newest first
       description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
-        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Lists only jobs requested by the calling membership; keyset cursor bound to the filter and caller; optional state filter. Expired jobs keep their metadata without a download. Synthetic construction admits no real export format and does not authorize real data or release.
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Lists only jobs requested by the calling membership; keyset cursor bound to the filter and caller; optional state filter. Expired jobs keep their metadata without a download. Synthetic construction does not authorize real data or release.
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
@@ -18717,7 +18717,7 @@ paths:
       operationId: enterpriseReportExportRead
       summary: Read one of the calling member's exports
       description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
-        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Returns state, attempts, failure code, and for a published file its row count, size, SHA-256, media type, ready and expiry instants. No storage address is ever returned. Synthetic construction admits no real export format and does not authorize real data or release.
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. Returns state, attempts, failure code, and for a published file its row count, size, SHA-256, media type, ready and expiry instants. No storage address is ever returned. Synthetic construction does not authorize real data or release.
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
@@ -18801,7 +18801,7 @@ paths:
       operationId: enterpriseReportExportAccess
       summary: Obtain a short-lived capability for a ready export
       description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
-        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. The read permission declared by the kind is re-checked first (FORBIDDEN with that key; a kind no longer admitted is EXPORT_FORMAT_UNAVAILABLE 422). Requires a READY job before its expiry (EXPORT_NOT_READY 409, EXPORT_EXPIRED 410). Records EXPORT_FILE ISSUED in the sensitive-access log before minting a capability bound to the API origin, organization, account, membership, job and file, valid for at most five minutes. An audit failure issues nothing. Synthetic construction admits no real export format and does not authorize real data or release.
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. The read permission declared by the kind is re-checked first (FORBIDDEN with that key; a kind no longer admitted is EXPORT_FORMAT_UNAVAILABLE 422). Requires a READY job before its expiry (EXPORT_NOT_READY 409, EXPORT_EXPIRED 410). Records EXPORT_FILE ISSUED in the sensitive-access log before minting a capability bound to the API origin, organization, account, membership, job and file, valid for at most five minutes. An audit failure issues nothing. Synthetic construction does not authorize real data or release.
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
@@ -18868,7 +18868,7 @@ paths:
       operationId: enterpriseReportExportContent
       summary: Download a ready export with its capability
       description: Current company cookie and exact Origin/CSRF. Fixed rpt.export.run permission on the whole organization
-        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. The read permission declared by the kind is re-checked as on access (FORBIDDEN with that key; a kind no longer admitted is EXPORT_FORMAT_UNAVAILABLE 422). The capability travels in the body. The server verifies it, re-checks authority, state and expiry, reads and verifies the private file, records EXPORT_FILE SERVED and only then returns the exact bytes base64-encoded. A foreign, changed or expired capability is NOT_FOUND; an audit failure serves nothing. Synthetic construction admits no real export format and does not authorize real data or release.
+        (ORG-scope grant only) with fresh proof, as the catalog requires for exports. The read permission declared by the kind is re-checked as on access (FORBIDDEN with that key; a kind no longer admitted is EXPORT_FORMAT_UNAVAILABLE 422). The capability travels in the body. The server verifies it, re-checks authority, state and expiry, reads and verifies the private file, records EXPORT_FILE SERVED and only then returns the exact bytes base64-encoded. A foreign, changed or expired capability is NOT_FOUND; an audit failure serves nothing. An admitted list kind serves media type application/zip holding <list>.csv (UTF-8 with byte-order mark, comma, LF, RFC 4180 quoting; a text cell that begins with =, +, -, @, tab, CR, LF or an apostrophe gains one leading apostrophe so it stays inert; integers are exact in the unit named by the column) and manifest.json (schema orgexport.list.v1 with organization, requester membership, as_of, generated_at, filters, review basis, ordering, row count, the CSV SHA-256, columns with units and omitted columns with reasons). Synthetic construction does not authorize real data or release.
       security:
       - CompanySessionCookie: []
       x-abastevo-organization:
@@ -19938,7 +19938,10 @@ components:
           data_mode: SYNTHETIC
         next_cursor: ''
     EnterpriseExportKind:
-      description: Kind of an admitted export format; a kind without an admitted format is EXPORT_FORMAT_UNAVAILABLE.
+      description: Kind of an admitted export format; a kind without an admitted format is EXPORT_FORMAT_UNAVAILABLE. Admitted
+        kinds are fleet.asset_list.csv, fleet.meter_reading_list.csv and idn.employee_list.csv (EMP-RPT-002); spreadsheet kinds
+        such as fleet.asset_list.xlsx are not admitted until a reviewed writer exists and answer EXPORT_FORMAT_UNAVAILABLE. No enum
+        is declared so that an unadmitted kind reaches that answer.
       type: string
       maxLength: 64
       pattern: '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$'
@@ -19957,7 +19960,9 @@ components:
           $ref: '#/components/schemas/EnterpriseExportKind'
         parameters:
           type: object
-          description: Filters of the format, lower-snake keys, no null, at most 4096 canonical bytes.
+          description: Filters of the format, lower-snake keys, no null, at most 4096 canonical bytes. Each admitted list kind accepts
+            only its closed filter object (EnterpriseAssetListExportParameters, EnterpriseMeterReadingListExportParameters,
+            EnterpriseEmployeeListExportParameters).
       required:
       - schema_version
       - operation_id
@@ -19969,6 +19974,61 @@ components:
         kind: test.synthetic_rows
         parameters:
           rows: 3
+    EnterpriseAssetListExportParameters:
+      description: Filters of fleet.asset_list.csv (EMP-RPT-002). Both optional; without state every state except ARCHIVED is
+        listed, as on the asset list. Rows are ordered by asset identifier.
+      type: object
+      additionalProperties: false
+      properties:
+        state:
+          type: string
+          enum: [DRAFT, ACTIVE, INACTIVE, DISPOSED, ARCHIVED]
+        kind:
+          type: string
+          enum: [VEHICLE, MACHINE, IMPLEMENT]
+      example:
+        state: ACTIVE
+        kind: VEHICLE
+    EnterpriseMeterReadingListExportParameters:
+      description: Filters of fleet.meter_reading_list.csv (EMP-RPT-002), all optional. The period is half-open
+        [occurred_from, occurred_to) over the exact occurrence instant, both canonical UTC RFC 3339 instants with from before
+        to. Only readings the server received at or before the job's as_of instant are listed; readings held for review are
+        not. Rows are ordered by occurrence instant, then reading identifier.
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        meter_kind:
+          type: string
+          enum: [ODOMETER, HOUR_METER]
+        state:
+          type: string
+          enum: [VALID, SUSPECT]
+        occurred_from:
+          type: string
+          format: date-time
+          maxLength: 35
+        occurred_to:
+          type: string
+          format: date-time
+          maxLength: 35
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000009301
+        meter_kind: ODOMETER
+        occurred_from: '2026-10-01T00:00:00Z'
+        occurred_to: '2026-11-01T00:00:00Z'
+    EnterpriseEmployeeListExportParameters:
+      description: Filters of idn.employee_list.csv (EMP-RPT-002). Optional state; work e-mail and phone are never exported and
+        are reported in the manifest as omitted (PURPOSE_LIMITED). Rows are ordered by employee identifier.
+      type: object
+      additionalProperties: false
+      properties:
+        state:
+          type: string
+          enum: [ACTIVE, INACTIVE, TERMINATED]
+      example:
+        state: ACTIVE
     EnterpriseExportListRequest:
       description: Keyset page of the calling member's exports, optionally filtered by state.
       type: object

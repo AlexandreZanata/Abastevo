@@ -1231,7 +1231,26 @@ pipeline already uses: `SELECT` plus the row-lock privilege for `FOR SHARE` on
 The worker must connect with an ordinary NOSUPERUSER/NOBYPASSRLS login that owns
 no RLS table. Rows are never deleted; export objects live under
 `org/<org_id>/export/` in the existing private bucket and are deleted by the
-`org-export-cleanup` job. No production format is registered (EMP-RPT-002).
+`org-export-cleanup` job.
+
+EMP-RPT-002 list readers (worker login only; column privileges, no work contact
+or capture locator): `GRANT SELECT(org_id,id,kind,category_id,name,fleet_number,
+plate,serial_number,usage_basis,state,revision,acquired_at,acquired_submicro,
+disposal_kind,disposed_at,disposed_submicro,disposal_reason) ON org_assets`,
+`GRANT SELECT(org_id,id,label) ON org_asset_categories`, `GRANT
+SELECT(org_id,asset_id,unit_id,valid_from,valid_to) ON org_asset_unit_periods`,
+`GRANT SELECT(org_id,asset_id,cost_centre_id,valid_from,valid_to) ON
+org_asset_cost_centre_periods`, `GRANT SELECT(org_id,id,asset_id,kind) ON
+org_meters`, `GRANT SELECT(org_id,id,meter_id,value,occurred_at,
+occurred_submicro,entry_zone,device_offset_seconds,received_at,origin,method,
+state,author_membership_id,capture_kind) ON org_meter_readings`, `GRANT
+SELECT(org_id,id,state,revision,merged_into) ON org_employee_identities`, `GRANT
+SELECT(org_id,employee_id,display_name,registration_number,job_title,
+home_unit_id,revision) ON org_employee_profiles`, `GRANT
+SELECT(org_id,employee_id,state) ON org_memberships` and `GRANT
+SELECT(org_id,display_name,time_zone) ON organizations` (the last two are
+already covered where the requester re-check holds table `SELECT`). The reading
+transaction is switched to read-only after the requester re-check.
 
 ### Organization document links (EMP-DOC-003)
 
