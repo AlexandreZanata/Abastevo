@@ -8,18 +8,20 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
 
-/** Loads the same mission-v1 oracle as Go (EMP-TRIP-008); expectations are never computed here. */
+/** Loads the same mission-v2 oracle as Go (EMP-TRIP-008/009, superseding v1); expectations are never computed here. */
 class EnterpriseTripMissionVectorsTest {
-    private val corpusHash = "d591d9e496cb686e24658f59f91896892e323afaa35f1d5ba4bf2c752021c21f"
+    private val corpusHash = "caf313daaee52b842e374ca091636f79a17b39d14f8728b6efa7f36d6572b95c"
     private val wantCounts = mapOf("STATE" to 20, "COMMAND" to 15, "RESPONSE" to 8, "TRANSITION" to 62, "CREATE" to 29, "RESTORE" to 34,
-        "ASSIGN" to 23, "RESPOND" to 32, "CANCEL" to 15)
+        "ASSIGN" to 23, "RESPOND" to 32, "CANCEL" to 15, "LOAD" to 8, "PLAN_VALUE" to 50, "PLAN" to 21)
     private val errorCodes = TripMissionFailure.entries.map { it.name }.toSet()
+    private val planArgs = "dest_text_hex dest_unit dest_unit_org plan_reason_hex project project_org load cargo_hex passengers"
     private val stored = "scope id id_org unit unit_org asset asset_org title_hex starts ends state revision assignee assignee_org member member_org answer answer_member answer_reason_hex"
     private val allowedArgs = mapOf("STATE" to "value_hex", "COMMAND" to "value_hex", "RESPONSE" to "value_hex", "TRANSITION" to "state command",
         "CREATE" to "scope id id_org unit unit_org asset asset_org title_hex starts ends omit", "RESTORE" to stored,
         "ASSIGN" to "$stored to to_org to_member to_member_org expected", "RESPOND" to "$stored by by_org kind_hex reason_hex expected",
-        "CANCEL" to "$stored reason_hex expected").mapValues { it.value.split(' ').toSet() }
-    private val missionAliases = mapOf("MI" to 91, "U" to 95)
+        "CANCEL" to "$stored reason_hex expected", "LOAD" to "value_hex", "PLAN_VALUE" to "scope $planArgs",
+        "PLAN" to "$stored $planArgs expected").mapValues { it.value.split(' ').toSet() }
+    private val missionAliases = mapOf("MI" to 91, "U" to 95, "U2" to 96, "CC" to 97)
 
     private fun alias(raw: String): String =
         missionAliases[raw]?.let { "5e000000-0000-4000-8000-" + it.toString().padStart(12, '0') } ?: TripFixture.alias(raw)
@@ -59,6 +61,22 @@ class EnterpriseTripMissionVectorsTest {
         "answer" to (m.answer?.kind ?: "?"), "answer_member" to (m.answer?.member?.let { label(it.id) } ?: "?"),
         "answer_reason_hex" to (m.answer?.reason?.let(::hex) ?: "?"))
 
+    private fun planInput(a: Map<String, String>): TripMissionPlanInput = TripMissionPlanInput(
+        destinationText = a.get("dest_text_hex", hex("Centro de distribuição Norte")).takeUnless { it == "?" }?.let(::decode),
+        destinationUnit = a.get("dest_unit", "?").takeUnless { it == "?" }?.let { UnitRef(alias(a.get("dest_unit_org", "A")), alias(it)) },
+        reason = decode(a.get("plan_reason_hex", hex("Entrega de peças de reposição"))),
+        costCentre = a.get("project", "CC").takeUnless { it == "?" }?.let { CostCentreRef(alias(a.get("project_org", "A")), alias(it)) },
+        load = a.get("load", "CARGO"),
+        cargoDescription = a.get("cargo_hex", hex("Peças de reposição")).takeUnless { it == "?" }?.let(::decode),
+        passengers = a.get("passengers", "?").takeUnless { it == "?" }?.let { requireNotNull(it.toIntOrNull()) },
+    )
+
+    private fun planFields(p: TripMissionPlan): Map<String, String> = mapOf(
+        "dest_kind" to if (p.destinationUnit != null) "UNIT" else "TEXT", "dest_text_hex" to (p.destinationText?.let(::hex) ?: "?"),
+        "dest_unit" to (p.destinationUnit?.let { label(it.id) } ?: "?"), "plan_reason_hex" to hex(p.reason),
+        "project" to (p.costCentre?.let { label(it.id) } ?: "?"), "load" to p.load.name, "cargo_hex" to (p.cargoDescription?.let(::hex) ?: "?"),
+        "passengers" to (p.passengers?.toString() ?: "?"))
+
     private fun expected(a: Map<String, String>): Long = requireNotNull(a.get("expected", "2").toLongOrNull())
 
     private fun command(a: Map<String, String>, run: (TripMission) -> TripMission): Map<String, String> {
@@ -89,6 +107,17 @@ class EnterpriseTripMissionVectorsTest {
                 a.get("reason_hex", "?").takeUnless { v -> v == "?" }?.let(::decode))
         }
         "CANCEL" -> command(a) { it.cancel(alias(a.get("scope", "A")), expected(a), decode(a.get("reason_hex", hex("Cliente cancelou")))) }
+        "LOAD" -> mapOf("load" to TripMissionLoad.parse(decode(a.getValue("value_hex"))).name)
+        "PLAN_VALUE" -> planFields(TripMissionPlan.create(alias(a.get("scope", "A")), planInput(a)))
+        "PLAN" -> {
+            var plan: TripMissionPlan? = null
+            val mission = command(a) {
+                val (next, p) = it.plan(alias(a.get("scope", "A")), expected(a), planInput(a))
+                plan = p
+                next
+            }
+            mission + planFields(requireNotNull(plan))
+        }
         else -> error("Unknown fixture operation")
     }
 
@@ -99,24 +128,25 @@ class EnterpriseTripMissionVectorsTest {
     }
 
     @TestFactory fun allSharedTripMissionVectors(): List<DynamicTest> {
-        val rows = TripFixture.corpus("mission-v1.psv", corpusHash)
-        assertEquals(238, rows.size)
+        val rows = TripFixture.corpus("mission-v2.psv", corpusHash)
+        assertEquals(317, rows.size)
         assertEquals(wantCounts, rows.groupingBy { it[1] }.eachCount())
         val codes = mutableSetOf<String>()
         val pairs = mutableSetOf<String>()
-        val enums = mapOf("STATE" to mutableSetOf<String>(), "COMMAND" to mutableSetOf(), "RESPONSE" to mutableSetOf())
+        val enums = mapOf("STATE" to mutableSetOf<String>(), "COMMAND" to mutableSetOf(), "RESPONSE" to mutableSetOf(), "LOAD" to mutableSetOf())
         for (row in rows) {
             val args = fields(row[2])
             require(args.keys.all { it in requireNotNull(allowedArgs[row[1]]) })
             val expected = fields(row[3])
             expected["error"]?.let { require(expected.size == 1); codes += it }
             if (row[1] == "TRANSITION") pairs += "${args["state"]}/${args["command"]}"
-            enums[row[1]]?.let { set -> listOf("state", "command", "response").forEach { k -> expected[k]?.let(set::add) } }
+            enums[row[1]]?.let { set -> listOf("state", "command", "response", "load").forEach { k -> expected[k]?.let(set::add) } }
         }
         assertEquals(errorCodes, codes, "every error code needs a shared vector and no other code may appear")
         assertEquals(TripMissionState.entries.map { it.name }.toSet(), enums.getValue("STATE"))
         assertEquals(TripMissionCommand.entries.map { it.name }.toSet(), enums.getValue("COMMAND"))
         assertEquals(TripMissionResponse.entries.map { it.name }.toSet(), enums.getValue("RESPONSE"))
+        assertEquals(TripMissionLoad.entries.map { it.name }.toSet(), enums.getValue("LOAD"))
         for (s in TripMissionState.entries) for (c in TripMissionCommand.entries) require("${s.name}/${c.name}" in pairs) { "pair without TRANSITION vector" }
         return rows.map { (id, operation, rawArgs, expected) ->
             DynamicTest.dynamicTest(id) {

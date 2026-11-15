@@ -197,7 +197,7 @@ NOT_FOUND, CONFLICT store nothing). No response starts a trip; the trip link,
 planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 
 ### EMP-TRIP-009 — Manager-planned trips: destination, reason, customer or project, cargo or passengers
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Record manager-planned trip inputs separately from field facts.
 - **Rules and use cases:** REQ-07.2, REQ-07.3, BR-PRIV-005, BR-AUD-001
 - **Depends on:** EMP-TRIP-008
@@ -211,6 +211,18 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 planned trips](../evidence/f4-trip009-planned-trips.md) are LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. `PLAN` moves a DRAFT, PLANNED, ASSIGNED or
+DECLINED mission to PLANNED (assignee and answer withdrawn; ACCEPTED,
+IN_PROGRESS and terminal refused) and appends an insert-only planning revision
+(migration 000231) bound to its transition, receipt and audit event:
+destination text or unit, reason, the cost centre as customer or project, and
+a load NONE, CARGO with a description or PASSENGERS with only a count; free
+texts refuse CPF-shaped tokens. Shared with Kotlin through `mission-v2.psv`
+(superseding v1); `POST …/missions/{mission_id}/plan` under fresh
+`trip.mission.manage`; the plan is read with the mission. The app display
+remains EMP-TRIP-021.
 
 ### EMP-TRIP-010 — Stops and legs: planned versus actual
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DB · size M · state TODO
@@ -261,7 +273,7 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-013 — Vehicle change within a mission
-- **Meta:** module TRIP · phase F4 · cut - · priority P2 · type DOM · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P2 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Change the assigned vehicle while preserving each vehicle's trip evidence.
 - **Rules and use cases:** REQ-07.1, REQ-07.6, BR-TEN-005, BR-TIME-002
 - **Depends on:** EMP-TRIP-008
@@ -275,6 +287,16 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 vehicle change](../evidence/f4-trip013-vehicle-change.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. A server-only mission operation replaces the
+vehicle of a PLANNED, ASSIGNED, ACCEPTED or DECLINED mission (state,
+assignee, answer and plan kept) with an insert-only change record (migration
+000232); it is refused while the assignee runs a trip on the current
+vehicle, for a vehicle that is not an ACTIVE main asset, is unavailable at the
+planned start or runs another trip, and when the planner or the assignee does
+not cover the mission with it. `POST …/missions/{mission_id}/vehicle/change`
+under fresh `trip.mission.manage`; trips, readings and meters never move.
 
 ### EMP-TRIP-014 — Missing final reading and supervisor closure
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO

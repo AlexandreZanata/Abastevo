@@ -1407,6 +1407,45 @@ intake principal needs the same three. Commands use fresh `trip.mission.manage`
 (admission class `trip.mission`); reads current `trip.mission.manage`; the own
 list current `trip.trip.start`. Nothing here provisions live grants.
 
+### Planned missions (EMP-TRIP-009)
+
+Migration 231 adds forced-RLS, insert-only `org_trip_mission_plans` (one
+planning revision per `PLAN` transition: destination text or unit, reason,
+optional cost centre, load, planner and command), widens the mission
+transition and receipt kind/state checks by name, replaces
+`org_trip_mission_next`, `org_trip_mission_transition_source`,
+`org_trip_mission_guard` and `org_trip_mission_complete` keeping every 227 line
+plus the `PLAN` clauses, and redefines `org_unit_current_usage` and
+`org_cost_centre_current_usage` (both from the 230 bodies) keeping every line and
+recognising the two plan keys as associations. The migration owner needs ownership of
+`org_trip_mission_transitions`, `org_trip_mission_commands` and the six
+replaced functions, and `REFERENCES` on `accounts`, `org_units`,
+`org_cost_centres` and `org_memberships`. The company principal needs `SELECT,
+INSERT ON org_trip_mission_plans` and `SELECT ON org_cost_centres` (plus the
+EMP-TRIP-008 grants). `POST /v1/orgs/{org_id}/missions/{mission_id}/plan` uses
+fresh `trip.mission.manage` (admission class `trip.mission`). Nothing here
+provisions live grants.
+
+### Mission vehicle change (EMP-TRIP-013)
+
+Migration 232 adds forced-RLS, insert-only `org_trip_mission_vehicles` (one
+record per `VEHICLE` transition: previous and new vehicle, reason, planner and
+command; its guard re-proves the current vehicle, an `ACTIVE` non-implement
+new vehicle that runs no trip, and no trip of the assignee running on the
+previous vehicle), widens the mission transition and receipt kind/state
+checks by name, replaces `org_trip_mission_next` (231 body plus the `VEHICLE`
+row), `org_trip_mission_guard` and `org_trip_mission_complete` (231 bodies plus
+the `VEHICLE` clauses) and redefines `org_asset_current_usage` from the 230
+body keeping every line and recognising the two change keys as associations.
+The migration owner needs ownership of `org_trip_mission_transitions`,
+`org_trip_mission_commands` and the four replaced functions, and `REFERENCES`
+on `accounts`, `org_assets` and `org_memberships`. The company principal needs
+`SELECT, INSERT ON org_trip_mission_vehicles` and `SELECT ON org_trips` (plus
+the EMP-TRIP-008/009 grants and the FLEET-007 availability reads).
+`POST /v1/orgs/{org_id}/missions/{mission_id}/vehicle/change` uses fresh
+`trip.mission.manage` (admission class `trip.mission`). Nothing here
+provisions live grants.
+
 ### Trip review, period lock and amendments (EMP-TRIP-004, EMP-TRIP-016, EMP-TRIP-015)
 
 Migration 226 adds forced-RLS, append-only `org_trip_review_entries`; 228

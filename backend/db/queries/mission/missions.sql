@@ -62,3 +62,35 @@ ORDER BY id LIMIT sqlc.arg(page_limit)::integer;
 -- name: MissionResponse :one
 SELECT mission_id::text,operation_id::text,actor_membership_id::text,actor_account_id::text,COALESCE(enrollment_id::text,'')::text AS enrollment_id,revision,kind,reason
 FROM org_trip_mission_transitions WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND operation_id=CAST(sqlc.arg(operation_id)::text AS uuid) AND source='DEVICE';
+
+-- EMP-TRIP-009 planning revisions (migration 000231).
+
+-- name: MissionCostCentreState :one
+SELECT state FROM org_cost_centres WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(id)::text AS uuid);
+
+-- name: InsertMissionPlan :exec
+INSERT INTO org_trip_mission_plans(org_id,mission_id,revision,operation_id,destination_text,destination_unit_id,reason,cost_centre_id,load_kind,cargo_description,passenger_count,planned_by,planned_by_membership_id)
+VALUES(CAST(sqlc.arg(org_id)::text AS uuid),CAST(sqlc.arg(mission_id)::text AS uuid),sqlc.arg(revision)::bigint,CAST(sqlc.arg(operation_id)::text AS uuid),sqlc.narg(destination_text)::text,
+ CAST(sqlc.narg(destination_unit_id)::text AS uuid),sqlc.arg(reason)::text,CAST(sqlc.narg(cost_centre_id)::text AS uuid),sqlc.arg(load_kind)::text,sqlc.narg(cargo_description)::text,
+ sqlc.narg(passenger_count)::integer,CAST(sqlc.arg(planned_by)::text AS uuid),CAST(sqlc.arg(planned_by_membership_id)::text AS uuid));
+
+-- name: MissionPlans :many
+SELECT DISTINCT ON(mission_id) mission_id::text,revision,destination_text,COALESCE(destination_unit_id::text,'')::text AS destination_unit_id,reason,COALESCE(cost_centre_id::text,'')::text AS cost_centre_id,
+ load_kind,cargo_description,passenger_count,recorded_at
+FROM org_trip_mission_plans WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND mission_id=ANY(CAST(sqlc.arg(mission_ids)::text[] AS uuid[]))
+ORDER BY mission_id,revision DESC;
+
+-- EMP-TRIP-013 vehicle changes (migration 000232).
+
+-- name: MissionAssigneeTripRunning :one
+SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
+ AND driver_employee_id=CAST(sqlc.arg(employee_id)::text AS uuid) AND state='IN_PROGRESS')::boolean AS running;
+
+-- name: InsertMissionVehicle :exec
+INSERT INTO org_trip_mission_vehicles(org_id,mission_id,revision,operation_id,previous_asset_id,asset_id,reason,changed_by,changed_by_membership_id)
+VALUES(CAST(sqlc.arg(org_id)::text AS uuid),CAST(sqlc.arg(mission_id)::text AS uuid),sqlc.arg(revision)::bigint,CAST(sqlc.arg(operation_id)::text AS uuid),
+ CAST(sqlc.narg(previous_asset_id)::text AS uuid),CAST(sqlc.arg(asset_id)::text AS uuid),sqlc.arg(reason)::text,CAST(sqlc.arg(changed_by)::text AS uuid),CAST(sqlc.arg(changed_by_membership_id)::text AS uuid));
+
+-- name: ChangeMissionVehicle :execrows
+UPDATE org_trip_missions SET revision=revision+1,asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
+WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(id)::text AS uuid) AND revision=sqlc.arg(revision)::bigint;

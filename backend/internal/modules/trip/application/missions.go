@@ -29,6 +29,12 @@ const (
 )
 
 var (
+	// ErrMissionAssetBusy is a new vehicle running another trip (the
+	// one-active-trip rule, B-BR-EMP-387).
+	ErrMissionAssetBusy = errors.New("trip: mission vehicle in use")
+	// ErrMissionTripInProgress is a vehicle change while the assignee runs a
+	// trip on the current vehicle (B-BR-EMP-388).
+	ErrMissionTripInProgress  = errors.New("trip: mission trip in progress")
 	ErrMissionDisabled        = errors.New("trip: mission surface disabled")
 	ErrMissionUnauthenticated = errors.New("trip: current company proof required")
 	// ErrMissionIneligible is an assignee or asset that cannot be named.
@@ -94,6 +100,10 @@ type MissionAuthority interface {
 	// EligibleAssigneeTx answers whether the membership currently holds
 	// trip.trip.start covering the mission as its own record (B-BR-EMP-355).
 	EligibleAssigneeTx(context.Context, pgx.Tx, kernel.OrgScope, string, MissionFacts) (bool, error)
+	// CoversMissionTx proves that the planner's current trip.mission.manage
+	// also covers the mission with the given structure (EMP-TRIP-013: the
+	// mission as it would be with its new vehicle); a denial names the key.
+	CoversMissionTx(context.Context, pgx.Tx, kernel.OrgScope, string, MissionFacts) error
 }
 
 // MissionCommandKind names one company command.
@@ -101,13 +111,91 @@ type MissionCommandKind string
 
 const (
 	MissionCreate        MissionCommandKind = "CREATE"
+	MissionPlanCommand   MissionCommandKind = "PLAN"
 	MissionAssignCommand MissionCommandKind = "ASSIGN"
 	MissionCancelCommand MissionCommandKind = "CANCEL"
+	// MissionVehicleCommand replaces the mission's vehicle (EMP-TRIP-013).
+	MissionVehicleCommand MissionCommandKind = "VEHICLE"
 )
 
+// MissionPlanFields is the content of one PLAN command (EMP-TRIP-009,
+// B-BR-EMP-382): exactly one destination (text or unit), a reason, an
+// optional cost centre and the load token with its only field.
+type MissionPlanFields struct {
+	private
+	DestinationText   *string
+	DestinationUnitID string
+	Reason            string
+	CostCentreID      string
+	Load              string
+	CargoDescription  *string
+	Passengers        *int
+}
+
+func (p MissionPlanFields) copy() MissionPlanFields {
+	p.DestinationText, p.CargoDescription, p.Passengers = copyPointer(p.DestinationText), copyPointer(p.CargoDescription), copyPointer(p.Passengers)
+	return p
+}
+
+// validate checks the identities and the domain plan profile without a
+// scope; the store re-proves the plan in its scope (trip.NewPlan).
+func (p MissionPlanFields) validate() error {
+	if (p.DestinationText == nil) == (p.DestinationUnitID == "") || p.DestinationUnitID != "" && !canonicalID(p.DestinationUnitID) || p.CostCentreID != "" && !canonicalID(p.CostCentreID) {
+		return trip.ErrInvalid
+	}
+	if p.DestinationText != nil {
+		if err := trip.ValidPlanText(*p.DestinationText); err != nil {
+			return err
+		}
+	}
+	if err := trip.ValidPlanText(p.Reason); err != nil {
+		return err
+	}
+	load, err := trip.ParseMissionLoad(p.Load)
+	if err != nil {
+		return err
+	}
+	switch load {
+	case trip.LoadNone:
+		if p.CargoDescription != nil || p.Passengers != nil {
+			return trip.ErrInvalid
+		}
+	case trip.LoadCargo:
+		if p.CargoDescription == nil || p.Passengers != nil {
+			return trip.ErrInvalid
+		}
+		return trip.ValidPlanText(*p.CargoDescription)
+	case trip.LoadPassengers:
+		if p.CargoDescription != nil || p.Passengers == nil || *p.Passengers < 1 || *p.Passengers > trip.MaxMissionPassengers {
+			return trip.ErrInvalid
+		}
+	}
+	return nil
+}
+
+// Domain builds the domain plan input in the scope.
+func (p MissionPlanFields) Domain(scope kernel.OrgScope) (trip.PlanInput, error) {
+	in := trip.PlanInput{DestinationText: copyPointer(p.DestinationText), Reason: p.Reason, Load: p.Load, CargoDescription: copyPointer(p.CargoDescription), Passengers: copyPointer(p.Passengers)}
+	if p.DestinationUnitID != "" {
+		unit, err := trip.NewUnitRef(scope, p.DestinationUnitID)
+		if err != nil {
+			return trip.PlanInput{}, err
+		}
+		in.DestinationUnit = &unit
+	}
+	if p.CostCentreID != "" {
+		centre, err := trip.NewCostCentreRef(scope, p.CostCentreID)
+		if err != nil {
+			return trip.PlanInput{}, err
+		}
+		in.CostCentre = &centre
+	}
+	return in, nil
+}
+
 // MissionCommandInput is one company command: create carries the content;
-// assign the expected revision and the employee; cancel the expected
-// revision and the reason.
+// plan the expected revision and the plan; assign the expected revision and
+// the employee; cancel the expected revision and the reason.
 type MissionCommandInput struct {
 	private
 	Kind               MissionCommandKind
@@ -119,6 +207,7 @@ type MissionCommandInput struct {
 	StartsAt, EndsAt   time.Time
 	AssigneeEmployeeID string
 	Reason             string
+	Plan               *MissionPlanFields
 }
 
 // MissionCommand is a validated, immutable command.
@@ -132,7 +221,20 @@ func NewMissionCommand(in MissionCommandInput) (MissionCommand, error) {
 		return MissionCommand{}, trip.ErrInvalid
 	}
 	out := MissionCommandInput{Kind: in.Kind, OperationID: in.OperationID}
+	if in.Kind != MissionPlanCommand && in.Plan != nil {
+		return MissionCommand{}, trip.ErrInvalid
+	}
 	switch in.Kind {
+	case MissionPlanCommand:
+		if !canonicalID(in.MissionID) || in.ExpectedRevision < 1 || in.UnitID != "" || in.AssetID != "" || in.Title != "" || !in.StartsAt.IsZero() || !in.EndsAt.IsZero() ||
+			in.AssigneeEmployeeID != "" || in.Reason != "" || in.Plan == nil {
+			return MissionCommand{}, trip.ErrInvalid
+		}
+		if err := in.Plan.validate(); err != nil {
+			return MissionCommand{}, err
+		}
+		plan := in.Plan.copy()
+		out.MissionID, out.ExpectedRevision, out.Plan = in.MissionID, in.ExpectedRevision, &plan
 	case MissionCreate:
 		if in.MissionID != "" || in.ExpectedRevision != 0 || in.AssigneeEmployeeID != "" || in.Reason != "" || !canonicalID(in.UnitID) || in.AssetID != "" && !canonicalID(in.AssetID) {
 			return MissionCommand{}, trip.ErrInvalid
@@ -145,6 +247,15 @@ func NewMissionCommand(in MissionCommandInput) (MissionCommand, error) {
 			return MissionCommand{}, err
 		}
 		out.UnitID, out.AssetID, out.Title, out.StartsAt, out.EndsAt = in.UnitID, in.AssetID, in.Title, window.From, window.To
+	case MissionVehicleCommand:
+		if !canonicalID(in.MissionID) || in.ExpectedRevision < 1 || !canonicalID(in.AssetID) || in.UnitID != "" || in.Title != "" || !in.StartsAt.IsZero() || !in.EndsAt.IsZero() ||
+			in.AssigneeEmployeeID != "" {
+			return MissionCommand{}, trip.ErrInvalid
+		}
+		if err := trip.ValidMissionText(in.Reason); err != nil {
+			return MissionCommand{}, err
+		}
+		out.MissionID, out.ExpectedRevision, out.AssetID, out.Reason = in.MissionID, in.ExpectedRevision, in.AssetID, in.Reason
 	case MissionAssignCommand, MissionCancelCommand:
 		if !canonicalID(in.MissionID) || in.ExpectedRevision < 1 || in.UnitID != "" || in.AssetID != "" || in.Title != "" || !in.StartsAt.IsZero() || !in.EndsAt.IsZero() {
 			return MissionCommand{}, trip.ErrInvalid
@@ -179,6 +290,14 @@ func (c MissionCommand) Snapshot() (MissionCommandInput, error) {
 	return again.value, nil
 }
 
+// planDigest is the canonical PLAN intent; CREATE, ASSIGN and CANCEL keep the
+// EMP-TRIP-008 form so stored receipts replay unchanged.
+func planDigest(scope kernel.OrgScope, in MissionCommandInput) []any {
+	p := in.Plan
+	return []any{"trip.mission.plan.v1", scope.OrgID().String(), in.Kind, in.OperationID, in.MissionID, in.ExpectedRevision, p.DestinationText, p.DestinationUnitID, p.Reason,
+		p.CostCentreID, p.Load, p.CargoDescription, p.Passengers}
+}
+
 // Digest is the canonical request hash bound to the organization.
 func (c MissionCommand) Digest(scope kernel.OrgScope) string {
 	in, err := c.Snapshot()
@@ -191,8 +310,12 @@ func (c MissionCommand) Digest(scope kernel.OrgScope) string {
 		}
 		return orgtime.FormatInstant(at)
 	}
-	raw, err := json.Marshal([]any{"trip.mission.command.v1", scope.OrgID().String(), in.Kind, in.OperationID, in.MissionID, in.ExpectedRevision, in.UnitID, in.AssetID,
-		in.Title, instant(in.StartsAt), instant(in.EndsAt), in.AssigneeEmployeeID, in.Reason})
+	fields := []any{"trip.mission.command.v1", scope.OrgID().String(), in.Kind, in.OperationID, in.MissionID, in.ExpectedRevision, in.UnitID, in.AssetID,
+		in.Title, instant(in.StartsAt), instant(in.EndsAt), in.AssigneeEmployeeID, in.Reason}
+	if in.Kind == MissionPlanCommand {
+		fields = planDigest(scope, in)
+	}
+	raw, err := json.Marshal(fields)
 	if err != nil {
 		return ""
 	}
@@ -217,7 +340,16 @@ type MissionAck struct {
 	Warning            *MissionWarning
 }
 
-// MissionView is one stored mission (head) as a reader sees it.
+// MissionPlanView is a mission's current planning revision (EMP-TRIP-009).
+type MissionPlanView struct {
+	private
+	Revision  int64
+	Fields    MissionPlanFields
+	PlannedAt time.Time
+}
+
+// MissionView is one stored mission (head) as a reader sees it, with its
+// current plan when it has one.
 type MissionView struct {
 	private
 	MissionID, UnitID, AssetID string
@@ -228,7 +360,18 @@ type MissionView struct {
 	AssigneeEmployeeID         string
 	Answer                     trip.MissionResponse
 	AnswerReason               *string
+	Plan                       *MissionPlanView
 	CreatedAt, UpdatedAt       time.Time
+}
+
+func (v MissionView) copy() MissionView {
+	v.AnswerReason = copyPointer(v.AnswerReason)
+	if v.Plan != nil {
+		p := *v.Plan
+		p.Fields = p.Fields.copy()
+		v.Plan = &p
+	}
+	return v
 }
 
 // MissionFilter is the identifier keyset page of missions.
@@ -318,16 +461,21 @@ func validMissionAck(v MissionAck, in MissionCommandInput) bool {
 	switch in.Kind {
 	case MissionCreate:
 		return v.Revision == 1 && v.State == trip.MissionDraft && v.AssigneeEmployeeID == ""
+	case MissionPlanCommand:
+		return v.Revision == in.ExpectedRevision+1 && v.State == trip.MissionPlanned && v.AssigneeEmployeeID == ""
 	case MissionAssignCommand:
 		return v.Revision == in.ExpectedRevision+1 && v.State == trip.MissionAssigned && v.AssigneeEmployeeID == in.AssigneeEmployeeID
 	case MissionCancelCommand:
 		return v.Revision == in.ExpectedRevision+1 && v.State == trip.MissionCancelled && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
+	case MissionVehicleCommand:
+		return v.Revision == in.ExpectedRevision+1 && trip.VehicleChangeAllowed(v.State) == nil && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
 	}
 	return false
 }
 
 // Command runs one company command under fresh trip.mission.manage: create
-// on the organization, assign and cancel on the mission.
+// on the organization, plan, assign, cancel and the vehicle change on the
+// mission.
 func (s MissionService) Command(ctx context.Context, scope kernel.OrgScope, actor MissionActor, decision access.Decision, command MissionCommand) (MissionAck, bool, error) {
 	in, err := command.Snapshot()
 	if err != nil {
@@ -380,6 +528,10 @@ func validMissionView(v MissionView) bool {
 			return false
 		}
 	}
+	if v.Plan != nil && (v.Plan.Revision < 2 || v.Plan.Revision > v.Revision || v.Plan.Fields.validate() != nil || !validMissionInstant(v.Plan.PlannedAt)) ||
+		v.State == trip.MissionPlanned && v.Plan == nil {
+		return false
+	}
 	return (v.Answer == trip.ResponseDecline) == (v.AnswerReason != nil)
 }
 
@@ -409,8 +561,7 @@ func (s MissionService) list(ctx context.Context, scope kernel.OrgScope, actor M
 		if !validMissionView(m) || m.MissionID <= prior {
 			return MissionPage{}, ErrUnavailable
 		}
-		m.AnswerReason = copyPointer(m.AnswerReason)
-		out.Missions = append(out.Missions, m)
+		out.Missions = append(out.Missions, m.copy())
 		prior = m.MissionID
 	}
 	return out, nil
@@ -443,8 +594,7 @@ func (s MissionService) Read(ctx context.Context, scope kernel.OrgScope, actor M
 	if v.MissionID != mission || !validMissionView(v) {
 		return MissionView{}, ErrUnavailable
 	}
-	v.AnswerReason = copyPointer(v.AnswerReason)
-	return v, nil
+	return v.copy(), nil
 }
 
 // ---- trip.mission.respond (EDR-229) ----
