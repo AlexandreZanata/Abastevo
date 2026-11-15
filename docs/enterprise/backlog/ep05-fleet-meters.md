@@ -249,7 +249,7 @@ site. [Evidence](../evidence/f4-fleet011-implement-attachments.md).
 - **Done when:** The cut C1 setup steps for a vehicle and its driver can be completed in the panel, with state tests passing.
 
 ### EMP-FLEET-013 — App: my assets and asset selection
-- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type APP · size S · state TODO
+- **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type APP · size S · state LOCAL_DONE
 - **Objective:** Show a driver the assets they may use and let them choose one for an operation, online or offline, so that a trip or fueling starts from a known asset.
 - **Rules and use cases:** UC-FLEET-08, BR-FLEET-024, BR-FLEET-027, BR-OFFL-016, BR-TEN-004, SCR-FLEET-08, SCR-FLEET-09, SCR-FLEET-10
 - **Depends on:** EMP-FLEET-006, EMP-OFFL-006, EMP-IDN-018
@@ -263,6 +263,17 @@ site. [Evidence](../evidence/f4-fleet011-implement-attachments.md).
 - **Validation:** V-APP, V-SYNC, V-PRIV · migration: new Room tables in the enterprise partition with a schema migration test · rollback: capability flag off hides enterprise fleet screens; local tables are left unused
 - **Risks and assumptions:** Depends on the partition decision (EMP-GOV-008) through its foundations. Content cards follow the container guidelines of the app.
 - **Done when:** The state tests pass and the picker returns an asset to a calling screen with no network.
+
+EMP-FLEET-013 LOCAL_DONE (pending integration): a strict Kotlin client of the
+signed reference feed (EMP-OFFL-006) applies RESET/DELTA/tombstones/FORBIDDEN
+whole into one versioned cache sealed in the PRIV-003 protected generation —
+not plaintext Room tables (EDR-224); "Meus ativos", the read-only detail and
+the reusable picker (review warning, no network) sit behind the
+`enterpriseFleetUiEnabled` flag. Shared wire oracle
+`sync/reference-feed-v1.psv` is consumed by Go and Kotlin; native acceptance
+ran on `emulator-5588` against an ordinary-PostGIS signed fixture. The feed
+carries no readings, tank capacity or availability beyond lifecycle: retained
+with their owners. [Evidence](../evidence/f4-fleet013-my-assets.md).
 
 ### EMP-METER-001 — Meter and reading domain: append-only evidence, sources and corrections
 - **Meta:** module METER · phase F2 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
