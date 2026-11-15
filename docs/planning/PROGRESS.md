@@ -1,4 +1,13 @@
 # Current execution state
+- Play Store readiness, 2026-11-15: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/play-store-readiness` from `origin/dev` `f17f57ec` (tree = main
+  `93f3a88d`; Claude Code). compileSdk/targetSdk 36 (Play requirement since
+  2026-08-31), share link moved off the GitHub APK, listing rewritten, store
+  screenshots/cards/feature graphic/icon with generator under `docs/store/`.
+  Verdict NOT READY: UGC report/block users, AAB + Play App Signing channel,
+  Console declarations and developer-account path stay open.
+  [Readiness checklist](../store/PLAY_STORE_READINESS.md).
+
 - Enterprise F4, 2026-11-15: batch checkpoint LOCAL_DONE / INTEGRATION_PENDING
   on owned `codex/enterprise-f4` (Claude Code), merged with `origin/dev`
   `82a5f97e` and `origin/main` `a0b72533` after PRs #221/#222.
