@@ -49,6 +49,7 @@ var matrixRepresentatives = []matrixRoute{
 	{"fleet.reservation.manage", "/fleet/assets/{asset_id}/reservations/request", true, true},
 	{"fleet.asset.read", "/fleet/assets/list", false, false},
 	{"meter.reading.correct", "/sync/reviews/meter-readings/list", false, false},
+	{"check.template.manage", "/checklists/templates/list", false, false},
 	{"fin.period.close", "/finance/periods/list", false, false},
 	{"fin.period.reopen", "/finance/periods/{period}/reopen", true, true},
 	{"doc.document.attach", "/documents/uploads/create", false, true},
@@ -241,6 +242,12 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_asset_blocks x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_reservation_commands x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_asset_commands x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_checklist_templates x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,template_id,version) FROM org_checklist_template_versions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,template_id,version,position) FROM org_checklist_template_items x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,template_id,version,category_id,asset_id) FROM org_checklist_template_targets x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,template_id,revision) FROM org_checklist_policy_revisions x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_checklist_template_commands x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meters x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meter_segments x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_meter_readings x),
@@ -331,6 +338,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	fx := devicesFixture(t)
 	grantEmployeeTables(t, fx.legalFixtureState)
 	_ = reservationStore(t, fx.legalFixtureState) // Real ordinary Fleet grants; no fake authority or records.
+	grantChecklistTables(t, fx.legalFixtureState)
 	fx.f.GrantMeterReviews(t)
 	periodGrant(t, fx.f)
 	exportGrant(t, fx)
@@ -622,10 +630,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 220 || allowed != 85 || denied != 135 {
+	if exercised != 230 || allowed != 88 || denied != 142 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 62 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 61 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
 }
 
 // matrixAssignableAsset creates, through the owner's actual requests, one
