@@ -765,6 +765,9 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/trips/review/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/sync/reviews/trips/list",
+        "POST /v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/read",
+        "POST /v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/resolve",
         "POST /v1/orgs/{org_id}/trips/review/list",
         "POST /v1/orgs/{org_id}/trips/{trip_id}/review/decide",
         "POST /v1/orgs/{org_id}/trips/{trip_id}/review/read"
