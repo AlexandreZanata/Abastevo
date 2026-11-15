@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Community safety: report and block users (COMMUNITY_SAFETY_CONTRACT, B-BR-SAFE-01..09). -->
+<resources>
+    <string name="safety_more_actions">Plus d’actions</string>
+    <string name="safety_report_topic">Signaler le sujet</string>
+    <string name="safety_report_comment">Signaler le commentaire</string>
+    <string name="safety_report_user">Signaler l’utilisateur</string>
+    <string name="safety_block_user">Bloquer l’utilisateur</string>
+    <string name="safety_report_user_title">Signaler l’utilisateur</string>
+    <string name="safety_report_user_prompt">Pourquoi signalez-vous cet utilisateur ? Les signalements sont privés et examinés par la modération. Le contenu reste visible jusqu’à l’examen.</string>
+    <string name="safety_reason_spam">Spam ou publicité</string>
+    <string name="safety_reason_harassment">Harcèlement ou intimidation</string>
+    <string name="safety_reason_hate">Discours haineux ou discrimination</string>
+    <string name="safety_reason_impersonation">Usurpation d’identité</string>
+    <string name="safety_reason_illegal">Contenu ou activité illégal</string>
+    <string name="safety_reason_other">Autre raison</string>
+    <string name="safety_report_detail_hint">Détails (facultatif)</string>
+    <string name="safety_report_detail_counter">%1$d / %2$d</string>
+    <string name="safety_report_send">Envoyer le signalement</string>
+    <string name="safety_report_user_received">Signalement reçu. L’équipe de modération va l’examiner.</string>
+    <string name="safety_report_user_replayed">Vous avez déjà signalé cet utilisateur. Le signalement est en cours d’examen.</string>
+    <string name="safety_block_title">Bloquer cet utilisateur ?</string>
+    <string name="safety_block_message">Ses sujets, commentaires et réponses sur le forum ainsi que ses commentaires sur les stations seront masqués pour vous. Il ne sera pas averti et les autres verront toujours son contenu. Vous pouvez le débloquer dans Profil → Gérer le compte → Utilisateurs bloqués.</string>
+    <string name="safety_block_confirm">Bloquer</string>
+    <string name="safety_block_done">Utilisateur bloqué. Son contenu est désormais masqué pour vous.</string>
+    <string name="safety_error_self_target">Ce contenu est le vôtre. Vous ne pouvez pas vous signaler ni vous bloquer vous-même.</string>
+    <string name="safety_error_block_limit">Vous avez atteint la limite d’utilisateurs bloqués. Débloquez d’abord quelqu’un dans Profil → Gérer le compte → Utilisateurs bloqués.</string>
+    <string name="safety_error_rate_limited">Trop de tentatives. Réessayez dans %1$d secondes.</string>
+    <string name="safety_error_offline">Vous êtes hors ligne. Réessayez une fois connecté.</string>
+    <string name="safety_error_not_found">Ce contenu n’est plus disponible.</string>
+    <string name="safety_error_generic">L’action n’a pas pu aboutir. Réessayez.</string>
+    <string name="safety_topic_hidden_title">Contenu masqué</string>
+    <string name="safety_topic_hidden_message">Ce sujet provient d’un utilisateur que vous avez bloqué. Vous pouvez le débloquer dans Profil → Gérer le compte → Utilisateurs bloqués.</string>
+    <string name="blocked_users_title">Utilisateurs bloqués</string>
+    <string name="blocked_users_entry_subtitle">Personnes dont le contenu est masqué pour vous</string>
+    <string name="blocked_users_intro">Le contenu des utilisateurs bloqués est masqué pour vous sur le forum et sur les pages des stations. Ils ne sont pas avertis.</string>
+    <string name="blocked_users_empty_title">Aucun utilisateur bloqué</string>
+    <string name="blocked_users_empty_message">Lorsque vous bloquez quelqu’un, la personne apparaît ici et vous pouvez la débloquer à tout moment.</string>
+    <string name="blocked_users_fallback_forum">Participant du forum</string>
+    <string name="blocked_users_fallback_station">Commentateur de station</string>
+    <string name="blocked_users_fallback_generic">Membre de la communauté</string>
+    <string name="blocked_users_since">Bloqué le %1$s</string>
+    <string name="blocked_users_unblock">Débloquer</string>
+    <string name="blocked_users_unblock_title">Débloquer %1$s ?</string>
+    <string name="blocked_users_unblock_message">Son contenu sera de nouveau visible pour vous au prochain chargement.</string>
+    <string name="blocked_users_unblocked">Utilisateur débloqué.</string>
+    <string name="blocked_users_load_error">Impossible de charger vos utilisateurs bloqués.</string>
+    <string name="blocked_users_sign_in">Connectez-vous pour gérer les utilisateurs bloqués.</string>
+</resources>
