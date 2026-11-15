@@ -495,7 +495,7 @@
     <!-- Share -->
     <string name="settings_share_section">Поделиться</string>
     <string name="settings_share_app">Поделиться приложением</string>
-    <string name="settings_share_app_message">Попробуйте ANP Fuel Prices — еженедельные цены на топливо от ANP, бесплатно: %1$s</string>
+    <string name="settings_share_app_message">Попробуйте Abastevo — еженедельные цены на топливо в вашем городе по данным ANP и сообщества: %1$s</string>
 
     <!-- Accessibility (Phase 9.3) -->
     <string name="a11y_loading">Загрузка содержимого</string>

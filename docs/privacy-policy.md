@@ -1,9 +1,9 @@
 # Abastevo privacy policy
 
 The canonical public Portuguese notice is the static
-[Privacy Policy](https://teste.abastevo.com.br/privacidade/), maintained in
+[Privacy Policy](https://abastevo.com.br/privacidade/), maintained in
 [landing/static/privacidade/index.html](../landing/static/privacidade/index.html).
-[Account/data deletion](https://teste.abastevo.com.br/excluir-conta/) provides the
+[Account/data deletion](https://abastevo.com.br/excluir-conta/) provides the
 private outside-app request route and the actual in-app account deletion path.
 
 The earlier June 2026 no-backend/no-account notice described an older application

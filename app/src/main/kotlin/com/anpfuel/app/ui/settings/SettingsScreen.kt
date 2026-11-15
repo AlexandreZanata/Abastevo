@@ -420,7 +420,7 @@ private fun SettingsContent(
                                         Intent.EXTRA_TEXT,
                                         context.getString(
                                             R.string.settings_share_app_message,
-                                            context.getString(R.string.app_release_apk_url),
+                                            context.getString(R.string.app_share_url),
                                         ),
                                     )
                                     type = "text/plain"

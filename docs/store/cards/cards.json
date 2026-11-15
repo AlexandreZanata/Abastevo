@@ -1,0 +1,50 @@
+{
+  "comment": "Store card manifest. {braces} mark the highlighted words. Sources are raw emulator screenshots under docs/store/screenshots/raw. Captions follow the Play metadata policy: no ranking/price/promo claims, no calls to action, and no text cut off near the edges.",
+  "sets": [
+    {
+      "name": "phone",
+      "size": [1080, 1920],
+      "cards": [
+        {"out": "01-anp-averages.png", "shot": "phone/07-home-prices-sorriso.png", "headline": "Médias semanais da {ANP} na sua cidade"},
+        {"out": "02-offline-map.png", "shot": "phone/03-map-sao-paulo.png", "headline": "Mapa de postos que {funciona offline}"},
+        {"out": "03-compare-stations.png", "shot": "phone/04-stations-sao-paulo.png", "headline": "Compare preços {posto a posto}"},
+        {"out": "04-tank-cost.png", "shot": "phone/10-tank-cost-sorriso.png", "headline": "Quanto custa {encher o seu tanque}"},
+        {"out": "05-community.png", "shot": "phone/05-community-sao-paulo.png", "headline": "Compartilhe preços {com a sua cidade}"},
+        {"out": "06-forum.png", "shot": "phone/06-forum.png", "headline": "Notícias e dicas no {Fórum Abastevo}"},
+        {"out": "07-history.png", "shot": "phone/09-history-sorriso.png", "headline": "Acompanhe os preços {semana a semana}"},
+        {"out": "08-offline-weeks.png", "shot": "phone/08-offline-weeks.png", "headline": "Semanas salvas para {consultar offline}"}
+      ]
+    },
+    {
+      "name": "tablet-7in",
+      "size": [1080, 1920],
+      "cards": [
+        {"out": "01-tank-and-averages.png", "shot": "tablet-7in/01-home-sao-paulo.png", "headline": "Custo do tanque e médias da {ANP}"},
+        {"out": "02-offline-map.png", "shot": "tablet-7in/02-map-sao-paulo.png", "headline": "Mapa de postos que {funciona offline}"},
+        {"out": "03-compare-stations.png", "shot": "tablet-7in/03-stations-sao-paulo.png", "headline": "Compare preços {posto a posto}"},
+        {"out": "04-community.png", "shot": "tablet-7in/04-community-sao-paulo.png", "headline": "Compartilhe preços {com a sua cidade}"},
+        {"out": "05-forum.png", "shot": "tablet-7in/05-forum.png", "headline": "Notícias e dicas no {Fórum Abastevo}"},
+        {"out": "06-history.png", "shot": "tablet-7in/06-history-sao-paulo.png", "headline": "Acompanhe os preços {semana a semana}"}
+      ]
+    },
+    {
+      "name": "tablet-10in",
+      "size": [1440, 2560],
+      "cards": [
+        {"out": "01-tank-and-averages.png", "shot": "tablet-10in/01-home-sorriso.png", "headline": "Médias da {ANP} e custo do tanque"},
+        {"out": "02-offline-map.png", "shot": "tablet-10in/02-map-sorriso.png", "headline": "Mapa de postos que {funciona offline}"},
+        {"out": "03-compare-stations.png", "shot": "tablet-10in/05-stations-sorriso.png", "headline": "Compare preços {posto a posto}"},
+        {"out": "04-history.png", "shot": "tablet-10in/04-history-sorriso.png", "headline": "Acompanhe os preços {semana a semana}"},
+        {"out": "05-forum.png", "shot": "tablet-10in/03-forum.png", "headline": "Notícias e dicas no {Fórum Abastevo}"},
+        {"out": "06-offline-weeks.png", "shot": "tablet-10in/06-offline-weeks.png", "headline": "Semanas salvas para {consultar offline}"}
+      ]
+    }
+  ],
+  "feature_graphic": {
+    "out": "feature-graphic-1024x500.png",
+    "size": [1024, 500],
+    "title": "Abastevo",
+    "tagline": "Preços de combustíveis da sua cidade, com dados da {ANP} e da {comunidade}"
+  },
+  "icon": {"out": "icon-512.png", "source": "docs/assets/brand/abastevo-app-icon-1024.png", "size": 512}
+}

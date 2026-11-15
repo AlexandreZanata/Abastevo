@@ -9,7 +9,7 @@ For **signed release** artifacts (APK/AAB, Play Store), see [release-build.md](r
 | Requirement | Version / notes |
 |-------------|-----------------|
 | JDK | **17** (Temurin recommended) |
-| Android SDK | **API 35** (`compileSdk` / `targetSdk`) — see `gradle/libs.versions.toml` |
+| Android SDK | **API 36** (`compileSdk` / `targetSdk`) — see `gradle/libs.versions.toml` |
 | `minSdk` | **26** (Android 8.0) |
 | Gradle | Wrapper included — run `./gradlew`, do not install Gradle globally |
 
@@ -21,7 +21,7 @@ Create `local.properties` at the repository root (gitignored):
 sdk.dir=/path/to/Android/Sdk
 ```
 
-Alternatively, set `ANDROID_HOME` (or `ANDROID_SDK_ROOT`) and ensure the SDK platform **android-35** and **build-tools** are installed (Android Studio SDK Manager or `sdkmanager`).
+Alternatively, set `ANDROID_HOME` (or `ANDROID_SDK_ROOT`) and ensure the SDK platform **android-36** and **build-tools** are installed (Android Studio SDK Manager or `sdkmanager`).
 
 Do **not** commit `local.properties`, keystores, `signing.properties`, or `.env`.
 

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<!-- Play feature graphic template rendered by build_cards.py. Key content stays in the centre
+     safe area; decoration is limited to the edges, as the Play preview-asset guidance asks. -->
+<style>
+  @font-face { font-family: "Manrope"; font-weight: 800; src: url("$font_manrope_extrabold"); }
+  @font-face { font-family: "Manrope"; font-weight: 600; src: url("$font_manrope_semibold"); }
+  html, body { margin: 0; width: ${width}px; height: ${height}px; overflow: hidden; }
+  body {
+    position: relative;
+    font-family: "Manrope", sans-serif;
+    background:
+      radial-gradient(ellipse 45% 70% at 100% 0%, rgba(0, 82, 247, 0.60), transparent 72%),
+      radial-gradient(ellipse 45% 70% at 0% 100%, rgba(99, 231, 164, 0.32), transparent 72%),
+      linear-gradient(160deg, #0d1d57 0%, #081338 55%, #050b22 100%);
+  }
+  svg.edges { position: absolute; inset: 0; }
+  .centre {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+  }
+  .brand { display: flex; align-items: center; gap: 22px; }
+  .icon {
+    width: 104px;
+    height: 104px;
+    border-radius: 22%;
+    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+  }
+  .title { color: #ffffff; font-weight: 800; font-size: 84px; letter-spacing: -0.03em; line-height: 1; }
+  .tagline {
+    margin-top: 30px;
+    max-width: 700px;
+    color: rgba(255, 255, 255, 0.90);
+    font-weight: 600;
+    font-size: 30px;
+    line-height: 1.3;
+    text-wrap: balance;
+  }
+  .tagline em { font-style: normal; color: #63e7a4; }
+</style>
+</head>
+<body>
+  <svg class="edges" viewBox="0 0 ${width} ${height}" aria-hidden="true">
+    <path d="M -20 420 C 60 360, 90 250, 40 160 S 70 20, 150 -20" fill="none" stroke="#63e7a4" stroke-opacity="0.35" stroke-width="5" stroke-dasharray="2 14" stroke-linecap="round"/>
+    <path d="M 1044 80 C 960 150, 950 260, 1000 330 S 960 470, 880 520" fill="none" stroke="#7aa6ff" stroke-opacity="0.35" stroke-width="5" stroke-dasharray="2 14" stroke-linecap="round"/>
+    <circle cx="40" cy="160" r="9" fill="#63e7a4" fill-opacity="0.55"/>
+    <circle cx="1000" cy="330" r="9" fill="#7aa6ff" fill-opacity="0.55"/>
+  </svg>
+  <div class="centre">
+    <div class="brand">
+      <img class="icon" src="$icon" alt="">
+      <div class="title">$title</div>
+    </div>
+    <div class="tagline">$tagline</div>
+  </div>
+</body>
+</html>
