@@ -44,10 +44,14 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.anpfuel.app.BuildConfig
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.auth.SecureAccountWindow
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.enterprise.fleet.MyAssetsHomeCard
+import com.anpfuel.app.ui.enterprise.fleet.MyAssetsPanel
+import com.anpfuel.app.ui.enterprise.fleet.MyAssetsViewModel
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.enterprise.EnterpriseAccessError
 import com.anpfuel.application.enterprise.EnterpriseContextState
@@ -61,12 +65,16 @@ fun EnterpriseContextScreen(
     onInvitation: () -> Unit,
     viewModel: EnterpriseContextViewModel = hiltViewModel(),
     syncViewModel: EnterpriseSyncViewModel = hiltViewModel(),
+    assetsViewModel: MyAssetsViewModel = hiltViewModel(),
 ) {
     // These are cheap local invalidation flows; keep private presentation current
     // while stopped rather than briefly resuming an earlier confirmed context.
     val state by viewModel.state.collectAsState()
     val connected by viewModel.connected.collectAsState()
     val syncState by syncViewModel.state.collectAsState()
+    val assetsState by assetsViewModel.state.collectAsState()
+    var showAssets by remember { mutableStateOf(false) }
+    var assetsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val renderedGeneration = syncState.generation
     val renderedSelected = state.selected
     var showSync by remember { mutableStateOf(false) }
@@ -87,11 +95,17 @@ fun EnterpriseContextScreen(
     }
     fun currentGesture(): Boolean = syncViewModel.isCurrent(renderedEpoch, renderedGeneration, allowBusy = true) &&
         viewModel.state.value.selected == renderedSelected
+    fun closeAssets() {
+        assetsViewModel.withdraw()
+        showAssets = false
+        assetsFor = null
+    }
     fun withdrawForGesture(): Boolean {
         if (!currentGesture()) return false
         syncViewModel.withdraw()
         showSync = false
         openedFor = null
+        closeAssets()
         return true
     }
     fun requestUnlock() {
@@ -119,10 +133,13 @@ fun EnterpriseContextScreen(
             renderedSelected?.let { syncViewModel.open(it, renderedEpoch, syncViewModel.state.value.generation) }
         }
     }
+    // "Meus ativos" (EMP-FLEET-013) is shown only for the exact selected partition, member and epoch.
+    val assetsMatches = resumed && renderedSelected != null && assetsState.epoch == renderedEpoch &&
+        assetsState.context?.partition == renderedSelected.partition && assetsState.context?.membershipId == renderedSelected.membershipId
     SecureAccountWindow()
-    DisposableEffect(viewModel, syncViewModel) { onDispose { syncViewModel.withdraw(); viewModel.unconfirm() } }
-    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumed = true; syncViewModel.invalidateIfStale(); viewModel.invalidateIfStale() }
-    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { resumed = false; showSync = false; openedFor = null; recovery = null; syncViewModel.withdraw(); viewModel.unconfirm() }
+    DisposableEffect(viewModel, syncViewModel, assetsViewModel) { onDispose { syncViewModel.withdraw(); assetsViewModel.withdraw(); viewModel.unconfirm() } }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { resumed = true; syncViewModel.invalidateIfStale(); assetsViewModel.invalidateIfStale(); viewModel.invalidateIfStale() }
+    LifecycleEventEffect(Lifecycle.Event.ON_STOP) { resumed = false; showSync = false; openedFor = null; recovery = null; syncViewModel.withdraw(); closeAssets(); viewModel.unconfirm() }
     LaunchedEffect(renderedSelected, renderedEpoch, resumed, choosing, state.busy, state.selectionConfirmed) {
         val selected = renderedSelected
         if (viewModel.state.value.selected != selected || viewModel.epochs.value != renderedEpoch) return@LaunchedEffect
@@ -130,6 +147,7 @@ fun EnterpriseContextScreen(
             showSync = false
             openedFor = null
         }
+        if (assetsFor != null && (assetsFor?.partition != selected?.partition || assetsFor?.membershipId != selected?.membershipId)) closeAssets()
         if (!resumed || selected == null) { syncViewModel.withdraw(); showSync = false; openedFor = null }
         else if (!choosing && !state.busy && resumed && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
             !viewModel.state.value.busy && viewModel.state.value.selected == selected && viewModel.epochs.value == renderedEpoch) {
@@ -151,6 +169,8 @@ fun EnterpriseContextScreen(
     }
     BackHandler {
         when {
+            showAssets && resumed -> if (assetsMatches && assetsState.detail != null) assetsViewModel.backToList(renderedEpoch, assetsState.generation)
+                else closeAssets()
             showSync && resumed && openedFor?.partition == renderedSelected?.partition &&
                 openedFor?.membershipId == renderedSelected?.membershipId -> syncBack()
             choosing -> choosing = false
@@ -174,7 +194,21 @@ fun EnterpriseContextScreen(
             }
         },
     ) { padding ->
-        if (showSync && resumed && renderedSelected != null && !choosing &&
+        if (showAssets && resumed && renderedSelected != null && !choosing &&
+            assetsFor?.partition == renderedSelected.partition && assetsFor?.membershipId == renderedSelected.membershipId) MyAssetsPanel(
+            // A source loss clears the owner; keep only its safe message and withhold every cached fact.
+            state = if (assetsMatches) assetsState else assetsState.copy(snapshot = null, detailAssetId = null,
+                error = assetsState.error ?: EnterpriseAccessError.STALE),
+            connected = connected,
+            onBack = {
+                if (assetsMatches && assetsState.detail != null) assetsViewModel.backToList(renderedEpoch, assetsState.generation)
+                else closeAssets()
+            },
+            onRefresh = { if (assetsMatches) assetsViewModel.refresh(renderedEpoch, assetsState.generation) },
+            onRetry = { assetsViewModel.open(renderedSelected, renderedEpoch) },
+            onOpen = { id -> if (assetsMatches) assetsViewModel.detail(id, renderedEpoch, assetsState.generation) },
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) else if (showSync && resumed && renderedSelected != null && !choosing &&
             openedFor?.partition == renderedSelected.partition && openedFor?.membershipId == renderedSelected.membershipId) EnterpriseSyncPanel(
             // A source loss can intentionally clear the flow owner. Keep its safe
             // recovery message visible while withholding every previous private fact.
@@ -214,6 +248,13 @@ fun EnterpriseContextScreen(
                         Text(stringResource(R.string.enterprise_context_empty_home))
                         Text(stringResource(R.string.enterprise_context_ownership), style = MaterialTheme.typography.bodyMedium)
                     }
+                    if (BuildConfig.ENTERPRISE_FLEET_UI_ENABLED) MyAssetsHomeCard(onOpen = {
+                        if (currentGesture() && !viewModel.state.value.busy) {
+                            assetsViewModel.open(selected, renderedEpoch)
+                            assetsFor = selected
+                            showAssets = true
+                        }
+                    })
                     EnterpriseSyncHomeStatus(if (syncMatches && syncState.error == null && !syncState.unlockRequired && !syncState.unrecoverable) syncState.totals else null,
                         onOpen = {
                             if (currentGesture() && !viewModel.state.value.busy && syncViewModel.open(selected, renderedEpoch, renderedGeneration)) {

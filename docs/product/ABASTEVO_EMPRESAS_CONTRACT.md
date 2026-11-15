@@ -5758,3 +5758,94 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   organization's trip, an uncovering structural grant, an AUDITOR, a race in
   both orders, forced RLS and the history guards, and a populated upgrade
   with injected failure and recovery.
+
+## EMP-FLEET-013 — App: my assets and asset selection (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-fleet013-my-assets.md).
+
+- **B-BR-EMP-348 — The asset cache lives in the protected partition.** The
+  app keeps the reference feed of one organization as one versioned cache
+  inside the accepted protected generation of its exact account, API origin
+  and organization (EMP-PRIV-003), bound to the membership and enrollment it
+  was pulled with: the minimised `asset` entities of B-BR-EMP-336, the opaque
+  cursor, the feed revision, the server `confirmed_at` and the device clock of
+  the commit. A cache bound to another membership or enrollment, or written in
+  an unknown cache version, reads as absent and is replaced by the next full
+  pull; it is never shown. No plaintext table, journal or file holds it, it is
+  never read under another account, origin or organization, and nothing here
+  reads or writes the personal `vehicle` table.
+- **B-BR-EMP-349 — A response is applied whole or not at all.** The app
+  parses the frozen wire strictly (exact keys, closed enums including the
+  entity type `asset`, OpenAPI bounds, canonical UTC instants) and binds it
+  to its own request: request, membership and enrollment identifiers equal
+  the request; a request without a cursor accepts only `RESET` with
+  `NEW_CURSOR` or `FORBIDDEN`; a request with a cursor accepts `DELTA` only
+  when `from_revision` equals the revision held with that cursor, or `RESET`
+  with `CURSOR_EXPIRED`, `CURSOR_AHEAD` or `FORBIDDEN`. Changes are strictly
+  increasing revisions not above `revision` (and above `from_revision` in a
+  delta), one per entity; an upsert carries its asset with the same
+  identifier and a tombstone carries none; a reset holds only upserts and
+  `FORBIDDEN` holds none. `RESET` replaces the whole cached set (empty and
+  marked forbidden for `FORBIDDEN`); `DELTA` replaces or removes only the
+  named entities, and a tombstone for an entity the app never held changes
+  nothing. Any violation leaves the cache untouched. The new set, cursor,
+  revision and confirmation commit in one protected write and only when the
+  cache is still the one the pull started from, so a process death or a
+  concurrent refresh never leaves a mixed state. A `NOT_FOUND` answer to a
+  request with a cursor is retried once without a cursor; nothing else is
+  retried within one refresh.
+- **B-BR-EMP-350 — Confirmation is shown, never invented.** The list shows
+  the server `confirmed_at` of the last applied response. It is "não
+  confirmado" when 24 hours have passed since that commit, measured by the
+  device's elapsed time within one boot or by its wall clock after a reboot,
+  or when the wall clock after a reboot is earlier than the commit. An asset
+  whose cached assignment end has passed on the device clock is marked not
+  confirmed on its own. A refresh that fails says that the list could not be
+  confirmed now. The device clock never removes, hides or disables an asset:
+  only an applied response does (BR-OFFL-016, B-BR-EMP-337).
+- **B-BR-EMP-351 — "Meus ativos" shows exactly the cached set.** The list
+  holds exactly the entities of the last applied response — the assets with
+  an active assignment covered by the member's `fleet.asset.read` at that
+  server instant — one per row with name, fleet number, plate, kind, the
+  assignment kind and end, and the state; an asset whose state is not
+  `ACTIVE` is shown as not available with its state (§6.2 row 1); no other
+  availability is claimed because the feed carries none. The read-only
+  detail adds the usage basis, the accepted products and each in-service
+  meter with its kind and installation instant; it shows no reading or tank
+  capacity because the feed carries none. With no cached entity the list says
+  that no asset is assigned and that a company manager who assigns assets
+  can do it; after `FORBIDDEN` it shows the no-permission pattern and no
+  asset. Reading needs no network; refreshing does.
+- **B-BR-EMP-352 — The picker returns a hint, the server decides.** The
+  picker lists the same cached assets, optionally narrowed by the calling
+  operation to what it accepts, one per row with large targets, and returns
+  to the calling screen the organization, the asset identifier and revision,
+  its kind, usage basis and in-service meters and the confirmation instant,
+  with no network. Choosing an asset that is not `ACTIVE`, not confirmed or
+  whose assignment end has passed first shows a warning that the company
+  will review the choice; after it the asset is returned with the warning
+  recorded (BR-FLEET-027). The returned value grants nothing: the operation
+  carries the asset identifier and intake decides as if no cache existed.
+- **BUC-EMP-175 — See my assets (UC-FLEET-08, SCR-FLEET-08/10).** Actor:
+  member with an enrollment in the selected organization. Main flow: open
+  "Meus ativos" → the protected cache is shown at once with its confirmation
+  instant → when connected, a signed pull with the held cursor applies the
+  changes and the list and its instant update → open an asset for its
+  read-only detail. Alternatives: no cache yet and offline → unavailable
+  state saying a connection is needed once; no assigned asset → empty state
+  naming who can assign; `FORBIDDEN` → no-permission state; pull failure →
+  the cached list stays with "não foi possível confirmar agora"; 24 hours
+  without a pull → "não confirmado"; organization switch → only the newly
+  selected organization's cache; another account → nothing.
+- **BUC-EMP-176 — Choose an asset for an operation (SCR-FLEET-09).** Actor:
+  member starting an operation. Main flow: the calling screen opens the
+  picker → the member chooses a row → the picker returns the choice to the
+  calling screen without network. Alternatives: a not available or not
+  confirmed asset → review warning, then returned; cancel → nothing returned;
+  no asset → the empty state of BUC-EMP-175.
+- **BUC-EMP-177 — Prove the client against the feed.** One shared wire
+  oracle consumed by the Go server parser/encoder and the Kotlin client, host
+  tests for application, cache, process death and partition isolation, and
+  native acceptance on the owned API 36 emulator against an ordinary PostGIS
+  signed feed: online pull, process death, server unassignment while
+  offline, reconnection tombstones and two organizations kept apart.

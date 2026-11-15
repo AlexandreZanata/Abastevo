@@ -310,6 +310,8 @@ explicit policy exists. See B-BR-EMP-115..122, EDR-076..080 and
 | Exports, reports, indicators | Online | Online | — | Online | Everything |
 | Station portal, Data portal, plan and billing | Online | Online | Online | Online | Everything |
 
+The reference feed (EMP-OFFL-006) is a signed per-member versioned delta of the member's assigned assets with durable tombstones, a server confirmation instant and RESET on lost authority (EDR-216..218). The app keeps it as one versioned cache sealed in the protected partition and shows its server confirmation (EMP-FLEET-013, EDR-224..226).
+
 ### 10.4 Protected status presentation (EMP-OFFL-004, in construction)
 
 The pending screen reads sanitized pages and full-partition totals from one

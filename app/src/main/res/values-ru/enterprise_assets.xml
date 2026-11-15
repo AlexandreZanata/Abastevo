@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- EMP-FLEET-013 "Meus ativos" and the asset picker (SCR-FLEET-08/09/10). -->
+    <string name="enterprise_assets_title">Мои активы</string>
+    <string name="enterprise_assets_home_copy">Активы, которые компания закрепила за вами, доступны и без интернета.</string>
+    <string name="enterprise_assets_open">Открыть мои активы</string>
+    <string name="enterprise_assets_back_home">Вернуться на главную компании</string>
+    <string name="enterprise_assets_back_list">Вернуться к моим активам</string>
+    <string name="enterprise_assets_refresh">Обновить список</string>
+    <string name="enterprise_assets_loading">Загрузка</string>
+    <string name="enterprise_assets_confirmed_at">Обновлено %1$s</string>
+    <string name="enterprise_assets_not_confirmed">Не подтверждено: более 24 часов без связи с компанией.</string>
+    <string name="enterprise_assets_refresh_failed">Сейчас не удалось подтвердить список. Показана последняя подтверждённая версия.</string>
+    <string name="enterprise_assets_refresh_failed_empty">Сейчас не удалось загрузить список. Попробуйте ещё раз.</string>
+    <string name="enterprise_assets_offline">Нет интернета. Показан последний подтверждённый список.</string>
+    <string name="enterprise_assets_needs_connection">Нет интернета. Для списка активов нужно хотя бы одно подключение.</string>
+    <string name="enterprise_assets_unavailable">Список активов сейчас недоступен. Сохранённые данные в безопасности.</string>
+    <string name="enterprise_assets_retry">Повторить</string>
+    <string name="enterprise_assets_empty">За вами не закреплено ни одного актива</string>
+    <string name="enterprise_assets_empty_who">Менеджер автопарка компании с правом закреплять активы может закрепить актив за вами.</string>
+    <string name="enterprise_assets_forbidden_title">Нет разрешения</string>
+    <string name="enterprise_assets_forbidden">Вы не можете видеть активы этой компании. Администратор компании может предоставить доступ.</string>
+    <string name="enterprise_assets_fleet_number">Номер в автопарке %1$s</string>
+    <string name="enterprise_assets_plate">Номерной знак %1$s</string>
+    <string name="enterprise_assets_kind_vehicle">Транспортное средство</string>
+    <string name="enterprise_assets_kind_machine">Машина</string>
+    <string name="enterprise_assets_kind_implement">Навесное оборудование</string>
+    <string name="enterprise_assets_assignment_primary">Основное закрепление</string>
+    <string name="enterprise_assets_assignment_additional">Дополнительное закрепление</string>
+    <string name="enterprise_assets_assignment_temporary">Временное закрепление</string>
+    <string name="enterprise_assets_assignment_until">До %1$s</string>
+    <string name="enterprise_assets_assignment_ended">Период закрепления закончился %1$s; компания подтвердит это, когда придут ваши записи.</string>
+    <string name="enterprise_assets_unavailable_state">Недоступно: %1$s</string>
+    <string name="enterprise_assets_state">Состояние: %1$s</string>
+    <string name="enterprise_assets_state_draft">черновик</string>
+    <string name="enterprise_assets_state_active">активен</string>
+    <string name="enterprise_assets_state_inactive">неактивен</string>
+    <string name="enterprise_assets_state_disposed">списан</string>
+    <string name="enterprise_assets_state_archived">в архиве</string>
+    <string name="enterprise_assets_row_not_confirmed">Не подтверждено</string>
+    <string name="enterprise_assets_detail_title">Сведения об активе</string>
+    <string name="enterprise_assets_usage_distance">Использование в километрах</string>
+    <string name="enterprise_assets_usage_hours">Использование в часах</string>
+    <string name="enterprise_assets_products">Допустимые продукты: %1$s</string>
+    <string name="enterprise_assets_products_none">Допустимые продукты не указаны</string>
+    <string name="enterprise_assets_product_electricity">Электроэнергия</string>
+    <string name="enterprise_assets_product_arla">AdBlue (ARLA 32)</string>
+    <string name="enterprise_assets_meter_odometer">Одометр установлен %1$s</string>
+    <string name="enterprise_assets_meter_hour">Счётчик моточасов установлен %1$s</string>
+    <string name="enterprise_assets_meters_none">Нет счётчиков в работе</string>
+    <string name="enterprise_assets_offline_limits">Показания и ёмкость баков не входят в этот офлайн-список.</string>
+    <string name="enterprise_assets_pick_title">Выбрать актив</string>
+    <string name="enterprise_assets_pick_cancel">Отмена</string>
+    <string name="enterprise_assets_warning_title">Компания проверит этот выбор</string>
+    <string name="enterprise_assets_warning_copy">Этот актив недоступен или его данные не подтверждены. Вы можете выбрать его; компания решит, когда придёт ваша запись.</string>
+    <string name="enterprise_assets_warning_confirm">Всё равно выбрать</string>
+</resources>

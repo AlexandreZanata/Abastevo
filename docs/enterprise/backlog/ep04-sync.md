@@ -118,7 +118,7 @@ upload producers remain separate; protected integration is pending.
 - **Done when:** Interrupted uploads converge under retry and the accepted file matches its declaration.
 
 ### EMP-OFFL-006 — Reference data pull for the active organization: versioned deltas
-- **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Pull authorized reference deltas for the selected organization.
 - **Rules and use cases:** BR-OFFL-003, BR-OFFL-016, BR-PRIV-003, BR-AUTH-014, UC-OFFL-08
 - **Depends on:** EMP-OFFL-002, EMP-FLEET-006
@@ -132,6 +132,13 @@ upload producers remain separate; protected integration is pending.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-SYNC, V-PRIV · migration: additive if feed state needs persistence · rollback: disable the feed and mark cached data unconfirmed
 - **Risks and assumptions:** Cached data is a read copy rather than proof of current authority.
 - **Done when:** Feed revision and scope behavior pass with synthetic organizations and changing permissions.
+
+[F4 reference feed](../evidence/f4-offl006-reference-feed.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-336..341, BUC-EMP-169..171 and
+EDR-216..218 precede behaviour; migration 000224 keeps the per-member change
+log. The Android client is EMP-FLEET-013. Retained: checklist templates and
+availability as entity types, paging beyond 200, read budget, log retention,
+production grants.
 
 ### EMP-OFFL-007 — Device clock capture, skew estimation and time fields
 - **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type DOM · size S · state TODO

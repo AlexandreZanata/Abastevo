@@ -7,6 +7,10 @@ import com.anpfuel.application.enterprise.EnterpriseLocalIdentity
 import com.anpfuel.application.enterprise.EnterpriseContextProtection
 import com.anpfuel.application.enterprise.EnterprisePersistence
 import com.anpfuel.application.enterprise.EnterpriseSessionFence
+import com.anpfuel.application.enterprise.fleet.EnterpriseReferenceCacheStore
+import com.anpfuel.application.enterprise.fleet.EnterpriseReferenceService
+import com.anpfuel.application.enterprise.fleet.EnterpriseReferenceTransport
+import com.anpfuel.application.enterprise.fleet.MyAssetsFlow
 import com.anpfuel.application.enterprise.queue.EnterpriseOperationQueue
 import com.anpfuel.application.enterprise.queue.EnterpriseOperationTransport
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueRegistry
@@ -21,6 +25,8 @@ import com.anpfuel.application.enterprise.sync.EnterpriseSyncStatusStore
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.data.enterprise.*
+import com.anpfuel.data.enterprise.fleet.EnterpriseReferenceHttpClient
+import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
 import com.anpfuel.data.remote.ApiEnvironment
@@ -171,6 +177,35 @@ object EnterpriseModule {
         transport: EnterpriseReviewTransport, limits: SyncLimits, activity: EnterpriseDeliveryActivity): EnterpriseReviewService =
         EnterpriseReviewService(source, queue, transport, AndroidEnterpriseDeviceClock(context)::read,
             entropy = { bound -> Random.Default.nextLong(bound) }, activity = activity, limits = limits)
+
+    /** EMP-FLEET-013: the signed reference feed on the device proof plane (EDR-225). */
+    @Provides
+    @Singleton
+    fun referenceClient(source: EnterpriseOperationSessionSource, signer: EnterpriseDeviceSigner): EnterpriseReferenceHttpClient =
+        EnterpriseReferenceHttpClient(
+            OkHttpClient.Builder().connectTimeout(10, TimeUnit.SECONDS).readTimeout(10, TimeUnit.SECONDS).build(),
+            source, signer,
+        )
+
+    @Provides
+    @Singleton
+    fun referenceTransport(client: EnterpriseReferenceHttpClient): EnterpriseReferenceTransport = client
+
+    /** The protected generation's sealed reference cache, never a plaintext table (EDR-224). */
+    @Provides
+    @Singleton
+    fun referenceCache(store: ProtectedEnterprisePersistence): EnterpriseReferenceCacheStore = ProtectedReferenceCacheStore(store)
+
+    @Provides
+    @Singleton
+    fun referenceService(@ApplicationContext context: Context, source: EnterpriseQueueSource, cache: EnterpriseReferenceCacheStore,
+        transport: EnterpriseReferenceTransport): EnterpriseReferenceService =
+        EnterpriseReferenceService(source, cache, transport, AndroidEnterpriseDeviceClock(context)::read)
+
+    /** Each visible "Meus ativos" owner is independent, like the sync status owner. */
+    @Provides
+    fun myAssetsFlow(@ApplicationContext context: Context, source: EnterpriseQueueSource, service: EnterpriseReferenceService,
+        fence: EnterpriseSessionFence): MyAssetsFlow = MyAssetsFlow(source, service, fence, AndroidEnterpriseDeviceClock(context)::read)
 
     /** Owning offline business producers must be accepted separately before registration. */
     @Provides

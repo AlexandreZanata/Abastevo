@@ -1350,6 +1350,15 @@ org_trip_held_events` (with its existing trip grants, including
 `UPDATE (state) ON org_trips` for the trip row lock). No read route is added.
 Nothing here provisions live grants.
 
+### Reference feed (EMP-OFFL-006)
+
+Migration 224 adds forced-RLS `org_reference_feed_heads`/`org_reference_feed_entries`.
+The signed intake principal needs `SELECT, INSERT, UPDATE ON
+org_reference_feed_heads`, `SELECT, INSERT ON org_reference_feed_entries` and
+SELECT on the listed columns of org_assets, org_asset_assignments, org_meters,
+org_meter_segments and org_asset_tank_products; the migrator needs
+`REFERENCES ON org_memberships`. Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

@@ -68,6 +68,17 @@ object CanonicalJson {
         return Parser(text, MAX_TRANSPORT_DEPTH).parse()
     }
 
+    /** Separate reference-feed profile (EMP-FLEET-013): a larger byte bound, the same grammar. */
+    internal fun parseLarge(raw: ByteArray, maxBytes: Int): SyncJson {
+        if (maxBytes < 1) throw invalid()
+        if (raw.size > maxBytes) throw invalid(SyncFailure.LIMIT)
+        val text = try {
+            Charsets.UTF_8.newDecoder().onMalformedInput(CodingErrorAction.REPORT)
+                .onUnmappableCharacter(CodingErrorAction.REPORT).decode(ByteBuffer.wrap(raw)).toString()
+        } catch (_: java.nio.charset.CharacterCodingException) { throw invalid() }
+        return Parser(text, MAX_TRANSPORT_DEPTH).parse().value
+    }
+
     internal fun parseSpanned(raw: ByteArray, maxBytes: Int, maxDepth: Int): JsonNode {
         if (maxBytes !in 1..MAX_BATCH_BYTES || maxDepth !in 1..MAX_TRANSPORT_DEPTH) throw invalid()
         if (raw.size > maxBytes) throw invalid(SyncFailure.LIMIT)
