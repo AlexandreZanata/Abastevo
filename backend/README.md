@@ -1307,6 +1307,23 @@ org_asset_implement_attachments`. Attach and detach use fresh
 `fleet.asset.manage` on both assets (admission class `fleet.asset`); the list
 uses current `fleet.asset.read`. Nothing here provisions live grants.
 
+### Trip logbook events (EMP-TRIP-003)
+
+Migration225 adds forced-RLS, insert-only `org_trip_events` (accepted logbook
+facts: identity, trip, type, text, author, enrollment, declaration, receipt)
+and `org_trip_held_events` (events declared after a completed trip's finish,
+held `TRIP_ALREADY_CLOSED` with an OFFL-008 review item), and redefines
+`org_sync_review_source_valid` from the 220 body with a `trip.event.record`
+branch. Events key only the trip, operation, author records and enrollment,
+so no usage source changes. The migration owner needs `REFERENCES` on
+`org_trips`, `org_sync_operations`, `org_memberships`,
+`org_employee_identities`, `org_device_enrollments` and
+`org_sync_review_items`, and ownership of `org_sync_review_source_valid`. The
+signed intake principal needs `SELECT, INSERT ON org_trip_events,
+org_trip_held_events` (with its existing trip grants, including
+`UPDATE (state) ON org_trips` for the trip row lock). No read route is added.
+Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

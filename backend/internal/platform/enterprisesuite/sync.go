@@ -96,7 +96,13 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish}, o.IntakeHandlers...)
+	// EMP-TRIP-003: typed logbook events append to the member's own stored
+	// trip; held events use the same OFFL-008 review items.
+	tripEvent, err := trippg.NewEventHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore, &trippg.EventStore{NewID: jobs.NewUUIDv4})
+	if err != nil {
+		return err
+	}
+	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent}, o.IntakeHandlers...)
 	registry, err := app.NewRegistry(handlers...)
 	if err != nil {
 		return err
@@ -133,9 +139,9 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[fuelingKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
-	// EMP-TRIP-002 (B-BR-EMP-319): no trip consumer exists yet; held facts
-	// are same-transaction review items.
-	for _, kind := range []string{tripapp.StartOperationType, tripapp.FinishOperationType} {
+	// EMP-TRIP-002/003 (B-BR-EMP-319, EDR-209): no trip consumer exists yet;
+	// held facts are same-transaction review items.
+	for _, kind := range []string{tripapp.StartOperationType, tripapp.FinishOperationType, tripapp.EventOperationType} {
 		key := app.OperationKey{Type: kind, Schema: 1}
 		if _, exists := noAsync[key]; exists {
 			return app.ErrUnavailable

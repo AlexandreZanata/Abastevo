@@ -203,7 +203,8 @@ type FinishRecord struct {
 	Declared                                                     orgtime.Declaration
 	Clock                                                        *trip.RunClock
 	ReceivedAt                                                   time.Time
-	MeterID, SegmentID, ReadingID                                string
+	MeterID, SegmentID, ReadingID, ReadingKind                   string
+	ReadingValue                                                 *int64
 	MissingReason                                                *string
 	EndDay                                                       string
 }

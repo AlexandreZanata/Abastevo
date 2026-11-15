@@ -256,10 +256,17 @@ func (s *Store) ReadTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.Or
 	if !ok || !okClock || state != trip.Completed || !row.FinishOccurredSubmicro.Valid || !row.FinishEntryZone.Valid || !row.FinishDeviceOffsetSeconds.Valid || !row.FinishReceivedAt.Valid {
 		return app.Record{}, app.ErrUnavailable
 	}
+	if (row.FinishReadingID != "") != row.FinishReadingValue.Valid {
+		return app.Record{}, app.ErrUnavailable
+	}
 	record.Finish = &app.FinishRecord{OperationID: row.FinishOperationID, PayloadDigest: row.FinishPayloadDigest, AuthorMembershipID: row.FinishAuthorMembershipID,
 		EnrollmentID: row.FinishEnrollmentID, Declared: orgtime.Declaration{OccurredAt: finishAt, EntryZone: row.FinishEntryZone.String, DeviceOffsetSeconds: row.FinishDeviceOffsetSeconds.Int64},
 		Clock: finishClock, ReceivedAt: row.FinishReceivedAt.Time.UTC(), MeterID: row.FinishMeterID, SegmentID: row.FinishSegmentID, ReadingID: row.FinishReadingID,
-		MissingReason: optionalText(row.FinishMissingReadingReason), EndDay: row.FinishEndDay}
+		ReadingKind: row.FinishReadingKind, MissingReason: optionalText(row.FinishMissingReadingReason), EndDay: row.FinishEndDay}
+	if row.FinishReadingValue.Valid {
+		n := row.FinishReadingValue.Int64
+		record.Finish.ReadingValue = &n
+	}
 	return record, nil
 }
 

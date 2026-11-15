@@ -62,7 +62,7 @@ active use are trip-backed and the FLEET-007 start decision holds blocked or
 reserved starts. Held-item resolution stays with EMP-TRIP-007.
 
 ### EMP-TRIP-003 — Logbook events: the typed timeline
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size M · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size M · state LOCAL_DONE
 - **Objective:** Append typed logbook facts with an understandable time-ordered history.
 - **Rules and use cases:** REQ-07.3, BR-OFFL-001, BR-TIME-002, EDR-028
 - **Depends on:** EMP-TRIP-002
@@ -76,6 +76,15 @@ reserved starts. Held-item resolution stays with EMP-TRIP-007.
 - **Validation:** V-DOM, V-API, V-SQL, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 logbook events](../evidence/f4-trip003-logbook-events.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Signed `trip.event.record`
+(migration 000225) appends one insert-only typed fact (NOTE, STOP, ARRIVAL,
+DEPARTURE) with its identity, author, original instant and zone and server
+receipt to the member's own trip and never changes the trip; reserved types
+stay queued, an event before the start is `MALFORMED`, one after a completed
+trip's finish is held `TRIP_ALREADY_CLOSED`; the timeline order and vocabulary
+are shared with Kotlin through `logbook-v1.psv`. No read route (EMP-TRIP-006).
 
 ### EMP-TRIP-004 — Trip submission and administrative review
 - **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type API · size M · state TODO

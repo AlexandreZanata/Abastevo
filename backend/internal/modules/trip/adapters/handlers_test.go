@@ -112,3 +112,48 @@ func TestQueriesRefuseUnboundInputs(t *testing.T) {
 		t.Fatal("nil store proved an own receipt", err)
 	}
 }
+
+// EMP-TRIP-003 (EDR-207): the logbook owner needs real ports, declares the
+// trip policies and maps refusals onto the frozen vocabulary; the logbook
+// store refuses unbound inputs.
+func TestEventOwnerPortsRefusalsAndUnboundStore(t *testing.T) {
+	if _, err := NewEventHandler(nil, nil, nil, nil); !errors.Is(err, syncapp.ErrUnavailable) {
+		t.Fatal("event owner without ports")
+	}
+	if d := (&eventHandler{}).Descriptor(); d.Validate() != nil || d.Type != app.EventOperationType || len(d.Results()) != 3 ||
+		d.WritePolicy.Permission != "trip.trip.start" || d.ReadPolicy.Permission != "trip.trip.read" {
+		t.Fatal("event descriptor drift")
+	}
+	if _, err := eventRefusal(trip.ErrForbidden); !errors.Is(err, syncapp.ErrSourceDenied) {
+		t.Fatal("another member's event is not a whole-response refusal", err)
+	} else if code, _ := orgapi.Registered(err); code != orgapi.Forbidden {
+		t.Fatal("refusal code", code)
+	}
+	for _, cause := range []error{trip.ErrEventBeforeStart, trip.ErrInvalid, trip.ErrScope} {
+		if outcome, err := eventRefusal(cause); err != nil || outcome.Result != protocol.Rejected || outcome.Code != "MALFORMED" {
+			t.Fatal("refusal is not MALFORMED", cause, outcome, err)
+		}
+	}
+	for _, cause := range []error{trip.ErrUnsupportedEvent, trip.ErrEventAfterFinish, errors.New("other")} {
+		if _, err := eventRefusal(cause); !errors.Is(err, syncapp.ErrUnavailable) {
+			t.Fatal("a cause outside the refusal map is not a retry", cause, err)
+		}
+	}
+	ctx := context.Background()
+	var s *EventStore
+	if _, err := s.EventFactsTx(ctx, nil, kernel.OrgScope{}, "x"); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("nil logbook store answered", err)
+	}
+	if _, err := s.TimelineTx(ctx, nil, kernel.OrgScope{}, "x"); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("nil logbook store read a timeline", err)
+	}
+	if err := s.CheckHeldTx(ctx, nil, syncapp.Source{}, protocol.Operation{}, syncapp.Outcome{}); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("nil logbook store proved a held event", err)
+	}
+	if _, err := s.CheckOwnReceiptTx(ctx, nil, syncapp.Source{}, protocol.Operation{}); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("nil logbook store proved an own receipt", err)
+	}
+	if _, err := (StartImplements{}).ImplementsAtStartDBTX(ctx, nil, kernel.OrgScope{}, "x"); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("start implements without ports", err)
+	}
+}

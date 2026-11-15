@@ -51,11 +51,14 @@ SELECT t.id::text AS id,t.operation_id::text AS operation_id,t.payload_digest,t.
  f.occurred_at AS finish_occurred_at,f.occurred_submicro AS finish_occurred_submicro,f.entry_zone AS finish_entry_zone,f.device_offset_seconds AS finish_device_offset_seconds,
  f.boot_id AS finish_boot_id,f.elapsed_millis AS finish_elapsed_millis,f.received_at AS finish_received_at,
  COALESCE(f.meter_id::text,'')::text AS finish_meter_id,COALESCE(f.segment_id::text,'')::text AS finish_segment_id,COALESCE(f.reading_id::text,'')::text AS finish_reading_id,
+ COALESCE(fm.kind,'')::text AS finish_reading_kind,fr.value AS finish_reading_value,
  f.missing_reading_reason AS finish_missing_reading_reason,COALESCE(f.end_day::text,'')::text AS finish_end_day
 FROM org_trips t
 LEFT JOIN org_meters m ON(m.org_id,m.id)=(t.org_id,t.meter_id)
 LEFT JOIN org_meter_readings r ON(r.org_id,r.meter_id,r.id)=(t.org_id,t.meter_id,t.reading_id)
 LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
+LEFT JOIN org_meters fm ON(fm.org_id,fm.id)=(f.org_id,f.meter_id)
+LEFT JOIN org_meter_readings fr ON(fr.org_id,fr.meter_id,fr.id)=(f.org_id,f.meter_id,f.reading_id)
 WHERE t.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND t.id=CAST(sqlc.arg(id)::text AS uuid);
 
 -- name: InsertTripReviewItem :execrows
