@@ -237,6 +237,7 @@ org.ownership.transfer O - - - - - - - -
 fleet.asset.manage O O O - - - - - -
 fleet.asset.read O O O O O O S S O
 fleet.asset.assign O O O O - - - - -
+fleet.reservation.manage O O O O - - - - -
 meter.reading.record O O O O - - S S -
 meter.reading.correct O O O O - - - - -
 trip.mission.manage O O O O - - - - -
@@ -246,6 +247,8 @@ trip.trip.close_for_other O O O O - - - - -
 trip.trip.review O O O O - O - - -
 check.checklist.execute S S S S - - S S -
 check.incident.report S S S S - - S S -
+check.template.manage O O O - - - - - -
+check.incident.manage O O O O - - - - -
 gps.location.read_live O O O O - - S2 - -
 gps.track.read O O O O - - S2 - O3
 fuel.fueling.record S S S S - - S S -

@@ -4763,3 +4763,161 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   largest monotonic counts and tolerances without overflow, and the named
   negatives: a local clock change inventing duration, midnight splitting
   one trip and a lost reporting basis.
+
+## AUTH catalog amendment org-permissions-v5 — reservation and checklist grants (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-auth-catalog-v5.md).
+
+- **B-BR-EMP-292 — Reservations and checklist handling have named roles.**
+  The permission catalog `org-permissions-v5` grants, with organization or
+  assigned-scope coverage (`O`) and only the four standing conditions (active
+  membership, live scoped assignment, organization and plan, record rules):
+  `fleet.reservation.manage` (request, confirm and cancel reservations; block
+  and unblock assets) to `OWNER`, `ADMIN`, `FLEET_MANAGER` and `SUPERVISOR`,
+  exactly the roles of `fleet.asset.assign`; `check.template.manage`
+  (checklist templates and the critical-item policy) to `OWNER`, `ADMIN` and
+  `FLEET_MANAGER`, exactly the roles of `maint.workorder.manage`;
+  `check.incident.manage` (handle reports, release a blocked asset, open claim
+  records) to `OWNER`, `ADMIN`, `FLEET_MANAGER` and `SUPERVISOR`. Every other
+  cell of `org-permissions-v4` is unchanged: `AUDITOR`, `FINANCE`, `APPROVER`,
+  `DRIVER`, `OPERATIONS_STAFF` and the station and data roles gain nothing, and
+  the 18 other unassigned keys stay denied to every role. A role assigned to a
+  unit, cost centre, team or asset applies these grants inside that scope only.
+- **B-BR-EMP-293 — A catalog version changes grants, not stored data or
+  routes.** Role assignments store the role and its scope, never a permission
+  set or a catalog version, so a current assignment holds the new grants at
+  its next request evaluation and nothing is migrated. Each earlier oracle
+  (`v1`–`v4`) stays unchanged beside the new one, and every consumer that pins
+  the version (route inventory, authorization matrix, export gating) moves to
+  `v5` in the same change. A granted key admits no request until its owning
+  task routes it; separation-of-duty record rules (for example a release by
+  someone other than the author, BR-CHECK-011) remain obligations of that task.
+
+## EMP-FLEET-007 — Reservations, blocks and derived availability (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-fleet007-reservations-availability.md).
+
+- **B-BR-EMP-294 — A reservation names one active asset, a future window, a
+  purpose and optionally one employee record.** A reservation belongs to one
+  organization and names one of its assets in `ACTIVE`, a half-open window
+  `[start, end)` with whole-microsecond bounds that starts later than the
+  server instant of the request and ends after its start, a purpose of 1 to 280
+  characters and, when known, one `ACTIVE` employee record of the organization
+  as the reserved employee. Its state is one of `REQUESTED`, `CONFIRMED`,
+  `FULFILLED`, `CANCELLED`, `NO_SHOW`, `EXPIRED`; it is created `REQUESTED`,
+  or `CONFIRMED` when the request says so. `FULFILLED` has no source until a
+  trip intake exists (EMP-TRIP-023): no command or job reaches it. The no-show
+  tolerance is the 60-minute default of fleet.md §6.4, stored with the
+  reservation. An asset in another state is refused with `VALIDATION_FAILED`;
+  an asset or employee of another organization (or unknown) is not found.
+  Rows are private under forced row-level security and never deleted; the
+  state changes only through the rows of fleet.md §6.4.
+- **B-BR-EMP-295 — Confirmed windows never overlap; a conflict reveals only
+  the window.** A request or a confirmation whose window overlaps a
+  `CONFIRMED` reservation of the asset, or a block of the asset whose period
+  overlaps it, changes nothing and answers `RESERVATION_CONFLICT` (409) whose
+  details carry only the conflicting window — its start and, when it has one,
+  its end — never the other record's identifier, requester, employee,
+  purpose, note or kind. `REQUESTED` windows may overlap each other until one
+  is confirmed. The database enforces non-overlap with an exclusion
+  constraint and refuses a confirmation over a block; commands are serialised
+  under the organization root lock, so of two concurrent overlapping
+  confirmations exactly one commits and the other receives the winner's window.
+- **B-BR-EMP-296 — Time-driven outcomes are derived at read time, settled by a
+  job and before any reservation command.** A `REQUESTED` reservation is
+  `EXPIRED` from its start; a `CONFIRMED` one is `NO_SHOW` from its no-show
+  deadline, the earlier of start plus tolerance and its end, because no
+  qualifying trip can start in this cut. Every read reports the effective state
+  at its own server instant, with the instant at which the outcome happened,
+  even when nothing was stored yet. A per-reservation job queued in the
+  command transaction for the due instant stores the outcome once
+  (compare-and-set: a second run changes nothing), and every reservation
+  command first settles the due outcomes of the asset, so a stopped job never
+  keeps a stale window. Each stored outcome records one audit event
+  (`fleet.reservation.expired`, `fleet.reservation.missed`) with the requesting
+  account as actor.
+- **B-BR-EMP-297 — Cancelling releases the window; leaving service cancels.**
+  A reservation that is `REQUESTED` or `CONFIRMED` and has not reached its
+  time-driven outcome can be cancelled; a reason of 1 to 280 characters is
+  required unless the requesting account cancels. A cancelled, expired or
+  missed reservation refuses confirmation and cancellation with `CONFLICT` and
+  changes nothing. When an asset becomes `INACTIVE` or `DISPOSED`, every
+  reservation of it that is `REQUESTED` or `CONFIRMED` and has not reached its
+  time-driven outcome is `CANCELLED` in the same transaction, with the cause
+  `ASSET_LEFT_SERVICE` and the asset revision.
+- **B-BR-EMP-298 — Blocks state a reason kind and a period and are removed
+  only with a reason.** A block names an asset in `ACTIVE` or `INACTIVE`, a
+  reason kind (`ADMINISTRATIVE`, `SAFETY`, `DOCUMENT`, `INVESTIGATION`,
+  `LENT_OUT`), an optional note of up to 280 characters and a half-open period
+  whose start is the server instant when omitted or a later instant when
+  given, with an optional end. Removing a block requires a reason of 1 to 280
+  characters (its absence is `VALIDATION_FAILED`) and ends it at the server
+  instant, or at its start when it has not started; removing a removed or
+  ended block is `CONFLICT`. Blocks are never deleted. Creating a block never
+  cancels or changes a reservation nor interrupts an operation in progress.
+- **B-BR-EMP-299 — Availability is derived on read and lists every cause.**
+  At the server instant, availability is the first applying row of fleet.md
+  §6.2 — `UNAVAILABLE` (lifecycle not `ACTIVE`), `IN_USE` (a trip in progress
+  or paused), `IN_MAINTENANCE` (an open hold), `BLOCKED` (a block covering the
+  instant), `RESERVED` (a confirmed reservation holding the asset at the
+  instant), otherwise `AVAILABLE` — and the answer lists every applying cause
+  in that order with its kind, record identifier and period (and the block
+  reason kind), never a person, purpose or note. A reservation holds the asset
+  from its start until the earliest of its end, its no-show deadline and its
+  cancellation (only if it was confirmed). Trips and maintenance holds are
+  answered by ports that, until their owners exist, answer "no source"; the
+  answer then names them as missing sources and never claims their absence.
+  Availability is never stored.
+- **B-BR-EMP-300 — A start is admitted or held with a precise code.** The
+  intake decision for a start of an asset by a member at a declared instant
+  holds the start for review with `ASSET_UNAVAILABLE` when the asset is not
+  `ACTIVE`, in maintenance, blocked, held by a reservation that does not name
+  the member's employee record, or available but not assigned to the member,
+  and with `ASSET_BUSY` when another trip holds it; a reservation naming the
+  member admits the start without an assignment. A trip already in progress
+  is never re-decided, so a block added during a trip applies to the next
+  start. The decision is exposed for the trip-start intake (EMP-TRIP-002); no
+  start intake exists yet.
+- **B-BR-EMP-301 — Reservation and block commands need fresh
+  `fleet.reservation.manage` on the asset; reads need `fleet.asset.read`.**
+  Request, confirm, cancel, block and unblock require fresh
+  `fleet.reservation.manage` covering the asset (`ORG`, or a `UNIT`,
+  `COST_CENTRE` or `ASSET` grant matching the asset's allocation at the server
+  instant); the reservation list, block list and availability read require
+  current `fleet.asset.read` covering the asset, including `SELF` on an asset
+  assigned to the member. Every write records exactly one audit event and one
+  receipt bound to its operation identifier; the same intent replayed returns
+  the first result, another intent under the same identifier is
+  `OPERATION_ID_REUSED`.
+- **BUC-EMP-148 — Request and confirm a reservation.** Actor: member with
+  fresh `fleet.reservation.manage` covering the asset. Main flow: choose the
+  window, the purpose, optionally the reserved employee and whether to confirm
+  → the server settles due outcomes of the asset, checks B-BR-EMP-294/295
+  under the organization root lock → reservation `REQUESTED` or `CONFIRMED`,
+  one audit event and receipt, its time-driven outcome queued; a `REQUESTED`
+  reservation is confirmed by a later command. Alternatives: overlap with a
+  confirmed reservation or a block → `RESERVATION_CONFLICT` with only the
+  window; asset not `ACTIVE`, employee not `ACTIVE` or window not in the
+  future → `VALIDATION_FAILED`; supervisor scoped to another unit →
+  `FORBIDDEN`; replay → first result. Result: the asset is held for the
+  window against others only.
+- **BUC-EMP-149 — Cancel a reservation; outcomes follow the clock.** Actor:
+  member with fresh `fleet.reservation.manage`; time. Main flow: cancel with a
+  reason (none needed by the requester) → `CANCELLED`, window released; or the
+  start passes unconfirmed → `EXPIRED`; or the deadline passes → `NO_SHOW`,
+  window released. Alternatives: ended reservation → `CONFLICT`; job stopped →
+  reads still show the outcome; job run twice → one stored outcome. Result:
+  every reservation reaches a terminal state with its cause.
+- **BUC-EMP-150 — Block and unblock an asset.** Actor: member with fresh
+  `fleet.reservation.manage`. Main flow: choose reason kind, optional note,
+  start and end → block recorded, the asset is `BLOCKED` for new starts →
+  remove with a reason. Alternatives: removal without reason →
+  `VALIDATION_FAILED`; already removed → `CONFLICT`; lending the asset out →
+  `LENT_OUT` with the expected return as end; trip in progress → it continues.
+  Result: block recorded and audited.
+- **BUC-EMP-151 — Read availability, reservations and blocks.** Actor: member
+  with current `fleet.asset.read` covering the asset. Main flow: the
+  availability with every cause and the missing sources at the server
+  instant; the reservations with their effective states; the blocks with
+  their removal facts. Alternatives: foreign or unknown asset → `NOT_FOUND`;
+  no covering grant → `FORBIDDEN`. Result: read only; nothing is stored.

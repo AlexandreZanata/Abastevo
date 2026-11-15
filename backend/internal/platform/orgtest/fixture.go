@@ -148,6 +148,7 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 	f.GrantFleetUsage(t)
 	f.GrantMeterUsage(t)
 	f.GrantAssignmentReductions(t)
+	f.GrantReservationReductions(t)
 
 	_, file, _, ok := runtime.Caller(0)
 	if !ok {
@@ -405,6 +406,23 @@ func (f *Fixture) GrantAssignmentReductions(t *testing.T) {
 	}
 	if installed {
 		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,employee_id,asset_id,valid_from,valid_to),UPDATE(valid_to,end_cause,source_revision,end_operation_id,ended_by,end_reason) ON org_asset_assignments TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// GrantReservationReductions provisions only the columns the installed
+// EMP-FLEET-007 consumer reads and writes when an asset leaves service:
+// every existing deactivation and disposal producer runs it in its own
+// transaction. Earlier embedded migration images remain unchanged.
+func (f *Fixture) GrantReservationReductions(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_asset_reservations') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id,state,revision,starts_at,ends_at,no_show_tolerance),UPDATE(state,revision,end_cause,source_revision) ON org_asset_reservations TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -161,6 +161,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "fleet.asset", Permissions: []string{"fleet.asset.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic fleet configuration inherits identity v1 write 200/hour on each current organization/account/web-or-device axis; production measurement and cleanup remain required."},
 		{Class: "fleet.assignment", Permissions: []string{"fleet.asset.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic driver assignments inherit identity v1 write 200/hour on each current organization/account/web axis (a command names at most 100 employees); production measurement and cleanup remain required."},
+		{Class: "fleet.reservation", Permissions: []string{"fleet.reservation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic reservations and blocks inherit identity v1 write 200/hour on each current organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "meter.review", Permissions: []string{"meter.reading.correct"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic held meter review decisions inherit identity v1 write200/hour on every current organization/account/web-or-device axis; production measurement and cleanup remain required."},
 		{Class: "idn.invitation", Permissions: []string{"idn.invitation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic invitation writes use the existing identity v1 write allowance on every axis; production measurement remains required."},
 		{Class: "idn.membership", Permissions: []string{"idn.membership.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic membership lifecycle uses identity v1 write200/hour on every axis; production measurement remains required."},
@@ -196,7 +197,9 @@ func Register(router chi.Router, o Options) error {
 	fleetAuthority := &orgpg.FleetAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
 	// NoOpenWork is the explicit BR-FLEET-010 "none" source until the trip and
 	// maintenance epics deliver open trips and work orders (EDR-144).
-	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: fleetpg.NoOpenWork{}}
+	// NoActiveUse and NoMaintenanceHolds are the explicit availability "no
+	// source" answers until trips and maintenance holds exist (EDR-194).
+	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: fleetpg.NoOpenWork{}, ActiveUse: fleetpg.NoActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}
@@ -219,6 +222,10 @@ func Register(router chi.Router, o Options) error {
 	}
 	// EMP-FLEET-006 assignment commands and reads on the same store.
 	if err := fleetweb.RegisterAssetAssignments(router, fleetapp.AssignmentService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	// EMP-FLEET-007 reservations, blocks and the availability read.
+	if err := fleetweb.RegisterAssetReservations(router, fleetapp.ReservationService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}

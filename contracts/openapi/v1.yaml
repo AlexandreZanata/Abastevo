@@ -16789,6 +16789,601 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/request:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetReservationRequest
+      summary: Request (and optionally confirm) a reservation of an organization asset
+      description: EMP-FLEET-007. Requests a reservation of an ACTIVE asset for a half-open whole-microsecond window
+        [starts_at, ends_at) starting after the server instant, with a purpose and optionally one ACTIVE employee
+        record of the organization; confirm true creates it CONFIRMED. Due time-driven outcomes of the asset are
+        settled first; a window overlapping a CONFIRMED reservation or a block refuses with RESERVATION_CONFLICT
+        whose details carry only the conflicting window (field conflict_window, codes STARTS_AT and ENDS_AT with an
+        instant), also against a concurrent command. The no-show tolerance is the 60-minute default. A non-ACTIVE
+        asset or employee or a window not in the future is VALIDATION_FAILED; a foreign asset or employee is
+        NOT_FOUND. Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks
+        current fleet.reservation.manage (org-permissions-v5) with fresh company proof, the existing organizations
+        C1 capability and same-organization membership; a UNIT, COST_CENTRE or ASSET grant covers the asset through
+        its allocation at the server instant (EMP-AUTH-006). Commands take the organization root lock; exactly one
+        audit event and receipt commit with the effect; an identical retry returns the first result and any other
+        reuse is OPERATION_ID_REUSED. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.reservation.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetReservationRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009101
+              starts_at: '2026-12-01T11:00:00Z'
+              ends_at: '2026-12-01T15:00:00Z'
+              employee_id: 7b0e2a54-0000-4000-8000-000000008601
+              purpose: Synthetic delivery round
+              confirm: true
+      responses:
+        '201':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetReservationAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                reservation_id: 7b0e2a54-0000-4000-8000-000000009201
+                state: CONFIRMED
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/{reservation_id}/confirm:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetReservationConfirm
+      summary: Confirm a requested reservation
+      description: EMP-FLEET-007. Confirms a reservation of the asset that is REQUESTED at the server instant (its start has
+        not passed); one that is EXPIRED, CONFIRMED or ended otherwise is CONFLICT with no effect. A window
+        overlapping a CONFIRMED reservation or a block refuses with RESERVATION_CONFLICT revealing only that window;
+        of two concurrent overlapping confirmations exactly one commits. A confirmation carries no reason. Dedicated
+        company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.reservation.manage (org-permissions-v5) with fresh company proof, the existing organizations C1
+        capability and same-organization membership; a UNIT, COST_CENTRE or ASSET grant covers the asset through its
+        allocation at the server instant (EMP-AUTH-006). Commands take the organization root lock; exactly one audit
+        event and receipt commit with the effect; an identical retry returns the first result and any other reuse is
+        OPERATION_ID_REUSED. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.reservation.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      - name: reservation_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private reservation selector of this asset; another asset's or organization's record is NOT_FOUND.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetReservationActRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009102
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetReservationAcknowledgement'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/{reservation_id}/cancel:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetReservationCancel
+      summary: Cancel a reservation
+      description: EMP-FLEET-007. Cancels a reservation of the asset that is REQUESTED or CONFIRMED at the server instant and
+        has not reached its time-driven outcome; the window is released. A reason (1 to 280 characters) is required
+        unless the requesting account cancels. An ended reservation is CONFLICT with no effect. Dedicated company
+        cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current fleet.reservation.manage
+        (org-permissions-v5) with fresh company proof, the existing organizations C1 capability and
+        same-organization membership; a UNIT, COST_CENTRE or ASSET grant covers the asset through its allocation at
+        the server instant (EMP-AUTH-006). Commands take the organization root lock; exactly one audit event and
+        receipt commit with the effect; an identical retry returns the first result and any other reuse is
+        OPERATION_ID_REUSED. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.reservation.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      - name: reservation_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private reservation selector of this asset; another asset's or organization's record is NOT_FOUND.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetReservationActRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009103
+              reason: Synthetic change of plan
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetReservationAcknowledgement'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetReservationList
+      summary: Read the reservations of an organization asset
+      description: EMP-FLEET-007. Start-ordered keyset page of every reservation of the asset with its effective state at
+        evaluated_at, the server instant of the page; a REQUESTED reservation past its start reads EXPIRED and a
+        CONFIRMED one past its no-show deadline (the earlier of start plus tolerance and end) reads NO_SHOW even
+        when no job has run; ended_at is then the instant of that outcome. Opaque 15-minute cursor bound to the
+        account, organization, membership, route, asset and limit. Dedicated company cookie, exact HTTPS Origin/Host
+        and CSRF are required. The server rechecks current fleet.asset.read and same-organization membership; a SELF
+        grant covers an asset assigned to the member at the server instant (EMP-FLEET-006). Responses are private
+        no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetReservationPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/create:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetBlockCreate
+      summary: Block an organization asset
+      description: EMP-FLEET-007. Blocks an ACTIVE or INACTIVE asset with a reason kind (ADMINISTRATIVE, SAFETY, DOCUMENT,
+        INVESTIGATION, LENT_OUT), an optional note and a half-open whole-microsecond period; valid_from omitted is
+        the server instant and a given one must be later; valid_to is optional. A block makes the asset BLOCKED for
+        new starts and never interrupts an operation in progress nor changes a reservation. A DRAFT, DISPOSED or
+        ARCHIVED asset is VALIDATION_FAILED. Dedicated company cookie, exact HTTPS Origin/Host and CSRF are
+        required. The server rechecks current fleet.reservation.manage (org-permissions-v5) with fresh company
+        proof, the existing organizations C1 capability and same-organization membership; a UNIT, COST_CENTRE or
+        ASSET grant covers the asset through its allocation at the server instant (EMP-AUTH-006). Commands take the
+        organization root lock; exactly one audit event and receipt commit with the effect; an identical retry
+        returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.reservation.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetBlockCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009104
+              reason_kind: LENT_OUT
+              note: Synthetic loan to a partner
+              valid_to: '2026-12-08T03:00:00Z'
+      responses:
+        '201':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetBlockAcknowledgement'
+              example:
+                asset_id: 7b0e2a54-0000-4000-8000-000000008201
+                block_id: 7b0e2a54-0000-4000-8000-000000009301
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/{block_id}/remove:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetBlockRemove
+      summary: Remove a block
+      description: EMP-FLEET-007. Removes a block of the asset that is neither removed nor ended at the server instant; its end
+        becomes that instant (its start when it has not started). The reason is required; a missing or empty reason
+        is VALIDATION_FAILED with no effect; a removed or ended block is CONFLICT. Blocks are never deleted.
+        Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        fleet.reservation.manage (org-permissions-v5) with fresh company proof, the existing organizations C1
+        capability and same-organization membership; a UNIT, COST_CENTRE or ASSET grant covers the asset through its
+        allocation at the server instant (EMP-AUTH-006). Commands take the organization root lock; exactly one audit
+        event and receipt commit with the effect; an identical retry returns the first result and any other reuse is
+        OPERATION_ID_REUSED. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.reservation.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      - name: block_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private block selector of this asset; another asset's or organization's record is NOT_FOUND.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetBlockRemoveRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009105
+              reason: Synthetic asset returned
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetBlockAcknowledgement'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/list:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetBlockList
+      summary: Read the blocks of an organization asset
+      description: EMP-FLEET-007. Start-ordered keyset page of every block of the asset, with removal facts when removed.
+        Opaque 15-minute cursor bound to the account, organization, membership, route, asset and limit. Dedicated
+        company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current fleet.asset.read
+        and same-organization membership; a SELF grant covers an asset assigned to the member at the server instant
+        (EMP-FLEET-006). Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssignmentListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetBlockPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseFleetAvailabilityRead
+      summary: Read the derived availability of an organization asset
+      description: EMP-FLEET-007. Derived at evaluated_at, never stored; the first applying row of UNAVAILABLE (lifecycle not
+        ACTIVE), IN_USE (a trip in progress), IN_MAINTENANCE (an open hold), BLOCKED, RESERVED (a confirmed
+        reservation holding the asset) or AVAILABLE, and every applying cause in that order with its kind, record
+        identifier and period (no person, purpose or note). missing_sources names the sources that could not be
+        consulted; until trips and maintenance holds exist, ACTIVE_USE and MAINTENANCE_HOLD, so the answer never
+        claims their absence. Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server
+        rechecks current fleet.asset.read and same-organization membership; a SELF grant covers an asset assigned to
+        the member at the server instant (EMP-FLEET-006). Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset, reservation or block.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFleetAssetReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFleetAvailability'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install:
     post:
       tags:
@@ -22235,6 +22830,477 @@ components:
         next_cursor: ''
         evaluated_at: '2026-11-14T12:30:00.5Z'
       description: Keyset page of assignments; next_cursor is empty on the last page.
+    EnterpriseFleetReservationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        starts_at:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond later than the server instant.
+        ends_at:
+          type: string
+          format: date-time
+          description: Exclusive end, a whole microsecond after the start.
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 280
+        confirm:
+          type: boolean
+          description: True creates the reservation CONFIRMED (the requester holds fleet.reservation.manage).
+      required:
+      - schema_version
+      - operation_id
+      - starts_at
+      - ends_at
+      - purpose
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009101
+        starts_at: '2026-12-01T11:00:00Z'
+        ends_at: '2026-12-01T15:00:00Z'
+        purpose: Synthetic delivery round
+      description: One reservation request (EMP-FLEET-007). No state, requester, tolerance or authority is
+        caller-chosen; employee_id names the reserved employee record when known.
+    EnterpriseFleetReservationActRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+          description: Cancellation only; required unless the requesting account cancels. A confirmation carries none.
+      required:
+      - schema_version
+      - operation_id
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009103
+        reason: Synthetic change of plan
+      description: Confirms or cancels one reservation at the server instant.
+    EnterpriseFleetReservationAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reservation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - REQUESTED
+          - CONFIRMED
+          - CANCELLED
+          description: The state the command left.
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - asset_id
+      - reservation_id
+      - state
+      - replayed
+      - data_mode
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        reservation_id: 7b0e2a54-0000-4000-8000-000000009201
+        state: REQUESTED
+        replayed: false
+        data_mode: SYNTHETIC
+      description: Original immutable committed result.
+    EnterpriseFleetReservation:
+      type: object
+      additionalProperties: false
+      properties:
+        reservation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 280
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        no_show_tolerance_minutes:
+          type: integer
+          minimum: 15
+          maximum: 240
+        state:
+          type: string
+          enum:
+          - REQUESTED
+          - CONFIRMED
+          - FULFILLED
+          - CANCELLED
+          - NO_SHOW
+          - EXPIRED
+          description: Effective at the page's evaluated_at, including time-driven outcomes no job has stored yet.
+        requested_at:
+          type: string
+          format: date-time
+        confirmed_at:
+          type: string
+          format: date-time
+        end_cause:
+          type: string
+          enum:
+          - CANCELLED
+          - ASSET_LEFT_SERVICE
+          - TIME
+        ended_at:
+          type: string
+          format: date-time
+          description: Cancellation instant, or the instant of the time-driven outcome; present exactly with end_cause.
+        end_reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - reservation_id
+      - asset_id
+      - purpose
+      - starts_at
+      - ends_at
+      - no_show_tolerance_minutes
+      - state
+      - requested_at
+      example:
+        reservation_id: 7b0e2a54-0000-4000-8000-000000009201
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        purpose: Synthetic delivery round
+        starts_at: '2026-11-14T11:00:00Z'
+        ends_at: '2026-11-14T15:00:00Z'
+        no_show_tolerance_minutes: 60
+        state: EXPIRED
+        requested_at: '2026-11-13T10:00:00.000123Z'
+        end_cause: TIME
+        ended_at: '2026-11-14T11:00:00Z'
+      description: One reservation window [starts_at, ends_at) of one asset. Same-organization references; rows are
+        never deleted.
+    EnterpriseFleetReservationPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetReservation'
+        next_cursor:
+          type: string
+        evaluated_at:
+          type: string
+          format: date-time
+          description: Server instant at which every effective state of the page was derived.
+      required:
+      - items
+      - next_cursor
+      - evaluated_at
+      example:
+        items: []
+        next_cursor: ''
+        evaluated_at: '2026-11-14T12:30:00.5Z'
+      description: Keyset page of reservations; next_cursor is empty on the last page.
+    EnterpriseFleetBlockCreateRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason_kind:
+          type: string
+          enum:
+          - ADMINISTRATIVE
+          - SAFETY
+          - DOCUMENT
+          - INVESTIGATION
+          - LENT_OUT
+        note:
+          type: string
+          minLength: 1
+          maxLength: 280
+        valid_from:
+          type: string
+          format: date-time
+          description: Inclusive start, a whole microsecond later than the server instant; omitted means the server
+            instant.
+        valid_to:
+          type: string
+          format: date-time
+          description: Optional exclusive end, a whole microsecond after the start.
+      required:
+      - schema_version
+      - operation_id
+      - reason_kind
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009104
+        reason_kind: SAFETY
+      description: One block command (EMP-FLEET-007). No author, state or authority is caller-chosen.
+    EnterpriseFleetBlockRemoveRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - schema_version
+      - operation_id
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009105
+        reason: Synthetic asset returned
+      description: Removes one block at the server instant; the reason is required.
+    EnterpriseFleetBlockAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        block_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - asset_id
+      - block_id
+      - replayed
+      - data_mode
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        block_id: 7b0e2a54-0000-4000-8000-000000009301
+        replayed: false
+        data_mode: SYNTHETIC
+      description: Original immutable committed result.
+    EnterpriseFleetBlock:
+      type: object
+      additionalProperties: false
+      properties:
+        block_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason_kind:
+          type: string
+          enum:
+          - ADMINISTRATIVE
+          - SAFETY
+          - DOCUMENT
+          - INVESTIGATION
+          - LENT_OUT
+        note:
+          type: string
+          minLength: 1
+          maxLength: 280
+        valid_from:
+          type: string
+          format: date-time
+        valid_to:
+          type: string
+          format: date-time
+          description: Absent while open-ended; equal to valid_from when removed before its start.
+        recorded_at:
+          type: string
+          format: date-time
+        removed_at:
+          type: string
+          format: date-time
+        removal_reason:
+          type: string
+          minLength: 1
+          maxLength: 280
+      required:
+      - block_id
+      - asset_id
+      - reason_kind
+      - valid_from
+      - recorded_at
+      example:
+        block_id: 7b0e2a54-0000-4000-8000-000000009301
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        reason_kind: LENT_OUT
+        note: Synthetic loan to a partner
+        valid_from: '2026-11-14T12:00:00.000123Z'
+        valid_to: '2026-11-20T12:00:00Z'
+        recorded_at: '2026-11-14T12:00:00.000123Z'
+      description: One half-open block period [valid_from, valid_to) of one asset; rows are never deleted.
+    EnterpriseFleetBlockPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetBlock'
+        next_cursor:
+          type: string
+        evaluated_at:
+          type: string
+          format: date-time
+      required:
+      - items
+      - next_cursor
+      - evaluated_at
+      example:
+        items: []
+        next_cursor: ''
+        evaluated_at: '2026-11-14T12:30:00.5Z'
+      description: Keyset page of blocks; next_cursor is empty on the last page.
+    EnterpriseFleetAvailabilityCause:
+      type: object
+      additionalProperties: false
+      properties:
+        availability:
+          type: string
+          enum:
+          - UNAVAILABLE
+          - IN_USE
+          - IN_MAINTENANCE
+          - BLOCKED
+          - RESERVED
+        kind:
+          type: string
+          enum:
+          - LIFECYCLE
+          - ACTIVE_USE
+          - MAINTENANCE_HOLD
+          - BLOCK
+          - RESERVATION
+        lifecycle_state:
+          type: string
+          enum:
+          - DRAFT
+          - INACTIVE
+          - DISPOSED
+          - ARCHIVED
+        record_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason_kind:
+          type: string
+          enum:
+          - ADMINISTRATIVE
+          - SAFETY
+          - DOCUMENT
+          - INVESTIGATION
+          - LENT_OUT
+        valid_from:
+          type: string
+          format: date-time
+        valid_to:
+          type: string
+          format: date-time
+      required:
+      - availability
+      - kind
+      example:
+        availability: BLOCKED
+        kind: BLOCK
+        record_id: 7b0e2a54-0000-4000-8000-000000009301
+        reason_kind: SAFETY
+        valid_from: '2026-11-14T12:00:00.000123Z'
+      description: One applying row with its source kind, record and period; never a person, purpose or note.
+    EnterpriseFleetAvailability:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        availability:
+          type: string
+          enum:
+          - AVAILABLE
+          - RESERVED
+          - IN_USE
+          - IN_MAINTENANCE
+          - BLOCKED
+          - UNAVAILABLE
+        causes:
+          type: array
+          maxItems: 1000
+          items:
+            $ref: '#/components/schemas/EnterpriseFleetAvailabilityCause'
+        missing_sources:
+          type: array
+          maxItems: 2
+          uniqueItems: true
+          items:
+            type: string
+            enum:
+            - ACTIVE_USE
+            - MAINTENANCE_HOLD
+        evaluated_at:
+          type: string
+          format: date-time
+      required:
+      - asset_id
+      - availability
+      - causes
+      - missing_sources
+      - evaluated_at
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        availability: BLOCKED
+        causes:
+        - availability: BLOCKED
+          kind: BLOCK
+          record_id: 7b0e2a54-0000-4000-8000-000000009301
+          reason_kind: SAFETY
+          valid_from: '2026-11-14T12:00:00.000123Z'
+        - availability: RESERVED
+          kind: RESERVATION
+          record_id: 7b0e2a54-0000-4000-8000-000000009201
+          valid_from: '2026-11-14T12:00:00Z'
+          valid_to: '2026-11-14T16:00:00Z'
+        missing_sources:
+        - ACTIVE_USE
+        - MAINTENANCE_HOLD
+        evaluated_at: '2026-11-14T12:30:00.5Z'
+      description: Derived availability at evaluated_at (fleet.md §6.2, BR-FLEET-025), never stored.
     EnterpriseFleetAssetPage:
       type: object
       additionalProperties: false
@@ -26411,7 +27477,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, RESERVATION_CONFLICT, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE]
     DriverCommandRequest:
       type: object
       additionalProperties: false
@@ -29850,6 +30916,11 @@ components:
                     pattern: '^(0|[1-9][0-9]{0,18})$'
                     maxLength: 19
                     example: '2'
+                  instant:
+                    type: string
+                    format: date-time
+                    description: Optional exact UTC instant; only a RESERVATION_CONFLICT window bound (field conflict_window,
+                      code STARTS_AT or ENDS_AT), never a record, person or reason.
     HealthStatus:
       description: Minimal liveness/readiness envelope.
       type: object

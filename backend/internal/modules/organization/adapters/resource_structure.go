@@ -86,7 +86,7 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 		return out, nil
 	}
 	switch {
-	case r.Kind == AssetStructure && (policy.Permission == "fleet.asset.read" || policy.Permission == "fleet.asset.manage" || policy.Permission == "fleet.asset.assign"):
+	case r.Kind == AssetStructure && (policy.Permission == "fleet.asset.read" || policy.Permission == "fleet.asset.manage" || policy.Permission == "fleet.asset.assign" || policy.Permission == "fleet.reservation.manage"):
 		if meterMissing(r.Allocations) {
 			return permissions.ResourceFacts{}, org.ErrUnavailable
 		}

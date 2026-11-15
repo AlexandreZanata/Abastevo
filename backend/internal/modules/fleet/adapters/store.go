@@ -29,6 +29,11 @@ type AssetStore struct {
 	// OpenWork answers BR-FLEET-010 inside lifecycle commands. Runtime wires
 	// NoOpenWork explicitly; a nil port fails every removal from service.
 	OpenWork app.AssetOpenWork
+	// ActiveUse and MaintenanceHolds answer availability rows 2 and 3
+	// (EMP-FLEET-007). Runtime wires NoActiveUse and NoMaintenanceHolds
+	// explicitly; a nil port fails every availability read and start check.
+	ActiveUse        app.ActiveUsePort
+	MaintenanceHolds app.MaintenanceHoldPort
 }
 
 var _ app.AssetRepository = (*AssetStore)(nil)
@@ -36,7 +41,8 @@ var _ app.AssetLookup = (*AssetStore)(nil)
 
 func AssetAuditDefinitions() []audit.Definition {
 	definitions := append([]audit.Definition{{Action: "fleet.asset.created", TargetType: "asset"}, {Action: "fleet.asset.changed", TargetType: "asset"}, {Action: "fleet.asset.discarded", TargetType: "asset"}, {Action: "fleet.asset.activated", TargetType: "asset"}}, lifecycleAuditDefinitions()...)
-	return append(definitions, assignmentAuditDefinitions()...)
+	definitions = append(definitions, assignmentAuditDefinitions()...)
+	return append(definitions, reservationAuditDefinitions()...)
 }
 func validID(raw string) bool { id, e := kernel.ParseOrgID(raw); return e == nil && id.String() == raw }
 func validCall(scope kernel.OrgScope, actor app.FleetActor, member string) error {

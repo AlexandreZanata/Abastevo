@@ -1218,6 +1218,33 @@ Commands use fresh `fleet.asset.assign` (admission class `fleet.assignment`);
 reads use current `fleet.asset.read`, whose SELF grants now cover assigned
 assets. Nothing here provisions live grants.
 
+### Reservations, blocks and availability (EMP-FLEET-007)
+
+Migration217 adds forced-RLS `org_asset_reservations` (stored state moved only
+by the guarded fleet.md §6.4 rows; CONFIRMED windows never overlap: a
+`btree_gist` exclusion; a confirmation over a block is refused),
+`org_asset_blocks` (append-only; removal sets the end with a reason) and the
+receipts `org_asset_reservation_commands`, one `AFTER UPDATE OF state` consumer
+that cancels open reservations when an asset leaves service, and recognises the
+two new asset keys in `org_asset_current_usage` (on top of the 215 body). The
+migration owner needs `TRIGGER` on `org_assets`, `REFERENCES` on
+`organizations`, `org_audit_events`, `org_assets` and `org_employee_identities`,
+and ownership of `org_asset_current_usage`. The Fleet principal needs `SELECT,
+INSERT, UPDATE ON org_asset_reservations, org_asset_blocks`, `SELECT, INSERT ON
+org_asset_reservation_commands` and `SELECT, INSERT ON job_queue` (the
+per-reservation `org-asset-reservation-outcome` job is queued in the command
+transaction). Every principal that deactivates or disposes an asset needs
+`SELECT (org_id, asset_id, state, revision, starts_at, ends_at,
+no_show_tolerance), UPDATE (state, revision, end_cause, source_revision) ON
+org_asset_reservations`.
+The worker composes the outcome handler on the general dispatcher with the same
+Fleet grants; it settles `EXPIRED`/`NO_SHOW` once (compare-and-set), and every
+read derives the same outcome at its own instant when no job has run. Commands
+use fresh `fleet.reservation.manage` (org-permissions-v5, admission class
+`fleet.reservation`); reservation, block and availability reads use current
+`fleet.asset.read`. Trips and maintenance holds are answered "no source" and
+listed in `missing_sources`. Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

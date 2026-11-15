@@ -42,6 +42,8 @@ func (g *FleetAuthority) CheckFleetTx(ctx context.Context, tx pgx.Tx, scope kern
 		policy = fleet.Policy(action == fleet.FleetManage)
 	case fleet.FleetAssign:
 		policy = fleet.AssignPolicy()
+	case fleet.FleetReserve:
+		policy = fleet.ReservePolicy()
 	case fleet.FleetReadOwnAssignments:
 		// The member's own assignment list: no structure or asset lookup.
 		if target != member {

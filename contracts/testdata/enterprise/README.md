@@ -44,6 +44,24 @@ two amendments; this declaration permission conveys no verification or
 station authority. Current membership, proof, capability and record checks
 remain mandatory at runtime.
 
+## Authorization catalog v5
+
+The reservation and checklist amendment (EDR-190/191) keeps v1–v4 as
+historical evidence and pins the [version 5 oracle](authorization-catalog-v5.psv):
+the v4 shape (85 keys × 13 roles = 1,105 cells, same row order) with exactly
+eleven cells changed from dash to O. fleet.reservation.manage takes the
+fleet.asset.assign column (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR);
+check.template.manage the maint.workorder.manage column (OWNER, ADMIN,
+FLEET_MANAGER); check.incident.manage OWNER, ADMIN, FLEET_MANAGER and
+SUPERVISOR. No restriction is added; AUDITOR and the station/data roles gain
+nothing; 18 keys stay unassigned. The regression compares both files, the
+compiled source and the v1 retention test; consumers (route inventory, HTTP
+matrix, export gating) read v5. Granting a key routes nothing.
+
+```sh
+(cd backend && go test -race ./internal/modules/orgaccess/domain -count=1)
+```
+
 ## Identity lifecycle v1
 
 EMP-IDN-001 executes all 29 rows of identity-lifecycle-v1.psv in Go. The
