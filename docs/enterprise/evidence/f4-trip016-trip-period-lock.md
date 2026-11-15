@@ -206,6 +206,45 @@ git diff --check
 - No Kotlin, Android, shared vector, job or deployment change, so no Gradle
   run applies; no emulator or device was used.
 
+## Merge with the integration head
+
+Task commits `6dd09490` (EMP-TRIP-016) and `9bdd7a45` (EMP-TRIP-015) on
+`7daf0010`; then, as the coordinator asked, a normal merge of
+`codex/enterprise-f4` at `3345865b` (EMP-FLEET-013 and EMP-TRIP-008,
+migration 000227) in merge commit `3a3eca09`. Conflicts were resolved as
+unions: the contract sections (FLEET-013, TRIP-008, then TRIP-016,
+TRIP-015), the EDR rows by number (224..231, then 232..237), the full-router
+path list, the matrix private snapshot (missions and amendments), the
+`TripStructure`/`MissionStructure` cases and the `trip.submit` and
+`trip.mission.respond` intake plans; the OpenAPI file is the F4 head's with
+the TRIP-016 decide description and the TRIP-015 path, schemas and owner
+results re-applied structurally (one `amendments/propose` path, YAML
+parses). 000227 redefines only `org_asset_current_usage` and
+`org_unit_current_usage`; 000228 and 000229 redefine neither, so no usage
+body had to be rebuilt, and the previous images of both upgrade tests now
+include 000227. Counts on the merged tree: 141 normal routes (routed 26,
+signed 1, not routed 58, specials 25), AUDITOR walk 141 / 30 / 111.
+
+Gates on the merged tree (`3a3eca09`):
+
+- Race/integration union with the same flags, log
+  `trip015-merged-db-union.jsonl` (47 min 20 s; `organization/adapters`
+  2800 s under load): 29 packages, 28 pass and `orgtest` has no tests;
+  1025 top-level / 8242 named, 0 failures, 0 skips. It includes every
+  TRIP-016, TRIP-015, TRIP-008, TRIP-004, TRIP-003 and METER-004 suite, the
+  authorization matrix at 260 cells (102 allowed / 158 denied) and the
+  AUDITOR walk at 141 routes / 30 positive / 111 FORBIDDEN with unchanged
+  private state.
+- Untagged whole module, log `trip015-merged-untagged-all.log`: exit 0, 222
+  packages ok, 81 without tests.
+- Toolchain gofmt, vet plain and integration, `sqlc vet`/`sqlc diff` and
+  staticcheck plain and integration (`trip015-merged-staticcheck.log`,
+  empty): clean.
+- OpenAPI: `vacuum lint` 0 errors, 1041 warnings / 660 informs versus 1036 /
+  660 on the F4 head `3345865b` (the five TRIP-015 description-style
+  warnings), log `trip015-merged-vacuum.log`.
+- `check_plan.py`: 0 problems; `git diff --check` clean.
+
 ## Retained obligations
 
 - EMP-TRIP-015: amendments of approved trips go through orgamend with this
