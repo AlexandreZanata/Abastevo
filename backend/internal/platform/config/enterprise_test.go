@@ -41,3 +41,23 @@ func TestEnterpriseDeviceLimitIsServerOwnedAndBounded(t *testing.T) {
 		}
 	}
 }
+
+// EMP-METER-003 (EDR-185): the reading validation is on unless the operator
+// turns it off; the switch is a strict boolean and never echoes its input.
+func TestEnterpriseMeterPlausibilityDefaultsOnAndValidatesSwitch(t *testing.T) {
+	cfg, err := load(envFunc(nil))
+	if err != nil || !cfg.EnterpriseMeterPlausibility {
+		t.Fatal("meter plausibility off by default", err)
+	}
+	for _, raw := range []string{"true", "false"} {
+		cfg, err := load(envFunc(map[string]string{keyEnterpriseMeterPlausibility: raw}))
+		if err != nil || cfg.EnterpriseMeterPlausibility != (raw == "true") {
+			t.Fatal(raw, err)
+		}
+	}
+	for _, raw := range []string{"", "off", " true ", "private-invalid-value"} {
+		if _, err := load(envFunc(map[string]string{keyEnterpriseMeterPlausibility: raw})); err == nil || !strings.Contains(err.Error(), keyEnterpriseMeterPlausibility) || strings.Contains(err.Error(), "private-invalid-value") {
+			t.Fatal("invalid meter plausibility switch accepted or disclosed", err)
+		}
+	}
+}

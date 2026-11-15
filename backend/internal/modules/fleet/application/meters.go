@@ -77,6 +77,9 @@ const (
 	MeterInstallAction MeterAction = iota + 1
 	MeterRecordAction
 	MeterReadAction
+	// EMP-METER-004 (EDR-188): meter.reading.correct on the reading's asset.
+	MeterCorrectAction
+	MeterCorrectReadAction
 )
 
 func MeterPolicy(action MeterAction) access.Policy {
@@ -87,6 +90,10 @@ func MeterPolicy(action MeterAction) access.Policy {
 		return Policy(false)
 	case MeterRecordAction:
 		return access.Policy{Permission: "meter.reading.record", Capability: "organizations", Effect: access.OperationalWrite}
+	case MeterCorrectAction:
+		return MeterReviewPolicy(true)
+	case MeterCorrectReadAction:
+		return MeterReviewPolicy(false)
 	}
 	return access.Policy{}
 }

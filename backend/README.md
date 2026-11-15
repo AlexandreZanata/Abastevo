@@ -1150,6 +1150,33 @@ ownership of `org_asset_current_usage`, `org_unit_current_usage` and
 changed-right and post-disposal fuelings store nothing and stay
 RETRY/UNAVAILABLE. Nothing here provisions live grants.
 
+### Meter reading validation (EMP-METER-003)
+
+Migration216 adds the forced-RLS, append-only `org_meter_reading_states`
+history (revision, state, canonical flags, `RETROACTIVE` note, cause,
+operation) and admits a `SUSPECT` classification for an accepted held
+reading. Every principal that records, applies or reads meter readings needs
+`SELECT, INSERT ON org_meter_reading_states` (the latest-valid read and the
+series check read it). The migrator needs `REFERENCES ON org_meter_readings,
+org_memberships` and ownership of `org_meter_observation_guard()`.
+`ANPFUEL_ENTERPRISE_METER_PLAUSIBILITY` (boolean, default `true`) is the
+rollback switch: `false` stores field readings `VALID` without flags or history,
+exactly as before the migration (EDR-185). Nothing here provisions live grants.
+
+### Meter reading decisions (EMP-METER-004)
+
+`POST …/fleet/assets/{asset_id}/meters/{meter_id}/readings/list` (history,
+`fleet.asset.read`), `…/readings/suspect/list` and
+`…/readings/{reading_id}/decide` (`meter.reading.correct`, fresh proof) reuse
+the meter principal and its `org_meter_reading_states` grants; no migration is
+added. The decision's approved-parent port additionally needs `SELECT
+(org_id, reading_id, review_state) ON org_fuelings`, and the reading-list
+export worker needs `SELECT (org_id, meter_id, reading_id, revision, state,
+recorded_at) ON org_meter_reading_states` to export the state as of its
+`as_of`. `meter.usage.recalculated` is published only when a composition
+supplies its consumers; production composes none (EDR-189). Nothing here
+provisions live grants.
+
 ### Asset lifecycle (EMP-FLEET-003)
 
 Migration201 adds nullable acquisition/disposal columns to `org_assets` and the

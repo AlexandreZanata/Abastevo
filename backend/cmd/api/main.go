@@ -531,7 +531,7 @@ func runWithRouterCheck(check func(chi.Router) error) error {
 		exportStorage = &orgexportpg.StorageConfig{Endpoint: cfg.R2.Endpoint, Bucket: cfg.R2.Bucket, Region: cfg.R2.Region,
 			Credentials: evidencestorage.Credentials{AccessKeyID: cfg.R2.AccessKeyID, SecretAccessKey: cfg.R2.SecretAccessKey}}
 	}
-	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Origin: "https://" + cfg.CanonicalHost, CursorSecret: cfg.CursorSecret, Pool: pool.Underlying(), Accounts: accountService, DeviceLimit: cfg.EnterpriseDeviceLimit, ExportStorage: exportStorage}); err != nil {
+	if err := enterprisesuite.Register(router, enterprisesuite.Options{Enabled: cfg.EnterpriseEnabled, Origin: "https://" + cfg.CanonicalHost, CursorSecret: cfg.CursorSecret, Pool: pool.Underlying(), Accounts: accountService, DeviceLimit: cfg.EnterpriseDeviceLimit, ExportStorage: exportStorage, MeterPlausibilityOff: !cfg.EnterpriseMeterPlausibility}); err != nil {
 		return err
 	}
 	// Station/fuel feedback (P14-T03). Same closure rule: session

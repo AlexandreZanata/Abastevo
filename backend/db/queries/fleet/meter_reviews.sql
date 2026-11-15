@@ -55,13 +55,15 @@ INSERT INTO org_sync_review_resolutions(org_id,id,review_item_id,expected_revisi
 VALUES(CAST(sqlc.arg(org_id)::text AS uuid),CAST(sqlc.arg(id)::text AS uuid),CAST(sqlc.arg(review_item_id)::text AS uuid),sqlc.arg(expected_revision)::bigint,sqlc.arg(outcome)::text,sqlc.arg(reason)::text,CAST(sqlc.arg(reviewer_account_id)::text AS uuid),CAST(sqlc.arg(reviewer_membership_id)::text AS uuid),CAST(sqlc.arg(reviewer_employee_id)::text AS uuid),CAST(sqlc.arg(reviewer_session_id)::text AS uuid),sqlc.arg(request_hash)::text,sqlc.arg(resolved_at)::timestamptz,sqlc.narg(entity_revision)::bigint,CAST(NULLIF(sqlc.arg(reading_id)::text,'') AS uuid),sqlc.arg(canonical_resolution)::bytea);
 
 -- name: ReadMeterReviewResolution :one
-SELECT z.review_item_id::text AS review_item_id,z.outcome,z.canonical_resolution,i.operation_id::text AS operation_id,h.asset_id::text AS asset_id,h.meter_id::text AS meter_id,h.segment_id::text AS segment_id,h.reading_id::text AS reading_id
+SELECT z.review_item_id::text AS review_item_id,z.outcome,z.canonical_resolution,i.operation_id::text AS operation_id,h.asset_id::text AS asset_id,h.meter_id::text AS meter_id,h.segment_id::text AS segment_id,h.reading_id::text AS reading_id,
+ h.value,h.occurred_at,h.occurred_submicro,a.received_at AS original_received_at
 FROM org_sync_review_resolutions z JOIN org_sync_review_items i ON(i.org_id,i.id)=(z.org_id,z.review_item_id) JOIN org_meter_held_readings h ON(h.org_id,h.review_item_id)=(i.org_id,i.id)
+JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id,a.review_item_id,a.review_proof_version)=(i.org_id,i.operation_id,i.id,i.proof_version)
 WHERE z.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND z.id=CAST(sqlc.arg(id)::text AS uuid);
 
 -- name: InsertReviewedMeterReading :exec
 INSERT INTO org_meter_readings(org_id,id,meter_id,segment_id,value,occurred_at,occurred_submicro,entry_zone,device_offset_seconds,author_membership_id,capture_kind,enrollment_id,operation_id,request_hash,origin,method,state,review_resolution_id)
-SELECT h.org_id,h.reading_id,h.meter_id,h.segment_id,h.value,h.occurred_at,h.occurred_submicro,h.entry_zone,h.device_offset_seconds,o.membership_id,'ENROLLED_DEVICE',o.enrollment_id,o.operation_id,h.request_hash,h.origin,h.method,'VALID',z.id
+SELECT h.org_id,h.reading_id,h.meter_id,h.segment_id,h.value,h.occurred_at,h.occurred_submicro,h.entry_zone,h.device_offset_seconds,o.membership_id,'ENROLLED_DEVICE',o.enrollment_id,o.operation_id,h.request_hash,h.origin,h.method,sqlc.arg(state)::text,z.id
 FROM org_sync_review_resolutions z JOIN org_sync_review_items i ON(i.org_id,i.id)=(z.org_id,z.review_item_id) JOIN org_meter_held_readings h ON(h.org_id,h.review_item_id)=(i.org_id,i.id) JOIN org_sync_operations o ON(o.org_id,o.operation_id)=(i.org_id,i.operation_id)
 WHERE z.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND z.id=CAST(sqlc.arg(id)::text AS uuid) AND z.outcome='ACCEPTED';
 

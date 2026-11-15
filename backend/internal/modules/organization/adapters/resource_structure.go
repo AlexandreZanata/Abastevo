@@ -86,7 +86,9 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 		return out, nil
 	}
 	switch {
-	case r.Kind == AssetStructure && (policy.Permission == "fleet.asset.read" || policy.Permission == "fleet.asset.manage" || policy.Permission == "fleet.asset.assign" || policy.Permission == "fleet.reservation.manage"):
+	// EMP-METER-004 (EDR-188): meter decisions cover the reading's asset
+	// through its current allocation, as every register action does.
+	case r.Kind == AssetStructure && (policy.Permission == "fleet.asset.read" || policy.Permission == "fleet.asset.manage" || policy.Permission == "fleet.asset.assign" || policy.Permission == "fleet.reservation.manage" || policy.Permission == "meter.reading.correct"):
 		if meterMissing(r.Allocations) {
 			return permissions.ResourceFacts{}, org.ErrUnavailable
 		}

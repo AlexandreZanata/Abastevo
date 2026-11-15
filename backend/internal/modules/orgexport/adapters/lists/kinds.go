@@ -16,7 +16,7 @@ var (
 	assetStates    = []string{"DRAFT", "ACTIVE", "INACTIVE", "DISPOSED", "ARCHIVED"}
 	assetKinds     = []string{"VEHICLE", "MACHINE", "IMPLEMENT"}
 	meterKinds     = []string{"ODOMETER", "HOUR_METER"}
-	readingStates  = []string{"VALID", "SUSPECT"}
+	readingStates  = []string{"VALID", "SUSPECT", "VOIDED"}
 	employeeStates = []string{"ACTIVE", "INACTIVE", "TERMINATED"}
 )
 
@@ -139,7 +139,7 @@ func (readingList) spec() domain.ListSpec {
 			integer("value_m", "m", "Odometer readings only, exact metres."), integer("value_s", "s", "Hour-meter readings only, exact seconds."),
 			instant("occurred_at", "Declared occurrence instant with its stored sub-microsecond digits."), note(text("entry_zone"), "IANA time zone declared at entry."),
 			integer("device_offset_s", "s", "Device clock offset from UTC declared at entry."), instant("received_at", "Server receipt instant."),
-			text("origin"), text("method"), text("state"), text("author_membership_id"), text("capture_kind"),
+			text("origin"), text("method"), note(text("state"), "State as of as_of: the latest classification history revision recorded at or before as_of, else the recorded classification (EMP-METER-004)."), text("author_membership_id"), text("capture_kind"),
 		},
 		Omitted: []domain.Omission{{Column: "capture_locator", Reason: "CAPTURE_LOCATOR",
 			Note: "The web session or device enrolment that captured the reading is server-side provenance and is not exported (BR-PRIV-008)."}},
@@ -173,10 +173,14 @@ func (readingList) consistent(f filters) bool {
 	return from.Before(to)
 }
 
-const readingStatement = `SELECT r.id::text,m.asset_id::text,r.meter_id::text,m.kind,r.value,r.occurred_at,r.occurred_submicro,r.entry_zone,r.device_offset_seconds,r.received_at,r.origin,r.method,r.state,r.author_membership_id::text,r.capture_kind
+// The state is the reading's classification as of as_of (EMP-METER-004):
+// the latest history revision recorded at or before as_of, else the
+// recorded classification.
+const readingStatement = `SELECT r.id::text,m.asset_id::text,r.meter_id::text,m.kind,r.value,r.occurred_at,r.occurred_submicro,r.entry_zone,r.device_offset_seconds,r.received_at,r.origin,r.method,c.state,r.author_membership_id::text,r.capture_kind
 FROM org_meter_readings r JOIN org_meters m ON m.org_id=r.org_id AND m.id=r.meter_id
+CROSS JOIN LATERAL(SELECT COALESCE((SELECT s.state FROM org_meter_reading_states s WHERE s.org_id=r.org_id AND s.meter_id=r.meter_id AND s.reading_id=r.id AND s.recorded_at<=$2::timestamptz ORDER BY s.revision DESC LIMIT 1),r.state) AS state) c
 WHERE r.org_id=$1::uuid AND r.received_at<=$2::timestamptz
- AND($3::text='' OR m.asset_id=CAST(NULLIF($3::text,'') AS uuid)) AND($4::text='' OR m.kind=$4::text) AND($5::text='' OR r.state=$5::text)
+ AND($3::text='' OR m.asset_id=CAST(NULLIF($3::text,'') AS uuid)) AND($4::text='' OR m.kind=$4::text) AND($5::text='' OR c.state=$5::text)
  AND($6::timestamptz IS NULL OR(r.occurred_at,r.occurred_submicro)>=($6::timestamptz,$7::smallint))
  AND($8::timestamptz IS NULL OR(r.occurred_at,r.occurred_submicro)<($8::timestamptz,$9::smallint))
 ORDER BY r.occurred_at,r.occurred_submicro,r.id LIMIT $10::bigint`

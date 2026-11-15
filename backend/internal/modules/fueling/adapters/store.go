@@ -224,3 +224,23 @@ func (s *Store) ReadFuelingTx(ctx context.Context, db syncapp.DBTX, scope kernel
 		Fill: row.Fill, Payer: row.Payer, Payment: row.PaymentMethod, Origin: row.Origin, Derived: derived, ReviewState: row.ReviewState,
 		MeterID: row.MeterID, SegmentID: row.SegmentID, ReadingID: row.ReadingID, UnitID: row.UnitID, CostCentreID: row.CostCentreID, Warnings: append([]string(nil), row.Warnings...)}, nil
 }
+
+// ApprovedParentTx answers the fleet decision port (EMP-METER-004,
+// B-BR-EMP-290): whether the fueling that carries the reading is APPROVED.
+// A reading carried by no fueling has no fueling parent.
+func (s *Store) ApprovedParentTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, reading string) (bool, error) {
+	queries, _, err := s.port(ctx, db, scope)
+	if err != nil {
+		return false, err
+	}
+	states, err := queries.FuelingReviewStateByReading(ctx, q.FuelingReviewStateByReadingParams{OrgID: scope.OrgID().String(), ReadingID: reading})
+	if err != nil {
+		return false, app.ErrUnavailable
+	}
+	for _, state := range states {
+		if state == string(review.Approved) {
+			return true, nil
+		}
+	}
+	return false, nil
+}

@@ -24,6 +24,16 @@ func meterStore(t *testing.T, fx legalFixtureState) *fleetpg.MeterStore {
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_meters,org_meter_segments,org_meter_readings,org_meter_commands TO "+role+";GRANT UPDATE(id) ON org_meters TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	// EMP-METER-003 history exists from 000216; upgrade rehearsals run older images.
+	var states bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_meter_reading_states') IS NOT NULL`).Scan(&states); err != nil {
+		t.Fatal(err)
+	}
+	if states {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_meter_reading_states TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 	catalog, err := audit.NewCatalog(fleetpg.MeterAuditDefinitions())
 	if err != nil {
 		t.Fatal(err)

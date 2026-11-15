@@ -40,6 +40,7 @@ func grantListReaders(t *testing.T, f *orgtest.Fixture) {
 		"GRANT SELECT(org_id,asset_id,cost_centre_id,valid_from,valid_to) ON org_asset_cost_centre_periods TO ",
 		"GRANT SELECT(org_id,id,asset_id,kind) ON org_meters TO ",
 		"GRANT SELECT(org_id,id,meter_id,value,occurred_at,occurred_submicro,entry_zone,device_offset_seconds,received_at,origin,method,state,author_membership_id,capture_kind) ON org_meter_readings TO ",
+		"GRANT SELECT(org_id,meter_id,reading_id,revision,state,recorded_at) ON org_meter_reading_states TO ",
 		"GRANT SELECT(org_id,id,state,revision,merged_into) ON org_employee_identities TO ",
 		"GRANT SELECT(org_id,employee_id,display_name,registration_number,job_title,home_unit_id,revision) ON org_employee_profiles TO ",
 		"GRANT SELECT(org_id,id,employee_id,account_id,state) ON org_memberships TO ",
@@ -528,5 +529,43 @@ func TestListExportsFailWithoutPartialOutput(t *testing.T) {
 	})
 	if err == nil {
 		t.Fatal("the export role can read work contact")
+	}
+}
+
+// EMP-METER-004: the reading list exports each reading's state as of the
+// "as of" instant from its classification history, so a reading voided after
+// that instant is still VALID there and VOIDED afterwards.
+func TestReadingListExportsTheStateAsOfTheHistory(t *testing.T) {
+	w := seed(t)
+	readings, _ := lists.Spec(lists.ReadingListKind)
+	voidedAt := time.Date(2026, 3, 1, 0, 0, 0, 0, time.UTC)
+	adminExec(t, w.f, w.a, []any{`INSERT INTO org_meter_reading_states(org_id,meter_id,reading_id,revision,state,flags,cause,operation_id,actor_membership_id,reason,recorded_at) VALUES($1,$2,$3,1,'VOIDED','{}','VOIDED',$4,$5,'Synthetic void',$6)`,
+		w.a.OrgID().String(), sid("a", 20), sid("a", 30), sid("a", 79), w.requester.MembershipID, voidedAt})
+	var before, after []string
+	for _, r := range w.readRows {
+		if r[0] == sid("a", 30) {
+			before = r
+			after = append([]string(nil), r...)
+			after[12] = "VOIDED"
+		}
+	}
+	if before == nil || before[12] != "VALID" {
+		t.Fatal("fixture reading missing")
+	}
+	for _, tc := range []struct {
+		parameters string
+		asOf       time.Time
+		want       [][]string
+	}{
+		{`{"state":"VOIDED"}`, readingsAsOf, [][]string{after}},
+		{`{"state":"VOIDED"}`, voidedAt.Add(-time.Nanosecond), nil},
+	} {
+		file, err := w.produce(t, readings.Kind, tc.parameters, tc.asOf, domain.DefaultLimits())
+		if err != nil {
+			t.Fatal(err)
+		}
+		p := open(t, file)
+		compare(t, readings, records(t, p), tc.want)
+		w.clean(t, p)
 	}
 }

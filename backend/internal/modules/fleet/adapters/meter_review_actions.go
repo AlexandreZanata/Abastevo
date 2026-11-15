@@ -308,7 +308,7 @@ func (s *MeterReviewStore) ApplyReviewedMeterTx(ctx context.Context, db syncapp.
 	}
 	reading, err := queries.GetMeterReadingByOperation(ctx, q.GetMeterReadingByOperationParams{OrgID: scope.OrgID().String(), MeterID: row.MeterID, OperationID: row.OperationID})
 	if errors.Is(err, pgx.ErrNoRows) {
-		if err := queries.InsertReviewedMeterReading(ctx, q.InsertReviewedMeterReadingParams{OrgID: scope.OrgID().String(), ID: resolutionID}); err != nil {
+		if err := s.insertReviewedReading(ctx, db, scope, view, row, resolutionID); err != nil {
 			return meter.Reading{}, meterError(ctx, err)
 		}
 		reading, err = queries.GetMeterReadingByOperation(ctx, q.GetMeterReadingByOperationParams{OrgID: scope.OrgID().String(), MeterID: row.MeterID, OperationID: row.OperationID})
@@ -317,6 +317,33 @@ func (s *MeterReviewStore) ApplyReviewedMeterTx(ctx context.Context, db syncapp.
 		return meter.Reading{}, app.ErrUnavailable
 	}
 	return meterReading(scope, view, reading)
+}
+
+// insertReviewedReading applies an accepted held reading with its
+// EMP-METER-003 classification at the original receipt (B-BR-EMP-283). The
+// decision transaction already holds the organization root; the meter lock
+// serialises this series like every other new reading.
+func (s *MeterReviewStore) insertReviewedReading(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, view app.MeterView, row q.ReadMeterReviewResolutionRow, resolutionID string) error {
+	queries := q.New(db)
+	if _, err := queries.LockMeter(ctx, q.LockMeterParams{OrgID: scope.OrgID().String(), AssetID: row.AssetID, ID: row.MeterID}); err != nil {
+		return err
+	}
+	occurred, err := exactMeterTime(row.OccurredAt, row.OccurredSubmicro)
+	if err != nil {
+		return err
+	}
+	received, err := exactMeterTime(row.OriginalReceivedAt, 0)
+	if err != nil {
+		return err
+	}
+	verdict, err := classifyCandidate(ctx, db, scope, s.Plausibility, view, candidatePoint(row.ReadingID, row.Value, occurred, received))
+	if err != nil {
+		return err
+	}
+	if err := queries.InsertReviewedMeterReading(ctx, q.InsertReviewedMeterReadingParams{OrgID: scope.OrgID().String(), ID: resolutionID, State: string(verdict.State)}); err != nil {
+		return err
+	}
+	return recordClassification(ctx, db, scope, s.Plausibility, view, row.ReadingID, resolutionID, verdict)
 }
 
 func reviewSelectorValid(v protocol.ReviewSelector) bool {

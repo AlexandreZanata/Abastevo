@@ -48,3 +48,7 @@ SELECT f.id::text AS id,f.operation_id::text AS operation_id,f.payload_digest,f.
  COALESCE((SELECT array_agg(w.code ORDER BY w.code) FROM org_fueling_warnings w WHERE w.org_id=f.org_id AND w.fueling_id=f.id AND w.revision=f.revision),'{}')::text[] AS warnings,
  COALESCE((SELECT r.state FROM org_fueling_review_entries r WHERE r.org_id=f.org_id AND r.fueling_id=f.id ORDER BY r.sequence DESC LIMIT 1),'')::text AS review_entry_state
 FROM org_fuelings f WHERE f.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND f.id=CAST(sqlc.arg(id)::text AS uuid);
+
+-- name: FuelingReviewStateByReading :many
+-- EMP-METER-004 (B-BR-EMP-290): the review state of the fueling that carries a reading.
+SELECT review_state FROM org_fuelings WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND reading_id=CAST(sqlc.arg(reading_id)::text AS uuid);

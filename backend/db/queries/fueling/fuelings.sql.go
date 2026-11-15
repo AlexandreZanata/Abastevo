@@ -71,6 +71,36 @@ func (q *Queries) FuelingReferenceFacts(ctx context.Context, arg FuelingReferenc
 	return i, err
 }
 
+const fuelingReviewStateByReading = `-- name: FuelingReviewStateByReading :many
+SELECT review_state FROM org_fuelings WHERE org_id=CAST($1::text AS uuid) AND reading_id=CAST($2::text AS uuid)
+`
+
+type FuelingReviewStateByReadingParams struct {
+	OrgID     string `json:"org_id"`
+	ReadingID string `json:"reading_id"`
+}
+
+// EMP-METER-004 (B-BR-EMP-290): the review state of the fueling that carries a reading.
+func (q *Queries) FuelingReviewStateByReading(ctx context.Context, arg FuelingReviewStateByReadingParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, fuelingReviewStateByReading, arg.OrgID, arg.ReadingID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var review_state string
+		if err := rows.Scan(&review_state); err != nil {
+			return nil, err
+		}
+		items = append(items, review_state)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getFueling = `-- name: GetFueling :one
 SELECT f.id::text AS id,f.operation_id::text AS operation_id,f.payload_digest,f.asset_id::text AS asset_id,
  f.responsible_employee_id::text AS responsible_employee_id,f.author_membership_id::text AS author_membership_id,
