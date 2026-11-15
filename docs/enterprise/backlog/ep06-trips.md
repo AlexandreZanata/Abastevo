@@ -13,7 +13,7 @@ ADR-019 construction batch. See the
 Recovered scope follows the surviving requirements and acceptance scenarios. Detailed trip rules are in [the recovered trip design](../modules/trips.md).
 
 ### EMP-TRIP-001 — Trip domain core: operational states and the driver-initiated trip
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DOM · size M · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DOM · size M · state LOCAL_DONE
 - **Objective:** Define the pure driver-initiated trip lifecycle.
 - **Rules and use cases:** REQ-07.1, REQ-07.4, BR-REV-001, BR-TEN-004
 - **Depends on:** EMP-FLEET-001, EMP-METER-001, EMP-PLAT-015
@@ -27,6 +27,14 @@ Recovered scope follows the surviving requirements and acceptance scenarios. Det
 - **Validation:** V-DOM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 pure trip domain](../evidence/f4-trip001-trip-domain.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. The closed operational lifecycle (START
+creates IN_PROGRESS, FINISH completes; pause, resume and cancel refused as
+unsupported until EMP-TRIP-011), the eligible start context with its ordered
+missing list, the start reporting day, completion by the starting member and
+never-invented meter usage pass all 207 shared Go/Kotlin vectors with 100% Go
+statements. Persistence, intake, authority and review binding remain open.
 
 ### EMP-TRIP-002 — Trip persistence and sync handlers with the one-active-trip-per-asset rule
 - **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type DB · size L · state TODO

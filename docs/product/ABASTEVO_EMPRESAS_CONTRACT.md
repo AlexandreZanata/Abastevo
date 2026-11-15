@@ -4605,3 +4605,101 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   unavailable forms, forced RLS without an organization setting,
   insert-only history and a populated 000212 → 000215 upgrade with injected
   failure, recovery, no-op replay and previous-image compatibility.
+
+## EMP-TRIP-001 — Trip domain core: operational states and the driver-initiated trip (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip001-trip-domain.md).
+
+- **B-BR-EMP-268 — Closed operational vocabulary and the C1 lifecycle.**
+  Trip operational states are exactly PLANNED, ASSIGNED, ACCEPTED,
+  IN_PROGRESS, PAUSED, COMPLETED and CANCELLED (08-state-model §3);
+  COMPLETED and CANCELLED are terminal. Operational commands are exactly
+  START, FINISH, PAUSE, RESUME and CANCEL. A C1 driver-initiated trip is
+  created by START directly in IN_PROGRESS (it never passes through the
+  mission or manager-planned states) and FINISH moves IN_PROGRESS to
+  COMPLETED. The transition table answers, first failure first: an unknown
+  state or command token is `INVALID`; any command on a terminal state is
+  `INVALID_TRANSITION` (a new attempt is a new trip, 08-state-model §4.3);
+  PAUSE, RESUME and CANCEL, and any command on PLANNED, ASSIGNED, ACCEPTED or
+  PAUSED, are `UNSUPPORTED_COMMAND` until their owners (EMP-TRIP-011 for
+  pause, resume and cancellation; EMP-TRIP-008/009/021 for missions and
+  planned trips) define them; START on an existing trip is
+  `INVALID_TRANSITION`. Approval words (APPROVED, APPROVE, SUBMIT) are not
+  operational tokens.
+- **B-BR-EMP-269 — A start needs an eligible context.** START takes the
+  scoped trip identity and the author membership (absent or malformed
+  `INVALID`, another organization `SCOPE`) and the eligible context: the
+  asset, the driver's employee record, the departure meter evidence and the
+  validated time-kernel declaration (instant, entry zone, device offset).
+  Departure evidence is exactly one of a reading of the trip's asset with
+  its exact typed meter value (the METER-001 reading reference and value of
+  that meter's kind, within its modulus) or a nonblank, control-free missing
+  reason of at most 280 characters (the METER-001 profile). Present parts
+  are checked in the order asset, driver, departure evidence, declaration:
+  another organization, or a reading of another asset, is `SCOPE`; a
+  malformed declaration is `INVALID`. Absent parts are then reported
+  together as `INCOMPLETE` with the ordered list ASSET, DRIVER,
+  DEPARTURE_EVIDENCE, DECLARATION. Membership, permission, assignment, asset
+  availability and the one-active-trip rule are not decided by this pure
+  value; their owners check them at receipt or from cached grants.
+- **B-BR-EMP-270 — A trip belongs to the day it started.** The start
+  attributes the reporting day of its instant with the accepted
+  `orgtime.AttributeReportingDay` (operating-unit zone when supplied,
+  otherwise the organization zone; an invalid unit zone never falls back;
+  the device entry zone never decides) and keeps day, zone and source. An
+  unusable zone is `INVALID`. No server receipt is required or invented, so a
+  trip starts and finishes offline.
+- **B-BR-EMP-271 — Transitions preserve the trip.** FINISH takes only its
+  actor, its declaration and its final evidence. It cannot change the trip
+  identity, organization, asset, driver, start event or start reporting
+  attribution; a refused command returns no trip and leaves the input value
+  unchanged.
+- **B-BR-EMP-272 — Operational completion.** FINISH on a trip of another
+  organization is `SCOPE`. Its actor is validated like the author, then the
+  final evidence (a reading of another organization or asset is `SCOPE`; a
+  reading identity equal to the departure reading is `INVALID`) and the
+  declaration (`INVALID` when malformed); absent parts are `INCOMPLETE` with
+  FINAL_EVIDENCE, DECLARATION. In C1 only the member who started the trip
+  finishes it (`FORBIDDEN` otherwise; handover and supervisor closure are
+  EMP-TRIP-012/014). A command the lifecycle refuses is
+  `INVALID_TRANSITION`. A finish instant strictly before the start instant
+  is `FINISH_BEFORE_START`; an equal instant is accepted.
+- **B-BR-EMP-273 — Meter evidence is never invented (BR-TRIP-004).** A trip
+  reports usage `MEASURED` only when it is COMPLETED and both readings exist
+  on the same meter and segment with a final value not below the departure
+  value; the usage is then the exact difference in the meter's base unit
+  (184 320 000 m to 184 610 000 m gives 290 000 m). Otherwise it is
+  `NOT_MEASURED` with the reason NOT_FINISHED, READING_ABSENT,
+  DIFFERENT_SEGMENT or DECREASING, never zero, interpolated, GPS, planned or
+  provider distance. A decreasing or cross-segment final reading does not
+  refuse the finish: the field fact is kept and final-reading plausibility
+  stays with the server and review (10-offline-sync matrix).
+- **B-BR-EMP-274 — Operational state is not review or delivery.** The trip
+  holds no review or sync state and needs no receipt; completion never sets
+  or implies a review state. The trip review vocabulary is the closed input
+  DRAFT, SUBMITTED, IN_REVIEW, APPROVED, RETURNED, REJECTED, CANCELLED and
+  VOIDED; a standing of one operational and one review state is completed
+  only for COMPLETED and approved only for APPROVED, so a COMPLETED trip is
+  never approved by itself (BR-REV-001).
+- **B-BR-EMP-275 — Pure, redacted and shared.** The domain lives in Go
+  `trip/domain` and its Kotlin mirror `com.anpfuel.domain.enterprise.trip`,
+  both executing the one synthetic `trip/trip-v1.psv` oracle. Identities,
+  readings, reasons and inputs print as redacted values in fmt, slog, JSON
+  and `toString`. No persistence, intake, route, OpenAPI, app or panel
+  screen, job, producer or dependency is added.
+- **BUC-EMP-136 — Start a driver-initiated trip offline.** The driver's
+  device supplies the trip identity, its membership, the asset, the driver
+  record, the departure reading 184 320 000 m (or a stated absence) and the
+  start declaration; the trip is IN_PROGRESS with its start reporting day and
+  no usage yet. Missing parts are named together.
+- **BUC-EMP-137 — Finish it operationally without approving it.** The same
+  member finishes with the final reading 184 610 000 m or a stated absence;
+  the trip is COMPLETED with 290 000 m of meter evidence (or NOT_MEASURED
+  with its reason), keeps its asset, driver and start day, and its standing
+  with review DRAFT, SUBMITTED or RETURNED is not approved.
+- **BUC-EMP-138 — Prove the lifecycle and its denials in both languages.**
+  Go and Kotlin load the same oracle, assert its hash, counts, unique IDs and
+  the complete state and command table, and cover start without an eligible
+  context, invalid and terminal transitions, unsupported pause, resume and
+  cancel, completion mistaken for approval, foreign asset, driver, actor or
+  reading, and a finish before its start.
