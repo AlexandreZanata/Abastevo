@@ -50,6 +50,7 @@ var matrixRepresentatives = []matrixRoute{
 	{"fleet.asset.read", "/fleet/assets/list", false, false},
 	{"meter.reading.correct", "/sync/reviews/meter-readings/list", false, false},
 	{"check.template.manage", "/checklists/templates/list", false, false},
+	{"trip.trip.review", "/trips/review/list", false, false},
 	{"fin.period.close", "/finance/periods/list", false, false},
 	{"fin.period.reopen", "/finance/periods/{period}/reopen", true, true},
 	{"doc.document.attach", "/documents/uploads/create", false, true},
@@ -265,6 +266,7 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_documents x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,document_id,target_kind,target_id) FROM org_document_links x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_export_jobs x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,trip_id,sequence) FROM org_trip_review_entries x),
 	 (SELECT count(*) FROM org_sensitive_access_events),
 	 (SELECT count(*) FROM org_audit_events), (SELECT count(*) FROM org_settings_commands),
 	 (SELECT count(*) FROM org_ownership_commands), (SELECT count(*) FROM org_role_commands))::text`).Scan(&value); err != nil {
@@ -344,6 +346,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	fx.f.GrantMeterReviews(t)
 	periodGrant(t, fx.f)
 	exportGrant(t, fx)
+	tripReviewGrants(t, fx.f)
 	roleSQL := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+roleSQL+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+roleSQL); err != nil {
 		t.Fatal(err)
@@ -632,7 +635,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 230 || allowed != 88 || denied != 142 {
+	if exercised != 240 || allowed != 93 || denied != 147 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
 	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 61 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)

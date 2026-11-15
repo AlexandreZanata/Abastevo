@@ -61,6 +61,8 @@ import (
 	reviewweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters/http"
 	reviewapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/application"
 	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
+	tripweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters/http"
+	tripapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgquota"
@@ -144,6 +146,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, syncpg.AuditDefinitions()...)
 	definitions = append(definitions, reviewpg.PeriodAuditDefinitions()...)
 	definitions = append(definitions, maintpg.ChecklistAuditDefinitions()...)
+	definitions = append(definitions, trippg.ReviewAuditDefinitions()...)
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
 	definitions = append(definitions, exportpg.AuditDefinitions()...)
@@ -179,6 +182,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "idn.employee", Permissions: []string{"idn.employee.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic employee register only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "idn.device", Permissions: []string{"idn.credential.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic scoped device enrollment and revocation inherit identity v1 write200/hour on every axis; current source membership precedes admission and production measurement remains required."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "trip.review", Permissions: []string{"trip.trip.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic trip review decisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -356,6 +360,15 @@ func Register(router chi.Router, o Options) error {
 	periods := &reviewpg.PeriodStore{Pool: o.Pool, Authority: &orgpg.PeriodAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}, Audit: auditStore}
 	periodAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: reviewweb.PeriodRecords{}, Now: time.Now}
 	if err := reviewweb.RegisterPeriods(router, reviewapp.PeriodService{Enabled: true, Repository: periods, NewID: jobs.NewUUIDv4}, cookies, gateway, periodAuthorization); err != nil {
+		return err
+	}
+
+	// EMP-TRIP-004 (EDR-222): the reviewer read and decision on a stored
+	// trip, structural grants through the trip's stored snapshot.
+	tripStructure := &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: o.Pool}
+	tripReviews := &trippg.ReviewStore{Pool: o.Pool, Authority: &orgpg.TripReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure}, Audit: auditStore}
+	tripReviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ReviewRecords{}, Structure: tripStructure, Now: time.Now}
+	if err := tripweb.RegisterReview(router, tripapp.ReviewService{Enabled: true, Repository: tripReviews}, cookies, gateway, tripReviewAuthorization); err != nil {
 		return err
 	}
 

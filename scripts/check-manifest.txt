@@ -44,6 +44,7 @@ backend/internal/modules/review/adapters/http
 backend/internal/modules/trip/domain
 backend/internal/modules/trip/application
 backend/internal/modules/trip/adapters
+backend/internal/modules/trip/adapters/http
 backend/internal/modules/maintenance/domain/checklist
 backend/internal/modules/maintenance/application
 backend/internal/modules/maintenance/adapters

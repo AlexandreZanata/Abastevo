@@ -762,6 +762,7 @@ sql:
       - db/migrations/000201_organization_asset_lifecycle.sql
       - db/migrations/000220_organization_trips.sql
       - db/migrations/000225_organization_trip_events.sql
+      - db/migrations/000226_organization_trip_reviews.sql
     gen:
       go:
         package: trip

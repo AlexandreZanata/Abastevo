@@ -744,10 +744,14 @@
     },
     {
       "permission": "trip.trip.review",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Mission and trip-operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/trips/review/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/trips/review/list",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/review/decide",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/review/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "trip.trip.start",

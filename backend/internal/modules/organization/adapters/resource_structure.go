@@ -28,6 +28,10 @@ const (
 	// it stored when held, no cost centre, and the teams whose links covered
 	// its author employee at the acknowledgement receipt instant.
 	HeldMeterReadingStructure
+	// TripStructure: a stored trip resolves to its asset, the unit and cost
+	// centre it stored at the start, and the teams whose links covered its
+	// author or driver at the start receipt (EMP-TRIP-004, EDR-222).
+	TripStructure
 )
 
 // ResourceStructure is the EMP-AUTH-006 structural scope lookup for one
@@ -53,6 +57,13 @@ FROM org_sync_review_items i
 JOIN org_meter_held_readings h ON(h.org_id,h.review_item_id,h.operation_id)=(i.org_id,i.id,i.operation_id)
 JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id,a.review_item_id,a.review_proof_version)=(i.org_id,i.operation_id,i.id,i.proof_version)
 WHERE i.org_id=$1 AND i.id=$2 AND i.operation_type='meter.reading.record' AND i.operation_schema=1`
+
+// tripStructure reads only the immutable start snapshot and retained team
+// link periods (half-open, at the trip's server receipt).
+const tripStructure = `SELECT t.asset_id::text,COALESCE(t.unit_id::text,''),COALESCE(t.cost_centre_id::text,''),
+ COALESCE((SELECT array_agg(DISTINCT l.team_id::text) FROM org_team_links l WHERE l.org_id=t.org_id AND l.employee_id IN(t.author_employee_id,t.driver_employee_id)
+  AND l.started_at<=t.received_at AND(l.ended_at IS NULL OR l.ended_at>t.received_at)),'{}'::text[])
+FROM org_trips t WHERE t.org_id=$1 AND t.id=$2`
 
 func (r *ResourceStructure) ResolveStructure(ctx context.Context, scope kernel.OrgScope, policy access.Policy, facts permissions.ResourceFacts, at time.Time) (permissions.ResourceFacts, error) {
 	if r == nil || r.Pool == nil {
@@ -109,6 +120,16 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 	case r.Kind == HeldMeterReadingStructure && policy.Permission == "meter.reading.correct":
 		var teams []string
 		if err := tx.QueryRow(ctx, heldReadingStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &teams); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return permissions.ResourceFacts{}, errStructureNotFound
+			}
+			return permissions.ResourceFacts{}, org.ErrUnavailable
+		}
+		slices.Sort(teams)
+		out.Teams = teams
+	case r.Kind == TripStructure && policy.Permission == "trip.trip.review":
+		var teams []string
+		if err := tx.QueryRow(ctx, tripStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return permissions.ResourceFacts{}, errStructureNotFound
 			}
