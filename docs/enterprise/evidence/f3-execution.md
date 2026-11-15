@@ -671,3 +671,11 @@ Final repository gates on the batch head: `scripts/check-backend-fast.sh` and
 staticcheck, sqlc vet/diff, OpenAPI lint, tracked/changed/PR-diff secret
 scans, govulncheck "No vulnerabilities found", deploy-agent harness 229/0,
 mobile static guards). Logs: `/data/dev/worktrees/f3-logs/final-*`.
+
+Re-verification on the final batch head `868daf9a` (after EMP-FUEL-002):
+untagged backend 214 packages, 2695/7577, 0 failures (4 pre-existing opt-in
+skips); full `go test -race -count=1 -timeout=45m -tags=integration ./...`
+226 packages pass, 4286/11481, with the same 15 Rust-preparer-CLI-gated
+failures in untouched `cmd/worker`, `directory` and `quality` packages
+(`organization/adapters` 763 s, `apicontract` 625 s); `make quick-verify`
+exit 0 (govulncheck: no vulnerabilities). Logs `final2-*`.

@@ -10,9 +10,9 @@
   002/003/006/014, BUDG-001, FIN-001, PRIV-005, NOTIF-001, RPT-001/002,
   AUTH-011) and the F2 chain FLEET-003/005, AUTH-006, FLEET-006 and full
   METER-002 are LOCAL_DONE / INTEGRATION_PENDING; EXP-002/FUEL-003 next. CI race
-  integration bound 45m (EDR-168). Final local: untagged 212 packages green;
-  full race/integration 224 packages green except 15 Rust-CLI-gated tests in
-  untouched packages. Delivered through the cumulative dev → main PR.
+  integration bound 45m (EDR-168). Final local (`868daf9a`): untagged 214
+  packages green; full race/integration 226 packages green except 15
+  Rust-CLI-gated tests in untouched packages; quick-verify green. Delivered through the cumulative dev → main PR.
   [Batch checkpoint](../enterprise/evidence/f3-execution.md#batch-checkpoint--2026-11-14).
 
 - Supplemental OpenTatu audit publication, 2026-11-14: LOCAL_DONE /
