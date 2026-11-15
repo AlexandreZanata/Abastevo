@@ -189,8 +189,9 @@ func OpenReferenceCursor(secret []byte, raw string) (ReferenceCursor, error) {
 	if len(secret) < 32 || !ok || len(raw) > 1024 {
 		return ReferenceCursor{}, ErrReferenceCursor
 	}
-	payload, err := base64.RawURLEncoding.DecodeString(encoded)
-	mac, err2 := base64.RawURLEncoding.DecodeString(signature)
+	// Strict: only the canonical spelling (zero unused trailing bits) opens.
+	payload, err := base64.RawURLEncoding.Strict().DecodeString(encoded)
+	mac, err2 := base64.RawURLEncoding.Strict().DecodeString(signature)
 	if err != nil || err2 != nil || !hmac.Equal(mac, referenceMAC(secret, payload)) {
 		return ReferenceCursor{}, ErrReferenceCursor
 	}

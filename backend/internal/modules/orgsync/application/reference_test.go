@@ -90,3 +90,44 @@ func TestReferenceCursorIsSignedAndBound(t *testing.T) {
 		t.Fatal("cursor signed with a short key")
 	}
 }
+
+// A cursor has exactly one accepted spelling: an unpadded base64url segment
+// whose final character carries unused bits must have them zero, so a
+// tampered final character never opens the cursor it came from (the signed
+// route's foreign-cursor test flipped such a character and passed or failed by
+// chance).
+func TestReferenceCursorAcceptsOnlyTheCanonicalSpelling(t *testing.T) {
+	const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
+	secret := []byte(strings.Repeat("k", 32))
+	cursor := app.ReferenceCursor{OrgID: "7b0e2a54-0000-4000-8000-000000000001", MembershipID: "7b0e2a54-0000-4000-8000-000000000002", EnrollmentID: "7b0e2a54-0000-4000-8000-000000000003", Epoch: "7b0e2a54-0000-4000-8000-000000000004", Revision: 7}
+	raw, err := app.SignReferenceCursor(secret, cursor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload, signature, _ := strings.Cut(raw, ".")
+	variant := func(segment string) (string, bool) {
+		unused := map[int]int{2: 4, 3: 2}[len(segment)%4] // bits left unused by the final character
+		if unused == 0 {
+			return "", false
+		}
+		last := strings.IndexByte(alphabet, segment[len(segment)-1])
+		return segment[:len(segment)-1] + string(alphabet[last^1]), true
+	}
+	tried := 0
+	for _, alt := range []func() (string, bool){
+		func() (string, bool) { s, ok := variant(signature); return payload + "." + s, ok },
+		func() (string, bool) { s, ok := variant(payload); return s + "." + signature, ok },
+	} {
+		bad, ok := alt()
+		if !ok {
+			continue
+		}
+		tried++
+		if _, err := app.OpenReferenceCursor(secret, bad); !errors.Is(err, app.ErrReferenceCursor) {
+			t.Fatal("non-canonical cursor spelling opened", bad)
+		}
+	}
+	if tried == 0 {
+		t.Fatal("no segment carries unused bits; the 32-byte MAC always does")
+	}
+}
