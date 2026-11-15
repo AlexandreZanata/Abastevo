@@ -157,9 +157,12 @@ func (p ports) record(ctx context.Context, db syncapp.DBTX, source syncapp.Sourc
 	return nil
 }
 
+// readingRecorded proves the trip's own embedded reading; a reading the
+// METER-003 validator keeps aside as SUSPECT is still the trip's fact, as for
+// the meter and fueling intakes (B-BR-EMP-280..285, EMP-TRIP-005).
 func readingRecorded(source syncapp.Source, e app.Event, view fleetapp.MeterView, reading meter.Reading, origin meter.Origin) bool {
 	actual := reading.Snapshot()
-	if e.Reading == nil || actual.Reference.ID() != e.Reading.ReadingID || actual.Reference.Segment() != view.Segment || actual.Value.Kind() != e.Reading.Value.Kind() || actual.Value.Count() != e.Reading.Value.Count() || actual.Declared == nil || !actual.Declared.OccurredAt.Equal(e.Declared.OccurredAt) || actual.Declared.EntryZone != e.Declared.EntryZone || actual.Declared.DeviceOffsetSeconds != e.Declared.DeviceOffsetSeconds || actual.Author.OrganizationID() != source.Scope.OrgID() || actual.Author.ID() != source.MembershipID || actual.Operation.ID() != e.OperationID || actual.Origin != origin || actual.Method != meter.Typed || actual.Photo != nil || actual.State != meter.Valid || actual.ReceivedAt.IsZero() {
+	if e.Reading == nil || actual.Reference.ID() != e.Reading.ReadingID || actual.Reference.Segment() != view.Segment || actual.Value.Kind() != e.Reading.Value.Kind() || actual.Value.Count() != e.Reading.Value.Count() || actual.Declared == nil || !actual.Declared.OccurredAt.Equal(e.Declared.OccurredAt) || actual.Declared.EntryZone != e.Declared.EntryZone || actual.Declared.DeviceOffsetSeconds != e.Declared.DeviceOffsetSeconds || actual.Author.OrganizationID() != source.Scope.OrgID() || actual.Author.ID() != source.MembershipID || actual.Operation.ID() != e.OperationID || actual.Origin != origin || actual.Method != meter.Typed || actual.Photo != nil || actual.State != meter.Valid && actual.State != meter.Suspect || actual.ReceivedAt.IsZero() {
 		return false
 	}
 	capture := reading.CaptureSource()
