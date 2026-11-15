@@ -9,6 +9,8 @@ import (
 	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
 	fuelapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/application"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
+	maintpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters"
+	maintapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/application"
 	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
 	tripapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
 	"net/url"
@@ -67,8 +69,8 @@ func IntakeEvents(pool *pgxpool.Pool, consumers map[string]eventpg.Effect) (even
 	return catalog, handler, nil
 }
 
-func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, meters *fleetpg.MeterStore, assets *fleetpg.AssetStore, auditor auditing.TransactionRunner, auditCatalog audit.Catalog) error {
-	if meters == nil || assets == nil {
+func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, meters *fleetpg.MeterStore, assets *fleetpg.AssetStore, incidents *maintpg.IncidentStore, auditor auditing.TransactionRunner, auditCatalog audit.Catalog) error {
+	if meters == nil || assets == nil || incidents == nil {
 		return app.ErrUnavailable
 	}
 	meterHandler, err := fleetpg.NewMeterIntakeHandler(meters.Authority, meters)
@@ -98,7 +100,8 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	}
 	// EMP-TRIP-003: typed logbook events append to the member's own stored
 	// trip; held events use the same OFFL-008 review items.
-	tripEvent, err := trippg.NewEventHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore, &trippg.EventStore{NewID: jobs.NewUUIDv4})
+	// EMP-CHECK-003 (EDR-240): reports made inside a trip are timeline facts.
+	tripEvent, err := trippg.NewEventHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore, &trippg.EventStore{NewID: jobs.NewUUIDv4, Reports: incidents})
 	if err != nil {
 		return err
 	}
@@ -113,7 +116,13 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse}, o.IntakeHandlers...)
+	// EMP-CHECK-003 (EDR-238): the reporter's signed damage or incident report
+	// shares the trip owners' authority sources, locks, allocation and trips.
+	report, err := maintpg.NewReportHandler((*orgpg.ReportAuthority)(meterAuthority), meters, assets, tripStore, incidents)
+	if err != nil {
+		return err
+	}
+	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse, report}, o.IntakeHandlers...)
 	registry, err := app.NewRegistry(handlers...)
 	if err != nil {
 		return err
@@ -172,6 +181,12 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[missionKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	// EMP-CHECK-003: a report has no consumer and no held path.
+	reportKey := app.OperationKey{Type: maintapp.ReportOperationType, Schema: 1}
+	if _, exists := noAsync[reportKey]; exists {
+		return app.ErrUnavailable
+	}
+	noAsync[reportKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
 	catalog, _, err := IntakeEvents(o.Pool, o.IntakeConsumers)
 	if err != nil {
 		return err

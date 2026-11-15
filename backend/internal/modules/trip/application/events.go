@@ -74,6 +74,11 @@ func ParseEvent(op protocol.Operation) (EventCommand, error) {
 	if err != nil {
 		return EventCommand{}, ErrMalformed
 	}
+	// EMP-CHECK-003 (EDR-240): incident and damage facts are their own
+	// operation, check.incident.report, like the start and the finish.
+	if kind == trip.LogbookIncident || kind == trip.LogbookDamage {
+		return EventCommand{}, ErrMalformed
+	}
 	if !kind.Supported() {
 		return EventCommand{}, ErrUnsupported
 	}
@@ -158,6 +163,24 @@ type TimelineEntry struct {
 	Declared           orgtime.Declaration
 	ReceivedAt         time.Time
 	Text               *string
+}
+
+// TimelineReport is one EMP-CHECK-003 report of a trip as a timeline fact
+// (EDR-240): its identity, fact type (INCIDENT or DAMAGE), reporter,
+// declaration and receipt; never its description.
+type TimelineReport struct {
+	private
+	ID                 string
+	Type               trip.LogbookType
+	AuthorMembershipID string
+	Declared           orgtime.Declaration
+	ReceivedAt         time.Time
+}
+
+// TimelineReports supplies the accepted reports of one stored trip; the
+// timeline reads them from their owner and never copies them (EDR-240).
+type TimelineReports interface {
+	TripReportsTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) ([]TimelineReport, error)
 }
 
 // EventStore persists logbook facts and held events in the intake

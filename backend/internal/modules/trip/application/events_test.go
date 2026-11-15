@@ -75,12 +75,15 @@ func TestParseEventRefusesMalformedAndKeepsReservedTypesUnavailable(t *testing.T
 		"entity-trip":       event(t, "STOP", nil, func(e, _ map[string]any) { e["entity"].(map[string]any)["type"] = app.EntityType }),
 		"two-dependencies":  event(t, "STOP", nil, func(e, _ map[string]any) { e["depends_on"] = []any{id(19), id(18)} }),
 		"start-operation":   operation(t, app.StartOperationType, map[string]any{"trip_id": id(40), "type": "NOTE", "text": "x"}, nil),
+		// EDR-240: incident and damage facts are check.incident.report.
+		"incident-own-operation": event(t, "INCIDENT", nil, nil),
+		"damage-own-operation":   event(t, "DAMAGE", "Lataria", nil),
 	} {
 		if _, err := app.ParseEvent(op); !errors.Is(err, app.ErrMalformed) {
 			t.Fatal("malformed event accepted", name, err)
 		}
 	}
-	for _, kind := range []string{"FUELING", "TOLL", "PARKING", "INCIDENT", "DAMAGE", "HANDOVER", "PAUSE", "RESUME", "CANCEL"} {
+	for _, kind := range []string{"FUELING", "TOLL", "PARKING", "HANDOVER", "PAUSE", "RESUME", "CANCEL"} {
 		if _, err := app.ParseEvent(event(t, kind, nil, nil)); !errors.Is(err, app.ErrUnsupported) {
 			t.Fatal("reserved type not kept unavailable", kind, err)
 		}

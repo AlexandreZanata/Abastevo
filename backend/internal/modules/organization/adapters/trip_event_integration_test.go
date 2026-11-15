@@ -12,6 +12,7 @@ import (
 
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	maintpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters"
 	syncpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
@@ -39,6 +40,17 @@ func eventGrants(t *testing.T, x tripState) {
 	if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_events,org_trip_held_events TO "+role+";GRANT SELECT ON org_trip_review_entries TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	// EMP-CHECK-003 (EDR-240): the timeline reads the trip's reports once the
+	// 000230 table exists (an upgrade rehearsal may stop at an earlier image).
+	var reports bool
+	if err := x.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_incident_reports') IS NOT NULL`).Scan(&reports); err != nil {
+		t.Fatal(err)
+	}
+	if reports {
+		if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_incident_reports TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func eventIntakeConfig(fx syncFixtureState) syncpg.Config {
@@ -51,7 +63,8 @@ func eventIntakeConfig(fx syncFixtureState) syncpg.Config {
 func eventFixtureOn(t *testing.T, x tripState) eventState {
 	t.Helper()
 	eventGrants(t, x)
-	e := eventState{tripState: x, events: &trippg.EventStore{NewID: func() (string, error) { return onboardingID(t), nil }}}
+	// EMP-CHECK-003 (EDR-240): the timeline also reads the trip's reports.
+	e := eventState{tripState: x, events: &trippg.EventStore{NewID: func() (string, error) { return onboardingID(t), nil }, Reports: &maintpg.IncidentStore{}}}
 	var err error
 	if e.event, err = trippg.NewEventHandler(x.authority, x.meters, x.store, e.events); err != nil {
 		t.Fatal(err)
@@ -345,8 +358,17 @@ func TestTripEventIntakeRefusalsHoldsAndReservedTypes(t *testing.T) {
 			x.malformed(t, op, ack, err)
 		}
 	})
+	// EDR-240: incident and damage facts are their own operation,
+	// check.incident.report, so the logbook operation refuses them finally.
+	t.Run("incident-damage-own-operation-malformed", func(t *testing.T) {
+		for _, kind := range []string{"INCIDENT", "DAMAGE"} {
+			op := x.eventOp(t, d, trip, kind, nil, started.Add(time.Minute), nil)
+			ack, err := x.process(t, d, op)
+			x.malformed(t, op, ack, err)
+		}
+	})
 	t.Run("reserved-type-unavailable", func(t *testing.T) {
-		for _, kind := range []string{"PAUSE", "RESUME", "CANCEL", "FUELING", "TOLL", "PARKING", "INCIDENT", "DAMAGE", "HANDOVER"} {
+		for _, kind := range []string{"PAUSE", "RESUME", "CANCEL", "FUELING", "TOLL", "PARKING", "HANDOVER"} {
 			op := x.eventOp(t, d, trip, kind, nil, started.Add(time.Minute), nil)
 			ack, err := x.process(t, d, op)
 			x.unavailable(t, op, ack, err)

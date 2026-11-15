@@ -339,7 +339,7 @@ func TestDocumentLinksResolveRealTargetsAndCheckBothEndpoints(t *testing.T) {
 	}
 	var columns string
 	if err := l.f.Admin.QueryRow(ctx, `SELECT string_agg(column_name,',' ORDER BY column_name) FROM information_schema.columns WHERE table_name='org_document_links'`).Scan(&columns); err != nil ||
-		columns != "asset_id,created_at,created_by,document_id,employee_id,held_reading_id,operation_id,org_id,reading_id,target_id,target_kind" {
+		columns != "asset_id,created_at,created_by,document_id,employee_id,held_reading_id,incident_report_id,operation_id,org_id,reading_id,target_id,target_kind" {
 		t.Fatal("link table carries an amount, content or locator column", columns, err)
 	}
 

@@ -58,6 +58,7 @@ enum-target-trip|ENUM|kind=TARGET;value=TRIP|value=TRIP;allocatable=false
 enum-target-asset|ENUM|kind=TARGET;value=ASSET|value=ASSET;allocatable=false
 enum-target-employee|ENUM|kind=TARGET;value=EMPLOYEE|value=EMPLOYEE;allocatable=false
 enum-target-meter-reading|ENUM|kind=TARGET;value=METER_READING|value=METER_READING;allocatable=false
+enum-target-incident|ENUM|kind=TARGET;value=INCIDENT|value=INCIDENT;allocatable=false
 enum-target-invalid-maintenance|ENUM|kind=TARGET;value=MAINTENANCE|error=INVALID
 enum-target-invalid-cost-centre|ENUM|kind=TARGET;value=COST_CENTRE|error=INVALID
 enum-target-invalid-lowercase|ENUM|kind=TARGET;value=expense|error=INVALID

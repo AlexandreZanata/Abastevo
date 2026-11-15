@@ -5759,6 +5759,124 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   both orders, forced RLS and the history guards, and a populated upgrade
   with injected failure and recovery.
 
+## EMP-CHECK-003 — Damage and incident reports with photos (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-check003-incident-reports.md).
+
+- **B-BR-EMP-369 — A report is the reporter's signed
+  `check.incident.report`.** The operation `check.incident.report` schema 1
+  on the OFFL-002 intake (entity `incident_report`, id = the device report
+  UUID, no expected revision, at most one dependency, no soft reference)
+  carries exactly `report_type` (`DAMAGE` or `INCIDENT`), `incident_kind`
+  (`BREAKDOWN`, `ACCIDENT`, `THEFT`, `FINE_NOTICE` or `OTHER` for an
+  incident, `null` for a damage), `asset_id`, `trip_id` (UUID or `null`),
+  `description` (1..1000 Unicode scalars, no control character, not only
+  white space, under the BR-CHECK-015 hint), `location` (1..140 scalars of
+  the same profile, or `null`: where on the asset, or the place) and
+  `blocks_use` (the answer "no" to "O veículo pode continuar em uso?"). The
+  envelope declaration is when it happened. No field exists for injuries,
+  health, third-party identity, amounts, costs, notice numbers or document
+  content. An envelope attachment declaration stays `RETRY` `UNAVAILABLE`
+  until EMP-OFFL-005/EMP-DOC-004 own the device attachment path.
+  Acceptance stores one report in `REPORTED` at revision 1 with the asset,
+  the unit and cost centre the asset had at the declared instant
+  (BR-AUTH-005), the trip when named, the reporter's account, membership,
+  employee record and enrollment, the declaration and the server receipt,
+  in the same transaction as the `ACCEPTED` acknowledgement (entity revision
+  1), the intake audit event and the effect.
+- **B-BR-EMP-370 — Who reports, and what is refused.** The report needs the
+  current enrolled device and `check.incident.report` from retained role
+  history at the declared instant (EDR-118 continuity): an `ORG` grant
+  covers every asset of the organization; a `SELF` grant covers only an
+  asset assigned to the member at that instant; a structural grant is not
+  yet an intake source. An unknown or another organization's asset is a
+  whole-response `NOT_FOUND`; a member without the permission is
+  `FORBIDDEN`; a `DRAFT` asset, an unknown token, a wrong shape, an incident
+  kind on a damage or none on an incident, an invalid description or
+  location, more than one dependency or a report identity already held by
+  another operation is `REJECTED` `MALFORMED`; a right that changed after
+  the declaration stores nothing and stays `RETRY` `UNAVAILABLE` (no held
+  owner yet). The same id and digest replays the stored acknowledgement
+  byte for byte; the same id with another digest is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-371 — Inside a trip the report is a timeline fact.** A named
+  trip must be stored in this organization (else `RETRY`
+  `DEPENDENCY_PENDING`, nothing stored or revealed), be on the report's
+  asset (else `MALFORMED`), have been started by the reporter (else
+  `FORBIDDEN`) and contain the declared instant — from its start, up to the
+  finish of a completed trip — (else `MALFORMED`); the check runs under the
+  organization root and asset locks that the trip finish also takes. An
+  accepted report with a trip is an `INCIDENT` or `DAMAGE` fact of that
+  trip's timeline with its identity, reporter, declaration and receipt and
+  without its description, in the shared order (B-BR-EMP-324); it is read
+  from the report, never copied into the logbook. `trip.event.record` with
+  `INCIDENT` or `DAMAGE` is therefore a final `MALFORMED`: those facts are
+  their own operation, as the start and the finish are.
+- **B-BR-EMP-372 — Photos are linked documents with their own state.** A
+  report stores no byte, file name, digest or locator. Photos are EMP-DOC-002
+  synthetic documents linked through EMP-DOC-003 with the target kind
+  `INCIDENT`, resolved by the maintenance module: a link needs
+  `doc.document.attach` on the member's own document and
+  `check.incident.report` on the member's own report (the reporter alone);
+  another member's document or report is `FORBIDDEN`, another organization's
+  or an unknown one `NOT_FOUND`. A report is accepted, read and handled
+  whatever the state of its photos: every read shows each linked document
+  only with its own storage state (`UPLOADING`, `RECEIVED`, `STORED`,
+  `QUARANTINED`, `FAILED`, …) and its link instant, never as ready unless it
+  is `STORED`, and never with content; opening a photo stays the
+  `doc.document.view_content` path audited by EMP-PRIV-005 (BR-CHECK-016,
+  BR-PRIV-004). Real photos stay legally gated (OQ-04).
+- **B-BR-EMP-373 — Handling is a recorded, scoped state change.** `POST
+  /v1/orgs/{org_id}/incidents/reports/{report_id}/decide`
+  (`check.incident.manage`, configuration write, fresh proof, `revision`)
+  applies `ACKNOWLEDGE` (`REPORTED` → `ACKNOWLEDGED`, no note), `TREAT`
+  (`REPORTED` or `ACKNOWLEDGED` → `IN_TREATMENT`, the stated action),
+  `RESOLVE` (any open state → `RESOLVED`, the resolution note) or `DISMISS`
+  (any open state → `DISMISSED`, the reason and optionally `duplicate_of`,
+  another report of the same asset). Notes have 1..500 scalars of the
+  description profile. Each step adds one append-only history row with the
+  handler's account, membership and employee record, the operation and the
+  command digest, and one audit event
+  `check.report.acknowledged|treated|resolved|dismissed` (target
+  `incident_report`, no text) in the same transaction as the report's next
+  revision. A stale revision or a step not allowed from the current state is
+  `CONFLICT`; a missing or invalid note, a note on an acknowledgement, a
+  duplicate on another action, the report itself or a report of another
+  asset is `VALIDATION_FAILED`; resolving or dismissing a report with
+  `blocks_use` by its reporter (shared account, membership or employee
+  record) is `SELF_APPROVAL` (BR-CHECK-011); an unknown or another
+  organization's report (or duplicate) is `NOT_FOUND`; a member without the
+  key, or whose grant does not cover the report's stored asset, unit or cost
+  centre, is `FORBIDDEN`. Two handlers racing on one revision leave one
+  step; the other is `CONFLICT`. The same operation and digest returns the
+  stored step with `replayed=true`; another digest is
+  `OPERATION_ID_REUSED`. Nothing is ever deleted.
+- **B-BR-EMP-374 — A report books no cost; minimal reads.** No report,
+  link or handling step creates or changes an expense, payable, budget,
+  allocation, fueling, trip, reading, availability or document state
+  (BR-CHECK-018); the asset block and the release of a blocking checklist
+  run (BR-CHECK-010/011) remain EMP-CHECK-002/004. `POST
+  /v1/orgs/{org_id}/incidents/reports/list` (`check.incident.manage`, read,
+  an organization-level resource that only an `ORG` grant covers) pages the
+  reports by identifier with their summary; `…/{report_id}/read` (same key,
+  structural coverage over the stored asset, unit and cost centre) returns
+  the report, its handling history and its linked documents' states; `POST
+  /v1/orgs/{org_id}/incidents/reports/mine` (`check.incident.report`, read,
+  the member's own record) pages the member's own reports. AUDITOR holds
+  neither key and is `FORBIDDEN` on all of them.
+- **BUC-EMP-186 — Report a damage or an incident offline.** A driver
+  answers "Relatar problema" without signal; the queued
+  `check.incident.report` is accepted on receipt (also inside the trip in
+  progress, where it appears on the trip timeline), a resend returns the
+  same acknowledgement, and nothing waits for the photos.
+- **BUC-EMP-187 — Attach photos to one's own report.** The reporter links
+  own synthetic documents to the report; the report and every read show each
+  photo's own storage state, a failed upload stays visibly failed, and
+  nobody obtains content without `doc.document.view_content`.
+- **BUC-EMP-188 — Handle a report.** A scoped manager reads the queue and
+  one report, acknowledges it, records an action, resolves it with a note or
+  dismisses it with a reason (or as a duplicate); every step is in the
+  history and the audit trail, and no cost appears.
+
 ## EMP-FLEET-013 — App: my assets and asset selection (2026-11-15)
 
 [Evidence](../enterprise/evidence/f4-fleet013-my-assets.md).

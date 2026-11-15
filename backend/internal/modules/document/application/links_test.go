@@ -79,7 +79,7 @@ func (r *fakeLinks) TargetLinks(_ context.Context, _ kernel.OrgScope, _ app.Acto
 
 func TestBindingsBelongToExactlyOneRegisteredKind(t *testing.T) {
 	for binding, want := range map[app.Binding]domain.TargetKind{app.BindAsset: domain.Asset, app.BindEmployee: domain.Employee,
-		app.BindMeterReading: domain.MeterReading, app.BindHeldMeterReading: domain.MeterReading} {
+		app.BindMeterReading: domain.MeterReading, app.BindHeldMeterReading: domain.MeterReading, app.BindIncident: domain.Incident} {
 		if kind, ok := binding.Kind(); !ok || kind != want {
 			t.Fatal("binding kind", binding, kind)
 		}

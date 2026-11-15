@@ -183,9 +183,11 @@ const (
 	Asset        TargetKind = "ASSET"
 	Employee     TargetKind = "EMPLOYEE"
 	MeterReading TargetKind = "METER_READING"
+	// Incident is a damage or incident report (EMP-CHECK-003, EDR-239).
+	Incident TargetKind = "INCIDENT"
 )
 
-var targetKinds = [...]TargetKind{Fueling, Expense, WorkOrder, Trip, Asset, Employee, MeterReading}
+var targetKinds = [...]TargetKind{Fueling, Expense, WorkOrder, Trip, Asset, Employee, MeterReading, Incident}
 
 // ParseTargetKind accepts only the closed link target kinds (EDR-135).
 func ParseTargetKind(raw string) (TargetKind, error) {

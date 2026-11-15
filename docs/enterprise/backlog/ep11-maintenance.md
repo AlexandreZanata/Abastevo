@@ -72,6 +72,24 @@ extension (EMP-OFFL-006), template events and policy history reads, the panel
 - **Risks and assumptions:** Detailed rules and exact thresholds come from the maintenance specification. Attachments and real-data activation retain their own gates.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+EMP-CHECK-003 LOCAL_DONE (pending integration): damages and incidents are the
+reporter's signed `check.incident.report` (EDR-238; migration 000230, forced
+RLS, guarded report and append-only handling history), durable offline and
+accepted whatever the state of their photos; photos are EMP-DOC-002 documents
+linked through EMP-DOC-003 with the new `INCIDENT` kind and shown only with
+their own storage state (EDR-239); a report made inside a trip is an
+`INCIDENT`/`DAMAGE` fact of the trip timeline by read join, and
+`trip.event.record` refuses those two types as `MALFORMED` (EDR-240);
+acknowledge, treat, resolve and dismiss under fresh `check.incident.manage`
+with revision CAS, `SELF_APPROVAL` for a blocking report and one audit event
+per step, plus the organization queue, the scoped read and the reporter's own
+list (EDR-241). The pure rule is shared by Go and Kotlin through
+`incident-v1.psv`. No report books a cost. Retained: the asset block and its
+release (EMP-CHECK-002/004), held reports for changed rights, the device
+attachment path (EMP-OFFL-005/EMP-DOC-004), notifications, the panel
+(EMP-CHECK-004), work orders (EMP-MAINT-003).
+[Evidence](../evidence/f4-check003-incident-reports.md).
+
 ### EMP-CHECK-004 — Panel: checklists, damages and incidents
 - **Meta:** module CHECK · phase F4 · cut - · priority P1 · type WEB · size M · state TODO
 - **Objective:** Let authorized company users review checklists, incidents and damages.

@@ -90,3 +90,64 @@ identifiers back to these aliases (`?` for none).
 (cd backend && go test -race ./internal/modules/maintenance/domain/checklist -count=1)
 ./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.maintenance.checklist.*'
 ```
+
+# Incident report oracle v1
+
+EMP-CHECK-003 / B-BR-EMP-369, B-BR-EMP-373, EDR-241. `incident-v1.psv` holds
+98 synthetic cases shared by Go (`backend/internal/modules/maintenance/domain/incident`)
+and Kotlin (`com.anpfuel.domain.enterprise.maintenance.incident`). Counts:
+REPORT 35, DECIDE 63. SHA-256
+`401ba762533077b059ffd5c39161451622adb6cf1fcf40b7de8ca8b235549119`.
+Both consumers assert the digest, the counts, unique case IDs, the known
+operations and argument keys, complete expected maps, that every operation
+and every error code (`INVALID`, `CONFLICT`, `TRANSITION`, `SELF_APPROVAL`)
+has a vector, that every operation has an `INVALID` vector and that every
+action and state appears in an accepted step. The oracle activates no
+repository, route, device or report.
+
+## Format
+
+The header, field and text grammar are those of `checklist-v1.psv` above
+(`hex:`, `rep:<n>:`). `?` is an absent value. In Kotlin, `hex:` bytes that are
+not valid UTF-8 cannot form a string and become an unpaired surrogate, which
+the text profile refuses like Go refuses invalid UTF-8. Identifiers: `R<n>`
+(reports) maps to `9c000000-0000-4000-8000-` plus the twelve-digit
+`4000 + n`, `A<n>` (accounts) `5000 + n`, `M<n>` (memberships) `6000 + n`,
+`E<n>` (employee records) `7000 + n`; anything else is literal input.
+
+## Operations
+
+- **REPORT** — `type` (default `DAMAGE`), `kind` (default `?`), `description`
+  (default `Synthetic damage`), `location` (default `?`), `blocks` (default
+  `false`). Output `type;kind;state;revision;blocks` of the new report
+  (`REPORTED`, revision 1).
+- **DECIDE** — the current fact `state` (default `REPORTED`), `revision`
+  (default 1), `blocks` (default `false`), `report` (default `R1`),
+  `reporter` (comma-separated identity keys, default `A1,M1,E1`), and the
+  command `action`, `expected` (default the current revision), `note`
+  (default `?`), `duplicate` (default `?`), `handler` (default `A2,M2,E2`).
+  Output `from;to;revision;action` of the step.
+
+## Shared rule
+
+- A report is `DAMAGE` without a kind or `INCIDENT` with one of `BREAKDOWN`,
+  `ACCIDENT`, `THEFT`, `FINE_NOTICE`, `OTHER`; a description of 1..1000 and an
+  optional location of 1..140 Unicode scalars, valid text with no C0/C1
+  control character and not only white space.
+- A step: `ACKNOWLEDGE` (`REPORTED` → `ACKNOWLEDGED`, no note), `TREAT`
+  (`REPORTED`/`ACKNOWLEDGED` → `IN_TREATMENT`), `RESOLVE` and `DISMISS` (any
+  open state → `RESOLVED`/`DISMISSED`), each but `ACKNOWLEDGE` with a note of
+  1..500 scalars; a duplicate only on `DISMISS`, canonical and not the report
+  itself. The current fact is consistent (revision 1..4, `REPORTED` exactly at
+  revision 1). Errors in this order: `INVALID` (fact, action, expected
+  revision, handler, note policy, duplicate), `CONFLICT` (expected revision
+  differs), `TRANSITION` (step not allowed from the state), `SELF_APPROVAL`
+  (`RESOLVE` or `DISMISS` of a blocking report by a handler sharing any
+  identity key with the reporter). A step advances the revision by one.
+
+Run:
+
+```sh
+(cd backend && go test -race -count=1 ./internal/modules/maintenance/domain/incident)
+./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.maintenance.incident.*'
+```

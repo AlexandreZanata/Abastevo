@@ -598,6 +598,7 @@ sql:
       - db/migrations/000205_org_documents.sql
       - db/migrations/000209_org_document_links.sql
       - db/migrations/000212_org_document_upload_safety.sql
+      - db/migrations/000230_organization_incident_reports.sql
     gen:
       go:
         package: document
@@ -706,10 +707,22 @@ sql:
       - db/migrations/000020_accounts.sql
       - db/migrations/000165_org_audit_events.sql
       - db/migrations/000169_organization_roots.sql
+      - db/migrations/000170_membership_periods.sql
       - db/migrations/000172_organization_onboarding.sql
       - db/migrations/000174_operating_units.sql
+      - db/migrations/000175_cost_centres.sql
+      - db/migrations/000194_organization_devices.sql
+      - db/migrations/000196_organization_sync_intake.sql
       - db/migrations/000197_organization_assets.sql
+      - db/migrations/000198_organization_meters.sql
+      - db/migrations/000199_organization_meter_reviews.sql
+      - db/migrations/000201_organization_asset_lifecycle.sql
+      - db/migrations/000205_org_documents.sql
+      - db/migrations/000209_org_document_links.sql
+      - db/migrations/000212_org_document_upload_safety.sql
+      - db/migrations/000220_organization_trips.sql
       - db/migrations/000223_organization_checklist_templates.sql
+      - db/migrations/000230_organization_incident_reports.sql
     gen:
       go:
         package: maintenance

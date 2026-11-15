@@ -256,9 +256,12 @@ func (h *eventHandler) Confirm(ctx context.Context, db syncapp.DBTX, source sync
 // ---- logbook store (EDR-208) ----
 
 // EventStore persists accepted and held logbook events; NewID names the
-// review items of held events.
+// review items of held events. Reports is the EMP-CHECK-003 source of the
+// timeline's INCIDENT and DAMAGE facts (EDR-240); the timeline is
+// unavailable without it, never silently incomplete.
 type EventStore struct {
-	NewID func() (string, error)
+	NewID   func() (string, error)
+	Reports app.TimelineReports
 }
 
 var _ app.EventStore = (*EventStore)(nil)
@@ -328,13 +331,14 @@ func (s *EventStore) ReadEventTx(ctx context.Context, db syncapp.DBTX, scope ker
 }
 
 // TimelineTx reads one stored trip's timeline (B-BR-EMP-324): its start, its
-// accepted logbook facts and its finish, each with fact type, actor,
-// declaration and server receipt, in the shared domain order. It computes no
-// working time (EDR-028) and lists no held event.
+// accepted logbook facts, the reports made inside it (EMP-CHECK-003, as
+// INCIDENT or DAMAGE facts without text) and its finish, each with fact
+// type, actor, declaration and server receipt, in the shared domain order.
+// It computes no working time (EDR-028) and lists no held event.
 func (s *EventStore) TimelineTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, tripID string) ([]app.TimelineEntry, error) {
 	queries, err := s.port(ctx, db, scope)
-	if err != nil {
-		return nil, err
+	if err != nil || absent(s.Reports) {
+		return nil, app.ErrUnavailable
 	}
 	record, err := (&Store{}).ReadTripTx(ctx, db, scope, tripID)
 	if err != nil {
@@ -353,6 +357,20 @@ func (s *EventStore) TimelineTx(ctx context.Context, db syncapp.DBTX, scope kern
 		}
 		entries = append(entries, app.TimelineEntry{Item: trip.TimelineItem{Kind: trip.TimelineEvent, ID: e.ID, At: e.Declared.OccurredAt}, FactType: string(e.Type),
 			AuthorMembershipID: e.AuthorMembershipID, Declared: e.Declared, ReceivedAt: e.ReceivedAt, Text: e.Text})
+	}
+	reports, err := s.Reports.TripReportsTx(ctx, syncapp.Borrow(db), scope, record.ID)
+	if err != nil {
+		return nil, app.ErrUnavailable
+	}
+	for _, r := range reports {
+		if !canonicalID(r.ID) || r.Type != trip.LogbookIncident && r.Type != trip.LogbookDamage || !canonicalID(r.AuthorMembershipID) || r.ReceivedAt.IsZero() {
+			return nil, app.ErrUnavailable
+		}
+		if _, err := orgtime.ValidateDeclaration(r.Declared); err != nil {
+			return nil, app.ErrUnavailable
+		}
+		entries = append(entries, app.TimelineEntry{Item: trip.TimelineItem{Kind: trip.TimelineEvent, ID: r.ID, At: r.Declared.OccurredAt}, FactType: string(r.Type),
+			AuthorMembershipID: r.AuthorMembershipID, Declared: r.Declared, ReceivedAt: r.ReceivedAt})
 	}
 	if f := record.Finish; f != nil {
 		entries = append(entries, app.TimelineEntry{Item: trip.TimelineItem{Kind: trip.TimelineFinish, ID: record.ID, At: f.Declared.OccurredAt}, FactType: string(trip.TimelineFinish),
