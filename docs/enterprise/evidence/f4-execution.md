@@ -545,3 +545,45 @@ the tampered cursor opened. Cursor segments are now decoded strictly (only the
 canonical spelling opens). RED unit test (a non-canonical MAC spelling opened)
 → GREEN; the route test passed 12/12 repeated race runs; orgsync unit tests
 and staticcheck clean.
+
+### EMP-TRIP-004 (F2/C1 prerequisite) — trip submission and review: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip004-trip-review.md), commit `95d5555e`, migration 000226
+(append-only, forced-RLS `org_trip_review_entries`). The trip's author sends a
+signed `trip.submit` (entity `trip_review`, `expected_revision` = review
+revision, payload exactly `{}`, at most the finish as dependency) so the
+Android producer can queue it offline behind its finish; only a COMPLETED trip
+whose case is DRAFT at that revision is accepted, appending the APPR-001
+SUBMIT entry with the ACK, effect and audit; an in-progress or undelivered
+trip is `DEPENDENCY_PENDING`, another member `FORBIDDEN`; a case no longer a
+draft, or a submission whose rights changed, stores nothing and stays
+RETRY/UNAVAILABLE until TRIP-015. Review routes under `trip.trip.review`:
+organization queue (ORG grants only; matrix representative), minimal decision
+read, and decide with fresh proof and expected revision (OPEN plus
+APPROVE/RETURN/REJECT in one transaction, one audit event). A new
+`TripStructure` resolves UNIT/COST_CENTRE (stored at start), TEAM (author or
+driver at the start receipt) and ASSET grants. RETURNED records the reason
+only; the correction loop is TRIP-015 (EDR-220..223). Database guards cover
+transitions, reason policy, COMPLETED trip, submitting author and reviewer
+separation from author and driver. The agent drafted the implementation before
+the tests (recorded in the evidence); RED against stubbed bodies: unit 5/10
+new top-level, PostGIS 8/8 and 27 subtests → GREEN unit 33/310; self-approval,
+stale revision race both orders, missing reason 422, replay/second decision,
+foreign/unknown trip NOT_FOUND, uncovered UNIT/COST_CENTRE/ASSET FORBIDDEN,
+AUDITOR/FINANCE/DRIVER FORBIDDEN, populated 224 → 226 upgrade with recovery;
+union 33 packages 1054/9336. Retained: resubmission and late/duplicate
+submissions, void and amendments (TRIP-015), Android producer and the author's
+own result read (TRIP-005), scoped lists and panel (TRIP-006), period lock on
+decisions (TRIP-016), an author cancel, a TEAM-scope PostGIS fixture,
+production grants.
+
+Integration: merged in a separate integration worktree while the `75c18421`
+union ran. OpenAPI owner and schema blocks of TRIP-003 and TRIP-004 were
+interleaved by the merge and restored structurally (both owners and all
+schemas kept; YAML parses); the operation-owner count both branches set to 5
+is 6 on the union (meter, fueling, trip start/finish/event/submit); both
+intake handlers are composed; sqlc lists 000225 and 000226. Counts take the
+TRIP-004 side: 134 normal routes (24 routed / 60 not routed / 25 special),
+auditor walk 134 / 30 / 104, matrix 240 cells (93/147). Build, vet, gofmt,
+`sqlc diff`, cmd/api, apicontract and trip unit tests green; focused PostGIS
+`Trip|Auditor|AuthorizationMatrix` race tests green.
