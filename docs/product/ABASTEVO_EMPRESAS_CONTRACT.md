@@ -4605,3 +4605,32 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   unavailable forms, forced RLS without an organization setting,
   insert-only history and a populated 000212 → 000215 upgrade with injected
   failure, recovery, no-op replay and previous-image compatibility.
+
+## AUTH catalog amendment org-permissions-v5 — reservation and checklist grants (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-auth-catalog-v5.md).
+
+- **B-BR-EMP-292 — Reservations and checklist handling have named roles.**
+  The permission catalog `org-permissions-v5` grants, with organization or
+  assigned-scope coverage (`O`) and only the four standing conditions (active
+  membership, live scoped assignment, organization and plan, record rules):
+  `fleet.reservation.manage` (request, confirm and cancel reservations; block
+  and unblock assets) to `OWNER`, `ADMIN`, `FLEET_MANAGER` and `SUPERVISOR`,
+  exactly the roles of `fleet.asset.assign`; `check.template.manage`
+  (checklist templates and the critical-item policy) to `OWNER`, `ADMIN` and
+  `FLEET_MANAGER`, exactly the roles of `maint.workorder.manage`;
+  `check.incident.manage` (handle reports, release a blocked asset, open claim
+  records) to `OWNER`, `ADMIN`, `FLEET_MANAGER` and `SUPERVISOR`. Every other
+  cell of `org-permissions-v4` is unchanged: `AUDITOR`, `FINANCE`, `APPROVER`,
+  `DRIVER`, `OPERATIONS_STAFF` and the station and data roles gain nothing, and
+  the 18 other unassigned keys stay denied to every role. A role assigned to a
+  unit, cost centre, team or asset applies these grants inside that scope only.
+- **B-BR-EMP-293 — A catalog version changes grants, not stored data or
+  routes.** Role assignments store the role and its scope, never a permission
+  set or a catalog version, so a current assignment holds the new grants at
+  its next request evaluation and nothing is migrated. Each earlier oracle
+  (`v1`–`v4`) stays unchanged beside the new one, and every consumer that pins
+  the version (route inventory, authorization matrix, export gating) moves to
+  `v5` in the same change. A granted key admits no request until its owning
+  task routes it; separation-of-duty record rules (for example a release by
+  someone other than the author, BR-CHECK-011) remain obligations of that task.

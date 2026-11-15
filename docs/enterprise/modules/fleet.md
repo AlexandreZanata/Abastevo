@@ -264,7 +264,7 @@ Defaults: early tolerance 30 minutes; no-show tolerance 60 minutes, configurable
 | `fleet.asset.read` | Lists, detail, availability, meter history | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `FINANCE`, `APPROVER`, `AUDITOR` in scope; `DRIVER` and `OPERATIONS_STAFF` on assigned assets |
 | `fleet.asset.manage` | Register, edit, lifecycle, tenure, allocation, transfer, tanks, meters, implements, document links | `OWNER`, `ADMIN`, `FLEET_MANAGER` |
 | `fleet.asset.assign` | Assignments | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` |
-| `fleet.reservation.manage` | Reservations and blocks | No matrix row yet; this module assumes the roles of `fleet.asset.assign` |
+| `fleet.reservation.manage` | Reservations and blocks | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` (§7.3, org-permissions-v5; EDR-190) |
 | `fleet.supplier.manage` | Suppliers | No matrix row yet; this module assumes `OWNER`, `ADMIN`, `FLEET_MANAGER`, `FINANCE` |
 | `meter.reading.record` | Record a reading | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` in scope; `DRIVER` and `OPERATIONS_STAFF` on own and assigned assets |
 | `meter.reading.correct` | Correct, void, confirm, replace, reset, rollover | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` |
@@ -422,7 +422,7 @@ Risks:
 - Typing errors are frequent and a queue of suspect readings can grow: precise flags, automatic re-evaluation after a correction and a digest keep it short (BR-METER-011, 012).
 - A wrong rollover or replacement record distorts every later figure: only `meter.reading.correct` holders record them, each shows the implied usage before saving, and all are audited.
 - Individual assignments are heavy for fleets where everybody uses every vehicle: the bulk command covers it now; a pool by team is a possible evolution and would need a new scope rule in [07-permissions](../07-permissions.md).
-- The permission matrix has no row for `fleet.reservation.manage` and `fleet.supplier.manage`; the roles assumed in §7 need confirmation before EMP-FLEET-007 and EMP-FLEET-009.
+- The permission matrix has no row for `fleet.supplier.manage`; the roles assumed in §7 need confirmation before EMP-FLEET-009 (`fleet.reservation.manage` was confirmed by org-permissions-v5, EDR-190).
 - Availability depends on three other modules; until they exist their ports answer "no hold", and the screen must not suggest more certainty than the cut has.
 - Device clocks far from real time disorder a series ordered by `occurred_at`: `FUTURE_INSTANT`, the `CLOCK_SKEW` flag of BR-TIME-006 and review of the affected readings bound the damage.
 

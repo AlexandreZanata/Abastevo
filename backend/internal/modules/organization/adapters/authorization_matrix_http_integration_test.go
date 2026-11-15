@@ -30,7 +30,7 @@ type matrixRoute struct {
 }
 
 // These expectations are literal policy examples, independent of the catalog
-// implementation. The independent v4 PSV supplies every role's cell outcome.
+// implementation. The independent v5 PSV supplies every role's cell outcome.
 var matrixRepresentatives = []matrixRoute{
 	{"org.ownership.transfer", "/ownership-transfer/propose", true, true},
 	{"org.ownership.respond", "/ownership-transfer/read", true, false},
@@ -62,7 +62,7 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		t.Fatal("authorization test location unavailable")
 	}
 	directory := filepath.Join(filepath.Dir(source), "../../../../../contracts/testdata/enterprise")
-	file, err := os.Open(filepath.Join(directory, "authorization-catalog-v4.psv"))
+	file, err := os.Open(filepath.Join(directory, "authorization-catalog-v5.psv"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
 		} `json:"permissions"`
 	}
 	raw, err := os.ReadFile(filepath.Join(directory, "authorization-routes-v1.json"))
-	if err != nil || json.Unmarshal(raw, &inventory) != nil || inventory.Version != 1 || inventory.Roles != "org-roles-v1" || inventory.PermissionsVersion != "org-permissions-v4" || len(inventory.Permissions) != 85 {
+	if err != nil || json.Unmarshal(raw, &inventory) != nil || inventory.Version != 1 || inventory.Roles != "org-roles-v1" || inventory.PermissionsVersion != "org-permissions-v5" || len(inventory.Permissions) != 85 {
 		t.Fatal("independent route inventory unavailable or invalid")
 	}
 	routed := map[string]string{}

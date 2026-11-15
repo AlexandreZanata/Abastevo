@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "roles_version": "org-roles-v1",
-  "permissions_version": "org-permissions-v4",
+  "permissions_version": "org-permissions-v5",
   "permissions": [
     {
       "permission": "agree.agreement.manage",
