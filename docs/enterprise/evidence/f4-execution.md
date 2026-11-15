@@ -1067,3 +1067,40 @@ Integration (`bc438c2b`): contract and EDR table conflicted; build, vet (both
 tags), gofmt, `sqlc diff`, cmd/api, apicontract (11 signed owners), trip,
 tracking and orgsync unit tests and the Kotlin enterprise domain suite (4094
 tests) green.
+
+### EMP-TRIP-007 — asset-overlap conflict resolution: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip007-conflict-resolution.md), commits `e81d6364` and
+`dabde1b3` (alignment with TRIP-011 after merging `45c3baf3`), migration
+000237 (no table or foreign key; widens the review-resolution outcome check
+and redefines six functions from their latest bodies — the 199 resolution
+source/complete and effect source, the 216 observation guard, the 220 trip
+source and the 000233 trip completion — and adds `org_trip_review_published`).
+Held facts of `trip.start/finish/event.record/submit/pause/resume/cancel` are
+listed, read and resolved once under `trip.trip.review` at
+`/sync/reviews/trips/{list,read,resolve}` (queue on organization-wide grants;
+narrower grants through a new `HeldTripStructure`). Every held item can be
+refused with a reason; only a held start can be accepted, becoming the trip it
+declared (IN_PROGRESS at revision 1, departure reading at the original
+receipt), and only if no other trip of the asset is in progress or paused or
+finished/cancelled after the declared start (else `CONFLICT`, nothing
+written); reviewing one's own item is `SELF_APPROVAL`, stale/resolved
+`CONFLICT`, replay unchanged. The held fact and its original ACK stay
+immutable; the driver's signed `review-results` read now answers trip items
+(before, a trip item made the poll fail `NOT_FOUND`) (EDR-262..264). RED
+application 5/5, cmd/api 4/22, apicontract 34/92, PostGIS 8/8 → GREEN 9/9
+PostGIS on the merged tree; union 38 packages 1249/8614, 0 failures. Counts:
+150 normal routes, auditor walk 150 / 30 / 120, matrix 280 cells. Retained:
+accept-with-another-asset (VAL-07, EDR-262), attaching a refused fact to the
+winning timeline (TRIP-006), Android presentation of resolutions, expiry
+escalation, production grants.
+
+EMP-TRIP-023 was not started: a mission reference on `trip.start` needs
+either an `operation_schema` 2 (the protocol accepts only 1 in Go and the
+shared Kotlin vectors) or a schema-1 soft reference with an
+`ORPHAN_REFERENCE` hold; reservations have no mission link and no `FULFILLED`
+source yet (notes `f4-logs/trip023-analysis.md`). Its IDs (412..414 /
+209..210 / 265..266, migration 000238) stay reserved.
+
+Integration (`40ea759d`): the branch already contained `45c3baf3`; clean merge;
+build, vet, gofmt, `sqlc diff`, check_plan green.
