@@ -1540,6 +1540,9 @@ SELECT(org_id,operation_id,membership_id) ON org_sync_operations` and `GRANT
 SELECT(org_id,id) ON org_employee_identities`. Links are never updated or
 deleted; only ASSET, EMPLOYEE and METER_READING targets are registered.
 
+The signed device attachment session (EMP-OFFL-005) reuses the DOC-002 and
+DOC-003 grants; no new grant.
+
 ### Document upload safety (EMP-DOC-014)
 
 Migration212 adds `org_documents.storage_reason` (closed reasons fixed by their

@@ -995,3 +995,42 @@ real-device acceptance (OWED).
 
 Integration: merged into the F4 branch with only shared docs (EDR table,
 contract, manifest) touched; build, vet and the tracking race tests green.
+
+### EMP-OFFL-005 (F3/C1 prerequisite) — attachment upload: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-offl005-attachment-upload.md), commit `cbd24fcc`, no migration.
+Photo bytes are sealed `ATTACHMENT` entries in the PRIV-003 protected store
+with one sealed `attachment-book` v1 index per partition written in the same
+write; capture only beside an operation already queued in that partition;
+16 MiB of unsent bytes and 500 entries without eviction; bytes are removed in
+the write that records `STORED`; flag `ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED`
+off by default (EDR-267). Whole-file retry with the OFFL-003 backoff; local
+states `WAITING_FOR_RECORD` → `DECLARED` → `RECEIVED` → `STORED`, `REFUSED`
+with a closed code or `FILE_MISSING`; only server answers advance a photo
+(EDR-268). The operation's final receipt gates the upload; the DOC-003 link
+target is fixed at capture and the server links with the real device actor
+(C1 targets INCIDENT and METER_READING) (EDR-269). One signed special route
+`POST /v1/orgs/{org_id}/sync/attachments` (`SIGNED_ATTACHMENT_SESSION`)
+declares, links and returns a fresh 5-minute capability; bytes go to the
+existing capability ingress (EDR-270). New 89-row
+`sync/attachment-session-v1.psv`. RED Go 14/16, cmd/api 2/4, PostGIS+MinIO
+3/3, Kotlin domain 96/97, application 8/8, data 11/11 → GREEN; union 17
+packages 884/7026 (organization adapters 2700 s). Native acceptance on
+`emulator-5588` against a real local backend and a throwaway MinIO: offline
+trip start with two synthetic JPEGs of its departure reading surviving a
+process kill sealed; on reconnect a truncated and a byte-flipped upload are
+refused (422) while the record already shows accepted, then reach `STORED` on
+retry; a process kill during a held upload resumes with a new session; server
+counts exact (3 documents, 3 STORED, 3 links); organization B sees nothing.
+Retained/OWED: capture/import screens and producers (DOC-004, FUEL-011,
+CHECK-003 Android, TRIP-020), real receipts (OQ-04; no production document
+bucket), an encrypted blob store, re-declaration after a closed 24 h session,
+TRIP/FUELING/EXPENSE/WORK_ORDER link kinds, OFFL-013, two physical devices.
+
+Integration (`62ed58fd`): contract and EDR table conflicted (appended
+sections); build/vet including the `nativefixture` tag, gofmt, cmd/api,
+apicontract, orgsync and document unit tests green; Android host suites on the
+merged tree domain 4002, application 664, data 195, app 23 tests, 0 failures,
+`:app:assembleDebug` (`f4-logs/coord-android-offl005-merged.log`); proposed
+shared text applied (10-offline-sync §10.3, data and backend READMEs,
+documents.md, 09-architecture).
