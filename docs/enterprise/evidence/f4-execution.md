@@ -692,3 +692,59 @@ immediate `-count=3` race rerun. Its root cause (a conditional PUT on a
 keep-alive connection the provider had just closed) is fixed on `dev` by
 `82a5f97e` (PR #222), which F4 will merge before delivery
 (`f4-logs/coord-union-3345865b.jsonl`).
+
+### EMP-TRIP-016 — period lock for trips: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip016-trip-period-lock.md), commit `6dd09490`, migration
+000228 (replaces the 000226 review-entry guard; no table, no usage change). A
+trip review decision reads the APPR-006 period of the trip's stored START
+reporting day (never device, UTC, finish or receipt day) inside the decision
+transaction: OPEN or REOPENED admits, LOCKED refuses `PERIOD_LOCKED` (409) and
+writes nothing; replays, reads, the queue and field intake are not gated; late
+field facts in a locked month are accepted as facts and their decision waits
+for an authorised reopening; no trip adjustment form (EDR-232/233). RED unit 1,
+PostGIS 5/5 then 2/5 (the real database gap) → GREEN 12/12: boundary trips
+stored on 31 October while their UTC/device/receipt days are November, a stale
+reopening withdrawn by a relock, lock against decision in both orders with
+lock-wait barriers, direct insert and in-place rewrite refused by the
+database, composed HTTP 409, populated 226 → 228 upgrade with recovery. The
+agent's first `organization/adapters` union was killed by another agent and is
+void; the package was rerun alone (507 / 4139, 0 failures).
+
+### EMP-TRIP-015 — late and duplicate events, amendments after closure: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip015-late-events-amendments.md), commit `9bdd7a45`,
+migration 000229. Resubmission: `trip.submit` naming the returned field
+revision appends `RESUBMIT` at revision + 1; logbook events are edits only
+while the trip is DRAFT or a returned field revision. Late and duplicate facts
+— an event inside a submitted, decided or amended trip, or a submission naming
+a revision that is no longer the current draft/returned one — are held once
+as `STALE_REVISION` (insert-only `org_trip_held_submissions`; the database
+refuses a direct logbook fact on such a revision), never applied. Amendments:
+`trips/{trip_id}/amendments/propose` under `meter.reading.correct` corrects the
+start and/or end reading with a reason; the `orgamend` kernel decides AMEND or
+EDIT of a returned amendment, period-gated; review uses the existing decide
+route with the amendment's author excluded; approval resolves and supersedes
+exactly the corrected readings through a new fleet port
+`MeterStore.SupersedeApprovedTx` in the same transaction; the decision context
+shows the effective revision and usage per revision — 290 000 m until approval
+and 280 000 m after (VAL-26, trips.md §10). METER-004 now treats approved trips
+as parents (`AMENDMENT_REQUIRED`); before, it could change an approved trip's
+distance in place. Server-only (EDR-234..237). The agent drafted bodies before
+the tests (recorded); RED against stubs unit 7, PostGIS 7/7 and 4/4 → GREEN
+18/18 after fixing an AMEND kind-parse bug and fixture grants (no expectation
+changed); TRIP-004/TRIP-003 tests updated where the new behaviour supersedes
+them (resubmit/hold assertions, upgrade test applies the remaining chain).
+Merged-tree union on `3a3eca09` (= `3345865b` + both tasks): 29 packages,
+1025 top-level / 8242 named, 0 failures; matrix 260 cells (102/158); auditor
+walk 141 / 30 / 111; untagged 222 packages; 141 normal routes. Retained:
+resolving held `STALE_REVISION` items (TRIP-007), changed-rights events and
+submissions (RETRY), adding missing readings, instant/event corrections, void,
+METER-004 still correcting readings of submitted-but-unapproved trips
+directly, recalculation consumers (METER-006), Android (TRIP-005), panel
+(TRIP-006), the period state in the decision context.
+
+Integration (`3a5497e9`): clean merge (the branch already contained
+`3345865b`); build, vet, gofmt, `sqlc diff` green; the trip review, period and
+amendment grants are added to the backend README. TRIP-002's production
+grants are not yet written in the README (retained).
