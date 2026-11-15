@@ -441,7 +441,9 @@ class FeedbackHttpClient(
             alias = item.optString("public_alias", ""),
             stationId = item.optString("station_id", ""),
             product = item.optString("product", ""),
-            parentId = item.optString("parent_id", ""),
+            // Android's org.json reads a JSON null through optString as the
+            // text "null", which hid every top-level comment from the list.
+            parentId = if (item.isNull("parent_id")) "" else item.optString("parent_id", ""),
             depth = item.optInt("depth", 0),
             text = item.optString("text", ""),
             revision = revision,
