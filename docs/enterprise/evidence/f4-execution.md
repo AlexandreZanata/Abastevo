@@ -169,3 +169,40 @@ dependencies.
 ## Execution log
 
 Entries are appended per integrated task (commit, evidence, validation).
+
+### EMP-TRIP-001 — trip domain core: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip001-trip-domain.md), commit `68dc0085` (F2/C1 prerequisite).
+Pure Go `trip/domain` and Kotlin `enterprise.trip` share the 207-case
+`trip-v1.psv` oracle: the closed seven-state operational catalog, the C1
+driver-initiated START → IN_PROGRESS → FINISH → COMPLETED lifecycle, an
+eligible start context reported as one ordered `INCOMPLETE` list, finish only
+by the starting member, honest meter usage (`MEASURED` only for two
+non-decreasing readings on one segment, 290 000 m in the VAL-01 example, else
+`NOT_MEASURED` with a reason; a finish is never refused for plausibility) and
+review as a closed input that a completion never approves. PAUSE/RESUME/CANCEL
+are recognised and refused `UNSUPPORTED_COMMAND` until TRIP-011
+(EDR-178..181). RED Go 9/10 top-level and 207/207 vectors, Kotlin 216/217
+failing → GREEN Go 10/207 under `-race` (100% statements), Kotlin 217 (99.58%
+instructions). Reuses `orgtime`, `fleet.AssetRef` and meter reading refs; no
+kernel change. Retained: persistence and intake (TRIP-002), logbook
+(TRIP-003), review binding (TRIP-004), Android producer (TRIP-005), pause/
+resume/cancel (TRIP-011), planned/assigned states (TRIP-008/009).
+
+### EMP-TRIP-017 — midnight and time-zone crossing: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip017-time-crossing.md), commit `87629a4a`. The trip keeps its
+start reporting day; finish carries no zone of its own; elapsed time comes only
+from the two instants; an optional device run clock (boot id + monotonic ms)
+confirms the elapsed time within a caller-supplied tolerance or flags a gap
+without inventing a value (EDR-182/183). New 66-case `trip-time-v1.psv`
+(trip-v1 unchanged). RED Go 4 new top-level and 65/66 vectors, Kotlin 3/3 unit
+and 65/66 vectors (the passing row is the TRIP-001 finish-before-start guard)
+→ GREEN Go 14/66/207 (100%), Kotlin 286 trip tests. Retained: the confirmation
+tolerance policy owner, the Android run-clock producer (TRIP-005), period locks
+keyed on the start day (TRIP-016).
+
+Integration (`7a071b04`): normal merge, only the EDR table conflicted (union
+by number); `go build ./...` and `go test -race ./internal/modules/trip/...`
+green on the merged tree; agent gates: untagged backend 215 packages, Kotlin
+enterprise suite 2571/0/0, staticcheck/vet/gofmt clean, check_plan 0 problems.
