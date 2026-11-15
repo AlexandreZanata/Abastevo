@@ -259,6 +259,10 @@ A driver reading whose assignment changed between its declared instant and its r
 
 A fueling whose rights changed between its declared instant and its receipt, or declared at or after the asset's disposal, is not stored and stays `RETRY`/`UNAVAILABLE` until the held-fueling review owner exists (EMP-FUEL-002, EDR-177).
 
+A device whose exact sealed period was revoked `ACCESS_ENDED` delivers it intake-only: from server history only (end instant, window in force at it, receipt), late operations are held `ACCESS_ENDED_BEFORE_RECEIPT` when their owner has a held path, else `RETRY`/`UNAVAILABLE`, or refused `MEMBERSHIP_ENDED`/`DEVICE_REVOKED`/`INTAKE_WINDOW_CLOSED`; a key revoked lost or compromised is refused as a whole (EMP-OFFL-009, EDR-197..199).
+
+Before any owner, the organization's recorded suspension history holds work declared before a suspension and received inside its grace (`ORG_SUSPENDED_GRACE`), refuses later work (`ORG_SUSPENDED`), and keeps reviewing work declared during a resolved suspension; work declared before its capability was turned off is held `PLAN_CHANGED` (EMP-OFFL-012, EDR-200/201).
+
 ### 10.3 Offline matrix
 
 OFFL-003's construction contract extends the accepted generation-backed Android

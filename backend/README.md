@@ -1272,6 +1272,24 @@ use fresh `fleet.reservation.manage` (org-permissions-v5, admission class
 `fleet.asset.read`. Trips and maintenance holds are answered "no source" and
 listed in `missing_sources`. Nothing here provisions live grants.
 
+### Late intake after revocation (EMP-OFFL-009)
+
+Migration 218 adds forced-RLS, append-only `org_sync_late_intakes`. The signed
+intake principal needs `SELECT, INSERT ON org_sync_late_intakes` and `SELECT ON
+org_settings_versions`; the migrator needs `REFERENCES` on org_sync_operations,
+org_sync_acknowledgements, org_memberships, org_device_enrollments and
+org_settings_versions, `TRIGGER` on org_sync_acknowledgements and ownership of
+`org_meter_held_source()`. Nothing here provisions live grants.
+
+### Organization-state intake (EMP-OFFL-012)
+
+Migration 219 adds forced-RLS, append-only `org_sync_state_intakes`. The signed
+intake principal needs `SELECT, INSERT ON org_sync_state_intakes` and `SELECT
+ON org_suspension_periods` (read before every owner); the migrator needs
+`REFERENCES` on org_sync_operations, org_sync_acknowledgements and
+org_capabilities and `TRIGGER` on org_sync_acknowledgements. Nothing here
+provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

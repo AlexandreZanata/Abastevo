@@ -171,7 +171,7 @@ BUC-EMP-83..88 and EDR-110..116 precede behavior. Actual original ACK and source
 history remain immutable; next-sync acceptance includes the protected client.
 
 ### EMP-OFFL-009 — Post-revocation intake window and quarantine
-- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Handle eligible pre-revocation work through a restricted F4 intake path.
 - **Rules and use cases:** BR-OFFL-006, BR-OFFL-008, BR-OFFL-009, BR-OFFL-011, BR-OFFL-012, BR-IDN-029, UC-OFFL-07
 - **Depends on:** EMP-OFFL-008, EMP-IDN-010
@@ -185,6 +185,12 @@ history remain immutable; next-sync acceptance includes the protected client.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-SYNC, V-PRIV · migration: preserve revoked access evidence · rollback: disable the exception and retain held operations
 - **Risks and assumptions:** The window and time rules come from server-side policy and history. This work stays outside C1.
 - **Done when:** The late-delivery and denial vectors pass through PostGIS-backed intake without restoring membership authority.
+
+[F4 post-revocation window](../evidence/f4-offl009-post-revocation-window.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-302..307, BUC-EMP-152..154 and
+EDR-197..199 precede behaviour; migration 000218 keeps the late-intake
+decisions. Retained: held late fuelings (FUEL-003), late intake into a
+suspended organization, Android presentation of the codes, production grants.
 
 ### EMP-OFFL-010 — Context switch, logout and shared-device behaviour with a pending queue
 - **Meta:** module OFFL · phase F1 · cut C1 · priority P0 · type APP · size M · state TODO
@@ -219,7 +225,7 @@ history remain immutable; next-sync acceptance includes the protected client.
 - **Done when:** Revocation class, denied access and resumable local cleanup pass on isolated fixtures.
 
 ### EMP-OFFL-012 — Organization-state and plan-change handling for queued operations
-- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Evaluate queued work against organization and plan changes using server history.
 - **Rules and use cases:** BR-OFFL-006, BR-OFFL-008, BR-OFFL-009, BR-ORG-030, BR-ORG-031, BR-AUTH-009, VAL-22, VAL-35
 - **Depends on:** EMP-OFFL-008, EMP-ORG-009
@@ -233,6 +239,12 @@ history remain immutable; next-sync acceptance includes the protected client.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-SYNC · migration: additive only if history requires it · rollback: preserve accepted records and held review state
 - **Risks and assumptions:** Local context and billing state do not decide authorization. Approved review is distinct from intake.
 - **Done when:** PostGIS and sync vectors prove grace boundaries, downgrade and reactivation outcomes.
+
+[F4 organization-state disposition](../evidence/f4-offl012-org-state-queued-operations.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-308..311, BUC-EMP-155..156 and
+EDR-200/201 precede behaviour; migration 000219 keeps the state decisions.
+Retained: a real plan history (subscriptions), plan limits, mixed-batch
+withholding (OFFL-008 L2), Android presentation of the codes, production grants.
 
 ### EMP-OFFL-013 — Sync resilience suite: duplicates, reordering, partial uploads, process death
 - **Meta:** module OFFL · phase F4 · cut - · priority P1 · type TEST · size M · state TODO

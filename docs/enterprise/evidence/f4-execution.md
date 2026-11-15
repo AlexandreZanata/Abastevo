@@ -117,6 +117,11 @@ reach a later task: an absent source is an explicit, tested "no source" port
 | EMP-FLEET-007 | same | 294..301 | 148..151 | 192..195 | 000217 |
 | EMP-OFFL-009 | `f4-offl009` / `codex/enterprise-f4-offl009` | 302..307 | 152..154 | 197..199 | 000218 if needed |
 | EMP-OFFL-012 | same | 308..311 | 155..156 | 200..201 | 000219 if needed |
+| EMP-TRIP-002 | `f4-trip001` / `codex/enterprise-f4-trip001` | 312..319 | 157..160 | 202..206 | 000220 |
+| EMP-TRIP-003 | same | 320..324 | 161..163 | 207..209 | 000221 |
+| EMP-FLEET-011 | `f4-fleet007` / `codex/enterprise-f4-fleet007` | 325..329 | 164..165 | 210..212 | 000222 |
+| EMP-CHECK-001 | `f4-check001` / `codex/enterprise-f4-check001` (reassigned) | 330..335 | 166..168 | 213..215 | 000223 |
+| EMP-OFFL-006 | `f4-offl009` / `codex/enterprise-f4-offl009` | 336..341 | 169..171 | 216..218 | 000224 if needed |
 
 Unused pre-allocated IDs stay unused and are reported per task.
 
@@ -265,3 +270,94 @@ fueling, expense, trip, document and budget used a timed handler with numeric
 markers; they now drop the record time (the `untimed` option DOC-006 already
 used). No marker or expectation changed. After the fix: 3000/3000 runs pass;
 the affected packages' untagged tests, vet (both tags) and staticcheck pass.
+
+### EMP-METER-003 (F2 prerequisite) — reading validation: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-meter003-reading-validation.md), commit `2669080c`. Pure
+validator in Go (`fleet/domain/meter/validation.go`) and Kotlin
+(`MeterValidation`) over the 104-case `validation-v1.psv` oracle: below the
+previous / above the next reading, an exact nanosecond rate check on both new
+pairs, a future instant beyond 300 s of skew, the `RETROACTIVE` note and
+fixed-point re-evaluation of suspect neighbours. Migration 000216 adds the
+append-only, forced-RLS reading-state history and replaces the 000201
+observation guard with one clause changed so an accepted held reading may be
+stored `SUSPECT`. The signed intake, the embedded fueling reading and accepted
+held reviews validate; a suspect reading is stored (never refused), ACCEPTED at
+revision 1, excluded from latest-valid, and its neighbours are re-evaluated in
+the same transaction; rollback switch `ANPFUEL_ENTERPRISE_METER_PLAUSIBILITY`
+(EDR-184..186). RED Go 6/7 top-level and 104/104 vectors, Kotlin 108/109,
+PostGIS 7/9 → GREEN Go 23/459 (validation 100%), Kotlin 2394 enterprise tests,
+PostGIS 9 focused; race union 22 packages 793/5213 (MinIO-dependent tests
+rerun green). One METER-002 unit expectation that treated a stored SUSPECT as
+a mismatch is obsolete under the new rule and now proves acceptance (recorded
+in the evidence). Retained: the Android warning screen (AC5 is proven at the
+validator), the review-ACK form for suspect standalone readings, per-category
+limits and the organization skew setting, rollover/segments (METER-005).
+
+### EMP-METER-004 (F2 prerequisite) — reading correction and void: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-meter004-reading-correction.md), commit `30bfa7c4`, no
+migration (000216 already holds actor, reason and supersession). Three routes:
+history with supersession chains (`fleet.asset.read`), suspect list and
+SUPERSEDE/VOID/CONFIRM decide (`meter.reading.correct`, fresh proof);
+`READING_ALREADY_SUPERSEDED` and `AMENDMENT_REQUIRED` (409, a reading of an
+approved fueling is refused until an amendment consumer exists); audit events
+`meter.reading.corrected|voided|confirmed` without reading content; the
+`meter.usage.recalculated` outbox event only when consumers are configured
+(none in production); structural scopes resolve `meter.reading.correct` on the
+reading's asset (EDR-187..189). RED unit 1/1, PostGIS 5/5 → GREEN 5 PostGIS
+tests (22 HTTP assertions), race union 23 packages 855 top-level. Retained:
+amendment consumer for approved parents, recalculation consumers (METER-006),
+organization-wide suspect queue and panel (METER-007), production grants.
+
+### EMP-OFFL-009 — post-revocation intake window: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-offl009-post-revocation-window.md), commit `fe59fba4`. A device
+whose exact enrollment period was revoked `ACCESS_ENDED` (membership end or a
+revocation command) delivers intake-only through the existing signed route.
+Evidence comes only from server history (EDR-197): the end instant, the
+`intake_window_days` setting in force at it (default 15, elapsed seconds,
+inclusive) and the database receipt clock; after the window
+`INTAKE_WINDOW_CLOSED`; with a pre-end server claim or a declared instant
+before the end, held `ACCESS_ENDED_BEFORE_RECEIPT`; otherwise
+`MEMBERSHIP_ENDED`/`DEVICE_REVOKED`. Lost or compromised keys are refused for
+the whole batch. Intake grants no reads; only late decisions replay byte for
+byte. Late fuelings stay `RETRY`/`UNAVAILABLE` (EDR-177) until FUEL-003.
+Migration 000218: append-only, forced-RLS decision table re-derived by the
+database. RED pure 45/54 named, PostGIS 12/13 top-level → GREEN 16/73; union
+18 packages 808/5582 (storage tests rerun with MinIO).
+
+### EMP-OFFL-012 — organization-state disposition of queued operations: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-offl012-org-state-queued-operations.md), commit `aa74b809`.
+Before every owner each operation is checked against ORG-009's suspension
+assessment, then the plan rule: declared before a suspension and inside the
+grace, or during a suspension since ended, held `ORG_SUSPENDED_GRACE`; at or
+after its start, `ORG_SUSPENDED`; with no billing yet the plan is the
+capability row (EDR-201): work declared before a capability was turned off is
+held `PLAN_CHANGED`, later work keeps `ENTITLEMENT_REQUIRED`. Migration 000219:
+append-only state decision table with a SQL copy of the suspension assessment
+checked against Go by a generated matrix and shared plan-rule vectors. RED
+pure 14/20 named, PostGIS 7/9 → GREEN 62/98 focused; union 21 packages
+834/5695 with MinIO, 0 failures. The intake now reads `org_suspension_periods`
+before every owner (production grant listed in the backend README).
+
+### Merged-tree verification — `942af96b` (TRIP-001/017, catalog v5, FLEET-007, METER-003/004, OFFL-009/012)
+
+METER merge conflicts were resolved as unions (route counts 121 normal /
+22 routed / 62 not routed; auditor walk 121 routes, 28 positive, 93
+FORBIDDEN; policy allow-lists; sqlc migration list 216 + 217; OpenAPI error
+enum); OFFL merged with only the contract conflicting. 216 and 218 redefine
+different meter functions. On the merged head: `go build`, `go vet` (both
+tags), toolchain gofmt, `sqlc diff`/`vet` clean; untagged
+`go test -count=1 ./...` 215 packages ok
+(`f4-logs/coord-untagged-942af96b.log`); race/integration union with PostGIS
+and a disposable MinIO (`f4-union-s3`) over organization adapters, fleet,
+orgsync, membership, orgaccess, orgcapability, fueling, orgexport, review,
+trip, document, orgmedia, enterprisesuite, apicontract, migrate, orgtest,
+orgapi, cmd/api and cmd/worker: 50 packages, 49 pass, 1274 top-level / 10038
+named, 23 min; the only failures are the 5 known `cmd/worker` tests that need
+the pinned Rust preparer CLIs (untouched package; CI builds them)
+(`f4-logs/coord-union-942af96b.jsonl`). The OFFL evidence's proposed shared
+text is applied (10-offline-sync §10.2, backend README grants, BR-IDN-029 and
+BR-ORG-031 references, ep04 states).
