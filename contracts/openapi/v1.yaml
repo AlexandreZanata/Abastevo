@@ -52,6 +52,8 @@ tags:
     description: Signed current-source operation transport with independent scoped transactions and protected receipts.
   - name: enterprise-finance
     description: Private organization financial periods; lock, reopen and re-lock with append-only history.
+  - name: enterprise-trips
+    description: Private organization trip review; submission arrives through the signed intake, decisions on the current revision.
   - name: enterprise-notifications
     description: Own in-app notices and per-kind preferences of the current member; external channels stay disabled.
   - name: enterprise-reports
@@ -14878,6 +14880,10 @@ paths:
         unavailable or changed-right asset and a finish of an already completed trip are kept as ACCEPTED_FOR_REVIEW
         held facts (ASSET_BUSY, ASSET_UNAVAILABLE, PERMISSION_CHANGED, TRIP_ALREADY_CLOSED); their resolution is
         EMP-TRIP-007. A finish whose trip is not stored is RETRY/DEPENDENCY_PENDING.
+        The trip.submit owner (EMP-TRIP-004) appends the author's SUBMIT entry to a COMPLETED trip whose review case
+        is DRAFT at the named expected_revision, with its ACK (entity trip_review, entity revision = review revision); a
+        trip not stored or still in progress is RETRY/DEPENDENCY_PENDING, another member FORBIDDEN, and a case no longer
+        a draft at that revision stores nothing and stays RETRY/UNAVAILABLE until EMP-TRIP-015.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -14934,6 +14940,17 @@ paths:
             ACCEPTED: NO_ASYNC_FOLLOWUP
             REJECTED: NO_ASYNC_FOLLOWUP
             ACCEPTED_FOR_REVIEW: ATOMIC_REVIEW
+        trip.submit:
+          schema: 1
+          entity_type: trip_review
+          payload:
+            $ref: '#/components/schemas/EnterpriseTripSubmitPayload'
+          terminal_results:
+          - ACCEPTED
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
       security: []
       parameters:
       - $ref: '#/components/parameters/EnterpriseOrgID'
@@ -18391,6 +18408,198 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/review/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripReviewList
+      summary: List trips awaiting a review decision
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.review permission on the whole
+        organization (an ORG grant; structural reviewers open each trip through its read). Returns the trips whose
+        latest review entry is SUBMITTED or IN_REVIEW, in submission order, with only trip, asset, driver employee,
+        start reporting day, review state, revision and submission instant; keyset cursor bound to the caller and the
+        limit. Lists filtered by structural scope and the panel are EMP-TRIP-006 (EMP-TRIP-004, B-BR-EMP-346).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.review
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripReviewListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current review queue page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripReviewQueuePage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/{trip_id}/review/read:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripReviewRead
+      summary: Read the decision context of one trip
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.review permission covering the trip
+        (ORG, or UNIT/COST_CENTRE/TEAM/ASSET through the trip's stored asset, start unit and cost centre and the teams
+        of its author or driver at the start receipt). Returns only the decision context (trip, asset, driver employee,
+        operational state, start and finish instants, start reporting day, review state and revision, and the
+        append-only entry history). No reading value, run clock, coordinate or document content; lists and the
+        timeline are EMP-TRIP-006. An unknown or another organization's trip is NOT_FOUND (EMP-TRIP-004,
+        B-BR-EMP-346).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.review
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripReviewReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current decision context.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripReviewView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/{trip_id}/review/decide:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripReviewDecide
+      summary: Approve, return or reject the current revision of one trip
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization,
+        enabled capability and trip.trip.review covering the trip (same structure as the read). One audited decision
+        on the named review revision; a SUBMITTED case is opened and decided in one transaction. RETURN and REJECT
+        need a reason (1..280 scalars, no control character); APPROVE takes an optional one. A reviewer who shares
+        an account, membership or canonical employee with the trip's author or driver is SELF_APPROVAL; a stale
+        revision or a case not SUBMITTED/IN_REVIEW is CONFLICT; a missing reason VALIDATION_FAILED. Same operation
+        and digest returns the first result with replayed=true and no second audit event; another digest is
+        OPERATION_ID_REUSED. Operational completion never approves (EMP-TRIP-004, B-BR-EMP-344/345).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.review
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripReviewDecisionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008601
+              revision: 1
+              decision: RETURN
+              reason: Informe o motivo da parada
+      responses:
+        '200':
+          description: Private audited decision or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripReviewDecision'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/finance/periods/list:
     post:
       tags:
@@ -20443,6 +20652,300 @@ components:
         soft_references and attachments are empty. Only the member who started the trip finishes it; a finish before the
         start instant is MALFORMED; a reading of the trip's asset is recorded with origin TRIP_END in the same transaction
         and the trip becomes COMPLETED (entity revision 2). Plausibility never refuses the finish.
+    EnterpriseTripSubmitPayload:
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+      description: Owner schema1 for trip.submit (EMP-TRIP-004). The payload is the exact empty object. Envelope
+        entity.type=trip_review, entity.id = the trip, expected_revision = the review revision submitted (1..1000000);
+        at most one depends_on entry (the finish); soft_references and attachments are empty. The envelope declaration is
+        the instant the author marked the trip ready to send. Only the author of a COMPLETED trip submits; the review
+        state becomes SUBMITTED on acceptance (BR-REV-002).
+    EnterpriseTripReviewListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          minLength: 1
+      example:
+        limit: 20
+    EnterpriseTripReviewQueueItem:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        driver_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reporting_day:
+          type: string
+          format: date
+        review_state:
+          type: string
+          enum:
+          - SUBMITTED
+          - IN_REVIEW
+        revision:
+          type: integer
+          minimum: 1
+        submitted_at:
+          type: string
+          format: date-time
+      required:
+      - trip_id
+      - asset_id
+      - driver_employee_id
+      - reporting_day
+      - review_state
+      - revision
+      - submitted_at
+    EnterpriseTripReviewQueuePage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseTripReviewQueueItem'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - trip_id: 7b0e2a54-0000-4000-8000-000000008701
+          asset_id: 7b0e2a54-0000-4000-8000-000000008201
+          driver_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+          reporting_day: '2026-11-15'
+          review_state: SUBMITTED
+          revision: 1
+          submitted_at: '2026-11-15T11:05:00Z'
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseTripReviewReadRequest:
+      description: Empty body; the trip is the path selector.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseTripReviewDecisionRequest:
+      type: object
+      additionalProperties: false
+      description: The review revision judged and one decision; RETURN and REJECT require a reason, APPROVE accepts an
+        empty or absent-content reason.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        decision:
+          type: string
+          enum:
+          - APPROVE
+          - RETURN
+          - REJECT
+        reason:
+          type: string
+          maxLength: 1120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - decision
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008601
+        revision: 1
+        decision: RETURN
+        reason: Informe o motivo da parada
+    EnterpriseTripReviewState:
+      type: string
+      enum:
+      - DRAFT
+      - SUBMITTED
+      - IN_REVIEW
+      - APPROVED
+      - RETURNED
+      - REJECTED
+      - CANCELLED
+      - VOIDED
+    EnterpriseTripReviewDecision:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        decision:
+          type: string
+          enum:
+          - APPROVE
+          - RETURN
+          - REJECT
+        review_state:
+          $ref: '#/components/schemas/EnterpriseTripReviewState'
+        revision:
+          type: integer
+          minimum: 1
+        reason:
+          type: string
+        recorded_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - trip_id
+      - decision
+      - review_state
+      - revision
+      - reason
+      - recorded_at
+      - replayed
+      - data_mode
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000008701
+        decision: RETURN
+        review_state: RETURNED
+        revision: 1
+        reason: Informe o motivo da parada
+        recorded_at: '2026-11-15T14:03:00.123456Z'
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseTripReviewEntry:
+      type: object
+      additionalProperties: false
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        kind:
+          type: string
+          enum:
+          - SUBMIT
+          - OPEN
+          - APPROVE
+          - RETURN
+          - REJECT
+        revision:
+          type: integer
+          minimum: 1
+        state:
+          $ref: '#/components/schemas/EnterpriseTripReviewState'
+        reason:
+          type: string
+        actor_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        recorded_at:
+          type: string
+          format: date-time
+      required:
+      - sequence
+      - kind
+      - revision
+      - state
+      - reason
+      - actor_membership_id
+      - recorded_at
+    EnterpriseTripReviewView:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        driver_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operational_state:
+          type: string
+          enum:
+          - PLANNED
+          - ASSIGNED
+          - ACCEPTED
+          - IN_PROGRESS
+          - PAUSED
+          - COMPLETED
+          - CANCELLED
+        started_at:
+          type: string
+          format: date-time
+        finished_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        reporting_day:
+          type: string
+          format: date
+        review_state:
+          $ref: '#/components/schemas/EnterpriseTripReviewState'
+        revision:
+          type: integer
+          minimum: 1
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseTripReviewEntry'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - trip_id
+      - asset_id
+      - driver_employee_id
+      - operational_state
+      - started_at
+      - finished_at
+      - reporting_day
+      - review_state
+      - revision
+      - history
+      - data_mode
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000008701
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        driver_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+        operational_state: COMPLETED
+        started_at: '2026-11-15T08:00:00.000000123Z'
+        finished_at: '2026-11-15T11:00:00Z'
+        reporting_day: '2026-11-15'
+        review_state: SUBMITTED
+        revision: 1
+        history:
+        - sequence: 1
+          kind: SUBMIT
+          revision: 1
+          state: SUBMITTED
+          reason: ''
+          actor_membership_id: 7b0e2a54-0000-4000-8000-000000008302
+          recorded_at: '2026-11-15T11:05:00Z'
+        data_mode: SYNTHETIC
     EnterpriseFuelingSubmitPayload:
       type: object
       additionalProperties: false

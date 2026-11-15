@@ -96,7 +96,12 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish}, o.IntakeHandlers...)
+	// EMP-TRIP-004 (EDR-220): the author's signed submission of a completed trip.
+	tripSubmit, err := trippg.NewSubmitHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore, tripStore)
+	if err != nil {
+		return err
+	}
+	handlers := append([]app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripSubmit}, o.IntakeHandlers...)
 	registry, err := app.NewRegistry(handlers...)
 	if err != nil {
 		return err
@@ -142,6 +147,12 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		}
 		noAsync[key] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup, protocol.AcceptedForReview: app.AtomicReview}
 	}
+	// EMP-TRIP-004: a submission has no consumer and no held path.
+	submitKey := app.OperationKey{Type: tripapp.SubmitOperationType, Schema: 1}
+	if _, exists := noAsync[submitKey]; exists {
+		return app.ErrUnavailable
+	}
+	noAsync[submitKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
 	catalog, _, err := IntakeEvents(o.Pool, o.IntakeConsumers)
 	if err != nil {
 		return err

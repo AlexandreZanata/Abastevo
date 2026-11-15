@@ -78,7 +78,7 @@ reserved starts. Held-item resolution stays with EMP-TRIP-007.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-004 — Trip submission and administrative review
-- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
 - **Objective:** Submit and review the operational trip without changing source facts.
 - **Rules and use cases:** REQ-07.2, BR-REV-001, BR-REV-003, BR-REV-005, BR-REV-007, VAL-01
 - **Depends on:** EMP-TRIP-002, EMP-APPR-001
@@ -92,6 +92,18 @@ reserved starts. Held-item resolution stays with EMP-TRIP-007.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 trip review](../evidence/f4-trip004-trip-review.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. The author's signed `trip.submit` (entity
+`trip_review`, expected revision, empty payload, migration 000226) appends
+the APPR-001 SUBMIT entry to a COMPLETED trip; an in-progress or undelivered
+trip is `DEPENDENCY_PENDING`, another member `FORBIDDEN`, a non-draft case
+stays `RETRY`. Company routes under `trip.trip.review` list the queue (ORG),
+read the decision context and decide one revision (fresh proof; OPEN and
+APPROVE/RETURN/REJECT in one audited transaction) with SELF_APPROVAL,
+CONFLICT, VALIDATION_FAILED, OPERATION_ID_REUSED, NOT_FOUND and structural
+FORBIDDEN proven on PostGIS. Resubmission after return, cancel, amendments
+and the panel remain EMP-TRIP-015/006.
 
 ### EMP-TRIP-005 — App: start a trip, log events and finish, offline first
 - **Meta:** module TRIP · phase F2 · cut C1 · priority P0 · type APP · size L · state TODO

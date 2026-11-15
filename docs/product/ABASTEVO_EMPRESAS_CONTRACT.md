@@ -5460,3 +5460,102 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   cursors, tombstones after the cursor, monotonic gap-detectable revisions,
   revoked grants, server-clock confirmation, concurrent pulls, database
   guards and a populated upgrade.
+
+## EMP-TRIP-004 — Trip submission and administrative review (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip004-trip-review.md).
+
+- **B-BR-EMP-342 — Submission is the author's signed `trip.submit`.** The
+  operation `trip.submit` schema 1 (entity `trip_review`, id = the trip
+  UUID, `expected_revision` = the review revision being submitted, at most
+  one dependency — the trip's finish —, no soft reference or attachment)
+  carries the exact empty payload `{}`; its envelope declaration is the
+  instant the author marked the trip ready to send. The device keeps it
+  queued as "ready to send" until the server answers; the case becomes
+  `SUBMITTED` only when the server accepts it (BR-REV-002). Acceptance
+  appends one APPR-001 `SUBMIT` entry (DRAFT → SUBMITTED, revision kept)
+  with the operation, the author membership and its employee record in the
+  same transaction as the `ACCEPTED` acknowledgement, the audit event and
+  the effect, whose entity revision is the submitted review revision.
+- **B-BR-EMP-343 — Only a completed trip, only by its author.** Only the
+  member who started the trip submits it, with current `trip.trip.start`
+  over the stored trip and the EDR-118 history continuity of the finish
+  (another member is a whole-response `FORBIDDEN`). Only an operationally
+  `COMPLETED` trip whose review case is `DRAFT` at the named revision is
+  submitted. A trip that is not stored in this organization (missing, held
+  or another organization's) or still `IN_PROGRESS` is `RETRY`
+  `DEPENDENCY_PENDING` with nothing stored; an absent, non-positive or
+  out-of-range expected revision, any payload key, a soft reference, an
+  attachment or more than one dependency is `REJECTED` `MALFORMED`; a case
+  that is no longer `DRAFT` at the named revision (submitted by another
+  operation, returned, decided) and a submission whose right changed after
+  its declaration store nothing and stay `RETRY` `UNAVAILABLE` until
+  EMP-TRIP-015 owns resubmission, late duplicates and their held review.
+  Same id and digest replays the stored acknowledgement byte for byte; the
+  same id with another digest is `OPERATION_ID_REUSED`. Operational
+  completion alone never submits or approves a trip.
+- **B-BR-EMP-344 — One decision per revision by an independent scoped
+  reviewer.** `POST /v1/orgs/{org_id}/trips/{trip_id}/review/decide`
+  (`trip.trip.review`, configuration write, fresh proof, `revision` =
+  the review revision judged) decides `APPROVE` (optional reason), `RETURN`
+  or `REJECT` (reason required) with the B-BR-EMP-163 reason profile (1..280
+  scalars, no control character, blank is missing). Under the organization
+  root and the trip row lock the stored history is replayed through the
+  APPR-001 lifecycle; a `SUBMITTED` case is opened (`OPEN`, SUBMITTED →
+  IN_REVIEW) and decided in the same transaction, an `IN_REVIEW` case is
+  decided directly. The entries carry the reviewer's membership and employee
+  record and the command operation; one audit event
+  `trip.trip.approved|returned|rejected` (target `trip`, command digest, no
+  reason text) commits with them. The reviewer's permission is checked at
+  receipt over the trip's stored structure: its asset, the unit and cost
+  centre stored at the start, and the teams of its author and driver at the
+  start receipt (EMP-AUTH-006 `UNIT`, `COST_CENTRE`, `TEAM`, `ASSET`).
+- **B-BR-EMP-345 — Refusals change nothing.** A reviewer who shares an
+  account, a membership or a canonical employee record (merge chain) with
+  the trip's author or driver is `SELF_APPROVAL`, whatever roles that person
+  holds (BR-REV-003); an expected revision other than the current one, or a
+  case that is not `SUBMITTED` or `IN_REVIEW` (draft, already decided), is
+  `CONFLICT` (BR-REV-007); a missing, blank or invalid reason is
+  `VALIDATION_FAILED`; an unknown or another organization's trip is
+  `NOT_FOUND`; a member without `trip.trip.review` (DRIVER, FINANCE,
+  AUDITOR) or whose grant does not cover the trip's structure is
+  `FORBIDDEN`. Two decisions racing on one revision leave exactly one
+  decision; the other is `CONFLICT`. The same operation and digest returns
+  the stored result with `replayed=true` and writes no second entry or
+  audit event; the same operation with another digest is
+  `OPERATION_ID_REUSED`. The history is append-only and forced-RLS; the
+  database re-proves the transition, the separation of reviewer and author
+  and, at commit, the receipt or audit event of every entry.
+- **B-BR-EMP-346 — Minimal reviewer reads.** `POST
+  /v1/orgs/{org_id}/trips/{trip_id}/review/read` (`trip.trip.review`, read,
+  same structural coverage) returns only the decision context: trip, asset,
+  driver employee, operational state, start and finish instants, start
+  reporting day, review state and revision, and the entry history (kind,
+  revision, resulting state, reason, actor membership, recorded instant). No
+  reading value, run clock, coordinate or document content. `POST
+  /v1/orgs/{org_id}/trips/review/list` (`trip.trip.review`, read, an
+  organization-level resource that only an `ORG` grant covers) pages the
+  trips whose latest entry is `SUBMITTED` or `IN_REVIEW` in submission order
+  with the same minimal fields and the submission instant. Lists filtered by
+  structural scope, the timeline and the panel screens remain EMP-TRIP-006.
+- **B-BR-EMP-347 — What return and rejection mean now.** `RETURNED` records
+  what to fix for the author and is not terminal; the correction loop — a
+  new revision through events and amendments, then `RESUBMIT` — belongs to
+  EMP-TRIP-015, so until then a `trip.submit` on a returned case stays
+  `RETRY` `UNAVAILABLE`. `APPROVED` and `REJECTED` are terminal (BR-REV-006).
+  No decision changes the trip's operational state, readings, meter usage
+  or any time or wage figure; nothing approves automatically, and the author
+  has no cancel command yet.
+- **BUC-EMP-172 — Submit a finished trip (VAL-01 steps 4–5).** The driver
+  finishes the trip offline and marks it ready to send; the queued
+  `trip.submit` waits for its finish, is accepted on receipt and the trip
+  becomes `SUBMITTED`; a resend returns the same acknowledgement.
+- **BUC-EMP-173 — Review a submitted trip (VAL-01 step 6).** A scoped
+  reviewer reads the decision context and approves, returns with a reason or
+  rejects the current revision; the decision, its reviewer, its reason and
+  one audit event are kept, and the previous entries remain.
+- **BUC-EMP-174 — Prove the review on real PostGIS.** Self-approval, stale
+  revision, missing reason, a repeated and a second decision, another
+  organization's trip, an uncovering structural grant, an AUDITOR, a race in
+  both orders, forced RLS and the history guards, and a populated upgrade
+  with injected failure and recovery.
