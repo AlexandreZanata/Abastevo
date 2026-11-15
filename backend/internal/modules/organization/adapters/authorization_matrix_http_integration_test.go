@@ -51,6 +51,7 @@ var matrixRepresentatives = []matrixRoute{
 	{"meter.reading.correct", "/sync/reviews/meter-readings/list", false, false},
 	{"check.template.manage", "/checklists/templates/list", false, false},
 	{"trip.trip.review", "/trips/review/list", false, false},
+	{"trip.trip.close_for_other", "/trips/open/list", false, false},
 	{"trip.mission.manage", "/missions/list", false, false},
 	{"trip.trip.start", "/missions/mine/list", false, false},
 	{"check.incident.manage", "/incidents/reports/list", false, false},
@@ -272,6 +273,7 @@ func matrixPrivateState(t *testing.T, fx deviceFixtureState) string {
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_export_jobs x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,trip_id,sequence) FROM org_trip_review_entries x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,trip_id,revision) FROM org_trip_amendments x),
+	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,trip_id) FROM org_trip_closures x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,id) FROM org_trip_missions x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,mission_id,revision) FROM org_trip_mission_transitions x),
 	 (SELECT jsonb_agg(to_jsonb(x) ORDER BY org_id,operation_id) FROM org_trip_mission_commands x),
@@ -649,10 +651,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 280 || allowed != 112 || denied != 168 {
+	if exercised != 290 || allowed != 116 || denied != 174 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 58 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident report S cells cover only the own report list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 55 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident report S cells cover only the own report list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
 }
 
 // matrixAssignableAsset creates, through the owner's actual requests, one

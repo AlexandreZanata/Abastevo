@@ -148,6 +148,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, maintpg.ChecklistAuditDefinitions()...)
 	definitions = append(definitions, maintpg.IncidentAuditDefinitions()...)
 	definitions = append(definitions, trippg.ReviewAuditDefinitions()...)
+	definitions = append(definitions, trippg.ClosureAuditDefinitions()...)
 	definitions = append(definitions, trippg.MissionAuditDefinitions()...)
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
@@ -186,6 +187,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "idn.device", Permissions: []string{"idn.credential.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic scoped device enrollment and revocation inherit identity v1 write200/hour on every axis; current source membership precedes admission and production measurement remains required."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "trip.mission", Permissions: []string{"trip.mission.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic mission create, assign and cancel commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "trip.close", Permissions: []string{"trip.trip.close_for_other"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic supervisor trip closures inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "trip.review", Permissions: []string{"trip.trip.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic trip review decisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
@@ -389,6 +391,13 @@ func Register(router chi.Router, o Options) error {
 	tripReviews := &trippg.ReviewStore{Pool: o.Pool, Authority: tripReviewAuthority, Audit: auditStore, Periods: reviewpg.PeriodGate{}, Amenders: tripReviewAuthority, Readings: meters}
 	tripReviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ReviewRecords{}, Structure: tripStructure, Now: time.Now}
 	if err := tripweb.RegisterReview(router, tripapp.ReviewService{Enabled: true, Repository: tripReviews, NewID: jobs.NewUUIDv4}, cookies, gateway, tripReviewAuthorization); err != nil {
+		return err
+	}
+	// EMP-TRIP-014 (EDR-259): the supervisor closure and the open-trip list
+	// under trip.trip.close_for_other through the same trip structure.
+	tripClosures := &trippg.ClosureStore{Pool: o.Pool, Authority: tripReviewAuthority, Audit: auditStore}
+	tripClosureAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ClosureRecords{}, Structure: tripStructure, Now: time.Now}
+	if err := tripweb.RegisterClosure(router, tripapp.ClosureService{Enabled: true, Repository: tripClosures}, cookies, gateway, tripClosureAuthorization); err != nil {
 		return err
 	}
 

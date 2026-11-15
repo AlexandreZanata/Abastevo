@@ -299,7 +299,7 @@ not cover the mission with it. `POST …/missions/{mission_id}/vehicle/change`
 under fresh `trip.mission.manage`; trips, readings and meters never move.
 
 ### EMP-TRIP-014 — Missing final reading and supervisor closure
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Close an eligible open trip with explicit missing-reading evidence.
 - **Rules and use cases:** REQ-07.6, JRN-07, BR-TRUTH-003, BR-REV-003, BR-AUD-001
 - **Depends on:** EMP-TRIP-004, EMP-METER-004

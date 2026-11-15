@@ -246,6 +246,13 @@ func (s *Store) ReadTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.Or
 		record.ReadingValue = &n
 	}
 	if row.FinishOperationID == "" {
+		// EMP-TRIP-014: a completed trip without a finish was closed by a supervisor.
+		if state == trip.Completed {
+			if record.Closure, err = tripClosure(ctx, queries, scope, tripID); err != nil {
+				return app.Record{}, err
+			}
+			return record, nil
+		}
 		if state != trip.InProgress {
 			return app.Record{}, app.ErrUnavailable
 		}

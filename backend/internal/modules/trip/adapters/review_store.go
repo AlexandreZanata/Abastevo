@@ -293,7 +293,21 @@ func (s *ReviewStore) DecideTripReview(ctx context.Context, scope kernel.OrgScop
 		if err != nil {
 			return err
 		}
-		added, err := app.DecideRevision(revisions, v, self, author, driver, amender)
+		// EMP-TRIP-014 (B-BR-EMP-401): the member who closed the trip is
+		// excluded like an author.
+		var others []app.Person
+		if facts.State == string(trip.Completed) && !facts.FinishedAt.Valid {
+			closure, err := tripClosure(ctx, queries, scope, v.TripID)
+			if err != nil {
+				return err
+			}
+			closer, err := person(ctx, queries, org, closure.CloserMembershipID, closure.CloserEmployeeID)
+			if err != nil {
+				return err
+			}
+			others = append(others, closer)
+		}
+		added, err := app.DecideRevision(revisions, v, self, author, driver, amender, others...)
 		if err != nil {
 			return err
 		}
@@ -417,6 +431,11 @@ func (s *ReviewStore) ReadTripReview(ctx context.Context, scope kernel.OrgScope,
 				return app.ErrUnavailable
 			}
 			view.FinishedAt = &finished
+		} else if operational == trip.Completed {
+			// EMP-TRIP-014 (B-BR-EMP-400): the closure stays visible.
+			if view.Closure, err = tripClosure(ctx, queries, scope, tripID); err != nil {
+				return err
+			}
 		}
 		again, err := s.Authority.CheckTripReviewTx(ctx, tx, scope, actor, member, tripID, false)
 		if err != nil {

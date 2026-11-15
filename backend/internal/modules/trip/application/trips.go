@@ -209,7 +209,8 @@ type FinishRecord struct {
 	EndDay                                                       string
 }
 
-// Record is one stored trip with its optional finish.
+// Record is one stored trip with its optional finish or, for a trip closed by
+// a supervisor, its closure (EMP-TRIP-014); never both.
 type Record struct {
 	private
 	ID, OperationID, PayloadDigest, AssetID, DriverID, AuthorMembershipID, AuthorEmployeeID, EnrollmentID string
@@ -222,6 +223,7 @@ type Record struct {
 	Reporting                                                                                             orgtime.ReportingAttribution
 	State                                                                                                 trip.State
 	Finish                                                                                                *FinishRecord
+	Closure                                                                                               *ClosureRecord
 }
 
 // Store persists trips, finishes and held facts in the intake transaction.

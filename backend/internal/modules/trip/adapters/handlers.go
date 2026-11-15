@@ -363,7 +363,9 @@ func (h *finishHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if !readingFits(v.Event, view) {
 		return malformed(), nil
 	}
-	if record.Finish != nil {
+	// A finished trip, or one a supervisor closed (EMP-TRIP-014), keeps a
+	// later finish as a held fact.
+	if record.Finish != nil || record.Closure != nil {
 		review, err := h.store.HoldFinishTx(ctx, syncapp.Borrow(db), source, op, command, app.TripAlreadyClosed)
 		return held(review, app.TripAlreadyClosed, err)
 	}

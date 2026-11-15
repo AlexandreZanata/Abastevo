@@ -25,6 +25,7 @@ import (
 	tripdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -47,6 +48,23 @@ func tripGrants(t *testing.T, fx legalFixtureState) {
 		";GRANT UPDATE(state) ON org_trips TO "+role+";GRANT SELECT ON org_employee_identities,org_asset_unit_periods,org_asset_cost_centre_periods,org_meters,org_meter_readings,org_units,org_meter_segments TO "+role+
 		";GRANT SELECT,INSERT,UPDATE ON org_asset_reservations,org_asset_blocks TO "+role+";GRANT SELECT,INSERT ON org_asset_reservation_commands TO "+role+";GRANT SELECT,INSERT ON job_queue TO "+role); err != nil {
 		t.Fatal(err)
+	}
+	tripClosureGrant(t, fx.f)
+}
+
+// tripClosureGrant grants the EMP-TRIP-014 closures once the 000235 table
+// exists: the completion, logbook and review guards read them, the closure
+// owner inserts them (an upgrade rehearsal may stop at an earlier image).
+func tripClosureGrant(t *testing.T, f *orgtest.Fixture) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_closures') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_closures TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 

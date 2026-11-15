@@ -31,6 +31,7 @@ type TripReviewAuthority struct {
 var (
 	_ trippg.ReviewAuthority = (*TripReviewAuthority)(nil)
 	_ trippg.AmendAuthority  = (*TripReviewAuthority)(nil)
+	_ trippg.CloseAuthority  = (*TripReviewAuthority)(nil)
 )
 
 func (g *TripReviewAuthority) CheckTripReviewTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string, write bool) (tripapp.Reviewer, error) {
@@ -46,6 +47,18 @@ func (g *TripReviewAuthority) CheckTripReviewTx(ctx context.Context, tx pgx.Tx, 
 // amendment's author (EMP-TRIP-015, EDR-236).
 func (g *TripReviewAuthority) CheckTripAmendTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string) (tripapp.Reviewer, error) {
 	return g.check(ctx, tx, scope, actor, member, target, tripapp.AmendPolicy(), true)
+}
+
+// CheckTripCloseTx proves trip.trip.close_for_other over the stored trip (a
+// write: fresh proof and ACTIVE organization) or, for the open-trip list,
+// over the organization itself, and returns the closer (EMP-TRIP-014,
+// EDR-259).
+func (g *TripReviewAuthority) CheckTripCloseTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string, write bool) (tripapp.Reviewer, error) {
+	policy := tripapp.ClosePolicy(tripapp.ClosureReadAction)
+	if write {
+		policy = tripapp.ClosePolicy(tripapp.ClosureWriteAction)
+	}
+	return g.check(ctx, tx, scope, actor, member, target, policy, write)
 }
 
 func (g *TripReviewAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string, policy access.Policy, write bool) (tripapp.Reviewer, error) {

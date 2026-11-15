@@ -6485,3 +6485,85 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   stale revisions and racing commands in both orders; a reading or trip moved
   to another asset; the database guards and a populated upgrade with injected
   failure and recovery.
+
+## EMP-TRIP-014 — Missing final reading and supervisor closure (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip014-supervisor-closure.md).
+
+- **B-BR-EMP-399 — A permitted supervisor closes another member's open
+  trip.** A member holding `trip.trip.close_for_other` (org-permissions-v5:
+  OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR) covering the trip — an `ORG`
+  grant, or a `UNIT`, `COST_CENTRE`, `TEAM` or `ASSET` grant through the
+  trip's stored structure (EMP-TRIP-004 `TripStructure`) — closes a trip
+  that is `IN_PROGRESS` at operational revision 1, with fresh company proof
+  in an `ACTIVE` organization, stating why it is closed (reason) and why no
+  final reading exists (missing-reading reason); both use the METER-001
+  text profile (1..280 Unicode scalars, no control character). The trip
+  becomes `COMPLETED` at operational revision 2 and stops holding its asset
+  (the one-active-trip rule). The closure is operational only: the review
+  case stays as it was (`DRAFT`), nothing is submitted or approved, and the
+  author may submit it through `trip.submit` like any completed trip.
+  Closing is not gated by a finance period lock (it is a field fact, not a
+  review decision; EMP-TRIP-016). `AUDITOR`, `FINANCE`, `APPROVER` and
+  `DRIVER` are `FORBIDDEN`; a structural grant that does not cover the trip
+  is `FORBIDDEN`; an unknown or another organization's trip is `NOT_FOUND`.
+- **B-BR-EMP-400 — Missing evidence stays visible; nothing is invented.**
+  A closure carries no meter reading, value, segment or distance: the
+  request has no such field (a body naming one is `MALFORMED`), the stored
+  closure has no such column, no `TRIP_END` reading is created, and the
+  trip's usage is `NOT_MEASURED` with reason `READING_ABSENT`, never a
+  distance (BR-TRUTH-003). The closure (instant, closing member, reason and
+  missing-reading reason) is returned by the command and shown in the
+  trip's review decision context beside the absent finish. A reading taken
+  later, such as the yard reading of JRN-07, is a separate meter reading
+  with its own author and time; tying it to the trip is a reviewed
+  amendment, never an edit of the closure.
+- **B-BR-EMP-401 — No self-decision (BR-REV-003).** The closing member is
+  never the trip's author or driver: sharing the account, the membership or
+  a canonical employee record (merge chain) with either is `SELF_APPROVAL`;
+  the trip's own author finishes it through `trip.finish` instead. The
+  member who closed a trip never opens or decides any review revision of
+  that trip (`SELF_APPROVAL`), whatever roles that person holds; another
+  scoped reviewer decides it. The database re-proves both separations.
+- **B-BR-EMP-402 — Field facts after a closure are kept for review.** The
+  driver's `trip.finish` received after the closure is held
+  `TRIP_ALREADY_CLOSED` with its declared reading values (the EMP-TRIP-002
+  held finish, never a stored reading or a completion); a logbook event
+  received after the closure is held `TRIP_ALREADY_CLOSED` whatever its
+  declared instant, because a closure has no device instant to compare
+  with (BR-OFFL-006); nothing is dropped. A driver finish and a supervisor
+  closure of the same trip serialize on the organization root and the trip
+  row: when the finish commits first the closure is `CONFLICT` and writes
+  nothing; when the closure commits first the finish is held. A closed trip
+  holds its asset only until the closure is recorded; no end instant is
+  invented for it.
+- **B-BR-EMP-403 — Command, list, replay, audit and database guards.**
+  `POST /v1/orgs/{org_id}/trips/{trip_id}/close` (fresh write, expected
+  revision required) and the organization list of trips in progress
+  `POST /v1/orgs/{org_id}/trips/open/list` (read; an organization-level
+  resource that only `ORG` grants cover; oldest start first; trip, asset,
+  driver employee, author membership, start instant, start reporting day
+  and revision only). A stale revision or an already completed trip is
+  `CONFLICT`; a missing or invalid reason `VALIDATION_FAILED`. The same
+  operation and digest returns the first result with `replayed=true` and no
+  second write or audit event; another digest is `OPERATION_ID_REUSED`. One
+  `trip.trip.closed` audit event (target `trip`, digest, no reason text).
+  The database keeps the closure insert-only and forced-RLS, accepts it
+  only for a trip in progress from an active, unmerged member separated
+  from the author and driver, makes it the only completion besides the
+  finish, and publishes it only with its audit event.
+- **BUC-EMP-202 — Close a trip left open (JRN-07).** A trip has been in
+  progress for 30 hours with no contact; the supervisor of its unit finds
+  it in the open-trip list, contacts the driver, and closes it with the
+  reason "Motorista sem sinal; viagem encerrada pela supervisão" and the
+  missing-reading reason "Leitura final não registrada". The trip is
+  `COMPLETED`, its usage is `NOT_MEASURED` (`READING_ABSENT`), the review
+  case is still `DRAFT`; the driver's phone later delivers its finish and a
+  stop, both held for review.
+- **BUC-EMP-203 — Prove supervisor closure on real PostGIS.** The
+  supervisor closing their own trip and later reviewing the closed trip; a
+  request carrying a meter value; another organization's and an unknown
+  trip; an uncovering structural grant and denied roles; a stale second
+  closure; a driver finish and a supervisor closure racing in both orders;
+  replay and operation reuse; the database guards and a populated upgrade
+  with injected failure and recovery.

@@ -95,6 +95,10 @@ func ParseEvent(op protocol.Operation) (EventCommand, error) {
 // StoredDomain rebuilds a stored trip, with its finish when completed,
 // through the pure EMP-TRIP-001 domain.
 func StoredDomain(scope kernel.OrgScope, record Record) (trip.Trip, error) {
+	// EMP-TRIP-014: a trip closed by a supervisor (never beside a finish).
+	if record.Closure != nil {
+		return closedDomain(scope, record)
+	}
 	f := record.Finish
 	if f == nil {
 		return startedDomain(scope, record)

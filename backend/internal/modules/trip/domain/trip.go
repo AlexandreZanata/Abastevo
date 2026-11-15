@@ -184,6 +184,7 @@ type Trip struct {
 	reporting orgtime.ReportingAttribution
 	finish    *Event
 	endDay    string
+	closure   *Closure // EMP-TRIP-014: a supervisor closure, never beside a finish
 }
 
 // Start creates a C1 driver-initiated trip in IN_PROGRESS (B-BR-EMP-269/270).
@@ -352,6 +353,10 @@ func (u MeterUsage) Delta() (int64, bool) { return u.delta, u.status == Measured
 // MeterUsage reports the trip's meter evidence (BR-TRIP-004): the exact
 // difference of its own two readings on one segment, or why there is none.
 func (t Trip) MeterUsage() MeterUsage {
+	if t.closure != nil {
+		// EMP-TRIP-014 (B-BR-EMP-400): a closure has no final reading.
+		return MeterUsage{status: NotMeasured, reason: ReasonReadingAbsent}
+	}
 	if t.finish == nil {
 		return MeterUsage{status: NotMeasured, reason: ReasonNotFinished}
 	}
