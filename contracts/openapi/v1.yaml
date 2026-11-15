@@ -18697,6 +18697,133 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/sync/reference:
+    post:
+      tags:
+      - enterprise-sync
+      operationId: enterpriseReferenceFeed
+      summary: Pull the member's purpose-bound reference data as versioned deltas
+      description: Normal account family plus exact signed bytes and the current exact enrollment (EMP-OFFL-006). The feed
+        holds only the assets currently assigned to the member that its fleet.asset.read grants cover, each as one minimised
+        asset entity; it is a read copy, never authority, and every choice is checked again at intake. Revisions only grow;
+        a DELETE tombstone reaches every older cursor. The opaque cursor is server-signed and bound to organization,
+        membership, enrollment and feed epoch; one that does not verify for the requesting period is NOT_FOUND. No cursor,
+        another epoch or a cursor ahead of the feed answers RESET; no covering grant answers RESET with reason FORBIDDEN
+        and no entities. confirmed_at is the server clock.
+      security: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: Signature
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      - name: Signature-Created
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Expires
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Keyid
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      - name: Signature-Nonce
+        in: header
+        required: true
+        description: Single-valued normal identity proof header; the signature covers exact method, canonical authority,
+          path/query and transmitted JSON bytes.
+        schema:
+          type: string
+          minLength: 1
+          maxLength: 256
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseReferenceFeedRequest'
+            example:
+              schema_version: 1
+              request_id: 7b0e2a54-0000-4000-8000-000000008620
+              family_id: 7b0e2a54-0000-4000-8000-000000008621
+              access_token: synthetic-reference-access
+              membership_id: 7b0e2a54-0000-4000-8000-000000008611
+              enrollment_id: 7b0e2a54-0000-4000-8000-000000008613
+              cursor: null
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Ordered changes after the cursor, or a reset with the complete current set.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseReferenceFeedResponse'
+              example:
+                schema_version: 1
+                request_id: 7b0e2a54-0000-4000-8000-000000008620
+                membership_id: 7b0e2a54-0000-4000-8000-000000008611
+                enrollment_id: 7b0e2a54-0000-4000-8000-000000008613
+                mode: DELTA
+                reason: null
+                from_revision: 3
+                revision: 4
+                confirmed_at: '2026-11-15T12:00:00.123456Z'
+                cursor: eyJ2IjoxfQ.c2lnbmF0dXJl
+                entity_types:
+                - asset
+                changes:
+                - revision: 4
+                  entity_type: asset
+                  entity_id: 7b0e2a54-0000-4000-8000-000000008630
+                  op: DELETE
+                  asset: null
+      x-abastevo-signed-reference-feed:
+        account_proof: true
+        signed: true
+        current_enrollment: true
+        bound_cursor: true
+        whole_body_preflight: true
+        success: 200
   /v1/orgs/{org_id}/sync/review-results:
     post:
       tags:
@@ -21763,6 +21890,245 @@ components:
       example:
         operation_id: 7b0e2a54-0000-4000-8000-000000008501
         payload_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    EnterpriseReferenceFeedRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        family_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        access_token:
+          type: string
+          minLength: 1
+          maxLength: 512
+          pattern: ^[!-~]+$
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        cursor:
+          anyOf:
+          - type: string
+            minLength: 1
+            maxLength: 1024
+          - type: 'null'
+      required:
+      - schema_version
+      - request_id
+      - family_id
+      - access_token
+      - membership_id
+      - enrollment_id
+      - cursor
+    EnterpriseReferenceAsset:
+      type: object
+      additionalProperties: false
+      description: Minimised asset entity (B-BR-EMP-336); no serial number, unit, cost centre, value or other drivers.
+      properties:
+        id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        kind:
+          type: string
+          enum:
+          - VEHICLE
+          - MACHINE
+          - IMPLEMENT
+        usage_basis:
+          type: string
+          enum:
+          - DISTANCE
+          - HOURS
+        state:
+          type: string
+          enum:
+          - DRAFT
+          - ACTIVE
+          - INACTIVE
+          - DISPOSED
+          - ARCHIVED
+        name:
+          type: string
+          maxLength: 80
+        fleet_number:
+          type: string
+          maxLength: 40
+        plate:
+          type: string
+          maxLength: 40
+        catalog:
+          type: string
+          const: fuel-products-v1
+        products:
+          type: array
+          maxItems: 64
+          items:
+            type: string
+            maxLength: 64
+        meters:
+          type: array
+          maxItems: 16
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              id:
+                $ref: '#/components/schemas/EnterpriseUUID'
+              kind:
+                type: string
+                enum:
+                - ODOMETER
+                - HOUR_METER
+              modulus:
+                anyOf:
+                - type: integer
+                  format: int64
+                  minimum: 1
+                - type: 'null'
+              segment_id:
+                $ref: '#/components/schemas/EnterpriseUUID'
+              installed_at:
+                type: string
+                format: date-time
+            required:
+            - id
+            - kind
+            - modulus
+            - segment_id
+            - installed_at
+        assignment:
+          type: object
+          additionalProperties: false
+          properties:
+            kind:
+              type: string
+              enum:
+              - PRIMARY
+              - TEMPORARY
+              - ADDITIONAL
+            valid_to:
+              anyOf:
+              - type: string
+                format: date-time
+              - type: 'null'
+          required:
+          - kind
+          - valid_to
+      required:
+      - id
+      - revision
+      - kind
+      - usage_basis
+      - state
+      - name
+      - fleet_number
+      - plate
+      - catalog
+      - products
+      - meters
+      - assignment
+    EnterpriseReferenceFeedResponse:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        request_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        enrollment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        mode:
+          type: string
+          enum:
+          - DELTA
+          - RESET
+        reason:
+          anyOf:
+          - type: string
+            enum:
+            - NEW_CURSOR
+            - CURSOR_EXPIRED
+            - CURSOR_AHEAD
+            - FORBIDDEN
+          - type: 'null'
+        from_revision:
+          anyOf:
+          - type: integer
+            format: int64
+            minimum: 0
+          - type: 'null'
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        confirmed_at:
+          type: string
+          format: date-time
+        cursor:
+          type: string
+          minLength: 1
+          maxLength: 1024
+        entity_types:
+          type: array
+          items:
+            type: string
+            enum:
+            - asset
+        changes:
+          type: array
+          maxItems: 200
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              revision:
+                type: integer
+                format: int64
+                minimum: 1
+              entity_type:
+                type: string
+                enum:
+                - asset
+              entity_id:
+                $ref: '#/components/schemas/EnterpriseUUID'
+              op:
+                type: string
+                enum:
+                - UPSERT
+                - DELETE
+              asset:
+                anyOf:
+                - $ref: '#/components/schemas/EnterpriseReferenceAsset'
+                - type: 'null'
+            required:
+            - revision
+            - entity_type
+            - entity_id
+            - op
+            - asset
+      required:
+      - schema_version
+      - request_id
+      - membership_id
+      - enrollment_id
+      - mode
+      - reason
+      - from_revision
+      - revision
+      - confirmed_at
+      - cursor
+      - entity_types
+      - changes
     EnterpriseReviewResultsRequest:
       type: object
       additionalProperties: false

@@ -518,6 +518,26 @@ func (f *Fixture) GrantStateIntake(t *testing.T) {
 	}
 }
 
+// GrantReferenceFeed provisions the disposable ordinary role for the
+// EMP-OFFL-006 feed log and exactly the fleet columns its projection reads.
+func (f *Fixture) GrantReferenceFeed(t *testing.T) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_reference_feed_heads') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON org_reference_feed_heads TO "+role+";GRANT SELECT,INSERT ON org_reference_feed_entries TO "+role+
+			";GRANT SELECT(org_id,id,revision,kind,usage_basis,state,name,fleet_number,plate,unit_id) ON org_assets TO "+role+
+			";GRANT SELECT(org_id,id,asset_id,employee_id,kind,valid_from,valid_to) ON org_asset_assignments TO "+role+
+			";GRANT SELECT(org_id,id,asset_id,kind,modulus,installed_at,installed_submicro,removed_at) ON org_meters TO "+role+
+			";GRANT SELECT(org_id,id,meter_id,closed_at) ON org_meter_segments TO "+role+";GRANT SELECT(org_id,asset_id,product) ON org_asset_tank_products TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
 // GrantMeterReviews enables current read projections only. The owning command
 // fixture must explicitly grant inserts and the item-row lock for decisions.
 func (f *Fixture) GrantMeterReviews(t *testing.T) {

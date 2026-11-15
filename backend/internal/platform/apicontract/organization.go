@@ -38,8 +38,9 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		reviewResults, reviewResultsGuarded := handler.(orgapi.SignedReviewResultsDescriptor)
 		selfNotice, selfNoticeGuarded := handler.(orgapi.SelfNoticeDescriptor)
 		ingress, ingressGuarded := handler.(orgapi.DocumentIngressDescriptor)
+		referenceFeed, referenceGuarded := handler.(orgapi.SignedReferenceFeedDescriptor)
 		item := document.Paths.Value(path)
-		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded && !reviewResultsGuarded && !selfNoticeGuarded && !ingressGuarded) || item == nil {
+		if method != http.MethodPost || (!guarded && !companyGuarded && !creationGuarded && !personalGuarded && !selfGuarded && !signedDeviceGuarded && !selfDeviceGuarded && !contextGuarded && !setupsGuarded && !contactGuarded && !batchGuarded && !reviewResultsGuarded && !selfNoticeGuarded && !ingressGuarded && !referenceGuarded) || item == nil {
 			return fmt.Errorf("unguarded or undocumented organization route %s %s", method, path)
 		}
 		operation := item.GetOperation(method)
@@ -77,8 +78,44 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 		if !ingressGuarded && operation.Extensions["x-abastevo-document-ingress"] != nil {
 			return fmt.Errorf("unexpected document ingress metadata for %s", path)
 		}
+		if !referenceGuarded && operation.Extensions["x-abastevo-signed-reference-feed"] != nil {
+			return fmt.Errorf("unexpected reference feed metadata for %s", path)
+		}
 		bodyType := "application/json"
-		if ingressGuarded {
+		if referenceGuarded {
+			// EMP-OFFL-006: the member's signed, purpose-bound reference feed.
+			expected := orgapi.SignedReferenceFeedRule{AccountProof: true, Signed: true, CurrentEnrollment: true, BoundCursor: true, WholeBodyPreflight: true, Success: 200}
+			if guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || reviewResultsGuarded || selfNoticeGuarded || ingressGuarded || path != "/v1/orgs/{org_id}/sync/reference" || referenceFeed.SignedReferenceFeedRule() != expected {
+				return fmt.Errorf("invalid signed reference feed guard for %s", path)
+			}
+			for _, key := range []string{"x-abastevo-organization", "x-abastevo-company-session", "x-abastevo-organization-creation", "x-abastevo-personal-invitation", "x-abastevo-self-membership", "x-abastevo-signed-device", "x-abastevo-self-device", "x-abastevo-account-context", "x-abastevo-owned-setups", "x-abastevo-device-contact", "x-abastevo-signed-batch", "x-abastevo-signed-review-results", "x-abastevo-self-notice", "x-abastevo-document-ingress"} {
+				if operation.Extensions[key] != nil {
+					return fmt.Errorf("unexpected authority metadata for reference feed %s", path)
+				}
+			}
+			raw, e := json.Marshal(operation.Extensions["x-abastevo-signed-reference-feed"])
+			var recorded orgapi.SignedReferenceFeedRule
+			decoder := json.NewDecoder(strings.NewReader(string(raw)))
+			decoder.DisallowUnknownFields()
+			if e != nil || decoder.Decode(&recorded) != nil || recorded != expected {
+				return fmt.Errorf("signed reference feed metadata differs for %s", path)
+			}
+			if e := validateSignedDeviceSecurity(operation, path); e != nil {
+				return e
+			}
+			body := operation.RequestBody.Value.Content.Get("application/json").Schema
+			if body.Ref != "#/components/schemas/EnterpriseReferenceFeedRequest" || !exactReviewObject(body.Value, "schema_version", "request_id", "family_id", "access_token", "membership_id", "enrollment_id", "cursor") {
+				return fmt.Errorf("invalid whole reference feed body for %s", path)
+			}
+			if operation.Responses == nil || operation.Responses.Value("200") == nil || operation.Responses.Value("200").Value == nil {
+				return fmt.Errorf("missing reference feed response for %s", path)
+			}
+			media := operation.Responses.Value("200").Value.Content.Get("application/json")
+			if media == nil || media.Schema == nil || media.Schema.Ref != "#/components/schemas/EnterpriseReferenceFeedResponse" {
+				return fmt.Errorf("invalid reference feed response for %s", path)
+			}
+			declared.Success = 200
+		} else if ingressGuarded {
 			if e := validateDocumentIngress(operation, path, ingress.DocumentIngressRule(), guarded || companyGuarded || creationGuarded || personalGuarded || selfGuarded || signedDeviceGuarded || selfDeviceGuarded || contextGuarded || setupsGuarded || contactGuarded || batchGuarded || reviewResultsGuarded || selfNoticeGuarded); e != nil {
 				return e
 			}
