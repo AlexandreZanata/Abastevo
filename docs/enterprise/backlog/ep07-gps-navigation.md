@@ -72,7 +72,7 @@ service, intake, processing and real-device acceptance remain open (EDR-271).
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-GPS-004 — Track intake: batch endpoint, de-duplication and segment storage
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type DB · size L · state TODO
+- **Meta:** module GPS · phase F4 · cut - · priority P1 · type DB · size L · state LOCAL_DONE
 - **Objective:** Intake authorized track batches with scope and duplicate protection.
 - **Rules and use cases:** BR-GPS-021, BR-GPS-022, BR-GPS-023, BR-GPS-039
 - **Depends on:** EMP-GPS-001, EMP-OFFL-002
@@ -86,6 +86,21 @@ service, intake, processing and real-device acceptance remain open (EDR-271).
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 track intake](../evidence/f4-gps004-track-intake.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. The six `gps.session.*` operations and
+`gps.track.batch` travel through the signed OFFL-002 intake (EDR-277): the
+first start opens the trip's one session only under the organization's
+recorded policy with its notice in force, every transition is an insert-only
+row replayed through the EMP-GPS-001 domain, and each accepted batch stores
+one insert-only segment (integer arrays and a `MULTIPOINT` of SRID 4326) with
+only the fixes inside a recording period while the trip runs; the session
+follows the trip's pauses, cancellation and finish (EMP-TRIP-011);
+resends replay byte for byte, reused identifiers are refused, overlapping and
+concurrent batches store each instant once (both orders on real PostGIS), and
+foreign, personal, implicit, oversized and policy-off cases store nothing.
+Held and late tracking, the policy writer, processing and the Android
+producer remain open; real-device acceptance is owed (EDR-271).
 
 ### EMP-GPS-005 — Track processing: filtering, gaps, GPS distance and simplified geometry
 - **Meta:** module GPS · phase F4 · cut - · priority P1 · type JOB · size M · state TODO

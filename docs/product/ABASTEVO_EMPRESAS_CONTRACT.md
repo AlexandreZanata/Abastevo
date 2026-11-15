@@ -6910,3 +6910,120 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   `AUDITOR`, accepting a finish, event or submission, the author's own
   result read, the database guards and a populated upgrade from 000232 with
   injected failure and recovery.
+
+## EMP-GPS-004 — Track intake: batch endpoint, de-duplication and segment storage (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps004-track-intake.md).
+
+- **B-BR-EMP-428 — Tracking is on only with a policy and its notice in
+  force.** The server resolves an organization's tracking policy from its
+  insert-only recorded policy versions at receipt: the latest version
+  effective at that instant gives `OPTIONAL` or `EXPECTED` only when its
+  employee notice (a named notice version) is in force at that instant;
+  no version, a version `OFF` or a notice not yet in force is `OFF`
+  (EDR-271). A session opens only under `OPTIONAL` or `EXPECTED` and keeps
+  the policy version it opened under; opening under `OFF` is refused with a
+  final `REJECTED` `FORBIDDEN` receipt and nothing else is stored. Turning
+  the policy off never touches a stored session, transition or segment.
+  Recording a policy version is not part of this task (no route writes it).
+- **B-BR-EMP-429 — Session transitions are signed device operations.** The
+  owner's enrolled device records the session through the OFFL-002 signed
+  intake with six schema-1 operations on the entity `tracking_session`
+  (the session identity): `gps.session.start` and `gps.session.resume`
+  carry the trip, the origin, the device permission and whether the tracking
+  notification is visible; `gps.session.suspend`, `gps.session.interrupt`,
+  `gps.session.reduce` and `gps.session.end` carry the trip and the cause.
+  The first `start` of a trip opens the session `NOT_STARTED` at its
+  declared instant and applies the start in the same transaction. Every
+  operation needs current `trip.trip.start` coverage over the stored trip
+  (receipt reads need `trip.trip.read`), and the EMP-GPS-001 domain decides
+  it at receipt with the trip's facts at the declared instant: `IN_PROGRESS`
+  from its start, then `PAUSED`, `IN_PROGRESS`, `CANCELLED` or `COMPLETED`
+  from its latest stored pause, resumption, cancellation or finish at or
+  before that instant (EMP-TRIP-011). Before deciding, the stored session
+  follows (EMP-GPS-001 `FOLLOW`) every stored pause, cancellation and finish
+  of the trip from its last transition up to, not including, the operation's
+  instant: a pause suspends a recording session (`TRIP_PAUSED`, actor
+  `TRIP`), a cancellation or finish ends it; those rows are stored with the
+  operation, and recording returns only through the driver's resume. An accepted operation is
+  `ACCEPTED` with the session's history length as its entity revision; a
+  refused permission or hidden notification is accepted as the recorded
+  attempt (B-BR-EMP-422). Policy `OFF` is `REJECTED` `FORBIDDEN`; another
+  member is a whole-request `FORBIDDEN` that stores nothing; every other
+  domain refusal (personal or implicit origin, second session, invalid
+  transition, trip state, out-of-order or malformed instant or value) is a
+  final `REJECTED` `MALFORMED` that stores nothing; a trip or session not
+  stored here is `RETRY` `DEPENDENCY_PENDING` without a claim; an identical
+  resend returns the stored receipt byte for byte and the same identifier
+  with another digest is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-430 — One session per trip, kept insert-only.** The database
+  holds at most one session per trip, bound to the organization, the trip,
+  the trip's driver membership and the policy version; its transitions are
+  insert-only rows with a contiguous sequence, non-decreasing instants, the
+  closed state, cause, actor and permission tokens, nothing after `ENDED`,
+  and only operations of the owner's enrolled device. A stored session is
+  rebuilt by replaying its rows through the EMP-GPS-001 domain, which must
+  reproduce them exactly, or the intake is unavailable. Rows are never
+  updated or deleted.
+- **B-BR-EMP-431 — A track batch is one bounded operation.** A batch is the
+  schema-1 operation `gps.track.batch` on the entity `tracking_session`; its
+  operation identifier is the batch identifier. The payload names the trip,
+  a positive sequence, the source `PHONE`, an optional boot identity with
+  its base elapsed milliseconds, a base position in 10⁻⁷ degrees, 1 to 200
+  fixes `[offset_ms, Δlat_e7, Δlon_e7, accuracy_m, speed_cm_s, bearing_deg,
+  flags]` and the device's dropped counters. The base instant is the
+  declared instant (whole microseconds); offsets increase strictly up to 24
+  hours; coordinates stay within ±90° and ±180°; accuracy is 0 to 10 000 m,
+  speed 0 to 100 000 cm/s or null, bearing 0 to 359 or null, flags bit 0
+  coarse and bit 1 mock. An operation is at most 8 KiB (one upload request
+  at most 64 KiB and 50 operations); more than 200 fixes or any invalid value
+  is a final `REJECTED` `MALFORMED` that stores nothing.
+- **B-BR-EMP-432 — Only fixes inside the session are stored.** A fix is
+  stored only when its instant lies in a recording period of the stored
+  session as it follows the trip (the latest transition at or before it is
+  `RECORDING` and no trip pause lies between the session's last transition
+  and the fix) while the trip runs: at or after its start, outside its paused
+  intervals and before its finish or cancellation; it is stored coarse when
+  that period is approximate. Other fixes are discarded and counted as
+  `OUTSIDE_SESSION`; a mock-flagged fix is discarded and counted as mock. A
+  batch whose session is not stored yet is `RETRY` `DEPENDENCY_PENDING`; a
+  batch naming another trip than its session's is `MALFORMED`. The database
+  refuses a stored fix outside a recording period, while the trip is paused,
+  at or after its finish or cancellation, or with the wrong precision.
+- **B-BR-EMP-433 — One accepted batch has one effect.** The first accepted
+  delivery of a batch stores exactly one segment, keyed by the organization
+  and the batch identifier and unique per session sequence, and answers
+  `ACCEPTED` with the sequence as entity revision; resends return the stored
+  receipt; a second batch with a used sequence is `MALFORMED`. A fix whose
+  instant is already stored for the session is counted once, as a duplicate
+  of the later batch. Batches of one session (and the trip's finish) are
+  serialized on the trip row, and the database refuses an instant stored
+  twice for a session, in either arrival order. The received, stored,
+  duplicate, outside-session and mock counters and the device's dropped
+  counters are stored with the segment; the receipt carries none of them.
+- **B-BR-EMP-434 — Segments are raw, scoped and private.** A segment keeps
+  the exact integer positions, instants, accuracy, speed, bearing and coarse
+  flags as arrays, a database-derived `MULTIPOINT` of SRID 4326, the source
+  `PHONE`, the device enrollment and author, the boot identity and the
+  receipt instant; it is insert-only (BR-GPS-023), organization-scoped with
+  forced row security and composite organization keys. No coordinate appears
+  in an error, log, receipt, audit event or printed value.
+- **BUC-EMP-217 — The driver's device records its session.** The driver
+  starts tracking on the trip screen: the device's `gps.session.start` opens
+  and starts the session on the server under the organization's policy;
+  later suspend, resume, interrupt, reduce and end operations append the
+  session's history, and the server's recording periods are exactly the
+  domain's.
+- **BUC-EMP-218 — The device uploads a track batch.** Every minute the
+  device sends its oldest batches after its pending operations; the server
+  checks the signed source, the trip coverage and the session, stores the
+  fixes inside the recording periods as one segment and answers `ACCEPTED`;
+  fixes outside the session or after the trip's finish are counted and
+  dropped; a batch for a session not stored yet is retried.
+- **BUC-EMP-219 — Resends and overlaps converge.** A batch resent after a
+  lost answer returns the stored receipt; the same identifier with another
+  body is refused; a second batch overlapping stored fixes stores only the
+  new ones; two batches of one session racing in either order store each
+  instant once; a foreign trip, a personal or implicit start, a fix while the
+  trip is paused or after it ended or was cancelled, an oversized batch and
+  policy `OFF` store nothing.
