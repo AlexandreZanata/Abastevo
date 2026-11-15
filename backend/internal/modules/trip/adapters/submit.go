@@ -29,11 +29,15 @@ func NewSubmitHandler(authority app.Authority, readings app.Readings, store app.
 	return &submitHandler{ports: p, reviews: reviews}, nil
 }
 
-// Descriptor: no held path, so only ACCEPTED and REJECTED are final.
+// Descriptor: a stale or duplicate submission is held STALE_REVISION
+// (EMP-TRIP-015, EDR-235), so ACCEPTED_FOR_REVIEW is final too.
 func (*submitHandler) Descriptor() syncapp.Descriptor {
 	return syncapp.Descriptor{Type: app.SubmitOperationType, Schema: 1, WritePolicy: app.Policy(app.RecordAction), ReadPolicy: app.Policy(app.ReadAction),
-		TerminalResults: []string{protocol.Accepted, protocol.Rejected}}
+		TerminalResults: []string{protocol.Accepted, protocol.Rejected, protocol.AcceptedForReview}}
 }
+
+// ReviewProof is the held-submission proof (OFFL-008).
+func (*submitHandler) ReviewProof() syncapp.ReviewProof { return SubmitProof{} }
 
 func (h *submitHandler) request(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, mode syncapp.Mode) (app.SubmitCommand, app.SubmitInput, error) {
 	if h == nil || !h.ready() || absent(h.reviews) {
@@ -133,15 +137,22 @@ func (h *submitHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 			return syncapp.Outcome{}, syncapp.ErrUnavailable
 		}
 	}
-	current, err := app.ReviewCase(entries)
+	revisions, err := app.TripRevisions(entries)
 	if err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	// A case that is no longer a draft at the named revision, and changed
-	// rights, store nothing until their owner exists (EDR-220).
-	if app.SubmitGate(state, current, v.Revision) != nil {
+	// A named revision that is no longer the current draft or returned field
+	// revision is a late or duplicate submission: one held fact that changes
+	// nothing (B-BR-EMP-364, EDR-235).
+	kind, err := app.SubmitKind(state, revisions, v.Revision)
+	if errors.Is(err, app.ErrSubmitStale) {
+		review, err := h.reviews.HoldSubmitTx(ctx, syncapp.Borrow(db), source, op, command, app.StaleRevision)
+		return held(review, app.StaleRevision, err)
+	}
+	if err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
+	// Changed rights store nothing until their owner exists (EMP-TRIP-007).
 	disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
 	if err != nil {
 		return syncapp.Outcome{}, err
@@ -155,14 +166,14 @@ func (h *submitHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	}
 	author := app.Person{MembershipID: record.AuthorMembershipID, Employees: []string{record.AuthorEmployeeID}}
 	submitter := app.Person{MembershipID: source.MembershipID, Employees: []string{employee}}
-	next, err := app.Submit(current, v.Revision, submitter, author)
+	entry, err := app.SubmitEntry(revisions, kind, v.Revision, submitter, author)
 	if errors.Is(err, review.ErrForbidden) {
 		return syncapp.Outcome{}, syncapp.SourceDenied(orgapi.Forbidden)
 	}
-	if err != nil || next.State() != review.Submitted {
+	if err != nil || entry.State != review.Submitted {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if err := h.reviews.InsertSubmitTx(ctx, syncapp.Borrow(db), source.Scope, source, command, record.AuthorEmployeeID); err != nil {
+	if err := h.reviews.InsertSubmitTx(ctx, syncapp.Borrow(db), source.Scope, source, command, entry, int64(len(entries)+1), record.AuthorEmployeeID); err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt); err != nil || disposition != app.Apply {
@@ -171,19 +182,22 @@ func (h *submitHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 		}
 		return syncapp.Outcome{}, err
 	}
-	revision := next.Revision()
+	revision := entry.Revision
 	return syncapp.Outcome{Result: protocol.Accepted, EntityRevision: &revision}, nil
 }
 
-// storedSubmit proves the stored SUBMIT entry is exactly this operation's.
-func storedSubmit(source syncapp.Source, v app.SubmitInput, record app.Record, entries []app.ReviewEntry) bool {
+// storedSubmit proves the stored SUBMIT (first, at the named revision) or
+// RESUBMIT (at the named revision + 1) entry is exactly this operation's,
+// and returns the revision it produced.
+func storedSubmit(source syncapp.Source, v app.SubmitInput, record app.Record, entries []app.ReviewEntry) (int64, bool) {
 	for _, e := range entries {
 		if e.OperationID == v.OperationID {
-			return e.Sequence == 1 && e.Kind == review.Submit && e.State == review.Submitted && e.Revision == v.Revision && e.Reason == "" &&
+			shape := e.Kind == review.Submit && e.Sequence == 1 && e.Revision == v.Revision || e.Kind == review.Resubmit && e.Sequence > 1 && e.Revision == v.Revision+1
+			return e.Revision, shape && e.State == review.Submitted && e.Reason == "" &&
 				e.ActorMembershipID == source.MembershipID && e.ActorMembershipID == record.AuthorMembershipID && e.ActorEmployeeID == record.AuthorEmployeeID
 		}
 	}
-	return false
+	return 0, false
 }
 
 func (h *submitHandler) Confirm(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, mode syncapp.Mode, outcome syncapp.Outcome) error {
@@ -198,7 +212,7 @@ func (h *submitHandler) Confirm(ctx context.Context, db syncapp.DBTX, source syn
 		return err
 	}
 	record, err := h.trip(ctx, db, source, v, mode)
-	if errors.Is(err, syncapp.ErrDependencyPending) && outcome.Result != protocol.Accepted {
+	if errors.Is(err, syncapp.ErrDependencyPending) && outcome.Result != protocol.Accepted && outcome.Result != protocol.AcceptedForReview {
 		return nil
 	}
 	if err != nil {
@@ -213,14 +227,29 @@ func (h *submitHandler) Confirm(ctx context.Context, db syncapp.DBTX, source syn
 			return syncapp.ErrUnavailable
 		}
 	}
+	if outcome.Result == protocol.AcceptedForReview {
+		if outcome.Code != app.StaleRevision || outcome.EntityRevision != nil {
+			return syncapp.ErrUnavailable
+		}
+		if err := (SubmitProof{}).CheckHeldTx(ctx, syncapp.Borrow(db), source, op, outcome.Copy()); err != nil {
+			if errors.Is(err, syncapp.ErrSourceDenied) {
+				return err
+			}
+			return syncapp.SourceDenied(err)
+		}
+		return nil
+	}
 	if outcome.Result != protocol.Accepted {
 		return nil
 	}
-	if outcome.EntityRevision == nil || *outcome.EntityRevision != v.Revision || outcome.Code != "" || len(outcome.Warnings) != 0 || record.State != trip.Completed {
+	if outcome.EntityRevision == nil || outcome.Code != "" || len(outcome.Warnings) != 0 || record.State != trip.Completed {
 		return syncapp.ErrUnavailable
 	}
 	entries, err := h.reviews.ReviewEntriesTx(ctx, syncapp.Borrow(db), source.Scope, v.TripID)
-	if err != nil || !storedSubmit(source, v, record, entries) {
+	if err != nil {
+		return syncapp.ErrUnavailable
+	}
+	if revision, ok := storedSubmit(source, v, record, entries); !ok || revision != *outcome.EntityRevision {
 		return syncapp.ErrUnavailable
 	}
 	return nil

@@ -28,9 +28,27 @@ type TripReviewAuthority struct {
 	Structure    *ResourceStructure
 }
 
-var _ trippg.ReviewAuthority = (*TripReviewAuthority)(nil)
+var (
+	_ trippg.ReviewAuthority = (*TripReviewAuthority)(nil)
+	_ trippg.AmendAuthority  = (*TripReviewAuthority)(nil)
+)
 
 func (g *TripReviewAuthority) CheckTripReviewTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string, write bool) (tripapp.Reviewer, error) {
+	policy := tripapp.ReviewPolicy(tripapp.ReviewReadAction)
+	if write {
+		policy = tripapp.ReviewPolicy(tripapp.ReviewDecideAction)
+	}
+	return g.check(ctx, tx, scope, actor, member, target, policy, write)
+}
+
+// CheckTripAmendTx proves meter.reading.correct over the stored trip with the
+// same company proof, ACTIVE organization and structure, and returns the
+// amendment's author (EMP-TRIP-015, EDR-236).
+func (g *TripReviewAuthority) CheckTripAmendTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string) (tripapp.Reviewer, error) {
+	return g.check(ctx, tx, scope, actor, member, target, tripapp.AmendPolicy(), true)
+}
+
+func (g *TripReviewAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor tripapp.ReviewActor, member, target string, policy access.Policy, write bool) (tripapp.Reviewer, error) {
 	if g == nil || meterMissing(tx) || meterMissing(g.Memberships) || meterMissing(g.Roles) || meterMissing(g.Capabilities) || g.Structure != nil && g.Structure.Kind != TripStructure {
 		return tripapp.Reviewer{}, tripapp.ErrUnavailable
 	}
@@ -40,13 +58,9 @@ func (g *TripReviewAuthority) CheckTripReviewTx(ctx context.Context, tx pgx.Tx, 
 	if err := database.ValidateOrgDBTX(ctx, tx, scope); err != nil {
 		return tripapp.Reviewer{}, tripapp.ErrUnavailable
 	}
-	action := tripapp.ReviewReadAction
-	if write {
-		action = tripapp.ReviewDecideAction
-	}
 	guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities, Structure: g.Structure}
 	proof := org.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}
-	if err := guard.check(ctx, tx, scope, proof, member, target, tripapp.ReviewPolicy(action)); err != nil {
+	if err := guard.check(ctx, tx, scope, proof, member, target, policy); err != nil {
 		return tripapp.Reviewer{}, tripReviewAuthorityError(err)
 	}
 	if write {
@@ -74,7 +88,7 @@ func (g *TripReviewAuthority) CheckTripReviewTx(ctx context.Context, tx pgx.Tx, 
 	if err != nil || person.State != memberdomain.EmployeeActive || person.MergedInto != "" {
 		return tripapp.Reviewer{}, access.ErrNoMembership
 	}
-	if err := guard.check(ctx, tx, scope, proof, member, target, tripapp.ReviewPolicy(action)); err != nil {
+	if err := guard.check(ctx, tx, scope, proof, member, target, policy); err != nil {
 		return tripapp.Reviewer{}, tripReviewAuthorityError(err)
 	}
 	return tripapp.Reviewer{AccountID: actor.AccountID, MembershipID: membership.ID, EmployeeID: person.ID}, nil

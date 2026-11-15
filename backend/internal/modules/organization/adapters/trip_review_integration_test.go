@@ -19,6 +19,7 @@ import (
 	syncpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
+	reviewpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters"
 	review "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/domain"
 	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
 	tripapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
@@ -37,7 +38,13 @@ func tripReviewGrants(t *testing.T, f *orgtest.Fixture) {
 	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
 	if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_review_entries TO "+role+
 		";GRANT SELECT ON org_trips,org_trip_finishes,org_team_links,org_memberships,org_employee_identities,org_audit_events,org_sync_operations,org_sync_acknowledgements,org_sync_effects,org_device_enrollments TO "+role+
-		";GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role); err != nil {
+		";GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+role+
+		// EMP-TRIP-016: the decision reads the period head (gate and guard).
+		";GRANT SELECT ON org_finance_periods,org_finance_period_transitions TO "+role+
+		// EMP-TRIP-015: held submissions, amendments, the logbook and the
+		// supersession of an approved amendment's readings.
+		";GRANT SELECT,INSERT ON org_trip_held_submissions,org_trip_amendments,org_trip_events,org_trip_held_events,org_meter_readings,org_meter_reading_states TO "+role+
+		";GRANT SELECT ON org_meters,org_meter_segments,company_web_sessions TO "+role); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -58,7 +65,8 @@ type tripReviewer struct {
 
 func tripReviewIntakeConfig(fx syncFixtureState) syncpg.Config {
 	config := tripIntakeConfig(fx)
-	config.NoAsyncPlans[syncapp.OperationKey{Type: tripapp.SubmitOperationType, Schema: 1}] = map[string]syncapp.FollowupMode{protocol.Accepted: syncapp.NoAsyncFollowup, protocol.Rejected: syncapp.NoAsyncFollowup}
+	config.NoAsyncPlans[syncapp.OperationKey{Type: tripapp.SubmitOperationType, Schema: 1}] = map[string]syncapp.FollowupMode{protocol.Accepted: syncapp.NoAsyncFollowup,
+		protocol.Rejected: syncapp.NoAsyncFollowup, protocol.AcceptedForReview: syncapp.AtomicReview}
 	return config
 }
 
@@ -69,7 +77,7 @@ func tripReviewStoreOf(t *testing.T, fx legalFixtureState) *trippg.ReviewStore {
 		t.Fatal(err)
 	}
 	return &trippg.ReviewStore{Pool: fx.f.Runtime, Authority: &orgpg.TripReviewAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles, Capabilities: fx.flags,
-		Structure: &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: fx.f.Runtime}}, Audit: auditpg.NewStore(fx.f.Runtime, catalog)}
+		Structure: &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: fx.f.Runtime}}, Audit: auditpg.NewStore(fx.f.Runtime, catalog), Periods: reviewpg.PeriodGate{}}
 }
 
 func tripReviewFixture(t *testing.T) tripReviewState {
@@ -283,12 +291,13 @@ func TestTripSubmitAcceptsOnlyTheAuthorsCompletedDraftAndReplays(t *testing.T) {
 			t.Fatalf("malformed submission %s stored a fact: %+v", name, c)
 		}
 	}
-	// A revision the draft does not have stores nothing and stays RETRY.
+	// A revision the draft does not have is a stale submission: one held
+	// STALE_REVISION fact and no review entry (EMP-TRIP-015, B-BR-EMP-364).
 	stale := x.submitOp(t, d, trip, 2, at.Add(2*time.Hour), nil)
-	if _, err := x.process(t, d, stale); !errors.Is(err, syncapp.ErrUnavailable) || errors.Is(err, syncapp.ErrSourceDenied) {
-		t.Fatal("a stale submission was not kept RETRY/UNAVAILABLE", err)
+	x.heldSubmission(t, d, stale)
+	if entries, _ := x.history(t, x.scope, trip); entries != "" {
+		t.Fatal("a stale submission wrote review history", entries)
 	}
-	nothing(stale)
 	before := x.tripRow(t, trip)
 	ack, err = x.process(t, d, waiting)
 	if err != nil || ack.Result() != protocol.Accepted || ack.Snapshot().EntityRevision == nil || *ack.Snapshot().EntityRevision != 1 || ack.Code() != "" || len(ack.Warnings()) != 0 {
@@ -311,14 +320,10 @@ func TestTripSubmitAcceptsOnlyTheAuthorsCompletedDraftAndReplays(t *testing.T) {
 	if refusal, err := x.process(t, d, reused); err != nil || refusal.Result() != protocol.Rejected || refusal.Code() != "OPERATION_ID_REUSED" {
 		t.Fatal("mismatched digest under the same submission was not refused", err, refusal.Code())
 	}
-	// A second submission of the submitted case stores nothing (EDR-220).
+	// A second submission of the submitted case is a duplicate: held once,
+	// never a second SUBMIT (EMP-TRIP-015, EDR-235).
 	again := x.submitOp(t, d, trip, 1, at.Add(3*time.Hour), nil)
-	if _, err := x.process(t, d, again); !errors.Is(err, syncapp.ErrUnavailable) || errors.Is(err, syncapp.ErrSourceDenied) {
-		t.Fatal("a second submission was not kept RETRY/UNAVAILABLE", err)
-	}
-	if c := x.countOp(t, again); c != (tripReviewCounts{}) {
-		t.Fatalf("a second submission left state: %+v", c)
-	}
+	x.heldSubmission(t, d, again)
 	if entries, audits := x.history(t, x.scope, trip); entries != "SUBMIT:SUBMITTED:1" || audits != 0 {
 		t.Fatal("submission history", entries, audits)
 	}
@@ -327,6 +332,26 @@ func TestTripSubmitAcceptsOnlyTheAuthorsCompletedDraftAndReplays(t *testing.T) {
 	if err != nil || view.Review != tripdomain.ReviewSubmitted || view.Operational != tripdomain.Completed || view.Revision != 1 || len(view.History) != 1 || view.FinishedAt == nil || !view.StartedAt.Equal(at) {
 		t.Fatal("the submitted trip's decision context", err, view.Review, view.Operational)
 	}
+}
+
+// heldSubmission proves a stale or duplicate trip.submit is one held
+// STALE_REVISION fact with its review item and receipt, and replays.
+func (x tripReviewState) heldSubmission(t *testing.T, d syncFixtureState, op protocol.Operation) protocol.Acknowledgement {
+	t.Helper()
+	ack, err := x.process(t, d, op)
+	if err != nil || ack.Result() != protocol.AcceptedForReview || ack.Code() != tripapp.StaleRevision || ack.Snapshot().ReviewItemID == "" || ack.Snapshot().EntityRevision != nil {
+		t.Fatal("expected a held STALE_REVISION submission", err, ack.Result(), ack.Code())
+	}
+	var held, items int
+	if err := x.f.Admin.QueryRow(t.Context(), `SELECT(SELECT count(*) FROM org_trip_held_submissions WHERE org_id=$1 AND operation_id=$2),(SELECT count(*) FROM org_sync_review_items WHERE org_id=$1 AND operation_id=$2 AND code='STALE_REVISION')`,
+		x.scope.OrgID().String(), op.ID()).Scan(&held, &items); err != nil || held != 1 || items != 1 {
+		t.Fatal("held submission not kept exactly once", held, items, err)
+	}
+	if c := x.countOp(t, op); c.entries != 0 || c.effects != 0 || c.receipts != 1 {
+		t.Fatalf("a held submission left an entry or effect: %+v", c)
+	}
+	x.replays(t, d, op, ack)
+	return ack
 }
 
 func (x tripReviewState) replays(t *testing.T, d syncFixtureState, op protocol.Operation, ack protocol.Acknowledgement) {
@@ -404,15 +429,17 @@ func TestTripReviewDecidesOneRevisionWithAuditReplayAndRefusals(t *testing.T) {
 		t.Fatal("a second decision was not refused", err)
 	}
 	unchanged(approved, "SUBMIT:SUBMITTED:1,OPEN:IN_REVIEW:1,APPROVE:APPROVED:1", 1)
-	// Return with the reason; the author's resubmission stays RETRY (EDR-220).
+	// Return with the reason; since EMP-TRIP-015 the author's submission
+	// naming the returned revision is its RESUBMIT as revision 2.
 	if result, _, err := x.decide(x.scope, owner, returned, 1, review.Return, "Informe o motivo da parada", onboardingID(t)); err != nil || result.State != review.Returned || result.Reason != "Informe o motivo da parada" {
 		t.Fatal("return with reason", err, result.State)
 	}
-	resubmit := x.submitOp(t, d, returned, 1, at.Add(10*time.Hour), nil)
-	if _, err := x.process(t, d, resubmit); !errors.Is(err, syncapp.ErrUnavailable) || errors.Is(err, syncapp.ErrSourceDenied) {
-		t.Fatal("a submission of a returned case was not kept RETRY/UNAVAILABLE", err)
-	}
 	unchanged(returned, "SUBMIT:SUBMITTED:1,OPEN:IN_REVIEW:1,RETURN:RETURNED:1", 1)
+	resubmit := x.submitOp(t, d, returned, 1, at.Add(10*time.Hour), nil)
+	if ack, err := x.process(t, d, resubmit); err != nil || ack.Result() != protocol.Accepted || ack.Snapshot().EntityRevision == nil || *ack.Snapshot().EntityRevision != 2 {
+		t.Fatal("the resubmission of a returned case was not accepted as revision 2", err)
+	}
+	unchanged(returned, "SUBMIT:SUBMITTED:1,OPEN:IN_REVIEW:1,RETURN:RETURNED:1,RESUBMIT:SUBMITTED:2", 1)
 	if result, _, err := x.decide(x.scope, owner, rejected, 1, review.Reject, "Viagem duplicada", onboardingID(t)); err != nil || result.State != review.Rejected {
 		t.Fatal("rejection with reason", err)
 	}
@@ -421,8 +448,8 @@ func TestTripReviewDecidesOneRevisionWithAuditReplayAndRefusals(t *testing.T) {
 		t.Fatal("a draft trip was decided", err)
 	}
 	unchanged(draft, "", 0)
-	if page, err := x.reviews.ListTripReviews(ctx, x.scope, owner.actor, owner.member, tripapp.QueueFilter{Limit: 10}); err != nil || len(page.Items) != 0 {
-		t.Fatal("decided trips stayed in the queue", err, len(page.Items))
+	if page, err := x.reviews.ListTripReviews(ctx, x.scope, owner.actor, owner.member, tripapp.QueueFilter{Limit: 10}); err != nil || len(page.Items) != 1 || page.Items[0].TripID != returned || page.Items[0].Revision != 2 {
+		t.Fatal("decided trips stayed in the queue or the resubmission is missing", err, len(page.Items))
 	}
 	for trip, row := range rows {
 		if x.tripRow(t, trip) != row {
@@ -430,8 +457,8 @@ func TestTripReviewDecidesOneRevisionWithAuditReplayAndRefusals(t *testing.T) {
 		}
 	}
 	view, err := x.read(owner, returned)
-	if err != nil || view.Review != tripdomain.ReviewReturned || view.Operational != tripdomain.Completed || len(view.History) != 3 || view.History[2].Reason != "Informe o motivo da parada" {
-		t.Fatal("returned decision context", err)
+	if err != nil || view.Review != tripdomain.ReviewSubmitted || view.Revision != 2 || view.Operational != tripdomain.Completed || len(view.History) != 4 || view.History[2].Reason != "Informe o motivo da parada" {
+		t.Fatal("resubmitted decision context", err)
 	}
 	// Another organization's reviewer naming this trip finds nothing.
 	other := legalFixtureFor(t, x.f, x.onboarding, x.legalFixtureState.actor, x.flags)

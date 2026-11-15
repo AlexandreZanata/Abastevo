@@ -12,6 +12,7 @@ import (
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
+	amend "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgamend/domain"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
 	orgtime "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgtime/domain"
@@ -111,12 +112,14 @@ func ParseSubmit(op protocol.Operation) (SubmitCommand, error) {
 		Declared: declared, Revision: *v.Entity.ExpectedRevision, DependsOn: slices.Clone(v.DependsOn)}}, nil
 }
 
-// SubmitStore appends the SUBMIT entry in the intake transaction under the
-// trip row lock (EDR-221).
+// SubmitStore appends the SUBMIT or RESUBMIT entry in the intake
+// transaction under the trip row lock (EDR-221, EDR-234) and keeps a stale
+// submission as a held fact (EDR-235).
 type SubmitStore interface {
 	LockTripTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) (trip.State, error)
 	ReviewEntriesTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) ([]ReviewEntry, error)
-	InsertSubmitTx(context.Context, syncapp.DBTX, kernel.OrgScope, syncapp.Source, SubmitCommand, string) error
+	InsertSubmitTx(context.Context, syncapp.DBTX, kernel.OrgScope, syncapp.Source, SubmitCommand, review.Entry, int64, string) error
+	HoldSubmitTx(context.Context, syncapp.DBTX, syncapp.Source, protocol.Operation, SubmitCommand, string) (string, error)
 }
 
 // ---- review case binding (EDR-223) ----
@@ -133,43 +136,11 @@ type ReviewEntry struct {
 	RecordedAt                                      time.Time
 }
 
-// reviewKinds is the C1 set this task produces; CANCEL, RESUBMIT and void
-// belong to their owners (EMP-TRIP-015) and are refused as stored history.
-var reviewKinds = []review.Kind{review.Submit, review.Open, review.Approve, review.Return, review.Reject}
-
-// ReviewCase rebuilds the APPR-001 case of stored entries, refusing any
-// history the lifecycle could not have produced or this cut does not write.
-func ReviewCase(entries []ReviewEntry) (review.Case, error) {
-	history := make([]review.Entry, 0, len(entries))
-	for i, e := range entries {
-		if e.Sequence != int64(i+1) || !slices.Contains(reviewKinds, e.Kind) || !canonicalID(e.ActorMembershipID) || !canonicalID(e.ActorEmployeeID) || !canonicalID(e.OperationID) || e.RecordedAt.IsZero() {
-			return review.Case{}, ErrUnavailable
-		}
-		history = append(history, review.Entry{Kind: e.Kind, Revision: e.Revision, State: e.State, Reason: e.Reason})
-	}
-	c, err := review.Replay(history)
-	if err != nil {
-		return review.Case{}, ErrUnavailable
-	}
-	return c, nil
-}
-
 // Standing is the trip's independent operational and review state
-// (BR-REV-001): the review state is the case's, never the operation's.
-func Standing(operational trip.State, c review.Case) (trip.Standing, error) {
-	return trip.NewStanding(operational, trip.ReviewState(c.State()))
-}
-
-// SubmitGate admits a submission only of an operationally COMPLETED trip
-// whose case is DRAFT at the named revision (B-BR-EMP-343).
-func SubmitGate(operational trip.State, c review.Case, revision int64) error {
-	if operational != trip.Completed {
-		return ErrSubmitPending
-	}
-	if c.State() != review.Draft || c.Revision() != revision {
-		return ErrSubmitStale
-	}
-	return nil
+// (BR-REV-001): the review state is the latest revision's, never the
+// operation's.
+func Standing(operational trip.State, r Revisions) (trip.Standing, error) {
+	return trip.NewStanding(operational, trip.ReviewState(r.State()))
 }
 
 // ---- decisions (B-BR-EMP-344/345) ----
@@ -279,28 +250,6 @@ func (p Person) identity() review.Identity {
 	return out
 }
 
-// Submit applies the author's SUBMIT (APPR-001 author command, DRAFT →
-// SUBMITTED at the named revision); permission is proven by the caller.
-func Submit(c review.Case, revision int64, submitter, author Person) (review.Case, error) {
-	return c.Apply(review.Command{Kind: review.Submit, Revision: revision}, review.Facts{Actor: submitter.identity(), Author: author.identity(), Permitted: true})
-}
-
-// Decide applies one decision to the case: a SUBMITTED case is opened and
-// decided, an IN_REVIEW case decided (EDR-222). The author is the trip's
-// author and the beneficiary its driver; permission is proven by the caller.
-func Decide(c review.Case, in DecisionInput, reviewer, author, driver Person) (review.Case, error) {
-	beneficiary := driver.identity()
-	facts := review.Facts{Actor: reviewer.identity(), Author: author.identity(), Beneficiary: &beneficiary, Permitted: true}
-	if c.State() == review.Submitted {
-		opened, err := c.Apply(review.Command{Kind: review.Open, Revision: in.ExpectedRevision}, facts)
-		if err != nil {
-			return review.Case{}, err
-		}
-		c = opened
-	}
-	return c.Apply(review.Command{Kind: in.Decision, Revision: in.ExpectedRevision, Reason: in.Reason}, facts)
-}
-
 // DecisionResult is rebuilt from the stored decision entry, so a replay
 // returns exactly the first answer.
 type DecisionResult struct {
@@ -313,7 +262,9 @@ type DecisionResult struct {
 	RecordedAt time.Time
 }
 
-// ReviewView is the minimal decision context (B-BR-EMP-346).
+// ReviewView is the minimal decision context (B-BR-EMP-346) with the
+// effective revision, its derived usage and every amendment
+// (B-BR-EMP-367).
 type ReviewView struct {
 	private
 	TripID, AssetID, DriverEmployeeID, ReportingDay string
@@ -323,6 +274,9 @@ type ReviewView struct {
 	Review                                          trip.ReviewState
 	Revision                                        int64
 	History                                         []ReviewEntry
+	EffectiveRevision                               int64
+	EffectiveUsage                                  *RevisionUsage
+	Amendments                                      []AmendmentView
 }
 
 func (v ReviewView) Clone() ReviewView {
@@ -331,6 +285,14 @@ func (v ReviewView) Clone() ReviewView {
 		v.FinishedAt = &at
 	}
 	v.History = slices.Clone(v.History)
+	v.EffectiveUsage = copyPointer(v.EffectiveUsage)
+	if v.Amendments != nil {
+		amendments := make([]AmendmentView, len(v.Amendments))
+		for i, a := range v.Amendments {
+			amendments[i] = a.clone()
+		}
+		v.Amendments = amendments
+	}
 	return v
 }
 
@@ -381,11 +343,15 @@ type ReviewRepository interface {
 	DecideTripReview(context.Context, kernel.OrgScope, ReviewActor, string, DecisionCommand) (DecisionResult, bool, error)
 	ReadTripReview(context.Context, kernel.OrgScope, ReviewActor, string, string) (ReviewView, error)
 	ListTripReviews(context.Context, kernel.OrgScope, ReviewActor, string, QueueFilter) (QueuePage, error)
+	ProposeTripAmendment(context.Context, kernel.OrgScope, ReviewActor, string, AmendmentCommand, [2]string) (AmendmentResult, bool, error)
 }
 
+// ReviewService serves the review routes and the amendment proposal; NewID
+// pre-allocates the readings an approved amendment would create.
 type ReviewService struct {
 	Enabled    bool
 	Repository ReviewRepository
+	NewID      func() (string, error)
 }
 
 func authorizedReview(ctx context.Context, scope kernel.OrgScope, actor ReviewActor, decision access.Decision, target string, policy access.Policy) error {
@@ -402,7 +368,7 @@ func authorizedReview(ctx context.Context, scope kernel.OrgScope, actor ReviewAc
 }
 
 func validEntry(e ReviewEntry) bool {
-	return e.Sequence > 0 && slices.Contains(reviewKinds, e.Kind) && e.Revision >= 1 && canonicalID(e.ActorMembershipID) && canonicalID(e.ActorEmployeeID) && canonicalID(e.OperationID) && !e.RecordedAt.IsZero()
+	return e.Sequence > 0 && slices.Contains(tripKinds, e.Kind) && e.Revision >= 1 && canonicalID(e.ActorMembershipID) && canonicalID(e.ActorEmployeeID) && canonicalID(e.OperationID) && !e.RecordedAt.IsZero()
 }
 
 // Decide proves the live request decision before and after the store and
@@ -495,20 +461,65 @@ func (s ReviewService) Read(ctx context.Context, scope kernel.OrgScope, actor Re
 	if err != nil {
 		return ReviewView{}, err
 	}
-	history := make([]review.Entry, 0, len(view.History))
 	for _, e := range view.History {
 		if !validEntry(e) {
 			return ReviewView{}, ErrUnavailable
 		}
-		history = append(history, review.Entry{Kind: e.Kind, Revision: e.Revision, State: e.State, Reason: e.Reason})
 	}
-	c, err := review.Replay(history)
+	r, err := TripRevisions(view.History)
 	if err != nil || view.TripID != tripID || !canonicalID(view.AssetID) || !canonicalID(view.DriverEmployeeID) || view.StartedAt.IsZero() || view.ReportingDay == "" ||
-		trip.ReviewState(c.State()) != view.Review || c.Revision() != view.Revision || (view.Operational == trip.Completed) != (view.FinishedAt != nil) {
+		trip.ReviewState(r.State()) != view.Review || r.Latest() != view.Revision || (view.Operational == trip.Completed) != (view.FinishedAt != nil) ||
+		view.EffectiveRevision != r.Effective() || (view.EffectiveUsage == nil) != (r.Effective() == 0) || view.EffectiveUsage != nil && view.EffectiveUsage.Revision != r.Effective() {
 		return ReviewView{}, ErrUnavailable
+	}
+	for _, a := range view.Amendments {
+		if state, ok := r.RevisionState(a.Revision); !ok || state != a.State || a.Usage.Revision != a.Revision || a.Start == nil && a.End == nil {
+			return ReviewView{}, ErrUnavailable
+		}
 	}
 	if _, err := trip.NewStanding(view.Operational, view.Review); err != nil {
 		return ReviewView{}, ErrUnavailable
 	}
 	return view.Clone(), nil
+}
+
+// Propose proves the live request decision (meter.reading.correct over the
+// trip) before and after the store, pre-allocates the superseding readings
+// and re-proves the stored result's shape (B-BR-EMP-365).
+func (s ReviewService) Propose(ctx context.Context, scope kernel.OrgScope, actor ReviewActor, decision access.Decision, command AmendmentCommand) (AmendmentResult, bool, error) {
+	if !s.Enabled {
+		return AmendmentResult{}, false, ErrReviewDisabled
+	}
+	in, err := command.Snapshot()
+	if err != nil {
+		return AmendmentResult{}, false, err
+	}
+	policy := AmendPolicy()
+	if err := authorizedReview(ctx, scope, actor, decision, in.TripID, policy); err != nil {
+		return AmendmentResult{}, false, err
+	}
+	if absentPort(s.Repository) || s.NewID == nil {
+		return AmendmentResult{}, false, ErrUnavailable
+	}
+	var ids [2]string
+	for i := range ids {
+		if ids[i], err = s.NewID(); err != nil || !canonicalID(ids[i]) {
+			return AmendmentResult{}, false, ErrUnavailable
+		}
+	}
+	if ids[0] == ids[1] {
+		return AmendmentResult{}, false, ErrUnavailable
+	}
+	result, replay, err := s.Repository.ProposeTripAmendment(ctx, scope, actor, decision.Subject().MembershipID(), command, ids)
+	if guard := authorizedReview(ctx, scope, actor, decision, in.TripID, policy); guard != nil {
+		return AmendmentResult{}, false, guard
+	}
+	if err != nil {
+		return AmendmentResult{}, false, err
+	}
+	if result.TripID != in.TripID || result.Revision < 2 || result.Base < 1 || result.Base >= result.Revision || result.State != review.Submitted || result.RecordedAt.IsZero() ||
+		result.Intent != amend.IntentAmend && result.Intent != amend.IntentEdit {
+		return AmendmentResult{}, false, ErrUnavailable
+	}
+	return result, replay, nil
 }

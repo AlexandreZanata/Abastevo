@@ -9,14 +9,16 @@ import (
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
+	reviewapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/application"
 	review "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/domain"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// EDR-220: the submission owner exists only with real ports and declares
-// exactly ACCEPTED and REJECTED (no held path).
-func TestSubmitOwnerNeedsRealPortsAndHasNoHeldPath(t *testing.T) {
+// EDR-220/235: the submission owner exists only with real ports and declares
+// ACCEPTED, REJECTED and, for a held stale submission, ACCEPTED_FOR_REVIEW.
+func TestSubmitOwnerNeedsRealPortsAndHoldsStaleSubmissions(t *testing.T) {
 	if h, err := NewSubmitHandler(nil, nil, nil, nil); h != nil || !errors.Is(err, syncapp.ErrUnavailable) {
 		t.Fatal("a submission owner without ports was composed", err)
 	}
@@ -26,8 +28,11 @@ func TestSubmitOwnerNeedsRealPortsAndHasNoHeldPath(t *testing.T) {
 	}
 	d := (&submitHandler{}).Descriptor()
 	if d.Type != app.SubmitOperationType || d.Schema != 1 || d.WritePolicy != app.Policy(app.RecordAction) || d.ReadPolicy != app.Policy(app.ReadAction) ||
-		len(d.TerminalResults) != 2 || d.TerminalResults[0] != protocol.Accepted || d.TerminalResults[1] != protocol.Rejected || d.Validate() != nil {
+		len(d.TerminalResults) != 3 || d.TerminalResults[0] != protocol.Accepted || d.TerminalResults[1] != protocol.Rejected || d.TerminalResults[2] != protocol.AcceptedForReview || d.Validate() != nil {
 		t.Fatal("submission descriptor drift", d.TerminalResults)
+	}
+	if _, ok := (&submitHandler{}).ReviewProof().(SubmitProof); !ok {
+		t.Fatal("the held-submission proof is not composed")
 	}
 	var h *submitHandler
 	if err := h.Admit(context.Background(), nil, syncapp.Source{}, protocol.Operation{}, syncapp.Write); !errors.Is(err, syncapp.ErrUnavailable) {
@@ -41,8 +46,13 @@ func TestStoredSubmitProvesTheExactEntry(t *testing.T) {
 	v := app.SubmitInput{OperationID: "op", Revision: 1}
 	record := app.Record{AuthorMembershipID: "m", AuthorEmployeeID: "e"}
 	good := app.ReviewEntry{Sequence: 1, Kind: review.Submit, Revision: 1, State: review.Submitted, ActorMembershipID: "m", ActorEmployeeID: "e", OperationID: "op"}
-	if !storedSubmit(source, v, record, []app.ReviewEntry{good}) {
+	if revision, ok := storedSubmit(source, v, record, []app.ReviewEntry{good}); !ok || revision != 1 {
 		t.Fatal("the exact entry was not proven")
+	}
+	resubmit := good
+	resubmit.Sequence, resubmit.Kind, resubmit.Revision = 4, review.Resubmit, 2
+	if revision, ok := storedSubmit(source, v, record, []app.ReviewEntry{resubmit}); !ok || revision != 2 {
+		t.Fatal("the exact RESUBMIT entry was not proven (EMP-TRIP-015)")
 	}
 	for name, edit := range map[string]func(*app.ReviewEntry){
 		"other operation": func(e *app.ReviewEntry) { e.OperationID = "other" },
@@ -55,7 +65,7 @@ func TestStoredSubmitProvesTheExactEntry(t *testing.T) {
 	} {
 		e := good
 		edit(&e)
-		if storedSubmit(source, v, record, []app.ReviewEntry{e}) {
+		if _, ok := storedSubmit(source, v, record, []app.ReviewEntry{e}); ok {
 			t.Fatal("a different entry was proven", name)
 		}
 	}
@@ -84,7 +94,37 @@ func TestReviewStoreFailsClosedAndMapsFailures(t *testing.T) {
 			t.Fatal("review failure mapping", c.in, got)
 		}
 	}
-	if len(ReviewAuditDefinitions()) != 3 {
-		t.Fatal("decision audit actions drift")
+	if len(ReviewAuditDefinitions()) != 4 || ReviewAuditDefinitions()[3].Action != app.AmendAuditAction {
+		t.Fatal("decision and amendment audit actions drift")
+	}
+}
+
+type periodlessAuthority struct{}
+
+func (periodlessAuthority) CheckTripReviewTx(context.Context, pgx.Tx, kernel.OrgScope, app.ReviewActor, string, string, bool) (app.Reviewer, error) {
+	return app.Reviewer{}, nil
+}
+
+type periodlessAudit struct{}
+
+func (periodlessAudit) RecordChangeTx(context.Context, pgx.Tx, kernel.OrgScope, audit.Event, func(context.Context, pgx.Tx) error) (bool, error) {
+	return false, nil
+}
+
+type periodGateStub struct{ reviewapp.PeriodGate }
+
+// EMP-TRIP-016 (EDR-232): a review store without the period gate is not
+// composed, so no decision can skip the lock of its reporting month.
+func TestReviewStoreNeedsThePeriodGate(t *testing.T) {
+	s := &ReviewStore{Pool: &pgxpool.Pool{}, Authority: periodlessAuthority{}, Audit: periodlessAudit{}}
+	if s.ready() {
+		t.Fatal("a review store without the period gate is ready")
+	}
+	if _, _, err := s.DecideTripReview(context.Background(), kernel.OrgScope{}, app.ReviewActor{}, "", app.DecisionCommand{}); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("a store without the period gate decided", err)
+	}
+	s.Periods = periodGateStub{}
+	if !s.ready() {
+		t.Fatal("a fully composed review store is not ready")
 	}
 }

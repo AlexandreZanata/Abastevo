@@ -342,9 +342,11 @@ func Register(router chi.Router, o Options) error {
 			return now, err
 		},
 	}
-	// EMP-METER-004: the fueling store answers the approved-parent port; no
-	// recalculation consumer exists, so nothing is published (EDR-189).
-	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore, Reviews: reviews, Plausibility: plausibility, Parents: &fuelpg.Store{Allocations: assets}}
+	// EMP-METER-004: the fueling and trip stores answer the approved-parent
+	// port (EMP-TRIP-015, B-BR-EMP-368); no recalculation consumer exists, so
+	// nothing is published (EDR-189).
+	meters := &fleetpg.MeterStore{Pool: o.Pool, Authority: meterAuthority, Audit: auditStore, Reviews: reviews, Plausibility: plausibility,
+		Parents: fleetpg.MeterParentSet{&fuelpg.Store{Allocations: assets}, &trippg.Store{}}}
 	if err := fleetweb.RegisterMeters(router, fleetapp.MeterService{Enabled: true, Repository: meters, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
 	}
@@ -368,9 +370,14 @@ func Register(router chi.Router, o Options) error {
 	// EMP-TRIP-004 (EDR-222): the reviewer read and decision on a stored
 	// trip, structural grants through the trip's stored snapshot.
 	tripStructure := &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: o.Pool}
-	tripReviews := &trippg.ReviewStore{Pool: o.Pool, Authority: &orgpg.TripReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure}, Audit: auditStore}
+	// EMP-TRIP-016 (EDR-232): decisions read the period of the stored start
+	// reporting day through the APPR-006 gate.
+	// EMP-TRIP-015 (EDR-236/237): the same authority proves amendments and the
+	// meter store supersedes an approved amendment's readings.
+	tripReviewAuthority := &orgpg.TripReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure}
+	tripReviews := &trippg.ReviewStore{Pool: o.Pool, Authority: tripReviewAuthority, Audit: auditStore, Periods: reviewpg.PeriodGate{}, Amenders: tripReviewAuthority, Readings: meters}
 	tripReviewAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ReviewRecords{}, Structure: tripStructure, Now: time.Now}
-	if err := tripweb.RegisterReview(router, tripapp.ReviewService{Enabled: true, Repository: tripReviews}, cookies, gateway, tripReviewAuthorization); err != nil {
+	if err := tripweb.RegisterReview(router, tripapp.ReviewService{Enabled: true, Repository: tripReviews, NewID: jobs.NewUUIDv4}, cookies, gateway, tripReviewAuthorization); err != nil {
 		return err
 	}
 
