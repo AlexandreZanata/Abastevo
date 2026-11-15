@@ -14859,7 +14859,13 @@ paths:
         meter.reading.record owner commits immutable evidence, audit, effect and ACK atomically with explicit accepted/
         rejected outcomes and no artificial asynchronous consumer. Its source-owned synthetic transport allowance is
         identity v1 write200/hour per organization/account/device, weighted by attempts; production measurement and
-        cleanup remain separate. ORG and SELF (assigned-asset) history are resolved from retained periods; Android producers and F4 late/grace require their actual owners.
+        cleanup remain separate. ORG and SELF (assigned-asset) history are resolved from retained periods; Android producers and F4 grace require their actual owners.
+        A device whose exact sealed period was revoked ACCESS_ENDED (membership end or revocation command) delivers
+        that period intake-only (EMP-OFFL-009). From server history only, an operation received after the window in
+        force at the end is REJECTED INTAKE_WINDOW_CLOSED; one claimed before the end or declared before it is
+        ACCEPTED_FOR_REVIEW ACCESS_ENDED_BEFORE_RECEIPT when its owner holds a typed fact (meter.reading.record),
+        else RETRY/UNAVAILABLE; any other is REJECTED MEMBERSHIP_ENDED or DEVICE_REVOKED. Late resends replay only
+        those decisions; a key revoked LOST_OR_COMPROMISED is refused as a whole and nothing becomes readable.
         The fueling.submit owner (EMP-FUEL-002) commits one immutable fueling, its embedded FUELING-origin reading,
         stored warnings and first review entry with its ACK; changed rights and post-disposal fuelings store nothing
         and stay RETRY/UNAVAILABLE until a held-fueling owner exists.
@@ -19572,8 +19578,10 @@ components:
           enum:
           - PERMISSION_CHANGED
           - ASSET_UNAVAILABLE
+          - ACCESS_ENDED_BEFORE_RECEIPT
           description: PERMISSION_CHANGED for retained authority; ASSET_UNAVAILABLE for a reading declared at or after
-            the asset's current disposal instant.
+            the asset's current disposal instant; ACCESS_ENDED_BEFORE_RECEIPT for a reading of a period whose access
+            ended, delivered inside the intake window (EMP-OFFL-009).
         state:
           type: string
           enum:

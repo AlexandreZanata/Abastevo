@@ -4605,3 +4605,91 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   unavailable forms, forced RLS without an organization setting,
   insert-only history and a populated 000212 → 000215 upgrade with injected
   failure, recovery, no-op replay and previous-image compatibility.
+
+## EMP-OFFL-009 — Post-revocation intake window and quarantine (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-offl009-post-revocation-window.md).
+
+- **B-BR-EMP-302 — Intake-only late source.** A device whose exact
+  enrollment period was revoked `ACCESS_ENDED` — by the end of its membership
+  (EMP-IDN-010) or by an `ACCESS_ENDED` revocation command (EMP-IDN-015) —
+  keeps an intake-only source for operations sealed to that period, through
+  the existing signed route only. The source needs current personal proof
+  (active, non-managed account, live family and token, signing key bound to
+  the account), the same organization root `ACTIVE` with its base capability
+  enabled, the period still owned by the same account and key, and no
+  `LOST_OR_COMPROMISED` revocation of that key anywhere in the organization.
+  It confers no permission, role, record read, receipt read or review-result
+  read: every current route, including the signed review-results read, keeps
+  refusing the ended member. A key revoked `LOST_OR_COMPROMISED` is refused as
+  a whole with `DEVICE_REVOKED` before any claim, receipt, audit or fact; an
+  unknown, foreign or still-enrolled period keeps its existing refusal.
+- **B-BR-EMP-303 — Server history decides; device time is evidence.** The
+  access end instant E is the membership's `ended_at` when the enrollment was
+  revoked by the membership end, else the enrollment's `revoked_at`. The
+  window W is `policies.intake_window_days` of the settings version in force
+  at E (latest `effective_at ≤ E`, ties by revision), 15 days when no version
+  exists; a later settings change neither reopens nor shortens it. Receipt R
+  is the database clock of the final acknowledgement. When R > E + W × 86 400
+  seconds the operation is `REJECTED` `INTAKE_WINDOW_CLOSED` (the window
+  includes its end instant). Otherwise it is eligible for review when the
+  server already holds its claim from before E (`claimed_at < E`) or, failing
+  that, when its declared instant is before E; else it is `REJECTED`
+  `MEMBERSHIP_ENDED` (membership end) or `DEVICE_REVOKED` (device command
+  end). The declared instant can only choose review over refusal: it never
+  applies an operation, never moves the window and never opens a read. The
+  enrollment's last contact is not recorded and is not evidence.
+- **B-BR-EMP-304 — Quarantine, never application.** An eligible operation is
+  `ACCEPTED_FOR_REVIEW` with `ACCESS_ENDED_BEFORE_RECEIPT` only when its
+  installed owner retains a typed held fact with a resolution path. The meter
+  owner holds the reading as an OFFL-008 review item and held reading with
+  version-1 proof after validating the payload and the target in the
+  organization without current authority; a malformed payload, a target that
+  does not exist in the organization or a declaration outside the meter's
+  service window is `REJECTED` `MALFORMED`. A held fact creates no reading,
+  effect, cost or dependency readiness until a reviewer who is not the author
+  resolves it (OFFL-008). An owner without a held path answers eligible work
+  `RETRY`/`UNAVAILABLE` with no claim — fuelings until FUEL-003 (EDR-177) —
+  while its `MEMBERSHIP_ENDED`, `DEVICE_REVOKED` and `INTAKE_WINDOW_CLOSED`
+  refusals are final. An eligible operation with unaccepted hard dependencies
+  is `RETRY`/`DEPENDENCY_PENDING` with its claim kept (BR-OFFL-007).
+- **B-BR-EMP-305 — One recorded decision per late operation.** Every final
+  late acknowledgement commits with one immutable, forced-RLS
+  `org_sync_late_intakes` row holding its evidence: end source and instant,
+  window and settings revision, declared instant, receipt, disposition,
+  result, code and policy `late-intake-v1`. The database re-derives E, W and
+  the disposition from history and refuses a mismatching row; the codes
+  `ACCESS_ENDED_BEFORE_RECEIPT`, `MEMBERSHIP_ENDED`, `INTAKE_WINDOW_CLOSED` and
+  `DEVICE_REVOKED` are stored only with their decision row; a late held meter
+  reading is stored only for an `ACCESS_ENDED` period whose declaration or
+  earlier claim precedes E.
+- **B-BR-EMP-306 — Replay never restores access.** A late resend of an
+  operation with a late decision returns its stored acknowledgement byte for
+  byte, also after the window closed or the review was resolved, and applies
+  nothing; the same identifier with another digest is `REJECTED`
+  `OPERATION_ID_REUSED` without storage; a resend of an operation finalized
+  through the normal path before the end is `RETRY`/`UNAVAILABLE` and its
+  stored acknowledgement is unchanged. Concurrent identical late deliveries
+  leave one claim, one decision and one held fact.
+- **B-BR-EMP-307 — Late routing and isolation.** The signed route enters the
+  late path only when the current device check refuses the signing key as
+  revoked or ended, or when the batch's sealed period differs from the
+  current one; the period is read from the batch's operations with the full
+  frozen parser and must be the exact owned period of the signing key in the
+  URL organization (another organization's period is `NOT_FOUND`). The late
+  source is confirmed again inside every operation transaction and once more
+  before the response; a failure withholds the whole response (OFFL-002).
+- **BUC-EMP-152 — Deliver after offboarding (UC-OFFL-07).** A driver
+  offboarded while offline reconnects inside the window: readings declared
+  before the end are held `ACCESS_ENDED_BEFORE_RECEIPT` and wait for a
+  manager, a reading declared after the end is `MEMBERSHIP_ENDED`, resends
+  return the same acknowledgements, and the driver can read nothing.
+- **BUC-EMP-153 — Closed window and lost device.** After the window every
+  late operation is `INTAKE_WINDOW_CLOSED`, whatever its declared time; a
+  device revoked as lost or compromised is refused as a whole with nothing
+  stored.
+- **BUC-EMP-154 — Prove late intake on real PostGIS.** Server-history
+  evidence, a forged declared time, the window in force at the end instant,
+  earlier-claim evidence, exact replay, 12-way concurrency, intake racing the
+  membership end in both orders, foreign organization, database guards and a
+  populated upgrade with injected failure and recovery.

@@ -187,7 +187,10 @@ func (h *syncSQLHandler) Apply(ctx context.Context, tx syncapp.DBTX, s syncapp.S
 }
 func syncFixture(t *testing.T) syncFixtureState {
 	t.Helper()
-	fx := devicesFixture(t)
+	return syncFixtureOn(t, devicesFixture(t))
+}
+func syncFixtureOn(t *testing.T, fx deviceFixtureState) syncFixtureState {
+	t.Helper()
 	matrixAssign(t, fx, matrixPerson{member: fx.person.member}, "ADMIN", "ORG", "ACTIVE")
 	enrolled, e := fx.devices.EnrollDevice(t.Context(), fx.scope, fx.person.actor, deviceEnrollCommand(t, "Synthetic SQL intake"))
 	if e != nil {

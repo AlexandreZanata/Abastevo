@@ -127,6 +127,14 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 			}
 			return now, nil
 		},
+		// EMP-OFFL-009: the intake-only source of one exact ended period.
+		ConfirmLate: func(ctx context.Context, tx pgx.Tx, s app.Source) (app.LateAccess, time.Time, error) {
+			v, now, err := devices.CheckLateIntakeDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)
+			if err != nil {
+				return app.LateAccess{}, time.Time{}, app.SourceDenied(err)
+			}
+			return app.LateAccess{End: app.LateEnd(v.End), EndedAt: v.EndedAt}, now, nil
+		},
 	})
 	origin, err := url.Parse(o.Origin)
 	if err != nil {
@@ -136,5 +144,5 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err := syncweb.RegisterReviewResults(router, syncweb.ReviewResultsOptions{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Repository: meters.Reviews}); err != nil {
 		return err
 	}
-	return syncweb.Register(router, syncweb.Options{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Service: app.Service{Store: store, Admission: intakeAdmission{budget}, Registry: registry}, Limits: protocol.DefaultLimits()})
+	return syncweb.Register(router, syncweb.Options{Enabled: true, Origin: o.Origin, Accounts: o.Accounts, Verifier: verifier, Devices: devices, Late: devices, Service: app.Service{Store: store, Admission: intakeAdmission{budget}, Registry: registry}, Limits: protocol.DefaultLimits()})
 }

@@ -110,7 +110,7 @@ func (q *Queries) ReadAcknowledgement(ctx context.Context, arg ReadAcknowledgeme
 }
 
 const readOperation = `-- name: ReadOperation :one
-SELECT org_id::text AS org_id,operation_id::text AS operation_id,owner_account_id::text AS owner_account_id,api_origin,membership_id::text AS membership_id,enrollment_id::text AS enrollment_id,operation_type,operation_schema,entity_type,entity_id::text AS entity_id,payload_digest
+SELECT org_id::text AS org_id,operation_id::text AS operation_id,owner_account_id::text AS owner_account_id,api_origin,membership_id::text AS membership_id,enrollment_id::text AS enrollment_id,operation_type,operation_schema,entity_type,entity_id::text AS entity_id,payload_digest,claimed_at
 FROM org_sync_operations WHERE org_id=CAST($1::text AS uuid) AND operation_id=CAST($2::text AS uuid) FOR UPDATE
 `
 
@@ -120,17 +120,18 @@ type ReadOperationParams struct {
 }
 
 type ReadOperationRow struct {
-	OrgID           string `json:"org_id"`
-	OperationID     string `json:"operation_id"`
-	OwnerAccountID  string `json:"owner_account_id"`
-	ApiOrigin       string `json:"api_origin"`
-	MembershipID    string `json:"membership_id"`
-	EnrollmentID    string `json:"enrollment_id"`
-	OperationType   string `json:"operation_type"`
-	OperationSchema int64  `json:"operation_schema"`
-	EntityType      string `json:"entity_type"`
-	EntityID        string `json:"entity_id"`
-	PayloadDigest   string `json:"payload_digest"`
+	OrgID           string             `json:"org_id"`
+	OperationID     string             `json:"operation_id"`
+	OwnerAccountID  string             `json:"owner_account_id"`
+	ApiOrigin       string             `json:"api_origin"`
+	MembershipID    string             `json:"membership_id"`
+	EnrollmentID    string             `json:"enrollment_id"`
+	OperationType   string             `json:"operation_type"`
+	OperationSchema int64              `json:"operation_schema"`
+	EntityType      string             `json:"entity_type"`
+	EntityID        string             `json:"entity_id"`
+	PayloadDigest   string             `json:"payload_digest"`
+	ClaimedAt       pgtype.Timestamptz `json:"claimed_at"`
 }
 
 func (q *Queries) ReadOperation(ctx context.Context, arg ReadOperationParams) (ReadOperationRow, error) {
@@ -148,6 +149,7 @@ func (q *Queries) ReadOperation(ctx context.Context, arg ReadOperationParams) (R
 		&i.EntityType,
 		&i.EntityID,
 		&i.PayloadDigest,
+		&i.ClaimedAt,
 	)
 	return i, err
 }

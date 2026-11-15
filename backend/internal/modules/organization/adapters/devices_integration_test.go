@@ -178,7 +178,13 @@ func deviceNewPerson(t *testing.T, fx deviceFixtureState) devicePerson {
 
 func devicesFixture(t *testing.T) deviceFixtureState {
 	t.Helper()
-	legal := legalFixture(t)
+	return devicesFixtureOn(t, legalFixture(t))
+}
+
+// devicesFixtureOn builds the device fixture on a given legal fixture, for
+// example one whose database stops at an earlier migration image.
+func devicesFixtureOn(t *testing.T, legal legalFixtureState) deviceFixtureState {
+	t.Helper()
 	legal.f.GrantDeviceCommands(t)
 	if _, _, e := legal.onboarding.Repository.ActivateOrganization(t.Context(), legal.scope, legal.actor, legal.member, onboardingID(t), 1); e != nil {
 		t.Fatal(e)
