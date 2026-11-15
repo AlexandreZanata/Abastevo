@@ -22,8 +22,10 @@ import (
 )
 
 const (
-	corpusPath = "../../../../../contracts/testdata/enterprise/trip/trip-v1.psv"
-	corpusHash = "068f9dbb8a7a994fdb1c424365d2c45b06655ec01a84b29b874253ea86c6d295"
+	// trip-v2 supersedes trip-v1 (EMP-TRIP-011, EDR-252).
+	corpusPath = "../../../../../contracts/testdata/enterprise/trip/trip-v2.psv"
+	corpusHash = "43aecf00903fffaff2ab17c3530595c3647e4040953fe2ff5e28b104b0bef41e"
+	corpusSize = 297
 )
 
 type fields map[string]string
@@ -31,17 +33,20 @@ type fields map[string]string
 var (
 	errUnknownEnumSelector = errors.New("fixture: unknown enum namespace")
 	errMalformedFixture    = errors.New("fixture: malformed grammar")
-	wantCounts             = map[string]int{"ENUM": 49, "TRANSITION": 40, "STANDING": 14, "START": 57, "FINISH": 47}
-	errorCodes             = []string{"INVALID", "SCOPE", "INCOMPLETE", "FORBIDDEN", "INVALID_TRANSITION", "UNSUPPORTED_COMMAND", "FINISH_BEFORE_START"}
+	wantCounts             = map[string]int{"ENUM": 49, "TRANSITION": 40, "STANDING": 14, "START": 57, "FINISH": 47, "PAUSE": 40, "RESUME": 16, "CANCEL": 22, "HISTORY": 12}
+	errorCodes             = []string{"INVALID", "SCOPE", "INCOMPLETE", "FORBIDDEN", "INVALID_TRANSITION", "UNSUPPORTED_COMMAND", "FINISH_BEFORE_START", "CONFLICT", "BEFORE_START"}
 	startKeys              = "scope org id id_org author author_org asset asset_org driver driver_org dep dep_org dep_asset dep_meter dep_segment " +
 		"dep_reading dep_kind dep_value_kind dep_value dep_modulus dep_reason_hex at entry offset zone unit_zone omit"
 	finishKeys = startKeys + " fin_scope fin_author fin_author_org fin fin_org fin_asset fin_meter fin_segment fin_reading fin_kind " +
 		"fin_value_kind fin_value fin_modulus fin_reason_hex fin_at fin_entry fin_offset fin_omit again"
+	commandKeys = startKeys + " history cmd_scope by by_org expected reason_hex cmd_at cmd_entry cmd_offset cmd_omit again"
 	allowedArgs = map[string]string{"ENUM": "kind value_hex", "TRANSITION": "state command", "STANDING": "operational review",
-		"START": startKeys, "FINISH": finishKeys}
-	startOmittable  = map[string]bool{"id": true, "author": true, "asset": true, "driver": true, "departure": true, "declaration": true, "zone": true}
-	finishOmittable = map[string]bool{"author": true, "final": true, "declaration": true}
-	aliases         = map[string]int{"A": 1, "B": 2, "T": 11, "T2": 12, "V": 21, "V2": 22, "D": 31, "D2": 32, "M": 41, "M2": 42,
+		"START": startKeys, "FINISH": finishKeys, "PAUSE": commandKeys, "RESUME": commandKeys, "CANCEL": commandKeys, "HISTORY": startKeys + " history"}
+	commandOmittable = map[string]bool{"author": true, "declaration": true}
+	cancelReasonHex  = hex.EncodeToString([]byte("Cliente cancelou"))
+	startOmittable   = map[string]bool{"id": true, "author": true, "asset": true, "driver": true, "departure": true, "declaration": true, "zone": true}
+	finishOmittable  = map[string]bool{"author": true, "final": true, "declaration": true}
+	aliases          = map[string]int{"A": 1, "B": 2, "T": 11, "T2": 12, "V": 21, "V2": 22, "D": 31, "D2": 32, "M": 41, "M2": 42,
 		"MT": 51, "MT2": 52, "SG": 61, "SG2": 62, "R1": 71, "R2": 72, "R3": 73}
 	departureReasonHex = hex.EncodeToString([]byte("Odometro ilegivel"))
 	finalReasonHex     = hex.EncodeToString([]byte("Sem leitura final"))
@@ -316,6 +321,37 @@ func finishFields(f fields) fields {
 	return f
 }
 
+// vectorFinishInput builds the fixture finish input of finish fields f.
+func vectorFinishInput(t *testing.T, f fields) (trip.FinishInput, error) {
+	t.Helper()
+	omit := omitted(t, f["fin_omit"], finishOmittable)
+	var in trip.FinishInput
+	var e error
+	if !omit["author"] {
+		if in.Author, e = trip.NewMembershipRef(vectorScope(f["fin_author_org"]), fixtureID(f["fin_author"])); e != nil {
+			return in, e
+		}
+	}
+	if !omit["final"] {
+		if in.Final, e = vectorObservation(t, f, "fin"); e != nil {
+			return in, e
+		}
+	}
+	if !omit["declaration"] {
+		if in.Declared, e = declaration(f["fin_at"], f["fin_entry"], f["fin_offset"]); e != nil {
+			return in, e
+		}
+	}
+	if raw, ok := f["fin_boot_hex"]; ok {
+		c, e := vectorClock(t, raw, f["fin_mono"])
+		if e != nil {
+			return in, e
+		}
+		in.Clock = &c
+	}
+	return in, nil
+}
+
 func vectorFinish(t *testing.T, args fields) (trip.Trip, error) {
 	t.Helper()
 	f := finishFields(startFields(args))
@@ -323,29 +359,9 @@ func vectorFinish(t *testing.T, args fields) (trip.Trip, error) {
 	if e != nil {
 		return trip.Trip{}, e
 	}
-	omit := omitted(t, f["fin_omit"], finishOmittable)
-	var in trip.FinishInput
-	if !omit["author"] {
-		if in.Author, e = trip.NewMembershipRef(vectorScope(f["fin_author_org"]), fixtureID(f["fin_author"])); e != nil {
-			return trip.Trip{}, e
-		}
-	}
-	if !omit["final"] {
-		if in.Final, e = vectorObservation(t, f, "fin"); e != nil {
-			return trip.Trip{}, e
-		}
-	}
-	if !omit["declaration"] {
-		if in.Declared, e = declaration(f["fin_at"], f["fin_entry"], f["fin_offset"]); e != nil {
-			return trip.Trip{}, e
-		}
-	}
-	if raw, ok := f["fin_boot_hex"]; ok {
-		c, e := vectorClock(t, raw, f["fin_mono"])
-		if e != nil {
-			return trip.Trip{}, e
-		}
-		in.Clock = &c
+	in, e := vectorFinishInput(t, f)
+	if e != nil {
+		return trip.Trip{}, e
 	}
 	before := tripFields(started)
 	scope := vectorScope(f["fin_scope"])
@@ -459,6 +475,30 @@ func runVector(t *testing.T, op string, f fields) (fields, error) {
 			return nil, e
 		}
 		return tripFields(tr), nil
+	case "PAUSE", "RESUME", "CANCEL":
+		return vectorCommand(t, trip.Command(op), f)
+	case "HISTORY":
+		g := startFields(f)
+		tr, e := vectorStart(t, g)
+		if e != nil {
+			return nil, e
+		}
+		if tr, e = vectorHistory(t, tr, g); e != nil {
+			return nil, e
+		}
+		out := tripFields(tr)
+		out["revision"], out["steps"] = strconv.FormatInt(tr.Revision(), 10), "?"
+		var steps []string
+		for _, l := range tr.Lifecycle() {
+			steps = append(steps, string(l.Command())+"/"+strconv.FormatInt(l.Revision(), 10))
+		}
+		if _, ok := tr.Finished(); ok {
+			steps = append(steps, "FINISH/"+strconv.FormatInt(tr.Revision(), 10))
+		}
+		if len(steps) != 0 {
+			out["steps"] = strings.Join(steps, ",")
+		}
+		return out, nil
 	}
 	t.Fatal("unknown operation")
 	return nil, nil
@@ -478,7 +518,7 @@ func errorFields(e error) fields {
 	for code, targets := range map[string][]error{"INVALID": {trip.ErrInvalid, meter.ErrInvalid, fleet.ErrInvalid},
 		"SCOPE": {trip.ErrScope, meter.ErrScope, fleet.ErrScope}, "FORBIDDEN": {trip.ErrForbidden},
 		"INVALID_TRANSITION": {trip.ErrInvalidTransition}, "UNSUPPORTED_COMMAND": {trip.ErrUnsupportedCommand},
-		"FINISH_BEFORE_START": {trip.ErrFinishBeforeStart}} {
+		"FINISH_BEFORE_START": {trip.ErrFinishBeforeStart}, "CONFLICT": {trip.ErrConflict}, "BEFORE_START": {trip.ErrBeforeStart}} {
 		for _, target := range targets {
 			if errors.Is(e, target) {
 				return fields{"error": code}
@@ -555,7 +595,7 @@ func TestSharedTripVectors(t *testing.T) {
 	if e = scanner.Err(); e != nil {
 		t.Fatal(e)
 	}
-	if len(ids) != 207 || !reflect.DeepEqual(counts, wantCounts) {
+	if len(ids) != corpusSize || !reflect.DeepEqual(counts, wantCounts) {
 		t.Fatal("incomplete corpus", len(ids), counts)
 	}
 	if len(pairs) != 35 {
@@ -569,4 +609,146 @@ func TestSharedTripVectors(t *testing.T) {
 	if len(codes) != len(errorCodes) {
 		t.Fatal("undocumented error code in corpus", codes)
 	}
+}
+
+// apply runs one lifecycle command on a trip.
+func apply(tr trip.Trip, cmd trip.Command, scope kernel.OrgScope, in trip.LifecycleInput) (trip.Trip, error) {
+	switch cmd {
+	case trip.CommandPause:
+		return tr.Pause(scope, in)
+	case trip.CommandResume:
+		return tr.Resume(scope, in)
+	case trip.CommandCancel:
+		return tr.Cancel(scope, in)
+	}
+	return trip.Trip{}, errMalformedFixture
+}
+
+// vectorHistory applies the fixture history steps (step i at 12:i0Z by M of
+// the trip organization at the current revision; FINISH with its v1 defaults).
+func vectorHistory(t *testing.T, tr trip.Trip, f fields) (trip.Trip, error) {
+	t.Helper()
+	raw, ok := f["history"]
+	if !ok {
+		return tr, nil
+	}
+	steps := strings.Split(raw, ",")
+	if len(steps) > 9 {
+		t.Fatal("history too long for the fixture clock")
+	}
+	scope := vectorScope(f["scope"])
+	for i, step := range steps {
+		var e error
+		switch step {
+		case "FINISH":
+			g := fields{}
+			for k, v := range f {
+				g[k] = v
+			}
+			in, e := vectorFinishInput(t, finishFields(g))
+			if e != nil {
+				t.Fatal("fixture finish step", e)
+			}
+			tr, e = tr.Finish(scope, in)
+			if e != nil {
+				return trip.Trip{}, e
+			}
+			continue
+		case "PAUSE", "RESUME", "CANCEL":
+		default:
+			t.Fatal("unknown history step", step)
+		}
+		author, e := trip.NewMembershipRef(vectorScope(f["org"]), fixtureID("M"))
+		if e != nil {
+			t.Fatal(e)
+		}
+		at, e := declaration(fmt.Sprintf("2026-11-14T12:%d0:00Z", i+1), "America/Cuiaba", "-14400")
+		if e != nil {
+			t.Fatal(e)
+		}
+		in := trip.LifecycleInput{Author: author, Expected: tr.Revision(), Declared: at}
+		if step == "CANCEL" {
+			reason := "Cliente cancelou"
+			in.Reason = &reason
+		}
+		if tr, e = apply(tr, trip.Command(step), scope, in); e != nil {
+			return trip.Trip{}, e
+		}
+	}
+	return tr, nil
+}
+
+// vectorCommand builds the trip and its history, then applies the command.
+func vectorCommand(t *testing.T, cmd trip.Command, args fields) (fields, error) {
+	t.Helper()
+	f := startFields(args)
+	tr, e := vectorStart(t, f)
+	if e != nil {
+		return nil, e
+	}
+	if tr, e = vectorHistory(t, tr, f); e != nil {
+		return nil, e
+	}
+	reason := "?"
+	if cmd == trip.CommandCancel {
+		reason = cancelReasonHex
+	}
+	g := fields{"cmd_scope": f["scope"], "by": "M", "by_org": f["org"], "expected": strconv.FormatInt(tr.Revision(), 10), "reason_hex": reason,
+		"cmd_at": "2026-11-14T14:00:00Z", "cmd_entry": "America/Cuiaba", "cmd_offset": "-14400"}
+	for k, v := range g {
+		f[k] = f.get(k, v)
+	}
+	omit := omitted(t, f["cmd_omit"], commandOmittable)
+	in := trip.LifecycleInput{}
+	if in.Expected, e = strconv.ParseInt(f["expected"], 10, 64); e != nil {
+		t.Fatal("malformed expected fixture revision")
+	}
+	if !omit["author"] {
+		if in.Author, e = trip.NewMembershipRef(vectorScope(f["by_org"]), fixtureID(f["by"])); e != nil {
+			return nil, e
+		}
+	}
+	if raw := f["reason_hex"]; raw != "?" {
+		text, e := decodeHex(raw)
+		if e != nil {
+			t.Fatal(e)
+		}
+		in.Reason = &text
+	}
+	if !omit["declaration"] {
+		if in.Declared, e = declaration(f["cmd_at"], f["cmd_entry"], f["cmd_offset"]); e != nil {
+			return nil, e
+		}
+	}
+	scope := vectorScope(f["cmd_scope"])
+	before := tripFields(tr)
+	next, e := apply(tr, cmd, scope, in)
+	if !reflect.DeepEqual(tripFields(tr), before) {
+		t.Fatal("a lifecycle command changed its input trip")
+	}
+	if again := f.get("again", "false"); again != "true" && again != "false" {
+		t.Fatal("malformed again fixture flag")
+	} else if e == nil && again == "true" {
+		next, e = apply(next, cmd, scope, in)
+	}
+	if e != nil {
+		return nil, e
+	}
+	facts := next.Lifecycle()
+	if len(facts) == 0 {
+		t.Fatal("an accepted command left no lifecycle fact")
+	}
+	last := facts[len(facts)-1]
+	out := tripFields(next)
+	out["revision"], out["previous"] = strconv.FormatInt(next.Revision(), 10), string(last.From())
+	out["command_author"], out["command_at"] = alias(last.Author().ID()), orgtime.FormatInstant(last.Declared().OccurredAt)
+	out["command_entry"], out["command_offset"] = last.Declared().EntryZone, strconv.FormatInt(last.Declared().DeviceOffsetSeconds, 10)
+	out["command_reason_hex"] = "?"
+	if r := last.Reason(); r != nil {
+		out["command_reason_hex"] = hex.EncodeToString([]byte(*r))
+	}
+	if last.Command() != cmd || last.To() != next.State() || last.Revision() != next.Revision() {
+		t.Fatal("the last lifecycle fact is not the applied command")
+	}
+	return out, nil
 }

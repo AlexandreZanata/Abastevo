@@ -156,3 +156,70 @@ func TestTripEventOwnerIsAnAtomicReviewOwnerWithAnExactPayload(t *testing.T) {
 		}
 	}
 }
+
+// EMP-TRIP-011 (EDR-253): the three lifecycle owners on the trip entity and
+// their exact payload; a cancellation's reason is enforced at receipt.
+func TestTripLifecycleOwnersAreAtomicReviewOwnersWithAnExactPayload(t *testing.T) {
+	doc := loadSpec(t)
+	raw, err := json.Marshal(doc.Paths.Value("/v1/orgs/{org_id}/sync/operations").Post.Extensions["x-abastevo-operation-owners"])
+	if err != nil {
+		t.Fatal(err)
+	}
+	var owners map[string]struct {
+		Schema  int    `json:"schema"`
+		Entity  string `json:"entity_type"`
+		Payload struct {
+			Ref string `json:"$ref"`
+		} `json:"payload"`
+		Results   []string          `json:"terminal_results"`
+		Followups map[string]string `json:"followup_by_result"`
+	}
+	if json.Unmarshal(raw, &owners) != nil {
+		t.Fatal("owners unreadable")
+	}
+	for _, kind := range []string{"trip.pause", "trip.resume", "trip.cancel"} {
+		owner, ok := owners[kind]
+		if !ok || owner.Schema != 1 || owner.Entity != "trip" || owner.Payload.Ref != "#/components/schemas/EnterpriseTripTransitionPayload" || len(owner.Results) != 3 ||
+			owner.Results[0] != "ACCEPTED" || owner.Results[1] != "ACCEPTED_FOR_REVIEW" || owner.Results[2] != "REJECTED" || len(owner.Followups) != 3 ||
+			owner.Followups["ACCEPTED"] != "NO_ASYNC_FOLLOWUP" || owner.Followups["REJECTED"] != "NO_ASYNC_FOLLOWUP" || owner.Followups["ACCEPTED_FOR_REVIEW"] != "ATOMIC_REVIEW" {
+			t.Fatal("trip lifecycle owner/outcome drift", kind)
+		}
+	}
+	schema := doc.Components.Schemas["EnterpriseTripTransitionPayload"]
+	if schema == nil || schema.Value == nil || schema.Value.Example == nil {
+		t.Fatal("missing trip lifecycle payload contract/example")
+	}
+	example := func() map[string]any {
+		raw, _ := json.Marshal(schema.Value.Example)
+		var v map[string]any
+		if json.Unmarshal(raw, &v) != nil {
+			t.Fatal("invalid example")
+		}
+		return v
+	}
+	if err := schema.Value.VisitJSON(example()); err != nil {
+		t.Fatal("invalid example", err)
+	}
+	none := example()
+	none["reason"] = nil
+	if err := schema.Value.VisitJSON(none); err != nil {
+		t.Fatal("a pause without reason refused", err)
+	}
+	if schema.Value.VisitJSON(map[string]any{}) == nil {
+		t.Fatal("the nullable reason key may be omitted")
+	}
+	for _, field := range []string{"state", "revision", "expected_revision", "trip_id", "author_membership_id", "occurred_at", "received_at"} {
+		v := example()
+		v[field] = "private"
+		if schema.Value.VisitJSON(v) == nil {
+			t.Fatal("payload authority or server field admitted", field)
+		}
+	}
+	for _, bad := range []any{"", strings.Repeat("a", 281), float64(1)} {
+		v := example()
+		v["reason"] = bad
+		if schema.Value.VisitJSON(v) == nil {
+			t.Fatal("malformed reason admitted", bad)
+		}
+	}
+}

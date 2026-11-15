@@ -100,8 +100,9 @@ func (h *submitHandler) Admit(ctx context.Context, db syncapp.DBTX, source synca
 	if err != nil {
 		return err
 	}
-	// Only a completed trip is submitted; its finish is the dependency.
-	if record.State != trip.Completed {
+	// Only a completed trip is submitted; its finish is the dependency. A
+	// cancelled trip is never submitted (EMP-TRIP-011): Apply refuses it.
+	if record.State != trip.Completed && record.State != trip.Cancelled {
 		return syncapp.ErrDependencyPending
 	}
 	_, err = h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
@@ -122,6 +123,10 @@ func (h *submitHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	record, err := h.trip(ctx, db, source, v, syncapp.Write)
 	if err != nil {
 		return syncapp.Outcome{}, err
+	}
+	// B-BR-EMP-392: a cancelled trip has no field revision to submit.
+	if record.State == trip.Cancelled {
+		return malformed(), nil
 	}
 	state, err := h.reviews.LockTripTx(ctx, syncapp.Borrow(db), source.Scope, v.TripID)
 	if err != nil || state != record.State {

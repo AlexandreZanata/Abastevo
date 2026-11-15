@@ -1,10 +1,10 @@
 package com.anpfuel.domain.enterprise.trip
 
-/** Closed failure vocabulary shared with the Go package through trip-v1. */
-enum class TripFailure { INVALID, SCOPE, INCOMPLETE, FORBIDDEN, INVALID_TRANSITION, UNSUPPORTED_COMMAND, FINISH_BEFORE_START }
+/** Closed failure vocabulary shared with the Go package through trip-v2 (EMP-TRIP-011 adds CONFLICT and BEFORE_START). */
+enum class TripFailure { INVALID, SCOPE, INCOMPLETE, FORBIDDEN, INVALID_TRANSITION, UNSUPPORTED_COMMAND, FINISH_BEFORE_START, CONFLICT, BEFORE_START }
 
-/** An absent part of the eligible context, reported in this order. */
-enum class TripMissing { ASSET, DRIVER, DEPARTURE_EVIDENCE, DECLARATION, FINAL_EVIDENCE }
+/** An absent part of the eligible context or of a lifecycle command, reported in this order. */
+enum class TripMissing { ASSET, DRIVER, DEPARTURE_EVIDENCE, DECLARATION, FINAL_EVIDENCE, REASON }
 
 class TripDomainException(val failure: TripFailure = TripFailure.INVALID, missing: List<TripMissing> = emptyList()) :
     IllegalArgumentException("trip: ${failure.name.lowercase()}") {
@@ -35,18 +35,22 @@ enum class TripCommand {
 }
 
 /**
- * The C1 operational table (EDR-178), first failure first: terminal states (a new attempt is a new trip),
- * commands and states whose lifecycle belongs to a later owner, then START on a trip that already exists.
- * START itself creates a trip only through [Trip.start].
+ * The operational table (EDR-178, EMP-TRIP-011 EDR-252), first failure first: terminal states (a new attempt is a new
+ * trip), the mission-owned states PLANNED, ASSIGNED and ACCEPTED, then the moves of an open trip: PAUSE IN_PROGRESS →
+ * PAUSED, RESUME PAUSED → IN_PROGRESS, CANCEL → CANCELLED and FINISH → COMPLETED from either; any other pair is
+ * INVALID_TRANSITION. START itself creates a trip only through [Trip.start].
  */
 object TripLifecycle {
     fun transition(from: TripState, command: TripCommand): TripState {
         if (from.terminal) throw TripDomainException(TripFailure.INVALID_TRANSITION)
-        if (from != TripState.IN_PROGRESS || command != TripCommand.START && command != TripCommand.FINISH) {
-            throw TripDomainException(TripFailure.UNSUPPORTED_COMMAND)
+        if (from != TripState.IN_PROGRESS && from != TripState.PAUSED) throw TripDomainException(TripFailure.UNSUPPORTED_COMMAND)
+        return when {
+            command == TripCommand.FINISH -> TripState.COMPLETED
+            command == TripCommand.CANCEL -> TripState.CANCELLED
+            command == TripCommand.PAUSE && from == TripState.IN_PROGRESS -> TripState.PAUSED
+            command == TripCommand.RESUME && from == TripState.PAUSED -> TripState.IN_PROGRESS
+            else -> throw TripDomainException(TripFailure.INVALID_TRANSITION)
         }
-        if (command == TripCommand.START) throw TripDomainException(TripFailure.INVALID_TRANSITION)
-        return TripState.COMPLETED
     }
 }
 

@@ -241,10 +241,11 @@ func ParseFinish(op protocol.Operation) (FinishCommand, error) {
 	return FinishCommand{valid: true, value: FinishInput{Event: e, DependsOn: v.DependsOn}}, nil
 }
 
-// FinishDomain rebuilds the stored trip through the pure domain and finishes
-// it with this event (EMP-TRIP-001 rules at receipt).
+// FinishDomain rebuilds the stored trip, with its lifecycle rows and without
+// a final cancellation, through the pure domain and finishes it with this
+// event (EMP-TRIP-001/011 rules at receipt).
 func FinishDomain(scope kernel.OrgScope, record Record, in FinishInput) (trip.Trip, error) {
-	started, err := startedDomain(scope, record)
+	started, err := openDomain(scope, record)
 	if err != nil {
 		return trip.Trip{}, err
 	}

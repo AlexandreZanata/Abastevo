@@ -331,8 +331,9 @@ func (s *EventStore) ReadEventTx(ctx context.Context, db syncapp.DBTX, scope ker
 }
 
 // TimelineTx reads one stored trip's timeline (B-BR-EMP-324): its start, its
-// accepted logbook facts, the reports made inside it (EMP-CHECK-003, as
-// INCIDENT or DAMAGE facts without text) and its finish, each with fact
+// accepted logbook facts, its pause, resume and cancellation (EMP-TRIP-011),
+// the reports made inside it (EMP-CHECK-003, as INCIDENT or DAMAGE facts
+// without text) and its finish, each with fact
 // type, actor, declaration and server receipt, in the shared domain order.
 // It computes no working time (EDR-028) and lists no held event.
 func (s *EventStore) TimelineTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, tripID string) ([]app.TimelineEntry, error) {
@@ -357,6 +358,12 @@ func (s *EventStore) TimelineTx(ctx context.Context, db syncapp.DBTX, scope kern
 		}
 		entries = append(entries, app.TimelineEntry{Item: trip.TimelineItem{Kind: trip.TimelineEvent, ID: e.ID, At: e.Declared.OccurredAt}, FactType: string(e.Type),
 			AuthorMembershipID: e.AuthorMembershipID, Declared: e.Declared, ReceivedAt: e.ReceivedAt, Text: e.Text})
+	}
+	// EMP-TRIP-011: each lifecycle command is a timeline fact (its command as
+	// the fact type, its reason as text), identified by its operation.
+	for _, x := range record.Transitions {
+		entries = append(entries, app.TimelineEntry{Item: trip.TimelineItem{Kind: trip.TimelineEvent, ID: x.OperationID, At: x.Declared.OccurredAt}, FactType: string(x.Command),
+			AuthorMembershipID: x.AuthorMembershipID, Declared: x.Declared, ReceivedAt: x.ReceivedAt, Text: copyText(x.Reason)})
 	}
 	reports, err := s.Reports.TripReportsTx(ctx, syncapp.Borrow(db), scope, record.ID)
 	if err != nil {
@@ -498,4 +505,12 @@ func (s *EventStore) ReviewEntriesTx(ctx context.Context, db syncapp.DBTX, scope
 		return nil, err
 	}
 	return reviewEntries(ctx, queries, scope, tripID)
+}
+
+func copyText(v *string) *string {
+	if v == nil {
+		return nil
+	}
+	c := *v
+	return &c
 }

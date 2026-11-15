@@ -363,7 +363,8 @@ func (h *finishHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if !readingFits(v.Event, view) {
 		return malformed(), nil
 	}
-	if record.Finish != nil {
+	// EMP-TRIP-011: a cancelled trip is closed like a completed one.
+	if record.Finish != nil || record.State == trip.Cancelled {
 		review, err := h.store.HoldFinishTx(ctx, syncapp.Borrow(db), source, op, command, app.TripAlreadyClosed)
 		return held(review, app.TripAlreadyClosed, err)
 	}
@@ -383,7 +384,9 @@ func (h *finishHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 		}
 		return syncapp.Outcome{}, err
 	}
-	revision := int64(2)
+	// EMP-TRIP-011: the finish is acknowledged at the trip's next revision (2
+	// without lifecycle commands).
+	revision := finished.Revision()
 	return syncapp.Outcome{Result: protocol.Accepted, EntityRevision: &revision}, nil
 }
 
@@ -429,7 +432,7 @@ func (h *finishHandler) Confirm(ctx context.Context, db syncapp.DBTX, source syn
 	case protocol.AcceptedForReview:
 		return h.checkHeld(ctx, db, source, op, outcome, outcome.Code == app.TripAlreadyClosed)
 	case protocol.Accepted:
-		if outcome.EntityRevision == nil || *outcome.EntityRevision != 2 || outcome.Code != "" || len(outcome.Warnings) != 0 || !storedFinish(source, v, record) {
+		if outcome.EntityRevision == nil || *outcome.EntityRevision != record.Revision() || outcome.Code != "" || len(outcome.Warnings) != 0 || !storedFinish(source, v, record) {
 			return syncapp.ErrUnavailable
 		}
 	}

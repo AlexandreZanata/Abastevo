@@ -114,7 +114,19 @@ internal object TripFixture {
     }
 
     fun finish(args: Map<String, String>): Trip {
-        val f = startFields(args).toMutableMap()
+        val f = finishFields(startFields(args))
+        val started = start(f)
+        val input = finishInput(f)
+        val again = f["again"] ?: "false"
+        require(again == "true" || again == "false")
+        val before = tripFields(started)
+        val scope = alias(f.getValue("fin_scope"))
+        val next = try { started.finish(scope, input) } finally { assertEquals(before, tripFields(started), "finish changed its input trip") }
+        return if (again == "true") next.finish(scope, input) else next
+    }
+
+    private fun finishFields(start: Map<String, String>): MutableMap<String, String> {
+        val f = start.toMutableMap()
         val defaults = mapOf("fin_scope" to f.getValue("scope"), "fin_author" to "M", "fin_author_org" to f.getValue("org"),
             "fin" to "READING", "fin_org" to f.getValue("org"), "fin_asset" to f.getValue("asset"), "fin_meter" to f.getValue("dep_meter"),
             "fin_segment" to f.getValue("dep_segment"), "fin_reading" to "R2", "fin_kind" to f.getValue("dep_kind"),
@@ -122,19 +134,78 @@ internal object TripFixture {
             "fin_at" to "2026-11-14T15:00:00Z", "fin_entry" to "America/Cuiaba", "fin_offset" to "-14400")
         defaults.forEach { (k, v) -> f.putIfAbsent(k, v) }
         f.putIfAbsent("fin_value_kind", f.getValue("fin_kind"))
-        val started = start(f)
+        return f
+    }
+
+    private fun finishInput(f: Map<String, String>): TripFinishInput {
         val omit = omitted(f["fin_omit"], finishOmittable)
         val author = if ("author" in omit) null else MembershipRef(alias(f.getValue("fin_author_org")), alias(f.getValue("fin_author")))
         val final = if ("final" in omit) null else evidence(f, "fin")
         val declared = if ("declaration" in omit) null else declaration(f.getValue("fin_at"), f.getValue("fin_entry"), f.getValue("fin_offset"))
         val runClock = f["fin_boot_hex"]?.let { clock(it, f.getValue("fin_mono")) }
-        val input = TripFinishInput(author, final, declared, runClock)
+        return TripFinishInput(author, final, declared, runClock)
+    }
+
+    private val commandOmittable = setOf("author", "declaration")
+
+    private fun apply(trip: Trip, command: TripCommand, scope: String, input: TripLifecycleInput): Trip = when (command) {
+        TripCommand.PAUSE -> trip.pause(scope, input)
+        TripCommand.RESUME -> trip.resume(scope, input)
+        TripCommand.CANCEL -> trip.cancel(scope, input)
+        else -> error("Not a lifecycle fixture command")
+    }
+
+    /** Applies the trip-v2 fixture history: step i at 12:i0Z by M of the trip organization; FINISH with its v1 defaults. */
+    private fun withHistory(started: Trip, f: Map<String, String>): Trip {
+        val raw = f["history"] ?: return started
+        val steps = raw.split(',')
+        require(steps.size <= 9)
+        val scope = alias(f.getValue("scope"))
+        var trip = started
+        steps.forEachIndexed { i, step ->
+            trip = if (step == "FINISH") trip.finish(scope, finishInput(finishFields(f))) else {
+                val command = TripCommand.parse(step)
+                require(command == TripCommand.PAUSE || command == TripCommand.RESUME || command == TripCommand.CANCEL)
+                val input = TripLifecycleInput(MembershipRef(alias(f.getValue("org")), alias("M")), trip.revision,
+                    if (command == TripCommand.CANCEL) "Cliente cancelou" else null,
+                    declaration("2026-11-14T12:${i + 1}0:00Z", "America/Cuiaba", "-14400"))
+                apply(trip, command, scope, input)
+            }
+        }
+        return trip
+    }
+
+    fun history(args: Map<String, String>): Map<String, String> {
+        val f = startFields(args)
+        val trip = withHistory(start(f), f)
+        val steps = trip.lifecycle.map { "${it.command.name}/${it.revision}" } + listOfNotNull(trip.finished?.let { "FINISH/${trip.revision}" })
+        return tripFields(trip) + mapOf("revision" to trip.revision.toString(), "steps" to (steps.joinToString(",").ifEmpty { "?" }))
+    }
+
+    fun command(command: TripCommand, args: Map<String, String>): Map<String, String> {
+        val f = startFields(args).toMutableMap()
+        val trip = withHistory(start(f), f)
+        val defaults = mapOf("cmd_scope" to f.getValue("scope"), "by" to "M", "by_org" to f.getValue("org"), "expected" to trip.revision.toString(),
+            "reason_hex" to if (command == TripCommand.CANCEL) hex("Cliente cancelou") else "?", "cmd_at" to "2026-11-14T14:00:00Z",
+            "cmd_entry" to "America/Cuiaba", "cmd_offset" to "-14400")
+        defaults.forEach { (k, v) -> f.putIfAbsent(k, v) }
+        val omit = omitted(f["cmd_omit"], commandOmittable)
+        val expected = requireNotNull(f.getValue("expected").toLongOrNull())
+        val author = if ("author" in omit) null else MembershipRef(alias(f.getValue("by_org")), alias(f.getValue("by")))
+        val reason = present(f["reason_hex"])?.let(::decode)
+        val declared = if ("declaration" in omit) null else declaration(f.getValue("cmd_at"), f.getValue("cmd_entry"), f.getValue("cmd_offset"))
+        val input = TripLifecycleInput(author, expected, reason, declared)
+        val scope = alias(f.getValue("cmd_scope"))
         val again = f["again"] ?: "false"
         require(again == "true" || again == "false")
-        val before = tripFields(started)
-        val scope = alias(f.getValue("fin_scope"))
-        val next = try { started.finish(scope, input) } finally { assertEquals(before, tripFields(started), "finish changed its input trip") }
-        return if (again == "true") next.finish(scope, input) else next
+        val before = tripFields(trip)
+        var next = try { apply(trip, command, scope, input) } finally { assertEquals(before, tripFields(trip), "a lifecycle command changed its input trip") }
+        if (again == "true") next = apply(next, command, scope, input)
+        val last = next.lifecycle.last()
+        check(last.command == command && last.to == next.state && last.revision == next.revision)
+        return tripFields(next) + mapOf("revision" to next.revision.toString(), "previous" to last.from.name, "command_author" to label(last.author.id),
+            "command_at" to EnterpriseTime.formatInstant(last.declared.occurredAt), "command_entry" to last.declared.entryZone,
+            "command_offset" to last.declared.deviceOffsetSeconds.toString(), "command_reason_hex" to (last.reason?.let(::hex) ?: "?"))
     }
 
     private fun evidenceField(evidence: TripMeterEvidence?): String = when (evidence) {
