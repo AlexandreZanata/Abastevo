@@ -346,3 +346,20 @@ start reporting day kept across midnight and zones with an informational end
 day, separate entry-zone and offset changes, and elapsed time derived only
 from instants, confirmed by a monotonic witness or flagged as a gap. No
 paid-hours, time-clock, persistence or runtime acceptance is claimed.
+
+## Checklist template vectors v1
+
+EMP-CHECK-001 executes all 127 rows of
+[checklist/checklist-v1.psv](checklist/checklist-v1.psv) in Go and Kotlin
+(TEMPLATE 40, POLICY 11, EVALUATE 38, RESOLVE 22, POLICY_AT 16). The oracle
+pins the bounded immutable template definition (a critical item is never
+optional), the critical-item policy values, the answer check with its fixed
+error order (`INVALID`, `ANSWER_NOT_ALLOWED`, `PHOTO_REQUIRED`, `INCOMPLETE`)
+and the computed outcome with the WARN acknowledgement, the asset → category
+→ organization default resolution and the policy in force at an instant. See
+[checklist/README.md](checklist/README.md). No run, intake or runtime
+acceptance is claimed; EMP-CHECK-002 consumes the rule.
+
+```sh
+(cd backend && go test -race ./internal/modules/maintenance/domain/checklist -count=1)
+```

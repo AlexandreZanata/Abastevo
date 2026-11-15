@@ -52,6 +52,7 @@ func auditorRouter(t *testing.T, fx deviceFixtureState) (chi.Router, *jobs.Dispa
 	t.Helper()
 	grantEmployeeTables(t, fx.legalFixtureState)
 	_ = attachmentStore(t, fx.legalFixtureState)
+	grantChecklistTables(t, fx.legalFixtureState)
 	_ = meterStore(t, fx.legalFixtureState)
 	fx.f.GrantMeterReviews(t)
 	fx.f.GrantMembershipAccessCommands(t)
@@ -229,6 +230,7 @@ var auditorTemplateParam = regexp.MustCompile(`\{[a-z_]+\}`)
 // auditorPositiveRoutes is the independent literal of the routes the
 // documented AUDITOR column grants at this head (B-BR-EMP-247).
 var auditorPositiveRoutes = []string{
+	"/v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable",
 	"/v1/orgs/{org_id}/documents/{document_id}/content/access",
 	"/v1/orgs/{org_id}/documents/{document_id}/content/read",
 	"/v1/orgs/{org_id}/employees/list",
@@ -334,6 +336,11 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	}
 	for _, template := range []string{"/v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list", "/v1/orgs/{org_id}/fleet/assignments/mine/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/lifecycle/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/cost-centre-allocations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/blocks/list", "/v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/list"} {
 		call(template, map[string]any{"limit": 20}, 200, "", "")
+	}
+	// EMP-CHECK-001: the applicable template read is a fleet.asset.read; no
+	// template exists, so no checklist is required.
+	if applicable := call("/v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable", map[string]any{"context": "DEPARTURE"}, 200, "", ""); applicable["required"] != false || applicable["match"] != "NONE" {
+		t.Fatal("auditor applicable checklist read", applicable)
 	}
 	if availability := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read", map[string]any{}, 200, "", ""); availability["availability"] != "UNAVAILABLE" {
 		t.Fatal("auditor availability of the draft asset", availability)
@@ -451,7 +458,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 124 || positive != 29 || denied != 95 {
+	if len(routes) != 131 || positive != 30 || denied != 101 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 

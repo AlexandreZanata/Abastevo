@@ -700,6 +700,25 @@ sql:
         omit_unused_structs: true
 
   - engine: postgresql
+    queries: db/queries/maintenance
+    schema:
+      - db/migrations/000004_identity.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000172_organization_onboarding.sql
+      - db/migrations/000174_operating_units.sql
+      - db/migrations/000197_organization_assets.sql
+      - db/migrations/000223_organization_checklist_templates.sql
+    gen:
+      go:
+        package: maintenance
+        out: db/queries/maintenance
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+
+  - engine: postgresql
     queries: db/queries/fueling
     schema:
       - db/migrations/000004_identity.sql

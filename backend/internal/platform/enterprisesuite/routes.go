@@ -30,6 +30,9 @@ import (
 	proofauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	maintpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters"
+	maintweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters/http"
+	maintapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/application"
 	member "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters"
 	memberweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/adapters/http"
 	memberapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/membership/application"
@@ -140,6 +143,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, orgpg.OwnershipTransferAuditDefinitions()...)
 	definitions = append(definitions, syncpg.AuditDefinitions()...)
 	definitions = append(definitions, reviewpg.PeriodAuditDefinitions()...)
+	definitions = append(definitions, maintpg.ChecklistAuditDefinitions()...)
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
 	definitions = append(definitions, exportpg.AuditDefinitions()...)
@@ -168,6 +172,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "fleet.asset", Permissions: []string{"fleet.asset.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic fleet configuration inherits identity v1 write 200/hour on each current organization/account/web-or-device axis; production measurement and cleanup remain required."},
 		{Class: "fleet.assignment", Permissions: []string{"fleet.asset.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic driver assignments inherit identity v1 write 200/hour on each current organization/account/web axis (a command names at most 100 employees); production measurement and cleanup remain required."},
 		{Class: "fleet.reservation", Permissions: []string{"fleet.reservation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic reservations and blocks inherit identity v1 write 200/hour on each current organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "check.template", Permissions: []string{"check.template.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic checklist template and policy commands inherit identity v1 write 200/hour on each current organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "meter.review", Permissions: []string{"meter.reading.correct"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic held meter review decisions inherit identity v1 write200/hour on every current organization/account/web-or-device axis; production measurement and cleanup remain required."},
 		{Class: "idn.invitation", Permissions: []string{"idn.invitation.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic invitation writes use the existing identity v1 write allowance on every axis; production measurement remains required."},
 		{Class: "idn.membership", Permissions: []string{"idn.membership.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic membership lifecycle uses identity v1 write200/hour on every axis; production measurement remains required."},
@@ -236,6 +241,14 @@ func Register(router chi.Router, o Options) error {
 	}
 	// EMP-FLEET-007 reservations, blocks and the availability read.
 	if err := fleetweb.RegisterAssetReservations(router, fleetapp.ReservationService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
+		return err
+	}
+	// EMP-CHECK-001 checklist templates (organization target) and the
+	// applicable template of an asset (fleet.asset.read on the asset).
+	checklists := &maintpg.ChecklistStore{Pool: o.Pool, Authority: &orgpg.ChecklistAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags, Structure: assetStructure, Assignee: assetAssignee}, Audit: auditStore}
+	templateAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.ChecklistRecords{}, Now: time.Now}
+	applicableAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.ChecklistRecords{}, Structure: assetStructure, Assignee: assetAssignee, Now: time.Now}
+	if err := maintweb.RegisterChecklists(router, maintapp.ChecklistService{Enabled: true, Repository: checklists, NewID: jobs.NewUUIDv4}, cookies, gateway, templateAuthorization, applicableAuthorization); err != nil {
 		return err
 	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}

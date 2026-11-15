@@ -52,6 +52,8 @@ tags:
     description: Signed current-source operation transport with independent scoped transactions and protected receipts.
   - name: enterprise-finance
     description: Private organization financial periods; lock, reopen and re-lock with append-only history.
+  - name: enterprise-checklists
+    description: Private organization checklist templates, their critical-item policy and the applicable template of an asset.
   - name: enterprise-notifications
     description: Own in-app notices and per-kind preferences of the current member; external channels stay disabled.
   - name: enterprise-reports
@@ -18391,6 +18393,528 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/templates/create:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistTemplateCreate
+      summary: Create a checklist template and publish its version 1
+      description: EMP-CHECK-001. Creates a template of a fixed context (DEPARTURE, RETURN, AD_HOC) and publishes version 1 — a
+        name of 1 to 80 characters, one target (ORGANIZATION default, 1 to 100 distinct asset categories or 1 to 100
+        distinct ACTIVE or INACTIVE assets of the organization) and 1 to 40 ordered items with critical, optional
+        (NOT_APPLICABLE accepted) and photo-on-not-OK flags; a critical item is never optional. The critical-item
+        policy revision 1 is the given one or BLOCK with a 12-hour validity (3600 to 259200 seconds). A target already
+        named by another ACTIVE template of the context is CONFLICT; a foreign or unknown category or asset is
+        NOT_FOUND; any other shape is VALIDATION_FAILED. Dedicated company cookie, exact HTTPS Origin/Host and CSRF
+        are required. The server rechecks current check.template.manage (org-permissions-v5) with fresh company proof,
+        the existing organizations C1 capability, an ACTIVE organization and same-organization membership; templates
+        are organization-level, so only an ORG grant covers them (a UNIT, COST_CENTRE, ASSET, TEAM or SELF grant
+        covers none). Commands take the organization root lock; exactly one audit event and receipt commit with the
+        effect; an identical retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are
+        private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.template.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistTemplateCreateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009101
+              context: DEPARTURE
+              name: Saída de caminhões
+              target_kind: CATEGORIES
+              target_ids:
+              - 7b0e2a54-0000-4000-8000-000000008501
+              items:
+              - label: Pneus calibrados
+                critical: true
+                photo_on_not_ok: true
+              - label: Estepe
+                optional: true
+              policy:
+                mode: BLOCK
+                validity_seconds: 43200
+      responses:
+        '201':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistTemplateAcknowledgement'
+              example:
+                template_id: 7b0e2a54-0000-4000-8000-000000009301
+                revision: 1
+                version: 1
+                policy_revision: 1
+                state: ACTIVE
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/templates/list:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistTemplateList
+      summary: List the organization's checklist templates
+      description: EMP-CHECK-001. Keyset page of the organization's templates in identifier order with their state, revisions and
+        current version's name and target kind; the cursor is bound to the caller and the page size. Dedicated company
+        cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current check.template.manage
+        (org-permissions-v5) with ORG coverage and same-organization membership. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.template.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistTemplateListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistTemplatePage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/templates/{template_id}/read:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistTemplateRead
+      summary: Read a checklist template and one of its versions
+      description: EMP-CHECK-001. The template head, the selected version (version, default the current one) with its target and
+        ordered items, and the current policy revision. Earlier versions are never rewritten and stay readable.
+        Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        check.template.manage (org-permissions-v5) with ORG coverage and same-organization membership. Responses are
+        private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.template.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private template selector. A template of another organization, or unknown, is NOT_FOUND;
+          a selector is not proof of a template.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistTemplateReadRequest'
+            example:
+              version: 1
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistTemplate'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/templates/{template_id}/publish:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistTemplatePublish
+      summary: Publish a new version of a checklist template
+      description: EMP-CHECK-001. Appends version n+1 with a new name, target and items under the template's fixed context,
+        naming the template revision read; earlier versions and completed runs are never rewritten. A stale revision,
+        an archived template or a target already named by another ACTIVE template of the context is CONFLICT.
+        Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        check.template.manage (org-permissions-v5) with fresh company proof, the existing organizations C1 capability,
+        an ACTIVE organization and same-organization membership; templates are organization-level, so only an ORG
+        grant covers them (a UNIT, COST_CENTRE, ASSET, TEAM or SELF grant covers none). Commands take the organization
+        root lock; exactly one audit event and receipt commit with the effect; an identical retry returns the first
+        result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.template.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private template selector. A template of another organization, or unknown, is NOT_FOUND;
+          a selector is not proof of a template.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistTemplatePublishRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009102
+              revision: 1
+              name: Saída revisada
+              target_kind: ORGANIZATION
+              items:
+              - label: Pneus calibrados
+                critical: true
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistTemplateAcknowledgement'
+              example:
+                template_id: 7b0e2a54-0000-4000-8000-000000009301
+                revision: 2
+                version: 2
+                policy_revision: 1
+                state: ACTIVE
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/templates/{template_id}/policy:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistTemplatePolicy
+      summary: Change the critical-item policy of a checklist template
+      description: EMP-CHECK-001. Appends policy revision m+1 (BLOCK or WARN, run validity 3600 to 259200 seconds) effective at
+        the server instant, naming the template revision read; no version is created and earlier revisions stay as
+        history. Another mode or validity is VALIDATION_FAILED; a stale revision or an archived template is CONFLICT.
+        Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server rechecks current
+        check.template.manage (org-permissions-v5) with fresh company proof, the existing organizations C1 capability,
+        an ACTIVE organization and same-organization membership; templates are organization-level, so only an ORG
+        grant covers them (a UNIT, COST_CENTRE, ASSET, TEAM or SELF grant covers none). Commands take the organization
+        root lock; exactly one audit event and receipt commit with the effect; an identical retry returns the first
+        result and any other reuse is OPERATION_ID_REUSED. Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.template.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private template selector. A template of another organization, or unknown, is NOT_FOUND;
+          a selector is not proof of a template.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistTemplatePolicyRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009103
+              revision: 2
+              mode: WARN
+              validity_seconds: 7200
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistTemplateAcknowledgement'
+              example:
+                template_id: 7b0e2a54-0000-4000-8000-000000009301
+                revision: 3
+                version: 2
+                policy_revision: 2
+                state: ACTIVE
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/templates/{template_id}/archive:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistTemplateArchive
+      summary: Archive a checklist template
+      description: EMP-CHECK-001. Moves the template to ARCHIVED, which is terminal, naming the template revision read; its
+        targets are free and it is no longer applicable. Versions and policy revisions stay as history. A stale
+        revision or an archived template is CONFLICT. Dedicated company cookie, exact HTTPS Origin/Host and CSRF are
+        required. The server rechecks current check.template.manage (org-permissions-v5) with fresh company proof, the
+        existing organizations C1 capability, an ACTIVE organization and same-organization membership; templates are
+        organization-level, so only an ORG grant covers them (a UNIT, COST_CENTRE, ASSET, TEAM or SELF grant covers
+        none). Commands take the organization root lock; exactly one audit event and receipt commit with the effect;
+        an identical retry returns the first result and any other reuse is OPERATION_ID_REUSED. Responses are private
+        no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.template.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: template_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private template selector. A template of another organization, or unknown, is NOT_FOUND;
+          a selector is not proof of a template.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistTemplateArchiveRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009104
+              revision: 3
+      responses:
+        '200':
+          description: Private committed acknowledgement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistTemplateAcknowledgement'
+              example:
+                template_id: 7b0e2a54-0000-4000-8000-000000009301
+                revision: 4
+                version: 2
+                policy_revision: 2
+                state: ARCHIVED
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistApplicableRead
+      summary: Read the applicable checklist template of an asset
+      description: EMP-CHECK-001. For the asset and a context, the ACTIVE template whose current version names the asset, else
+        its category, else the organization default, else none (required false), at evaluated_at — the template
+        identifier, name, current version with its ordered items and the current policy revision — what a run pins —
+        and never the template's other targets. Dedicated company cookie, exact HTTPS Origin/Host and CSRF are
+        required. The server rechecks current fleet.asset.read and same-organization membership; a UNIT, COST_CENTRE
+        or ASSET grant covers the asset through its allocation at the server instant (EMP-AUTH-006) and a SELF grant
+        covers an asset assigned to the member (EMP-FLEET-006). Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector. Foreign or missing records remain hidden; a selector is not
+          proof of an asset or a template.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistApplicableRequest'
+            example:
+              context: DEPARTURE
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistApplicable'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/finance/periods/list:
     post:
       tags:
@@ -21204,6 +21728,656 @@ components:
       type: string
       pattern: '^(000[1-9]|00[1-9][0-9]|0[1-9][0-9]{2}|[1-9][0-9]{3})-(0[1-9]|1[0-2])$'
       example: '2026-10'
+    EnterpriseChecklistContext:
+      description: The fixed moment a template serves.
+      type: string
+      enum:
+      - DEPARTURE
+      - RETURN
+      - AD_HOC
+    EnterpriseChecklistTargetKind:
+      description: What a version applies to; ORGANIZATION is the organization default and names no identifier.
+      type: string
+      enum:
+      - ORGANIZATION
+      - CATEGORIES
+      - ASSETS
+    EnterpriseChecklistTargetIDs:
+      description: Distinct asset categories (CATEGORIES) or assets (ASSETS) of the organization; absent or empty for ORGANIZATION.
+      type: array
+      maxItems: 100
+      uniqueItems: true
+      items:
+        $ref: '#/components/schemas/EnterpriseUUID'
+    EnterpriseChecklistItemInput:
+      description: One ordered item; a critical item is never optional. Absent flags are false.
+      type: object
+      additionalProperties: false
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        critical:
+          type: boolean
+        optional:
+          type: boolean
+        photo_on_not_ok:
+          type: boolean
+      required:
+      - label
+      example:
+        label: Pneus calibrados
+        critical: true
+        photo_on_not_ok: true
+    EnterpriseChecklistItems:
+      type: array
+      minItems: 1
+      maxItems: 40
+      items:
+        $ref: '#/components/schemas/EnterpriseChecklistItemInput'
+    EnterpriseChecklistPolicyInput:
+      description: A critical-item policy value (BLOCK or WARN, run validity 1 to 72 hours in seconds).
+      type: object
+      additionalProperties: false
+      properties:
+        mode:
+          type: string
+          enum:
+          - BLOCK
+          - WARN
+        validity_seconds:
+          type: integer
+          minimum: 3600
+          maximum: 259200
+      required:
+      - mode
+      - validity_seconds
+      example:
+        mode: BLOCK
+        validity_seconds: 43200
+    EnterpriseChecklistTemplateCreateRequest:
+      description: One template creation (EMP-CHECK-001). No state, revision, version or authority is caller-chosen; an absent
+        policy is BLOCK with a 12-hour validity.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        target_kind:
+          $ref: '#/components/schemas/EnterpriseChecklistTargetKind'
+        target_ids:
+          $ref: '#/components/schemas/EnterpriseChecklistTargetIDs'
+        items:
+          $ref: '#/components/schemas/EnterpriseChecklistItems'
+        policy:
+          $ref: '#/components/schemas/EnterpriseChecklistPolicyInput'
+      required:
+      - schema_version
+      - operation_id
+      - context
+      - name
+      - target_kind
+      - items
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009101
+        context: DEPARTURE
+        name: Saída de caminhões
+        target_kind: ORGANIZATION
+        items:
+        - label: Pneus calibrados
+          critical: true
+    EnterpriseChecklistTemplatePublishRequest:
+      description: One new version under the template's fixed context, naming the template revision read.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        target_kind:
+          $ref: '#/components/schemas/EnterpriseChecklistTargetKind'
+        target_ids:
+          $ref: '#/components/schemas/EnterpriseChecklistTargetIDs'
+        items:
+          $ref: '#/components/schemas/EnterpriseChecklistItems'
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - name
+      - target_kind
+      - items
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009102
+        revision: 1
+        name: Saída revisada
+        target_kind: ORGANIZATION
+        items:
+        - label: Pneus calibrados
+          critical: true
+    EnterpriseChecklistTemplatePolicyRequest:
+      description: One policy revision, naming the template revision read.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        mode:
+          type: string
+          enum:
+          - BLOCK
+          - WARN
+        validity_seconds:
+          type: integer
+          minimum: 3600
+          maximum: 259200
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - mode
+      - validity_seconds
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009103
+        revision: 2
+        mode: WARN
+        validity_seconds: 7200
+    EnterpriseChecklistTemplateArchiveRequest:
+      description: Archive the template, naming the template revision read.
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009104
+        revision: 3
+    EnterpriseChecklistTemplateListRequest:
+      description: Keyset page of the organization's templates in identifier order.
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      required: []
+      example:
+        limit: 20
+    EnterpriseChecklistTemplateReadRequest:
+      description: Optional version to read; the current one when absent.
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          minimum: 1
+      required: []
+      example:
+        version: 1
+    EnterpriseChecklistApplicableRequest:
+      description: The context whose applicable template is read.
+      type: object
+      additionalProperties: false
+      properties:
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+      required:
+      - context
+      example:
+        context: DEPARTURE
+    EnterpriseChecklistTemplateAcknowledgement:
+      description: The template state, revisions and current version the command left.
+      type: object
+      additionalProperties: false
+      properties:
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        version:
+          type: integer
+          minimum: 1
+        policy_revision:
+          type: integer
+          minimum: 1
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - template_id
+      - revision
+      - version
+      - policy_revision
+      - state
+      - replayed
+      - data_mode
+      example:
+        template_id: 7b0e2a54-0000-4000-8000-000000009301
+        revision: 1
+        version: 1
+        policy_revision: 1
+        state: ACTIVE
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseChecklistItem:
+      description: One stored item; position is its identity inside the version.
+      type: object
+      additionalProperties: false
+      properties:
+        position:
+          type: integer
+          minimum: 1
+          maximum: 40
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        critical:
+          type: boolean
+        optional:
+          type: boolean
+        photo_on_not_ok:
+          type: boolean
+      required:
+      - position
+      - label
+      - critical
+      - optional
+      - photo_on_not_ok
+      example:
+        position: 1
+        label: Pneus calibrados
+        critical: true
+        optional: false
+        photo_on_not_ok: true
+    EnterpriseChecklistPolicy:
+      description: One stored policy revision with the server instant it took effect.
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        mode:
+          type: string
+          enum:
+          - BLOCK
+          - WARN
+        validity_seconds:
+          type: integer
+          minimum: 3600
+          maximum: 259200
+        effective_at:
+          type: string
+          format: date-time
+      required:
+      - revision
+      - mode
+      - validity_seconds
+      - effective_at
+      example:
+        revision: 1
+        mode: BLOCK
+        validity_seconds: 43200
+        effective_at: '2026-11-15T12:00:00Z'
+    EnterpriseChecklistTemplateSummary:
+      description: One template with its current version's name and target kind; archived_at only when archived.
+      type: object
+      additionalProperties: false
+      properties:
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+        revision:
+          type: integer
+          minimum: 1
+        version:
+          type: integer
+          minimum: 1
+        policy_revision:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        target_kind:
+          $ref: '#/components/schemas/EnterpriseChecklistTargetKind'
+        created_at:
+          type: string
+          format: date-time
+        archived_at:
+          type: string
+          format: date-time
+      required:
+      - template_id
+      - context
+      - state
+      - revision
+      - version
+      - policy_revision
+      - name
+      - target_kind
+      - created_at
+      example:
+        template_id: 7b0e2a54-0000-4000-8000-000000009301
+        context: DEPARTURE
+        state: ACTIVE
+        revision: 1
+        version: 1
+        policy_revision: 1
+        name: Saída de caminhões
+        target_kind: ORGANIZATION
+        created_at: '2026-11-15T12:00:00Z'
+    EnterpriseChecklistTemplatePage:
+      description: Templates in identifier order.
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseChecklistTemplateSummary'
+        next_cursor:
+          type: string
+          maxLength: 2048
+      required:
+      - items
+      - next_cursor
+      example:
+        items:
+        - template_id: 7b0e2a54-0000-4000-8000-000000009301
+          context: DEPARTURE
+          state: ACTIVE
+          revision: 1
+          version: 1
+          policy_revision: 1
+          name: Saída de caminhões
+          target_kind: ORGANIZATION
+          created_at: '2026-11-15T12:00:00Z'
+        next_cursor: ''
+    EnterpriseChecklistTemplateVersion:
+      description: One immutable version with its target and ordered items.
+      type: object
+      additionalProperties: false
+      properties:
+        version:
+          type: integer
+          minimum: 1
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        target_kind:
+          $ref: '#/components/schemas/EnterpriseChecklistTargetKind'
+        target_ids:
+          $ref: '#/components/schemas/EnterpriseChecklistTargetIDs'
+        items:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items:
+            $ref: '#/components/schemas/EnterpriseChecklistItem'
+        published_at:
+          type: string
+          format: date-time
+      required:
+      - version
+      - name
+      - target_kind
+      - target_ids
+      - items
+      - published_at
+      example:
+        version: 1
+        name: Saída de caminhões
+        target_kind: ORGANIZATION
+        target_ids: []
+        items:
+        - position: 1
+          label: Pneus calibrados
+          critical: true
+          optional: false
+          photo_on_not_ok: true
+        published_at: '2026-11-15T12:00:00Z'
+    EnterpriseChecklistTemplate:
+      description: The template head, the selected version and the current policy revision; archived_at only when archived.
+      type: object
+      additionalProperties: false
+      properties:
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        state:
+          type: string
+          enum:
+          - ACTIVE
+          - ARCHIVED
+        revision:
+          type: integer
+          minimum: 1
+        version:
+          type: integer
+          minimum: 1
+        policy_revision:
+          type: integer
+          minimum: 1
+        created_at:
+          type: string
+          format: date-time
+        archived_at:
+          type: string
+          format: date-time
+        selected_version:
+          $ref: '#/components/schemas/EnterpriseChecklistTemplateVersion'
+        policy:
+          $ref: '#/components/schemas/EnterpriseChecklistPolicy'
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - template_id
+      - context
+      - state
+      - revision
+      - version
+      - policy_revision
+      - created_at
+      - selected_version
+      - policy
+      - data_mode
+      example:
+        template_id: 7b0e2a54-0000-4000-8000-000000009301
+        context: DEPARTURE
+        state: ACTIVE
+        revision: 1
+        version: 1
+        policy_revision: 1
+        created_at: '2026-11-15T12:00:00Z'
+        selected_version:
+          version: 1
+          name: Saída de caminhões
+          target_kind: ORGANIZATION
+          target_ids: []
+          items:
+          - position: 1
+            label: Pneus calibrados
+            critical: true
+            optional: false
+            photo_on_not_ok: true
+          published_at: '2026-11-15T12:00:00Z'
+        policy:
+          revision: 1
+          mode: BLOCK
+          validity_seconds: 43200
+          effective_at: '2026-11-15T12:00:00Z'
+        data_mode: SYNTHETIC
+    EnterpriseChecklistApplicableTemplate:
+      description: What a run pins; never the template's targets.
+      type: object
+      additionalProperties: false
+      properties:
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        version:
+          type: integer
+          minimum: 1
+        published_at:
+          type: string
+          format: date-time
+        items:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items:
+            $ref: '#/components/schemas/EnterpriseChecklistItem'
+      required:
+      - template_id
+      - name
+      - version
+      - published_at
+      - items
+      example:
+        template_id: 7b0e2a54-0000-4000-8000-000000009301
+        name: Saída de caminhões
+        version: 2
+        published_at: '2026-11-15T12:00:00Z'
+        items:
+        - position: 1
+          label: Pneus calibrados
+          critical: true
+          optional: false
+          photo_on_not_ok: true
+    EnterpriseChecklistApplicable:
+      description: The applicable template of an asset for a context at evaluated_at; template and policy are present exactly
+        when required is true (match not NONE).
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        required:
+          type: boolean
+        match:
+          type: string
+          enum:
+          - ASSET
+          - CATEGORY
+          - ORGANIZATION
+          - NONE
+        template:
+          $ref: '#/components/schemas/EnterpriseChecklistApplicableTemplate'
+        policy:
+          $ref: '#/components/schemas/EnterpriseChecklistPolicy'
+        evaluated_at:
+          type: string
+          format: date-time
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - asset_id
+      - context
+      - required
+      - match
+      - evaluated_at
+      - data_mode
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        context: DEPARTURE
+        required: true
+        match: CATEGORY
+        template:
+          template_id: 7b0e2a54-0000-4000-8000-000000009301
+          name: Saída de caminhões
+          version: 2
+          published_at: '2026-11-15T12:00:00Z'
+          items:
+          - position: 1
+            label: Pneus calibrados
+            critical: true
+            optional: false
+            photo_on_not_ok: true
+        policy:
+          revision: 2
+          mode: WARN
+          validity_seconds: 7200
+          effective_at: '2026-11-15T12:05:00Z'
+        evaluated_at: '2026-11-15T12:30:00Z'
+        data_mode: SYNTHETIC
     EnterpriseFinancePeriodListRequest:
       description: Keyset page of months with lock history, optionally filtered by current state.
       type: object

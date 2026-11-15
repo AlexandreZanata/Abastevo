@@ -5460,3 +5460,117 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   cursors, tombstones after the cursor, monotonic gap-detectable revisions,
   revoked grants, server-clock confirmation, concurrent pulls, database
   guards and a populated upgrade.
+
+## EMP-CHECK-001 — Checklist templates per asset category (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-check001-checklist-templates.md).
+
+- **B-BR-EMP-330 — A template version is one immutable, bounded
+  definition.** A checklist template belongs to one organization and has a
+  fixed context, `DEPARTURE`, `RETURN` or `AD_HOC`. Each version states a name
+  of 1 to 80 characters, exactly one target — the organization default
+  (`ORGANIZATION`), 1 to 100 distinct asset categories (`CATEGORIES`) or 1 to
+  100 distinct assets (`ASSETS`) of the organization — and 1 to 40 ordered
+  items, each with a label of 1 to 120 characters and three flags: critical,
+  optional (`NOT_APPLICABLE` accepted) and photo required when not OK. A
+  critical item is never optional. Names and labels are valid UTF-8, free of
+  control characters and not blank. An item is identified by its position
+  1..n inside its version. Any other shape is `VALIDATION_FAILED`; a category
+  or asset of another organization, or unknown, is `NOT_FOUND`; an asset
+  target must be `ACTIVE` or `INACTIVE` when the version is published (a
+  draft, disposed or archived asset is `VALIDATION_FAILED`).
+- **B-BR-EMP-331 — Publication appends and never rewrites.** Creating a
+  template publishes version 1 with policy revision 1 and leaves the template
+  `ACTIVE` at template revision 1. Publishing a change appends version n+1,
+  changing the critical-item policy appends a policy revision, and archiving
+  moves the template to `ARCHIVED`, which is terminal; each of these commands
+  names the expected template revision and increments it by one. A stale
+  revision or an archived template is `CONFLICT` and changes nothing.
+  Versions with their items and targets, and policy revisions, are
+  insert-only: the database refuses their update, delete or truncate, a gap
+  or a repeated version or revision number, and an item or a target added to
+  a committed version. A run of EMP-CHECK-002 names the version and the policy
+  revision it used, so a later publication never changes a completed run
+  (BR-CHECK-001).
+- **B-BR-EMP-332 — One applicable template per asset and context.** Among the
+  `ACTIVE` templates of one context, a category, an asset and the organization
+  default are each named by at most one template's current version; a
+  publication that would name a taken target is `CONFLICT`, decided under the
+  organization root lock so that two concurrent publications cannot both take
+  it. For an asset and a context, the applicable template is the `ACTIVE` one
+  whose current version names the asset, else the one naming the asset's
+  category, else the organization default, else none, and then no checklist
+  is required (BR-CHECK-002). The applicable read answers, at its server
+  instant, the template identifier, name, current version with its items, the
+  match kind (`ASSET`, `CATEGORY`, `ORGANIZATION` or `NONE`) and the current
+  policy revision with its mode, validity and effective instant — exactly what
+  a run pins — and never the template's other targets.
+- **B-BR-EMP-333 — The critical-item policy is revisioned per template.** A
+  policy revision states the mode `BLOCK` (default) or `WARN` and the run
+  validity in seconds from 3 600 to 259 200 (1 to 72 hours), default 43 200
+  (12 hours) (BR-CHECK-005, BR-CHECK-012); any other value is
+  `VALIDATION_FAILED`. Revisions are numbered from 1 and carry the server
+  instant at which they took effect. The policy in force at an instant is the
+  revision with the latest effective instant not after it, ties by the higher
+  revision; before the first revision none is in force. Changing the policy
+  creates no template version and rewrites no earlier revision.
+- **B-BR-EMP-334 — Answers are checked and the outcome is computed by one
+  shared rule.** For the items of a version and a policy, an answer set has
+  exactly one entry per item: `OK`, `NOT_OK`, `NOT_APPLICABLE` or unanswered,
+  each with an optional note of at most 140 control-free characters and an
+  optional photo declaration. In this order: a malformed set (wrong count,
+  unknown answer, invalid note) is `INVALID`; `NOT_APPLICABLE` on an item that
+  is not optional is `ANSWER_NOT_ALLOWED`; `NOT_OK` without a photo on an
+  item that requires one is `PHOTO_REQUIRED`; an unanswered item is
+  `INCOMPLETE` (BR-CHECK-003, BR-CHECK-015). The outcome is `COMPLETED_OK`
+  when no answer is `NOT_OK`, `BLOCKING` when a critical item is `NOT_OK`
+  under `BLOCK`, and `COMPLETED_WITH_ISSUES` otherwise (BR-CHECK-004); the
+  result lists the positions answered `NOT_OK` and the critical ones among
+  them, and requires the author's acknowledgement exactly when a critical item
+  is `NOT_OK` under `WARN` (BR-CHECK-005). Go and Kotlin share this rule, the
+  target resolution and the policy-in-force lookup through one oracle; no
+  route evaluates a run before EMP-CHECK-002.
+- **B-BR-EMP-335 — Template commands need fresh `check.template.manage`; the
+  applicable read needs `fleet.asset.read` on the asset.** Templates are
+  organization-level resources: create, publish, policy and archive require
+  fresh `check.template.manage` with `ORG` coverage (a `UNIT`, `COST_CENTRE`,
+  `ASSET`, `TEAM` or `SELF` grant covers none), an `ACTIVE` organization and
+  the organizations capability; the template list and read require current
+  `check.template.manage` with `ORG` coverage. The applicable read requires
+  current `fleet.asset.read` covering the asset (`ORG`, a `UNIT`,
+  `COST_CENTRE` or `ASSET` grant matching its allocation at the server
+  instant, or `SELF` on an asset assigned to the member). A template, category
+  or asset of another organization is `NOT_FOUND` with no data. Rows are
+  private under forced row-level security. Every write records exactly one
+  audit event and one receipt bound to its operation identifier; the same
+  intent replayed returns the first result, another intent under the same
+  identifier is `OPERATION_ID_REUSED`.
+- **BUC-EMP-166 — Create, publish and archive a template.** Actor: member
+  with fresh `check.template.manage` at `ORG`. Main flow: choose the context,
+  name, target and items, and optionally the policy → the server validates
+  B-BR-EMP-330 and that the target is free under the organization root lock →
+  template `ACTIVE`, version 1, policy revision 1, one audit event and
+  receipt → later, publish a change with the revision read → version n+1, the
+  earlier versions still readable; archive with the revision read →
+  `ARCHIVED`, its targets free and no checklist required by it from then on.
+  Alternatives: target taken by another `ACTIVE` template of the context →
+  `CONFLICT`; stale revision or archived template → `CONFLICT`; a critical
+  optional item, 41 items or a blank label → `VALIDATION_FAILED`; foreign or
+  unknown category or asset → `NOT_FOUND`; supervisor or driver →
+  `FORBIDDEN`; replay → first result. Result: an append-only version history.
+- **BUC-EMP-167 — Set the critical-item policy.** Actor: member with fresh
+  `check.template.manage` at `ORG`. Main flow: choose `BLOCK` or `WARN` and
+  the run validity with the revision read → policy revision m+1 effective at
+  the server instant; versions unchanged. Alternatives: validity outside 1 to
+  72 hours or an unknown mode → `VALIDATION_FAILED`; stale revision or
+  archived template → `CONFLICT`. Result: the policy history answers which
+  revision was in force at any instant (the EMP-CHECK-002 server recheck).
+- **BUC-EMP-168 — Read the applicable template of an asset.** Actor: member
+  with current `fleet.asset.read` covering the asset, such as a driver on an
+  assigned asset. Main flow: choose the context → the server resolves asset →
+  category → organization default at its instant → the template version with
+  its items and the current policy revision, or "no checklist required".
+  Alternatives: foreign or unknown asset → `NOT_FOUND`; an unassigned asset
+  for a `SELF` driver or another unit's asset for a `UNIT` supervisor →
+  `FORBIDDEN`. Result: the run of EMP-CHECK-002 pins the version and the
+  policy revision; nothing is stored by the read.
