@@ -1104,3 +1104,14 @@ source yet (notes `f4-logs/trip023-analysis.md`). Its IDs (412..414 /
 
 Integration (`40ea759d`): the branch already contained `45c3baf3`; clean merge;
 build, vet, gofmt, `sqlc diff`, check_plan green.
+
+PR #225 (UGC safety: report topics, report and block users; migration 000239
+reserved by that session) was merged by the coordinator at 23:43Z as
+`b0ab7d33` on the owner's instruction to merge every open PR with valid CI:
+`fast`, `integration`, `Quick verification` and `test` completed successfully
+on the exact head `5407e478`, `make quick-verify` passed locally on it
+(`f4-logs/pr225-quick-verify-5407e478.log`), and the merge used
+`--match-head-commit`. `origin/main` was merged into the F4 branch
+(`b55157a2`) without conflicts; 000239 redefines no function used by F4.
+The owner also asked for an unattended run: recommended decisions are taken
+without questions and recorded here.
