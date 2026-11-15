@@ -71,7 +71,9 @@ out of scope.
   hidden items from the forum feed, conversation lists, best-answer
   previews and station comment lists, and an opened topic by a blocked
   author shows a neutral notice instead of its text. The app may skip the
-  question while the account has no blocks. Accepted inference: the
+  question while the account has no blocks. A failed answer, or one slower
+  than 5 seconds, shows the content (fail open) and the next load asks
+  again. Accepted inference: the
   blocker can tell that hidden items share their author with blocked
   content; this is inherent to blocking and bounded by the block limits.
 - **B-BR-SAFE-07 — Block list.** The owner lists their blocks: a label

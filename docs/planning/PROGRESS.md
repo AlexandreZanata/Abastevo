@@ -1,11 +1,27 @@
 # Current execution state
-- Play Store readiness, 2026-11-15: LOCAL_DONE / INTEGRATION_PENDING on
-  `codex/play-store-readiness` from `origin/dev` `f17f57ec` (tree = main
+- Play UGC safety, 2026-11-15: LOCAL_DONE / INTEGRATION_PENDING on
+  `claude/inspiring-clarke-396e18` from `origin/dev` `db43e949` (Claude Code;
+  readiness item 2.5). [Community safety contract](../product/COMMUNITY_SAFETY_CONTRACT.md)
+  B-BR-SAFE-01…09 / BUC-SAFE-01…05: report a forum topic in the app, report a
+  user and block a user (server-side per account) from forum topics,
+  comments, replies and station comments, *Blocked users* to unblock, explicit
+  Terms list (terms version `2026-11`, B-BR-TA03 re-asks acceptance). Backend
+  module `safety`, migration 000239 (reserved with the F4 session, which
+  allocates from 000240). Real-PostGIS and Android unit suites green; emulator
+  E2E against a local API passed after two fixes (signed body restore; station
+  comments' `parent_id` null on Android, pre-existing). Station UGC stays
+  behind the default-off `feedback_enabled` flag. Evidence:
+  [UGC safety evidence](../store/UGC_SAFETY_EVIDENCE.md). Delivery: its own
+  dev → main PR, ordered with the F4 continuation.
+
+- Play Store readiness, 2026-11-15: INTEGRATED through PR #224 (main
+  `7ab0b477`); built on `codex/play-store-readiness` from `origin/dev` `f17f57ec` (tree = main
   `93f3a88d`; Claude Code). compileSdk/targetSdk 36 (Play requirement since
   2026-08-31), share link moved off the GitHub APK, listing rewritten, store
   screenshots/cards/feature graphic/icon with generator under `docs/store/`.
-  Verdict NOT READY: UGC report/block users, the owner-signed AAB upload
-  (organization account, new upload key) and Console declarations stay open.
+  Verdict NOT READY: the owner-signed AAB upload (organization account, new
+  upload key) and Console declarations stay open; UGC report/block is the
+  entry above.
   [Readiness checklist](../store/PLAY_STORE_READINESS.md).
 
 - Enterprise F4, 2026-11-15: batch checkpoint LOCAL_DONE / INTEGRATION_PENDING
