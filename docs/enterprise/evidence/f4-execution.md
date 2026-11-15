@@ -638,3 +638,46 @@ proposed shared text of OFFL-006 and FLEET-013 is applied (10-offline-sync
 vet, gofmt and orgsync tests green; Android host suites domain 3055,
 application 644, data 176, app enterprise 19 tests, 0 failures, and
 `:app:assembleDebug` pass (`f4-logs/coord-android-merged.log`).
+
+### EMP-TRIP-008 — missions: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip008-missions.md), commit `f8027a4e`, migration 000227.
+Pure mission rules in Go (`trip/domain/mission.go`) and Kotlin
+(`TripMission.kt`) over the 238-case `trip/mission-v1.psv` oracle: the
+8 states × 7 commands table, create as DRAFT, restore, assign, respond and
+cancel; a stale revision is CONFLICT and only the current assignee responds.
+Migration 000227: forced-RLS mission row that changes only together with the
+history entry for its new revision, append-only history and command receipts;
+triggers re-check the transition table, assignee eligibility and that a
+response comes from the exact signed operation of the current assignee; the
+asset (from 000223) and unit (from 000220) usage functions each keep every
+line and add one mission key. Separate sqlc package `db/queries/mission`
+(EDR-230). Six routes under `/missions/`: create and list (`trip.mission.manage`
+ORG), read/assign/cancel (`trip.mission.manage` covering the stored unit and
+asset through a new `MissionStructure`), and `mine/list` (`trip.trip.start`
+on the member's own membership); commands need fresh proof, revision CAS and
+one audit event; naming a vehicle returns the FLEET-007 start decision as a
+warning only. The assignee answers through the signed offline operation
+`trip.mission.respond` decided on facts current at receipt: another member or
+an ended assignment FORBIDDEN, another organization's mission NOT_FOUND, stale
+or already answered CONFLICT, all transport denials storing nothing (the ACK
+vocabulary has no CONFLICT rejection); no `mission_id` on `trip.start` yet
+(EDR-228..231). RED Go 1/18 top-level and 236/238 vectors, Kotlin 236/238,
+router 4, contract 1, PostGIS 9/9 twice → GREEN 238/238 (100%), Kotlin 3157,
+PostGIS 9/9; union 24 packages 1041/8597, 0 failures. A lock-order hazard
+(response locked the mission before the organization root) was fixed during
+GREEN. Counts: 140 normal routes (26 routed / 58 not routed / 25 special),
+auditor walk 140 / 30 / 110, matrix 260 cells (102/158), 7 signed owners.
+Retained: trip link and reservation linkage (TRIP-021/023), planning
+(TRIP-009), vehicle change (TRIP-013), app inbox and mission feed entity
+(TRIP-021), board and panel/auditor reads (TRIP-022/006), notifications, a
+held form for late responses, production grants.
+
+Incident reported by the TRIP-008 agent: while stopping its own hung RED test
+it killed the TRIP-016 agent's `organization/adapters` race union (after
+1097 s); that result is void and the TRIP-016 agent was told to rerun it.
+
+Integration (`022b66c1`): only the contract, EDR table and backend README
+conflicted (appended sections). Build, vet, gofmt, `sqlc diff`, cmd/api,
+apicontract, trip and orgsync unit tests green; Kotlin enterprise domain suite
+3294 tests, 0 failures (`f4-logs/coord-kotlin-trip008.log`).
