@@ -45,6 +45,31 @@ func (q *Queries) AdvanceMission(ctx context.Context, arg AdvanceMissionParams) 
 	return result.RowsAffected(), nil
 }
 
+const changeMissionVehicle = `-- name: ChangeMissionVehicle :execrows
+UPDATE org_trip_missions SET revision=revision+1,asset_id=CAST($1::text AS uuid)
+WHERE org_id=CAST($2::text AS uuid) AND id=CAST($3::text AS uuid) AND revision=$4::bigint
+`
+
+type ChangeMissionVehicleParams struct {
+	AssetID  string `json:"asset_id"`
+	OrgID    string `json:"org_id"`
+	ID       string `json:"id"`
+	Revision int64  `json:"revision"`
+}
+
+func (q *Queries) ChangeMissionVehicle(ctx context.Context, arg ChangeMissionVehicleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, changeMissionVehicle,
+		arg.AssetID,
+		arg.OrgID,
+		arg.ID,
+		arg.Revision,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getMission = `-- name: GetMission :one
 SELECT id::text,unit_id::text,COALESCE(asset_id::text,'')::text AS asset_id,title,starts_at,ends_at,state,revision,COALESCE(assignee_employee_id::text,'')::text AS assignee_employee_id,
  COALESCE(assignee_membership_id::text,'')::text AS assignee_membership_id,COALESCE(answer,'')::text AS answer,answer_reason,created_at,updated_at
@@ -248,6 +273,39 @@ func (q *Queries) InsertMissionTransition(ctx context.Context, arg InsertMission
 	return err
 }
 
+const insertMissionVehicle = `-- name: InsertMissionVehicle :exec
+INSERT INTO org_trip_mission_vehicles(org_id,mission_id,revision,operation_id,previous_asset_id,asset_id,reason,changed_by,changed_by_membership_id)
+VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),$3::bigint,CAST($4::text AS uuid),
+ CAST($5::text AS uuid),CAST($6::text AS uuid),$7::text,CAST($8::text AS uuid),CAST($9::text AS uuid))
+`
+
+type InsertMissionVehicleParams struct {
+	OrgID                 string      `json:"org_id"`
+	MissionID             string      `json:"mission_id"`
+	Revision              int64       `json:"revision"`
+	OperationID           string      `json:"operation_id"`
+	PreviousAssetID       pgtype.Text `json:"previous_asset_id"`
+	AssetID               string      `json:"asset_id"`
+	Reason                string      `json:"reason"`
+	ChangedBy             string      `json:"changed_by"`
+	ChangedByMembershipID string      `json:"changed_by_membership_id"`
+}
+
+func (q *Queries) InsertMissionVehicle(ctx context.Context, arg InsertMissionVehicleParams) error {
+	_, err := q.db.Exec(ctx, insertMissionVehicle,
+		arg.OrgID,
+		arg.MissionID,
+		arg.Revision,
+		arg.OperationID,
+		arg.PreviousAssetID,
+		arg.AssetID,
+		arg.Reason,
+		arg.ChangedBy,
+		arg.ChangedByMembershipID,
+	)
+	return err
+}
+
 const listMissions = `-- name: ListMissions :many
 SELECT id::text,unit_id::text,COALESCE(asset_id::text,'')::text AS asset_id,title,starts_at,ends_at,state,revision,COALESCE(assignee_employee_id::text,'')::text AS assignee_employee_id,
  COALESCE(assignee_membership_id::text,'')::text AS assignee_membership_id,COALESCE(answer,'')::text AS answer,answer_reason,created_at,updated_at
@@ -426,6 +484,26 @@ func (q *Queries) MissionAssigneeFacts(ctx context.Context, arg MissionAssigneeF
 	var i MissionAssigneeFactsRow
 	err := row.Scan(&i.State, &i.Merged, &i.MembershipID)
 	return i, err
+}
+
+const missionAssigneeTripRunning = `-- name: MissionAssigneeTripRunning :one
+
+SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST($1::text AS uuid) AND asset_id=CAST($2::text AS uuid)
+ AND driver_employee_id=CAST($3::text AS uuid) AND state='IN_PROGRESS')::boolean AS running
+`
+
+type MissionAssigneeTripRunningParams struct {
+	OrgID      string `json:"org_id"`
+	AssetID    string `json:"asset_id"`
+	EmployeeID string `json:"employee_id"`
+}
+
+// EMP-TRIP-013 vehicle changes (migration 000232).
+func (q *Queries) MissionAssigneeTripRunning(ctx context.Context, arg MissionAssigneeTripRunningParams) (bool, error) {
+	row := q.db.QueryRow(ctx, missionAssigneeTripRunning, arg.OrgID, arg.AssetID, arg.EmployeeID)
+	var running bool
+	err := row.Scan(&running)
+	return running, err
 }
 
 const missionCommandReceipt = `-- name: MissionCommandReceipt :one

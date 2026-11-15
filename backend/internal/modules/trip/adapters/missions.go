@@ -7,6 +7,7 @@ import (
 
 	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/mission"
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	permission "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
@@ -27,17 +28,18 @@ import (
 const MissionTargetType = "trip_mission"
 
 var missionActions = map[app.MissionCommandKind]string{
-	app.MissionCreate:        "trip.mission.created",
-	app.MissionPlanCommand:   "trip.mission.planned",
-	app.MissionAssignCommand: "trip.mission.assigned",
-	app.MissionCancelCommand: "trip.mission.cancelled",
+	app.MissionCreate:         "trip.mission.created",
+	app.MissionPlanCommand:    "trip.mission.planned",
+	app.MissionAssignCommand:  "trip.mission.assigned",
+	app.MissionCancelCommand:  "trip.mission.cancelled",
+	app.MissionVehicleCommand: "trip.mission.vehicle_changed",
 }
 
 // MissionAuditDefinitions registers one action per company command kind
 // (B-BR-EMP-358, B-BR-EMP-385); responses are audited by their intake receipt.
 func MissionAuditDefinitions() []audit.Definition {
 	out := []audit.Definition{}
-	for _, kind := range []app.MissionCommandKind{app.MissionCreate, app.MissionPlanCommand, app.MissionAssignCommand, app.MissionCancelCommand} {
+	for _, kind := range []app.MissionCommandKind{app.MissionCreate, app.MissionPlanCommand, app.MissionAssignCommand, app.MissionCancelCommand, app.MissionVehicleCommand} {
 		out = append(out, audit.Definition{Action: missionActions[kind], TargetType: MissionTargetType})
 	}
 	return out
@@ -79,7 +81,7 @@ func missionError(ctx context.Context, err error) error {
 	}
 	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrSetupIncomplete, access.ErrFreshAuthRequired,
 		access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrOperationReused, app.ErrNotFound, app.ErrUnavailable,
-		app.ErrMissionUnauthenticated, app.ErrMissionIneligible, trip.ErrConflict, trip.ErrInvalidTransition, trip.ErrUnsupportedCommand, trip.ErrInvalid, trip.ErrScope, trip.ErrForbidden} {
+		app.ErrMissionUnauthenticated, app.ErrMissionIneligible, app.ErrMissionAssetBusy, app.ErrMissionTripInProgress, trip.ErrConflict, trip.ErrInvalidTransition, trip.ErrUnsupportedCommand, trip.ErrInvalid, trip.ErrScope, trip.ErrForbidden} {
 		if errors.Is(err, known) {
 			return err
 		}
@@ -311,8 +313,77 @@ func planRow(org string, actor app.MissionActor, member string, in app.MissionCo
 	return row
 }
 
-// change applies PLAN, ASSIGN or CANCEL to the locked head through the pure
-// rules.
+// vehicle decides a vehicle change (EMP-TRIP-013, B-BR-EMP-387/388), first
+// failure first: the new vehicle of the organization (else not found), the
+// planner's coverage of the mission with it, its lifecycle and kind, the pure
+// rules, a current assignee's coverage, a trip the assignee runs on the
+// current vehicle, then the new vehicle's FLEET-007 assessment at the planned
+// start. The assessment does not depend on the starter, so a mission without
+// an assignee reads it with the planner's membership.
+func (s *MissionStore) vehicle(ctx context.Context, tx pgx.Tx, queries *q.Queries, scope kernel.OrgScope, actor app.MissionActor, member string, in app.MissionCommandInput,
+	record app.MissionRecord, current trip.Mission) (trip.Mission, q.InsertMissionVehicleParams, error) {
+	org := scope.OrgID().String()
+	asset, err := queries.MissionAssetFacts(ctx, q.MissionAssetFactsParams{OrgID: org, ID: in.AssetID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrNotFound
+	}
+	if err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+	}
+	after := facts(record)
+	after.AssetID = in.AssetID
+	if err := s.Authority.CoversMissionTx(ctx, tx, scope, member, after); err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+	}
+	if asset.State != "ACTIVE" || asset.Kind == "IMPLEMENT" {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionIneligible
+	}
+	ref, err := trip.NewMissionAssetRef(scope, in.AssetID)
+	if err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+	}
+	next, err := current.ChangeVehicle(scope, in.ExpectedRevision, ref, in.Reason)
+	if err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+	}
+	if state := record.View.State; record.AssigneeMembershipID != "" && (state == trip.MissionAssigned || state == trip.MissionAccepted) {
+		eligible, err := s.Authority.EligibleAssigneeTx(ctx, tx, scope, record.AssigneeMembershipID, after)
+		if err != nil {
+			return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+		}
+		if !eligible {
+			return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionIneligible
+		}
+	}
+	if record.View.AssetID != "" && record.View.AssigneeEmployeeID != "" {
+		running, err := queries.MissionAssigneeTripRunning(ctx, q.MissionAssigneeTripRunningParams{OrgID: org, AssetID: record.View.AssetID, EmployeeID: record.View.AssigneeEmployeeID})
+		if err != nil {
+			return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+		}
+		if running {
+			return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionTripInProgress
+		}
+	}
+	starter := record.AssigneeMembershipID
+	if starter == "" {
+		starter = member
+	}
+	decision, err := s.Availability.StartDecisionDBTX(ctx, syncapp.Borrow(tx), scope, in.AssetID, starter, record.View.StartsAt)
+	if err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrUnavailable
+	}
+	switch decision.Assessment.Availability {
+	case fleet.InUse:
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionAssetBusy
+	case fleet.Unavailable, fleet.InMaintenance, fleet.Blocked:
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionIneligible
+	}
+	return next, q.InsertMissionVehicleParams{OrgID: org, MissionID: in.MissionID, Revision: record.View.Revision + 1, OperationID: in.OperationID, PreviousAssetID: nullable(record.View.AssetID),
+		AssetID: in.AssetID, Reason: in.Reason, ChangedBy: actor.AccountID, ChangedByMembershipID: member}, nil
+}
+
+// change applies PLAN, ASSIGN, CANCEL or VEHICLE to the locked head through
+// the pure rules.
 func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries, scope kernel.OrgScope, actor app.MissionActor, member string, in app.MissionCommandInput) (app.MissionAck, error) {
 	org := scope.OrgID().String()
 	record, err := s.head(ctx, queries, org, in.MissionID, true)
@@ -331,7 +402,14 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 	var next trip.Mission
 	var warning *app.MissionWarning
 	var planned *q.InsertMissionPlanParams
+	var changed *q.InsertMissionVehicleParams
 	switch in.Kind {
+	case app.MissionVehicleCommand:
+		var row q.InsertMissionVehicleParams
+		if next, row, err = s.vehicle(ctx, tx, queries, scope, actor, member, in, record, current); err != nil {
+			return app.MissionAck{}, err
+		}
+		changed = &row
 	case app.MissionPlanCommand:
 		input, err := planInput(ctx, queries, scope, *in.Plan)
 		if err != nil {
@@ -389,6 +467,19 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 		if err := queries.InsertMissionPlan(ctx, *planned); err != nil {
 			return app.MissionAck{}, err
 		}
+	}
+	if changed != nil {
+		if err := queries.InsertMissionVehicle(ctx, *changed); err != nil {
+			return app.MissionAck{}, err
+		}
+		// Only the vehicle and the revision move (EDR-251).
+		if n, err := queries.ChangeMissionVehicle(ctx, q.ChangeMissionVehicleParams{OrgID: org, ID: in.MissionID, Revision: record.View.Revision, AssetID: changed.AssetID}); err != nil || n != 1 {
+			if err == nil {
+				err = trip.ErrConflict
+			}
+			return app.MissionAck{}, err
+		}
+		return app.MissionAck{MissionID: in.MissionID, Revision: v.Revision, State: v.State, AssigneeEmployeeID: employee}, nil
 	}
 	advance := q.AdvanceMissionParams{OrgID: org, ID: in.MissionID, Revision: record.View.Revision, State: string(v.State), AssigneeEmployeeID: nullable(employee), AssigneeMembershipID: nullable(membership)}
 	if v.Answer != nil {

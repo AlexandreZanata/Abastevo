@@ -29,6 +29,12 @@ const (
 )
 
 var (
+	// ErrMissionAssetBusy is a new vehicle running another trip (the
+	// one-active-trip rule, B-BR-EMP-387).
+	ErrMissionAssetBusy = errors.New("trip: mission vehicle in use")
+	// ErrMissionTripInProgress is a vehicle change while the assignee runs a
+	// trip on the current vehicle (B-BR-EMP-388).
+	ErrMissionTripInProgress  = errors.New("trip: mission trip in progress")
 	ErrMissionDisabled        = errors.New("trip: mission surface disabled")
 	ErrMissionUnauthenticated = errors.New("trip: current company proof required")
 	// ErrMissionIneligible is an assignee or asset that cannot be named.
@@ -94,6 +100,10 @@ type MissionAuthority interface {
 	// EligibleAssigneeTx answers whether the membership currently holds
 	// trip.trip.start covering the mission as its own record (B-BR-EMP-355).
 	EligibleAssigneeTx(context.Context, pgx.Tx, kernel.OrgScope, string, MissionFacts) (bool, error)
+	// CoversMissionTx proves that the planner's current trip.mission.manage
+	// also covers the mission with the given structure (EMP-TRIP-013: the
+	// mission as it would be with its new vehicle); a denial names the key.
+	CoversMissionTx(context.Context, pgx.Tx, kernel.OrgScope, string, MissionFacts) error
 }
 
 // MissionCommandKind names one company command.
@@ -104,6 +114,8 @@ const (
 	MissionPlanCommand   MissionCommandKind = "PLAN"
 	MissionAssignCommand MissionCommandKind = "ASSIGN"
 	MissionCancelCommand MissionCommandKind = "CANCEL"
+	// MissionVehicleCommand replaces the mission's vehicle (EMP-TRIP-013).
+	MissionVehicleCommand MissionCommandKind = "VEHICLE"
 )
 
 // MissionPlanFields is the content of one PLAN command (EMP-TRIP-009,
@@ -235,6 +247,15 @@ func NewMissionCommand(in MissionCommandInput) (MissionCommand, error) {
 			return MissionCommand{}, err
 		}
 		out.UnitID, out.AssetID, out.Title, out.StartsAt, out.EndsAt = in.UnitID, in.AssetID, in.Title, window.From, window.To
+	case MissionVehicleCommand:
+		if !canonicalID(in.MissionID) || in.ExpectedRevision < 1 || !canonicalID(in.AssetID) || in.UnitID != "" || in.Title != "" || !in.StartsAt.IsZero() || !in.EndsAt.IsZero() ||
+			in.AssigneeEmployeeID != "" {
+			return MissionCommand{}, trip.ErrInvalid
+		}
+		if err := trip.ValidMissionText(in.Reason); err != nil {
+			return MissionCommand{}, err
+		}
+		out.MissionID, out.ExpectedRevision, out.AssetID, out.Reason = in.MissionID, in.ExpectedRevision, in.AssetID, in.Reason
 	case MissionAssignCommand, MissionCancelCommand:
 		if !canonicalID(in.MissionID) || in.ExpectedRevision < 1 || in.UnitID != "" || in.AssetID != "" || in.Title != "" || !in.StartsAt.IsZero() || !in.EndsAt.IsZero() {
 			return MissionCommand{}, trip.ErrInvalid
@@ -446,12 +467,15 @@ func validMissionAck(v MissionAck, in MissionCommandInput) bool {
 		return v.Revision == in.ExpectedRevision+1 && v.State == trip.MissionAssigned && v.AssigneeEmployeeID == in.AssigneeEmployeeID
 	case MissionCancelCommand:
 		return v.Revision == in.ExpectedRevision+1 && v.State == trip.MissionCancelled && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
+	case MissionVehicleCommand:
+		return v.Revision == in.ExpectedRevision+1 && trip.VehicleChangeAllowed(v.State) == nil && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
 	}
 	return false
 }
 
 // Command runs one company command under fresh trip.mission.manage: create
-// on the organization, plan, assign and cancel on the mission.
+// on the organization, plan, assign, cancel and the vehicle change on the
+// mission.
 func (s MissionService) Command(ctx context.Context, scope kernel.OrgScope, actor MissionActor, decision access.Decision, command MissionCommand) (MissionAck, bool, error) {
 	in, err := command.Snapshot()
 	if err != nil {

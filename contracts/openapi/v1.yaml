@@ -19898,6 +19898,82 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/vehicle/change:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionVehicleChange
+      summary: Replace the mission's vehicle
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        capability and trip.mission.manage covering the mission as stored and as it would be with the new vehicle (a
+        structural grant covering only one of them is FORBIDDEN). Replaces the vehicle of a PLANNED, ASSIGNED, ACCEPTED or
+        DECLINED mission at the named revision with a reason (1..280 scalars), keeping state, assignee, answer and plan (a
+        DRAFT keeps its creation vehicle until planned); one VEHICLE transition and one insert-only change record keep the previous vehicle. The new vehicle is
+        an ACTIVE main asset of the organization (unknown or another organization's NOT_FOUND; draft, inactive or an
+        IMPLEMENT VALIDATION_FAILED), not UNAVAILABLE, IN_MAINTENANCE or BLOCKED at the planned start (VALIDATION_FAILED)
+        and not running another trip (CONFLICT); a current assignee must still hold trip.trip.start covering the mission
+        with it (VALIDATION_FAILED). The change is CONFLICT while the assignee runs a trip on the current vehicle (finish it
+        with its final reading first), for the current vehicle again, a stale revision, a DRAFT, IN_PROGRESS or terminal
+        mission.
+        It never moves a trip, reading, meter, event, review entry, reservation or block. Same operation and digest returns
+        the first result with replayed=true and no second audit event (trip.mission.vehicle_changed); another digest is
+        OPERATION_ID_REUSED (EMP-TRIP-013, B-BR-EMP-387..389).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionVehicleRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008805
+              revision: 3
+              asset_id: 7b0e2a54-0000-4000-8000-000000008202
+              reason: Veículo em manutenção
+      responses:
+        '200':
+          description: Private audited vehicle change or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAck'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose:
     post:
       tags:
@@ -23336,6 +23412,36 @@ components:
           kind: PASSENGERS
           count: 4
         planned_at: '2026-11-15T10:10:00.123456Z'
+    EnterpriseMissionVehicleRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - asset_id
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008805
+        revision: 3
+        asset_id: 7b0e2a54-0000-4000-8000-000000008202
+        reason: Veículo em manutenção
     EnterpriseMissionCancelRequest:
       type: object
       additionalProperties: false

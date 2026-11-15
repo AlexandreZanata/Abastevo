@@ -79,3 +79,18 @@ SELECT DISTINCT ON(mission_id) mission_id::text,revision,destination_text,COALES
  load_kind,cargo_description,passenger_count,recorded_at
 FROM org_trip_mission_plans WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND mission_id=ANY(CAST(sqlc.arg(mission_ids)::text[] AS uuid[]))
 ORDER BY mission_id,revision DESC;
+
+-- EMP-TRIP-013 vehicle changes (migration 000232).
+
+-- name: MissionAssigneeTripRunning :one
+SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
+ AND driver_employee_id=CAST(sqlc.arg(employee_id)::text AS uuid) AND state='IN_PROGRESS')::boolean AS running;
+
+-- name: InsertMissionVehicle :exec
+INSERT INTO org_trip_mission_vehicles(org_id,mission_id,revision,operation_id,previous_asset_id,asset_id,reason,changed_by,changed_by_membership_id)
+VALUES(CAST(sqlc.arg(org_id)::text AS uuid),CAST(sqlc.arg(mission_id)::text AS uuid),sqlc.arg(revision)::bigint,CAST(sqlc.arg(operation_id)::text AS uuid),
+ CAST(sqlc.narg(previous_asset_id)::text AS uuid),CAST(sqlc.arg(asset_id)::text AS uuid),sqlc.arg(reason)::text,CAST(sqlc.arg(changed_by)::text AS uuid),CAST(sqlc.arg(changed_by_membership_id)::text AS uuid));
+
+-- name: ChangeMissionVehicle :execrows
+UPDATE org_trip_missions SET revision=revision+1,asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
+WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(id)::text AS uuid) AND revision=sqlc.arg(revision)::bigint;

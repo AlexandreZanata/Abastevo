@@ -6423,3 +6423,65 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   replay, reuse and racing commands in both orders, the database guards, and
   a populated upgrade from the 000229 head with injected failure and
   recovery.
+
+## EMP-TRIP-013 — Vehicle change within a mission (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip013-vehicle-change.md).
+
+- **B-BR-EMP-387 — Authorized replacement of the mission's vehicle.** A
+  vehicle change names the mission's new vehicle and a reason (METER-001 text
+  profile) at the expected revision. It is accepted only for a `PLANNED`,
+  `ASSIGNED`, `ACCEPTED` or `DECLINED` mission; a `DRAFT` mission exists only
+  at revision 1 (B-BR-EMP-353), so it keeps its creation vehicle until it is
+  planned (`INVALID_TRANSITION`); an `IN_PROGRESS` mission is
+  `UNSUPPORTED_COMMAND` (the trip link of EMP-TRIP-021/023) and a terminal one
+  `INVALID_TRANSITION`; naming the current vehicle again is
+  `INVALID_TRANSITION`. The change fails first on scope, then on the vehicle
+  reference and the reason, then on a non-positive expected revision, then
+  `CONFLICT` for a stale revision, then on the state. It changes only the
+  mission's vehicle and revision (exactly one more): state, assignee, answer,
+  plan, unit, title and window stay, so an answer still in flight for the
+  earlier revision is `CONFLICT`. The new vehicle must be an `ACTIVE` main
+  asset of the organization (never an `IMPLEMENT`, EDR-219; unknown or another
+  organization's `NOT_FOUND`, otherwise `VALIDATION_FAILED`), must not be in
+  use by another trip (`IN_USE`, the EMP-TRIP-002 one-active-trip rule:
+  `CONFLICT`) and must not be `UNAVAILABLE`, `IN_MAINTENANCE` or `BLOCKED` at
+  the planned start (EMP-FLEET-007 derived availability: `VALIDATION_FAILED`);
+  a reservation is never refused or changed by it. When the mission has a
+  current assignee (`ASSIGNED`, `ACCEPTED`), that member must still hold
+  `trip.trip.start` covering the mission with the new vehicle, otherwise
+  `VALIDATION_FAILED`. The planner needs fresh `trip.mission.manage` covering
+  the mission as stored and as it would be with the new vehicle (a structural
+  grant covering only one of them is `FORBIDDEN`); another organization's
+  mission is `NOT_FOUND`; `AUDITOR` is `FORBIDDEN`.
+- **B-BR-EMP-388 — Each vehicle keeps its own evidence.** A change is refused
+  `CONFLICT` while the mission's assignee has a trip in progress on the
+  current vehicle: that trip is finished on its own vehicle with its final
+  reading first, and work on the new vehicle is a new trip that starts with
+  the new vehicle's own reading. A change never moves, splits, merges or
+  rewrites a trip, reading, meter, segment, logbook event, review entry,
+  reservation or block; meter histories are never merged; the database
+  refuses reassigning a reading or a trip to another asset.
+- **B-BR-EMP-389 — History, receipts and database guards.** An accepted change
+  appends one `VEHICLE` transition (same state on both sides) and one
+  insert-only vehicle-change record (previous and new vehicle, reason, the
+  planner and the command), records exactly one `trip.mission.vehicle_changed`
+  audit event and one receipt; replay and reuse follow B-BR-EMP-358; two
+  commands decided on one revision resolve to one. The database moves the
+  mission's vehicle only together with that record, re-proves the new
+  vehicle's lifecycle and that it runs no trip, refuses a change while the
+  assignee runs a trip on the previous vehicle, keeps the records insert-only
+  and forced-RLS, and its asset usage source recognises the two record keys as
+  associations without counting them.
+- **BUC-EMP-195 — Replace a vehicle in a mission.** The accepted mission's
+  vehicle needs maintenance; the driver finishes the running trip on it with
+  the final reading; the fleet manager names a free vehicle of the unit with
+  the reason "Veículo em manutenção"; the mission stays `ACCEPTED`, the
+  driver's next trip starts on the new vehicle with its own reading, and the
+  first vehicle's trip and readings are unchanged.
+- **BUC-EMP-196 — Prove vehicle changes on real PostGIS.** Foreign, draft,
+  implement, blocked and busy vehicles; a running trip on the current
+  vehicle; the assignee's and the planner's coverage; another organization;
+  stale revisions and racing commands in both orders; a reading or trip moved
+  to another asset; the database guards and a populated upgrade with injected
+  failure and recovery.

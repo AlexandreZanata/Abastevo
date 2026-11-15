@@ -50,7 +50,7 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"EnterpriseMissionCreateRequest", "EnterpriseMissionAssignRequest", "EnterpriseMissionCancelRequest", "EnterpriseMissionListRequest", "EnterpriseMissionReadRequest",
-		"EnterpriseMissionAck", "EnterpriseMissionPage", "EnterpriseMissionView", "EnterpriseTripMissionRespondPayload", "EnterpriseMissionPlanRequest", "EnterpriseMissionPlan"} {
+		"EnterpriseMissionAck", "EnterpriseMissionPage", "EnterpriseMissionView", "EnterpriseTripMissionRespondPayload", "EnterpriseMissionPlanRequest", "EnterpriseMissionPlan", "EnterpriseMissionVehicleRequest"} {
 		schema := doc.Components.Schemas[name]
 		if schema == nil || schema.Value == nil || schema.Value.Example == nil {
 			t.Fatal("missing mission schema or explicit example", name)
@@ -86,13 +86,14 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 	read := map[string]any{"permission": "trip.mission.manage", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200}
 	command := map[string]any{"permission": "trip.mission.manage", "write": true, "fresh": true, "require_revision": true, "company_only": true, "success": 200}
 	for path, want := range map[string]map[string]any{
-		prefix + "create":              {"permission": "trip.mission.manage", "write": true, "fresh": true, "require_revision": false, "company_only": true, "success": 201},
-		prefix + "list":                read,
-		prefix + "{mission_id}/read":   read,
-		prefix + "{mission_id}/assign": command,
-		prefix + "{mission_id}/cancel": command,
-		prefix + "{mission_id}/plan":   command,
-		prefix + "mine/list":           {"permission": "trip.trip.start", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		prefix + "create":                      {"permission": "trip.mission.manage", "write": true, "fresh": true, "require_revision": false, "company_only": true, "success": 201},
+		prefix + "list":                        read,
+		prefix + "{mission_id}/read":           read,
+		prefix + "{mission_id}/assign":         command,
+		prefix + "{mission_id}/cancel":         command,
+		prefix + "{mission_id}/plan":           command,
+		prefix + "{mission_id}/vehicle/change": command,
+		prefix + "mine/list":                   {"permission": "trip.trip.start", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
 	} {
 		operation := doc.Paths.Value(path).Post
 		if operation == nil {

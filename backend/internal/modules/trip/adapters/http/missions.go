@@ -28,6 +28,8 @@ const (
 	MissionPlanPath   = MissionPrefix + "/{mission_id}/plan"
 	MissionAssignPath = MissionPrefix + "/{mission_id}/assign"
 	MissionCancelPath = MissionPrefix + "/{mission_id}/cancel"
+	// MissionVehiclePath replaces the mission's vehicle (EMP-TRIP-013, EDR-251).
+	MissionVehiclePath = MissionPrefix + "/{mission_id}/vehicle/change"
 )
 
 // MissionRecords accepts only the mission policies on their own targets: the
@@ -166,6 +168,11 @@ func (v missionPlanRequest) fields() (app.MissionPlanFields, error) {
 	return out, nil
 }
 
+type missionVehicleRequest struct {
+	missionCommandFields
+	AssetID string `json:"asset_id"`
+	Reason  string `json:"reason"`
+}
 type missionCancelRequest struct {
 	missionCommandFields
 	Reason string `json:"reason"`
@@ -201,6 +208,15 @@ func (v *missionPlanRequest) UnmarshalJSON(raw []byte) error {
 		return err
 	}
 	*v = missionPlanRequest(in)
+	return nil
+}
+func (v *missionVehicleRequest) UnmarshalJSON(raw []byte) error {
+	type plain missionVehicleRequest
+	var in plain
+	if err := decodeStrict(raw, &in); err != nil {
+		return err
+	}
+	*v = missionVehicleRequest(in)
 	return nil
 }
 func (v *missionCancelRequest) UnmarshalJSON(raw []byte) error {
@@ -245,6 +261,7 @@ func missionMapped(err error) error {
 		code   orgapi.Code
 	}{
 		{trip.ErrConflict, orgapi.Conflict}, {trip.ErrInvalidTransition, orgapi.Conflict}, {trip.ErrUnsupportedCommand, orgapi.Conflict},
+		{app.ErrMissionAssetBusy, orgapi.Conflict}, {app.ErrMissionTripInProgress, orgapi.Conflict},
 		{trip.ErrInvalid, orgapi.ValidationFailed}, {trip.ErrScope, orgapi.NotFound}, {app.ErrMissionIneligible, orgapi.ValidationFailed},
 		{app.ErrMissionDisabled, orgapi.NotFound}, {app.ErrNotFound, orgapi.NotFound}, {app.ErrMissionUnauthenticated, orgapi.Unauthenticated},
 		{app.ErrOperationReused, orgapi.OperationReused},
@@ -332,7 +349,7 @@ func projectPlan(p app.MissionPlanView) map[string]any {
 	return out
 }
 
-// RegisterMissions mounts the six trip.mission.manage routes and the own
+// RegisterMissions mounts the seven trip.mission.manage routes and the own
 // list. The organization and mission routes share the MissionStructure
 // authorization; the own list carries no structure or assignee source.
 func RegisterMissions(router chi.Router, service app.MissionService, cookies company.Handler, gateway orgapi.Gateway, authorization access.Authorization) error {
@@ -412,6 +429,19 @@ func RegisterMissions(router chi.Router, service app.MissionService, cookies com
 			return nil, err
 		}
 		return command(ctx, p, decision, app.MissionCommandInput{Kind: app.MissionPlanCommand, OperationID: input.OperationID, MissionID: mission, ExpectedRevision: *input.Revision, Plan: &plan})
+	}); err != nil {
+		return err
+	}
+	if err := guarded.Register(owned, MissionVehiclePath, gateway, MissionRule(app.MissionManage, true, 200), authorization, app.MissionPolicy(app.MissionManage), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionVehicleRequest) (any, error) {
+		mission, err := missionPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if input.Revision == nil {
+			return nil, orgapi.Malformed
+		}
+		return command(ctx, p, decision, app.MissionCommandInput{Kind: app.MissionVehicleCommand, OperationID: input.OperationID, MissionID: mission, ExpectedRevision: *input.Revision,
+			AssetID: input.AssetID, Reason: input.Reason})
 	}); err != nil {
 		return err
 	}

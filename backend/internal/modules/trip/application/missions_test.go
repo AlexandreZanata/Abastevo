@@ -246,3 +246,42 @@ func TestMissionPlanCommandIsExactAndDigestStable(t *testing.T) {
 		t.Fatal("the EMP-TRIP-008 digest form changed")
 	}
 }
+
+// EMP-TRIP-013 (B-BR-EMP-387, EDR-251): VEHICLE carries exactly the mission,
+// the expected revision, the new vehicle and a reason; its digest binds them.
+func TestMissionVehicleCommandIsExact(t *testing.T) {
+	base := app.MissionCommandInput{Kind: app.MissionVehicleCommand, OperationID: id(1), MissionID: id(4), ExpectedRevision: 3, AssetID: id(8), Reason: "Veículo em manutenção"}
+	if _, err := app.NewMissionCommand(base); err != nil {
+		t.Fatal("valid vehicle change refused", err)
+	}
+	for name, change := range map[string]func(*app.MissionCommandInput){
+		"no-asset":       func(v *app.MissionCommandInput) { v.AssetID = "" },
+		"bad-asset":      func(v *app.MissionCommandInput) { v.AssetID = "asset" },
+		"no-reason":      func(v *app.MissionCommandInput) { v.Reason = "" },
+		"control-reason": func(v *app.MissionCommandInput) { v.Reason = "Motivo\u0000" },
+		"revision-zero":  func(v *app.MissionCommandInput) { v.ExpectedRevision = 0 },
+		"no-mission":     func(v *app.MissionCommandInput) { v.MissionID = "" },
+		"with-unit":      func(v *app.MissionCommandInput) { v.UnitID = id(2) },
+		"with-assignee":  func(v *app.MissionCommandInput) { v.AssigneeEmployeeID = id(5) },
+		"with-title":     func(v *app.MissionCommandInput) { v.Title = "x" },
+		"with-plan":      func(v *app.MissionCommandInput) { v.Plan = &app.MissionPlanFields{Reason: "x"} },
+		"with-window":    func(v *app.MissionCommandInput) { v.StartsAt = time.Date(2026, 11, 20, 11, 0, 0, 0, time.UTC) },
+	} {
+		in := base
+		change(&in)
+		if _, err := app.NewMissionCommand(in); !errors.Is(err, trip.ErrInvalid) {
+			t.Fatal("invalid vehicle change admitted", name, err)
+		}
+	}
+	scope := missionScope(t, 1)
+	c, _ := app.NewMissionCommand(base)
+	other := base
+	other.AssetID = id(9)
+	o, _ := app.NewMissionCommand(other)
+	cancel := base
+	cancel.Kind, cancel.AssetID = app.MissionCancelCommand, ""
+	cc, _ := app.NewMissionCommand(cancel)
+	if d := c.Digest(scope); len(d) != 64 || d == o.Digest(scope) || d == cc.Digest(scope) || d == c.Digest(missionScope(t, 2)) {
+		t.Fatal("vehicle digest does not bind the vehicle, the kind and the organization")
+	}
+}
