@@ -220,6 +220,71 @@ before any owner; it now names the trip's accepted start and finish.
 | Populated upgrade from the 000224 head | `TestTripReviewPopulatedUpgradeFailureRecoveryAndPreviousImage` (completed DRAFT trip; injected failure leaves schema/data; recovery once; no-op replay; previous image compatible; forced-RLS migrator ownership; the pre-existing trip then submitted and approved) |
 | Contract | `TestTripReviewContractOwnerShapesAndGuards`, owner count in `TestMeterStandaloneContractHasOneExplicitAtomicOwner`, inventory and full-router tests in `cmd/api` |
 
+## Merge with the integration head
+
+Task commit `95d5555e` on `0fb49112`; then, as the coordinator asked, a
+normal merge of `codex/enterprise-f4` at `08b3e37c` (EMP-CHECK-001,
+migration 000223) in one merge commit (validated as `d4727b3c`; only this
+evidence file was amended into it afterwards). Conflicts were resolved as
+unions: the contract sections (CHECK-001 then TRIP-004), the company
+authority policy allow-list, the suite audit definitions, the
+check-manifest, the full-router path list and the matrix representatives;
+the OpenAPI trip blocks were re-inserted structurally on the integration
+head's file (503 added lines, no line of the head changed). 000223
+redefines `org_asset_current_usage`; 000226 redefines no usage source, so
+nothing had to be rebuilt. Counts on the merged tree: 134 normal routes
+(routed 24, signed 1, not routed 60, specials 25), AUDITOR walk 134 routes /
+30 positive / 104 FORBIDDEN, authorization matrix 240 cells (93 allowed /
+147 denied).
+
+## Validation
+
+All gates pass on the merged tree (validated as `d4727b3c`: task commit
+`95d5555e` plus the integration head `08b3e37c`). Go 1.27.4 toolchain from `backend`,
+`GOCACHE=/data/dev/cache/f4-go-build`, real PostGIS through `orgtest`
+isolated child databases, the coordinator MinIO (`127.0.0.1:32819`,
+`validation-private`) for the storage-dependent suites:
+
+```sh
+gofmt -l ./internal ./cmd ./db                                       # empty (toolchain gofmt)
+go build ./... && go vet ./... && go vet -tags=integration ./...      # clean
+GOTOOLCHAIN=go1.27.1 staticcheck ./internal/modules/{trip,organization,review}/... ./internal/platform/{enterprisesuite,apicontract}/... ./cmd/api/...   # clean
+GOTOOLCHAIN=go1.27.1 staticcheck -tags=integration ./internal/modules/trip/... ./internal/modules/organization/adapters/... ./internal/platform/apicontract/... ./cmd/api/...   # clean
+sqlc vet && sqlc diff                                                 # clean (sqlc generate reproduces db/queries/trip incl. reviews.sql.go)
+go test -json -race -tags=integration -count=1 -p 2 -timeout=60m ./internal/modules/organization/adapters ./internal/modules/{trip,review,fleet,orgsync,orgaccess,maintenance}/... ./internal/platform/{enterprisesuite,apicontract,migrate,orgtest,orgapi}/... ./cmd/api/...
+GOFLAGS=-p=2 go test -count=1 -timeout=45m ./...
+vacuum lint -r contracts/openapi/vacuum-rules.yaml contracts/openapi/v1.yaml --no-update-check   # repo root
+python3 docs/enterprise/tools/check_plan.py                           # repo root
+git diff --check
+```
+
+- Race/integration union, log `trip004-db-union.jsonl` (27 min 7 s;
+  `organization/adapters` 1494 s): 33 packages, 32 pass, 1 without tests
+  (`orgtest`), 1054 top-level / 9336 named tests pass, 0 failures, 0 skips.
+  It includes every `TestTripSubmit*`/`TestTripReview*` test, the matrix at
+  240 cells (93/147), the AUDITOR walk at 134/30/104, the CHECK-001 and
+  TRIP-002 suites, `migrate` on the full chain and the storage-dependent
+  document/export/auditor suites with MinIO. The 5 `cmd/worker` tests that
+  need the pinned Rust preparer CLIs are outside this union (untouched).
+- Untagged whole module, log `trip004-untagged-all.log`: exit 0, 222
+  packages ok, 80 without tests, 0 failures (3 min).
+- Static gates, log `trip004-merged-static.log`: all clean.
+- Unit coverage (`trip004-go-cover-unit.out`, race): `trip/domain` 100.0%,
+  `trip/application` 66.6%, `trip/adapters/http` 37.1%, `trip/adapters`
+  8.0%; the store, handler and route paths are exercised by the PostGIS
+  tests above.
+- OpenAPI: 0 vacuum errors; 1018 warnings / 660 informs versus 1006 / 659 on
+  the integration head (the existing enterprise path-pattern and
+  description-style rules), log `trip004-vacuum.log`.
+- `check_plan.py`: 348 tasks, 545 rules, 167 use cases, 145 screens, 0
+  problems; `git diff --check` clean.
+- Secret/PII review of the task diff: the pattern scan hits only synthetic
+  test fixtures (session access tokens of synthetic accounts, a repeated-byte
+  cursor secret) and a context line of EDR-217; `gitleaks stdin --redact`
+  finds no leaks. Synthetic data only.
+- No Kotlin, Android, shared vector, job or deployment change, so no Gradle
+  run applies; no emulator or device was used.
+
 ## Retained obligations
 
 - EMP-TRIP-015: the author's correction loop after RETURNED (a new revision

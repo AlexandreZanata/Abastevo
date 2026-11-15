@@ -45,6 +45,10 @@ backend/internal/modules/trip/domain
 backend/internal/modules/trip/application
 backend/internal/modules/trip/adapters
 backend/internal/modules/trip/adapters/http
+backend/internal/modules/maintenance/domain/checklist
+backend/internal/modules/maintenance/application
+backend/internal/modules/maintenance/adapters
+backend/internal/modules/maintenance/adapters/http
 backend/internal/modules/organization/domain
 backend/internal/modules/organization/application
 backend/internal/modules/organization/adapters
