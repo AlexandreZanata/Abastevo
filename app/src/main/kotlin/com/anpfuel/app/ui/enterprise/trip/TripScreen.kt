@@ -67,6 +67,11 @@ import com.anpfuel.domain.enterprise.meter.MeterEntryForm
 import com.anpfuel.domain.enterprise.meter.MeterKind
 import com.anpfuel.domain.enterprise.meter.ReadingFlag
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncStatus
+import com.anpfuel.domain.enterprise.trip.ClosingEvidenceState
+import com.anpfuel.domain.enterprise.trip.ClosingItem
+import com.anpfuel.domain.enterprise.trip.ClosingItemKind
+import com.anpfuel.domain.enterprise.trip.ClosingRecordState
+import com.anpfuel.domain.enterprise.trip.TripClosing
 import com.anpfuel.domain.enterprise.trip.TripAssetLabel
 import com.anpfuel.domain.enterprise.trip.TripEvidence
 import com.anpfuel.domain.enterprise.trip.TripLocalFailure
@@ -197,7 +202,7 @@ internal fun TripPanel(
                 else -> if (open != null) {
                     tripDetail(open, connected, state.busy, onEvent = { mode = TripMode.Event(open.trip.tripId) },
                         onFinish = { mode = TripMode.Finish(open.trip.tripId) }, onReady = { onReady(open.trip.tripId) }, onSend = onSend,
-                        photos = state.attachments, onPhoto = photo.takeIf { capture != null })
+                        photos = state.attachments, onPhoto = photo.takeIf { capture != null }, closing = state.closing(open.trip.tripId))
                 } else {
                     item {
                         Button(onClick = { onPick(); mode = TripMode.Picker }, enabled = !state.busy,
@@ -304,7 +309,7 @@ private fun StatusChip(record: TripRecordView, tag: String) {
 /** The open trip as separate list items, so a long timeline scrolls record by record. */
 private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: Boolean, onEvent: () -> Unit, onFinish: () -> Unit,
     onReady: () -> Unit, onSend: () -> Unit, photos: Map<String, List<AttachmentView>> = emptyMap(),
-    onPhoto: ((String, AttachmentTarget) -> Unit)? = null) {
+    onPhoto: ((String, AttachmentTarget) -> Unit)? = null, closing: TripClosing? = null) {
     item(key = "detail-header") {
         TripCard(Modifier.testTag("enterprise-trip-detail")) {
             Text(label(view.trip.label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
@@ -326,6 +331,8 @@ private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: B
     }
     view.finish?.let { item(key = "record-finish") { Record(it, stringResource(R.string.enterprise_trips_record_finish), "finish", busy, photos, onPhoto) } }
     view.submission?.let { item(key = "record-submission") { Record(it, stringResource(R.string.enterprise_trips_record_submission), "submission") } }
+    // EMP-TRIP-020: the closing conference of a finished trip, before and after it is marked ready (B-BR-EMP-522..526).
+    if (closing != null && view.trip.state == TripLocalState.FINISHED) item(key = "detail-closing") { ClosingConference(closing) }
     item(key = "detail-actions") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (view.trip.state == TripLocalState.IN_PROGRESS) {
@@ -491,6 +498,61 @@ internal fun TripsHomeCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
         Text(stringResource(R.string.enterprise_trips_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         Text(stringResource(R.string.enterprise_trips_home_copy))
         Button(onClick = onOpen, modifier = Modifier.fillMaxWidth().testTag("enterprise-trips-open")) { Text(stringResource(R.string.enterprise_trips_open)) }
+    }
+}
+
+private fun closingRecordText(state: ClosingRecordState): Int = when (state) {
+    ClosingRecordState.SAVED_ON_DEVICE -> R.string.enterprise_trip_closing_record_saved
+    ClosingRecordState.SENDING -> R.string.enterprise_trip_closing_record_sending
+    ClosingRecordState.ACCEPTED -> R.string.enterprise_trip_closing_record_accepted
+    ClosingRecordState.NEEDS_REVIEW -> R.string.enterprise_trip_closing_record_needs_review
+    ClosingRecordState.REFUSED -> R.string.enterprise_trip_closing_record_refused
+}
+
+private fun closingEvidenceText(state: ClosingEvidenceState): Int = when (state) {
+    ClosingEvidenceState.MISSING -> R.string.enterprise_trip_closing_evidence_missing
+    ClosingEvidenceState.PENDING -> R.string.enterprise_trip_closing_evidence_pending
+    ClosingEvidenceState.AVAILABLE -> R.string.enterprise_trip_closing_evidence_available
+    ClosingEvidenceState.UNREADABLE -> R.string.enterprise_trip_closing_evidence_unreadable
+}
+
+/** Exact centavos as reais with a decimal comma, never rounded and never added to another item. */
+private fun closingReais(centavos: Long): String = java.math.BigDecimal.valueOf(centavos, 2).toPlainString().replace('.', ',')
+
+/** SCR-TRIP-01 closing conference (EMP-TRIP-020): each item with its own record and evidence state; no total, no decision. */
+@Composable
+private fun ClosingConference(closing: TripClosing) {
+    TripCard(Modifier.testTag("enterprise-trip-closing")) {
+        Text(stringResource(R.string.enterprise_trip_closing_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+        Text(stringResource(R.string.enterprise_trip_closing_intro), style = MaterialTheme.typography.bodySmall)
+        if (closing.relatedUnavailable) Notice(stringResource(R.string.enterprise_trip_closing_related_unavailable), Modifier.testTag("enterprise-trip-closing-unavailable"))
+        if (!closing.relatedUnavailable && closing.items.none { it.kind == ClosingItemKind.FUELING || it.kind == ClosingItemKind.EXPENSE })
+            Text(stringResource(R.string.enterprise_trip_closing_none), modifier = Modifier.testTag("enterprise-trip-closing-none"))
+        closing.items.forEach { ClosingRow(it) }
+        Text(stringResource(R.string.enterprise_trip_closing_no_decision), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun ClosingRow(item: ClosingItem) {
+    val title = when (item.kind) {
+        ClosingItemKind.DEPARTURE_READING -> stringResource(R.string.enterprise_trip_closing_departure)
+        ClosingItemKind.FINAL_READING -> stringResource(R.string.enterprise_trip_closing_final)
+        ClosingItemKind.FUELING -> stringResource(R.string.enterprise_trip_closing_fueling, closingReais(item.paidCentavos ?: 0))
+        ClosingItemKind.EXPENSE -> stringResource(R.string.enterprise_trip_closing_expense, closingReais(item.paidCentavos ?: 0))
+    }
+    val record = stringResource(closingRecordText(item.record))
+    val evidence = stringResource(closingEvidenceText(item.evidence))
+    val reason = item.code?.takeIf { item.record == ClosingRecordState.NEEDS_REVIEW || item.record == ClosingRecordState.REFUSED }
+        ?.let { stringResource(reasonText(it)) }
+    Column(Modifier.fillMaxWidth().testTag("enterprise-trip-closing-${item.kind.name.lowercase()}-${item.recordId}")
+        .semantics(mergeDescendants = true) { stateDescription = listOfNotNull(record, reason, evidence).joinToString(". ") }) {
+        Text(title, style = MaterialTheme.typography.labelLarge)
+        Text(formatted(item.occurredAt), style = MaterialTheme.typography.bodySmall)
+        Text(record)
+        reason?.let { Text(stringResource(R.string.enterprise_trips_reason, it)) }
+        Text(evidence)
+        if (item.photos > 0) Text(stringResource(R.string.enterprise_trip_closing_photos, item.photos), style = MaterialTheme.typography.bodySmall)
     }
 }
 

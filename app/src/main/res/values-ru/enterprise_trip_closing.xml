@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-TRIP-020 closing conference; generated from one table by f4-logs/exp004-scripts/gen_closing_strings.py -->
+<resources>
+    <string name="enterprise_trip_closing_title">Проверка при завершении</string>
+    <string name="enterprise_trip_closing_intro">Прежде чем отметить поездку как готовую, проверьте, что это устройство для неё записало. Заправки и расходы показаны по транспорту и времени поездки; здесь ничего не суммируется, не связывается на сервере и не утверждается.</string>
+    <string name="enterprise_trip_closing_departure">Показание при выезде</string>
+    <string name="enterprise_trip_closing_final">Показание при прибытии</string>
+    <string name="enterprise_trip_closing_fueling">Заправка · R$ %1$s</string>
+    <string name="enterprise_trip_closing_expense">Расход · R$ %1$s</string>
+    <string name="enterprise_trip_closing_record_saved">Сохранено на этом устройстве</string>
+    <string name="enterprise_trip_closing_record_sending">Отправляется</string>
+    <string name="enterprise_trip_closing_record_accepted">Принято компанией</string>
+    <string name="enterprise_trip_closing_record_needs_review">Требует проверки</string>
+    <string name="enterprise_trip_closing_record_refused">Не принято</string>
+    <string name="enterprise_trip_closing_evidence_missing">Чек: отсутствует</string>
+    <string name="enterprise_trip_closing_evidence_pending">Чек: ожидает (на устройстве или отправляется)</string>
+    <string name="enterprise_trip_closing_evidence_available">Чек: сохранён компанией</string>
+    <string name="enterprise_trip_closing_evidence_unreadable">Чеки: не читаются на этом устройстве</string>
+    <string name="enterprise_trip_closing_related_unavailable">Сейчас нельзя прочитать заправки или расходы на этом устройстве; список может быть неполным.</string>
+    <string name="enterprise_trip_closing_none">На этом устройстве нет заправок или расходов этого транспорта во время поездки.</string>
+    <string name="enterprise_trip_closing_no_decision">Утверждение или возврат решает компания, никогда не это устройство.</string>
+    <string name="enterprise_trip_closing_photos">Фото: %1$d</string>
+</resources>

@@ -45,6 +45,7 @@ import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStore
 import com.anpfuel.application.enterprise.trip.TripFlow
+import com.anpfuel.application.enterprise.trip.TripRelatedRecords
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.data.BuildConfig
@@ -274,8 +275,12 @@ object EnterpriseModule {
     /** Each visible trip owner is independent, like "Meus ativos"; "Enviar agora" is one dispatch of its partition. */
     @Provides
     fun tripFlow(source: EnterpriseQueueSource, service: EnterpriseTripService, fence: EnterpriseSessionFence,
-        delivery: EnterpriseQueueService, receipts: EnterpriseReceipts): TripFlow =
-        TripFlow(source, service, fence, receipts) { account, partition -> delivery.dispatch(account, partition) }
+        delivery: EnterpriseQueueService, receipts: EnterpriseReceipts, fuelings: EnterpriseFuelingService,
+        expenses: EnterpriseExpenseService): TripFlow =
+        // EMP-TRIP-020: the closing conference reads the same partition's own fuelings and expenses (EDR-339).
+        TripFlow(source, service, fence, receipts, TripRelatedRecords(fuelings::fuelings, expenses::expenses)) { account, partition ->
+            delivery.dispatch(account, partition)
+        }
 
     /** EMP-FUEL-011: the partition's retained `fueling.submit` entries, never a plaintext table (EDR-295). */
     @Provides

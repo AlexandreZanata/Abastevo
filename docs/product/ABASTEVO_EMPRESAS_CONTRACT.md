@@ -8143,3 +8143,60 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   another organization's or a fueling's expense on the server, a saved
   expense never shown as accepted before its receipt, and the shared oracle
   rows that the intake refuses.
+
+## EMP-TRIP-020 — Trip closing conference: expenses and documents before submission (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip020-closing-conference.md).
+
+- **B-BR-EMP-522 — The conference is device-local.** Before a finished trip
+  is marked ready to send, the trip detail shows "Conferência de
+  fechamento": the trip's own departure and final readings and the
+  fuelings and expenses saved on this device in the trip's organization
+  (its own protected partition) for the trip's vehicle, declared between the
+  trip's start and its finish (since the start while it is open). This
+  grouping exists only on the device: no trip reference is sent with a
+  fueling or an expense (`trip_id` stays null and RETRY/UNAVAILABLE at the
+  intake), the server learns nothing new, and records of another vehicle,
+  organization or account, or outside the interval, never appear.
+- **B-BR-EMP-523 — Each item keeps its own record state.** A reading, fueling
+  or expense shows only what its own retained receipt proves: "Salvo neste
+  aparelho", "Enviando", "Aceito pela empresa", "Precisa de revisão" or "Não
+  aceito" with the reason. Nothing is shown as accepted, approved or
+  returned without that receipt.
+- **B-BR-EMP-524 — Evidence is missing, pending or available, never
+  certified.** Each item's evidence comes only from the photos that its own
+  operation owns and that target that record: no usable photo (none, a
+  missing file or a refused transfer) is "faltando"; a photo saved on the
+  device or still being sent or checked is "pendente"; every photo stored by
+  the company is "guardado pela empresa" — stored, never "válido",
+  "verificado" or "certificado". A photo of another record never counts; an
+  attachment index this device cannot read shows every item's evidence as
+  unreadable, never as available; unreadable fuelings or expenses are said
+  ("a lista pode estar incompleta"), never shown as nothing to confer.
+- **B-BR-EMP-525 — A link is never a cost.** Each fueling or expense shows its
+  own entered paid amount; the conference adds nothing up, and a fueling's
+  own expense (projected on the server by EMP-EXP-002) is never listed as a
+  second item. Duplicated entries count once.
+- **B-BR-EMP-526 — Submission names the right revision and decides
+  nothing.** From the conference, "Marcar como pronta para enviar" queues the
+  trip's first `trip.submit` exactly as EMP-TRIP-005 does: entity
+  `trip_review` at revision 1, depending on the finish; a trip already marked
+  queues nothing more (`ALREADY_SUBMITTED`). Approval, return and rejection
+  stay the company's: the device never shows or makes a decision offline. A
+  resubmission after a return names the returned revision (EMP-TRIP-015) and
+  needs the author's own review read, which does not exist yet: retained.
+- **BUC-EMP-267 — Confer before sending.** Bruno finishes the trip, opens it
+  and sees the departure reading with its photo "guardado pela empresa", the
+  fueling of R$ 970,00 "Aceito pela empresa" with its receipt "pendente", the
+  toll of R$ 12,50 "Salvo neste aparelho" with "Comprovante: faltando" and
+  the final reading; he adds the toll's receipt from "Despesas", returns and
+  marks the trip ready to send.
+- **BUC-EMP-268 — Incomplete device data.** The device cannot read its
+  fuelings: the conference says the list may be incomplete and still lists
+  the readings and the expenses; marking ready remains possible and nothing
+  is invented.
+- **BUC-EMP-269 — Negatives.** A fueling of another vehicle, a parking of
+  another organization and an expense saved after the finish are absent; a
+  photo owned by the fueling but targeting the expense documents neither; a
+  missing file is never "guardado"; an unreadable index never shows
+  "guardado"; the amounts are never summed; marking twice queues nothing.
