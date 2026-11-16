@@ -61,6 +61,9 @@ import (
 	reviewpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters"
 	reviewweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/adapters/http"
 	reviewapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/review/application"
+	trackingpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/adapters"
+	trackingweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/adapters/http"
+	trackingapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/application"
 	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
 	tripweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters/http"
 	tripapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
@@ -154,6 +157,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
 	definitions = append(definitions, exportpg.AuditDefinitions()...)
+	definitions = append(definitions, trackingpg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -410,6 +414,15 @@ func Register(router chi.Router, o Options) error {
 		Audit: auditStore, Allocations: assets, Readings: reviews}
 	conflictAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.ConflictRecords{}, Structure: heldTripStructure, Now: time.Now}
 	if err := tripweb.RegisterConflicts(router, tripapp.ConflictService{Enabled: true, Repository: conflicts}, cookies, gateway, conflictAuthorization); err != nil {
+		return err
+	}
+	// EMP-GPS-012 (EDR-281/282): recorded tracks only under gps.track.read
+	// through the trip's stored structure; every page is recorded in the
+	// PRIV-005 access log before it is served.
+	tracks := &trackingpg.TrackStore{Pool: o.Pool, Authority: &orgpg.TrackAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure},
+		Access: auditpg.AccessLog{Runner: auditStore}, NewID: jobs.NewUUIDv4}
+	trackAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.TrackRecords{}, Structure: tripStructure, Now: time.Now}
+	if err := trackingweb.RegisterTrack(router, trackingapp.TrackService{Enabled: true, Repository: tracks}, cookies, gateway, trackAuthorization, tracks); err != nil {
 		return err
 	}
 

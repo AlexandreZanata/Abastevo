@@ -265,6 +265,8 @@ Before any owner, the organization's recorded suspension history holds work decl
 
 A mission response (`trip.mission.respond`, EMP-TRIP-008, EDR-229) is not a field fact: it is decided on current facts at receipt only (current assignee, current `trip.trip.start` coverage, current revision), never on the declared instant. Another member or an ended assignment is a whole-response `FORBIDDEN`, a mission not stored here `NOT_FOUND`, a stale or already answered mission `CONFLICT` (08-state-model §4.7), each a transport denial that stores nothing; it has no held form and no late holder.
 
+Tracking (`gps.session.start`, `resume`, `suspend`, `interrupt`, `reduce`, `end` and `gps.track.batch`, EMP-GPS-004, EDR-277/278) needs no online validation: every refusal is final and per operation. The first start opens the trip's one session only under the organization's tracking policy with its employee notice in force (`OFF` is `REJECTED` `FORBIDDEN`); another member is a whole-request `FORBIDDEN`; any other domain refusal and a batch above 200 fixes are `REJECTED` `MALFORMED`; a trip or session not stored here is `RETRY` `DEPENDENCY_PENDING`. A session follows the trip's stored pauses, cancellation and finish (GPS-001 `FOLLOW`) before each session command; a batch stores one segment whose fixes outside the followed recording periods, while the trip is paused or at or after its finish or cancellation are counted on the segment, never in the receipt. Tracking owners have no held form and no late holder.
+
 ### 10.3 Offline matrix
 
 OFFL-003's construction contract extends the accepted generation-backed Android
