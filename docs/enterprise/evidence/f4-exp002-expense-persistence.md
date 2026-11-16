@@ -2,13 +2,16 @@
 
 Date: 2026-11-15.
 Status: LOCAL_DONE
-Validation: PENDING
+Validation: PASS
 Integration: INTEGRATION_PENDING
 
 One bounded F3 DB task (an F4 prerequisite of EMP-TRIP-020 through
 EMP-EXP-004) on `codex/enterprise-f4-exp002` (worktree
 `/data/dev/worktrees/f4-exp002`), based on the F4 head `4f9170fc`
-(migrations through `000237`; `000238..000243` belong to other sessions).
+(migrations through `000237`; `000238..000243` belong to other sessions),
+then merged with the F4 head `0912b48a` (EMP-TRIP-014/018 `000235/000236`,
+UGC safety `000239`, EMP-GPS-004/012 `000240`) before its final gates; the
+usage sources are still the 000232/000231 bodies there.
 Real dependencies used: the EMP-EXP-001 pure expense domain and its totals,
 the EMP-FUEL-002 fueling store, handler and authority, the OFFL-002 signed
 intake ledger, the METER-002 history classifier (`historyDisposition`), the
@@ -154,10 +157,11 @@ oracle and migration.
 ## GREEN and REFACTOR
 
 - Go unit race, all expense and fueling packages pass
-  (`f4-logs/exp002-go-green-unit.jsonl`); statement coverage below.
+  (`f4-logs/exp002-go-green-unit.jsonl`); statement coverage under Validation.
 - PostGIS focused (`f4-logs/exp002-db-green.jsonl`, same selection plus the
   new pure rule test): 26 top-level / 65 named subtests, 0 failures, 0 skips.
-- Contract: `internal/platform/apicontract` passes (12 owners).
+- Contract: `internal/platform/apicontract` passes (12 owners on the base,
+  19 after the merge with the GPS-004 owners).
 - Kotlin (`f4-logs/exp002-kotlin-green.log`, XML in
   `f4-logs/exp002-kotlin-green-xml/`): 280 tests, 0 failures, errors or
   skips; no compiler warning.
@@ -203,7 +207,61 @@ shared PostGIS `127.0.0.1:32775` (orgtest child databases/roles), own MinIO
 project `f4-exp002-s3` for storage tests (removed with `down -v`). Logs in
 `/data/dev/worktrees/f4-logs/exp002-*`.
 
-Merged-tree gates pending (recorded in the next commit after merging the F4 head).
+Every gate below ran on the merged tree (`a83c1927`, the task commit
+`41adb3d6` plus the F4 head `0912b48a`) after the last code edit.
+
+```sh
+gofmt -l ./internal ./cmd ./db                                  # empty (toolchain gofmt)
+go build ./... && go vet ./... && go vet -tags=integration ./... # pass
+go vet -tags=integration,nativefixture ./internal/modules/organization/adapters
+GOTOOLCHAIN=go1.27.1 staticcheck [-tags=integration] ./internal/modules/expense/... ./internal/modules/fueling/... \
+  ./internal/modules/organization/adapters ./internal/platform/enterprisesuite ./internal/platform/apicontract   # no findings
+sqlc vet && sqlc generate                                       # no diff
+go test -json -race -tags=integration -count=1 -timeout=90m -p 2 ./internal/modules/organization/adapters \
+  ./internal/modules/expense/... ./internal/modules/fueling/... ./internal/modules/budget/... ./internal/modules/review/... \
+  ./internal/modules/orgsync/... ./internal/platform/... ./cmd/api/...
+go test -count=1 -timeout=45m ./...
+./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.*' (flock, JDK 17, offline)
+vacuum lint -r contracts/openapi/vacuum-rules.yaml contracts/openapi/v1.yaml
+python3 docs/enterprise/tools/check_plan.py
+git diff --check; gitleaks on the staged diff
+```
+
+- Race/integration union (`f4-logs/exp002-db-union.jsonl`, start/end/exit
+  files beside it): 37 packages (35 with tests, all pass; `legalterms` and
+  `orgtest` have no test files), 1124 top-level / 8353 named subtests, 0
+  failures, 0 skips, exit 0; organization adapters 3464 s under a shared-host
+  load average of ~17. Storage tests used the own MinIO project
+  `f4-exp002-s3` (removed afterwards with `down -v`). A first pre-merge union
+  was stopped deliberately when the coordinator published the new F4 head
+  (`exp002-db-union-premerge-aborted.jsonl`, no failure before the stop).
+- Untagged `go test -count=1 -timeout=45m ./...`
+  (`f4-logs/exp002-untagged-all.log`): 229 packages ok, exit 0.
+- Unit race with coverage (`f4-logs/exp002-go-green-unit.jsonl`,
+  `exp002-go-green-unit-cover.out`): expense/application 7 top / 84 named,
+  expense/adapters 1, expense domain and payable unchanged (15/222, 17/275),
+  fueling packages 20 top / 286 named, all pass; statements:
+  expense/application 82.0%, expense domain and payable 100%, fueling
+  application 86.0%, fueling domain 90.9%. Integration coverage of the new
+  code (`f4-logs/exp002-cover-integration.out`, the `TestExpense*` set):
+  `expense/adapters/intake.go` 69.5%, `store.go` 70.8%,
+  `application/command.go` 88.2%, `projection.go` 71.4%,
+  `organization/adapters/expense_authority.go` 75.0%; the uncovered lines
+  are unavailable and invalid-evidence refusals.
+- Kotlin enterprise suite (`f4-logs/exp002-kotlin-enterprise-final.log`):
+  4138 tests, 0 failures, errors or skips (expense 280).
+- staticcheck plain and `-tags=integration`: no findings
+  (`f4-logs/exp002-staticcheck.log`); build/vet log
+  `f4-logs/exp002-build-vet.log`.
+- vacuum: 0 errors; warnings/informs 1109/681, identical to the merged base
+  spec (`exp002-vacuum.log`).
+- `check_plan.py`: 348 tasks, 545 rules, 167 use cases, 145 screens, 0
+  problems; `git diff --check` clean; gitleaks: no leaks; the keyword scan of
+  the staged diff found no credential, CPF, CNPJ, real name or real place
+  (synthetic identifiers and Portuguese synthetic labels only).
+- Not run: the Android emulator or device (no app change), the 15 Rust
+  preparer tests of `cmd/worker`, `directory` and `quality` (not in this
+  union; no change there).
 
 ## Retained
 
@@ -231,8 +289,9 @@ Merged-tree gates pending (recorded in the next commit after merging the F4 head
   approved company amounts; settlement never creates an expense (the database
   refuses settlement kinds as an origin).
 - Production grants (proposal below); no route, matrix, inventory or auditor
-  change (counts unchanged: 150 normal routes, routed 28 / not routed 56 /
-  specials 26; auditor walk 150/30/120; matrix 280 cells; 12 signed owners).
+  change (counts unchanged from the merged head `0912b48a`: 153 normal
+  routes, routed 30 / not routed 54 / specials 26; auditor walk 153/31/122;
+  matrix 300 cells); signed operation owners in OpenAPI 18 → 19.
 - No F3/F4/M3/M4 acceptance, deployment, real data or release is claimed.
 
 ## Proposed shared-doc changes (coordinator)
