@@ -24,7 +24,7 @@ func TestChecklistRunOwnerPayloadAndShapesAreExact(t *testing.T) {
 		Results   []string          `json:"terminal_results"`
 		Followups map[string]string `json:"followup_by_result"`
 	}
-	if json.Unmarshal(raw, &owners) != nil || len(owners) != 12 {
+	if json.Unmarshal(raw, &owners) != nil || len(owners) != 20 {
 		t.Fatal("owners unreadable or count drift", len(owners))
 	}
 	owner, ok := owners["check.run.complete"]

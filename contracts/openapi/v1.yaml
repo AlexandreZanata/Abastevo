@@ -15055,7 +15055,14 @@ paths:
         is held PLAN_CHANGED; later work keeps the owner's ENTITLEMENT_REQUIRED. State decisions replay unchanged.
         The fueling.submit owner (EMP-FUEL-002) commits one immutable fueling, its embedded FUELING-origin reading,
         stored warnings and first review entry with its ACK; changed rights and post-disposal fuelings store nothing
-        and stay RETRY/UNAVAILABLE until a held-fueling owner exists.
+        and stay RETRY/UNAVAILABLE until a held-fueling owner exists. Since EMP-EXP-002 the same transaction stores the
+        fueling's one FUEL expense (paid and company amount equal to the paid total); a fueling never commits without it.
+        The expense.submit owner (EMP-EXP-002) stores one DIRECT expense of an asset (v1 categories TOLL, PARKING,
+        MAINTENANCE, LEASE, INSURANCE, FINE, OTHER; exact centavos with company_amount <= paid_total) with its ACK at
+        entity revision 1, scoped by the asset's unit and cost centre at its instant. FUEL, wrong shapes and draft assets
+        are MALFORMED; an unknown or foreign asset NOT_FOUND; no exp.expense.record coverage FORBIDDEN; a configured
+        category of the later catalogue, trip_id, attachments, changed rights and post-disposal expenses stay
+        RETRY/UNAVAILABLE with nothing stored.
         The trip.start and trip.finish owners (EMP-TRIP-002) commit one trip or its one completion with the embedded
         TRIP_START/TRIP_END reading and the ACK; at most one trip per asset is in progress. A later start on a busy,
         unavailable or changed-right asset and a finish of an already completed trip are kept as ACCEPTED_FOR_REVIEW
@@ -15130,6 +15137,17 @@ paths:
           entity_type: fueling
           payload:
             $ref: '#/components/schemas/EnterpriseFuelingSubmitPayload'
+          terminal_results:
+          - ACCEPTED
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+        expense.submit:
+          schema: 1
+          entity_type: expense
+          payload:
+            $ref: '#/components/schemas/EnterpriseExpenseSubmitPayload'
           terminal_results:
           - ACCEPTED
           - REJECTED
@@ -25759,6 +25777,54 @@ components:
         snapshot at the declared instant and the stored warnings; the paid total is never recomputed and ARITHMETIC_MISMATCH
         or PRODUCT_NOT_ACCEPTED never refuse the fact. Only a NOT_FOUND typed place is stored; other place kinds, non-null
         trip_id/contracted_supplier_id and nonempty attachments/depends_on/soft_references stay unavailable until their owners exist.
+    EnterpriseExpenseSubmitPayload:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        category:
+          type: string
+          description: Key profile ^[A-Z][A-Z0-9_]{0,63}$. The v1 direct categories are accepted; FUEL (a fueling) is
+            refused and another code of the profile waits for the configured catalogue (EMP-EXP-003).
+          pattern: ^[A-Z][A-Z0-9_]{0,63}$
+        paid_total:
+          type: string
+          description: Centavos as paid; never recomputed.
+          pattern: ^(0|[1-9][0-9]{0,11}|1000000000000)$
+        company_amount:
+          type: string
+          description: Centavos the organization bears, at most paid_total.
+          pattern: ^(0|[1-9][0-9]{0,11}|1000000000000)$
+        payer:
+          type: string
+          enum:
+          - COMPANY
+          - EMPLOYEE
+        trip_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+      required:
+      - asset_id
+      - category
+      - paid_total
+      - company_amount
+      - payer
+      - trip_id
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        category: TOLL
+        paid_total: '1250'
+        company_amount: '1250'
+        payer: EMPLOYEE
+        trip_id: null
+      description: Owner schema1 for expense.submit (EMP-EXP-002). Expense identity is envelope entity.type=expense/entity.id;
+        expected_revision is null. The competence belongs only to envelope occurred_at/entry_zone/device_offset_seconds.
+        Server fixes origin DIRECT, author, enrollment, receipt, review state SUBMITTED, the asset's unit/cost-centre
+        snapshot at the competence instant and the reporting day in that unit's zone (else the organization's). Non-null
+        trip_id and nonempty attachments/depends_on/soft_references stay unavailable until their owners exist.
     EnterpriseMeterInstallRequest:
       type: object
       additionalProperties: false

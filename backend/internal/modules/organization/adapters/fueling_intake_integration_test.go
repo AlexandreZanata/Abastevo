@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	expensepg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/expense/adapters"
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	fa "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
@@ -25,17 +26,20 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
 	orgtime "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgtime/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/jackc/pgx/v5"
 )
 
 // fuelingState is the SELF intake fixture (ACTIVE implement with a meter, the
 // FLEET-006 assignment source and the ADMIN/ORG device member) plus an ACTIVE
-// DIESEL_S10 vehicle with its own meter and the real fueling.submit owner.
+// DIESEL_S10 vehicle with its own meter and the real fueling.submit owner
+// with its real expense projection (EMP-EXP-002).
 type fuelingState struct {
 	selfIntakeState
 	authority *orgpg.FuelingAuthority
 	store     *fuelpg.Store
+	expenses  *expensepg.Store
 	fueling   syncapp.Handler
 	fuelings  *syncpg.Store
 	vehicle   fa.MeterInstallResult
@@ -48,6 +52,22 @@ func fuelingGrants(t *testing.T, fx legalFixtureState) {
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_fuelings,org_fueling_warnings,org_fueling_review_entries TO "+role+";GRANT SELECT ON org_employee_identities,org_asset_unit_periods,org_asset_cost_centre_periods,org_asset_tank_products,org_meters,org_meter_readings TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	expenseGrants(t, fx)
+}
+
+// expenseGrants provisions the signed intake principal for EMP-EXP-002 once
+// migration 000244 is installed: every accepted fueling inserts its expense.
+func expenseGrants(t *testing.T, fx legalFixtureState) {
+	t.Helper()
+	var installed bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_expenses') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_expenses TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 func fuelingIntakeConfig(fx syncFixtureState) syncpg.Config {
@@ -58,7 +78,15 @@ func fuelingIntakeConfig(fx syncFixtureState) syncpg.Config {
 
 func fuelingFixture(t *testing.T) fuelingState {
 	t.Helper()
-	x := fuelingState{selfIntakeState: selfIntakeFixture(t)}
+	return fuelingFixtureOn(t, selfIntakeFixture(t), nil)
+}
+
+// fuelingFixtureOn builds the fueling fixture on a SELF intake fixture. A nil
+// costs port composes the real expense projection, as the runtime does; an
+// earlier migration image (before 000244) supplies its own.
+func fuelingFixtureOn(t *testing.T, base selfIntakeState, costs fuelapp.CostProjection) fuelingState {
+	t.Helper()
+	x := fuelingState{selfIntakeState: base}
 	fuelingGrants(t, x.legalFixtureState)
 	meterAuthority, ok := x.meters.Authority.(*orgpg.MeterAuthority)
 	if !ok {
@@ -66,7 +94,11 @@ func fuelingFixture(t *testing.T) fuelingState {
 	}
 	x.authority = (*orgpg.FuelingAuthority)(meterAuthority)
 	x.store = &fuelpg.Store{Allocations: x.assets}
-	handler, err := fuelpg.NewIntakeHandler(x.authority, x.meters, x.store)
+	x.expenses = &expensepg.Store{Allocations: x.assets, NewID: jobs.NewUUIDv4}
+	if costs == nil {
+		costs = x.expenses
+	}
+	handler, err := fuelpg.NewIntakeHandler(x.authority, x.meters, x.store, costs)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,11 +160,22 @@ func (x fuelingState) process(t *testing.T, d syncFixtureState, op protocol.Oper
 	return x.fuelings.Process(t.Context(), d.source, op, protocol.DefaultLimits(), x.fueling)
 }
 
-type fuelingCounts struct{ fuelings, readings, warnings, entries, effects, claims, receipts, audits int }
+type fuelingCounts struct{ fuelings, readings, warnings, entries, effects, claims, receipts, audits, expenses int }
 
+// count includes the operation's expenses once migration 000244 exists
+// (EMP-EXP-002: an accepted fueling has exactly one).
 func (x fuelingState) count(t *testing.T, op protocol.Operation) fuelingCounts {
 	t.Helper()
 	var c fuelingCounts
+	var installed bool
+	if err := x.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_expenses') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if err := x.f.Admin.QueryRow(t.Context(), `SELECT count(*) FROM org_expenses WHERE org_id=$1 AND operation_id=$2`, x.scope.OrgID().String(), op.ID()).Scan(&c.expenses); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if err := x.f.Admin.QueryRow(t.Context(), `SELECT(SELECT count(*) FROM org_fuelings WHERE org_id=$1 AND operation_id=$2),(SELECT count(*) FROM org_meter_readings WHERE org_id=$1 AND operation_id=$2),
 (SELECT count(*) FROM org_fueling_warnings w JOIN org_fuelings f ON(f.org_id,f.id)=(w.org_id,w.fueling_id) WHERE f.org_id=$1 AND f.operation_id=$2),
 (SELECT count(*) FROM org_fueling_review_entries WHERE org_id=$1 AND operation_id=$2),(SELECT count(*) FROM org_sync_effects WHERE org_id=$1 AND operation_id=$2),
@@ -148,7 +191,7 @@ func (x fuelingState) accepted(t *testing.T, op protocol.Operation, ack protocol
 	if err != nil || ack.Result() != protocol.Accepted || ack.Snapshot().EntityRevision == nil || *ack.Snapshot().EntityRevision != 1 || len(ack.Warnings()) != 0 {
 		t.Fatal("legitimate fueling was not accepted", err, ack.Result(), ack.Code())
 	}
-	if c := x.count(t, op); c != (fuelingCounts{fuelings: 1, readings: readings, warnings: warnings, entries: 1, effects: 1, claims: 1, receipts: 1, audits: 1}) {
+	if c := x.count(t, op); c != (fuelingCounts{fuelings: 1, readings: readings, warnings: warnings, entries: 1, effects: 1, claims: 1, receipts: 1, audits: 1, expenses: 1}) {
 		t.Fatalf("accepted fueling not stored exactly once: %+v", c)
 	}
 }
@@ -522,11 +565,11 @@ func TestFuelingIntakeRollsBackTheReadingAndTheFuelingTogether(t *testing.T) {
 	x := fuelingFixture(t)
 	d := x.syncFixtureState
 	op := x.op(t, d, x.declaredNow(t), nil)
-	failingStore, err := fuelpg.NewIntakeHandler(x.authority, x.meters, fuelingFailingStore{x.store})
+	failingStore, err := fuelpg.NewIntakeHandler(x.authority, x.meters, fuelingFailingStore{x.store}, x.expenses)
 	if err != nil {
 		t.Fatal(err)
 	}
-	failingReadings, err := fuelpg.NewIntakeHandler(x.authority, fuelingFailingReadings{x.meters}, x.store)
+	failingReadings, err := fuelpg.NewIntakeHandler(x.authority, fuelingFailingReadings{x.meters}, x.store, x.expenses)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -568,7 +611,9 @@ func TestFuelingSchemaIsForcedRLSAndInsertOnly(t *testing.T) {
 		t.Fatal("fueling visible to another organization", visible, err)
 	}
 	role := pgx.Identifier{x.f.RuntimeRole}.Sanitize()
-	if _, err := x.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_fuelings,org_fueling_warnings,org_fueling_review_entries TO "+role); err != nil {
+	// EMP-EXP-002: TRUNCATE ... CASCADE also reaches org_expenses, which keeps
+	// its own insert-only guard; grant it too so only the guards can refuse.
+	if _, err := x.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_fuelings,org_fueling_warnings,org_fueling_review_entries,org_expenses TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	for _, statement := range []string{`UPDATE org_fuelings SET paid_centavos=97350`, `DELETE FROM org_fuelings`, `TRUNCATE org_fuelings CASCADE`, `UPDATE org_fueling_review_entries SET state='SUBMITTED'`, `DELETE FROM org_fueling_warnings`, `TRUNCATE org_fueling_review_entries`} {
@@ -585,8 +630,9 @@ func TestFuelingSchemaIsForcedRLSAndInsertOnly(t *testing.T) {
 }
 
 // The default enterprise runtime registers the real fueling.submit owner: a
-// signed TLS request records the fueling with its reading and warnings, and
-// a resend returns the same canonical ACK (EDR-175).
+// signed TLS request records the fueling with its reading, warnings and its
+// one expense (EMP-EXP-002), and a resend returns the same canonical ACK
+// (EDR-175).
 func TestFuelingIntakeDefaultRuntimeSignedTLSAcceptsAndReplays(t *testing.T) {
 	fx := meterIntakeHTTP(t)
 	fuelingGrants(t, fx.legalFixtureState)
@@ -629,7 +675,8 @@ func TestFuelingIntakeDefaultRuntimeSignedTLSAcceptsAndReplays(t *testing.T) {
 	var exact bool
 	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT count(*)=1 AND bool_and(f.paid_centavos=97000 AND f.unit_id=$3
  AND(SELECT array_agg(code ORDER BY code) FROM org_fueling_warnings w WHERE w.org_id=f.org_id AND w.fueling_id=f.id)=ARRAY['ARITHMETIC_MISMATCH','PRODUCT_NOT_ACCEPTED']
- AND EXISTS(SELECT 1 FROM org_meter_readings r WHERE r.org_id=f.org_id AND r.id=f.reading_id AND r.origin='FUELING' AND r.value=42))
+ AND EXISTS(SELECT 1 FROM org_meter_readings r WHERE r.org_id=f.org_id AND r.id=f.reading_id AND r.origin='FUELING' AND r.value=42)
+ AND(SELECT count(*) FROM org_expenses x WHERE x.org_id=f.org_id AND x.fueling_id=f.id AND x.origin_kind='FUELING' AND x.category='FUEL' AND x.paid_centavos=97000 AND x.company_centavos=97000)=1)
  FROM org_fuelings f WHERE f.org_id=$1 AND f.operation_id=$2`, fx.scope.OrgID().String(), op.ID(), unit).Scan(&exact); err != nil || !exact {
 		t.Fatal("default runtime fueling not stored exactly once", err)
 	}

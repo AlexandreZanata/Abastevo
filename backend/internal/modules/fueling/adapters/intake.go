@@ -22,6 +22,7 @@ type intakeHandler struct {
 	authority app.Authority
 	readings  app.Readings
 	store     app.Store
+	costs     app.CostProjection
 }
 
 func absent(value any) bool {
@@ -36,12 +37,13 @@ func absent(value any) bool {
 	return false
 }
 
-// NewIntakeHandler composes the fueling.submit owner from real ports only.
-func NewIntakeHandler(authority app.Authority, readings app.Readings, store app.Store) (syncapp.Handler, error) {
-	if absent(authority) || absent(readings) || absent(store) {
+// NewIntakeHandler composes the fueling.submit owner from real ports only;
+// the expense projection is mandatory (EMP-EXP-002, EDR-287).
+func NewIntakeHandler(authority app.Authority, readings app.Readings, store app.Store, costs app.CostProjection) (syncapp.Handler, error) {
+	if absent(authority) || absent(readings) || absent(store) || absent(costs) {
 		return nil, syncapp.ErrUnavailable
 	}
-	return &intakeHandler{authority: authority, readings: readings, store: store}, nil
+	return &intakeHandler{authority: authority, readings: readings, store: store, costs: costs}, nil
 }
 
 // Descriptor declares no ACCEPTED_FOR_REVIEW: held fuelings stay retained
@@ -78,7 +80,7 @@ func denied(err error) error {
 
 // request binds the operation to its exact signed source, then parses it.
 func (h *intakeHandler) request(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, mode syncapp.Mode) (app.Command, error) {
-	if h == nil || absent(h.authority) || absent(h.readings) || absent(h.store) || ctx == nil || syncapp.Borrow(db) == nil || (mode != syncapp.Write && mode != syncapp.ReadReceipt) {
+	if h == nil || absent(h.authority) || absent(h.readings) || absent(h.store) || absent(h.costs) || ctx == nil || syncapp.Borrow(db) == nil || (mode != syncapp.Write && mode != syncapp.ReadReceipt) {
 		return app.Command{}, syncapp.ErrUnavailable
 	}
 	if err := ctx.Err(); err != nil {
@@ -191,7 +193,8 @@ func malformed() syncapp.Outcome {
 	return syncapp.Outcome{Result: protocol.Rejected, Code: "MALFORMED"}
 }
 
-// Apply stores one fueling with its reading evidence (B-BR-EMP-263..265).
+// Apply stores one fueling with its reading evidence (B-BR-EMP-263..265)
+// and its one expense (B-BR-EMP-445).
 // Order: authority and reading target, then the root and asset locks, then
 // final MALFORMED checks, then holds (no fact, unavailable), then writes.
 func (h *intakeHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation) (syncapp.Outcome, error) {
@@ -260,6 +263,11 @@ func (h *intakeHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 		}
 	}
 	if err := h.store.InsertFuelingTx(ctx, syncapp.Borrow(db), scope, source, command, prepared, arithmetic); err != nil {
+		return syncapp.Outcome{}, syncapp.ErrUnavailable
+	}
+	// EMP-EXP-002 (B-BR-EMP-445): the one cost of this fueling, projected
+	// from the stored fact in the same transaction.
+	if err := h.costs.ProjectFuelingTx(ctx, syncapp.Borrow(db), scope, v.FuelingID, 1); err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	if disposition, err := h.classify(ctx, db, source, v); err != nil || disposition != app.Apply {
