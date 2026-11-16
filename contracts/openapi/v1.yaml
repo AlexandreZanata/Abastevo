@@ -20256,6 +20256,199 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/{trip_id}/handover:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripHandover
+      summary: Hand an open trip over to another member
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        capability and trip.trip.close_for_other covering the trip (ORG, or UNIT/COST_CENTRE/TEAM/ASSET through the
+        trip's stored asset, start unit and cost centre and the teams of its author or driver at the start receipt).
+        Moves the responsibility for an open (IN_PROGRESS or PAUSED) trip at its current operational revision to the
+        receiving membership with a reason (1..280 scalars, no control character); the instant is the server's and the
+        body has no time field (an unknown key is MALFORMED). The receiver must be another ACTIVE membership whose
+        employee record is ACTIVE and not merged, holding trip.trip.start for the trip as its own record and assigned
+        to the trip's asset at the handover instant; otherwise (unknown, foreign, ended, suspended, unassigned, already
+        responsible) VALIDATION_FAILED. The trip keeps its state at the next revision; later lifecycle commands,
+        finish and submission come from the receiver, logbook events from the member responsible at their declared
+        instant, and every earlier fact keeps its actor. A recorder who is the current responsible member or the
+        receiver is SELF_APPROVAL; a stale revision or a trip already finished, cancelled or closed is CONFLICT; an
+        unknown or another organization's trip NOT_FOUND. Every party of a handover never decides the trip's review.
+        Same operation and digest returns the first result with replayed=true and no second audit event; another
+        digest is OPERATION_ID_REUSED (EMP-TRIP-012, B-BR-EMP-394..397).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.close_for_other
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripHandoverRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009101
+              revision: 1
+              receiver_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+              reason: Troca de turno
+      responses:
+        '200':
+          description: Private audited handover or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripHandoverResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/handovers/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripHandoverList
+      summary: List the organization's trip handovers
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.close_for_other permission on the whole
+        organization (an ORG grant; structural supervisors hand each trip over through its path). Returns the recorded
+        handovers in recording order with only trip, asset, revision, instant, giving, receiving and recording
+        memberships and the reason; keyset cursor bound to the caller and the limit. No reading, coordinate or event
+        (EMP-TRIP-012, B-BR-EMP-398).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.close_for_other
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripOpenListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current page of handovers.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripHandoverPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/mine/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripMineList
+      summary: List the open trips the requesting member is responsible for
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.start permission over the requesting
+        membership itself (its own record). Returns the open (IN_PROGRESS or PAUSED) trips whose current responsible
+        member is the requesting member (the receiver of the latest handover, else the starter), by trip identity, with
+        only trip, asset, operational state, revision, start instant, start reporting day and, when it was handed over
+        to the member, that handover; keyset cursor bound to the caller and the limit (EMP-TRIP-012, B-BR-EMP-398).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.start
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripOpenListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current page of the member's own open trips.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripOwnPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/missions/create:
     post:
       tags:
@@ -24177,6 +24370,235 @@ components:
           kind: null
           distance: null
         replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseTripHandoverRequest:
+      type: object
+      additionalProperties: false
+      description: The operational revision the recorder saw (the open trip's current revision), the receiving
+        membership and why the trip is handed over. There is no time field; the instant is the server's.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        receiver_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - receiver_membership_id
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009101
+        revision: 1
+        receiver_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+        reason: Troca de turno
+    EnterpriseTripHandover:
+      type: object
+      additionalProperties: false
+      description: One recorded handover of a trip; earlier facts keep their actors.
+      properties:
+        revision:
+          description: The trip revision the handover created.
+          type: integer
+          minimum: 2
+        handed_over_at:
+          type: string
+          format: date-time
+        from_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        to_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        recorder_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+      required:
+      - revision
+      - handed_over_at
+      - from_membership_id
+      - to_membership_id
+      - recorder_membership_id
+      - reason
+      example:
+        revision: 2
+        handed_over_at: '2026-11-15T13:00:00.123456Z'
+        from_membership_id: 7b0e2a54-0000-4000-8000-000000009301
+        to_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+        recorder_membership_id: 7b0e2a54-0000-4000-8000-000000009303
+        reason: Troca de turno
+    EnterpriseTripHandoverResult:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operational_state:
+          description: A handover keeps the open trip's state.
+          type: string
+          enum:
+          - IN_PROGRESS
+          - PAUSED
+        revision:
+          description: The trip's operational revision after the handover (the named revision plus one).
+          type: integer
+          minimum: 2
+        handover:
+          $ref: '#/components/schemas/EnterpriseTripHandover'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - trip_id
+      - operational_state
+      - revision
+      - handover
+      - replayed
+      - data_mode
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000009001
+        operational_state: IN_PROGRESS
+        revision: 2
+        handover:
+          revision: 2
+          handed_over_at: '2026-11-15T13:00:00.123456Z'
+          from_membership_id: 7b0e2a54-0000-4000-8000-000000009301
+          to_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+          recorder_membership_id: 7b0e2a54-0000-4000-8000-000000009303
+          reason: Troca de turno
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseTripHandoverItem:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        handover:
+          $ref: '#/components/schemas/EnterpriseTripHandover'
+      required:
+      - trip_id
+      - asset_id
+      - handover
+    EnterpriseTripHandoverPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseTripHandoverItem'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - trip_id: 7b0e2a54-0000-4000-8000-000000009001
+          asset_id: 7b0e2a54-0000-4000-8000-000000009201
+          handover:
+            revision: 2
+            handed_over_at: '2026-11-15T13:00:00.123456Z'
+            from_membership_id: 7b0e2a54-0000-4000-8000-000000009301
+            to_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+            recorder_membership_id: 7b0e2a54-0000-4000-8000-000000009303
+            reason: Troca de turno
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseTripOwnItem:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operational_state:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - PAUSED
+        revision:
+          description: The trip's operational revision, named by the member's next lifecycle command.
+          type: integer
+          minimum: 1
+        started_at:
+          type: string
+          format: date-time
+        reporting_day:
+          type: string
+          format: date
+        handover:
+          description: The latest handover when it handed the trip to the requesting member; null for its own start.
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripHandover'
+          - type: 'null'
+      required:
+      - trip_id
+      - asset_id
+      - operational_state
+      - revision
+      - started_at
+      - reporting_day
+      - handover
+    EnterpriseTripOwnPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseTripOwnItem'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - trip_id: 7b0e2a54-0000-4000-8000-000000009001
+          asset_id: 7b0e2a54-0000-4000-8000-000000009201
+          operational_state: IN_PROGRESS
+          revision: 2
+          started_at: '2026-11-15T08:00:00Z'
+          reporting_day: '2026-11-15'
+          handover:
+            revision: 2
+            handed_over_at: '2026-11-15T13:00:00.123456Z'
+            from_membership_id: 7b0e2a54-0000-4000-8000-000000009301
+            to_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+            recorder_membership_id: 7b0e2a54-0000-4000-8000-000000009303
+            reason: Troca de turno
+        next_cursor: ''
         data_mode: SYNTHETIC
     EnterpriseTripRevisionUsage:
       type: object

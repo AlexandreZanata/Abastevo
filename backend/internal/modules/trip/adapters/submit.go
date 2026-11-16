@@ -72,11 +72,11 @@ func (h *submitHandler) trip(ctx context.Context, db syncapp.DBTX, source syncap
 	if err != nil {
 		return app.Record{}, syncapp.ErrUnavailable
 	}
-	target := app.Target{TripID: record.ID, AssetID: record.AssetID, UnitID: record.UnitID, CostCentreID: record.CostCentreID, AuthorMembershipID: record.AuthorMembershipID}
-	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, target, action(mode)); err != nil {
+	// EMP-TRIP-012: the member currently responsible for the trip submits it.
+	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, tripTarget(record, source, mode, nil), action(mode)); err != nil {
 		return app.Record{}, denied(err)
 	}
-	if mode == syncapp.Write && record.AuthorMembershipID != source.MembershipID {
+	if responsible, _ := record.Responsible(); mode == syncapp.Write && responsible != source.MembershipID {
 		return app.Record{}, syncapp.SourceDenied(orgapi.Forbidden)
 	}
 	return record, nil
@@ -105,7 +105,7 @@ func (h *submitHandler) Admit(ctx context.Context, db syncapp.DBTX, source synca
 	if record.State != trip.Completed && record.State != trip.Cancelled {
 		return syncapp.ErrDependencyPending
 	}
-	_, err = h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+	_, err = h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt)
 	return err
 }
 
@@ -158,7 +158,7 @@ func (h *submitHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	// Changed rights store nothing until their owner exists (EMP-TRIP-007).
-	disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+	disposition, err := h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt)
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
@@ -169,7 +169,8 @@ func (h *submitHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	author := app.Person{MembershipID: record.AuthorMembershipID, Employees: []string{record.AuthorEmployeeID}}
+	responsibleMember, responsibleEmployee := record.Responsible()
+	author := app.Person{MembershipID: responsibleMember, Employees: []string{responsibleEmployee}}
 	submitter := app.Person{MembershipID: source.MembershipID, Employees: []string{employee}}
 	entry, err := app.SubmitEntry(revisions, kind, v.Revision, submitter, author)
 	if errors.Is(err, review.ErrForbidden) {
@@ -178,10 +179,10 @@ func (h *submitHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if err != nil || entry.State != review.Submitted {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if err := h.reviews.InsertSubmitTx(ctx, syncapp.Borrow(db), source.Scope, source, command, entry, int64(len(entries)+1), record.AuthorEmployeeID); err != nil {
+	if err := h.reviews.InsertSubmitTx(ctx, syncapp.Borrow(db), source.Scope, source, command, entry, int64(len(entries)+1), responsibleEmployee); err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt); err != nil || disposition != app.Apply {
+	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt); err != nil || disposition != app.Apply {
 		if err == nil {
 			err = syncapp.ErrUnavailable
 		}
@@ -189,6 +190,15 @@ func (h *submitHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	}
 	revision := entry.Revision
 	return syncapp.Outcome{Result: protocol.Accepted, EntityRevision: &revision}, nil
+}
+
+func responsibleMembership(record app.Record) string {
+	member, _ := record.Responsible()
+	return member
+}
+func responsibleEmployee(record app.Record) string {
+	_, employee := record.Responsible()
+	return employee
 }
 
 // storedSubmit proves the stored SUBMIT (first, at the named revision) or
@@ -199,7 +209,7 @@ func storedSubmit(source syncapp.Source, v app.SubmitInput, record app.Record, e
 		if e.OperationID == v.OperationID {
 			shape := e.Kind == review.Submit && e.Sequence == 1 && e.Revision == v.Revision || e.Kind == review.Resubmit && e.Sequence > 1 && e.Revision == v.Revision+1
 			return e.Revision, shape && e.State == review.Submitted && e.Reason == "" &&
-				e.ActorMembershipID == source.MembershipID && e.ActorMembershipID == record.AuthorMembershipID && e.ActorEmployeeID == record.AuthorEmployeeID
+				e.ActorMembershipID == source.MembershipID && e.ActorMembershipID == responsibleMembership(record) && e.ActorEmployeeID == responsibleEmployee(record)
 		}
 	}
 	return 0, false
@@ -224,7 +234,7 @@ func (h *submitHandler) Confirm(ctx context.Context, db syncapp.DBTX, source syn
 		return err
 	}
 	if mode == syncapp.Write && outcome.Result == protocol.Accepted {
-		disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+		disposition, err := h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt)
 		if err != nil {
 			return err
 		}

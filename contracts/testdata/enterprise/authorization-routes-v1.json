@@ -750,8 +750,10 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/trips/open/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/trips/handovers/list",
         "POST /v1/orgs/{org_id}/trips/open/list",
-        "POST /v1/orgs/{org_id}/trips/{trip_id}/close"
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/close",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/handover"
       ],
       "reason": ""
     },
@@ -781,7 +783,8 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/missions/mine/list",
       "routes": [
-        "POST /v1/orgs/{org_id}/missions/mine/list"
+        "POST /v1/orgs/{org_id}/missions/mine/list",
+        "POST /v1/orgs/{org_id}/trips/mine/list"
       ],
       "reason": ""
     }

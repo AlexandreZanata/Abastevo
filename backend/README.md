@@ -1540,6 +1540,28 @@ org_fuelings and ownership of `org_asset_current_usage`,
 accepted before 000244 receive their expense from the per-organization
 catch-up; nothing provisions live grants.
 
+### Trip driver handover (EMP-TRIP-012)
+
+Migration 243 adds forced-RLS, insert-only `org_trip_handovers` (one row per
+handover at the trip's next revision; it moves no trip column), the functions
+`org_trip_responsible` and `org_trip_responsible_member`, the handover source
+and its deferred publication guard (the `trip.trip.handed_over` audit event),
+and redefines, keeping every other line, the 233 transition, held-transition
+and finish sources, the 235 revision, logbook, held-logbook, review-entry and
+closure sources, the 236 held source and offboarding guard, the 229
+held-submission source and the 230 incident report source. Production grants
+(not provisioned here): the company runtime `SELECT, INSERT ON
+org_trip_handovers` with `SELECT ON org_asset_assignments` for the receiver's
+eligibility; every principal that reads a trip, its revision or its
+responsible member (the signed intake, the trip review, closure, conflict,
+incident, tracking and offboarding stores) `SELECT ON org_trip_handovers`. The
+migrator needs `REFERENCES ON org_trips, org_memberships,
+org_employee_identities, org_audit_events` and ownership of the twelve
+replaced functions. `/v1/orgs/{org_id}/trips/{trip_id}/handover` (fresh) and
+`/v1/orgs/{org_id}/trips/handovers/list` use `trip.trip.close_for_other`;
+`/v1/orgs/{org_id}/trips/mine/list` uses `trip.trip.start` on the requesting
+membership. Nothing here provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

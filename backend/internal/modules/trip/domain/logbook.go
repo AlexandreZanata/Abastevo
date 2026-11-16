@@ -117,10 +117,11 @@ func (e LogbookEntry) Declared() orgtime.Declaration { return e.declared }
 
 // Log validates one logbook event against the trip (B-BR-EMP-320/323), first
 // failure first: scope and trip, event identity, author, type (unknown
-// ErrInvalid, reserved ErrUnsupportedEvent), text, declaration, the starting
-// member (ErrForbidden), then time (ErrEventBeforeStart; after the finish of
-// a completed trip or the cancellation of a cancelled one
-// ErrEventAfterFinish). The trip is never changed.
+// ErrInvalid, reserved ErrUnsupportedEvent), text, declaration, the member
+// responsible at the declared instant (ErrForbidden, EMP-TRIP-012), then
+// time (ErrEventBeforeStart; after the finish of a completed trip or the
+// cancellation of a cancelled one ErrEventAfterFinish). The trip is never
+// changed.
 func (t Trip) Log(scope kernel.OrgScope, in LogbookInput) (LogbookEntry, error) {
 	if scope.Validate() != nil {
 		return LogbookEntry{}, ErrScope
@@ -152,7 +153,8 @@ func (t Trip) Log(scope kernel.OrgScope, in LogbookInput) (LogbookEntry, error) 
 	if err != nil {
 		return LogbookEntry{}, ErrInvalid
 	}
-	if in.Author != t.Responsible() {
+	// EMP-TRIP-012: the member responsible at the declared instant.
+	if in.Author != t.ResponsibleAt(declared.OccurredAt) {
 		return LogbookEntry{}, ErrForbidden
 	}
 	if declared.OccurredAt.Before(t.start.declared.OccurredAt) {

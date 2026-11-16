@@ -279,7 +279,7 @@ a closed trip holds the command `TRIP_ALREADY_CLOSED`, a stale revision
 and reports no distance. Pure rules in Go and Kotlin over `trip-v2.psv`.
 
 ### EMP-TRIP-012 — Driver handover during a trip
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Record driver handover without moving historical responsibility.
 - **Rules and use cases:** REQ-07.6, BR-TEN-003, BR-AUD-005, BR-TIME-002
 - **Depends on:** EMP-TRIP-002
@@ -293,6 +293,17 @@ and reports no distance. Pure rules in Go and Kotlin over `trip-v2.psv`.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 driver handover](../evidence/f4-trip012-driver-handover.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. A supervisor holding
+`trip.trip.close_for_other` hands an open trip over at its revision to an
+eligible, assigned member (`/v1/orgs/{org_id}/trips/{trip_id}/handover`);
+lifecycle, finish and submission then come from the receiver, logbook events
+from the member responsible at their declared instant, and every earlier fact
+keeps its actor; every handover party is excluded from the trip's review;
+migration 000243 re-proves the revision, responsibility and separation. The
+receiver lists its trips under `trip.trip.start`; tracking session handover
+and the Android trip book remain retained (EDR-256, EMP-TRIP-021).
 
 ### EMP-TRIP-013 — Vehicle change within a mission
 - **Meta:** module TRIP · phase F4 · cut - · priority P2 · type DOM · size S · state LOCAL_DONE

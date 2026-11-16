@@ -48,6 +48,8 @@ func tripReviewGrants(t *testing.T, f *orgtest.Fixture) {
 		t.Fatal(err)
 	}
 	tripClosureGrant(t, f)
+	// EMP-TRIP-012: submissions and decisions read the handover parties.
+	tripHandoverGrant(t, f)
 }
 
 // tripReviewState is the EMP-TRIP-002 trip fixture with the real
@@ -78,7 +80,8 @@ func tripReviewStoreOf(t *testing.T, fx legalFixtureState) *trippg.ReviewStore {
 		t.Fatal(err)
 	}
 	return &trippg.ReviewStore{Pool: fx.f.Runtime, Authority: &orgpg.TripReviewAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles, Capabilities: fx.flags,
-		Structure: &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: fx.f.Runtime}}, Audit: auditpg.NewStore(fx.f.Runtime, catalog), Periods: reviewpg.PeriodGate{}}
+		Structure: &orgpg.ResourceStructure{Kind: orgpg.TripStructure, Pool: fx.f.Runtime}}, Audit: auditpg.NewStore(fx.f.Runtime, catalog), Periods: reviewpg.PeriodGate{},
+		PreHandoverImage: !handoverImage(t, fx.f)}
 }
 
 func tripReviewFixture(t *testing.T) tripReviewState {

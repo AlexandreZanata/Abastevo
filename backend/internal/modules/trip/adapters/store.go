@@ -33,6 +33,10 @@ type Store struct {
 	// before migration 000233, where no lifecycle row (EMP-TRIP-011) can
 	// exist; every production store reads a trip's lifecycle rows.
 	PreLifecycleImage bool
+	// PreHandoverImage is set only by rehearsals that populate a schema image
+	// before migration 000243, where no handover (EMP-TRIP-012) can exist;
+	// every production store reads a trip's handovers.
+	PreHandoverImage bool
 }
 
 var _ app.Store = (*Store)(nil)
@@ -259,12 +263,33 @@ func (s *Store) ReadTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.Or
 			return app.Record{}, err
 		}
 	}
-	current := trip.InProgress
-	for i, x := range record.Transitions {
-		if x.Revision != int64(i+2) || x.From != current {
+	// EMP-TRIP-012: the handovers, in revision order.
+	if !s.PreHandoverImage {
+		handovers, err := queries.ListTripHandovers(ctx, q.ListTripHandoversParams{OrgID: scope.OrgID().String(), TripID: tripID})
+		if err != nil {
+			return app.Record{}, storeError(err)
+		}
+		if record.Handovers, err = handoverRecords(handovers); err != nil {
+			return app.Record{}, err
+		}
+	}
+	// Lifecycle rows and handovers share one revision sequence from 2; a
+	// handover keeps the state.
+	current, next, handovers := trip.InProgress, int64(2), record.Handovers
+	for _, x := range record.Transitions {
+		for len(handovers) > 0 && handovers[0].Revision == next {
+			handovers, next = handovers[1:], next+1
+		}
+		if x.Revision != next || x.From != current {
 			return app.Record{}, app.ErrUnavailable
 		}
-		current = x.To
+		current, next = x.To, next+1
+	}
+	for _, h := range handovers {
+		if h.Revision != next {
+			return app.Record{}, app.ErrUnavailable
+		}
+		next++
 	}
 	if row.FinishOperationID == "" {
 		// EMP-TRIP-014: a completed trip without a finish was closed by a

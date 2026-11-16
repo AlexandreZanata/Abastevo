@@ -819,6 +819,7 @@ sql:
       - db/migrations/000229_organization_trip_amendments.sql
       - db/migrations/000233_organization_trip_lifecycle.sql
       - db/migrations/000235_organization_trip_closures.sql
+      - db/migrations/000243_organization_trip_handovers.sql
     gen:
       go:
         package: trip

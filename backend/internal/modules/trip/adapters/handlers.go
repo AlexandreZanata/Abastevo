@@ -286,8 +286,8 @@ func (h *finishHandler) trip(ctx context.Context, db syncapp.DBTX, source syncap
 	if err != nil {
 		return app.Record{}, syncapp.ErrUnavailable
 	}
-	target := app.Target{TripID: record.ID, AssetID: record.AssetID, UnitID: record.UnitID, CostCentreID: record.CostCentreID, AuthorMembershipID: record.AuthorMembershipID}
-	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, target, action(mode)); err != nil {
+	// EMP-TRIP-012: the member currently responsible for the trip.
+	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, tripTarget(record, source, mode, nil), action(mode)); err != nil {
 		return app.Record{}, denied(err)
 	}
 	return record, nil
@@ -310,7 +310,7 @@ func (h *finishHandler) Admit(ctx context.Context, db syncapp.DBTX, source synca
 		}
 		return err
 	}
-	_, _, err = h.meterTarget(ctx, db, source, record.AssetID, record.DriverID, v.Event)
+	_, _, err = h.meterTarget(ctx, db, source, record.AssetID, record.Driver(), v.Event)
 	return err
 }
 
@@ -342,7 +342,7 @@ func (h *finishHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
-	disposition, view, err := h.meterTarget(ctx, db, source, record.AssetID, record.DriverID, v.Event)
+	disposition, view, err := h.meterTarget(ctx, db, source, record.AssetID, record.Driver(), v.Event)
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
@@ -379,7 +379,7 @@ func (h *finishHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if err := h.store.InsertFinishTx(ctx, syncapp.Borrow(db), source.Scope, source, command, finished.Crossing().EndDay()); err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt); err != nil || disposition != app.Apply {
+	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt); err != nil || disposition != app.Apply {
 		if err == nil {
 			err = syncapp.ErrUnavailable
 		}
@@ -421,7 +421,7 @@ func (h *finishHandler) Confirm(ctx context.Context, db syncapp.DBTX, source syn
 		return err
 	}
 	if mode == syncapp.Write {
-		disposition, _, err := h.meterTarget(ctx, db, source, record.AssetID, record.DriverID, v.Event)
+		disposition, _, err := h.meterTarget(ctx, db, source, record.AssetID, record.Driver(), v.Event)
 		if err != nil {
 			return err
 		}
