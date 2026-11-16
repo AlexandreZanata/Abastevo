@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-TRIP-020 closing conference; generated from one table by f4-logs/exp004-scripts/gen_closing_strings.py -->
+<resources>
+    <string name="enterprise_trip_closing_title">Contrôle de clôture</string>
+    <string name="enterprise_trip_closing_intro">Avant de marquer le trajet comme prêt, vérifiez ce que cet appareil a enregistré pour lui. Les pleins et les dépenses sont listés par véhicule et horaire du trajet ; rien ici n’est additionné, lié sur le serveur ni approuvé.</string>
+    <string name="enterprise_trip_closing_departure">Relevé de départ</string>
+    <string name="enterprise_trip_closing_final">Relevé d’arrivée</string>
+    <string name="enterprise_trip_closing_fueling">Plein · R$ %1$s</string>
+    <string name="enterprise_trip_closing_expense">Dépense · R$ %1$s</string>
+    <string name="enterprise_trip_closing_record_saved">Enregistré sur cet appareil</string>
+    <string name="enterprise_trip_closing_record_sending">Envoi en cours</string>
+    <string name="enterprise_trip_closing_record_accepted">Accepté par l’entreprise</string>
+    <string name="enterprise_trip_closing_record_needs_review">À examiner</string>
+    <string name="enterprise_trip_closing_record_refused">Non accepté</string>
+    <string name="enterprise_trip_closing_evidence_missing">Justificatif : manquant</string>
+    <string name="enterprise_trip_closing_evidence_pending">Justificatif : en attente (sur l’appareil ou en envoi)</string>
+    <string name="enterprise_trip_closing_evidence_available">Justificatif : conservé par l’entreprise</string>
+    <string name="enterprise_trip_closing_evidence_unreadable">Justificatifs : illisibles sur cet appareil</string>
+    <string name="enterprise_trip_closing_related_unavailable">Les pleins ou les dépenses de cet appareil ne peuvent pas être lus maintenant ; cette liste peut être incomplète.</string>
+    <string name="enterprise_trip_closing_none">Aucun plein ni aucune dépense de ce véhicule pendant le trajet sur cet appareil.</string>
+    <string name="enterprise_trip_closing_no_decision">L’approbation ou le renvoi est décidé par l’entreprise, jamais sur cet appareil.</string>
+    <string name="enterprise_trip_closing_photos">Photos : %1$d</string>
+</resources>

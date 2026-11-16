@@ -17,6 +17,8 @@ import com.anpfuel.domain.enterprise.TimeDeclaration
 import com.anpfuel.domain.enterprise.attachment.AttachmentLocalFailure
 import com.anpfuel.domain.enterprise.attachment.AttachmentTarget
 import com.anpfuel.domain.enterprise.attachment.AttachmentView
+import com.anpfuel.domain.enterprise.expense.ExpenseView
+import com.anpfuel.domain.enterprise.fueling.FuelingView
 import com.anpfuel.domain.enterprise.fleet.EnterpriseAssetChoice
 import com.anpfuel.domain.enterprise.meter.MeterDomainException
 import com.anpfuel.domain.enterprise.meter.MeterEntryForm
@@ -297,6 +299,19 @@ class EnterpriseTripService(
     override fun toString(): String = "EnterpriseTripService(redacted)"
 }
 
+/**
+ * EMP-TRIP-020 (EDR-339): this partition's own fuelings and expenses, read for the closing conference only. They are
+ * grouped with a trip on the device by vehicle and interval; no reference is sent and nothing is added up.
+ */
+class TripRelatedRecords(
+    private val fuelings: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> List<FuelingView>,
+    private val expenses: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> List<ExpenseView>,
+) {
+    suspend fun fuelings(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): List<FuelingView> = fuelings.invoke(account, partition)
+    suspend fun expenses(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): List<ExpenseView> = expenses.invoke(account, partition)
+    override fun toString(): String = "TripRelatedRecords(redacted)"
+}
+
 data class TripViewState(
     val generation: Long = 0,
     val epoch: Long? = null,
@@ -326,8 +341,18 @@ data class TripViewState(
     val attachmentRefusal: AttachmentLocalFailure? = null,
     /** The owning operation of the latest durably saved photo, for one polite announcement. */
     val lastAttached: String? = null,
+    /** EMP-TRIP-020: the conference reads related records; null lists were unreadable (said, never shown as none). */
+    val relatedEnabled: Boolean = false,
+    val fuelings: List<FuelingView>? = null,
+    val expenses: List<ExpenseView>? = null,
 ) {
     val openTrip: TripView? get() = openTripId?.let { id -> trips.firstOrNull { it.trip.tripId == id } }
+    /** The device-local closing conference of one listed trip (B-BR-EMP-522..526); null when it is not listed or not enabled. */
+    fun closing(tripId: String): TripClosing? {
+        if (!relatedEnabled) return null
+        val view = trips.firstOrNull { it.trip.tripId == tripId } ?: return null
+        return TripClosings.of(view, attachments.takeUnless { attachmentsUnavailable }, fuelings, expenses)
+    }
     override fun toString(): String = "TripViewState(redacted)"
 }
 
@@ -338,6 +363,8 @@ class TripFlow(
     private val fence: EnterpriseSessionFence,
     /** EMP-DOC-004 photos of trip readings; absent when the attachment queue is not composed. */
     private val receipts: EnterpriseReceipts? = null,
+    /** EMP-TRIP-020 closing conference sources; absent when the trip screen composes no conference. */
+    private val related: TripRelatedRecords? = null,
     private val deliver: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> Unit,
 ) {
     private val mutable = MutableStateFlow(TripViewState())
@@ -402,13 +429,21 @@ class TripFlow(
             catch (denied: EnterpriseLocalDenied) { throw denied }
             catch (_: Exception) { null }
         }
+        // EMP-TRIP-020: the same partition's own fuelings and expenses; an unreadable list is kept as unknown (null).
+        suspend fun <T> readable(read: suspend () -> List<T>): List<T>? = try { read() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (denied: EnterpriseLocalDenied) { throw denied }
+            catch (_: Exception) { null }
+        val fuelings = related?.let { r -> readable { r.fuelings(account(request), request.context.partition) } }
+        val expenses = related?.let { r -> readable { r.expenses(account(request), request.context.partition) } }
         if (!retained(request)) { invalidateIfStale(); return }
         synchronized(monitor) {
             if (owner !== request || !viewCurrent(request)) return
             val open = mutable.value.openTripId?.takeIf { id -> trips.any { it.trip.tripId == id } }
             mutable.value = mutable.value.copy(busy = false, loaded = true, trips = trips, openTripId = open, lastSaved = saved,
                 sendFailed = sendFailed, error = null, unlockRequired = false, unrecoverable = false,
-                attachments = photos ?: emptyMap(), attachmentsUnavailable = receipts?.enabled == true && photos == null, lastAttached = attached)
+                attachments = photos ?: emptyMap(), attachmentsUnavailable = receipts?.enabled == true && photos == null, lastAttached = attached,
+                relatedEnabled = related != null, fuelings = fuelings, expenses = expenses)
         }
     }
 

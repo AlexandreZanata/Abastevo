@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-EXP-004 SCR-EXP-01; generated from one table by f4-logs/exp004-scripts/gen_expense_strings.py -->
+<resources>
+    <string name="enterprise_expenses_title">Gastos</string>
+    <string name="enterprise_expenses_home_copy">Registra un peaje, estacionamiento u otro gasto del vehículo con su comprobante, incluso sin conexión.</string>
+    <string name="enterprise_expenses_open_list">Abrir gastos</string>
+    <string name="enterprise_expenses_back_home">Volver a la empresa</string>
+    <string name="enterprise_expenses_back_list">Volver a los gastos</string>
+    <string name="enterprise_expenses_synthetic_notice">Fase de prueba: solo datos e imágenes sintéticos.</string>
+    <string name="enterprise_expenses_new">Registrar gasto</string>
+    <string name="enterprise_expenses_empty">Aún no hay gastos de esta empresa en este dispositivo.</string>
+    <string name="enterprise_expenses_loading">Leyendo los gastos guardados en este dispositivo…</string>
+    <string name="enterprise_expenses_unavailable">No se pueden leer ahora los gastos de este dispositivo. Los registros guardados se conservan.</string>
+    <string name="enterprise_expenses_retry">Reintentar</string>
+    <string name="enterprise_expenses_open">Abrir gasto</string>
+    <string name="enterprise_expenses_form_title">Nuevo gasto</string>
+    <string name="enterprise_expenses_asset_chosen">Activo: %1$s</string>
+    <string name="enterprise_expenses_change_asset">Cambiar activo</string>
+    <string name="enterprise_expenses_category">Tipo de gasto</string>
+    <string name="enterprise_expenses_category_toll">Peaje</string>
+    <string name="enterprise_expenses_category_parking">Estacionamiento</string>
+    <string name="enterprise_expenses_category_maintenance">Mantenimiento</string>
+    <string name="enterprise_expenses_category_lease">Arrendamiento</string>
+    <string name="enterprise_expenses_category_insurance">Seguro</string>
+    <string name="enterprise_expenses_category_fine">Multa</string>
+    <string name="enterprise_expenses_category_other">Otro</string>
+    <string name="enterprise_expenses_paid">Total pagado (R$)</string>
+    <string name="enterprise_expenses_company">Importe para la empresa (R$)</string>
+    <string name="enterprise_expenses_company_hint">Hasta el total pagado.</string>
+    <string name="enterprise_expenses_payer">Quién pagó</string>
+    <string name="enterprise_expenses_payer_company">La empresa</string>
+    <string name="enterprise_expenses_payer_employee">Pagué yo</string>
+    <string name="enterprise_expenses_receipt_optional">Comprobante (opcional)</string>
+    <string name="enterprise_expenses_receipt_title">Comprobante del gasto</string>
+    <string name="enterprise_expenses_add_receipt">Agregar comprobante</string>
+    <string name="enterprise_expenses_save">Guardar gasto</string>
+    <string name="enterprise_expenses_cancel">Cancelar</string>
+    <string name="enterprise_expenses_saved">Gasto guardado en el dispositivo.</string>
+    <string name="enterprise_expenses_saved_with_receipt">Gasto guardado en el dispositivo con su comprobante.</string>
+    <string name="enterprise_expenses_saved_receipt_not_saved">Gasto guardado en el dispositivo; su comprobante no se guardó. Vuelve a intentar el comprobante.</string>
+    <string name="enterprise_expenses_save_failed">No se guardó nada. Vuelve a intentarlo.</string>
+    <string name="enterprise_expenses_capture_invalid">Revisa los valores: reales con hasta dos decimales y sin separador de miles, y el importe de la empresa no puede superar el total pagado. No se guardó nada.</string>
+    <string name="enterprise_expenses_send_now">Enviar ahora</string>
+    <string name="enterprise_expenses_send_offline">Sin conexión. Los registros quedan en este dispositivo y se envían cuando vuelva la conexión.</string>
+    <string name="enterprise_expenses_send_failed">El envío no terminó. Los registros siguen guardados en este dispositivo.</string>
+    <string name="enterprise_expenses_record_status">Envío: %1$s</string>
+    <string name="enterprise_expenses_reason">Motivo: %1$s</string>
+    <string name="enterprise_expenses_review_not_sent">Revisión: aún no enviado</string>
+    <string name="enterprise_expenses_review_awaiting">Revisión: pendiente de aprobación</string>
+    <string name="enterprise_expenses_review_needs">Revisión: requiere revisión</string>
+    <string name="enterprise_expenses_review_refused">Revisión: no aceptado</string>
+    <string name="enterprise_expenses_amounts">Pagado R$ %1$s · empresa R$ %2$s</string>
+    <string name="enterprise_expenses_paid_value">Total pagado: R$ %1$s</string>
+    <string name="enterprise_expenses_company_value">Importe para la empresa: R$ %1$s</string>
+    <string name="enterprise_expenses_decided_by_company">Solo la empresa aprueba o devuelve un gasto; este dispositivo nunca lo hace.</string>
+</resources>

@@ -482,7 +482,7 @@ reason (`CHECKLIST_REQUIRED`, `CHECKLIST_BLOCKING`, `CHECKLIST_EXPIRED`,
 counting return run and is never held for it. Migration 000255; no route.
 
 ### EMP-TRIP-020 — Trip closing conference: expenses and documents before submission
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Review trip-related expenses and documents before submission.
 - **Rules and use cases:** REQ-07.2, REQ-07.3, BR-PRIV-004, BR-REV-002, BR-TRUTH-001
 - **Depends on:** EMP-TRIP-005, EMP-FUEL-011, EMP-EXP-004

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-TRIP-020 closing conference; generated from one table by f4-logs/exp004-scripts/gen_closing_strings.py -->
+<resources>
+    <string name="enterprise_trip_closing_title">Revisión de cierre</string>
+    <string name="enterprise_trip_closing_intro">Antes de marcar el viaje como listo, revisa lo que este dispositivo registró para él. Las cargas de combustible y los gastos se listan por el vehículo y el horario del viaje; nada aquí se suma, se vincula en el servidor ni se aprueba.</string>
+    <string name="enterprise_trip_closing_departure">Lectura de salida</string>
+    <string name="enterprise_trip_closing_final">Lectura de llegada</string>
+    <string name="enterprise_trip_closing_fueling">Carga de combustible · R$ %1$s</string>
+    <string name="enterprise_trip_closing_expense">Gasto · R$ %1$s</string>
+    <string name="enterprise_trip_closing_record_saved">Guardado en este dispositivo</string>
+    <string name="enterprise_trip_closing_record_sending">Enviando</string>
+    <string name="enterprise_trip_closing_record_accepted">Aceptado por la empresa</string>
+    <string name="enterprise_trip_closing_record_needs_review">Requiere revisión</string>
+    <string name="enterprise_trip_closing_record_refused">No aceptado</string>
+    <string name="enterprise_trip_closing_evidence_missing">Comprobante: falta</string>
+    <string name="enterprise_trip_closing_evidence_pending">Comprobante: pendiente (en el dispositivo o enviando)</string>
+    <string name="enterprise_trip_closing_evidence_available">Comprobante: guardado por la empresa</string>
+    <string name="enterprise_trip_closing_evidence_unreadable">Comprobantes: no se pueden leer en este dispositivo</string>
+    <string name="enterprise_trip_closing_related_unavailable">No se pueden leer ahora las cargas o los gastos de este dispositivo; esta lista puede estar incompleta.</string>
+    <string name="enterprise_trip_closing_none">Ninguna carga ni gasto de este vehículo durante el viaje en este dispositivo.</string>
+    <string name="enterprise_trip_closing_no_decision">La aprobación o la devolución la decide la empresa, nunca este dispositivo.</string>
+    <string name="enterprise_trip_closing_photos">Fotos: %1$d</string>
+</resources>

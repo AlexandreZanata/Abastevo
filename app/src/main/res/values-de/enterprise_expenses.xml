@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-EXP-004 SCR-EXP-01; generated from one table by f4-logs/exp004-scripts/gen_expense_strings.py -->
+<resources>
+    <string name="enterprise_expenses_title">Ausgaben</string>
+    <string name="enterprise_expenses_home_copy">Erfasse Maut, Parken oder andere Fahrzeugkosten mit Beleg, auch ohne Verbindung.</string>
+    <string name="enterprise_expenses_open_list">Ausgaben öffnen</string>
+    <string name="enterprise_expenses_back_home">Zurück zum Unternehmen</string>
+    <string name="enterprise_expenses_back_list">Zurück zu den Ausgaben</string>
+    <string name="enterprise_expenses_synthetic_notice">Testphase: nur synthetische Daten und Bilder.</string>
+    <string name="enterprise_expenses_new">Ausgabe erfassen</string>
+    <string name="enterprise_expenses_empty">Auf diesem Gerät gibt es noch keine Ausgabe dieses Unternehmens.</string>
+    <string name="enterprise_expenses_loading">Die auf diesem Gerät gespeicherten Ausgaben werden gelesen…</string>
+    <string name="enterprise_expenses_unavailable">Die Ausgaben auf diesem Gerät können gerade nicht gelesen werden. Gespeicherte Einträge bleiben erhalten.</string>
+    <string name="enterprise_expenses_retry">Erneut versuchen</string>
+    <string name="enterprise_expenses_open">Ausgabe öffnen</string>
+    <string name="enterprise_expenses_form_title">Neue Ausgabe</string>
+    <string name="enterprise_expenses_asset_chosen">Fahrzeug: %1$s</string>
+    <string name="enterprise_expenses_change_asset">Fahrzeug wechseln</string>
+    <string name="enterprise_expenses_category">Art der Ausgabe</string>
+    <string name="enterprise_expenses_category_toll">Maut</string>
+    <string name="enterprise_expenses_category_parking">Parken</string>
+    <string name="enterprise_expenses_category_maintenance">Wartung</string>
+    <string name="enterprise_expenses_category_lease">Leasing</string>
+    <string name="enterprise_expenses_category_insurance">Versicherung</string>
+    <string name="enterprise_expenses_category_fine">Bußgeld</string>
+    <string name="enterprise_expenses_category_other">Sonstiges</string>
+    <string name="enterprise_expenses_paid">Bezahlter Betrag (R$)</string>
+    <string name="enterprise_expenses_company">Betrag für das Unternehmen (R$)</string>
+    <string name="enterprise_expenses_company_hint">Höchstens der bezahlte Betrag.</string>
+    <string name="enterprise_expenses_payer">Wer hat bezahlt</string>
+    <string name="enterprise_expenses_payer_company">Das Unternehmen</string>
+    <string name="enterprise_expenses_payer_employee">Ich habe bezahlt</string>
+    <string name="enterprise_expenses_receipt_optional">Beleg (optional)</string>
+    <string name="enterprise_expenses_receipt_title">Beleg der Ausgabe</string>
+    <string name="enterprise_expenses_add_receipt">Beleg hinzufügen</string>
+    <string name="enterprise_expenses_save">Ausgabe speichern</string>
+    <string name="enterprise_expenses_cancel">Abbrechen</string>
+    <string name="enterprise_expenses_saved">Ausgabe auf dem Gerät gespeichert.</string>
+    <string name="enterprise_expenses_saved_with_receipt">Ausgabe mit Beleg auf dem Gerät gespeichert.</string>
+    <string name="enterprise_expenses_saved_receipt_not_saved">Ausgabe auf dem Gerät gespeichert; der Beleg wurde nicht gespeichert. Versuche den Beleg erneut.</string>
+    <string name="enterprise_expenses_save_failed">Nichts wurde gespeichert. Versuche es erneut.</string>
+    <string name="enterprise_expenses_capture_invalid">Prüfe die Werte: Reais mit höchstens zwei Dezimalstellen und ohne Tausendertrennzeichen; der Betrag für das Unternehmen darf den bezahlten Betrag nicht übersteigen. Nichts wurde gespeichert.</string>
+    <string name="enterprise_expenses_send_now">Jetzt senden</string>
+    <string name="enterprise_expenses_send_offline">Offline. Einträge bleiben auf diesem Gerät und werden gesendet, sobald wieder eine Verbindung besteht.</string>
+    <string name="enterprise_expenses_send_failed">Das Senden wurde nicht abgeschlossen. Die Einträge bleiben auf diesem Gerät gespeichert.</string>
+    <string name="enterprise_expenses_record_status">Übertragung: %1$s</string>
+    <string name="enterprise_expenses_reason">Grund: %1$s</string>
+    <string name="enterprise_expenses_review_not_sent">Prüfung: noch nicht gesendet</string>
+    <string name="enterprise_expenses_review_awaiting">Prüfung: wartet auf Genehmigung</string>
+    <string name="enterprise_expenses_review_needs">Prüfung: muss geprüft werden</string>
+    <string name="enterprise_expenses_review_refused">Prüfung: nicht angenommen</string>
+    <string name="enterprise_expenses_amounts">Bezahlt R$ %1$s · Unternehmen R$ %2$s</string>
+    <string name="enterprise_expenses_paid_value">Bezahlter Betrag: R$ %1$s</string>
+    <string name="enterprise_expenses_company_value">Betrag für das Unternehmen: R$ %1$s</string>
+    <string name="enterprise_expenses_decided_by_company">Nur das Unternehmen genehmigt eine Ausgabe oder gibt sie zurück; dieses Gerät tut das nie.</string>
+</resources>

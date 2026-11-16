@@ -370,8 +370,8 @@ func TestSignedAttachmentSessionRefusesWrongRecordsAuthorityAndReuse(t *testing.
 		t.Fatal("missing record linked", status, code)
 	}
 	// A kind without a registered owner is refused by the DOC-003 registry
-	// (FUELING has one since EMP-FUEL-011; EXPENSE still has none).
-	if status, _, code := fx.session(t, "", fx.declaration(t, fx.raw, "EXPENSE", onboardingID(t))); status != 422 || code != "VALIDATION_FAILED" {
+	// (FUELING and EXPENSE have one since EMP-FUEL-011 and EMP-EXP-004; TRIP still has none).
+	if status, _, code := fx.session(t, "", fx.declaration(t, fx.raw, "TRIP", onboardingID(t))); status != 422 || code != "VALIDATION_FAILED" {
 		t.Fatal("unregistered link kind accepted", status, code)
 	}
 	if fx.count(t, links, fx.org) != 0 {

@@ -206,7 +206,7 @@ the Android form (EXP-004), held expenses and the panel (EXP-005) remain open.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-EXP-004 — App: add an expense with receipt
-- **Meta:** module EXP · phase F3 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module EXP · phase F3 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Capture a scoped expense and authorized attachment on Android.
 - **Rules and use cases:** BR-MONEY-001, BR-OFFL-002, BR-OFFL-003, BR-OFFL-015, BR-PRIV-004, OQ-04, REQ-11.1
 - **Depends on:** EMP-EXP-002, EMP-DOC-004

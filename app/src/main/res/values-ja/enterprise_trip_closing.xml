@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-TRIP-020 closing conference; generated from one table by f4-logs/exp004-scripts/gen_closing_strings.py -->
+<resources>
+    <string name="enterprise_trip_closing_title">終了時の確認</string>
+    <string name="enterprise_trip_closing_intro">運行を準備完了にする前に、この端末が記録した内容を確認してください。給油と経費は運行の車両と時間で表示されます。ここでは合計、サーバーでの紐付け、承認は行いません。</string>
+    <string name="enterprise_trip_closing_departure">出発時の読み取り</string>
+    <string name="enterprise_trip_closing_final">到着時の読み取り</string>
+    <string name="enterprise_trip_closing_fueling">給油 · R$ %1$s</string>
+    <string name="enterprise_trip_closing_expense">経費 · R$ %1$s</string>
+    <string name="enterprise_trip_closing_record_saved">この端末に保存済み</string>
+    <string name="enterprise_trip_closing_record_sending">送信中</string>
+    <string name="enterprise_trip_closing_record_accepted">会社が受理</string>
+    <string name="enterprise_trip_closing_record_needs_review">要審査</string>
+    <string name="enterprise_trip_closing_record_refused">受理されませんでした</string>
+    <string name="enterprise_trip_closing_evidence_missing">領収書：なし</string>
+    <string name="enterprise_trip_closing_evidence_pending">領収書：保留中（端末内または送信中）</string>
+    <string name="enterprise_trip_closing_evidence_available">領収書：会社が保管済み</string>
+    <string name="enterprise_trip_closing_evidence_unreadable">領収書：この端末で読み取れません</string>
+    <string name="enterprise_trip_closing_related_unavailable">この端末の給油または経費を現在読み取れません。この一覧は不完全な可能性があります。</string>
+    <string name="enterprise_trip_closing_none">この端末には、運行中のこの車両の給油や経費はありません。</string>
+    <string name="enterprise_trip_closing_no_decision">承認または差し戻しは会社が決定し、この端末で行われることはありません。</string>
+    <string name="enterprise_trip_closing_photos">写真：%1$d</string>
+</resources>
