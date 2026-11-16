@@ -1463,6 +1463,20 @@ the EMP-TRIP-008/009 grants and the FLEET-007 availability reads).
 `trip.mission.manage` (admission class `trip.mission`). Nothing here
 provisions live grants.
 
+### Mission eligible assignees (EMP-TRIP-022)
+
+`POST /v1/orgs/{org_id}/missions/{mission_id}/assignees/list` lists, under
+current (not fresh) `trip.mission.manage` covering the mission, the employees
+the assignment command would accept now: ACTIVE, unmerged, with an ACTIVE
+account-linked membership whose current `trip.trip.start` covers the mission
+(the command's own `EligibleAssigneeTx`, evaluated per candidate in the read
+transaction between two authority checks). Items carry only `employee_id`,
+`display_name` and `registration_number`; the sealed cursor is bound to the
+mission and limit and advances by the last scanned employee, so a page may be
+empty while a cursor remains. No migration; the company principal needs
+`SELECT ON org_employee_profiles` (already held by the employee reads) besides
+the EMP-TRIP-008 grants. Nothing here provisions live grants.
+
 ### Trip review, period lock and amendments (EMP-TRIP-004, EMP-TRIP-016, EMP-TRIP-015)
 
 Migration 226 adds forced-RLS, append-only `org_trip_review_entries`; 228

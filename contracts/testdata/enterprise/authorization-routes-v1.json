@@ -742,6 +742,7 @@
         "POST /v1/orgs/{org_id}/missions/create",
         "POST /v1/orgs/{org_id}/missions/list",
         "POST /v1/orgs/{org_id}/missions/{mission_id}/assign",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/assignees/list",
         "POST /v1/orgs/{org_id}/missions/{mission_id}/cancel",
         "POST /v1/orgs/{org_id}/missions/{mission_id}/plan",
         "POST /v1/orgs/{org_id}/missions/{mission_id}/read",

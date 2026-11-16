@@ -616,6 +616,12 @@ func withPlans(ctx context.Context, queries *q.Queries, org string, views []app.
 
 // read runs one read between two authority checks of the action and target.
 func (s *MissionStore) read(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, target string, action app.MissionAction, call func(*q.Queries) error) error {
+	return s.readTx(ctx, scope, actor, member, target, action, func(_ pgx.Tx, queries *q.Queries) error { return call(queries) })
+}
+
+// readTx is read with the transaction itself, for reads that consult the
+// authority per row (EDR-304).
+func (s *MissionStore) readTx(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, target string, action app.MissionAction, call func(pgx.Tx, *q.Queries) error) error {
 	if err := validMissionCall(scope, actor, member); err != nil {
 		return err
 	}
@@ -626,7 +632,7 @@ func (s *MissionStore) read(ctx context.Context, scope kernel.OrgScope, actor ap
 		if err := s.Authority.CheckMissionTx(ctx, tx, scope, actor, member, target, action); err != nil {
 			return err
 		}
-		if err := call(q.New(tx)); err != nil {
+		if err := call(tx, q.New(tx)); err != nil {
 			return err
 		}
 		return s.Authority.CheckMissionTx(ctx, tx, scope, actor, member, target, action)
@@ -703,6 +709,61 @@ func (s *MissionStore) ReadMission(ctx context.Context, scope kernel.OrgScope, a
 		return app.MissionView{}, err
 	}
 	return v, nil
+}
+
+// ListMissionAssignees pages the employees eligible for one mission
+// (EMP-TRIP-022, EDR-304): it scans at most filter.Limit candidates (ACTIVE,
+// unmerged, with an ACTIVE account-linked membership) in employee order
+// between two authority checks of the mission read and keeps those the
+// assignment command would accept (EligibleAssigneeTx); NextID is the last
+// scanned employee when more remain.
+func (s *MissionStore) ListMissionAssignees(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, mission string, filter app.MissionAssigneeFilter) (app.MissionAssigneePage, error) {
+	if err := filter.Validate(); err != nil {
+		return app.MissionAssigneePage{}, err
+	}
+	if !canonicalID(mission) {
+		return app.MissionAssigneePage{}, app.ErrNotFound
+	}
+	page := app.MissionAssigneePage{Assignees: []app.MissionAssignee{}}
+	err := s.readTx(ctx, scope, actor, member, mission, app.MissionRead, func(tx pgx.Tx, queries *q.Queries) error {
+		org := scope.OrgID().String()
+		record, err := s.head(ctx, queries, org, mission, false)
+		if err != nil {
+			return err
+		}
+		rows, err := queries.ListMissionAssigneeCandidates(ctx, q.ListMissionAssigneeCandidatesParams{OrgID: org, AfterID: filter.AfterID, PageLimit: int32(filter.Limit) + 1})
+		if err != nil {
+			return err
+		}
+		more := len(rows) > filter.Limit
+		if more {
+			rows = rows[:filter.Limit]
+		}
+		prior := filter.AfterID
+		for _, row := range rows {
+			// One live membership per employee; a repeated or unordered row
+			// is not a usable source.
+			if !canonicalID(row.EmployeeID) || !canonicalID(row.MembershipID) || row.EmployeeID <= prior {
+				return app.ErrUnavailable
+			}
+			prior = row.EmployeeID
+			eligible, err := s.Authority.EligibleAssigneeTx(ctx, tx, scope, row.MembershipID, facts(record))
+			if err != nil {
+				return err
+			}
+			if eligible {
+				page.Assignees = append(page.Assignees, app.MissionAssignee{EmployeeID: row.EmployeeID, DisplayName: row.DisplayName, RegistrationNumber: row.RegistrationNumber})
+			}
+		}
+		if more {
+			page.NextID = prior
+		}
+		return nil
+	})
+	if err != nil {
+		return app.MissionAssigneePage{}, err
+	}
+	return page, nil
 }
 
 // ---- response facts on the borrowed intake transaction (EDR-229) ----
