@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-015 tracking transparency; generated from one table by f4-logs/gps015-scripts/gen_transparency_strings.py -->
+<resources>
+    <string name="enterprise_tracking_indicator_active">会社の位置記録中 — %1$s</string>
+    <string name="enterprise_tracking_indicator_detail">%1$s から · 車両ではなくこのスマートフォンの位置</string>
+    <string name="enterprise_tracking_indicator_precise">正確な位置</string>
+    <string name="enterprise_tracking_indicator_approximate">おおよその位置</string>
+    <string name="enterprise_tracking_indicator_open">自分の位置記録を見る</string>
+    <string name="enterprise_tracking_not_collecting_here">このスマートフォンは現在この運行の位置を収集していません。</string>
+    <string name="enterprise_tracking_mine_title">自分の位置記録</string>
+    <string name="enterprise_tracking_mine_home">会社が何を収集し、このスマートフォンでいつ位置記録が有効だったかを確認できます。</string>
+    <string name="enterprise_tracking_mine_back">会社のホームに戻る</string>
+    <string name="enterprise_tracking_mine_now_active">このスマートフォンは現在、会社の運行を記録しています。</string>
+    <string name="enterprise_tracking_mine_now_inactive">このスマートフォンで有効な会社の位置記録はありません。</string>
+    <string name="enterprise_tracking_mine_collected_title">収集される情報</string>
+    <string name="enterprise_tracking_mine_collected">位置記録を開始した会社の運行中で、記録が有効な間だけ: このスマートフォン (車両ではない) の位置、精度、速度、方向、時刻を、移動中は約 10 秒ごと、停止中は 2 分ごとに収集し、記録の開始・中断・終了も記録します。</string>
+    <string name="enterprise_tracking_mine_not_collected_title">収集されない情報</string>
+    <string name="enterprise_tracking_mine_not_collected">記録中の運行以外、個人モード、記録の停止後や運行の終了後は何も収集しません。アプリがバックグラウンドの位置情報を求めることはなく、記録を自動で開始することもありません。</string>
+    <string name="enterprise_tracking_mine_who_title">誰が見られるか</string>
+    <string name="enterprise_tracking_mine_who">位置記録の権限を持つ会社の担当者は担当範囲の運行を見ることができ、各アクセスは記録されます。ここではあなた自身の記録を確認できます。</string>
+    <string name="enterprise_tracking_mine_retention_title">保存期間</string>
+    <string name="enterprise_tracking_mine_retention">会社は運行後 90 日間位置を保存します (会社が 30〜365 日の別の期間を設定した場合を除く)。運行の概要は運行とともに保存されます。</string>
+    <string name="enterprise_tracking_mine_device_title">このスマートフォン上</string>
+    <string name="enterprise_tracking_mine_device">位置は送信されるまでこのスマートフォンで保護されます。会社がこのスマートフォンを取り消すか、あなたが会社を離れた場合、アプリが次に接続したときにこのスマートフォンのコピーが削除されます。接続していないスマートフォンが遠隔で削除されることはなく、会社がすでに受け取ったデータは会社の保存期間に従います。</string>
+    <string name="enterprise_tracking_mine_policy">会社のポリシー: %1$s · お知らせ %2$s</string>
+    <string name="enterprise_tracking_mine_policy_expected">位置記録を求める</string>
+    <string name="enterprise_tracking_mine_policy_optional">位置記録は任意</string>
+    <string name="enterprise_tracking_mine_policy_off">位置記録はオフ</string>
+    <string name="enterprise_tracking_mine_policy_unknown">このスマートフォンではまだ会社のポリシーを読み込んでいません。</string>
+    <string name="enterprise_tracking_mine_sessions_title">このスマートフォンでのあなたの記録</string>
+    <string name="enterprise_tracking_mine_empty">記録された運行はありません</string>
+    <string name="enterprise_tracking_mine_unavailable">このスマートフォンの位置記録を現在読み込めません。</string>
+    <string name="enterprise_tracking_mine_retry">再試行</string>
+    <string name="enterprise_tracking_mine_session_vehicle">%1$s での運行</string>
+    <string name="enterprise_tracking_mine_session_started">記録開始: %1$s</string>
+    <string name="enterprise_tracking_mine_session_never">この運行では記録が開始されませんでした。</string>
+    <string name="enterprise_tracking_mine_session_ended">終了: %1$s</string>
+    <string name="enterprise_tracking_mine_session_ongoing">進行中</string>
+    <string name="enterprise_tracking_mine_gap_signal">%1$s から %2$s まで GPS 信号なし。</string>
+    <string name="enterprise_tracking_mine_gap_provider">%1$s から %2$s まで位置情報オフ。</string>
+    <string name="enterprise_tracking_mine_gap_mock">%1$s から %2$s まで疑似位置を無視。</string>
+</resources>

@@ -9230,3 +9230,140 @@ EMP-GPS-002 (the service and its session operations) and EMP-GPS-004 (the
   even when the checklist is in backoff, keeps everything "Salvo no
   aparelho" across a lost or incomplete answer, and applies each receipt
   once. Native acceptance on the emulator is owed while it is locked.
+
+## EMP-GPS-010 — Tracking interruptions: permission, approximate-only, reboot, process death (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-gps010-tracking-interruptions.md). Builds
+on EMP-GPS-002 (the service, its session operations and the recovery at the
+next opening of the trip screen) and EMP-GPS-003 (the sealed buffer, the
+batches and the fix-level gaps); owner decision EDR-271. No server change:
+every cause used here is already accepted by the EMP-GPS-004 intake.
+
+- **B-BR-EMP-544 — Every interruption is recorded with its cause and stays
+  visible.** A recording session that this process does not collect for is
+  interrupted, never left shown as recording: at the next opening of the trip
+  screen (EMP-GPS-002) and also as soon as the tracking service, after
+  consuming the visible screen's grant, cannot listen for it (no permission,
+  hidden notification, platform refusal, another session already listening)
+  or cannot show its foreground notification. The interruption carries the
+  last proof of recording as its instant (the checkpoint, the last transition
+  or one millisecond after the last buffered fix) and the cause the device
+  observes, in this order: `DEVICE_RESTARTED` when the checkpoint or the buffer
+  names another boot, `PERMISSION_REVOKED` when no location permission is
+  granted now, `NOTIFICATION_BLOCKED` when the tracking notification cannot be
+  seen now, otherwise `PROCESS_STOPPED` (said as "the collection stopped on
+  this phone without your command"). A precision reduction found after a
+  process death is that `PROCESS_STOPPED` interruption; the resume then
+  records the approximate grant (no reduction is invented for a period nobody
+  recorded). The trip screen lists every interruption of the session with its
+  cause, start and end (open until the driver resumes or the trip ends); the
+  ongoing notification says when location is off, the signal is lost or only
+  simulated locations arrive, and that nothing is recorded meanwhile.
+- **B-BR-EMP-545 — No interruption is bridged.** Fixes recorded in one
+  recording run (from a start or resume to the next interruption, suspension
+  or end; a precision reduction does not end a run) are sealed into batches
+  apart from the fixes of any other run, even when the seal at the
+  interruption failed and both runs' fixes wait in the buffer together; each
+  batch depends on the opening of its own run. A fix-level gap still open when
+  its run ended is closed at that run's end, never carried into the next run.
+  No position, path or distance is derived across an interruption or a gap
+  (BR-GPS-024).
+- **B-BR-EMP-546 — Approximate fixes never claim precision.** A fix is
+  recorded with the lower of its recording period's precision and the location
+  permission the platform grants at that report; a report observed without any
+  location permission is not recorded. The first approximate report inside a
+  precise period writes the reduction (`PRECISION_REDUCED`) at that report's
+  instant before the fix is recorded, and a service that begins listening
+  with only approximate permission for a precise period writes the reduction
+  first, so every coarse-flagged fix lies in an approximate period and every
+  precise-flagged fix in a precise one. A raise to precise waits for the
+  driver's next resume (EDR-275). The trip screen says, for as long as the
+  session lasts, that no GPS distance is derived from its approximate parts.
+- **B-BR-EMP-547 — Resumption needs the driver's visible tap and current
+  authority; the buffer survives every interruption.** Nothing resumes by
+  itself: no recovery, start intent without the screen's fresh grant, worker,
+  notification, boot or server path starts collection. A start or resume tap
+  writes only when this account still holds the partition, the context's
+  membership is the enrollment's, the trip is the member's own open trip on
+  this device, the session is neither refused nor ended, the latest policy
+  read on the device is `OPTIONAL` or `EXPECTED` (with a connection the screen
+  reads the policy in force first; a failed read keeps the last value and says
+  so; `OFF` or never read refuses with nothing written) and no other session
+  is being collected on this phone; only then does the screen arm the
+  one-time grant. No interruption, recovery, reduction, owner change or failed
+  write removes, rebinds or duplicates a recorded fix: each stays pending in
+  its owner's sealed buffer or leaves in exactly one batch.
+- **BUC-EMP-279 — Recover from an interruption.** The phone restarted, the
+  app was closed or the location permission was removed while tracking: at the
+  next opening of the trip the session shows "Rastreamento interrompido" with
+  the reason and since when, the waiting positions leave in batches, and
+  "Retomar rastreamento" resumes only after the driver's tap, with the policy
+  re-checked; declining keeps the trip untracked and the interval stays a gap
+  for the company.
+- **BUC-EMP-280 — Track with approximate location.** The driver grants only
+  approximate location, or reduces it during the trip: the session records
+  coarse positions at the heartbeat rate inside an approximate period, the
+  screen says that no GPS distance is derived from those parts, and precise
+  recording returns only through a stop and a resume with precise permission.
+
+## EMP-GPS-015 — App: tracking transparency (indicator, what is collected, session history) (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-gps015-tracking-transparency.md). Builds on
+EMP-GPS-002 (the service and its notification), EMP-GPS-003 (the sealed
+buffer) and EMP-GPS-010 (interruptions); owner decision EDR-271. No server
+change: no driver-facing read of one's own sessions exists, so the history is
+the phone's own sealed records.
+
+- **B-BR-EMP-548 — One indicator on every enterprise screen, only while this
+  phone collects.** While this phone's organization collector listens, the
+  header shared by every enterprise screen (the home and the trips, fuelings,
+  expenses, assets, checklists, sync and "Meu rastreamento" panels) shows one
+  indicator in text and icon, never colour alone: "Rastreamento da empresa
+  ativo" with the organization's name, since when, precise or approximate,
+  that the position is this phone's and not the vehicle's, and an open
+  location-off, no-signal or simulated-location gap; a tap opens "Meu
+  rastreamento". It is derived only from the process's running organization
+  collector, never from a stored session alone and never from the personal
+  recorder; it appears when the listener attaches and disappears when it is
+  released. On the trip screen a session stored as recording that this phone is
+  not collecting says so instead of looking active, until the next opening
+  records the interruption (B-BR-EMP-544). The ongoing notification stays the
+  indicator outside the app (EMP-GPS-002/010).
+- **B-BR-EMP-549 — "Meu rastreamento" shows what is collected and one's own
+  sessions, from this phone only.** Any member in enterprise mode can open it
+  offline from the selected organization's sealed tracking book and buffer:
+  what is collected and when, what is not collected, who can see it, the
+  default retention, what stays on this phone, the policy and notice version
+  last read, whether this phone collects now, and the member's own sessions on
+  this phone, newest first, each with its vehicle, tracking start, end or "em
+  andamento", interruptions with cause, start and end, location gaps with
+  reason, approximate parts, and positions waiting or batches accepted and still
+  on the phone; never a coordinate, never another member's or another
+  organization's session (the book is bound to this membership and
+  enrollment). After a stop or a finish nothing more is recorded for that
+  session and its end is shown. Empty: "Nenhuma viagem rastreada"; the list says
+  it is this phone's.
+- **B-BR-EMP-550 — Organization and personal tracking are never mixed up.**
+  Organization tracking is always labelled with the organization's name and as
+  this phone's position, in enterprise screens and its own notification
+  channel only; the personal Abastevo recorder ("Gravar percurso") and the
+  driver suite never feed the enterprise indicator or "Meu rastreamento", and
+  the organization collector never feeds the personal recorder's state or its
+  saved tracks.
+- **B-BR-EMP-551 — No false promise about erasure.** The transparency copy says
+  that positions stay protected on this phone until sent; that after a device
+  revocation or leaving the organization this phone's copy is erased when the
+  app next reaches the server; that a phone without a connection is not erased
+  remotely; and that what the organization received follows its retention
+  (raw positions 90 days after the trip by default, 30 to 365 by organization
+  choice). No tracking text in any locale promises remote or immediate erasure
+  of a disconnected phone or deletion of what the organization received
+  (BR-PRIV-018, BR-OFFL-014).
+- **BUC-EMP-281 — See my tracking.** In enterprise mode the member opens "Meu
+  rastreamento" from the home or from the indicator, reads what is collected,
+  sees whether this phone collects now and goes through their own sessions on
+  this phone with their interruptions and gaps, offline.
+- **BUC-EMP-282 — Know from any screen that tracking is on.** While a trip is
+  tracked, the member moves between the enterprise screens and the indicator
+  stays visible on each, naming the organization and since when; when tracking
+  stops, ends or is interrupted it disappears at once.

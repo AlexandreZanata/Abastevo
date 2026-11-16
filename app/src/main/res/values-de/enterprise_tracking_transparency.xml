@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-015 tracking transparency; generated from one table by f4-logs/gps015-scripts/gen_transparency_strings.py -->
+<resources>
+    <string name="enterprise_tracking_indicator_active">Unternehmensverfolgung aktiv — %1$s</string>
+    <string name="enterprise_tracking_indicator_detail">Seit %1$s · Position dieses Telefons, nicht des Fahrzeugs</string>
+    <string name="enterprise_tracking_indicator_precise">Genauer Standort</string>
+    <string name="enterprise_tracking_indicator_approximate">Ungefährer Standort</string>
+    <string name="enterprise_tracking_indicator_open">Meine Verfolgung ansehen</string>
+    <string name="enterprise_tracking_not_collecting_here">Dieses Telefon erfasst gerade keine Positionen für diese Fahrt.</string>
+    <string name="enterprise_tracking_mine_title">Meine Verfolgung</string>
+    <string name="enterprise_tracking_mine_home">Sehen Sie, was das Unternehmen erfasst und wann die Verfolgung auf diesem Telefon aktiv war.</string>
+    <string name="enterprise_tracking_mine_back">Zurück zur Unternehmensstartseite</string>
+    <string name="enterprise_tracking_mine_now_active">Dieses Telefon verfolgt gerade eine Fahrt des Unternehmens.</string>
+    <string name="enterprise_tracking_mine_now_inactive">Auf diesem Telefon ist keine Unternehmensverfolgung aktiv.</string>
+    <string name="enterprise_tracking_mine_collected_title">Was erfasst wird</string>
+    <string name="enterprise_tracking_mine_collected">Nur während einer Unternehmensfahrt, für die Sie die Verfolgung gestartet haben, und solange sie aktiv ist: die Position dieses Telefons (nicht des Fahrzeugs), Genauigkeit, Geschwindigkeit, Richtung und Uhrzeit, etwa alle 10 Sekunden in Bewegung und alle 2 Minuten im Stillstand, sowie Beginn, Unterbrechungen und Ende der Verfolgung.</string>
+    <string name="enterprise_tracking_mine_not_collected_title">Was nicht erfasst wird</string>
+    <string name="enterprise_tracking_mine_not_collected">Nichts außerhalb einer verfolgten Fahrt, im persönlichen Modus oder nachdem Sie die Verfolgung beendet oder die Fahrt abgeschlossen haben. Die App fragt nie nach Standort im Hintergrund und startet die Verfolgung nie von selbst.</string>
+    <string name="enterprise_tracking_mine_who_title">Wer es sehen kann</string>
+    <string name="enterprise_tracking_mine_who">Personen im Unternehmen mit Verfolgungsberechtigung sehen die Fahrten in ihrem Bereich, und jeder Zugriff wird protokolliert. Hier sehen Sie Ihre eigenen Sitzungen.</string>
+    <string name="enterprise_tracking_mine_retention_title">Wie lange es gespeichert wird</string>
+    <string name="enterprise_tracking_mine_retention">Das Unternehmen speichert die Positionen 90 Tage nach der Fahrt, sofern es keinen anderen Zeitraum zwischen 30 und 365 Tagen festlegt; die Fahrtzusammenfassung folgt der Fahrt.</string>
+    <string name="enterprise_tracking_mine_device_title">Auf diesem Telefon</string>
+    <string name="enterprise_tracking_mine_device">Positionen bleiben auf diesem Telefon geschützt, bis sie gesendet sind. Widerruft das Unternehmen dieses Telefon oder verlassen Sie es, wird die Kopie dieses Telefons gelöscht, sobald die App wieder eine Verbindung hat; ein Telefon ohne Verbindung wird nicht aus der Ferne gelöscht, und was das Unternehmen bereits erhalten hat, folgt seiner Aufbewahrung.</string>
+    <string name="enterprise_tracking_mine_policy">Unternehmensrichtlinie: %1$s · Hinweis %2$s</string>
+    <string name="enterprise_tracking_mine_policy_expected">Verfolgung erwartet</string>
+    <string name="enterprise_tracking_mine_policy_optional">Verfolgung freiwillig</string>
+    <string name="enterprise_tracking_mine_policy_off">Verfolgung aus</string>
+    <string name="enterprise_tracking_mine_policy_unknown">Die Unternehmensrichtlinie wurde auf diesem Telefon noch nicht gelesen.</string>
+    <string name="enterprise_tracking_mine_sessions_title">Ihre Sitzungen auf diesem Telefon</string>
+    <string name="enterprise_tracking_mine_empty">Keine verfolgte Fahrt</string>
+    <string name="enterprise_tracking_mine_unavailable">Die Verfolgungsdaten dieses Telefons konnten gerade nicht gelesen werden.</string>
+    <string name="enterprise_tracking_mine_retry">Erneut versuchen</string>
+    <string name="enterprise_tracking_mine_session_vehicle">Fahrt mit %1$s</string>
+    <string name="enterprise_tracking_mine_session_started">Beginn der Verfolgung: %1$s</string>
+    <string name="enterprise_tracking_mine_session_never">Die Verfolgung hat bei dieser Fahrt nie begonnen.</string>
+    <string name="enterprise_tracking_mine_session_ended">Ende: %1$s</string>
+    <string name="enterprise_tracking_mine_session_ongoing">Läuft</string>
+    <string name="enterprise_tracking_mine_gap_signal">Kein GPS-Signal von %1$s bis %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_provider">Standort aus von %1$s bis %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_mock">Simulierte Standorte ignoriert von %1$s bis %2$s.</string>
+</resources>

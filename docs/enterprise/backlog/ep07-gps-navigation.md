@@ -264,6 +264,26 @@ the planned and estimated sources (route owner) remain open.
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 tracking interruptions](../evidence/f4-gps010-tracking-interruptions.md)
+is LOCAL_DONE / INTEGRATION_PENDING (emulator acceptance OWED), 2026-11-16.
+A recording session that this phone does not collect for is interrupted with
+the cause the device observes (`DEVICE_RESTARTED`, `PERMISSION_REVOKED`,
+`NOTIFICATION_BLOCKED`, otherwise `PROCESS_STOPPED`) at its last proof of
+recording: at the next opening of the trip screen and also as soon as the
+service, after the visible grant, cannot listen or go to the foreground. The
+trip screen lists every interruption with its cause and bounds, the ongoing
+notification states location off, no signal or simulated locations, batches
+are sealed per recording run and an earlier run's gap ends with it. A fix
+never claims more precision than its period or the permission granted with
+it (the reduction is written first, at the report's instant, or before
+listening). Every start or resume tap re-checks the policy in force (read
+online first when connected; `OFF` or never read refuses), the member's own
+open trip and that no other session is collected on the phone; no recovery,
+intent, worker or boot path resumes collection; each recorded fix stays in
+its owner's buffer or one batch. No server change (every cause was already
+accepted). Native and real-device acceptance remain owed (EDR-271); the
+long-stationary guard (BR-GPS-016) stays open.
+
 ### EMP-GPS-011 — Track retention: raw-point purge and summary retention
 - **Meta:** module GPS · phase F5 · cut - · priority P1 · type JOB · size S · state TODO
 - **Objective:** Purge expired raw location and retain only approved summaries.
@@ -353,6 +373,21 @@ acceptance is owed (EDR-271).
 - **Validation:** V-APP, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 tracking transparency](../evidence/f4-gps015-tracking-transparency.md) is
+LOCAL_DONE / INTEGRATION_PENDING (emulator acceptance OWED), 2026-11-16. While
+this phone's organization collector listens, the header that every
+enterprise screen shares shows one indicator (organization, since when,
+precise or approximate, this phone's position and not the vehicle's, an open
+location-off or no-signal gap) derived only from the running collector, never
+from a stored session or the personal recorder; a stored recording session
+that the phone does not collect says so on the trip card. "Meu rastreamento"
+(SCR-GPS-04) shows, offline from the partition's sealed records, what is and
+is not collected, who sees it, the default retention, what stays on the phone
+(erased at the next contact after a revocation, never remotely when
+offline), the policy and notice last read, and the member's own sessions on
+this phone with their interruptions, gaps and approximate parts. No server
+read, route or migration; real-device acceptance owed (EDR-271).
 
 ### EMP-ROUTE-001 — Map components: reuse the Android map engine port and add the panel web map
 - **Meta:** module ROUTE · phase F5 · cut - · priority P1 · type INT · size M · state TODO

@@ -55,6 +55,8 @@ import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingPolicyGatew
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingProducers
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingService
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingStore
+import com.anpfuel.application.enterprise.tracking.MyTrackingFlow
+import com.anpfuel.application.enterprise.tracking.TrackingDeviceObserver
 import com.anpfuel.application.enterprise.tracking.TrackingRuntime
 import com.anpfuel.application.enterprise.tracking.TrackingStartGate
 import com.anpfuel.application.portable.AuthFlow
@@ -304,11 +306,13 @@ object EnterpriseModule {
     fun tripFlow(@ApplicationContext context: Context, source: EnterpriseQueueSource, service: EnterpriseTripService,
         fence: EnterpriseSessionFence, delivery: EnterpriseQueueService, receipts: EnterpriseReceipts, fuelings: EnterpriseFuelingService,
         expenses: EnterpriseExpenseService, tracking: EnterpriseTrackingService, runtime: TrackingRuntime,
-        missions: EnterpriseMissionService): TripFlow =
+        missions: EnterpriseMissionService, device: TrackingDeviceObserver): TripFlow =
         // EMP-TRIP-020: the closing conference reads the same partition's own fuelings and expenses (EDR-339);
         // EMP-GPS-002: the tracking hooks of the open trip (EDR-323); EMP-TRIP-021: the missions inbox (EDR-342).
         TripFlow(source, service, fence, receipts, TripRelatedRecords(fuelings::fuelings, expenses::expenses),
-            TripTracking(tracking, runtime::running) { AndroidEnterpriseDeviceClock(context).read().boot }, missions) { account, partition ->
+            // EMP-GPS-010: the cause observed at recovery and the one session this phone collects (B-BR-EMP-544/547).
+            TripTracking(tracking, runtime::running, { AndroidEnterpriseDeviceClock(context).read().boot }, device::observe,
+                { runtime.collector?.runningSessionId }), missions) { account, partition ->
             delivery.dispatch(account, partition)
         }
 
@@ -355,6 +359,11 @@ object EnterpriseModule {
         gateway: EnterpriseTrackingPolicyGateway): EnterpriseTrackingService = EnterpriseTrackingService(
         source, { partition, operation -> delivery.save(partition, operation) }, store, gateway, { ZoneId.systemDefault() },
     )
+
+    /** EMP-GPS-015 (EDR-358): "Meu rastreamento" over the selected partition's sealed tracking records, offline. */
+    @Provides
+    fun myTrackingFlow(source: EnterpriseQueueSource, tracking: EnterpriseTrackingService, fence: EnterpriseSessionFence): MyTrackingFlow =
+        MyTrackingFlow(source, tracking, fence)
 
     /** The process's one tracking runtime: the visible start gate (elapsed time) and the running collector (EDR-323). */
     @Provides

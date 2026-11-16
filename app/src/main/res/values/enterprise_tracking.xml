@@ -22,7 +22,7 @@
     <string name="enterprise_tracking_approximate">Approximate location: no GPS distance will be calculated for this trip.</string>
     <string name="enterprise_tracking_cause_permission_denied">Location permission was not granted. The trip continues without tracking.</string>
     <string name="enterprise_tracking_cause_notification_blocked">Notifications are blocked, so tracking cannot run with its visible notice. Allow notifications to track.</string>
-    <string name="enterprise_tracking_cause_process_stopped">The app was closed while tracking.</string>
+    <string name="enterprise_tracking_cause_process_stopped">Tracking stopped on this phone without your command (app closed or stopped by the system).</string>
     <string name="enterprise_tracking_cause_device_restarted">The phone restarted while tracking.</string>
     <string name="enterprise_tracking_cause_stopped_by_driver">You stopped tracking. The trip continues.</string>
     <string name="enterprise_tracking_cause_owner_changed">The account or company changed on this phone.</string>

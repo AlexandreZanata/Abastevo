@@ -26,6 +26,8 @@ import com.anpfuel.domain.enterprise.tracking.TrackingBatchOperations
 import com.anpfuel.domain.enterprise.tracking.TrackingBatching
 import com.anpfuel.domain.enterprise.tracking.TrackingBufferBook
 import com.anpfuel.domain.enterprise.tracking.TrackingGap
+import com.anpfuel.domain.enterprise.tracking.TrackingInterruption
+import com.anpfuel.domain.enterprise.tracking.TrackingInterruptions
 import com.anpfuel.domain.enterprise.tracking.TrackingObservation
 import com.anpfuel.domain.enterprise.tracking.TrackingObservationOutcome
 import com.anpfuel.domain.enterprise.tracking.TrackingOperationException
@@ -87,7 +89,14 @@ fun interface EnterpriseTrackingPolicyGateway {
 
 /** Local refusals before queueing; never a server outcome. */
 enum class TrackingLocalFailure {
-    UNKNOWN_TRIP, TRIP_NOT_OPEN, POLICY_OFF, POLICY_UNKNOWN, SESSION_ENDED, SESSION_REFUSED, NOT_RECORDING, REFUSED
+    UNKNOWN_TRIP, TRIP_NOT_OPEN, POLICY_OFF, POLICY_UNKNOWN, SESSION_ENDED, SESSION_REFUSED, NOT_RECORDING, REFUSED,
+    /** EMP-GPS-010 (B-BR-EMP-547): another session is being collected on this phone; one listener per device. */
+    BUSY,
+}
+
+/** EMP-GPS-010 (B-BR-EMP-544): the location permission and tracking-notification visibility the platform reports now. */
+fun interface TrackingDeviceObserver {
+    fun observe(): TrackingDevice
 }
 
 class TrackingLocalException(val failure: TrackingLocalFailure) : IllegalStateException("tracking local: ${failure.name.lowercase()}")
@@ -127,6 +136,14 @@ internal object TrackingRules {
      */
     fun periodOpening(session: LocalTrackingSession, at: Instant): String? =
         session.transitions.lastOrNull { !it.at.isAfter(at) && it.state == TrackingSessionState.RECORDING && it.cause == null }?.operationId
+
+    /** EMP-GPS-010 (B-BR-EMP-545): the start or resume that opened the session's current recording run, if any. */
+    fun runStart(session: LocalTrackingSession): Instant? =
+        session.transitions.lastOrNull { it.state == TrackingSessionState.RECORDING && it.cause == null }?.at
+
+    /** The end of the run before the one that opened at [runStart]: the interruption that the resume closed. */
+    fun previousRunEnd(session: LocalTrackingSession, runStart: Instant): Instant? =
+        TrackingInterruptions.of(session.transitions).lastOrNull { it.end == runStart }?.start
 
     fun expectedDependencies(fact: TrackingOperationFact, trip: LocalTrip, local: LocalTrackingSession?): List<String> {
         val previous = local?.lastOperationId
@@ -256,13 +273,19 @@ class TrackingSessionView(
     batches: List<TrackingRecordView> = emptyList(),
     gaps: List<TrackingGap> = emptyList(),
     val overflow: Long = 0,
+    /** EMP-GPS-010 (B-BR-EMP-544): every interval the session stopped recording, with its cause, start and end. */
+    interruptions: List<TrackingInterruption> = emptyList(),
+    /** EMP-GPS-010 (B-BR-EMP-546): any recording period was approximate; no GPS distance comes from those parts. */
+    val coarse: Boolean = false,
 ) {
     private val values = records.toList()
     private val batchValues = batches.toList()
     private val gapValues = gaps.toList()
+    private val interruptionValues = interruptions.toList()
     val records: List<TrackingRecordView> get() = values.toList()
     val batches: List<TrackingRecordView> get() = batchValues.toList()
     val gaps: List<TrackingGap> get() = gapValues.toList()
+    val interruptions: List<TrackingInterruption> get() = interruptionValues.toList()
     val openGap: TrackingGap? get() = gapValues.lastOrNull()?.takeIf { it.end == null }
     override fun toString(): String = "EnterpriseTrackingSessionView(redacted)"
 }
@@ -341,9 +364,11 @@ class EnterpriseTrackingService(
             TrackingRecordView(id, TrackingBatchOperations.TYPE, null, entry.operation.declaration.occurredAt,
                 EnterpriseSyncProjection.status(EnterpriseSyncProjection.item(entry)), entry.acknowledgement?.code)
         }
+        // EMP-GPS-010: the interruptions and any approximate period stay visible for the whole session (B-BR-EMP-544/546).
+        val coarse = local.transitions.any { it.state == TrackingSessionState.RECORDING && it.permission == LocationPermission.APPROXIMATE }
         return TrackingSessionView(local.sessionId, local.tripId, local.policy, local.state, last.cause, last.at, precision, local.refused,
             refusal, listOfNotNull(local.checkpoint?.at, buffer?.checkpointAt).maxOrNull(), records, buffer?.pending?.size ?: 0, batches,
-            buffer?.gaps.orEmpty(), buffer?.overflow ?: 0)
+            buffer?.gaps.orEmpty(), buffer?.overflow ?: 0, TrackingInterruptions.of(local.transitions), coarse)
     }
 
     suspend fun screen(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): TrackingScreen {
@@ -351,6 +376,22 @@ class EnterpriseTrackingService(
         val snapshot = snapshot(attempt)
         val book = snapshot.book ?: return TrackingScreen(null, emptyList())
         return TrackingScreen(book.policy, book.sessions.map { view(it, snapshot.entries, snapshot.buffers?.session(it.sessionId)) })
+    }
+
+    /**
+     * EMP-GPS-015 (B-BR-EMP-549): this member's own sessions on this phone, newest first, from the partition's sealed book,
+     * buffer and trip book only (bound to this membership and enrollment); never a coordinate, never another partition.
+     */
+    suspend fun history(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): TrackingHistory {
+        val attempt = attempt(account, partition)
+        val snapshot = snapshot(attempt)
+        val book = snapshot.book ?: return TrackingHistory(null, emptyList())
+        val entries = book.sessions.sortedByDescending { it.transitions.first().at }.map { local ->
+            TrackingHistoryEntry(view(local, snapshot.entries, snapshot.buffers?.session(local.sessionId)), snapshot.trips?.trip(local.tripId)?.label,
+                local.transitions.firstOrNull { it.state == TrackingSessionState.RECORDING }?.at,
+                local.transitions.lastOrNull { it.state == TrackingSessionState.ENDED }?.at)
+        }
+        return TrackingHistory(book.policy, entries)
     }
 
     /** B-BR-EMP-495: one online read of the policy in force, kept in the book; null when it could not be read. */
@@ -374,7 +415,9 @@ class EnterpriseTrackingService(
      * permission and notification visibility observed now; an attempt that cannot record is recorded as such.
      */
     suspend fun start(account: EnterpriseQueueAccountLease, context: EnterpriseContextSummary, tripId: String,
-        device: TrackingDevice): TrackingSessionView {
+        device: TrackingDevice,
+        /** EMP-GPS-010: the session this phone is collecting for now, if any (B-BR-EMP-547). */
+        collecting: String? = null): TrackingSessionView {
         val attempt = attempt(account, context.partition)
         if (attempt.enrollment.target.membershipId != context.membershipId) throw EnterpriseLocalDenied()
         val snapshot = snapshot(attempt)
@@ -383,20 +426,19 @@ class EnterpriseTrackingService(
         val book = book(attempt, snapshot)
         val local = book.session(tripId)
         val permission = (device.permission ?: throw denied(TrackingLocalFailure.REFUSED)).name
-        if (local == null) {
-            when (book.policy?.policy) {
-                null -> throw denied(TrackingLocalFailure.POLICY_UNKNOWN)
-                TrackingPolicy.OFF -> throw denied(TrackingLocalFailure.POLICY_OFF)
-                else -> Unit
-            }
-        } else {
+        if (local != null) {
             if (local.refused) throw denied(TrackingLocalFailure.SESSION_REFUSED)
-            when (local.state) {
-                TrackingSessionState.ENDED -> throw denied(TrackingLocalFailure.SESSION_ENDED)
-                TrackingSessionState.RECORDING -> return view(local, snapshot.entries)
-                else -> Unit
-            }
+            if (local.state == TrackingSessionState.ENDED) throw denied(TrackingLocalFailure.SESSION_ENDED)
         }
+        // EMP-GPS-010 (B-BR-EMP-547): every tap re-checks the latest policy read on this device, also for an existing session.
+        when (book.policy?.policy) {
+            null -> throw denied(TrackingLocalFailure.POLICY_UNKNOWN)
+            TrackingPolicy.OFF -> throw denied(TrackingLocalFailure.POLICY_OFF)
+            else -> Unit
+        }
+        if (local?.state == TrackingSessionState.RECORDING) return view(local, snapshot.entries, snapshot.buffers?.session(local.sessionId))
+        // One listener per phone (BR-GPS-013): another session being collected here refuses the tap; nothing is written.
+        if (collecting != null && collecting != local?.sessionId) throw denied(TrackingLocalFailure.BUSY)
         val sessionId = local?.sessionId ?: newId()
         val first = local == null || local.state == TrackingSessionState.NOT_STARTED
         val deps = listOf(local?.lastOperationId ?: trip.startOperationId)
@@ -502,7 +544,9 @@ class EnterpriseTrackingService(
      * interrupted at its checkpoint (DEVICE_RESTARTED on another boot, else PROCESS_STOPPED); finished trips end instead.
      * Returns the number of sessions changed.
      */
-    suspend fun recover(account: EnterpriseQueueAccountLease, partition: EnterprisePartition, running: (String) -> Boolean, bootId: String): Int {
+    suspend fun recover(account: EnterpriseQueueAccountLease, partition: EnterprisePartition, running: (String) -> Boolean, bootId: String,
+        /** EMP-GPS-010: the permission and notification visibility observed now, null when not observed (B-BR-EMP-544). */
+        device: TrackingDevice? = null): Int {
         val attempt = attempt(account, partition)
         val snapshot = snapshot(attempt)
         var changed = 0
@@ -514,14 +558,39 @@ class EnterpriseTrackingService(
                 continue
             }
             if (local.state != TrackingSessionState.RECORDING || running(local.sessionId)) continue
-            val checkpoint = local.checkpoint
-            val buffer = snapshot.buffers?.session(local.sessionId)
-            val cause = if (listOfNotNull(checkpoint?.bootId, buffer?.bootId).any { it != bootId }) TrackingCause.DEVICE_RESTARTED else TrackingCause.PROCESS_STOPPED
-            // The gap starts after the last proof of recording: the book checkpoint or, just after it, the last buffered fix (BR-GPS-012).
-            val at = listOfNotNull(checkpoint?.at, local.lastAt, buffer?.checkpointAt?.plusMillis(1)).maxOrNull()
-            if (interrupt(account, partition, local.sessionId, cause, at) != null) changed++
+            if (uncollected(account, partition, local, snapshot, bootId, device) != null) changed++
         }
         return changed
+    }
+
+    /**
+     * EMP-GPS-010 (B-BR-EMP-544): interrupts a recording session nobody collects for, with the cause the device observes now,
+     * after its last proof of recording: the book checkpoint, its last transition or, just after it, the last buffered fix.
+     */
+    private suspend fun uncollected(account: EnterpriseQueueAccountLease, partition: EnterprisePartition, local: LocalTrackingSession,
+        snapshot: EnterpriseTrackingSnapshot, bootId: String, device: TrackingDevice?): TrackingSessionView? {
+        val checkpoint = local.checkpoint
+        val buffer = snapshot.buffers?.session(local.sessionId)
+        val cause = TrackingInterruptions.observedCause(listOfNotNull(checkpoint?.bootId, buffer?.bootId), bootId, device?.permission,
+            device?.notificationVisible)
+        val at = listOfNotNull(checkpoint?.at, local.lastAt, buffer?.checkpointAt?.plusMillis(1)).maxOrNull()
+        return interrupt(account, partition, local.sessionId, cause, at)
+    }
+
+    /**
+     * EMP-GPS-010 (B-BR-EMP-544): a recording session that this process does not collect for is interrupted now at its last
+     * proof of recording, with the cause the device observes; never resumed. Null when it is not recording.
+     */
+    suspend fun interruptUncollected(account: EnterpriseQueueAccountLease, partition: EnterprisePartition, sessionId: String, bootId: String,
+        device: TrackingDevice?): TrackingSessionView? {
+        val attempt = attempt(account, partition)
+        val snapshot = snapshot(attempt)
+        val local = book(attempt, snapshot).sessionById(sessionId) ?: return null
+        if (local.refused || local.state != TrackingSessionState.RECORDING) return null
+        val trip = snapshot.trips?.trip(local.tripId) ?: return null
+        // A trip that finished meanwhile ends the session instead (B-BR-EMP-499).
+        if (trip.state != TripLocalState.IN_PROGRESS) return follow(account, partition, local.tripId)
+        return uncollected(account, partition, local, snapshot, bootId, device)
     }
 
     /** The running collector's checkpoint (BR-GPS-012); false when the session is not recording any more. */
@@ -537,25 +606,40 @@ class EnterpriseTrackingService(
      * observed at [nowElapsed] / [nowWall] on boot [bootId]; nothing is recorded for a session that is not collecting.
      */
     suspend fun record(account: EnterpriseQueueAccountLease, partition: EnterprisePartition, sessionId: String, observation: TrackingObservation,
-        economy: Boolean, nowElapsed: Long, nowWall: Instant, bootId: String): TrackingObservationOutcome {
+        economy: Boolean, nowElapsed: Long, nowWall: Instant, bootId: String,
+        /** EMP-GPS-010: the permission granted with this report, null when not observed (B-BR-EMP-546). */
+        permission: LocationPermission? = null): TrackingObservationOutcome {
         val attempt = attempt(account, partition)
         val snapshot = snapshot(attempt)
-        val local = book(attempt, snapshot).sessionById(sessionId) ?: return TrackingObservationOutcome.IGNORED
+        var local = book(attempt, snapshot).sessionById(sessionId) ?: return TrackingObservationOutcome.IGNORED
         val collecting = collecting(account, partition, sessionId) ?: return TrackingObservationOutcome.IGNORED
+        // EMP-GPS-010 (B-BR-EMP-546): never more precise than the permission granted with the report; none records nothing.
+        val precision = TrackingInterruptions.fixPrecision(collecting.precision, permission) ?: return TrackingObservationOutcome.IGNORED
+        if (precision != collecting.precision) {
+            // The first approximate report of a precise period reduces it at that report's own instant before it is recorded.
+            val fixAt = nowWall.minusMillis((nowElapsed - observation.elapsedMillis).coerceAtLeast(0))
+            event(account, partition, { it.sessionById(sessionId)?.takeIf { s -> s.state == TrackingSessionState.RECORDING } },
+                TrackingOperations.REDUCE, TrackingCause.PRECISION_REDUCED, fixAt) ?: return TrackingObservationOutcome.IGNORED
+            local = book(attempt, snapshot(attempt)).sessionById(sessionId) ?: return TrackingObservationOutcome.IGNORED
+        }
         val period = TrackingDecisions.rebuild(partition.organizationId, attempt.enrollment.target.membershipId, local).recordingPeriods.last()
+        val runStart = TrackingRules.runStart(local) ?: period.start
+        val previousEnd = TrackingRules.previousRunEnd(local, runStart)
         // Fixes of another boot are sealed first; a batch never mixes boots (B-BR-EMP-504).
         if (snapshot.buffers?.session(sessionId)?.let { it.bootId != bootId && it.pending.isNotEmpty() } == true) sealAll(attempt, sessionId, force = true)
         var outcome = TrackingObservationOutcome.IGNORED
         store.updateBuffer(attempt, sessionId) { current ->
-            val buffer = (current ?: SessionBuffer.empty(sessionId, local.tripId, bootId)).let { if (it.pending.isEmpty()) it.onBoot(bootId) else it }
-            if (buffer.bootId != bootId) return@updateBuffer null
-            val (next, result) = TrackingSampler.observe(buffer, observation, collecting.precision, economy, period.start, nowElapsed, nowWall)
+            val stored = (current ?: SessionBuffer.empty(sessionId, local.tripId, bootId)).let { if (it.pending.isEmpty()) it.onBoot(bootId) else it }
+            if (stored.bootId != bootId) return@updateBuffer null
+            // A gap left open by an earlier run ends with that run, never inside this one (B-BR-EMP-545).
+            val buffer = TrackingInterruptions.enterRun(stored, runStart, previousEnd)
+            val (next, result) = TrackingSampler.observe(buffer, observation, precision, economy, period.start, nowElapsed, nowWall)
             outcome = result
             // An accepted fix that is not recorded only moves the anchors: written at most once a minute (EDR-327), well inside
             // the 180-second gap threshold, so a running process never opens a false gap and the vault is not rewritten every 5 s.
             val anchorOnly = result == TrackingObservationOutcome.ACCEPTED_NOT_RECORDED && buffer.openGap == null &&
                 buffer.lastAcceptedAt?.let { next.lastAcceptedAt!!.toEpochMilli() - it.toEpochMilli() < ANCHOR_MILLIS } == true
-            next.takeIf { result != TrackingObservationOutcome.IGNORED && !anchorOnly }
+            next.takeIf { result != TrackingObservationOutcome.IGNORED && !anchorOnly || buffer !== stored }
         }
         return outcome
     }
@@ -567,12 +651,16 @@ class EnterpriseTrackingService(
         val local = book(attempt, snapshot(attempt)).sessionById(sessionId) ?: return null
         collecting(account, partition, sessionId) ?: return null
         val period = TrackingDecisions.rebuild(partition.organizationId, attempt.enrollment.target.membershipId, local).recordingPeriods.last()
+        val runStart = TrackingRules.runStart(local) ?: period.start
+        val previousEnd = TrackingRules.previousRunEnd(local, runStart)
         var opened: TrackingGap? = null
         store.updateBuffer(attempt, sessionId) { current ->
-            val buffer = current ?: SessionBuffer.empty(sessionId, local.tripId, bootId)
+            val stored = current ?: SessionBuffer.empty(sessionId, local.tripId, bootId)
+            // EMP-GPS-010 (B-BR-EMP-545): a gap of an earlier run ends with it and no longer hides this run's gaps.
+            val buffer = TrackingInterruptions.enterRun(stored, runStart, previousEnd)
             val next = TrackingSampler.tick(buffer, nowWall, providerEnabled, period.start)
             if (next.openGap != null && buffer.openGap == null) opened = next.openGap
-            next.takeIf { it !== buffer }
+            next.takeIf { it !== stored }
         }
         if (opened != null) sealAll(attempt, sessionId, force = true)
         return opened
@@ -590,8 +678,9 @@ class EnterpriseTrackingService(
             if (local.refused) return queued
             val buffer = snapshot.buffers?.session(sessionId) ?: return queued
             if (!TrackingBatching.due(buffer, Instant.ofEpochMilli(wallMillis()), force)) return queued
-            val run = TrackingBatching.nextRun(buffer)
-            val opening = TrackingRules.periodOpening(local, run.first().at) ?: return queued
+            val opening = TrackingRules.periodOpening(local, TrackingBatching.nextRun(buffer).first().at) ?: return queued
+            // EMP-GPS-010 (B-BR-EMP-545): one recording run per batch, even when an earlier seal failed and two runs wait together.
+            val run = TrackingBatching.nextRun(buffer).takeWhile { TrackingRules.periodOpening(local, it.at) == opening }
             val declared = declaration(run.first().at)
             var size = run.size
             var operation: EnterpriseOperation? = null

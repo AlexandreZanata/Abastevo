@@ -37,12 +37,17 @@ import com.anpfuel.application.enterprise.tracking.TrackingPlatform
 import com.anpfuel.application.enterprise.tracking.TrackingRuntime
 import com.anpfuel.domain.enterprise.EnterprisePartition
 import com.anpfuel.domain.enterprise.tracking.LocationPermission
+import com.anpfuel.domain.enterprise.tracking.TrackingDevice
+import com.anpfuel.domain.enterprise.tracking.TrackingGapReason
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -154,6 +159,9 @@ class OrganizationTrackingService : Service() {
     private var platform: AndroidTrackingPlatform? = null
     private var watchdog: Job? = null
     private var consumer: Job? = null
+    /** EMP-GPS-010: follows the collector's open gap to keep the ongoing notification truthful. */
+    private var notices: Job? = null
+    private var name: String = ""
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -174,7 +182,7 @@ class OrganizationTrackingService : Service() {
                 intent.getStringExtra(EXTRA_ORGANIZATION).orEmpty())
         } catch (_: Exception) { null }
         val sessionId = intent.getStringExtra(EXTRA_SESSION).orEmpty()
-        val name = intent.getStringExtra(EXTRA_NAME).orEmpty().take(120)
+        name = intent.getStringExtra(EXTRA_NAME).orEmpty().take(120)
         // A foreground service must show its notification at once; a refused start removes it again.
         val shown = runCatching {
             OrganizationTrackingNotifications.ensureChannel(this)
@@ -182,15 +190,33 @@ class OrganizationTrackingService : Service() {
                 if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION else 0)
         }.isSuccess
         val installed = OrganizationTrackingHost.installed
-        if (!shown || partition == null || installed == null) { if (collector?.runningSessionId == null) shutdown(); return }
+        if (!shown || partition == null || installed == null) {
+            // EMP-GPS-010 (B-BR-EMP-544): a session the visible screen granted that cannot run in the foreground is interrupted
+            // at once with the observed cause, never left shown as recording; without that grant nothing is written.
+            if (installed != null && partition != null && collector?.runningSessionId == null && installed.runtime.gate.consume(partition, sessionId)) {
+                val observed = AndroidTrackingPlatform(this)
+                scope.launch {
+                    runCatching {
+                        installed.service.interruptUncollected(installed.source.account(), partition, sessionId, observed.bootId(),
+                            TrackingDevice(observed.permission(), observed.notificationVisible()))
+                    }
+                    shutdown()
+                }
+            } else if (collector?.runningSessionId == null) shutdown()
+            return
+        }
         val active = collector ?: TrackingCollector(installed.service, installed.source, installed.runtime.gate,
             AndroidTrackingPlatform(this).also { platform = it }, installed.deliver).also { collector = it }
         scope.launch {
-            when (active.begin(partition, sessionId)) {
+            // EMP-GPS-015: the organization's name travels with the visible start, for the indicator of every enterprise screen.
+            when (active.begin(partition, sessionId, name)) {
                 TrackingBeginResult.STARTED -> {
                     installed.runtime.collector = active
                     // EMP-GPS-003: reports are recorded durably, in arrival order, off the platform callback.
                     if (consumer == null) consumer = scope.launch { active.run() }
+                    // EMP-GPS-010: location off, no signal or only simulated locations are said in the ongoing notification.
+                    notices?.cancel()
+                    notices = scope.launch { active.state.map { it.gap }.distinctUntilChanged().drop(1).collect(::showGap) }
                     startWatchdog(active)
                 }
                 TrackingBeginResult.ALREADY_RUNNING -> Unit
@@ -209,16 +235,22 @@ class OrganizationTrackingService : Service() {
         }
     }
 
+    private fun showGap(gap: TrackingGapReason?) {
+        if (!OrganizationTrackingNotifications.visible(this)) return
+        runCatching { getSystemService(NotificationManager::class.java)?.notify(OrganizationTrackingNotifications.NOTIFICATION_ID, notification(name, gap)) }
+    }
+
     private fun shutdown() {
         watchdog?.cancel(); watchdog = null
         consumer?.cancel(); consumer = null
+        notices?.cancel(); notices = null
         val installed = OrganizationTrackingHost.installed
         if (installed?.runtime?.collector === collector) installed?.runtime?.collector = null
         runCatching { ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE) }
         stopSelf()
     }
 
-    private fun notification(name: String): Notification {
+    private fun notification(name: String, gap: TrackingGapReason? = null): Notification {
         val stop = PendingIntent.getService(this, 0, Intent(this, OrganizationTrackingService::class.java).setAction(ACTION_STOP),
             PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val open = packageManager.getLaunchIntentForPackage(packageName)?.let {
@@ -227,7 +259,13 @@ class OrganizationTrackingService : Service() {
         return NotificationCompat.Builder(this, OrganizationTrackingNotifications.CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_mylocation)
             .setContentTitle(getString(R.string.enterprise_tracking_notification_title, name))
-            .setContentText(getString(R.string.enterprise_tracking_notification_text))
+            .setContentText(getString(when (gap) {
+                TrackingGapReason.PROVIDER_DISABLED -> R.string.enterprise_tracking_notification_gap_provider
+                TrackingGapReason.SIGNAL_LOST -> R.string.enterprise_tracking_notification_gap_signal
+                TrackingGapReason.MOCK_LOCATION -> R.string.enterprise_tracking_notification_gap_mock
+                null -> R.string.enterprise_tracking_notification_text
+            }))
+            .setOnlyAlertOnce(true)
             .setOngoing(true)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)

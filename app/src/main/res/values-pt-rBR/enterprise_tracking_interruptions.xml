@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-010 tracking interruptions; generated from one table by f4-logs/gps010-scripts/gen_interruption_strings.py -->
+<resources>
+    <string name="enterprise_tracking_interruption_open">%1$s desde %2$s. %3$s</string>
+    <string name="enterprise_tracking_interruption_closed">%1$s de %2$s a %3$s. %4$s</string>
+    <string name="enterprise_tracking_coarse_parts">Parte deste rastreamento usou localização aproximada: dessas partes não sai distância por GPS.</string>
+    <string name="enterprise_tracking_refusal_busy">Este celular já está rastreando outra viagem. Pare aquele rastreamento antes.</string>
+    <string name="enterprise_tracking_notification_gap_provider">Localização desligada: nada é registrado até ela voltar.</string>
+    <string name="enterprise_tracking_notification_gap_signal">Sem sinal de GPS: nada é registrado neste intervalo.</string>
+    <string name="enterprise_tracking_notification_gap_mock">Localizações simuladas ignoradas: nada é registrado neste intervalo.</string>
+</resources>

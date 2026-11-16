@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-010 tracking interruptions; generated from one table by f4-logs/gps010-scripts/gen_interruption_strings.py -->
+<resources>
+    <string name="enterprise_tracking_interruption_open">自 %2$s 起%1$s。%3$s</string>
+    <string name="enterprise_tracking_interruption_closed">%2$s 至 %3$s %1$s。%4$s</string>
+    <string name="enterprise_tracking_coarse_parts">本次追踪的部分时段使用了大致位置：这些时段不计算 GPS 距离。</string>
+    <string name="enterprise_tracking_refusal_busy">此手机正在追踪另一个行程。请先停止该追踪。</string>
+    <string name="enterprise_tracking_notification_gap_provider">位置已关闭：重新开启前不记录任何内容。</string>
+    <string name="enterprise_tracking_notification_gap_signal">没有 GPS 信号：此期间不记录任何内容。</string>
+    <string name="enterprise_tracking_notification_gap_mock">已忽略模拟位置：此期间不记录任何内容。</string>
+</resources>

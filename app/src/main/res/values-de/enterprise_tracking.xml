@@ -22,7 +22,7 @@
     <string name="enterprise_tracking_approximate">Ungefährer Standort: Für diese Fahrt wird keine GPS-Strecke berechnet.</string>
     <string name="enterprise_tracking_cause_permission_denied">Die Standortberechtigung wurde nicht erteilt. Die Fahrt läuft ohne Verfolgung weiter.</string>
     <string name="enterprise_tracking_cause_notification_blocked">Benachrichtigungen sind blockiert, daher kann die Verfolgung nicht mit sichtbarem Hinweis laufen. Erlauben Sie Benachrichtigungen.</string>
-    <string name="enterprise_tracking_cause_process_stopped">Die App wurde während der Verfolgung geschlossen.</string>
+    <string name="enterprise_tracking_cause_process_stopped">Die Verfolgung wurde auf diesem Telefon ohne Ihre Anweisung beendet (App geschlossen oder vom System gestoppt).</string>
     <string name="enterprise_tracking_cause_device_restarted">Das Telefon wurde während der Verfolgung neu gestartet.</string>
     <string name="enterprise_tracking_cause_stopped_by_driver">Sie haben die Verfolgung beendet. Die Fahrt geht weiter.</string>
     <string name="enterprise_tracking_cause_owner_changed">Konto oder Unternehmen wurde auf diesem Telefon gewechselt.</string>

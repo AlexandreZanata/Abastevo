@@ -22,7 +22,7 @@
     <string name="enterprise_tracking_approximate">大致位置：本次行程不会计算 GPS 距离。</string>
     <string name="enterprise_tracking_cause_permission_denied">未授予位置权限。行程将在不追踪的情况下继续。</string>
     <string name="enterprise_tracking_cause_notification_blocked">通知被阻止，追踪无法在显示通知的情况下运行。请允许通知。</string>
-    <string name="enterprise_tracking_cause_process_stopped">追踪期间应用已关闭。</string>
+    <string name="enterprise_tracking_cause_process_stopped">此手机上的追踪在你未操作的情况下停止了（应用被关闭或被系统停止）。</string>
     <string name="enterprise_tracking_cause_device_restarted">追踪期间手机已重启。</string>
     <string name="enterprise_tracking_cause_stopped_by_driver">你已停止追踪。行程继续。</string>
     <string name="enterprise_tracking_cause_owner_changed">此手机上的账户或公司已更改。</string>

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-015 tracking transparency; generated from one table by f4-logs/gps015-scripts/gen_transparency_strings.py -->
+<resources>
+    <string name="enterprise_tracking_indicator_active">Seguimiento de la empresa activo — %1$s</string>
+    <string name="enterprise_tracking_indicator_detail">Desde %1$s · posición de este teléfono, no del vehículo</string>
+    <string name="enterprise_tracking_indicator_precise">Ubicación precisa</string>
+    <string name="enterprise_tracking_indicator_approximate">Ubicación aproximada</string>
+    <string name="enterprise_tracking_indicator_open">Ver mi seguimiento</string>
+    <string name="enterprise_tracking_not_collecting_here">Este teléfono no está recopilando posiciones de este viaje ahora.</string>
+    <string name="enterprise_tracking_mine_title">Mi seguimiento</string>
+    <string name="enterprise_tracking_mine_home">Mira qué recopila la empresa y cuándo estuvo activo el seguimiento en este teléfono.</string>
+    <string name="enterprise_tracking_mine_back">Volver al inicio de la empresa</string>
+    <string name="enterprise_tracking_mine_now_active">Este teléfono está siguiendo un viaje de la empresa ahora.</string>
+    <string name="enterprise_tracking_mine_now_inactive">No hay ningún seguimiento de la empresa activo en este teléfono.</string>
+    <string name="enterprise_tracking_mine_collected_title">Qué se recopila</string>
+    <string name="enterprise_tracking_mine_collected">Solo durante un viaje de la empresa en el que iniciaste el seguimiento, y mientras está activo: la posición de este teléfono (no del vehículo), su precisión, velocidad, dirección y hora, cerca de cada 10 segundos en movimiento y cada 2 minutos detenido, además de cuándo el seguimiento empezó, se interrumpió y terminó.</string>
+    <string name="enterprise_tracking_mine_not_collected_title">Qué no se recopila</string>
+    <string name="enterprise_tracking_mine_not_collected">Nada fuera de un viaje con seguimiento, en el modo personal o después de que detienes el seguimiento o terminas el viaje. La app nunca pide ubicación en segundo plano y nunca inicia el seguimiento por sí sola.</string>
+    <string name="enterprise_tracking_mine_who_title">Quién lo ve</string>
+    <string name="enterprise_tracking_mine_who">Las personas de la empresa con permiso de seguimiento ven los viajes de su ámbito, y cada acceso queda registrado. Aquí ves tus propias sesiones.</string>
+    <string name="enterprise_tracking_mine_retention_title">Cuánto tiempo se guarda</string>
+    <string name="enterprise_tracking_mine_retention">La empresa guarda las posiciones durante 90 días después del viaje, salvo otro plazo que defina entre 30 y 365 días; el resumen del viaje sigue al viaje.</string>
+    <string name="enterprise_tracking_mine_device_title">En este teléfono</string>
+    <string name="enterprise_tracking_mine_device">Las posiciones quedan protegidas en este teléfono hasta que se envían. Si la empresa revoca este teléfono o sales de ella, la copia de este teléfono se borra cuando la app vuelva a conectarse; un teléfono sin conexión no se borra a distancia, y lo que la empresa ya recibió sigue su retención.</string>
+    <string name="enterprise_tracking_mine_policy">Política de la empresa: %1$s · aviso %2$s</string>
+    <string name="enterprise_tracking_mine_policy_expected">seguimiento esperado</string>
+    <string name="enterprise_tracking_mine_policy_optional">seguimiento opcional</string>
+    <string name="enterprise_tracking_mine_policy_off">seguimiento desactivado</string>
+    <string name="enterprise_tracking_mine_policy_unknown">La política de la empresa aún no se leyó en este teléfono.</string>
+    <string name="enterprise_tracking_mine_sessions_title">Tus sesiones en este teléfono</string>
+    <string name="enterprise_tracking_mine_empty">Ningún viaje con seguimiento</string>
+    <string name="enterprise_tracking_mine_unavailable">No se pudieron leer ahora los registros de seguimiento de este teléfono.</string>
+    <string name="enterprise_tracking_mine_retry">Intentar de nuevo</string>
+    <string name="enterprise_tracking_mine_session_vehicle">Viaje con %1$s</string>
+    <string name="enterprise_tracking_mine_session_started">Inicio del seguimiento: %1$s</string>
+    <string name="enterprise_tracking_mine_session_never">El seguimiento no llegó a empezar en este viaje.</string>
+    <string name="enterprise_tracking_mine_session_ended">Fin: %1$s</string>
+    <string name="enterprise_tracking_mine_session_ongoing">En curso</string>
+    <string name="enterprise_tracking_mine_gap_signal">Sin señal GPS de %1$s a %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_provider">Ubicación desactivada de %1$s a %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_mock">Ubicaciones simuladas ignoradas de %1$s a %2$s.</string>
+</resources>

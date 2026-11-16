@@ -74,6 +74,34 @@ class TripTrackingViewModelTest {
         assertEquals(1, launched.size, "a refused session never listens")
     }
 
+    /** EMP-GPS-010 (B-BR-EMP-547): with a connection the tap reads the policy in force first, in the same flow gesture. */
+    @Test fun `a tap with a connection asks for the policy in force first and offline uses the cached one`(): Unit = runTest(dispatcher) {
+        val model = model(); advanceUntilIdle()
+        val device = TrackingDevice(LocationPermission.PRECISE, true)
+        model.startTracking(trip, device, 0, 7); advanceUntilIdle()
+        coVerify(exactly = 1) { flow.startTracking(trip, device, 0, 7, false) }
+        online.value = true; advanceUntilIdle()
+        model.startTracking(trip, device, 0, 7); advanceUntilIdle()
+        coVerify(exactly = 1) { flow.startTracking(trip, device, 0, 7, true) }
+        assertTrue(launched.isEmpty(), "nothing recording, nothing launched")
+    }
+
+    /** EMP-GPS-010 with EMP-TRIP-021: a pause or a cancellation releases the listener at once; a resume never restarts it. */
+    @Test fun `a pause or a cancellation releases the listener and a resume launches nothing`(): Unit = runTest(dispatcher) {
+        val model = model(); advanceUntilIdle()
+        states.value = tracked(TrackingSessionState.RECORDING)
+        coEvery { flow.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.PAUSE, null, 0, 7) } answers {
+            states.value = tracked(TrackingSessionState.SUSPENDED) }
+        model.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.PAUSE, null, 0, 7); advanceUntilIdle()
+        assertEquals(listOf(session), released)
+        model.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.RESUME, null, 0, 7); advanceUntilIdle()
+        assertEquals(listOf(session), released); assertTrue(launched.isEmpty(), "a resumed trip does not restart tracking")
+        coEvery { flow.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.CANCEL, "Cliente cancelou", 0, 7) } answers {
+            states.value = tracked(TrackingSessionState.ENDED) }
+        model.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.CANCEL, "Cliente cancelou", 0, 7); advanceUntilIdle()
+        assertEquals(listOf(session, session), released)
+    }
+
     @Test fun `stop and finish release the listener after the write and old gestures do nothing`(): Unit = runTest(dispatcher) {
         val model = model(); advanceUntilIdle()
         states.value = tracked(TrackingSessionState.RECORDING)
