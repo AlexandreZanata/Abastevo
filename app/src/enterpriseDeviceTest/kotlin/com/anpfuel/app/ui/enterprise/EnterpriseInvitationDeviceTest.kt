@@ -31,7 +31,6 @@ import androidx.hilt.work.HiltWorkerFactory
 import androidx.lifecycle.Lifecycle
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
-import androidx.work.Configuration
 import androidx.work.WorkManager
 import com.anpfuel.app.MainActivity
 import com.anpfuel.app.R
@@ -116,11 +115,9 @@ class EnterpriseInvitationDeviceTest {
             if (description.getAnnotation(EnterpriseGuestAccount::class.java) == null) {
                 check(auth.loginWithKey(EnterpriseDeviceScenario.ACCOUNT_KEY) is AuthApiResult.Ok)
             }
-            try {
-                WorkManager.getInstance(context)
-            } catch (_: IllegalStateException) {
-                WorkManager.initialize(context, Configuration.Builder().setWorkerFactory(workerFactory).build())
-            }
+            // The runner initialized WorkManager for this process (EnterpriseDeviceWork); this test's graph runs its jobs.
+            EnterpriseDeviceWork.use(workerFactory)
+            WorkManager.getInstance(context)
         }
     }
     @get:Rule(order = 2) val compose = createAndroidComposeRule<MainActivity>()

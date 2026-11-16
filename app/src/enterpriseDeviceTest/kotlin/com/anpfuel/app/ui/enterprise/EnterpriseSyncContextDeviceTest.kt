@@ -241,6 +241,12 @@ class EnterpriseSyncContextDeviceTest {
         // The synthetic account API answers a refresh only for its in-process family. Align it with the
         // retained session so the delivery-proof refresh takes the real path, never a synthetic revocation.
         scenario.familyId = checkNotNull(sessions.load()).familyId
+        // EDR-335: start the online stage inside the synthetic access token's last minute on every run, so the
+        // delivery proof's same-family refresh (a credential rotation that retires the lease "Meus ativos" opened
+        // with) is always exercised, not only on the first run 14 idle minutes after the previous refresh.
+        val expiring = checkNotNull(sessions.load()).let { it.copy(accessExpiresAt = System.currentTimeMillis() / 1000L + 30L) }
+        sessions.save(expiring)
+        check(sessions.load() == expiring)
         try {
             graph.seed()
             graph.serverAssets[graph.a.partition.organizationId] = listOf(graph.asset("Caminhão sintético A1"), graph.asset("Van sintética A2"))
@@ -297,6 +303,9 @@ class EnterpriseSyncContextDeviceTest {
             compose.onNodeWithTag("enterprise-assets-open").performScrollTo().performClick()
             awaitAssets(graph.a, listOf("Caminhão sintético A1", "Van sintética A2"), "online")
             assertEquals(1, graph.referencePulls.get())
+            val refreshed = checkNotNull(sessions.load())
+            assertEquals("The refresh changed the account or family", expiring.accountId to expiring.familyId, refreshed.accountId to refreshed.familyId)
+            assertTrue("The online pull did not refresh the expiring session", refreshed.accessExpiresAt > System.currentTimeMillis() / 1000L + 60L)
             compose.onNodeWithText("Caminhão sintético A1").assertIsDisplayed()
             compose.onNodeWithTag("enterprise-assets-confirmed-at").assertExists()
             compose.onNodeWithTag("enterprise-assets-back").performClick()

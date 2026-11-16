@@ -74,14 +74,23 @@ internal class MyAssetsFixture {
     val disk = mutableMapOf<EnterprisePartition, ByteArray>()
     private var nonce = 100
     private fun membership(p: EnterprisePartition) = if (p.organizationId == first.partition.organizationId) first.membershipId else second.membershipId
+    /** The stored session's credentials; a same-family refresh replaces them without moving the fence (EDR-335). */
+    var credentials = 1
+    /** When set, every delivery-proof capture first refreshes the session, as the account flow does near expiry. */
+    var rotateOnDelivery = false
     val source = object : EnterpriseQueueSource {
         override suspend fun account(): EnterpriseQueueAccountLease {
-            val captured = identity; val epoch = fence.epoch; val background = fence.backgroundEpoch
+            val captured = identity; val epoch = fence.epoch; val background = fence.backgroundEpoch; val held = credentials
+            // Like the actual session source, a lease is retained only while the stored session is byte-identical.
             return EnterpriseQueueAccountLease.capture(captured, epoch, background, assetId(nonce++)) {
-                identity == captured && fence.epoch == epoch && fence.backgroundEpoch == background
+                identity == captured && fence.epoch == epoch && fence.backgroundEpoch == background && credentials == held
             }
         }
-        override suspend fun deliveryAccount(): EnterpriseQueueAccountLease { deliveryCaptures++; return account() }
+        override suspend fun deliveryAccount(): EnterpriseQueueAccountLease {
+            deliveryCaptures++
+            if (rotateOnDelivery) credentials++
+            return account()
+        }
         override suspend fun attempt(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): EnterpriseQueueAttempt {
             account.assertCurrent()
             return account.forEnrollment(EnterpriseEnrollmentBinding(EnterpriseDeviceTarget(partition, membership(partition)), assetId(4), 1))
@@ -211,6 +220,41 @@ class EnterpriseMyAssetsFlowTest {
         assertTrue(second.state.value.loaded); assertNull(second.state.value.snapshot, "Another account on this device sees nothing")
         // The old owner cannot read its rendered row any more.
         assertNull(flow.choose(assetId(10), true, f.fence.epoch, flow.state.value.generation))
+    }
+
+    /**
+     * EDR-335: the delivery proof may refresh the session within the same family (new tokens, same epoch). The lease that
+     * `open` captured is then retired; the pull must adopt the fresh delivery lease instead of reporting the view stale.
+     * Native symptom before the fix: the first online "Meus ativos" after the access token's last minute showed STALE
+     * with no feed contact (EnterpriseSyncContextDeviceTest intermittent).
+     */
+    @Test fun `a same-family session refresh during the pull adopts the fresh lease and shows the list`() = runTest {
+        val f = MyAssetsFixture(); val org = f.first.partition.organizationId
+        f.server.assign(org, 10, "Caminhão"); f.server.assign(org, 11, "Van")
+        f.rotateOnDelivery = true
+        val flow = f.flow()
+        val epoch = f.fence.epoch
+        flow.open(f.first, epoch, online = true)
+        val opened = flow.state.value
+        assertNull(opened.error, "A same-family refresh is not a lost context")
+        assertTrue(opened.loaded); assertFalse(opened.refreshFailed)
+        assertEquals(listOf("Caminhão", "Van"), f.names(flow))
+        assertEquals(1, f.server.pulls); assertEquals(2, f.credentials)
+        assertEquals(epoch, f.fence.epoch, "The refresh did not move the fence")
+        // An explicit refresh refreshes again and still shows the list.
+        f.server.assign(org, 12, "Trator")
+        flow.refresh(epoch, flow.state.value.generation)
+        assertNull(flow.state.value.error); assertFalse(flow.state.value.refreshFailed)
+        assertEquals(listOf("Caminhão", "Trator", "Van"), f.names(flow))
+        assertEquals(3, f.credentials)
+        // The pull's choice still works after the rotation, without network.
+        assertNotNull(flow.choose(assetId(12), false, epoch, flow.state.value.generation))
+        // Negative: a refresh that also changes the identity (another family) still withdraws the view.
+        f.server.assign(org, 13, "Ônibus")
+        f.identity = EnterpriseLocalIdentity(f.identity.account, ASSET_ORIGIN, assetId(79))
+        flow.refresh(epoch, flow.state.value.generation)
+        assertEquals(EnterpriseAccessError.STALE, flow.state.value.error)
+        assertNull(flow.state.value.snapshot)
     }
 
     @Test fun `a failed refresh keeps the cached list and says it could not be confirmed now`() = runTest {
