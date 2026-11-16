@@ -85,6 +85,21 @@ func (p ports) root(ctx context.Context, db syncapp.DBTX, source syncapp.Source,
 	return nil
 }
 
+// tripTarget is a stored trip's authority target (EMP-TRIP-012): its stored
+// structure and the member responsible for it now, or at the instant when one
+// is given; a member that was ever responsible re-reads the receipts of the
+// operations it sent as its own record (B-BR-EMP-395).
+func tripTarget(record app.Record, source syncapp.Source, mode syncapp.Mode, at *time.Time) app.Target {
+	member, _ := record.Responsible()
+	if at != nil {
+		member, _ = record.ResponsibleAt(*at)
+	}
+	if mode == syncapp.ReadReceipt && record.Party(source.MembershipID) {
+		member = source.MembershipID
+	}
+	return app.Target{TripID: record.ID, AssetID: record.AssetID, UnitID: record.UnitID, CostCentreID: record.CostCentreID, AuthorMembershipID: member}
+}
+
 // classify decides an event on the asset from retained history (EDR-118).
 func (p ports) classify(ctx context.Context, db syncapp.DBTX, source syncapp.Source, asset, driver string, at time.Time) (app.Disposition, error) {
 	employee, err := p.store.AuthorEmployeeTx(ctx, syncapp.Borrow(db), source.Scope, source.MembershipID)

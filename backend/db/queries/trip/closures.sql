@@ -36,8 +36,10 @@ ORDER BY t.occurred_at,t.occurred_submicro,t.id
 LIMIT sqlc.arg(row_limit)::integer;
 
 -- name: OpenTripsOfAuthor :many
--- EMP-TRIP-018: the trips in progress a membership started (offboarding
--- handover items), bounded like the offboarding review.
-SELECT id::text AS id FROM org_trips
-WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND author_membership_id=CAST(sqlc.arg(membership_id)::text AS uuid) AND state IN('IN_PROGRESS','PAUSED')
-ORDER BY id LIMIT 501;
+-- EMP-TRIP-018: the trips in progress a membership is responsible for
+-- (offboarding handover items; EMP-TRIP-012: the receiver of the latest
+-- handover, else the starter), bounded like the offboarding review.
+SELECT t.id::text AS id FROM org_trips t
+WHERE t.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND t.state IN('IN_PROGRESS','PAUSED')
+ AND org_trip_responsible_member(t.org_id,t.id)=CAST(sqlc.arg(membership_id)::text AS uuid)
+ORDER BY t.id LIMIT 501;

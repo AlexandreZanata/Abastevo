@@ -150,6 +150,7 @@ func TestTripClosurePopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing.T
 	}
 	// The pre-existing trips under the upgraded schema and guards.
 	tripClosureGrant(t, f)
+	tripHandoverGrant(t, f)
 	closures := tripClosureState{tripAmendState: tripAmendState{tripPeriodState: tripPeriodState{tripReviewState: x}}, closures: tripClosureStoreOf(t, x.legalFixtureState, f.Runtime)}
 	supervisor := x.reviewerFor(t, "SUPERVISOR", "ORG", "")
 	result, _, err := closures.close(x.scope, supervisor, running, 1, closureReason, closureMissing, onboardingID(t))

@@ -194,7 +194,8 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 	// meter.reading.correct over the same stored structure.
 	// EMP-TRIP-014 (EDR-259): a closure covers the trip through the same
 	// stored structure; EMP-GPS-012 (EDR-281): a recorded-track read uses the
-	// same snapshot.
+	// same snapshot; EMP-TRIP-012 (EDR-255): a handover covers the trip
+	// through it too.
 	case r.Kind == TripStructure && (policy.Permission == "trip.trip.review" || policy.Permission == "meter.reading.correct" || policy.Permission == "trip.trip.close_for_other" || policy.Permission == "gps.track.read"):
 		var teams []string
 		if err := tx.QueryRow(ctx, tripStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {

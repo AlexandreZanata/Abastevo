@@ -208,7 +208,7 @@ func TestTripLifecyclePopulatedUpgradeFailureRecoveryAndPreviousImage(t *testing
 	}
 	// The trip in progress is paused, resumed and finished on the new schema.
 	tripGrants(t, x.legalFixtureState)
-	store := &trippg.Store{Allocations: x.assets, NewID: func() (string, error) { return onboardingID(t), nil }}
+	store := &trippg.Store{Allocations: x.assets, NewID: func() (string, error) { return onboardingID(t), nil }, PreHandoverImage: !handoverImage(t, x.f)}
 	lifecycle := tripLifecycleState{eventState: x, lifecycle: map[string]syncapp.Handler{}}
 	for _, kind := range tripapp.LifecycleOperationTypes {
 		handler, err := trippg.NewTransitionHandler(kind, x.authority, x.meters, store, store)

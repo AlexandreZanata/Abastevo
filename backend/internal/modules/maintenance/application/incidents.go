@@ -264,8 +264,10 @@ type ReportStore interface {
 }
 
 // TripWindow checks a named trip against the report (B-BR-EMP-371): the
-// same asset (else ErrMalformed), the reporter as the trip's author (else
-// ErrForbiddenTrip) and the declared instant inside the trip.
+// same asset (else ErrMalformed), the reporter as the member responsible for
+// the trip at the declared instant (its author, or the receiver of a
+// handover, EMP-TRIP-012; else ErrForbiddenTrip) and the declared instant
+// inside the trip.
 func TripWindow(record tripapp.Record, in ReportInput) error {
 	if record.ID != in.TripID {
 		return ErrUnavailable
@@ -273,10 +275,10 @@ func TripWindow(record tripapp.Record, in ReportInput) error {
 	if record.AssetID != in.AssetID {
 		return ErrMalformed
 	}
-	if record.AuthorMembershipID != in.AuthorMembershipID {
+	at := in.Declared.OccurredAt
+	if responsible, _ := record.ResponsibleAt(at); responsible != in.AuthorMembershipID {
 		return ErrForbiddenTrip
 	}
-	at := in.Declared.OccurredAt
 	if at.Before(record.Declared.OccurredAt) || record.Finish != nil && at.After(record.Finish.Declared.OccurredAt) {
 		return ErrMalformed
 	}

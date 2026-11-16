@@ -187,6 +187,8 @@ type Trip struct {
 	revision  int64
 	lifecycle []LifecycleFact
 	closure   *Closure // EMP-TRIP-014: a supervisor closure, never beside a finish
+	// handovers are the accepted handovers in revision order (EMP-TRIP-012).
+	handovers []HandoverFact
 }
 
 // Start creates a C1 driver-initiated trip in IN_PROGRESS (B-BR-EMP-269/270).

@@ -7320,3 +7320,124 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   `OPERATION_ID_REUSED`, concurrent duplicates, wrong role and wrong scope,
   forced RLS and insert-only history, and a populated upgrade from the 000237
   head with injected failure, recovery and the catch-up run twice.
+
+## EMP-TRIP-012 — Driver handover during a trip (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip012-driver-handover.md).
+
+- **B-BR-EMP-394 — A handover is a supervisor's online command on an open
+  trip.** A handover moves the responsibility for one open trip
+  (`IN_PROGRESS` or `PAUSED`) of the organization from its current
+  responsible member to another member. It is recorded online on a company
+  session by a member holding `trip.trip.close_for_other` with fresh proof
+  over the trip's stored structure (ORG, or the unit, cost centre, team or
+  asset of the start snapshot) on an `ACTIVE` organization:
+  `POST /v1/orgs/{org_id}/trips/{trip_id}/handover` with `schema_version`
+  1, `operation_id`, the trip's operational `revision` the supervisor saw,
+  `receiver_membership_id` and a `reason` (nonblank, control-free, at most
+  280 characters). Its instant is the server clock at recording, never a
+  device claim (BR-TIME-003). The receiver must be an `ACTIVE` membership of
+  the organization other than the current responsible member, whose
+  employee record is `ACTIVE` and not merged, who currently holds
+  `trip.trip.start` for the trip as its own record and who is assigned
+  (FLEET-006) to the trip's asset at the handover instant; an unknown,
+  ended, suspended, foreign or otherwise ineligible receiver is
+  `VALIDATION_FAILED` with no detail about the person. A closed trip
+  (`COMPLETED` or `CANCELLED`) or a revision that is not the current one is
+  `CONFLICT`; a trip not stored in the organization is `NOT_FOUND`; a
+  body with another field is `MALFORMED`. An accepted handover is one
+  insert-only fact (trip, the revision it creates, giving membership and
+  employee, receiving membership and employee, recorder account,
+  membership and employee, reason, operation and request digest, instant)
+  and one `trip.trip.handed_over` audit event carrying the digest and no
+  reason text; the identical request returns the stored answer marked
+  `replayed`, the same operation with another body is
+  `OPERATION_ID_REUSED`. The pure trip (Go `trip/domain`, Kotlin
+  `enterprise.trip`) applies a handover with the order scope and trip,
+  recorder, receiver and receiving employee (absent `INVALID`, another
+  organization `SCOPE`), present reason and instant (`INVALID`), a
+  non-positive expected revision (`INVALID`), a missing reason
+  (`INCOMPLETE` `REASON`), a terminal trip (`INVALID_TRANSITION`), a stale
+  revision (`CONFLICT`), a recorder who is the current responsible member
+  or the receiver (`FORBIDDEN`), a receiver who already is responsible
+  (`INVALID`), then an instant before the previous handover's (`INVALID`);
+  both languages execute the shared `trip/handover-v1.psv` oracle.
+- **B-BR-EMP-395 — Future actions use the new responsibility; history keeps
+  its actors.** After a handover accepted at instant h: `trip.pause`,
+  `trip.resume`, `trip.cancel`, `trip.finish` and `trip.submit` are
+  admitted only from the current responsible member (the receiver of the
+  latest handover); a logbook event (`trip.event.record`) is admitted only
+  from the member responsible at its declared instant (the giving member
+  before h, the receiver at or after h), so field facts the giving member
+  declared offline before the handover still arrive; any other member is
+  `FORBIDDEN` and stores nothing, also on a held path (a late finish of a
+  member that is no longer responsible is `MALFORMED`, as for any other
+  member). The authority, the history continuity rule (EDR-118), an
+  incident report inside the trip, the tracking trip facts and the database
+  consult the member responsible at that point and that member's employee
+  as the trip's current driver. When a membership ends, its open work
+  (`TRIP:<id>` flags, EMP-TRIP-018) is the trips it is currently
+  responsible for: a giving member's offboarding no longer needs the
+  handed-over trip's flag, the receiver's does. Nothing is rewritten: the start, its readings, every
+  stored event, lifecycle row, finish, review entry and acknowledgement
+  keep their original actor, instants and receipt; the trip keeps its
+  identity, asset, start driver, structure snapshot, reporting day and
+  usage rule. A member who was responsible may still re-read the receipts
+  of the operations it sent.
+- **B-BR-EMP-396 — One revision, one responsible member.** A handover is a
+  trip revision: the operational revision is 1 after the start and one
+  more per lifecycle command, finish and handover (08-state-model rule 7).
+  Of two commands naming the same revision under the organization root and
+  trip row locks exactly one applies: a second handover is `CONFLICT`, a
+  device lifecycle command is held `STALE_REVISION` (or `FORBIDDEN` when
+  its author no longer holds the trip), so at no instant two members are
+  responsible. The database re-proves, under the same locks, the open
+  state, the next revision, the giving member as the current responsible
+  member, the receiver's active membership and employee and the
+  separation, and moves no trip column (responsibility is derived from the
+  handover facts).
+- **B-BR-EMP-397 — Separation.** The recorder is neither the current
+  responsible member nor the receiver, by account, membership or canonical
+  employee (`SELF_APPROVAL`, nothing written). Every party of every
+  handover of a trip — giving member, receiving member and recorder, by
+  account, membership and canonical employee — is excluded from every
+  review decision of that trip like its author (BR-REV-003), in the
+  application and in the review-entry guard. The member currently
+  responsible for a trip never closes it for another (EMP-TRIP-014,
+  `SELF_APPROVAL`), and a closed trip takes no handover (`CONFLICT`). The
+  resolution of a held fact (EMP-TRIP-007) keeps its own author and driver
+  separation.
+- **B-BR-EMP-398 — Who sees the handover; tracking ownership.** Under
+  `trip.trip.close_for_other` the organization's handovers are listed
+  (`POST /v1/orgs/{org_id}/trips/handovers/list`, organization level, only
+  an ORG grant covers it, keyset by instant and operation). The receiving
+  member learns its responsibility through
+  `POST /v1/orgs/{org_id}/trips/mine/list` under `trip.trip.start` on its
+  own membership: the open trips it is currently responsible for, with the
+  asset, state, revision, start instant and, when it was handed over, the
+  latest handover's instant, giving member and reason. A tracking session
+  belongs to the member who opened it (B-BR-EMP-421): after a handover the
+  giving member's session collects nothing and cannot start or resume (the
+  pure session refuses an owner who no longer runs the trip); the device
+  of the giving member stops collection and ends its session, and the
+  receiving member's device opens its own session for the remaining trip,
+  which the tracking owner must admit (EDR-256).
+- **BUC-EMP-199 — Hand a trip over at a shift change.** A driver started a
+  trip at 184 320 000 m; at 13:00 the supervisor, who is not driving,
+  hands it over at revision 1 to a second driver assigned to the same
+  vehicle with the reason "Troca de turno": the trip stays one trip at
+  revision 2, the audit trail names the supervisor and the second driver
+  sees it in the own list. A second handover of the same revision, a
+  handover to a driver not assigned to the vehicle, to someone outside the
+  organization or of a finished trip changes nothing.
+- **BUC-EMP-200 — Continue a handed-over trip.** The second driver pauses
+  (revision 3), resumes, records stops and finishes at 184 610 000 m; a
+  stop the first driver noted offline at 12:40 still arrives under the
+  first driver, while the first driver's later pause or stop is
+  `FORBIDDEN`. The timeline shows each fact with the member who recorded
+  it.
+- **BUC-EMP-201 — Review a handed-over trip.** The second driver submits
+  the trip; neither driver nor the supervisor who recorded the handover
+  can approve, return or reject it (`SELF_APPROVAL`); another reviewer
+  decides. Proven on real PostGIS with the races between two handovers and
+  between a handover and a pause, in both orders.
