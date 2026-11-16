@@ -72,11 +72,14 @@ func ParseMissionCommand(raw string) (MissionCommand, error) {
 	return MissionCommand(raw), nil
 }
 
-// MissionTransition is the EDR-228 table with the EDR-246 PLAN rows, first
-// failure first: a terminal state; START, COMPLETE and every IN_PROGRESS
-// change (later owners); ACCEPT and DECLINE only from ASSIGNED; PLAN never
-// from ACCEPTED (an accepted plan is not rewritten), else to PLANNED; ASSIGN
-// and CANCEL from DRAFT, PLANNED, ASSIGNED, ACCEPTED and DECLINED.
+// MissionTransition is the EDR-228 table with the EDR-246 PLAN rows and the
+// EDR-265 trip rows, first failure first: a terminal state; from
+// IN_PROGRESS only COMPLETE (the linked trip completed) and CANCEL; START
+// only from ACCEPTED (the linked trip started) and COMPLETE only from
+// IN_PROGRESS; ACCEPT and DECLINE only from ASSIGNED; PLAN never from
+// ACCEPTED (an accepted plan is not rewritten), else to PLANNED; ASSIGN and
+// CANCEL from DRAFT, PLANNED, ASSIGNED, ACCEPTED and DECLINED. The table
+// answers INVALID_TRANSITION for every refused pair (EMP-TRIP-023).
 func MissionTransition(from MissionState, command MissionCommand) (MissionState, error) {
 	if _, err := ParseMissionState(string(from)); err != nil {
 		return "", err
@@ -87,10 +90,23 @@ func MissionTransition(from MissionState, command MissionCommand) (MissionState,
 	if from.Terminal() {
 		return "", ErrInvalidTransition
 	}
-	if command == MissionStart || command == MissionComplete || from == MissionInProgress {
-		return "", ErrUnsupportedCommand
+	if from == MissionInProgress {
+		switch command {
+		case MissionComplete:
+			return MissionCompleted, nil
+		case MissionCancel:
+			return MissionCancelled, nil
+		}
+		return "", ErrInvalidTransition
 	}
 	switch command {
+	case MissionStart:
+		if from != MissionAccepted {
+			return "", ErrInvalidTransition
+		}
+		return MissionInProgress, nil
+	case MissionComplete:
+		return "", ErrInvalidTransition
 	case MissionPlan:
 		if from == MissionAccepted {
 			return "", ErrInvalidTransition

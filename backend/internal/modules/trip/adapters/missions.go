@@ -33,13 +33,14 @@ var missionActions = map[app.MissionCommandKind]string{
 	app.MissionAssignCommand:  "trip.mission.assigned",
 	app.MissionCancelCommand:  "trip.mission.cancelled",
 	app.MissionVehicleCommand: "trip.mission.vehicle_changed",
+	app.MissionReserveCommand: "trip.mission.reservation_requested",
 }
 
 // MissionAuditDefinitions registers one action per company command kind
 // (B-BR-EMP-358, B-BR-EMP-385); responses are audited by their intake receipt.
 func MissionAuditDefinitions() []audit.Definition {
 	out := []audit.Definition{}
-	for _, kind := range []app.MissionCommandKind{app.MissionCreate, app.MissionPlanCommand, app.MissionAssignCommand, app.MissionCancelCommand, app.MissionVehicleCommand} {
+	for _, kind := range []app.MissionCommandKind{app.MissionCreate, app.MissionPlanCommand, app.MissionAssignCommand, app.MissionCancelCommand, app.MissionVehicleCommand, app.MissionReserveCommand} {
 		out = append(out, audit.Definition{Action: missionActions[kind], TargetType: MissionTargetType})
 	}
 	return out
@@ -47,12 +48,14 @@ func MissionAuditDefinitions() []audit.Definition {
 
 // MissionStore owns the mission commands and reads (company) and the
 // response facts of the signed intake (EMP-TRIP-008, migration 000227).
-// Availability is the EMP-FLEET-007 start decision used only as a warning.
+// Availability is the EMP-FLEET-007 start decision used only as a warning;
+// Reservations creates a mission's reservation (EMP-TRIP-023).
 type MissionStore struct {
 	Pool         *pgxpool.Pool
 	Authority    app.MissionAuthority
 	Audit        auditing.TransactionRunner
 	Availability fleetapp.StartAvailabilityPort
+	Reservations fleetapp.MissionReservationPort
 }
 
 var (
@@ -81,7 +84,10 @@ func missionError(ctx context.Context, err error) error {
 	}
 	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrSetupIncomplete, access.ErrFreshAuthRequired,
 		access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrOperationReused, app.ErrNotFound, app.ErrUnavailable,
-		app.ErrMissionUnauthenticated, app.ErrMissionIneligible, app.ErrMissionAssetBusy, app.ErrMissionTripInProgress, trip.ErrConflict, trip.ErrInvalidTransition, trip.ErrUnsupportedCommand, trip.ErrInvalid, trip.ErrScope, trip.ErrForbidden} {
+		app.ErrMissionUnauthenticated, app.ErrMissionIneligible, app.ErrMissionAssetBusy, app.ErrMissionTripInProgress, trip.ErrConflict, trip.ErrInvalidTransition, trip.ErrUnsupportedCommand, trip.ErrInvalid, trip.ErrScope, trip.ErrForbidden,
+		// EMP-TRIP-023: the reservation request keeps its window conflict
+		// (only the window) and a window that has already started.
+		fleetapp.ErrReservationConflict, fleet.ErrInvalid} {
 		if errors.Is(err, known) {
 			return err
 		}
@@ -187,7 +193,7 @@ func (s *MissionStore) warning(ctx context.Context, tx pgx.Tx, scope kernel.OrgS
 	if record.View.AssetID == "" {
 		return nil, nil
 	}
-	decision, err := s.Availability.StartDecisionDBTX(ctx, syncapp.Borrow(tx), scope, record.View.AssetID, member, record.View.StartsAt)
+	decision, err := s.Availability.StartDecisionDBTX(ctx, syncapp.Borrow(tx), scope, record.View.AssetID, member, record.View.MissionID, record.View.StartsAt)
 	if err != nil {
 		return nil, app.ErrUnavailable
 	}
@@ -368,7 +374,7 @@ func (s *MissionStore) vehicle(ctx context.Context, tx pgx.Tx, queries *q.Querie
 	if starter == "" {
 		starter = member
 	}
-	decision, err := s.Availability.StartDecisionDBTX(ctx, syncapp.Borrow(tx), scope, in.AssetID, starter, record.View.StartsAt)
+	decision, err := s.Availability.StartDecisionDBTX(ctx, syncapp.Borrow(tx), scope, in.AssetID, starter, record.View.MissionID, record.View.StartsAt)
 	if err != nil {
 		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrUnavailable
 	}
@@ -382,9 +388,9 @@ func (s *MissionStore) vehicle(ctx context.Context, tx pgx.Tx, queries *q.Querie
 		AssetID: in.AssetID, Reason: in.Reason, ChangedBy: actor.AccountID, ChangedByMembershipID: member}, nil
 }
 
-// change applies PLAN, ASSIGN, CANCEL or VEHICLE to the locked head through
-// the pure rules.
-func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries, scope kernel.OrgScope, actor app.MissionActor, member string, in app.MissionCommandInput) (app.MissionAck, error) {
+// change applies PLAN, ASSIGN, CANCEL, VEHICLE or RESERVE to the locked head
+// through the pure rules; reservation is the new reservation of a RESERVE.
+func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries, scope kernel.OrgScope, actor app.MissionActor, member, reservation, digest string, in app.MissionCommandInput) (app.MissionAck, error) {
 	org := scope.OrgID().String()
 	record, err := s.head(ctx, queries, org, in.MissionID, true)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -403,7 +409,23 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 	var warning *app.MissionWarning
 	var planned *q.InsertMissionPlanParams
 	var changed *q.InsertMissionVehicleParams
+	var reserved *fleetapp.MissionReservation
 	switch in.Kind {
+	case app.MissionReserveCommand:
+		// EMP-TRIP-023 (B-BR-EMP-414): the mission's vehicle for its planned
+		// window; the reservation follows the RESERVE revision.
+		if absent(s.Reservations) || !canonicalID(reservation) {
+			return app.MissionAck{}, app.ErrUnavailable
+		}
+		if next, err = current.Reserve(scope, in.ExpectedRevision); err != nil {
+			return app.MissionAck{}, err
+		}
+		window, err := fleet.NewReservationWindow(record.View.StartsAt, record.View.EndsAt)
+		if err != nil {
+			return app.MissionAck{}, app.ErrUnavailable
+		}
+		reserved = &fleetapp.MissionReservation{ID: reservation, OperationID: in.OperationID, ActorAccountID: actor.AccountID, AssetID: record.View.AssetID,
+			MissionID: in.MissionID, Purpose: in.Reason, Window: window}
 	case app.MissionVehicleCommand:
 		var row q.InsertMissionVehicleParams
 		if next, row, err = s.vehicle(ctx, tx, queries, scope, actor, member, in, record, current); err != nil {
@@ -463,6 +485,12 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 	if err := queries.InsertMissionTransition(ctx, transition); err != nil {
 		return app.MissionAck{}, err
 	}
+	if reserved != nil {
+		reserved.Digest = digest
+		if err := s.Reservations.RequestMissionReservationTx(ctx, tx, scope, *reserved); err != nil {
+			return app.MissionAck{}, err
+		}
+	}
 	if planned != nil {
 		if err := queries.InsertMissionPlan(ctx, *planned); err != nil {
 			return app.MissionAck{}, err
@@ -491,7 +519,11 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 		}
 		return app.MissionAck{}, err
 	}
-	return app.MissionAck{MissionID: in.MissionID, Revision: v.Revision, State: v.State, AssigneeEmployeeID: employee, Warning: warning}, nil
+	ack := app.MissionAck{MissionID: in.MissionID, Revision: v.Revision, State: v.State, AssigneeEmployeeID: employee, Warning: warning}
+	if reserved != nil {
+		ack.ReservationID = reserved.ID
+	}
+	return ack, nil
 }
 
 // CommandMission runs one command under the organization root lock:
@@ -509,7 +541,11 @@ func (s *MissionStore) CommandMission(ctx context.Context, scope kernel.OrgScope
 	if in.Kind == app.MissionCreate {
 		mission, target = newID, scope.OrgID().String()
 	}
-	if !canonicalID(mission) || in.Kind != app.MissionCreate && newID != "" {
+	reservation := ""
+	if in.Kind == app.MissionReserveCommand {
+		reservation = newID
+	}
+	if !canonicalID(mission) || in.Kind != app.MissionCreate && in.Kind != app.MissionReserveCommand && newID != "" || in.Kind == app.MissionReserveCommand && !canonicalID(newID) {
 		return app.MissionAck{}, false, trip.ErrInvalid
 	}
 	if !s.ready(true) {
@@ -539,6 +575,14 @@ func (s *MissionStore) CommandMission(ctx context.Context, scope kernel.OrgScope
 			if prior.WarningCode != "" {
 				ack.Warning = &app.MissionWarning{Code: prior.WarningCode, Availability: prior.WarningAvailability}
 			}
+			if in.Kind == app.MissionReserveCommand {
+				if absent(s.Reservations) {
+					return app.ErrUnavailable
+				}
+				if ack.ReservationID, err = s.Reservations.MissionReservationOfTx(ctx, tx, scope, in.OperationID); err != nil {
+					return err
+				}
+			}
 			replayed = true
 			return s.Authority.CheckMissionTx(ctx, tx, scope, actor, member, target, app.MissionManage)
 		}
@@ -552,7 +596,7 @@ func (s *MissionStore) CommandMission(ctx context.Context, scope kernel.OrgScope
 			if in.Kind == app.MissionCreate {
 				ack, err = s.create(ctx, queries, scope, actor, member, mission, in)
 			} else {
-				ack, err = s.change(ctx, tx, queries, scope, actor, member, in)
+				ack, err = s.change(ctx, tx, queries, scope, actor, member, reservation, digest, in)
 			}
 			if err != nil {
 				return err
