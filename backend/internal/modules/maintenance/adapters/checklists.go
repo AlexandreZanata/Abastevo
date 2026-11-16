@@ -471,6 +471,37 @@ func (s *ChecklistStore) ReadTemplate(ctx context.Context, scope kernel.OrgScope
 	return view, nil
 }
 
+// applicable resolves the asset's applicable template of the context with the
+// pure BR-CHECK-002 rule over the matching ACTIVE templates (B-BR-EMP-332);
+// the CHECK-001 read and the EMP-TRIP-019 departure gate share it.
+func applicable(ctx context.Context, queries *q.Queries, org, asset string, moment checklist.Context) (checklist.Resolution, error) {
+	category, err := queries.ChecklistAssetCategory(ctx, q.ChecklistAssetCategoryParams{OrgID: org, ID: asset})
+	if err != nil {
+		return checklist.Resolution{}, err
+	}
+	rows, err := queries.ChecklistApplicableCandidates(ctx, q.ChecklistApplicableCandidatesParams{AssetID: asset, CategoryID: category, OrgID: org, Context: string(moment)})
+	if err != nil {
+		return checklist.Resolution{}, err
+	}
+	var candidates []checklist.Candidate
+	for _, r := range rows {
+		target := checklist.Target{Kind: checklist.TargetKind(r.TargetKind)}
+		if r.TargetKind != string(checklist.TargetOrganization) {
+			target.IDs = []string{r.TargetID}
+		}
+		if n := len(candidates); n > 0 && candidates[n-1].TemplateID == r.TemplateID {
+			candidates[n-1].Target.IDs = append(candidates[n-1].Target.IDs, target.IDs...)
+			continue
+		}
+		candidates = append(candidates, checklist.Candidate{TemplateID: r.TemplateID, Context: moment, Target: target})
+	}
+	resolved, err := checklist.Resolve(candidates, moment, asset, category)
+	if err != nil {
+		return checklist.Resolution{}, app.ErrUnavailable
+	}
+	return resolved, nil
+}
+
 // ReadApplicable resolves the asset's applicable template with the pure
 // BR-CHECK-002 rule over the matching ACTIVE templates (B-BR-EMP-332).
 func (s *ChecklistStore) ReadApplicable(ctx context.Context, scope kernel.OrgScope, actor app.ChecklistActor, member, asset string, moment checklist.Context) (app.ApplicableView, error) {
@@ -483,29 +514,9 @@ func (s *ChecklistStore) ReadApplicable(ctx context.Context, scope kernel.OrgSco
 	org := scope.OrgID().String()
 	view := app.ApplicableView{AssetID: asset, Context: moment, Match: checklist.MatchNone}
 	err := s.read(ctx, scope, actor, member, asset, app.ApplicableRead, func(queries *q.Queries) error {
-		category, err := queries.ChecklistAssetCategory(ctx, q.ChecklistAssetCategoryParams{OrgID: org, ID: asset})
+		resolved, err := applicable(ctx, queries, org, asset, moment)
 		if err != nil {
 			return err
-		}
-		rows, err := queries.ChecklistApplicableCandidates(ctx, q.ChecklistApplicableCandidatesParams{AssetID: asset, CategoryID: category, OrgID: org, Context: string(moment)})
-		if err != nil {
-			return err
-		}
-		var candidates []checklist.Candidate
-		for _, r := range rows {
-			target := checklist.Target{Kind: checklist.TargetKind(r.TargetKind)}
-			if r.TargetKind != string(checklist.TargetOrganization) {
-				target.IDs = []string{r.TargetID}
-			}
-			if n := len(candidates); n > 0 && candidates[n-1].TemplateID == r.TemplateID {
-				candidates[n-1].Target.IDs = append(candidates[n-1].Target.IDs, target.IDs...)
-				continue
-			}
-			candidates = append(candidates, checklist.Candidate{TemplateID: r.TemplateID, Context: moment, Target: target})
-		}
-		resolved, err := checklist.Resolve(candidates, moment, asset, category)
-		if err != nil {
-			return app.ErrUnavailable
 		}
 		view.Match = resolved.Match
 		if resolved.Match != checklist.MatchNone {

@@ -8152,3 +8152,111 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   self-release surfaces `SELF_APPROVAL`, a block is never hidden, no content
   action exists without the permission, a foreign report clears the panel and
   a `CONFLICT` re-reads; a local Chromium check proves the DOM.
+
+## EMP-TRIP-019 — Checklist gate at trip start and finish (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip019-checklist-gate.md).
+
+- **B-BR-EMP-511 — A trip start names its departure run; a finish may name
+  its return run.** `trip.start` and `trip.finish` keep operation schema 1
+  and their exact payloads. A start may carry in its envelope
+  `soft_references` at most one `{type: "checklist_run", id}` beside the
+  EMP-TRIP-023 mission reference; a finish may carry at most one
+  `checklist_run` reference and nothing else. Any other reference type, two
+  references of one type, or a reference on another trip operation stays a
+  recognised but unsupported form (`RETRY`/`UNAVAILABLE`, nothing stored);
+  a reference id that is not a canonical lowercase UUID is refused by the
+  shared envelope profile. The Android producer names, on the start, the
+  latest completed departure run of the chosen vehicle that its sealed
+  checklist book holds as valid and not `BLOCKING`, and nothing when there
+  is none; the shared table `trip/trip-operations-v2.psv` (superseding v1,
+  hash-checked by Go and Kotlin) pins those bytes. The device's cached
+  template and policy never decide the server gate.
+- **B-BR-EMP-512 — The departure gate is decided by the server at receipt.**
+  Under the organization root and asset locks of the start, after the
+  final refusals (`MALFORMED`, `FORBIDDEN`, `DEPENDENCY_PENDING`) and the
+  FLEET-007 start decision: a departure checklist is *required* when the
+  CHECK-001 applicable-template rule (BR-CHECK-002) finds an `ACTIVE`
+  `DEPARTURE` template for the asset in the organization's current
+  configuration. A named run *counts* only when it is a stored run of the
+  organization, of the `DEPARTURE` context, of the start's asset, authored
+  by the start's author membership and not yet linked to any trip. A
+  counting run is *blocking* at the start instant when its server recheck
+  is `BLOCKING` and it was not released before that instant (the EDR-285
+  block period), and *valid* when the start instant lies in
+  `[completion, completion + validity)`, where the validity is that of the
+  run template's policy revision in force at the start instant by the
+  server's history (the latest revision effective at or before it, else
+  revision 1). The gate passes when nothing is required and nothing is
+  named, or when a counting run is neither blocking nor outside its
+  validity. Otherwise its reason is, first failure first:
+  `CHECKLIST_REQUIRED` (required and nothing named, or required and the
+  named run does not count), `ORPHAN_REFERENCE` (not required and the named
+  run does not count), `CHECKLIST_BLOCKING`, `CHECKLIST_EXPIRED` (outside
+  the validity, before the completion included). A named run is decided
+  even when no checklist is required.
+- **B-BR-EMP-513 — A failed gate holds the start with the closed
+  acknowledgement vocabulary and stores its reason.** No acknowledgement
+  code is added. The existing held codes keep their order
+  (`PERMISSION_CHANGED`, `ASSET_UNAVAILABLE`, `ASSET_BUSY`); then a failed
+  gate holds an otherwise accepted start `ASSET_UNAVAILABLE` for
+  `CHECKLIST_REQUIRED` without a named run, `CHECKLIST_BLOCKING` and
+  `CHECKLIST_EXPIRED`, and `ORPHAN_REFERENCE` (BR-OFFL-007, the link
+  removed) when the named run does not count; then the EMP-TRIP-023
+  mission reference. Whatever held code wins, a failed gate stores one
+  insert-only gate reason beside the held start (its operation and review
+  item, the reason and the named run when it is stored in the
+  organization); the database refuses a reason without its held start, a
+  `BLOCKING` or `EXPIRED` reason the run's history does not prove at the
+  held start's declared instant, and any change or deletion. A held start
+  never links; the EMP-TRIP-007 acceptance creates the declared trip
+  without the run.
+- **B-BR-EMP-514 — An accepted start links its departure run once.** A
+  start that passes the gate with a named run stores, in the trip's
+  transaction, one insert-only link (trip, `DEPARTURE`, run, start
+  operation): one departure link per trip and one trip per run, so a second
+  start naming the same run does not count it. The database re-proves the
+  link against the stored trip (its own start operation, `IN_PROGRESS`, the
+  run's context, asset, author, not blocking and valid at the declared
+  start) and refuses any change or deletion. The link is read back by the
+  receipt confirmation; replays return the stored acknowledgement byte for
+  byte, and the same operation with another digest (another run) is
+  `OPERATION_ID_REUSED`.
+- **B-BR-EMP-515 — A return run never holds a trip open (BR-CHECK-013).** A
+  finish naming a stored `RETURN` run of the trip's asset, authored by the
+  finishing member, completed at or after the trip's declared start and at
+  or before the finish, and not linked to any trip, links it (trip,
+  `RETURN`, run, finish operation) in the finish's transaction, whatever
+  the run's outcome; a `BLOCKING` return run blocks the asset's next use
+  through EDR-285. A finish whose return run is missing, foreign, of
+  another asset, context or member, outside the trip or already linked is
+  accepted exactly as without the reference and links nothing; a held
+  finish (`TRIP_ALREADY_CLOSED`) links nothing.
+- **B-BR-EMP-516 — One lock order decides a release and a start.** The
+  gate reads runs, releases and policy history without row locks, under
+  the organization root lock that every run insert and every release
+  takes first, so a release and a start serialize in either order without
+  a deadlock and are decided by history: a start declared before a
+  release's recording is gated `CHECKLIST_BLOCKING` in both orders, and a
+  start declared after it passes.
+- **BUC-EMP-261 — Start after a valid departure check.** A vehicle whose
+  category has an active departure template (BLOCK, 12 hours): the driver,
+  offline, completes the check at 07:40 with every item OK and starts at
+  07:55 at 184 320 000 m; the start names the run. On reconnect the run is
+  accepted, then the start is accepted and linked to the run. A second
+  driver's start on another day naming the same run is held
+  `ORPHAN_REFERENCE` with the reason `CHECKLIST_REQUIRED`.
+- **BUC-EMP-262 — Start held by the gate.** The same vehicle: a start naming
+  no run, a run of another vehicle or another organization's run is held
+  (`ASSET_UNAVAILABLE`, `CHECKLIST_REQUIRED`, or `ORPHAN_REFERENCE` for the
+  named one); a start naming a run whose brakes item was `NOT_OK` under
+  BLOCK is held `ASSET_UNAVAILABLE` with `CHECKLIST_BLOCKING`; a device
+  whose cached policy still said 72 hours starts 13 hours after its check
+  and is held `CHECKLIST_EXPIRED` because the server's policy says 12. The
+  facts are kept and a reviewer decides them in the EMP-TRIP-007 queue.
+- **BUC-EMP-263 — Return evidence at the finish.** The driver completes a
+  return check with a damaged mirror (`BLOCKING` under BLOCK) and finishes
+  at 184 610 000 m naming it: the trip completes, the run is linked to the
+  finish and the vehicle is blocked for the next use until released. A
+  finish naming a return run the server does not hold yet still completes
+  the trip and links nothing.

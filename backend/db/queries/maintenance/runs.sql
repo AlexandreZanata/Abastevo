@@ -79,3 +79,11 @@ WHERE sqlc.arg(after_id)::text='' OR r.queue_group>sqlc.arg(after_group)::int
  OR(r.queue_group=sqlc.arg(after_group)::int AND(r.occurred_at<sqlc.arg(after_at)::timestamptz
   OR(r.occurred_at=sqlc.arg(after_at)::timestamptz AND r.id>CAST(NULLIF(sqlc.arg(after_id)::text,'') AS uuid))))
 ORDER BY r.queue_group,r.occurred_at DESC,r.id LIMIT sqlc.arg(row_limit)::int;
+
+-- name: ChecklistRunGateFacts :one
+-- EMP-TRIP-019 (EDR-334): a run as a trip boundary reads it, with the
+-- recording of its release; no row lock (the caller holds the root lock).
+SELECT r.id::text AS id,r.asset_id::text AS asset_id,r.context,r.template_id::text AS template_id,r.author_membership_id::text AS author_membership_id,
+ r.occurred_at,r.occurred_submicro,r.recheck_outcome,l.recorded_at AS released_at
+FROM org_checklist_runs r LEFT JOIN org_checklist_run_releases l ON(l.org_id,l.run_id)=(r.org_id,r.id)
+WHERE r.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND r.id=CAST(sqlc.arg(id)::text AS uuid);

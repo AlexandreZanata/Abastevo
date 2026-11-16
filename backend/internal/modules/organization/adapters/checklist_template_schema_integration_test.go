@@ -36,6 +36,11 @@ func TestChecklistTemplateSchemaGuardsAndIsolation(t *testing.T) {
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON org_checklist_runs,org_checklist_run_answers,org_checklist_run_releases TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	// EMP-TRIP-019: the cascade also reaches the trip checklist links and
+	// gate reasons (000255), whose append-only guards must be reached too.
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON org_trip_checklist_links,org_trip_checklist_holds TO "+role); err != nil {
+		t.Fatal(err)
+	}
 	for label, statement := range map[string]string{
 		"rewrite a published version name":  `UPDATE org_checklist_template_versions SET name='Reescrita' WHERE org_id=$1 AND template_id=$2 AND version=1`,
 		"rewrite a published item":          `UPDATE org_checklist_template_items SET critical=false WHERE org_id=$1 AND template_id=$2 AND version=1`,

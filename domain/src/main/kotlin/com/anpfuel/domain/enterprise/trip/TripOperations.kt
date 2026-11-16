@@ -20,7 +20,8 @@ import java.time.ZoneId
 
 /*
  * The Android producer's signed trip operations (EMP-TRIP-005, B-BR-EMP-375, EDR-245): the exact schema 1
- * payloads of EMP-TRIP-002/003/004, pinned by contracts/testdata/enterprise/trip/trip-operations-v1.psv.
+ * payloads of EMP-TRIP-002/003/004, pinned by contracts/testdata/enterprise/trip/trip-operations-v2.psv; a start may name its
+ * departure checklist run and a finish its return run through one `checklist_run` soft reference (EMP-TRIP-019, EDR-331).
  */
 
 /** The intake refusal class a builder or decoder refusal corresponds to. */
@@ -57,11 +58,12 @@ sealed class TripOperationFact(val operationId: String, val declared: TimeDeclar
     private val dependencies = dependsOn.toList()
     val dependsOn: List<String> get() = dependencies.toList()
     class Start(operationId: String, declared: TimeDeclaration, dependsOn: List<String>, val tripId: String, val assetId: String,
-        val driverEmployeeId: String, val evidence: TripEvidence, val clock: TripRunClock?) : TripOperationFact(operationId, declared, dependsOn)
+        val driverEmployeeId: String, val evidence: TripEvidence, val clock: TripRunClock?, val departureRunId: String? = null) :
+        TripOperationFact(operationId, declared, dependsOn)
     class Event(operationId: String, declared: TimeDeclaration, dependsOn: List<String>, val eventId: String, val tripId: String,
         val type: TripLogbookType, val text: String?) : TripOperationFact(operationId, declared, dependsOn)
     class Finish(operationId: String, declared: TimeDeclaration, dependsOn: List<String>, val tripId: String,
-        val evidence: TripEvidence, val clock: TripRunClock?) : TripOperationFact(operationId, declared, dependsOn)
+        val evidence: TripEvidence, val clock: TripRunClock?, val returnRunId: String? = null) : TripOperationFact(operationId, declared, dependsOn)
     class Submit(operationId: String, declared: TimeDeclaration, dependsOn: List<String>, val tripId: String,
         val revision: Long) : TripOperationFact(operationId, declared, dependsOn)
     final override fun toString(): String = "EnterpriseTripOperationFact(redacted)"
@@ -106,9 +108,15 @@ private fun clockJson(value: TripRunClock?): SyncJson = value?.let {
     SyncJson.Object(mapOf("boot_id" to text(it.bootId), "elapsed_millis" to text(it.elapsedMillis.toString())))
 } ?: SyncJson.Null
 
-/** Seals the canonical envelope; any envelope-profile refusal is a malformed record that is never queued. */
+/** The soft-reference type naming a checklist run (EMP-TRIP-019, EDR-331). */
+private const val CHECKLIST_RUN_REFERENCE = "checklist_run"
+
+/**
+ * Seals the canonical envelope; any envelope-profile refusal is a malformed record that is never queued. [checklistRun] is the
+ * operation's one `checklist_run` soft reference, if any.
+ */
 private fun seal(envelope: TripEnvelope, type: String, entityType: String, entityId: String, revision: Long?, dependsOn: String?,
-    payload: Map<String, SyncJson>): EnterpriseOperation = try {
+    payload: Map<String, SyncJson>, checklistRun: String? = null): EnterpriseOperation = try {
     val declared = envelope.declared
     val root = SyncJson.Object(mapOf(
         "schema_version" to SyncJson.Integer("1"), "operation_id" to text(envelope.operationId),
@@ -120,7 +128,9 @@ private fun seal(envelope: TripEnvelope, type: String, entityType: String, entit
         "occurred_at" to text(EnterpriseTime.formatInstant(declared.occurredAt)), "entry_zone" to text(declared.entryZone),
         "device_offset_seconds" to SyncJson.Integer(declared.deviceOffsetSeconds.toString()),
         "depends_on" to SyncJson.Array(listOfNotNull(dependsOn).map(::text)),
-        "soft_references" to SyncJson.Array(emptyList()), "attachments" to SyncJson.Array(emptyList()),
+        "soft_references" to SyncJson.Array(listOfNotNull(checklistRun).map {
+            SyncJson.Object(mapOf("type" to text(CHECKLIST_RUN_REFERENCE), "id" to text(it)))
+        }), "attachments" to SyncJson.Array(emptyList()),
         "payload" to SyncJson.Object(payload),
     ))
     EnterpriseOperation.seal(CanonicalJson.encode(root, CanonicalJson.MAX_OPERATION_DEPTH), envelope.binding)
@@ -163,16 +173,20 @@ object TripOperations {
     const val MAX_REVIEW_REVISION = 1_000_000L
     val TYPES: Set<String> = setOf(START, FINISH, EVENT, SUBMIT)
 
-    /** `trip.start`: exactly one of [reading] and [missingReason]; no dependency (EDR-202). */
+    /**
+     * `trip.start`: exactly one of [reading] and [missingReason]; no dependency (EDR-202); [departureRunId] names the departure
+     * checklist run as the operation's one `checklist_run` soft reference (EMP-TRIP-019, B-BR-EMP-511).
+     */
     fun start(envelope: TripEnvelope, tripId: String, assetId: String, driverEmployeeId: String, reading: TripReadingInput?,
-        missingReason: String?, clock: TripClockReading?): EnterpriseOperation {
+        missingReason: String?, clock: TripClockReading?, departureRunId: String? = null): EnterpriseOperation {
         val trip = identity(tripId)
         val asset = identity(assetId)
         val driver = identity(driverEmployeeId)
         val (readingJson, reasonJson) = evidenceJson(evidence(reading, missingReason))
         val runClock = clock(clock)
+        val run = departureRunId?.let(::identity)
         return seal(envelope, START, ENTITY_TRIP, trip, null, null, mapOf("asset_id" to text(asset), "driver_employee_id" to text(driver),
-            "reading" to readingJson, "missing_reading_reason" to reasonJson, "run_clock" to clockJson(runClock)))
+            "reading" to readingJson, "missing_reading_reason" to reasonJson, "run_clock" to clockJson(runClock)), run)
     }
 
     /** `trip.event.record`: the type token is checked like the intake (unknown MALFORMED, reserved UNSUPPORTED, then text). */
@@ -184,14 +198,15 @@ object TripOperations {
             mapOf("trip_id" to text(trip), "type" to text(kind.name), "text" to optional(text)))
     }
 
-    /** `trip.finish`: exactly one of [reading] and [missingReason], at most the start as dependency. */
+    /** `trip.finish`: exactly one of [reading] and [missingReason], at most the start as dependency; [returnRunId] as on [start]. */
     fun finish(envelope: TripEnvelope, tripId: String, reading: TripReadingInput?, missingReason: String?, clock: TripClockReading?,
-        dependsOn: String?): EnterpriseOperation {
+        dependsOn: String?, returnRunId: String? = null): EnterpriseOperation {
         val trip = identity(tripId)
         val (readingJson, reasonJson) = evidenceJson(evidence(reading, missingReason))
         val runClock = clock(clock)
+        val run = returnRunId?.let(::identity)
         return seal(envelope, FINISH, ENTITY_TRIP, trip, null, dependsOn?.let(::identity),
-            mapOf("reading" to readingJson, "missing_reading_reason" to reasonJson, "run_clock" to clockJson(runClock)))
+            mapOf("reading" to readingJson, "missing_reading_reason" to reasonJson, "run_clock" to clockJson(runClock)), run)
     }
 
     /** `trip.submit`: entity `trip_review` at [revision], payload `{}`, at most the finish as dependency (EDR-220). */
@@ -217,6 +232,10 @@ object TripOperations {
         val declared = operation.declaration
         val id = operation.operationId
         val extras = operation.attachments.isNotEmpty() || operation.softReferences.isNotEmpty()
+        // EMP-TRIP-019 (B-BR-EMP-511): a start or a finish may carry exactly one checklist-run reference and nothing else.
+        val references = operation.softReferences
+        val checklistRun = references.singleOrNull()?.takeIf { it.type == CHECKLIST_RUN_REFERENCE }?.id
+        val runExtras = operation.attachments.isNotEmpty() || references.isNotEmpty() && checklistRun == null
         return when (operation.type) {
             START -> {
                 if (entity.reference.type != ENTITY_TRIP || entity.expectedRevision != null) throw malformed()
@@ -225,16 +244,16 @@ object TripOperations {
                 val driver = identity(field(fields, "driver_employee_id") ?: throw malformed())
                 val evidence = decodedEvidence(fields)
                 val clock = decodedClock(fields)
-                if (extras || deps.isNotEmpty()) throw unsupported()
-                TripOperationFact.Start(id, declared, deps, entity.reference.id, asset, driver, evidence, clock)
+                if (runExtras || deps.isNotEmpty()) throw unsupported()
+                TripOperationFact.Start(id, declared, deps, entity.reference.id, asset, driver, evidence, clock, checklistRun)
             }
             FINISH -> {
                 if (entity.reference.type != ENTITY_TRIP || entity.expectedRevision != null || deps.size > 1) throw malformed()
                 val fields = exact(payload, FINISH_KEYS)
                 val evidence = decodedEvidence(fields)
                 val clock = decodedClock(fields)
-                if (extras) throw unsupported()
-                TripOperationFact.Finish(id, declared, deps, entity.reference.id, evidence, clock)
+                if (runExtras) throw unsupported()
+                TripOperationFact.Finish(id, declared, deps, entity.reference.id, evidence, clock, checklistRun)
             }
             EVENT -> {
                 if (entity.reference.type != ENTITY_EVENT || entity.expectedRevision != null || deps.size > 1) throw malformed()

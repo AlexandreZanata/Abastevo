@@ -363,6 +363,10 @@ internal fun DepartureChecklistLine(state: ChecklistViewState?, assetId: String,
 internal fun departureBlocks(state: ChecklistViewState?, assetId: String): Boolean =
     state != null && state.assetId == assetId && state.checklistContext == ChecklistContext.DEPARTURE && ChecklistPresentation.startBlocked(state.departure)
 
+/** EMP-TRIP-019 (B-BR-EMP-511): the departure run the trip start names for the chosen vehicle, if the form shows a valid one. */
+internal fun departureRun(state: ChecklistViewState?, assetId: String): String? =
+    state?.takeIf { it.assetId == assetId && it.checklistContext == ChecklistContext.DEPARTURE }?.let { ChecklistPresentation.departureRun(it.departure) }
+
 private sealed interface HomeMode {
     data object Picker : HomeMode
     class Moment(val assetId: String, val label: String) : HomeMode
