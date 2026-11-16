@@ -9367,3 +9367,71 @@ the phone's own sealed records.
   tracked, the member moves between the enterprise screens and the indicator
   stays visible on each, naming the organization and since when; when tracking
   stops, ends or is interrupted it disappears at once.
+
+## EMP-REL-005 — M4 gate: trips, logbook, sync and tracking fundamentals acceptance (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-rel005-m4-gate.md). A TEST gate over the
+integrated F4 head: it adds no behaviour and no test of its own
+([15-validation](../enterprise/15-validation.md) §1); it runs the owners'
+scenario tests as one command set, maps them to VAL-04, VAL-22 (part 2),
+VAL-23, VAL-26, VAL-27, VAL-28 and the M4 exit criteria, names what is owed and
+decides. Owner decision EDR-271 stands; the physical phone attached to this
+machine is never used and the owned emulator is never unlocked, wiped or
+replaced by an agent.
+
+- **B-BR-EMP-552 — M4 is accepted only when every required case passes,
+  device coverage included.** The M4 gate records a pass only when, on one
+  named revision, VAL-04, VAL-22 part 2, VAL-23, VAL-26, VAL-27 and VAL-28
+  pass as written, VAL-02 and VAL-21 pass over the routes and permissions F4
+  added, the entry conditions hold (M3 accepted through EMP-REL-004;
+  EMP-GOV-005 and EMP-GOV-006 done) and the tracking interruption matrix has
+  run on real phones of at least three manufacturers (screen off, app swiped
+  away, reboot, force stop, battery saver, Doze). A device stage that was not
+  run, was skipped, was only compiled or ran only on an emulator is never
+  recorded as a pass, and a host-JVM or PostGIS proof of a device rule is named
+  as a host proof. A scenario clause that no owner produces yet (for example a
+  fueling held for review after an offboarding or a suspension before
+  EMP-FUEL-003) is recorded as not proven with its owner, never as proven by a
+  neighbouring operation.
+- **B-BR-EMP-553 — The gate's negative cases are pinned to named evidence.**
+  "Silent queue loss" is answered by the tests that keep every saved operation
+  pending across process death, lost or incomplete answers and an ended
+  membership until a final receipt or a verified disposal (B-BR-EMP-542,
+  EMP-OFFL-011); "location resumed without authority" by the tests that resume
+  collection only from the driver's visible tap after a fresh policy and
+  membership check, never from a restart, a stale intent or a new grant
+  (B-BR-EMP-547, EMP-GPS-001 FOLLOW, the mobile guard refusing background
+  location, boot receivers and sticky starts); "private fixtures committed" by
+  a scan of the phase diff for secrets, personal identifiers, photos and
+  coordinates recorded with the gate; "missing device coverage called pass" by
+  B-BR-EMP-552 and the device ledger of the record.
+- **B-BR-EMP-554 — Tracking stays held while the device matrix is owed.**
+  Until a recorded M4 gate pass includes the real-device interruption matrix,
+  tracking collects from no real employee of any organization: the tracking
+  policy of every real organization stays absent or `OFF`, and `OPTIONAL` or
+  `EXPECTED` is set only in synthetic validation organizations. EDR-271's
+  authorization (tracking implemented for real and prepared for production,
+  synthetic validation, activation per organization only with its employee
+  notice and terms in force) is unchanged; its per-organization activation for
+  real employees waits on this gate's device evidence or on a new explicit
+  owner decision recorded as an EDR that names the accepted risk.
+- **B-BR-EMP-555 — A gate record states what was run and what is owed.** The
+  record names the tested revision, the exact commands, top-level and named
+  test counts, every failure with its rerun (a failure seen only under load is
+  rerun alone and reported, a genuine failure is fixed with a failing test
+  first, never weakened), the clauses not proven with their owners, and every
+  owed device acceptance with who provides it and its prepared one-line
+  driver. A gate run is LOCAL_DONE / INTEGRATION_PENDING evidence at most; it
+  never claims F4 or M4 complete, INTEGRATED or RELEASE_CERTIFIED, and while M4
+  is not accepted the gate task is `BLOCKED` naming its blockers.
+- **BUC-EMP-283 — Run the M4 gate.** An engineer runs the documented scenario
+  union on the integrated F4 head (real PostGIS with a throwaway object store,
+  the Kotlin host suites, the mobile guard), maps each VAL item and each M4
+  exit criterion to named tests, scans the phase diff for private data, lists
+  the owed device evidence with its drivers and records the decision.
+- **BUC-EMP-284 — Supply the owed device evidence.** The owner unlocks the
+  owned emulator once so the prepared native drivers can run, and the owner or
+  pilot users run the interruption matrix on phones of at least three
+  manufacturers that they consent to use, with a synthetic organization and
+  synthetic trips; each result is recorded per device and case, and the gate
+  is run again on the head that includes them.
