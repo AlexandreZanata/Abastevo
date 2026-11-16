@@ -55,6 +55,22 @@ service, intake, processing and real-device acceptance remain open (EDR-271).
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 organization trip tracking service](../evidence/f4-gps002-tracking-service.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-16. The driver reads the policy
+in force (`tracking/policy/mine` under `trip.trip.start`); the open trip offers
+tracking only under `OPTIONAL`/`EXPECTED`, shows the notice at each start and
+records denied permission or blocked notifications as attempts; the
+non-exported, never-sticky `location` foreground service listens only after
+consuming the visible trip screen's one-time grant, holds one listener, shows
+an ongoing notification with a stop action and re-checks permission,
+precision, notification, owner and trip every 30 seconds; every transition is
+a signed `gps.session.*` operation in the protected queue with the sealed
+tracking book, replayed through the GPS-001 domain; the finish ends the
+session at its own instant and a process death is found at the next opening
+as `PROCESS_STOPPED`/`DEVICE_RESTARTED`. The mobile guard allows exactly this
+fourth subscription. Trip pause/cancel/handover feeds (EMP-TRIP-021) and
+real-device acceptance remain open (EDR-271).
+
 ### EMP-GPS-003 — Adaptive sampling, local buffer and batch envelope
 - **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size M · state TODO
 - **Objective:** Buffer bounded quality-labelled fixes durably for batch transport.

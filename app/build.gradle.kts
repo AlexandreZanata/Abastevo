@@ -77,6 +77,9 @@ android {
         // EMP-CHECK-002 rollback switch (EDR-286): hides the checklist entry and the trip start's departure line; queued runs keep their delivery.
         buildConfigField("boolean", "ENTERPRISE_CHECKLIST_UI_ENABLED",
             providers.gradleProperty("enterpriseChecklistUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-GPS-002 rollback switch (EDR-323): hides the trip tracking card; queued session operations keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_TRACKING_UI_ENABLED",
+            providers.gradleProperty("enterpriseTrackingUiEnabled").orElse("true").get().toBooleanStrict().toString())
         testInstrumentationRunner = if (enterpriseDeviceValidation) {
             "com.anpfuel.app.ui.enterprise.EnterpriseDeviceTestRunner"
         } else {

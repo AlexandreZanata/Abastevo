@@ -24,18 +24,44 @@ import (
 const (
 	PolicyReadPath   = "/v1/orgs/{org_id}/tracking/policy/read"
 	PolicyChangePath = "/v1/orgs/{org_id}/tracking/policy/change"
+	// PolicyMinePath is the member's own read of the policy in force
+	// (EMP-GPS-002): trip.trip.start over the requesting membership.
+	PolicyMinePath = "/v1/orgs/{org_id}/tracking/policy/mine"
 )
 
 // PolicyRecords accepts only the two tracking policy policies over the
-// organization itself.
+// organization itself and the member's own read over the requesting
+// membership itself (EMP-GPS-002).
 type PolicyRecords struct{}
 
 func (PolicyRecords) Check(_ context.Context, scope kernel.OrgScope, subject access.Subject, policy access.Policy, facts permissions.ResourceFacts, rules []permissions.Rule) error {
-	if scope.Validate() != nil || subject.Scope() != scope || facts.OrgID != scope.OrgID() || facts.ID != scope.OrgID().String() || len(rules) == 0 ||
-		policy != app.PolicySettingsPolicy(app.PolicyRead) && policy != app.PolicySettingsPolicy(app.PolicyManage) {
+	if scope.Validate() != nil || subject.Scope() != scope || facts.OrgID != scope.OrgID() || len(rules) == 0 {
 		return access.ErrUnavailable
 	}
-	return nil
+	switch policy {
+	case app.PolicySettingsPolicy(app.PolicyRead), app.PolicySettingsPolicy(app.PolicyManage):
+		if facts.ID == scope.OrgID().String() {
+			return nil
+		}
+	case app.PolicySettingsPolicy(app.PolicyOwn):
+		if member := subject.MembershipID(); member != "" && facts.ID == member && facts.AssignedTo == member {
+			return nil
+		}
+	}
+	return access.ErrUnavailable
+}
+
+// policyOwn resolves the requesting membership itself (the EMP-TRIP-012
+// own-list pattern): no client-selected target.
+type policyOwn struct{}
+
+func (policyOwn) Resolve(_ context.Context, scope kernel.OrgScope, subject access.Subject) (permissions.ResourceFacts, error) {
+	member := subject.MembershipID()
+	id, err := kernel.ParseOrgID(member)
+	if scope.Validate() != nil || err != nil || id.String() != member {
+		return permissions.ResourceFacts{}, access.ErrUnavailable
+	}
+	return permissions.ResourceFacts{OrgID: scope.OrgID(), ID: member, AssignedTo: member}, nil
 }
 
 // policyRoot resolves the organization itself: no client-selected target.
@@ -167,6 +193,23 @@ func RegisterPolicy(router chi.Router, service app.PolicyService, cookies compan
 		}
 		return map[string]any{"revision": v.Revision, "policy": v.Policy, "notice_version": nullableText(v.NoticeVersion), "notice_in_force_at": optionalInstant(v.NoticeInForce),
 			"effective_at": optionalInstant(v.EffectiveAt), "in_force": map[string]any{"policy": v.InForce, "revision": v.InForceRevision}, "data_mode": "SYNTHETIC"}, nil
+	}); err != nil {
+		return err
+	}
+	// The member's own read of the policy in force (EMP-GPS-002).
+	own := app.PolicySettingsPolicy(app.PolicyOwn)
+	ownRule := orgapi.Rule{Permission: app.PolicyOwnPermission, Write: false, Fresh: own.Fresh, CompanyOnly: true, Success: 200}
+	if err := guarded.Register(owned, PolicyMinePath, gateway, ownRule, authorization, own, policyOwn{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, _ policyReadRequest) (any, error) {
+		actor, err := actorOf(ctx)
+		if err != nil {
+			return nil, err
+		}
+		v, err := service.Mine(ctx, p.Scope, actor, decision)
+		if err != nil {
+			return nil, policyMapped(err)
+		}
+		return map[string]any{"revision": v.Revision, "policy": v.Policy, "notice_version": nullableText(v.NoticeVersion), "notice_in_force_at": optionalInstant(v.NoticeInForce),
+			"data_mode": "SYNTHETIC"}, nil
 	}); err != nil {
 		return err
 	}

@@ -7716,3 +7716,118 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
 - **BUC-EMP-236 — Retries, duplicates and races converge.** A redelivered
   job, a job run twice, two workers on one session, a superseded lease and a
   foreign organization's job leave one revision per input and nothing else.
+
+## EMP-GPS-002 — Organization trip tracking service: explicit start from the trip screen, visible notification, location-guard update (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps002-tracking-service.md). Owner
+decision EDR-271: tracking is implemented for real and is active per
+organization only with its employee notice in force; real-device acceptance
+is owed.
+
+- **B-BR-EMP-495 — The driver sees the organization's tracking policy in
+  force.** `POST /v1/orgs/{org_id}/tracking/policy/mine` (company session,
+  empty body) requires `trip.trip.start` covering the requesting membership's
+  own record (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR, DRIVER) and answers the
+  policy in force now (`OFF` until the version's employee notice is in force;
+  revision `0` and `OFF` when nothing was recorded) with, only when it is not
+  `OFF`, the notice version and its in-force instant. AUDITOR, FINANCE,
+  APPROVER and members without the key are `FORBIDDEN` naming
+  `trip.trip.start`; another or unknown organization is `NOT_FOUND`; the read
+  writes nothing and carries no session, member or location data. The app
+  keeps the last read and its read instant in the partition's sealed
+  tracking book: `OFF` and a policy never read hide every tracking control,
+  `OPTIONAL` offers "Iniciar rastreamento" beside "Continuar sem rastrear",
+  `EXPECTED` says that the company expects this trip to be tracked and still
+  lets the trip run without it (BR-GPS-005). The cached value is a display
+  hint; the intake decides (B-BR-EMP-428).
+- **B-BR-EMP-496 — Recording starts only from the visible trip screen.** Only
+  the open trip screen of an `IN_PROGRESS` organization trip of the driver's
+  own trip book offers the control, whose text names tracking; before each
+  start or resume the screen shows what is collected and the organization's
+  notice version (BR-GPS-034), requests fine and coarse location together and,
+  on Android 13 and later, the notification permission. The result is
+  recorded as it is: permission `NONE` (`PERMISSION_DENIED`) or a notification
+  that cannot be shown (`NOTIFICATION_BLOCKED`) keeps the session where it was
+  and starts no service. Recording runs only in the non-exported foreground
+  service of type `location`, which starts listening only after consuming a
+  one-time start grant armed by the resumed trip screen for that exact
+  partition and session (valid 30 seconds); a start intent at boot, from a
+  worker, a push, a notification, another process or with an expired or
+  foreign grant starts nothing. The service is never sticky and never
+  restarts itself; the app never declares or requests
+  `ACCESS_BACKGROUND_LOCATION`; the static mobile guard fails the build when
+  the background permission, an unlisted continuous subscription, a boot
+  receiver, an exported or untyped tracking service or a sticky tracking
+  service appears.
+- **B-BR-EMP-497 — Every session transition is a signed queued operation.**
+  The six `gps.session.start|resume|suspend|interrupt|reduce|end` schema-1
+  operations are built exactly as the EMP-GPS-004 intake parses them (entity
+  `tracking_session` with the session identifier, payload
+  `{trip_id, origin, permission, notification_visible}` for start and resume
+  with origin `TRIP_SCREEN`, `{trip_id, cause}` for the others) and saved in
+  the protected queue together with the partition's sealed `tracking-book`
+  record in one write; a failed write saves neither. The transition is
+  decided again inside that write by replaying the stored transitions through
+  the EMP-GPS-001 session domain with the trip facts of the partition's trip
+  book, so the device never stores a transition the domain refuses. The first
+  start depends on the trip's `trip.start`, each later session operation on
+  the previous one and the end also on the trip's `trip.finish`; instants
+  never go back. The trip screen states each record's sync state from its own
+  receipt only ("Salvo no aparelho" until the server answers). A final
+  refusal of any session operation stops the session on this device: nothing
+  is collected or continued for it, and the screen shows the refusal with its
+  code while the trip continues.
+- **B-BR-EMP-498 — One listener, safe stop, bound owner.** The service holds
+  at most one location listener for the one recording session of the
+  process; a repeated start adds no listener and resets no counter; a stop
+  releases only this service's listener before leaving the foreground. The
+  session and its collection are bound to the account, origin, organization,
+  membership, enrollment and trip that started it; a change of account or
+  context, a locked or lost partition, or another responsible member of the
+  trip stops collection at once, and when the partition is still writable the
+  session is interrupted `OWNER_CHANGED`; nothing is ever rebound to another
+  owner (BR-GPS-014, BR-OFFL-003).
+- **B-BR-EMP-499 — The session follows the trip and the device, never
+  silently.** Finishing the trip ends the session at the finish's own instant
+  (`TRIP_COMPLETED`) and stops the service; a trip start finally refused by
+  the server ends it `TRIP_CANCELLED`. "Parar rastreamento" in the
+  notification or on the trip screen interrupts it `STOPPED_BY_DRIVER` while
+  the trip continues. Every 30 seconds while recording the service re-checks
+  permission (lost: `PERMISSION_REVOKED`), precision (fine reduced to
+  approximate: the session keeps recording with `PRECISION_REDUCED`),
+  notification visibility (`NOTIFICATION_BLOCKED`), owner and trip state, and
+  writes a checkpoint with its boot identity and instant. After a process
+  death, a force-stop or a restart the service does not come back; at the
+  next opening of the trip screen a `RECORDING` session with no running
+  service is interrupted at its last checkpoint instant with
+  `DEVICE_RESTARTED` (another boot) or `PROCESS_STOPPED`, and the screen asks
+  "Retomar rastreamento?"; recording returns only by that tap.
+- **B-BR-EMP-500 — Never for personal or foreign trips; always visible.**
+  Personal mode, a trip of another organization or membership, a trip that is
+  not `IN_PROGRESS`, policy `OFF` and a policy never read start nothing. While
+  recording, the ongoing notification names the organization, says that
+  tracking is active and offers the stop action; the trip screen shows
+  "Rastreamento ativo", "Rastreamento suspenso" or "Rastreamento
+  interrompido" with its reason in text, not colour only. No coordinate
+  appears in notifications, logs, errors or the trip screen; in this task the
+  service only counts accepted platform fixes in memory (the buffer and the
+  batches are EMP-GPS-003).
+- **BUC-EMP-252 — A driver starts a trip and its tracking.** With the
+  organization's policy `OPTIONAL` or `EXPECTED` read, the driver opens the
+  trip in progress, reads what is collected and the notice version, taps
+  "Iniciar rastreamento", grants location and notifications, and sees the
+  ongoing notification and "Rastreamento ativo"; the start operation waits in
+  the queue as "Salvo no aparelho" until the server accepts it. Denied
+  location or blocked notifications leave the trip running without tracking,
+  with the reason shown; policy `OFF` shows no tracking control.
+- **BUC-EMP-253 — The driver stops tracking, resumes it and finishes the
+  trip.** "Parar rastreamento" interrupts the session and removes the
+  notification while the trip continues; "Retomar rastreamento" on the trip
+  screen records again after the same checks; finishing the trip ends the
+  session and stops the service; every transition is one queued operation
+  delivered in order.
+- **BUC-EMP-254 — Tracking after a process death or restart.** The app is
+  killed while recording; nothing restarts it. When the driver opens the trip
+  again, the session is shown interrupted with its reason and the instant of
+  the last checkpoint, and "Retomar rastreamento" is offered; the driver may
+  also continue without tracking.

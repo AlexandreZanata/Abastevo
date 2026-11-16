@@ -47,6 +47,7 @@ import com.anpfuel.app.ui.enterprise.checklist.departureBlocks
 import com.anpfuel.app.ui.enterprise.fleet.EnterpriseAssetPicker
 import com.anpfuel.app.ui.enterprise.reasonText
 import com.anpfuel.app.ui.enterprise.statusText
+import com.anpfuel.app.ui.enterprise.tracking.TrackingCard
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.enterprise.checklist.ChecklistViewState
 import com.anpfuel.application.enterprise.fleet.MyAssetsViewState
@@ -59,6 +60,7 @@ import com.anpfuel.domain.enterprise.meter.MeterEntryForm
 import com.anpfuel.domain.enterprise.meter.MeterKind
 import com.anpfuel.domain.enterprise.meter.ReadingFlag
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncStatus
+import com.anpfuel.domain.enterprise.tracking.TrackingDevice
 import com.anpfuel.domain.enterprise.trip.TripAssetLabel
 import com.anpfuel.domain.enterprise.trip.TripEvidence
 import com.anpfuel.domain.enterprise.trip.TripLocalFailure
@@ -90,6 +92,10 @@ private sealed interface TripMode {
     class Checklist(val start: Start) : TripMode
 }
 
+/** EMP-GPS-002 (B-BR-EMP-496): the tracking gestures of the open trip; null hides the card (rollback flag). */
+internal class TripTrackingActions(val onStart: (tripId: String, TrackingDevice) -> Unit, val onStop: (tripId: String) -> Unit,
+    val onRefresh: () -> Unit)
+
 /** The meters the driver may read for a choice: the picker's in-service meters, by kind. */
 internal fun meterChoices(choice: EnterpriseAssetChoice): List<TripMeterChoice> =
     choice.meters.map { TripMeterChoice(it.id, it.segmentId, MeterKind.parse(it.kind.name), it.modulus) }
@@ -115,6 +121,7 @@ internal fun TripPanel(
     checklist: ChecklistViewState? = null,
     onDepartureCheck: (assetId: String) -> Unit = {},
     departureContent: (@Composable (assetId: String, label: String, onDone: () -> Unit) -> Unit)? = null,
+    tracking: TripTrackingActions? = null,
 ) {
     var mode by remember { mutableStateOf<TripMode>(TripMode.Home) }
     // A durable save closes the form it came from; a refusal or failure keeps the entered values.
@@ -175,7 +182,8 @@ internal fun TripPanel(
                 }
                 else -> if (open != null) {
                     tripDetail(open, connected, state.busy, onEvent = { mode = TripMode.Event(open.trip.tripId) },
-                        onFinish = { mode = TripMode.Finish(open.trip.tripId) }, onReady = { onReady(open.trip.tripId) }, onSend = onSend)
+                        onFinish = { mode = TripMode.Finish(open.trip.tripId) }, onReady = { onReady(open.trip.tripId) }, onSend = onSend,
+                        state = state, tracking = tracking)
                 } else {
                     item {
                         Button(onClick = { onPick(); mode = TripMode.Picker }, enabled = !state.busy,
@@ -273,7 +281,7 @@ private fun StatusChip(record: TripRecordView, tag: String) {
 
 /** The open trip as separate list items, so a long timeline scrolls record by record. */
 private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: Boolean, onEvent: () -> Unit, onFinish: () -> Unit,
-    onReady: () -> Unit, onSend: () -> Unit) {
+    onReady: () -> Unit, onSend: () -> Unit, state: TripViewState, tracking: TripTrackingActions?) {
     item(key = "detail-header") {
         TripCard(Modifier.testTag("enterprise-trip-detail")) {
             Text(label(view.trip.label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
@@ -284,6 +292,13 @@ private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: B
             if (view.waitingForStartReview) Notice(stringResource(R.string.enterprise_trips_waiting_start_review), Modifier.testTag("enterprise-trip-waiting"))
             if (view.trip.state == TripLocalState.START_REFUSED) Notice(stringResource(R.string.enterprise_trips_start_refused_notice))
         }
+    }
+    // EMP-GPS-002: shown for an organization trip in progress or one that already has a session; never for personal trips.
+    if (tracking != null && (view.trip.state == TripLocalState.IN_PROGRESS || state.tracking?.session(view.trip.tripId) != null)) item(key = "detail-tracking") {
+        val tripId = view.trip.tripId
+        TrackingCard(tripId, view.trip.state == TripLocalState.IN_PROGRESS, state.tracking, state.trackingRefusal, state.trackingPolicyFailed,
+            connected, busy, { formatted(it) }, onStart = { tracking.onStart(tripId, it) }, onStop = { tracking.onStop(tripId) },
+            onRefresh = tracking.onRefresh)
     }
     item(key = "detail-timeline") {
         Text(stringResource(R.string.enterprise_trips_timeline), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })

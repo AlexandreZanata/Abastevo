@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-002 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<resources>
+    <string name="enterprise_tracking_title">Suivi du trajet</string>
+    <string name="enterprise_tracking_policy_expected">L’entreprise attend que ce trajet soit suivi. Le trajet continue aussi sans suivi.</string>
+    <string name="enterprise_tracking_policy_optional">L’entreprise autorise le suivi de ce trajet si vous le souhaitez.</string>
+    <string name="enterprise_tracking_policy_unknown">Suivi indisponible : la politique de l’entreprise n’a pas encore été lue sur cet appareil. Connectez-vous pour la mettre à jour.</string>
+    <string name="enterprise_tracking_policy_refresh">Mettre à jour la politique de suivi</string>
+    <string name="enterprise_tracking_policy_failed">La politique n’a pas pu être lue pour le moment. La dernière lue reste en vigueur.</string>
+    <string name="enterprise_tracking_notice">Pendant le suivi, l’app enregistre la position de ce téléphone uniquement pendant ce trajet et jusqu’à ce que vous l’arrêtiez. Version de l’avis de l’entreprise : %1$s.</string>
+    <string name="enterprise_tracking_start">Démarrer le suivi</string>
+    <string name="enterprise_tracking_resume">Reprendre le suivi</string>
+    <string name="enterprise_tracking_resume_question">Reprendre le suivi ?</string>
+    <string name="enterprise_tracking_stop">Arrêter le suivi</string>
+    <string name="enterprise_tracking_without">Continuer sans suivi</string>
+    <string name="enterprise_tracking_state_not_started">Suivi non démarré</string>
+    <string name="enterprise_tracking_state_recording">Suivi actif</string>
+    <string name="enterprise_tracking_state_suspended">Suivi suspendu</string>
+    <string name="enterprise_tracking_state_interrupted">Suivi interrompu</string>
+    <string name="enterprise_tracking_state_ended">Suivi terminé</string>
+    <string name="enterprise_tracking_since">Depuis %1$s</string>
+    <string name="enterprise_tracking_approximate">Position approximative : aucune distance GPS ne sera calculée pour ce trajet.</string>
+    <string name="enterprise_tracking_cause_permission_denied">L’autorisation de localisation n’a pas été accordée. Le trajet continue sans suivi.</string>
+    <string name="enterprise_tracking_cause_notification_blocked">Les notifications sont bloquées : le suivi ne peut pas fonctionner avec son avis visible. Autorisez les notifications pour suivre.</string>
+    <string name="enterprise_tracking_cause_process_stopped">L’app a été fermée pendant le suivi.</string>
+    <string name="enterprise_tracking_cause_device_restarted">Le téléphone a redémarré pendant le suivi.</string>
+    <string name="enterprise_tracking_cause_stopped_by_driver">Vous avez arrêté le suivi. Le trajet continue.</string>
+    <string name="enterprise_tracking_cause_owner_changed">Le compte ou l’entreprise a changé sur ce téléphone.</string>
+    <string name="enterprise_tracking_cause_permission_revoked">L’autorisation de localisation a été retirée pendant le trajet.</string>
+    <string name="enterprise_tracking_cause_other">Le suivi s’est arrêté avec le trajet.</string>
+    <string name="enterprise_tracking_refused">L’entreprise a refusé le suivi de ce trajet (%1$s). Le trajet continue.</string>
+    <string name="enterprise_tracking_refusal_off">Le suivi est désactivé par l’entreprise.</string>
+    <string name="enterprise_tracking_refusal_other">Le suivi n’a pas pu être modifié sur cet appareil ; rien n’a été enregistré.</string>
+    <string name="enterprise_tracking_record">%1$s — %2$s</string>
+    <string name="enterprise_tracking_notification_channel">Suivi de trajet de l’entreprise</string>
+    <string name="enterprise_tracking_notification_title">Suivi actif — %1$s</string>
+    <string name="enterprise_tracking_notification_text">La position de ce téléphone est enregistrée pendant le trajet.</string>
+</resources>

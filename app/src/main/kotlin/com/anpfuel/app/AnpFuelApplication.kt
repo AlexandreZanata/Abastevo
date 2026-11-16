@@ -42,6 +42,15 @@ class AnpFuelApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var chargingCommunity: com.anpfuel.application.usecase.charging.ChargingCommunityUseCase
 
+    @Inject
+    lateinit var trackingRuntime: com.anpfuel.application.enterprise.tracking.TrackingRuntime
+
+    @Inject
+    lateinit var trackingService: com.anpfuel.application.enterprise.tracking.EnterpriseTrackingService
+
+    @Inject
+    lateinit var enterpriseQueueSource: com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
@@ -62,6 +71,9 @@ class AnpFuelApplication : Application(), Configuration.Provider {
             }
             AppLocaleHolder.localeTag = resolvedTag
         }
+        // EMP-GPS-002 (EDR-323): the tracking service is not a Hilt entry point; it reads these installed dependencies.
+        com.anpfuel.app.ui.enterprise.tracking.OrganizationTrackingHost.installed =
+            com.anpfuel.app.ui.enterprise.tracking.OrganizationTrackingHost.Installed(trackingRuntime, trackingService, enterpriseQueueSource)
         com.anpfuel.data.worker.TrainingConsentRevocationWorker.schedule(this)
         applicationScope.launch {
             com.anpfuel.data.worker.DirectorySyncWorker.maintainSchedule(this@AnpFuelApplication, preferenceStore)

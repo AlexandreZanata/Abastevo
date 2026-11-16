@@ -35,6 +35,13 @@ import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStore
 import com.anpfuel.application.enterprise.trip.TripFlow
+import com.anpfuel.application.enterprise.trip.TripTracking
+import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingPolicyGateway
+import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingProducers
+import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingService
+import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingStore
+import com.anpfuel.application.enterprise.tracking.TrackingRuntime
+import com.anpfuel.application.enterprise.tracking.TrackingStartGate
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.data.BuildConfig
@@ -47,6 +54,8 @@ import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
 import com.anpfuel.data.enterprise.trip.ProtectedTripStore
+import com.anpfuel.data.enterprise.tracking.EnterpriseTrackingPolicyHttpGateway
+import com.anpfuel.data.enterprise.tracking.ProtectedTrackingStore
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
 import com.anpfuel.domain.enterprise.sync.SyncLimits
@@ -235,13 +244,13 @@ object EnterpriseModule {
 
     /**
      * Owning offline business producers are registered only after their own acceptance: the four EMP-TRIP-005
-     * `trip.*` producers (EDR-242) are the first, then the EMP-CHECK-002 `check.run.complete` producer (EDR-283).
-     * Their queued work keeps its delivery whatever the UI flags say.
+     * `trip.*` producers (EDR-242) are the first, then the EMP-CHECK-002 `check.run.complete` producer (EDR-283), then the
+     * six EMP-GPS-002 `gps.session.*` producers (EDR-322). Their queued work keeps its delivery whatever the UI flags say.
      */
     @Provides
     @Singleton
     fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry =
-        EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), *EnterpriseChecklistProducers.all())
+        EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), *EnterpriseChecklistProducers.all(), *EnterpriseTrackingProducers.all())
 
     /** The sealed trip book and the entries it names, never a plaintext table (EDR-242). */
     @Provides
@@ -258,8 +267,33 @@ object EnterpriseModule {
 
     /** Each visible trip owner is independent, like "Meus ativos"; "Enviar agora" is one dispatch of its partition. */
     @Provides
-    fun tripFlow(source: EnterpriseQueueSource, service: EnterpriseTripService, fence: EnterpriseSessionFence,
-        delivery: EnterpriseQueueService): TripFlow = TripFlow(source, service, fence) { account, partition -> delivery.dispatch(account, partition) }
+    fun tripFlow(@ApplicationContext context: Context, source: EnterpriseQueueSource, service: EnterpriseTripService, fence: EnterpriseSessionFence,
+        delivery: EnterpriseQueueService, tracking: EnterpriseTrackingService, runtime: TrackingRuntime): TripFlow =
+        TripFlow(source, service, fence, TripTracking(tracking, runtime::running) { AndroidEnterpriseDeviceClock(context).read().boot }) {
+            account, partition -> delivery.dispatch(account, partition)
+        }
+
+    /** The sealed tracking book, its trip book and the entries they name, never a plaintext table (EDR-322). */
+    @Provides
+    @Singleton
+    fun trackingStore(store: ProtectedEnterprisePersistence): EnterpriseTrackingStore = ProtectedTrackingStore(store)
+
+    /** B-BR-EMP-495: the driver's policy read on the account cookie plane (EDR-321). */
+    @Provides
+    @Singleton
+    fun trackingPolicyGateway(client: CompanyAccessClient): EnterpriseTrackingPolicyGateway = EnterpriseTrackingPolicyHttpGateway(client)
+
+    @Provides
+    @Singleton
+    fun trackingService(source: EnterpriseQueueSource, delivery: EnterpriseQueueService, store: EnterpriseTrackingStore,
+        gateway: EnterpriseTrackingPolicyGateway): EnterpriseTrackingService = EnterpriseTrackingService(
+        source, { partition, operation -> delivery.save(partition, operation) }, store, gateway, { ZoneId.systemDefault() },
+    )
+
+    /** The process's one tracking runtime: the visible start gate (elapsed time) and the running collector (EDR-323). */
+    @Provides
+    @Singleton
+    fun trackingRuntime(): TrackingRuntime = TrackingRuntime(TrackingStartGate { android.os.SystemClock.elapsedRealtime() })
 
     /** The sealed checklist book and the entries it names, never a plaintext table (EDR-283). */
     @Provides

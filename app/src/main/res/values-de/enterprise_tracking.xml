@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-002 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<resources>
+    <string name="enterprise_tracking_title">Fahrtverfolgung</string>
+    <string name="enterprise_tracking_policy_expected">Das Unternehmen erwartet, dass diese Fahrt verfolgt wird. Die Fahrt läuft auch ohne Verfolgung weiter.</string>
+    <string name="enterprise_tracking_policy_optional">Das Unternehmen erlaubt die Verfolgung dieser Fahrt, wenn Sie möchten.</string>
+    <string name="enterprise_tracking_policy_unknown">Verfolgung nicht verfügbar: Die Richtlinie des Unternehmens wurde auf diesem Gerät noch nicht gelesen. Verbinden Sie sich zum Aktualisieren.</string>
+    <string name="enterprise_tracking_policy_refresh">Verfolgungsrichtlinie aktualisieren</string>
+    <string name="enterprise_tracking_policy_failed">Die Richtlinie konnte gerade nicht gelesen werden. Die zuletzt gelesene bleibt gültig.</string>
+    <string name="enterprise_tracking_notice">Während der Verfolgung zeichnet die App die Position dieses Telefons nur während dieser Fahrt auf, bis Sie sie beenden. Version des Unternehmenshinweises: %1$s.</string>
+    <string name="enterprise_tracking_start">Verfolgung starten</string>
+    <string name="enterprise_tracking_resume">Verfolgung fortsetzen</string>
+    <string name="enterprise_tracking_resume_question">Verfolgung fortsetzen?</string>
+    <string name="enterprise_tracking_stop">Verfolgung beenden</string>
+    <string name="enterprise_tracking_without">Ohne Verfolgung fortfahren</string>
+    <string name="enterprise_tracking_state_not_started">Verfolgung nicht gestartet</string>
+    <string name="enterprise_tracking_state_recording">Verfolgung aktiv</string>
+    <string name="enterprise_tracking_state_suspended">Verfolgung ausgesetzt</string>
+    <string name="enterprise_tracking_state_interrupted">Verfolgung unterbrochen</string>
+    <string name="enterprise_tracking_state_ended">Verfolgung beendet</string>
+    <string name="enterprise_tracking_since">Seit %1$s</string>
+    <string name="enterprise_tracking_approximate">Ungefährer Standort: Für diese Fahrt wird keine GPS-Strecke berechnet.</string>
+    <string name="enterprise_tracking_cause_permission_denied">Die Standortberechtigung wurde nicht erteilt. Die Fahrt läuft ohne Verfolgung weiter.</string>
+    <string name="enterprise_tracking_cause_notification_blocked">Benachrichtigungen sind blockiert, daher kann die Verfolgung nicht mit sichtbarem Hinweis laufen. Erlauben Sie Benachrichtigungen.</string>
+    <string name="enterprise_tracking_cause_process_stopped">Die App wurde während der Verfolgung geschlossen.</string>
+    <string name="enterprise_tracking_cause_device_restarted">Das Telefon wurde während der Verfolgung neu gestartet.</string>
+    <string name="enterprise_tracking_cause_stopped_by_driver">Sie haben die Verfolgung beendet. Die Fahrt geht weiter.</string>
+    <string name="enterprise_tracking_cause_owner_changed">Konto oder Unternehmen wurde auf diesem Telefon gewechselt.</string>
+    <string name="enterprise_tracking_cause_permission_revoked">Die Standortberechtigung wurde während der Fahrt entzogen.</string>
+    <string name="enterprise_tracking_cause_other">Die Verfolgung wurde mit der Fahrt beendet.</string>
+    <string name="enterprise_tracking_refused">Das Unternehmen hat die Verfolgung dieser Fahrt abgelehnt (%1$s). Die Fahrt geht weiter.</string>
+    <string name="enterprise_tracking_refusal_off">Die Verfolgung ist vom Unternehmen ausgeschaltet.</string>
+    <string name="enterprise_tracking_refusal_other">Die Verfolgung konnte auf diesem Gerät nicht geändert werden; nichts wurde gespeichert.</string>
+    <string name="enterprise_tracking_record">%1$s — %2$s</string>
+    <string name="enterprise_tracking_notification_channel">Fahrtverfolgung des Unternehmens</string>
+    <string name="enterprise_tracking_notification_title">Verfolgung aktiv — %1$s</string>
+    <string name="enterprise_tracking_notification_text">Die Position dieses Telefons wird während der Fahrt aufgezeichnet.</string>
+</resources>

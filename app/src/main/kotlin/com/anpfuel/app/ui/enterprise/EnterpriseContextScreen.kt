@@ -296,6 +296,11 @@ fun EnterpriseContextScreen(
                 ChecklistRunPanel(renderedChecklist, connected, label, checklistActions(renderedSelected), onBack = onDone,
                     modifier = Modifier.fillMaxSize().padding(padding))
             },
+            tracking = if (!BuildConfig.ENTERPRISE_TRACKING_UI_ENABLED) null else com.anpfuel.app.ui.enterprise.trip.TripTrackingActions(
+                onStart = { trip, device -> if (tripsMatch) tripViewModel.startTracking(trip, device, renderedEpoch, tripState.generation) },
+                onStop = { trip -> if (tripsMatch) tripViewModel.stopTracking(trip, renderedEpoch, tripState.generation) },
+                onRefresh = { if (tripsMatch) tripViewModel.refreshTrackingPolicy(renderedEpoch, tripState.generation) },
+            ),
         ) else if (showAssets && resumed && renderedSelected != null && !choosing &&
             assetsFor?.partition == renderedSelected.partition && assetsFor?.membershipId == renderedSelected.membershipId) MyAssetsPanel(
             // A source loss clears the owner; keep only its safe message and withhold every cached fact.

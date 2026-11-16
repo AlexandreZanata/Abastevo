@@ -109,6 +109,7 @@ func TestFullProductionRouterEnterpriseContractAndDefaultOff(t *testing.T) {
 						"/v1/orgs/{org_id}/trips/mine/list",
 						"/v1/orgs/{org_id}/tracking/policy/read",
 						"/v1/orgs/{org_id}/tracking/policy/change",
+						"/v1/orgs/{org_id}/tracking/policy/mine",
 						"/v1/orgs/{org_id}/missions/create",
 						"/v1/orgs/{org_id}/missions/list",
 						"/v1/orgs/{org_id}/missions/mine/list",

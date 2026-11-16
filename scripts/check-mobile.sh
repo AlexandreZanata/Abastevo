@@ -103,15 +103,18 @@ if grep -rn "testInjected *= *true" "$ROOT/data/src/main" "$ROOT/app/src/main" 2
 fi
 pass "no test-injection hooks in release sources"
 
-# 5. No-background-tracking assertion (P16-T04, B-BR-L02/L04).
-# Browsing and route preview use one-shot requests. Only the three explicitly
+# 5. No-background-tracking assertion (P16-T04, B-BR-L02/L04; EMP-GPS-002 EDR-323).
+# Browsing and route preview use one-shot requests. Only the four explicitly
 # started location foreground services may subscribe to updates. Guidance can
-# use high-accuracy fused location or GPS, and the two recorders use GPS.
+# use high-accuracy fused location or GPS, and the two recorders use GPS. The
+# organization trip tracking service (owner decision EDR-271) has one pinned
+# subscription, starts only after consuming the visible trip screen's grant,
+# is never sticky, and no boot receiver or background permission exists.
 [[ -d "$ROOT/app/src/main" && -d "$ROOT/data/src/main" ]] || fail "missing Android location guard source roots"
 if grep -rn "ACCESS_BACKGROUND_LOCATION" "$ROOT/app/src/main" "$ROOT/data/src/main" 2>/dev/null; then
     fail "background location permission found in shipped sources"
 fi
-if grep -rn "requestLocationUpdates\|requestUpdates(" "$ROOT/data/src/main" "$ROOT/app/src/main" 2>/dev/null | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt" | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/map/TripRecordingService.kt" | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/driver/work/DriverGpsService.kt"; then
+if grep -rn "requestLocationUpdates\|requestUpdates(" "$ROOT/data/src/main" "$ROOT/app/src/main" 2>/dev/null | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt" | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/map/TripRecordingService.kt" | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/driver/work/DriverGpsService.kt" | grep -v "app/src/main/kotlin/com/anpfuel/app/ui/enterprise/tracking/OrganizationTrackingService.kt"; then
     fail "continuous location polling found outside the permitted location foreground services (one-shot only elsewhere)"
 fi
 guidance="$ROOT/app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt"
@@ -139,6 +142,31 @@ fi
 trip_block=$(awk '/TripRecordingService/ {found=1} found {print} found && /\/>/ {exit}' "$ROOT/app/src/main/AndroidManifest.xml")
 if ! echo "$trip_block" | grep -q 'android:exported="false"' || ! echo "$trip_block" | grep -q 'foregroundServiceType="location"'; then
     fail "TripRecordingService must stay a non-exported location foreground service"
+fi
+if grep -rn "BOOT_COMPLETED\|LOCKED_BOOT_COMPLETED" "$ROOT/app/src/main" "$ROOT/data/src/main" 2>/dev/null; then
+    fail "boot receiver found in shipped sources (no location work may start at boot)"
+fi
+tracking="$ROOT/app/src/main/kotlin/com/anpfuel/app/ui/enterprise/tracking/OrganizationTrackingService.kt"
+tracking_block=$(awk '/OrganizationTrackingService"/ {found=1} found {print} found && /\/>/ {exit}' "$ROOT/app/src/main/AndroidManifest.xml")
+if [[ -n "$tracking_block" || -f "$tracking" ]]; then
+    [[ -f "$tracking" ]] || fail "OrganizationTrackingService is declared without its pinned source"
+    if grep -nE 'requestLocationUpdates|requestUpdates\(' "$tracking" | grep -Ev '^[0-9]+:[[:space:]]*LocationManagerCompat\.requestLocationUpdates\(manager, provider, request, listener, Looper\.getMainLooper\(\)\)$'; then
+        fail "unexpected continuous location source in OrganizationTrackingService"
+    fi
+    if ! grep -Fq 'val provider = if (precision == LocationPermission.PRECISE) LocationManager.GPS_PROVIDER else coarseProvider(manager)' "$tracking" ||
+       ! grep -Fq 'val request = LocationRequestCompat.Builder(5_000L).setMinUpdateIntervalMillis(5_000L)' "$tracking"; then
+        fail "OrganizationTrackingService must request five-second GPS (precise) or fused/network (approximate) updates"
+    fi
+    if grep -nE 'START_STICKY|START_REDELIVER_INTENT' "$tracking" || ! grep -Fq 'return START_NOT_STICKY' "$tracking"; then
+        fail "OrganizationTrackingService must never be restarted by the system"
+    fi
+    if ! grep -Fq 'val granted = gate.consume(partition, sessionId)' "$ROOT/application/src/main/kotlin/com/anpfuel/application/enterprise/tracking/TrackingCollector.kt" 2>/dev/null; then
+        fail "organization tracking must consume the visible trip screen's start grant"
+    fi
+    if ! echo "$tracking_block" | grep -q 'android:exported="false"' || ! echo "$tracking_block" | grep -q 'foregroundServiceType="location"' ||
+       echo "$tracking_block" | grep -q 'android:exported="true"'; then
+        fail "OrganizationTrackingService must stay a non-exported location foreground service"
+    fi
 fi
 if grep -rn "startUpdatingLocation\|allowsBackgroundLocationUpdates" "$ROOT/iosApp/Sources" 2>/dev/null; then
     fail "background location tracking found in shipped iOS sources (one-shot only)"

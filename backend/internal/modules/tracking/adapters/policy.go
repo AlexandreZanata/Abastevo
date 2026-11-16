@@ -231,3 +231,51 @@ func (s *PolicyStore) ReadPolicy(ctx context.Context, scope kernel.OrgScope, act
 	}
 	return v, nil
 }
+
+// ReadPolicyInForce reads the policy in force now for the requesting member's
+// device, between two authority checks under trip.trip.start over the
+// member's own record (EMP-GPS-002). It writes nothing.
+func (s *PolicyStore) ReadPolicyInForce(ctx context.Context, scope kernel.OrgScope, actor app.PolicyActor, member string) (app.PolicyInForce, error) {
+	if scope.Validate() != nil || !canonicalID(member) || actor.Validate() != nil {
+		return app.PolicyInForce{}, app.ErrPolicyUnauthorized
+	}
+	if !s.ready(false) {
+		return app.PolicyInForce{}, app.ErrUnavailable
+	}
+	v := app.PolicyInForce{Policy: domain.PolicyOff}
+	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
+		if err := s.Authority.CheckPolicyTx(ctx, tx, scope, actor, member, app.PolicyOwn); err != nil {
+			return err
+		}
+		var policy string
+		var notice *string
+		var inForceAt *time.Time
+		// The EMP-GPS-004 in-force rule: the latest version effective now,
+		// OFF until its notice is in force; the notice only while enabled.
+		err := tx.QueryRow(ctx, `SELECT f.policy,f.revision,p.notice_version,p.notice_in_force_at FROM org_tracking_policy_in_force($1,clock_timestamp()) f
+ JOIN org_tracking_policies p ON p.org_id=$1 AND p.revision=f.revision`, scope.OrgID().String()).Scan(&policy, &v.Revision, &notice, &inForceAt)
+		switch {
+		case errors.Is(err, pgx.ErrNoRows):
+		case err != nil:
+			return err
+		default:
+			parsed, err := domain.ParsePolicy(policy)
+			if err != nil {
+				return app.ErrUnavailable
+			}
+			v.Policy = parsed
+			if parsed != domain.PolicyOff {
+				if notice == nil || inForceAt == nil {
+					return app.ErrUnavailable
+				}
+				at := inForceAt.UTC()
+				v.NoticeVersion, v.NoticeInForce = *notice, &at
+			}
+		}
+		return s.Authority.CheckPolicyTx(ctx, tx, scope, actor, member, app.PolicyOwn)
+	})
+	if err != nil {
+		return app.PolicyInForce{}, policyError(ctx, err)
+	}
+	return v, nil
+}
