@@ -24,4 +24,17 @@ class WorkflowBoundary(unittest.TestCase):
   self.assertEqual(raw.count('if: always()'),1)
   self.assertNotIn('android-release',Path('.github/workflows/release-staging.yml').read_text())
 
+ def test_build_tools_come_from_the_runner_sdk_not_the_path(self):
+  # The release job failed with exit 127 on every attempt since 2026-11-05:
+  # the hosted image ships the SDK under $ANDROID_HOME but does not put
+  # cmdline-tools on PATH. The step must name the SDK's own sdkmanager,
+  # fail with a clear message when it is absent, and keep the pinned packages.
+  raw=Path('.github/workflows/android-release.yml').read_text()
+  step=raw.split('- name: Install pinned Android build tools',1)[1].split('\n      - name:',1)[0]
+  self.assertRegex(step,r'\$\{?ANDROID_HOME[^/}]*\}?/cmdline-tools/latest/bin/sdkmanager')
+  self.assertNotRegex(step,r'(?m)^\s*(run:\s*)?sdkmanager\s')
+  self.assertIn("'platforms;android-36'",step)
+  self.assertIn("'build-tools;35.0.0'",step)
+  self.assertIn('::error::',step)
+
 if __name__=='__main__':unittest.main()

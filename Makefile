@@ -26,6 +26,7 @@ test-flow:
 	bash scripts/tests/test-git-flow.sh
 	bash scripts/tests/test-project-batch-flow.sh
 	python3 scripts/tests/test-ci-cadence.py
+	python3 scripts/tests/test-backend-integration-shard.py
 
 test-issues:
 	bash scripts/tests/test-issues.sh

@@ -186,6 +186,15 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool, co
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { conn.Close(context.Background()) })
+	// EDR-365: in script mode the API and the worker it starts log in as a
+	// role provisioned only by infra/db/runtime-role.sql after migration.
+	processDSN := testDSN
+	var scriptLogin runtimeLogin
+	if runtimeScriptMode() {
+		scriptLogin = newRuntimeLogin(t, conn)
+		processDSN = scriptLogin.dsn(t, testDSN)
+		t.Log("API and worker log in as the script-provisioned runtime role")
+	}
 	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
@@ -208,7 +217,7 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool, co
 			cmd.Env = append(cmd.Env, "ANPFUEL_R2_"+name+"="+value)
 		}
 	}
-	cmd.Env = append(cmd.Env, "ANPFUEL_ANP_DISCOVERY_ENABLED=false", "ANPFUEL_API_HELPER=1", "ANPFUEL_ENV=development", "ANPFUEL_DATABASE_URL="+testDSN, "ANPFUEL_HTTP_ADDR="+addr, "ANPFUEL_METRICS_ADDR=", "ANPFUEL_CANONICAL_HOST=test.invalid", "ANPFUEL_CURSOR_SECRET="+strings.Repeat("synthetic", 8))
+	cmd.Env = append(cmd.Env, "ANPFUEL_ANP_DISCOVERY_ENABLED=false", "ANPFUEL_API_HELPER=1", "ANPFUEL_ENV=development", "ANPFUEL_DATABASE_URL="+processDSN, "ANPFUEL_HTTP_ADDR="+addr, "ANPFUEL_METRICS_ADDR=", "ANPFUEL_CANONICAL_HOST=test.invalid", "ANPFUEL_CURSOR_SECRET="+strings.Repeat("synthetic", 8))
 	if storageEndpoint != "" {
 		// Synthetic fixture budget, not a deployment-capacity recommendation.
 		cmd.Env = append(cmd.Env, "ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS=8")
@@ -249,6 +258,9 @@ func testPublicProcessIdentityAndSignedWrites(t *testing.T, development bool, co
 	h.call(h.req("GET", "/health/ready", nil), 503)
 	if _, err := migrate.Apply(ctx, testDSN, dbmigrations.Files); err != nil {
 		t.Fatal(err)
+	}
+	if runtimeScriptMode() {
+		applyRuntimeScript(t, conn, scriptLogin)
 	}
 	h.call(h.req("GET", "/health/ready", nil), 200)
 	station := "c0000000-0000-4000-8000-000000000001"

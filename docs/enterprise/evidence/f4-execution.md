@@ -1923,3 +1923,34 @@ RELEASE_CERTIFIED. Final gates on the delivered head are recorded below.
 
 Native and real-device acceptance stays OWED (emulator incident above); the
 phase is LOCAL_DONE / INTEGRATION_PENDING with M4 NOT accepted.
+
+## After PR #226 (merged by the owner, main `3677af4c`, 2026-11-16)
+
+Second delivery batch on `codex/enterprise-activation` (from `b17dc3d8`,
+merged with main `3677af4c`):
+
+- EMP-REL-002 activation preparation, LOCAL_DONE / INTEGRATION_PENDING
+  ([evidence](f4-enterprise-activation.md), commits `6efb4e94`, `c3ce8bd7`,
+  runbook correction `d54f1846`): the generated least-privilege runtime role
+  script `infra/db/runtime-role.sql` (schema 000257; `runtimegrants` derives
+  the per-table privileges from the production SQL of `cmd/api` and
+  `cmd/worker`), the composed proof that the real API process and worker serve
+  public and enterprise traffic as that role (and that the current superuser
+  login is refused), the audited operator command `ops enterprise capability
+  show|set` shipped as `/ops` in the API image, staging manifests pointing the
+  api and worker at `ANPFUEL_RUNTIME_DATABASE_URL` with
+  `ANPFUEL_ENTERPRISE_ENABLED=true`, and
+  `docs/operations/ENTERPRISE_ACTIVATION_RUNBOOK.md` (backup, apply, switch,
+  smoke, rollback). The VPS runs the deploy agent's gap rollout strategy, so a
+  failed switch is down until the rollback completes (runbook corrected).
+  Nothing was applied to the VPS by this commit.
+- Android release workflow fix `a138e34c` (requested by the owner in this
+  session): the release job called a bare `sdkmanager`, which the hosted image
+  does not put on PATH, so every real release attempt since at least
+  2026-11-05 exited 127 and no prerelease was ever published. RED/GREEN on the
+  workflow boundary test; `scripts/android` 21/21.
+
+Gates on `a138e34c`: `make quick-verify` ok (178 s, govulncheck none);
+`check-backend-fast.sh` ok on `8f49950c` (later commits change docs, the
+workflow and a Python test only); `infra/k8s/staging/test-manifests.py` 5/5;
+race integration `cmd/api`, `cmd/ops`, `runtimegrants`, `enterprisesuite` ok.

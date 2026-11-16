@@ -247,9 +247,17 @@ func TestTripStopsOwnReadKeepsThePlanApartFromObservedTimes(t *testing.T) {
 	t1 := x.declaredNow(t)
 	arrival := event("ARRIVAL", "Cliente Jardim Primavera, doca 2", t1)
 	event("NOTE", "Cliente ausente", x.declaredNow(t))
-	stop := event("STOP", nil, x.declaredNow(t))
-	// The departure from the first stop is delivered after the next stop.
-	t2 := t1.Add(x.declaredNow(t).Sub(t1) / 3).Truncate(time.Microsecond)
+	tStop := x.declaredNow(t)
+	stop := event("STOP", nil, tStop)
+	// The departure from the first stop is delivered after the next stop but
+	// declared between the arrival and that stop. It is derived from the two
+	// declared instants, never from the clock after the stop was processed:
+	// a third of "now minus arrival" fell after the stop on a slow runner
+	// (PR #226 CI) and paired the departure with the wrong stop.
+	t2 := t1.Add(tStop.Sub(t1) / 2).Truncate(time.Microsecond)
+	if !t1.Before(t2) || !t2.Before(tStop) {
+		t.Fatal("precondition: the late departure must be declared between the arrival and the stop", t1, t2, tStop)
+	}
 	departure := event("DEPARTURE", nil, t2)
 	leave := event("DEPARTURE", nil, x.declaredNow(t))
 	// A plan change while the mission executes is refused (B-BR-EMP-413).

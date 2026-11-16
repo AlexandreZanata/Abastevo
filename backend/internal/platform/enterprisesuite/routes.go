@@ -111,6 +111,10 @@ type Options struct {
 	MeterPlausibilityOff bool
 }
 
+// CapabilityCodes are the organization capabilities this composition
+// registers; the operator tool validates against the same list (EDR-368).
+func CapabilityCodes() []string { return []string{"organizations"} }
+
 // Register performs no I/O or provisioning. The default mounts no private
 // entry; enabled commands still require an ordinary role and current proof.
 func Register(router chi.Router, o Options) error {
@@ -167,7 +171,7 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	auditStore := auditpg.NewStore(o.Pool, auditCatalog)
-	capabilities, err := cap.NewCatalog([]string{"organizations"})
+	capabilities, err := cap.NewCatalog(CapabilityCodes())
 	if err != nil {
 		return err
 	}

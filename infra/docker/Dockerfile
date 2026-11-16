@@ -44,7 +44,8 @@ RUN go build -trimpath -ldflags="-s -w" -o /out/api ./cmd/api \
  && go build -trimpath -ldflags="-s -w" -o /out/worker ./cmd/worker \
  && go build -trimpath -ldflags="-s -w" -o /out/migrate ./cmd/migrate \
  && go build -trimpath -ldflags="-s -w" -o /out/station-load ./cmd/station-load \
- && go build -trimpath -ldflags="-s -w" -o /out/charging-catalog ./cmd/charging-catalog
+ && go build -trimpath -ldflags="-s -w" -o /out/charging-catalog ./cmd/charging-catalog \
+ && go build -trimpath -ldflags="-s -w" -o /out/ops ./cmd/ops
 
 FROM ${RUNTIME_IMAGE} AS api
 ARG REVISION
@@ -52,6 +53,9 @@ LABEL org.opencontainers.image.title="anpfuel-api" \
       org.opencontainers.image.revision="${REVISION}" \
       org.opencontainers.image.licenses="LicenseRef-Abastevo-Visible-Attribution-1.0"
 COPY --from=builder --chown=65532:65532 /out/api /api
+# Restricted operator tool (EMP-REL-002, EDR-367): run only through
+# `kubectl exec … -c api -- /ops …` with the container's runtime DSN.
+COPY --from=builder --chown=65532:65532 /out/ops /ops
 COPY --chown=65532:65532 LICENSE THIRD_PARTY_NOTICES.md /usr/share/doc/abastevo/
 COPY --chown=65532:65532 LICENSES/MIT-original.txt /usr/share/doc/abastevo/MIT-original.txt
 USER 65532:65532

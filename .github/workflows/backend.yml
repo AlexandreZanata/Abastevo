@@ -67,6 +67,8 @@ jobs:
         run: |
           python3 scripts/tests/test-anp-source-census.py
           python3 scripts/tests/test-enforcement-privacy.py
+      - name: Integration legs cover every test exactly once
+        run: python3 scripts/tests/test-backend-integration-shard.py
       - name: Fast gate (no database)
         run: bash scripts/check-backend-fast.sh
       - name: Vulnerability scan
@@ -74,7 +76,28 @@ jobs:
 
   integration:
     if: ${{ github.event_name != 'pull_request' || github.event.pull_request.draft == false }}
+    name: integration (${{ matrix.leg }})
     runs-on: ubuntu-latest
+    # One `go test ./...` took 44-57 min because Go runs the top-level tests of
+    # a package one after another: organization/adapters (~33 min) and
+    # platform/apicontract (~21 min) were the critical path. Legs run on
+    # separate runners with their own PostGIS and MinIO; the two largest
+    # packages are split by a stable hash of the test name and every other
+    # package runs unsharded in the rest leg. The union of the legs is exactly
+    # the former command: nothing is skipped or shortened, and
+    # scripts/tests/test-backend-integration-shard.py pins this matrix to
+    # scripts/backend-integration-shard.py.
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { leg: "organization adapters 1/4", package: "./internal/modules/organization/adapters", shard: 0, shards: 4 }
+          - { leg: "organization adapters 2/4", package: "./internal/modules/organization/adapters", shard: 1, shards: 4 }
+          - { leg: "organization adapters 3/4", package: "./internal/modules/organization/adapters", shard: 2, shards: 4 }
+          - { leg: "organization adapters 4/4", package: "./internal/modules/organization/adapters", shard: 3, shards: 4 }
+          - { leg: "api contract 1/2", package: "./internal/platform/apicontract", shard: 0, shards: 2 }
+          - { leg: "api contract 2/2", package: "./internal/platform/apicontract", shard: 1, shards: 2 }
+          - { leg: "other packages", package: "", shard: 0, shards: 1 }
     services:
       postgres:
         image: postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677
@@ -120,6 +143,9 @@ jobs:
           go-version: ${{ env.GO_VERSION }}
           cache-dependency-path: backend/go.sum
       - name: Build locked Rust source preparers
+        # Only cmd/worker, directory and quality suites run the preparers; they
+        # are all in the rest leg.
+        if: matrix.package == ''
         run: |
           rustup toolchain install ${{ env.RUST_VERSION }} --profile minimal
           cargo +${{ env.RUST_VERSION }} build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --bin prepare_enforcement --bin prepare_charging --bin prepare_vehicle --target-dir "$RUNNER_TEMP/station-prep-target"
@@ -148,5 +174,10 @@ jobs:
         # allocation, assignment and auditor suites to that package: its local
         # race time grew from ~620s to ~800-900s alone (1221s under load), which
         # projects to ~27m on the shared runner, so the bound is 45m (EDR-168).
-        # No case is skipped or shortened.
-        run: cd backend && go test -race -count=1 -timeout=45m -tags=integration ./...
+        # The script keeps that bound per leg. No case is skipped or shortened.
+        run: |
+          if [ -z "${{ matrix.package }}" ]; then
+            python3 scripts/backend-integration-shard.py --rest
+          else
+            python3 scripts/backend-integration-shard.py --package "${{ matrix.package }}" --shard ${{ matrix.shard }} --shards ${{ matrix.shards }}
+          fi
