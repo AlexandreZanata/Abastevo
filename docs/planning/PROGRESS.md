@@ -1,5 +1,5 @@
 # Current execution state
-- Play UGC safety, 2026-11-15: LOCAL_DONE / INTEGRATION_PENDING on
+- Play UGC safety, 2026-11-15: INTEGRATED through PR #225 (main `b0ab7d33`); built on
   `claude/inspiring-clarke-396e18` from `origin/dev` `db43e949` (Claude Code;
   readiness item 2.5). [Community safety contract](../product/COMMUNITY_SAFETY_CONTRACT.md)
   B-BR-SAFE-01…09 / BUC-SAFE-01…05: report a forum topic in the app, report a
@@ -24,22 +24,33 @@
   entry above.
   [Readiness checklist](../store/PLAY_STORE_READINESS.md).
 
-- Enterprise F4, 2026-11-15: batch checkpoint LOCAL_DONE / INTEGRATION_PENDING
-  on owned `codex/enterprise-f4` (Claude Code), merged with `origin/dev`
-  `82a5f97e` and `origin/main` `a0b72533` after PRs #221/#222.
-  [F4 ledger](../enterprise/evidence/f4-execution.md) (EDR-196). Delivered: F2/C1
-  prerequisites TRIP-001..005, METER-003/004, OFFL-006, FLEET-013; F4 tasks
-  TRIP-017, FLEET-007 (+ `org-permissions-v5`), FLEET-011, OFFL-009/012,
-  CHECK-001/003, TRIP-008, TRIP-015/016 (10 of 38). Not done: 28 F4 tasks —
-  GPS-001..015 and REL-005 (M4 gate) blocked by EMP-GOV-005/006; TRIP-009/013
-  in progress on their own branch; TRIP-007/010/011/012/014/018..023,
-  OFFL-011/013, ROUTE-004, CHECK-002/004 open. No M4/F4 acceptance is claimed.
-  Final local gates on `bff5a788`: `check-backend-fast.sh` and `make
-  quick-verify` pass; merged-tree unions green except the 5 known Rust-CLI
-  `cmd/worker` tests. PR #223 merged by the maintainer at `93f3a88d`
-  (2026-11-15): these 19 tasks are INTEGRATED, not RELEASE_CERTIFIED. Next
-  batch on the branch: TRIP-009/013 LOCAL_DONE (`4a7c211d`, 000231/000232).
-  [Batch checkpoint](../enterprise/evidence/f4-execution.md#batch-checkpoint--2026-11-15).
+- Enterprise F4, 2026-11-16: phase construction LOCAL_DONE / INTEGRATION_PENDING
+  on owned `codex/enterprise-f4` (Claude Code), built on main `b0ab7d33`
+  (PRs #223/#224/#225). [F4 ledger](../enterprise/evidence/f4-execution.md)
+  (EDR-196, owner decisions EDR-271/272). 37 of 38 F4 tasks LOCAL_DONE: the
+  19 integrated through PR #223 plus TRIP-007/009..014/018..023, OFFL-005
+  (prerequisite)/011/013, CHECK-002/004, GPS-001..006/010/012/015 with the
+  tracking policy command, METER-005/006, ROUTE-004, and the F3 prerequisites
+  EXP-002, DOC-004, FUEL-011, EXP-004. EMP-REL-005 (M4 gate) is BLOCKED: the
+  source/host scenario union passes on `1ee50c9e` (G1 240/5266, G2 46/117,
+  G3 445/4625, inventory 4/29, Kotlin 4721/214/232/46), but M4 is NOT
+  accepted (EDR-361) — owed: native runs on `emulator-5588` (RUNNING_LOCKED
+  behind its synthetic credential since 2026-11-16; owner unlock), the
+  real-device interruption matrix on three manufacturers, held fuelings
+  (FUEL-003), VAL-23 (f), VAL-27 display/review (TRIP-006), a VAL-02 sweep and
+  M3 (REL-004). Tracking collects from no real employee until the matrix
+  passes or the owner records the accepted risk (EDR-362). Merged-tree
+  evidence: combined PostGIS race on `19e681a3` 43 packages 1504/12556, later
+  merges focused runs green, Android full module suites on `1ee50c9e` 5671 /
+  767 / 999 / 842 with validation build and `check-mobile.sh`;
+  `check-backend-fast.sh` passes on `69915314`. Fixes found at integration:
+  mission-board `CHECKLIST_RUN` source (`b2dfc674`), sync-context
+  intermittent (EDR-335), queue soft-reference ordering (EDR-352), guard
+  here-strings (`1ee50c9e`). Next: final gates on the delivered head, the
+  cumulative dev → main PR, guarded merge, main CI, staging deploy and the
+  owner-chosen enterprise enablement on the VPS. Not INTEGRATED, not
+  RELEASE_CERTIFIED.
+  [Batch checkpoint](../enterprise/evidence/f4-execution.md#batch-checkpoint--2026-11-16).
 
 - Enterprise F3, 2026-11-14: IN_PROGRESS on owned `codex/enterprise-f3` from
   merged main/dev `43b21389` (Claude Code). [F3 ledger](../enterprise/evidence/f3-execution.md)

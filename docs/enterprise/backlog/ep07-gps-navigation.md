@@ -40,7 +40,7 @@ all 359 shared Go/Kotlin vectors pass with 100% Go statements. The Android
 service, intake, processing and real-device acceptance remain open (EDR-271).
 
 ### EMP-GPS-002 — Organization trip tracking service: explicit start from the trip screen, visible notification, location-guard update
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size L · state TODO
+- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size L · state LOCAL_DONE
 - **Objective:** Start Android collection only from the authorized visible trip flow.
 - **Rules and use cases:** BR-GPS-002, BR-GPS-003, BR-GPS-004, BR-GPS-013, BR-GPS-014
 - **Depends on:** EMP-GPS-001, EMP-TRIP-005
@@ -72,7 +72,7 @@ fourth subscription. Trip pause/cancel/handover feeds (EMP-TRIP-021) and
 real-device acceptance remain open (EDR-271).
 
 ### EMP-GPS-003 — Adaptive sampling, local buffer and batch envelope
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Buffer bounded quality-labelled fixes durably for batch transport.
 - **Rules and use cases:** BR-GPS-012, BR-GPS-017, BR-GPS-018, BR-GPS-019, BR-GPS-020
 - **Depends on:** EMP-GPS-002
@@ -249,7 +249,7 @@ the planned and estimated sources (route owner) remain open.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-GPS-010 — Tracking interruptions: permission, approximate-only, reboot, process death
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Handle permission and process interruptions with truthful gaps.
 - **Rules and use cases:** BR-GPS-007, BR-GPS-011, BR-GPS-012, BR-GPS-015, BR-GPS-024
 - **Depends on:** EMP-GPS-002
@@ -359,7 +359,7 @@ acceptance is owed (EDR-271).
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-GPS-015 — App: tracking transparency (indicator, what is collected, session history)
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size S · state TODO
+- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size S · state LOCAL_DONE
 - **Objective:** Make tracking purpose, active collection and own sessions visible to the employee.
 - **Rules and use cases:** BR-GPS-004, BR-GPS-034, BR-GPS-040, BR-PRIV-015
 - **Depends on:** EMP-GPS-002

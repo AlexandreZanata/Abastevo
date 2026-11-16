@@ -1859,3 +1859,44 @@ real-device acceptance (drivers `gps010-scripts/native-{source,driver}.sh`,
 a local "tracking interrupted" notification, the long-stationary guard
 (BR-GPS-016), a server policy check on resume, a server read of own sessions,
 SCR-PRIV-01.
+
+GPS-010/015 merged-tree result on `1ee50c9e`: Android full module suites
+domain 5671, application 767, data 999, app 842, 0 failures; lint, the
+enterprise validation build and `check-mobile.sh` pass.
+
+### EMP-REL-005 — M4 gate: BLOCKED (M4 NOT accepted)
+
+[Evidence](f4-rel005-m4-gate.md), commit `497bfe4c`, documentation only
+(B-BR-EMP-552..555, BUC-EMP-283..284, EDR-360..362). The M4 scenario union is
+one documented command set (`docs/backend/TEST_STRATEGY.md`, "Enterprise M4
+gate scenario union") run on `1ee50c9e`: G1 `organization/adapters` named
+scenarios on real PostGIS with `-race` and a disposable MinIO 240 top-level /
+5266 named (including the 300-cell matrix and the 166/33/133 auditor walk);
+G2 `orgsync`/`orgaudit`/`fleet` adapters 46/117; G3 trip, tracking, orgsync,
+fleet domain, maintenance and apicontract 445/4625 plus the `cmd/api`
+inventory 4/29; Kotlin enterprise domain 4721, application 214, data 232, app
+46; `check-mobile.sh --static-only` ok; 0 failures, 0 skips. Each VAL clause
+and M4 exit criterion is mapped to named tests. Not proven (no owner yet):
+VAL-04/VAL-22 part 2 held fuelings (FUEL-003), VAL-23 (f) `CLOCK_SKEW`, VAL-27
+display and review (TRIP-006, UC-GPS-08), a `trip.start` through the
+suspension check, VAL-02 as one cross-surface sweep; entry condition M3
+(REL-004) unmet. Device ledger OWED (nothing run): native stages for
+OFFL-013, GPS-002/003, GPS-010, OFFL-011 and the task-level items, plus the
+real-device interruption matrix on at least three manufacturers. EDR-361: M4
+NOT accepted, REL-005 BLOCKED. EDR-362: tracking collects from no real
+employee of any organization until a recorded M4 pass with the matrix or a new
+explicit owner decision naming the accepted risk (procedural; the policy
+already defaults to `OFF` and needs a notice in force; EDR-271 unchanged). The
+F4 diff `b0ab7d33..HEAD` scan found no secrets, only the synthetic CPF and
+synthetic coordinates, and no images or binaries. Merged as `63726828`.
+
+Backlog bookkeeping at the checkpoint: GPS-002, GPS-003, GPS-010, GPS-015 and
+CHECK-003 carried evidence notes but a stale `state TODO`; their state lines
+now read LOCAL_DONE (37 of 38 F4 tasks LOCAL_DONE, REL-005 BLOCKED).
+
+## Batch checkpoint — 2026-11-16
+
+Second F4 batch on `codex/enterprise-f4`, built on main `b0ab7d33`. Every F4
+implementation task is LOCAL_DONE / INTEGRATION_PENDING; EMP-REL-005 is
+BLOCKED and M4 is NOT accepted (EDR-361/362). Nothing here is INTEGRATED or
+RELEASE_CERTIFIED. Final gates on the delivered head are recorded below.

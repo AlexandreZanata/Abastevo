@@ -77,7 +77,7 @@ reference-feed entity type, events.
 [Evidence](../evidence/f4-check002-checklist-execution.md).
 
 ### EMP-CHECK-003 — Damage and incident reports with photos
-- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Record scoped damage or incident evidence without directly recognizing costs.
 - **Rules and use cases:** BR-CHECK-014, BR-CHECK-015, BR-CHECK-016, BR-CHECK-018, BR-PRIV-004, OQ-04
 - **Depends on:** EMP-DOC-003, EMP-TRIP-003
