@@ -217,6 +217,8 @@ Which role holds each key is the matrix in [07-permissions](../07-permissions.md
 
 Produced: `fuel.fueling.submitted`, `fuel.fueling.approved`, `fuel.fueling.returned`, `fuel.fueling.rejected`, `fuel.fueling.cancelled`, `fuel.fueling.amended`, `fuel.fueling.voided`, `fuel.fueling.flagged`, `fuel.suspicion.decided`, `fuel.interval.computed`, `fuel.interval.superseded`. Consumed, with names defined by the owning modules: reading recorded, corrected or voided and meter replaced or reset ([fleet](fleet.md)); trip readings fixed or changed ([trips](trips.md)); review decisions and period locks ([expenses-finance](expenses-finance.md)); document linked or replaced ([documents](documents.md)); redemption confirmed ([station-commerce](station-commerce.md)); dispensing recorded ([fuel-stock](fuel-stock.md)). Notifications: the author when a fueling is returned, rejected, approved or held for review; reviewers by digest when their queue grows ([imports-notifications-integrations](imports-notifications-integrations.md)). Integrations: the existing consumption engine through a port; read-only ports to `directory`, `official` and `community` for the place and the price reference. No external service.
 
+Accepted fuelings store their one expense in the same transaction (EMP-EXP-002, EDR-287).
+
 ## 10. Data, formulas and examples
 
 ### 10.1 Fields, units and precision

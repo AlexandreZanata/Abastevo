@@ -263,6 +263,15 @@ No persistence, review, settlement or runtime acceptance is claimed.
 (cd backend && go test -race ./internal/modules/expense/domain -count=1)
 ```
 
+## Expense submit vectors v1
+
+EMP-EXP-002 pins the exact `expense.submit` operation of the Android
+producer in [expense/expense-submit-v1.psv](expense/expense-submit-v1.psv):
+40 rows (OK 7, MALFORMED 28, UNSUPPORTED 4, PROTOCOL 1) built and decoded by
+Kotlin `ExpenseOperations` and parsed by the Go intake codec. See
+[expense/README.md](expense/README.md). Persistence, authority and the
+fueling projection are proven on real PostGIS, not by the rows.
+
 ## Document vectors v1
 
 EMP-DOC-001 executes all 251 rows of

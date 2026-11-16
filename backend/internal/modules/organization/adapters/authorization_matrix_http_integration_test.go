@@ -61,6 +61,7 @@ var matrixRepresentatives = []matrixRoute{
 	{"doc.document.attach", "/documents/uploads/create", false, true},
 	{"doc.document.view_content", "/documents/{document_id}/content/access", false, false},
 	{"rpt.export.run", "/reports/exports/list", true, false},
+	{"gps.track.read", "/trips/{trip_id}/track/read", false, false},
 }
 
 func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
@@ -361,6 +362,11 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	exportGrant(t, fx)
 	tripReviewGrants(t, fx.f)
 	incidentGrants(t, fx.f)
+	// EMP-GPS-012: one recorded track of a trip authored by another member of
+	// the organization's first unit, through the real signed intake.
+	tracked := trackingFixtureOn(t, tripFixtureOn(t, selfIntakeFixtureOn(t, syncFixtureOn(t, fx))))
+	tracked.recordedTrack(t)
+	trackReadGrants(t, tracked)
 	roleSQL := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+roleSQL+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+roleSQL); err != nil {
 		t.Fatal(err)
@@ -433,7 +439,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			// Each role reopens its own synthetic month, locked by the owner first.
 			month := fmt.Sprintf("2019-%02d", roleIndex+1)
 			path := func(entry matrixRoute, organization string) string {
-				return "/v1/orgs/" + organization + strings.NewReplacer("{membership_id}", target.member, "{period}", month, "{document_id}", ownerDocument, "{asset_id}", matrixAsset).Replace(entry.path)
+				return "/v1/orgs/" + organization + strings.NewReplacer("{membership_id}", target.member, "{period}", month, "{document_id}", ownerDocument, "{asset_id}", matrixAsset, "{trip_id}", tracked.trip).Replace(entry.path)
 			}
 			for _, entry := range matrixRepresentatives {
 				if entry.permission == "org.ownership.respond" && proposalID == "" {
@@ -451,8 +457,9 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 				// Fleet's S cells cover only assets assigned to the member, never
 				// the organization list representative. No creator or other record
 				// fact substitutes for SELF. A SELF content cell is refused on
-				// another member's document.
-				if cell == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(cell, "S") || entry.permission == "doc.document.view_content" && strings.HasPrefix(cell, "S") {
+				// another member's document. A DRIVER's own-trips track cell is
+				// refused on another member's trip (EMP-GPS-012).
+				if cell == "-" || entry.permission == "fleet.asset.read" && strings.HasPrefix(cell, "S") || entry.permission == "doc.document.view_content" && strings.HasPrefix(cell, "S") || entry.permission == "gps.track.read" && strings.HasPrefix(cell, "S") {
 					want, code, key = 403, "FORBIDDEN", entry.permission
 					denied++
 				} else if strings.HasPrefix(cell, "O") || (entry.permission == "doc.document.attach" || entry.permission == "trip.trip.start" || entry.permission == "check.incident.report") && strings.HasPrefix(cell, "S") {
@@ -527,7 +534,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 						if entry.permission == "doc.document.attach" {
 							want = 201
 						}
-						if oracle[entry.permission][role] == "-" || (entry.permission == "fleet.asset.read" || entry.permission == "doc.document.view_content") && strings.HasPrefix(oracle[entry.permission][role], "S") {
+						if oracle[entry.permission][role] == "-" || (entry.permission == "fleet.asset.read" || entry.permission == "doc.document.view_content" || entry.permission == "gps.track.read") && strings.HasPrefix(oracle[entry.permission][role], "S") {
 							want, code, key = 403, "FORBIDDEN", entry.permission
 						}
 						organization := org
@@ -575,8 +582,12 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 							// A structural grant covers only records that carry its unit
 							// (EMP-AUTH-006); every representative is organization-level
 							// or, for assignments, an asset of another unit, so even the
-							// ownership response and own documents are refused.
-							want, code, key = 403, "FORBIDDEN", entry.permission
+							// ownership response and own documents are refused. The
+							// recorded track is of a trip whose stored unit is the
+							// scoped one, so an O cell covers it (EMP-GPS-012).
+							if !(entry.permission == "gps.track.read" && want == 200) {
+								want, code, key = 403, "FORBIDDEN", entry.permission
+							}
 						}
 						matrixCall(t, fx, router, actor, path(entry, organization), body(entry), want, code, key, edit)
 					})
@@ -651,10 +662,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 290 || allowed != 116 || denied != 174 {
+	if exercised != 300 || allowed != 121 || denied != 179 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 55 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident report S cells cover only the own report list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 54 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident report S cells cover only the own report list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
 }
 
 // matrixAssignableAsset creates, through the owner's actual requests, one

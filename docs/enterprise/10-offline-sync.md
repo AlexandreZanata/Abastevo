@@ -32,7 +32,7 @@ What is reused from the personal cloud protocol, and what differs:
 |---|---|---|
 | Owner | One account | One organization; the actor is a membership on a device |
 | Unit of work | A batch of record writes, atomic as a whole | Each operation is its own transaction; a batch is only transport. One conflicting record must not hold back the others recorded in the field. |
-| Shape | Generic typed record with expected revision | Domain commands (`trip.start`, `fueling.submit`, …) handled by the owning module |
+| Shape | Generic typed record with expected revision | Domain commands (`trip.start`, `fueling.submit`, `expense.submit` schema 1 (EDR-289), …) handled by the owning module |
 | Replay | Same identifier and body returns the first result; changed body conflicts | Same |
 | Conflict | Refuse with base, current and proposed | Field facts are kept for review instead of refused (BR-OFFL-006) |
 | Consent mask and deletion epoch | Per-dataset opt-in by the account holder | Not applicable; activation is per organization, and personal-data rights follow [11-privacy-security](11-privacy-security.md) |
@@ -264,6 +264,8 @@ A device whose exact sealed period was revoked `ACCESS_ENDED` delivers it intake
 Before any owner, the organization's recorded suspension history holds work declared before a suspension and received inside its grace (`ORG_SUSPENDED_GRACE`), refuses later work (`ORG_SUSPENDED`), and keeps reviewing work declared during a resolved suspension; work declared before its capability was turned off is held `PLAN_CHANGED` (EMP-OFFL-012, EDR-200/201).
 
 A mission response (`trip.mission.respond`, EMP-TRIP-008, EDR-229) is not a field fact: it is decided on current facts at receipt only (current assignee, current `trip.trip.start` coverage, current revision), never on the declared instant. Another member or an ended assignment is a whole-response `FORBIDDEN`, a mission not stored here `NOT_FOUND`, a stale or already answered mission `CONFLICT` (08-state-model §4.7), each a transport denial that stores nothing; it has no held form and no late holder.
+
+Tracking (`gps.session.start`, `resume`, `suspend`, `interrupt`, `reduce`, `end` and `gps.track.batch`, EMP-GPS-004, EDR-277/278) needs no online validation: every refusal is final and per operation. The first start opens the trip's one session only under the organization's tracking policy with its employee notice in force (`OFF` is `REJECTED` `FORBIDDEN`); another member is a whole-request `FORBIDDEN`; any other domain refusal and a batch above 200 fixes are `REJECTED` `MALFORMED`; a trip or session not stored here is `RETRY` `DEPENDENCY_PENDING`. A session follows the trip's stored pauses, cancellation and finish (GPS-001 `FOLLOW`) before each session command; a batch stores one segment whose fixes outside the followed recording periods, while the trip is paused or at or after its finish or cancellation are counted on the segment, never in the receipt. Tracking owners have no held form and no late holder.
 
 ### 10.3 Offline matrix
 

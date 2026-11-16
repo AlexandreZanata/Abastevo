@@ -1156,3 +1156,87 @@ TEAM-scope fixture, production grants.
 
 Integration (`05971894`): clean merge; build, vet (both tags), gofmt,
 `sqlc diff`, cmd/api, apicontract, trip and membership unit tests green.
+
+### EMP-GPS-004 — track intake and segment storage: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps004-track-intake.md), commit `2d53fc84`, migration 000240.
+Batches are signed operations through the OFFL-002 intake (six session
+operations `gps.session.start|resume|suspend|interrupt|reduce|end` plus
+`gps.track.batch` on the `tracking_session` entity; one operation ≤ 8 KiB and
+200 fixes; the batch id is the operation id, so replay and
+`OPERATION_ID_REUSED` come from the intake) (EDR-277). The closed receipt
+vocabulary is kept: policy OFF → REJECTED/FORBIDDEN; other domain refusals and
+oversized batches → REJECTED/MALFORMED; another member → whole-request
+FORBIDDEN; unknown trip/session → RETRY/DEPENDENCY_PENDING; outside-session,
+duplicate and mock counters live on the segment (EDR-278). Four forced-RLS
+tables: insert-only `org_tracking_policies` (absent = OFF; the notice must be
+in force), `org_tracking_sessions` (unique per trip),
+`org_tracking_transitions` (contiguous) and `org_tracking_segments` (integer
+arrays plus a database-derived MultiPoint, SRID 4326), serialized on the trip
+row lock, with triggers re-checking policy, operation source, recording period,
+trip running time, precision and per-session instant uniqueness; a row commits
+only with its ACCEPTED receipt (EDR-279/280). Sessions follow the trip's
+pause/resume/cancel/finish (TRIP-011); fixes while paused or at/after
+cancellation or finish are outside the session in Go and SQL. RED application
+8/9 and 70/70, contract 2/2, PostGIS 7/7 → GREEN 9/84, PostGIS 8/19.
+
+### EMP-GPS-012 — location access permission and audit: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps012-location-access-audit.md), commit `9b1491e3`, no
+migration (000241 unused). `POST /v1/orgs/{org_id}/trips/{trip_id}/track/read`
+under `gps.track.read` only: the trip's author counts as the reader's own
+record, so DRIVER `OWN_TRIPS_ONLY` and AUDITOR `RECORDED_TRACKS_ONLY` apply;
+unit/team scope from the trip's stored structure; authority re-proved inside
+the read transaction; ≤ 20 segments per page; every page records
+`LOCATION_TRACK` ISSUED then SERVED through the PRIV-005 recorder before the
+response, and a failed record serves nothing (UNAVAILABLE) (EDR-281/282). Live
+positions stay with GPS-007/008 (F5). RED application 1, inventory/contract
+1+1, PostGIS 2/2 → GREEN; union 39 packages 1204/9382, 0 failures; untagged
+225 packages. Retained: tracking late intake (OFFL-009), a writer for
+`org_tracking_policies` (no backlog owner yet — assigned to the coordinator's
+activation work), production grants, the Android producer and batch splitting
+(GPS-002/003), processing (GPS-005), retention (GPS-011), live views
+(GPS-007..009, F5), real-device acceptance (OWED).
+
+Integration (merge of `codex/enterprise-f4-gps004` onto `b4249772`): route
+counts conflicted with TRIP-014 and were merged as the union — 153 normal
+routes (30 routed / 54 not routed / 26 special), auditor walk 153 / 31 / 122,
+matrix 300 cells (121 allowed / 179 denied), 18 signed owners; the company
+policy allow-list keeps both TRIP-014's closure policies and GPS-012's track
+policy; `TripStructure` answers `trip.trip.close_for_other` and
+`gps.track.read`; three duplicated EDR rows (262..264) from the rebased branch
+were deduplicated. Build, vet (both tags), gofmt, `sqlc diff`, cmd/api,
+apicontract, tracking and trip unit tests and the focused PostGIS race tests
+`Auditor|AuthorizationMatrix|Track|Tracking|Closure|Close|OpenTrip|Offboarding`
+(with a disposable MinIO) green.
+
+### EMP-EXP-002 (F3 prerequisite of TRIP-020) — expense persistence and fueling projection: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-exp002-expense-persistence.md), commit `41adb3d6`, migration
+000244 (forced-RLS, insert-only `org_expenses`; usage functions from 000232 /
+000231 plus one line each). The fueling's expense is created inside the
+`fueling.submit` transaction (no consumer exists for the org-event job kind):
+category FUEL, paid and company amount equal to the fueling's paid total, its
+payer and snapshot, reporting day in the unit (else organization) zone,
+SUBMITTED revision 1; neither half can exist alone (a deferred check on
+`org_fuelings` and a composite foreign key) (EDR-287/288). DIRECT expenses
+through signed `expense.submit` schema 1 (exact keys `asset_id`, `category`,
+`paid_total`, `company_amount`, `payer`, `trip_id`; categories TOLL, PARKING,
+MAINTENANCE, LEASE, INSURANCE, FINE, OTHER under a named CHECK that EXP-003
+replaces; FUEL is MALFORMED; a `trip_id`, attachments, changed rights and
+post-disposal dates stay RETRY/UNAVAILABLE); `exp.expense.record` ORG covers the
+member's own expense on any asset, SELF only on assigned periods (EDR-289).
+A stale projection writes nothing; a newer or differing stored expense is never
+overwritten (EDR-290). Kotlin `ExpenseOperations` builder with the 40-row
+`expense/expense-submit-v1.psv`. Fuelings accepted before 000244 get their
+expense from an idempotent per-organization catch-up whose production trigger
+is not wired (only synthetic fuelings exist). RED application 6/7 and 76/77,
+PostGIS 21/25 and 12/27, contract 2/2, Kotlin 43/280 → GREEN; union 37
+packages 1124/8353 on the merged tree; untagged 229 packages; Kotlin
+enterprise 4138. 19 signed owners. Retained: catch-up trigger, FUEL-003/015,
+EXP-003/004/005/006, TRIP-020 link, DOC-004 receipts, WORK_ORDER origin,
+production grants.
+
+Integration (`a27a30f4`): the branch already contained `0912b48a`; clean
+merge; build, vet, gofmt, `sqlc diff`, check_plan green; proposed shared text
+applied (backend README, 09-architecture, fuelings §9, 10-offline-sync).

@@ -261,6 +261,7 @@ var auditorPositiveRoutes = []string{
 	"/v1/orgs/{org_id}/settings/history",
 	"/v1/orgs/{org_id}/settings/read",
 	"/v1/orgs/{org_id}/settings/revision/read",
+	"/v1/orgs/{org_id}/trips/{trip_id}/track/read",
 }
 
 // The only positive AUDITOR write routes: the export request (an audited
@@ -355,6 +356,23 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	}
 	if matrixPrivateState(t, fx) != before || auditorExtraState(t, fx) != beforeExtra {
 		t.Fatal("a documented auditor read changed private source state")
+	}
+
+	// EMP-GPS-012: the AUDITOR reads a recorded track (RECORDED_TRACKS_ONLY) of
+	// another member's trip, recorded as issued and accessed before it is
+	// served; it holds no live location grant.
+	tracked := trackingFixtureOn(t, tripFixtureOn(t, selfIntakeFixtureOn(t, syncFixtureOn(t, fx))))
+	tracked.recordedTrack(t)
+	trackReadGrants(t, tracked)
+	values["{trip_id}"] = tracked.trip
+	if page := call("/v1/orgs/{org_id}/trips/{trip_id}/track/read", map[string]any{}, 200, "", ""); page["trip_id"] != tracked.trip || len(page["segments"].([]any)) != 2 {
+		t.Fatal("auditor recorded-track read", page["trip_id"])
+	}
+	if issued, served := tracked.trackAccesses(t, auditor.member, tracked.trip); issued != 1 || served != 1 {
+		t.Fatal("auditor track read not recorded once per stage", issued, served)
+	}
+	if cell := oracle["gps.location.read_live"]["AUDITOR"]; cell != "-" {
+		t.Fatal("an auditor holds a live location grant", cell)
 	}
 
 	// B-BR-EMP-250: document bytes only under the content permission, audited.
@@ -459,7 +477,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 152 || positive != 30 || denied != 122 {
+	if len(routes) != 153 || positive != 31 || denied != 122 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 

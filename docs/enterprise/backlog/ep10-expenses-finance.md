@@ -162,7 +162,7 @@ day and approved-versus-pending totals pass all 222 shared Go/Kotlin vectors
 with 100% Go statements. Persistence, projection, review binding and F3 remain open.
 
 ### EMP-EXP-002 — Expense persistence, sync handlers and the fueling-to-expense projection
-- **Meta:** module EXP · phase F3 · cut - · priority P1 · type DB · size M · state TODO
+- **Meta:** module EXP · phase F3 · cut - · priority P1 · type DB · size M · state LOCAL_DONE
 - **Objective:** Persist one cost per fueling and support scoped expense intake.
 - **Rules and use cases:** EDR-013, BR-FUEL-010, BR-OFFL-004, BR-REV-009, BR-TEN-005, REQ-11.2, VAL-13
 - **Depends on:** EMP-EXP-001, EMP-FUEL-002, EMP-OFFL-002
@@ -176,6 +176,18 @@ with 100% Go statements. Persistence, projection, review binding and F3 remain o
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-MONEY · migration: prove additive upgrade and recovery if persistent state changes · rollback: close new admission and preserve accepted costs, exact balances, decisions and audit
 - **Risks and assumptions:** The [expense and finance design](../modules/expenses-finance.md) and the owning reviewed policy govern detailed states and choices.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
+
+[F4 expense persistence](../evidence/f4-exp002-expense-persistence.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Migration 000244 stores
+insert-only, forced-RLS `org_expenses` with one cost per origin (unique
+origin key and unique fueling); every accepted `fueling.submit` stores its
+one `FUEL` expense of the paid total in the same transaction, a fueling
+never commits without it and a second cost is refused in both race orders;
+the signed `expense.submit` records `DIRECT` expenses of an asset (v1
+categories, exact centavos, unit/cost-centre snapshot) with exact replay,
+shared Go/Kotlin vectors for the Android producer and an idempotent catch-up
+for fuelings accepted before 000244. Review decisions, categories (EXP-003),
+the Android form (EXP-004), held expenses and the panel (EXP-005) remain open.
 
 ### EMP-EXP-003 — Expense categories configuration
 - **Meta:** module EXP · phase F3 · cut - · priority P1 · type API · size S · state TODO
