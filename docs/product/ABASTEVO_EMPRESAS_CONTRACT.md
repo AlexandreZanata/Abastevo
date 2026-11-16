@@ -9435,3 +9435,78 @@ replaced by an agent.
   manufacturers that they consent to use, with a synthetic organization and
   synthetic trips; each result is recorded per device and case, and the gate
   is run again on the head that includes them.
+
+## EMP-REL-002 — Runtime role, grant inventory and staging activation runbook (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-enterprise-activation.md). A prerequisite
+of the scoped activation that EMP-REL-002 rehearses: the owner chose to turn
+Abastevo Empresas on in the VPS environment (EDR-272) and the organization
+role guard (`requireSafeOrgRole`) refuses the superuser login that the API
+and worker use there today, so every organization operation would answer
+unavailable. This delivery adds the ordinary runtime login, its reviewed
+grant inventory, the proof that the whole composition works under it, the
+deployment wiring and the activation runbook with rollback. It does not
+activate anything, provision a live role or certify a release; EMP-REL-001
+and the VAL-24 rehearsal stay owed.
+
+- **B-BR-EMP-556 — The API and the worker log in as an ordinary runtime role
+  that owns nothing.** The production API and worker connect as one login
+  (`abastevo_runtime` on the VPS) created `LOGIN NOSUPERUSER NOBYPASSRLS
+  NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION`, a member of no role and the
+  owner of no object, so the organization role guard admits it and forced RLS
+  applies to it. The migration owner (the login that runs migrations, the
+  pre-deploy backup, the schema probe and the registry job) is never the
+  runtime login and stays refused by the guard. No password, DSN or secret
+  value is ever stored in Git or printed: the password comes from a secret at
+  apply time.
+- **B-BR-EMP-557 — The runtime grant inventory is derived, reviewed and
+  converged by one idempotent script.** `infra/db/runtime-role.sql` grants,
+  per relation of the head schema, only `SELECT`, `INSERT`, `UPDATE` and
+  `DELETE` as the production binaries need them: what the SQL of the `cmd/api`
+  and `cmd/worker` build closure does (an `UPDATE` also for a row lock or an
+  `ON CONFLICT … DO UPDATE`), plus what the head's SECURITY INVOKER functions,
+  RLS policies, column defaults, checks and views do when they run as that
+  login, plus a reviewed exception list. It never grants `TRUNCATE`,
+  `REFERENCES`, `TRIGGER`, `MAINTAIN`, `CREATE`, ownership, role membership or
+  `EXECUTE` on a SECURITY DEFINER function, and never re-opens a function a
+  migration closed to operators (the meter projection rebuild stays
+  operator-only). It runs as the migration owner in one transaction, refuses a
+  database at another schema version, a role that owns something or is a
+  member of a role, and the owner itself, converges a widened role back to the
+  inventory and verifies the result before committing. The checked-in script
+  must equal the generator's output for the migrated head.
+- **B-BR-EMP-558 — Deployment keeps the owner DSN for schema work and gives
+  the runtime DSN only to the serving containers.** The API and worker
+  containers read `ANPFUEL_DATABASE_URL` from the secret key
+  `ANPFUEL_RUNTIME_DATABASE_URL`; the secret's `ANPFUEL_DATABASE_URL` stays the
+  owner DSN that the deploy agent's backup, schema and migration Jobs and the
+  registry job read, and is never removed. `ANPFUEL_ENTERPRISE_ENABLED=true` is
+  set on both containers together. Objects that a later migration creates get
+  ordinary DML for the runtime role by default until the script of the
+  deployed release is applied again, which converges them to the derived
+  inventory; the script is applied again after every release whose script
+  differs from the previous one.
+- **B-BR-EMP-559 — Activation is scoped, reversible and preserves data.** The
+  VPS activation happens only after the automatic deploy of the release that
+  carries the script, a verified backup and the owner's final confirmation,
+  while the deploy agent is held off by its own lock. Verification uses
+  synthetic organizations only (the only accepted terms are the synthetic DPA)
+  and tracking stays absent or `OFF` for every real organization (EDR-362).
+  Rollback removes the two container settings and rolls out again: the routes
+  stop being served, every stored row stays, and the role, its grants and the
+  new secret key are additive and may remain.
+- **BUC-EMP-285 — Provision the runtime login and activate on the VPS.** The
+  coordinator, holding the deploy agent's lock, records the current revision,
+  takes and verifies a backup with the agent's backup Job, applies the
+  release's runtime script as the owner, sets the password from a newly
+  generated secret with statement logging off for that session, stores the
+  runtime DSN in the new secret key, sets both containers' settings, waits for
+  the rollout and runs the smoke: readiness, public reads, the enterprise
+  routes answering an unauthenticated caller with `401 UNAUTHENTICATED`, a
+  synthetic organization created and read, a capability-gated write answering
+  `ENTITLEMENT_REQUIRED`, and no `permission denied` in the database log.
+- **BUC-EMP-286 — Roll back the activation.** On any failed step after the
+  settings change, or on the owner's request, the coordinator removes the two
+  container settings with a delete patch (images untouched) and waits for the
+  rollout; readiness and public reads return to the owner login, the
+  organization routes answer `404`, and nothing stored is deleted.

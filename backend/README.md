@@ -184,6 +184,39 @@ ordinary runtime role needs the full grant inventory, including SELECT on
 `org_settings_heads` for the role that deletes accounts. See the
 [review record](../docs/enterprise/evidence/f1-pr202-review.md#final-review-head-45230e28).
 
+### Runtime role and grant inventory (EMP-REL-002 activation)
+
+The ordinary runtime login of the composed API and worker is provisioned only
+by the generated, idempotent `infra/db/runtime-role.sql` (B-BR-EMP-556..558,
+EDR-363..366). `internal/platform/runtimegrants` derives it from the SQL of the
+`cmd/api` and `cmd/worker` production build closure and the migrated head
+(SECURITY INVOKER bodies, policies, defaults, checks, views) plus a reviewed
+exception list; per relation it grants only `SELECT`/`INSERT`/`UPDATE`/`DELETE`
+as needed, never `TRUNCATE`, DDL, ownership or SECURITY DEFINER access, and the
+meter projection rebuild stays operator-only. The per-task "grants" paragraphs
+above remain the history of each change; this script is the deployable
+inventory. Regenerate after any migration or SQL change and review the diff:
+
+```sh
+ANPFUEL_RUNTIME_GRANTS_WRITE=1 ANPFUEL_TEST_DATABASE_URL=postgres://...disposable... \
+  go test -tags=integration -count=1 -run TestRuntimeScriptMatchesHead ./internal/platform/runtimegrants
+```
+
+Without the variable the same test fails when the checked-in script is stale.
+Apply it as the migration owner with
+`psql -v ON_ERROR_STOP=1 -v runtime_role=abastevo_runtime -f infra/db/runtime-role.sql`;
+it refuses another schema version and never sets a password. Proofs:
+`./internal/platform/runtimegrants` (convergence and refusals) and
+`./cmd/api -run TestRuntimeRoleServesProductionProcessAndEnterprise` (the real
+API process and worker as the script role with the enterprise switch on).
+`ANPFUEL_TEST_RUNTIME_GRANTS=script` additionally runs the orgtest suites with
+their pools logged in as a script-provisioned role (test grants land on the
+unused fixture login) and the public process tests with the API and worker as
+that role; tests that revoke from or observe the fixture login are expected to
+fail in that mode (EDR-365). The VPS procedure and rollback are in the
+[activation runbook](../docs/operations/ENTERPRISE_ACTIVATION_RUNBOOK.md); with
+the switch on, `ANPFUEL_R2_ENDPOINT` must be HTTPS or absent.
+
 ### Organization write admission (EMP-PLAT-014)
 
 Every orgapi.Rule.Write route must provide Gateway.WriteAdmission with a

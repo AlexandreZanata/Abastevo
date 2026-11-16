@@ -55,6 +55,28 @@ class StagingManifests(unittest.TestCase):
         for container in pod["containers"]:
             self.assertEqual(container["imagePullPolicy"],"IfNotPresent")
 
+    def test_runtime_login_and_enterprise_switch(self):
+        # EMP-REL-002 / EDR-366: both serving containers read the runtime DSN
+        # key and the enterprise switch; schema work keeps the owner DSN.
+        pod=obj("api-deployment.yaml")["spec"]["template"]["spec"]
+        self.assertEqual({c["name"] for c in pod["containers"]},{"api","worker"})
+        for container in pod["containers"]:
+            names=[e["name"] for e in container["env"]]
+            self.assertEqual(len(names),len(set(names)))
+            env={e["name"]:e for e in container["env"]}
+            database=env["ANPFUEL_DATABASE_URL"]
+            self.assertNotIn("value",database)
+            self.assertEqual(database["valueFrom"],{"secretKeyRef":{"name":"abastevo-temp-secrets","key":"ANPFUEL_RUNTIME_DATABASE_URL"}})
+            self.assertEqual(env["ANPFUEL_ENTERPRISE_ENABLED"],{"name":"ANPFUEL_ENTERPRISE_ENABLED","value":"true"})
+            self.assertEqual(container["envFrom"],[{"secretRef":{"name":"abastevo-temp-secrets"}}])
+        agent=(ROOT.parent.parent/"deploy"/"agent"/"runtime"/"k8s.sh").read_text()
+        self.assertNotIn("ANPFUEL_RUNTIME_DATABASE_URL",agent)
+        self.assertEqual(agent.count("envFrom:"),3)
+        self.assertEqual(agent.count("\\$ANPFUEL_DATABASE_URL"),2)
+        registry=(ROOT/"registry-sync-cronjob.yaml").read_text()
+        self.assertIn("key: ANPFUEL_DATABASE_URL",registry)
+        self.assertNotIn("ANPFUEL_RUNTIME_DATABASE_URL",registry)
+
     def test_render_keeps_shell_variables(self):
         paths=[ROOT/n for n in ("api-deployment.yaml","storage-deployment.yaml","storage-configmap.yaml","storage-service.yaml")]
         keys=set()

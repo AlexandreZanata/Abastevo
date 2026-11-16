@@ -113,3 +113,18 @@ singleton before restoring the original pod. No simultaneous writer is safe.
 The historical zero-diff above predates these changes; new live zero-diff and
 private-media smoke remain OWED. `make check-infra test-infra` includes stdlib
 structural/render checks for the affected JSON-as-YAML objects.
+
+## Enterprise activation (EMP-REL-002; desired state, applied by the coordinator)
+
+`api-deployment.yaml` now records the activation of Abastevo Empresas
+(EDR-272, EDR-366): the `api` and `worker` containers read
+`ANPFUEL_DATABASE_URL` from the secret key `ANPFUEL_RUNTIME_DATABASE_URL` (the
+ordinary role of `infra/db/runtime-role.sql`; a container `env` entry wins over
+`envFrom`) and set `ANPFUEL_ENTERPRISE_ENABLED=true`. The secret's
+`ANPFUEL_DATABASE_URL` stays the owner DSN that the deploy agent's schema,
+backup and migration Jobs and the registry CronJob read; `test-manifests.py`
+pins both. Nothing here applies it: the coordinator follows the
+[activation runbook](../../../docs/operations/ENTERPRISE_ACTIVATION_RUNBOOK.md)
+(verified backup, script, secret key, patch, smoke, rollback by deleting the
+two entries). Until it is applied, the live zero-diff for these two entries is
+expected to differ and remains OWED.

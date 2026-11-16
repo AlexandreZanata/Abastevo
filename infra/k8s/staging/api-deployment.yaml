@@ -73,6 +73,19 @@
               {
                 "name": "ANPFUEL_SHUTDOWN_TIMEOUT",
                 "value": "10s"
+              },
+              {
+                "name": "ANPFUEL_DATABASE_URL",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "abastevo-temp-secrets",
+                    "key": "ANPFUEL_RUNTIME_DATABASE_URL"
+                  }
+                }
+              },
+              {
+                "name": "ANPFUEL_ENTERPRISE_ENABLED",
+                "value": "true"
               }
             ],
             "envFrom": [
@@ -202,6 +215,19 @@
               {
                 "name": "ANPFUEL_ENTERPRISE_PORTAL_LANDING_URL",
                 "value": "${STAGING_LANDING_URL}"
+              },
+              {
+                "name": "ANPFUEL_DATABASE_URL",
+                "valueFrom": {
+                  "secretKeyRef": {
+                    "name": "abastevo-temp-secrets",
+                    "key": "ANPFUEL_RUNTIME_DATABASE_URL"
+                  }
+                }
+              },
+              {
+                "name": "ANPFUEL_ENTERPRISE_ENABLED",
+                "value": "true"
               }
             ],
             "envFrom": [

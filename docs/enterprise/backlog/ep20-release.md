@@ -43,6 +43,7 @@ Gate tasks require actual executed evidence. Recovery of this backlog accepts no
 - **Validation:** V-E2E, V-SQL, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Each gate retains immediate critical checks, current-head evidence and distinct local, integration and production states.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+- **Status (2026-11-16):** prerequisite LOCAL_DONE / INTEGRATION_PENDING on `codex/enterprise-activation`: the ordinary runtime role, its generated grant inventory (`infra/db/runtime-role.sql`), the composed-process proof under that role and the [VPS activation runbook](../../operations/ENTERPRISE_ACTIVATION_RUNBOOK.md) with rollback ([evidence](../evidence/f4-enterprise-activation.md), EDR-363..366). The task stays TODO: EMP-REL-001, the VAL-24 switch rehearsal and the activation itself remain owed.
 
 ### EMP-REL-003 — M1 gate: access and isolation acceptance
 - **Meta:** module REL · phase F1 · cut - · priority P1 · type TEST · size S · state TODO

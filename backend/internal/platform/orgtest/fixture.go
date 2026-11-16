@@ -23,6 +23,7 @@ import (
 	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/runtimegrants"
 )
 
 // Organization contains the shared scope and deliberately colliding record keys.
@@ -131,6 +132,15 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 	f.runtimeConfig.ConnConfig.User = f.RuntimeRole
 	f.runtimeConfig.ConnConfig.Password = password
 	f.runtimeConfig.MinConns = 0
+	if os.Getenv("ANPFUEL_TEST_RUNTIME_GRANTS") == "script" && files == dbmigrations.Files {
+		// Script mode (EDR-365): the runtime pools log in as a role provisioned
+		// only by infra/db/runtime-role.sql. Grants that tests address to
+		// RuntimeRole land on the unused fixture login, so a passing test
+		// proves the reviewed inventory alone serves the composition.
+		role, secret := f.ProvisionScriptRole(t)
+		f.runtimeConfig.ConnConfig.User, f.runtimeConfig.ConnConfig.Password = role, secret
+		t.Logf("orgtest runtime pools use the script-provisioned role")
+	}
 	f.Runtime = f.RuntimePool(t, 1)
 	// Installed device projections run in every existing membership-ending
 	// transaction. The ordinary fixture role needs the exact source effect
@@ -181,6 +191,63 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 		}
 	}
 	return f
+}
+
+// ProvisionScriptRole creates one more login in this disposable database,
+// provisioned only by the reviewed runtime script applied as the migration
+// owner, and returns its name and generated test secret. The role and its
+// privileges are removed before the database cleanup.
+func (f *Fixture) ProvisionScriptRole(t *testing.T) (string, string) {
+	t.Helper()
+	_, file, _, ok := runtime.Caller(0)
+	if !ok {
+		t.Fatal("orgtest repository location unavailable")
+	}
+	script, err := os.ReadFile(filepath.Join(filepath.Dir(file), "../../../..", runtimegrants.ScriptPath))
+	if err != nil {
+		t.Fatalf("orgtest read runtime script: %v", err)
+	}
+	role := "emp_script_" + randomHex(t, 8)
+	sql, err := runtimegrants.ForRole(script, role)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		name := pgx.Identifier{role}.Sanitize()
+		if _, err := f.Admin.Exec(ctx, "DROP OWNED BY "+name+"; DROP ROLE IF EXISTS "+name); err != nil {
+			t.Errorf("orgtest script role cleanup failed: %v", err)
+		}
+	})
+	if _, err := f.Admin.Exec(t.Context(), sql); err != nil {
+		t.Fatalf("orgtest apply runtime script: %v", err)
+	}
+	secret := randomHex(t, 24)
+	// Generated hexadecimal test secret for a quoted generated identifier.
+	if _, err := f.Admin.Exec(t.Context(), "ALTER ROLE "+pgx.Identifier{role}.Sanitize()+" PASSWORD '"+secret+"'"); err != nil {
+		t.Fatal("orgtest set script role secret failed")
+	}
+	// A test whose lock observer watches RuntimeRole cannot see this login
+	// wait; bound such waits so the test fails instead of hanging.
+	if _, err := f.Admin.Exec(t.Context(), "ALTER ROLE "+pgx.Identifier{role}.Sanitize()+" SET lock_timeout='120s'; ALTER ROLE "+pgx.Identifier{role}.Sanitize()+" SET idle_in_transaction_session_timeout='120s'"); err != nil {
+		t.Fatal(err)
+	}
+	return role, secret
+}
+
+// ScriptRuntimePool opens a bounded pool logged in as a script-provisioned role.
+func (f *Fixture) ScriptRuntimePool(t *testing.T, role, secret string, maxConns int32) *pgxpool.Pool {
+	t.Helper()
+	config := f.runtimeConfig.Copy()
+	config.ConnConfig.User, config.ConnConfig.Password = role, secret
+	config.MaxConns = maxConns
+	pool, err := pgxpool.NewWithConfig(t.Context(), config)
+	if err != nil {
+		t.Fatal("orgtest open script runtime pool failed")
+	}
+	t.Cleanup(pool.Close)
+	return pool
 }
 
 // RuntimePool opens an additional ordinary-login pool with a bounded size.
