@@ -32,7 +32,7 @@ What is reused from the personal cloud protocol, and what differs:
 |---|---|---|
 | Owner | One account | One organization; the actor is a membership on a device |
 | Unit of work | A batch of record writes, atomic as a whole | Each operation is its own transaction; a batch is only transport. One conflicting record must not hold back the others recorded in the field. |
-| Shape | Generic typed record with expected revision | Domain commands (`trip.start`, `fueling.submit`, …) handled by the owning module |
+| Shape | Generic typed record with expected revision | Domain commands (`trip.start`, `fueling.submit`, `expense.submit` schema 1 (EDR-289), …) handled by the owning module |
 | Replay | Same identifier and body returns the first result; changed body conflicts | Same |
 | Conflict | Refuse with base, current and proposed | Field facts are kept for review instead of refused (BR-OFFL-006) |
 | Consent mask and deletion epoch | Per-dataset opt-in by the account holder | Not applicable; activation is per organization, and personal-data rights follow [11-privacy-security](11-privacy-security.md) |

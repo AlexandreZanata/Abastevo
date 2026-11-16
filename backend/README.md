@@ -1526,6 +1526,20 @@ and of the six replaced functions. `/v1/orgs/{org_id}/sync/reviews/trips/{list,
 {review_item_id}/read, {review_item_id}/resolve}` use `trip.trip.review`
 (fresh for the resolution). Nothing here provisions live grants.
 
+### Expense intake and fueling projection (EMP-EXP-002)
+
+Migration 244 adds forced-RLS, insert-only `org_expenses`. Every principal
+that inserts fuelings (the signed intake) needs `SELECT, INSERT ON
+org_expenses`: a fueling commits only with its one FUEL expense. The same
+principal records `expense.submit` with the meter/fueling sources it already
+has. The migrator needs `REFERENCES` on organizations, org_sync_operations,
+org_fuelings, org_assets, org_memberships, org_employee_identities,
+org_device_enrollments, org_units and org_cost_centres, `TRIGGER` on
+org_fuelings and ownership of `org_asset_current_usage`,
+`org_unit_current_usage` and `org_cost_centre_current_usage`. Fuelings
+accepted before 000244 receive their expense from the per-organization
+catch-up; nothing provisions live grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also
