@@ -30,6 +30,9 @@ import com.anpfuel.domain.enterprise.tracking.TrackingDevice
 import com.anpfuel.domain.enterprise.tracking.TrackingPolicy
 import com.anpfuel.domain.enterprise.tracking.TrackingPolicyRead
 import com.anpfuel.domain.enterprise.tracking.TrackingSessionState
+import com.anpfuel.domain.enterprise.tracking.TrackingBatchOperations
+import com.anpfuel.domain.enterprise.tracking.TrackingObservation
+import com.anpfuel.domain.enterprise.tracking.TrackingObservationOutcome
 import java.nio.file.Path
 import java.time.Instant
 import java.time.ZoneId
@@ -131,5 +134,43 @@ class ProtectedTrackingStoreTest {
         // Every session operation is sealed to the partition's membership and enrollment (BR-OFFL-003).
         val entries = after.store.read(attempt(reopened)).entries
         assertTrue(resumed.records.all { entries.getValue(it.operationId).operation.let { op -> op.membershipId == B && op.enrollmentId == C } })
+    }
+
+    @Test fun `recorded fixes survive a restart in the sealed buffer and leave only in one batch`(): Unit = runBlocking {
+        val vault = root.resolve("vault-buffer"); val provider = root.resolve("provider-buffer")
+        val first = VaultFixture(vault, FileTestVaultKeys(provider)); first.confirm(partition()); first.confirm(partition(org = B))
+        val before = Device(first)
+        before.startTrip()
+        before.service.refreshPolicy(before.source.account(), before.context)
+        val session = before.service.start(before.source.account(), before.context, id(610), TrackingDevice(LocationPermission.PRECISE, true)).sessionId
+        var elapsed = 50_000L
+        fun record(device: Device, lon: Double): TrackingObservationOutcome = runBlocking {
+            device.wall += 10_000; elapsed += 10_000
+            device.service.record(device.source.account(), partition(), session, TrackingObservation(-15.6, lon, 6f, 14f, 90f, false, elapsed),
+                false, elapsed, Instant.ofEpochMilli(device.wall), "boot-3")
+        }
+        assertEquals(TrackingObservationOutcome.RECORDED, record(before, -56.1))
+        assertEquals(TrackingObservationOutcome.RECORDED, record(before, -56.0987))
+        val lastFix = Instant.ofEpochMilli(before.wall)
+        // Nothing of the buffer is readable outside encryption or from the other organization.
+        assertNull(before.store.read(attempt(first, partition(org = B))).buffers)
+        // The process dies with both fixes unsealed; the next process opens the same generation.
+        val reopened = VaultFixture(vault, FileTestVaultKeys(provider))
+        val after = Device(reopened, before.wall + 5 * 60_000, firstId = 4000)
+        val kept = after.store.read(attempt(reopened)).buffers!!.session(session)!!
+        assertEquals(2, kept.pending.size, "the buffer survives the restart")
+        assertEquals(lastFix, kept.checkpointAt)
+        assertEquals(1, after.service.recover(after.source.account(), partition(), { false }, "boot-3"))
+        val snapshot = after.store.read(attempt(reopened))
+        val buffer = snapshot.buffers!!.session(session)!!
+        assertTrue(buffer.pending.isEmpty()); assertEquals(2L, buffer.nextSequence)
+        val batch = TrackingBatchOperations.read(snapshot.entries.getValue(buffer.batchOperationIds.single()).operation)
+        assertEquals(2, batch.fixes.size); assertEquals(1L, batch.sequence)
+        assertEquals(listOf(snapshot.book!!.sessionById(session)!!.operationIds.first()), batch.dependsOn)
+        val interrupted = snapshot.book!!.sessionById(session)!!.transitions.last()
+        assertEquals(TrackingSessionState.INTERRUPTED, interrupted.state)
+        assertEquals(lastFix.plusMillis(1), interrupted.at, "the interruption follows the last recorded fix")
+        // A buffer is never created for a session that is not in this partition's book.
+        assertNull(after.store.updateBuffer(attempt(reopened), id(1)) { error("not called") })
     }
 }

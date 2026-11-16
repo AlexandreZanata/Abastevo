@@ -8010,3 +8010,80 @@ is owed.
   again, the session is shown interrupted with its reason and the instant of
   the last checkpoint, and "Retomar rastreamento" is offered; the driver may
   also continue without tracking.
+
+## EMP-GPS-003 — Adaptive sampling, local buffer and batch envelope (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-gps003-sampling-buffer.md). Builds on
+EMP-GPS-002 (the service and its session operations) and EMP-GPS-004 (the
+`gps.track.batch` intake); owner decision EDR-271.
+
+- **B-BR-EMP-501 — Approved sampling `sampling-v1`.** While a session records,
+  the service requests a location every 5 seconds (GPS for precise, the fused
+  or network provider for approximate) and records, among the fixes that pass
+  the filter: the first fix of the session; while moving (speed of at least
+  1.5 m/s) a fix 10 seconds after the last recorded one, or earlier on a turn
+  of at least 30° once 5 seconds have passed; while slow, a fix 50 m away from
+  the last recorded one; a heartbeat every 120 seconds; with approximate
+  precision the heartbeat only. Below 15 % battery and not charging the
+  routine interval becomes 30 seconds and the turn trigger is off; the trip
+  screen says so and no battery-optimisation exemption is requested. The
+  values are the documented defaults of the specification (§10.2) and change
+  only through a new policy version.
+- **B-BR-EMP-502 — Each fix is filtered and flagged before it counts.** A
+  report with non-finite or out-of-range coordinates is ignored; a mock
+  report is never recorded and is counted `mock`; a report older than 15
+  seconds at collection, or earlier than the start of the recording period,
+  is counted `stale`; a report without accuracy or, with precise permission,
+  less accurate than 50 m is counted `accuracy`; a precise report implying
+  more than 70 m/s from the previous accepted fix is counted `jump`. A fix's
+  instant is the device clock at collection minus the report's monotonic age;
+  fixes of an approximate period carry the coarse flag. Rejected reports are
+  counted, never stored; no fix is ever created, moved or interpolated.
+- **B-BR-EMP-503 — A sealed local buffer survives restarts.** Every recorded
+  fix is written to the partition's sealed `tracking-buffer` record before it
+  counts, with the session's next batch sequence, the counters since the last
+  batch, the sampler's anchors and the fix-level gaps; the last recorded or
+  accepted fix is the checkpoint that an interruption after a process death
+  starts from. The buffer belongs to its account, organization, membership,
+  enrollment and session and is never rebound. At most 2 000 fixes wait
+  unsealed: past that bound a fix is not recorded and is counted as overflow;
+  the app never deletes an unsent fix by itself.
+- **B-BR-EMP-504 — Batches are bounded envelopes delivered in order.**
+  Pending fixes are sealed into `gps.track.batch` schema-1 operations exactly
+  as the EMP-GPS-004 intake parses them: at most 200 fixes and 8 KiB per
+  operation, the first fix as base and declared instant, deltas in 10⁻⁷
+  degrees, strictly increasing offsets of at most 24 hours, the boot identity
+  and base elapsed time, source `PHONE`, the device counters since the
+  previous batch, consecutive sequences per session from 1, and a dependency
+  on the session operation that opened the fixes' recording period. Sealing
+  removes exactly those fixes from the buffer in the same protected write as
+  the queued operation; a refused or failed write keeps both unchanged.
+  Fixes are sealed when the oldest has waited 60 seconds, when 200 wait, when
+  a gap opens, when recording stops, ends or is found interrupted, and before
+  a new boot's fixes; delivery is the ordinary queue's, after the session
+  operations it depends on. Go and Kotlin share the batch vectors.
+- **B-BR-EMP-505 — Gaps are data; coverage is never claimed through them.**
+  Inside a recording period, more than 180 seconds without an accepted fix
+  opens a fix-level gap from the last accepted fix (or the period start):
+  `MOCK_LOCATION` when only mock reports arrived, `SIGNAL_LOST` otherwise;
+  a disabled provider opens `PROVIDER_DISABLED` at once. The next accepted fix
+  closes the gap at its own instant; the end of the period closes an open one.
+  No batch spans the start of a gap, and nothing is recorded inside one. The
+  trip screen shows the open gap with its reason and start. The gap reasons
+  stay on the device in this task (the `gps.track.batch` format carries only
+  fixes and counters; the server derives its own gaps from the stored fixes,
+  EMP-GPS-005).
+- **BUC-EMP-255 — A tracked trip is recorded and uploaded in batches.** The
+  driver drives with tracking active; fixes are recorded by the sampling
+  policy, sealed into batches every minute and sent with the trip's other
+  operations when online; each batch shows "Salvo no aparelho" until its own
+  receipt; the server stores each fix once.
+- **BUC-EMP-256 — Signal, provider and mock problems become gaps.** In a
+  tunnel, with the location provider off or with a mock location app, nothing
+  is recorded; after 180 seconds (at once for the provider) the screen shows
+  the gap and its reason; the next good fix closes it; the batches before and
+  after never claim the interval.
+- **BUC-EMP-257 — A restart keeps the buffer.** The app dies with fixes not
+  yet sealed; at the next opening the session is interrupted at the last
+  recorded fix, the waiting fixes are sealed into a batch and queued, and the
+  driver may resume; nothing is lost, duplicated or invented.

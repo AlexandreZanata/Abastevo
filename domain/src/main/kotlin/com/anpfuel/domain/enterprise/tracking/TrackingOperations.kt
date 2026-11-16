@@ -75,7 +75,8 @@ object TrackingOperations {
         return values.map(::identity)
     }
 
-    private fun seal(envelope: TrackingEnvelope, type: String, sessionId: String, dependsOn: List<String>,
+    /** Seals one tracking operation of entity `tracking_session`; any envelope-profile refusal (8 KiB included) is MALFORMED. */
+    internal fun sealOperation(envelope: TrackingEnvelope, type: String, sessionId: String, dependsOn: List<String>,
         payload: Map<String, SyncJson>): EnterpriseOperation = try {
         val declared = declared(envelope.declared)
         val root = SyncJson.Object(mapOf(
@@ -98,7 +99,7 @@ object TrackingOperations {
         val trip = identity(tripId)
         val o = origin(origin)
         val p = permission(permission)
-        return seal(envelope, type, sessionId, dependsOn, mapOf("trip_id" to text(trip), "origin" to text(o.name),
+        return sealOperation(envelope, type, sessionId, dependsOn, mapOf("trip_id" to text(trip), "origin" to text(o.name),
             "permission" to text(p.name), "notification_visible" to SyncJson.Bool(notificationVisible)))
     }
 
@@ -118,7 +119,7 @@ object TrackingOperations {
         if (type !in EVENT_TYPES) throw malformed()
         val trip = identity(tripId)
         val c = cause(cause)
-        return seal(envelope, type, sessionId, dependsOn, mapOf("trip_id" to text(trip), "cause" to text(c.name)))
+        return sealOperation(envelope, type, sessionId, dependsOn, mapOf("trip_id" to text(trip), "cause" to text(c.name)))
     }
 
     private fun exact(value: SyncJson.Object, keys: Set<String>): SyncJson.Object {

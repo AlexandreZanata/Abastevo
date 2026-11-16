@@ -19,8 +19,12 @@ object EnterprisePresentationModule {
     @Provides
     @Named("enterpriseConnectivity")
     fun connectivity(source: NetworkConnectivityGateway): NetworkConnectivityGateway = source
+}
 
-    /** EMP-GPS-002: arms the visible start grant and starts the tracking service (EDR-323). */
+/** EMP-GPS-002: arms the visible start grant and starts the tracking service (EDR-323); separate so screen tests keep it. */
+@Module
+@InstallIn(SingletonComponent::class)
+object EnterpriseTrackingPresentationModule {
     @Provides
     fun trackingLauncher(@ApplicationContext context: Context, runtime: TrackingRuntime): TrackingServiceLauncher =
         AndroidTrackingServiceLauncher(context, runtime)

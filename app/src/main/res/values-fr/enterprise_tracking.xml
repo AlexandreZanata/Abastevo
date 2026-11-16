@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- EMP-GPS-002 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<!-- EMP-GPS-002/003 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
 <resources>
     <string name="enterprise_tracking_title">Suivi du trajet</string>
     <string name="enterprise_tracking_policy_expected">L’entreprise attend que ce trajet soit suivi. Le trajet continue aussi sans suivi.</string>
@@ -35,4 +35,10 @@
     <string name="enterprise_tracking_notification_channel">Suivi de trajet de l’entreprise</string>
     <string name="enterprise_tracking_notification_title">Suivi actif — %1$s</string>
     <string name="enterprise_tracking_notification_text">La position de ce téléphone est enregistrée pendant le trajet.</string>
+    <string name="enterprise_tracking_pending">Positions en attente d’envoi : %1$d</string>
+    <string name="enterprise_tracking_batches">Lots de positions : %1$d acceptés par l’entreprise, %2$d sur l’appareil</string>
+    <string name="enterprise_tracking_gap_signal_lost">Pas de signal GPS depuis %1$s. Rien n’est enregistré pour cet intervalle.</string>
+    <string name="enterprise_tracking_gap_provider_disabled">Localisation désactivée depuis %1$s. Rien n’est enregistré pour cet intervalle.</string>
+    <string name="enterprise_tracking_gap_mock_location">Positions simulées ignorées depuis %1$s. Rien n’est enregistré pour cet intervalle.</string>
+    <string name="enterprise_tracking_gaps_count">Intervalles sans signal pendant ce trajet : %1$d</string>
 </resources>

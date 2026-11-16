@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- EMP-GPS-002 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<!-- EMP-GPS-002/003 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
 <resources>
     <string name="enterprise_tracking_title">運行の位置記録</string>
     <string name="enterprise_tracking_policy_expected">会社はこの運行の位置記録を求めています。記録しなくても運行は続けられます。</string>
@@ -35,4 +35,10 @@
     <string name="enterprise_tracking_notification_channel">会社の運行の位置記録</string>
     <string name="enterprise_tracking_notification_title">位置記録中 — %1$s</string>
     <string name="enterprise_tracking_notification_text">運行中、このスマートフォンの位置が記録されています。</string>
+    <string name="enterprise_tracking_pending">送信待ちの位置: %1$d</string>
+    <string name="enterprise_tracking_batches">位置のまとまり: 会社が受理 %1$d、端末に %2$d</string>
+    <string name="enterprise_tracking_gap_signal_lost">%1$s から GPS 信号がありません。この間は何も記録されません。</string>
+    <string name="enterprise_tracking_gap_provider_disabled">%1$s から位置情報がオフです。この間は何も記録されません。</string>
+    <string name="enterprise_tracking_gap_mock_location">%1$s から疑似位置を無視しています。この間は何も記録されません。</string>
+    <string name="enterprise_tracking_gaps_count">この運行の信号なしの区間: %1$d</string>
 </resources>

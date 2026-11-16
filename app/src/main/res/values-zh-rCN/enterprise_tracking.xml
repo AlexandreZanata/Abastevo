@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- EMP-GPS-002 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<!-- EMP-GPS-002/003 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
 <resources>
     <string name="enterprise_tracking_title">行程追踪</string>
     <string name="enterprise_tracking_policy_expected">公司希望追踪此行程。不追踪也可以继续行程。</string>
@@ -35,4 +35,10 @@
     <string name="enterprise_tracking_notification_channel">公司行程追踪</string>
     <string name="enterprise_tracking_notification_title">追踪中 — %1$s</string>
     <string name="enterprise_tracking_notification_text">行程中正在记录此手机的位置。</string>
+    <string name="enterprise_tracking_pending">等待发送的位置：%1$d</string>
+    <string name="enterprise_tracking_batches">位置批次：公司已接受 %1$d 个，设备上 %2$d 个</string>
+    <string name="enterprise_tracking_gap_signal_lost">自 %1$s 起没有 GPS 信号。此期间不记录任何内容。</string>
+    <string name="enterprise_tracking_gap_provider_disabled">自 %1$s 起位置已关闭。此期间不记录任何内容。</string>
+    <string name="enterprise_tracking_gap_mock_location">自 %1$s 起忽略模拟位置。此期间不记录任何内容。</string>
+    <string name="enterprise_tracking_gaps_count">本次行程中无信号的时段：%1$d</string>
 </resources>

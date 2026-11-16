@@ -51,6 +51,9 @@ class AnpFuelApplication : Application(), Configuration.Provider {
     @Inject
     lateinit var enterpriseQueueSource: com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
 
+    @Inject
+    lateinit var enterpriseQueueService: com.anpfuel.application.enterprise.queue.EnterpriseQueueService
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     override fun onCreate() {
@@ -73,7 +76,9 @@ class AnpFuelApplication : Application(), Configuration.Provider {
         }
         // EMP-GPS-002 (EDR-323): the tracking service is not a Hilt entry point; it reads these installed dependencies.
         com.anpfuel.app.ui.enterprise.tracking.OrganizationTrackingHost.installed =
-            com.anpfuel.app.ui.enterprise.tracking.OrganizationTrackingHost.Installed(trackingRuntime, trackingService, enterpriseQueueSource)
+            com.anpfuel.app.ui.enterprise.tracking.OrganizationTrackingHost.Installed(trackingRuntime, trackingService, enterpriseQueueSource) {
+                account, partition -> enterpriseQueueService.dispatch(account, partition)
+            }
         com.anpfuel.data.worker.TrainingConsentRevocationWorker.schedule(this)
         applicationScope.launch {
             com.anpfuel.data.worker.DirectorySyncWorker.maintainSchedule(this@AnpFuelApplication, preferenceStore)

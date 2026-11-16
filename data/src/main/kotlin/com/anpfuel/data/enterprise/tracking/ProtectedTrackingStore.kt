@@ -12,7 +12,9 @@ import com.anpfuel.data.enterprise.VaultKind
 import com.anpfuel.data.enterprise.VaultQueueChange
 import com.anpfuel.data.enterprise.VaultSnapshot
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedQueueCodec
+import com.anpfuel.domain.enterprise.tracking.SessionBuffer
 import com.anpfuel.domain.enterprise.tracking.TrackingBook
+import com.anpfuel.domain.enterprise.tracking.TrackingBufferBook
 import com.anpfuel.domain.enterprise.tracking.TrackingCheckpoint
 import com.anpfuel.domain.enterprise.tracking.TrackingPolicyRead
 import com.anpfuel.domain.enterprise.trip.TripBook
@@ -40,16 +42,40 @@ class ProtectedTrackingStore(private val persistence: ProtectedEnterprisePersist
         } catch (_: Exception) { throw EnterprisePersistenceUnavailable() }
     }
 
+    /** EMP-GPS-003: the sealed buffer record; unreadable or foreign is unavailable and never replaced. */
+    private fun buffers(snapshot: VaultSnapshot, attempt: EnterpriseQueueAttempt): TrackingBufferBook? {
+        val stored = snapshot.entries[BUFFER_KEY] ?: return null
+        return try {
+            TrackingBufferBook.decode(stored.bytes).requireBinding(attempt.enrollment.target.membershipId, attempt.enrollment.enrollmentId)
+        } catch (_: Exception) { throw EnterprisePersistenceUnavailable() }
+    }
+
     override suspend fun read(attempt: EnterpriseQueueAttempt): EnterpriseTrackingSnapshot = persistence.queueAccess(attempt) { snapshot ->
         val book = book(snapshot, attempt)
         val trips = trips(snapshot, attempt)
-        val ids = (book?.sessions?.flatMap { it.operationIds } ?: emptyList()) + (trips?.trips?.flatMap { it.operationIds } ?: emptyList())
+        val buffers = buffers(snapshot, attempt)
+        val ids = (book?.sessions?.flatMap { it.operationIds } ?: emptyList()) + (trips?.trips?.flatMap { it.operationIds } ?: emptyList()) +
+            (buffers?.sessions?.flatMap { it.batchOperationIds } ?: emptyList())
         val entries = ids.distinct().associateWith { id ->
             val entry = snapshot.entries["QUEUE:$id"] ?: throw EnterprisePersistenceUnavailable()
             ProtectedQueueCodec.decode(entry.bytes, snapshot, entry.id)
         }
-        VaultQueueChange(EnterpriseTrackingSnapshot(book, trips, entries))
+        VaultQueueChange(EnterpriseTrackingSnapshot(book, trips, entries, buffers))
     }
+
+    override suspend fun updateBuffer(attempt: EnterpriseQueueAttempt, sessionId: String, change: (SessionBuffer?) -> SessionBuffer?): SessionBuffer? =
+        persistence.queueAccess(attempt) { snapshot ->
+            val member = attempt.enrollment.target.membershipId
+            val enrollment = attempt.enrollment.enrollmentId
+            // A buffer exists only for a session of this partition's book (never rebound, B-BR-EMP-503).
+            if (book(snapshot, attempt)?.sessionById(sessionId) == null) return@queueAccess VaultQueueChange<SessionBuffer?>(null)
+            val current = buffers(snapshot, attempt) ?: TrackingBufferBook.empty(member, enrollment)
+            val next = change(current.session(sessionId)) ?: return@queueAccess VaultQueueChange(current.session(sessionId))
+            require(next.sessionId == sessionId)
+            val bytes = current.with(next).canonicalBytes
+            snapshot.entries[BUFFER_KEY] = VaultEntry(VaultKind.RECORD, EnterpriseTrackingProducers.BUFFER_RECORD_ID, "", bytes)
+            VaultQueueChange(next, changed = true)
+        }
 
     private suspend fun update(attempt: EnterpriseQueueAttempt, change: (TrackingBook?) -> TrackingBook?): Boolean =
         persistence.queueAccess(attempt) { snapshot ->
@@ -75,5 +101,6 @@ class ProtectedTrackingStore(private val persistence: ProtectedEnterprisePersist
     private companion object {
         const val KEY = "RECORD:" + EnterpriseTrackingProducers.BOOK_RECORD_ID
         const val TRIP_KEY = "RECORD:" + EnterpriseTripProducers.BOOK_RECORD_ID
+        const val BUFFER_KEY = "RECORD:" + EnterpriseTrackingProducers.BUFFER_RECORD_ID
     }
 }

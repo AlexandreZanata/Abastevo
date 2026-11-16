@@ -14,7 +14,9 @@ import android.location.Location
 import android.location.LocationManager
 import android.os.Build
 import android.os.IBinder
+import android.os.BatteryManager
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -25,6 +27,7 @@ import androidx.core.location.LocationListenerCompat
 import androidx.core.location.LocationManagerCompat
 import androidx.core.location.LocationRequestCompat
 import com.anpfuel.app.R
+import com.anpfuel.application.enterprise.queue.EnterpriseQueueAccountLease
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingService
 import com.anpfuel.application.enterprise.tracking.TrackingBeginResult
@@ -51,7 +54,9 @@ import kotlinx.coroutines.launch
 
 /** The process's installed tracking dependencies; the application (or a device test) installs them once. */
 object OrganizationTrackingHost {
-    class Installed(val runtime: TrackingRuntime, val service: EnterpriseTrackingService, val source: EnterpriseQueueSource) {
+    class Installed(val runtime: TrackingRuntime, val service: EnterpriseTrackingService, val source: EnterpriseQueueSource,
+        /** EMP-GPS-003: one delivery of the partition after batches were sealed (the ordinary queue). */
+        val deliver: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> Unit = { _, _ -> }) {
         override fun toString(): String = "OrganizationTrackingHost.Installed(redacted)"
     }
     @Volatile var installed: Installed? = null
@@ -93,6 +98,23 @@ internal class AndroidTrackingPlatform(private val context: Context) : TrackingP
         try { manager?.let { LocationManagerCompat.removeUpdates(it, listener) } } catch (_: SecurityException) { }
     }
 
+    override fun wallMillis(): Long = System.currentTimeMillis()
+    override fun elapsedMillis(): Long = SystemClock.elapsedRealtime()
+
+    /** BR-GPS-019: below 15 % and not charging. */
+    override fun batteryLow(): Boolean {
+        val battery = context.getSystemService(BatteryManager::class.java) ?: return false
+        val level = battery.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY)
+        return level in 0 until com.anpfuel.domain.enterprise.tracking.TrackingSamplingPolicy.ECONOMY_BATTERY_PERCENT && !battery.isCharging
+    }
+
+    override fun providerEnabled(precision: LocationPermission): Boolean {
+        val manager = manager ?: return false
+        if (!LocationManagerCompat.isLocationEnabled(manager)) return false
+        return try { manager.isProviderEnabled(if (precision == LocationPermission.PRECISE) LocationManager.GPS_PROVIDER else coarseProvider(manager)) }
+        catch (_: IllegalArgumentException) { false }
+    }
+
     private fun coarseProvider(manager: LocationManager): String =
         if (Build.VERSION.SDK_INT >= 31 && manager.allProviders.contains(LocationManager.FUSED_PROVIDER)) LocationManager.FUSED_PROVIDER
         else LocationManager.NETWORK_PROVIDER
@@ -131,6 +153,7 @@ class OrganizationTrackingService : Service() {
     private var collector: TrackingCollector? = null
     private var platform: AndroidTrackingPlatform? = null
     private var watchdog: Job? = null
+    private var consumer: Job? = null
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -161,10 +184,15 @@ class OrganizationTrackingService : Service() {
         val installed = OrganizationTrackingHost.installed
         if (!shown || partition == null || installed == null) { if (collector?.runningSessionId == null) shutdown(); return }
         val active = collector ?: TrackingCollector(installed.service, installed.source, installed.runtime.gate,
-            AndroidTrackingPlatform(this).also { platform = it }).also { collector = it }
+            AndroidTrackingPlatform(this).also { platform = it }, installed.deliver).also { collector = it }
         scope.launch {
             when (active.begin(partition, sessionId)) {
-                TrackingBeginResult.STARTED -> { installed.runtime.collector = active; startWatchdog(active) }
+                TrackingBeginResult.STARTED -> {
+                    installed.runtime.collector = active
+                    // EMP-GPS-003: reports are recorded durably, in arrival order, off the platform callback.
+                    if (consumer == null) consumer = scope.launch { active.run() }
+                    startWatchdog(active)
+                }
                 TrackingBeginResult.ALREADY_RUNNING -> Unit
                 else -> if (active.runningSessionId == null) shutdown()
             }
@@ -183,6 +211,7 @@ class OrganizationTrackingService : Service() {
 
     private fun shutdown() {
         watchdog?.cancel(); watchdog = null
+        consumer?.cancel(); consumer = null
         val installed = OrganizationTrackingHost.installed
         if (installed?.runtime?.collector === collector) installed?.runtime?.collector = null
         runCatching { ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE) }

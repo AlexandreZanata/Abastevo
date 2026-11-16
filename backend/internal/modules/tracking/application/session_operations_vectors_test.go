@@ -45,6 +45,12 @@ func loadSessionVectors(t *testing.T) []sessionVector {
 	if fmt.Sprintf("%x", sha256.Sum256(raw)) != sessionCorpusHash {
 		t.Fatal("tracking session operation corpus hash changed")
 	}
+	return loadSessionVectorsFrom(t, raw)
+}
+
+// loadSessionVectorsFrom reads the shared five-column tracking corpus grammar.
+func loadSessionVectorsFrom(t *testing.T, raw []byte) []sessionVector {
+	t.Helper()
 	lines := strings.Split(strings.TrimSuffix(string(raw), "\n"), "\n")
 	if lines[0] != "id|operation|args|expected|bytes_hex" {
 		t.Fatal("tracking session operation corpus header")

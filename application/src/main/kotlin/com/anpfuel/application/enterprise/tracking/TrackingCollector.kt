@@ -6,6 +6,10 @@ import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
 import com.anpfuel.domain.enterprise.EnterprisePartition
 import com.anpfuel.domain.enterprise.tracking.LocationPermission
 import com.anpfuel.domain.enterprise.tracking.TrackingCause
+import com.anpfuel.domain.enterprise.tracking.TrackingObservation
+import com.anpfuel.domain.enterprise.tracking.TrackingObservationOutcome
+import java.time.Instant
+import kotlinx.coroutines.channels.Channel
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -37,6 +41,13 @@ interface TrackingPlatform {
     fun attach(precision: LocationPermission, sink: (TrackingFixSample) -> Unit): Boolean
     /** Removes this collector's listener only. */
     fun detach()
+    /** EMP-GPS-003: the device wall clock and monotonic clock, read together at a report (EDR-325). */
+    fun wallMillis(): Long
+    fun elapsedMillis(): Long
+    /** Below 15 % battery and not charging (BR-GPS-019). */
+    fun batteryLow(): Boolean
+    /** The provider of [precision] is enabled (a disabled one opens PROVIDER_DISABLED at once). */
+    fun providerEnabled(precision: LocationPermission): Boolean
 }
 
 /**
@@ -64,7 +75,7 @@ enum class TrackingBeginResult { STARTED, ALREADY_RUNNING, NO_GRANT, BUSY, NOT_R
 
 /** Counts and state only, never coordinates (B-BR-EMP-500). */
 data class TrackingRuntimeState(val active: Boolean = false, val sessionId: String? = null, val precision: LocationPermission? = null,
-    val accepted: Long = 0, val stoppedBy: TrackingCause? = null) {
+    val accepted: Long = 0, val stoppedBy: TrackingCause? = null, val recorded: Long = 0, val economy: Boolean = false) {
     override fun toString(): String = "TrackingRuntimeState(redacted)"
 }
 
@@ -73,7 +84,12 @@ class TrackingCollector(
     private val source: EnterpriseQueueSource,
     private val gate: TrackingStartGate,
     private val platform: TrackingPlatform,
+    /** EMP-GPS-003: one delivery attempt of the partition after batches were sealed (the ordinary queue). */
+    private val deliver: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> Unit = { _, _ -> },
 ) {
+    /** A report with the clocks read when it arrived (EDR-325). */
+    private class Received(val owner: Any, val sample: TrackingFixSample, val wall: Long, val elapsed: Long)
+    private val inbox = Channel<Received>(capacity = INBOX)
     private class Binding(val partition: EnterprisePartition, val sessionId: String, val tripId: String, val identity: com.anpfuel.application.enterprise.EnterpriseLocalIdentity,
         val membershipId: String, val enrollmentId: String, val precision: LocationPermission)
     private val lock = Mutex()
@@ -119,6 +135,34 @@ class TrackingCollector(
         if (binding !== owner) return
         if (!sample.latitude.isFinite() || !sample.longitude.isFinite()) return
         mutable.value = mutable.value.copy(accepted = accepted.incrementAndGet())
+        // Durable recording happens off the callback, in arrival order; a full inbox is counted, never blocking the platform.
+        inbox.trySend(Received(owner, sample, platform.wallMillis(), platform.elapsedMillis()))
+    }
+
+    /** EMP-GPS-003: records every report queued so far through the sampler and the sealed buffer (B-BR-EMP-501..503). */
+    suspend fun drain(): Int {
+        var processed = 0
+        while (true) {
+            val next = inbox.tryReceive().getOrNull() ?: return processed
+            process(next); processed++
+        }
+    }
+
+    /** The service's consumer loop: records reports as they arrive until the collector is closed. */
+    suspend fun run() { for (next in inbox) process(next) }
+
+    private suspend fun process(received: Received) = lock.withLock {
+        val current = binding ?: return@withLock
+        if (current !== received.owner && current.sessionId != (received.owner as Binding).sessionId) return@withLock
+        val s = received.sample
+        val economy = platform.batteryLow()
+        val outcome = try {
+            service.record(lease(), current.partition, current.sessionId, TrackingObservation(s.latitude, s.longitude, s.accuracyMetres,
+                s.speedMetresPerSecond, s.bearingDegrees, s.mock, s.elapsedMillis), economy, received.elapsed, Instant.ofEpochMilli(received.wall),
+                platform.bootId())
+        } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { TrackingObservationOutcome.IGNORED }
+        val recorded = mutable.value.recorded + if (outcome == TrackingObservationOutcome.RECORDED) 1 else 0
+        mutable.value = mutable.value.copy(recorded = recorded, economy = economy)
     }
 
     private fun detachLocked(stoppedBy: TrackingCause?) {
@@ -132,7 +176,9 @@ class TrackingCollector(
     suspend fun release(stoppedBy: TrackingCause? = null): Unit = lock.withLock { detachLocked(stoppedBy) }
 
     /** "Parar rastreamento" from the notification: interrupts the session (STOPPED_BY_DRIVER) and releases the listener. */
-    suspend fun stopByDriver(): Boolean = lock.withLock {
+    suspend fun stopByDriver(): Boolean { drain(); return stopLocked() }
+
+    private suspend fun stopLocked(): Boolean = lock.withLock {
         val current = binding ?: return false
         try {
             val account = lease()
@@ -148,7 +194,9 @@ class TrackingCollector(
      * The 30-second watchdog (BR-GPS-015): owner, trip and session first, then permission, precision and notification;
      * a failed check records the cause it requires and releases the listener. True while still collecting.
      */
-    suspend fun tick(): Boolean = lock.withLock {
+    suspend fun tick(): Boolean { drain(); return tickLocked() }
+
+    private suspend fun tickLocked(): Boolean = lock.withLock {
         val current = binding ?: return false
         val account = try { lease() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { null }
         val same = account != null && account.identity == current.identity && account.identity.owns(current.partition) && try {
@@ -194,6 +242,13 @@ class TrackingCollector(
                 mutable.value = mutable.value.copy(precision = LocationPermission.APPROXIMATE)
             }
             service.checkpoint(account, current.partition, current.sessionId, platform.bootId())
+            // EMP-GPS-003: gaps are data (B-BR-EMP-505); due fixes leave in a batch and the queue is asked to deliver.
+            val precision = binding?.precision ?: current.precision
+            service.checkGap(account, current.partition, current.sessionId, platform.providerEnabled(precision),
+                Instant.ofEpochMilli(platform.wallMillis()), platform.bootId())
+            if (service.seal(account, current.partition, current.sessionId, force = false) > 0) {
+                try { deliver(account, current.partition) } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { }
+            }
             true
         } catch (cancelled: CancellationException) { throw cancelled } catch (_: EnterpriseLocalDenied) {
             detachLocked(TrackingCause.OWNER_CHANGED)
@@ -205,6 +260,8 @@ class TrackingCollector(
     }
 
     override fun toString(): String = "EnterpriseTrackingCollector(redacted)"
+
+    private companion object { const val INBOX = 256 }
 }
 
 /**

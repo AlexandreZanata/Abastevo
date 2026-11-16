@@ -44,6 +44,8 @@ import com.anpfuel.application.enterprise.tracking.TrackingSessionView
 import com.anpfuel.domain.enterprise.tracking.LocationPermission
 import com.anpfuel.domain.enterprise.tracking.TrackingCause
 import com.anpfuel.domain.enterprise.tracking.TrackingDevice
+import com.anpfuel.domain.enterprise.tracking.TrackingGapReason
+import com.anpfuel.domain.enterprise.sync.EnterpriseSyncStatus
 import com.anpfuel.domain.enterprise.tracking.TrackingPolicy
 import com.anpfuel.domain.enterprise.tracking.TrackingSessionState
 import java.time.Instant
@@ -131,6 +133,20 @@ internal fun TrackingCard(
                         Text(stringResource(R.string.enterprise_tracking_approximate))
                     if (session.refused) Text(stringResource(R.string.enterprise_tracking_refused, session.refusalCode ?: "-"),
                         modifier = Modifier.testTag("enterprise-tracking-refused"))
+                }
+                // EMP-GPS-003 (B-BR-EMP-503..505): counts and gaps only, never a position.
+                session.openGap?.let { gap ->
+                    Text(stringResource(when (gap.reason) {
+                        TrackingGapReason.SIGNAL_LOST -> R.string.enterprise_tracking_gap_signal_lost
+                        TrackingGapReason.PROVIDER_DISABLED -> R.string.enterprise_tracking_gap_provider_disabled
+                        TrackingGapReason.MOCK_LOCATION -> R.string.enterprise_tracking_gap_mock_location
+                    }, formatted(gap.start)), modifier = Modifier.testTag("enterprise-tracking-gap"))
+                }
+                if (session.gaps.isNotEmpty()) Text(stringResource(R.string.enterprise_tracking_gaps_count, session.gaps.size), style = MaterialTheme.typography.bodySmall)
+                if (session.pendingFixes > 0 || session.batches.isNotEmpty()) {
+                    Text(stringResource(R.string.enterprise_tracking_pending, session.pendingFixes), modifier = Modifier.testTag("enterprise-tracking-pending"))
+                    Text(stringResource(R.string.enterprise_tracking_batches, session.batches.count { it.sync == EnterpriseSyncStatus.ACCEPTED },
+                        session.batches.count { it.sync != EnterpriseSyncStatus.ACCEPTED }), modifier = Modifier.testTag("enterprise-tracking-batches"))
                 }
                 for (record in session.records) Text(stringResource(R.string.enterprise_tracking_record,
                     stringResource(trackingStateText(stateAfter(record.type))), stringResource(statusText(record.sync))), style = MaterialTheme.typography.bodySmall)

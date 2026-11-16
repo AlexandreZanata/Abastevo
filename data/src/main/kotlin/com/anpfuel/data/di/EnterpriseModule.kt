@@ -54,7 +54,6 @@ import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
 import com.anpfuel.data.enterprise.trip.ProtectedTripStore
-import com.anpfuel.data.enterprise.tracking.EnterpriseTrackingPolicyHttpGateway
 import com.anpfuel.data.enterprise.tracking.ProtectedTrackingStore
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
@@ -277,11 +276,6 @@ object EnterpriseModule {
     @Provides
     @Singleton
     fun trackingStore(store: ProtectedEnterprisePersistence): EnterpriseTrackingStore = ProtectedTrackingStore(store)
-
-    /** B-BR-EMP-495: the driver's policy read on the account cookie plane (EDR-321). */
-    @Provides
-    @Singleton
-    fun trackingPolicyGateway(client: CompanyAccessClient): EnterpriseTrackingPolicyGateway = EnterpriseTrackingPolicyHttpGateway(client)
 
     @Provides
     @Singleton

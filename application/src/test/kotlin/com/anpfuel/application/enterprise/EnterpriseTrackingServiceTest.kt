@@ -29,7 +29,14 @@ internal class TrackingServerFake(private val trips: TripServerFake) {
             """"result":"$result","code":${code?.let { "\"$it\"" } ?: "null"},"entity_revision":${revision ?: "null"},""" +
             """"received_at":${if (final) "\"2026-11-15T18:00:00Z\"" else "null"},"review_item_id":null,"warnings":[]}""").toByteArray(), op)
     }
+    val batches = mutableListOf<TrackingBatchFact>()
     fun answer(op: EnterpriseOperation): OperationAcknowledgement {
+        if (op.type == TrackingBatchOperations.TYPE) {
+            delivered += op.operationId
+            if (!op.dependsOn.all { it in accepted }) return ack(op, "RETRY", "DEPENDENCY_PENDING")
+            batches += TrackingBatchOperations.read(op); accepted += op.operationId
+            return ack(op, "ACCEPTED", revision = 1)
+        }
         if (op.type !in TrackingOperations.SESSION_TYPES) return trips.answer(op)
         delivered += op.operationId
         if (!op.dependsOn.all { it in accepted || it in trips.accepted }) return ack(op, "RETRY", "DEPENDENCY_PENDING")
@@ -48,6 +55,10 @@ internal class FakeTrackingPlatform {
     var refuse = false
     var sink: ((TrackingFixSample) -> Unit)? = null
     var precision: LocationPermission? = null
+    var wall = 1_763_208_000_000L
+    var elapsed = 5_000L
+    var batteryLow = false
+    var providerEnabled = true
     val port = object : TrackingPlatform {
         override fun permission() = permission
         override fun notificationVisible() = notification
@@ -59,6 +70,10 @@ internal class FakeTrackingPlatform {
             return true
         }
         override fun detach() { sink = null; precision = null }
+        override fun wallMillis() = wall
+        override fun elapsedMillis() = elapsed
+        override fun batteryLow() = batteryLow
+        override fun providerEnabled(precision: LocationPermission) = providerEnabled
     }
     fun fix(at: Long = 1_000) = sink?.invoke(TrackingFixSample(-15.6, -56.1, 5f, 10f, 90f, at, at, false))
 }
@@ -82,6 +97,7 @@ internal class TrackingFixture {
             EnterpriseLocalRecord(attempt.partition, EnterpriseTrackingProducers.BOOK_RECORD_ID, next.canonicalBytes)
     }
     var storeFails = false
+    var bufferWrites = 0
     val store = object : EnterpriseTrackingStore {
         override suspend fun read(attempt: EnterpriseQueueAttempt): EnterpriseTrackingSnapshot {
             attempt.assertCurrent()
@@ -89,8 +105,22 @@ internal class TrackingFixture {
             val p = f.disk.of(attempt.partition)
             val trips = p.records[EnterpriseTripProducers.BOOK_RECORD_ID]?.let { TripBook.decode(it.envelope) }
             val tracking = book(attempt)
-            val ids = (tracking?.sessions?.flatMap { it.operationIds } ?: emptyList()) + (trips?.trips?.flatMap { it.operationIds } ?: emptyList())
-            return EnterpriseTrackingSnapshot(tracking, trips, ids.associateWith { p.entries.getValue(it) })
+            val buffers = p.records[EnterpriseTrackingProducers.BUFFER_RECORD_ID]?.let { TrackingBufferBook.decode(it.envelope) }
+            val ids = (tracking?.sessions?.flatMap { it.operationIds } ?: emptyList()) + (trips?.trips?.flatMap { it.operationIds } ?: emptyList()) +
+                (buffers?.sessions?.flatMap { it.batchOperationIds } ?: emptyList())
+            return EnterpriseTrackingSnapshot(tracking, trips, ids.associateWith { p.entries.getValue(it) }, buffers)
+        }
+        override suspend fun updateBuffer(attempt: EnterpriseQueueAttempt, sessionId: String, change: (SessionBuffer?) -> SessionBuffer?): SessionBuffer? {
+            attempt.assertCurrent()
+            if (book(attempt)?.sessionById(sessionId) == null) return null
+            val records = records(attempt.partition)
+            val current = records[EnterpriseTrackingProducers.BUFFER_RECORD_ID]?.let { TrackingBufferBook.decode(it.envelope) }
+                ?: TrackingBufferBook.empty(attempt.enrollment.target.membershipId, attempt.enrollment.enrollmentId)
+            val next = change(current.session(sessionId)) ?: return current.session(sessionId)
+            bufferWrites++
+            records[EnterpriseTrackingProducers.BUFFER_RECORD_ID] = EnterpriseLocalRecord(attempt.partition, EnterpriseTrackingProducers.BUFFER_RECORD_ID,
+                current.with(next).canonicalBytes)
+            return next
         }
         override suspend fun replacePolicy(attempt: EnterpriseQueueAttempt, read: TrackingPolicyRead) {
             attempt.assertCurrent()
@@ -116,7 +146,8 @@ internal class TrackingFixture {
     var elapsed = 0L
     val gate = TrackingStartGate { elapsed }
     val platform = FakeTrackingPlatform()
-    fun collector() = TrackingCollector(tracking, f.source, gate, platform.port)
+    var deliveries = 0
+    fun collector() = TrackingCollector(tracking, f.source, gate, platform.port) { account, partition -> deliveries++; delivery.dispatch(account, partition) }
 
     val a get() = f.a
     suspend fun account() = f.source.account()

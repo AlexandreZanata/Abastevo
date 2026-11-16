@@ -226,9 +226,16 @@ service were removed — minSdk 26 — and the app enterprise tests rerun,
 `gps002-kotlin-app-green-2.log`); `:app:assembleDebug` built. Guard
 static-only ok and its fixture tests 34/34; plan check 0 problems.
 
+Follow-up recorded with EMP-GPS-003 (see
+[its evidence](f4-gps003-sampling-buffer.md)): the enterprise validation
+build of this commit's tree fails at the device-test Hilt graph (the policy
+gateway and the launcher were provided by modules the device tests replace);
+EMP-GPS-003 moves them to their own modules and the validation build passes;
+the emulator acceptance is OWED (the emulator is locked behind a credential
+nobody may enter; drivers and APKs are ready).
+
 The cumulative gates that cover both tracking tasks run once on the merged
-tree that contains this commit and EMP-GPS-003 (see the EMP-GPS-003 evidence
-`f4-gps003-sampling-buffer.md`): the race/integration union with
+tree that contains this commit and EMP-GPS-003: the race/integration union with
 `organization/adapters`, the untagged `go test ./...`, `make quick-verify`, the
 enterprise validation build and the native acceptance on `emulator-5588`
 (trip start → explicit tracking start with its notification → simulated route

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- EMP-GPS-002 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<!-- EMP-GPS-002/003 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
 <resources>
     <string name="enterprise_tracking_title">Отслеживание поездки</string>
     <string name="enterprise_tracking_policy_expected">Компания ожидает, что эта поездка будет отслеживаться. Поездка продолжится и без отслеживания.</string>
@@ -35,4 +35,10 @@
     <string name="enterprise_tracking_notification_channel">Отслеживание поездки компании</string>
     <string name="enterprise_tracking_notification_title">Отслеживание включено — %1$s</string>
     <string name="enterprise_tracking_notification_text">Положение этого телефона записывается во время поездки.</string>
+    <string name="enterprise_tracking_pending">Позиций ожидает отправки: %1$d</string>
+    <string name="enterprise_tracking_batches">Пакеты позиций: %1$d принято компанией, %2$d на устройстве</string>
+    <string name="enterprise_tracking_gap_signal_lost">Нет сигнала GPS с %1$s. За этот интервал ничего не записывается.</string>
+    <string name="enterprise_tracking_gap_provider_disabled">Геолокация выключена с %1$s. За этот интервал ничего не записывается.</string>
+    <string name="enterprise_tracking_gap_mock_location">Имитированные местоположения игнорируются с %1$s. За этот интервал ничего не записывается.</string>
+    <string name="enterprise_tracking_gaps_count">Интервалов без сигнала в этой поездке: %1$d</string>
 </resources>
