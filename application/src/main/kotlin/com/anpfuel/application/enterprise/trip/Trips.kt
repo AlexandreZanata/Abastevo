@@ -221,8 +221,9 @@ class EnterpriseTripService(
         return TripPresentation.views(book, snapshot.entries)
     }
 
+    /** [departureRunId] names the vehicle's departure checklist run on the start (EMP-TRIP-019, B-BR-EMP-511); the server decides it. */
     suspend fun start(account: EnterpriseQueueAccountLease, context: EnterpriseContextSummary, choice: EnterpriseAssetChoice,
-        label: TripAssetLabel, departure: TripCapture): String {
+        label: TripAssetLabel, departure: TripCapture, departureRunId: String? = null): String {
         val driver = context.employeeId ?: throw TripDriverUnknown()
         val partition = context.partition
         if (choice.organizationId != partition.organizationId) throw EnterpriseLocalDenied()
@@ -234,7 +235,9 @@ class EnterpriseTripService(
         val operationId = newId()
         // The exact local rule first (B-BR-EMP-377); the producer re-checks it inside the protected write.
         book(attempt).withStart(LocalTrip(tripId, choice.assetId, label, choice.reviewWarningAccepted, operationId, declared.occurredAt))
-        val operation = build { TripOperations.start(envelope(attempt, operationId, declared), tripId, choice.assetId, driver, reading, reason, run) }
+        val operation = build {
+            TripOperations.start(envelope(attempt, operationId, declared), tripId, choice.assetId, driver, reading, reason, run, departureRunId)
+        }
         hints.put(operationId, label, choice.reviewWarningAccepted)
         try { save(partition, operation) } finally { hints.remove(operationId) }
         return operationId
@@ -463,8 +466,9 @@ class TripFlow(
         }
     }
 
-    suspend fun start(choice: EnterpriseAssetChoice, label: TripAssetLabel, departure: TripCapture, renderedEpoch: Long, generation: Long) =
-        write(renderedEpoch, generation) { request, account -> service.start(account, request.context, choice, label, departure) }
+    suspend fun start(choice: EnterpriseAssetChoice, label: TripAssetLabel, departure: TripCapture, renderedEpoch: Long, generation: Long,
+        departureRunId: String? = null) =
+        write(renderedEpoch, generation) { request, account -> service.start(account, request.context, choice, label, departure, departureRunId) }
 
     suspend fun log(tripId: String, type: TripLogbookType, text: String?, renderedEpoch: Long, generation: Long) =
         write(renderedEpoch, generation) { request, account -> service.log(account, request.context.partition, tripId, type, text) }

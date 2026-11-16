@@ -441,7 +441,7 @@ statements. The Android clock source and persistence remain open.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-019 — Checklist gate at trip start and finish
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Apply recorded checklist policy at trip boundaries.
 - **Rules and use cases:** REQ-07.2, BR-CHECK-005, BR-CHECK-007, BR-CHECK-008, BR-CHECK-013
 - **Depends on:** EMP-TRIP-002, EMP-CHECK-002
@@ -455,6 +455,20 @@ statements. The Android clock source and persistence remain open.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-SYNC · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 checklist gate](../evidence/f4-trip019-checklist-gate.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-16. `trip.start` (schema 1) may name its
+departure run and `trip.finish` its return run through one `checklist_run`
+soft reference (Android builders and `trip-operations-v2.psv`). At receipt
+the server requires a departure run when a CHECK-001 DEPARTURE template
+applies now, counts only the author's own unlinked DEPARTURE run of the
+asset, and judges it at the declared start by history (BLOCKING until its
+release was recorded; valid for the policy in force then); a failed gate
+holds the start with the closed codes (`ASSET_UNAVAILABLE`, or
+`ORPHAN_REFERENCE` for a named run that does not count) and stores the
+reason (`CHECKLIST_REQUIRED`, `CHECKLIST_BLOCKING`, `CHECKLIST_EXPIRED`,
+`ORPHAN_REFERENCE`); an accepted start links its run once. A finish links a
+counting return run and is never held for it. Migration 000255; no route.
 
 ### EMP-TRIP-020 — Trip closing conference: expenses and documents before submission
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state TODO

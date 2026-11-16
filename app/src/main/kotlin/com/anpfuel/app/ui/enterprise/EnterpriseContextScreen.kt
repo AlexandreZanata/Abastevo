@@ -57,6 +57,7 @@ import com.anpfuel.app.ui.enterprise.checklist.ChecklistHomePanel
 import com.anpfuel.app.ui.enterprise.checklist.ChecklistRunPanel
 import com.anpfuel.app.ui.enterprise.checklist.ChecklistViewModel
 import com.anpfuel.app.ui.enterprise.checklist.ChecklistsHomeCard
+import com.anpfuel.app.ui.enterprise.checklist.departureRun
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsHomeCard
 import com.anpfuel.app.ui.enterprise.fueling.FuelingPanel
 import com.anpfuel.app.ui.enterprise.fueling.FuelingViewModel
@@ -332,7 +333,11 @@ fun EnterpriseContextScreen(
             onOpenTrip = { id -> if (tripsMatch) tripViewModel.openTrip(id, renderedEpoch, tripState.generation) },
             onPick = { if (currentGesture()) assetsViewModel.open(renderedSelected, renderedEpoch) },
             onChoose = { id, warning -> if (assetsMatches) assetsViewModel.choose(id, warning, renderedEpoch, assetsState.generation) else null },
-            onStart = { choice, label, departure -> if (tripsMatch) tripViewModel.start(choice, label, departure, renderedEpoch, tripState.generation) },
+            // EMP-TRIP-019: the start names the chosen vehicle's latest valid, non-blocking departure run shown on the form.
+            onStart = { choice, label, departure ->
+                if (tripsMatch) tripViewModel.start(choice, label, departure, renderedEpoch, tripState.generation,
+                    if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) departureRun(renderedChecklist, choice.assetId) else null)
+            },
             onLog = { trip, type, text -> if (tripsMatch) tripViewModel.log(trip, type, text, renderedEpoch, tripState.generation) },
             onFinish = { trip, final -> if (tripsMatch) tripViewModel.finish(trip, final, renderedEpoch, tripState.generation) },
             finishWarnings = { trip, final -> if (tripsMatch) tripViewModel.finishWarnings(trip, final) else emptyList() },

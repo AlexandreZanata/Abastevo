@@ -74,10 +74,10 @@ func TestFinishRefusalsUseTheFrozenVocabulary(t *testing.T) {
 }
 
 func TestOwnersNeedRealPortsAndDeclareTheirResults(t *testing.T) {
-	if _, err := NewStartHandler(nil, nil, nil, nil); !errors.Is(err, syncapp.ErrUnavailable) {
+	if _, err := NewStartHandler(nil, nil, nil, nil, nil); !errors.Is(err, syncapp.ErrUnavailable) {
 		t.Fatal("start owner without ports")
 	}
-	if _, err := NewFinishHandler(nil, nil, (*Store)(nil)); !errors.Is(err, syncapp.ErrUnavailable) {
+	if _, err := NewFinishHandler(nil, nil, nil, (*Store)(nil)); !errors.Is(err, syncapp.ErrUnavailable) {
 		t.Fatal("finish owner without ports")
 	}
 	for kind, d := range map[string]syncapp.Descriptor{app.StartOperationType: (&startHandler{}).Descriptor(), app.FinishOperationType: (&finishHandler{}).Descriptor()} {

@@ -53,6 +53,7 @@ func tripStateOn(t *testing.T, f *orgtest.Fixture) tripState {
 		PreHandoverImage: !handoverImage(t, x.f)}
 	x.assets.OpenWork, x.assets.ActiveUse, x.assets.MaintenanceHolds = trippg.OpenWork{}, trippg.ActiveUse{PreLifecycleImage: x.store.PreLifecycleImage}, fleetpg.NoMaintenanceHolds{}
 	x.assets.ChecklistBlocks = checklistBlockSource(t, x.legalFixtureState)
+	x.gate = checklistGateSource(t, x.legalFixtureState)
 	x.start, x.finish = x.handlers(t, x.meters, x.store)
 	x.trips = syncpg.NewStore(tripIntakeConfig(x.syncFixtureState))
 	input := fleetCreateInput()

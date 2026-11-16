@@ -102,11 +102,13 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	// EMP-TRIP-002: the trip owners share the same authority sources, fleet
 	// readings and allocation port; held facts use the OFFL-008 review items.
 	tripStore := &trippg.Store{Allocations: assets, NewID: jobs.NewUUIDv4}
-	tripStart, err := trippg.NewStartHandler((*orgpg.TripAuthority)(meterAuthority), meters, assets, tripStore)
+	// EMP-TRIP-019: the checklist gate reads the CHECK-001/002 tables.
+	checklistGate := maintpg.TripChecklistGate{}
+	tripStart, err := trippg.NewStartHandler((*orgpg.TripAuthority)(meterAuthority), meters, assets, checklistGate, tripStore)
 	if err != nil {
 		return err
 	}
-	tripFinish, err := trippg.NewFinishHandler((*orgpg.TripAuthority)(meterAuthority), meters, tripStore)
+	tripFinish, err := trippg.NewFinishHandler((*orgpg.TripAuthority)(meterAuthority), meters, checklistGate, tripStore)
 	if err != nil {
 		return err
 	}
