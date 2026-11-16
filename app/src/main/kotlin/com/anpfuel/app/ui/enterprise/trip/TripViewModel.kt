@@ -66,8 +66,9 @@ class TripViewModel @Inject constructor(
         viewModelScope.launch { flow.open(context, renderedEpoch) }
     }
     fun reload(renderedEpoch: Long, generation: Long) = action(renderedEpoch, generation) { flow.reload(renderedEpoch, generation) }
-    fun start(choice: EnterpriseAssetChoice, label: TripAssetLabel, departure: TripCapture, renderedEpoch: Long, generation: Long) =
-        action(renderedEpoch, generation) { flow.start(choice, label, departure, renderedEpoch, generation) }
+    fun start(choice: EnterpriseAssetChoice, label: TripAssetLabel, departure: TripCapture, renderedEpoch: Long, generation: Long,
+        departureRunId: String? = null) =
+        action(renderedEpoch, generation) { flow.start(choice, label, departure, renderedEpoch, generation, departureRunId) }
     fun log(tripId: String, type: TripLogbookType, text: String?, renderedEpoch: Long, generation: Long) =
         action(renderedEpoch, generation) { flow.log(tripId, type, text, renderedEpoch, generation) }
     fun finish(tripId: String, final: TripCapture, renderedEpoch: Long, generation: Long) =

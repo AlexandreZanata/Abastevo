@@ -35,6 +35,7 @@ type tripState struct {
 	selfIntakeState
 	authority     *orgpg.TripAuthority
 	store         *trippg.Store
+	gate          tripapp.ChecklistGate
 	start, finish syncapp.Handler
 	trips         *syncpg.Store
 	vehicle       fa.MeterInstallResult
@@ -137,11 +138,11 @@ func tripIntakeConfig(fx syncFixtureState) syncpg.Config {
 
 func (x *tripState) handlers(t *testing.T, readings tripapp.Readings, store tripapp.Store) (syncapp.Handler, syncapp.Handler) {
 	t.Helper()
-	start, err := trippg.NewStartHandler(x.authority, readings, x.assets, store)
+	start, err := trippg.NewStartHandler(x.authority, readings, x.assets, x.gate, store)
 	if err != nil {
 		t.Fatal(err)
 	}
-	finish, err := trippg.NewFinishHandler(x.authority, readings, store)
+	finish, err := trippg.NewFinishHandler(x.authority, readings, x.gate, store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,6 +168,7 @@ func tripFixtureOn(t *testing.T, base selfIntakeState) tripState {
 		PreHandoverImage: !handoverImage(t, x.f)}
 	x.assets.OpenWork, x.assets.ActiveUse, x.assets.MaintenanceHolds = trippg.OpenWork{}, trippg.ActiveUse{PreLifecycleImage: x.store.PreLifecycleImage}, fleetpg.NoMaintenanceHolds{}
 	x.assets.ChecklistBlocks = checklistBlockSource(t, x.legalFixtureState)
+	x.gate = checklistGateSource(t, x.legalFixtureState)
 	x.start, x.finish = x.handlers(t, x.meters, x.store)
 	x.trips = syncpg.NewStore(tripIntakeConfig(x.syncFixtureState))
 	input := fleetCreateInput()

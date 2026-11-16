@@ -1620,6 +1620,27 @@ of `org_asset_reservations`, `org_trip_mission_transitions`,
 `/v1/orgs/{org_id}/missions/{mission_id}/reservations/request` (fresh) uses
 `trip.mission.manage`. Nothing here provisions live grants.
 
+### Checklist gate at trip start and finish (EMP-TRIP-019)
+
+Migration 255 (EMP-TRIP-010 moves to 256; 000250 stays unused) adds
+forced-RLS, insert-only `org_trip_checklist_links` (one departure link per
+trip from its start operation and one return link from its finish
+operation, one trip per run, re-proved against the stored trip and the run's
+history) and `org_trip_checklist_holds` (the gate reason beside a held
+start), with the functions `org_trip_checklist_validity` and
+`org_trip_checklist_blocking_at`; no existing function or row changes.
+`trip.start` may name one `checklist_run` (beside its mission) and
+`trip.finish` one; the acknowledgement keeps the closed held codes
+(`ASSET_UNAVAILABLE`, `ORPHAN_REFERENCE`). Production grants (not
+provisioned here): the signed intake (`trip.start`, `trip.finish`) `SELECT,
+INSERT ON org_trip_checklist_links, org_trip_checklist_holds` and `SELECT ON
+org_checklist_runs, org_checklist_run_releases, org_checklist_templates,
+org_checklist_template_versions, org_checklist_template_targets,
+org_checklist_policy_revisions, org_assets`. The migrator needs `REFERENCES
+ON org_trips, org_checklist_runs, org_sync_operations, org_trip_held_starts,
+org_sync_review_items`. No route is added. Nothing here provisions live
+grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

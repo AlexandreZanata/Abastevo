@@ -16,14 +16,17 @@ import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.TestFactory
 
-/** The Kotlin consumer of trip-operations-v1 (EMP-TRIP-005, BUC-EMP-191, EDR-245); the Go intake parsers consume the same rows. */
+/**
+ * The Kotlin consumer of trip-operations-v2 (EMP-TRIP-005, BUC-EMP-191, EDR-245; v2 adds the EMP-TRIP-019 checklist-run references,
+ * EDR-331); the Go intake parsers consume the same rows.
+ */
 class EnterpriseTripOperationVectorsTest {
-    private val hash = "6c12cb7970bf5184f10a0b77b10cbd78127a059a7d8dc84f432b985d2aaf3551"
+    private val hash = "08e0c63235a470ce11756f9700f99d29ec640cf03e8803e3e845e6341dda04ef"
     private val binding = SyncBinding.of("7b0e2a54-0000-4000-8000-000000009501", "https://api.example.invalid", "7b0e2a54-0000-4000-8000-000000009502")
     private class Row(val id: String, val operation: String, val args: Map<String, String>, val outcome: String, val bytes: ByteArray)
 
     private fun rows(): List<Row> {
-        val file = File("../contracts/testdata/enterprise/trip/trip-operations-v1.psv")
+        val file = File("../contracts/testdata/enterprise/trip/trip-operations-v2.psv")
         assertEquals(hash, MessageDigest.getInstance("SHA-256").digest(file.readBytes()).joinToString("") { "%02x".format(it.toInt() and 255) })
         val lines = file.readLines()
         assertEquals("id|operation|args|expected|bytes_hex", lines.first())
@@ -47,10 +50,11 @@ class EnterpriseTripOperationVectorsTest {
 
     private fun build(row: Row): EnterpriseOperation = when (row.operation) {
         "START" -> TripOperations.start(envelope(row), row.args.getValue("trip"), row.args.getValue("asset"), row.args.getValue("driver"),
-            reading(row), text(row, "reason"), clock(row))
+            reading(row), text(row, "reason"), clock(row), row.args["run"])
         "EVENT" -> TripOperations.event(envelope(row), row.args.getValue("event"), row.args.getValue("trip"), row.args.getValue("type"),
             text(row, "text"), row.args["dep"])
-        "FINISH" -> TripOperations.finish(envelope(row), row.args.getValue("trip"), reading(row), text(row, "reason"), clock(row), row.args["dep"])
+        "FINISH" -> TripOperations.finish(envelope(row), row.args.getValue("trip"), reading(row), text(row, "reason"), clock(row), row.args["dep"],
+            row.args["run"])
         "SUBMIT" -> TripOperations.submit(envelope(row), row.args.getValue("trip"), row.args.getValue("revision").toLong(), row.args["dep"])
         else -> fail("unknown operation ${row.operation}")
     }
@@ -79,13 +83,16 @@ class EnterpriseTripOperationVectorsTest {
         when (fact) {
             is TripOperationFact.Start -> {
                 assertEquals(listOf(row.args["trip"], row.args["asset"], row.args["driver"]), listOf(fact.tripId, fact.assetId, fact.driverEmployeeId))
-                evidence(row, fact.evidence); clockMatches(row, fact.clock)
+                evidence(row, fact.evidence); clockMatches(row, fact.clock); assertEquals(row.args["run"], fact.departureRunId)
             }
             is TripOperationFact.Event -> {
                 assertEquals(listOf(row.args["event"], row.args["trip"], row.args["type"]), listOf(fact.eventId, fact.tripId, fact.type.name))
                 assertEquals(text(row, "text"), fact.text)
             }
-            is TripOperationFact.Finish -> { assertEquals(row.args["trip"], fact.tripId); evidence(row, fact.evidence); clockMatches(row, fact.clock) }
+            is TripOperationFact.Finish -> {
+                assertEquals(row.args["trip"], fact.tripId); evidence(row, fact.evidence); clockMatches(row, fact.clock)
+                assertEquals(row.args["run"], fact.returnRunId)
+            }
             is TripOperationFact.Submit -> {
                 assertEquals(row.args["trip"], fact.tripId); assertEquals(row.args.getValue("revision").toLong(), fact.revision)
             }
@@ -110,15 +117,33 @@ class EnterpriseTripOperationVectorsTest {
 
     @Test fun `the corpus is complete and every operation and outcome is covered`() {
         val all = rows()
-        assertEquals(54, all.size)
+        assertEquals(61, all.size)
         assertEquals(all.size, all.map { it.id }.distinct().size)
-        assertEquals(mapOf("START/OK" to 8, "START/MALFORMED" to 17, "EVENT/OK" to 7, "EVENT/MALFORMED" to 7, "EVENT/UNSUPPORTED" to 3,
-            "FINISH/OK" to 4, "FINISH/MALFORMED" to 4, "SUBMIT/OK" to 2, "SUBMIT/MALFORMED" to 1, "SUBMIT/PROTOCOL" to 1),
+        assertEquals(mapOf("START/OK" to 10, "START/MALFORMED" to 17, "START/PROTOCOL" to 2, "EVENT/OK" to 7, "EVENT/MALFORMED" to 7,
+            "EVENT/UNSUPPORTED" to 3, "FINISH/OK" to 6, "FINISH/MALFORMED" to 4, "FINISH/PROTOCOL" to 1, "SUBMIT/OK" to 2, "SUBMIT/MALFORMED" to 1,
+            "SUBMIT/PROTOCOL" to 1),
             all.groupingBy { it.operation + "/" + it.outcome }.eachCount())
         assertEquals(TripOperations.TYPES, setOf("trip.start", "trip.finish", "trip.event.record", "trip.submit"))
         // Every supported logbook type is produced and every reserved one is refused somewhere in the corpus.
         val types = all.filter { it.operation == "EVENT" }.map { it.args.getValue("type") }.toSet()
         assertTrue(TripLogbookType.entries.filter { it.supported }.all { it.name in types })
+    }
+
+    /** EMP-TRIP-019 (B-BR-EMP-511): the device reads back exactly one `checklist_run` reference; anything else stays UNSUPPORTED. */
+    @Test fun `a second reference or another reference type stays unsupported`() {
+        for (id in listOf("start-with-departure-run", "finish-with-return-run")) {
+            val row = rows().first { it.id == id }
+            val run = row.args.getValue("run")
+            val raw = row.bytes.toString(Charsets.UTF_8).replace(Regex(",\"payload_digest\":\"sha256:[0-9a-f]{64}\""), "")
+            val single = "\"soft_references\":[{\"id\":\"$run\",\"type\":\"checklist_run\"}]"
+            assertTrue(raw.contains(single))
+            for (refs in listOf("[{\"id\":\"$run\",\"type\":\"checklist_run\"},{\"id\":\"7b0e2a54-0000-4000-8000-000000009663\",\"type\":\"checklist_run\"}]",
+                "[{\"id\":\"$run\",\"type\":\"fueling\"}]", "[{\"id\":\"$run\",\"type\":\"checklist_run\"},{\"id\":\"$run\",\"type\":\"mission\"}]")) {
+                val sealed = EnterpriseOperation.seal(raw.replace(single, "\"soft_references\":$refs").toByteArray(Charsets.UTF_8), binding)
+                val failure = try { TripOperations.read(sealed); null } catch (refusal: TripOperationException) { refusal.failure }
+                assertEquals(TripOperationFailure.UNSUPPORTED, failure, "$id $refs")
+            }
+        }
     }
 
     @TestFactory fun vectors(): List<DynamicTest> = rows().map { row ->

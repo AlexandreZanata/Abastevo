@@ -23601,7 +23601,9 @@ components:
         missing_reading_reason: null
         run_clock: null
       description: Owner schema1 for trip.start (EMP-TRIP-002). Trip identity is envelope entity.type=trip/entity.id;
-        expected_revision is null and depends_on, soft_references and attachments are empty. The envelope declaration
+        expected_revision is null and depends_on and attachments are empty; soft_references hold at most one mission
+        (EMP-TRIP-023) and one checklist_run naming the departure run (EMP-TRIP-019), decided by the server at receipt
+        (a failed checklist gate holds the start ASSET_UNAVAILABLE or ORPHAN_REFERENCE). The envelope declaration
         is the start instant and the departure reading's instant. Exactly one of reading or missing_reading_reason is
         non-null; a reading is recorded with origin TRIP_START in the same transaction. Server fixes author, enrollment,
         receipt, state IN_PROGRESS, the unit/cost-centre snapshot and the start reporting day; the review case begins
@@ -23675,7 +23677,8 @@ components:
           boot_id: boot-a1
           elapsed_millis: '10800000'
       description: Owner schema1 for trip.finish (EMP-TRIP-002). Entity is the stored trip; at most one depends_on entry;
-        soft_references and attachments are empty. Only the member who started the trip finishes it; a finish before the
+        attachments are empty; soft_references hold at most one checklist_run naming the return run, linked when it
+        counts and never holding the finish (EMP-TRIP-019). Only the member who started the trip finishes it; a finish before the
         start instant is MALFORMED; a reading of the trip's asset is recorded with origin TRIP_END in the same transaction
         and the trip becomes COMPLETED (entity revision 2). Plausibility never refuses the finish.
     EnterpriseTripEventPayload:

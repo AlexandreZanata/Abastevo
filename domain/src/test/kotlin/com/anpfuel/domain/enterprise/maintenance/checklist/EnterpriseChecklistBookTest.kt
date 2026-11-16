@@ -245,6 +245,10 @@ class EnterpriseChecklistBookTest {
         assertEquals(f.id(152), latest.run.runId)
         assertFalse(ChecklistPresentation.startBlocked(latest))
         assertFalse(ChecklistPresentation.startBlocked(null))
+        // EMP-TRIP-019: the start names the latest valid departure run, never a blocking one and nothing without a run.
+        assertEquals(f.id(152), ChecklistPresentation.departureRun(latest))
+        assertNull(ChecklistPresentation.departureRun(ChecklistPresentation.latestDeparture(completed, saved, f.asset, at.plusSeconds(60))))
+        assertNull(ChecklistPresentation.departureRun(null))
         val views = ChecklistPresentation.views(both, entries, at.plusSeconds(400))
         assertEquals(listOf(f.id(152), f.id(150)), views.map { it.run.runId })
         val inProgress = f.answered(f.book(), 153, ChecklistAnswer.OK to null)

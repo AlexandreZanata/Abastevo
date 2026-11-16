@@ -611,4 +611,10 @@ object ChecklistPresentation {
 
     /** The device effect of BR-CHECK-006: a BLOCKING run disables the trip start on this device. */
     fun startBlocked(view: ChecklistRunView?): Boolean = view?.outcome == ChecklistOutcome.BLOCKING
+
+    /**
+     * EMP-TRIP-019 (B-BR-EMP-511): the departure run a trip start names — the [latestDeparture] view when it does not block; the
+     * server decides the gate at receipt and the device's cached policy never does.
+     */
+    fun departureRun(view: ChecklistRunView?): String? = view?.takeIf { !startBlocked(it) }?.run?.runId
 }

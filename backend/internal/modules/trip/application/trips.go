@@ -137,16 +137,20 @@ func (e Event) copy() Event {
 }
 
 // StartInput is a parsed trip.start; MissionID is the mission named by its
-// soft reference, "" when it names none (EMP-TRIP-023).
+// soft reference, "" when it names none (EMP-TRIP-023); DepartureRunID the
+// departure checklist run it names, "" when none (EMP-TRIP-019).
 type StartInput struct {
 	Event
-	AssetID, DriverID, MissionID string
+	AssetID, DriverID, MissionID, DepartureRunID string
 }
 
 // FinishInput is a parsed trip.finish; its trip and asset come from storage.
+// ReturnRunID is the return checklist run it names, "" when none
+// (EMP-TRIP-019).
 type FinishInput struct {
 	Event
-	DependsOn []string
+	DependsOn   []string
+	ReturnRunID string
 }
 
 type StartCommand struct {
@@ -254,6 +258,18 @@ type Store interface {
 	// LinkMissionTx stores the accepted start's link to its eligible mission
 	// and the mission's START revision in the start's transaction.
 	LinkMissionTx(context.Context, syncapp.DBTX, syncapp.Source, StartCommand) error
+	// ChecklistLinkedTx answers whether a trip is linked to the checklist
+	// run (EMP-TRIP-019: one run, one trip).
+	ChecklistLinkedTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, run string) (bool, error)
+	// ChecklistLinkTx reads the run linked to the trip for the context kind,
+	// "" when none.
+	ChecklistLinkTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, trip, kind string) (string, error)
+	// LinkChecklistTx stores the trip's departure (its start operation) or
+	// return (its finish operation) run link in that operation's transaction.
+	LinkChecklistTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, trip, kind, run, operation string) error
+	// HoldChecklistTx stores the gate reason beside a held start; run is the
+	// named run when it is stored in the organization, else "".
+	HoldChecklistTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, operation, review, reason, run string) error
 	syncapp.ReviewProof
 }
 
