@@ -505,7 +505,7 @@ statements. The Android clock source and persistence remain open.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-023 — Reservation-to-trip integration and no-show release
-- **Meta:** module TRIP · phase F4 · cut - · priority P2 · type DOM · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P2 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Convert eligible reservations into trip use and release no-shows safely.
 - **Rules and use cases:** REQ-07.1, BR-TEN-005, BR-OFFL-004, BR-TRUTH-006
 - **Depends on:** EMP-FLEET-007, EMP-TRIP-008
@@ -519,3 +519,16 @@ statements. The Android clock source and persistence remain open.
 - **Validation:** V-API, V-SQL, V-JOB, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 reservation-to-trip link](../evidence/f4-trip023-reservation-trip-link.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. A signed `trip.start`
+(schema 1) may name its mission through one envelope soft reference; an
+eligible ACCEPTED mission of the author, driver and vehicle is linked at
+receipt (insert-only link, migration 000249), moves to IN_PROGRESS and is
+completed by the transaction that completes the trip; a missing, foreign or
+ineligible mission holds the start `ORPHAN_REFERENCE`. The planner requests
+the mission vehicle's reservation (`POST …/missions/{mission_id}/reservations/request`,
+fresh `trip.mission.manage`); the linked start consumes the confirmed
+reservation once (`FULFILLED`) only before its no-show deadline, and the
+outcome job (now taking the root lock first) records `NO_SHOW` once; both
+race orders resolve to one outcome. Shared mission table `mission-v3.psv`.

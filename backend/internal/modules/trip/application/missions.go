@@ -116,6 +116,10 @@ const (
 	MissionCancelCommand MissionCommandKind = "CANCEL"
 	// MissionVehicleCommand replaces the mission's vehicle (EMP-TRIP-013).
 	MissionVehicleCommand MissionCommandKind = "VEHICLE"
+	// MissionReserveCommand requests the reservation of the mission's
+	// vehicle for its planned window; Reason carries the purpose
+	// (EMP-TRIP-023, B-BR-EMP-414).
+	MissionReserveCommand MissionCommandKind = "RESERVE"
 )
 
 // MissionPlanFields is the content of one PLAN command (EMP-TRIP-009,
@@ -256,6 +260,15 @@ func NewMissionCommand(in MissionCommandInput) (MissionCommand, error) {
 			return MissionCommand{}, err
 		}
 		out.MissionID, out.ExpectedRevision, out.AssetID, out.Reason = in.MissionID, in.ExpectedRevision, in.AssetID, in.Reason
+	case MissionReserveCommand:
+		if !canonicalID(in.MissionID) || in.ExpectedRevision < 1 || in.UnitID != "" || in.AssetID != "" || in.Title != "" || !in.StartsAt.IsZero() || !in.EndsAt.IsZero() ||
+			in.AssigneeEmployeeID != "" {
+			return MissionCommand{}, trip.ErrInvalid
+		}
+		if err := trip.ValidMissionText(in.Reason); err != nil {
+			return MissionCommand{}, err
+		}
+		out.MissionID, out.ExpectedRevision, out.Reason = in.MissionID, in.ExpectedRevision, in.Reason
 	case MissionAssignCommand, MissionCancelCommand:
 		if !canonicalID(in.MissionID) || in.ExpectedRevision < 1 || in.UnitID != "" || in.AssetID != "" || in.Title != "" || !in.StartsAt.IsZero() || !in.EndsAt.IsZero() {
 			return MissionCommand{}, trip.ErrInvalid
@@ -338,6 +351,9 @@ type MissionAck struct {
 	State              trip.MissionState
 	AssigneeEmployeeID string
 	Warning            *MissionWarning
+	// ReservationID is the reservation a RESERVE command created
+	// (EMP-TRIP-023); empty for every other command.
+	ReservationID string
 }
 
 // MissionPlanView is a mission's current planning revision (EMP-TRIP-009).
@@ -458,6 +474,9 @@ func validMissionAck(v MissionAck, in MissionCommandInput) bool {
 	if v.Warning != nil && (in.Kind != MissionAssignCommand || v.Warning.Code != "ASSET_BUSY" && v.Warning.Code != "ASSET_UNAVAILABLE" || v.Warning.Availability == "") {
 		return false
 	}
+	if (in.Kind == MissionReserveCommand) != (v.ReservationID != "") || v.ReservationID != "" && !canonicalID(v.ReservationID) {
+		return false
+	}
 	switch in.Kind {
 	case MissionCreate:
 		return v.Revision == 1 && v.State == trip.MissionDraft && v.AssigneeEmployeeID == ""
@@ -469,6 +488,8 @@ func validMissionAck(v MissionAck, in MissionCommandInput) bool {
 		return v.Revision == in.ExpectedRevision+1 && v.State == trip.MissionCancelled && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
 	case MissionVehicleCommand:
 		return v.Revision == in.ExpectedRevision+1 && trip.VehicleChangeAllowed(v.State) == nil && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
+	case MissionReserveCommand:
+		return v.Revision == in.ExpectedRevision+1 && trip.ReservationRequestAllowed(v.State) == nil && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
 	}
 	return false
 }
@@ -489,7 +510,8 @@ func (s MissionService) Command(ctx context.Context, scope kernel.OrgScope, acto
 	replayed := false
 	err = s.guarded(ctx, scope, actor, decision, MissionManage, target, func() error {
 		newID := ""
-		if in.Kind == MissionCreate {
+		// The new mission, or the reservation a RESERVE creates (EMP-TRIP-023).
+		if in.Kind == MissionCreate || in.Kind == MissionReserveCommand {
 			if s.NewID == nil {
 				return ErrUnavailable
 			}

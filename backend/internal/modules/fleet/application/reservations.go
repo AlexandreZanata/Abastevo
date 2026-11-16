@@ -12,6 +12,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -341,10 +342,42 @@ type MaintenanceHoldPort interface {
 
 // StartAvailabilityPort is the intake check of a trip start (B-BR-EMP-300):
 // the decision for a start of the asset by the membership at the declared
-// instant, on the borrowed intake transaction. EMP-TRIP-002 calls it.
+// instant, on the borrowed intake transaction. EMP-TRIP-002 calls it. The
+// mission argument is the mission the start executes when its reference is
+// eligible ("" otherwise): a reservation of that mission admits the start
+// (EMP-TRIP-023, BR-FLEET-031).
 type StartAvailabilityPort interface {
-	StartDecisionDBTX(context.Context, syncapp.DBTX, kernel.OrgScope, string, string, time.Time) (fleet.StartDecision, error)
+	StartDecisionDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset, member, mission string, at time.Time) (fleet.StartDecision, error)
 }
+
+// MissionReservation is the EMP-TRIP-023 reservation request of a mission's
+// vehicle for its planned window (B-BR-EMP-414): ID is the new reservation,
+// Digest the mission command's request hash, Purpose the planner's text.
+type MissionReservation struct {
+	private
+	ID, OperationID, ActorAccountID, AssetID, MissionID, Purpose, Digest string
+	Window                                                               fleet.ReservationWindow
+}
+
+// MissionReservationPort creates a mission's REQUESTED reservation inside the
+// mission command's transaction, after the mission's RESERVE revision, and
+// answers the reservation an earlier request operation created (replay).
+type MissionReservationPort interface {
+	RequestMissionReservationTx(context.Context, pgx.Tx, kernel.OrgScope, MissionReservation) error
+	MissionReservationOfTx(context.Context, pgx.Tx, kernel.OrgScope, string) (string, error)
+}
+
+// MissionReservationFulfilment consumes, in the start intake's transaction,
+// the CONFIRMED reservation of the mission on the trip's asset that is not
+// yet due and whose window extended by the early tolerance contains the
+// declared start; it answers the fulfilled reservation or "" (B-BR-EMP-414).
+type MissionReservationFulfilment interface {
+	FulfilMissionReservationDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, mission, trip, asset string, declared time.Time) (string, error)
+}
+
+// EarlyStartTolerance is the fleet.md §6.4 default early tolerance of a
+// qualifying start (30 minutes; not configurable yet).
+const EarlyStartTolerance = 30 * time.Minute
 
 // ReservationOutcomes settles one due time-driven outcome (the job and the
 // commands). It answers the state left, or ErrNotDue before the instant.

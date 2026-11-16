@@ -30,7 +30,9 @@ func TestReservationTransitionTableIsExactlyFleetSection64(t *testing.T) {
 		fleet.CancelReservation:  {fleet.ReservationRequested: fleet.ReservationCancelled, fleet.ReservationConfirmed: fleet.ReservationCancelled},
 		fleet.ExpireReservation:  {fleet.ReservationRequested: fleet.ReservationExpired},
 		fleet.MissReservation:    {fleet.ReservationConfirmed: fleet.ReservationNoShow},
-		fleet.FulfilReservation:  {},
+		// EMP-TRIP-023 (B-BR-EMP-414): a qualifying linked start fulfils a
+		// CONFIRMED reservation; FLEET-007 had no source for this row.
+		fleet.FulfilReservation: {fleet.ReservationConfirmed: fleet.ReservationFulfilled},
 	}
 	cells := 0
 	for command, rows := range want {

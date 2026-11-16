@@ -50,7 +50,8 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"EnterpriseMissionCreateRequest", "EnterpriseMissionAssignRequest", "EnterpriseMissionCancelRequest", "EnterpriseMissionListRequest", "EnterpriseMissionReadRequest",
-		"EnterpriseMissionAck", "EnterpriseMissionPage", "EnterpriseMissionView", "EnterpriseTripMissionRespondPayload", "EnterpriseMissionPlanRequest", "EnterpriseMissionPlan", "EnterpriseMissionVehicleRequest"} {
+		"EnterpriseMissionAck", "EnterpriseMissionPage", "EnterpriseMissionView", "EnterpriseTripMissionRespondPayload", "EnterpriseMissionPlanRequest", "EnterpriseMissionPlan", "EnterpriseMissionVehicleRequest",
+		"EnterpriseMissionReservationRequest"} {
 		schema := doc.Components.Schemas[name]
 		if schema == nil || schema.Value == nil || schema.Value.Example == nil {
 			t.Fatal("missing mission schema or explicit example", name)
@@ -93,7 +94,9 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 		prefix + "{mission_id}/cancel":         command,
 		prefix + "{mission_id}/plan":           command,
 		prefix + "{mission_id}/vehicle/change": command,
-		prefix + "mine/list":                   {"permission": "trip.trip.start", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		// EMP-TRIP-023 (EDR-266): the mission's reservation request.
+		prefix + "{mission_id}/reservations/request": {"permission": "trip.mission.manage", "write": true, "fresh": true, "require_revision": true, "company_only": true, "success": 201},
+		prefix + "mine/list":                         {"permission": "trip.trip.start", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
 	} {
 		operation := doc.Paths.Value(path).Post
 		if operation == nil {
@@ -186,5 +189,60 @@ func TestTripMissionPlanContractShapes(t *testing.T) {
 		if plan == nil || plan.Ref != "#/components/schemas/EnterpriseMissionPlan" {
 			t.Fatal("mission projection without the plan", name)
 		}
+	}
+}
+
+// EMP-TRIP-023 (B-BR-EMP-414): the reservation request body is closed — no
+// asset, window, employee or confirmation is chosen by the caller (they come
+// from the mission and the fleet confirmation route); the ack names the
+// reservation.
+func TestTripMissionReservationContractShapes(t *testing.T) {
+	doc := loadSpec(t)
+	schema := doc.Components.Schemas["EnterpriseMissionReservationRequest"].Value
+	request := struct{ VisitJSON func(map[string]any) error }{func(v map[string]any) error {
+		raw, _ := json.Marshal(v)
+		var decoded any
+		if err := json.Unmarshal(raw, &decoded); err != nil {
+			return err
+		}
+		return schema.VisitJSON(decoded)
+	}}
+	base := map[string]any{"schema_version": 1, "operation_id": "7b0e2a54-0000-4000-8000-000000008806", "revision": 3, "purpose": "Entrega"}
+	if request.VisitJSON(base) != nil {
+		t.Fatal("a valid reservation request is refused")
+	}
+	for name, extra := range map[string]map[string]any{
+		"caller-chosen asset":    {"asset_id": "7b0e2a54-0000-4000-8000-000000008202"},
+		"caller-chosen window":   {"starts_at": "2026-11-20T11:00:00Z"},
+		"caller-chosen employee": {"employee_id": "7b0e2a54-0000-4000-8000-000000008301"},
+		"self confirmation":      {"confirm": true},
+	} {
+		v := map[string]any{}
+		for k, x := range base {
+			v[k] = x
+		}
+		for k, x := range extra {
+			v[k] = x
+		}
+		if request.VisitJSON(v) == nil {
+			t.Fatal("an open reservation request was admitted", name)
+		}
+	}
+	for _, missing := range []string{"revision", "purpose"} {
+		v := map[string]any{}
+		for k, x := range base {
+			if k != missing {
+				v[k] = x
+			}
+		}
+		if request.VisitJSON(v) == nil {
+			t.Fatal("a reservation request without its field was admitted", missing)
+		}
+	}
+	ack := doc.Components.Schemas["EnterpriseMissionAck"].Value
+	raw, _ := json.Marshal(map[string]any{"mission_id": "7b0e2a54-0000-4000-8000-000000008901", "revision": 4, "state": "ACCEPTED", "reservation_id": "7b0e2a54-0000-4000-8000-000000008951", "replayed": false, "data_mode": "SYNTHETIC"})
+	var example any
+	if json.Unmarshal(raw, &example) != nil || ack.VisitJSON(example) != nil {
+		t.Fatal("the reservation ack is refused")
 	}
 }

@@ -634,7 +634,7 @@ func TestFleetAvailabilityReadAndStartCheckPort(t *testing.T) {
 		var decision fleet.StartDecision
 		if err := database.WithOrgTx(t.Context(), fx.f.Runtime, fx.scope, func(tx pgx.Tx) error {
 			var err error
-			decision, err = s.StartDecisionDBTX(t.Context(), syncapp.Borrow(tx), fx.scope, asset, member, exactNow(t, fx))
+			decision, err = s.StartDecisionDBTX(t.Context(), syncapp.Borrow(tx), fx.scope, asset, member, "", exactNow(t, fx))
 			return err
 		}); err != nil {
 			t.Fatal("start check", err)

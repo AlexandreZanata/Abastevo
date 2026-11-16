@@ -34,6 +34,10 @@ type AssetStore struct {
 	// explicitly; a nil port fails every availability read and start check.
 	ActiveUse        app.ActiveUsePort
 	MaintenanceHolds app.MaintenanceHoldPort
+	// PreMissionLinkImage is set only by rehearsals that populate a schema
+	// image before 000249 (EMP-TRIP-023): the availability facts then read no
+	// reservation mission. Production leaves it false.
+	PreMissionLinkImage bool
 }
 
 var _ app.AssetRepository = (*AssetStore)(nil)

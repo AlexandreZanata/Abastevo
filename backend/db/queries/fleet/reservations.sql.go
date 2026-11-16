@@ -57,6 +57,46 @@ func (q *Queries) AvailabilityBlocks(ctx context.Context, arg AvailabilityBlocks
 	return items, nil
 }
 
+const availabilityReservationMissions = `-- name: AvailabilityReservationMissions :many
+SELECT id::text AS id,mission_id::text AS mission_id FROM org_asset_reservations
+WHERE org_id=CAST($1::text AS uuid) AND asset_id=CAST($2::text AS uuid) AND confirmed_at IS NOT NULL AND mission_id IS NOT NULL
+ AND starts_at<=$3::timestamptz AND $3::timestamptz<ends_at
+ORDER BY id
+`
+
+type AvailabilityReservationMissionsParams struct {
+	OrgID   string             `json:"org_id"`
+	AssetID string             `json:"asset_id"`
+	At      pgtype.Timestamptz `json:"at"`
+}
+
+type AvailabilityReservationMissionsRow struct {
+	ID        string `json:"id"`
+	MissionID string `json:"mission_id"`
+}
+
+// EMP-TRIP-023: the mission of each ever-confirmed reservation whose window
+// contains the instant (BR-FLEET-031: it admits the mission's own start).
+func (q *Queries) AvailabilityReservationMissions(ctx context.Context, arg AvailabilityReservationMissionsParams) ([]AvailabilityReservationMissionsRow, error) {
+	rows, err := q.db.Query(ctx, availabilityReservationMissions, arg.OrgID, arg.AssetID, arg.At)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AvailabilityReservationMissionsRow
+	for rows.Next() {
+		var i AvailabilityReservationMissionsRow
+		if err := rows.Scan(&i.ID, &i.MissionID); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const availabilityReservations = `-- name: AvailabilityReservations :many
 SELECT id::text AS id,COALESCE(employee_id::text,'')::text AS employee_id,state,starts_at,ends_at,no_show_tolerance,(confirmed_at IS NOT NULL)::boolean AS confirmed,ended_at
 FROM org_asset_reservations
@@ -301,6 +341,69 @@ func (q *Queries) DueAssetReservations(ctx context.Context, arg DueAssetReservat
 	return items, nil
 }
 
+const fulfilReservationRow = `-- name: FulfilReservationRow :execrows
+UPDATE org_asset_reservations SET state='FULFILLED',revision=revision+1,trip_id=CAST($1::text AS uuid)
+WHERE org_id=CAST($2::text AS uuid) AND id=CAST($3::text AS uuid) AND state='CONFIRMED' AND revision=$4::bigint
+`
+
+type FulfilReservationRowParams struct {
+	TripID   string `json:"trip_id"`
+	OrgID    string `json:"org_id"`
+	ID       string `json:"id"`
+	Revision int64  `json:"revision"`
+}
+
+// Compare-and-set of CONFIRMED -> FULFILLED with the linked trip.
+func (q *Queries) FulfilReservationRow(ctx context.Context, arg FulfilReservationRowParams) (int64, error) {
+	result, err := q.db.Exec(ctx, fulfilReservationRow,
+		arg.TripID,
+		arg.OrgID,
+		arg.ID,
+		arg.Revision,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const fulfillableMissionReservation = `-- name: FulfillableMissionReservation :one
+SELECT id::text AS id,revision FROM org_asset_reservations
+WHERE org_id=CAST($1::text AS uuid) AND mission_id=CAST($2::text AS uuid) AND asset_id=CAST($3::text AS uuid)
+ AND state='CONFIRMED' AND transaction_timestamp()<org_asset_reservation_deadline(starts_at,ends_at,no_show_tolerance)
+ AND starts_at-make_interval(secs=>$4::int)<=$5::timestamptz AND $5::timestamptz<ends_at
+ORDER BY starts_at,id LIMIT 1 FOR UPDATE
+`
+
+type FulfillableMissionReservationParams struct {
+	OrgID        string             `json:"org_id"`
+	MissionID    string             `json:"mission_id"`
+	AssetID      string             `json:"asset_id"`
+	EarlySeconds int32              `json:"early_seconds"`
+	Declared     pgtype.Timestamptz `json:"declared"`
+}
+
+type FulfillableMissionReservationRow struct {
+	ID       string `json:"id"`
+	Revision int64  `json:"revision"`
+}
+
+// EMP-TRIP-023: the earliest CONFIRMED reservation of the mission on the
+// asset, not yet due at the transaction instant, whose window extended by
+// the early tolerance contains the declared start; locked for its change.
+func (q *Queries) FulfillableMissionReservation(ctx context.Context, arg FulfillableMissionReservationParams) (FulfillableMissionReservationRow, error) {
+	row := q.db.QueryRow(ctx, fulfillableMissionReservation,
+		arg.OrgID,
+		arg.MissionID,
+		arg.AssetID,
+		arg.EarlySeconds,
+		arg.Declared,
+	)
+	var i FulfillableMissionReservationRow
+	err := row.Scan(&i.ID, &i.Revision)
+	return i, err
+}
+
 const insertBlock = `-- name: InsertBlock :exec
 INSERT INTO org_asset_blocks(org_id,id,asset_id,reason_kind,note,valid_from,valid_to,operation_id,blocked_by)
 VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),CAST($3::text AS uuid),$4::text,$5::text,
@@ -330,6 +433,45 @@ func (q *Queries) InsertBlock(ctx context.Context, arg InsertBlockParams) error 
 		arg.ValidTo,
 		arg.OperationID,
 		arg.BlockedBy,
+	)
+	return err
+}
+
+const insertMissionReservation = `-- name: InsertMissionReservation :exec
+INSERT INTO org_asset_reservations(org_id,id,asset_id,purpose,starts_at,ends_at,no_show_tolerance,state,revision,operation_id,requested_by,mission_id)
+VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),CAST($3::text AS uuid),$4::text,
+ $5::timestamptz,$6::timestamptz,$7::int,'REQUESTED',1,
+ CAST($8::text AS uuid),CAST($9::text AS uuid),CAST($10::text AS uuid))
+`
+
+type InsertMissionReservationParams struct {
+	OrgID           string             `json:"org_id"`
+	ID              string             `json:"id"`
+	AssetID         string             `json:"asset_id"`
+	Purpose         string             `json:"purpose"`
+	StartsAt        pgtype.Timestamptz `json:"starts_at"`
+	EndsAt          pgtype.Timestamptz `json:"ends_at"`
+	NoShowTolerance int32              `json:"no_show_tolerance"`
+	OperationID     string             `json:"operation_id"`
+	RequestedBy     string             `json:"requested_by"`
+	MissionID       string             `json:"mission_id"`
+}
+
+// EMP-TRIP-023 (B-BR-EMP-414): a mission's REQUESTED reservation of its
+// vehicle for its planned window; the row guard requires the mission's
+// RESERVE revision of the same operation.
+func (q *Queries) InsertMissionReservation(ctx context.Context, arg InsertMissionReservationParams) error {
+	_, err := q.db.Exec(ctx, insertMissionReservation,
+		arg.OrgID,
+		arg.ID,
+		arg.AssetID,
+		arg.Purpose,
+		arg.StartsAt,
+		arg.EndsAt,
+		arg.NoShowTolerance,
+		arg.OperationID,
+		arg.RequestedBy,
+		arg.MissionID,
 	)
 	return err
 }
@@ -563,6 +705,23 @@ func (q *Queries) MemberEmployee(ctx context.Context, arg MemberEmployeeParams) 
 	var employee_id string
 	err := row.Scan(&employee_id)
 	return employee_id, err
+}
+
+const missionReservationByOperation = `-- name: MissionReservationByOperation :one
+SELECT id::text AS id FROM org_asset_reservations
+WHERE org_id=CAST($1::text AS uuid) AND operation_id=CAST($2::text AS uuid) AND mission_id IS NOT NULL
+`
+
+type MissionReservationByOperationParams struct {
+	OrgID       string `json:"org_id"`
+	OperationID string `json:"operation_id"`
+}
+
+func (q *Queries) MissionReservationByOperation(ctx context.Context, arg MissionReservationByOperationParams) (string, error) {
+	row := q.db.QueryRow(ctx, missionReservationByOperation, arg.OrgID, arg.OperationID)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const removeBlockRow = `-- name: RemoveBlockRow :execrows
