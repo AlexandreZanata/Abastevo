@@ -69,7 +69,16 @@ jobs:
           python3 scripts/android/release_flow.py version --sha "$RELEASE_SHA" --output "$RUNNER_TEMP/android-version.json"
           python3 -m unittest discover -s scripts/android -p 'test_*.py'
       - name: Install pinned Android build tools
-        run: sdkmanager 'platforms;android-36' 'build-tools;35.0.0'
+        # The hosted image ships the SDK under $ANDROID_HOME without putting
+        # cmdline-tools on PATH (bare `sdkmanager` exited 127 since 2026-11-05).
+        run: |
+          set -euo pipefail
+          sdkmanager="${ANDROID_HOME:?ANDROID_HOME is not set on this runner}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$sdkmanager" ]; then
+            echo "::error::Android cmdline-tools not found at $sdkmanager"
+            exit 1
+          fi
+          "$sdkmanager" --install 'platforms;android-36' 'build-tools;35.0.0'
       - name: Reuse a verified same-head release on retries
         id: existing
         env:
