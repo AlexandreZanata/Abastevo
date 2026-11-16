@@ -1562,6 +1562,22 @@ replaced functions. `/v1/orgs/{org_id}/trips/{trip_id}/handover` (fresh) and
 `/v1/orgs/{org_id}/trips/mine/list` uses `trip.trip.start` on the requesting
 membership. Nothing here provisions live grants.
 
+### Checklist runs (EMP-CHECK-002)
+
+Migration 242 adds forced-RLS `org_checklist_runs`, `org_checklist_run_answers`
+and `org_checklist_run_releases`. Production runtime grants (not provisioned
+here): `SELECT, INSERT` on the three tables, `UPDATE(outcome, revision,
+updated_at)` on `org_checklist_runs`, and `SELECT` on the checklist template
+tables it reads.
+
+### Tracking policy and processing (EMP-GPS-002 prerequisite, EMP-GPS-005)
+
+Migration 247 adds the receipt table `org_tracking_policy_commands`; the policy
+command writes insert-only `org_tracking_policies` rows (000240). Migration 246
+adds insert-only `org_tracking_summaries`, written by the `org-tracking-process`
+job on the general worker. Production grants for these tables, the 000240
+tracking tables and `org_sensitive_access_events` are not provisioned here.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

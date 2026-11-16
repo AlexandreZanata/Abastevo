@@ -1270,3 +1270,70 @@ handover screens (TRIP-021/022), real-device acceptance.
 
 Integration: the commit's parent is the F4 head `2f031276`; clean merge;
 build, vet, gofmt, `sqlc diff`, check_plan green.
+
+### EMP-CHECK-002 — checklist execution offline: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-check002-checklist-execution.md), commit `3e91dab5`, migration
+000242 (three forced-RLS run tables and a deferred database recheck; the
+000244 usage bodies gained the three run keys at integration so the later
+redefinition keeps them). Pure server recheck
+(`maintenance/domain/checklist/run.go`) and a signed `check.run.complete`:
+a well-formed run is always ACCEPTED with what the device recorded and the
+server's outcome by the policy in force from its own history;
+`TEMPLATE_SUPERSEDED` is flagged; a disagreement is kept as `review_required`
+and never dropped (EDR-283..286). A BLOCKING run blocks the asset through a new
+availability cause `CHECKLIST_RUN` (`ChecklistBlockPort`), so a new trip start
+is held `ASSET_UNAVAILABLE`; routes: run read (`fleet.asset.read`) and release
+(fresh `check.incident.manage`, `SELF_APPROVAL`, CAS, replay, one audit event).
+Shared 56-row `checklist/run-v1.psv`. Android: Kotlin builder, sealed
+`checklist-book` v1, producer and store, `ChecklistRunScreen` reachable from the
+context screen and the trip start form (disabled while BLOCKING), 66 strings ×
+8 locales, flag `ENTERPRISE_CHECKLIST_UI_ENABLED`. RED → GREEN across Go
+(recheck 7/35 → 16/162, vectors 54/56, availability, contract, router, PostGIS
+8/8 twice) and Android (vectors 55/58, book, flow, gateway, store, process
+death, ViewModel); merged-tree union on `3fdab0b8` 46 packages 1387/10075, 0
+failures; Kotlin domain 4204. Native acceptance on `emulator-5588` (7 stages:
+offline BLOCKING run with process death, server agreement, a WARN-vs-BLOCK
+disagreement shown as "A empresa recalculou o resultado"; exact server counts)
+— run before the emulator-lock rule existed. Retained: the trip gate
+(TRIP-019), run photos (DOC-003 `CHECKLIST_RUN` link kind), damages and
+incident blocks and the panel (CHECK-004), the feed entity type, events,
+protocol-level ACCEPTED_FOR_REVIEW, production grants; OWED: real Hilt UI end
+to end, release while the device watches, a second device, visual/TalkBack.
+
+### Tracking policy command (EMP-GPS-002 prerequisite): LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps-policy-command.md), commit `4d5159c7`, migration 000247
+(receipt table only). `tracking/policy/change` under fresh
+`org.settings.manage` (the key the spec names for SCR-GPS-09) and
+`tracking/policy/read` under `org.settings.read`; each change writes the next
+insert-only `org_tracking_policies` version with a receipt and one
+`gps.policy.changed` audit event under revision CAS; OPTIONAL/EXPECTED need a
+notice version already in force (a future notice is refused); no notice text is
+stored (EDR-302/303). RED unit 3/4, PostGIS 3/4, contract 2+2 → GREEN.
+
+### EMP-GPS-005 — track processing: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps005-track-processing.md), commit `90ee8c83`, migration
+000246. Storing a session END (or a segment of an ended session) queues
+`org-tracking-process` in the intake transaction; the job, under its lease,
+writes one insert-only `org_tracking_summaries` revision: fixes filtered and
+counted (outside session, accuracy > 50 m, implied speed > 70 m/s), gaps with
+reason and detector (SIGNAL_LOST after 180 s), coverage and quality from the
+GPS-001 function, haversine distance inside runs only with its method,
+Douglas–Peucker at 20 m (≤ 1000 vertices) plus a database-built
+MULTILINESTRING; the database re-proves the exact stored input and accepts only
+a strictly newer input at the next revision (EDR-298..301). RED unit 16/17,
+PostGIS 4/4 → GREEN; union 33 packages 1173/8319 on a tree containing
+`2f031276`. Retained: processing for trips ending without the device's
+`gps.session.end` (needs a trip-completion consumer), summary reads
+(GPS-006/009), purge/trim recomputation (GPS-011), held/late tracking,
+production grants, real-device acceptance (OWED).
+
+Integration (CHECK-002 merge `2e3b02e6`; tracking merge `eca80543`): route
+counts merged as unions — 160 normal routes (30 routed / 54 not routed / 26
+special), auditor walk 160 / 33 / 127, matrix 300 cells (121/179), 20 signed
+owners; the router test lists both TRIP-012 and tracking routes; duplicated EDR
+rows 262..264 removed again. Build, vet (incl. `nativefixture`), gofmt,
+`sqlc diff`, cmd/api, apicontract and tracking unit tests green; proposed shared
+text applied (10-offline-sync checklist row, data and backend READMEs).
