@@ -19824,8 +19824,8 @@ paths:
       description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.review permission covering the trip
         (ORG, or UNIT/COST_CENTRE/TEAM/ASSET through the trip's stored asset, start unit and cost centre and the teams
         of its author or driver at the start receipt). Returns only the decision context (trip, asset, driver employee,
-        operational state, start and finish instants, start reporting day, review state and revision, and the
-        append-only entry history). No reading value, run clock, coordinate or document content; lists and the
+        operational state, start and finish instants or the supervisor closure of a trip completed without a finish
+        (EMP-TRIP-014), start reporting day, review state and revision, and the append-only entry history). No reading value, run clock, coordinate or document content; lists and the
         timeline are EMP-TRIP-006. An unknown or another organization's trip is NOT_FOUND (EMP-TRIP-004,
         B-BR-EMP-346).
       security:
@@ -19937,6 +19937,139 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseTripReviewDecision'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/open/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripOpenList
+      summary: List the organization's trips in progress
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.close_for_other permission on the whole
+        organization (an ORG grant; structural supervisors close each trip through its path). Returns the open trips
+        (IN_PROGRESS or PAUSED), oldest start first, with only trip, asset, driver employee, author membership and its
+        state, start instant, start reporting day, operational state and revision; keyset cursor bound to the caller and the limit. No reading,
+        run clock, coordinate or event (EMP-TRIP-014, B-BR-EMP-403).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.close_for_other
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripOpenListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current page of trips in progress.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripOpenPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/{trip_id}/close:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripClose
+      summary: Close another member's trip in progress without a final reading
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization,
+        enabled capability and trip.trip.close_for_other covering the trip (ORG, or UNIT/COST_CENTRE/TEAM/ASSET through
+        the trip's stored asset, start unit and cost centre and the teams of its author or driver at the start
+        receipt). Completes an open (IN_PROGRESS or PAUSED) trip at its current operational revision with the reason and
+        the reason why no final reading exists (both 1..280 scalars, no control character); the body has no reading,
+        value or distance field and an unknown key is MALFORMED. The trip becomes COMPLETED at the next revision with
+        usage NOT_MEASURED
+        (READING_ABSENT); the review case is unchanged (DRAFT). The trip's author or driver closing it is SELF_APPROVAL
+        (the author finishes it instead); a stale revision or a trip already finished, cancelled or closed is CONFLICT; a missing
+        reason VALIDATION_FAILED; an unknown or another organization's trip NOT_FOUND. The closer never decides the
+        trip's review. The driver's later finish and logbook events are held TRIP_ALREADY_CLOSED. Same operation and
+        digest returns the first result with replayed=true and no second audit event; another digest is
+        OPERATION_ID_REUSED (EMP-TRIP-014, B-BR-EMP-399..403).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.close_for_other
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripCloseRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008901
+              revision: 1
+              reason: Motorista sem sinal; viagem encerrada pela supervisão
+              missing_reading_reason: Leitura final não registrada
+      responses:
+        '200':
+          description: Private audited closure or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripCloseResult'
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
         '401':
@@ -23579,6 +23712,11 @@ components:
           - string
           - 'null'
           format: date-time
+        closure:
+          description: The supervisor closure of a trip completed without a finish (EMP-TRIP-014); null otherwise.
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripClosure'
+          - type: 'null'
         reporting_day:
           type: string
           format: date
@@ -23614,6 +23752,7 @@ components:
       - operational_state
       - started_at
       - finished_at
+      - closure
       - reporting_day
       - review_state
       - revision
@@ -23629,6 +23768,7 @@ components:
         operational_state: COMPLETED
         started_at: '2026-11-15T08:00:00.000000123Z'
         finished_at: '2026-11-15T11:00:00Z'
+        closure: null
         reporting_day: '2026-11-15'
         review_state: SUBMITTED
         revision: 1
@@ -23643,6 +23783,230 @@ components:
         effective_revision: 0
         effective_usage: null
         amendments: []
+        data_mode: SYNTHETIC
+    EnterpriseTripOpenListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          minLength: 1
+      example:
+        limit: 20
+    EnterpriseTripOpenItem:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        driver_employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        author_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        started_at:
+          type: string
+          format: date-time
+        reporting_day:
+          type: string
+          format: date
+        operational_state:
+          description: An open trip is IN_PROGRESS or PAUSED (EMP-TRIP-011).
+          type: string
+          enum:
+          - IN_PROGRESS
+          - PAUSED
+        revision:
+          description: The trip's operational revision (1 after the start, one more per pause, resume or cancellation),
+            named by a closure.
+          type: integer
+          minimum: 1
+        author_membership_state:
+          description: The author's membership state; ENDED or SUSPENDED marks a trip left open by a member who lost
+            access (EMP-TRIP-018).
+          type: string
+          enum:
+          - ACTIVE
+          - SUSPENDED
+          - ENDED
+      required:
+      - trip_id
+      - asset_id
+      - driver_employee_id
+      - author_membership_id
+      - started_at
+      - reporting_day
+      - operational_state
+      - revision
+      - author_membership_state
+    EnterpriseTripOpenPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseTripOpenItem'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - trip_id: 7b0e2a54-0000-4000-8000-000000008701
+          asset_id: 7b0e2a54-0000-4000-8000-000000008201
+          driver_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+          author_membership_id: 7b0e2a54-0000-4000-8000-000000008302
+          started_at: '2026-11-14T08:00:00Z'
+          reporting_day: '2026-11-14'
+          operational_state: IN_PROGRESS
+          revision: 1
+          author_membership_state: ENDED
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseTripCloseRequest:
+      type: object
+      additionalProperties: false
+      description: The operational revision the closer saw (the open trip's current revision), why the trip is closed
+        and why no final reading exists. There is no reading, value or distance field (B-BR-EMP-400).
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1120
+        missing_reading_reason:
+          type: string
+          minLength: 1
+          maxLength: 1120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      - missing_reading_reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008901
+        revision: 1
+        reason: Motorista sem sinal; viagem encerrada pela supervisão
+        missing_reading_reason: Leitura final não registrada
+    EnterpriseTripClosure:
+      type: object
+      additionalProperties: false
+      description: A supervisor closure of a trip completed without a finish; it holds no reading or value.
+      properties:
+        closed_at:
+          type: string
+          format: date-time
+        closer_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+        missing_reading_reason:
+          type: string
+      required:
+      - closed_at
+      - closer_membership_id
+      - reason
+      - missing_reading_reason
+      example:
+        closed_at: '2026-11-15T14:00:00.123456Z'
+        closer_membership_id: 7b0e2a54-0000-4000-8000-000000008303
+        reason: Motorista sem sinal; viagem encerrada pela supervisão
+        missing_reading_reason: Leitura final não registrada
+    EnterpriseTripCloseResult:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operational_state:
+          type: string
+          enum:
+          - COMPLETED
+        revision:
+          description: The trip's operational revision after the closure (the named revision plus one).
+          type: integer
+          minimum: 2
+        closure:
+          $ref: '#/components/schemas/EnterpriseTripClosure'
+        final_reading:
+          type: 'null'
+          description: Always null; a closure never supplies a final reading.
+        usage:
+          type: object
+          additionalProperties: false
+          description: Always NOT_MEASURED with READING_ABSENT; no kind or distance is invented.
+          properties:
+            status:
+              type: string
+              enum:
+              - NOT_MEASURED
+            reason:
+              type: string
+              enum:
+              - READING_ABSENT
+            kind:
+              type: 'null'
+            distance:
+              type: 'null'
+          required:
+          - status
+          - reason
+          - kind
+          - distance
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - trip_id
+      - operational_state
+      - revision
+      - closure
+      - final_reading
+      - usage
+      - replayed
+      - data_mode
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000008701
+        operational_state: COMPLETED
+        revision: 2
+        closure:
+          closed_at: '2026-11-15T14:00:00.123456Z'
+          closer_membership_id: 7b0e2a54-0000-4000-8000-000000008303
+          reason: Motorista sem sinal; viagem encerrada pela supervisão
+          missing_reading_reason: Leitura final não registrada
+        final_reading: null
+        usage:
+          status: NOT_MEASURED
+          reason: READING_ABSENT
+          kind: null
+          distance: null
+        replayed: false
         data_mode: SYNTHETIC
     EnterpriseTripRevisionUsage:
       type: object
@@ -30273,7 +30637,7 @@ components:
         key:
           type: string
           maxLength: 100
-          pattern: ^(SETTING:(review_fallback|platform_notices|data_protection|billing):(primary|substitute)|TEAM_LINK:[a-f0-9-]{36})$
+          pattern: ^(SETTING:(review_fallback|platform_notices|data_protection|billing):(primary|substitute)|TEAM_LINK:[a-f0-9-]{36}|TRIP:[a-f0-9-]{36})$
         source_revision:
           type: integer
           format: int64

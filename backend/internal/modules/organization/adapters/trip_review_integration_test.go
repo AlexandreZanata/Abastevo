@@ -47,6 +47,7 @@ func tripReviewGrants(t *testing.T, f *orgtest.Fixture) {
 		";GRANT SELECT ON org_meters,org_meter_segments,company_web_sessions TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	tripClosureGrant(t, f)
 }
 
 // tripReviewState is the EMP-TRIP-002 trip fixture with the real

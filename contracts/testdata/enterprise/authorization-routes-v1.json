@@ -745,10 +745,13 @@
     },
     {
       "permission": "trip.trip.close_for_other",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Mission and trip-operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/trips/open/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/trips/open/list",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/close"
+      ],
+      "reason": ""
     },
     {
       "permission": "trip.trip.read",

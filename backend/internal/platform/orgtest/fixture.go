@@ -319,6 +319,16 @@ func (f *Fixture) GrantOffboardingCommands(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
+	// EMP-TRIP-018: the open-work source and the offboarding guard read the
+	// trips in progress of the ending membership.
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trips') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,author_membership_id,state) ON org_trips TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
+			t.Fatal(e)
+		}
+	}
 }
 
 // GrantRehireCommands provisions only the disposable ordinary test role.

@@ -400,8 +400,12 @@ func projectView(v app.ReviewView) map[string]any {
 			"author_membership_id": a.AuthorMembershipID, "recorded_at": orgtime.FormatInstant(a.RecordedAt), "start_reading": projectCorrection(a.Start),
 			"end_reading": projectCorrection(a.End), "usage": projectUsage(a.Usage)})
 	}
+	var closure any
+	if v.Closure != nil {
+		closure = projectClosure(*v.Closure)
+	}
 	return map[string]any{"trip_id": v.TripID, "asset_id": v.AssetID, "driver_employee_id": v.DriverEmployeeID, "operational_state": v.Operational,
-		"started_at": orgtime.FormatInstant(v.StartedAt), "finished_at": finished, "reporting_day": v.ReportingDay, "review_state": v.Review,
+		"started_at": orgtime.FormatInstant(v.StartedAt), "finished_at": finished, "closure": closure, "reporting_day": v.ReportingDay, "review_state": v.Review,
 		"revision": v.Revision, "history": history, "effective_revision": v.EffectiveRevision, "effective_usage": effective, "amendments": amendments, "data_mode": "SYNTHETIC"}
 }
 

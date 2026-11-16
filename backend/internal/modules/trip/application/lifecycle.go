@@ -124,7 +124,8 @@ type TransitionRecord struct {
 // more per lifecycle row or finish.
 func (r Record) Revision() int64 {
 	revision := 1 + int64(len(r.Transitions))
-	if r.Finish != nil {
+	// EMP-TRIP-014: a supervisor closure ends the trip at the next revision too.
+	if r.Finish != nil || r.Closure != nil {
 		revision++
 	}
 	return revision
