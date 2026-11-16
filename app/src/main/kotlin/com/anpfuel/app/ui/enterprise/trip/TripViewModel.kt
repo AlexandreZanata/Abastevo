@@ -97,7 +97,13 @@ class TripViewModel @Inject constructor(
         action(renderedEpoch, generation) { flow.startMission(missionId, choice, label, departure, renderedEpoch, generation, departureRunId) }
     /** EMP-TRIP-011 pause, resume or cancel; offline (B-BR-EMP-530). */
     fun lifecycle(tripId: String, command: TripCommand, reason: String?, renderedEpoch: Long, generation: Long) =
-        action(renderedEpoch, generation) { flow.lifecycle(tripId, command, reason, renderedEpoch, generation) }
+        action(renderedEpoch, generation) {
+            flow.lifecycle(tripId, command, reason, renderedEpoch, generation)
+            // EMP-GPS-010: a pause suspended or a cancellation ended the session; release the listener now, not at the next
+            // watchdog tick (nothing is recorded meanwhile either way). A resume never restarts it (B-BR-EMP-547).
+            if (command != TripCommand.RESUME) state.value.tracking?.session(tripId)?.takeIf { it.state != TrackingSessionState.RECORDING }
+                ?.let { tracking.release(it.sessionId) }
+        }
     /** Accept or decline offline (B-BR-EMP-528). */
     fun respond(missionId: String, response: TripMissionResponse, reason: String?, renderedEpoch: Long, generation: Long) =
         action(renderedEpoch, generation) { flow.respond(missionId, response, reason, renderedEpoch, generation) }

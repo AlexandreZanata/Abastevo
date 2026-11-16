@@ -190,6 +190,36 @@ Results:
   reviewed for secrets and PII (synthetic identifiers, organization names and
   emulator route only).
 
+## Composition with EMP-TRIP-021 (after merging the F4 head `fac846c3`)
+
+At the coordinator's request the F4 head `fac846c3` (OFFL-011, GPS-006,
+TRIP-021, ROUTE-004) was merged into this branch (`6e0cbc89`; DI, EDR and
+contract conflicts resolved by union). TRIP-021 lets the device pause a trip
+(the recording session is suspended as `TRIP_PAUSED`) and cancel it (ended as
+`TRIP_CANCELLED`), each at the command's own instant. A follow-up commit pins
+how this task's rules compose with those transitions and releases the
+listener at once:
+
+- `missing gap - a device pause and cancellation compose with the
+  interruptions, the runs and the buffer` (application): the pause is listed
+  as a `SUSPENDED`/`TRIP_PAUSED` interval that only the driver's resume tap
+  closes; a report arriving while paused is not recorded and the watchdog
+  releases the listener; opening the trip screen while paused writes no
+  interruption (a pause is not a dead process; recovery follows the trip); a
+  resumed trip does not resume tracking by itself; the runs before and after
+  the pause are sealed apart, each on its own opening; the cancellation ends
+  the session and seals the last run; every recorded fix is conserved. It
+  passed on its first run: it pins the composition, not new behaviour.
+- `TripViewModel.lifecycle` now releases the listener right after a pause or
+  a cancellation left the session not recording (as the finish already did),
+  instead of at the next 30-second watchdog tick; a resume releases and
+  launches nothing. App test `a pause or a cancellation releases the listener
+  and a resume launches nothing` (written with the change; no separate RED).
+
+The combined run and the final gates of the merged tree are recorded in the
+EMP-GPS-015 evidence (`f4-gps015-tracking-transparency.md`), whose commit
+follows on the same tree.
+
 ## Native acceptance on `emulator-5588`: OWED
 
 The emulator is `RUNNING_LOCKED` behind a synthetic lock-screen credential

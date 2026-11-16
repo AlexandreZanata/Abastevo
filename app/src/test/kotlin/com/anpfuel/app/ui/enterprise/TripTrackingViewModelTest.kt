@@ -86,6 +86,22 @@ class TripTrackingViewModelTest {
         assertTrue(launched.isEmpty(), "nothing recording, nothing launched")
     }
 
+    /** EMP-GPS-010 with EMP-TRIP-021: a pause or a cancellation releases the listener at once; a resume never restarts it. */
+    @Test fun `a pause or a cancellation releases the listener and a resume launches nothing`(): Unit = runTest(dispatcher) {
+        val model = model(); advanceUntilIdle()
+        states.value = tracked(TrackingSessionState.RECORDING)
+        coEvery { flow.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.PAUSE, null, 0, 7) } answers {
+            states.value = tracked(TrackingSessionState.SUSPENDED) }
+        model.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.PAUSE, null, 0, 7); advanceUntilIdle()
+        assertEquals(listOf(session), released)
+        model.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.RESUME, null, 0, 7); advanceUntilIdle()
+        assertEquals(listOf(session), released); assertTrue(launched.isEmpty(), "a resumed trip does not restart tracking")
+        coEvery { flow.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.CANCEL, "Cliente cancelou", 0, 7) } answers {
+            states.value = tracked(TrackingSessionState.ENDED) }
+        model.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.CANCEL, "Cliente cancelou", 0, 7); advanceUntilIdle()
+        assertEquals(listOf(session, session), released)
+    }
+
     @Test fun `stop and finish release the listener after the write and old gestures do nothing`(): Unit = runTest(dispatcher) {
         val model = model(); advanceUntilIdle()
         states.value = tracked(TrackingSessionState.RECORDING)

@@ -290,6 +290,62 @@ class EnterpriseTrackingInterruptionTest {
         r.assertConserved("gap carried")
     }
 
+    /** EMP-GPS-010 with EMP-TRIP-021: a device pause suspends and a cancellation ends the session; the GPS-010 rules still hold. */
+    @Test fun `missing gap - a device pause and cancellation compose with the interruptions, the runs and the buffer`() = runTest {
+        val r = Rig()
+        var collecting: String? = null
+        val flow = TripFlow(r.x.f.source, r.x.trips, r.x.f.fence, tracking = TripTracking(r.service, { it == collecting }, { "boot-7" },
+            { r.x.device() }, { collecting })) { _, _ -> }
+        fun generation() = flow.state.value.generation
+        val epoch = r.x.f.fence.epoch
+        r.trip = r.x.startTrip(); r.x.refresh()
+        flow.open(r.x.a, epoch)
+        flow.startTracking(r.trip, r.x.device(), epoch, generation())
+        r.session = flow.state.value.tracking!!.session(r.trip)!!.sessionId
+        val first = r.collector()
+        assertEquals(TrackingBeginResult.STARTED, r.begin(first)); collecting = r.session
+        r.move(1); r.move(10); first.drain()
+        // Paused on the device: suspended at the pause's instant, listed as a suspension, the run's fixes sealed.
+        flow.lifecycle(r.trip, com.anpfuel.domain.enterprise.trip.TripCommand.PAUSE, null, epoch, generation())
+        val paused = flow.state.value.tracking!!.session(r.trip)!!
+        assertEquals(TrackingSessionState.SUSPENDED, paused.state)
+        assertEquals(listOf(TrackingCause.TRIP_PAUSED), paused.interruptions.map { it.cause })
+        assertEquals(TrackingSessionState.SUSPENDED, paused.interruptions.single().state); assertNull(paused.interruptions.single().end)
+        val pausedAt = paused.interruptions.single().start
+        assertEquals(0, paused.pendingFixes)
+        // A late report while paused is not recorded; the watchdog follows the pause and releases the listener.
+        val recorded = r.buffer()!!.recorded
+        r.move(10)
+        assertFalse(first.tick())
+        assertEquals(recorded, r.buffer()!!.recorded)
+        collecting = null
+        // Opening the screen while paused writes no interruption: a pause is not a dead process.
+        flow.open(r.x.a, epoch)
+        assertEquals(listOf(TrackingCause.TRIP_PAUSED), flow.state.value.tracking!!.session(r.trip)!!.interruptions.map { it.cause })
+        // Resumed trip, resumed tracking by the driver's tap: a new run.
+        r.idle(60)
+        flow.lifecycle(r.trip, com.anpfuel.domain.enterprise.trip.TripCommand.RESUME, null, epoch, generation())
+        assertEquals(TrackingSessionState.SUSPENDED, flow.state.value.tracking!!.session(r.trip)!!.state, "nothing resumes by itself")
+        flow.startTracking(r.trip, r.x.device(), epoch, generation())
+        val second = r.collector()
+        assertEquals(TrackingBeginResult.STARTED, r.begin(second)); collecting = r.session
+        r.move(5); r.move(10); second.drain()
+        // Cancelled: ended at the cancellation, the pause's interval closed by the resume, the run sealed apart.
+        flow.lifecycle(r.trip, com.anpfuel.domain.enterprise.trip.TripCommand.CANCEL, "Cliente cancelou", epoch, generation())
+        val ended = flow.state.value.tracking!!.session(r.trip)!!
+        assertEquals(TrackingSessionState.ENDED, ended.state); assertEquals(TrackingCause.TRIP_CANCELLED, ended.cause)
+        assertNotNull(ended.interruptions.single().end)
+        assertFalse(second.tick())
+        val records = r.view().records
+        val start = records.first { it.type == TrackingOperations.START }.operationId
+        val resume = records.first { it.type == TrackingOperations.RESUME }.operationId
+        val batches = r.batches()
+        assertEquals(listOf(listOf(start), listOf(resume)), batches.map { it.dependsOn })
+        assertTrue(batches[0].let { b -> b.fixes.all { !b.declared.occurredAt.plusMillis(it.offsetMillis).isAfter(pausedAt) } })
+        assertEquals(0, r.buffer()!!.pending.size)
+        r.assertConserved("pause and cancel")
+    }
+
     @Test fun `precision overclaim - an approximate report inside a precise period reduces first and is recorded coarse`() = runTest {
         val r = Rig(); r.open()
         val collector = r.collector()
