@@ -8,8 +8,8 @@ Integration: INTEGRATION_PENDING
 One bounded F4 task (module CHECK, P1, type APP, size M) on
 `codex/enterprise-f4-check002` (worktree `/data/dev/worktrees/f4-check002`),
 based on the F4 head `45c3baf3` (main `7ab0b477` + TRIP-009/013, GPS-001,
-OFFL-005, TRIP-011 with 000233) and then merged with the F4 head named in
-"Merged-tree validation". The coordinator integrates it into
+OFFL-005, TRIP-011 with 000233) and then merged with the F4 heads `0912b48a`
+and `2f031276` ("Merged-tree validation"). The coordinator integrates it into
 `codex/enterprise-f4` and owns PROGRESS, the F4 ledger, pushes and the PR.
 Synthetic data only; no real photo, person, plate or place. The only Android
 device used is the owned emulator `emulator-5588` (AVD `enterprise-f2-api36`);
@@ -321,7 +321,7 @@ project `f4-check002-s3`; Kotlin/Gradle through the shared flock with JDK 17.
   ./internal/modules/{maintenance,fleet,orgsync,trip}/... ./internal/platform/...
   ./cmd/api/...` → `check002-db-union.jsonl`: 1,257 top-level / 8,669
   subtests, 7 failures caused by this task (see GREEN), all fixed and rerun
-  green; the full union is repeated on the merged tree below.
+  green; the full union was repeated on the final merged tree below.
 - Android (from the Android half): enterprise host suites domain 4160,
   application 134, data 204, app 28 tests, 0 failures, errors or skips
   (`check002-android-suites-lint-final.log`); `:app:assembleDebug
@@ -414,4 +414,53 @@ same APKs: trip presentation 6/6, My Assets presentation 6/6, the five
 
 ## Merged-tree validation
 
-Filled after merging the current F4 head (below).
+The task commit `3e91dab5` was merged twice with `codex/enterprise-f4`:
+
+1. `0912b48a` (TRIP-007/014/018 with 000235..000237, GPS-004/012 with
+   000240, UGC safety 000239) — merge commit `9a5ba2b7`. Conflicts resolved
+   as unions: EDR rows by number, contract sections, the sync owners
+   description, the structure kinds (`ChecklistRunStructure` and
+   `HeldTripStructure`), the intake no-async plans; counts 155 normal routes
+   (routed 30 / not routed 54 / specials 26), AUTH-011 walk 155 / 32 positive
+   / 123 FORBIDDEN, matrix unchanged (300 cells). None of 000235..000240
+   redefines a usage source. On that tree the Android host suites passed
+   (domain 4160, application 134, data 204, app 28, 0 failures;
+   `:app:assembleDebug :app:lintDebug :data:lintDebug` 0 errors, app warnings
+   354 vs 352 before the merge — the two new ones are in the head's own files,
+   none in a file this task touched; `check002-android-merged.log`).
+2. `2f031276` (EXP-002 with 000244) — merge commit `3fdab0b8`. 000244 runs
+   after 000242 and redefines `org_asset_current_usage`,
+   `org_unit_current_usage` and `org_cost_centre_current_usage`, so the three
+   run keys of 000242 are merged into the 000244 bodies (one line each, every
+   EXP-002 line kept); 000242 keeps its own redefinition for an image that
+   stops at it (the 000242 upgrade rehearsal). The coordinator owns 000244 and
+   may instead move the three lines to a later migration (see the final
+   report). The unit and cost-centre schema fixture copies list both the
+   expense and the run keys; signed operation owners 20.
+
+On the final merged tree `3fdab0b8`:
+
+- Toolchain gofmt empty; `go build ./...`, `go vet ./...`, `go vet
+  -tags=integration ./...`, `go vet -tags='integration nativefixture'` on
+  organization adapters clean; `sqlc vet` and `sqlc diff` clean; staticcheck
+  (go1.27.1) plain, `-tags=integration` and with the native fixture tags on
+  the touched packages: no findings (`check002-staticcheck-merged.log`).
+- Race/integration union `go test -json -race -tags=integration -count=1
+  -timeout=150m -p 2 ./internal/modules/organization/adapters
+  ./internal/modules/{maintenance,fleet,orgsync,trip,tracking,expense}/...
+  ./internal/platform/... ./cmd/api/...` with PostGIS and the throwaway MinIO
+  (`check002-db-union-merged.jsonl`): 46 packages, 42 pass and 4 have no
+  tests; 1,387 top-level / 10,075 subtests pass, 0 failures, 0 skips; 45.7 min
+  wall, `organization/adapters` 2,706 s. (A first merged union on `9a5ba2b7`
+  was stopped when the EXP-002 head arrived; it is not counted.)
+- Untagged whole module `GOFLAGS=-p=2 go test -count=1 -timeout=45m ./...`
+  (`check002-untagged-all.log`): exit 0, 229 packages ok, 87 without tests,
+  0 FAIL.
+- Kotlin `:domain:test --tests 'com.anpfuel.domain.enterprise.*'`: 4204 tests,
+  0 failures (`check002-kotlin-domain-merged2.log`); EXP-002 changed only
+  Kotlin domain files, so the application, data and app suites of the first
+  merged tree stand.
+- OpenAPI vacuum: 0 errors; 1,113 warnings / 682 informs vs 1,118 / 681 at
+  the head (the description rules count differently with the added schemas;
+  `check002-vacuum-merged2.log`, `check002-vacuum-f4head2.log`).
+- `check_plan.py` 0 problems; `git diff --check` clean.
