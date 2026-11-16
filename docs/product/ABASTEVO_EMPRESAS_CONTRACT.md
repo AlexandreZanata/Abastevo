@@ -7320,3 +7320,83 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   `OPERATION_ID_REUSED`, concurrent duplicates, wrong role and wrong scope,
   forced RLS and insert-only history, and a populated upgrade from the 000237
   head with injected failure, recovery and the catch-up run twice.
+
+## EMP-TRIP-022 — Panel: mission planning and assignment board (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip022-mission-board.md).
+
+- **B-BR-EMP-470 — Eligible assignees of a mission are a server read.** `POST
+  /v1/orgs/{org_id}/missions/{mission_id}/assignees/list` lists, under current
+  `trip.mission.manage` covering the mission (read, not fresh; structural scope
+  as the mission read: another organization's or an unknown mission
+  `NOT_FOUND`, a planner whose grant does not cover it, `AUDITOR` and `DRIVER`
+  `FORBIDDEN`), exactly the employees the assignment command would accept: an
+  `ACTIVE`, unmerged employee of the organization with an `ACTIVE`
+  account-linked membership whose current `trip.trip.start` covers the mission
+  (the EMP-TRIP-008 `EligibleAssigneeTx` rule, evaluated per candidate inside
+  the read transaction). Each item carries only `employee_id`, `display_name`
+  and `registration_number` (empty strings when the profile has none); no
+  contact, membership, role, scope or account data. Pages scan candidates in
+  employee order and return the eligible ones; the opaque cursor is bound to
+  the route, mission and limit and advances by the last scanned employee, so a
+  page can be empty while a cursor remains. The read changes nothing and is
+  answered `no-store` like every private company read. Eligibility shown here
+  is never authority: the assignment command re-decides it.
+- **B-BR-EMP-471 — The board reports server state only.** The company panel
+  board (SCR-TRIP-03) shows a mission's state, revision, vehicle, assignee,
+  answer and plan only as returned by the latest successful mission list or
+  read, with the instant it was read (BR-TRUTH-006). A pending command never
+  changes the shown mission; an acknowledged command is followed by a new read
+  of that mission and only that read replaces it. `ACCEPTED` and `DECLINED`
+  appear only when a server read says so; an assignment acknowledgement must
+  say `ASSIGNED` for the requested employee, otherwise it is unusable. The
+  FLEET-007 assignment warning (`ASSET_UNAVAILABLE`/`ASSET_BUSY` with the
+  availability) is shown as returned and is never a refusal.
+- **B-BR-EMP-472 — Only eligible scoped choices are offered.** Vehicles offered
+  for creation and vehicle change are the planner's server-listed `ACTIVE`
+  assets that are not `IMPLEMENT` (never the mission's current vehicle for a
+  change); assignees offered are only those of B-BR-EMP-470 for that mission
+  (never the current assignee again). A choice that is not in the current
+  server list is refused before any request. Cost centres are offered only
+  from the server's `ACTIVE` cost-centre list when the member can read it;
+  otherwise the plan is saved without one. The vehicle's agenda (SCR-FLEET-06
+  list view) shows its FLEET-007 availability with causes and evaluation
+  instant, and its reservations and blocks by state and window; free-text
+  purposes and notes are not displayed. A displayed option or control is not
+  authorization: the server decides every read and command.
+- **B-BR-EMP-473 — Commands keep their contracts.** Create, plan, assign,
+  vehicle change and cancel use the existing routes with schema 1, one
+  immutable operation id and body per decision, and the mission revision the
+  planner saw. An unknown outcome may be retried only with the same id and
+  body; a new decision gets a new id. `CONFLICT` (stale revision, a state that
+  no longer allows the action, a busy vehicle) clears the pending decision,
+  never retries, and re-reads the mission so the current server state is
+  shown with the conflict. `FORBIDDEN` and `NOT_FOUND` clear every private
+  board record and show fixed copy that reveals nothing about the target;
+  `FRESH_AUTH_REQUIRED` and `UNAUTHENTICATED` end the company session view;
+  `VALIDATION_FAILED` keeps the planner's input.
+- **B-BR-EMP-474 — Isolation, freshness and privacy of the board.** Changing
+  organization, losing authority, signing out or reloading clears the board
+  and aborts its requests; a late response of an earlier scope or decision is
+  discarded. Nothing is kept in browser storage; private responses must be
+  `no-store`; the board displays no personal data beyond the fields the routes
+  return and never sends a value it did not receive from the server as a
+  reference.
+- **BUC-EMP-239 — Plan and hand over a mission from the panel.** A fleet
+  manager opens the board, creates "Entrega sintética no cliente" with FR-001
+  for tomorrow 08:00–10:00, plans destination text, reason, cost centre and
+  cargo, sees FR-001's agenda (a confirmed reservation the same morning),
+  assigns Bruno from the eligible list and reads the server's
+  `ASSET_UNAVAILABLE` warning; the mission shows `ASSIGNED` (awaiting answer)
+  until a later read shows Bruno's `ACCEPTED`.
+- **BUC-EMP-240 — A concurrent change is never hidden.** Two planners open the
+  same mission at revision 3; the first reassigns it; the second's cancel gets
+  `CONFLICT`, the board re-reads and shows revision 4 assigned to the other
+  member with the conflict message, and the second planner decides again.
+- **BUC-EMP-241 — Prove the board and its read.** Real PostGIS proves the
+  eligible-assignee read (FINANCE, AUDITOR, suspended, inactive, merged and
+  account-less candidates excluded; unit-scoped coverage; empty pages with a
+  cursor; another organization and out-of-scope planners refused; the read
+  changes nothing) and its composed HTTP route; the web tests prove a foreign
+  or stale assignment is not offered, a conflict refreshes server state, an
+  unconfirmed state is never shown as accepted and a `403` clears the board.

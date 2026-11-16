@@ -50,7 +50,7 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 		}
 	}
 	for _, name := range []string{"EnterpriseMissionCreateRequest", "EnterpriseMissionAssignRequest", "EnterpriseMissionCancelRequest", "EnterpriseMissionListRequest", "EnterpriseMissionReadRequest",
-		"EnterpriseMissionAck", "EnterpriseMissionPage", "EnterpriseMissionView", "EnterpriseTripMissionRespondPayload", "EnterpriseMissionPlanRequest", "EnterpriseMissionPlan", "EnterpriseMissionVehicleRequest"} {
+		"EnterpriseMissionAck", "EnterpriseMissionPage", "EnterpriseMissionView", "EnterpriseTripMissionRespondPayload", "EnterpriseMissionPlanRequest", "EnterpriseMissionPlan", "EnterpriseMissionVehicleRequest", "EnterpriseMissionAssigneesRequest", "EnterpriseMissionAssigneePage"} {
 		schema := doc.Components.Schemas[name]
 		if schema == nil || schema.Value == nil || schema.Value.Example == nil {
 			t.Fatal("missing mission schema or explicit example", name)
@@ -78,6 +78,24 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 			t.Fatal("a review, trip or sync state was admitted as a mission state", state)
 		}
 	}
+	// EDR-304: an eligible assignee carries only its descriptive fields.
+	assignees := doc.Components.Schemas["EnterpriseMissionAssigneePage"].Value
+	for name, extra := range map[string]map[string]any{"contact": {"work_email": "synthetic@example.invalid"}, "membership": {"membership_id": "7b0e2a54-0000-4000-8000-000000008301"}, "role": {"role": "DRIVER"}} {
+		example := map[string]any{}
+		raw, _ := json.Marshal(assignees.Example)
+		_ = json.Unmarshal(raw, &example)
+		items, _ := example["items"].([]any)
+		if len(items) == 0 {
+			t.Fatal("eligible-assignee example has no item")
+		}
+		item, _ := items[0].(map[string]any)
+		for k, v := range extra {
+			item[k] = v
+		}
+		if assignees.VisitJSON(example) == nil {
+			t.Fatal("an eligible-assignee item admitted more than its descriptive fields", name)
+		}
+	}
 	_, router := companyRoutes(t)
 	if err := ValidateOrganizationRoutes(router, doc); err != nil {
 		t.Fatal(err)
@@ -93,6 +111,7 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 		prefix + "{mission_id}/cancel":         command,
 		prefix + "{mission_id}/plan":           command,
 		prefix + "{mission_id}/vehicle/change": command,
+		prefix + "{mission_id}/assignees/list": read,
 		prefix + "mine/list":                   {"permission": "trip.trip.start", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
 	} {
 		operation := doc.Paths.Value(path).Post

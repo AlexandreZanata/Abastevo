@@ -839,6 +839,7 @@ sql:
       - db/migrations/000172_organization_onboarding.sql
       - db/migrations/000174_operating_units.sql
       - db/migrations/000175_cost_centres.sql
+      - db/migrations/000176_employee_profiles.sql
       - db/migrations/000194_organization_devices.sql
       - db/migrations/000196_organization_sync_intake.sql
       - db/migrations/000197_organization_assets.sql

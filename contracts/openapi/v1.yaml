@@ -20794,6 +20794,72 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/assignees/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionAssigneeList
+      summary: List the employees eligible for a mission
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.mission.manage permission covering the mission (the
+        mission read's structure; an unknown or another organization's mission is NOT_FOUND). Lists exactly the employees
+        the assignment command would accept now - ACTIVE, unmerged, with an ACTIVE account-linked membership whose current
+        trip.trip.start covers the mission as its own record - each with only its employee identifier, display name and
+        registration number (empty strings when the profile has none). Pages scan candidates in employee order; the keyset
+        cursor is bound to the caller, the route, the mission and the limit and advances by the last scanned employee, so
+        a page may be empty while next_cursor is set. Eligibility shown here is not authority; the assignment re-decides it
+        (EMP-TRIP-022, B-BR-EMP-470).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionAssigneesRequest'
+            example:
+              limit: 50
+      responses:
+        '200':
+          description: Private current page of eligible assignees.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAssigneePage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose:
     post:
       tags:
@@ -24671,6 +24737,65 @@ components:
         operation_id: 7b0e2a54-0000-4000-8000-000000008803
         revision: 2
         reason: Cliente cancelou a entrega
+    EnterpriseMissionAssigneesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          minLength: 1
+      example:
+        limit: 50
+    EnterpriseMissionAssignee:
+      type: object
+      additionalProperties: false
+      description: An employee the assignment command would accept now; descriptive fields only (EDR-304).
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          maxLength: 200
+        registration_number:
+          type: string
+          maxLength: 64
+      required:
+      - employee_id
+      - display_name
+      - registration_number
+    EnterpriseMissionAssigneePage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionAssignee'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - employee_id: 7b0e2a54-0000-4000-8000-000000008301
+          display_name: Bruno Sintético
+          registration_number: SYN-001
+        - employee_id: 7b0e2a54-0000-4000-8000-000000008302
+          display_name: ''
+          registration_number: ''
+        next_cursor: ''
+        data_mode: SYNTHETIC
     EnterpriseMissionListRequest:
       type: object
       additionalProperties: false
