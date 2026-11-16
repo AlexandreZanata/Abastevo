@@ -204,3 +204,122 @@ func TestTrackReadContractRouteAndView(t *testing.T) {
 func segmentFix(v map[string]any) map[string]any {
 	return v["segments"].([]any)[0].(map[string]any)["fixes"].([]any)[0].(map[string]any)
 }
+
+// EDR-302 (B-BR-EMP-467..469): the tracking policy read and change are
+// actual company routes under org.settings.read and fresh
+// org.settings.manage, with closed request and view schemas that carry no
+// notice text, session, member or location field.
+func TestTrackingPolicyContractRoutesAndSchemas(t *testing.T) {
+	doc := loadSpec(t)
+	_, router := companyRoutes(t)
+	if err := ValidateOrganizationRoutes(router, doc); err != nil {
+		t.Fatal(err)
+	}
+	for path, want := range map[string]map[string]any{
+		"/v1/orgs/{org_id}/tracking/policy/read":   {"permission": "org.settings.read", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		"/v1/orgs/{org_id}/tracking/policy/change": {"permission": "org.settings.manage", "write": true, "fresh": true, "require_revision": false, "company_only": true, "success": 200},
+	} {
+		operation := doc.Paths.Value(path).Post
+		if operation == nil {
+			t.Fatal("missing actual tracking policy route", path)
+		}
+		raw, _ := json.Marshal(operation.Extensions["x-abastevo-organization"])
+		var got map[string]any
+		if json.Unmarshal(raw, &got) != nil || len(got) != len(want) {
+			t.Fatal("tracking policy guard metadata drift", path, got)
+		}
+		for k, v := range want {
+			if want, _ := json.Marshal(v); string(want) != string(mustJSON(t, got[k])) {
+				t.Fatal("tracking policy guard metadata drift", path, k)
+			}
+		}
+		for _, permission := range []string{"gps.track.read", "trip.trip.start", "org.structure.manage"} {
+			document, actual := companyRoutes(t)
+			metadata := map[string]any{}
+			for k, v := range want {
+				metadata[k] = v
+			}
+			metadata["permission"] = permission
+			document.Paths.Value(path).Post.Extensions["x-abastevo-organization"] = metadata
+			if ValidateOrganizationRoutes(actual, document) == nil {
+				t.Fatal("tracking policy authority derived from another permission", path, permission)
+			}
+		}
+	}
+	schema := func(name string) map[string]any {
+		s := doc.Components.Schemas[name]
+		if s == nil || s.Value == nil || s.Value.Example == nil {
+			t.Fatal("missing tracking policy schema or example", name)
+		}
+		raw, _ := json.Marshal(s.Value.Example)
+		var example map[string]any
+		if json.Unmarshal(raw, &example) != nil || s.Value.VisitJSON(example) != nil {
+			t.Fatal("invalid tracking policy example", name)
+		}
+		return example
+	}
+	visit := func(name string, v map[string]any) error { return doc.Components.Schemas[name].Value.VisitJSON(v) }
+	change := "EnterpriseTrackingPolicyChangeRequest"
+	base := schema(change)
+	with := func(edit func(map[string]any)) map[string]any {
+		v := map[string]any{}
+		for k, x := range base {
+			v[k] = x
+		}
+		edit(v)
+		return v
+	}
+	for name, v := range map[string]map[string]any{
+		"first version": with(func(v map[string]any) { delete(v, "revision") }),
+		"off":           with(func(v map[string]any) { v["policy"], v["notice_version"], v["notice_in_force_at"] = "OFF", nil, nil }),
+		"optional":      with(func(v map[string]any) { v["policy"] = "OPTIONAL" }),
+	} {
+		if err := visit(change, v); err != nil {
+			t.Fatal("a valid tracking policy change is refused", name, err)
+		}
+	}
+	for name, v := range map[string]map[string]any{
+		"zero revision":   with(func(v map[string]any) { v["revision"] = 0 }),
+		"unknown policy":  with(func(v map[string]any) { v["policy"] = "ON" }),
+		"notice text":     with(func(v map[string]any) { v["notice_text"] = "Aviso" }),
+		"upper version":   with(func(v map[string]any) { v["notice_version"] = "Notice-1" }),
+		"no operation":    with(func(v map[string]any) { delete(v, "operation_id") }),
+		"schema 2":        with(func(v map[string]any) { v["schema_version"] = 2 }),
+		"session":         with(func(v map[string]any) { v["session_id"] = "7b0e2a54-0000-4000-8000-000000008702" }),
+		"no policy":       with(func(v map[string]any) { delete(v, "policy") }),
+		"numeric version": with(func(v map[string]any) { v["notice_version"] = 1 }),
+	} {
+		if visit(change, v) == nil {
+			t.Fatal("an invalid tracking policy change was admitted", name)
+		}
+	}
+	if visit("EnterpriseTrackingPolicyReadRequest", map[string]any{}) != nil || visit("EnterpriseTrackingPolicyReadRequest", map[string]any{"revision": 1}) == nil {
+		t.Fatal("the tracking policy read request is not closed")
+	}
+	ack := schema("EnterpriseTrackingPolicyAcknowledgement")
+	view := schema("EnterpriseTrackingPolicyView")
+	empty := map[string]any{"revision": 0, "policy": "OFF", "notice_version": nil, "notice_in_force_at": nil, "effective_at": nil, "in_force": map[string]any{"policy": "OFF", "revision": 0}, "data_mode": "SYNTHETIC"}
+	if err := visit("EnterpriseTrackingPolicyView", empty); err != nil {
+		t.Fatal("the empty policy view is refused", err)
+	}
+	for name, mutate := range map[string]func(map[string]any){
+		"session":      func(v map[string]any) { v["sessions"] = []any{} },
+		"notice text":  func(v map[string]any) { v["notice_text"] = "x" },
+		"other policy": func(v map[string]any) { v["policy"] = "ON" },
+	} {
+		for label, base := range map[string]map[string]any{"ack": ack, "view": view} {
+			v := map[string]any{}
+			for k, x := range base {
+				v[k] = x
+			}
+			mutate(v)
+			target := "EnterpriseTrackingPolicyAcknowledgement"
+			if label == "view" {
+				target = "EnterpriseTrackingPolicyView"
+			}
+			if visit(target, v) == nil {
+				t.Fatal("an invalid tracking policy result was admitted", label, name)
+			}
+		}
+	}
+}

@@ -1035,6 +1035,14 @@ func run() error {
 	for _, handler := range fleetHandlers {
 		handlers[handler.Kind()] = handler
 	}
+	// EMP-GPS-005 (EDR-298): track processing runs on the general dispatcher.
+	trackingHandlers, err := trackingWorkerHandlers(cfg.EnterpriseEnabled, raw)
+	if err != nil {
+		return err
+	}
+	for _, handler := range trackingHandlers {
+		handlers[handler.Kind()] = handler
+	}
 	// EMP-DOC-014: no document bucket is configured here, as in cmd/api.
 	documentHandlers, err := documentWorkerHandlers(workerDocumentConfig{Enabled: cfg.EnterpriseEnabled, Pool: raw})
 	if err != nil {

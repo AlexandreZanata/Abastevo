@@ -20209,6 +20209,132 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/policy/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTrackingPolicyRead
+      summary: Read the organization tracking policy
+      description: Current company cookie and exact Origin/CSRF. Fixed org.settings.read covering the organization
+        itself (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR, FINANCE, APPROVER, AUDITOR); a structural or SELF grant
+        never covers it (B-BR-EMP-469). Returns the newest stored version (revision 0 with OFF and no notice when
+        nothing was recorded), its employee notice version and in-force instant, its effective instant and the
+        policy in force now (OFF until a notice is in force, EMP-GPS-004). No session, member or location data.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.settings.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: An empty object; the read takes no field.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTrackingPolicyReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: The stored and effective tracking policy.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTrackingPolicyView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/policy/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTrackingPolicyChange
+      summary: Change the organization tracking policy
+      description: Current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        organizations capability and org.settings.manage covering the organization itself (OWNER, ADMIN);
+        admission class org.setup (B-BR-EMP-467). revision is the expected current version and is omitted only
+        while none exists; a stale or premature revision is CONFLICT. OPTIONAL and EXPECTED need the employee
+        notice version and its in-force instant at or before the database's effective instant; a missing,
+        malformed or not yet in-force notice, or a notice sent with OFF, is VALIDATION_FAILED with a frozen field
+        code (B-BR-EMP-468). Writes the next insert-only version, its receipt and one gps.policy.changed audit
+        event; the same operation and digest returns the first result with replayed=true, another digest is
+        OPERATION_ID_REUSED. Existing sessions keep the version they opened under. No notice text is stored.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.settings.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: One tracking policy change with the expected revision and, when enabled, the employee notice.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTrackingPolicyChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008801
+              revision: 1
+              policy: EXPECTED
+              notice_version: notice-2026.11
+              notice_in_force_at: '2026-11-01T00:00:00Z'
+      responses:
+        '200':
+          description: The written (or replayed) tracking policy version.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTrackingPolicyAcknowledgement'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/{trip_id}/review/decide:
     post:
       tags:
@@ -26016,6 +26142,173 @@ components:
       description: One audited page of a trip's recorded track (EMP-GPS-012). session is null when the trip was never
         tracked; segments are in sequence order; next_cursor is empty on the last page. Raw stored values only; no
         live position, distance, gap or quality is derived here.
+    EnterpriseTrackingPolicyReadRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+      description: The tracking policy read takes no field (B-BR-EMP-469).
+    EnterpriseTrackingPolicyChangeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        policy:
+          type: string
+          enum:
+          - 'OFF'
+          - OPTIONAL
+          - EXPECTED
+        notice_version:
+          type:
+          - string
+          - 'null'
+          pattern: ^[a-z0-9][a-z0-9._-]{0,63}$
+        notice_in_force_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - schema_version
+      - operation_id
+      - policy
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008801
+        revision: 1
+        policy: EXPECTED
+        notice_version: notice-2026.11
+        notice_in_force_at: '2026-11-01T00:00:00Z'
+      description: One tracking policy change (B-BR-EMP-467/468). revision is the expected current version, omitted
+        only while none exists. notice_version and notice_in_force_at are required for OPTIONAL and EXPECTED and
+        absent (or null) for OFF; the instant must be at or before the database's effective instant. No notice
+        text, session, member or location field exists.
+    EnterpriseTrackingPolicyAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        policy:
+          type: string
+          enum:
+          - 'OFF'
+          - OPTIONAL
+          - EXPECTED
+        notice_version:
+          type:
+          - string
+          - 'null'
+          pattern: ^[a-z0-9][a-z0-9._-]{0,63}$
+        notice_in_force_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        effective_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - revision
+      - policy
+      - notice_version
+      - notice_in_force_at
+      - effective_at
+      - replayed
+      - data_mode
+      example:
+        revision: 2
+        policy: EXPECTED
+        notice_version: notice-2026.11
+        notice_in_force_at: '2026-11-01T00:00:00Z'
+        effective_at: '2026-11-15T12:00:00Z'
+        replayed: false
+        data_mode: SYNTHETIC
+      description: The written tracking policy version, or the first result of a replay (replayed=true).
+    EnterpriseTrackingPolicyView:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        policy:
+          type: string
+          enum:
+          - 'OFF'
+          - OPTIONAL
+          - EXPECTED
+        notice_version:
+          type:
+          - string
+          - 'null'
+          pattern: ^[a-z0-9][a-z0-9._-]{0,63}$
+        notice_in_force_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        effective_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        in_force:
+          type: object
+          additionalProperties: false
+          properties:
+            policy:
+              type: string
+              enum:
+              - 'OFF'
+              - OPTIONAL
+              - EXPECTED
+            revision:
+              type: integer
+              minimum: 0
+          required:
+          - policy
+          - revision
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - revision
+      - policy
+      - notice_version
+      - notice_in_force_at
+      - effective_at
+      - in_force
+      - data_mode
+      example:
+        revision: 2
+        policy: EXPECTED
+        notice_version: notice-2026.11
+        notice_in_force_at: '2026-11-01T00:00:00Z'
+        effective_at: '2026-11-15T12:00:00Z'
+        in_force:
+          policy: EXPECTED
+          revision: 2
+        data_mode: SYNTHETIC
+      description: The newest stored tracking policy version and the policy in force now (B-BR-EMP-469). revision 0
+        with OFF, null notice and null effective_at when nothing was recorded.
     EnterpriseFuelingSubmitPayload:
       type: object
       additionalProperties: false

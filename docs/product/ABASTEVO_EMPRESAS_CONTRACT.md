@@ -7568,3 +7568,151 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   `COMPLETED_WITH_ISSUES` at revision 2 with its answers unchanged, and the
   audit trail has the release. The author trying the same is refused
   `SELF_APPROVAL`.
+
+## EMP-GPS-002 prerequisite — Tracking policy command (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps-policy-command.md). Coordinator-assigned
+prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
+`org_tracking_policies`, so no organization could turn tracking on.
+
+- **B-BR-EMP-467 — Only a fresh organization administrator changes the
+  tracking policy.** The company route
+  `POST /v1/orgs/{org_id}/tracking/policy/change` requires the current
+  company proof with fresh authentication, `org.settings.manage` covering the
+  organization itself (OWNER and ADMIN; the catalog key that the tracking
+  specification names for the tracking policy), the organizations capability
+  and an `ACTIVE` organization. The body names `schema_version` 1, an
+  `operation_id`, the expected current `revision` (absent only while the
+  organization has no recorded version), the `policy` (`OFF`, `OPTIONAL`,
+  `EXPECTED`) and, for `OPTIONAL` and `EXPECTED`, the employee notice
+  (`notice_version`, `notice_in_force_at`). One accepted change writes, in one
+  transaction, the next insert-only policy version (revision + 1, effective at
+  the database clock), one immutable command receipt (actor account and
+  membership, request digest, resulting revision) and one audit event
+  `gps.policy.changed`. Another role (including `AUDITOR`), a member without
+  coverage and a stale or premature revision change nothing: `FORBIDDEN`
+  naming `org.settings.manage`, `CONFLICT`. Another organization, an unknown
+  organization and an account without a current membership are `NOT_FOUND`.
+  The same operation and digest returns the first result with
+  `replayed: true` and no second version or audit event; the same operation
+  with another body is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-468 — Tracking is enabled only with the employee notice in
+  force.** `OPTIONAL` and `EXPECTED` require a notice version
+  (`^[a-z0-9][a-z0-9._-]{0,63}$`) and the instant it entered into force,
+  which must be at or before the effective instant the database assigns to
+  the new version; a missing notice, a malformed version, a notice that is
+  not yet in force and any notice field sent with `OFF` are
+  `VALIDATION_FAILED` naming the field with a frozen code and write nothing.
+  The platform stores only the version identifier and instant that the
+  organization declares for its own employee notice (EDR-271); the notice
+  text is the organization's publication and is shown to the driver by
+  EMP-GPS-002/015, never stored or invented here. A new version governs new
+  sessions only; existing sessions keep the policy revision they opened under
+  and their stored data (BR-GPS-006). Policy `OFF` carries no notice.
+- **B-BR-EMP-469 — The policy read states the stored and the effective
+  policy.** `POST /v1/orgs/{org_id}/tracking/policy/read` requires
+  `org.settings.read` covering the organization (OWNER, ADMIN, FLEET_MANAGER,
+  SUPERVISOR, FINANCE, APPROVER, AUDITOR) and answers the current revision
+  (`0` with `OFF` and no notice when nothing was recorded), the stored policy,
+  notice version and in-force instant, the version's effective instant and the
+  policy in force now (the EMP-GPS-004 rule: `OFF` until a notice is in
+  force). `DRIVER` and the other roles are `FORBIDDEN` naming
+  `org.settings.read`. The read carries no session, member or location data.
+- **BUC-EMP-237 — An administrator turns tracking on.** After publishing the
+  employee notice, an owner or administrator reads the current policy, sets
+  `EXPECTED` with the notice version and its in-force instant on the read
+  revision, and from then on drivers' trips open tracking sessions under that
+  version; turning it `OFF` later stops new sessions and keeps what was stored.
+- **BUC-EMP-238 — The policy cannot be changed around its owners.** A
+  supervisor, a fleet manager, an auditor, a driver, another organization, a
+  stale revision, two administrators racing on one revision (one wins, the
+  other is `CONFLICT`) and a notice not yet in force all leave the policy
+  unchanged.
+
+## EMP-GPS-005 — Track processing: filtering, gaps, GPS distance and simplified geometry (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps005-track-processing.md).
+
+- **B-BR-EMP-461 — An ended session is processed by one fenced job.** When
+  a session's `ENDED` transition is stored, or a segment is stored for a
+  session that already ended, the tracking store queues one
+  `org-tracking-process` job in the same transaction; its payload names only
+  the organization and the session, and its de-duplication key names the
+  input (the session's stored segment and transition counts), so a resend
+  converges and a new input is a new job. The job runs in one
+  organization-scoped transaction that first holds its own queue row under
+  its lease token (a superseded lease writes nothing) and then the trip row
+  (the lock of the intake and of the trip finish). A session not stored in
+  the job's organization, and a session not ended yet, complete with no
+  effect.
+- **B-BR-EMP-462 — Fixes are filtered, counted and never edited.** In
+  instant order, a stored fix outside the trip's running time or the
+  session's recording periods, or whose coarse flag disagrees with its
+  period, is counted `OUTSIDE`; a precise fix whose accuracy is above 50 m is
+  counted `ACCURACY`; a precise fix whose speed implied from the previous
+  accepted precise fix is above 70 m/s is counted `SPEED`; a coarse fix is
+  accepted without those checks and is never measured (BR-GPS-007/017). The
+  device's own dropped counters (accuracy, stale, jump, mock) and the intake
+  counters (duplicates, outside the session, mock) of the session's segments
+  are summed into the summary. Raw fixes are never edited, reordered in
+  storage or deleted by processing (BR-GPS-023).
+- **B-BR-EMP-463 — Gaps are data with a reason and a detector.** Inside the
+  trip's `IN_PROGRESS` time — from its start until its finish, cancellation
+  or supervisor closure, pauses excluded, and until the session's end when the
+  trip has none stored — every interval without recording is a gap whose
+  reason is the session's cause (before the session opened `NOT_STARTED`;
+  after an early end its end cause), detected by the device when the driver
+  or the device reported it and by the server otherwise; inside a recording
+  period any interval longer than 180 s without an accepted fix (from the
+  period's start, between accepted fixes, until its end) is a `SIGNAL_LOST`
+  gap detected by the server. Gaps are ordered, never overlap, merge only
+  with an adjacent gap of the same reason and detector, and store start, end,
+  reason and detector (BR-GPS-024). Expected seconds are the whole seconds of
+  that time (floor), gap seconds the ceiling of the gaps' length bounded by
+  it, and coverage and quality are the EMP-GPS-001 classification (any
+  approximate recording period caps it at `APPROXIMATE`, BR-GPS-026).
+- **B-BR-EMP-464 — GPS distance is measured inside runs only.** When the
+  quality is not `INSUFFICIENT` and a precise run holds two accepted fixes,
+  the GPS distance is the sum, on a sphere of 6 371 008.8 m, of the
+  great-circle lengths between consecutive accepted precise fixes of one run
+  (one precise recording period split at every `SIGNAL_LOST` gap), a step
+  counted only once it reaches 10 m from the last counted fix, floored to
+  whole metres, with method `haversine-r6371008.8-step10-v1`
+  (BR-GPS-025). Nothing is added across a gap or from a coarse period; when no
+  precise run can be measured, or the quality is `INSUFFICIENT`, the distance
+  is absent, never zero.
+- **B-BR-EMP-465 — One insert-only summary revision records its basis.**
+  Each processed input stores one summary revision (method `gps-track-v1`)
+  with the input it names, the job and lease that wrote it, the database
+  processing instant, expected and gap seconds, coverage, quality, the filter
+  and intake counters, the count of `CLOCK_UNCERTAIN` segments (no boot
+  identity, or a wall base more than 2 s away from its boot's monotonic base;
+  instants are never rewritten), the gaps, the distance with its method and
+  the simplified geometry with its tolerance: every precise run of at least
+  two accepted fixes simplified with Douglas–Peucker at 20 m on a local
+  projection, the tolerance doubled until at most 1 000 vertices remain, kept
+  as integer arrays and a database-derived `MULTILINESTRING` of SRID 4326 whose
+  parts break at every gap; no geometry when the quality is `INSUFFICIENT`, no
+  run has two fixes or the run end points alone exceed 1 000 vertices. No
+  coordinate appears in the job payload, a log or an error.
+- **B-BR-EMP-466 — Retries converge and a stale job never overwrites.** The
+  database stores a summary only for an ended session, only when it names
+  exactly the stored input (segment and transition counts) under the trip
+  lock, only when that input is strictly newer than the current revision's
+  and at the next revision, and only when its fix, intake and device totals
+  are the session's own; a summary of an older or equal input, of another
+  session's fixes or of another organization is refused, and summaries are
+  never updated or deleted. A job whose input is already summarized, a job
+  run twice, two concurrent runs and a retried job converge on one revision
+  per input; a late batch makes a newer input whose revision supersedes the
+  previous one (BR-TRUTH-004), which stays stored.
+- **BUC-EMP-234 — A finished trip's track is summarized.** The driver
+  finishes the trip and the device ends the session; the job filters the
+  stored fixes, records the gaps, measures the runs, simplifies the line and
+  stores the summary with its quality, coverage and methods.
+- **BUC-EMP-235 — A late batch supersedes the summary.** Fixes collected
+  before the end arrive later; a new job writes the next revision over the
+  complete input and the earlier revision stays as history.
+- **BUC-EMP-236 — Retries, duplicates and races converge.** A redelivered
+  job, a job run twice, two workers on one session, a superseded lease and a
+  foreign organization's job leave one revision per input and nothing else.
