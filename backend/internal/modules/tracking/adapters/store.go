@@ -164,6 +164,10 @@ func (s *Store) RecordSessionTx(ctx context.Context, db syncapp.DBTX, scope kern
 			return storeError(err)
 		}
 	}
+	// EMP-GPS-005 (EDR-298): an ended session queues its processing.
+	if change.Transitions[len(change.Transitions)-1].State == domain.Ended {
+		return requestProcessing(ctx, q, scope, change.Session.ID)
+	}
 	return nil
 }
 
@@ -252,5 +256,6 @@ func (s *Store) InsertSegmentTx(ctx context.Context, db syncapp.DBTX, scope kern
 		b.Dropped.Accuracy, b.Dropped.Stale, b.Dropped.Jump, b.Dropped.Mock); err != nil {
 		return storeError(err)
 	}
-	return nil
+	// EMP-GPS-005 (EDR-298): a segment of an ended session is a new input.
+	return requestProcessing(ctx, q, scope, b.SessionID)
 }
