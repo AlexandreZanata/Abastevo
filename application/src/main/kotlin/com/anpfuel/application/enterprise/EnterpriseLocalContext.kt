@@ -16,7 +16,12 @@ interface EnterprisePersistence {
     suspend fun pending(partition: EnterprisePartition, limit: Int): List<EnterprisePendingOperation>
 }
 
-class EnterpriseLocalDenied : IllegalStateException("Enterprise local context unavailable")
+open class EnterpriseLocalDenied : IllegalStateException("Enterprise local context unavailable")
+/**
+ * EMP-OFFL-011 (B-BR-EMP-538): the exact signed contact answered ACCESS_ENDED for this partition. Its data is
+ * locked for every use except delivering its sealed unsent work intake-only; nothing has been removed yet.
+ */
+class EnterpriseAccessEndedLocked : EnterpriseLocalDenied()
 class EnterprisePersistenceUnavailable : IllegalStateException("Enterprise protected storage unavailable")
 class EnterpriseOperationReused : IllegalStateException("Enterprise operation reused")
 /** The managed device unlock must happen before this partition can be read or written. */

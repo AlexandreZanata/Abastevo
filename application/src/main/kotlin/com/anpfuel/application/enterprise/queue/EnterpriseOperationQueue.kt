@@ -116,7 +116,11 @@ class EnterpriseOperationDelivery(acknowledgements: List<OperationAcknowledgemen
     override fun toString(): String = "EnterpriseOperationDelivery(redacted)"
 }
 
-class EnterpriseQueueDeliveryFailure(val retryAfterMillis: Long? = null) : IllegalStateException("Enterprise operation delivery unavailable") {
+class EnterpriseQueueDeliveryFailure(
+    val retryAfterMillis: Long? = null,
+    /** EMP-OFFL-011 (EDR-348): a whole-response 403/404 asks for one exact contact; it is never a verdict. */
+    val revocationHint: Boolean = false,
+) : IllegalStateException("Enterprise operation delivery unavailable") {
     init { require(retryAfterMillis == null || retryAfterMillis >= 0) }
 }
 
@@ -125,8 +129,20 @@ fun interface EnterpriseOperationTransport {
 }
 
 class EnterpriseQueueDispatchResult(val attempted: Int = 0, val completed: Int = 0, val retryable: Int = 0,
-    val attention: Int = 0, val retryAfterMillis: Long? = null) {
+    val attention: Int = 0, val retryAfterMillis: Long? = null,
+    /** EMP-OFFL-011 (EDR-348): this delivery saw a revocation hint; the worker may ask for one exact contact. */
+    val revocationHint: Boolean = false) {
     override fun toString(): String = "EnterpriseQueueDispatchResult(redacted)"
+}
+
+/**
+ * EMP-OFFL-011 (EDR-348..350): what the worker's revocation step established for one partition. A null state means
+ * no verdict changed anything (no claim); [unsent] counts the sealed work still being delivered intake-only.
+ */
+class EnterpriseRevocationOutcome(val state: RevocationCleanupState? = null, val unsent: Int = 0) {
+    init { require(unsent >= 0 && (state == RevocationCleanupState.INTAKE_ONLY || unsent == 0)) }
+    override fun toString(): String = "EnterpriseRevocationOutcome(state=$state,unsent=$unsent)"
+    companion object { val NONE = EnterpriseRevocationOutcome() }
 }
 
 class EnterpriseQueueService(private val source: EnterpriseQueueSource, private val queue: EnterpriseOperationQueue,
@@ -279,6 +295,7 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             }
         }
         var floor: Long? = null
+        var hinted = false
         val acknowledgements = try {
             attempt.assertCurrent()
             val delivery = transport.deliver(attempt, selected.toList())
@@ -292,11 +309,13 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
         catch (denied: EnterpriseLocalDenied) { throw denied }
         catch (failure: Exception) {
             attempt.assertCurrent()
-            if (failure is EnterpriseQueueDeliveryFailure) floor = failure.retryAfterMillis
+            if (failure is EnterpriseQueueDeliveryFailure) { floor = failure.retryAfterMillis; hinted = failure.revocationHint }
             for (operation in selected) retainForRetry(operation, floor)
             return@guarded result(EnterpriseQueueDispatchResult(selected.size, completed.size, retryable = entries.size - attention.size - completed.size,
-                attention = attention.size, retryAfterMillis = remainingDelay.values.minOrNull()))
+                attention = attention.size, retryAfterMillis = remainingDelay.values.minOrNull(), revocationHint = hinted))
         }
+        // EMP-OFFL-011 (EDR-348): a late-intake answer only asks the worker for one exact contact.
+        hinted = acknowledgements.any(RevocationCleanup::hint)
         for ((index, ack) in acknowledgements.withIndex()) {
             val operation = selected[index]
             attempt.assertCurrent()
@@ -314,7 +333,7 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             catch (_: Exception) { retainForRetry(operation, floor, ack) }
         }
         result(EnterpriseQueueDispatchResult(selected.size, completed.size, entries.size - attention.size - completed.size,
-            attention.size, remainingDelay.values.minOrNull()))
+            attention.size, remainingDelay.values.minOrNull(), hinted))
         } finally {
             // Publication/retry processing is finished before an observer refreshes.
             // A retiring attempt can remove only its own progress ticket.

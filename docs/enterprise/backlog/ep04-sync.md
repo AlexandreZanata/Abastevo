@@ -225,7 +225,7 @@ suspended organization, Android presentation of the codes, production grants.
 - **Done when:** Context and logout tests pass with two accounts, two organizations and pending writes.
 
 ### EMP-OFFL-011 — Cleanup of revoked sessions and devices on next contact
-- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type APP · size S · state TODO
+- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type APP · size S · state LOCAL_DONE
 - **Objective:** Apply local cleanup after server revocation or expiration of approved offline access.
 - **Rules and use cases:** BR-OFFL-011, BR-OFFL-012, BR-OFFL-013, BR-OFFL-014, BR-IDN-038, BR-PRIV-018, UC-PRIV-03
 - **Depends on:** EMP-OFFL-003, EMP-IDN-015
@@ -239,6 +239,12 @@ suspended organization, Android presentation of the codes, production grants.
 - **Validation:** V-APP, V-SYNC, V-ISO, V-PRIV · migration: preserve unrelated partitions · rollback: keep revoked local data locked and preserve recovery evidence
 - **Risks and assumptions:** Offline key expiry requires the approved clock and device protections.
 - **Done when:** Revocation class, denied access and resumable local cleanup pass on isolated fixtures.
+
+[F4 revocation cleanup](../evidence/f4-offl011-revocation-cleanup.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-536..539, BUC-EMP-275..276 and
+EDR-348..350 precede behaviour; no server change or migration. Retained:
+native acceptance on the owned emulator (OWED), reboot re-anchoring of an
+intake-only partition, late attachments, suspension locking.
 
 ### EMP-OFFL-012 — Organization-state and plan-change handling for queued operations
 - **Meta:** module OFFL · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE

@@ -65,6 +65,17 @@ foreign identities, malformed wire and late replies never become wipe commands.
 Managed server policy remains unavailable until its owning AUTH/GOV source
 exists; no managed timeout is guessed.
 
+EMP-OFFL-011 applies those verdicts on next contact. The operation worker treats
+a whole-response 403/404 or a late-intake acknowledgement code only as a hint to
+ask the exact contact once for that partition's retained enrollment. ERASE
+erases that partition alone. LOCK writes the opaque Keystore marker
+`abastevo_enterprise_v2_ended_<token>`: records, feature reads/writes, new
+operations, status, review lookups and uploads are refused, while queue delivery
+(pending, entry, acknowledge, retry) keeps sending sealed unsent work through the
+EMP-OFFL-009 intake-only path. Under the vault lock the partition is erased once
+nothing is unsent or the server answered `INTAKE_WINDOW_CLOSED`; the marker is
+erased with it. ACTIVE, refusals and outages change nothing (EDR-348..350).
+
 The native request-start clock anchors validity conservatively through network
 and durable I/O. Same-boot elapsed time enforces expiry. Reboot, backward wall
 time or decreasing elapsed observations require fresh contact and a durable

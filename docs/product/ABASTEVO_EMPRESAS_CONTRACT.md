@@ -8852,3 +8852,70 @@ EMP-GPS-002 (the service and its session operations) and EMP-GPS-004 (the
   yet sealed; at the next opening the session is interrupted at the last
   recorded fix, the waiting fixes are sealed into a batch and queued, and the
   driver may resume; nothing is lost, duplicated or invented.
+
+## EMP-OFFL-011 — Cleanup of revoked sessions and devices on next contact (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-offl011-revocation-cleanup.md).
+
+- **B-BR-EMP-536 — The revocation class comes only from the exact signed
+  contact.** The device learns that a partition's enrollment was revoked,
+  and its class, only from the EMP-PRIV-003 signed device contact for that
+  exact account, origin, organization, membership and enrollment:
+  `LOST_OR_COMPROMISED` (verdict ERASE) or `ACCESS_ENDED` (verdict LOCK). A
+  whole-response 403 or 404 of the signed delivery plane and a late-intake
+  acknowledgement code (`ACCESS_ENDED_BEFORE_RECEIPT`, `MEMBERSHIP_ENDED`,
+  `INTAKE_WINDOW_CLOSED`, `DEVICE_REVOKED`) are only hints: the operation
+  worker then makes one exact contact for that partition and applies its
+  verdict. ACTIVE, a generic refusal, an outage and a foreign, malformed or
+  late answer change nothing. A disconnected device changes nothing and
+  claims nothing; its data stays under the offline validity of BR-PRIV-018
+  (30 days without contact, then the key is discarded).
+- **B-BR-EMP-537 — Cleanup touches only the revoked partition.** Locking and
+  erasure act on the one partition (account, origin, organization) whose
+  exact enrollment the verdict names. Another organization of the same
+  account, another account or origin on the same device and personal
+  storage keep their keys, files, queues and records.
+- **B-BR-EMP-538 — Access ended: locked for use, still delivering eligible
+  work.** After `ACCESS_ENDED` the partition is locked durably: no local
+  read, no feature write, no new operation, no review lookup and no
+  attachment upload. Its sealed unsent operations keep being delivered,
+  unchanged, through the EMP-OFFL-009 intake-only path with the normal
+  retry policy; an answer that is not final (`RETRY`, for example
+  `UNAVAILABLE` for a type without a held path) keeps the operation pending
+  and visible as pending. The partition is erased only when every operation
+  has a final acknowledgement, or once the server answered
+  `INTAKE_WINDOW_CLOSED` for that sealed period (the window never reopens and
+  the remaining operations would be refused; they are counted, not sent).
+  `LOST_OR_COMPROMISED` erases at once and the device never sends that
+  partition's work again (UC-PRIV-03: unsent records on that phone are
+  lost). The verdict never extends the partition's offline validity.
+- **B-BR-EMP-539 — Cleanup is durable, resumable and reported as it is.** The
+  erasure intent is persisted before any key or file is removed; an
+  interrupted cleanup leaves the partition denied (never readable, never
+  sent) and the existing maintenance retries it until every key and file is
+  verified gone. The device states one of: locked and still delivering N
+  records (`INTAKE_ONLY`), cleanup decided but not verified
+  (`CLEANUP_PENDING`), or removed (`CLEANED`, only after verified disposal).
+  The app never says data was removed while disconnected, before contact or
+  before the erasure completed. When a company selection meets a LOCK
+  verdict the app says that access to this company ended on this device,
+  that records saved before are still being sent for the company's review,
+  and that this company's data stays locked here and is removed after
+  sending; nothing is said to be removed yet.
+- **BUC-EMP-275 — Access ended while work is pending.** Ana is offboarded
+  while her phone, offline, holds three fuelings and one meter reading of
+  company A; she also belongs to company B. When the phone reconnects, the
+  worker's delivery gets late-intake answers and asks for an exact contact:
+  LOCK. Company A's data is locked at once (no list, no new record), the
+  reading is held `ACCESS_ENDED_BEFORE_RECEIPT`, the fuelings stay `RETRY`
+  `UNAVAILABLE` and pending, so nothing is removed. When the server answers
+  `INTAKE_WINDOW_CLOSED`, company A's partition is erased; company B and her
+  personal data are untouched.
+- **BUC-EMP-276 — Lost phone reconnects; restart during cleanup.** A manager
+  revokes Bruno's phone as lost. The phone's next delivery is refused as a
+  whole; the worker's exact contact answers ERASE and only that company's
+  partition is erased; its queued work is never sent again. If the app is
+  killed in the middle of the erasure, the partition stays denied after
+  restart, maintenance finishes the disposal, and only then does the state
+  become `CLEANED`. While the phone stays offline nothing changes and
+  nothing is claimed.

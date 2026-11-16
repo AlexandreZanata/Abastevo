@@ -510,6 +510,10 @@ fun EnterpriseContextScreen(
                     FreshContextSignIn(state, signIn)
                 }
             }
+            if (state.accessEndedLocked) Text(
+                stringResource(R.string.enterprise_protection_access_ended),
+                modifier = Modifier.testTag("enterprise-protection-access-ended").semantics { liveRegion = LiveRegionMode.Polite },
+            )
             if (state.unlockRequired) {
                 Text(stringResource(R.string.enterprise_protection_unlock_required))
                 Button(onClick = ::requestUnlock, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("enterprise-protection-unlock")) {
@@ -620,7 +624,8 @@ private fun ContextStatus(state: EnterpriseContextState, connected: Boolean, cat
         CircularProgressIndicator()
         Text(stringResource(R.string.enterprise_context_busy), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     }
-    state.error?.let { error -> Text(
+    // EMP-OFFL-011: an access-ended lock has its own message instead of the generic denial.
+    state.error?.takeUnless { state.accessEndedLocked }?.let { error -> Text(
         stringResource(when (error) {
             EnterpriseAccessError.ACCESS_DENIED -> R.string.enterprise_context_denied
             EnterpriseAccessError.SIGN_IN_REQUIRED, EnterpriseAccessError.FRESH_AUTH_REQUIRED -> R.string.enterprise_invitation_fresh_required

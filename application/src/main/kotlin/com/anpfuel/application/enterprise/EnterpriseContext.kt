@@ -29,6 +29,8 @@ data class EnterpriseContextState(
     val unlockRequired: Boolean = false,
     val erasedWorkAcknowledgementRequired: Boolean = false,
     val confirmationTarget: EnterpriseContextSummary? = null,
+    /** EMP-OFFL-011: the selection met an ACCESS_ENDED verdict; data stays locked, nothing removed yet. */
+    val accessEndedLocked: Boolean = false,
 ) {
     override fun toString(): String = "EnterpriseContextState(busy=$busy,confirmed=$selectionConfirmed,redacted)"
 }
@@ -154,6 +156,7 @@ class EnterpriseContextFlow(
             catch (failure: EnterpriseProtectionRefused) { protectionFailure(attempt, failure.error); return null }
             catch (_: EnterpriseUnlockRequired) { protectionFailure(attempt, EnterpriseAccessError.UNAVAILABLE, unlock = true); return null }
             catch (_: EnterpriseVaultUnrecoverable) { protectionFailure(attempt, EnterpriseAccessError.UNAVAILABLE, recovery = true); return null }
+            catch (_: EnterpriseAccessEndedLocked) { protectionFailure(attempt, EnterpriseAccessError.ACCESS_DENIED, accessEnded = true); return null }
             catch (_: EnterpriseLocalDenied) { protectionFailure(attempt, EnterpriseAccessError.STALE); return null }
             catch (_: Exception) { protectionFailure(attempt, EnterpriseAccessError.UNAVAILABLE); return null }
         }
@@ -170,12 +173,15 @@ class EnterpriseContextFlow(
         }
     }
 
-    private fun protectionFailure(attempt: Attempt, error: EnterpriseAccessError, unlock: Boolean = false, recovery: Boolean = false) {
+    private fun protectionFailure(attempt: Attempt, error: EnterpriseAccessError, unlock: Boolean = false, recovery: Boolean = false,
+        accessEnded: Boolean = false) {
         synchronized(monitor) {
             if (!retainedLocked(attempt)) return
             failureLocked(error)
             if (unlock || recovery) mutable.value = mutable.value.copy(unlockRequired = unlock,
                 erasedWorkAcknowledgementRequired = recovery, confirmationTarget = attempt.desired)
+            // EMP-OFFL-011 (B-BR-EMP-539): locked and still sending; nothing is said to be removed.
+            if (accessEnded) mutable.value = mutable.value.copy(accessEndedLocked = true)
         }
     }
 
