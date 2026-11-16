@@ -89,6 +89,10 @@ android {
         // EMP-GPS-002 rollback switch (EDR-323): hides the trip tracking card; queued session operations keep their delivery.
         buildConfigField("boolean", "ENTERPRISE_TRACKING_UI_ENABLED",
             providers.gradleProperty("enterpriseTrackingUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-TRIP-021 rollback switch (EDR-344): hides the missions inbox and the pause/resume/cancel actions; queued answers
+        // and commands keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_MISSION_UI_ENABLED",
+            providers.gradleProperty("enterpriseMissionUiEnabled").orElse("true").get().toBooleanStrict().toString())
         testInstrumentationRunner = if (enterpriseDeviceValidation) {
             "com.anpfuel.app.ui.enterprise.EnterpriseDeviceTestRunner"
         } else {

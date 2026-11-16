@@ -403,7 +403,7 @@ acceptance is owed (EDR-271).
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-ROUTE-004 — Navigation phase 1: open the existing in-app route and guidance for a trip destination
-- **Meta:** module ROUTE · phase F4 · cut - · priority P1 · type APP · size S · state TODO
+- **Meta:** module ROUTE · phase F4 · cut - · priority P1 · type APP · size S · state LOCAL_DONE
 - **Objective:** Open existing in-app guidance for an authorized trip destination.
 - **Rules and use cases:** BR-ROUTE-011, BR-ROUTE-012, BR-ROUTE-015
 - **Depends on:** EMP-TRIP-005
@@ -417,6 +417,15 @@ acceptance is owed (EDR-271).
 - **Validation:** V-APP, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 navigation hand-off](../evidence/f4-route004-navigation-handoff.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-16. "Navegar" on a mission of the
+EMP-TRIP-021 copy and on a trip whose start names that mission hands only the
+plan's free-text destination to the existing in-app route preview as its
+destination search (`MapRouteTarget.Address`, confirmed by the driver); a unit
+destination, a missing plan, a trip without mission and a mission no longer
+in the copy show why and open nothing; it records, queues and sends nothing
+and never opens another app. No server change, route or migration.
 
 ### EMP-ROUTE-005 — In-app route preview
 - **Meta:** module ROUTE · phase F5 · cut - · priority P1 · type APP · size M · state TODO

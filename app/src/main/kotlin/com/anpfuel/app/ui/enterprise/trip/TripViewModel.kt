@@ -16,7 +16,9 @@ import com.anpfuel.domain.enterprise.meter.ReadingFlag
 import com.anpfuel.domain.enterprise.tracking.TrackingDevice
 import com.anpfuel.domain.enterprise.tracking.TrackingSessionState
 import com.anpfuel.domain.enterprise.trip.TripAssetLabel
+import com.anpfuel.domain.enterprise.trip.TripCommand
 import com.anpfuel.domain.enterprise.trip.TripLogbookType
+import com.anpfuel.domain.enterprise.trip.TripMissionResponse
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import javax.inject.Named
@@ -89,6 +91,19 @@ class TripViewModel @Inject constructor(
         }
     fun markReady(tripId: String, renderedEpoch: Long, generation: Long) =
         action(renderedEpoch, generation) { flow.markReady(tripId, renderedEpoch, generation) }
+    /** EMP-TRIP-021: the planned trip of a confirmed mission; offline like every other save (B-BR-EMP-529). */
+    fun startMission(missionId: String, choice: EnterpriseAssetChoice, label: TripAssetLabel, departure: TripCapture, renderedEpoch: Long,
+        generation: Long, departureRunId: String? = null) =
+        action(renderedEpoch, generation) { flow.startMission(missionId, choice, label, departure, renderedEpoch, generation, departureRunId) }
+    /** EMP-TRIP-011 pause, resume or cancel; offline (B-BR-EMP-530). */
+    fun lifecycle(tripId: String, command: TripCommand, reason: String?, renderedEpoch: Long, generation: Long) =
+        action(renderedEpoch, generation) { flow.lifecycle(tripId, command, reason, renderedEpoch, generation) }
+    /** Accept or decline offline (B-BR-EMP-528). */
+    fun respond(missionId: String, response: TripMissionResponse, reason: String?, renderedEpoch: Long, generation: Long) =
+        action(renderedEpoch, generation) { flow.respond(missionId, response, reason, renderedEpoch, generation) }
+    /** "Atualizar missões" is an online action: without a connection it does nothing (BR-OFFL-017). */
+    fun refreshMissions(renderedEpoch: Long, generation: Long) =
+        action(renderedEpoch, generation, online = true) { flow.refreshMissions(renderedEpoch, generation) }
     /** EMP-DOC-004: seals an unsaved photo beside its record; offline like every other save (EDR-293). */
     fun attach(ownerOperationId: String, target: AttachmentTarget, draft: ReceiptDraft, renderedEpoch: Long, generation: Long) =
         action(renderedEpoch, generation) { flow.attach(ownerOperationId, target, draft, renderedEpoch, generation) }

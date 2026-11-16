@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-ROUTE-004 SCR-ROUTE-06; generated from one table by f4-logs/route004-scripts/gen_route_strings.py -->
+<resources>
+    <string name="enterprise_route_navigate">Navegar</string>
+    <string name="enterprise_route_not_recorded">Esta navegación no se registra en el viaje y no envía tu posición.</string>
+    <string name="enterprise_route_unsupported_unit">El destino es una unidad de la empresa; el mapa de la app no la ubica. Usa la búsqueda del mapa.</string>
+    <string name="enterprise_route_unsupported_no_plan">Sin destino planificado por la empresa.</string>
+    <string name="enterprise_route_unsupported_no_mission">Este viaje no tiene misión con destino.</string>
+    <string name="enterprise_route_unsupported_not_in_copy">Actualiza las misiones para ver el destino de este viaje.</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-ROUTE-004 SCR-ROUTE-06; generated from one table by f4-logs/route004-scripts/gen_route_strings.py -->
+<resources>
+    <string name="enterprise_route_navigate">ナビ開始</string>
+    <string name="enterprise_route_not_recorded">このナビは運行に記録されず、位置も送信しません。</string>
+    <string name="enterprise_route_unsupported_unit">目的地は会社の拠点のため、アプリの地図では表示できません。地図の検索を使ってください。</string>
+    <string name="enterprise_route_unsupported_no_plan">会社が計画した目的地はありません。</string>
+    <string name="enterprise_route_unsupported_no_mission">この運行には目的地のあるミッションがありません。</string>
+    <string name="enterprise_route_unsupported_not_in_copy">この運行の目的地を表示するにはミッションを更新してください。</string>
+</resources>

@@ -193,7 +193,8 @@ class TrackingBook private constructor(val membershipId: String, val enrollmentI
 }
 
 /** The trip facts that the device knows, from its own trip book. */
-enum class TrackingLocalTrip { IN_PROGRESS, FINISHED, START_REFUSED }
+/** EMP-TRIP-021 adds the device's paused and cancelled trips (EMP-TRIP-011 lifecycle commands). */
+enum class TrackingLocalTrip { IN_PROGRESS, FINISHED, START_REFUSED, PAUSED, CANCELLED }
 
 /**
  * The device's decision rules (EDR-322): a mirror of the intake's `Rebuild` and `Decide` over the EMP-GPS-001 session
@@ -205,6 +206,8 @@ object TrackingDecisions {
         TrackingLocalTrip.IN_PROGRESS -> TripState.IN_PROGRESS
         TrackingLocalTrip.FINISHED -> TripState.COMPLETED
         TrackingLocalTrip.START_REFUSED -> TripState.CANCELLED
+        TrackingLocalTrip.PAUSED -> TripState.PAUSED
+        TrackingLocalTrip.CANCELLED -> TripState.CANCELLED
     }
 
     fun facts(organizationId: String, tripId: String, driverMembershipId: String, state: TripState): TrackingTripFacts =

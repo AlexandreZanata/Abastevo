@@ -99,6 +99,8 @@ internal fun localTrip(trip: LocalTrip): TrackingLocalTrip = when (trip.state) {
     TripLocalState.IN_PROGRESS -> TrackingLocalTrip.IN_PROGRESS
     TripLocalState.FINISHED -> TrackingLocalTrip.FINISHED
     TripLocalState.START_REFUSED -> TrackingLocalTrip.START_REFUSED
+    TripLocalState.PAUSED -> TrackingLocalTrip.PAUSED
+    TripLocalState.CANCELLED -> TrackingLocalTrip.CANCELLED
 }
 
 private fun trackingBookOf(tx: EnterpriseQueueTransaction, attempt: EnterpriseQueueAttempt): TrackingBook {
@@ -132,6 +134,11 @@ internal object TrackingRules {
             local == null -> listOf(trip.startOperationId)
             fact is TrackingOperationFact.Event && fact.cause == TrackingCause.TRIP_COMPLETED ->
                 listOf(previous!!, requireNotNull(trip.finishOperationId)).sorted()
+            // EMP-TRIP-021: the suspension that follows a device pause and the end that follows a device cancellation depend
+            // on that command (the trip's latest lifecycle command); a refused start's end keeps its single dependency.
+            fact is TrackingOperationFact.Event && (fact.cause == TrackingCause.TRIP_PAUSED && trip.state == TripLocalState.PAUSED ||
+                fact.cause == TrackingCause.TRIP_CANCELLED && trip.state == TripLocalState.CANCELLED) ->
+                listOf(previous!!, trip.lifecycle.last().operationId).sorted()
             else -> listOf(previous!!)
         }
     }
@@ -454,7 +461,9 @@ class EnterpriseTrackingService(
 
     /**
      * The session follows the trip facts this device knows (B-BR-EMP-499): a finished trip ends it at the finish's own
-     * instant, a finally refused start ends it as cancelled. Null when there is nothing to follow.
+     * instant, a finally refused start ends it as cancelled. Null when there is nothing to follow. EMP-TRIP-021: a paused
+     * trip suspends a recording session (`TRIP_PAUSED`) and a cancelled trip ends it (`TRIP_CANCELLED`), each at the
+     * command's own instant and depending on it, as the server's FOLLOW does (BR-PRIV-006).
      */
     suspend fun follow(account: EnterpriseQueueAccountLease, partition: EnterprisePartition, tripId: String): TrackingSessionView? {
         val attempt = attempt(account, partition)
@@ -462,8 +471,18 @@ class EnterpriseTrackingService(
         val local = book(attempt, snapshot).session(tripId) ?: return null
         if (local.refused || local.state == TrackingSessionState.ENDED) return null
         val trip = trip(snapshot, tripId)
+        fun command(): com.anpfuel.domain.enterprise.sync.EnterpriseOperation =
+            snapshot.entries[trip.lifecycle.last().operationId]?.operation ?: throw com.anpfuel.application.enterprise.EnterprisePersistenceUnavailable()
+        var type = TrackingOperations.END
         val (cause, declared, deps) = when (trip.state) {
             TripLocalState.IN_PROGRESS -> return null
+            TripLocalState.PAUSED -> {
+                if (local.state != TrackingSessionState.RECORDING) return null
+                type = TrackingOperations.SUSPEND
+                val pause = command()
+                Triple(TrackingCause.TRIP_PAUSED, pause.declaration, listOf(local.lastOperationId, pause.operationId).sorted())
+            }
+            TripLocalState.CANCELLED -> command().let { Triple(TrackingCause.TRIP_CANCELLED, it.declaration, listOf(local.lastOperationId, it.operationId).sorted()) }
             TripLocalState.FINISHED -> {
                 val finish = snapshot.entries[trip.finishOperationId]?.operation ?: throw com.anpfuel.application.enterprise.EnterprisePersistenceUnavailable()
                 Triple(TrackingCause.TRIP_COMPLETED, finish.declaration, listOf(local.lastOperationId, finish.operationId))
@@ -472,7 +491,7 @@ class EnterpriseTrackingService(
                 listOf(local.lastOperationId))
         }
         val stored = write(attempt, snapshot, trip, { envelope ->
-            TrackingOperations.event(TrackingOperations.END, envelope, local.sessionId, local.tripId, cause.name, deps)
+            TrackingOperations.event(type, envelope, local.sessionId, local.tripId, cause.name, deps)
         }, declared)
         afterPeriod(attempt, local.sessionId, declared.occurredAt)
         return view(stored, snapshot(attempt).entries)
