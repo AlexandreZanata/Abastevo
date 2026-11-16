@@ -178,6 +178,13 @@ type Prepared struct {
 	ResponsibleActive, ProductAccepted                                    bool
 }
 
+// CostProjection stores the one FUELING expense of a fueling inserted in
+// the same intake transaction (EMP-EXP-002, EDR-287): a fueling never
+// commits without its cost, and a failure rolls both back.
+type CostProjection interface {
+	ProjectFuelingTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, fueling string, revision int64) error
+}
+
 // Store persists fuelings in the borrowed intake transaction.
 type Store interface {
 	AuthorEmployeeTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) (string, error)

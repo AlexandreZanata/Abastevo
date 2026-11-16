@@ -5,6 +5,8 @@ import (
 	"crypto/hmac"
 	"crypto/sha256"
 	"errors"
+	expensepg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/expense/adapters"
+	expenseapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/expense/application"
 	fleetpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/adapters"
 	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
 	fuelapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/application"
@@ -83,7 +85,15 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if !ok || meterAuthority == nil {
 		return app.ErrUnavailable
 	}
-	fuelingHandler, err := fuelpg.NewIntakeHandler((*orgpg.FuelingAuthority)(meterAuthority), meters, &fuelpg.Store{Allocations: assets})
+	// EMP-EXP-002 (EDR-287): every accepted fueling stores its one expense in
+	// the same transaction; the expense.submit owner records direct expenses
+	// with the same authority sources, asset locks and allocation port.
+	expenses := &expensepg.Store{Allocations: assets, NewID: jobs.NewUUIDv4}
+	fuelingHandler, err := fuelpg.NewIntakeHandler((*orgpg.FuelingAuthority)(meterAuthority), meters, &fuelpg.Store{Allocations: assets}, expenses)
+	if err != nil {
+		return err
+	}
+	expenseHandler, err := expensepg.NewIntakeHandler((*orgpg.ExpenseAuthority)(meterAuthority), meters, expenses)
 	if err != nil {
 		return err
 	}
@@ -122,7 +132,7 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	handlers := []app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse, report}
+	handlers := []app.Handler{meterHandler, fuelingHandler, expenseHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse, report}
 	// EMP-TRIP-011 (EDR-253): pause, resume and cancellation of the member's
 	// own trip at the expected revision; held commands use the same OFFL-008
 	// review items.
@@ -164,12 +174,19 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[meterKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup, protocol.AcceptedForReview: app.AtomicReview}
-	// EDR-175: no consumer exists until EXP-002 owns the expense projection.
+	// EDR-287: the fueling's expense is projected atomically, never by an
+	// asynchronous consumer.
 	fuelingKey := app.OperationKey{Type: fuelapp.OperationType, Schema: 1}
 	if _, exists := noAsync[fuelingKey]; exists {
 		return app.ErrUnavailable
 	}
 	noAsync[fuelingKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	// EMP-EXP-002 (EDR-289): a direct expense has no consumer and no held path.
+	expenseKey := app.OperationKey{Type: expenseapp.OperationType, Schema: 1}
+	if _, exists := noAsync[expenseKey]; exists {
+		return app.ErrUnavailable
+	}
+	noAsync[expenseKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
 	// EMP-TRIP-002/003/011 (B-BR-EMP-319, EDR-209, EDR-253): no trip consumer
 	// exists yet; held facts are same-transaction review items.
 	for _, kind := range append([]string{tripapp.StartOperationType, tripapp.FinishOperationType, tripapp.EventOperationType}, tripapp.LifecycleOperationTypes...) {

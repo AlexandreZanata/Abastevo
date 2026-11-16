@@ -30,6 +30,8 @@ backend/internal/modules/fueling/application
 backend/internal/modules/fueling/adapters
 backend/internal/modules/expense/domain
 backend/internal/modules/expense/domain/payable
+backend/internal/modules/expense/application
+backend/internal/modules/expense/adapters
 backend/internal/modules/budget/domain
 backend/internal/modules/document/domain
 backend/internal/modules/document/domain/fiscal
