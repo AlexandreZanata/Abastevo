@@ -8,9 +8,9 @@ import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
 
-/** Loads the same mission-v2 oracle as Go (EMP-TRIP-008/009, superseding v1); expectations are never computed here. */
+/** Loads the same mission-v3 oracle as Go (EMP-TRIP-008/009/023, superseding v2 and v1); expectations are never computed here. */
 class EnterpriseTripMissionVectorsTest {
-    private val corpusHash = "caf313daaee52b842e374ca091636f79a17b39d14f8728b6efa7f36d6572b95c"
+    private val corpusHash = "6b29bcbf3359066c553e371e1c054d2dba56632d99a1b05cc258fad45e1ef18c"
     private val wantCounts = mapOf("STATE" to 20, "COMMAND" to 15, "RESPONSE" to 8, "TRANSITION" to 62, "CREATE" to 29, "RESTORE" to 34,
         "ASSIGN" to 23, "RESPOND" to 32, "CANCEL" to 15, "LOAD" to 8, "PLAN_VALUE" to 50, "PLAN" to 21)
     private val errorCodes = TripMissionFailure.entries.map { it.name }.toSet()
@@ -128,7 +128,7 @@ class EnterpriseTripMissionVectorsTest {
     }
 
     @TestFactory fun allSharedTripMissionVectors(): List<DynamicTest> {
-        val rows = TripFixture.corpus("mission-v2.psv", corpusHash)
+        val rows = TripFixture.corpus("mission-v3.psv", corpusHash)
         assertEquals(317, rows.size)
         assertEquals(wantCounts, rows.groupingBy { it[1] }.eachCount())
         val codes = mutableSetOf<String>()

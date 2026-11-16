@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
+	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	guarded "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/adapters/http"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
@@ -33,6 +35,9 @@ const (
 	// MissionAssigneesPath lists the employees eligible for the mission
 	// (EMP-TRIP-022, EDR-304).
 	MissionAssigneesPath = MissionPrefix + "/{mission_id}/assignees/list"
+	// MissionReservePath requests the reservation of the mission's vehicle
+	// for its planned window (EMP-TRIP-023, EDR-266).
+	MissionReservePath = MissionPrefix + "/{mission_id}/reservations/request"
 )
 
 // MissionRecords accepts only the mission policies on their own targets: the
@@ -180,6 +185,21 @@ type missionCancelRequest struct {
 	missionCommandFields
 	Reason string `json:"reason"`
 }
+type missionReserveRequest struct {
+	missionCommandFields
+	Purpose string `json:"purpose"`
+}
+
+func (v *missionReserveRequest) UnmarshalJSON(raw []byte) error {
+	type plain missionReserveRequest
+	var in plain
+	if err := decodeStrict(raw, &in); err != nil {
+		return err
+	}
+	*v = missionReserveRequest(in)
+	return nil
+}
+
 type missionListRequest struct {
 	companyRequest
 	orgapi.Page
@@ -256,6 +276,17 @@ func missionMapped(err error) error {
 	if errors.As(err, &denied) {
 		return orgapi.MissingPermission(string(denied.Permission()))
 	}
+	// EMP-TRIP-023: a reservation request reports only the conflicting window.
+	var window fleetapp.ReservationConflict
+	if errors.As(err, &window) {
+		return orgapi.ReservationWindowConflict(window.From, window.To)
+	}
+	if errors.Is(err, fleetapp.ErrReservationConflict) {
+		return orgapi.ReservationConflict
+	}
+	if errors.Is(err, fleet.ErrInvalid) {
+		return orgapi.ValidationFailed
+	}
 	if code, ok := orgapi.Registered(err); ok {
 		return code
 	}
@@ -296,6 +327,9 @@ func MissionRule(action app.MissionAction, revision bool, success int) orgapi.Ru
 
 func missionAck(v app.MissionAck, replayed bool) map[string]any {
 	out := map[string]any{"mission_id": v.MissionID, "revision": v.Revision, "state": v.State, "replayed": replayed, "data_mode": "SYNTHETIC"}
+	if v.ReservationID != "" {
+		out["reservation_id"] = v.ReservationID
+	}
 	if v.AssigneeEmployeeID != "" {
 		out["assignee_employee_id"] = v.AssigneeEmployeeID
 	}
@@ -445,6 +479,18 @@ func RegisterMissions(router chi.Router, service app.MissionService, cookies com
 		}
 		return command(ctx, p, decision, app.MissionCommandInput{Kind: app.MissionVehicleCommand, OperationID: input.OperationID, MissionID: mission, ExpectedRevision: *input.Revision,
 			AssetID: input.AssetID, Reason: input.Reason})
+	}); err != nil {
+		return err
+	}
+	if err := guarded.Register(owned, MissionReservePath, gateway, MissionRule(app.MissionManage, true, 201), authorization, app.MissionPolicy(app.MissionManage), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionReserveRequest) (any, error) {
+		mission, err := missionPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if input.Revision == nil {
+			return nil, orgapi.Malformed
+		}
+		return command(ctx, p, decision, app.MissionCommandInput{Kind: app.MissionReserveCommand, OperationID: input.OperationID, MissionID: mission, ExpectedRevision: *input.Revision, Reason: input.Purpose})
 	}); err != nil {
 		return err
 	}

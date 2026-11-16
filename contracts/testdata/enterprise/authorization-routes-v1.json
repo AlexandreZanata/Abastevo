@@ -746,6 +746,7 @@
         "POST /v1/orgs/{org_id}/missions/{mission_id}/cancel",
         "POST /v1/orgs/{org_id}/missions/{mission_id}/plan",
         "POST /v1/orgs/{org_id}/missions/{mission_id}/read",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/reservations/request",
         "POST /v1/orgs/{org_id}/missions/{mission_id}/vehicle/change"
       ],
       "reason": ""

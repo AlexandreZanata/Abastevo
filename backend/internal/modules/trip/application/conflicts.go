@@ -60,7 +60,7 @@ func ConflictPolicy(write bool) access.Policy {
 
 // heldCodes are the held codes each trip owner keeps (B-BR-EMP-407).
 var heldCodes = map[string][]string{
-	StartOperationType:  {AssetBusy, AssetUnavailable, PermissionChanged},
+	StartOperationType:  {AssetBusy, AssetUnavailable, PermissionChanged, OrphanReference},
 	FinishOperationType: {TripAlreadyClosed},
 	EventOperationType:  {TripAlreadyClosed, StaleRevision},
 	SubmitOperationType: {StaleRevision},

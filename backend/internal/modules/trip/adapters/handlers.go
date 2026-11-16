@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	meter "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
@@ -16,13 +15,14 @@ import (
 
 type startHandler struct {
 	ports
-	availability fleetapp.StartAvailabilityPort
+	availability app.StartAvailability
 }
 type finishHandler struct{ ports }
 
 // NewStartHandler composes the trip.start owner from real ports only; the
-// FLEET-007 start decision is consulted under the asset lock.
-func NewStartHandler(authority app.Authority, readings app.Readings, availability fleetapp.StartAvailabilityPort, store app.Store) (syncapp.Handler, error) {
+// FLEET-007 start decision is consulted under the asset lock and the linked
+// start consumes its mission's reservation (EMP-TRIP-023).
+func NewStartHandler(authority app.Authority, readings app.Readings, availability app.StartAvailability, store app.Store) (syncapp.Handler, error) {
 	p := ports{authority: authority, readings: readings, store: store}
 	if !p.ready() || absent(availability) {
 		return nil, syncapp.ErrUnavailable
@@ -108,6 +108,25 @@ func (h *startHandler) Admit(ctx context.Context, db syncapp.DBTX, source syncap
 	return err
 }
 
+// mission answers the mission an admissible start executes (EMP-TRIP-023,
+// B-BR-EMP-412): the referenced mission locked under the root and asset
+// locks and eligible for this author, driver and asset, else "".
+func (h *startHandler) mission(ctx context.Context, db syncapp.DBTX, source syncapp.Source, v app.StartInput) (string, error) {
+	if v.MissionID == "" {
+		return "", nil
+	}
+	m, err := h.store.MissionForStartTx(ctx, syncapp.Borrow(db), source.Scope, v.MissionID)
+	switch {
+	case errors.Is(err, app.ErrNotFound):
+		return "", nil
+	case err != nil:
+		return "", syncapp.ErrUnavailable
+	case !app.MissionEligible(m, source.MembershipID, v.DriverID, v.AssetID):
+		return "", nil
+	}
+	return v.MissionID, nil
+}
+
 // startHold decides the held condition of an admissible start under the
 // root and asset locks; "" applies it (B-BR-EMP-313). The FLEET-007 start
 // decision (block, reservation for someone else, lifecycle, maintenance,
@@ -166,14 +185,24 @@ func (h *startHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 	if facts.AssetState == "DRAFT" || fleet.MainAssetAllowed(fleet.Kind(facts.AssetKind)) != nil || !facts.DriverActive || facts.ExistingOperation != "" || facts.HeldOperation != "" || !readingFits(v.Event, view) {
 		return malformed(), nil
 	}
-	decision, err := h.availability.StartDecisionDBTX(ctx, syncapp.Borrow(db), source.Scope, v.AssetID, source.MembershipID, v.Declared.OccurredAt)
+	mission, err := h.mission(ctx, db, source, v)
+	if err != nil {
+		return syncapp.Outcome{}, err
+	}
+	decision, err := h.availability.StartDecisionDBTX(ctx, syncapp.Borrow(db), source.Scope, v.AssetID, source.MembershipID, mission, v.Declared.OccurredAt)
 	if err != nil {
 		if errors.Is(err, syncapp.ErrSourceDenied) {
 			return syncapp.Outcome{}, err
 		}
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if code := startHold(disposition, facts, decision, v); code != "" {
+	code := startHold(disposition, facts, decision, v)
+	// EMP-TRIP-023 (B-BR-EMP-412): an otherwise accepted start naming a
+	// missing, foreign or ineligible mission is held with the link removed.
+	if code == "" && v.MissionID != "" && mission == "" {
+		code = app.OrphanReference
+	}
+	if code != "" {
 		review, err := h.store.HoldStartTx(ctx, syncapp.Borrow(db), source, op, command, code)
 		return held(review, code, err)
 	}
@@ -192,6 +221,16 @@ func (h *startHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 			err = syncapp.ErrUnavailable
 		}
 		return syncapp.Outcome{}, err
+	}
+	if mission != "" {
+		// EMP-TRIP-023 (B-BR-EMP-413/414): the link, the mission's START and
+		// the consumption of its qualifying reservation, in this transaction.
+		if err := h.store.LinkMissionTx(ctx, syncapp.Borrow(db), source, command); err != nil {
+			return syncapp.Outcome{}, syncapp.ErrUnavailable
+		}
+		if _, err := h.availability.FulfilMissionReservationDBTX(ctx, syncapp.Borrow(db), source.Scope, mission, v.TripID, v.AssetID, v.Declared.OccurredAt); err != nil {
+			return syncapp.Outcome{}, syncapp.ErrUnavailable
+		}
 	}
 	revision := int64(1)
 	return syncapp.Outcome{Result: protocol.Accepted, EntityRevision: &revision}, nil
@@ -223,7 +262,7 @@ func (h *startHandler) Confirm(ctx context.Context, db syncapp.DBTX, source sync
 		disposition, _, err := h.meterTarget(ctx, db, source, v.AssetID, v.DriverID, v.Event)
 		if err != nil || outcome.Result != protocol.Accepted {
 			if err == nil && outcome.Result == protocol.AcceptedForReview {
-				return h.checkHeld(ctx, db, source, op, outcome, outcome.Code == app.AssetBusy || outcome.Code == app.AssetUnavailable || outcome.Code == app.PermissionChanged)
+				return h.checkHeld(ctx, db, source, op, outcome, app.StartHeldCode(outcome.Code))
 			}
 			return err
 		}
@@ -240,7 +279,7 @@ func (h *startHandler) Confirm(ctx context.Context, db syncapp.DBTX, source sync
 			return denied(err)
 		}
 		if outcome.Result == protocol.AcceptedForReview {
-			return h.checkHeld(ctx, db, source, op, outcome, outcome.Code == app.AssetBusy || outcome.Code == app.AssetUnavailable || outcome.Code == app.PermissionChanged)
+			return h.checkHeld(ctx, db, source, op, outcome, app.StartHeldCode(outcome.Code))
 		}
 	}
 	if outcome.Result != protocol.Accepted {

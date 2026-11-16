@@ -179,3 +179,43 @@ func TestAvailabilityBlocksOnABlockingChecklistRun(t *testing.T) {
 		}
 	}
 }
+
+// EMP-TRIP-023 (B-BR-EMP-412/414, BR-FLEET-031): a confirmed reservation of a
+// mission admits the start that executes that mission (an eligible mission
+// reference) like a reservation naming the starter; the mission's assignee
+// without the reference, another mission's start and a start naming a
+// mission not reserved here stay held ASSET_UNAVAILABLE.
+func TestStartDecisionAdmitsTheReservingMissionsStart(t *testing.T) {
+	at := resAt(20)
+	reserved := confirmedFact(t, "res-1", "", 10, 130)
+	reserved.MissionID = "mission-1"
+	facts := fleet.AvailabilityFacts{Lifecycle: fleet.Active, Reservations: []fleet.ReservationFact{reserved}}
+	for _, c := range []struct {
+		name    string
+		starter fleet.Starter
+		admit   bool
+	}{
+		{"the mission's start without an assignment", fleet.Starter{EmployeeID: "emp-2", MissionID: "mission-1"}, true},
+		{"the mission's start with an assignment", fleet.Starter{EmployeeID: "emp-2", Assigned: true, MissionID: "mission-1"}, true},
+		{"the same member without the reference", fleet.Starter{EmployeeID: "emp-2", Assigned: true}, false},
+		{"another mission's start", fleet.Starter{EmployeeID: "emp-2", Assigned: true, MissionID: "mission-2"}, false},
+	} {
+		got, err := fleet.DecideStart(facts, c.starter, at, at)
+		if err != nil || got.Admitted != c.admit || !c.admit && got.Code != fleet.AssetUnavailable {
+			t.Fatalf("%s: %+v %v", c.name, got, err)
+		}
+	}
+	// Outside the reservation's hold the mission reference grants nothing: an
+	// unassigned starter is held as before.
+	if got, err := fleet.DecideStart(facts, fleet.Starter{EmployeeID: "emp-2", MissionID: "mission-1"}, resAt(140), resAt(140)); err != nil || got.Admitted || got.Code != fleet.AssetUnavailable {
+		t.Fatal("mission reference admitted an unassigned start outside its reservation", got, err)
+	}
+	if _, err := fleet.DecideStart(facts, fleet.Starter{EmployeeID: "emp-2", MissionID: " bad"}, at, at); !errors.Is(err, fleet.ErrInvalid) {
+		t.Fatal("malformed mission reference admitted")
+	}
+	bad := reserved
+	bad.MissionID = " bad"
+	if _, err := fleet.DecideStart(fleet.AvailabilityFacts{Lifecycle: fleet.Active, Reservations: []fleet.ReservationFact{bad}}, fleet.Starter{EmployeeID: "emp-2"}, at, at); !errors.Is(err, fleet.ErrInvalid) {
+		t.Fatal("malformed reservation mission admitted")
+	}
+}

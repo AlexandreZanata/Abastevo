@@ -21339,6 +21339,89 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/reservations/request:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionReservationRequest
+      summary: Request the reservation of the mission's vehicle
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        capability and trip.mission.manage covering the mission as stored (unit and vehicle). Requests, at the named
+        revision of a PLANNED, ASSIGNED, ACCEPTED or DECLINED mission that names a vehicle, one REQUESTED reservation of
+        that vehicle for the mission's planned window, linked to the mission, with no reserved employee and the 60-minute
+        no-show tolerance; the purpose is 1..280 scalars. The vehicle's due reservation outcomes are settled first. The
+        mission gains a RESERVE revision keeping its state, assignee, answer and plan; one trip.mission.reservation_requested
+        audit event, the mission command receipt and the fleet REQUEST receipt are written and the outcome job is queued.
+        A mission without a vehicle or a window that has already started is VALIDATION_FAILED; a stale revision, a DRAFT,
+        IN_PROGRESS or terminal mission is CONFLICT; an overlap with a confirmed reservation or a block is
+        RESERVATION_CONFLICT carrying only that window; an unknown or another organization's mission is NOT_FOUND.
+        Confirmation and cancellation stay on the fleet reservation routes under fleet.reservation.manage. The mission's
+        linked trip start consumes the confirmed reservation once (FULFILLED); a no-show is released once by the outcome
+        job. Same operation and digest returns the first result with replayed=true and no second audit event; another
+        digest is OPERATION_ID_REUSED (EMP-TRIP-023, B-BR-EMP-414).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionReservationRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008806
+              revision: 3
+              purpose: Entrega sintética no cliente
+      responses:
+        '201':
+          description: Private audited reservation request or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAck'
+              example:
+                mission_id: 7b0e2a54-0000-4000-8000-000000008901
+                revision: 4
+                state: ACCEPTED
+                assignee_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+                reservation_id: 7b0e2a54-0000-4000-8000-000000008951
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose:
     post:
       tags:
@@ -25420,6 +25503,32 @@ components:
         revision: 3
         asset_id: 7b0e2a54-0000-4000-8000-000000008202
         reason: Veículo em manutenção
+    EnterpriseMissionReservationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 1120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - purpose
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008806
+        revision: 3
+        purpose: Entrega sintética no cliente
     EnterpriseMissionCancelRequest:
       type: object
       additionalProperties: false
@@ -25560,6 +25669,8 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         asset_warning:
           $ref: '#/components/schemas/EnterpriseMissionWarning'
+        reservation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
         replayed:
           type: boolean
         data_mode:
