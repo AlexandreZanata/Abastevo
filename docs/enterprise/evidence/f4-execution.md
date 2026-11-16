@@ -1209,3 +1209,34 @@ were deduplicated. Build, vet (both tags), gofmt, `sqlc diff`, cmd/api,
 apicontract, tracking and trip unit tests and the focused PostGIS race tests
 `Auditor|AuthorizationMatrix|Track|Tracking|Closure|Close|OpenTrip|Offboarding`
 (with a disposable MinIO) green.
+
+### EMP-EXP-002 (F3 prerequisite of TRIP-020) — expense persistence and fueling projection: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-exp002-expense-persistence.md), commit `41adb3d6`, migration
+000244 (forced-RLS, insert-only `org_expenses`; usage functions from 000232 /
+000231 plus one line each). The fueling's expense is created inside the
+`fueling.submit` transaction (no consumer exists for the org-event job kind):
+category FUEL, paid and company amount equal to the fueling's paid total, its
+payer and snapshot, reporting day in the unit (else organization) zone,
+SUBMITTED revision 1; neither half can exist alone (a deferred check on
+`org_fuelings` and a composite foreign key) (EDR-287/288). DIRECT expenses
+through signed `expense.submit` schema 1 (exact keys `asset_id`, `category`,
+`paid_total`, `company_amount`, `payer`, `trip_id`; categories TOLL, PARKING,
+MAINTENANCE, LEASE, INSURANCE, FINE, OTHER under a named CHECK that EXP-003
+replaces; FUEL is MALFORMED; a `trip_id`, attachments, changed rights and
+post-disposal dates stay RETRY/UNAVAILABLE); `exp.expense.record` ORG covers the
+member's own expense on any asset, SELF only on assigned periods (EDR-289).
+A stale projection writes nothing; a newer or differing stored expense is never
+overwritten (EDR-290). Kotlin `ExpenseOperations` builder with the 40-row
+`expense/expense-submit-v1.psv`. Fuelings accepted before 000244 get their
+expense from an idempotent per-organization catch-up whose production trigger
+is not wired (only synthetic fuelings exist). RED application 6/7 and 76/77,
+PostGIS 21/25 and 12/27, contract 2/2, Kotlin 43/280 → GREEN; union 37
+packages 1124/8353 on the merged tree; untagged 229 packages; Kotlin
+enterprise 4138. 19 signed owners. Retained: catch-up trigger, FUEL-003/015,
+EXP-003/004/005/006, TRIP-020 link, DOC-004 receipts, WORK_ORDER origin,
+production grants.
+
+Integration (`a27a30f4`): the branch already contained `0912b48a`; clean
+merge; build, vet, gofmt, `sqlc diff`, check_plan green; proposed shared text
+applied (backend README, 09-architecture, fuelings §9, 10-offline-sync).

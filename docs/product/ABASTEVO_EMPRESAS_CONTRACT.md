@@ -7211,6 +7211,116 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   another unit, a platform staff account, another organization and a failing
   access log all get nothing; a driver reads only its own trips.
 
+## EMP-EXP-002 — Expense persistence, sync handlers and the fueling-to-expense projection (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-exp002-expense-persistence.md).
+
+- **B-BR-EMP-444 — One stored cost per origin, enforced by the database.**
+  `org_expenses` keeps the original revision-1 fact of each expense, insert
+  only, under its origin key (organization, kind, source): a `FUELING`
+  expense is keyed by its fueling, a `DIRECT` expense by its own identity
+  (EDR-131). The database refuses a second expense for one origin (the
+  unique origin key and the domain-model unique (organization, fueling)),
+  any origin kind other than `FUELING` and `DIRECT` (`WORK_ORDER` waits for
+  its maintenance owner; payment, reimbursement, card statement, advance,
+  payable, document and stock kinds are never stored as a cost), a `FUELING`
+  expense whose fueling is not a stored fueling of the same organization or
+  whose facts differ from it, a `DIRECT` expense that names a fueling, and
+  any update, delete or truncate. Amounts are exact integer centavos with
+  0 ≤ company ≤ paid ≤ 10^12. The stored review state is `SUBMITTED` at
+  revision 1 with source revision 1; decisions, returns, amendments and voids
+  belong to their review owners (FUEL-003 for fuelings, EXP-005 for direct
+  expenses).
+- **B-BR-EMP-445 — A fueling and its expense commit together.** Accepting a
+  `fueling.submit` stores, in the same intake transaction and after the
+  fueling, exactly one `FUELING` expense derived from the stored fueling
+  only (never from the device payload): category `FUEL`, paid amount and
+  company amount equal to the fueling's paid total (the discount is not a
+  cost; a partial company amount is a later review decision), the fueling's
+  payer, asset, author membership and employee, enrollment, operation and
+  payload digest, competence equal to the fueling's declared instant, unit
+  and cost-centre snapshot equal to the fueling's stored snapshot, and the
+  reporting day of that instant in the snapshot unit's zone or else the
+  organization's zone (BR-TIME-004). Neither half may exist alone: a fueling
+  inserted after migration 000244 cannot commit without its expense and an
+  expense cannot reference a fueling that is not stored; a failure before or
+  after either insert rolls both back and the operation stays
+  `RETRY`/`UNAVAILABLE` with nothing stored. Fuelings accepted before 000244
+  have no expense until the idempotent per-organization catch-up projects
+  them: each then has exactly one, and a second run changes nothing.
+- **B-BR-EMP-446 — The projection is idempotent and never overwrites.** The
+  projection names the fueling and the fueling revision it projects. Run for
+  a fueling whose expense already exists at that source revision it returns
+  the stored expense unchanged; a request for an older source revision than
+  the stored expense is stale and writes nothing; a newer source revision
+  stays unavailable until the fueling revision owners (FUEL-003/015) exist.
+  Review decisions, document links, payables, reimbursements and payments
+  never insert or change an expense row, so the recognized amount is counted
+  once: the EMP-EXP-001 totals over the stored expenses give one cost of the
+  fueling's paid total per fueling, `includes pending` while it is
+  `SUBMITTED`.
+- **B-BR-EMP-447 — The signed `expense.submit` (schema 1) records one direct
+  expense.** The entity is `expense` with the device's expense identity and
+  no expected revision; the competence is the envelope declaration. The
+  payload has exactly the keys `asset_id`, `category`, `paid_total`,
+  `company_amount`, `payer` and `trip_id`. The asset is required: it scopes
+  the expense with the asset's FLEET-005 unit and cost centre at the
+  competence instant and the reporting day follows from that unit's zone or
+  the organization's. Until the configured catalogue of EMP-EXP-003 exists
+  every organization has the v1 direct categories `TOLL`, `PARKING`,
+  `MAINTENANCE`, `LEASE`, `INSURANCE`, `FINE` and `OTHER`; `FUEL` is not a
+  direct category (a fuel cost is a fueling, EDR-013) and is `MALFORMED`,
+  another code of the key profile is a configured-catalogue form kept
+  `RETRY`/`UNAVAILABLE`, any other text `MALFORMED`. `paid_total` and
+  `company_amount` are canonical centavos with company ≤ paid; `payer` is
+  `COMPANY` or `EMPLOYEE`; a canonical `trip_id` (trip closing conference),
+  attachments, dependencies and soft references are recognised forms kept
+  `RETRY`/`UNAVAILABLE` with nothing stored; an unknown or missing key, a
+  non-canonical value, a `DRAFT` asset or an expense identity already used
+  by another operation is `MALFORMED`. An accepted expense is stored
+  `SUBMITTED` at revision 1 with one `ACCEPTED` ACK at entity revision 1.
+  Intake never consults the APPR-006 period gate (B-BR-EMP-266 precedent).
+- **B-BR-EMP-448 — Authority at receipt for direct expenses.** Only a
+  current enrolled operational device of the author records. History of
+  `exp.expense.record` (an `S` cell for every holder) follows EDR-118
+  continuity from the declared instant to the receipt: an `ORG` grant with a
+  positive rule covers the member's own expense on any asset of the
+  organization; a `SELF` grant covers it only while the asset is assigned to
+  the member (FLEET-006 periods); structural grants stay unsupported in the
+  signed intake. Never covered (for example `AUDITOR`, or a `SELF` member on
+  an asset never assigned to them) is `FORBIDDEN`; a missing or foreign
+  asset is `NOT_FOUND`; both refuse the whole response with nothing stored.
+  Changed rights or a competence at or after the asset's disposal store
+  nothing and stay `RETRY`/`UNAVAILABLE` until a held-expense owner exists. A
+  receipt replay needs current `exp.expense.read` over the stored record
+  (author, asset, stored unit and cost centre).
+- **B-BR-EMP-449 — Exact replay, isolation and history.** The same operation
+  id and digest returns the stored ACK byte for byte and creates no second
+  expense or audit; the same id with another digest is `REJECTED`
+  `OPERATION_ID_REUSED` and changes nothing; concurrent identical
+  deliveries leave exactly one expense. `org_expenses` is forced-RLS (no row
+  without an organization setting, none of another organization), refuses
+  update, delete and truncate even with grants, and uses composite
+  same-organization foreign keys; the asset, unit and cost-centre usage
+  sources list its keys as associations, never as current use.
+- **BUC-EMP-225 — One fueling, one cost (VAL-13, intake part).** Bruno's
+  fueling of 97 350 centavos paid from his own pocket is delivered, resent
+  twice and resent with another digest; twelve identical deliveries race.
+  The organization has one fueling and one `FUEL` expense of 97 350
+  (company 97 350, payer `EMPLOYEE`); its period figure is 97 350 including
+  pending and 0 approved, never 194 700; a second expense for the fueling
+  cannot be inserted in either order relative to the fueling's transaction.
+- **BUC-EMP-226 — Record a toll offline.** A driver assigned FR-001 records a
+  toll of R$ 12,50 offline; at the next connection the server stores one
+  `DIRECT` `TOLL` expense of 1 250 centavos with the vehicle's unit at that
+  instant and acknowledges it once; a resend returns the same ACK.
+- **BUC-EMP-227 — Prove the expense store on real PostGIS.** A foreign
+  fueling or asset, a second cost for one fueling (both orders), a partial
+  transaction in both directions, a stale projection, replay and
+  `OPERATION_ID_REUSED`, concurrent duplicates, wrong role and wrong scope,
+  forced RLS and insert-only history, and a populated upgrade from the 000237
+  head with injected failure, recovery and the catch-up run twice.
+
 ## EMP-GPS-002 prerequisite — Tracking policy command (2026-11-15)
 
 [Evidence](../enterprise/evidence/f4-gps-policy-command.md). Coordinator-assigned
