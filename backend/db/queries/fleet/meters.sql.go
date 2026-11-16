@@ -41,6 +41,154 @@ func (q *Queries) ActualInServiceAssetMeters(ctx context.Context, arg ActualInSe
 	return items, nil
 }
 
+const assetKindMeterRevisions = `-- name: AssetKindMeterRevisions :many
+SELECT m.id::text AS id,COALESCE(c.revision,0)::bigint AS revision,(c.org_id IS NOT NULL)::boolean AS projected
+FROM org_meters m LEFT JOIN org_meter_current_values c ON(c.org_id,c.meter_id)=(m.org_id,m.id)
+WHERE m.org_id=CAST($1::text AS uuid) AND m.asset_id=CAST($2::text AS uuid) AND m.kind=$3::text
+ORDER BY m.installed_at,m.installed_submicro,m.id
+`
+
+type AssetKindMeterRevisionsParams struct {
+	OrgID   string `json:"org_id"`
+	AssetID string `json:"asset_id"`
+	Kind    string `json:"kind"`
+}
+
+type AssetKindMeterRevisionsRow struct {
+	ID        string `json:"id"`
+	Revision  int64  `json:"revision"`
+	Projected bool   `json:"projected"`
+}
+
+// The projection revision of each of the asset's meters of one kind.
+func (q *Queries) AssetKindMeterRevisions(ctx context.Context, arg AssetKindMeterRevisionsParams) ([]AssetKindMeterRevisionsRow, error) {
+	rows, err := q.db.Query(ctx, assetKindMeterRevisions, arg.OrgID, arg.AssetID, arg.Kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssetKindMeterRevisionsRow
+	for rows.Next() {
+		var i AssetKindMeterRevisionsRow
+		if err := rows.Scan(&i.ID, &i.Revision, &i.Projected); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const assetKindSegmentChain = `-- name: AssetKindSegmentChain :many
+SELECT s.id::text AS id,s.meter_id::text AS meter_id,s.kind,s.opened_at,s.opened_submicro,
+ (CASE s.kind WHEN 'ROLLOVER' THEN 0 ELSE(SELECT r.value FROM org_meter_readings r WHERE(r.org_id,r.meter_id,r.id)=(s.org_id,s.meter_id,s.opening_reading_id)) END)::bigint AS open_value,
+ s.closed_at,s.closed_submicro,s.closing_value
+FROM org_meter_segments s JOIN org_meters m ON(m.org_id,m.id)=(s.org_id,s.meter_id)
+WHERE m.org_id=CAST($1::text AS uuid) AND m.asset_id=CAST($2::text AS uuid) AND m.kind=$3::text
+ORDER BY m.installed_at,m.installed_submicro,m.id,s.opened_at,s.opened_submicro
+`
+
+type AssetKindSegmentChainParams struct {
+	OrgID   string `json:"org_id"`
+	AssetID string `json:"asset_id"`
+	Kind    string `json:"kind"`
+}
+
+type AssetKindSegmentChainRow struct {
+	ID             string             `json:"id"`
+	MeterID        string             `json:"meter_id"`
+	Kind           string             `json:"kind"`
+	OpenedAt       pgtype.Timestamptz `json:"opened_at"`
+	OpenedSubmicro int16              `json:"opened_submicro"`
+	OpenValue      int64              `json:"open_value"`
+	ClosedAt       pgtype.Timestamptz `json:"closed_at"`
+	ClosedSubmicro int16              `json:"closed_submicro"`
+	ClosingValue   pgtype.Int8        `json:"closing_value"`
+}
+
+func (q *Queries) AssetKindSegmentChain(ctx context.Context, arg AssetKindSegmentChainParams) ([]AssetKindSegmentChainRow, error) {
+	rows, err := q.db.Query(ctx, assetKindSegmentChain, arg.OrgID, arg.AssetID, arg.Kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssetKindSegmentChainRow
+	for rows.Next() {
+		var i AssetKindSegmentChainRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.MeterID,
+			&i.Kind,
+			&i.OpenedAt,
+			&i.OpenedSubmicro,
+			&i.OpenValue,
+			&i.ClosedAt,
+			&i.ClosedSubmicro,
+			&i.ClosingValue,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const assetKindValidReadings = `-- name: AssetKindValidReadings :many
+SELECT r.id::text AS id,COALESCE((CASE WHEN r.origin='METER_REMOVAL' THEN r.segment_id ELSE(SELECT g.id FROM org_meter_segments g WHERE(g.org_id,g.meter_id)=(r.org_id,r.meter_id) AND(g.opened_at,g.opened_submicro)<=(r.occurred_at,r.occurred_submicro) AND(g.closed_at IS NULL OR(r.occurred_at,r.occurred_submicro)<(g.closed_at,g.closed_submicro)) ORDER BY g.opened_at DESC,g.opened_submicro DESC LIMIT 1) END),r.segment_id)::text AS segment_id,r.value,r.occurred_at,r.occurred_submicro,r.received_at
+FROM org_meter_readings r JOIN org_meters m ON(m.org_id,m.id)=(r.org_id,r.meter_id)
+WHERE m.org_id=CAST($1::text AS uuid) AND m.asset_id=CAST($2::text AS uuid) AND m.kind=$3::text
+AND COALESCE((SELECT s.state FROM org_meter_reading_states s WHERE(s.org_id,s.meter_id,s.reading_id)=(r.org_id,r.meter_id,r.id) ORDER BY s.revision DESC LIMIT 1),r.state)='VALID'
+ORDER BY r.occurred_at,r.occurred_submicro,r.received_at,r.id
+`
+
+type AssetKindValidReadingsParams struct {
+	OrgID   string `json:"org_id"`
+	AssetID string `json:"asset_id"`
+	Kind    string `json:"kind"`
+}
+
+type AssetKindValidReadingsRow struct {
+	ID               string             `json:"id"`
+	SegmentID        string             `json:"segment_id"`
+	Value            int64              `json:"value"`
+	OccurredAt       pgtype.Timestamptz `json:"occurred_at"`
+	OccurredSubmicro int16              `json:"occurred_submicro"`
+	ReceivedAt       pgtype.Timestamptz `json:"received_at"`
+}
+
+// The readings currently VALID with the segment B-BR-EMP-481 derives.
+func (q *Queries) AssetKindValidReadings(ctx context.Context, arg AssetKindValidReadingsParams) ([]AssetKindValidReadingsRow, error) {
+	rows, err := q.db.Query(ctx, assetKindValidReadings, arg.OrgID, arg.AssetID, arg.Kind)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []AssetKindValidReadingsRow
+	for rows.Next() {
+		var i AssetKindValidReadingsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.SegmentID,
+			&i.Value,
+			&i.OccurredAt,
+			&i.OccurredSubmicro,
+			&i.ReceivedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const closeMeterSegment = `-- name: CloseMeterSegment :execrows
 UPDATE org_meter_segments SET closed_at=$1::timestamptz,closed_submicro=$2::smallint,closing_kind=$3::text,
  closing_value=$4::bigint,closing_reading_id=CAST(NULLIF($5::text,'') AS uuid),closing_operation_id=CAST($6::text AS uuid),
@@ -541,6 +689,41 @@ func (q *Queries) ListAssetMeterIDs(ctx context.Context, arg ListAssetMeterIDsPa
 		arg.AfterID,
 		arg.RowLimit,
 	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const lockAssetKindMeters = `-- name: LockAssetKindMeters :many
+SELECT m.id::text AS id FROM org_meters m
+WHERE m.org_id=CAST($1::text AS uuid) AND m.asset_id=CAST($2::text AS uuid) AND m.kind=$3::text
+ORDER BY m.installed_at,m.installed_submicro,m.id FOR SHARE
+`
+
+type LockAssetKindMetersParams struct {
+	OrgID   string `json:"org_id"`
+	AssetID string `json:"asset_id"`
+	Kind    string `json:"kind"`
+}
+
+// EMP-METER-006: share-lock the asset's meters of one kind (every reading
+// change locks its meter for update). A locking statement keeps the snapshot
+// it started with for joined rows, so every read follows in later statements.
+func (q *Queries) LockAssetKindMeters(ctx context.Context, arg LockAssetKindMetersParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, lockAssetKindMeters, arg.OrgID, arg.AssetID, arg.Kind)
 	if err != nil {
 		return nil, err
 	}

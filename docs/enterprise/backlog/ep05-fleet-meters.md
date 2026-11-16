@@ -387,7 +387,7 @@ organization-wide suspect queue and the panel (EMP-METER-007).
 - **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15; [evidence](../evidence/f4-meter005-replacement-rollover.md). The commands shipped with migration 000251 (closures and removals need guarded updates). Retained: the maintained projection and usage query (EMP-METER-006), SCR-METER-04 and history of closed segments (EMP-METER-007), re-targeting late device readings that name a closed segment.
 
 ### EMP-METER-006 — Current-value projection and usage-between-instants query
-- **Meta:** module METER · phase F3 · cut - · priority P1 · type DB · size S · state TODO
+- **Meta:** module METER · phase F3 · cut - · priority P1 · type DB · size S · state LOCAL_DONE
 - **Objective:** Give other modules one maintained answer for "current reading" and "usage between two instants" that names the readings it used, so that consumption, maintenance and trip distance never compute from raw displayed values.
 - **Rules and use cases:** BR-METER-006, BR-METER-007, BR-METER-016, BR-TRUTH-003, BR-TRUTH-004, UC-METER-08
 - **Depends on:** EMP-METER-005
@@ -401,6 +401,7 @@ organization-wide suspect queue and the panel (EMP-METER-007).
 - **Validation:** V-SQL, V-ISO, V-IDEM, V-MONEY · migration: additive projection table, filled by the rebuild command · rollback: drop the use of the projection and fall back to the direct query; readings are untouched
 - **Risks and assumptions:** The projection is a convenience, never the source of truth; any doubt is settled by rebuilding from readings.
 - **Done when:** The rebuild-equals-incremental test passes on a fixture containing every example of the specification.
+- **Local checkpoint:** LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15; [evidence](../evidence/f4-meter006-current-value-projection.md). Migration 000252; the rebuild is `ops meter rebuild-projection`. Retained: consumption intervals, maintenance due computation and indicators as port consumers; recalculation consumers in production.
 
 ### EMP-METER-007 — Panel: meter history and corrections
 - **Meta:** module METER · phase F2 · cut - · priority P1 · type WEB · size S · state TODO

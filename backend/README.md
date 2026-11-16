@@ -1208,6 +1208,20 @@ ownership of `org_meters`, `org_meter_segments`, `org_meter_reading_states`,
 `REFERENCES ON org_audit_events, org_meter_readings`. Nothing here provisions
 live grants.
 
+### Meter current-value projection and usage port (EMP-METER-006)
+
+Migration252 adds the forced-RLS `org_meter_current_values`, written only by
+`SECURITY DEFINER` trigger functions owned by the migrator. The runtime role
+needs `SELECT ON org_meter_current_values` for `MeterStore.UsageBetween`; the
+operator role needs `EXECUTE ON FUNCTION org_meter_current_rebuild(uuid)` for
+`ops meter rebuild-projection --org <uuid>`. The migrator needs `SELECT,
+REFERENCES, TRIGGER ON org_meters, org_meter_segments, org_meter_readings`,
+`SELECT, TRIGGER ON org_meter_reading_states` and `SELECT, UPDATE ON
+organizations` (the rebuild locks the organization root). Existing meters have
+no projection until `ops meter rebuild-projection` runs for their organization
+(forced RLS lets no migration enumerate organizations); until then the usage
+port answers unavailable. Nothing here provisions live grants.
+
 ### Asset lifecycle (EMP-FLEET-003)
 
 Migration201 adds nullable acquisition/disposal columns to `org_assets` and the

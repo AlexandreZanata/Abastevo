@@ -8007,3 +8007,48 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   120 km flagged `POSSIBLE_ROLLOVER` on "Caminhão 11", sees the implied
   170 000 m and confirms; the reading becomes `VALID` in the new segment
   (example D).
+
+## EMP-METER-006 — Current-value projection and usage-between-instants query (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-meter006-current-value-projection.md).
+
+- **B-BR-EMP-487 — The current value is a maintained projection.** Every meter
+  has one projection row: its open segment (none once removed), the latest
+  currently `VALID` reading counting in that segment (B-BR-EMP-481) with its
+  value and instant (none when there is no such reading), and a revision equal
+  to the number of the meter's source facts (readings, history revisions,
+  segments, segment closures and the removal). The database writes it in the
+  transaction of every such fact, so intake, fuelings, trips, held reviews,
+  decisions, rollovers, replacements, resets and EMP-TRIP-015 amendment
+  supersessions all maintain it; a change of any fact raises the revision.
+  The projection is never the source of truth (BR-METER-006): a figure is
+  computed from readings, and any doubt is settled by a rebuild.
+- **B-BR-EMP-488 — Rebuild.** An operator rebuild deletes one organization's
+  projection rows and recomputes them from the readings in one transaction;
+  the rebuilt rows equal the incrementally maintained rows (values and
+  revisions) and a second rebuild changes nothing. The rebuild needs an
+  operator identity and changes no business fact.
+- **B-BR-EMP-489 — Usage between two instants.** A server port takes an asset,
+  a kind and two instants (`from` at or before `to`) and answers with the
+  B-BR-EMP-482 figure over the asset's meters of that kind, their segment
+  chain and their currently `VALID` readings: status (`OK` or
+  `INSUFFICIENT_DATA`), reason (`NO_READING_BEFORE`, `METER_GAP`), usage
+  (absent unless `OK`), both anchor readings that exist (identifier, value,
+  instant), the method version `meter-usage-v1` and the projection revision
+  (the sum of the revisions of the asset's meters of that kind) read with
+  them. It never interpolates. Instants
+  in reverse order are `VALIDATION_FAILED`; another organization's asset, or
+  an asset without a meter of that kind, is `NOT_FOUND`.
+- **B-BR-EMP-490 — Consistency and recalculation.** A usage answer reads
+  readings, history, segments and projection under a shared lock of the
+  asset's meters of that kind, which every reading change locks for update,
+  so a concurrent correction is either wholly before or wholly after it. A correction raises the projection revision in its own
+  transaction and, when consumers are composed, emits
+  `meter.usage.recalculated` once (EMP-METER-004); the projection itself needs
+  no event.
+- **BUC-EMP-248 — Ask for usage between two instants.** A module asks for the
+  odometer usage of an asset between a trip's start and finish and receives
+  the figure, both readings it used and the projection revision, or
+  `INSUFFICIENT_DATA` with the reason.
+- **BUC-EMP-249 — Rebuild the projection.** An operator suspects drift and
+  rebuilds one organization's projection; nothing changes when it was right.

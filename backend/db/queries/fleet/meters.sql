@@ -134,3 +134,34 @@ SELECT s.meter_id::text AS meter_id,s.id::text AS closed_segment_id,s.closing_ki
 FROM org_meter_segments s LEFT JOIN org_meters m ON m.org_id=s.org_id AND m.created_operation_id=s.closing_operation_id AND s.closing_kind='REMOVAL'
 JOIN org_meter_segments n ON n.org_id=s.org_id AND(n.meter_id=s.meter_id AND n.opened_operation_id=s.closing_operation_id OR n.meter_id=m.id AND n.kind='INSTALLATION')
 WHERE s.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND s.closing_operation_id=CAST(sqlc.arg(operation_id)::text AS uuid);
+
+-- name: LockAssetKindMeters :many
+-- EMP-METER-006: share-lock the asset's meters of one kind (every reading
+-- change locks its meter for update). A locking statement keeps the snapshot
+-- it started with for joined rows, so every read follows in later statements.
+SELECT m.id::text AS id FROM org_meters m
+WHERE m.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND m.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND m.kind=sqlc.arg(kind)::text
+ORDER BY m.installed_at,m.installed_submicro,m.id FOR SHARE;
+
+-- name: AssetKindMeterRevisions :many
+-- The projection revision of each of the asset's meters of one kind.
+SELECT m.id::text AS id,COALESCE(c.revision,0)::bigint AS revision,(c.org_id IS NOT NULL)::boolean AS projected
+FROM org_meters m LEFT JOIN org_meter_current_values c ON(c.org_id,c.meter_id)=(m.org_id,m.id)
+WHERE m.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND m.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND m.kind=sqlc.arg(kind)::text
+ORDER BY m.installed_at,m.installed_submicro,m.id;
+
+-- name: AssetKindSegmentChain :many
+SELECT s.id::text AS id,s.meter_id::text AS meter_id,s.kind,s.opened_at,s.opened_submicro,
+ (CASE s.kind WHEN 'ROLLOVER' THEN 0 ELSE(SELECT r.value FROM org_meter_readings r WHERE(r.org_id,r.meter_id,r.id)=(s.org_id,s.meter_id,s.opening_reading_id)) END)::bigint AS open_value,
+ s.closed_at,s.closed_submicro,s.closing_value
+FROM org_meter_segments s JOIN org_meters m ON(m.org_id,m.id)=(s.org_id,s.meter_id)
+WHERE m.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND m.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND m.kind=sqlc.arg(kind)::text
+ORDER BY m.installed_at,m.installed_submicro,m.id,s.opened_at,s.opened_submicro;
+
+-- name: AssetKindValidReadings :many
+-- The readings currently VALID with the segment B-BR-EMP-481 derives.
+SELECT r.id::text AS id,COALESCE((CASE WHEN r.origin='METER_REMOVAL' THEN r.segment_id ELSE(SELECT g.id FROM org_meter_segments g WHERE(g.org_id,g.meter_id)=(r.org_id,r.meter_id) AND(g.opened_at,g.opened_submicro)<=(r.occurred_at,r.occurred_submicro) AND(g.closed_at IS NULL OR(r.occurred_at,r.occurred_submicro)<(g.closed_at,g.closed_submicro)) ORDER BY g.opened_at DESC,g.opened_submicro DESC LIMIT 1) END),r.segment_id)::text AS segment_id,r.value,r.occurred_at,r.occurred_submicro,r.received_at
+FROM org_meter_readings r JOIN org_meters m ON(m.org_id,m.id)=(r.org_id,r.meter_id)
+WHERE m.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND m.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND m.kind=sqlc.arg(kind)::text
+AND COALESCE((SELECT s.state FROM org_meter_reading_states s WHERE(s.org_id,s.meter_id,s.reading_id)=(r.org_id,r.meter_id,r.id) ORDER BY s.revision DESC LIMIT 1),r.state)='VALID'
+ORDER BY r.occurred_at,r.occurred_submicro,r.received_at,r.id;

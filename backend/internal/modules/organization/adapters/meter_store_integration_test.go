@@ -39,6 +39,16 @@ func meterStore(t *testing.T, fx legalFixtureState) *fleetpg.MeterStore {
 	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT EXISTS(SELECT 1 FROM information_schema.columns WHERE table_name='org_meter_segments' AND column_name='closing_kind')`).Scan(&boundaries); err != nil {
 		t.Fatal(err)
 	}
+	// EMP-METER-006 reads its projection from 000252.
+	var projection bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_meter_current_values') IS NOT NULL`).Scan(&projection); err != nil {
+		t.Fatal(err)
+	}
+	if projection {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_meter_current_values TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 	if boundaries {
 		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT UPDATE(removed_at,removed_submicro,removal_operation_id) ON org_meters TO "+role+
 			";GRANT UPDATE(closed_at,closed_submicro,closing_kind,closing_value,closing_reading_id,closing_operation_id,closing_previous_reading_id,closing_implied_usage) ON org_meter_segments TO "+role); err != nil {

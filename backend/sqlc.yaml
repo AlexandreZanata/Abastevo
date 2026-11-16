@@ -713,6 +713,7 @@ sql:
       - db/migrations/000232_organization_trip_mission_vehicles.sql
       - db/migrations/000249_organization_trip_reservation_links.sql
       - db/migrations/000251_organization_meter_segments.sql
+      - db/migrations/000252_organization_meter_current_values.sql
     gen:
       go:
         package: fleet
