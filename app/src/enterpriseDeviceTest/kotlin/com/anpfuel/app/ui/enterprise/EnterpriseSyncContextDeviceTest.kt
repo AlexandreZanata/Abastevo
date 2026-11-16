@@ -1,6 +1,10 @@
 package com.anpfuel.app.ui.enterprise
 
 import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureViewModel
+import com.anpfuel.app.ui.enterprise.fueling.FuelingViewModel
+import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingService
+import com.anpfuel.application.enterprise.fueling.FuelingFlow
+import com.anpfuel.data.enterprise.fueling.ProtectedFuelingStore
 import com.anpfuel.app.ui.enterprise.trip.TripViewModel
 import com.anpfuel.data.enterprise.attachment.AndroidReceiptOriginals
 import com.anpfuel.application.enterprise.trip.EnterpriseTripService
@@ -108,6 +112,7 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var assetsModel: MyAssetsViewModel
             lateinit var tripModel: TripViewModel
             lateinit var receiptModel: ReceiptCaptureViewModel
+            lateinit var fuelingModel: FuelingViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
@@ -117,13 +122,16 @@ class EnterpriseSyncContextDeviceTest {
                 receiptModel = ReceiptCaptureViewModel(AndroidReceiptOriginals(InstrumentationRegistry.getInstrumentation().targetContext), false)
                 models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel); models.put("trips", tripModel)
                 models.put("receipts", receiptModel)
+                // EMP-FUEL-011: the fueling owner over the same protected store; no fueling action runs here.
+                fuelingModel = FuelingViewModel(graph.fuelingFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("fuelings", fuelingModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
                     MaterialTheme { EnterpriseContextScreen({ personal = true }, { sourceCalls.incrementAndGet() },
-                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel, receiptModel) }
+                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel) }
                 }
             }
             awaitTag(option(graph.a))
@@ -230,6 +238,7 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var assetsModel: MyAssetsViewModel
             lateinit var tripModel: TripViewModel
             lateinit var receiptModel: ReceiptCaptureViewModel
+            lateinit var fuelingModel: FuelingViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
@@ -239,12 +248,15 @@ class EnterpriseSyncContextDeviceTest {
                 receiptModel = ReceiptCaptureViewModel(AndroidReceiptOriginals(InstrumentationRegistry.getInstrumentation().targetContext), false)
                 models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel); models.put("trips", tripModel)
                 models.put("receipts", receiptModel)
+                // EMP-FUEL-011: the fueling owner over the same protected store; no fueling action runs here.
+                fuelingModel = FuelingViewModel(graph.fuelingFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("fuelings", fuelingModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
-                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel, receiptModel) }
+                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel) }
                 }
             }
             fun names() = assetsModel.state.value.snapshot?.assets?.map { it.asset.name }
@@ -397,6 +409,8 @@ class EnterpriseSyncContextDeviceTest {
         /** EMP-TRIP-005: the trip owner over the same protected store; no trip action runs in these methods. */
         val tripFlow = TripFlow(source, EnterpriseTripService(source, delivery::save, ProtectedTripStore(store), EnterpriseTripStartHints(),
             clock::read, { ZoneId.systemDefault() }), fence) { account, partition -> delivery.dispatch(account, partition) }
+        val fuelingFlow = FuelingFlow(source, EnterpriseFuelingService(source, delivery::save, ProtectedFuelingStore(store), { ZoneId.systemDefault() }),
+            fence) { account, partition -> delivery.dispatch(account, partition) }
         fun asset(name: String): String = """{"id":"${UUID.randomUUID()}","revision":1,"kind":"VEHICLE","usage_basis":"DISTANCE","state":"ACTIVE","name":"$name","fleet_number":"SYN-1","plate":"","catalog":"fuel-products-v1","products":["DIESEL_S10"],"meters":[],"assignment":{"kind":"PRIMARY","valid_to":null}}"""
         lateinit var first: EnterpriseOperation
         lateinit var second: EnterpriseOperation

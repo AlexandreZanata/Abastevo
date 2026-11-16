@@ -78,6 +78,8 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 	tripReviewGrants(t, x.f)
 	grantEmployeeTables(t, x.legalFixtureState)
 	documentGrants(t, x.deviceFixtureState)
+	// EMP-FUEL-011: the default runtime's fueling owner (and its EXP-002 expense) and the FUELING link resolver.
+	fuelingGrants(t, x.legalFixtureState)
 	role := pgx.Identifier{x.f.RuntimeRole}.Sanitize()
 	if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_events,org_trip_held_events,org_document_links TO "+role); err != nil {
 		t.Fatal(err)

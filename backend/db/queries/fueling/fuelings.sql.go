@@ -29,6 +29,25 @@ func (q *Queries) FuelingAuthorEmployee(ctx context.Context, arg FuelingAuthorEm
 	return employee_id, err
 }
 
+const fuelingDocumentAuthor = `-- name: FuelingDocumentAuthor :one
+SELECT author_membership_id::text AS author_membership_id FROM org_fuelings
+WHERE org_id=CAST($1::text AS uuid) AND id=CAST($2::text AS uuid)
+`
+
+type FuelingDocumentAuthorParams struct {
+	OrgID string `json:"org_id"`
+	ID    string `json:"id"`
+}
+
+// EMP-FUEL-011 (EDR-297): the authoring membership of one stored fueling, the
+// SELF subject of a FUELING document link.
+func (q *Queries) FuelingDocumentAuthor(ctx context.Context, arg FuelingDocumentAuthorParams) (string, error) {
+	row := q.db.QueryRow(ctx, fuelingDocumentAuthor, arg.OrgID, arg.ID)
+	var author_membership_id string
+	err := row.Scan(&author_membership_id)
+	return author_membership_id, err
+}
+
 const fuelingReferenceFacts = `-- name: FuelingReferenceFacts :one
 SELECT a.state AS asset_state,
  EXISTS(SELECT 1 FROM org_employee_identities e WHERE e.org_id=a.org_id AND e.id=CAST($1::text AS uuid) AND e.state='ACTIVE' AND e.merged_into IS NULL)::boolean AS responsible_active,

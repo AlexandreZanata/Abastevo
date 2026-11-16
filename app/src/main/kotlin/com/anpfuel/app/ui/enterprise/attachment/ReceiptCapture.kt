@@ -178,7 +178,7 @@ private fun attachmentRefusalText(refusal: AttachmentRefusal): Int = when (refus
 
 /** SCR-DOC-01: the original, its hint, keep or retake, and "Salvar no aparelho" only for an accepted original. */
 @Composable
-fun ReceiptCaptureCard(title: String, capture: ReceiptCaptureUi, busy: Boolean, onSave: (ReceiptDraft) -> Unit, onCancel: () -> Unit,
+fun ReceiptCaptureCard(title: String, capture: ReceiptCaptureUi, busy: Boolean, onSave: ((ReceiptDraft) -> Unit)?, onCancel: (() -> Unit)?,
     modifier: Modifier = Modifier) {
     val state = capture.state
     ReceiptContainer(modifier.testTag("enterprise-receipt-capture")) {
@@ -218,11 +218,12 @@ fun ReceiptCaptureCard(title: String, capture: ReceiptCaptureUi, busy: Boolean, 
             }
             Text(stringResource(R.string.enterprise_receipts_keep_or_retake), style = MaterialTheme.typography.bodySmall)
         }
-        Button(onClick = { state.draft?.let(onSave) }, enabled = !busy && !state.reading && state.draft != null,
+        // Embedded in a record's form (EMP-FUEL-011) the record's own save seals the photo after it.
+        if (onSave != null) Button(onClick = { state.draft?.let(onSave) }, enabled = !busy && !state.reading && state.draft != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("enterprise-receipt-save")) {
             Text(stringResource(R.string.enterprise_receipts_save))
         }
-        TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("enterprise-receipt-cancel")) {
+        if (onCancel != null) TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("enterprise-receipt-cancel")) {
             Text(stringResource(R.string.enterprise_receipts_cancel))
         }
     }

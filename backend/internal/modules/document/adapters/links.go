@@ -146,6 +146,8 @@ func (s *Store) link(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, acto
 		insert.HeldReadingID = reference
 	case app.BindIncident:
 		insert.IncidentReportID = reference
+	case app.BindFueling:
+		insert.FuelingID = reference
 	default:
 		return app.LinkView{}, false, app.ErrUnavailable
 	}

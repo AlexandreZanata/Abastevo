@@ -27,6 +27,10 @@ import com.anpfuel.application.enterprise.queue.EnterpriseReviewTransport
 import com.anpfuel.application.enterprise.sync.EnterpriseDeliveryActivity
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncFlow
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncStatusStore
+import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingProducer
+import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingService
+import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingStore
+import com.anpfuel.application.enterprise.fueling.FuelingFlow
 import com.anpfuel.application.enterprise.trip.EnterpriseTripProducers
 import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
@@ -43,6 +47,7 @@ import com.anpfuel.data.enterprise.fleet.EnterpriseReferenceHttpClient
 import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
+import com.anpfuel.data.enterprise.fueling.ProtectedFuelingStore
 import com.anpfuel.data.enterprise.trip.ProtectedTripStore
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
@@ -236,7 +241,9 @@ object EnterpriseModule {
      */
     @Provides
     @Singleton
-    fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry = EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints))
+    fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry =
+        // EMP-FUEL-011 adds the `fueling.submit` producer (EDR-295).
+        EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), EnterpriseFuelingProducer())
 
     /** The sealed trip book and the entries it names, never a plaintext table (EDR-242). */
     @Provides
@@ -256,6 +263,22 @@ object EnterpriseModule {
     fun tripFlow(source: EnterpriseQueueSource, service: EnterpriseTripService, fence: EnterpriseSessionFence,
         delivery: EnterpriseQueueService, receipts: EnterpriseReceipts): TripFlow =
         TripFlow(source, service, fence, receipts) { account, partition -> delivery.dispatch(account, partition) }
+
+    /** EMP-FUEL-011: the partition's retained `fueling.submit` entries, never a plaintext table (EDR-295). */
+    @Provides
+    @Singleton
+    fun fuelingStore(store: ProtectedEnterprisePersistence): EnterpriseFuelingStore = ProtectedFuelingStore(store)
+
+    @Provides
+    @Singleton
+    fun fuelingService(source: EnterpriseQueueSource, delivery: EnterpriseQueueService, store: EnterpriseFuelingStore): EnterpriseFuelingService =
+        EnterpriseFuelingService(source, { partition, operation -> delivery.save(partition, operation) }, store, { ZoneId.systemDefault() })
+
+    /** Each visible fueling owner is independent, like the trip owner; its receipts go through EMP-DOC-004. */
+    @Provides
+    fun fuelingFlow(source: EnterpriseQueueSource, service: EnterpriseFuelingService, fence: EnterpriseSessionFence,
+        delivery: EnterpriseQueueService, receipts: EnterpriseReceipts): FuelingFlow =
+        FuelingFlow(source, service, fence, receipts) { account, partition -> delivery.dispatch(account, partition) }
 
     @Provides
     @Singleton
