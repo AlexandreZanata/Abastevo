@@ -9510,3 +9510,48 @@ and the VAL-24 rehearsal stay owed.
   container settings with a delete patch (images untouched) and waits for the
   rollout; readiness and public reads return to the owner login, the
   organization routes answer `404`, and nothing stored is deleted.
+
+## EMP-REL-002 — Operator capability command (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-enterprise-activation.md#operator-capability-command).
+A follow-up of the runtime-role delivery above: the audited capability store
+(EMP-PLAT-005) had no production caller, so every organization stayed
+capability-off and its writes answered `ENTITLEMENT_REQUIRED`. This adds the
+operator path; it does not enable anything by itself.
+
+- **B-BR-EMP-560 — An operator changes an organization's capability only
+  through the audited capability service.** `ops enterprise capability set`
+  requires the operator identity as a canonical UUID (`--operator` or
+  `ANPFUEL_OPERATOR_ID`), the organization UUID, a registered capability code
+  (`organizations`), exactly one of `--enabled` or `--disabled`, a canonical
+  operation ID and the expected revision (0 for the first state). One change
+  writes the state and one audit event (`capability.enabled` or
+  `capability.disabled`, reason `operator.request`, actor = the operator)
+  atomically; the same operation with the same command is acknowledged as a
+  replay (with the current state) and writes nothing; the same operation with another
+  command is refused as a reused operation; a stale expected revision is
+  refused as a conflict with nothing changed; malformed input or an
+  unregistered capability is refused before any database work; an unknown
+  organization is refused as not found with nothing written. The command
+  never runs raw SQL.
+- **B-BR-EMP-561 — The command runs only as the ordinary runtime login.** It
+  opens the database named by `ANPFUEL_DATABASE_URL` in its environment —
+  inside the `api` container after activation that is the runtime DSN — and
+  refuses, before any read or write, a login that the organization role guard
+  refuses (the owner or any superuser, BYPASSRLS or table-owning login),
+  saying why. `ops enterprise capability show` reads the current state
+  (enabled and revision; no row reads as disabled at revision 0) through the
+  same service and the same refusal.
+- **B-BR-EMP-562 — The production API image ships the operator tool, which
+  grants nothing else.** The `api` image carries `/ops`. A capability change
+  is independent of `ANPFUEL_ENTERPRISE_ENABLED` (it may precede or follow the
+  switch), mounts no route, assigns no role and changes no membership;
+  disabling keeps every row and every authorized read and export
+  (BR-AUTH-009, VAL-24). Output names only the organization, the capability,
+  the state, the revision and whether the answer is a replay.
+- **BUC-EMP-287 — Turn a capability on or off for one organization.** The
+  coordinator runs `show` inside the `api` container, then `set` with a new
+  operation ID and the revision read, checks that a capability-gated write
+  now succeeds (or answers `ENTITLEMENT_REQUIRED` after disabling) and keeps
+  the operation ID, the resulting revision and the operator identity in the
+  receipt; a retry of the same command is safe.

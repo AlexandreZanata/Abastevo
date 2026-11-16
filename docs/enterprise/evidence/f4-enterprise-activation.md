@@ -205,11 +205,10 @@ default mode of the normal gates, where their expectations hold.
    startup. The rollout would never become ready (the previous pod keeps
    serving with `maxUnavailable: 0`). The runbook prints only the scheme as a
    pre-flight gate.
-2. **No production path enables the `organizations` capability.** The audited
-   store primitive exists, but no route or `ops` command reaches it, so every
-   organization created on the VPS stays capability-off and its writes answer
-   `ENTITLEMENT_REQUIRED`. The VPS smoke therefore stops at creation, settings
-   read and that refusal; the full flow is proven only in the test above.
+2. **No production path enabled the `organizations` capability** (at
+   `6efb4e94`). Resolved by the follow-up below: `ops enterprise capability`
+   in the `api` image; the coordinator confirmed read-only that the VPS R2
+   endpoint is `https`, so finding 1 does not stop this activation.
 3. **Any signed-in account can create a capability-off organization** under
    the synthetic DPA once the switch is on; organization name, unit name and
    the creator's membership are stored. Accepted inside the owner's EDR-272
@@ -270,8 +269,66 @@ agent lock, pre-flight (release carries the script for the live schema, R2
 scheme, owner superuser, PUBLIC without CREATE, revision recorded), verified
 backup with the agent's backup Job (`activation-*`), script as the owner,
 password with statement logging off, new secret key, strategic patch of both
-containers, rollout status, smoke, `permission denied` count, release;
+containers, rollout status, smoke (including the synthetic organization's
+capability enabled with `/ops`, a write proven, then disabled again),
+`permission denied` count, release;
 rollback by deleting the two entries; re-run after releases.
+
+## Operator capability command
+
+Follow-up commit on the same branch (coordinator request). Rules
+B-BR-EMP-560..562, BUC-EMP-287, decisions EDR-367/368; all pre-allocated IDs
+used; no migration; the runtime grant inventory is unchanged
+(`TestRuntimeScriptMatchesHead` still green).
+
+- Shape: `backend/cmd/ops/enterprise.go` (`parseEnterpriseArgs`,
+  `executeCapability`, `operatorAuthority`, `runEnterprise`), dispatch and
+  usage in `cmd/ops/main.go`, `enterprisesuite.CapabilityCodes()` (one list
+  for the API composition and the tool), `infra/docker/Dockerfile` builds
+  `cmd/ops` and copies `/ops` into the `api` image. The command composes the
+  existing `orgcapability` `Service` (operation ID, expected revision, audit
+  runner) with an operator authority port (Manage/Read only, organization
+  resolved through the existing root store); no SQL of its own.
+- RED (stubs): unit 2/2 top-level FAIL (`TestParseEnterpriseCapabilityArgs`,
+  `TestProductionAPIImageShipsTheOperatorTool`); integration 1/1 FAIL
+  (`TestEnterpriseCapabilityCommandOnTheRuntimeRole`). Logs
+  `activation-capability-red-*.jsonl`.
+- GREEN: `cmd/ops` 21/21 top-level PASS (20 untagged + the integration test,
+  with its subtest) under `-race -tags=integration`; `runtimegrants` 9/9,
+  `enterprisesuite` 3/3, `cmd/api` `TestFullProductionRouterEnterpriseContractAndDefaultOff`
+  and `TestRuntimeRoleServesProductionProcessAndEnterprise` PASS under
+  `-race`. Log `activation-capability-green-*.jsonl`.
+- Integration proof on real PostGIS, as the role provisioned only by the
+  script: absent switch reads disabled at revision 0; enable at revision 0 →
+  enabled, revision 1, one `capability.enabled` event with the operator UUID
+  as actor, reason `operator.request`, target the organization; the same
+  command again → replayed, no new event; the same operation with another
+  command → `ErrReused`; expected revision 0 again or 7 → `ErrConflict`,
+  nothing written; disable at revision 1 → revision 2 and one
+  `capability.disabled` event; an unknown organization → not found for show
+  and set, nothing written; the other fixture organization untouched; the
+  migration owner (superuser) login refused before any read or write, both
+  directly and through the real entry point; the real entry point
+  (`config.Load`, `ANPFUEL_DATABASE_URL`, operator from `ANPFUEL_OPERATOR_ID`)
+  prints exactly one line without the role or secret.
+- Unit refusals before any I/O: no subcommand, unknown group or action,
+  anonymous operator, non-UUID operator, missing, uppercase or zero org,
+  unknown or missing capability, state or operation flags on `show`, `set`
+  without a state or with both, missing or malformed operation ID, missing,
+  negative or textual expected revision, a `--reason` flag, positional
+  arguments; dispatch from `run`.
+- Packaging: `TestProductionAPIImageShipsTheOperatorTool` pins the builder
+  line and the `api` stage copy (non-root user, `/api` entrypoint unchanged);
+  `CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" ./cmd/ops`
+  builds a 12.6 MB static binary whose usage lists the command;
+  `scripts/check-security.sh` and `scripts/tests/test-security.sh` 11/11. The
+  image itself was not built here (disk: 17 GB free on the shared host; the
+  release workflow builds and signs it).
+- Gates: toolchain `gofmt` clean; `go build ./...`, `go vet` both tags PASS;
+  `staticcheck` both tags on `cmd/ops` and `enterprisesuite` clean;
+  `check_plan.py` 0 problems; `git diff --check` clean; untagged
+  `go test ./...` 232 packages ok, 0 FAIL (`activation-capability-untagged.log`); staged diff reviewed (fixed synthetic UUIDs
+  only, generated test secrets, no credentials).
 
 ## Retained
 
@@ -280,8 +337,8 @@ rollback by deleting the two entries; re-run after releases.
 - Regenerate `infra/db/runtime-role.sql` on the integrated tree whenever it
   carries migrations or SQL beyond `b17dc3d8` (one command; the test fails
   until then).
-- An audited operator path for the `organizations` capability (no production
-  route or command exists).
+- The first use of `/ops enterprise capability` on the VPS (runbook step 6)
+  and the image build that carries it (release workflow).
 - Wiring the grant convergence into the release pipeline (EDR-364); until
   then the documented re-run after releases whose script changed.
 - `identity_rate_windows` cleanup scheduling and measured production quota

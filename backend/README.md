@@ -217,6 +217,25 @@ fail in that mode (EDR-365). The VPS procedure and rollback are in the
 [activation runbook](../docs/operations/ENTERPRISE_ACTIVATION_RUNBOOK.md); with
 the switch on, `ANPFUEL_R2_ENDPOINT` must be HTTPS or absent.
 
+Operators turn an organization capability on or off only with
+`ops enterprise capability show|set` (B-BR-EMP-560..562, EDR-367/368), which
+composes the audited `orgcapability` service (operation ID, expected revision,
+replay, stale-revision conflict, one `capability.*` audit event with reason
+`operator.request` and the operator UUID as actor). It runs inside the `api`
+container (`kubectl exec … -c api -- /ops …`, the image ships `/ops`) with that
+container's runtime DSN and refuses a login the organization role guard
+refuses, so it never runs as the owner:
+
+```sh
+/ops enterprise capability show --org <uuid> --capability organizations --operator <uuid>
+/ops enterprise capability set --org <uuid> --capability organizations --enabled \
+  --operation-id <uuid> --expected-revision <n> --operator <uuid>
+```
+
+Its proof is `ANPFUEL_TEST_DATABASE_URL=… go test -tags=integration -run
+TestEnterpriseCapabilityCommandOnTheRuntimeRole ./cmd/ops` (script-provisioned
+role; the runtime inventory needs no change for it).
+
 ### Organization write admission (EMP-PLAT-014)
 
 Every orgapi.Rule.Write route must provide Gateway.WriteAdmission with a

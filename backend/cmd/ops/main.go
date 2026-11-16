@@ -52,6 +52,8 @@ func run(args []string, getenv func(string) string) error {
 		return runAdmin(args[1:], os.Stdout)
 	case "meter":
 		return runMeter(args[1:], getenv)
+	case "enterprise":
+		return runEnterprise(args[1:], getenv, os.Stdout)
 	case "-h", "-help", "--help", "help":
 		return errors.New(usage)
 	default:
@@ -78,6 +80,9 @@ const usage = `usage:
   ops evidence-url --case <id> --evidence-id <id> [--operator <id>]
   ops admin keygen
   ops meter rebuild-projection --org <uuid> [--operator <id>]
+  ops enterprise capability show --org <uuid> --capability organizations [--operator <uuid>]
+  ops enterprise capability set --org <uuid> --capability organizations --enabled|--disabled
+      --operation-id <uuid> --expected-revision <n> [--operator <uuid>]
 
 operator identity: --operator flag or ANPFUEL_OPERATOR_ID environment.
 no public admin path exists; every command appends audit history

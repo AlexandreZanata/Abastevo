@@ -4,7 +4,7 @@ Scope: namespace `abastevo-temp` (`ANPFUEL_ENV=staging`, public at
 `https://abastevo.com.br`). Authority: owner decision EDR-272 ("enable
 enterprise on the VPS", a manual change after the automatic deploy, with a
 written rollback and the owner's final confirmation). This runbook implements
-B-BR-EMP-556..559, BUC-EMP-285/286 and EDR-363..366; the source evidence is
+B-BR-EMP-556..562, BUC-EMP-285..287 and EDR-363..368; the source evidence is
 [f4-enterprise-activation](../enterprise/evidence/f4-enterprise-activation.md).
 It is not a release certification, does not accept EMP-REL-001/002 or M4 and
 does not authorize real-company data: verification uses synthetic
@@ -23,6 +23,7 @@ HTTP codes only.
 | Secret `abastevo-temp-secrets` | `ANPFUEL_DATABASE_URL` = owner DSN | same, plus `ANPFUEL_RUNTIME_DATABASE_URL` | may stay; `ANPFUEL_DATABASE_URL` is never touched |
 | Deployment `abastevo-temp-api`, containers `api` and `worker` | owner DSN through `envFrom`; switch unset | `env` `ANPFUEL_DATABASE_URL` from key `ANPFUEL_RUNTIME_DATABASE_URL`; `ANPFUEL_ENTERPRISE_ENABLED=true` | delete both entries |
 | Deploy agent Jobs (schema, backup, migrate), registry CronJob | owner DSN | unchanged (owner DSN) | — |
+| Synthetic smoke organization | absent | created, capability enabled (revision 1), proven, disabled again (revision 2); two audit events | stays as synthetic staging data |
 
 The deploy agent sets only images, pull policy, strategy and annotations, and
 its `rollout undo` targets the revision it recorded before its own image
@@ -49,6 +50,7 @@ WORK="$(mktemp -d)"; cd "$WORK"
 NS=abastevo-temp DEPLOY=abastevo-temp-api SECRET=abastevo-temp-secrets
 DBPOD=abastevo-temp-db-0 ROLE=abastevo_runtime BASE=https://abastevo.com.br
 SHA="$(jq -r .sha /var/lib/abastevo-deploy/current.json)"   # deployed release
+OPERATOR_ID=<canonical UUID of the operator, kept in the coordinator ledger>
 ```
 
 Hold the deploy agent for the whole operation; its timer runs then defer:
@@ -169,15 +171,35 @@ ORG="$(post -H "X-CSRF: $CSRF" --data "{\"schema_version\":1,\"operation_id\":\"
   "$BASE/v1/org-access/organizations/create" | jq -r .organization_id)"
 echo "organization $ORG"                                                  # a UUID
 post -H "X-CSRF: $CSRF" --data '{}' "$BASE/v1/orgs/$ORG/settings/read" | jq -c '.context.capability_enabled'   # false
-post -H "X-CSRF: $CSRF" --data "{\"schema_version\":1,\"operation_id\":\"$(op)\",\"name\":\"Synthetic refused unit\",\"code\":\"REFUSED\"}" \
-  "$BASE/v1/orgs/$ORG/units/create" | jq -r .error.code                  # ENTITLEMENT_REQUIRED
+unit() { post -H "X-CSRF: $CSRF" --data "{\"schema_version\":1,\"operation_id\":\"$(op)\",\"name\":\"Synthetic unit $1\",\"code\":\"$1\"}" "$BASE/v1/orgs/$ORG/units/create"; }
+unit REFUSED | jq -r .error.code                                          # ENTITLEMENT_REQUIRED
+# Operator capability command (BUC-EMP-287): the api container's /ops runs
+# with that container's runtime DSN; it refuses the owner login by design.
+capability() { kubectl -n "$NS" exec deploy/"$DEPLOY" -c api -- /ops enterprise capability "$@" \
+  --org "$ORG" --capability organizations --operator "$OPERATOR_ID"; }
+capability show                                         # ... enabled=false revision=0 replayed=false
+ENABLE_OP="$(op)"
+capability set --enabled --operation-id "$ENABLE_OP" --expected-revision 0    # ... enabled=true revision=1 replayed=false
+capability set --enabled --operation-id "$ENABLE_OP" --expected-revision 0    # same line with replayed=true (safe retry)
+post -H "X-CSRF: $CSRF" --data "{\"schema_version\":1,\"operation_id\":\"$(op)\",\"revision\":1}" \
+  "$BASE/v1/orgs/$ORG/organization/activate" | jq -r .state                 # ACTIVE
+unit SECOND | jq -r .unit_id                                              # a UUID: the write now succeeds
+DISABLE_OP="$(op)"
+capability set --disabled --operation-id "$DISABLE_OP" --expected-revision 1  # ... enabled=false revision=2 replayed=false
+unit THIRD | jq -r .error.code                                            # ENTITLEMENT_REQUIRED again
 unset SESSION CSRF; rm -f jar
+kubectl -n "$NS" exec "$DBPOD" -- psql -U "$OWNER_USER" -d "$DB_NAME" -tAc \
+  "SELECT action, actor_id, reason_code FROM org_audit_events WHERE org_id='$ORG' AND action LIKE 'capability.%' ORDER BY recorded_at"
+                                                        # capability.enabled|<operator>|operator.request, then capability.disabled
 kubectl -n "$NS" logs "$DBPOD" --since=15m | grep -c 'permission denied' || true   # 0
 ```
 
-Every organization created on the VPS stays capability-off until an audited
-operator path for the `organizations` capability exists (EDR-366); a write
-therefore answers `ENTITLEMENT_REQUIRED`, which this smoke expects.
+The synthetic organization ends capability-off (revision 2), so no
+organization is left enabled after the smoke (EDR-368). To enable it, or a
+named pilot organization once approved, run `capability show` and then
+`capability set --enabled` with a new operation ID and the revision shown. A
+stale revision answers a conflict and changes nothing; reusing an operation ID
+for another command is refused; the same command retried is a replay.
 
 ## 7. Release the agent and record
 
@@ -187,8 +209,9 @@ cd /; rm -rf "$WORK"
 ```
 
 Record in the coordinator ledger (no secrets): date, `$SHA`, revision before
-and after, backup name, the synthetic organization identifier, every smoke
-code and the `permission denied` count.
+and after, backup name, the synthetic organization identifier, the operator
+UUID, both capability operation IDs and revisions with the reason for the
+change, every smoke code and the `permission denied` count.
 
 ## Rollback
 
@@ -226,7 +249,6 @@ password and the secret do not change.
 
 ## Owed before real organizations
 
-An audited operator path to enable the `organizations` capability per
-organization; scheduling of `identity_rate_windows` cleanup (EMP-PLAT-014);
+Scheduling of `identity_rate_windows` cleanup (EMP-PLAT-014);
 measured production quota classes; EMP-REL-001 and the VAL-24 switch
 rehearsal; the M4 device matrix before any tracking (EDR-361/362).
