@@ -479,3 +479,51 @@ func (q *Queries) InsertChecklistRunRelease(ctx context.Context, arg InsertCheck
 	)
 	return err
 }
+
+const listChecklistRunQueue = `-- name: ListChecklistRunQueue :many
+SELECT r.id::text AS id FROM(
+ SELECT id,occurred_at,CASE WHEN outcome='BLOCKING' THEN 0 WHEN outcome_differs THEN 1 ELSE 2 END AS queue_group
+ FROM org_checklist_runs WHERE org_id=CAST($1::text AS uuid)) r
+WHERE $2::text='' OR r.queue_group>$3::int
+ OR(r.queue_group=$3::int AND(r.occurred_at<$4::timestamptz
+  OR(r.occurred_at=$4::timestamptz AND r.id>CAST(NULLIF($2::text,'') AS uuid))))
+ORDER BY r.queue_group,r.occurred_at DESC,r.id LIMIT $5::int
+`
+
+type ListChecklistRunQueueParams struct {
+	OrgID      string             `json:"org_id"`
+	AfterID    string             `json:"after_id"`
+	AfterGroup int32              `json:"after_group"`
+	AfterAt    pgtype.Timestamptz `json:"after_at"`
+	RowLimit   int32              `json:"row_limit"`
+}
+
+// EMP-CHECK-004 (EDR-328): the organization's runs in queue order after the
+// given key: the current outcome BLOCKING, then a disagreement held for
+// review, then every other run; the newest declared completion first; then
+// the identifier.
+func (q *Queries) ListChecklistRunQueue(ctx context.Context, arg ListChecklistRunQueueParams) ([]string, error) {
+	rows, err := q.db.Query(ctx, listChecklistRunQueue,
+		arg.OrgID,
+		arg.AfterID,
+		arg.AfterGroup,
+		arg.AfterAt,
+		arg.RowLimit,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []string
+	for rows.Next() {
+		var id string
+		if err := rows.Scan(&id); err != nil {
+			return nil, err
+		}
+		items = append(items, id)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}

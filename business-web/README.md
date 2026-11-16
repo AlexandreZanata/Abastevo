@@ -25,7 +25,7 @@ checks font provenance, preserves OFL notices and fingerprints the complete
 ES-module graph after rewriting imports. Fonts and brand assets are read-only
 inputs from landing/static/assets. No runtime dependency, remote font,
 inline script, service worker, persisted account proof or client data cache
-is supplied. Dist contains only 27 allowlisted static files. Credentials,
+is supplied. Dist contains only 29 allowlisted static files. Credentials,
 source maps, TypeScript and package metadata are excluded. No `_headers`
 file ships: Caddy ignored it and served it as a public file. The artifact
 check reads the served company policy from the staging web Caddyfile.
@@ -269,3 +269,37 @@ npm run build && python3 tests/missionboard.py
 ```
 
 [Executed evidence](../docs/enterprise/evidence/f4-trip022-mission-board.md).
+
+## Checklist and incident panel
+
+EMP-CHECK-004 adds SCR-CHECK-04/05 to the organization workspace, opened on
+demand. It lists the organization's checklist runs from
+`checklists/runs/list` (BLOCKING first, then runs whose outcome the server
+recalculated, as the server orders them) and the damage and incident queue
+`incidents/reports/list` (open reports first, blocking marks first), opens a
+run through its asset's run read or a report through its read, and always shows
+the asset's FLEET-007 `availability/read` as the server answered it, naming a
+`CHECKLIST_RUN` cause that is the opened run; a failed read is "not confirmed",
+never available. Release of a BLOCKING run and the handling steps (ciente,
+action, resolution note, dismissal reason, optionally a listed duplicate of the
+same asset) use the existing routes with schema 1, one immutable operation per
+decision and the revision read; `SELF_APPROVAL` is named and never retried,
+`CONFLICT` re-reads the record and its availability, `403`/`404` clear the
+panel. Photo content is offered only with the `doc.document.view_content`
+context hint and a `STORED` attachment, and only through the audited
+`content/access` + `content/read` path (`privateContent`, its own 8 MiB bound);
+the capability and bytes are never kept: the file is handed to the browser to
+save because the company CSP admits no `blob:`/`data:` images.
+
+`tests/checks.test.mjs` runs the actual parsers and controller against an
+in-memory synthetic server (self-release, hidden block, content permission,
+foreign report, conflict, exact bodies, transport allowlist and bounds).
+`tests/checkpanel.py` is a local-only Chromium check of the built DOM with
+intercepted synthetic routes; it needs no Go API or database and never targets
+a remote host:
+
+```sh
+npm run build && python3 tests/checkpanel.py
+```
+
+[Executed evidence](../docs/enterprise/evidence/f4-check004-checklist-incident-panel.md).

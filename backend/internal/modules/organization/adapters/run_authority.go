@@ -48,7 +48,8 @@ func (f *RunAuthority) ClassifyRunTx(ctx context.Context, db syncapp.DBTX, scope
 // RunCompanyAuthority proves the company run policies (EDR-285): the read on
 // the asset (AUTH-006 structure and FLEET-006 SELF assignee, as the
 // applicable read) and the release on the stored run (fresh proof, ACTIVE
-// root, structure through the run's stored asset, unit and cost centre).
+// root, structure through the run's stored asset, unit and cost centre); the
+// queue on the organization root exactly as the incident queue (EDR-328).
 type RunCompanyAuthority struct {
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
@@ -71,6 +72,12 @@ func (g *RunCompanyAuthority) CheckRunCompanyTx(ctx context.Context, tx pgx.Tx, 
 		return inner.checkTx(ctx, tx, scope, actor, member, target, checklists.RunCompanyPolicy(action), false, &companyAuthority{Structure: g.AssetStructure, Assignee: g.Assignee})
 	case checklists.RunRelease:
 		return inner.checkTx(ctx, tx, scope, actor, member, target, checklists.RunCompanyPolicy(action), true, &companyAuthority{Structure: g.RunStructure})
+	case checklists.RunQueue:
+		// EDR-328: exactly the incident queue, on the organization root only.
+		if target != scope.OrgID().String() {
+			return checklists.Handler{}, checklists.ErrUnavailable
+		}
+		return inner.checkTx(ctx, tx, scope, actor, member, target, checklists.RunCompanyPolicy(action), false, nil)
 	}
 	return checklists.Handler{}, checklists.ErrUnavailable
 }

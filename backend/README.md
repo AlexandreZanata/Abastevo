@@ -1584,6 +1584,19 @@ here): `SELECT, INSERT` on the three tables, `UPDATE(outcome, revision,
 updated_at)` on `org_checklist_runs`, and `SELECT` on the checklist template
 tables it reads.
 
+### Checklist run queue and the content hint (EMP-CHECK-004)
+
+`POST /v1/orgs/{org_id}/checklists/runs/list` pages every run of the
+organization under current (not fresh) `check.incident.manage` on the
+organization, exactly the incident queue's policy (an ORG grant; structural
+holders read runs through the run read of their assets). Items are the run
+read's projection; order: current outcome BLOCKING, then `review_required`,
+then the rest, newest declared completion first, then the run id; the sealed
+cursor carries that key and is bound to the route and limit. No migration and
+no grant beyond EMP-CHECK-002's. `contexts/read` now hints
+`doc.document.view_content` when an ORG assignment covers it (a read hint, not
+authority). Nothing here provisions live grants.
+
 ### Tracking policy and processing (EMP-GPS-002 prerequisite, EMP-GPS-005)
 
 Migration 247 adds the receipt table `org_tracking_policy_commands`; the policy

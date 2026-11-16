@@ -91,6 +91,7 @@ func TestFullProductionRouterEnterpriseContractAndDefaultOff(t *testing.T) {
 						"/v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable",
 						"/v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read",
 						"/v1/orgs/{org_id}/checklists/runs/{run_id}/release",
+						"/v1/orgs/{org_id}/checklists/runs/list",
 						"/v1/orgs/{org_id}/incidents/reports/list",
 						"/v1/orgs/{org_id}/incidents/reports/mine",
 						"/v1/orgs/{org_id}/incidents/reports/{report_id}/read",

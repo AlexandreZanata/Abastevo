@@ -98,6 +98,7 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/incidents/reports/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/checklists/runs/list",
         "POST /v1/orgs/{org_id}/checklists/runs/{run_id}/release",
         "POST /v1/orgs/{org_id}/incidents/reports/list",
         "POST /v1/orgs/{org_id}/incidents/reports/{report_id}/decide",

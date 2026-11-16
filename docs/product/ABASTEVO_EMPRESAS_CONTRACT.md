@@ -7796,3 +7796,92 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   changes nothing) and its composed HTTP route; the web tests prove a foreign
   or stale assignment is not offered, a conflict refreshes server state, an
   unconfirmed state is never shown as accepted and a `403` clears the board.
+
+## EMP-CHECK-004 — Panel: checklists, damages and incidents (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-check004-checklist-incident-panel.md).
+
+- **B-BR-EMP-506 — The organization's checklist runs are a server queue.**
+  `POST /v1/orgs/{org_id}/checklists/runs/list` lists, under current
+  `check.incident.manage` on the whole organization (read, not fresh; exactly
+  the incident queue's policy: an `ORG` grant covers it, a `UNIT`,
+  `COST_CENTRE`, `ASSET` or `SELF` grant does not, and `AUDITOR`, `DRIVER`,
+  `FINANCE` and `APPROVER` are `FORBIDDEN` naming the key), every run of the
+  organization with exactly the run read's projection (both outcomes, the
+  policy revisions, the flags, the issue and critical-issue positions, the
+  revision and the release instant; never a note, a photo, the reason or the
+  author's identity). Runs whose current outcome is `BLOCKING` come first,
+  then runs whose device and server outcomes differ (`review_required`), then
+  every other run; inside each group the newest declared completion comes
+  first, then the run identifier. The opaque cursor is bound to the caller,
+  the route and the limit (1..100). The read changes nothing; another
+  organization's runs are never listed.
+- **B-BR-EMP-507 — Document content is offered only with its own
+  permission.** `contexts/read` adds the hint `doc.document.view_content`
+  when a current `ORG`-scope assignment of the member covers it on the
+  organization (a read hint, independent of proof freshness and of the
+  organization being writable); a `UNIT` or `SELF` grant, an expired
+  assignment or a role without the key gives no hint. The hint is never
+  authority. The panel offers the content action of an attachment only with
+  that hint and only while the attachment is `STORED`; otherwise the row says
+  that a photo exists and shows its storage state. The action runs only on
+  the member's explicit request and only through the audited DOC-002/PRIV-005
+  path (`content/access`, then `content/read` with the returned capability,
+  which stays in memory for that one exchange); the bytes are handed to the
+  browser as a file the member saves and are never kept in panel state, the
+  page or browser storage. A `403` hides the action for the rest of the view.
+- **B-BR-EMP-508 — The asset block shown is the server's.** For an opened run
+  or report the panel reads the asset's FLEET-007 availability (availability,
+  every cause with its kind and record, missing sources, evaluation instant)
+  and shows it as read, naming a `CHECKLIST_RUN` cause that is the opened run.
+  It reads it again after every acknowledged release or handling step. The
+  block is never inferred from a run's outcome or from a report's mark: if
+  the availability read fails, the block is shown as not confirmed, never as
+  available. A report's `blocks_use` is shown as the reporter's declaration;
+  the asset block from reports is not applied by the server yet.
+- **B-BR-EMP-509 — Release and handling keep their contracts and history.**
+  The release of a `BLOCKING` run (fresh `check.incident.manage`, the run
+  revision read, a reason of 1..500 scalars) and the handling steps of a
+  report (`ACKNOWLEDGE` without a note; `TREAT` with the stated action;
+  `RESOLVE` with the resolution note; `DISMISS` with the reason, optionally as
+  a duplicate of another listed report of the same asset) use the existing
+  routes with schema 1, one immutable operation id and body per decision and
+  the revision read. An unknown outcome is retried only with the same id and
+  body. `SELF_APPROVAL` is shown as "another member must decide", keeps the
+  record shown and is never retried; `CONFLICT` clears the pending decision,
+  re-reads the record and its asset availability and shows the current
+  server state with the conflict; `FORBIDDEN` and `NOT_FOUND` clear every
+  private panel record (a foreign or vanished report leaves nothing of it on
+  screen); `FRESH_AUTH_REQUIRED` and `UNAUTHENTICATED` end the session view;
+  `VALIDATION_FAILED` keeps the input. A released run is shown with its
+  device, server and current outcomes, the unchanged issue positions and the
+  release instant from the server read; the panel never edits evidence.
+- **B-BR-EMP-510 — Isolation, freshness and privacy of the panel.** The
+  panel opens only on the member's request, shows each list and record with
+  the instant it was read (BR-TRUTH-006) and clears on a change of
+  organization, a refusal, sign-out or reload, discarding late responses.
+  Nothing is kept in browser storage; private responses must be `no-store`;
+  references sent are only those the server returned; no free identifier is
+  typed.
+- **BUC-EMP-258 — Release a blocked vehicle from the panel.** A fleet manager
+  opens the checklists: FR-001's `BLOCKING` departure run is first, item 2
+  critical; the vehicle is `BLOCKED` by that run (`CHECKLIST_RUN`). The
+  manager enters "Freios verificados na oficina" and releases; the panel
+  re-reads: the run is `COMPLETED_WITH_ISSUES` at revision 2 with the device
+  and server outcomes and the release instant, the vehicle `AVAILABLE` as the
+  server evaluated it. The run's author trying the same release gets "another
+  member must release it" (`SELF_APPROVAL`) and the run stays blocked.
+- **BUC-EMP-259 — Treat a damage report.** A manager opens the open reports,
+  opens a blocking damage with its description, history and a stored photo,
+  acknowledges it, records the action, resolves it with a note; each step
+  shows the new revision from the server. With `doc.document.view_content`
+  the manager saves the photo through the audited path; a supervisor without
+  it sees only "Foto anexada (armazenada)". A second handler at the same
+  revision sees the report already updated and decides again.
+- **BUC-EMP-260 — Prove the panel and its queue.** Real PostGIS proves the run
+  queue (order, pagination, `ORG`-only coverage, refusals, another
+  organization, the read changes nothing) and its composed HTTP route; the
+  domain and HTTP tests prove the content hint; the web tests prove that a
+  self-release surfaces `SELF_APPROVAL`, a block is never hidden, no content
+  action exists without the permission, a foreign report clears the panel and
+  a `CONFLICT` re-reads; a local Chromium check proves the DOM.

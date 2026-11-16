@@ -2,10 +2,12 @@ package http
 
 // EMP-CHECK-002 company routes (EDR-285): one run of an asset under
 // fleet.asset.read and the release of a blocking run under fresh
-// check.incident.manage.
+// check.incident.manage; EMP-CHECK-004 (EDR-328): the organization's run
+// queue under the incident queue's policy.
 
 import (
 	"context"
+	"fmt"
 
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
@@ -21,6 +23,7 @@ import (
 
 const RunReadPath = ChecklistPrefix + "/assets/{asset_id}/runs/{run_id}/read"
 const RunReleasePath = ChecklistPrefix + "/runs/{run_id}/release"
+const RunQueuePath = ChecklistPrefix + "/runs/list"
 
 // runResource resolves the path run as the protected record of a release.
 type runResource struct{}
@@ -37,6 +40,10 @@ func (runResource) Resolve(ctx context.Context, scope kernel.OrgScope, _ access.
 }
 
 type runReadRequest struct{ companyRequest }
+type runQueueRequest struct {
+	companyRequest
+	orgapi.Page
+}
 type runReleaseRequest struct {
 	commandFields
 	Reason *string `json:"reason"`
@@ -49,6 +56,15 @@ func (v *runReadRequest) UnmarshalJSON(raw []byte) error {
 		return err
 	}
 	*v = runReadRequest(in)
+	return nil
+}
+func (v *runQueueRequest) UnmarshalJSON(raw []byte) error {
+	type plain runQueueRequest
+	var in plain
+	if err := decodeChecklist(raw, &in); err != nil {
+		return err
+	}
+	*v = runQueueRequest(in)
 	return nil
 }
 func (v *runReleaseRequest) UnmarshalJSON(raw []byte) error {
@@ -66,6 +82,9 @@ func RunRule(action app.RunCompanyAction) orgapi.Rule {
 	policy := app.RunCompanyPolicy(action)
 	return orgapi.Rule{Permission: string(policy.Permission), Write: policy.Effect.Write(), Fresh: policy.Fresh, RequireRevision: action == app.RunRelease, CompanyOnly: true, Success: 200}
 }
+
+// runQueueBinding binds a sealed queue cursor to its page size.
+func runQueueBinding(limit int) string { return fmt.Sprintf("checklists.runs.queue.v1:%d", limit) }
 
 func ints(values []int) []int {
 	if values == nil {
@@ -115,8 +134,9 @@ func pathID(ctx context.Context, name string) (string, error) {
 // RegisterRuns mounts the two EMP-CHECK-002 routes: the read of a run on its
 // asset (the applicable-read authorization: asset structure and SELF
 // assignee) and the release on the stored run (structure through the run's
-// stored snapshot).
-func RegisterRuns(router chi.Router, service app.RunService, cookies company.Handler, gateway orgapi.Gateway, assets, runs access.Authorization) error {
+// stored snapshot); and the EMP-CHECK-004 queue on the organization (the
+// incident queue's authorization, no structure).
+func RegisterRuns(router chi.Router, service app.RunService, cookies company.Handler, gateway orgapi.Gateway, assets, runs, queue access.Authorization) error {
 	if !service.Enabled {
 		return nil
 	}
@@ -125,11 +145,54 @@ func RegisterRuns(router chi.Router, service app.RunService, cookies company.Han
 			return app.ErrUnavailable
 		}
 	}
+	if missing(queue.Source) || missing(queue.Capabilities) || missing(queue.Records) || queue.Now == nil {
+		return app.ErrUnavailable
+	}
 	if router == nil || missing(service.Repository) {
 		return app.ErrUnavailable
 	}
 	owned, gateway, err := organization.CompanyEntry(router, cookies, gateway)
 	if err != nil {
+		return err
+	}
+	if err := guarded.Register(owned, RunQueuePath, gateway, RunRule(app.RunQueue), queue, app.RunCompanyPolicy(app.RunQueue), templateRoot{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input runQueueRequest) (any, error) {
+		actor, err := incidentActor(ctx)
+		if err != nil {
+			return nil, err
+		}
+		normalized, err := input.Page.Normalize()
+		if err != nil {
+			return nil, orgapi.Malformed
+		}
+		raw, err := gateway.OpenCursor(p, RunQueuePath, runQueueBinding(normalized.Limit), normalized.Cursor)
+		if err != nil {
+			return nil, orgapi.Malformed
+		}
+		after, err := app.ParseRunQueueKey(raw)
+		filter := app.RunQueueFilter{After: after, Limit: normalized.Limit}
+		if err != nil || filter.Validate() != nil {
+			return nil, orgapi.Malformed
+		}
+		page, err := service.List(ctx, p.Scope, actor, decision, filter)
+		if err != nil {
+			return nil, incidentMapped(err)
+		}
+		items := make([]map[string]any, 0, len(page.Items))
+		for _, v := range page.Items {
+			item, err := projectRun(v)
+			if err != nil {
+				return nil, err
+			}
+			items = append(items, item)
+		}
+		next := ""
+		if page.Next != nil {
+			if next, err = gateway.SealCursor(p, RunQueuePath, runQueueBinding(normalized.Limit), page.Next.Cursor()); err != nil {
+				return nil, orgapi.Unavailable
+			}
+		}
+		return map[string]any{"items": items, "next_cursor": next, "data_mode": "SYNTHETIC"}, nil
+	}); err != nil {
 		return err
 	}
 	if err := guarded.Register(owned, RunReadPath, gateway, RunRule(app.RunRead), assets, app.RunCompanyPolicy(app.RunRead), assetResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, _ runReadRequest) (any, error) {

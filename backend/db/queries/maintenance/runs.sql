@@ -66,3 +66,16 @@ LEFT JOIN org_checklist_run_releases l ON(l.org_id,l.run_id)=(r.org_id,r.id)
 WHERE r.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND r.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND r.recheck_outcome='BLOCKING'
  AND r.occurred_at<=sqlc.arg(at)::timestamptz AND(l.recorded_at IS NULL OR sqlc.arg(at)::timestamptz<l.recorded_at)
 ORDER BY r.occurred_at,r.id;
+
+-- name: ListChecklistRunQueue :many
+-- EMP-CHECK-004 (EDR-328): the organization's runs in queue order after the
+-- given key: the current outcome BLOCKING, then a disagreement held for
+-- review, then every other run; the newest declared completion first; then
+-- the identifier.
+SELECT r.id::text AS id FROM(
+ SELECT id,occurred_at,CASE WHEN outcome='BLOCKING' THEN 0 WHEN outcome_differs THEN 1 ELSE 2 END AS queue_group
+ FROM org_checklist_runs WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid)) r
+WHERE sqlc.arg(after_id)::text='' OR r.queue_group>sqlc.arg(after_group)::int
+ OR(r.queue_group=sqlc.arg(after_group)::int AND(r.occurred_at<sqlc.arg(after_at)::timestamptz
+  OR(r.occurred_at=sqlc.arg(after_at)::timestamptz AND r.id>CAST(NULLIF(sqlc.arg(after_id)::text,'') AS uuid))))
+ORDER BY r.queue_group,r.occurred_at DESC,r.id LIMIT sqlc.arg(row_limit)::int;
