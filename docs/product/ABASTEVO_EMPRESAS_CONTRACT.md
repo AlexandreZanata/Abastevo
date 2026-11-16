@@ -8063,3 +8063,83 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   (fueling kept, receipt not saved), an attempt to link a receipt to another
   member's or another organization's fueling on the server, and the shared
   oracle rows that the intake refuses.
+
+## EMP-EXP-004 — App: add an expense with receipt (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-exp004-app-expense.md).
+
+- **B-BR-EMP-517 — The device builds the exact `expense.submit` the intake
+  reads.** The app produces only schema 1 of `expense.submit` through the
+  EMP-EXP-002 Kotlin builder (EDR-289): entity `expense` with a new device
+  identifier and no expected revision, no dependency, soft reference or
+  envelope attachment, and the exact six-key payload — the chosen asset, a
+  v1 direct category, the paid total and the company amount as exact
+  centavos texts, the payer and `trip_id` null. The registered producer
+  admits only an operation the device decoder reads back, inside the
+  protected write; the shared oracle `expense/expense-submit-v1.psv` pins the
+  bytes for both languages.
+- **B-BR-EMP-518 — An expense is saved durably in its creation partition.**
+  "Salvar despesa" queues the operation through the EMP-OFFL-003 protected
+  write of the selected organization's partition (account, origin,
+  organization, membership, enrollment); "Salvo no aparelho" appears only
+  after that write returns; a failed write says that nothing was saved and
+  keeps the form. Nothing else of the expense is stored: list and detail are
+  read back from the partition's retained `expense.submit` entries, so the
+  original scope and both amounts survive restart exactly as queued. Another
+  organization or account never lists or sends it.
+- **B-BR-EMP-519 — Entry is exact and offline.** The asset comes from the
+  EMP-FLEET-013 picker (implements excluded); the category is one of the
+  EMP-EXP-002 accepted direct categories (toll, parking, maintenance, lease,
+  insurance, fine, other — a fuel cost is a fueling, recorded in
+  "Abastecimentos"); "Valor pago" and "Valor para a empresa" are both
+  required, take reais with at most two decimals, a decimal comma or point
+  and no grouping, and are converted to integer centavos without rounding;
+  a company amount above the paid total, a third decimal, a grouping
+  separator, a currency sign or a value beyond the money profile is refused
+  before saving ("confira os valores") and nothing is saved; the payer
+  (company or employee) is an explicit choice. Nothing is recomputed.
+- **B-BR-EMP-520 — The receipt is a separate, optional photo linked to the
+  expense.** In the form, "Comprovante (opcional)" uses the EMP-DOC-004 sheet
+  (camera or import, legibility hint, keep or retake; synthetic images only
+  until OQ-04); not taking one is allowed. After the expense is saved, its
+  photo is sealed in a second protected write with target `EXPENSE` (the
+  expense identifier) and owner the `expense.submit` operation of the same
+  partition — a receipt can never name an operation of another organization
+  or account (`UNKNOWN_OPERATION`, nothing saved). If that second write fails
+  or is refused the expense stays saved and the screen says the receipt was
+  not saved, keeping the photo for another attempt; a receipt can also be
+  added later from the expense's detail. The photo is declared only after
+  the expense's final receipt (EDR-268/269) and links only to a stored
+  direct expense, through the new `EXPENSE` link kind of EMP-DOC-003 resolved
+  by the expense owner under `exp.expense.record` (the author's own expense;
+  another member's is `FORBIDDEN`; another organization's, a missing one or a
+  fueling's own expense `NOT_FOUND`). A link is evidence, never a cost: it
+  changes no amount and creates no expense; its progress is shown
+  separately and never changes the expense's state.
+- **B-BR-EMP-521 — Acceptance follows the server; rollback and scope.** The
+  expense shows "Salvo no aparelho" until its own final receipt: "Aceito pela
+  empresa" with "Aguardando aprovação" only from an `ACCEPTED` receipt, "Não
+  aceito" with the reason otherwise; a held expense (changed rights, after
+  disposal) stays saved and retried. No approval, return or decision is ever
+  made or shown as made on the device. `ENTERPRISE_EXPENSE_UI_ENABLED`
+  (default on) hides the entry; queued expenses and receipts keep their
+  delivery. No trip reference (`trip_id` stays null; EMP-TRIP-020 decides),
+  configured category (EMP-EXP-003) or real receipt is produced.
+- **BUC-EMP-264 — Record a toll offline with a receipt.** Bruno, with no
+  signal, opens "Despesas", chooses his truck, picks "Pedágio", enters
+  R$ 12,50 paid and R$ 12,50 for the company, paid by himself, photographs
+  the synthetic receipt and saves: "Despesa salva no aparelho com o
+  comprovante". The phone restarts; both are still saved. On reconnection the
+  expense becomes "Aceito pela empresa — aguardando aprovação"; the receipt
+  shows "Enviando" until it is stored ("Arquivo guardado pela empresa").
+- **BUC-EMP-265 — Without receipt now, receipt later.** Parking of R$ 8,00
+  paid by the company is saved without a photo; the receipt is added the next
+  morning from the expense's detail.
+- **BUC-EMP-266 — Negatives.** A failed protected write (nothing saved), an
+  expense of organization A never listed or sent under B, "12,345", "1.234,56"
+  or a company amount above the paid total (nothing saved), a receipt refused
+  locally (expense kept, receipt not saved), a receipt naming an operation of
+  another partition, an attempt to link a receipt to another member's,
+  another organization's or a fueling's expense on the server, a saved
+  expense never shown as accepted before its receipt, and the shared oracle
+  rows that the intake refuses.

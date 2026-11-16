@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-EXP-004 SCR-EXP-01; generated from one table by f4-logs/exp004-scripts/gen_expense_strings.py -->
+<resources>
+    <string name="enterprise_expenses_title">経費</string>
+    <string name="enterprise_expenses_home_copy">通信がなくても、通行料、駐車料金などの車両費用を領収書付きで記録できます。</string>
+    <string name="enterprise_expenses_open_list">経費を開く</string>
+    <string name="enterprise_expenses_back_home">会社に戻る</string>
+    <string name="enterprise_expenses_back_list">経費に戻る</string>
+    <string name="enterprise_expenses_synthetic_notice">テスト段階：合成データと画像のみ。</string>
+    <string name="enterprise_expenses_new">経費を記録</string>
+    <string name="enterprise_expenses_empty">この端末にはまだこの会社の経費がありません。</string>
+    <string name="enterprise_expenses_loading">この端末に保存された経費を読み込んでいます…</string>
+    <string name="enterprise_expenses_unavailable">現在この端末の経費を読み込めません。保存済みの記録は保持されます。</string>
+    <string name="enterprise_expenses_retry">再試行</string>
+    <string name="enterprise_expenses_open">経費を開く</string>
+    <string name="enterprise_expenses_form_title">新しい経費</string>
+    <string name="enterprise_expenses_asset_chosen">車両：%1$s</string>
+    <string name="enterprise_expenses_change_asset">車両を変更</string>
+    <string name="enterprise_expenses_category">経費の種類</string>
+    <string name="enterprise_expenses_category_toll">通行料</string>
+    <string name="enterprise_expenses_category_parking">駐車料金</string>
+    <string name="enterprise_expenses_category_maintenance">整備</string>
+    <string name="enterprise_expenses_category_lease">リース</string>
+    <string name="enterprise_expenses_category_insurance">保険</string>
+    <string name="enterprise_expenses_category_fine">罰金</string>
+    <string name="enterprise_expenses_category_other">その他</string>
+    <string name="enterprise_expenses_paid">支払総額（R$）</string>
+    <string name="enterprise_expenses_company">会社負担額（R$）</string>
+    <string name="enterprise_expenses_company_hint">支払総額まで。</string>
+    <string name="enterprise_expenses_payer">支払った人</string>
+    <string name="enterprise_expenses_payer_company">会社</string>
+    <string name="enterprise_expenses_payer_employee">自分</string>
+    <string name="enterprise_expenses_receipt_optional">領収書（任意）</string>
+    <string name="enterprise_expenses_receipt_title">経費の領収書</string>
+    <string name="enterprise_expenses_add_receipt">領収書を追加</string>
+    <string name="enterprise_expenses_save">経費を保存</string>
+    <string name="enterprise_expenses_cancel">キャンセル</string>
+    <string name="enterprise_expenses_saved">経費を端末に保存しました。</string>
+    <string name="enterprise_expenses_saved_with_receipt">経費を領収書付きで端末に保存しました。</string>
+    <string name="enterprise_expenses_saved_receipt_not_saved">経費を端末に保存しましたが、領収書は保存されませんでした。領収書をもう一度お試しください。</string>
+    <string name="enterprise_expenses_save_failed">何も保存されませんでした。もう一度お試しください。</string>
+    <string name="enterprise_expenses_capture_invalid">値を確認してください：レアルは小数点以下2桁まで、桁区切りなし。会社負担額は支払総額を超えられません。何も保存されませんでした。</string>
+    <string name="enterprise_expenses_send_now">今すぐ送信</string>
+    <string name="enterprise_expenses_send_offline">オフラインです。記録はこの端末に残り、接続が戻ると送信されます。</string>
+    <string name="enterprise_expenses_send_failed">送信が完了しませんでした。記録はこの端末に保存されたままです。</string>
+    <string name="enterprise_expenses_record_status">送信：%1$s</string>
+    <string name="enterprise_expenses_reason">理由：%1$s</string>
+    <string name="enterprise_expenses_review_not_sent">審査：未送信</string>
+    <string name="enterprise_expenses_review_awaiting">審査：承認待ち</string>
+    <string name="enterprise_expenses_review_needs">審査：要審査</string>
+    <string name="enterprise_expenses_review_refused">審査：受理されませんでした</string>
+    <string name="enterprise_expenses_amounts">支払 R$ %1$s · 会社 R$ %2$s</string>
+    <string name="enterprise_expenses_paid_value">支払総額：R$ %1$s</string>
+    <string name="enterprise_expenses_company_value">会社負担額：R$ %1$s</string>
+    <string name="enterprise_expenses_decided_by_company">経費を承認または差し戻すのは会社だけです。この端末が行うことはありません。</string>
+</resources>

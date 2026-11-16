@@ -10,6 +10,10 @@ import com.anpfuel.domain.enterprise.maintenance.checklist.ChecklistApplicable
 import com.anpfuel.domain.enterprise.maintenance.checklist.ChecklistContext
 import com.anpfuel.domain.enterprise.maintenance.checklist.ChecklistServerRun
 import com.anpfuel.app.ui.enterprise.fueling.FuelingViewModel
+import com.anpfuel.app.ui.enterprise.expense.ExpenseViewModel
+import com.anpfuel.application.enterprise.expense.EnterpriseExpenseService
+import com.anpfuel.application.enterprise.expense.ExpenseFlow
+import com.anpfuel.data.enterprise.expense.ProtectedExpenseStore
 import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingService
 import com.anpfuel.application.enterprise.fueling.FuelingFlow
 import com.anpfuel.data.enterprise.fueling.ProtectedFuelingStore
@@ -122,6 +126,7 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var receiptModel: ReceiptCaptureViewModel
             lateinit var fuelingModel: FuelingViewModel
             lateinit var checklistModel: ChecklistViewModel
+            lateinit var expenseModel: ExpenseViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
@@ -137,13 +142,17 @@ class EnterpriseSyncContextDeviceTest {
                 // EMP-CHECK-002: the checklist owner over the same protected store; no checklist action runs here.
                 checklistModel = ChecklistViewModel(graph.checklistFlow, graph.network, fence, EnterpriseDeliveryActivity())
                 models.put("checklists", checklistModel)
+                // EMP-EXP-004: the expense owner over the same protected store; no expense action runs here.
+                expenseModel = ExpenseViewModel(graph.expenseFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("expenses", expenseModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
                     MaterialTheme { EnterpriseContextScreen({ personal = true }, { sourceCalls.incrementAndGet() },
-                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel, checklistModel) }
+                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel, checklistModel,
+                        expenseModel) }
                 }
             }
             awaitTag(option(graph.a))
@@ -258,6 +267,7 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var receiptModel: ReceiptCaptureViewModel
             lateinit var fuelingModel: FuelingViewModel
             lateinit var checklistModel: ChecklistViewModel
+            lateinit var expenseModel: ExpenseViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
@@ -273,12 +283,16 @@ class EnterpriseSyncContextDeviceTest {
                 // EMP-CHECK-002: the checklist owner over the same protected store; no checklist action runs here.
                 checklistModel = ChecklistViewModel(graph.checklistFlow, graph.network, fence, EnterpriseDeliveryActivity())
                 models.put("checklists", checklistModel)
+                // EMP-EXP-004: the expense owner over the same protected store; no expense action runs here.
+                expenseModel = ExpenseViewModel(graph.expenseFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("expenses", expenseModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
-                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel, checklistModel) }
+                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel, checklistModel,
+                        expenseModel) }
                 }
             }
             fun names() = assetsModel.state.value.snapshot?.assets?.map { it.asset.name }
@@ -435,6 +449,8 @@ class EnterpriseSyncContextDeviceTest {
         val tripFlow = TripFlow(source, EnterpriseTripService(source, delivery::save, ProtectedTripStore(store), EnterpriseTripStartHints(),
             clock::read, { ZoneId.systemDefault() }), fence) { account, partition -> delivery.dispatch(account, partition) }
         val fuelingFlow = FuelingFlow(source, EnterpriseFuelingService(source, delivery::save, ProtectedFuelingStore(store), { ZoneId.systemDefault() }),
+            fence) { account, partition -> delivery.dispatch(account, partition) }
+        val expenseFlow = ExpenseFlow(source, EnterpriseExpenseService(source, delivery::save, ProtectedExpenseStore(store), { ZoneId.systemDefault() }),
             fence) { account, partition -> delivery.dispatch(account, partition) }
         /** EMP-CHECK-002: the validation graph has no company cookie client, so checklist company reads are unavailable. */
         private val checklistGateway = object : EnterpriseChecklistGateway {

@@ -54,6 +54,16 @@ func linkGrants(t *testing.T, fx deviceFixtureState) {
 			t.Fatal(err)
 		}
 	}
+	// EMP-EXP-004 (000257): the EXPENSE resolver reads a direct expense's author.
+	var expenses bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_expenses') IS NOT NULL`).Scan(&expenses); err != nil {
+		t.Fatal(err)
+	}
+	if expenses {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,author_membership_id,origin_kind) ON org_expenses TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // linkTargets is the production registry of linkable kinds (EDR-162).
@@ -349,7 +359,7 @@ func TestDocumentLinksResolveRealTargetsAndCheckBothEndpoints(t *testing.T) {
 	}
 	var columns string
 	if err := l.f.Admin.QueryRow(ctx, `SELECT string_agg(column_name,',' ORDER BY column_name) FROM information_schema.columns WHERE table_name='org_document_links'`).Scan(&columns); err != nil ||
-		columns != "asset_id,created_at,created_by,document_id,employee_id,fueling_id,held_reading_id,incident_report_id,operation_id,org_id,reading_id,target_id,target_kind" {
+		columns != "asset_id,created_at,created_by,document_id,employee_id,expense_id,fueling_id,held_reading_id,incident_report_id,operation_id,org_id,reading_id,target_id,target_kind" {
 		t.Fatal("link table carries an amount, content or locator column", columns, err)
 	}
 
@@ -591,8 +601,8 @@ func TestDocumentLinkSchemaGuardsScopeReferencesAndRetention(t *testing.T) {
 		},
 		"unregistered-kind": func(op string) row {
 			r := ok(op)
-			// EXPENSE has no owner yet (FUELING has one since EMP-FUEL-011, carried only by fueling_id).
-			r.values = []any{org, fresh, "EXPENSE", l.activeAsset, l.activeAsset, nil, nil, nil, op, member}
+			// TRIP has no owner yet (FUELING and EXPENSE have one since EMP-FUEL-011 and EMP-EXP-004, carried only by their own columns).
+			r.values = []any{org, fresh, "TRIP", l.activeAsset, l.activeAsset, nil, nil, nil, op, member}
 			r.want = "23514"
 			return r
 		},

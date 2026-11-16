@@ -22816,8 +22816,9 @@ paths:
       description: Dedicated company cookie, exact Origin/CSRF and doc.document.attach covering the document (own
         documents for SELF roles), plus, in the same transaction, the target owner's own permission covering the
         target record (fleet.asset.manage for ASSET, meter.reading.record for METER_READING with own readings for
-        SELF roles, idn.employee.manage for EMPLOYEE). Only kinds with a registered owner resolver are accepted;
-        FUELING, EXPENSE, WORK_ORDER and TRIP are VALIDATION_FAILED until their owners register. A foreign, missing
+        SELF roles, idn.employee.manage for EMPLOYEE, fuel.fueling.record for FUELING and exp.expense.record for a
+        DIRECT EXPENSE, each covering only the author's own record for SELF roles). Only kinds with a registered owner
+        resolver are accepted; WORK_ORDER and TRIP are VALIDATION_FAILED until their owners register. A foreign, missing
         or wrong-table target is NOT_FOUND; a DRAFT asset or a FAILED, REPLACED or DELETED document is CONFLICT. A
         pending (UPLOADING) document can be linked and stays pending. The operation UUID replays the first link,
         the same operation with other facts or member is OPERATION_ID_REUSED, and another operation naming an
@@ -29627,7 +29628,7 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         target_kind:
           type: string
-          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING]
+          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING, EXPENSE]
         target_id:
           $ref: '#/components/schemas/EnterpriseUUID'
       required:
@@ -45929,7 +45930,7 @@ components:
       properties:
         kind:
           type: string
-          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING]
+          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING, EXPENSE]
         id:
           $ref: '#/components/schemas/EnterpriseUUID'
       example:

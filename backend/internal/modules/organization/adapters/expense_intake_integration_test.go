@@ -47,7 +47,14 @@ func expenseIntakeConfig(fx syncFixtureState) syncpg.Config {
 
 func expenseFixture(t *testing.T) expenseState {
 	t.Helper()
-	x := expenseState{fuelingState: fuelingFixture(t)}
+	return expenseFixtureFrom(t, fuelingFixture(t))
+}
+
+// expenseFixtureFrom composes the expense.submit owner over an existing
+// fueling fixture (EMP-EXP-004 reuses it on an older migration image).
+func expenseFixtureFrom(t *testing.T, fueling fuelingState) expenseState {
+	t.Helper()
+	x := expenseState{fuelingState: fueling}
 	meterAuthority, ok := x.meters.Authority.(*orgpg.MeterAuthority)
 	if !ok {
 		t.Fatal("fixture meter authority is not the real one")
@@ -851,13 +858,19 @@ VALUES($1,$2,'DIRECT',$2,1,$3,$4,$5,$6,$7,$8,'TOLL',1250,1250,'EMPLOYEE',clock_t
 		t.Fatal("insert accepted without an organization setting", err)
 	}
 	role := pgx.Identifier{x.f.RuntimeRole}.Sanitize()
-	if _, err := x.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_expenses TO "+role); err != nil {
+	// EMP-EXP-004 (000257): org_document_links references org_expenses, so TRUNCATE ... CASCADE also reaches it
+	// (it keeps its own retained guard); grant it too so only the guards can refuse.
+	if _, err := x.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_expenses,org_document_links TO "+role); err != nil {
 		t.Fatal(err)
 	}
-	for _, statement := range []string{`UPDATE org_expenses SET company_centavos=0`, `UPDATE org_expenses SET review_state='SUBMITTED'`, `DELETE FROM org_expenses`, `TRUNCATE org_expenses`} {
+	for _, statement := range []string{`UPDATE org_expenses SET company_centavos=0`, `UPDATE org_expenses SET review_state='SUBMITTED'`, `DELETE FROM org_expenses`, `TRUNCATE org_expenses CASCADE`} {
 		if code := sqlState(t, x.legalFixtureState, x.scope, statement); code != "55000" {
 			t.Fatal("expense history accepted ordinary maintenance", statement, code)
 		}
+	}
+	// A plain TRUNCATE is refused before any guard by the 000257 link reference.
+	if code := sqlState(t, x.legalFixtureState, x.scope, `TRUNCATE org_expenses`); code != "0A000" {
+		t.Fatal("plain expense truncation was not refused", code)
 	}
 	x.directAccepted(t, op, ack, nil)
 	// The usage sources answer for the referenced asset and unit (the keys

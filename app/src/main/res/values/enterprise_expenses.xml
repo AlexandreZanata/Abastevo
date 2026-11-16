@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-EXP-004 SCR-EXP-01; generated from one table by f4-logs/exp004-scripts/gen_expense_strings.py -->
+<resources>
+    <string name="enterprise_expenses_title">Expenses</string>
+    <string name="enterprise_expenses_home_copy">Record a toll, parking or other vehicle cost with its receipt, even without a connection.</string>
+    <string name="enterprise_expenses_open_list">Open expenses</string>
+    <string name="enterprise_expenses_back_home">Back to company</string>
+    <string name="enterprise_expenses_back_list">Back to expenses</string>
+    <string name="enterprise_expenses_synthetic_notice">Test phase: synthetic data and images only.</string>
+    <string name="enterprise_expenses_new">Record an expense</string>
+    <string name="enterprise_expenses_empty">No expense of this company on this device yet.</string>
+    <string name="enterprise_expenses_loading">Reading the expenses saved on this device…</string>
+    <string name="enterprise_expenses_unavailable">The expenses on this device cannot be read now. Saved records are kept.</string>
+    <string name="enterprise_expenses_retry">Try again</string>
+    <string name="enterprise_expenses_open">Open expense</string>
+    <string name="enterprise_expenses_form_title">New expense</string>
+    <string name="enterprise_expenses_asset_chosen">Asset: %1$s</string>
+    <string name="enterprise_expenses_change_asset">Change asset</string>
+    <string name="enterprise_expenses_category">Kind of expense</string>
+    <string name="enterprise_expenses_category_toll">Toll</string>
+    <string name="enterprise_expenses_category_parking">Parking</string>
+    <string name="enterprise_expenses_category_maintenance">Maintenance</string>
+    <string name="enterprise_expenses_category_lease">Lease</string>
+    <string name="enterprise_expenses_category_insurance">Insurance</string>
+    <string name="enterprise_expenses_category_fine">Fine</string>
+    <string name="enterprise_expenses_category_other">Other</string>
+    <string name="enterprise_expenses_paid">Total paid (R$)</string>
+    <string name="enterprise_expenses_company">Amount for the company (R$)</string>
+    <string name="enterprise_expenses_company_hint">Up to the total paid.</string>
+    <string name="enterprise_expenses_payer">Who paid</string>
+    <string name="enterprise_expenses_payer_company">The company</string>
+    <string name="enterprise_expenses_payer_employee">I paid</string>
+    <string name="enterprise_expenses_receipt_optional">Receipt (optional)</string>
+    <string name="enterprise_expenses_receipt_title">Receipt of the expense</string>
+    <string name="enterprise_expenses_add_receipt">Add a receipt</string>
+    <string name="enterprise_expenses_save">Save expense</string>
+    <string name="enterprise_expenses_cancel">Cancel</string>
+    <string name="enterprise_expenses_saved">Expense saved on the device.</string>
+    <string name="enterprise_expenses_saved_with_receipt">Expense saved on the device with its receipt.</string>
+    <string name="enterprise_expenses_saved_receipt_not_saved">Expense saved on the device; its receipt was not saved. Try the receipt again.</string>
+    <string name="enterprise_expenses_save_failed">Nothing was saved. Try again.</string>
+    <string name="enterprise_expenses_capture_invalid">Check the values: reais with up to two decimals and no thousands separator, and the company amount cannot exceed the total paid. Nothing was saved.</string>
+    <string name="enterprise_expenses_send_now">Send now</string>
+    <string name="enterprise_expenses_send_offline">Offline. Records stay on this device and are sent when a connection returns.</string>
+    <string name="enterprise_expenses_send_failed">Sending did not complete. Records stay saved on this device.</string>
+    <string name="enterprise_expenses_record_status">Sync: %1$s</string>
+    <string name="enterprise_expenses_reason">Reason: %1$s</string>
+    <string name="enterprise_expenses_review_not_sent">Review: not sent yet</string>
+    <string name="enterprise_expenses_review_awaiting">Review: awaiting approval</string>
+    <string name="enterprise_expenses_review_needs">Review: needs review</string>
+    <string name="enterprise_expenses_review_refused">Review: not accepted</string>
+    <string name="enterprise_expenses_amounts">Paid R$ %1$s · company R$ %2$s</string>
+    <string name="enterprise_expenses_paid_value">Total paid: R$ %1$s</string>
+    <string name="enterprise_expenses_company_value">Amount for the company: R$ %1$s</string>
+    <string name="enterprise_expenses_decided_by_company">Only the company approves or returns an expense; this device never does.</string>
+</resources>

@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-EXP-004 SCR-EXP-01; generated from one table by f4-logs/exp004-scripts/gen_expense_strings.py -->
+<resources>
+    <string name="enterprise_expenses_title">费用</string>
+    <string name="enterprise_expenses_home_copy">即使没有网络，也可以记录附带票据的过路费、停车费等车辆费用。</string>
+    <string name="enterprise_expenses_open_list">打开费用</string>
+    <string name="enterprise_expenses_back_home">返回公司</string>
+    <string name="enterprise_expenses_back_list">返回费用</string>
+    <string name="enterprise_expenses_synthetic_notice">测试阶段：仅限合成数据和图像。</string>
+    <string name="enterprise_expenses_new">记录费用</string>
+    <string name="enterprise_expenses_empty">本设备上还没有该公司的费用。</string>
+    <string name="enterprise_expenses_loading">正在读取本设备保存的费用…</string>
+    <string name="enterprise_expenses_unavailable">现在无法读取本设备上的费用。已保存的记录会保留。</string>
+    <string name="enterprise_expenses_retry">重试</string>
+    <string name="enterprise_expenses_open">打开费用</string>
+    <string name="enterprise_expenses_form_title">新费用</string>
+    <string name="enterprise_expenses_asset_chosen">车辆：%1$s</string>
+    <string name="enterprise_expenses_change_asset">更换车辆</string>
+    <string name="enterprise_expenses_category">费用类型</string>
+    <string name="enterprise_expenses_category_toll">过路费</string>
+    <string name="enterprise_expenses_category_parking">停车费</string>
+    <string name="enterprise_expenses_category_maintenance">维修保养</string>
+    <string name="enterprise_expenses_category_lease">租赁</string>
+    <string name="enterprise_expenses_category_insurance">保险</string>
+    <string name="enterprise_expenses_category_fine">罚款</string>
+    <string name="enterprise_expenses_category_other">其他</string>
+    <string name="enterprise_expenses_paid">实付总额（R$）</string>
+    <string name="enterprise_expenses_company">公司承担金额（R$）</string>
+    <string name="enterprise_expenses_company_hint">不超过实付总额。</string>
+    <string name="enterprise_expenses_payer">付款人</string>
+    <string name="enterprise_expenses_payer_company">公司</string>
+    <string name="enterprise_expenses_payer_employee">我自己</string>
+    <string name="enterprise_expenses_receipt_optional">票据（可选）</string>
+    <string name="enterprise_expenses_receipt_title">费用票据</string>
+    <string name="enterprise_expenses_add_receipt">添加票据</string>
+    <string name="enterprise_expenses_save">保存费用</string>
+    <string name="enterprise_expenses_cancel">取消</string>
+    <string name="enterprise_expenses_saved">费用已保存在设备上。</string>
+    <string name="enterprise_expenses_saved_with_receipt">费用及其票据已保存在设备上。</string>
+    <string name="enterprise_expenses_saved_receipt_not_saved">费用已保存在设备上，但票据未保存。请重试票据。</string>
+    <string name="enterprise_expenses_save_failed">没有保存任何内容。请重试。</string>
+    <string name="enterprise_expenses_capture_invalid">请检查数值：雷亚尔最多两位小数且不带千位分隔符，公司承担金额不能超过实付总额。没有保存任何内容。</string>
+    <string name="enterprise_expenses_send_now">立即发送</string>
+    <string name="enterprise_expenses_send_offline">离线。记录保留在设备上，网络恢复后会发送。</string>
+    <string name="enterprise_expenses_send_failed">发送未完成。记录仍保存在设备上。</string>
+    <string name="enterprise_expenses_record_status">发送：%1$s</string>
+    <string name="enterprise_expenses_reason">原因：%1$s</string>
+    <string name="enterprise_expenses_review_not_sent">审核：尚未发送</string>
+    <string name="enterprise_expenses_review_awaiting">审核：等待批准</string>
+    <string name="enterprise_expenses_review_needs">审核：需要审核</string>
+    <string name="enterprise_expenses_review_refused">审核：未被接受</string>
+    <string name="enterprise_expenses_amounts">实付 R$ %1$s · 公司 R$ %2$s</string>
+    <string name="enterprise_expenses_paid_value">实付总额：R$ %1$s</string>
+    <string name="enterprise_expenses_company_value">公司承担金额：R$ %1$s</string>
+    <string name="enterprise_expenses_decided_by_company">只有公司会批准或退回费用；本设备从不这样做。</string>
+</resources>

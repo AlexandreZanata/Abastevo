@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-EXP-004 SCR-EXP-01; generated from one table by f4-logs/exp004-scripts/gen_expense_strings.py -->
+<resources>
+    <string name="enterprise_expenses_title">Despesas</string>
+    <string name="enterprise_expenses_home_copy">Registre pedágio, estacionamento ou outro gasto do veículo com o comprovante, mesmo sem conexão.</string>
+    <string name="enterprise_expenses_open_list">Abrir despesas</string>
+    <string name="enterprise_expenses_back_home">Voltar à empresa</string>
+    <string name="enterprise_expenses_back_list">Voltar às despesas</string>
+    <string name="enterprise_expenses_synthetic_notice">Fase de teste: apenas dados e imagens sintéticos.</string>
+    <string name="enterprise_expenses_new">Registrar despesa</string>
+    <string name="enterprise_expenses_empty">Ainda não há despesa desta empresa neste aparelho.</string>
+    <string name="enterprise_expenses_loading">Lendo as despesas salvas neste aparelho…</string>
+    <string name="enterprise_expenses_unavailable">Não é possível ler as despesas deste aparelho agora. Os registros salvos são mantidos.</string>
+    <string name="enterprise_expenses_retry">Tentar de novo</string>
+    <string name="enterprise_expenses_open">Abrir despesa</string>
+    <string name="enterprise_expenses_form_title">Nova despesa</string>
+    <string name="enterprise_expenses_asset_chosen">Ativo: %1$s</string>
+    <string name="enterprise_expenses_change_asset">Trocar ativo</string>
+    <string name="enterprise_expenses_category">Tipo de despesa</string>
+    <string name="enterprise_expenses_category_toll">Pedágio</string>
+    <string name="enterprise_expenses_category_parking">Estacionamento</string>
+    <string name="enterprise_expenses_category_maintenance">Manutenção</string>
+    <string name="enterprise_expenses_category_lease">Locação</string>
+    <string name="enterprise_expenses_category_insurance">Seguro</string>
+    <string name="enterprise_expenses_category_fine">Multa</string>
+    <string name="enterprise_expenses_category_other">Outra</string>
+    <string name="enterprise_expenses_paid">Valor pago (R$)</string>
+    <string name="enterprise_expenses_company">Valor para a empresa (R$)</string>
+    <string name="enterprise_expenses_company_hint">Até o valor pago.</string>
+    <string name="enterprise_expenses_payer">Quem pagou</string>
+    <string name="enterprise_expenses_payer_company">A empresa</string>
+    <string name="enterprise_expenses_payer_employee">Eu paguei</string>
+    <string name="enterprise_expenses_receipt_optional">Comprovante (opcional)</string>
+    <string name="enterprise_expenses_receipt_title">Comprovante da despesa</string>
+    <string name="enterprise_expenses_add_receipt">Adicionar comprovante</string>
+    <string name="enterprise_expenses_save">Salvar despesa</string>
+    <string name="enterprise_expenses_cancel">Cancelar</string>
+    <string name="enterprise_expenses_saved">Despesa salva no aparelho.</string>
+    <string name="enterprise_expenses_saved_with_receipt">Despesa salva no aparelho com o comprovante.</string>
+    <string name="enterprise_expenses_saved_receipt_not_saved">Despesa salva no aparelho; o comprovante não foi salvo. Tente o comprovante de novo.</string>
+    <string name="enterprise_expenses_save_failed">Nada foi salvo. Tente de novo.</string>
+    <string name="enterprise_expenses_capture_invalid">Confira os valores: reais com até duas casas decimais e sem separador de milhar, e o valor da empresa não pode passar do valor pago. Nada foi salvo.</string>
+    <string name="enterprise_expenses_send_now">Enviar agora</string>
+    <string name="enterprise_expenses_send_offline">Sem conexão. Os registros ficam neste aparelho e são enviados quando a conexão voltar.</string>
+    <string name="enterprise_expenses_send_failed">O envio não terminou. Os registros continuam salvos neste aparelho.</string>
+    <string name="enterprise_expenses_record_status">Envio: %1$s</string>
+    <string name="enterprise_expenses_reason">Motivo: %1$s</string>
+    <string name="enterprise_expenses_review_not_sent">Revisão: ainda não enviada</string>
+    <string name="enterprise_expenses_review_awaiting">Revisão: aguardando aprovação</string>
+    <string name="enterprise_expenses_review_needs">Revisão: precisa de revisão</string>
+    <string name="enterprise_expenses_review_refused">Revisão: não aceita</string>
+    <string name="enterprise_expenses_amounts">Pago R$ %1$s · empresa R$ %2$s</string>
+    <string name="enterprise_expenses_paid_value">Valor pago: R$ %1$s</string>
+    <string name="enterprise_expenses_company_value">Valor para a empresa: R$ %1$s</string>
+    <string name="enterprise_expenses_decided_by_company">Só a empresa aprova ou devolve uma despesa; este aparelho nunca faz isso.</string>
+</resources>

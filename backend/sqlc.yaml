@@ -613,6 +613,7 @@ sql:
       - db/migrations/000212_org_document_upload_safety.sql
       - db/migrations/000230_organization_incident_reports.sql
       - db/migrations/000245_organization_fueling_document_links.sql
+      - db/migrations/000257_organization_expense_document_links.sql
     gen:
       go:
         package: document

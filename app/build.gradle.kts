@@ -83,6 +83,9 @@ android {
         // EMP-FUEL-011 rollback switch (EDR-295): hides the fueling entry; queued fuelings and receipts keep their delivery.
         buildConfigField("boolean", "ENTERPRISE_FUELING_UI_ENABLED",
             providers.gradleProperty("enterpriseFuelingUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-EXP-004 rollback switch (EDR-336): hides the expense entry; queued expenses and receipts keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_EXPENSE_UI_ENABLED",
+            providers.gradleProperty("enterpriseExpenseUiEnabled").orElse("true").get().toBooleanStrict().toString())
         testInstrumentationRunner = if (enterpriseDeviceValidation) {
             "com.anpfuel.app.ui.enterprise.EnterpriseDeviceTestRunner"
         } else {

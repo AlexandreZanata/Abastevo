@@ -80,13 +80,13 @@ func (r *fakeLinks) TargetLinks(_ context.Context, _ kernel.OrgScope, _ app.Acto
 func TestBindingsBelongToExactlyOneRegisteredKind(t *testing.T) {
 	for binding, want := range map[app.Binding]domain.TargetKind{app.BindAsset: domain.Asset, app.BindEmployee: domain.Employee,
 		app.BindMeterReading: domain.MeterReading, app.BindHeldMeterReading: domain.MeterReading, app.BindIncident: domain.Incident,
-		app.BindFueling: domain.Fueling} {
+		app.BindFueling: domain.Fueling, app.BindExpense: domain.Expense} {
 		if kind, ok := binding.Kind(); !ok || kind != want {
 			t.Fatal("binding kind", binding, kind)
 		}
 	}
-	// FUELING is bound since EMP-FUEL-011 (EDR-297); the other kinds still have no owner.
-	for _, binding := range []app.Binding{"", "fueling", "asset", "HELD_READING", "EXPENSE", "TRIP", "WORK_ORDER"} {
+	// FUELING is bound since EMP-FUEL-011 (EDR-297) and EXPENSE since EMP-EXP-004 (EDR-338); the other kinds still have no owner.
+	for _, binding := range []app.Binding{"", "fueling", "expense", "asset", "HELD_READING", "TRIP", "WORK_ORDER"} {
 		if _, ok := binding.Kind(); ok {
 			t.Fatal("unknown binding accepted", binding)
 		}
