@@ -101,9 +101,10 @@ class EnterpriseTripLocalTest {
         assertEquals(label, trip.label); assertTrue(trip.reviewWarningAccepted); assertEquals(f.at("2026-11-15T12:00:00.000000123Z"), trip.startedAt)
         assertEquals(f.at("2026-11-15T15:00:00Z"), trip.finishedAt); assertEquals(f.id(400), trip.submitOperationId)
         assertTrue(decoded.trip(f.id(11))!!.startRefused)
+        // EMP-TRIP-021 (EDR-344): the index is written as version 2; a version 1 index is still read (below).
         val empty = String(book().canonicalBytes)
-        assertEquals("""{"enrollment_id":"${f.enrollment}","format":"trip-book","membership_id":"${f.member}","trips":[],"version":1}""", empty)
-        for (bad in listOf(empty.replace("\"version\":1", "\"version\":2"), empty.replace("trip-book", "trip-list"),
+        assertEquals("""{"enrollment_id":"${f.enrollment}","format":"trip-book","membership_id":"${f.member}","trips":[],"version":2}""", empty)
+        for (bad in listOf(empty.replace("\"version\":2", "\"version\":3"), empty.replace("trip-book", "trip-list"),
             empty.replace("}", ",\"extra\":1}"), empty.replace(f.member, f.member.uppercase()), "{}", "[]", "")) {
             assertThrows(IllegalArgumentException::class.java, { TripBook.decode(bad.toByteArray()) }, bad)
         }

@@ -40,6 +40,10 @@ import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingProducer
 import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingService
 import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingStore
 import com.anpfuel.application.enterprise.fueling.FuelingFlow
+import com.anpfuel.application.enterprise.trip.EnterpriseMissionGateway
+import com.anpfuel.application.enterprise.trip.EnterpriseMissionProducers
+import com.anpfuel.application.enterprise.trip.EnterpriseMissionService
+import com.anpfuel.application.enterprise.trip.EnterpriseMissionStore
 import com.anpfuel.application.enterprise.trip.EnterpriseTripProducers
 import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
@@ -68,6 +72,7 @@ import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
 import com.anpfuel.data.enterprise.expense.ProtectedExpenseStore
 import com.anpfuel.data.enterprise.fueling.ProtectedFuelingStore
+import com.anpfuel.data.enterprise.trip.ProtectedMissionStore
 import com.anpfuel.data.enterprise.trip.ProtectedTripStore
 import com.anpfuel.data.enterprise.tracking.ProtectedTrackingStore
 import com.anpfuel.data.remote.ApiEnvironment
@@ -265,34 +270,48 @@ object EnterpriseModule {
     @Singleton
     fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry =
         // EMP-FUEL-011 adds the `fueling.submit` producer (EDR-295), EMP-EXP-004 the `expense.submit` producer (EDR-336),
-        // EMP-GPS-002 the `gps.session.*` producers (EDR-321).
+        // EMP-GPS-002 the `gps.session.*` producers (EDR-321); EMP-TRIP-021 the lifecycle producers (inside the trip producers)
+        // and the `trip.mission.respond` producer delivered alone (EDR-343).
         EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), *EnterpriseChecklistProducers.all(), EnterpriseFuelingProducer(),
-            EnterpriseExpenseProducer(), *EnterpriseTrackingProducers.all())
+            EnterpriseExpenseProducer(), *EnterpriseTrackingProducers.all(), *EnterpriseMissionProducers.all())
 
     /** The sealed trip book and the entries it names, never a plaintext table (EDR-242). */
     @Provides
     @Singleton
     fun tripStore(store: ProtectedEnterprisePersistence): EnterpriseTripStore = ProtectedTripStore(store)
 
+    /** EMP-TRIP-021: the sealed mission-inbox copy and the entries of its saved answers, never a plaintext table (EDR-342). */
+    @Provides
+    @Singleton
+    fun missionStore(store: ProtectedEnterprisePersistence): EnterpriseMissionStore = ProtectedMissionStore(store)
+
     @Provides
     @Singleton
     fun tripService(@ApplicationContext context: Context, source: EnterpriseQueueSource, delivery: EnterpriseQueueService,
-        store: EnterpriseTripStore, hints: EnterpriseTripStartHints): EnterpriseTripService = EnterpriseTripService(
+        store: EnterpriseTripStore, hints: EnterpriseTripStartHints, missions: EnterpriseMissionStore): EnterpriseTripService = EnterpriseTripService(
         source, { partition, operation -> delivery.save(partition, operation) }, store, hints,
-        AndroidEnterpriseDeviceClock(context)::read, { ZoneId.systemDefault() },
+        AndroidEnterpriseDeviceClock(context)::read, { ZoneId.systemDefault() }, missions = missions,
     )
+
+    @Provides
+    @Singleton
+    fun missionService(@ApplicationContext context: Context, source: EnterpriseQueueSource, delivery: EnterpriseQueueService,
+        store: EnterpriseMissionStore, gateway: EnterpriseMissionGateway, trips: EnterpriseTripStore): EnterpriseMissionService =
+        EnterpriseMissionService(source, { partition, operation -> delivery.save(partition, operation) }, store, gateway, trips,
+            AndroidEnterpriseDeviceClock(context)::read, { ZoneId.systemDefault() })
 
     /** Each visible trip owner is independent, like "Meus ativos"; "Enviar agora" is one dispatch of its partition. */
     @Provides
     fun tripFlow(@ApplicationContext context: Context, source: EnterpriseQueueSource, service: EnterpriseTripService,
         fence: EnterpriseSessionFence, delivery: EnterpriseQueueService, receipts: EnterpriseReceipts, fuelings: EnterpriseFuelingService,
-        expenses: EnterpriseExpenseService, tracking: EnterpriseTrackingService, runtime: TrackingRuntime, device: TrackingDeviceObserver): TripFlow =
+        expenses: EnterpriseExpenseService, tracking: EnterpriseTrackingService, runtime: TrackingRuntime,
+        missions: EnterpriseMissionService, device: TrackingDeviceObserver): TripFlow =
         // EMP-TRIP-020: the closing conference reads the same partition's own fuelings and expenses (EDR-339);
-        // EMP-GPS-002: the tracking hooks of the open trip (EDR-323).
+        // EMP-GPS-002: the tracking hooks of the open trip (EDR-323); EMP-TRIP-021: the missions inbox (EDR-342).
         TripFlow(source, service, fence, receipts, TripRelatedRecords(fuelings::fuelings, expenses::expenses),
             // EMP-GPS-010: the cause observed at recovery and the one session this phone collects (B-BR-EMP-544/547).
             TripTracking(tracking, runtime::running, { AndroidEnterpriseDeviceClock(context).read().boot }, device::observe,
-                { runtime.collector?.runningSessionId })) { account, partition ->
+                { runtime.collector?.runningSessionId }), missions) { account, partition ->
             delivery.dispatch(account, partition)
         }
 
@@ -431,6 +450,8 @@ object EnterpriseModule {
         source, store::discover, { account, partition -> service.dispatch(account, partition) },
         { account, partition -> reviews.poll(account, partition) },
         if (BuildConfig.ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED) { account, partition -> attachments.deliver(account, partition) } else null,
+        // EMP-OFFL-011: on-contact cleanup of the exact revoked partition (EDR-348/349).
+        cleanup = { account, partition, hinted -> store.revocationCleanup(account, partition, hinted) },
     )
 
     @Provides

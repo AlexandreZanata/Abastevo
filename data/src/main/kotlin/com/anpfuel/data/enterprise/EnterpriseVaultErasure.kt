@@ -46,6 +46,17 @@ class EnterpriseVaultErasure(
         return true
     }
 
+    /**
+     * EMP-OFFL-011 (EDR-349): durably records the ACCESS_ENDED intake-only lock of [token] and returns whether this
+     * call created it. The caller decides whether a new lock must also withdraw live contexts.
+     */
+    internal fun endAccessLocked(token: String): Boolean {
+        val alias = EnterpriseVaultGenerationNames.ended(token)
+        if (keys.existing(alias) != null) return false
+        keys.create(alias, null)
+        return true
+    }
+
     private fun intent(token: String): Boolean {
         denied += token
         var success = true
@@ -58,7 +69,7 @@ class EnterpriseVaultErasure(
     }
 
     private fun contentAliases(token: String): List<String> = keys.aliases(EnterpriseVaultGenerationNames.prefix(token)) +
-        listOf(EnterpriseVaultCodec.alias(token), EnterpriseVaultGenerationNames.retained(token))
+        listOf(EnterpriseVaultCodec.alias(token), EnterpriseVaultGenerationNames.retained(token), EnterpriseVaultGenerationNames.ended(token))
 
     private fun hasContent(token: String): Boolean {
         if (token.length == 64) return tokens(token).any(::hasContent)
@@ -69,7 +80,8 @@ class EnterpriseVaultErasure(
         if (invalidate) fence.lock()
         val intentEstablished = intent(token)
         var success = intentEstablished
-        val aliases = mutableSetOf(EnterpriseVaultCodec.alias(token), EnterpriseVaultGenerationNames.retained(token))
+        val aliases = mutableSetOf(EnterpriseVaultCodec.alias(token), EnterpriseVaultGenerationNames.retained(token),
+            EnterpriseVaultGenerationNames.ended(token))
         try { aliases += keys.aliases(EnterpriseVaultGenerationNames.prefix(token)) } catch (_: Exception) { success = false }
         val generations = try { files.generations(token) } catch (_: Exception) { success = false; emptyList() }
         generations.forEach { generation ->

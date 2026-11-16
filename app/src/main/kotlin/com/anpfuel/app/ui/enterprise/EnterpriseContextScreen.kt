@@ -91,6 +91,8 @@ fun EnterpriseContextScreen(
     fuelingViewModel: FuelingViewModel = hiltViewModel(),
     checklistViewModel: ChecklistViewModel = hiltViewModel(),
     expenseViewModel: ExpenseViewModel = hiltViewModel(),
+    /** EMP-ROUTE-004: opens the app's own route preview with an approved destination query; last, so positional callers stay valid. */
+    onNavigate: (String) -> Unit = {},
 ) {
     // These are cheap local invalidation flows; keep private presentation current
     // while stopped rather than briefly resuming an earlier confirmed context.
@@ -362,7 +364,7 @@ fun EnterpriseContextScreen(
         ) else if (showTrips && resumed && renderedSelected != null && !choosing &&
             tripsFor?.partition == renderedSelected.partition && tripsFor?.membershipId == renderedSelected.membershipId) TripPanel(
             // A source loss clears the owner; keep only its safe message and withhold every trip fact.
-            state = if (tripsMatch) tripState else tripState.copy(trips = emptyList(), openTripId = null,
+            state = if (tripsMatch) tripState else tripState.copy(trips = emptyList(), openTripId = null, missions = null,
                 error = tripState.error ?: EnterpriseAccessError.STALE),
             connected = connected,
             assets = if (assetsMatches) assetsState else assetsState.copy(snapshot = null, detailAssetId = null),
@@ -395,6 +397,17 @@ fun EnterpriseContextScreen(
                 onStop = { trip -> if (tripsMatch) tripViewModel.stopTracking(trip, renderedEpoch, tripState.generation) },
                 onRefresh = { if (tripsMatch) tripViewModel.refreshTrackingPolicy(renderedEpoch, tripState.generation) },
             ),
+            // EMP-TRIP-021: the missions inbox, answers, planned starts and the trip lifecycle, with the same exact-partition guards.
+            missionsEnabled = BuildConfig.ENTERPRISE_MISSION_UI_ENABLED,
+            onRefreshMissions = { if (tripsMatch) tripViewModel.refreshMissions(renderedEpoch, tripState.generation) },
+            onRespond = { mission, response, reason -> if (tripsMatch) tripViewModel.respond(mission, response, reason, renderedEpoch, tripState.generation) },
+            onStartMission = { mission, choice, label, departure ->
+                if (tripsMatch) tripViewModel.startMission(mission, choice, label, departure, renderedEpoch, tripState.generation,
+                    if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) departureRun(renderedChecklist, choice.assetId) else null)
+            },
+            onLifecycle = { trip, command, reason -> if (tripsMatch) tripViewModel.lifecycle(trip, command, reason, renderedEpoch, tripState.generation) },
+            // EMP-ROUTE-004 (B-BR-EMP-532..535): the visible partition's own approved destination only; nothing is recorded or sent.
+            onNavigate = if (BuildConfig.ENTERPRISE_MISSION_UI_ENABLED) { query -> if (tripsMatch) onNavigate(query) } else null,
         ) else if (showAssets && resumed && renderedSelected != null && !choosing &&
             assetsFor?.partition == renderedSelected.partition && assetsFor?.membershipId == renderedSelected.membershipId) MyAssetsPanel(
             // A source loss clears the owner; keep only its safe message and withhold every cached fact.
@@ -510,6 +523,10 @@ fun EnterpriseContextScreen(
                     FreshContextSignIn(state, signIn)
                 }
             }
+            if (state.accessEndedLocked) Text(
+                stringResource(R.string.enterprise_protection_access_ended),
+                modifier = Modifier.testTag("enterprise-protection-access-ended").semantics { liveRegion = LiveRegionMode.Polite },
+            )
             if (state.unlockRequired) {
                 Text(stringResource(R.string.enterprise_protection_unlock_required))
                 Button(onClick = ::requestUnlock, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("enterprise-protection-unlock")) {
@@ -620,7 +637,8 @@ private fun ContextStatus(state: EnterpriseContextState, connected: Boolean, cat
         CircularProgressIndicator()
         Text(stringResource(R.string.enterprise_context_busy), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     }
-    state.error?.let { error -> Text(
+    // EMP-OFFL-011: an access-ended lock has its own message instead of the generic denial.
+    state.error?.takeUnless { state.accessEndedLocked }?.let { error -> Text(
         stringResource(when (error) {
             EnterpriseAccessError.ACCESS_DENIED -> R.string.enterprise_context_denied
             EnterpriseAccessError.SIGN_IN_REQUIRED, EnterpriseAccessError.FRESH_AUTH_REQUIRED -> R.string.enterprise_invitation_fresh_required

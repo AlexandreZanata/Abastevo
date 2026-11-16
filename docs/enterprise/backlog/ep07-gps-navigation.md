@@ -169,7 +169,7 @@ trigger without the device's end and real-device acceptance (EDR-271) remain
 open.
 
 ### EMP-GPS-006 — Distance sources on a trip and the divergence signal
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module GPS · phase F4 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Keep GPS, meter, planned and provider distances independent.
 - **Rules and use cases:** BR-GPS-027, BR-GPS-028, BR-GPS-029, BR-TRUTH-003
 - **Depends on:** EMP-GPS-005, EMP-METER-006
@@ -183,6 +183,22 @@ open.
 - **Validation:** V-DOM, V-MONEY · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 distance sources](../evidence/f4-gps006-distance-sources.md) are LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-16. A pure tracking evaluation keeps the
+odometer, GPS, planned and estimated distances apart, takes the odometer as
+the basis, the GPS distance only on a `PRECISE` track ("por GPS"), and
+otherwise states `INSUFFICIENT_DATA` with the reason; the divergence signal
+compares integers against 2 000 m and 10 % and only describes the difference.
+A server port (no route, EDR-318) proves `gps.track.read` in its transaction
+through the EMP-GPS-012 authority (without it the GPS source is withheld),
+reads the latest EMP-GPS-005 summary, takes the odometer from the METER-006
+usage between the trip's start and finish only when both readings are at
+those instants (a finish without its reading is `NO_FINAL_READING`, never
+0 m, EDR-319) and records the `LOCATION_TRACK` access before answering; no
+migration. The `trip.trip.read` route (EMP-TRIP-006), organization thresholds,
+the divergence outcome (UC-GPS-08), the `gps.divergence.detected` event and
+the planned and estimated sources (route owner) remain open.
 
 ### EMP-GPS-007 — Live position projection with staleness rules
 - **Meta:** module GPS · phase F5 · cut - · priority P1 · type API · size M · state TODO
@@ -407,7 +423,7 @@ acceptance is owed (EDR-271).
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-ROUTE-004 — Navigation phase 1: open the existing in-app route and guidance for a trip destination
-- **Meta:** module ROUTE · phase F4 · cut - · priority P1 · type APP · size S · state TODO
+- **Meta:** module ROUTE · phase F4 · cut - · priority P1 · type APP · size S · state LOCAL_DONE
 - **Objective:** Open existing in-app guidance for an authorized trip destination.
 - **Rules and use cases:** BR-ROUTE-011, BR-ROUTE-012, BR-ROUTE-015
 - **Depends on:** EMP-TRIP-005
@@ -421,6 +437,15 @@ acceptance is owed (EDR-271).
 - **Validation:** V-APP, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 navigation hand-off](../evidence/f4-route004-navigation-handoff.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-16. "Navegar" on a mission of the
+EMP-TRIP-021 copy and on a trip whose start names that mission hands only the
+plan's free-text destination to the existing in-app route preview as its
+destination search (`MapRouteTarget.Address`, confirmed by the driver); a unit
+destination, a missing plan, a trip without mission and a mission no longer
+in the copy show why and open nothing; it records, queues and sends nothing
+and never opens another app. No server change, route or migration.
 
 ### EMP-ROUTE-005 — In-app route preview
 - **Meta:** module ROUTE · phase F5 · cut - · priority P1 · type APP · size M · state TODO

@@ -34,6 +34,7 @@ internal class TripServerFake {
     val delivered = mutableListOf<String>()
     val accepted = mutableSetOf<String>()
     val active = mutableMapOf<String, String>()
+    val revisions = mutableMapOf<String, Long>()
     var unavailable = false
     fun busy(asset: String) { active[asset] = tid(9999) }
     private fun ack(op: EnterpriseOperation, result: String, code: String? = null, revision: Long? = null): OperationAcknowledgement {
@@ -57,6 +58,16 @@ internal class TripServerFake {
                 active.values.remove(fact.tripId); accepted += op.operationId; ack(op, "ACCEPTED", revision = 2)
             }
             is TripOperationFact.Submit -> if (!parentReady) ack(op, "RETRY", "DEPENDENCY_PENDING") else { accepted += op.operationId; ack(op, "ACCEPTED", revision = 1) }
+            // EMP-TRIP-011 in miniature (EMP-TRIP-021): a cancellation frees the asset; a revision other than expected is held.
+            is TripOperationFact.Lifecycle -> when {
+                !parentReady -> ack(op, "RETRY", "DEPENDENCY_PENDING")
+                fact.revision != (revisions[fact.tripId] ?: 1L) -> ack(op, "ACCEPTED_FOR_REVIEW", "STALE_REVISION")
+                else -> {
+                    revisions[fact.tripId] = fact.revision + 1
+                    if (fact.command == TripCommand.CANCEL) active.values.remove(fact.tripId)
+                    accepted += op.operationId; ack(op, "ACCEPTED", revision = fact.revision + 1)
+                }
+            }
         }
     }
 }

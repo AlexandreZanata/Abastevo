@@ -7,7 +7,9 @@ import com.anpfuel.application.enterprise.queue.EnterpriseQueueDispatchResult
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueDeliveryFailure
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
 import com.anpfuel.application.enterprise.queue.EnterpriseReviewPollResult
+import com.anpfuel.application.enterprise.queue.EnterpriseRevocationOutcome
 import com.anpfuel.domain.enterprise.EnterprisePartition
+import com.anpfuel.domain.enterprise.sync.RevocationCleanupState
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
@@ -53,6 +55,11 @@ class EnterpriseOperationWorkResult(
     val attachmentsStored: Int = 0,
     val attachmentsPending: Int = 0,
     val attachmentsFailed: Int = 0,
+    /** EMP-OFFL-011 revocation steps (EDR-348..350): locked and still delivering, erasure unverified, erased. */
+    val revocationLocked: Int = 0,
+    val revocationPending: Int = 0,
+    val revocationCleaned: Int = 0,
+    val revocationFailed: Int = 0,
 ) {
     init { require(nextAttemptMillis == null || nextAttemptMillis >= 0) }
 
@@ -76,6 +83,8 @@ class EnterpriseOperationWorkRunner(
     private val review: (suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> EnterpriseReviewPollResult)? = null,
     /** EMP-OFFL-005: attachments of the partition, after its operations and review lookups (EDR-268). */
     private val attachments: (suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> EnterpriseAttachmentDeliveryResult)? = null,
+    /** EMP-OFFL-011: after each partition's delivery, with whether it saw a revocation hint (EDR-348). */
+    private val cleanup: (suspend (EnterpriseQueueAccountLease, EnterprisePartition, Boolean) -> EnterpriseRevocationOutcome)? = null,
 ) {
     private val invocation = Mutex()
 
@@ -96,6 +105,11 @@ class EnterpriseOperationWorkRunner(
         var attachmentsFailed = 0
         var nextAttempt: Long? = null
         var backoff = false
+        var revocationLocked = 0
+        var revocationPending = 0
+        var revocationCleaned = 0
+        var revocationFailed = 0
+        var resumed = false
         fun observeRetryAfter(value: Long?) {
             if (value != null && value >= 0) retryAfter = maxOf(retryAfter ?: 0, value)
         }
@@ -127,6 +141,7 @@ class EnterpriseOperationWorkRunner(
                 for (enrollment in enrollments) {
                     currentCoroutineContext().ensureActive()
                     account.assertCurrent()
+                    var hinted = false
                     val partition = enrollment.target.partition
                     if (!account.identity.owns(partition)) {
                         failed = add(failed, 1)
@@ -145,6 +160,7 @@ class EnterpriseOperationWorkRunner(
                             account.assertCurrent()
                             last = dispatch(account, partition)
                             account.assertCurrent()
+                            hinted = hinted || last.revocationHint
                             val candidateDelay = last.retryAfterMillis
                             require(last.attempted >= 0 && last.completed >= 0 && last.retryable >= 0 && last.attention >= 0 &&
                                 (candidateDelay == null || candidateDelay >= 0))
@@ -167,11 +183,35 @@ class EnterpriseOperationWorkRunner(
                         throw cancelled
                     } catch (failure: EnterpriseQueueDeliveryFailure) {
                         account.assertCurrent()
+                        hinted = hinted || failure.revocationHint
                         observeFailure(failure.retryAfterMillis)
                     } catch (_: Exception) {
                         // A paused organization never widens to the next account.
                         account.assertCurrent()
                         observeFailure(null)
+                    }
+                    val clean = cleanup
+                    if (clean != null) {
+                        // EMP-OFFL-011 (EDR-348..350): only counts leave; a revoked partition gets no review lookup or upload.
+                        var revoked: EnterpriseRevocationOutcome? = null
+                        try {
+                            currentCoroutineContext().ensureActive()
+                            account.assertCurrent()
+                            revoked = clean(account, partition, hinted)
+                        } catch (cancelled: CancellationException) {
+                            throw cancelled
+                        } catch (_: Exception) {
+                            revocationFailed = add(revocationFailed, 1)
+                        }
+                        when (revoked?.state) {
+                            RevocationCleanupState.INTAKE_ONLY -> revocationLocked = add(revocationLocked, 1)
+                            RevocationCleanupState.CLEANUP_PENDING -> revocationPending = add(revocationPending, 1)
+                            RevocationCleanupState.CLEANED -> revocationCleaned = add(revocationCleaned, 1)
+                            null -> Unit
+                        }
+                        // A new lock or erasure withdrew this invocation's own lease: continue at once with a fresh one.
+                        if (!runCatching { account.assertCurrent() }.isSuccess) { resumed = true; observeNext(0); break }
+                        if (revoked?.state != null) { yield(); continue }
                     }
                     val lookup = review
                     if (lookup != null) {
@@ -214,13 +254,14 @@ class EnterpriseOperationWorkRunner(
                     }
                     yield()
                 }
+                if (resumed) break
                 account.assertCurrent()
                 val next = page.nextAfterOpaque
                 if (next != null && (!OPAQUE.matches(next) || !cursors.add(next))) throw EnterpriseQueueDeliveryFailure()
                 after = next
                 yield()
             } while (after != null)
-            account.assertCurrent()
+            if (!resumed) account.assertCurrent()
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (failure: EnterpriseQueueDeliveryFailure) {
@@ -237,7 +278,9 @@ class EnterpriseOperationWorkRunner(
         return EnterpriseOperationWorkResult(attempted, completed, retryable, attention, failed, retryAfter,
             reviewResolved = reviewResolved, reviewUnresolved = reviewUnresolved, reviewFailed = reviewFailed,
             signedOut = signedOut, nextAttemptMillis = nextAttempt, backoff = backoff,
-            attachmentsStored = attachmentsStored, attachmentsPending = attachmentsPending, attachmentsFailed = attachmentsFailed)
+            attachmentsStored = attachmentsStored, attachmentsPending = attachmentsPending, attachmentsFailed = attachmentsFailed,
+            revocationLocked = revocationLocked, revocationPending = revocationPending, revocationCleaned = revocationCleaned,
+            revocationFailed = revocationFailed)
     }
     override fun toString(): String = "EnterpriseOperationWorkRunner(redacted)"
 

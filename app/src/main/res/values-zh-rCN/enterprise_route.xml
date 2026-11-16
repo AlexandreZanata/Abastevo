@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-ROUTE-004 SCR-ROUTE-06; generated from one table by f4-logs/route004-scripts/gen_route_strings.py -->
+<resources>
+    <string name="enterprise_route_navigate">导航</string>
+    <string name="enterprise_route_not_recorded">此导航不会记录到行程中，也不会发送你的位置。</string>
+    <string name="enterprise_route_unsupported_unit">目的地是公司的一个单位，应用地图无法定位。请使用地图搜索。</string>
+    <string name="enterprise_route_unsupported_no_plan">公司未规划目的地。</string>
+    <string name="enterprise_route_unsupported_no_mission">此行程没有带目的地的任务。</string>
+    <string name="enterprise_route_unsupported_not_in_copy">请更新任务以查看此行程的目的地。</string>
+</resources>

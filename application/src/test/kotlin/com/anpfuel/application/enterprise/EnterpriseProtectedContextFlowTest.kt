@@ -115,4 +115,30 @@ class EnterpriseProtectedContextFlowTest {
         assertFalse(flow.state.value.selectionConfirmed)
         assertFalse(flow.state.value.busy)
     }
+
+    /** EMP-OFFL-011 (B-BR-EMP-539): a LOCK verdict is said as locked and still sending, never as removed. */
+    @Test fun `an access ended verdict is presented as locked without claiming removal or opening metadata`() = runTest {
+        val f = Fixture()
+        val flow = f.flow { _, _, _, _ -> throw EnterpriseAccessEndedLocked() }
+        flow.select(summary())
+        assertEquals(listOf("contact"), f.events)
+        val state = flow.state.value
+        assertTrue(state.accessEndedLocked)
+        assertFalse(state.selectionConfirmed)
+        assertFalse(state.erasedWorkAcknowledgementRequired, "An access-ended lock is not a loss to acknowledge")
+        assertFalse(state.unlockRequired)
+        // A generic denial or any other failure never raises the access-ended presentation.
+        for (failure in listOf(EnterpriseLocalDenied(), EnterpriseProtectionRefused(EnterpriseAccessError.ACCESS_DENIED), EnterpriseVaultUnrecoverable())) {
+            val other = Fixture()
+            val plain = other.flow { _, _, _, _ -> throw failure }
+            plain.select(summary())
+            assertFalse(plain.state.value.accessEndedLocked, failure.javaClass.simpleName)
+        }
+        // The next successful selection clears it.
+        val next = Fixture()
+        var locked = true
+        val retried = next.flow { _, binding, owner, _ -> if (locked) { locked = false; throw EnterpriseAccessEndedLocked() } else next.fence.commitHandoff(owner, binding.epoch) }
+        retried.select(summary()); assertTrue(retried.state.value.accessEndedLocked)
+        retried.select(summary()); assertFalse(retried.state.value.accessEndedLocked); assertTrue(retried.state.value.selectionConfirmed)
+    }
 }

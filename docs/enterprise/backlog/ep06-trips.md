@@ -498,7 +498,7 @@ counting return run and is never held for it. Migration 000255; no route.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-021 — App: missions inbox and planned-trip execution
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Let drivers act on scoped missions and planned trips in Android.
 - **Rules and use cases:** REQ-07.2, BR-OFFL-003, BR-OFFL-016, BR-OFFL-017, JRN-06
 - **Depends on:** EMP-TRIP-008, EMP-TRIP-009, EMP-TRIP-011, EMP-TRIP-005
@@ -512,6 +512,18 @@ counting return run and is never held for it. Migration 000255; no route.
 - **Validation:** V-APP, V-SYNC, V-AUTHZ, V-ISO · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 missions inbox](../evidence/f4-trip021-missions-inbox.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-16. The app keeps a sealed `mission-inbox` copy
+of the member's own list (one page of 100, refused whole for another
+assignee) and always states its age from the device receipt clock (labelled
+at 24 h or when unknown); refreshing is online only. Answers are the signed
+`trip.mission.respond`, delivered alone after every other due operation (a
+transport denial holds nothing else; a denied answer stays unconfirmed and is
+explained after a refresh). A planned trip starts only from a confirmed
+acceptance with the mission soft reference on the mission's vehicle, and the
+trip records `trip.pause`/`trip.resume`/`trip.cancel` (`trip-book` v2,
+`trip-operations-v3.psv`). No server change, route or migration.
 
 ### EMP-TRIP-022 — Panel: mission planning and assignment board
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type WEB · size M · state LOCAL_DONE

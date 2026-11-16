@@ -332,4 +332,28 @@ class EnterpriseOperationQueueTest {
         } finally { job.cancel() }
         assertTrue(f.entries.values.all { it.acknowledgement == null })
     }
+
+    /** EMP-OFFL-011 (EDR-348): late-intake codes and a whole-response hint are reported, never acted on here. */
+    @Test fun revocationHintsComeOnlyFromLateCodesOrAWholeResponseHintAndChangeNoQueueState(): Unit = runTest {
+        for ((result, code) in listOf("ACCEPTED_FOR_REVIEW" to "ACCESS_ENDED_BEFORE_RECEIPT", "REJECTED" to "MEMBERSHIP_ENDED",
+            "REJECTED" to "INTAKE_WINDOW_CLOSED", "REJECTED" to "DEVICE_REVOKED")) {
+            val f = Fixture(); val first = op(10); val second = op(11)
+            f.service().save(partition, first); f.service().save(partition, second)
+            val dispatched = f.service({ ops -> EnterpriseOperationDelivery(ops.map { if (it.operationId == first.operationId) ack(it, result, code) else ack(it, "RETRY", "UNAVAILABLE") }) })
+                .dispatch(f.account, partition)
+            assertTrue(dispatched.revocationHint, "$result $code")
+            assertNotNull(f.entries.getValue(first.operationId).acknowledgement)
+            assertNull(f.entries.getValue(second.operationId).acknowledgement, "A retry answer stays pending")
+        }
+        for ((result, code) in listOf("ACCEPTED" to null, "ACCEPTED_FOR_REVIEW" to "STALE_REVISION", "REJECTED" to "FORBIDDEN", "RETRY" to "UNAVAILABLE")) {
+            val f = Fixture(); f.service().save(partition, op(10))
+            assertFalse(f.service({ ops -> EnterpriseOperationDelivery(ops.map { ack(it, result, code) }) }).dispatch(f.account, partition).revocationHint)
+        }
+        val refused = Fixture(); refused.service().save(partition, op(10))
+        val hinted = refused.service({ throw EnterpriseQueueDeliveryFailure(revocationHint = true) }).dispatch(refused.account, partition)
+        assertTrue(hinted.revocationHint); assertEquals(1, hinted.retryable)
+        assertNull(refused.entries.getValue(id(10)).acknowledgement)
+        val offline = Fixture(); offline.service().save(partition, op(10))
+        assertFalse(offline.service({ throw EnterpriseQueueDeliveryFailure() }).dispatch(offline.account, partition).revocationHint)
+    }
 }

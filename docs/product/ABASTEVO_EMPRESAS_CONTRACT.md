@@ -8853,6 +8853,315 @@ EMP-GPS-002 (the service and its session operations) and EMP-GPS-004 (the
   recorded fix, the waiting fixes are sealed into a batch and queued, and the
   driver may resume; nothing is lost, duplicated or invented.
 
+## EMP-OFFL-011 — Cleanup of revoked sessions and devices on next contact (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-offl011-revocation-cleanup.md).
+
+- **B-BR-EMP-536 — The revocation class comes only from the exact signed
+  contact.** The device learns that a partition's enrollment was revoked,
+  and its class, only from the EMP-PRIV-003 signed device contact for that
+  exact account, origin, organization, membership and enrollment:
+  `LOST_OR_COMPROMISED` (verdict ERASE) or `ACCESS_ENDED` (verdict LOCK). A
+  whole-response 403 or 404 of the signed delivery plane and a late-intake
+  acknowledgement code (`ACCESS_ENDED_BEFORE_RECEIPT`, `MEMBERSHIP_ENDED`,
+  `INTAKE_WINDOW_CLOSED`, `DEVICE_REVOKED`) are only hints: the operation
+  worker then makes one exact contact for that partition and applies its
+  verdict. ACTIVE, a generic refusal, an outage and a foreign, malformed or
+  late answer change nothing. A disconnected device changes nothing and
+  claims nothing; its data stays under the offline validity of BR-PRIV-018
+  (30 days without contact, then the key is discarded).
+- **B-BR-EMP-537 — Cleanup touches only the revoked partition.** Locking and
+  erasure act on the one partition (account, origin, organization) whose
+  exact enrollment the verdict names. Another organization of the same
+  account, another account or origin on the same device and personal
+  storage keep their keys, files, queues and records.
+- **B-BR-EMP-538 — Access ended: locked for use, still delivering eligible
+  work.** After `ACCESS_ENDED` the partition is locked durably: no local
+  read, no feature write, no new operation, no review lookup and no
+  attachment upload. Its sealed unsent operations keep being delivered,
+  unchanged, through the EMP-OFFL-009 intake-only path with the normal
+  retry policy; an answer that is not final (`RETRY`, for example
+  `UNAVAILABLE` for a type without a held path) keeps the operation pending
+  and visible as pending. The partition is erased only when every operation
+  has a final acknowledgement, or once the server answered
+  `INTAKE_WINDOW_CLOSED` for that sealed period (the window never reopens and
+  the remaining operations would be refused; they are counted, not sent).
+  `LOST_OR_COMPROMISED` erases at once and the device never sends that
+  partition's work again (UC-PRIV-03: unsent records on that phone are
+  lost). The verdict never extends the partition's offline validity.
+- **B-BR-EMP-539 — Cleanup is durable, resumable and reported as it is.** The
+  erasure intent is persisted before any key or file is removed; an
+  interrupted cleanup leaves the partition denied (never readable, never
+  sent) and the existing maintenance retries it until every key and file is
+  verified gone. The device states one of: locked and still delivering N
+  records (`INTAKE_ONLY`), cleanup decided but not verified
+  (`CLEANUP_PENDING`), or removed (`CLEANED`, only after verified disposal).
+  The app never says data was removed while disconnected, before contact or
+  before the erasure completed. When a company selection meets a LOCK
+  verdict the app says that access to this company ended on this device,
+  that records saved before are still being sent for the company's review,
+  and that this company's data stays locked here and is removed after
+  sending; nothing is said to be removed yet.
+- **BUC-EMP-275 — Access ended while work is pending.** Ana is offboarded
+  while her phone, offline, holds three fuelings and one meter reading of
+  company A; she also belongs to company B. When the phone reconnects, the
+  worker's delivery gets late-intake answers and asks for an exact contact:
+  LOCK. Company A's data is locked at once (no list, no new record), the
+  reading is held `ACCESS_ENDED_BEFORE_RECEIPT`, the fuelings stay `RETRY`
+  `UNAVAILABLE` and pending, so nothing is removed. When the server answers
+  `INTAKE_WINDOW_CLOSED`, company A's partition is erased; company B and her
+  personal data are untouched.
+- **BUC-EMP-276 — Lost phone reconnects; restart during cleanup.** A manager
+  revokes Bruno's phone as lost. The phone's next delivery is refused as a
+  whole; the worker's exact contact answers ERASE and only that company's
+  partition is erased; its queued work is never sent again. If the app is
+  killed in the middle of the erasure, the partition stays denied after
+  restart, maintenance finishes the disposal, and only then does the state
+  become `CLEANED`. While the phone stays offline nothing changes and
+  nothing is claimed.
+
+## EMP-GPS-006 — Distance sources on a trip and the divergence signal (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-gps006-distance-sources.md).
+
+- **B-BR-EMP-491 — Each distance source stands alone.** A trip's distance
+  answer carries four sources — odometer, GPS, planned and engine estimate —
+  each with its own status (`OK` or `INSUFFICIENT_DATA`; for GPS also
+  `WITHHELD`), a reason whenever it is not `OK`, and its own evidence; a value
+  exists only on an `OK` source, in exact whole metres from 0 to 10¹² m, and
+  sources are never added, averaged or substituted (BR-GPS-027, BR-TRUTH-003,
+  BR-MONEY-002/009/010). The odometer source is the EMP-METER-006 usage of the
+  trip's asset's odometer between the trip's start instant and its finish
+  instant, with both anchor readings, the method `meter-usage-v1` and the
+  projection revision; it is `OK` only when the usage is known and both
+  anchors are currently `VALID` odometer readings at exactly those two
+  instants, so a usage computed from an earlier reading is never reported.
+  Otherwise its reason is `TRIP_NOT_FINISHED` (in progress or paused),
+  `TRIP_CANCELLED`, `NO_FINAL_READING` (a supervisor closure, or no valid
+  reading at the finish instant), `NO_START_READING`, `NO_METER` (no
+  odometer: an hour meter is never a distance), `NO_READING_BEFORE`,
+  `METER_GAP` or `METER_UNAVAILABLE` (the projection is not built or the
+  stored chain is not a valid track). The GPS source is the latest stored
+  EMP-GPS-005 summary revision of the trip's tracking session: distance with
+  its method, quality, coverage, expected and gap seconds, gap count, session,
+  revision and processing instant; its reason is `NO_TRACK` (no session),
+  `NOT_PROCESSED` (no summary yet) or `NO_GPS_DISTANCE` (the summary has no
+  distance; its quality and coverage are still stated). The planned source is
+  `INSUFFICIENT_DATA` with `NO_ROUTE_PLAN` and the engine estimate with
+  `NO_ROUTE_COMPUTATION` until a route owner records them.
+- **B-BR-EMP-492 — Travelled distance basis.** The figure that needs
+  travelled distance is the odometer distance with basis `ODOMETER` when that
+  source is `OK`; otherwise the GPS distance with basis `GPS` (shown as "por
+  GPS") only when the GPS source is `OK` with quality `PRECISE`; otherwise
+  `INSUFFICIENT_DATA` with the odometer's reason and no number. A planned
+  distance or an engine estimate is never travelled distance, a GPS estimate
+  never replaces an odometer distance, and a consumer receives a value only
+  together with its basis, so nothing (including money) can be computed from
+  an absent basis (BR-GPS-028, BR-TRUTH-004).
+- **B-BR-EMP-493 — Divergence is data for review.** The divergence signal is
+  evaluated only when the odometer and GPS sources are both `OK` and the
+  quality is `PRECISE`; otherwise it is `NOT_EVALUATED` with the reason
+  `NO_ODOMETER_DISTANCE`, `GPS_WITHHELD`, `NO_GPS_DISTANCE` or
+  `GPS_NOT_PRECISE`, in that order. With `diff = |odometer − gps|` in whole
+  metres it is `RAISED` when `diff > M` and `diff × 100 > P × odometer`
+  (integer arithmetic; defaults M = 2 000 m and P = 10 %, accepted ranges
+  500–10 000 m and 5–30 %), otherwise `NOT_RAISED`. It carries both values,
+  the difference and the thresholds beside the GPS source's coverage and
+  gaps, asks for review and names no person, cause or loss (BR-GPS-029,
+  BR-TRUTH-005). It is derived when the answer is read, so a later reading
+  correction or summary revision changes it; nothing is stored or emitted.
+- **B-BR-EMP-494 — The GPS part is a recorded-track read.** The answer is a
+  server port with no route: its caller proves the reader's trip read first
+  (EMP-TRIP-006). Inside the read transaction the GPS source is served only
+  when the EMP-GPS-012 authority proves `gps.track.read` over the stored trip
+  for the reader's current company proof and membership; without that grant
+  the GPS source is `WITHHELD` with no value, quality or coverage, the basis
+  never uses GPS and the divergence is `NOT_EVALUATED` with `GPS_WITHHELD`.
+  Every answer that serves the GPS source, even one without a summary, records
+  one `LOCATION_TRACK` access `ISSUED` and one `SERVED` (fresh identifiers and
+  a digest of the trip, session and summary revision, no coordinate) before it
+  is returned, and a failed record returns nothing. An unknown trip or another
+  organization's trip is `NOT_FOUND` and records nothing; an invalid proof is
+  refused before anything is read.
+- **BUC-EMP-250 — Read a trip's distances.** A trip owner (the future trip
+  panel, EMP-TRIP-006) asks for a finished trip's distances and receives the
+  odometer distance with its two readings, the GPS distance with coverage,
+  quality and gaps, the planned distance and the estimate as not informed,
+  the basis and the divergence evaluation; a missing value says why and never
+  shows zero.
+- **BUC-EMP-251 — Review a divergence signal.** On a precise track the
+  odometer distance and the GPS distance differ by more than both thresholds;
+  the answer raises the signal with both values, the difference, coverage and
+  gaps for a reviewer, and states nothing about the driver.
+
+## EMP-TRIP-021 — App: missions inbox and planned-trip execution (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-trip021-missions-inbox.md).
+
+- **B-BR-EMP-527 — The missions inbox is a sealed copy of the member's own
+  list that always shows its age.** With a connection and on request
+  ("Atualizar missões") the app reads the EMP-TRIP-008 own list
+  (`/v1/orgs/{org_id}/missions/mine/list`, the account cookie plane the app
+  already uses for its context reads) for the selected organization. The
+  answer is parsed strictly (closed fields, the EMP-TRIP-009 plan shape,
+  `data_mode`); an answer with any item whose assignee is not the member's own
+  employee record (EMP-TRIP-005 `employee_id`) is refused as a whole and
+  nothing of it is kept. An accepted answer replaces the previous copy in one
+  protected write of the creation partition (EMP-PRIV-003 generation): one
+  sealed record per partition (versioned `mission-inbox` format) bound to the
+  membership, enrollment and employee record, holding at most the first 100
+  missions in identifier order (more are flagged as not shown) and the device
+  receipt clock (wall instant, boot identity and elapsed time). The inbox
+  always states its age from that clock: elapsed time within one boot, wall
+  time after a reboot (FLEET-013, EDR-226); at 24 hours or more, or when the
+  age cannot be known (the clock moved back), it is labelled as possibly out
+  of date. A copy is never shown without its age, never updated without a
+  server answer, and another account, origin, organization, membership or
+  enrollment never reads it. Refreshing is an online action: without a
+  connection it is disabled with the reason; a failed or refused refresh keeps
+  the previous copy and its age and says that nothing was updated; a refused
+  read (`FORBIDDEN`) is the same safe answer and clears nothing silently.
+- **B-BR-EMP-528 — Accept or decline offline as the signed response, sealed to
+  its partition.** "Aceitar" and "Recusar" exist only for a mission of the
+  partition's copy that is `ASSIGNED` and has no answer saved on this device
+  for that revision. The answer is the frozen EMP-TRIP-008 `trip.mission.respond`
+  schema 1 operation (entity `mission` with `expected_revision` = the copy's
+  revision, payload exactly `response` and `reason`; a decline needs a reason
+  in the METER-001 text profile, an acceptance has none; no dependency, soft
+  reference or attachment), carrying the account, API origin, organization,
+  membership and enrollment of the exact enrollment that created it
+  (BR-OFFL-003). The operation and its line in the inbox record are committed
+  in one protected write before the screen says "Resposta salva no aparelho";
+  a failed write says that nothing was saved. Switching to personal mode or
+  another organization never shows, moves or rewrites it; it keeps being
+  delivered to its own organization. The server decides it on current facts
+  at receipt only (EDR-229); a stale, reassigned or foreign answer is a
+  transport denial that stores nothing. The device therefore delivers each
+  response in a batch of its own after every other due operation, so a denial
+  never holds another record; a denied response stays saved and unconfirmed
+  and keeps being retried with the OFFL-003 backoff.
+- **B-BR-EMP-529 — A planned trip starts only from a confirmed acceptance.**
+  "Iniciar viagem da missão" exists only for a mission whose acceptance the
+  company confirmed — the copy shows it `ACCEPTED`, or this device's own
+  acceptance of the copy's revision has its `ACCEPTED` receipt — and that has
+  no trip of this partition on this device linked to it whose start was not
+  finally refused. A saved but unconfirmed acceptance shows why the start is
+  not offered yet; an ordinary trip stays available. The start is the
+  EMP-TRIP-005 `trip.start` with one soft reference `{type: "mission", id}`
+  (EMP-TRIP-023) beside the EMP-TRIP-019 departure run when one is named; the vehicle is the mission's own (the picker offers only it;
+  a mission without a vehicle offers the member's assets), and the departure
+  rules of EMP-TRIP-005 apply unchanged. The server alone links the trip, moves
+  the mission to `IN_PROGRESS` and consumes its reservation; a start whose
+  mission is no longer eligible at receipt is held `ORPHAN_REFERENCE` and shown
+  "Precisa de revisão" with that reason.
+- **B-BR-EMP-530 — Pause, resume and cancel are their own signed operations.**
+  The trip screen records the EMP-TRIP-011 `trip.pause`, `trip.resume` and
+  `trip.cancel` schema 1 operations (entity `trip` with `expected_revision` =
+  1 plus the trip's earlier lifecycle commands recorded on this device;
+  payload exactly `reason`, optional for a pause or resume and required for a
+  cancellation in the METER-001 profile; depending on the start). Local rules
+  before queueing: pause only a running trip, resume only a paused one, cancel
+  a running or paused one; events and the finish while running or paused;
+  nothing after a cancellation; a cancelled trip no longer holds its vehicle on
+  this device. The reserved `PAUSE`, `RESUME` and `CANCEL` logbook types are
+  never produced. The server decides every command (`STALE_REVISION`,
+  `TRIP_ALREADY_CLOSED` are shown "Precisa de revisão" with the reason). The
+  local trip index becomes `trip-book` v2 (mission and lifecycle commands per
+  trip) and reads every v1 index unchanged.
+- **B-BR-EMP-531 — The inbox states only what a server answer proves.** A
+  mission's state comes from the copy with its age; an answer's state from its
+  own receipt ("Resposta salva no aparelho" without one, "Aceita pela empresa"
+  or "Recusa registrada pela empresa" after its `ACCEPTED` receipt). When a
+  later copy shows the mission at a revision after a saved answer that has no
+  receipt, or no longer lists it, the inbox says the answer was not confirmed
+  and the mission changed or is no longer assigned to the member. `IN_PROGRESS`
+  and `COMPLETED` are shown only from a copy; the local trip line ("Em
+  andamento", "Pausada", "Cancelada no aparelho") never claims a server state.
+  No online-only action is ever reported as done offline.
+- **BUC-EMP-270 — Answer a mission without signal (JRN-06 step 1, UC-TRIP-03,
+  UC-OFFL-01).** Actor: assigned driver. Main flow: at the yard with signal
+  "Atualizar missões" → the inbox lists the missions with title, window, plan
+  (destination, reason, load) and "Atualizadas agora" → later, offline, opens
+  one `ASSIGNED` mission → "Aceitar" → "Resposta salva no aparelho"; the age
+  keeps growing; "Atualizar missões" says it needs a connection → back in
+  coverage the response is sent alone and shows "Aceita pela empresa".
+  Alternatives: "Recusar" asks for the reason; the planner reassigned the
+  mission meanwhile → the answer stays unconfirmed and, after a refresh, the
+  inbox says the mission is no longer assigned to the member; another
+  organization's inbox never shows it.
+- **BUC-EMP-271 — Execute a planned trip.** Actor: the same driver. Main flow:
+  the acceptance confirmed → "Iniciar viagem da missão" → the picker offers
+  the mission's vehicle → departure reading → the trip starts with its mission
+  → "Pausar" and "Retomar" with optional reasons → events → "Encerrar viagem"
+  → delivery; a refresh shows the mission `IN_PROGRESS` and, after the finish,
+  `COMPLETED`. Alternatives: "Cancelar viagem" with a reason (the vehicle is
+  free on the device; the mission stays as the server keeps it); a stale
+  command held `STALE_REVISION` with its reason.
+- **BUC-EMP-272 — Prove the inbox.** The shared operation oracle
+  `trip/trip-operations-v3.psv` (every EMP-TRIP-019 v2 row plus the mission
+  reference, alone or beside the departure run, the lifecycle commands and the
+  response) produced byte for byte by the Kotlin
+  builders and accepted or refused identically by the Go intake parsers; host
+  tests for the inbox codec, age and eligibility matrix, the producers, the
+  isolated delivery of responses, the gateway, the protected stores and the
+  flow; and native acceptance on the owned API 36 emulator against an
+  ordinary PostGIS signed intake and company read: refresh, offline answer and
+  process death, organization switch, reconnection, a planned trip linked and
+  completed, and a reassigned mission whose answer is denied without holding
+  any other record.
+
+## EMP-ROUTE-004 — Navigation phase 1: open the existing in-app route and guidance for a trip destination (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-route004-navigation-handoff.md).
+
+- **B-BR-EMP-532 — Only the approved destination of the member's own
+  mission or trip is handed to the app's own route.** "Navegar" exists on a
+  mission of the partition's missions copy (EMP-TRIP-021) and on a trip of the
+  partition's trip book whose start names that mission (EMP-TRIP-023
+  reference). It hands over exactly one thing: the free-text destination of
+  that mission's current plan (EMP-TRIP-009), as the query of the existing
+  in-app route preview's destination search (`MapRouteTarget.Address`), where
+  the driver confirms a search result before any route is computed by the
+  existing on-device engine (BR-ROUTE-009). No coordinate is guessed or
+  parsed from the text, no other trip's or mission's destination is ever used,
+  and a trip or mission that is not in the visible partition's own records
+  opens nothing (wrong trip).
+- **B-BR-EMP-533 — Unsupported destinations say so and open nothing.** A plan
+  whose destination is a company unit (the device holds neither the unit's
+  name nor its location), a mission without a plan, a trip that executes no
+  mission and a trip whose mission is no longer in the copy offer no
+  "Navegar" and show why; nothing is opened, searched or recorded.
+- **B-BR-EMP-534 — Guidance alone records and sends nothing.** Opening the
+  route preview or guidance from a mission or trip writes no operation, starts,
+  stops or pauses no tracking session, changes no trip or mission state and
+  sends no position to the server (BR-ROUTE-011, BR-ROUTE-015); the screen says
+  that this navigation is not recorded on the trip. The trip stays in the
+  partition's book and is reopened from the company screen.
+- **B-BR-EMP-535 — No external hand-off.** The mission and trip screens never
+  send a destination or a position to an external maps application: no
+  external intent, `geo:` or navigation URI is built; the hand-off is the app's
+  own map tab (BR-ROUTE-012). A failure to open it leaves the planned flow as
+  it was.
+- **BUC-EMP-273 — Navigate to a planned trip's destination (UC-ROUTE-03,
+  SCR-ROUTE-06).** Actor: assigned driver with the mission's trip in
+  progress. Main flow: open the trip → "Navegar" (with the notice that this
+  navigation is not recorded) → the app's map opens its route preview with the
+  plan's destination as the search query → the driver picks the result → the
+  existing engine computes the route with the downloaded map region and
+  guidance starts. Alternatives: the destination is a company unit, the
+  mission has no plan or the trip has no mission → no "Navegar", with the
+  reason; guidance active elsewhere → the map's own "stop the current route
+  first" message.
+- **BUC-EMP-274 — Prove that navigation is local.** Pure tests of the
+  destination resolution (own record, text only, unit and absent
+  destinations, wrong trip); a source guard that the enterprise mission/trip
+  screens build no external intent and reference no tracking or network
+  port; presentation device tests that "Navegar" hands exactly the plan text
+  to the in-app map and calls nothing else; and native acceptance on the
+  owned API 36 emulator through the real app map: the route preview opens
+  with the destination query while the enterprise queue, trip book and
+  intake stay unchanged.
+
 ## EMP-GPS-010 — Tracking interruptions: permission, approximate-only, reboot, process death (2026-11-16)
 
 [Evidence](../enterprise/evidence/f4-gps010-tracking-interruptions.md). Builds

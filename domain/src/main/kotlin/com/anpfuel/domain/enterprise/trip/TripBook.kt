@@ -8,7 +8,8 @@ import java.time.Instant
 
 /*
  * The device's local trip index (EMP-TRIP-005, B-BR-EMP-376/377, EDR-242): one sealed record per partition,
- * written only together with the operation it indexes. It decides nothing on the server.
+ * written only together with the operation it indexes. It decides nothing on the server. Version 2
+ * (EMP-TRIP-021, B-BR-EMP-529/530, EDR-344) adds each trip's mission and its lifecycle commands and reads v1.
  */
 
 /** Local refusals before queueing (B-BR-EMP-377); never a server outcome. */
@@ -31,11 +32,25 @@ enum class TripLocalFailure {
     FULL,
     /** The book belongs to another membership or enrollment. */
     FOREIGN,
+    /** A pause needs a running trip (EMP-TRIP-011). */
+    NOT_RUNNING,
+    /** A resume needs a paused trip. */
+    NOT_PAUSED,
+    /** The mission already has a trip on this device whose start was not refused (B-BR-EMP-529). */
+    MISSION_ALREADY_STARTED,
 }
 
 class TripLocalException(val failure: TripLocalFailure) : IllegalStateException("trip local: ${failure.name.lowercase()}")
 
-enum class TripLocalState { IN_PROGRESS, FINISHED, START_REFUSED }
+enum class TripLocalState { IN_PROGRESS, PAUSED, FINISHED, CANCELLED, START_REFUSED }
+
+/** One lifecycle command of a local trip, in the order it was recorded (EMP-TRIP-011). */
+class TripLifecycleEntry(val command: TripCommand, val operationId: String) {
+    init { require(command == TripCommand.PAUSE || command == TripCommand.RESUME || command == TripCommand.CANCEL); EnterprisePartition.requireId(operationId) }
+    override fun equals(other: Any?): Boolean = other is TripLifecycleEntry && command == other.command && operationId == other.operationId
+    override fun hashCode(): Int = 31 * command.hashCode() + operationId.hashCode()
+    override fun toString(): String = "EnterpriseTripLifecycleEntry(redacted)"
+}
 
 /** The picker's display label of the asset at the start (B-BR-EMP-352 bounds); display only. */
 class TripAssetLabel(val name: String, val fleetNumber: String, val plate: String) {
@@ -57,11 +72,25 @@ class LocalTrip(
     val finishedAt: Instant? = null,
     val submitOperationId: String? = null,
     val startRefused: Boolean = false,
+    /** The mission this trip executes (the start's EMP-TRIP-023 reference), absent for an ordinary trip. */
+    val missionId: String? = null,
+    lifecycle: List<TripLifecycleEntry> = emptyList(),
 ) {
     private val events = eventOperationIds.toList()
     val eventOperationIds: List<String> get() = events.toList()
+    private val commands = lifecycle.toList()
+    /** The lifecycle commands in recorded order. */
+    val lifecycle: List<TripLifecycleEntry> get() = commands.toList()
+    /** The revision the next lifecycle command expects: 1 after the start, one more per earlier command (EDR-344). */
+    val nextRevision: Long get() = 1L + commands.size
     init {
-        for (id in listOf(tripId, assetId, startOperationId) + events + listOfNotNull(finishOperationId, submitOperationId)) EnterprisePartition.requireId(id)
+        for (id in listOf(tripId, assetId, startOperationId) + events + listOfNotNull(finishOperationId, submitOperationId, missionId)) EnterprisePartition.requireId(id)
+        // Commands alternate PAUSE/RESUME from a running trip; a cancellation is the last one and excludes a finish.
+        require(commands.size <= TripBook.MAX_EVENTS && commands.withIndex().all { (index, entry) -> when (entry.command) {
+            TripCommand.PAUSE -> index % 2 == 0
+            TripCommand.RESUME -> index % 2 == 1
+            else -> index == commands.lastIndex && finishOperationId == null
+        } })
         require(events.size <= TripBook.MAX_EVENTS && (finishOperationId == null) == (finishedAt == null) &&
             (submitOperationId == null || finishOperationId != null) && (finishedAt == null || !finishedAt.isBefore(startedAt)))
         val ids = operationIds
@@ -71,14 +100,20 @@ class LocalTrip(
     }
     val state: TripLocalState get() = when {
         startRefused -> TripLocalState.START_REFUSED
+        commands.lastOrNull()?.command == TripCommand.CANCEL -> TripLocalState.CANCELLED
         finishOperationId != null -> TripLocalState.FINISHED
+        commands.lastOrNull()?.command == TripCommand.PAUSE -> TripLocalState.PAUSED
         else -> TripLocalState.IN_PROGRESS
     }
+    /** Running or paused: it holds its asset and admits events and the finish (EMP-TRIP-011). */
+    val open: Boolean get() = state == TripLocalState.IN_PROGRESS || state == TripLocalState.PAUSED
     /** Every operation identifier of the trip, start first. */
-    val operationIds: List<String> get() = listOf(startOperationId) + events + listOfNotNull(finishOperationId, submitOperationId)
+    val operationIds: List<String> get() = listOf(startOperationId) + events + commands.map { it.operationId } +
+        listOfNotNull(finishOperationId, submitOperationId)
     internal fun copy(events: List<String> = this.events, finishOperationId: String? = this.finishOperationId, finishedAt: Instant? = this.finishedAt,
-        submitOperationId: String? = this.submitOperationId, startRefused: Boolean = this.startRefused) = LocalTrip(tripId, assetId, label,
-        reviewWarningAccepted, startOperationId, startedAt, events, finishOperationId, finishedAt, submitOperationId, startRefused)
+        submitOperationId: String? = this.submitOperationId, startRefused: Boolean = this.startRefused,
+        lifecycle: List<TripLifecycleEntry> = this.commands) = LocalTrip(tripId, assetId, label,
+        reviewWarningAccepted, startOperationId, startedAt, events, finishOperationId, finishedAt, submitOperationId, startRefused, missionId, lifecycle)
     override fun toString(): String = "EnterpriseLocalTrip(redacted)"
 }
 
@@ -100,7 +135,7 @@ class TripBook private constructor(val membershipId: String, val enrollmentId: S
     private fun open(tripId: String, operationId: String, at: Instant): LocalTrip {
         val trip = trip(tripId) ?: throw TripLocalException(TripLocalFailure.UNKNOWN_TRIP)
         if (known(operationId)) throw TripLocalException(TripLocalFailure.DUPLICATE)
-        if (trip.state != TripLocalState.IN_PROGRESS) throw TripLocalException(TripLocalFailure.TRIP_NOT_OPEN)
+        if (!trip.open) throw TripLocalException(TripLocalFailure.TRIP_NOT_OPEN)
         if (at.isBefore(trip.startedAt)) throw TripLocalException(TripLocalFailure.BEFORE_START)
         if (operationCount >= MAX_OPERATIONS) throw TripLocalException(TripLocalFailure.FULL)
         return trip
@@ -110,7 +145,8 @@ class TripBook private constructor(val membershipId: String, val enrollmentId: S
     fun withStart(trip: LocalTrip): TripBook {
         require(trip.eventOperationIds.isEmpty() && trip.finishOperationId == null && trip.submitOperationId == null && !trip.startRefused)
         if (trip(trip.tripId) != null || known(trip.startOperationId)) throw TripLocalException(TripLocalFailure.DUPLICATE)
-        if (values.any { it.assetId == trip.assetId && it.state == TripLocalState.IN_PROGRESS }) throw TripLocalException(TripLocalFailure.ASSET_HAS_UNFINISHED_TRIP)
+        if (values.any { it.assetId == trip.assetId && it.open }) throw TripLocalException(TripLocalFailure.ASSET_HAS_UNFINISHED_TRIP)
+        if (trip.missionId != null && missionTrip(trip.missionId) != null) throw TripLocalException(TripLocalFailure.MISSION_ALREADY_STARTED)
         if (values.size >= MAX_TRIPS || operationCount >= MAX_OPERATIONS) throw TripLocalException(TripLocalFailure.FULL)
         return TripBook(membershipId, enrollmentId, values + trip)
     }
@@ -122,6 +158,25 @@ class TripBook private constructor(val membershipId: String, val enrollmentId: S
     fun withFinish(tripId: String, operationId: String, at: Instant): TripBook {
         val trip = open(tripId, operationId, at)
         return replace(trip.copy(finishOperationId = operationId, finishedAt = at))
+    }
+    /** EMP-TRIP-011: a running trip is paused; the command is declared at or after the start. */
+    fun withPause(tripId: String, operationId: String, at: Instant): TripBook = command(tripId, operationId, at, TripCommand.PAUSE)
+    /** A paused trip is resumed. */
+    fun withResume(tripId: String, operationId: String, at: Instant): TripBook = command(tripId, operationId, at, TripCommand.RESUME)
+    /** A running or paused trip is cancelled; it then holds its asset no more on this device. */
+    fun withCancel(tripId: String, operationId: String, at: Instant): TripBook = command(tripId, operationId, at, TripCommand.CANCEL)
+    /** The trip of this book, if any, that executes [missionId] and whose start was not refused (B-BR-EMP-529). */
+    fun missionTrip(missionId: String): LocalTrip? = values.lastOrNull { it.missionId == missionId && !it.startRefused }
+
+    private fun command(tripId: String, operationId: String, at: Instant, command: TripCommand): TripBook {
+        val trip = open(tripId, operationId, at)
+        when (command) {
+            TripCommand.PAUSE -> if (trip.state != TripLocalState.IN_PROGRESS) throw TripLocalException(TripLocalFailure.NOT_RUNNING)
+            TripCommand.RESUME -> if (trip.state != TripLocalState.PAUSED) throw TripLocalException(TripLocalFailure.NOT_PAUSED)
+            else -> Unit
+        }
+        if (trip.lifecycle.size >= MAX_EVENTS) throw TripLocalException(TripLocalFailure.FULL)
+        return replace(trip.copy(lifecycle = trip.lifecycle + TripLifecycleEntry(command, operationId)))
     }
     fun withSubmission(tripId: String, operationId: String): TripBook {
         val trip = trip(tripId) ?: throw TripLocalException(TripLocalFailure.UNKNOWN_TRIP)
@@ -142,16 +197,19 @@ class TripBook private constructor(val membershipId: String, val enrollmentId: S
         if (membershipId != this.membershipId || enrollmentId != this.enrollmentId) throw TripLocalException(TripLocalFailure.FOREIGN)
         return this
     }
-    val canonicalBytes: ByteArray get() = CanonicalJson.encode(SyncJson.Object(mapOf(
-        "format" to SyncJson.Text(FORMAT), "version" to SyncJson.Integer(VERSION.toString()),
+    val canonicalBytes: ByteArray get() = encode(VERSION)
+    private fun encode(version: Long): ByteArray = CanonicalJson.encode(SyncJson.Object(mapOf(
+        "format" to SyncJson.Text(FORMAT), "version" to SyncJson.Integer(version.toString()),
         "membership_id" to SyncJson.Text(membershipId), "enrollment_id" to SyncJson.Text(enrollmentId),
-        "trips" to SyncJson.Array(values.map(::tripJson)),
+        "trips" to SyncJson.Array(values.map { tripJson(it, version) }),
     )))
     override fun toString(): String = "EnterpriseTripBook(redacted)"
 
     companion object {
         const val FORMAT = "trip-book"
-        const val VERSION = 1L
+        /** Version 2 (EMP-TRIP-021, EDR-344) adds `mission_id` and `lifecycle`; version 1 is still read. */
+        const val VERSION = 2L
+        private const val VERSION_1 = 1L
         const val MAX_TRIPS = 1000
         const val MAX_EVENTS = 500
         /** The queue's own entry bound (OFFL-003). */
@@ -159,25 +217,37 @@ class TripBook private constructor(val membershipId: String, val enrollmentId: S
         const val MAX_BYTES = 2 * 1024 * 1024
         private val TRIP_KEYS = setOf("trip_id", "asset_id", "label", "review_warning_accepted", "start_operation_id", "started_at",
             "event_operation_ids", "finish_operation_id", "finished_at", "submit_operation_id", "start_refused")
+        private val TRIP_KEYS_V2 = TRIP_KEYS + setOf("mission_id", "lifecycle")
         fun empty(membershipId: String, enrollmentId: String): TripBook = TripBook(membershipId, enrollmentId, emptyList())
 
         /** Strict decode; an unknown format or version is refused, never guessed. */
         fun decode(raw: ByteArray): TripBook {
             val root = obj(CanonicalJson.parseLarge(raw, MAX_BYTES), setOf("format", "version", "membership_id", "enrollment_id", "trips"))
-            require(text(root, "format") == FORMAT && (root.fields["version"] as? SyncJson.Integer)?.lexeme == VERSION.toString())
+            val version = when ((root.fields["version"] as? SyncJson.Integer)?.lexeme) {
+                VERSION.toString() -> VERSION
+                VERSION_1.toString() -> VERSION_1
+                else -> throw IllegalArgumentException("Invalid trip book")
+            }
+            require(text(root, "format") == FORMAT)
             val trips = (root.fields["trips"] as? SyncJson.Array ?: throw IllegalArgumentException()).values.map { item ->
-                val trip = obj(item, TRIP_KEYS)
+                val trip = obj(item, if (version == VERSION) TRIP_KEYS_V2 else TRIP_KEYS)
+                val lifecycle = if (version == VERSION_1) emptyList() else
+                    (trip.fields["lifecycle"] as? SyncJson.Array ?: throw IllegalArgumentException()).values.map {
+                        val entry = obj(it, setOf("command", "operation_id"))
+                        TripLifecycleEntry(try { TripCommand.parse(text(entry, "command")) } catch (_: TripDomainException) {
+                            throw IllegalArgumentException("Invalid trip book") }, text(entry, "operation_id"))
+                    }
                 val label = obj(trip.fields["label"], setOf("name", "fleet_number", "plate"))
                 LocalTrip(text(trip, "trip_id"), text(trip, "asset_id"), TripAssetLabel(text(label, "name"), text(label, "fleet_number"), text(label, "plate")),
                     bool(trip, "review_warning_accepted"), text(trip, "start_operation_id"), instant(text(trip, "started_at")),
                     (trip.fields["event_operation_ids"] as? SyncJson.Array ?: throw IllegalArgumentException()).values.map {
                         (it as? SyncJson.Text)?.value ?: throw IllegalArgumentException() },
                     nullable(trip, "finish_operation_id"), nullable(trip, "finished_at")?.let(::instant), nullable(trip, "submit_operation_id"),
-                    bool(trip, "start_refused"))
+                    bool(trip, "start_refused"), if (version == VERSION_1) null else nullable(trip, "mission_id"), lifecycle)
             }
             val book = TripBook(text(root, "membership_id"), text(root, "enrollment_id"), trips)
-            // Only the exact canonical spelling is a stored book.
-            require(book.canonicalBytes.contentEquals(raw))
+            // Only the exact canonical spelling of its own version is a stored book.
+            require(book.encode(version).contentEquals(raw))
             return book
         }
 
@@ -195,7 +265,7 @@ class TripBook private constructor(val membershipId: String, val enrollmentId: S
             return at
         }
         private fun optional(value: String?): SyncJson = value?.let { SyncJson.Text(it) } ?: SyncJson.Null
-        private fun tripJson(trip: LocalTrip): SyncJson = SyncJson.Object(mapOf(
+        private fun tripJson(trip: LocalTrip, version: Long): SyncJson = SyncJson.Object(mapOf(
             "trip_id" to SyncJson.Text(trip.tripId), "asset_id" to SyncJson.Text(trip.assetId),
             "label" to SyncJson.Object(mapOf("name" to SyncJson.Text(trip.label.name), "fleet_number" to SyncJson.Text(trip.label.fleetNumber),
                 "plate" to SyncJson.Text(trip.label.plate))),
@@ -207,6 +277,11 @@ class TripBook private constructor(val membershipId: String, val enrollmentId: S
             "finished_at" to optional(trip.finishedAt?.let(EnterpriseTime::formatInstant)),
             "submit_operation_id" to optional(trip.submitOperationId),
             "start_refused" to SyncJson.Bool(trip.startRefused),
+        ) + if (version == VERSION_1) emptyMap() else mapOf(
+            "mission_id" to optional(trip.missionId),
+            "lifecycle" to SyncJson.Array(trip.lifecycle.map {
+                SyncJson.Object(mapOf("command" to SyncJson.Text(it.command.name), "operation_id" to SyncJson.Text(it.operationId)))
+            }),
         ))
     }
 }

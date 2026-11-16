@@ -253,6 +253,42 @@ class EnterpriseTrackingServiceTest {
             kotlinx.coroutines.runBlocking { x.tracking.start(x.account(), x.a, trip, x.device()) } }.failure)
     }
 
+    /** EMP-TRIP-021 (B-BR-EMP-530, BR-PRIV-006): a device pause suspends and a device cancellation ends the recording session. */
+    @Test fun `a trip pause suspends and a cancellation ends the session at the command's own instant`() = runTest {
+        val x = TrackingFixture(); val flow = x.flow()
+        val trip = x.startTrip(); x.refresh()
+        flow.open(x.a, x.f.fence.epoch)
+        flow.startTracking(trip, x.device(), x.f.fence.epoch, flow.state.value.generation)
+        x.running = flow.state.value.tracking!!.session(trip)!!.sessionId
+        x.f.later(10)
+        flow.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.PAUSE, null, x.f.fence.epoch, flow.state.value.generation)
+        assertEquals(TripLocalState.PAUSED, flow.state.value.trips.single().trip.state)
+        val paused = flow.state.value.tracking!!.session(trip)!!
+        assertEquals(TrackingSessionState.SUSPENDED, paused.state); assertEquals(TrackingCause.TRIP_PAUSED, paused.cause)
+        val pause = flow.state.value.trips.single().lifecycle.single().fact
+        val suspend = x.operation(paused.records.last().operationId)
+        assertEquals(TrackingOperations.SUSPEND, suspend.type)
+        assertEquals(pause.declared, suspend.declaration, "the suspension carries the pause's own instant")
+        assertTrue(pause.operationId in suspend.dependsOn)
+        // Tracking does not start while paused; after the resume the driver restarts it explicitly.
+        flow.startTracking(trip, x.device(), x.f.fence.epoch, flow.state.value.generation)
+        assertEquals(TrackingLocalFailure.TRIP_NOT_OPEN, flow.state.value.trackingRefusal)
+        x.f.later(10)
+        flow.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.RESUME, null, x.f.fence.epoch, flow.state.value.generation)
+        assertEquals(TrackingSessionState.SUSPENDED, flow.state.value.tracking!!.session(trip)!!.state)
+        flow.startTracking(trip, x.device(), x.f.fence.epoch, flow.state.value.generation)
+        assertEquals(TrackingSessionState.RECORDING, flow.state.value.tracking!!.session(trip)!!.state)
+        x.f.later(10)
+        flow.lifecycle(trip, com.anpfuel.domain.enterprise.trip.TripCommand.CANCEL, "Cliente cancelou", x.f.fence.epoch, flow.state.value.generation)
+        val ended = flow.state.value.tracking!!.session(trip)!!
+        assertEquals(TrackingSessionState.ENDED, ended.state); assertEquals(TrackingCause.TRIP_CANCELLED, ended.cause)
+        val cancel = flow.state.value.trips.single().lifecycle.last().fact
+        assertEquals(cancel.declared, x.operation(ended.records.last().operationId).declaration)
+        // Delivered in order, each accepted by the intake's dependency rule.
+        x.delivery.dispatch(x.account(), x.a.partition)
+        assertTrue(x.tracking.screen(x.account(), x.a.partition).session(trip)!!.records.all { it.sync == EnterpriseSyncStatus.ACCEPTED })
+    }
+
     @Test fun `recovery interrupts a recording session with no running collector at its checkpoint and never resumes it`() = runTest {
         val x = TrackingFixture(); val trip = x.startTrip(); x.refresh()
         val started = x.tracking.start(x.account(), x.a, trip, x.device())

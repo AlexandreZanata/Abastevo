@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-ROUTE-004 SCR-ROUTE-06; generated from one table by f4-logs/route004-scripts/gen_route_strings.py -->
+<resources>
+    <string name="enterprise_route_navigate">Навигация</string>
+    <string name="enterprise_route_not_recorded">Эта навигация не записывается в поездку и не передаёт вашу позицию.</string>
+    <string name="enterprise_route_unsupported_unit">Пункт назначения — подразделение компании; карта приложения не может его найти. Воспользуйтесь поиском на карте.</string>
+    <string name="enterprise_route_unsupported_no_plan">Компания не запланировала пункт назначения.</string>
+    <string name="enterprise_route_unsupported_no_mission">У этой поездки нет задания с пунктом назначения.</string>
+    <string name="enterprise_route_unsupported_not_in_copy">Обновите задания, чтобы увидеть пункт назначения этой поездки.</string>
+</resources>
