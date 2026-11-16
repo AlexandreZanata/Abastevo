@@ -35,6 +35,8 @@ export interface MissionSource {
 }
 
 const AVAILABILITIES = ['AVAILABLE', 'RESERVED', 'IN_USE', 'IN_MAINTENANCE', 'BLOCKED', 'UNAVAILABLE'];
+// The sources the server may not have consulted (fleet AvailabilitySource, B-BR-EMP-506).
+const SOURCES = ['ACTIVE_USE', 'CHECKLIST_RUN', 'MAINTENANCE_HOLD'];
 const scalars = (v: unknown, limit: number): v is string => typeof v === 'string' && [...v].length <= limit;
 const instant = (v: unknown): v is string => typeof v === 'string' && v.length <= 40 && Number.isFinite(Date.parse(v));
 const bad = (): never => { throw new ApiError('unavailable'); };
@@ -123,7 +125,7 @@ export class MissionBoardApi implements MissionSource {
   }
   async availability(org: string, asset: string, signal: AbortSignal): Promise<Availability> {
     const v = await this.api.privatePost(this.#path(org, `fleet/assets/${this.#id(asset)}/availability/read`), {}, signal);
-    if (v.asset_id !== asset || !AVAILABILITIES.includes(String(v.availability)) || !Array.isArray(v.causes) || v.causes.length > 50 || !Array.isArray(v.missing_sources) || v.missing_sources.length > 2 || !v.missing_sources.every(s => s === 'ACTIVE_USE' || s === 'MAINTENANCE_HOLD') || !instant(v.evaluated_at)) bad();
+    if (v.asset_id !== asset || !AVAILABILITIES.includes(String(v.availability)) || !Array.isArray(v.causes) || v.causes.length > 50 || !Array.isArray(v.missing_sources) || v.missing_sources.length > SOURCES.length || !v.missing_sources.every((s, i, all) => SOURCES.includes(String(s)) && all.indexOf(s) === i) || !instant(v.evaluated_at)) bad();
     const causes = (v.causes as unknown[]).map(raw => {
       const c = record(raw);
       if (!AVAILABILITIES.includes(String(c.availability)) || typeof c.kind !== 'string' || !optional(c.valid_from, instant) || !optional(c.valid_to, instant) || !optional(c.lifecycle_state, s => scalars(s, 40)) || !optional(c.reason_kind, s => scalars(s, 40))) bad();

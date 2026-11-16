@@ -178,6 +178,17 @@ test('a refused optional read disables only its picker; invalid input keeps the 
  assert.equal(c.c.state.phase,'failed');assert.match(c.c.state.message,/Confira/);assert.equal(c.c.retryable,false);assert.equal(c.c.state.selected.revision,1);
 });
 
+test('availability admits every server source, including a blocking checklist run (B-BR-EMP-506)',async()=>{
+ const all=new MissionBoardApi({async privatePost(){return {asset_id:vehicle,availability:'BLOCKED',causes:[{availability:'BLOCKED',kind:'CHECKLIST_RUN',record_id:uuid(71)}],missing_sources:['ACTIVE_USE','CHECKLIST_RUN','MAINTENANCE_HOLD'],evaluated_at:at};}});
+ const value=await all.availability(org.id,vehicle,new AbortController().signal);
+ assert.deepEqual(value.missing,['ACTIVE_USE','CHECKLIST_RUN','MAINTENANCE_HOLD']);
+ assert.equal(value.causes[0].kind,'CHECKLIST_RUN');
+ for(const missing of [['UNKNOWN'],['ACTIVE_USE','CHECKLIST_RUN','MAINTENANCE_HOLD','ACTIVE_USE']]){
+  const bad=new MissionBoardApi({async privatePost(){return {asset_id:vehicle,availability:'AVAILABLE',causes:[],missing_sources:missing,evaluated_at:at};}});
+  await assert.rejects(bad.availability(org.id,vehicle,new AbortController().signal),e=>e instanceof ApiError);
+ }
+});
+
 test('parsers refuse malformed server data and the transport admits only the board routes',async()=>{
  for(const bad of [wireMission({state:'APPROVED'}),wireMission({revision:0}),wireMission({assignee_employee_id:'not-a-uuid'}),wireMission({state:'DECLINED',assignee_employee_id:driver}),wireMission({answer:{response:'ACCEPT'}})]){
   const api=new MissionBoardApi({async privatePost(){return bad;}});await assert.rejects(api.mission(org.id,mission,new AbortController().signal),e=>e instanceof ApiError);

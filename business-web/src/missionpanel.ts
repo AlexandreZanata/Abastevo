@@ -5,8 +5,8 @@ import { type BoardState, type Mission, type MissionSource, type MissionState, t
 // list view (SCR-FLEET-06, EDR-306). Every label is fixed pt-BR copy over the
 // server's own vocabulary; unknown values are never echoed as status.
 const AVAILABILITY: Record<string, string> = { AVAILABLE: 'Disponível', RESERVED: 'Reservado', IN_USE: 'Em uso', IN_MAINTENANCE: 'Em manutenção', BLOCKED: 'Bloqueado', UNAVAILABLE: 'Indisponível' };
-const CAUSES: Record<string, string> = { LIFECYCLE: 'Situação do cadastro do ativo', ACTIVE_USE: 'Viagem em andamento', MAINTENANCE_HOLD: 'Manutenção', BLOCK: 'Bloqueio', RESERVATION: 'Reserva' };
-const MISSING: Record<string, string> = { ACTIVE_USE: 'viagens em andamento', MAINTENANCE_HOLD: 'manutenções' };
+const CAUSES: Record<string, string> = { LIFECYCLE: 'Situação do cadastro do ativo', ACTIVE_USE: 'Viagem em andamento', MAINTENANCE_HOLD: 'Manutenção', BLOCK: 'Bloqueio', RESERVATION: 'Reserva', CHECKLIST_RUN: 'Checklist bloqueante' };
+const MISSING: Record<string, string> = { ACTIVE_USE: 'viagens em andamento', MAINTENANCE_HOLD: 'manutenções', CHECKLIST_RUN: 'checklists bloqueantes' };
 const RESERVATIONS: Record<string, string> = { REQUESTED: 'Solicitada', CONFIRMED: 'Confirmada', FULFILLED: 'Utilizada', CANCELLED: 'Cancelada', NO_SHOW: 'Não utilizada', EXPIRED: 'Expirada' };
 const BLOCKS: Record<string, string> = { ADMINISTRATIVE: 'Administrativo', SAFETY: 'Segurança', DOCUMENT: 'Documentação', INVESTIGATION: 'Apuração', LENT_OUT: 'Emprestado' };
 const WARNINGS: Record<string, string> = { ASSET_UNAVAILABLE: 'a pessoa designada não poderia iniciar com este veículo no início planejado', ASSET_BUSY: 'o veículo estará ocupado no início planejado' };
