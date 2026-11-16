@@ -428,6 +428,12 @@ func Register(router chi.Router, o Options) error {
 	if err := tripweb.RegisterHandover(router, tripapp.HandoverService{Enabled: true, Repository: tripHandovers}, cookies, gateway, tripHandoverAuthorization); err != nil {
 		return err
 	}
+	// EMP-TRIP-010 (EDR-309): the member's planned-versus-observed read of an
+	// own trip under the same own-trips policy and authority.
+	tripStops := &trippg.StopsStore{Pool: o.Pool, Authority: tripHandovers.Authority}
+	if err := tripweb.RegisterStops(router, tripapp.StopsService{Enabled: true, Repository: tripStops}, cookies, gateway, tripHandoverAuthorization); err != nil {
+		return err
+	}
 	// EMP-TRIP-007 (EDR-263): held trip facts resolved once under
 	// trip.trip.review; structure through the held fact (HeldTripStructure);
 	// an accepted start's reading through the meter review store.

@@ -8260,3 +8260,108 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   finish and the vehicle is blocked for the next use until released. A
   finish naming a return run the server does not hold yet still completes
   the trip and links nothing.
+
+## EMP-TRIP-010 — Stops and legs: planned versus actual (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-trip010-stops-legs.md).
+
+- **B-BR-EMP-475 — Planned stops belong to the planning revision.** A
+  `PLAN` command (EMP-TRIP-009) may carry `stops`: 1 to 20 ordered
+  intermediate stops between the trip's start and the plan's destination
+  (a technical bound, not a product rule), each a free-text place with the
+  plan text profile (B-BR-EMP-382: nonblank, control-free, at most 280
+  characters, no standalone CPF-shaped token). No unit, coordinate, time,
+  person or contact is accepted; an absent list means no planned stop and
+  an empty list is refused. The stops are stored insert-only with the
+  planning revision their `PLAN` produced (sequence 1..n), in the `PLAN`
+  transaction and before its receipt; a re-plan appends a new revision with
+  its own stops and keeps every earlier one. The plan of an `ACCEPTED`,
+  `IN_PROGRESS`, `COMPLETED` or `CANCELLED` mission cannot change
+  (B-BR-EMP-381, B-BR-EMP-413), so the stops shown beside a trip are those
+  the member accepted. A plan without stops keeps the `trip.mission.plan.v1`
+  digest byte for byte, so stored receipts replay; a plan with stops binds
+  them in `trip.mission.plan.v2`. Every plan projection carries `stops` only
+  when the revision has stops. The planned legs are derived, never stored:
+  start → stop 1 → … → stop n → destination; no planned distance, duration
+  or route estimate is shown or compared with travel (BR-ROUTE-008).
+- **B-BR-EMP-476 — Observed stops and legs are derived from the trip's
+  typed facts.** Nothing new is recorded on the device: the observed side is
+  derived at read time from the trip's start, its end (the finish, or the
+  cancellation; a supervisor closure has no device instant and ends
+  nothing) and its accepted `STOP`, `ARRIVAL` and `DEPARTURE` logbook events
+  (EMP-TRIP-003), in the shared timeline order (B-BR-EMP-324: declared
+  instant, then identity; the receipt is never an ordering key). A `STOP`
+  or an `ARRIVAL` opens a stop and ends the leg that led to it; a
+  `DEPARTURE` closes the open stop and opens the next leg; the trip's start
+  opens the first leg and its end closes the last one; a trip that ends
+  while stopped ends at that stop. Every boundary keeps its fact identity,
+  type, declared instant, entry zone and device offset (BR-TIME-001) and the
+  server receipt (BR-TIME-002). Notes, pauses, incidents and other facts are
+  not stops. No distance, duration or pairing with a planned stop is
+  derived. The derivation is shared by Go and Kotlin through
+  `trip/stops-v1.psv`.
+- **B-BR-EMP-477 — Incoherent observations are surfaced, never paired,
+  reordered or dropped.** A `DEPARTURE` with no open stop yields a stop
+  without arrival (`ARRIVAL_MISSING`), and the leg that should have ended
+  there ends without arrival (`ARRIVAL_MISSING`); a `STOP` or `ARRIVAL`
+  while a stop is still open leaves that stop without departure
+  (`DEPARTURE_MISSING`) and starts the next leg without departure
+  (`DEPARTURE_MISSING`). A boundary declared after its own server receipt
+  is flagged `after_receipt` (BR-TIME-006: reported, never rewritten).
+  Observations outside the trip keep their EMP-TRIP-003/015 handling: before
+  the start `MALFORMED` (nothing stored); after the finish or on a decided
+  revision held for review (`TRIP_ALREADY_CLOSED`, `STALE_REVISION`); the
+  read lists the trip's held `STOP`, `ARRIVAL` and `DEPARTURE` observations
+  with their code and declared time, never as stops. An observation accepted
+  while the trip was open but declared after the end that was recorded later
+  (a device clock that moved) is listed apart as `after_end`, in timeline
+  order, never as a stop or leg boundary and never dropped.
+- **B-BR-EMP-478 — The member reads the plan beside the observed stops and
+  legs of an own trip.** `POST
+  /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read` (company session,
+  `trip.trip.start`, read; the target is the requesting membership, the
+  EMP-TRIP-012 own-trips policy) answers for a trip whose starting member or
+  current responsible member is the requester: the trip summary with its
+  start and end boundaries; `planned` — `null` when the trip executes no
+  mission (EMP-TRIP-023 link) or its mission has no planning revision, else
+  the mission's current planning revision (revision, planning instant,
+  mission window, destination, stops, derived legs); and `observed` — stops,
+  legs and held observations with their recorded times. Another member's trip,
+  another organization's trip and an unknown trip are the same `NOT_FOUND`
+  with nothing revealed; a member without `trip.trip.start` is `FORBIDDEN`.
+- **B-BR-EMP-479 — Planned data never rewrites observations.** Planning
+  revisions and their stops live in their own insert-only tables; the
+  observations are the insert-only logbook rows. A re-plan before
+  acceptance, or a `PLAN` refused on an executing mission (`CONFLICT`),
+  changes no trip, event, held event or observed stop or leg. The database
+  refuses a stop row outside its `PLAN` transaction (after its receipt, on
+  a head at another revision or state, out of sequence), a stop row without
+  its published `PLAN` receipt, and any change or deletion.
+- **B-BR-EMP-480 — Replays change nothing.** The same `PLAN` operation with
+  the same digest replays its stored receipt and stores no second stop; the
+  same operation with other stops is `OPERATION_ID_REUSED`. An observation
+  resend returns the stored acknowledgement byte for byte and the same
+  identifier with another digest is `OPERATION_ID_REUSED` (EMP-TRIP-003);
+  the observed stops and legs read after a replay are identical.
+- **BUC-EMP-242 — Plan the stops of a delivery.** A planner plans a mission
+  to the destination "Centro de distribuição Norte" with the stops "Cliente
+  Jardim Primavera" and "Posto de apoio BR-163", then, before assigning it,
+  re-plans with a third stop "Cliente Vila Rica". The second planning
+  revision holds three stops and four planned legs; the first keeps its two
+  stops. After the driver accepts, a re-plan is refused.
+- **BUC-EMP-243 — Distinguish the plan from what happened.** The assigned
+  driver starts the linked trip at 08:00 (America/Cuiaba, −04:00), records
+  `ARRIVAL` 09:10, `DEPARTURE` 09:40, `STOP` 11:00, `DEPARTURE` 11:15 and
+  finishes at 12:30. The member's read shows the three planned stops and
+  four planned legs and, separately, two observed stops (09:10–09:40,
+  11:00–11:15) and three observed legs (08:00–09:10, 09:40–11:00,
+  11:15–12:30), each time with its zone, offset and receipt; nothing says
+  which planned stop was visited.
+- **BUC-EMP-244 — Incoherent observations stay visible.** The driver forgets
+  an arrival and records two departures in a row, then two arrivals in a
+  row, and a device clock ahead of the server declares one arrival after it
+  was received; an arrival recorded after the finish is held. The read shows
+  a stop without arrival and a stop without departure with their legs
+  flagged, the arrival flagged `after_receipt` and, because the finish was
+  then declared before it, listed apart as `after_end`, and the held arrival
+  with `TRIP_ALREADY_CLOSED`; no time is moved and no event is dropped.
