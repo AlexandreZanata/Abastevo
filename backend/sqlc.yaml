@@ -705,6 +705,13 @@ sql:
       - db/migrations/000216_organization_meter_reading_states.sql
       - db/migrations/000217_organization_asset_reservations.sql
       - db/migrations/000222_organization_implement_attachments.sql
+      # EMP-TRIP-023: the reservation's mission and trip links (000249) and
+      # the trip and mission tables they reference.
+      - db/migrations/000220_organization_trips.sql
+      - db/migrations/000227_organization_trip_missions.sql
+      - db/migrations/000231_organization_trip_mission_plans.sql
+      - db/migrations/000232_organization_trip_mission_vehicles.sql
+      - db/migrations/000249_organization_trip_reservation_links.sql
     gen:
       go:
         package: fleet
@@ -841,6 +848,7 @@ sql:
       - db/migrations/000172_organization_onboarding.sql
       - db/migrations/000174_operating_units.sql
       - db/migrations/000175_cost_centres.sql
+      - db/migrations/000176_employee_profiles.sql
       - db/migrations/000194_organization_devices.sql
       - db/migrations/000196_organization_sync_intake.sql
       - db/migrations/000197_organization_assets.sql

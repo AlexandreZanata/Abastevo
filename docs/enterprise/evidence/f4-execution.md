@@ -1337,3 +1337,33 @@ owners; the router test lists both TRIP-012 and tracking routes; duplicated EDR
 rows 262..264 removed again. Build, vet (incl. `nativefixture`), gofmt,
 `sqlc diff`, cmd/api, apicontract and tracking unit tests green; proposed shared
 text applied (10-offline-sync checklist row, data and backend READMEs).
+
+### EMP-TRIP-022 — panel: mission planning and assignment board: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip022-mission-board.md), commit `ebcf9bd0`, no migration
+(000248 unused). Business-web mission board (SCR-TRIP-03) in the organization
+workspace: sends nothing until the planner opens it; lists, creates (unit =
+the chosen vehicle's current unit), plans, assigns, changes the vehicle and
+cancels through the existing routes with schema 1, one fixed operation id per
+decision and the revision the planner saw; shows only server-read state with
+its read time (ACCEPTED/DECLINED only from a read carrying the answer);
+CONFLICT re-reads and never retries, FORBIDDEN/NOT_FOUND clear the board,
+FRESH_AUTH_REQUIRED resets the session. SCR-FLEET-06 is delivered as a
+read-only vehicle agenda (availability with causes, reservations and blocks,
+without purposes, notes or people). One missing backend read was added:
+`POST /missions/{mission_id}/assignees/list` under the mission read policy,
+reusing the assignment eligibility check and returning only employee id,
+display name and registration number (EDR-304..306; the company principal
+also needs `SELECT ON org_employee_profiles`). RED router 4, contract 1/2,
+PostGIS 3/3, web 8/8 → GREEN router 24/24, contract 2/2, PostGIS 3/3, web
+59/59; a local Chromium DOM check found and fixed a focus bug. Union 8 packages
+820/7052 on its base. Retained: the actual-API HTTPS browser flow
+(`tests/browser.py`) not extended, reservation/block commands and grid
+calendar, filters, history, missions without a vehicle, a
+`trip.mission.manage` context hint, production grants.
+
+Integration (merge onto `1a566b45`): counts merged to 161 normal routes (30
+routed / 54 not routed / 26 special) and the auditor walk 161 / 33 / 128;
+build, vet, gofmt, `sqlc diff`, cmd/api, apicontract and trip unit tests
+green; business-web typecheck, 59/59 tests, build and the 27-file artifact
+check pass on the merged tree.

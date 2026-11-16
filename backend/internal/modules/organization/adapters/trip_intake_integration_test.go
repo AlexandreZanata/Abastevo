@@ -57,6 +57,23 @@ func tripGrants(t *testing.T, fx legalFixtureState) {
 	}
 	tripClosureGrant(t, fx.f)
 	tripHandoverGrant(t, fx.f)
+	tripMissionLinkGrant(t, fx.f)
+}
+
+// tripMissionLinkGrant is EMP-TRIP-023's runtime use of the trip-mission
+// links once 000249 exists: the start stores them and every trip completion
+// (finish or closure) reads them to complete a linked mission.
+func tripMissionLinkGrant(t *testing.T, f *orgtest.Fixture) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_mission_links') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_mission_links TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // tripClosureGrant grants the EMP-TRIP-014 closures once the 000235 table

@@ -131,6 +131,58 @@
           </section>
           <section id="invitation-delivery" class="delivery-card" aria-labelledby="delivery-title" hidden><h3 id="delivery-title" tabindex="-1">Guarde o convite agora</h3><p>O código é exibido apenas nesta emissão. Entregue-o somente à pessoa convidada. Ao fechar ou trocar de empresa, ele será removido desta tela.</p><label for="delivery-code">Código do convite</label><input id="delivery-code" readonly autocomplete="off"><button id="delivery-copy-code" class="button-quiet" type="button">Copiar código</button><label for="delivery-link">Link do convite</label><input id="delivery-link" readonly autocomplete="off"><div class="state-actions"><button id="delivery-copy-link" class="button-quiet" type="button">Copiar link</button><button id="delivery-print" class="button-quiet" type="button">Imprimir convite</button><button id="delivery-close" class="button-primary" type="button">Fechar convite</button></div><p id="delivery-status" role="status"></p></section>
         </section>
+        <section id="mission-board" class="mission-board" aria-labelledby="missions-title" hidden>
+          <div class="section-heading"><div><p class="eyebrow">MISSÕES</p><h2 id="missions-title" tabindex="-1">Planejamento e atribuição de missões</h2></div><button id="missions-load" class="button-quiet" type="button">Consultar missões</button></div>
+          <p class="field-help">O quadro mostra somente o que o servidor confirmou. As opções seguem seu acesso atual, e o servidor confere cada operação.</p>
+          <p id="mission-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <button id="mission-retry" class="button-quiet" type="button" hidden>Tentar novamente</button>
+          <p id="mission-listed-at" class="field-help"></p>
+          <ul id="mission-list" class="record-list" aria-label="Missões"></ul>
+          <button id="missions-next" class="button-quiet" type="button" hidden>Mais missões</button>
+          <details id="mission-create" hidden><summary>Nova missão</summary>
+            <form id="mission-create-form" autocomplete="off">
+              <div class="field-grid"><div><label for="mission-title">Título da missão</label><input id="mission-title" maxlength="280" required></div><div><label for="mission-vehicle">Veículo</label><select id="mission-vehicle" required aria-describedby="mission-vehicle-help"></select></div><div><label for="mission-start">Início planejado</label><input id="mission-start" type="datetime-local" required aria-describedby="mission-zone"></div><div><label for="mission-end">Fim planejado</label><input id="mission-end" type="datetime-local" required aria-describedby="mission-zone"></div></div>
+              <p id="mission-vehicle-help" class="field-help">Somente veículos e máquinas ativos da sua lista. A unidade da missão é a unidade atual do veículo.</p>
+              <p id="mission-zone" class="field-help"></p>
+              <button id="mission-create-submit" class="button-primary" type="submit">Criar missão</button>
+            </form>
+          </details>
+          <section id="mission-detail" class="employee-detail" aria-labelledby="mission-detail-title" hidden>
+            <div class="section-heading"><h3 id="mission-detail-title" tabindex="-1"></h3><button id="mission-reload" class="button-quiet" type="button">Atualizar missão</button></div>
+            <dl id="mission-fields" class="record-fields"></dl>
+            <p id="mission-read-at" class="field-help"></p>
+            <p id="mission-warning" class="setup-notice" hidden></p>
+            <form id="mission-plan-form" autocomplete="off"><fieldset><legend>Planejamento</legend>
+              <div class="field-grid"><div><label for="plan-destination">Destino</label><input id="plan-destination" maxlength="280" required></div><div><label for="plan-reason">Motivo</label><input id="plan-reason" maxlength="280" required></div><div><label for="plan-cost-centre">Centro de custo (cliente, contrato ou projeto)</label><select id="plan-cost-centre" aria-describedby="plan-cost-help"></select></div><div><label for="plan-load">Carga</label><select id="plan-load"><option value="NONE">Sem carga</option><option value="CARGO">Carga</option><option value="PASSENGERS">Passageiros</option></select></div><div><label for="plan-cargo">Descrição da carga</label><input id="plan-cargo" maxlength="280"></div><div><label for="plan-passengers">Quantidade de passageiros</label><input id="plan-passengers" type="number" min="1" max="999" step="1"></div></div>
+              <p id="plan-cost-help" class="field-help"></p>
+              <p class="field-help">Não informe nomes, documentos ou contatos de passageiros.</p>
+              <button id="mission-plan-submit" class="button-primary" type="submit">Salvar planejamento</button>
+            </fieldset></form>
+            <form id="mission-assign-form"><fieldset><legend>Designação</legend>
+              <label for="assign-employee">Pessoa elegível</label><select id="assign-employee" aria-describedby="assign-help"></select>
+              <p id="assign-help" class="field-help">Somente pessoas que o servidor confirmou como elegíveis para esta missão. A pessoa responde pelo aplicativo; a resposta aparece aqui depois que o servidor a registrar.</p>
+              <button id="assignees-next" class="button-quiet" type="button" hidden>Mais pessoas elegíveis</button>
+              <button id="mission-assign-submit" class="button-primary" type="submit">Designar</button>
+            </fieldset></form>
+            <form id="mission-vehicle-form" autocomplete="off"><fieldset><legend>Troca de veículo</legend>
+              <div class="field-grid"><div><label for="vehicle-asset">Novo veículo</label><select id="vehicle-asset"></select></div><div><label for="vehicle-reason">Motivo da troca</label><input id="vehicle-reason" maxlength="280" required></div></div>
+              <button id="vehicle-preview" class="button-quiet" type="button">Ver agenda do novo veículo</button>
+              <button id="mission-vehicle-submit" class="button-primary" type="submit">Trocar veículo</button>
+            </fieldset></form>
+            <form id="mission-cancel-form" autocomplete="off"><fieldset><legend>Cancelamento</legend>
+              <label for="cancel-reason">Motivo do cancelamento</label><input id="cancel-reason" maxlength="280" required>
+              <button id="mission-cancel-submit" class="button-quiet" type="submit">Cancelar missão</button>
+            </fieldset></form>
+            <section id="mission-agenda" class="mission-agenda" aria-labelledby="agenda-title" hidden>
+              <h4 id="agenda-title">Agenda do veículo</h4>
+              <p id="agenda-availability"></p>
+              <ul id="agenda-causes" class="record-list" aria-label="Motivos da disponibilidade"></ul>
+              <h5>Reservas</h5><ul id="agenda-reservations" class="record-list" aria-label="Reservas do veículo"></ul>
+              <h5>Bloqueios</h5><ul id="agenda-blocks" class="record-list" aria-label="Bloqueios do veículo"></ul>
+              <p id="agenda-note" class="field-help"></p>
+            </section>
+          </section>
+        </section>
       </section>
       <p id="live-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
       <noscript>Ative o JavaScript para entrar no painel com segurança.</noscript>

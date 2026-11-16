@@ -202,6 +202,7 @@ func TestConflictViewValidationAndHeldCodes(t *testing.T) {
 		{app.SubmitOperationType, app.TripAlreadyClosed, false}, {"meter.reading.record", app.PermissionChanged, false},
 		{app.PauseOperationType, app.TripAlreadyClosed, true}, {app.ResumeOperationType, app.StaleRevision, true}, {app.CancelOperationType, app.StaleRevision, true},
 		{app.CancelOperationType, app.AssetBusy, false},
+		{app.StartOperationType, app.OrphanReference, true}, {app.FinishOperationType, app.OrphanReference, false},
 	} {
 		if app.HeldCode(c.kind, c.code) != c.ok {
 			t.Fatal("held code", c.kind, c.code)
@@ -228,7 +229,9 @@ func TestConflictViewValidationAndHeldCodes(t *testing.T) {
 		t.Fatal("valid accepted view refused")
 	}
 	for name, change := range map[string]func(*app.ConflictView){
-		"meter code":   func(v *app.ConflictView) { v.Code = "ORPHAN_REFERENCE" },
+		// EMP-TRIP-023 made ORPHAN_REFERENCE a held-start code; a code no
+		// trip start holds stays invalid.
+		"meter code":   func(v *app.ConflictView) { v.Code = "PERIOD_LOCKED" },
 		"finish shape": func(v *app.ConflictView) { v.OperationType = app.FinishOperationType },
 		"accepted finish": func(v *app.ConflictView) {
 			v.OperationType, v.Code, v.Fact.Finish, v.Fact.Start = app.FinishOperationType, app.TripAlreadyClosed, v.Fact.Start, nil

@@ -7717,6 +7717,185 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   job, a job run twice, two workers on one session, a superseded lease and a
   foreign organization's job leave one revision per input and nothing else.
 
+## EMP-TRIP-022 — Panel: mission planning and assignment board (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip022-mission-board.md).
+
+- **B-BR-EMP-470 — Eligible assignees of a mission are a server read.** `POST
+  /v1/orgs/{org_id}/missions/{mission_id}/assignees/list` lists, under current
+  `trip.mission.manage` covering the mission (read, not fresh; structural scope
+  as the mission read: another organization's or an unknown mission
+  `NOT_FOUND`, a planner whose grant does not cover it, `AUDITOR` and `DRIVER`
+  `FORBIDDEN`), exactly the employees the assignment command would accept: an
+  `ACTIVE`, unmerged employee of the organization with an `ACTIVE`
+  account-linked membership whose current `trip.trip.start` covers the mission
+  (the EMP-TRIP-008 `EligibleAssigneeTx` rule, evaluated per candidate inside
+  the read transaction). Each item carries only `employee_id`, `display_name`
+  and `registration_number` (empty strings when the profile has none); no
+  contact, membership, role, scope or account data. Pages scan candidates in
+  employee order and return the eligible ones; the opaque cursor is bound to
+  the route, mission and limit and advances by the last scanned employee, so a
+  page can be empty while a cursor remains. The read changes nothing and is
+  answered `no-store` like every private company read. Eligibility shown here
+  is never authority: the assignment command re-decides it.
+- **B-BR-EMP-471 — The board reports server state only.** The company panel
+  board (SCR-TRIP-03) shows a mission's state, revision, vehicle, assignee,
+  answer and plan only as returned by the latest successful mission list or
+  read, with the instant it was read (BR-TRUTH-006). A pending command never
+  changes the shown mission; an acknowledged command is followed by a new read
+  of that mission and only that read replaces it. `ACCEPTED` and `DECLINED`
+  appear only when a server read says so; an assignment acknowledgement must
+  say `ASSIGNED` for the requested employee, otherwise it is unusable. The
+  FLEET-007 assignment warning (`ASSET_UNAVAILABLE`/`ASSET_BUSY` with the
+  availability) is shown as returned and is never a refusal.
+- **B-BR-EMP-472 — Only eligible scoped choices are offered.** Vehicles offered
+  for creation and vehicle change are the planner's server-listed `ACTIVE`
+  assets that are not `IMPLEMENT` (never the mission's current vehicle for a
+  change); assignees offered are only those of B-BR-EMP-470 for that mission
+  (never the current assignee again). A choice that is not in the current
+  server list is refused before any request. Cost centres are offered only
+  from the server's `ACTIVE` cost-centre list when the member can read it;
+  otherwise the plan is saved without one. The vehicle's agenda (SCR-FLEET-06
+  list view) shows its FLEET-007 availability with causes and evaluation
+  instant, and its reservations and blocks by state and window; free-text
+  purposes and notes are not displayed. A displayed option or control is not
+  authorization: the server decides every read and command.
+- **B-BR-EMP-473 — Commands keep their contracts.** Create, plan, assign,
+  vehicle change and cancel use the existing routes with schema 1, one
+  immutable operation id and body per decision, and the mission revision the
+  planner saw. An unknown outcome may be retried only with the same id and
+  body; a new decision gets a new id. `CONFLICT` (stale revision, a state that
+  no longer allows the action, a busy vehicle) clears the pending decision,
+  never retries, and re-reads the mission so the current server state is
+  shown with the conflict. `FORBIDDEN` and `NOT_FOUND` clear every private
+  board record and show fixed copy that reveals nothing about the target;
+  `FRESH_AUTH_REQUIRED` and `UNAUTHENTICATED` end the company session view;
+  `VALIDATION_FAILED` keeps the planner's input.
+- **B-BR-EMP-474 — Isolation, freshness and privacy of the board.** Changing
+  organization, losing authority, signing out or reloading clears the board
+  and aborts its requests; a late response of an earlier scope or decision is
+  discarded. Nothing is kept in browser storage; private responses must be
+  `no-store`; the board displays no personal data beyond the fields the routes
+  return and never sends a value it did not receive from the server as a
+  reference.
+- **BUC-EMP-239 — Plan and hand over a mission from the panel.** A fleet
+  manager opens the board, creates "Entrega sintética no cliente" with FR-001
+  for tomorrow 08:00–10:00, plans destination text, reason, cost centre and
+  cargo, sees FR-001's agenda (a confirmed reservation the same morning),
+  assigns Bruno from the eligible list and reads the server's
+  `ASSET_UNAVAILABLE` warning; the mission shows `ASSIGNED` (awaiting answer)
+  until a later read shows Bruno's `ACCEPTED`.
+- **BUC-EMP-240 — A concurrent change is never hidden.** Two planners open the
+  same mission at revision 3; the first reassigns it; the second's cancel gets
+  `CONFLICT`, the board re-reads and shows revision 4 assigned to the other
+  member with the conflict message, and the second planner decides again.
+- **BUC-EMP-241 — Prove the board and its read.** Real PostGIS proves the
+  eligible-assignee read (FINANCE, AUDITOR, suspended, inactive, merged and
+  account-less candidates excluded; unit-scoped coverage; empty pages with a
+  cursor; another organization and out-of-scope planners refused; the read
+  changes nothing) and its composed HTTP route; the web tests prove a foreign
+  or stale assignment is not offered, a conflict refreshes server state, an
+  unconfirmed state is never shown as accepted and a `403` clears the board.
+
+## EMP-TRIP-023 — Reservation-to-trip integration and no-show release (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip023-reservation-trip-link.md).
+
+- **B-BR-EMP-412 — A trip start may name the mission it executes.** A
+  signed `trip.start` keeps operation schema 1 and its exact payload; it may
+  carry in its envelope `soft_references` exactly one reference
+  `{type: "mission", id}` (BR-OFFL-007). No reference keeps the earlier
+  behaviour; another reference type or more than one reference stays a
+  recognised but unsupported form (`RETRY`/`UNAVAILABLE`, nothing stored).
+  The reference is decided at receipt, under the organization root and
+  asset locks and after the existing final refusals (`MALFORMED`,
+  `FORBIDDEN`, `DEPENDENCY_PENDING`): it is eligible only when the mission
+  belongs to the organization, is `ACCEPTED`, its current assignee is the
+  start's author membership and driver employee, its current vehicle (when
+  it names one) is the start's asset, and no trip is linked to it yet. An
+  eligible reference admits the start inside a confirmed reservation of that
+  mission (BR-FLEET-031, as a reservation naming the starter does). The
+  existing held codes keep their order (`PERMISSION_CHANGED`,
+  `ASSET_UNAVAILABLE`, `ASSET_BUSY`); a start that would otherwise be
+  accepted with a missing, foreign or ineligible mission is held
+  `ORPHAN_REFERENCE` (`ACCEPTED_FOR_REVIEW`, no trip, no link). A held start
+  never links: when the EMP-TRIP-007 resolution accepts it, the trip it
+  declared is created without the mission (the link removed) and consumes no
+  reservation. An accepted start with an eligible mission stores, in the same
+  transaction as the trip, one insert-only link (one trip, one mission, the
+  start operation); the database refuses a link whose mission is not
+  `ACCEPTED` for the trip's author, driver and asset, a second link of the
+  trip or of the mission, and any change or deletion of a link. Replays
+  return the stored acknowledgement byte for byte.
+- **B-BR-EMP-413 — The mission follows its linked trip.** The shared mission
+  table (Go and Kotlin, `trip/mission-v3.psv` superseding v2) gains
+  `START` (`ACCEPTED` → `IN_PROGRESS`) and `COMPLETE` (`IN_PROGRESS` →
+  `COMPLETED`); `CANCEL` is also allowed from `IN_PROGRESS`; every other
+  command on an `IN_PROGRESS` mission, and `START` or `COMPLETE` from any
+  other open state, is `INVALID_TRANSITION` (the mission table no longer
+  answers `UNSUPPORTED_COMMAND`). No company or device command produces
+  `START` or `COMPLETE`: the linked start appends the mission's `START`
+  transition (source `TRIP`: the trip, its start operation, the author
+  membership and account) and moves the mission to `IN_PROGRESS` at the next
+  revision in the start's transaction; the transaction that completes the
+  linked trip — the driver's finish or a supervisor closure (EMP-TRIP-014) —
+  appends `COMPLETE` (source `TRIP`: the finish or closure operation and its
+  member) and moves the mission to `COMPLETED`. A cancelled trip leaves the
+  mission `IN_PROGRESS`; its planner may cancel it with a reason, and a
+  later completion of a trip whose mission was cancelled changes nothing.
+  A planner command other than `CANCEL` on an `IN_PROGRESS` mission is
+  `CONFLICT`; the vehicle change stays refused.
+- **B-BR-EMP-414 — A mission's reservation is consumed once by its linked
+  start or released once.** A planner holding fresh `trip.mission.manage`
+  over the mission's structure requests the reservation of the mission's
+  vehicle: `POST /v1/orgs/{org_id}/missions/{mission_id}/reservations/request`
+  with `schema_version` 1, `operation_id`, the mission's `revision` and a
+  `purpose` (nonblank, control-free, at most 280 characters). The mission
+  must be `PLANNED`, `ASSIGNED`, `ACCEPTED` or `DECLINED` and name a
+  vehicle (else `VALIDATION_FAILED`); `DRAFT`, `IN_PROGRESS`, terminal or a
+  stale revision is `CONFLICT`. One `REQUESTED` reservation of that vehicle
+  for the mission's planned window is created, linked to the mission, with
+  no reserved employee and the 60-minute no-show tolerance, after settling
+  the vehicle's due outcomes; a window that has started is
+  `VALIDATION_FAILED`, an overlap with a confirmed window or a block is
+  `RESERVATION_CONFLICT` showing only that window. The mission gains a
+  `RESERVE` revision keeping its state, assignee and answer; one
+  `trip.mission.reservation_requested` audit event, the mission command and
+  the fleet `REQUEST` receipts are written and the outcome job is queued.
+  Confirmation and cancellation stay under `fleet.reservation.manage`. In
+  the linked start's transaction, the mission's reservation on the trip's
+  asset that is stored `CONFIRMED`, not yet due at the receipt instant
+  (before its no-show deadline) and whose window extended by the 30-minute
+  early tolerance (`[start − 30 min, end)`) contains the declared start
+  becomes `FULFILLED` with that trip (the earliest such window); it is an
+  effect of the start operation, covered by that operation's receipt and
+  audit event, with no event of its own. The FLEET-007 outcome job,
+  which now takes the organization root lock before the reservation, records
+  `NO_SHOW` once at the deadline; a `FULFILLED` reservation is never missed
+  and a `NO_SHOW`, `EXPIRED` or `CANCELLED` one is never consumed (the start
+  is decided without it). The database refuses `FULFILLED` from any state
+  but `CONFIRMED`, at or after the deadline, without the linked trip of the
+  reservation's mission on its asset with a declared start inside the
+  extended window, or for a second trip.
+- **BUC-EMP-209 — Execute an accepted mission offline.** A planner creates
+  a mission for the synthetic vehicle tomorrow 08:00–12:00, assigns the
+  driver, who accepts on the phone, and reserves the vehicle; a fleet
+  manager confirms. At 07:50 the driver, offline, starts the trip naming
+  the mission; on reconnect the start is accepted, the mission is
+  `IN_PROGRESS` and the reservation `FULFILLED` with the trip; another
+  driver's start on the vehicle at 09:00 is held `ASSET_BUSY`. The finish at
+  184 610 000 m completes the trip and the mission. A start naming a
+  cancelled mission, another driver's mission or a mission of another
+  organization is held `ORPHAN_REFERENCE`; nothing is linked.
+- **BUC-EMP-210 — Release a no-show.** The driver never starts: at 09:00
+  (start plus the 60-minute tolerance) the outcome job records `NO_SHOW`
+  once and the vehicle is free for others from then on; running the job
+  again changes nothing. A start the driver declared at 08:30 and delivered
+  at 09:05 is decided normally and is not linked to the released
+  reservation, whose `NO_SHOW` stays; a start delivered at 08:59 while the
+  job waits behind it consumes the reservation, and the job then finds it
+  `FULFILLED` and changes nothing.
+
 ## EMP-GPS-002 — Organization trip tracking service: explicit start from the trip screen, visible notification, location-guard update (2026-11-15)
 
 [Evidence](../enterprise/evidence/f4-gps002-tracking-service.md). Owner

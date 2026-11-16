@@ -108,3 +108,39 @@ ORDER BY starts_at,id;
 SELECT employee_id::text AS employee_id FROM org_memberships
 WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(membership_id)::text AS uuid)
  AND started_at IS NOT NULL AND started_at<=sqlc.arg(at)::timestamptz AND(ended_at IS NULL OR sqlc.arg(at)::timestamptz<ended_at);
+
+-- name: InsertMissionReservation :exec
+-- EMP-TRIP-023 (B-BR-EMP-414): a mission's REQUESTED reservation of its
+-- vehicle for its planned window; the row guard requires the mission's
+-- RESERVE revision of the same operation.
+INSERT INTO org_asset_reservations(org_id,id,asset_id,purpose,starts_at,ends_at,no_show_tolerance,state,revision,operation_id,requested_by,mission_id)
+VALUES(CAST(sqlc.arg(org_id)::text AS uuid),CAST(sqlc.arg(id)::text AS uuid),CAST(sqlc.arg(asset_id)::text AS uuid),sqlc.arg(purpose)::text,
+ sqlc.arg(starts_at)::timestamptz,sqlc.arg(ends_at)::timestamptz,sqlc.arg(no_show_tolerance)::int,'REQUESTED',1,
+ CAST(sqlc.arg(operation_id)::text AS uuid),CAST(sqlc.arg(requested_by)::text AS uuid),CAST(sqlc.arg(mission_id)::text AS uuid));
+
+-- name: MissionReservationByOperation :one
+SELECT id::text AS id FROM org_asset_reservations
+WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND operation_id=CAST(sqlc.arg(operation_id)::text AS uuid) AND mission_id IS NOT NULL;
+
+-- name: FulfillableMissionReservation :one
+-- EMP-TRIP-023: the earliest CONFIRMED reservation of the mission on the
+-- asset, not yet due at the transaction instant, whose window extended by
+-- the early tolerance contains the declared start; locked for its change.
+SELECT id::text AS id,revision FROM org_asset_reservations
+WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND mission_id=CAST(sqlc.arg(mission_id)::text AS uuid) AND asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
+ AND state='CONFIRMED' AND transaction_timestamp()<org_asset_reservation_deadline(starts_at,ends_at,no_show_tolerance)
+ AND starts_at-make_interval(secs=>sqlc.arg(early_seconds)::int)<=sqlc.arg(declared)::timestamptz AND sqlc.arg(declared)::timestamptz<ends_at
+ORDER BY starts_at,id LIMIT 1 FOR UPDATE;
+
+-- name: FulfilReservationRow :execrows
+-- Compare-and-set of CONFIRMED -> FULFILLED with the linked trip.
+UPDATE org_asset_reservations SET state='FULFILLED',revision=revision+1,trip_id=CAST(sqlc.arg(trip_id)::text AS uuid)
+WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(id)::text AS uuid) AND state='CONFIRMED' AND revision=sqlc.arg(revision)::bigint;
+
+-- name: AvailabilityReservationMissions :many
+-- EMP-TRIP-023: the mission of each ever-confirmed reservation whose window
+-- contains the instant (BR-FLEET-031: it admits the mission's own start).
+SELECT id::text AS id,mission_id::text AS mission_id FROM org_asset_reservations
+WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND asset_id=CAST(sqlc.arg(asset_id)::text AS uuid) AND confirmed_at IS NOT NULL AND mission_id IS NOT NULL
+ AND starts_at<=sqlc.arg(at)::timestamptz AND sqlc.arg(at)::timestamptz<ends_at
+ORDER BY id;

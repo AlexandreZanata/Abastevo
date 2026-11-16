@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"time"
+	"unicode/utf8"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
@@ -116,6 +117,10 @@ const (
 	MissionCancelCommand MissionCommandKind = "CANCEL"
 	// MissionVehicleCommand replaces the mission's vehicle (EMP-TRIP-013).
 	MissionVehicleCommand MissionCommandKind = "VEHICLE"
+	// MissionReserveCommand requests the reservation of the mission's
+	// vehicle for its planned window; Reason carries the purpose
+	// (EMP-TRIP-023, B-BR-EMP-414).
+	MissionReserveCommand MissionCommandKind = "RESERVE"
 )
 
 // MissionPlanFields is the content of one PLAN command (EMP-TRIP-009,
@@ -256,6 +261,15 @@ func NewMissionCommand(in MissionCommandInput) (MissionCommand, error) {
 			return MissionCommand{}, err
 		}
 		out.MissionID, out.ExpectedRevision, out.AssetID, out.Reason = in.MissionID, in.ExpectedRevision, in.AssetID, in.Reason
+	case MissionReserveCommand:
+		if !canonicalID(in.MissionID) || in.ExpectedRevision < 1 || in.UnitID != "" || in.AssetID != "" || in.Title != "" || !in.StartsAt.IsZero() || !in.EndsAt.IsZero() ||
+			in.AssigneeEmployeeID != "" {
+			return MissionCommand{}, trip.ErrInvalid
+		}
+		if err := trip.ValidMissionText(in.Reason); err != nil {
+			return MissionCommand{}, err
+		}
+		out.MissionID, out.ExpectedRevision, out.Reason = in.MissionID, in.ExpectedRevision, in.Reason
 	case MissionAssignCommand, MissionCancelCommand:
 		if !canonicalID(in.MissionID) || in.ExpectedRevision < 1 || in.UnitID != "" || in.AssetID != "" || in.Title != "" || !in.StartsAt.IsZero() || !in.EndsAt.IsZero() {
 			return MissionCommand{}, trip.ErrInvalid
@@ -338,6 +352,9 @@ type MissionAck struct {
 	State              trip.MissionState
 	AssigneeEmployeeID string
 	Warning            *MissionWarning
+	// ReservationID is the reservation a RESERVE command created
+	// (EMP-TRIP-023); empty for every other command.
+	ReservationID string
 }
 
 // MissionPlanView is a mission's current planning revision (EMP-TRIP-009).
@@ -394,6 +411,38 @@ type MissionPage struct {
 	NextID   string
 }
 
+// MissionAssigneeFilter pages the eligible assignees of one mission by the
+// last scanned employee (EMP-TRIP-022, EDR-304).
+type MissionAssigneeFilter struct {
+	private
+	AfterID string
+	Limit   int
+}
+
+func (f MissionAssigneeFilter) Validate() error {
+	if f.Limit < 1 || f.Limit > MaxMissionPage || f.AfterID != "" && !canonicalID(f.AfterID) {
+		return trip.ErrInvalid
+	}
+	return nil
+}
+
+// MissionAssignee is one employee the assignment command would accept now:
+// only the employee list's descriptive name and registration number
+// (B-BR-EMP-470).
+type MissionAssignee struct {
+	private
+	EmployeeID, DisplayName, RegistrationNumber string
+}
+
+// MissionAssigneePage holds the eligible employees of one scanned page;
+// NextID is the last scanned employee when more candidates remain, so a page
+// may be empty while NextID is set.
+type MissionAssigneePage struct {
+	private
+	Assignees []MissionAssignee
+	NextID    string
+}
+
 // MissionRepository owns the company commands and reads; every call proves
 // current authority inside its own transaction.
 type MissionRepository interface {
@@ -402,6 +451,9 @@ type MissionRepository interface {
 	// missions whose current assignee is the member.
 	ListMissions(context.Context, kernel.OrgScope, MissionActor, string, bool, MissionFilter) (MissionPage, error)
 	ReadMission(context.Context, kernel.OrgScope, MissionActor, string, string) (MissionView, error)
+	// ListMissionAssignees pages the employees eligible for the mission under
+	// the assignment command's own rule (EDR-304).
+	ListMissionAssignees(context.Context, kernel.OrgScope, MissionActor, string, string, MissionAssigneeFilter) (MissionAssigneePage, error)
 }
 
 type MissionService struct {
@@ -458,6 +510,9 @@ func validMissionAck(v MissionAck, in MissionCommandInput) bool {
 	if v.Warning != nil && (in.Kind != MissionAssignCommand || v.Warning.Code != "ASSET_BUSY" && v.Warning.Code != "ASSET_UNAVAILABLE" || v.Warning.Availability == "") {
 		return false
 	}
+	if (in.Kind == MissionReserveCommand) != (v.ReservationID != "") || v.ReservationID != "" && !canonicalID(v.ReservationID) {
+		return false
+	}
 	switch in.Kind {
 	case MissionCreate:
 		return v.Revision == 1 && v.State == trip.MissionDraft && v.AssigneeEmployeeID == ""
@@ -469,6 +524,8 @@ func validMissionAck(v MissionAck, in MissionCommandInput) bool {
 		return v.Revision == in.ExpectedRevision+1 && v.State == trip.MissionCancelled && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
 	case MissionVehicleCommand:
 		return v.Revision == in.ExpectedRevision+1 && trip.VehicleChangeAllowed(v.State) == nil && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
+	case MissionReserveCommand:
+		return v.Revision == in.ExpectedRevision+1 && trip.ReservationRequestAllowed(v.State) == nil && (v.AssigneeEmployeeID == "" || canonicalID(v.AssigneeEmployeeID))
 	}
 	return false
 }
@@ -489,7 +546,8 @@ func (s MissionService) Command(ctx context.Context, scope kernel.OrgScope, acto
 	replayed := false
 	err = s.guarded(ctx, scope, actor, decision, MissionManage, target, func() error {
 		newID := ""
-		if in.Kind == MissionCreate {
+		// The new mission, or the reservation a RESERVE creates (EMP-TRIP-023).
+		if in.Kind == MissionCreate || in.Kind == MissionReserveCommand {
 			if s.NewID == nil {
 				return ErrUnavailable
 			}
@@ -595,6 +653,47 @@ func (s MissionService) Read(ctx context.Context, scope kernel.OrgScope, actor M
 		return MissionView{}, ErrUnavailable
 	}
 	return v.copy(), nil
+}
+
+// validAssigneeText bounds the profile texts the read may carry (the
+// 000176 display name and registration number limits).
+func validAssigneeText(v string, limit int) bool {
+	return utf8.ValidString(v) && utf8.RuneCountInString(v) <= limit
+}
+
+// Assignees pages the employees eligible for one mission (B-BR-EMP-470): the
+// mission read policy on the mission before and after the repository call,
+// and a result that is ordered, bounded and canonical.
+func (s MissionService) Assignees(ctx context.Context, scope kernel.OrgScope, actor MissionActor, decision access.Decision, mission string, filter MissionAssigneeFilter) (MissionAssigneePage, error) {
+	if !canonicalID(mission) {
+		return MissionAssigneePage{}, ErrNotFound
+	}
+	if err := filter.Validate(); err != nil {
+		return MissionAssigneePage{}, err
+	}
+	var v MissionAssigneePage
+	err := s.guarded(ctx, scope, actor, decision, MissionRead, mission, func() error {
+		var err error
+		v, err = s.Repository.ListMissionAssignees(ctx, scope, actor, decision.Subject().MembershipID(), mission, filter)
+		return err
+	})
+	if err != nil {
+		return MissionAssigneePage{}, err
+	}
+	if len(v.Assignees) > filter.Limit || v.NextID != "" && (!canonicalID(v.NextID) || v.NextID <= filter.AfterID) {
+		return MissionAssigneePage{}, ErrUnavailable
+	}
+	prior := filter.AfterID
+	out := MissionAssigneePage{Assignees: make([]MissionAssignee, 0, len(v.Assignees)), NextID: v.NextID}
+	for _, a := range v.Assignees {
+		if !canonicalID(a.EmployeeID) || a.EmployeeID <= prior || v.NextID != "" && a.EmployeeID > v.NextID ||
+			!validAssigneeText(a.DisplayName, 200) || !validAssigneeText(a.RegistrationNumber, 64) {
+			return MissionAssigneePage{}, ErrUnavailable
+		}
+		out.Assignees = append(out.Assignees, MissionAssignee{EmployeeID: a.EmployeeID, DisplayName: a.DisplayName, RegistrationNumber: a.RegistrationNumber})
+		prior = a.EmployeeID
+	}
+	return out, nil
 }
 
 // ---- trip.mission.respond (EDR-229) ----

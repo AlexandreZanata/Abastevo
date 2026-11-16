@@ -4,6 +4,8 @@ import { CREATE, HOME, LOGIN, organizationPath, setupPath, route } from './model
 import { CurrentMemberships } from './company.js';
 import { EmployeeAccessApi } from './employees.js';
 import { mountEmployeeAccess } from './panel.js';
+import { MissionBoardApi } from './missions.js';
+import { mountMissionBoard } from './missionpanel.js';
 import { OrganizationSetupApi } from './setup.js';
 import { mountOrganizationSetup } from './setuppanel.js';
 
@@ -33,6 +35,7 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
   let expiryTimer = 0;
   const api = session instanceof CompanyApi ? session : null;
   const panel = api ? mountEmployeeAccess(doc, browser, new EmployeeAccessApi(api), message => controller.reset(message)) : null;
+  const missions = api ? mountMissionBoard(doc, browser, new MissionBoardApi(api), message => controller.reset(message)) : null;
   const setup = api ? mountOrganizationSetup(doc, browser, new OrganizationSetupApi(api), message => controller.reset(message), id => {
     if (target.kind !== 'create' && target.kind !== 'setup') return;
     const path = setupPath(id);
@@ -57,8 +60,8 @@ export function mountCompany(doc: Document, browser: Window, session: SessionPor
     // An unchanged tab-return recheck keeps focus, the pending choice and the
     // live region as they are; only the refreshed expiry deadline applies.
     if (unchanged) return;
-    if (state.phase === 'ready') panel?.select(state.authority);
-    else panel?.clear();
+    if (state.phase === 'ready') { panel?.select(state.authority); missions?.select(state.authority); }
+    else { panel?.clear(); missions?.clear(); }
     if (state.phase === 'setup' && state.setupAccountId && (target.kind === 'create' || target.kind === 'setup')) setup?.select(state.setupAccountId, target.kind === 'setup' ? target.id : undefined);
     else setup?.clear();
     const busy = state.phase === 'loading' || state.phase === 'signing-out';

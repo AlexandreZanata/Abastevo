@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
+	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	guarded "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/adapters/http"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
@@ -30,6 +32,12 @@ const (
 	MissionCancelPath = MissionPrefix + "/{mission_id}/cancel"
 	// MissionVehiclePath replaces the mission's vehicle (EMP-TRIP-013, EDR-251).
 	MissionVehiclePath = MissionPrefix + "/{mission_id}/vehicle/change"
+	// MissionAssigneesPath lists the employees eligible for the mission
+	// (EMP-TRIP-022, EDR-304).
+	MissionAssigneesPath = MissionPrefix + "/{mission_id}/assignees/list"
+	// MissionReservePath requests the reservation of the mission's vehicle
+	// for its planned window (EMP-TRIP-023, EDR-266).
+	MissionReservePath = MissionPrefix + "/{mission_id}/reservations/request"
 )
 
 // MissionRecords accepts only the mission policies on their own targets: the
@@ -177,6 +185,21 @@ type missionCancelRequest struct {
 	missionCommandFields
 	Reason string `json:"reason"`
 }
+type missionReserveRequest struct {
+	missionCommandFields
+	Purpose string `json:"purpose"`
+}
+
+func (v *missionReserveRequest) UnmarshalJSON(raw []byte) error {
+	type plain missionReserveRequest
+	var in plain
+	if err := decodeStrict(raw, &in); err != nil {
+		return err
+	}
+	*v = missionReserveRequest(in)
+	return nil
+}
+
 type missionListRequest struct {
 	companyRequest
 	orgapi.Page
@@ -253,6 +276,17 @@ func missionMapped(err error) error {
 	if errors.As(err, &denied) {
 		return orgapi.MissingPermission(string(denied.Permission()))
 	}
+	// EMP-TRIP-023: a reservation request reports only the conflicting window.
+	var window fleetapp.ReservationConflict
+	if errors.As(err, &window) {
+		return orgapi.ReservationWindowConflict(window.From, window.To)
+	}
+	if errors.Is(err, fleetapp.ErrReservationConflict) {
+		return orgapi.ReservationConflict
+	}
+	if errors.Is(err, fleet.ErrInvalid) {
+		return orgapi.ValidationFailed
+	}
 	if code, ok := orgapi.Registered(err); ok {
 		return code
 	}
@@ -293,6 +327,9 @@ func MissionRule(action app.MissionAction, revision bool, success int) orgapi.Ru
 
 func missionAck(v app.MissionAck, replayed bool) map[string]any {
 	out := map[string]any{"mission_id": v.MissionID, "revision": v.Revision, "state": v.State, "replayed": replayed, "data_mode": "SYNTHETIC"}
+	if v.ReservationID != "" {
+		out["reservation_id"] = v.ReservationID
+	}
 	if v.AssigneeEmployeeID != "" {
 		out["assignee_employee_id"] = v.AssigneeEmployeeID
 	}
@@ -349,7 +386,7 @@ func projectPlan(p app.MissionPlanView) map[string]any {
 	return out
 }
 
-// RegisterMissions mounts the seven trip.mission.manage routes and the own
+// RegisterMissions mounts the eight trip.mission.manage routes and the own
 // list. The organization and mission routes share the MissionStructure
 // authorization; the own list carries no structure or assignee source.
 func RegisterMissions(router chi.Router, service app.MissionService, cookies company.Handler, gateway orgapi.Gateway, authorization access.Authorization) error {
@@ -445,6 +482,18 @@ func RegisterMissions(router chi.Router, service app.MissionService, cookies com
 	}); err != nil {
 		return err
 	}
+	if err := guarded.Register(owned, MissionReservePath, gateway, MissionRule(app.MissionManage, true, 201), authorization, app.MissionPolicy(app.MissionManage), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionReserveRequest) (any, error) {
+		mission, err := missionPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if input.Revision == nil {
+			return nil, orgapi.Malformed
+		}
+		return command(ctx, p, decision, app.MissionCommandInput{Kind: app.MissionReserveCommand, OperationID: input.OperationID, MissionID: mission, ExpectedRevision: *input.Revision, Reason: input.Purpose})
+	}); err != nil {
+		return err
+	}
 	if err := guarded.Register(owned, MissionCancelPath, gateway, MissionRule(app.MissionManage, true, 200), authorization, app.MissionPolicy(app.MissionManage), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionCancelRequest) (any, error) {
 		mission, err := missionPathID(ctx)
 		if err != nil {
@@ -495,6 +544,43 @@ func RegisterMissions(router chi.Router, service app.MissionService, cookies com
 		}
 	}
 	if err := guarded.Register(owned, MissionListPath, gateway, MissionRule(app.MissionRead, false, 200), authorization, app.MissionPolicy(app.MissionRead), missionRoot{}, list(MissionListPath, false)); err != nil {
+		return err
+	}
+	if err := guarded.Register(owned, MissionAssigneesPath, gateway, MissionRule(app.MissionRead, false, 200), authorization, app.MissionPolicy(app.MissionRead), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionListRequest) (any, error) {
+		actor, err := missionActor(ctx)
+		if err != nil {
+			return nil, err
+		}
+		mission, err := missionPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		page, err := input.Page.Normalize()
+		if err != nil {
+			return nil, orgapi.Malformed
+		}
+		// The cursor is bound to the route, this mission and the limit.
+		binding := fmt.Sprintf("trip.mission.assignees.v1:%s:%d", mission, page.Limit)
+		filter := app.MissionAssigneeFilter{Limit: page.Limit}
+		if filter.AfterID, err = gateway.OpenCursor(p, MissionAssigneesPath, binding, page.Cursor); err != nil || filter.Validate() != nil {
+			return nil, orgapi.Malformed
+		}
+		result, err := service.Assignees(ctx, p.Scope, actor, decision, mission, filter)
+		if err != nil {
+			return nil, missionMapped(err)
+		}
+		items := make([]map[string]any, 0, len(result.Assignees))
+		for _, v := range result.Assignees {
+			items = append(items, map[string]any{"employee_id": v.EmployeeID, "display_name": v.DisplayName, "registration_number": v.RegistrationNumber})
+		}
+		next := ""
+		if result.NextID != "" {
+			if next, err = gateway.SealCursor(p, MissionAssigneesPath, binding, result.NextID); err != nil {
+				return nil, orgapi.Unavailable
+			}
+		}
+		return map[string]any{"items": items, "next_cursor": next, "data_mode": "SYNTHETIC"}, nil
+	}); err != nil {
 		return err
 	}
 	if err := guarded.Register(owned, MissionReadPath, gateway, MissionRule(app.MissionRead, false, 200), authorization, app.MissionPolicy(app.MissionRead), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, _ missionReadRequest) (any, error) {

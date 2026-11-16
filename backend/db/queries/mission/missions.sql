@@ -94,3 +94,14 @@ VALUES(CAST(sqlc.arg(org_id)::text AS uuid),CAST(sqlc.arg(mission_id)::text AS u
 -- name: ChangeMissionVehicle :execrows
 UPDATE org_trip_missions SET revision=revision+1,asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
 WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(id)::text AS uuid) AND revision=sqlc.arg(revision)::bigint;
+
+-- name: ListMissionAssigneeCandidates :many
+-- EMP-TRIP-022 (EDR-304): candidates the assignment command could resolve, in
+-- employee order; the store keeps the ones EligibleAssigneeTx accepts.
+SELECT e.id::text AS employee_id,m.id::text AS membership_id,COALESCE(p.display_name,'')::text AS display_name,COALESCE(p.registration_number,'')::text AS registration_number
+FROM org_employee_identities e
+JOIN org_memberships m ON m.org_id=e.org_id AND m.employee_id=e.id AND m.state='ACTIVE' AND m.account_id IS NOT NULL
+LEFT JOIN org_employee_profiles p ON p.org_id=e.org_id AND p.employee_id=e.id
+WHERE e.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND e.state='ACTIVE' AND e.merged_into IS NULL
+ AND(sqlc.arg(after_id)::text='' OR e.id>CAST(NULLIF(sqlc.arg(after_id)::text,'') AS uuid))
+ORDER BY e.id,m.id LIMIT sqlc.arg(page_limit)::integer;

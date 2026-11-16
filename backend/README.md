@@ -1463,6 +1463,20 @@ the EMP-TRIP-008/009 grants and the FLEET-007 availability reads).
 `trip.mission.manage` (admission class `trip.mission`). Nothing here
 provisions live grants.
 
+### Mission eligible assignees (EMP-TRIP-022)
+
+`POST /v1/orgs/{org_id}/missions/{mission_id}/assignees/list` lists, under
+current (not fresh) `trip.mission.manage` covering the mission, the employees
+the assignment command would accept now: ACTIVE, unmerged, with an ACTIVE
+account-linked membership whose current `trip.trip.start` covers the mission
+(the command's own `EligibleAssigneeTx`, evaluated per candidate in the read
+transaction between two authority checks). Items carry only `employee_id`,
+`display_name` and `registration_number`; the sealed cursor is bound to the
+mission and limit and advances by the last scanned employee, so a page may be
+empty while a cursor remains. No migration; the company principal needs
+`SELECT ON org_employee_profiles` (already held by the employee reads) besides
+the EMP-TRIP-008 grants. Nothing here provisions live grants.
+
 ### Trip review, period lock and amendments (EMP-TRIP-004, EMP-TRIP-016, EMP-TRIP-015)
 
 Migration 226 adds forced-RLS, append-only `org_trip_review_entries`; 228
@@ -1577,6 +1591,34 @@ command writes insert-only `org_tracking_policies` rows (000240). Migration 246
 adds insert-only `org_tracking_summaries`, written by the `org-tracking-process`
 job on the general worker. Production grants for these tables, the 000240
 tracking tables and `org_sensitive_access_events` are not provisioned here.
+
+### Reservation-to-trip integration (EMP-TRIP-023)
+
+Migration 249 (000238 stays unused) adds forced-RLS, insert-only
+`org_trip_mission_links` (one per executing trip and per mission, bound to
+the trip's start operation, published only with the mission's `START`
+revision), the columns `mission_id`, `trip_id` and `fulfilled_at` of
+`org_asset_reservations`, the mission transition kinds `RESERVE`, `START`,
+`COMPLETE`, the source `TRIP` and `trip_id`, an `AFTER UPDATE OF state`
+trigger on `org_trips` completing a linked `IN_PROGRESS` mission, and
+redefines, keeping every earlier line, the 217 reservation guard, the 232
+mission table, head guard and publication, the 231 transition source and the
+243 held source (`ORPHAN_REFERENCE` for held starts). Production grants (not
+provisioned here): the signed intake (`trip.start`) `SELECT, INSERT ON
+org_trip_mission_links`, `SELECT, UPDATE ON org_trip_missions`, `SELECT,
+INSERT ON org_trip_mission_transitions` and `SELECT, UPDATE ON
+org_asset_reservations`; every principal that completes a trip (the finish
+intake and the supervisor closure store) `SELECT ON org_trip_mission_links`
+and, for a linked mission, the same mission grants; the company runtime of
+the mission commands `SELECT, INSERT, UPDATE ON org_asset_reservations`,
+`SELECT, INSERT ON org_asset_reservation_commands, job_queue`; the
+reservation outcome job the existing root lock on `organizations` (it now
+takes it first). The migrator needs `REFERENCES ON org_trips,
+org_trip_missions, org_sync_operations`, `TRIGGER ON org_trips`, ownership
+of `org_asset_reservations`, `org_trip_mission_transitions`,
+`org_trip_mission_commands` and of the six replaced functions.
+`/v1/orgs/{org_id}/missions/{mission_id}/reservations/request` (fresh) uses
+`trip.mission.manage`. Nothing here provisions live grants.
 
 ### Finance periods (EMP-APPR-006)
 

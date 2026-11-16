@@ -20,14 +20,16 @@ import (
 )
 
 const (
-	missionCorpusPath = "../../../../../contracts/testdata/enterprise/trip/mission-v2.psv"
-	missionCorpusHash = "caf313daaee52b842e374ca091636f79a17b39d14f8728b6efa7f36d6572b95c"
+	missionCorpusPath = "../../../../../contracts/testdata/enterprise/trip/mission-v3.psv"
+	missionCorpusHash = "6b29bcbf3359066c553e371e1c054d2dba56632d99a1b05cc258fad45e1ef18c"
 )
 
 var (
 	missionCounts = map[string]int{"STATE": 20, "COMMAND": 15, "RESPONSE": 8, "TRANSITION": 62, "CREATE": 29, "RESTORE": 34, "ASSIGN": 23, "RESPOND": 32, "CANCEL": 15,
 		"LOAD": 8, "PLAN_VALUE": 50, "PLAN": 21}
-	missionErrorCodes = []string{"INVALID", "SCOPE", "FORBIDDEN", "CONFLICT", "INVALID_TRANSITION", "UNSUPPORTED_COMMAND"}
+	// EMP-TRIP-023 (EDR-265): the mission table no longer answers
+	// UNSUPPORTED_COMMAND; every refused pair is INVALID_TRANSITION.
+	missionErrorCodes = []string{"INVALID", "SCOPE", "FORBIDDEN", "CONFLICT", "INVALID_TRANSITION"}
 	missionStored     = "scope id id_org unit unit_org asset asset_org title_hex starts ends state revision assignee assignee_org member member_org answer answer_member answer_reason_hex"
 	missionArgs       = map[string]string{"STATE": "value_hex", "COMMAND": "value_hex", "RESPONSE": "value_hex", "TRANSITION": "state command",
 		"CREATE":     "scope id id_org unit unit_org asset asset_org title_hex starts ends omit",
@@ -399,8 +401,8 @@ func missionErrorFields(e error) fields {
 	return fields{"error": "UNEXPECTED"}
 }
 
-// EMP-TRIP-008/009: the shared mission-v2 oracle (superseding v1), consumed
-// byte for byte by Kotlin.
+// EMP-TRIP-008/009/023: the shared mission-v3 oracle (superseding v2 and
+// v1), consumed byte for byte by Kotlin.
 func TestSharedTripMissionVectors(t *testing.T) {
 	raw, e := os.ReadFile(missionCorpusPath)
 	if e != nil {

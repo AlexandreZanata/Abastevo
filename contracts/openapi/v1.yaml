@@ -21333,6 +21333,155 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/assignees/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionAssigneeList
+      summary: List the employees eligible for a mission
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.mission.manage permission covering the mission (the
+        mission read's structure; an unknown or another organization's mission is NOT_FOUND). Lists exactly the employees
+        the assignment command would accept now - ACTIVE, unmerged, with an ACTIVE account-linked membership whose current
+        trip.trip.start covers the mission as its own record - each with only its employee identifier, display name and
+        registration number (empty strings when the profile has none). Pages scan candidates in employee order; the keyset
+        cursor is bound to the caller, the route, the mission and the limit and advances by the last scanned employee, so
+        a page may be empty while next_cursor is set. Eligibility shown here is not authority; the assignment re-decides it
+        (EMP-TRIP-022, B-BR-EMP-470).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionAssigneesRequest'
+            example:
+              limit: 50
+      responses:
+        '200':
+          description: Private current page of eligible assignees.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAssigneePage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/reservations/request:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionReservationRequest
+      summary: Request the reservation of the mission's vehicle
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        capability and trip.mission.manage covering the mission as stored (unit and vehicle). Requests, at the named
+        revision of a PLANNED, ASSIGNED, ACCEPTED or DECLINED mission that names a vehicle, one REQUESTED reservation of
+        that vehicle for the mission's planned window, linked to the mission, with no reserved employee and the 60-minute
+        no-show tolerance; the purpose is 1..280 scalars. The vehicle's due reservation outcomes are settled first. The
+        mission gains a RESERVE revision keeping its state, assignee, answer and plan; one trip.mission.reservation_requested
+        audit event, the mission command receipt and the fleet REQUEST receipt are written and the outcome job is queued.
+        A mission without a vehicle or a window that has already started is VALIDATION_FAILED; a stale revision, a DRAFT,
+        IN_PROGRESS or terminal mission is CONFLICT; an overlap with a confirmed reservation or a block is
+        RESERVATION_CONFLICT carrying only that window; an unknown or another organization's mission is NOT_FOUND.
+        Confirmation and cancellation stay on the fleet reservation routes under fleet.reservation.manage. The mission's
+        linked trip start consumes the confirmed reservation once (FULFILLED); a no-show is released once by the outcome
+        job. Same operation and digest returns the first result with replayed=true and no second audit event; another
+        digest is OPERATION_ID_REUSED (EMP-TRIP-023, B-BR-EMP-414).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 201
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionReservationRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008806
+              revision: 3
+              purpose: Entrega sintética no cliente
+      responses:
+        '201':
+          description: Private audited reservation request or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAck'
+              example:
+                mission_id: 7b0e2a54-0000-4000-8000-000000008901
+                revision: 4
+                state: ACCEPTED
+                assignee_employee_id: 7b0e2a54-0000-4000-8000-000000008301
+                reservation_id: 7b0e2a54-0000-4000-8000-000000008951
+                replayed: false
+                data_mode: SYNTHETIC
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/{trip_id}/amendments/propose:
     post:
       tags:
@@ -25414,6 +25563,32 @@ components:
         revision: 3
         asset_id: 7b0e2a54-0000-4000-8000-000000008202
         reason: Veículo em manutenção
+    EnterpriseMissionReservationRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        purpose:
+          type: string
+          minLength: 1
+          maxLength: 1120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - purpose
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008806
+        revision: 3
+        purpose: Entrega sintética no cliente
     EnterpriseMissionCancelRequest:
       type: object
       additionalProperties: false
@@ -25439,6 +25614,65 @@ components:
         operation_id: 7b0e2a54-0000-4000-8000-000000008803
         revision: 2
         reason: Cliente cancelou a entrega
+    EnterpriseMissionAssigneesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          minLength: 1
+      example:
+        limit: 50
+    EnterpriseMissionAssignee:
+      type: object
+      additionalProperties: false
+      description: An employee the assignment command would accept now; descriptive fields only (EDR-304).
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          maxLength: 200
+        registration_number:
+          type: string
+          maxLength: 64
+      required:
+      - employee_id
+      - display_name
+      - registration_number
+    EnterpriseMissionAssigneePage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionAssignee'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - employee_id: 7b0e2a54-0000-4000-8000-000000008301
+          display_name: Bruno Sintético
+          registration_number: SYN-001
+        - employee_id: 7b0e2a54-0000-4000-8000-000000008302
+          display_name: ''
+          registration_number: ''
+        next_cursor: ''
+        data_mode: SYNTHETIC
     EnterpriseMissionListRequest:
       type: object
       additionalProperties: false
@@ -25495,6 +25729,8 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         asset_warning:
           $ref: '#/components/schemas/EnterpriseMissionWarning'
+        reservation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
         replayed:
           type: boolean
         data_mode:

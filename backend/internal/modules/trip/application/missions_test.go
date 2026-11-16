@@ -285,3 +285,26 @@ func TestMissionVehicleCommandIsExact(t *testing.T) {
 		t.Fatal("vehicle digest does not bind the vehicle, the kind and the organization")
 	}
 }
+
+// EMP-TRIP-022 (EDR-304): the eligible-assignee page is bounded and keyed by
+// a canonical employee identifier; the service refuses a non-canonical
+// mission before any repository call.
+func TestMissionAssigneeFilterIsBounded(t *testing.T) {
+	const id = "7b0e2a54-0000-4000-8000-000000008301"
+	for _, f := range []app.MissionAssigneeFilter{{Limit: 0}, {Limit: app.MaxMissionPage + 1}, {Limit: 1, AfterID: "not-a-uuid"}, {Limit: 1, AfterID: "7B0E2A54-0000-4000-8000-000000008301"}} {
+		if f.Validate() == nil {
+			t.Fatal("an unbounded or non-canonical assignee filter was accepted", f.Limit)
+		}
+	}
+	for _, f := range []app.MissionAssigneeFilter{{Limit: 1}, {Limit: app.MaxMissionPage, AfterID: id}} {
+		if f.Validate() != nil {
+			t.Fatal("a valid assignee filter was refused", f.Limit)
+		}
+	}
+	if _, err := (app.MissionService{Enabled: true}).Assignees(t.Context(), kernel.OrgScope{}, app.MissionActor{}, access.Decision{}, "not-a-mission", app.MissionAssigneeFilter{Limit: 1}); !errors.Is(err, app.ErrNotFound) {
+		t.Fatal("a non-canonical mission is not found before any call", err)
+	}
+	if _, err := (app.MissionService{Enabled: true}).Assignees(t.Context(), kernel.OrgScope{}, app.MissionActor{}, access.Decision{}, id, app.MissionAssigneeFilter{}); !errors.Is(err, trip.ErrInvalid) {
+		t.Fatal("an invalid filter is refused before any call", err)
+	}
+}

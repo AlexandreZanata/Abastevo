@@ -133,3 +133,12 @@ form .button-primary { width: 100%; }
 .setup-panel [aria-invalid="true"] { outline: 2px solid var(--ink); outline-offset: 2px; }
 .setup-panel :disabled { cursor: not-allowed; }
 @media (max-width: 600px) { .setup-panel .setup-kinds, .setup-panel .setup-review, .setup-panel .setup-responsibility { padding: 14px; } .setup-kind-grid { display: block; } .setup-kind-grid .check-label { margin: 12px 0; } }
+.mission-board { margin-top: 48px; }
+.mission-board details { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.mission-board summary { cursor: pointer; font-weight: 650; min-height: 44px; padding: 10px 0; }
+.mission-board summary:focus-visible { outline: 3px solid var(--focus); outline-offset: 3px; }
+.mission-board fieldset { min-width: 0; border: 0; padding: 0; margin: 24px 0; }
+.mission-board legend { font-weight: 650; font-size: 18px; padding: 0; margin-bottom: 16px; }
+.mission-board .record-list > li[aria-current="true"] { border-left: 3px solid var(--link); padding-left: 12px; }
+.mission-agenda { margin-top: 24px; }
+.mission-agenda h5 { font-size: 16px; margin: 20px 0 0; }

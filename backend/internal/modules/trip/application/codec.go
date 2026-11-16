@@ -185,10 +185,21 @@ func ParseStart(op protocol.Operation) (StartCommand, error) {
 	if _, err := StartDomain(v, StartInput{Event: e, AssetID: asset, DriverID: driver}, orgtime.ReportingZones{Organization: "UTC"}); err != nil {
 		return StartCommand{}, ErrMalformed
 	}
-	if len(v.Attachments) != 0 || len(v.DependsOn) != 0 || len(v.SoftReferences) != 0 {
+	if len(v.Attachments) != 0 || len(v.DependsOn) != 0 || len(v.SoftReferences) > 1 {
 		return StartCommand{}, ErrUnsupported
 	}
-	return StartCommand{valid: true, value: StartInput{Event: e, AssetID: asset, DriverID: driver}}, nil
+	// EMP-TRIP-023 (EDR-265): at most one soft reference, naming the mission
+	// the start executes; any other reference stays a recognised but
+	// unsupported form.
+	mission := ""
+	if len(v.SoftReferences) == 1 {
+		ref := v.SoftReferences[0]
+		if ref.Type != MissionReferenceType || !canonicalID(ref.ID) {
+			return StartCommand{}, ErrUnsupported
+		}
+		mission = ref.ID
+	}
+	return StartCommand{valid: true, value: StartInput{Event: e, AssetID: asset, DriverID: driver, MissionID: mission}}, nil
 }
 
 // StartDomain builds the EMP-TRIP-001 trip of a start with the resolved zones.

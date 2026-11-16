@@ -50,6 +50,8 @@ func tripReviewGrants(t *testing.T, f *orgtest.Fixture) {
 	tripClosureGrant(t, f)
 	// EMP-TRIP-012: submissions and decisions read the handover parties.
 	tripHandoverGrant(t, f)
+	// EMP-TRIP-023: completing a trip reads its mission link.
+	tripMissionLinkGrant(t, f)
 }
 
 // tripReviewState is the EMP-TRIP-002 trip fixture with the real

@@ -222,7 +222,7 @@ func (x runState) startDecision(t *testing.T, member string, at time.Time) fleet
 	var decision fleet.StartDecision
 	if err := database.WithOrgTx(t.Context(), x.f.Runtime, x.scope, func(tx pgx.Tx) error {
 		var err error
-		decision, err = x.assets.StartDecisionDBTX(t.Context(), tx, x.scope, x.vehicle.AssetID, member, at)
+		decision, err = x.assets.StartDecisionDBTX(t.Context(), syncapp.Borrow(tx), x.scope, x.vehicle.AssetID, member, "", at)
 		return err
 	}); err != nil {
 		t.Fatal(err)
