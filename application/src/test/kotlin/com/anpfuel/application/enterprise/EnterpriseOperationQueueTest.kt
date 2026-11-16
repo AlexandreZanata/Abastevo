@@ -86,6 +86,77 @@ class EnterpriseOperationQueueTest {
             registry, { now }, { 0 })
     }
 
+    /** An operation of the entity [type]/[entity] naming other entities as soft references (EMP-OFFL-013). */
+    private fun refOp(n: Int, type: String, entity: Int, refs: List<Pair<String, Int>> = emptyList(), kind: String = "validation.queue"): EnterpriseOperation {
+        val references = refs.joinToString { (t, e) -> """{"type":"$t","id":"${id(e)}"}""" }
+        return EnterpriseOperation.seal("""{"schema_version":1,"operation_id":"${id(n)}","owner_account_id":"${id(1)}","api_origin":"${partition.origin}","org_id":"${id(3)}","membership_id":"${id(4)}","enrollment_id":"${id(5)}","type":"$kind","operation_schema":1,"entity":{"type":"$type","id":"${id(entity)}","expected_revision":null},"occurred_at":"2026-11-13T00:00:00Z","entry_zone":"UTC","device_offset_seconds":0,"depends_on":[],"soft_references":[$references],"attachments":[],"payload":{"local_operation":"${id(n)}"}}""".toByteArray(), SyncBinding.of(id(1), partition.origin, id(3)))
+    }
+
+    // EMP-OFFL-013 (B-BR-EMP-541, EDR-352): the departure run in backoff is the start's local parent; the start is
+    // never sent before the run's final receipt, so the server never holds it ORPHAN_REFERENCE.
+    @Test fun anOperationNamingAQueuedEntityWaitsForThatOperationsFinalReceipt(): Unit = runTest {
+        val f = Fixture()
+        var now = f.now
+        var reply: suspend (List<EnterpriseOperation>) -> EnterpriseOperationDelivery = { throw EnterpriseQueueDeliveryFailure() }
+        val service = EnterpriseQueueService(f.source, f.queue, EnterpriseOperationTransport { captured, operations ->
+            captured.assertCurrent(); f.sent.add(operations.map { it.operationId }); reply(operations)
+        }, EnterpriseQueueRegistry(f.producer), { now }, { 0 })
+        val run = refOp(20, "checklist_run", 500)
+        val start = refOp(21, "trip", 600, listOf("checklist_run" to 500))
+        service.save(partition, run)
+        service.dispatch(f.account, partition)
+        assertEquals(listOf(listOf(run.operationId)), f.sent)
+        val backoff = f.entries.getValue(run.operationId).retry.delayMillis
+        assertTrue(backoff > 0)
+        service.save(partition, start)
+        reply = { operations -> EnterpriseOperationDelivery(operations.map { ack(it) }) }
+        // The run is not due; the start is due but waits for the run's final receipt and keeps the run's delay.
+        val held = service.dispatch(f.account, partition)
+        assertEquals(listOf(listOf(run.operationId)), f.sent, "the start was sent before its departure run was finally acknowledged")
+        assertEquals(0, held.attempted); assertEquals(2, held.retryable); assertEquals(0, held.attention)
+        assertEquals(backoff, held.retryAfterMillis)
+        now = EnterpriseDeviceClock("boot", f.now.elapsedMillis + backoff, f.now.wallMillis + backoff)
+        // Due again: the run goes alone and the drained batch leaves the start due at once for the next round.
+        val first = service.dispatch(f.account, partition)
+        assertEquals(listOf(run.operationId), f.sent.last()); assertEquals(1, first.completed); assertEquals(0L, first.retryAfterMillis)
+        assertNull(f.entries.getValue(start.operationId).acknowledgement)
+        val second = service.dispatch(f.account, partition)
+        assertEquals(listOf(start.operationId), f.sent.last()); assertEquals(1, second.completed)
+        assertTrue(listOf(run, start).all { f.entries.getValue(it.operationId).acknowledgement != null })
+    }
+
+    @Test fun aReferencedOperationAnsweredRetryInItsBatchStillHoldsTheReference(): Unit = runTest {
+        val f = Fixture()
+        val run = refOp(30, "checklist_run", 510)
+        val start = refOp(31, "trip", 610, listOf("checklist_run" to 510))
+        val service = f.service({ operations -> EnterpriseOperationDelivery(operations.map {
+            if (it.operationId == run.operationId) ack(it, "RETRY", "UNAVAILABLE") else ack(it) }) })
+        service.save(partition, run); service.save(partition, start)
+        val result = service.dispatch(f.account, partition)
+        assertEquals(listOf(listOf(run.operationId)), f.sent, "the start shared a batch with a run that was not finally acknowledged")
+        assertEquals(0, result.completed); assertEquals(2, result.retryable)
+        assertTrue(listOf(run, start).all { f.entries.getValue(it.operationId).acknowledgement == null })
+        // The held start is due when the run is due again, never earlier (its delay is settled after the batch).
+        val runDelay = f.entries.getValue(run.operationId).retry.delayMillis
+        assertTrue(runDelay > 0); assertEquals(runDelay, result.retryAfterMillis)
+    }
+
+    @Test fun referenceCyclesAndReferencesToUnsendableWorkNeedAttentionInsteadOfRetryingForever(): Unit = runTest {
+        val f = Fixture()
+        val a = refOp(40, "checklist_run", 520, listOf("trip" to 620))
+        val b = refOp(41, "trip", 620, listOf("checklist_run" to 520))
+        val unknown = refOp(42, "checklist_run", 521, kind = "validation.other")
+        val waiting = refOp(43, "trip", 621, listOf("checklist_run" to 521))
+        val unrelated = refOp(44, "expense", 900)
+        val service = f.service()
+        for (operation in listOf(a, b, waiting, unrelated)) service.save(partition, operation)
+        f.entries[unknown.operationId] = EnterpriseQueueEntry(unknown)
+        val result = service.dispatch(f.account, partition)
+        assertEquals(listOf(listOf(unrelated.operationId)), f.sent)
+        assertEquals(4, result.attention); assertEquals(1, result.completed); assertEquals(0, result.retryable)
+        assertTrue(listOf(a, b, unknown, waiting).all { f.entries.getValue(it.operationId).acknowledgement == null })
+    }
+
     @Test fun saveRequiresActualProducerAndCommitsProjectionBeforeReturningReplay(): Unit = runTest {
         val f = Fixture(); val operation = op(10)
         assertThrows(EnterprisePersistenceUnavailable::class.java) { kotlinx.coroutines.runBlocking { f.service(registry = EnterpriseQueueRegistry()).save(partition, operation) } }

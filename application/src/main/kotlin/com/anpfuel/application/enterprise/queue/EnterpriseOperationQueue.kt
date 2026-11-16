@@ -204,8 +204,13 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
         entries.forEach { matches(attempt, it.operation) }
         val byId = entries.associateBy { it.operation.operationId }.toMutableMap()
         if (byId.size != entries.size) throw EnterprisePersistenceUnavailable()
-        val order = EnterpriseQueueOrdering.order(entries.map { it.operation })
+        // EDR-352 (B-BR-EMP-541): an operation naming the entity of another unacknowledged operation of this queue in a
+        // soft reference waits for that operation's final receipt; the server would otherwise hold it ORPHAN_REFERENCE.
+        val references = EnterpriseQueueOrdering.localReferences(entries.map { it.operation })
+        val order = EnterpriseQueueOrdering.order(entries.map { it.operation }, references)
         val attention = order.cycleBlocked.toMutableSet()
+        // Held operation -> the operations it waits on, in order; its delay is theirs (settled again after a batch).
+        val held = linkedMapOf<String, List<String>>()
         val capturedClock = clock()
         val selected = mutableListOf<EnterpriseOperation>()
         // EDR-343: due operations whose producer is `alone`, sent one per batch only when no ordinary operation is due.
@@ -254,6 +259,16 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             }
             if (!retry.isDue(capturedClock)) {
                 remainingDelay[operation.operationId] = delayFor(retry, capturedClock)
+                continue
+            }
+            // Referenced operations come first in the order; their own delay (or 0 when sent now) is known here. A
+            // dependent of a held operation is held with it, never sent to collect a DEPENDENCY_PENDING answer.
+            val waiting = references[operation.operationId].orEmpty().filter { it !in completed } +
+                operation.dependsOn.filter { it in held }
+            if (waiting.isNotEmpty()) {
+                if (waiting.any { it in attention }) { attention.add(operation.operationId); continue }
+                held[operation.operationId] = waiting
+                remainingDelay[operation.operationId] = waiting.maxOf { remainingDelay[it] ?: 0 }
                 continue
             }
             remainingDelay[operation.operationId] = 0
@@ -310,6 +325,10 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
                 remainingDelay[operation.operationId] = floor ?: retryPolicy.baseMillis
             }
         }
+        // A held operation is due when everything it waits on is final (0) or due again after its own retry delay.
+        fun settleHeld() {
+            for ((id, waiting) in held) remainingDelay[id] = waiting.maxOf { if (it in completed) 0 else remainingDelay[it] ?: 0 }
+        }
         var floor: Long? = null
         var hinted = false
         val acknowledgements = try {
@@ -327,6 +346,7 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             attempt.assertCurrent()
             if (failure is EnterpriseQueueDeliveryFailure) { floor = failure.retryAfterMillis; hinted = failure.revocationHint }
             for (operation in selected) retainForRetry(operation, floor)
+            settleHeld()
             return@guarded result(EnterpriseQueueDispatchResult(selected.size, completed.size, retryable = entries.size - attention.size - completed.size,
                 attention = attention.size, retryAfterMillis = remainingDelay.values.minOrNull(), revocationHint = hinted))
         }
@@ -348,6 +368,7 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             catch (denied: EnterpriseLocalDenied) { throw denied }
             catch (_: Exception) { retainForRetry(operation, floor, ack) }
         }
+        settleHeld()
         result(EnterpriseQueueDispatchResult(selected.size, completed.size, entries.size - attention.size - completed.size,
             attention.size, remainingDelay.values.minOrNull(), hinted))
         } finally {
