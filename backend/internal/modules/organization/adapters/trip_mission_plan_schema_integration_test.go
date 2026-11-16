@@ -82,10 +82,16 @@ func TestTripMissionPlanSchemaIsForcedRLSGuardedAndAppendOnly(t *testing.T) {
 	if _, err := m.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_trip_mission_plans TO "+pgx.Identifier{m.f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
+	// EMP-TRIP-010: the planned stops (000256) reference the planning
+	// revisions, so the truncation cascades to them and must reach both
+	// append-only guards (the EMP-TRIP-019 checklist precedent).
+	if _, err := m.f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON org_trip_mission_plan_stops TO "+pgx.Identifier{m.f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	for name, query := range map[string]string{
 		"plan-update":   `UPDATE org_trip_mission_plans SET reason='Reescrito' WHERE org_id=$1`,
 		"plan-delete":   `DELETE FROM org_trip_mission_plans WHERE org_id=$1`,
-		"plan-truncate": `TRUNCATE org_trip_mission_plans`,
+		"plan-truncate": `TRUNCATE org_trip_mission_plans CASCADE`,
 	} {
 		t.Run(name, func(t *testing.T) {
 			args := []any{org}

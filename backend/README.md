@@ -1682,6 +1682,25 @@ ON org_trips, org_checklist_runs, org_sync_operations, org_trip_held_starts,
 org_sync_review_items`. No route is added. Nothing here provisions live
 grants.
 
+### Stops and legs: planned versus actual (EMP-TRIP-010)
+
+Migration 256 adds only forced-RLS, insert-only `org_trip_mission_plan_stops`
+(the ordered free-text planned stops of one planning revision, written by its
+own `PLAN` transaction after the head moves and before the receipt, published
+only with that receipt); no existing table, function, row or usage source
+changes. The observed stops and legs are derived at read time from the trip's
+accepted `STOP`, `ARRIVAL` and `DEPARTURE` events and are never stored.
+`POST /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read` uses
+`trip.trip.start` over the requesting membership (the EMP-TRIP-012 own-trips
+policy). Production grants (not provisioned here): the company runtime of the
+mission commands and reads `SELECT, INSERT ON org_trip_mission_plan_stops`;
+the own-trip read `SELECT ON org_trip_mission_plan_stops,
+org_trip_mission_plans, org_trip_missions, org_trip_mission_links,
+org_trip_events, org_trip_held_events, org_sync_review_items, org_trips,
+org_trip_finishes, org_trip_transitions, org_trip_handovers`. The migrator
+needs `REFERENCES ON org_trip_mission_plans`. Nothing here provisions live
+grants.
+
 ### Finance periods (EMP-APPR-006)
 
 Migration203 adds the immutable `org_finance_period_transitions` history (also

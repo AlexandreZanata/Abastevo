@@ -20880,6 +20880,74 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripMineStopsRead
+      summary: Read the plan beside the observed stops and legs of an own trip
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.start permission over the requesting
+        membership itself (the EMP-TRIP-012 own-trips policy). Answers only for a trip the member started or currently
+        holds after a handover; another member's, another organization's or an unknown trip is the same NOT_FOUND.
+        Returns the trip summary with its start and end boundaries, `planned` (null when the trip executes no mission
+        or the mission has no planning revision, else the mission's current planning revision with its window,
+        destination, ordered stops and derived legs, without distance or duration) and `observed` (the stops and legs
+        derived from the trip's accepted STOP, ARRIVAL and DEPARTURE events, each boundary with its declared instant,
+        entry zone, device offset and server receipt, `after_receipt` when declared after its own receipt, an issue
+        `ARRIVAL_MISSING` or `DEPARTURE_MISSING` for an incoherent sequence, the accepted observations declared after
+        the recorded end listed apart, and the held stop observations with their code). Planned and observed stops are
+        never paired (EMP-TRIP-010, B-BR-EMP-475..478).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.start
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripStopsReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current planned-versus-observed read of the member's own trip.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripStopsView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/missions/create:
     post:
       tags:
@@ -25567,6 +25635,14 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         load:
           $ref: '#/components/schemas/EnterpriseMissionLoad'
+        stops:
+          description: Optional ordered intermediate stops (EMP-TRIP-010, B-BR-EMP-475); absent is none, an empty list
+            is refused.
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionPlannedStopRequest'
       required:
       - schema_version
       - operation_id
@@ -25605,6 +25681,13 @@ components:
         planned_at:
           type: string
           format: date-time
+        stops:
+          description: The revision's ordered planned stops, present only when it has stops (EMP-TRIP-010).
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionPlannedStop'
       required:
       - revision
       - destination
@@ -25621,6 +25704,467 @@ components:
           kind: PASSENGERS
           count: 4
         planned_at: '2026-11-15T10:10:00.123456Z'
+    EnterpriseMissionPlannedStopRequest:
+      description: One planned stop of a PLAN command, a free-text place only (EMP-TRIP-010, EDR-307); no unit,
+        coordinate, time, person or contact.
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          const: TEXT
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1120
+      required:
+      - kind
+      - text
+      example:
+        kind: TEXT
+        text: Cliente Jardim Primavera
+    EnterpriseMissionPlannedStop:
+      description: One stored planned stop with its 1-based order (EMP-TRIP-010).
+      type: object
+      additionalProperties: false
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+          maximum: 20
+        kind:
+          type: string
+          const: TEXT
+        text:
+          type: string
+      required:
+      - sequence
+      - kind
+      - text
+      example:
+        sequence: 1
+        kind: TEXT
+        text: Cliente Jardim Primavera
+    EnterpriseTripStopsReadRequest:
+      description: Empty body; the trip is the path selector.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseTripPlannedPoint:
+      description: One end of a derived planned leg; a stop names its sequence.
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            enum:
+            - START
+            - DESTINATION
+        required:
+        - kind
+      - type: object
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            const: STOP
+          sequence:
+            type: integer
+            minimum: 1
+            maximum: 20
+        required:
+        - kind
+        - sequence
+    EnterpriseTripStopsPlan:
+      type: object
+      additionalProperties: false
+      description: The current planning revision of the mission the trip executes, with its derived legs; no distance,
+        duration or route estimate (EMP-TRIP-010, B-BR-EMP-475).
+      properties:
+        mission_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 2
+        planned_at:
+          type: string
+          format: date-time
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        destination:
+          $ref: '#/components/schemas/EnterpriseMissionDestination'
+        stops:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionPlannedStop'
+        legs:
+          type: array
+          minItems: 1
+          maxItems: 21
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              sequence:
+                type: integer
+                minimum: 1
+              from:
+                $ref: '#/components/schemas/EnterpriseTripPlannedPoint'
+              to:
+                $ref: '#/components/schemas/EnterpriseTripPlannedPoint'
+            required:
+            - sequence
+            - from
+            - to
+      required:
+      - mission_id
+      - revision
+      - planned_at
+      - starts_at
+      - ends_at
+      - destination
+      - stops
+      - legs
+    EnterpriseTripObservedBoundary:
+      type: object
+      additionalProperties: false
+      description: One recorded boundary of an observed stop or leg - the trip start or end, or a STOP, ARRIVAL or
+        DEPARTURE event - with its declared instant, entry zone and device offset (BR-TIME-001) and server receipt
+        (BR-TIME-002); `after_receipt` flags a boundary declared after its own receipt (BR-TIME-006), never rewritten.
+      properties:
+        kind:
+          type: string
+          enum:
+          - START
+          - STOP
+          - ARRIVAL
+          - DEPARTURE
+          - FINISH
+          - CANCEL
+        fact_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        received_at:
+          type: string
+          format: date-time
+        after_receipt:
+          type: boolean
+      required:
+      - kind
+      - fact_id
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      - received_at
+      - after_receipt
+    EnterpriseTripObservedIssue:
+      description: An incoherent observed boundary (B-BR-EMP-477), null when coherent.
+      type:
+      - string
+      - 'null'
+      enum:
+      - ARRIVAL_MISSING
+      - DEPARTURE_MISSING
+      - null
+    EnterpriseTripObservedStop:
+      type: object
+      additionalProperties: false
+      description: One derived stop; a missing or not yet recorded boundary is null.
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        arrival:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        departure:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        issue:
+          $ref: '#/components/schemas/EnterpriseTripObservedIssue'
+      required:
+      - sequence
+      - arrival
+      - departure
+      - issue
+    EnterpriseTripObservedLeg:
+      type: object
+      additionalProperties: false
+      description: One derived leg between two consecutive boundaries; no distance or duration.
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        departure:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        arrival:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        issue:
+          $ref: '#/components/schemas/EnterpriseTripObservedIssue'
+      required:
+      - sequence
+      - departure
+      - arrival
+      - issue
+    EnterpriseTripHeldObservation:
+      type: object
+      additionalProperties: false
+      description: One STOP, ARRIVAL or DEPARTURE event of the trip held for review (EMP-TRIP-003/015); never a stop.
+      properties:
+        event_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        type:
+          type: string
+          enum:
+          - STOP
+          - ARRIVAL
+          - DEPARTURE
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        code:
+          type: string
+          enum:
+          - TRIP_ALREADY_CLOSED
+          - STALE_REVISION
+      required:
+      - event_id
+      - type
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      - code
+    EnterpriseTripStopsView:
+      type: object
+      additionalProperties: false
+      description: The member's planned-versus-observed read of one own trip (EMP-TRIP-010, B-BR-EMP-478); the plan and
+        the observations are never paired.
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operational_state:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - PAUSED
+          - COMPLETED
+          - CANCELLED
+        start:
+          $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+        end:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        planned:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripStopsPlan'
+          - type: 'null'
+        observed:
+          type: object
+          additionalProperties: false
+          properties:
+            stops:
+              type: array
+              items:
+                $ref: '#/components/schemas/EnterpriseTripObservedStop'
+            legs:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/EnterpriseTripObservedLeg'
+            after_end:
+              description: Accepted STOP, ARRIVAL or DEPARTURE events declared after the recorded end (a device clock
+                that moved), in timeline order; never a stop or leg boundary, never dropped (B-BR-EMP-477).
+              type: array
+              items:
+                $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+            held:
+              type: array
+              items:
+                $ref: '#/components/schemas/EnterpriseTripHeldObservation'
+          required:
+          - stops
+          - legs
+          - after_end
+          - held
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - trip_id
+      - asset_id
+      - operational_state
+      - start
+      - end
+      - planned
+      - observed
+      - data_mode
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000009001
+        asset_id: 7b0e2a54-0000-4000-8000-000000009201
+        operational_state: COMPLETED
+        start:
+          kind: START
+          fact_id: 7b0e2a54-0000-4000-8000-000000009001
+          occurred_at: '2026-11-15T12:00:00Z'
+          entry_zone: America/Cuiaba
+          device_offset_seconds: -14400
+          received_at: '2026-11-15T12:00:01.123456Z'
+          after_receipt: false
+        end:
+          kind: FINISH
+          fact_id: 7b0e2a54-0000-4000-8000-000000009001
+          occurred_at: '2026-11-15T16:30:00Z'
+          entry_zone: America/Cuiaba
+          device_offset_seconds: -14400
+          received_at: '2026-11-15T16:31:00Z'
+          after_receipt: false
+        planned:
+          mission_id: 7b0e2a54-0000-4000-8000-000000009401
+          revision: 3
+          planned_at: '2026-11-14T18:00:00Z'
+          starts_at: '2026-11-15T12:00:00Z'
+          ends_at: '2026-11-15T18:00:00Z'
+          destination:
+            kind: TEXT
+            text: Centro de distribuição Norte
+          stops:
+          - sequence: 1
+            kind: TEXT
+            text: Cliente Jardim Primavera
+          legs:
+          - sequence: 1
+            from:
+              kind: START
+            to:
+              kind: STOP
+              sequence: 1
+          - sequence: 2
+            from:
+              kind: STOP
+              sequence: 1
+            to:
+              kind: DESTINATION
+        observed:
+          stops:
+          - sequence: 1
+            arrival:
+              kind: ARRIVAL
+              fact_id: 7b0e2a54-0000-4000-8000-000000009501
+              occurred_at: '2026-11-15T13:10:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T13:10:02Z'
+              after_receipt: false
+            departure: null
+            issue: DEPARTURE_MISSING
+          - sequence: 2
+            arrival:
+              kind: STOP
+              fact_id: 7b0e2a54-0000-4000-8000-000000009502
+              occurred_at: '2026-11-15T15:00:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T15:00:03Z'
+              after_receipt: false
+            departure:
+              kind: DEPARTURE
+              fact_id: 7b0e2a54-0000-4000-8000-000000009503
+              occurred_at: '2026-11-15T15:15:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T15:14:00Z'
+              after_receipt: true
+            issue: null
+          legs:
+          - sequence: 1
+            departure:
+              kind: START
+              fact_id: 7b0e2a54-0000-4000-8000-000000009001
+              occurred_at: '2026-11-15T12:00:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T12:00:01.123456Z'
+              after_receipt: false
+            arrival:
+              kind: ARRIVAL
+              fact_id: 7b0e2a54-0000-4000-8000-000000009501
+              occurred_at: '2026-11-15T13:10:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T13:10:02Z'
+              after_receipt: false
+            issue: null
+          - sequence: 2
+            departure: null
+            arrival:
+              kind: STOP
+              fact_id: 7b0e2a54-0000-4000-8000-000000009502
+              occurred_at: '2026-11-15T15:00:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T15:00:03Z'
+              after_receipt: false
+            issue: DEPARTURE_MISSING
+          - sequence: 3
+            departure:
+              kind: DEPARTURE
+              fact_id: 7b0e2a54-0000-4000-8000-000000009503
+              occurred_at: '2026-11-15T15:15:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T15:14:00Z'
+              after_receipt: true
+            arrival:
+              kind: FINISH
+              fact_id: 7b0e2a54-0000-4000-8000-000000009001
+              occurred_at: '2026-11-15T16:30:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T16:31:00Z'
+              after_receipt: false
+            issue: null
+          after_end: []
+          held:
+          - event_id: 7b0e2a54-0000-4000-8000-000000009504
+            type: ARRIVAL
+            occurred_at: '2026-11-15T16:40:00Z'
+            entry_zone: America/Cuiaba
+            device_offset_seconds: -14400
+            code: TRIP_ALREADY_CLOSED
+        data_mode: SYNTHETIC
     EnterpriseMissionVehicleRequest:
       type: object
       additionalProperties: false

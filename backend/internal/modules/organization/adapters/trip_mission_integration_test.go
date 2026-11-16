@@ -29,17 +29,19 @@ import (
 const missionMigration = "000227_organization_trip_missions.sql"
 
 // grantMissionTables gives the ordinary runtime role exactly the EMP-TRIP-008
-// table rights and, once migrations 000231 and 000232 exist, the EMP-TRIP-009
-// planning revisions and the EMP-TRIP-013 vehicle changes (the 000227 and
-// 000231 rehearsals run before them).
+// table rights and, once migrations 000231, 000232 and 000256 exist, the
+// EMP-TRIP-009 planning revisions, the EMP-TRIP-013 vehicle changes and the
+// EMP-TRIP-010 planned stops (the 000227 and 000231 rehearsals run before
+// them).
 func grantMissionTables(t *testing.T, fx legalFixtureState) {
 	t.Helper()
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON org_trip_missions TO "+role+";GRANT SELECT,INSERT ON org_trip_mission_transitions,org_trip_mission_commands TO "+role); err != nil {
 		t.Fatal(err)
 	}
-	var plans, vehicles bool
-	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('org_trip_mission_plans') IS NOT NULL,to_regclass('org_trip_mission_vehicles') IS NOT NULL`).Scan(&plans, &vehicles); err != nil {
+	var plans, vehicles, stops bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('org_trip_mission_plans') IS NOT NULL,to_regclass('org_trip_mission_vehicles') IS NOT NULL,
+ to_regclass('org_trip_mission_plan_stops') IS NOT NULL`).Scan(&plans, &vehicles, &stops); err != nil {
 		t.Fatal(err)
 	}
 	if plans {
@@ -49,6 +51,12 @@ func grantMissionTables(t *testing.T, fx legalFixtureState) {
 	}
 	if vehicles {
 		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_mission_vehicles TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	// EMP-TRIP-010: every plan read attaches the planned stops (000256).
+	if stops {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_mission_plan_stops TO "+role); err != nil {
 			t.Fatal(err)
 		}
 	}
