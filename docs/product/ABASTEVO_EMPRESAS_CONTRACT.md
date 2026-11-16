@@ -8919,3 +8919,77 @@ EMP-GPS-002 (the service and its session operations) and EMP-GPS-004 (the
   restart, maintenance finishes the disposal, and only then does the state
   become `CLEANED`. While the phone stays offline nothing changes and
   nothing is claimed.
+
+## EMP-GPS-006 — Distance sources on a trip and the divergence signal (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-gps006-distance-sources.md).
+
+- **B-BR-EMP-491 — Each distance source stands alone.** A trip's distance
+  answer carries four sources — odometer, GPS, planned and engine estimate —
+  each with its own status (`OK` or `INSUFFICIENT_DATA`; for GPS also
+  `WITHHELD`), a reason whenever it is not `OK`, and its own evidence; a value
+  exists only on an `OK` source, in exact whole metres from 0 to 10¹² m, and
+  sources are never added, averaged or substituted (BR-GPS-027, BR-TRUTH-003,
+  BR-MONEY-002/009/010). The odometer source is the EMP-METER-006 usage of the
+  trip's asset's odometer between the trip's start instant and its finish
+  instant, with both anchor readings, the method `meter-usage-v1` and the
+  projection revision; it is `OK` only when the usage is known and both
+  anchors are currently `VALID` odometer readings at exactly those two
+  instants, so a usage computed from an earlier reading is never reported.
+  Otherwise its reason is `TRIP_NOT_FINISHED` (in progress or paused),
+  `TRIP_CANCELLED`, `NO_FINAL_READING` (a supervisor closure, or no valid
+  reading at the finish instant), `NO_START_READING`, `NO_METER` (no
+  odometer: an hour meter is never a distance), `NO_READING_BEFORE`,
+  `METER_GAP` or `METER_UNAVAILABLE` (the projection is not built or the
+  stored chain is not a valid track). The GPS source is the latest stored
+  EMP-GPS-005 summary revision of the trip's tracking session: distance with
+  its method, quality, coverage, expected and gap seconds, gap count, session,
+  revision and processing instant; its reason is `NO_TRACK` (no session),
+  `NOT_PROCESSED` (no summary yet) or `NO_GPS_DISTANCE` (the summary has no
+  distance; its quality and coverage are still stated). The planned source is
+  `INSUFFICIENT_DATA` with `NO_ROUTE_PLAN` and the engine estimate with
+  `NO_ROUTE_COMPUTATION` until a route owner records them.
+- **B-BR-EMP-492 — Travelled distance basis.** The figure that needs
+  travelled distance is the odometer distance with basis `ODOMETER` when that
+  source is `OK`; otherwise the GPS distance with basis `GPS` (shown as "por
+  GPS") only when the GPS source is `OK` with quality `PRECISE`; otherwise
+  `INSUFFICIENT_DATA` with the odometer's reason and no number. A planned
+  distance or an engine estimate is never travelled distance, a GPS estimate
+  never replaces an odometer distance, and a consumer receives a value only
+  together with its basis, so nothing (including money) can be computed from
+  an absent basis (BR-GPS-028, BR-TRUTH-004).
+- **B-BR-EMP-493 — Divergence is data for review.** The divergence signal is
+  evaluated only when the odometer and GPS sources are both `OK` and the
+  quality is `PRECISE`; otherwise it is `NOT_EVALUATED` with the reason
+  `NO_ODOMETER_DISTANCE`, `GPS_WITHHELD`, `NO_GPS_DISTANCE` or
+  `GPS_NOT_PRECISE`, in that order. With `diff = |odometer − gps|` in whole
+  metres it is `RAISED` when `diff > M` and `diff × 100 > P × odometer`
+  (integer arithmetic; defaults M = 2 000 m and P = 10 %, accepted ranges
+  500–10 000 m and 5–30 %), otherwise `NOT_RAISED`. It carries both values,
+  the difference and the thresholds beside the GPS source's coverage and
+  gaps, asks for review and names no person, cause or loss (BR-GPS-029,
+  BR-TRUTH-005). It is derived when the answer is read, so a later reading
+  correction or summary revision changes it; nothing is stored or emitted.
+- **B-BR-EMP-494 — The GPS part is a recorded-track read.** The answer is a
+  server port with no route: its caller proves the reader's trip read first
+  (EMP-TRIP-006). Inside the read transaction the GPS source is served only
+  when the EMP-GPS-012 authority proves `gps.track.read` over the stored trip
+  for the reader's current company proof and membership; without that grant
+  the GPS source is `WITHHELD` with no value, quality or coverage, the basis
+  never uses GPS and the divergence is `NOT_EVALUATED` with `GPS_WITHHELD`.
+  Every answer that serves the GPS source, even one without a summary, records
+  one `LOCATION_TRACK` access `ISSUED` and one `SERVED` (fresh identifiers and
+  a digest of the trip, session and summary revision, no coordinate) before it
+  is returned, and a failed record returns nothing. An unknown trip or another
+  organization's trip is `NOT_FOUND` and records nothing; an invalid proof is
+  refused before anything is read.
+- **BUC-EMP-250 — Read a trip's distances.** A trip owner (the future trip
+  panel, EMP-TRIP-006) asks for a finished trip's distances and receives the
+  odometer distance with its two readings, the GPS distance with coverage,
+  quality and gaps, the planned distance and the estimate as not informed,
+  the basis and the divergence evaluation; a missing value says why and never
+  shows zero.
+- **BUC-EMP-251 — Review a divergence signal.** On a precise track the
+  odometer distance and the GPS distance differ by more than both thresholds;
+  the answer raises the signal with both values, the difference, coverage and
+  gaps for a reviewer, and states nothing about the driver.
