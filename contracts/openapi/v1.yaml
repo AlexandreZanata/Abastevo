@@ -15105,6 +15105,14 @@ paths:
         batch sequence (gps.track.batch); a batch stores one segment whose fixes outside the recording periods, while
         the trip is paused, at or after the trip's finish or cancellation, mock-flagged or already stored are counted on
         the segment, never in the receipt.
+        The check.run.complete owner (EMP-CHECK-002) stores one completed checklist run of an asset with its answers,
+        the device outcome and the named policy revision as declared, and the server's recheck against the named
+        template version and the policy in force at the declared completion by its own history (server outcome,
+        server policy revision, template_superseded, outcome_differs held for review); a well-formed run is always
+        ACCEPTED at entity revision 1 and never rewritten. An unknown or another organization's asset is NOT_FOUND, no
+        check.checklist.execute FORBIDDEN, a DRAFT asset, a wrong shape, an unknown version or policy revision, another
+        context, a version whose target does not cover the asset or an answer set the shared rule refuses MALFORMED;
+        changed rights, a photo declaration, attachments and soft references stay RETRY/UNAVAILABLE.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -15214,6 +15222,17 @@ paths:
           entity_type: incident_report
           payload:
             $ref: '#/components/schemas/EnterpriseIncidentReportPayload'
+          terminal_results:
+          - ACCEPTED
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+        check.run.complete:
+          schema: 1
+          entity_type: checklist_run
+          payload:
+            $ref: '#/components/schemas/EnterpriseChecklistRunPayload'
           terminal_results:
           - ACCEPTED
           - REJECTED
@@ -17771,7 +17790,8 @@ paths:
         reservation holding the asset) or AVAILABLE, and every applying cause in that order with its kind, record
         identifier and period (no person, purpose or note). missing_sources names the sources that could not be
         consulted; until maintenance holds exist, MAINTENANCE_HOLD, so the answer never claims their absence (trips
-        are the ACTIVE_USE source since EMP-TRIP-002). Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server
+        are the ACTIVE_USE source since EMP-TRIP-002). BLOCKED also comes from a BLOCKING checklist run (kind
+        CHECKLIST_RUN, from its declared completion until its release; EMP-CHECK-002). Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server
         rechecks current fleet.asset.read and same-organization membership; a SELF grant covers an asset assigned to
         the member at the server instant (EMP-FLEET-006). Responses are private no-store.
       security:
@@ -19594,6 +19614,146 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseChecklistApplicable'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistRunRead
+      summary: Read one checklist run of an asset
+      description: EMP-CHECK-002. The stored run of the asset with the device outcome and the named policy revision as
+        declared, the server's recheck (recheck_outcome, server_policy_revision, template_superseded, outcome_differs,
+        review_required), the current outcome after a release and the positions of the issues and critical issues;
+        never a note, a photo or the author's identity. Dedicated company cookie, exact HTTPS Origin/Host and CSRF are
+        required. The server rechecks current fleet.asset.read on the asset exactly as the applicable read (UNIT,
+        COST_CENTRE or ASSET grants through the allocation, a SELF grant on an assigned asset); a run of another asset,
+        another organization or none is NOT_FOUND (B-BR-EMP-441). Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector; a selector is not proof of an asset or a run.
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private run selector; foreign or missing runs remain hidden.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistRunReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistRun'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/runs/{run_id}/release:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistRunRelease
+      summary: Release a blocking checklist run
+      description: EMP-CHECK-002. Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE
+        organization, enabled capability and check.incident.manage covering the run's stored asset, unit or cost centre.
+        A BLOCKING run at the named revision becomes COMPLETED_WITH_ISSUES at revision 2 with the reason (1..500
+        scalars without control characters), its block on the asset ends at the release instant and one audit event
+        check.run.released is written; the answers, the device outcome and the recheck outcome never change. The
+        author of the run (same account, membership or canonical employee record) is SELF_APPROVAL; a run that is not
+        BLOCKING or a stale revision is CONFLICT; a missing or blank reason is VALIDATION_FAILED. Same operation and
+        digest returns the first result with replayed=true; another digest is OPERATION_ID_REUSED (B-BR-EMP-442).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.incident.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistRunReleaseRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009601
+              revision: 1
+              reason: Freios verificados na oficina
+      responses:
+        '200':
+          description: Private audited release or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistRunRelease'
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
         '401':
@@ -27600,6 +27760,375 @@ components:
           effective_at: '2026-11-15T12:05:00Z'
         evaluated_at: '2026-11-15T12:30:00Z'
         data_mode: SYNTHETIC
+    EnterpriseChecklistRunOutcome:
+      type: string
+      enum:
+      - COMPLETED_OK
+      - COMPLETED_WITH_ISSUES
+      - BLOCKING
+    EnterpriseChecklistRunAnswer:
+      type: object
+      additionalProperties: false
+      description: One answer per item in item order. NOT_APPLICABLE only on optional items (rechecked). photo is a
+        declaration of a photo of a NOT_OK item; it is RETRY/UNAVAILABLE until the run-photo channel exists.
+      properties:
+        answer:
+          type: string
+          enum:
+          - OK
+          - NOT_OK
+          - NOT_APPLICABLE
+        note:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 560
+          description: 1..140 Unicode scalars, no control character, not only white space, or null.
+        photo:
+          type: boolean
+      required:
+      - answer
+      - note
+      - photo
+    EnterpriseChecklistRunPayload:
+      type: object
+      additionalProperties: false
+      description: Owner schema1 for check.run.complete (EMP-CHECK-002, B-BR-EMP-439). Entity type checklist_run with the
+        device run UUID and no expected revision; no depends_on, soft_references or attachments. The envelope declaration
+        is the completion. template_version and policy_revision are the cached ones the device used; device_outcome is
+        the device's own computation and never governs; acknowledged ("Estou ciente das pendências") is true only with
+        COMPLETED_WITH_ISSUES. The server recheck and its flags are never fields of the payload.
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        template_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        policy_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        started_at:
+          type: string
+          format: date-time
+          description: Canonical UTC instant with at most microsecond precision, not after the completion.
+        answers:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items:
+            $ref: '#/components/schemas/EnterpriseChecklistRunAnswer'
+        device_outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        acknowledged:
+          type: boolean
+      required:
+      - asset_id
+      - context
+      - template_id
+      - template_version
+      - policy_revision
+      - started_at
+      - answers
+      - device_outcome
+      - acknowledged
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000009721
+        context: DEPARTURE
+        template_id: 7b0e2a54-0000-4000-8000-000000009731
+        template_version: 1
+        policy_revision: 1
+        started_at: '2026-11-15T11:40:00Z'
+        answers:
+        - answer: OK
+          note: null
+          photo: false
+        - answer: NOT_OK
+          note: Freios rangendo
+          photo: false
+        device_outcome: BLOCKING
+        acknowledged: false
+    EnterpriseChecklistRunReadRequest:
+      description: Empty body; the asset and the run are the path selectors.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseChecklistRunReleaseRequest:
+      type: object
+      additionalProperties: false
+      description: The run revision released and the reason; the outcome is never chosen.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 2
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: 1..500 Unicode scalars, no control character, not only white space.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009601
+        revision: 1
+        reason: Freios verificados na oficina
+    EnterpriseChecklistRun:
+      type: object
+      additionalProperties: false
+      description: One run as stored (B-BR-EMP-441); review_required equals outcome_differs. released_at is present exactly
+        at revision 2.
+      properties:
+        run_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        template_version:
+          type: integer
+          minimum: 1
+        policy_revision:
+          type: integer
+          minimum: 1
+        server_policy_revision:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 2
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        received_at:
+          type: string
+          format: date-time
+        device_outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        recheck_outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        outcome_differs:
+          type: boolean
+        review_required:
+          type: boolean
+        template_superseded:
+          type: boolean
+        acknowledged:
+          type: boolean
+        issues:
+          type: array
+          maxItems: 40
+          items:
+            type: integer
+            minimum: 1
+            maximum: 40
+        critical_issues:
+          type: array
+          maxItems: 40
+          items:
+            type: integer
+            minimum: 1
+            maximum: 40
+        released_at:
+          type: string
+          format: date-time
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - run_id
+      - asset_id
+      - template_id
+      - context
+      - template_version
+      - policy_revision
+      - server_policy_revision
+      - revision
+      - started_at
+      - completed_at
+      - received_at
+      - device_outcome
+      - recheck_outcome
+      - outcome
+      - outcome_differs
+      - review_required
+      - template_superseded
+      - acknowledged
+      - issues
+      - critical_issues
+      - data_mode
+      example:
+        run_id: 7b0e2a54-0000-4000-8000-000000009711
+        asset_id: 7b0e2a54-0000-4000-8000-000000009721
+        template_id: 7b0e2a54-0000-4000-8000-000000009731
+        context: DEPARTURE
+        template_version: 1
+        policy_revision: 2
+        server_policy_revision: 3
+        revision: 1
+        started_at: '2026-11-15T11:40:00Z'
+        completed_at: '2026-11-15T12:00:00.123Z'
+        received_at: '2026-11-15T12:30:00.5Z'
+        device_outcome: COMPLETED_WITH_ISSUES
+        recheck_outcome: BLOCKING
+        outcome: BLOCKING
+        outcome_differs: true
+        review_required: true
+        template_superseded: false
+        acknowledged: true
+        issues:
+        - 2
+        critical_issues:
+        - 2
+        data_mode: SYNTHETIC
+    EnterpriseChecklistRunRelease:
+      type: object
+      additionalProperties: false
+      description: The released run (revision 2) and whether this was a replay.
+      properties:
+        run_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        template_version:
+          type: integer
+          minimum: 1
+        policy_revision:
+          type: integer
+          minimum: 1
+        server_policy_revision:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          const: 2
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        received_at:
+          type: string
+          format: date-time
+        device_outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        recheck_outcome:
+          type: string
+          const: BLOCKING
+        outcome:
+          type: string
+          const: COMPLETED_WITH_ISSUES
+        outcome_differs:
+          type: boolean
+        review_required:
+          type: boolean
+        template_superseded:
+          type: boolean
+        acknowledged:
+          type: boolean
+        issues:
+          type: array
+          maxItems: 40
+          items:
+            type: integer
+            minimum: 1
+            maximum: 40
+        critical_issues:
+          type: array
+          maxItems: 40
+          items:
+            type: integer
+            minimum: 1
+            maximum: 40
+        released_at:
+          type: string
+          format: date-time
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        replayed:
+          type: boolean
+      required:
+      - run_id
+      - asset_id
+      - template_id
+      - context
+      - template_version
+      - policy_revision
+      - server_policy_revision
+      - revision
+      - started_at
+      - completed_at
+      - received_at
+      - device_outcome
+      - recheck_outcome
+      - outcome
+      - outcome_differs
+      - review_required
+      - template_superseded
+      - acknowledged
+      - issues
+      - critical_issues
+      - released_at
+      - data_mode
+      - replayed
+      example:
+        run_id: 7b0e2a54-0000-4000-8000-000000009711
+        asset_id: 7b0e2a54-0000-4000-8000-000000009721
+        template_id: 7b0e2a54-0000-4000-8000-000000009731
+        context: DEPARTURE
+        template_version: 1
+        policy_revision: 1
+        server_policy_revision: 1
+        revision: 2
+        started_at: '2026-11-15T11:40:00Z'
+        completed_at: '2026-11-15T12:00:00.123Z'
+        received_at: '2026-11-15T12:30:00.5Z'
+        device_outcome: BLOCKING
+        recheck_outcome: BLOCKING
+        outcome: COMPLETED_WITH_ISSUES
+        outcome_differs: false
+        review_required: false
+        template_superseded: false
+        acknowledged: false
+        issues:
+        - 2
+        critical_issues:
+        - 2
+        released_at: '2026-11-15T14:00:00Z'
+        data_mode: SYNTHETIC
+        replayed: false
     EnterpriseFinancePeriodListRequest:
       description: Keyset page of months with lock history, optionally filtered by current state.
       type: object
@@ -31059,6 +31588,7 @@ components:
           - ACTIVE_USE
           - MAINTENANCE_HOLD
           - BLOCK
+          - CHECKLIST_RUN
           - RESERVATION
         lifecycle_state:
           type: string
@@ -31117,12 +31647,13 @@ components:
             $ref: '#/components/schemas/EnterpriseFleetAvailabilityCause'
         missing_sources:
           type: array
-          maxItems: 2
+          maxItems: 3
           uniqueItems: true
           items:
             type: string
             enum:
             - ACTIVE_USE
+            - CHECKLIST_RUN
             - MAINTENANCE_HOLD
         evaluated_at:
           type: string

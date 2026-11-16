@@ -151,3 +151,47 @@ Run:
 (cd backend && go test -race -count=1 ./internal/modules/maintenance/domain/incident)
 ./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.maintenance.incident.*'
 ```
+
+# Checklist run operation oracle v1
+
+EMP-CHECK-002 / B-BR-EMP-439, EDR-284/286. `run-v1.psv` pins the signed
+`check.run.complete` schema 1 operation the Android producer builds. 56 rows:
+OK 15, MALFORMED 37, UNSUPPORTED 2, PROTOCOL 2. SHA-256
+`fbbea99443fd5aadf49f7d55bf132b34208d2ee7e545188a078af56dff14a24e`. Generated
+by an independent Python oracle (`f4-logs/check002-scripts/gen_run_vectors.py`)
+without reading either consumer. The Kotlin builder must produce the OK bytes
+exactly and refuse every other buildable row; the Go codec
+(`maintenance/application.ParseRun`) must accept exactly the OK rows (and
+return the declared values) and refuse each other row with its class. The
+server recheck (`checklist.RecheckRun`) is server-only and is not in this
+oracle (EDR-283).
+
+## Format
+
+The exact header is `id|operation|args|expected|bytes_hex`; `operation` is
+always `RUN`. Fields are `key=value` joined by `;`. `bytes_hex` is the UTF-8
+operation: for `OK` the sealed canonical bytes (enterprise canonical profile:
+sorted keys, compact, only quote, backslash and C0 escaped, `payload_digest` =
+`sha256:` + hex SHA-256 of the canonical envelope without it); for the other
+classes the canonical envelope without the digest that a lenient builder would
+emit. The envelope is owner `7b0e2a54-0000-4000-8000-000000009501`, origin
+`https://api.example.invalid`, organization `…9502`, membership `…9503`,
+enrollment `…9504`, declared `2026-11-15T12:00:00.123Z` in `America/Cuiaba`
+with offset −14400 unless `at`/`zone`/`offset` say otherwise.
+
+Keys: `op`, `run`, `asset`, `context`, `template`, `version`, `policy`,
+`started`, `answers`, `device`, `ack`; optional `at`, `zone`, `offset`, `dep`
+(one dependency), `revision` (an expected revision), `entity` (another entity
+type) and `shape` (a payload shape no builder can express: `extra-key`,
+`missing-key`, `answer-extra-key`, `answer-missing-photo`, `answers-null`,
+`answers-object`, `acknowledged-null`, `acknowledged-string`, `version-string`,
+`photo-null`, `note-number`). `answers` is a `,`-separated list of
+`ANSWER[:hexnote][+photo]` items (empty list when the value is empty).
+
+## Classes
+
+- `OK`: buildable and accepted.
+- `MALFORMED`: final refusal (`ErrMalformed` / `MALFORMED`).
+- `UNSUPPORTED`: a photo declaration, kept `RETRY`/`UNAVAILABLE` until the
+  run-photo channel exists; the Android builder never produces it.
+- `PROTOCOL`: refused by the shared envelope profile before any run parser.

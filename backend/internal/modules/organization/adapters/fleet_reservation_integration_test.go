@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	maintpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters"
 	"testing"
 	"time"
 
@@ -39,7 +40,26 @@ func reservationStore(t *testing.T, fx legalFixtureState) *fleetpg.AssetStore {
 		}
 	}
 	s.ActiveUse, s.MaintenanceHolds = fleetpg.NoActiveUse{}, fleetpg.NoMaintenanceHolds{}
+	s.ChecklistBlocks = checklistBlockSource(t, fx)
 	return s
+}
+
+// checklistBlockSource is the EMP-CHECK-002 block source (EDR-285) with its
+// read grants on an image that has the runs (000242), else the explicit
+// no-source adapter for an upgrade rehearsal that stops earlier.
+func checklistBlockSource(t *testing.T, fx legalFixtureState) fa.ChecklistBlockPort {
+	t.Helper()
+	var installed bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_checklist_runs') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if !installed {
+		return fleetpg.NoChecklistBlocks{}
+	}
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_checklist_runs,org_checklist_run_releases TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	return maintpg.ChecklistBlocks{}
 }
 
 // exactNow is the database clock floored to the microsecond.
@@ -714,5 +734,11 @@ func TestFleetAvailabilityReadAndStartCheckPort(t *testing.T) {
 	bare.ActiveUse = nil
 	if _, err := bare.ReadAvailability(t.Context(), fx.scope, fleetActor(fx), fx.member, asset); !errors.Is(err, fa.ErrUnavailable) {
 		t.Fatal("availability without the active-use port", err)
+	}
+	// EMP-CHECK-002 (EDR-285): nor without the checklist-block port.
+	noChecklists := *s
+	noChecklists.ChecklistBlocks = nil
+	if _, err := noChecklists.ReadAvailability(t.Context(), fx.scope, fleetActor(fx), fx.member, asset); !errors.Is(err, fa.ErrUnavailable) {
+		t.Fatal("availability without the checklist-block port", err)
 	}
 }

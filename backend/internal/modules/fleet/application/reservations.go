@@ -298,6 +298,8 @@ type AvailabilitySource string
 const (
 	ActiveUseSource       AvailabilitySource = "ACTIVE_USE"
 	MaintenanceHoldSource AvailabilitySource = "MAINTENANCE_HOLD"
+	// ChecklistBlockSource is the BLOCKING checklist runs (EMP-CHECK-002).
+	ChecklistBlockSource AvailabilitySource = "CHECKLIST_RUN"
 )
 
 // AvailabilityView is the derived answer at the server instant At and the
@@ -337,6 +339,20 @@ type HoldAnswer struct {
 // instant. The maintenance epic replaces the explicit "no source" adapter.
 type MaintenanceHoldPort interface {
 	MaintenanceHoldsDBTX(context.Context, syncapp.DBTX, kernel.OrgScope, string, time.Time) (HoldAnswer, error)
+}
+
+// ChecklistBlockAnswer is the checklist-block port's answer; Sourced is
+// false when no checklist source is composed (EDR-285).
+type ChecklistBlockAnswer struct {
+	private
+	Sourced bool
+	Blocks  []fleet.ChecklistBlockFact
+}
+
+// ChecklistBlockPort answers the BLOCKING checklist runs of an asset whose
+// period covers the instant, on the caller's transaction (BR-CHECK-010).
+type ChecklistBlockPort interface {
+	ChecklistBlocksDBTX(context.Context, syncapp.DBTX, kernel.OrgScope, string, time.Time) (ChecklistBlockAnswer, error)
 }
 
 // StartAvailabilityPort is the intake check of a trip start (B-BR-EMP-300):
@@ -638,14 +654,14 @@ func (s ReservationService) Availability(ctx context.Context, scope kernel.OrgSc
 	if err != nil {
 		return AvailabilityView{}, err
 	}
-	if v.AssetID != asset || !validInstant(v.At) || len(v.MissingSources) > 2 {
+	if v.AssetID != asset || !validInstant(v.At) || len(v.MissingSources) > 3 {
 		return AvailabilityView{}, ErrUnavailable
 	}
 	if (len(v.Assessment.Causes) == 0) != (v.Assessment.Availability == fleet.Available) || len(v.Assessment.Causes) > 0 && v.Assessment.Causes[0].Availability != v.Assessment.Availability {
 		return AvailabilityView{}, ErrUnavailable
 	}
 	for i, source := range v.MissingSources {
-		if source != ActiveUseSource && source != MaintenanceHoldSource || i > 0 && source <= v.MissingSources[i-1] {
+		if source != ActiveUseSource && source != MaintenanceHoldSource && source != ChecklistBlockSource || i > 0 && source <= v.MissingSources[i-1] {
 			return AvailabilityView{}, ErrUnavailable
 		}
 	}

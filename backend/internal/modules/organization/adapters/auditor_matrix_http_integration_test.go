@@ -232,6 +232,7 @@ var auditorTemplateParam = regexp.MustCompile(`\{[a-z_]+\}`)
 // documented AUDITOR column grants at this head (B-BR-EMP-247).
 var auditorPositiveRoutes = []string{
 	"/v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable",
+	"/v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read",
 	"/v1/orgs/{org_id}/documents/{document_id}/content/access",
 	"/v1/orgs/{org_id}/documents/{document_id}/content/read",
 	"/v1/orgs/{org_id}/employees/list",
@@ -344,6 +345,10 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if applicable := call("/v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable", map[string]any{"context": "DEPARTURE"}, 200, "", ""); applicable["required"] != false || applicable["match"] != "NONE" {
 		t.Fatal("auditor applicable checklist read", applicable)
 	}
+	// EMP-CHECK-002: a run is read under fleet.asset.read on its asset; the
+	// authority passes and a run that does not exist is NOT_FOUND (no run is
+	// delivered in this walk; the run tests prove a stored run's read).
+	call("/v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read", map[string]any{}, 404, "NOT_FOUND", "")
 	if availability := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/availability/read", map[string]any{}, 200, "", ""); availability["availability"] != "UNAVAILABLE" {
 		t.Fatal("auditor availability of the draft asset", availability)
 	}
@@ -477,7 +482,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 156 || positive != 31 || denied != 125 {
+	if len(routes) != 158 || positive != 32 || denied != 126 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 

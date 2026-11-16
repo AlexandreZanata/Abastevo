@@ -39,6 +39,10 @@ const (
 	// and the unit and cost centre it stored at its declared instant
 	// (EMP-CHECK-003, EDR-241); no team facts yet.
 	IncidentStructure
+	// ChecklistRunStructure: a checklist run resolves to its asset and the
+	// unit and cost centre it stored at its declared completion
+	// (EMP-CHECK-002, EDR-285); no team facts yet.
+	ChecklistRunStructure
 	// HeldTripStructure: a held trip fact (EMP-TRIP-007, EDR-263). A held
 	// start resolves to the asset it declared, that asset's FLEET-005 unit
 	// and cost centre at the declared instant and the teams covering its
@@ -74,6 +78,9 @@ WHERE i.org_id=$1 AND i.id=$2 AND i.operation_type='meter.reading.record' AND i.
 
 // incidentStructure reads only the immutable report snapshot.
 const incidentStructure = `SELECT asset_id::text,COALESCE(unit_id::text,''),COALESCE(cost_centre_id::text,'') FROM org_incident_reports WHERE org_id=$1 AND id=$2`
+
+// checklistRunStructure reads only the immutable run snapshot.
+const checklistRunStructure = `SELECT asset_id::text,COALESCE(unit_id::text,''),COALESCE(cost_centre_id::text,'') FROM org_checklist_runs WHERE org_id=$1 AND id=$2`
 
 // tripStructure reads only the immutable start snapshot and retained team
 // link periods (half-open, at the trip's server receipt).
@@ -174,6 +181,13 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 		}
 	case r.Kind == IncidentStructure && policy.Permission == "check.incident.manage":
 		if err := tx.QueryRow(ctx, incidentStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return permissions.ResourceFacts{}, errStructureNotFound
+			}
+			return permissions.ResourceFacts{}, org.ErrUnavailable
+		}
+	case r.Kind == ChecklistRunStructure && policy.Permission == "check.incident.manage":
+		if err := tx.QueryRow(ctx, checklistRunStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
 				return permissions.ResourceFacts{}, errStructureNotFound
 			}

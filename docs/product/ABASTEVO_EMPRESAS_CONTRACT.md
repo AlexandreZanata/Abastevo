@@ -7441,3 +7441,130 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   can approve, return or reject it (`SELF_APPROVAL`); another reviewer
   decides. Proven on real PostGIS with the races between two handovers and
   between a handover and a pause, in both orders.
+
+## EMP-CHECK-002 — Checklist execution offline with the critical-item policy (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-check002-checklist-execution.md).
+
+- **B-BR-EMP-438 — A run is filled offline from the cached template and
+  decided on the device.** The app obtains the applicable template of an
+  asset and context (version, ordered items, policy revision, mode and
+  validity) from the EMP-CHECK-001 applicable read under `fleet.asset.read`
+  while online and keeps it sealed in the protected store with the server
+  instant that confirmed it; offline is the normal state and shows that age.
+  A run is started for one asset, context and cached template; every answer
+  (`OK`, `NOT_OK`, `NOT_APPLICABLE`, an optional note of at most 140
+  characters) is written to the sealed run before the screen shows it as
+  saved, so answers survive closing the app or process death; a failed write
+  reports that nothing was saved. Completion is refused locally with the
+  shared EMP-CHECK-001 answer rule (`ANSWER_NOT_ALLOWED`, `PHOTO_REQUIRED`,
+  `INCOMPLETE`) and when the run is older than the cached policy validity
+  (`CHECKLIST_EXPIRED`, a new run is started). The device computes the
+  outcome (B-BR-EMP-334) from the cached version and policy revision, names
+  both in the run and shows it at once: `BLOCKING` is stated in text and
+  icon with the items that block, `COMPLETED_WITH_ISSUES` with critical items
+  under `WARN` asks the driver to confirm "Estou ciente das pendências". The
+  completed run is one durable `check.run.complete` operation queued in the
+  same protected write as the run's local record (BR-OFFL-002); the run is
+  attachable by its identifier (the departure gate of a trip start is
+  EMP-TRIP-019).
+- **B-BR-EMP-439 — The signed run operation.** `check.run.complete` schema 1:
+  envelope entity `checklist_run` with the run identity and no expected
+  revision, no dependency, no soft reference or attachment (those are
+  `RETRY`/`UNAVAILABLE`), `occurred_at` the completion instant, payload
+  exactly `asset_id`, `context`, `template_id`, `template_version` (≥ 1),
+  `policy_revision` (≥ 1), `started_at` (not after the completion),
+  `answers` (1..40 objects of exactly `answer`, `note` — null or 1..140
+  nonblank control-free characters — and `photo`, true only with `NOT_OK`),
+  `device_outcome` and `acknowledged` (true only with
+  `COMPLETED_WITH_ISSUES`). Anything else is a final `MALFORMED`. A `photo`
+  declaration is `RETRY`/`UNAVAILABLE` until the run-photo channel exists
+  (retained), so a photo is never claimed without its bytes.
+- **B-BR-EMP-440 — The server rechecks by its own history.** On receipt the
+  server reads the named template version of this organization, its items
+  and target, every version's publication instant, the archive instant and
+  the whole policy history, and recomputes with one pure rule (Go
+  `maintenance/domain/checklist.RecheckRun`, mirrored by the database):
+  an unknown version or policy revision, another context, an answer count
+  other than the version's items, a version whose target does not cover the
+  asset (organization default, the asset, or the asset's category), a start
+  after the completion, or an answer set the shared rule refuses is
+  `MALFORMED`; the policy is the revision in force at the declared completion
+  instant (the first revision when the instant precedes it); the run is
+  `TEMPLATE_SUPERSEDED` when a later version of that template was published,
+  or the template archived, at or before the completion. The server outcome
+  is stored and governs; the device's own claim never does, so a critical
+  `NOT_OK` under `BLOCK` declared `COMPLETED_OK` is stored `BLOCKING`.
+- **B-BR-EMP-441 — A disagreement keeps the field fact.** A well-formed run
+  is always stored and acknowledged `ACCEPTED` at revision 1, with the
+  answers, the device outcome and the named policy revision as declared, the
+  server outcome, the server policy revision, `template_superseded` and
+  `outcome_differs`; a run whose outcomes differ is held for review
+  (`review_required`) and never dropped or rewritten. The author is told by
+  reading the run: `POST /v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read`
+  under `fleet.asset.read` on the asset exactly as the applicable read (its
+  allocation for structural grants; an assigned driver through the
+  assignment; a run of another asset is not found) returns both
+  outcomes, the flags and the positions of the issues — never a note, a
+  photo or the author's identity. A run whose asset is another
+  organization's, unknown or not covered is not found; a `DRAFT` asset is
+  `MALFORMED`; changed rights store nothing (`RETRY`/`UNAVAILABLE`); the same
+  operation returns the stored acknowledgement byte for byte and another
+  digest is `OPERATION_ID_REUSED`; a second operation for a stored run
+  identity is `MALFORMED`. The intake authority is `check.checklist.execute`
+  with the EDR-177 history rule (S: own records and assigned assets).
+- **B-BR-EMP-442 — A blocking run blocks the asset until another member
+  releases it.** From the declared completion instant a run stored
+  `BLOCKING` makes the asset `BLOCKED` for every member (FLEET-007 §6.2 row
+  4, new cause kind `CHECKLIST_RUN` with the run as record and its period; a
+  new start is held `ASSET_UNAVAILABLE` by the existing start check; the
+  `CHECKLIST_BLOCKING` gate code is EMP-TRIP-019). `POST
+  /v1/orgs/{org_id}/checklists/runs/{run_id}/release` under fresh
+  `check.incident.manage` covering the run's stored asset, unit or cost
+  centre takes an operation identifier, the expected revision and a reason
+  (1..500): a `BLOCKING` run at that revision becomes `COMPLETED_WITH_ISSUES`
+  at revision 2, the block ends at the release instant, one audit event
+  `check.run.released` is written and the answers, device outcome and
+  recheck outcome never change. The author of the run (same account,
+  membership or canonical employee record) is refused `SELF_APPROVAL`; a run
+  that is not `BLOCKING` or a stale revision is `CONFLICT`; a missing or
+  blank reason is `VALIDATION_FAILED`; replay returns the first answer and
+  another intent is `OPERATION_ID_REUSED`. Migration 000242 stores runs,
+  answers and releases with forced RLS, same-organization keys to the
+  template version, items and policy revisions, insert-only answers and
+  releases, a database recheck of the outcome, the flags and the in-force
+  policy, publication only with the `ACCEPTED` receipt or the release audit
+  event, and the asset, unit and cost-centre usage sources redefined from
+  their latest bodies with the run keys as associations.
+- **B-BR-EMP-443 — The execution screens.** An enterprise "Checklists" entry
+  and the trip start form open the execution screen for an asset: one item
+  per row with large targets, critical marks, the three answers and the note,
+  progress, the cached template's confirmation age, and "Nenhum checklist
+  exigido para este veículo" when none applies. The outcome screen shows the
+  local outcome, the blocking items and that the company rechecks it; after
+  delivery it shows the server outcome and, when it differs, "A empresa
+  recalculou o resultado" with both outcomes. The trip start form shows the
+  latest valid departure run of the chosen vehicle and disables the start
+  while it is `BLOCKING` (the device effect of BR-CHECK-006). Items that
+  require a photo when not OK cannot be completed `NOT_OK` until the
+  run-photo channel exists, and the screen says so. Strings exist in the
+  eight app locales; the visual direction is the app's (black solid header
+  and bars, white containers, light by default, no grey fills).
+- **BUC-EMP-222 — Fill a departure checklist with no connection.** A driver
+  opens the cached template of a vehicle (BLOCK, item 2 "Freios" critical),
+  answers item 1 OK, closes the app, reopens it and finds the answer, answers
+  "Freios" NOT_OK with a note and completes: the screen shows "Bloqueando o
+  uso" with "Freios" as the blocking item and the trip start of that vehicle
+  is disabled; the run waits in the queue.
+- **BUC-EMP-223 — The company rechecks the run.** On reconnection the run is
+  accepted; the server stores `BLOCKING` and the vehicle is `BLOCKED` for a
+  second member. A run computed on a cached `WARN` revision while the
+  server's policy at that time was `BLOCK` is stored `BLOCKING` with the
+  device's `COMPLETED_WITH_ISSUES`, held for review, and the author's screen
+  shows both outcomes; nothing was refused or rewritten.
+- **BUC-EMP-224 — Release a blocked vehicle.** A fleet manager of the
+  vehicle's unit, not the author, releases the run with the reason "Freios
+  verificados na oficina"; the vehicle is available again, the run reads
+  `COMPLETED_WITH_ISSUES` at revision 2 with its answers unchanged, and the
+  audit trail has the release. The author trying the same is refused
+  `SELF_APPROVAL`.
