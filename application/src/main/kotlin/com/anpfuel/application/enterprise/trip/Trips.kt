@@ -368,7 +368,11 @@ data class TripViewState(
 }
 
 /** EMP-GPS-002 hooks of the trip screen: the tracking service and the process's running-collector and boot facts. */
-class TripTracking(val service: EnterpriseTrackingService, val running: (String) -> Boolean, val bootId: () -> String) {
+class TripTracking(val service: EnterpriseTrackingService, val running: (String) -> Boolean, val bootId: () -> String,
+    /** EMP-GPS-010: the permission and notification visibility the platform reports now; null when not observed. */
+    val device: () -> TrackingDevice? = { null },
+    /** EMP-GPS-010: the session this process is collecting for, if any (one listener per phone). */
+    val collecting: () -> String? = { null }) {
     override fun toString(): String = "TripTracking(redacted)"
 }
 
@@ -479,7 +483,7 @@ class TripFlow(
     /** BR-GPS-011/012 at the opening: a recording session with no running collector is interrupted, a finished trip followed. */
     private suspend fun recoverTracking(request: Owner) {
         val hooks = tracking ?: return
-        try { hooks.service.recover(account(request), request.context.partition, hooks.running, hooks.bootId()) }
+        try { hooks.service.recover(account(request), request.context.partition, hooks.running, hooks.bootId(), hooks.device()) }
         catch (cancelled: CancellationException) { throw cancelled }
         catch (denied: EnterpriseLocalDenied) { throw denied }
         catch (_: Exception) { /* The checkpoint stays; the next opening tries again. */ }
@@ -561,10 +565,18 @@ class TripFlow(
         }
 
     /** EMP-GPS-002: the driver's tap on "Iniciar/Retomar rastreamento" on this visible screen (B-BR-EMP-496). */
-    suspend fun startTracking(tripId: String, device: TrackingDevice, renderedEpoch: Long, generation: Long) {
+    suspend fun startTracking(tripId: String, device: TrackingDevice, renderedEpoch: Long, generation: Long,
+        /** EMP-GPS-010 (B-BR-EMP-547): with a connection the policy in force is read first, in the same gesture. */
+        online: Boolean = false) {
         val hooks = tracking ?: return
-        write(renderedEpoch, generation) { request, account ->
-            hooks.service.start(account, request.context, tripId, device).records.last().operationId
+        val request = begin(renderedEpoch, generation) ?: return
+        perform(request, write = true) {
+            // A failed online read keeps the cached policy and says so, also when the tap is then refused (B-BR-EMP-547).
+            val policyFailed = online && hooks.service.refreshPolicy(account(request, delivery = true), request.context) == null
+            if (policyFailed) synchronized(monitor) { if (owner === request) mutable.value = mutable.value.copy(trackingPolicyFailed = true) }
+            val saved = hooks.service.start(account(request), request.context, tripId, device, hooks.collecting()).records.last().operationId
+            if (!retained(request)) { invalidateIfStale(); return@perform }
+            publish(request, saved = saved, policyFailed = policyFailed)
         }
     }
 

@@ -22,7 +22,7 @@
     <string name="enterprise_tracking_approximate">Ubicación aproximada: no habrá distancia por GPS en este viaje.</string>
     <string name="enterprise_tracking_cause_permission_denied">No se concedió el permiso de ubicación. El viaje continúa sin seguimiento.</string>
     <string name="enterprise_tracking_cause_notification_blocked">Las notificaciones están bloqueadas, así que el seguimiento no puede funcionar con su aviso visible. Permite las notificaciones para seguir.</string>
-    <string name="enterprise_tracking_cause_process_stopped">La app se cerró durante el seguimiento.</string>
+    <string name="enterprise_tracking_cause_process_stopped">El seguimiento se detuvo en este teléfono sin que lo pidieras (app cerrada o detenida por el sistema).</string>
     <string name="enterprise_tracking_cause_device_restarted">El teléfono se reinició durante el seguimiento.</string>
     <string name="enterprise_tracking_cause_stopped_by_driver">Detuviste el seguimiento. El viaje continúa.</string>
     <string name="enterprise_tracking_cause_owner_changed">La cuenta o la empresa cambió en este teléfono.</string>

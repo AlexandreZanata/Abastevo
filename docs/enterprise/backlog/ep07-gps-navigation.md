@@ -248,6 +248,26 @@ open.
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 tracking interruptions](../evidence/f4-gps010-tracking-interruptions.md)
+is LOCAL_DONE / INTEGRATION_PENDING (emulator acceptance OWED), 2026-11-16.
+A recording session that this phone does not collect for is interrupted with
+the cause the device observes (`DEVICE_RESTARTED`, `PERMISSION_REVOKED`,
+`NOTIFICATION_BLOCKED`, otherwise `PROCESS_STOPPED`) at its last proof of
+recording: at the next opening of the trip screen and also as soon as the
+service, after the visible grant, cannot listen or go to the foreground. The
+trip screen lists every interruption with its cause and bounds, the ongoing
+notification states location off, no signal or simulated locations, batches
+are sealed per recording run and an earlier run's gap ends with it. A fix
+never claims more precision than its period or the permission granted with
+it (the reduction is written first, at the report's instant, or before
+listening). Every start or resume tap re-checks the policy in force (read
+online first when connected; `OFF` or never read refuses), the member's own
+open trip and that no other session is collected on the phone; no recovery,
+intent, worker or boot path resumes collection; each recorded fix stays in
+its owner's buffer or one batch. No server change (every cause was already
+accepted). Native and real-device acceptance remain owed (EDR-271); the
+long-stationary guard (BR-GPS-016) stays open.
+
 ### EMP-GPS-011 — Track retention: raw-point purge and summary retention
 - **Meta:** module GPS · phase F5 · cut - · priority P1 · type JOB · size S · state TODO
 - **Objective:** Purge expired raw location and retain only approved summaries.

@@ -100,7 +100,8 @@ class TripViewModel @Inject constructor(
      */
     fun startTracking(tripId: String, device: TrackingDevice, renderedEpoch: Long, generation: Long) =
         action(renderedEpoch, generation) {
-            flow.startTracking(tripId, device, renderedEpoch, generation)
+            // EMP-GPS-010 (B-BR-EMP-547): with a connection the policy in force is read first, in the same gesture.
+            flow.startTracking(tripId, device, renderedEpoch, generation, connected.value)
             val current = state.value
             val session = current.tracking?.session(tripId)
             val context = current.context

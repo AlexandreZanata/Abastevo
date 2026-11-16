@@ -22,7 +22,7 @@
     <string name="enterprise_tracking_approximate">Position approximative : aucune distance GPS ne sera calculée pour ce trajet.</string>
     <string name="enterprise_tracking_cause_permission_denied">L’autorisation de localisation n’a pas été accordée. Le trajet continue sans suivi.</string>
     <string name="enterprise_tracking_cause_notification_blocked">Les notifications sont bloquées : le suivi ne peut pas fonctionner avec son avis visible. Autorisez les notifications pour suivre.</string>
-    <string name="enterprise_tracking_cause_process_stopped">L’app a été fermée pendant le suivi.</string>
+    <string name="enterprise_tracking_cause_process_stopped">Le suivi s’est arrêté sur ce téléphone sans votre commande (app fermée ou arrêtée par le système).</string>
     <string name="enterprise_tracking_cause_device_restarted">Le téléphone a redémarré pendant le suivi.</string>
     <string name="enterprise_tracking_cause_stopped_by_driver">Vous avez arrêté le suivi. Le trajet continue.</string>
     <string name="enterprise_tracking_cause_owner_changed">Le compte ou l’entreprise a changé sur ce téléphone.</string>

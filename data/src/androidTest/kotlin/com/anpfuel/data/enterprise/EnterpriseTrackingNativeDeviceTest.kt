@@ -4,7 +4,9 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.LocationManager
+import android.os.Build
 import android.os.Looper
+import android.os.ParcelFileDescriptor
 import android.os.Process
 import android.os.SystemClock
 import android.provider.Settings
@@ -58,6 +60,8 @@ import com.anpfuel.domain.enterprise.tracking.LocationPermission
 import com.anpfuel.domain.enterprise.tracking.TrackingBatchOperations
 import com.anpfuel.domain.enterprise.tracking.TrackingCause
 import com.anpfuel.domain.enterprise.tracking.TrackingDevice
+import com.anpfuel.domain.enterprise.tracking.TrackingGapReason
+import com.anpfuel.domain.enterprise.tracking.TrackingOperations
 import com.anpfuel.domain.enterprise.tracking.TrackingPolicy
 import com.anpfuel.domain.enterprise.tracking.TrackingSessionState
 import com.anpfuel.domain.enterprise.trip.TripAssetLabel
@@ -198,6 +202,116 @@ class EnterpriseTrackingNativeDeviceTest {
         } finally { graph.close() }
     }
 
+    /**
+     * EMP-GPS-010 stage 1 (B-BR-EMP-544/545): precise recording, then location switched off by the emulator's shell (a
+     * synthetic setting) opens `PROVIDER_DISABLED` at the next watchdog check and says so in the collector state; the next
+     * fix after location returns closes it. The process is left recording; the driver ends it and removes fine location.
+     */
+    @Test
+    fun interruption1PreciseRecordingWithALocationOffGapThenTheProcessEnds(): Unit = runBlocking {
+        val fixture = readFixture(File(context.noBackupFilesDir, FIXTURE))
+        val graph = Graph(context, fixture, seed = true)
+        try {
+            assertEquals("Unexpected previous native tracking stage", 0, graph.preferences.getInt(STAGE_NUMBER, 0))
+            assertEquals("Fine location must be granted by the driver", LocationPermission.PRECISE, graph.platform.permission())
+            graph.establishCustody()
+            val (trip, session) = graph.startTrackedTrip(fixture)
+            val collector = graph.collector()
+            graph.gate.arm(fixture.partition, session)
+            assertEquals(TrackingBeginResult.STARTED, collector.begin(fixture.partition, session))
+            graph.recordUntil(collector, 2)
+            graph.shell("settings put secure location_mode 0")
+            try {
+                assertTrue(collector.tick())
+                assertEquals(TrackingGapReason.PROVIDER_DISABLED, graph.view(trip).openGap?.reason)
+                assertEquals(TrackingGapReason.PROVIDER_DISABLED, collector.state.value.gap)
+            } finally { graph.shell("settings put secure location_mode 3") }
+            graph.recordUntil(collector, collector.state.value.recorded + 1)
+            assertNull("The next fix closes the gap", graph.view(trip).openGap)
+            assertNull(collector.state.value.gap)
+            graph.preferences.edit().putString(TRIP, trip).putString(SESSION, session).commit()
+            graph.mark(11)
+        } finally { graph.close() }
+    }
+
+    /**
+     * EMP-GPS-010 stage 2 (B-BR-EMP-544/546): only approximate location remains; the next opening records the dead process
+     * as `PROCESS_STOPPED` (no reduction invented) and seals what waited; the driver's tap resumes as an approximate period
+     * whose fixes are coarse. The process is left recording; the driver ends it and removes coarse location too.
+     */
+    @Test
+    fun interruption2FineLocationRemovedIsAStopAndTheResumeIsApproximate(): Unit = runBlocking {
+        val fixture = readFixture(File(context.noBackupFilesDir, FIXTURE))
+        val graph = Graph(context, fixture, seed = false)
+        try {
+            graph.requireStage(11)
+            val trip = requireNotNull(graph.preferences.getString(TRIP, null))
+            assertEquals("Only approximate location must remain", LocationPermission.APPROXIMATE, graph.platform.permission())
+            assertEquals(TrackingSessionState.RECORDING, graph.view(trip).state)
+            assertEquals(1, graph.tracking.recover(graph.source.account(), fixture.partition, { false }, graph.platform.bootId(),
+                TrackingDevice(graph.platform.permission(), true)))
+            val interrupted = graph.view(trip)
+            assertEquals(TrackingSessionState.INTERRUPTED, interrupted.state); assertEquals(TrackingCause.PROCESS_STOPPED, interrupted.cause)
+            assertTrue("No reduction is invented", interrupted.records.none { it.type == TrackingOperations.REDUCE })
+            assertEquals(0, interrupted.pendingFixes)
+            val resumed = graph.tracking.start(graph.source.account(), fixture.context, trip, TrackingDevice(graph.platform.permission(), true))
+            assertEquals(TrackingSessionState.RECORDING, resumed.state); assertEquals(LocationPermission.APPROXIMATE, resumed.precision)
+            assertTrue(resumed.coarse)
+            val collector = graph.collector()
+            graph.gate.arm(fixture.partition, resumed.sessionId)
+            assertEquals(TrackingBeginResult.STARTED, collector.begin(fixture.partition, resumed.sessionId))
+            // Approximate updates are throttled by the platform: wait for one coarse fix.
+            graph.recordUntil(collector, 1, seconds = 660)
+            graph.mark(12)
+        } finally { graph.close() }
+    }
+
+    /**
+     * EMP-GPS-010 stage 3 (B-BR-EMP-544/546/547): no location permission remains; the next opening records
+     * `PERMISSION_REVOKED`, nothing resumes (a tap without permission is a recorded attempt, a grant listens to nothing), the
+     * trip finishes and every operation and batch is accepted, the coarse flag exactly on the approximate run.
+     */
+    @Test
+    fun interruption3NoPermissionIsARevocationNothingResumesAndEverythingIsAccepted(): Unit = runBlocking {
+        val fixture = readFixture(File(context.noBackupFilesDir, FIXTURE))
+        val graph = Graph(context, fixture, seed = false)
+        try {
+            graph.requireStage(12)
+            val trip = requireNotNull(graph.preferences.getString(TRIP, null))
+            assertEquals("No location permission must remain", LocationPermission.NONE, graph.platform.permission())
+            assertEquals(1, graph.tracking.recover(graph.source.account(), fixture.partition, { false }, graph.platform.bootId(),
+                TrackingDevice(LocationPermission.NONE, true)))
+            val interrupted = graph.view(trip)
+            assertEquals(TrackingCause.PERMISSION_REVOKED, interrupted.cause)
+            assertNull(graph.tracking.collecting(graph.source.account(), fixture.partition, interrupted.sessionId))
+            val attempt = graph.tracking.start(graph.source.account(), fixture.context, trip, TrackingDevice(LocationPermission.NONE, true))
+            assertEquals(TrackingSessionState.INTERRUPTED, attempt.state); assertEquals(TrackingCause.PERMISSION_DENIED, attempt.cause)
+            val collector = graph.collector()
+            graph.gate.arm(fixture.partition, attempt.sessionId)
+            assertEquals(TrackingBeginResult.NOT_RECORDING, collector.begin(fixture.partition, attempt.sessionId))
+            val view = graph.trips.trips(graph.source.account(), fixture.partition).single()
+            val departure = view.start.fact as com.anpfuel.domain.enterprise.trip.TripOperationFact.Start
+            val evidence = departure.evidence as com.anpfuel.domain.enterprise.trip.TripEvidence.Reading
+            graph.trips.finish(graph.source.account(), fixture.partition, trip,
+                TripCapture.Reading(TripMeterChoice(evidence.meterId, evidence.segmentId, MeterKind.ODOMETER, null), MeterEntryForm.KM, "184330"))
+            assertEquals(TrackingSessionState.ENDED, requireNotNull(graph.tracking.follow(graph.source.account(), fixture.partition, trip)).state)
+            val done = graph.deliverAll(trip)
+            assertEquals(listOf(TrackingCause.PROCESS_STOPPED, TrackingCause.PERMISSION_REVOKED), done.interruptions.map { it.cause })
+            assertTrue(done.interruptions.all { it.end != null })
+            val records = done.records
+            val start = records.first { it.type == TrackingOperations.START }.operationId
+            val resume = records.first { it.type == TrackingOperations.RESUME }.operationId
+            val batches = done.batches.map { TrackingBatchOperations.read(graph.store.read(graph.source.attempt(graph.source.account(),
+                fixture.partition)).entries.getValue(it.operationId).operation) }
+            assertTrue(batches.isNotEmpty() && batches.all { it.dependsOn == listOf(start) || it.dependsOn == listOf(resume) })
+            assertTrue("Precise run fixes are never coarse", batches.filter { it.dependsOn == listOf(start) }.all { b -> b.fixes.all { it.flags == 0 } })
+            assertTrue("Approximate run fixes are always coarse", batches.filter { it.dependsOn == listOf(resume) }
+                .all { b -> b.fixes.all { it.flags == TrackingBatchOperations.FLAG_COARSE } })
+            graph.assertProtectedSurfaces(listOf(trip, done.sessionId, batches.first().fixes.first().latE7.toString(), TrackingBatchOperations.TYPE))
+            graph.cleanup()
+        } finally { graph.close() }
+    }
+
     private class SourceFixture(val origin: String, val certificate: String, val session: PortableAuth.Session, val organization: String,
         val member: String, val employee: String, val asset: String) {
         val partition: EnterprisePartition get() = EnterprisePartition.of(session.accountId, origin, organization)
@@ -210,9 +324,17 @@ class EnterpriseTrackingNativeDeviceTest {
         private val manager = context.getSystemService(LocationManager::class.java)
         private var listener: LocationListenerCompat? = null
         var attached = 0
-        override fun permission(): LocationPermission =
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED) LocationPermission.PRECISE
-            else LocationPermission.NONE
+        override fun permission(): LocationPermission = when {
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED -> LocationPermission.PRECISE
+            // EMP-GPS-010: an approximate-only grant is observed as such (the shipped platform's mapping).
+            ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED -> LocationPermission.APPROXIMATE
+            else -> LocationPermission.NONE
+        }
+        private fun provider(precision: LocationPermission): String = when {
+            precision == LocationPermission.PRECISE -> LocationManager.GPS_PROVIDER
+            Build.VERSION.SDK_INT >= 31 && manager.allProviders.contains(LocationManager.FUSED_PROVIDER) -> LocationManager.FUSED_PROVIDER
+            else -> LocationManager.NETWORK_PROVIDER
+        }
         override fun notificationVisible(): Boolean = true
         override fun bootId(): String = "boot-" + Settings.Global.getInt(context.contentResolver, Settings.Global.BOOT_COUNT, 0)
         override fun attach(precision: LocationPermission, sink: (TrackingFixSample) -> Unit): Boolean {
@@ -220,8 +342,9 @@ class EnterpriseTrackingNativeDeviceTest {
                 if (l.hasSpeed()) l.speed else null, if (l.hasBearing()) l.bearing else null, l.time, l.elapsedRealtimeNanos / 1_000_000, LocationCompat.isMock(l))) }
             listener = active; attached++
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
-                LocationManagerCompat.requestLocationUpdates(manager, LocationManager.GPS_PROVIDER,
-                    LocationRequestCompat.Builder(1_000L).setQuality(LocationRequestCompat.QUALITY_HIGH_ACCURACY).build(), active, Looper.getMainLooper())
+                LocationManagerCompat.requestLocationUpdates(manager, provider(precision),
+                    LocationRequestCompat.Builder(1_000L).setQuality(if (precision == LocationPermission.PRECISE) LocationRequestCompat.QUALITY_HIGH_ACCURACY
+                        else LocationRequestCompat.QUALITY_BALANCED_POWER_ACCURACY).build(), active, Looper.getMainLooper())
             }
             return true
         }
@@ -233,7 +356,8 @@ class EnterpriseTrackingNativeDeviceTest {
         override fun wallMillis(): Long = System.currentTimeMillis()
         override fun elapsedMillis(): Long = SystemClock.elapsedRealtime()
         override fun batteryLow(): Boolean = false
-        override fun providerEnabled(precision: LocationPermission): Boolean = manager.isProviderEnabled(LocationManager.GPS_PROVIDER)
+        override fun providerEnabled(precision: LocationPermission): Boolean =
+            LocationManagerCompat.isLocationEnabled(manager) && runCatching { manager.isProviderEnabled(provider(precision)) }.getOrDefault(false)
     }
 
     private class Graph(private val context: Context, private val fixture: SourceFixture, seed: Boolean) : Closeable {
@@ -286,9 +410,44 @@ class EnterpriseTrackingNativeDeviceTest {
 
         suspend fun view(trip: String): TrackingSessionView = requireNotNull(tracking.screen(source.account(), fixture.partition).session(trip))
 
-        /** Records until [count] fixes are recorded from the driver's simulated route (at most 120 s). */
-        suspend fun recordUntil(collector: TrackingCollector, count: Long) {
-            val deadline = SystemClock.elapsedRealtime() + 120_000
+        /** EMP-GPS-010: the references, the policy in force, the trip start and the driver's tracking tap; returns trip and session. */
+        suspend fun startTrackedTrip(fixture: SourceFixture): Pair<String, String> {
+            val cache = requireNotNull(references.refresh(source.deliveryAccount(), fixture.partition).cache)
+            assertEquals(TrackingPolicy.EXPECTED, requireNotNull(tracking.refreshPolicy(source.deliveryAccount(), fixture.context)).policy)
+            val snapshot = MyAssets.present(cache, clock.read())
+            val choice = requireNotNull(MyAssets.choose(fixture.organization, snapshot, fixture.asset, warningAccepted = true))
+            val asset = snapshot.assets.single { it.asset.id == fixture.asset }.asset
+            val meter = choice.meters.single()
+            trips.start(source.account(), fixture.context, choice, TripAssetLabel(asset.name, asset.fleetNumber, asset.plate),
+                TripCapture.Reading(TripMeterChoice(meter.id, meter.segmentId, MeterKind.ODOMETER, meter.modulus), MeterEntryForm.KM, "184320"))
+            val trip = trips.trips(source.account(), fixture.partition).single().trip.tripId
+            val started = tracking.start(source.account(), fixture.context, trip, TrackingDevice(platform.permission(), true))
+            assertEquals(TrackingSessionState.RECORDING, started.state)
+            return trip to started.sessionId
+        }
+
+        /** Runs a synthetic emulator setting through the instrumentation's shell (never a credential or a wipe). */
+        fun shell(command: String) {
+            ParcelFileDescriptor.AutoCloseInputStream(InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(command)).use { it.readBytes() }
+        }
+
+        /** Delivers until every record and batch of the trip's session is accepted (at most 20 attempts). */
+        suspend fun deliverAll(trip: String): TrackingSessionView {
+            val diagnostics = StringBuilder()
+            for (attempt in 1..20) {
+                try { delivery.dispatch(source.deliveryAccount(), fixture.partition) }
+                catch (failure: Exception) { diagnostics.append("dispatch ").append(failure.javaClass.simpleName).append("; ") }
+                val current = view(trip)
+                diagnostics.append("http=$statuses ").append((current.records + current.batches).joinToString(",") { "${it.type}/${it.sync}/${it.code}" }).append("; ")
+                if ((current.records + current.batches).all { it.sync == EnterpriseSyncStatus.ACCEPTED }) return current
+                Thread.sleep(3_000)
+            }
+            throw AssertionError("Tracking was not accepted after delivery: $diagnostics")
+        }
+
+        /** Records until [count] fixes are recorded from the driver's simulated route (at most [seconds]). */
+        suspend fun recordUntil(collector: TrackingCollector, count: Long, seconds: Long = 120) {
+            val deadline = SystemClock.elapsedRealtime() + seconds * 1_000
             while (collector.state.value.recorded < count) {
                 assertTrue("No emulator fix was recorded: accepted=${collector.state.value.accepted} recorded=${collector.state.value.recorded}",
                     SystemClock.elapsedRealtime() < deadline)

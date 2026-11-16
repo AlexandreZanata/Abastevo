@@ -79,6 +79,7 @@ internal fun trackingCauseText(cause: TrackingCause): Int? = when (cause) {
 private fun refusalText(failure: TrackingLocalFailure): Int = when (failure) {
     TrackingLocalFailure.POLICY_OFF -> R.string.enterprise_tracking_refusal_off
     TrackingLocalFailure.POLICY_UNKNOWN -> R.string.enterprise_tracking_policy_unknown
+    TrackingLocalFailure.BUSY -> R.string.enterprise_tracking_refusal_busy
     else -> R.string.enterprise_tracking_refusal_other
 }
 
@@ -143,6 +144,17 @@ internal fun TrackingCard(
                     }, formatted(gap.start)), modifier = Modifier.testTag("enterprise-tracking-gap"))
                 }
                 if (session.gaps.isNotEmpty()) Text(stringResource(R.string.enterprise_tracking_gaps_count, session.gaps.size), style = MaterialTheme.typography.bodySmall)
+                // EMP-GPS-010 (B-BR-EMP-544/546): every interruption stays listed with its cause and bounds; approximate parts are said.
+                for (interruption in session.interruptions) {
+                    val label = stringResource(trackingStateText(interruption.state))
+                    val cause = stringResource(trackingCauseText(interruption.cause) ?: R.string.enterprise_tracking_cause_other)
+                    val end = interruption.end
+                    Text(if (end == null) stringResource(R.string.enterprise_tracking_interruption_open, label, formatted(interruption.start), cause)
+                        else stringResource(R.string.enterprise_tracking_interruption_closed, label, formatted(interruption.start), formatted(end), cause),
+                        style = MaterialTheme.typography.bodySmall, modifier = Modifier.testTag("enterprise-tracking-interruption"))
+                }
+                if (session.coarse && session.precision != LocationPermission.APPROXIMATE) Text(stringResource(R.string.enterprise_tracking_coarse_parts),
+                    modifier = Modifier.testTag("enterprise-tracking-coarse"))
                 if (session.pendingFixes > 0 || session.batches.isNotEmpty()) {
                     Text(stringResource(R.string.enterprise_tracking_pending, session.pendingFixes), modifier = Modifier.testTag("enterprise-tracking-pending"))
                     Text(stringResource(R.string.enterprise_tracking_batches, session.batches.count { it.sync == EnterpriseSyncStatus.ACCEPTED },

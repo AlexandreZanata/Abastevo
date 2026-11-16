@@ -74,6 +74,18 @@ class TripTrackingViewModelTest {
         assertEquals(1, launched.size, "a refused session never listens")
     }
 
+    /** EMP-GPS-010 (B-BR-EMP-547): with a connection the tap reads the policy in force first, in the same flow gesture. */
+    @Test fun `a tap with a connection asks for the policy in force first and offline uses the cached one`(): Unit = runTest(dispatcher) {
+        val model = model(); advanceUntilIdle()
+        val device = TrackingDevice(LocationPermission.PRECISE, true)
+        model.startTracking(trip, device, 0, 7); advanceUntilIdle()
+        coVerify(exactly = 1) { flow.startTracking(trip, device, 0, 7, false) }
+        online.value = true; advanceUntilIdle()
+        model.startTracking(trip, device, 0, 7); advanceUntilIdle()
+        coVerify(exactly = 1) { flow.startTracking(trip, device, 0, 7, true) }
+        assertTrue(launched.isEmpty(), "nothing recording, nothing launched")
+    }
+
     @Test fun `stop and finish release the listener after the write and old gestures do nothing`(): Unit = runTest(dispatcher) {
         val model = model(); advanceUntilIdle()
         states.value = tracked(TrackingSessionState.RECORDING)

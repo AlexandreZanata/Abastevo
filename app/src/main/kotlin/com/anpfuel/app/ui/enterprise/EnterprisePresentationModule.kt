@@ -1,10 +1,13 @@
 package com.anpfuel.app.ui.enterprise
 
 import android.content.Context
+import com.anpfuel.app.ui.enterprise.tracking.AndroidTrackingPlatform
 import com.anpfuel.app.ui.enterprise.tracking.AndroidTrackingServiceLauncher
 import com.anpfuel.app.ui.enterprise.tracking.TrackingServiceLauncher
+import com.anpfuel.application.enterprise.tracking.TrackingDeviceObserver
 import com.anpfuel.application.enterprise.tracking.TrackingRuntime
 import com.anpfuel.application.port.NetworkConnectivityGateway
+import com.anpfuel.domain.enterprise.tracking.TrackingDevice
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -28,4 +31,9 @@ object EnterpriseTrackingPresentationModule {
     @Provides
     fun trackingLauncher(@ApplicationContext context: Context, runtime: TrackingRuntime): TrackingServiceLauncher =
         AndroidTrackingServiceLauncher(context, runtime)
+
+    /** EMP-GPS-010 (B-BR-EMP-544): the permission and notification visibility the recovery names the cause from. */
+    @Provides
+    fun trackingDeviceObserver(@ApplicationContext context: Context): TrackingDeviceObserver =
+        TrackingDeviceObserver { AndroidTrackingPlatform(context).let { TrackingDevice(it.permission(), it.notificationVisible()) } }
 }

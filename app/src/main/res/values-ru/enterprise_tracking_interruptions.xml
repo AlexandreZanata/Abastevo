@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-010 tracking interruptions; generated from one table by f4-logs/gps010-scripts/gen_interruption_strings.py -->
+<resources>
+    <string name="enterprise_tracking_interruption_open">%1$s с %2$s. %3$s</string>
+    <string name="enterprise_tracking_interruption_closed">%1$s с %2$s по %3$s. %4$s</string>
+    <string name="enterprise_tracking_coarse_parts">Часть этого отслеживания использовала приблизительное местоположение: по этим частям расстояние по GPS не рассчитывается.</string>
+    <string name="enterprise_tracking_refusal_busy">Этот телефон уже отслеживает другую поездку. Сначала остановите то отслеживание.</string>
+    <string name="enterprise_tracking_notification_gap_provider">Геолокация выключена: ничего не записывается, пока она не включится.</string>
+    <string name="enterprise_tracking_notification_gap_signal">Нет сигнала GPS: за этот интервал ничего не записывается.</string>
+    <string name="enterprise_tracking_notification_gap_mock">Имитированные местоположения игнорируются: за этот интервал ничего не записывается.</string>
+</resources>

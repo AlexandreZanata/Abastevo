@@ -42,7 +42,10 @@ import (
 // EMP-GPS-002/003 on the owned emulator. It is never a product endpoint or a
 // test-control API. Its only extra behaviour is the organization's tracking
 // policy, recorded as EXPECTED with an employee notice already in force, the
-// way the settings owner records it.
+// way the settings owner records it. EMP-GPS-010 reuses it for its
+// interruption stages: EMP_GPS_NATIVE_WANT_TRANSITIONS, when set, replaces
+// the stored transitions that the acceptance stop expects (the EMP-GPS-002
+// sequence otherwise); every other check is unchanged.
 func TestTrackingNativeSourceFixture(t *testing.T) {
 	const host = "api.anpfuel.example.invalid"
 	const origin = "https://" + host
@@ -224,6 +227,9 @@ func TestTrackingNativeSourceFixture(t *testing.T) {
 			}
 			t.Logf("native tracking transitions %s", transitions)
 			want := "NOT_STARTED:NOT_STARTED,RECORDING:-,INTERRUPTED:STOPPED_BY_DRIVER,RECORDING:-,INTERRUPTED:PROCESS_STOPPED,ENDED:TRIP_COMPLETED"
+			if override := os.Getenv("EMP_GPS_NATIVE_WANT_TRANSITIONS"); override != "" {
+				want = override
+			}
 			if transitions != want {
 				t.Fatalf("stored transitions differ:\n got %s\nwant %s", transitions, want)
 			}

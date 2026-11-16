@@ -6,6 +6,8 @@ import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
 import com.anpfuel.domain.enterprise.EnterprisePartition
 import com.anpfuel.domain.enterprise.tracking.LocationPermission
 import com.anpfuel.domain.enterprise.tracking.TrackingCause
+import com.anpfuel.domain.enterprise.tracking.TrackingDevice
+import com.anpfuel.domain.enterprise.tracking.TrackingGapReason
 import com.anpfuel.domain.enterprise.tracking.TrackingObservation
 import com.anpfuel.domain.enterprise.tracking.TrackingObservationOutcome
 import java.time.Instant
@@ -75,7 +77,9 @@ enum class TrackingBeginResult { STARTED, ALREADY_RUNNING, NO_GRANT, BUSY, NOT_R
 
 /** Counts and state only, never coordinates (B-BR-EMP-500). */
 data class TrackingRuntimeState(val active: Boolean = false, val sessionId: String? = null, val precision: LocationPermission? = null,
-    val accepted: Long = 0, val stoppedBy: TrackingCause? = null, val recorded: Long = 0, val economy: Boolean = false) {
+    val accepted: Long = 0, val stoppedBy: TrackingCause? = null, val recorded: Long = 0, val economy: Boolean = false,
+    /** EMP-GPS-010 (B-BR-EMP-544): the open fix-level gap the ongoing notification states; null while fixes arrive. */
+    val gap: TrackingGapReason? = null) {
     override fun toString(): String = "TrackingRuntimeState(redacted)"
 }
 
@@ -106,7 +110,10 @@ class TrackingCollector(
     suspend fun begin(partition: EnterprisePartition, sessionId: String): TrackingBeginResult = lock.withLock {
         val granted = gate.consume(partition, sessionId)
         binding?.let { current ->
-            return if (current.partition == partition && current.sessionId == sessionId) TrackingBeginResult.ALREADY_RUNNING else TrackingBeginResult.BUSY
+            if (current.partition == partition && current.sessionId == sessionId) return TrackingBeginResult.ALREADY_RUNNING
+            // EMP-GPS-010 (B-BR-EMP-544): one listener per phone; a granted session that cannot be collected is interrupted.
+            if (granted) uncollected(null, partition, sessionId)
+            return TrackingBeginResult.BUSY
         }
         if (!granted) return TrackingBeginResult.NO_GRANT
         val account = try { lease() } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { return TrackingBeginResult.UNAVAILABLE }
@@ -114,8 +121,13 @@ class TrackingCollector(
         val collecting = try { service.collecting(account, partition, sessionId) } catch (cancelled: CancellationException) { throw cancelled }
             catch (_: Exception) { return TrackingBeginResult.UNAVAILABLE } ?: return TrackingBeginResult.NOT_RECORDING
         val permission = platform.permission()
-        if (permission == LocationPermission.NONE) return TrackingBeginResult.PERMISSION_MISSING
-        if (!platform.notificationVisible()) return TrackingBeginResult.NOTIFICATION_HIDDEN
+        if (permission == LocationPermission.NONE) { uncollected(account, partition, sessionId); return TrackingBeginResult.PERMISSION_MISSING }
+        if (!platform.notificationVisible()) { uncollected(account, partition, sessionId); return TrackingBeginResult.NOTIFICATION_HIDDEN }
+        if (collecting.precision == LocationPermission.PRECISE && permission == LocationPermission.APPROXIMATE) {
+            // EMP-GPS-010 (B-BR-EMP-546): a precise period that can only be collected approximately is reduced before listening.
+            try { service.reduce(account, partition, sessionId) } catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { return TrackingBeginResult.UNAVAILABLE }
+        }
         // Precision may only fall between a start and the next one (EDR-275): never collect finer than the session's.
         val precision = if (collecting.precision == LocationPermission.APPROXIMATE) LocationPermission.APPROXIMATE else permission
         val next = Binding(partition, sessionId, collecting.tripId, account.identity, attempt.enrollment.target.membershipId,
@@ -123,12 +135,22 @@ class TrackingCollector(
         binding = next
         if (!platform.attach(precision) { onFix(next, it) }) {
             binding = null
+            uncollected(account, partition, sessionId)
             return TrackingBeginResult.PLATFORM_REFUSED
         }
         mutable.value = TrackingRuntimeState(active = true, sessionId = sessionId, precision = precision, accepted = accepted.get())
         try { service.checkpoint(account, partition, sessionId, platform.bootId()) } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { }
         TrackingBeginResult.STARTED
     }
+
+    /**
+     * EMP-GPS-010 (B-BR-EMP-544): the session this collector was granted but cannot listen for is interrupted now with the
+     * cause the device observes; a storage outage leaves it to the next opening. Returns the recorded cause.
+     */
+    private suspend fun uncollected(account: EnterpriseQueueAccountLease?, partition: EnterprisePartition, sessionId: String): TrackingCause? = try {
+        service.interruptUncollected(account ?: lease(), partition, sessionId, platform.bootId(),
+            TrackingDevice(platform.permission(), platform.notificationVisible()))?.cause
+    } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { null }
 
     private fun onFix(owner: Binding, sample: TrackingFixSample) {
         // A report that arrives after a stop or for a replaced binding is dropped, never counted (BR-GPS-013).
@@ -157,12 +179,16 @@ class TrackingCollector(
         val s = received.sample
         val economy = platform.batteryLow()
         val outcome = try {
+            // EMP-GPS-010 (B-BR-EMP-546): the permission granted now bounds the precision the fix may claim.
             service.record(lease(), current.partition, current.sessionId, TrackingObservation(s.latitude, s.longitude, s.accuracyMetres,
                 s.speedMetresPerSecond, s.bearingDegrees, s.mock, s.elapsedMillis), economy, received.elapsed, Instant.ofEpochMilli(received.wall),
-                platform.bootId())
+                platform.bootId(), platform.permission())
         } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { TrackingObservationOutcome.IGNORED }
         val recorded = mutable.value.recorded + if (outcome == TrackingObservationOutcome.RECORDED) 1 else 0
-        mutable.value = mutable.value.copy(recorded = recorded, economy = economy)
+        // An accepted fix closes an open gap; the ongoing notification stops saying so (B-BR-EMP-544).
+        val closesGap = outcome == TrackingObservationOutcome.RECORDED || outcome == TrackingObservationOutcome.ACCEPTED_NOT_RECORDED ||
+            outcome == TrackingObservationOutcome.OVERFLOW
+        mutable.value = mutable.value.copy(recorded = recorded, economy = economy, gap = if (closesGap) null else mutable.value.gap)
     }
 
     private fun detachLocked(stoppedBy: TrackingCause?) {
@@ -238,14 +264,21 @@ class TrackingCollector(
                 val reduced = Binding(current.partition, current.sessionId, current.tripId, current.identity, current.membershipId,
                     current.enrollmentId, LocationPermission.APPROXIMATE)
                 binding = reduced
-                if (!platform.attach(LocationPermission.APPROXIMATE) { onFix(reduced, it) }) { binding = null; return false }
+                if (!platform.attach(LocationPermission.APPROXIMATE) { onFix(reduced, it) }) {
+                    // EMP-GPS-010 (B-BR-EMP-544): the approximate listener was refused: interrupted, never left recording unseen.
+                    binding = null
+                    val cause = uncollected(account, current.partition, current.sessionId)
+                    mutable.value = TrackingRuntimeState(active = false, accepted = accepted.get(), stoppedBy = cause)
+                    return false
+                }
                 mutable.value = mutable.value.copy(precision = LocationPermission.APPROXIMATE)
             }
             service.checkpoint(account, current.partition, current.sessionId, platform.bootId())
             // EMP-GPS-003: gaps are data (B-BR-EMP-505); due fixes leave in a batch and the queue is asked to deliver.
             val precision = binding?.precision ?: current.precision
-            service.checkGap(account, current.partition, current.sessionId, platform.providerEnabled(precision),
+            val opened = service.checkGap(account, current.partition, current.sessionId, platform.providerEnabled(precision),
                 Instant.ofEpochMilli(platform.wallMillis()), platform.bootId())
+            if (opened != null) mutable.value = mutable.value.copy(gap = opened.reason)
             if (service.seal(account, current.partition, current.sessionId, force = false) > 0) {
                 try { deliver(account, current.partition) } catch (cancelled: CancellationException) { throw cancelled } catch (_: Exception) { }
             }

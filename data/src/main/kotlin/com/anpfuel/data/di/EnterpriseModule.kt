@@ -51,6 +51,7 @@ import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingPolicyGatew
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingProducers
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingService
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingStore
+import com.anpfuel.application.enterprise.tracking.TrackingDeviceObserver
 import com.anpfuel.application.enterprise.tracking.TrackingRuntime
 import com.anpfuel.application.enterprise.tracking.TrackingStartGate
 import com.anpfuel.application.portable.AuthFlow
@@ -285,11 +286,13 @@ object EnterpriseModule {
     @Provides
     fun tripFlow(@ApplicationContext context: Context, source: EnterpriseQueueSource, service: EnterpriseTripService,
         fence: EnterpriseSessionFence, delivery: EnterpriseQueueService, receipts: EnterpriseReceipts, fuelings: EnterpriseFuelingService,
-        expenses: EnterpriseExpenseService, tracking: EnterpriseTrackingService, runtime: TrackingRuntime): TripFlow =
+        expenses: EnterpriseExpenseService, tracking: EnterpriseTrackingService, runtime: TrackingRuntime, device: TrackingDeviceObserver): TripFlow =
         // EMP-TRIP-020: the closing conference reads the same partition's own fuelings and expenses (EDR-339);
         // EMP-GPS-002: the tracking hooks of the open trip (EDR-323).
         TripFlow(source, service, fence, receipts, TripRelatedRecords(fuelings::fuelings, expenses::expenses),
-            TripTracking(tracking, runtime::running) { AndroidEnterpriseDeviceClock(context).read().boot }) { account, partition ->
+            // EMP-GPS-010: the cause observed at recovery and the one session this phone collects (B-BR-EMP-544/547).
+            TripTracking(tracking, runtime::running, { AndroidEnterpriseDeviceClock(context).read().boot }, device::observe,
+                { runtime.collector?.runningSessionId })) { account, partition ->
             delivery.dispatch(account, partition)
         }
 

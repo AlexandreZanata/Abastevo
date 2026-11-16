@@ -398,10 +398,17 @@ class EnterpriseTrackingServiceTest {
         x.tracking.start(x.account(), x.a, trip, x.device())
         x.platform.permission = LocationPermission.NONE; x.gate.arm(x.a.partition, session)
         assertEquals(TrackingBeginResult.PERMISSION_MISSING, collector.begin(x.a.partition, session))
-        x.platform.permission = LocationPermission.PRECISE; x.platform.notification = false; x.gate.arm(x.a.partition, session)
+        // EMP-GPS-010 (B-BR-EMP-544): the granted session that cannot be collected is interrupted with the observed cause,
+        // never left shown as recording; each case below resumes it first.
+        assertEquals(TrackingCause.PERMISSION_REVOKED, x.session(trip)!!.cause)
+        x.platform.permission = LocationPermission.PRECISE; x.tracking.start(x.account(), x.a, trip, x.device())
+        x.platform.notification = false; x.gate.arm(x.a.partition, session)
         assertEquals(TrackingBeginResult.NOTIFICATION_HIDDEN, collector.begin(x.a.partition, session))
-        x.platform.notification = true; x.platform.refuse = true; x.gate.arm(x.a.partition, session)
+        assertEquals(TrackingCause.NOTIFICATION_BLOCKED, x.session(trip)!!.cause)
+        x.platform.notification = true; x.tracking.start(x.account(), x.a, trip, x.device())
+        x.platform.refuse = true; x.gate.arm(x.a.partition, session)
         assertEquals(TrackingBeginResult.PLATFORM_REFUSED, collector.begin(x.a.partition, session))
+        assertEquals(TrackingCause.PROCESS_STOPPED, x.session(trip)!!.cause)
         assertNull(collector.runningSessionId); assertEquals(0, x.platform.attaches)
     }
 
