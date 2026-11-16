@@ -126,7 +126,7 @@ if ! grep -Fq 'val request = LocationRequestCompat.Builder(1_000L)' "$guidance" 
     fail "GuidanceService must request one-second high-accuracy location updates"
 fi
 guidance_block=$(awk '/GuidanceService/ {found=1} found {print} found && /\/>/ {exit}' "$ROOT/app/src/main/AndroidManifest.xml")
-if ! echo "$guidance_block" | grep -q 'android:exported="false"' || ! echo "$guidance_block" | grep -q 'foregroundServiceType="location"'; then
+if ! grep -q 'android:exported="false"' <<<"$guidance_block" || ! grep -q 'foregroundServiceType="location"' <<<"$guidance_block"; then
     fail "GuidanceService must stay a non-exported location foreground service"
 fi
 if grep -rn "requestLocationUpdates" "$ROOT/app/src/main/kotlin/com/anpfuel/app/ui/map/TripRecordingService.kt" 2>/dev/null | grep -v "GPS_PROVIDER, 2000L" | grep -v "removeUpdates"; then
@@ -136,11 +136,11 @@ if grep -rn "requestLocationUpdates" "$ROOT/app/src/main/kotlin/com/anpfuel/app/
     fail "unexpected continuous location source in DriverGpsService"
 fi
 driver_gps_block=$(awk '/DriverGpsService/ {found=1} found {print} found && /\/>/ {exit}' "$ROOT/app/src/main/AndroidManifest.xml")
-if ! echo "$driver_gps_block" | grep -q 'foregroundServiceType="location"'; then
+if ! grep -q 'foregroundServiceType="location"' <<<"$driver_gps_block"; then
     fail "DriverGpsService must stay a location foreground service"
 fi
 trip_block=$(awk '/TripRecordingService/ {found=1} found {print} found && /\/>/ {exit}' "$ROOT/app/src/main/AndroidManifest.xml")
-if ! echo "$trip_block" | grep -q 'android:exported="false"' || ! echo "$trip_block" | grep -q 'foregroundServiceType="location"'; then
+if ! grep -q 'android:exported="false"' <<<"$trip_block" || ! grep -q 'foregroundServiceType="location"' <<<"$trip_block"; then
     fail "TripRecordingService must stay a non-exported location foreground service"
 fi
 if grep -rn "BOOT_COMPLETED\|LOCKED_BOOT_COMPLETED" "$ROOT/app/src/main" "$ROOT/data/src/main" 2>/dev/null; then
@@ -163,8 +163,8 @@ if [[ -n "$tracking_block" || -f "$tracking" ]]; then
     if ! grep -Fq 'val granted = gate.consume(partition, sessionId)' "$ROOT/application/src/main/kotlin/com/anpfuel/application/enterprise/tracking/TrackingCollector.kt" 2>/dev/null; then
         fail "organization tracking must consume the visible trip screen's start grant"
     fi
-    if ! echo "$tracking_block" | grep -q 'android:exported="false"' || ! echo "$tracking_block" | grep -q 'foregroundServiceType="location"' ||
-       echo "$tracking_block" | grep -q 'android:exported="true"'; then
+    if ! grep -q 'android:exported="false"' <<<"$tracking_block" || ! grep -q 'foregroundServiceType="location"' <<<"$tracking_block" ||
+       grep -q 'android:exported="true"' <<<"$tracking_block"; then
         fail "OrganizationTrackingService must stay a non-exported location foreground service"
     fi
 fi
