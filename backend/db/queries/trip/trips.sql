@@ -109,13 +109,16 @@ SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST(sqlc.arg(org_id)::text A
 
 -- name: TripUsesOfAssetAt :many
 -- FLEET-007 active use (EDR-206): trips holding the asset at the instant,
--- from the start until the finish or the cancellation (B-BR-EMP-392).
+-- from the start until the finish or the cancellation (B-BR-EMP-392). A
+-- trip without either holds it only while open: a trip closed by a
+-- supervisor gets no invented end instant (EMP-TRIP-014, EDR-258).
 SELECT t.id::text AS id,t.occurred_at,t.occurred_submicro FROM org_trips t LEFT JOIN org_trip_finishes f ON(f.org_id,f.trip_id)=(t.org_id,t.id)
 LEFT JOIN org_trip_transitions c ON(c.org_id,c.trip_id,c.command)=(t.org_id,t.id,'CANCEL')
 WHERE t.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND t.asset_id=CAST(sqlc.arg(asset_id)::text AS uuid)
 AND(t.occurred_at,t.occurred_submicro)<=(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint)
 AND(f.trip_id IS NULL OR(f.occurred_at,f.occurred_submicro)>(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint))
 AND(c.trip_id IS NULL OR(c.occurred_at,c.occurred_submicro)>(sqlc.arg(at)::timestamptz,sqlc.arg(at_submicro)::smallint))
+AND(f.trip_id IS NOT NULL OR c.trip_id IS NOT NULL OR t.state IN('IN_PROGRESS','PAUSED'))
 ORDER BY t.occurred_at,t.occurred_submicro,t.id;
 
 -- name: TripUsesOfAssetAtBeforeLifecycle :many

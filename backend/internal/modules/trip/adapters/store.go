@@ -267,6 +267,14 @@ func (s *Store) ReadTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.Or
 		current = x.To
 	}
 	if row.FinishOperationID == "" {
+		// EMP-TRIP-014: a completed trip without a finish was closed by a
+		// supervisor from IN_PROGRESS or PAUSED.
+		if state == trip.Completed && (current == trip.InProgress || current == trip.Paused) {
+			if record.Closure, err = tripClosure(ctx, queries, scope, tripID); err != nil {
+				return app.Record{}, err
+			}
+			return record, nil
+		}
 		if state != current {
 			return app.Record{}, app.ErrUnavailable
 		}
@@ -330,7 +338,8 @@ func heldCode(kind, code string) bool {
 	if kind == app.StartOperationType {
 		return code == app.AssetBusy || code == app.AssetUnavailable || code == app.PermissionChanged
 	}
-	return kind == app.FinishOperationType && code == app.TripAlreadyClosed
+	// EMP-TRIP-018: a late finish of an ended period (EMP-OFFL-009).
+	return kind == app.FinishOperationType && (code == app.TripAlreadyClosed || code == syncapp.LateHeldCode)
 }
 
 // sameHeld compares a stored held fact with the operation's parsed event.

@@ -6,12 +6,14 @@ were read on 2026-11-15 from the sources listed in [Sources](#sources). Recheck
 them at submission time; Play policy changes often.
 
 **Overall verdict: NOT READY for a production Play submission.** The store
-listing assets, privacy/deletion URLs, 16 KB alignment and the API 36 target
-are in place. Three items still block a first submission: user-generated-content
-reporting/blocking, a signed AAB (release channel or a manual upload signed
-with the owner's upload key), and the Play Console declarations (Data safety,
-foreground services, content rating). None of these can be completed by code in this
-branch alone.
+listing assets, privacy/deletion URLs, 16 KB alignment, the API 36 target and
+(since the 2026-11-15 follow-up, item 2.5) user-generated-content reporting and
+blocking are in place in source. Two items still block a first submission: a
+signed AAB (release channel or a manual upload signed with the owner's upload
+key) and the Play Console declarations (Data safety, foreground services,
+content rating). Neither can be completed by code alone. The UGC changes reach
+users only after the backend release that carries migration 000239 and an app
+build that includes them.
 
 Legend: **VALID** — meets the requirement with evidence; **FIXED** — was
 failing, corrected in this branch; **BLOCKING** — must be resolved before
@@ -46,7 +48,7 @@ this checklist does not repeat it. Apple asset specs for a future iOS release:
 | 2.2 | Account deletion: in-app path **and** a web resource naming the app, how to request, what is retained [S10] | **VALID** (operational TO CONFIRM) | In app: Perfil → Gerenciar conta → Excluir minha conta → Sim, excluir (`POST /v1/accounts/deletion`). Web: `https://abastevo.com.br/excluir-conta/` (HTTP 200) names Abastevo and the controller (ZAFLAS INOVA SIMPLES), the in-app path, a WhatsApp/phone/post route and retained records. Completed production erasure is still an open obligation in STORE_PRIVACY_READINESS. |
 | 2.3 | Data safety form [S8] | **TO CONFIRM** (Console) | Draft answers in [§5](#5-data-safety-draft). Must be completed by the owner from the final AAB; never declare "no data collected". |
 | 2.4 | Government information / misrepresentation: non-government apps showing government data must cite the source and state non-affiliation in the listing; the Government apps declaration is mandatory [S21][S22] | **FIXED** (listing) | The old [listing draft](../play-store-listing.md) claimed "no account, no backend, 100% on-device" and linked the privacy policy on GitHub — false for the current app. It is rewritten: the description cites `https://www.gov.br/anp/pt-br` as the source and says the app is not affiliated with ANP or any government body. The app shows the same statement on the first-launch Terms gate. App name "Abastevo" has no "ANP"/"oficial". Declaration answer: **not a government app**. |
-| 2.5 | User-generated content: terms before posting, defined objectionable content, moderation, **in-app reporting of content and users, and blocking of users** for publicly accessible UGC [S19] | **BLOCKING** | Present: first-launch terms acceptance; Terms §2–3 prohibit offensive content/spam and describe moderation; forum topics and comments are pre-moderated (`PENDING_REVIEW`); reporting exists for forum comments/replies, station comments and charging observations. **Missing:** reporting a *user*, blocking/muting a user, and a report action on forum *topics* (the HTTP client supports it, the screen does not). Needs a documented B-BR/BUC, backend and app task. |
+| 2.5 | User-generated content: terms before posting, defined objectionable content, moderation, **in-app reporting of content and users, and blocking of users** for publicly accessible UGC [S19] | **FIXED** (source; live after the next release) | First-launch terms acceptance; [Terms](https://abastevo.com.br/termos/) §2 now lists the forbidden content and behaviour explicitly and §3 describes reporting content and users, blocking users and what moderation does; forum topics and comments are pre-moderated (`PENDING_REVIEW`). Reporting covers forum topics (new menu on the topic), comments and replies, station comments and charging observations. New: **report a user** and **block a user** from any forum topic, comment or reply and any station comment, plus *Profile → Manage account → Blocked users* to unblock ([community safety contract](../product/COMMUNITY_SAFETY_CONTRACT.md), B-BR-SAFE-01…09). Blocks are server-side per account (follow the user across devices, hide that author's forum and station content for the blocker only); user reports open a `COMMUNITY_ACCOUNT` moderation case. Station comments and ratings stay behind the local `feedback_enabled` flag (default off), so production shows no station UGC today. Evidence: [UGC safety evidence](UGC_SAFETY_EVIDENCE.md). |
 | 2.6 | Location permissions: prefer foreground; background needs a declaration [S12][S13] | **VALID** (TO CONFIRM fine-location form) | Only `ACCESS_COARSE/FINE_LOCATION`; no `ACCESS_BACKGROUND_LOCATION`. Onboarding shows its own prompt ("Encontrar sua cidade automaticamente?") with a manual alternative before the system dialog. Google opened an `ACCESS_FINE_LOCATION` declaration in Nov 2026 — answer it if the Console asks. City detection sends full-precision coordinates to OSM Nominatim; rounding them (or proxying server-side) is recommended and must be reflected in Data safety. |
 | 2.7 | Foreground service types must be declared with description, impact and a video [S14] | **TO CONFIRM** (Console) | Three `foregroundServiceType="location"` services, all user-started with a visible notification and a stop action: `GuidanceService` (turn-by-turn navigation), `TripRecordingService` (record a trip), `DriverGpsService` (driver shift GPS, reachable from Veículos → Central do motorista even with enterprise disabled server-side). Record one short video per use case. |
 | 2.8 | Camera | **VALID** | Used only when the user photographs a price board; OCR runs on-device (ML Kit). No Play declaration; uploaded photos go in Data safety. |
@@ -124,8 +126,8 @@ advertising ID, payment card data (no in-app sale is enabled).
 
 ## 7. Follow-ups (not done here)
 
-1. **UGC compliance** — report users, block users, report forum topics, and make
-   the Terms list of objectionable content explicit (backend + app, B-BR/BUC first).
+1. ~~**UGC compliance**~~ — done in source on 2026-11-15 (item 2.5); live after
+   the next backend release (migration 000239) and app build.
 2. **AAB release channel** — automate `bundleRelease` signing with the owner's
    upload key (CI secret) and run the artifact checks on the AAB-generated APKs.
 3. **Console declarations** — Data safety (§5), foreground-service videos (2.7),

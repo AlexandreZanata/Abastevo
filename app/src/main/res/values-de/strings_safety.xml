@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Community safety: report and block users (COMMUNITY_SAFETY_CONTRACT, B-BR-SAFE-01..09). -->
+<resources>
+    <string name="safety_more_actions">Weitere Aktionen</string>
+    <string name="safety_report_topic">Thema melden</string>
+    <string name="safety_report_comment">Kommentar melden</string>
+    <string name="safety_report_user">Nutzer melden</string>
+    <string name="safety_block_user">Nutzer blockieren</string>
+    <string name="safety_report_user_title">Nutzer melden</string>
+    <string name="safety_report_user_prompt">Warum meldest du diesen Nutzer? Meldungen sind privat und werden von der Moderation geprüft. Der Inhalt bleibt bis zur Prüfung sichtbar.</string>
+    <string name="safety_reason_spam">Spam oder Werbung</string>
+    <string name="safety_reason_harassment">Belästigung oder Mobbing</string>
+    <string name="safety_reason_hate">Hassrede oder Diskriminierung</string>
+    <string name="safety_reason_impersonation">Identitätsmissbrauch</string>
+    <string name="safety_reason_illegal">Illegale Inhalte oder Aktivitäten</string>
+    <string name="safety_reason_other">Anderer Grund</string>
+    <string name="safety_report_detail_hint">Details (optional)</string>
+    <string name="safety_report_detail_counter">%1$d / %2$d</string>
+    <string name="safety_report_send">Meldung senden</string>
+    <string name="safety_report_user_received">Meldung erhalten. Das Moderationsteam prüft sie.</string>
+    <string name="safety_report_user_replayed">Du hast diesen Nutzer bereits gemeldet. Die Meldung wird geprüft.</string>
+    <string name="safety_block_title">Diesen Nutzer blockieren?</string>
+    <string name="safety_block_message">Seine Themen, Kommentare und Antworten im Forum sowie seine Tankstellen-Kommentare werden für dich ausgeblendet. Er wird nicht benachrichtigt und andere sehen seine Inhalte weiterhin. Du kannst ihn unter Profil → Konto verwalten → Blockierte Nutzer wieder freigeben.</string>
+    <string name="safety_block_confirm">Blockieren</string>
+    <string name="safety_block_done">Nutzer blockiert. Seine Inhalte sind jetzt für dich ausgeblendet.</string>
+    <string name="safety_error_self_target">Das ist dein eigener Inhalt. Du kannst dich nicht selbst melden oder blockieren.</string>
+    <string name="safety_error_block_limit">Du hast die Höchstzahl blockierter Nutzer erreicht. Gib zuerst jemanden unter Profil → Konto verwalten → Blockierte Nutzer frei.</string>
+    <string name="safety_error_rate_limited">Zu viele Versuche. Versuche es in %1$d Sekunden erneut.</string>
+    <string name="safety_error_offline">Du bist offline. Versuche es erneut, sobald du verbunden bist.</string>
+    <string name="safety_error_not_found">Dieser Inhalt ist nicht mehr verfügbar.</string>
+    <string name="safety_error_generic">Die Aktion konnte nicht abgeschlossen werden. Versuche es erneut.</string>
+    <string name="safety_topic_hidden_title">Inhalt ausgeblendet</string>
+    <string name="safety_topic_hidden_message">Dieses Thema stammt von einem Nutzer, den du blockiert hast. Du kannst ihn unter Profil → Konto verwalten → Blockierte Nutzer wieder freigeben.</string>
+    <string name="blocked_users_title">Blockierte Nutzer</string>
+    <string name="blocked_users_entry_subtitle">Personen, deren Inhalte für dich ausgeblendet sind</string>
+    <string name="blocked_users_intro">Inhalte blockierter Nutzer sind für dich im Forum und auf Tankstellenseiten ausgeblendet. Sie werden nicht benachrichtigt.</string>
+    <string name="blocked_users_empty_title">Keine blockierten Nutzer</string>
+    <string name="blocked_users_empty_message">Wenn du jemanden blockierst, erscheint die Person hier und du kannst sie jederzeit wieder freigeben.</string>
+    <string name="blocked_users_fallback_forum">Forumsteilnehmer</string>
+    <string name="blocked_users_fallback_station">Tankstellen-Kommentator</string>
+    <string name="blocked_users_fallback_generic">Community-Mitglied</string>
+    <string name="blocked_users_since">Blockiert am %1$s</string>
+    <string name="blocked_users_unblock">Freigeben</string>
+    <string name="blocked_users_unblock_title">%1$s freigeben?</string>
+    <string name="blocked_users_unblock_message">Die Inhalte werden dir beim nächsten Laden wieder angezeigt.</string>
+    <string name="blocked_users_unblocked">Nutzer freigegeben.</string>
+    <string name="blocked_users_load_error">Deine blockierten Nutzer konnten nicht geladen werden.</string>
+    <string name="blocked_users_sign_in">Melde dich an, um blockierte Nutzer zu verwalten.</string>
+</resources>

@@ -378,7 +378,9 @@ func (s *MeterReviewStore) OwnMeterReviewResults(ctx context.Context, source syn
 			return syncapp.SourceDenied(err)
 		}
 		for _, selector := range selectors {
-			proof, err := q.New(tx).ReadMeterHeldProof(ctx, q.ReadMeterHeldProofParams{OrgID: source.Scope.OrgID().String(), OperationID: selector.OperationID})
+			// EMP-TRIP-007 (EDR-263): every OFFL-008 owner's item, not only a
+			// held meter reading, answers its own author.
+			proof, err := q.New(tx).ReadOwnReviewProof(ctx, q.ReadOwnReviewProofParams{OrgID: source.Scope.OrgID().String(), OperationID: selector.OperationID})
 			if errors.Is(err, pgx.ErrNoRows) {
 				return orgapi.NotFound
 			}

@@ -1067,3 +1067,145 @@ Integration (`bc438c2b`): contract and EDR table conflicted; build, vet (both
 tags), gofmt, `sqlc diff`, cmd/api, apicontract (11 signed owners), trip,
 tracking and orgsync unit tests and the Kotlin enterprise domain suite (4094
 tests) green.
+
+### EMP-TRIP-007 — asset-overlap conflict resolution: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip007-conflict-resolution.md), commits `e81d6364` and
+`dabde1b3` (alignment with TRIP-011 after merging `45c3baf3`), migration
+000237 (no table or foreign key; widens the review-resolution outcome check
+and redefines six functions from their latest bodies — the 199 resolution
+source/complete and effect source, the 216 observation guard, the 220 trip
+source and the 000233 trip completion — and adds `org_trip_review_published`).
+Held facts of `trip.start/finish/event.record/submit/pause/resume/cancel` are
+listed, read and resolved once under `trip.trip.review` at
+`/sync/reviews/trips/{list,read,resolve}` (queue on organization-wide grants;
+narrower grants through a new `HeldTripStructure`). Every held item can be
+refused with a reason; only a held start can be accepted, becoming the trip it
+declared (IN_PROGRESS at revision 1, departure reading at the original
+receipt), and only if no other trip of the asset is in progress or paused or
+finished/cancelled after the declared start (else `CONFLICT`, nothing
+written); reviewing one's own item is `SELF_APPROVAL`, stale/resolved
+`CONFLICT`, replay unchanged. The held fact and its original ACK stay
+immutable; the driver's signed `review-results` read now answers trip items
+(before, a trip item made the poll fail `NOT_FOUND`) (EDR-262..264). RED
+application 5/5, cmd/api 4/22, apicontract 34/92, PostGIS 8/8 → GREEN 9/9
+PostGIS on the merged tree; union 38 packages 1249/8614, 0 failures. Counts:
+150 normal routes, auditor walk 150 / 30 / 120, matrix 280 cells. Retained:
+accept-with-another-asset (VAL-07, EDR-262), attaching a refused fact to the
+winning timeline (TRIP-006), Android presentation of resolutions, expiry
+escalation, production grants.
+
+EMP-TRIP-023 was not started: a mission reference on `trip.start` needs
+either an `operation_schema` 2 (the protocol accepts only 1 in Go and the
+shared Kotlin vectors) or a schema-1 soft reference with an
+`ORPHAN_REFERENCE` hold; reservations have no mission link and no `FULFILLED`
+source yet (notes `f4-logs/trip023-analysis.md`). Its IDs (412..414 /
+209..210 / 265..266, migration 000238) stay reserved.
+
+Integration (`40ea759d`): the branch already contained `45c3baf3`; clean merge;
+build, vet, gofmt, `sqlc diff`, check_plan green.
+
+PR #225 (UGC safety: report topics, report and block users; migration 000239
+reserved by that session) was merged by the coordinator at 23:43Z as
+`b0ab7d33` on the owner's instruction to merge every open PR with valid CI:
+`fast`, `integration`, `Quick verification` and `test` completed successfully
+on the exact head `5407e478`, `make quick-verify` passed locally on it
+(`f4-logs/pr225-quick-verify-5407e478.log`), and the merge used
+`--match-head-commit`. `origin/main` was merged into the F4 branch
+(`b55157a2`) without conflicts; 000239 redefines no function used by F4.
+The owner also asked for an unattended run: recommended decisions are taken
+without questions and recorded here.
+
+### EMP-TRIP-014 — missing final reading and supervisor closure: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip014-supervisor-closure.md), commit `f837b42d` (+ merge
+alignment `cc5b5985` onto the 000233 bodies), migration 000235 (insert-only,
+forced-RLS `org_trip_closures`; completion guard, logbook and held-logbook
+sources and `org_trip_revision` from their 000233 bodies; review-entry source
+from 000229 with the closer excluded from review). Routes `trips/open/list`
+(ORG grants only) and `trips/{trip_id}/close` (fresh write, revision CAS,
+`reason` + `missing_reading_reason`) under `trip.trip.close_for_other`; no
+reading, value or distance is accepted or created (usage stays NOT_MEASURED /
+READING_ABSENT); the closer is never the author or driver and never reviews
+the trip; the driver's later finish and events are held
+`TRIP_ALREADY_CLOSED`; PAUSED trips are closable, CANCELLED ones `CONFLICT`; a
+closed trip frees its asset without an invented end instant (EDR-257..259).
+RED domain 3/3, application 3/4, PostGIS 6/6 → GREEN.
+
+### EMP-TRIP-018 — open trips when a membership ends: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip018-membership-end-open-trips.md), commit `b07973c6`,
+migration 000236 (`org_offboarding_guard` from 191 with `TRIP:<id>` flags and
+a refusal to leave an open trip unflagged; `org_trip_held_source` from 233
+with a late-finish branch). Trips enter the IDN-010 open-responsibilities
+source through an explicit port as mandatory `TRIP:<id>` items; offboarding
+never closes or deletes a trip; the open-trip list shows the author's
+membership state for a scoped supervisor closure; a pre-end late finish is
+held `ACCESS_ENDED_BEFORE_RECEIPT`, later work `MEMBERSHIP_ENDED`, a lost
+device `DEVICE_REVOKED` for the whole response (EDR-260/261). RED membership
+domain 1/1, PostGIS 4/4 → GREEN; the IDN-010 offboarding fixture gained the
+`org_trips` grant (no expectation weakened). Final merged-tree union on
+`8effb2e8`: 37 packages, 1311 top-level / 9873 named, 0 failures; untagged 224
+packages. Counts: 152 normal routes (29 routed / 55 not routed / 26
+special), auditor walk 152/30/122, matrix 290 cells (116/174). Note: 000235
+and 000236 apply before 000237 by number; no function is redefined by both
+sides. Retained: linking a later reading to a closed trip by amendment,
+held-item resolution for finishes/events/late finishes, late holders for
+start/event/submit, successor handover (TRIP-012), notifications, panel,
+TEAM-scope fixture, production grants.
+
+Integration (`05971894`): clean merge; build, vet (both tags), gofmt,
+`sqlc diff`, cmd/api, apicontract, trip and membership unit tests green.
+
+### EMP-GPS-004 — track intake and segment storage: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps004-track-intake.md), commit `2d53fc84`, migration 000240.
+Batches are signed operations through the OFFL-002 intake (six session
+operations `gps.session.start|resume|suspend|interrupt|reduce|end` plus
+`gps.track.batch` on the `tracking_session` entity; one operation ≤ 8 KiB and
+200 fixes; the batch id is the operation id, so replay and
+`OPERATION_ID_REUSED` come from the intake) (EDR-277). The closed receipt
+vocabulary is kept: policy OFF → REJECTED/FORBIDDEN; other domain refusals and
+oversized batches → REJECTED/MALFORMED; another member → whole-request
+FORBIDDEN; unknown trip/session → RETRY/DEPENDENCY_PENDING; outside-session,
+duplicate and mock counters live on the segment (EDR-278). Four forced-RLS
+tables: insert-only `org_tracking_policies` (absent = OFF; the notice must be
+in force), `org_tracking_sessions` (unique per trip),
+`org_tracking_transitions` (contiguous) and `org_tracking_segments` (integer
+arrays plus a database-derived MultiPoint, SRID 4326), serialized on the trip
+row lock, with triggers re-checking policy, operation source, recording period,
+trip running time, precision and per-session instant uniqueness; a row commits
+only with its ACCEPTED receipt (EDR-279/280). Sessions follow the trip's
+pause/resume/cancel/finish (TRIP-011); fixes while paused or at/after
+cancellation or finish are outside the session in Go and SQL. RED application
+8/9 and 70/70, contract 2/2, PostGIS 7/7 → GREEN 9/84, PostGIS 8/19.
+
+### EMP-GPS-012 — location access permission and audit: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps012-location-access-audit.md), commit `9b1491e3`, no
+migration (000241 unused). `POST /v1/orgs/{org_id}/trips/{trip_id}/track/read`
+under `gps.track.read` only: the trip's author counts as the reader's own
+record, so DRIVER `OWN_TRIPS_ONLY` and AUDITOR `RECORDED_TRACKS_ONLY` apply;
+unit/team scope from the trip's stored structure; authority re-proved inside
+the read transaction; ≤ 20 segments per page; every page records
+`LOCATION_TRACK` ISSUED then SERVED through the PRIV-005 recorder before the
+response, and a failed record serves nothing (UNAVAILABLE) (EDR-281/282). Live
+positions stay with GPS-007/008 (F5). RED application 1, inventory/contract
+1+1, PostGIS 2/2 → GREEN; union 39 packages 1204/9382, 0 failures; untagged
+225 packages. Retained: tracking late intake (OFFL-009), a writer for
+`org_tracking_policies` (no backlog owner yet — assigned to the coordinator's
+activation work), production grants, the Android producer and batch splitting
+(GPS-002/003), processing (GPS-005), retention (GPS-011), live views
+(GPS-007..009, F5), real-device acceptance (OWED).
+
+Integration (merge of `codex/enterprise-f4-gps004` onto `b4249772`): route
+counts conflicted with TRIP-014 and were merged as the union — 153 normal
+routes (30 routed / 54 not routed / 26 special), auditor walk 153 / 31 / 122,
+matrix 300 cells (121 allowed / 179 denied), 18 signed owners; the company
+policy allow-list keeps both TRIP-014's closure policies and GPS-012's track
+policy; `TripStructure` answers `trip.trip.close_for_other` and
+`gps.track.read`; three duplicated EDR rows (262..264) from the rebased branch
+were deduplicated. Build, vet (both tags), gofmt, `sqlc diff`, cmd/api,
+apicontract, tracking and trip unit tests and the focused PostGIS race tests
+`Auditor|AuthorizationMatrix|Track|Tracking|Closure|Close|OpenTrip|Offboarding`
+(with a disposable MinIO) green.

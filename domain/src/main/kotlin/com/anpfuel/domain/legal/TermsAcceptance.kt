@@ -39,5 +39,5 @@ internal fun validVersion(value: String): Boolean =
  * `PublishedLegalDocumentsTest` compares both.
  */
 object PublishedLegalDocuments {
-    val CURRENT = LegalDocuments(termsVersion = "2026-10", privacyVersion = "1.0")
+    val CURRENT = LegalDocuments(termsVersion = "2026-11", privacyVersion = "1.0")
 }

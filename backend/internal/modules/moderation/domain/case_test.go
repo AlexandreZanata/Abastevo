@@ -223,3 +223,16 @@ func TestContributionReasonsFrozen(t *testing.T) {
 		t.Errorf("observation free-text reason rejected: %v", err)
 	}
 }
+
+// B-BR-SAFE-04: a user report names the reported account by UUID.
+func TestNewCaseCommunityAccountTarget(t *testing.T) {
+	p := validParams()
+	p.TargetType = TargetCommunityAccount
+	if _, _, err := NewCase(p); err != nil {
+		t.Fatalf("community account rejected: %v", err)
+	}
+	p.TargetID = "tok-abc123"
+	if _, _, err := NewCase(p); !errors.Is(err, ErrInvalidCase) {
+		t.Fatalf("non-UUID community account = %v, want ErrInvalidCase", err)
+	}
+}

@@ -130,6 +130,23 @@ ANPFUEL_CANONICAL_HOST=127.0.0.1:18080 ANPFUEL_FORUM_ENABLED=true go run ./cmd/a
 
 Staging and production keep refusing anything but a bare public hostname.
 
+### Community safety: report and block users (B-BR-SAFE-01…09)
+
+`internal/modules/safety` owns `community_user_blocks` and
+`community_user_reports` (migration 000239) behind five signed routes under
+`/v1/community/` ([contract](../docs/product/COMMUNITY_SAFETY_CONTRACT.md)).
+Authors come from forum and feedback lookups wired in `cmd/api/safety.go`;
+account erasure runs `safety.EraseAccountBatch` after Forum. Unit tests need no
+database; the store suite needs disposable PostGIS:
+
+```sh
+go test -race -count=1 ./internal/modules/safety/...
+go test -race -count=1 ./cmd/api/ -run 'Safety'
+ANPFUEL_TEST_DATABASE_URL=postgres://...disposable... \
+  go test -race -count=1 -tags=integration ./internal/modules/safety/... \
+  ./internal/modules/forum/... ./internal/modules/feedback/... ./internal/modules/moderation/...
+```
+
 ### Private Empresas activation (EMP-PLAT-005)
 
 `ANPFUEL_ENTERPRISE_ENABLED` defaults to false. Future organization-route
@@ -1487,6 +1504,27 @@ org_trip_held_transitions` (with its existing trip grants, including `UPDATE
 (state) ON org_trips`); the FLEET-007 active-use reader needs `SELECT (org_id,
 trip_id, command, occurred_at, occurred_submicro) ON org_trip_transitions`.
 No route is added. Nothing here provisions live grants.
+
+### Trip conflict resolution (EMP-TRIP-007)
+
+Migration 237 adds no table: it widens the `org_sync_review_resolutions`
+outcome check and replaces the resolution source and publication guards, the
+observation guard, the effect source and the trip source and publication so a
+held trip fact is resolved once and an accepted held start becomes its trip.
+Production runtime grants for the company conflict routes (not provisioned
+here): `SELECT, INSERT ON org_sync_review_resolutions, org_sync_effects,
+org_trips, org_meter_readings`; `SELECT ON org_sync_review_items,
+org_trip_held_starts, org_trip_held_finishes, org_trip_held_events,
+org_trip_held_submissions, org_trip_finishes, org_team_links,
+org_asset_unit_periods, org_asset_cost_centre_periods, org_units, org_meters,
+org_meter_segments, org_device_enrollments, company_web_sessions,
+org_trip_transitions, org_trip_held_transitions` plus the
+EMP-TRIP-004 review grants, the OFFL-008 item row-lock privilege
+(`UPDATE(id) ON org_sync_review_items`) and the existing asset row-lock
+privilege. The migrator needs ownership of `org_sync_review_resolutions`
+and of the six replaced functions. `/v1/orgs/{org_id}/sync/reviews/trips/{list,
+{review_item_id}/read, {review_item_id}/resolve}` use `trip.trip.review`
+(fresh for the resolution). Nothing here provisions live grants.
 
 ### Finance periods (EMP-APPR-006)
 

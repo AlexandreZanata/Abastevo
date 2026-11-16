@@ -11,6 +11,8 @@ import (
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
 	maintpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters"
 	maintapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/application"
+	trackingpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/adapters"
+	trackingapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/application"
 	trippg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/adapters"
 	tripapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/application"
 	"net/url"
@@ -139,7 +141,18 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		}
 		handlers = append(handlers, lifecycle)
 	}
-	handlers = append(handlers, o.IntakeHandlers...)
+	// EMP-GPS-004 (EDR-277/278): the tracking session and batch owners share
+	// the trip authority and the stored trips; no held form, no follow-up.
+	trackingStore := &trackingpg.Store{}
+	tracking, err := trackingpg.NewSessionHandlers((*orgpg.TripAuthority)(meterAuthority), tripStore, trackingStore)
+	if err != nil {
+		return err
+	}
+	trackingBatch, err := trackingpg.NewBatchHandler((*orgpg.TripAuthority)(meterAuthority), tripStore, trackingStore)
+	if err != nil {
+		return err
+	}
+	handlers = append(append(append(handlers, tracking...), trackingBatch), o.IntakeHandlers...)
 	registry, err := app.NewRegistry(handlers...)
 	if err != nil {
 		return err
@@ -210,6 +223,14 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[runKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	// EMP-GPS-004: tracking operations have no consumer and no held path.
+	for _, kind := range append(trackingapp.SessionOperationTypes(), trackingapp.BatchOperationType) {
+		key := app.OperationKey{Type: kind, Schema: 1}
+		if _, exists := noAsync[key]; exists {
+			return app.ErrUnavailable
+		}
+		noAsync[key] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	}
 	catalog, _, err := IntakeEvents(o.Pool, o.IntakeConsumers)
 	if err != nil {
 		return err

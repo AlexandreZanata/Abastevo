@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Community safety: report and block users (COMMUNITY_SAFETY_CONTRACT, B-BR-SAFE-01..09). -->
+<resources>
+    <string name="safety_more_actions">More actions</string>
+    <string name="safety_report_topic">Report topic</string>
+    <string name="safety_report_comment">Report comment</string>
+    <string name="safety_report_user">Report user</string>
+    <string name="safety_block_user">Block user</string>
+    <string name="safety_report_user_title">Report user</string>
+    <string name="safety_report_user_prompt">Why are you reporting this user? Reports are private and reviewed by moderation. The content stays visible until review.</string>
+    <string name="safety_reason_spam">Spam or advertising</string>
+    <string name="safety_reason_harassment">Harassment or bullying</string>
+    <string name="safety_reason_hate">Hate speech or discrimination</string>
+    <string name="safety_reason_impersonation">Impersonation</string>
+    <string name="safety_reason_illegal">Illegal content or activity</string>
+    <string name="safety_reason_other">Other reason</string>
+    <string name="safety_report_detail_hint">Details (optional)</string>
+    <string name="safety_report_detail_counter">%1$d / %2$d</string>
+    <string name="safety_report_send">Send report</string>
+    <string name="safety_report_user_received">Report received. The moderation team will review it.</string>
+    <string name="safety_report_user_replayed">You already reported this user. The report is under review.</string>
+    <string name="safety_block_title">Block this user?</string>
+    <string name="safety_block_message">Their forum topics, comments and replies and their station comments will be hidden for you. They will not be notified and others still see their content. You can unblock them in Profile → Manage account → Blocked users.</string>
+    <string name="safety_block_confirm">Block</string>
+    <string name="safety_block_done">User blocked. Their content is now hidden for you.</string>
+    <string name="safety_error_self_target">This is your own content. You cannot report or block yourself.</string>
+    <string name="safety_error_block_limit">You reached the limit of blocked users. Unblock someone in Profile → Manage account → Blocked users first.</string>
+    <string name="safety_error_rate_limited">Too many attempts. Try again in %1$d seconds.</string>
+    <string name="safety_error_offline">You are offline. Try again when connected.</string>
+    <string name="safety_error_not_found">This content is no longer available.</string>
+    <string name="safety_error_generic">The action could not be completed. Try again.</string>
+    <string name="safety_topic_hidden_title">Content hidden</string>
+    <string name="safety_topic_hidden_message">This topic is from a user you blocked. You can unblock them in Profile → Manage account → Blocked users.</string>
+    <string name="blocked_users_title">Blocked users</string>
+    <string name="blocked_users_entry_subtitle">People whose content is hidden for you</string>
+    <string name="blocked_users_intro">Content from blocked users is hidden for you in the forum and on station pages. They are not notified.</string>
+    <string name="blocked_users_empty_title">No blocked users</string>
+    <string name="blocked_users_empty_message">When you block someone, they appear here and you can unblock them at any time.</string>
+    <string name="blocked_users_fallback_forum">Forum participant</string>
+    <string name="blocked_users_fallback_station">Station commenter</string>
+    <string name="blocked_users_fallback_generic">Community member</string>
+    <string name="blocked_users_since">Blocked on %1$s</string>
+    <string name="blocked_users_unblock">Unblock</string>
+    <string name="blocked_users_unblock_title">Unblock %1$s?</string>
+    <string name="blocked_users_unblock_message">Their content will be visible to you again the next time it loads.</string>
+    <string name="blocked_users_unblocked">User unblocked.</string>
+    <string name="blocked_users_load_error">Your blocked users could not be loaded.</string>
+    <string name="blocked_users_sign_in">Sign in to manage blocked users.</string>
+</resources>

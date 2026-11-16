@@ -557,6 +557,19 @@ sql:
         emit_json_tags: true
 
   - engine: postgresql
+    queries: db/queries/safety
+    schema:
+      - db/migrations/000016_moderation.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000239_community_user_safety.sql
+    gen:
+      go:
+        package: safety
+        out: db/queries/safety
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/forum
     schema:
       - db/migrations/000001_enable_postgis.sql
@@ -780,6 +793,7 @@ sql:
       - db/migrations/000226_organization_trip_reviews.sql
       - db/migrations/000229_organization_trip_amendments.sql
       - db/migrations/000233_organization_trip_lifecycle.sql
+      - db/migrations/000235_organization_trip_closures.sql
     gen:
       go:
         package: trip

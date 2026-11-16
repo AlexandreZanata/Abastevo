@@ -15,6 +15,9 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.anpfuel.app.R
+import com.anpfuel.app.community.CommunitySafetyError
+import com.anpfuel.app.community.CommunitySafetyNotice
+import com.anpfuel.app.community.CommunitySafetyViewModel
 import com.anpfuel.app.community.FeedbackDisplay
 import com.anpfuel.app.community.FeedbackUiState
 import com.anpfuel.app.community.FeedbackViewModel
@@ -22,9 +25,13 @@ import com.anpfuel.app.ui.designsystem.Button
 import com.anpfuel.app.ui.designsystem.FilterChip
 import com.anpfuel.app.ui.designsystem.OutlinedButton
 import com.anpfuel.app.ui.designsystem.TextButton
+import com.anpfuel.app.ui.safety.BlockUserDialog
+import com.anpfuel.app.ui.safety.ReportUserDialog
 import com.anpfuel.application.usecase.feedback.SubmitFeedbackUseCase
 import com.anpfuel.domain.portable.PortableText
 import com.anpfuel.domain.repository.FeedbackCommentView
+import com.anpfuel.domain.safety.SafetyContentKind
+import com.anpfuel.domain.safety.SafetyContentRef
 
 /** Separate retained VMs for ratings and discussion: loading totals never erases comments. */
 @OptIn(ExperimentalLayoutApi::class)
@@ -39,8 +46,11 @@ internal fun StationExperienceSection(
     val scopeKey = "$stationId:$fuelWire:$accountId"
     val ratings: FeedbackViewModel = hiltViewModel(key = "rating:$scopeKey")
     val comments: FeedbackViewModel = hiltViewModel(key = "comments:$scopeKey")
+    // Report-user, block-user and hidden-comment filtering (BUC-SAFE-02/03, B-BR-SAFE-06).
+    val safety: CommunitySafetyViewModel = hiltViewModel(key = "safety:$scopeKey")
     val ratingState by ratings.state.collectAsStateWithLifecycle()
     val commentState by comments.state.collectAsStateWithLifecycle()
+    val safetyState by safety.state.collectAsStateWithLifecycle()
     var stars by remember(scopeKey) { mutableIntStateOf(0) }
     var draft by remember(scopeKey) { mutableStateOf("") }
     var ratingAttempt by remember(scopeKey) { mutableStateOf(false) }
@@ -60,6 +70,15 @@ internal fun StationExperienceSection(
             is FeedbackUiState.Reported -> { commentAttempt = false; notice = R.string.station_page_report_received; comments.loadFirstPage() }
             is FeedbackUiState.Voted -> { commentAttempt = false; notice = R.string.station_page_write_received; comments.loadFirstPage() }
             else -> Unit
+        }
+    }
+    LaunchedEffect(commentState) {
+        (commentState as? FeedbackUiState.Loaded)?.let { loaded -> safety.show(loaded.items.map { it.safetyRef() }) }
+    }
+    LaunchedEffect(safetyState.requireSignIn) {
+        if (safetyState.requireSignIn) {
+            safety.consumeSignIn()
+            onSignIn()
         }
     }
     LaunchedEffect(ratingState) {
@@ -122,22 +141,47 @@ internal fun StationExperienceSection(
         }
         HorizontalDivider()
         notice?.let { Text(stringResource(it), color = MaterialTheme.colorScheme.primary) }
+        safetyState.notice?.let { Text(stringResource(safetyNoticeText(it)), color = MaterialTheme.colorScheme.primary) }
+        safetyState.error?.let { error ->
+            val text = when (error) {
+                is CommunitySafetyError.RateLimited ->
+                    stringResource(R.string.safety_error_rate_limited, (error.retryAfterSeconds ?: 30L).toInt())
+                else -> stringResource(safetyErrorText(error))
+            }
+            Text(text, color = MaterialTheme.colorScheme.error)
+        }
         when (val state = commentState) {
             is FeedbackUiState.Loaded -> {
-                if (state.items.isEmpty()) Text(stringResource(R.string.station_page_feedback_empty))
-                state.items.filter { it.stationId == stationId && it.product == fuelWire && it.parentId.isEmpty() }.forEach { comment ->
+                // Comments by blocked authors never show; the rest show once checked (B-BR-SAFE-06).
+                val listed = state.items.filter { it.stationId == stationId && it.product == fuelWire && it.parentId.isEmpty() }
+                val visible = listed.filter { safetyState.isVisible(it.safetyRef()) }
+                val checking = listed.any { it.safetyRef() !in safetyState.checked }
+                if (state.items.isEmpty() || (listed.isNotEmpty() && visible.isEmpty() && !checking)) {
+                    Text(stringResource(R.string.station_page_feedback_empty))
+                }
+                visible.forEach { comment ->
                     var menu by remember(comment.id) { mutableStateOf(false) }
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text(comment.alias, style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
                             Box {
-                                IconButton(onClick = { menu = true }, enabled = !busy) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.station_page_report_title))
+                                IconButton(onClick = { menu = true }, enabled = !busy, modifier = Modifier.size(48.dp)) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.safety_more_actions))
                                 }
                                 DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
                                     DropdownMenuItem(text = { Text(stringResource(R.string.station_page_report_title)) }, onClick = {
                                         menu = false
                                         if (signedIn) { reason = "spam"; reportTarget = comment } else onSignIn()
+                                    })
+                                    // Ownership is not known here: the server refuses own
+                                    // comments with safety.self-target (B-BR-SAFE-02).
+                                    DropdownMenuItem(text = { Text(stringResource(R.string.safety_report_user)) }, onClick = {
+                                        menu = false
+                                        if (signedIn) safety.openReportUser(comment.safetyRef()) else onSignIn()
+                                    })
+                                    DropdownMenuItem(text = { Text(stringResource(R.string.safety_block_user)) }, onClick = {
+                                        menu = false
+                                        if (signedIn) safety.openBlockUser(comment.safetyRef()) else onSignIn()
                                     })
                                 }
                             }
@@ -196,4 +240,34 @@ internal fun StationExperienceSection(
                 }
             }, dismissButton = { TextButton(onClick = { reportTarget = null }) { Text(stringResource(R.string.action_cancel)) } })
     }
+    if (safetyState.userReportTarget != null) {
+        ReportUserDialog(
+            submitting = safetyState.submittingReport,
+            onDismiss = safety::cancelReportUser,
+            onSubmit = safety::submitReportUser,
+        )
+    }
+    if (safetyState.blockTarget != null) {
+        BlockUserDialog(
+            blocking = safetyState.blocking,
+            onDismiss = safety::cancelBlockUser,
+            onConfirm = safety::confirmBlockUser,
+        )
+    }
+}
+
+private fun FeedbackCommentView.safetyRef(): SafetyContentRef = SafetyContentRef(SafetyContentKind.STATION_COMMENT, id)
+
+private fun safetyNoticeText(notice: CommunitySafetyNotice): Int = when (notice) {
+    CommunitySafetyNotice.REPORTED -> R.string.safety_report_user_received
+    CommunitySafetyNotice.REPORT_REPLAYED -> R.string.safety_report_user_replayed
+    CommunitySafetyNotice.BLOCKED -> R.string.safety_block_done
+}
+
+private fun safetyErrorText(error: CommunitySafetyError): Int = when (error) {
+    CommunitySafetyError.SelfTarget -> R.string.safety_error_self_target
+    CommunitySafetyError.BlockLimit -> R.string.safety_error_block_limit
+    CommunitySafetyError.NotFound -> R.string.safety_error_not_found
+    CommunitySafetyError.Offline -> R.string.safety_error_offline
+    is CommunitySafetyError.RateLimited, CommunitySafetyError.Generic -> R.string.safety_error_generic
 }

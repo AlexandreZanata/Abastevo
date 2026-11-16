@@ -21,6 +21,10 @@ follow the enterprise roadmap and its gates.
 define the future editorial/news/discussion/bulletin baseline in 30 microtasks.
 Planning only; no Forum code, source activation, Android change or deploy.
 
+[Community safety contract](product/COMMUNITY_SAFETY_CONTRACT.md) adds the
+Google Play UGC duties to Forum and station comments: report a forum topic,
+report a user and block a user, server-side per account (B-BR-SAFE-01…09).
+
 [Full EV/hybrid extension](planning/EV_FULL_SUPPORT_EXECUTION_PLAN.md),
 [25-source research register](planning/EV_SOURCE_RESEARCH.md),
 [EV product rules](product/EV_SUPPORT_CONTRACT.md),

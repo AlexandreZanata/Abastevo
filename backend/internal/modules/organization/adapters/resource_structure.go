@@ -43,6 +43,13 @@ const (
 	// unit and cost centre it stored at its declared completion
 	// (EMP-CHECK-002, EDR-285); no team facts yet.
 	ChecklistRunStructure
+	// HeldTripStructure: a held trip fact (EMP-TRIP-007, EDR-263). A held
+	// start resolves to the asset it declared, that asset's FLEET-005 unit
+	// and cost centre at the declared instant and the teams covering its
+	// author or driver at the receipt; a held finish, event, submission or
+	// EMP-TRIP-011 lifecycle command to the stored structure of the trip it
+	// names (as TripStructure).
+	HeldTripStructure
 )
 
 // ResourceStructure is the EMP-AUTH-006 structural scope lookup for one
@@ -81,6 +88,24 @@ const tripStructure = `SELECT t.asset_id::text,COALESCE(t.unit_id::text,''),COAL
  COALESCE((SELECT array_agg(DISTINCT l.team_id::text) FROM org_team_links l WHERE l.org_id=t.org_id AND l.employee_id IN(t.author_employee_id,t.driver_employee_id)
   AND l.started_at<=t.received_at AND(l.ended_at IS NULL OR l.ended_at>t.received_at)),'{}'::text[])
 FROM org_trips t WHERE t.org_id=$1 AND t.id=$2`
+
+// heldTripStructure reads only immutable held facts, the retained
+// allocation periods and team link periods (half-open, at the receipt).
+const heldTripStructure = `SELECT x.asset_id::text,COALESCE(x.unit_id::text,''),COALESCE(x.cost_centre_id::text,''),
+ COALESCE((SELECT array_agg(DISTINCT l.team_id::text) FROM org_team_links l WHERE l.org_id=$1 AND l.employee_id IN(x.author_employee_id,x.driver_employee_id)
+  AND l.started_at<=x.received_at AND(l.ended_at IS NULL OR l.ended_at>x.received_at)),'{}'::text[])
+FROM(SELECT h.asset_id,u.unit_id,CASE WHEN u.unit_id IS NULL THEN NULL ELSE c.cost_centre_id END AS cost_centre_id,i.author_employee_id,h.driver_employee_id,a.received_at
+ FROM org_sync_review_items i JOIN org_trip_held_starts h ON(h.org_id,h.review_item_id,h.operation_id)=(i.org_id,i.id,i.operation_id)
+ JOIN org_sync_acknowledgements a ON(a.org_id,a.operation_id,a.review_item_id,a.review_proof_version)=(i.org_id,i.operation_id,i.id,i.proof_version)
+ LEFT JOIN org_asset_unit_periods u ON u.org_id=h.org_id AND u.asset_id=h.asset_id AND u.valid_from<=h.occurred_at AND(u.valid_to IS NULL OR h.occurred_at<u.valid_to)
+ LEFT JOIN org_asset_cost_centre_periods c ON c.org_id=h.org_id AND c.asset_id=h.asset_id AND c.valid_from<=h.occurred_at AND(c.valid_to IS NULL OR h.occurred_at<c.valid_to)
+ WHERE i.org_id=$1 AND i.id=$2 AND i.operation_type='trip.start'
+ UNION ALL
+ SELECT t.asset_id,t.unit_id,t.cost_centre_id,t.author_employee_id,t.driver_employee_id,t.received_at
+ FROM org_sync_review_items i JOIN org_trips t ON t.org_id=i.org_id AND t.id=COALESCE((SELECT f.trip_id FROM org_trip_held_finishes f WHERE f.org_id=i.org_id AND f.review_item_id=i.id),
+  (SELECT e.trip_id FROM org_trip_held_events e WHERE e.org_id=i.org_id AND e.review_item_id=i.id),(SELECT s.trip_id FROM org_trip_held_submissions s WHERE s.org_id=i.org_id AND s.review_item_id=i.id),
+  (SELECT h.trip_id FROM org_trip_held_transitions h WHERE h.org_id=i.org_id AND h.review_item_id=i.id))
+ WHERE i.org_id=$1 AND i.id=$2 AND i.operation_type IN('trip.finish','trip.event.record','trip.submit','trip.pause','trip.resume','trip.cancel')) x`
 
 // missionStructure reads the mission's immutable unit and asset.
 const missionStructure = `SELECT unit_id::text,COALESCE(asset_id::text,'') FROM org_trip_missions WHERE org_id=$1 AND id=$2`
@@ -168,9 +193,23 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 			}
 			return permissions.ResourceFacts{}, org.ErrUnavailable
 		}
+	// EMP-TRIP-007 (EDR-263): a held trip fact under trip.trip.review.
+	case r.Kind == HeldTripStructure && policy.Permission == "trip.trip.review":
+		var teams []string
+		if err := tx.QueryRow(ctx, heldTripStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return permissions.ResourceFacts{}, errStructureNotFound
+			}
+			return permissions.ResourceFacts{}, org.ErrUnavailable
+		}
+		slices.Sort(teams)
+		out.Teams = teams
 	// EMP-TRIP-015 (EDR-236): an amendment corrects the trip's readings under
 	// meter.reading.correct over the same stored structure.
-	case r.Kind == TripStructure && (policy.Permission == "trip.trip.review" || policy.Permission == "meter.reading.correct"):
+	// EMP-TRIP-014 (EDR-259): a closure covers the trip through the same
+	// stored structure; EMP-GPS-012 (EDR-281): a recorded-track read uses the
+	// same snapshot.
+	case r.Kind == TripStructure && (policy.Permission == "trip.trip.review" || policy.Permission == "meter.reading.correct" || policy.Permission == "trip.trip.close_for_other" || policy.Permission == "gps.track.read"):
 		var teams []string
 		if err := tx.QueryRow(ctx, tripStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {

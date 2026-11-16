@@ -383,14 +383,16 @@
       "status": "NOT_YET_ROUTED",
       "representative_route": "",
       "routes": [],
-      "reason": "Location, track and geofence routes have not been delivered."
+      "reason": "The live position projection belongs to EMP-GPS-007 (F5); no live location route has been delivered."
     },
     {
       "permission": "gps.track.read",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Location, track and geofence routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/trips/{trip_id}/track/read",
+      "routes": [
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/track/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "idn.credential.manage",
@@ -747,10 +749,13 @@
     },
     {
       "permission": "trip.trip.close_for_other",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Mission and trip-operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/trips/open/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/trips/open/list",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/close"
+      ],
+      "reason": ""
     },
     {
       "permission": "trip.trip.read",
@@ -764,6 +769,9 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/trips/review/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/sync/reviews/trips/list",
+        "POST /v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/read",
+        "POST /v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/resolve",
         "POST /v1/orgs/{org_id}/trips/review/list",
         "POST /v1/orgs/{org_id}/trips/{trip_id}/review/decide",
         "POST /v1/orgs/{org_id}/trips/{trip_id}/review/read"

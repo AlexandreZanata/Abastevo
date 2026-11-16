@@ -363,8 +363,9 @@ func (h *finishHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if !readingFits(v.Event, view) {
 		return malformed(), nil
 	}
-	// EMP-TRIP-011: a cancelled trip is closed like a completed one.
-	if record.Finish != nil || record.State == trip.Cancelled {
+	// EMP-TRIP-011: a cancelled trip is closed like a completed one; so is a
+	// trip a supervisor closed (EMP-TRIP-014).
+	if record.Finish != nil || record.State == trip.Cancelled || record.Closure != nil {
 		review, err := h.store.HoldFinishTx(ctx, syncapp.Borrow(db), source, op, command, app.TripAlreadyClosed)
 		return held(review, app.TripAlreadyClosed, err)
 	}

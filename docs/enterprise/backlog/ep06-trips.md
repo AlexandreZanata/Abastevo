@@ -154,7 +154,7 @@ physical devices (OWED), visual/TalkBack review.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-007 — Asset-overlap conflict resolution
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Resolve overlapping asset claims through the review queue.
 - **Rules and use cases:** REQ-07.5, BR-OFFL-006, BR-REV-003, BR-REV-007, VAL-07
 - **Depends on:** EMP-TRIP-002, EMP-OFFL-008
@@ -168,6 +168,19 @@ physical devices (OWED), visual/TalkBack review.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 conflict resolution](../evidence/f4-trip007-conflict-resolution.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Held trip starts, finishes,
+events, submissions and EMP-TRIP-011 lifecycle commands are listed, read and resolved once under
+`trip.trip.review` (`/v1/orgs/{org_id}/sync/reviews/trips/…`, structure
+through the held fact): refuse with a reason, or accept a held start as the
+trip it declared (in progress, its reading at the original receipt, its
+pending finish then accepted) only when no trip of the asset is in progress
+or paused, or finished or cancelled after its declared start; migration
+000237 re-proves every
+acceptance; the held evidence stays and the author's review-results read
+answers trip items. Accept with another asset and the Android presentation
+of trip resolutions remain retained.
 
 ### EMP-TRIP-008 — Missions: create, assign, accept and decline
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
@@ -308,7 +321,7 @@ not cover the mission with it. `POST …/missions/{mission_id}/vehicle/change`
 under fresh `trip.mission.manage`; trips, readings and meters never move.
 
 ### EMP-TRIP-014 — Missing final reading and supervisor closure
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Close an eligible open trip with explicit missing-reading evidence.
 - **Rules and use cases:** REQ-07.6, JRN-07, BR-TRUTH-003, BR-REV-003, BR-AUD-001
 - **Depends on:** EMP-TRIP-004, EMP-METER-004
@@ -401,7 +414,7 @@ or flagged as a gap; all 66 shared Go/Kotlin vectors pass with 100% Go
 statements. The Android clock source and persistence remain open.
 
 ### EMP-TRIP-018 — Open trips when a membership ends
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Hand over open trips when access ends.
 - **Rules and use cases:** REQ-18.4, BR-IDN-027, BR-IDN-028, BR-OFFL-011, JRN-04
 - **Depends on:** EMP-TRIP-014, EMP-IDN-010

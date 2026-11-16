@@ -25,6 +25,7 @@ import (
 	tripdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -51,6 +52,23 @@ func tripGrants(t *testing.T, fx legalFixtureState) {
 	// EMP-TRIP-011: every trip read loads the lifecycle rows once 000233 exists.
 	if lifecycleImage(t, fx) {
 		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_transitions,org_trip_held_transitions TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tripClosureGrant(t, fx.f)
+}
+
+// tripClosureGrant grants the EMP-TRIP-014 closures once the 000235 table
+// exists: the completion, logbook and review guards read them, the closure
+// owner inserts them (an upgrade rehearsal may stop at an earlier image).
+func tripClosureGrant(t *testing.T, f *orgtest.Fixture) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_closures') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_closures TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 			t.Fatal(err)
 		}
 	}
