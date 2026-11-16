@@ -269,4 +269,24 @@ Merged-tree gates: toolchain gofmt empty, vet (both tags), `sqlc vet`/`diff`,
 staticcheck plain and integration clean (`trip014-merged-staticcheck.log`);
 focused PostGIS `^(TestTrip|TestOffboarding)` 87/87 top-level pass
 (`trip014-merged-focused.jsonl`, including every TRIP-011 lifecycle test);
-MERGED_UNION_PLACEHOLDER
+the union started on `cc5b5985` was stopped after 18 packages had passed
+(none failed) because the base moved again.
+
+The branch then merged `codex/enterprise-f4` at `4f9170fc` (EMP-TRIP-007 with
+migration 000237) in merge commit `8effb2e8`: route counts became 152 normal
+routes (29 routed / 55 not routed / 26 special), AUTH-011 walk 152 / 30 /
+122, matrix 290 cells (116 / 174); `CheckTripCloseTx` passes `TripStructure`
+to the kind-aware check of the trip review authority. 000235 and 000236 sort
+before 000237; 000237 redefines none of their functions and they redefine
+none of its functions, so no body needed rebasing.
+
+Final merged-tree gates on `8effb2e8`: toolchain gofmt empty, vet (both
+tags), `sqlc vet`/`diff`, staticcheck plain and integration clean
+(`trip014-final-staticcheck.log`); race/integration union with PostGIS and the throwaway MinIO over the same
+package roots, log `trip014-final-union.jsonl` (32 min 41 s;
+`organization/adapters` 1938 s, `apicontract` 1427 s): 37 packages, 35 pass
+and 2 have no test files, 1311 top-level / 9873 named tests, 0 failures, 0
+skips — including every TRIP-007/011/014/018 suite, the matrix at 290 cells
+(116 / 174) and the AUDITOR walk at 152 / 30 / 122; untagged whole module
+(`trip014-final-untagged-all.log`): exit 0, 224 packages ok; `check_plan.py`
+0 problems; `git diff --check` clean.
