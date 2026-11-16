@@ -8660,3 +8660,72 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   photo owned by the fueling but targeting the expense documents neither; a
   missing file is never "guardado"; an unreadable index never shows
   "guardado"; the amounts are never summed; marking twice queues nothing.
+
+## EMP-OFFL-013 — Sync resilience suite: duplicates, reordering, partial uploads, process death (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-offl013-sync-resilience.md).
+
+- **B-BR-EMP-540 — One effect and one acknowledgement under any delivery.**
+  For every real signed operation of the batch (`trip.mission.respond`,
+  `check.run.complete`, `trip.start` naming its mission and its departure
+  run, `trip.event.record`, `meter.reading.record`, `fueling.submit`,
+  `expense.submit`, `trip.finish`, `trip.submit`) the server keeps exactly
+  one claim, one effect and one final acknowledgement per (organization,
+  operation identifier) whatever the network does: a resend after a lost
+  answer, a resend of the whole device queue after the device process was
+  killed, sequential resends and concurrent resends in device order and in
+  reverse order all return the stored acknowledgement byte for byte and
+  change nothing. The same identifier with another payload digest is
+  `REJECTED` `OPERATION_ID_REUSED`, stores nothing and leaves the original
+  acknowledgement and effect unchanged. A `RETRY` answer is never a stored
+  acknowledgement: a later delivery decides that operation afresh.
+- **B-BR-EMP-541 — Reordering converges; references wait on the device.**
+  Delivering the same operations with every declared dependency reversed
+  answers each dependent operation `RETRY` `DEPENDENCY_PENDING` with no
+  receipt, audit or effect, and after redelivery the organization's final
+  state equals the in-order state: the same result, code and revision per
+  operation and the same effects (trip, logbook, finish, review submission,
+  readings, fueling with its one cost, direct expense, checklist run,
+  checklist and mission links, mission state, review items), compared
+  without server times and generated identifiers. A soft reference names
+  its target's entity, not an operation, and the server holds a reference
+  whose target is not stored yet `ACCEPTED_FOR_REVIEW` `ORPHAN_REFERENCE`
+  with nothing linked (BR-OFFL-007). The device therefore never sends an
+  operation before the final receipt of another unacknowledged operation of
+  the same partition whose entity one of its soft references names (the
+  departure or return checklist run of the trip start or finish naming it);
+  an operation caught in a cycle through such references, or waiting on an
+  operation that needs attention, needs attention instead of being retried
+  forever.
+- **B-BR-EMP-542 — Process death and missing answers lose nothing.** An
+  operation the device reports saved survives the death of its process with
+  its exact bytes; delivery after a restart is at least once and its effect
+  once. A lost answer (the server committed, the device never read it), an
+  answer with an acknowledgement missing, and a whole-request refusal leave
+  every sent operation pending on the device with no acknowledgement
+  applied; an acknowledgement is applied only from a complete answer that
+  matches the sent operations, and applying it again projects nothing more.
+- **B-BR-EMP-543 — Partial uploads and foreign scope.** A truncated or
+  altered receipt transfer (fueling and expense receipts) is refused, keeps
+  the document `UPLOADING` at its storage revision, and becomes `STORED`
+  only when a retry delivers exactly the declared size and SHA-256; a repeat
+  after `STORED` stores nothing more. Another organization never receives,
+  applies or reveals state of this one: operations of A posted to B's route
+  are refused as a whole and store nothing in either; B's own operation
+  carrying A's identifier gets its own acknowledgement while A's stays
+  byte-identical; on the device an acknowledgement of A's operation is never
+  applied in B's partition and B's delivery never sends A's operations.
+- **BUC-EMP-277 — A field day under a bad network (server).** Bruno's phone
+  delivers a mission acceptance, a departure checklist, the trip start naming
+  both, two logbook events, a reading, a fueling, a toll, the finish and the
+  submission. The first answer is lost; the phone restarts and resends its
+  whole queue, then resends it again while other copies race in both orders;
+  each receipt upload is cut halfway or altered before it succeeds. The
+  company ends with exactly the records of an undisturbed day, and the other
+  organization of the same account has none of them.
+- **BUC-EMP-278 — A field day under a bad network (device).** The same kinds
+  of operations, saved offline through the product producers, survive a
+  killed process; the queue sends the checklist before the trip that names it
+  even when the checklist is in backoff, keeps everything "Salvo no
+  aparelho" across a lost or incomplete answer, and applies each receipt
+  once. Native acceptance on the emulator is owed while it is locked.

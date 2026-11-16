@@ -263,7 +263,7 @@ Retained: a real plan history (subscriptions), plan limits, mixed-batch
 withholding (OFFL-008 L2), Android presentation of the codes, production grants.
 
 ### EMP-OFFL-013 — Sync resilience suite: duplicates, reordering, partial uploads, process death
-- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type TEST · size M · state TODO
+- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type TEST · size M · state LOCAL_DONE
 - **Objective:** Prove end-to-end convergence across the enterprise sync failure cases.
 - **Rules and use cases:** BR-OFFL-002, BR-OFFL-004, BR-OFFL-005, BR-OFFL-007, BR-OFFL-013, BR-OFFL-015, VAL-06, VAL-23
 - **Depends on:** EMP-OFFL-002, EMP-OFFL-003, EMP-OFFL-005
@@ -277,6 +277,15 @@ withholding (OFFL-008 L2), Android presentation of the codes, production grants.
 - **Validation:** V-SQL, V-SYNC, V-IDEM, V-ISO, V-PRIV · migration: none · rollback: keep the regression suite and fixture contracts
 - **Risks and assumptions:** Use synthetic content and the normal entry points. Keep device and production evidence separate from this task.
 - **Done when:** All documented resilience cases pass against a named revision with equivalent final state.
+
+[F4 sync resilience suite](../evidence/f4-offl013-sync-resilience.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-540..543, BUC-EMP-277/278 and
+EDR-351..353 precede behaviour; no migration. The server half runs the real
+signed operations of one field day through the default runtime on real
+PostGIS; the device half runs the real vault, queue, producers and HTTP
+client. The suite found and fixed one defect: the device sent a trip start
+before its departure run's final receipt (EDR-352). Retained: the native
+emulator stage (owed while the emulator is locked) and VAL-23 (f) clock skew.
 
 ### EMP-OFFL-014 — Panel: sync review queue
 - **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type WEB · size S · state TODO

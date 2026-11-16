@@ -50,6 +50,9 @@ import (
 // fault on the ingress armed by the device driver through files in the
 // private fixture directory ("truncate", "flip"); at the stop the driver's
 // expect.json names the exact effects the device stages must have produced.
+// EMP-OFFL-013 adds one intake fault, armed through "intake-plan" ("lose"):
+// the real intake commits the next batch and its connection is closed before
+// any answer byte leaves, so the device must recover the stored receipts.
 func TestReceiptNativeSourceFixture(t *testing.T) {
 	const host = "api.anpfuel.example.invalid"
 	const origin = "https://" + host
@@ -149,8 +152,37 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 		}
 		return faults[0]
 	}
+	// EMP-OFFL-013: pops the next armed intake fault from "intake-plan".
+	nextIntakeFault := func() string {
+		mu.Lock()
+		defer mu.Unlock()
+		path := filepath.Join(dir, "intake-plan")
+		raw, err := os.ReadFile(path)
+		if err != nil {
+			return ""
+		}
+		faults := strings.Split(strings.TrimSpace(string(raw)), ",")
+		if len(faults) == 0 || faults[0] == "" {
+			return ""
+		}
+		if err := os.WriteFile(path, []byte(strings.Join(faults[1:], ",")), 0600); err != nil {
+			t.Error(err)
+		}
+		return faults[0]
+	}
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
+		case strings.HasSuffix(r.URL.Path, "/sync/operations") && nextIntakeFault() == "lose":
+			answer := httptest.NewRecorder()
+			router.ServeHTTP(answer, r)
+			record("intake-lost", answer.Code)
+			// Status codes only; the committed answer never leaves.
+			t.Logf("intake answer %d lost after commit", answer.Code)
+			if connection, _, err := w.(http.Hijacker).Hijack(); err == nil {
+				_ = connection.Close()
+			} else {
+				t.Error("native receipt fixture requires HTTP1 lost-answer transport")
+			}
 		case strings.HasSuffix(r.URL.Path, "/content/upload"):
 			fault := nextFault()
 			if fault == "truncate" || fault == "flip" {
@@ -245,7 +277,7 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 	write("ca.pem", public)
 	write("fixture.json", fixture)
 	t.Cleanup(func() {
-		for _, name := range []string{"plan", "expect.json", "stop"} {
+		for _, name := range []string{"plan", "intake-plan", "expect.json", "stop"} {
 			_ = os.Remove(filepath.Join(dir, name))
 		}
 	})
@@ -282,6 +314,11 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 				Trips     int            `json:"trips"`
 				// EMP-EXP-004: direct expenses of the member (a fueling's own FUEL expense is not counted).
 				Expenses int `json:"expenses"`
+				// EMP-OFFL-013: intake answers lost after commit (default 0 for earlier drivers).
+				Lost int `json:"lost"`
+				// EMP-OFFL-013: logbook events and finishes of the member's trips (checked only when given).
+				Events   *int `json:"events"`
+				Finishes *int `json:"finishes"`
 			}
 			if err := json.Unmarshal(raw, &expect); err != nil {
 				t.Fatal(err)
@@ -295,6 +332,14 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 						(key == "upload-truncate" || key == "upload-flip") && code != http.StatusUnprocessableEntity {
 						t.Fatal("unexpected native answer", key, code)
 					}
+				}
+			}
+			if len(observed["intake-lost"]) != expect.Lost {
+				t.Fatalf("native lost intake answers differ: %v, expected %d", observed["intake-lost"], expect.Lost)
+			}
+			for _, code := range observed["intake-lost"] {
+				if code != http.StatusOK {
+					t.Fatal("a lost intake answer was not a committed 200", code)
 				}
 			}
 			for kind, count := range expect.Uploads {
@@ -340,6 +385,17 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 			for kind, count := range expect.Links {
 				if links[kind] != count {
 					t.Fatalf("native receipt links differ: %v, expected %v", links, expect.Links)
+				}
+			}
+			if expect.Events != nil || expect.Finishes != nil {
+				var events, finishes int
+				if err := x.f.Admin.QueryRow(t.Context(), `SELECT (SELECT count(*) FROM org_trip_events e JOIN org_trips t ON(t.org_id,t.id)=(e.org_id,e.trip_id) WHERE e.org_id=$1 AND t.author_membership_id=$2),
+ (SELECT count(*) FROM org_trip_finishes f JOIN org_trips t ON(t.org_id,t.id)=(f.org_id,f.trip_id) WHERE f.org_id=$1 AND t.author_membership_id=$2)`, orgA, person.member).Scan(&events, &finishes); err != nil {
+					t.Fatal(err)
+				}
+				t.Logf("native resilience effects events=%d finishes=%d", events, finishes)
+				if expect.Events != nil && events != *expect.Events || expect.Finishes != nil && finishes != *expect.Finishes {
+					t.Fatalf("native trip effects differ: events=%d finishes=%d", events, finishes)
 				}
 			}
 			return
