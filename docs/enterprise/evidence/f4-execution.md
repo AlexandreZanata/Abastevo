@@ -1405,3 +1405,56 @@ availability tests of both tasks kept. Build, vet (all tags), gofmt,
 focused PostGIS race tests
 `Mission|Reservation|Checklist|TripIntake|TripClosure|Auditor|AuthorizationMatrix|FleetStore|Availability`
 with a disposable MinIO: 6 packages, 106 top-level / 4893 named, 0 failures.
+
+### EMP-DOC-004 (F3 prerequisite) — app capture and import: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-doc004-app-capture.md), commit `ab3ff194`, no migration.
+`ReceiptCapture.kt` judges the file by its bytes with the OFFL-005 JPEG policy
+and keeps the original unmodified; a pure integer legibility hint (resolution,
+dark, bright, contrast, blur) never blocks and never claims fiscal validation;
+`ReceiptCaptureController`/`EnterpriseReceipts`; `AndroidReceiptOriginals`
+(FileProvider camera file deleted once read); SCR-DOC-01 `ReceiptCaptureCard`
+with the system camera (`TakePicture`) and photo picker (`PickVisualMedia`),
+no new dependency; entry point on trip start/finish records carrying a reading;
+flag `ENTERPRISE_RECEIPT_CAPTURE_UI_ENABLED`; 49 strings × 8 locales
+(EDR-291..293). RED domain 10/10, application 6/6 + 9/9 → GREEN; native on
+`emulator-5588` with a real backend: offline capture → process death →
+reconnect, a truncated upload refused while the start was accepted, STORED on
+retry, organization B nothing.
+
+### EMP-FUEL-011 (F3 prerequisite) — app fueling offline: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-fuel011-app-fueling.md), commit `ef85f52f`, migration 000245
+(`org_document_links.fueling_id` and the `FUELING` link kind with a composite
+same-organization foreign key; no function or usage change). Kotlin
+`FuelingOperations.kt` (builder + strict decoder mirroring Go `ParseOperation`)
+and `FuelingPresentation.kt`; shared 59-row `fueling/fueling-submit-v1.psv`
+consumed by Kotlin and the real Go parsers; producer, service and
+`FuelingFlow` (the receipt is a second protected write targeting `FUELING`;
+warnings never block); `ProtectedFuelingStore` reads retained queue entries;
+`FuelingPanel`, flag `ENTERPRISE_FUELING_UI_ENABLED`, 86 strings × 8 locales;
+backend `FuelingDocumentTargets` resolver under `fuel.fueling.record`
+(EDR-294..297). RED Kotlin domain 62/63, application 8/8, data 1/1, Go resolver
+and PostGIS link (503 stub) → GREEN; union 24 packages 1005/9345 with four
+fixture-level fixes. Native with a real backend including EXP-002: two offline
+fuelings (receipt in the same save and added later), process death,
+reconnect → both accepted, one receipt STORED and the other refused (422) then
+STORED on retry; server 2 fuelings, 2 documents, 2 FUELING links.
+
+Integration: the DOC-004/FUEL-011 branch conflicted with CHECK-002 in the
+Android screens; a dedicated integration agent merged `e7cbf724` and
+`c7e407e6` into it keeping all three rollback flags, both trip-screen modes
+(departure checklist and reading photo), the checklist, receipt and fueling
+owners on the context screen, and a queue registry with trip, checklist and
+fueling producers (`835218be`, `ec74050b`, gofmt fix `257b06e8`); EDR rows
+re-sorted (306 rows, no duplicates). On `257b06e8`: Go build/vet (all tags),
+gofmt, staticcheck, sqlc clean; PostGIS race
+`Fueling|DocumentLink|Attachment|Checklist|Expense|Mission|Reservation` 98/222;
+Android host suites domain 4366, application 710, data 205, app 30; lint 0
+errors; normal and enterprise validation builds; native regression on
+`emulator-5588` (trip 6/6, checklist 7/7, receipt 5/5, fueling 3/3, context
+6/6, sync-context 2/2). Merged into the F4 branch as `aab550f0` without
+conflicts. Retained: real receipts (OQ-04), trip/place/supplier references and
+the capacity warning in the app, FUEL-003/004/012/015, DOC-011, TRIP-020, the
+recurring `EnterpriseSyncContextDeviceTest` intermittent, two physical devices,
+TalkBack/visual review.

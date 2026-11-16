@@ -1696,6 +1696,11 @@ deleted; only ASSET, EMPLOYEE and METER_READING targets are registered.
 The signed device attachment session (EMP-OFFL-005) reuses the DOC-002 and
 DOC-003 grants; no new grant.
 
+Migration 245 adds the `FUELING` link kind (`fueling_id`, composite foreign key to
+`org_fuelings`); the link principal needs `SELECT (org_id,id,author_membership_id)
+ON org_fuelings` and the migrator `REFERENCES ON org_fuelings` and ownership of
+`org_document_links`. Nothing here provisions live grants.
+
 ### Document upload safety (EMP-DOC-014)
 
 Migration212 adds `org_documents.storage_reason` (closed reasons fixed by their

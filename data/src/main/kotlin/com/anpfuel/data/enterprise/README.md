@@ -134,6 +134,12 @@ already queued; verified bytes are removed in the write that records `STORED`; t
 operation worker delivers them after the queue behind
 `ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED` (default off).
 
+EMP-DOC-004 adds `AndroidReceiptOriginals` (a FileProvider camera file under
+`cache/enterprise-receipts/`, deleted once read; bounded content reads; a decoded
+luminance sample) and `EnterpriseReceipts`; nothing of an unsaved photo is written.
+EMP-FUEL-011 registers the `fueling.submit` producer; fuelings are read back from
+the partition's retained queue entries (`ProtectedFuelingStore`), with no separate index.
+
 EMP-CHECK-002 registers `check.run.complete`; its projection is one sealed
 `checklist-book` v1 RECORD per partition, holding cached applicable reads, answers
 written without an operation, and completions written in the queue's own write.
