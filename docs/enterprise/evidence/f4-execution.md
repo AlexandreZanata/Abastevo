@@ -1240,3 +1240,33 @@ production grants.
 Integration (`a27a30f4`): the branch already contained `0912b48a`; clean
 merge; build, vet, gofmt, `sqlc diff`, check_plan green; proposed shared text
 applied (backend README, 09-architecture, fuelings §9, 10-offline-sync).
+
+### EMP-TRIP-012 — driver handover during a trip: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip012-driver-handover.md), commit `a30ad444`, migration
+000243 (insert-only, forced-RLS `org_trip_handovers`; new
+`org_trip_responsible`, `org_trip_responsible_member`,
+`org_trip_handover_source`, `org_trip_handover_published`; twelve
+redefinitions each from its latest body including 000235/000236/000239/000240,
+every original line kept — line log `f4-logs/trip012-migration-lines.log`; no
+usage-function line, so 000244 is untouched; 000234 stays unused). Routes
+`POST /trips/{trip_id}/handover` (supervisor, fresh `trip.trip.close_for_other`
+covering the trip structure, receiver an eligible member assigned to the asset,
+revision CAS), `/trips/handovers/list` and `/trips/mine/list`. Responsibility
+is derived from the handover rows: the current responsible member gates
+pause/resume/cancel/finish/submit/late finish; logbook events, incidents in
+trips and tracking facts are checked against the member responsible at the
+declared instant; each handover adds one to the trip revision; every past
+responsible member is excluded from review; handovers respect supervisor
+closures and offboarding flags; after a handover the old tracking owner is
+refused and the receiver opens a new session (EDR-254..256). New 87-case
+`trip/handover-v1.psv` with Kotlin `TripHandover.kt`. RED Go 5/31 and 81/87,
+Kotlin 83/954, PostGIS 7/7 and 4/4 → GREEN Go 36/896 (99.9%), Kotlin 954 and
+enterprise 4227, PostGIS incl. races; merged-tree union on `2f031276` + this
+change: 55 packages, 1476 top-level / 10379 named, 0 failures; untagged 229
+packages. Counts: 156 normal routes (30 routed / 54 not routed / 26 special),
+auditor walk 156/31/125, matrix 300 cells (121/179). Retained: Android/panel
+handover screens (TRIP-021/022), real-device acceptance.
+
+Integration: the commit's parent is the F4 head `2f031276`; clean merge;
+build, vet, gofmt, `sqlc diff`, check_plan green.
