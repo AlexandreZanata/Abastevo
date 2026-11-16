@@ -85,7 +85,7 @@ Persistence, access, links API, workflows and fiscal/extraction stay with EMP-DO
   read surfaces retained.
 
 ### EMP-DOC-004 — App: capture and import with offline queue and legibility check
-- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module DOC · phase F3 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Capture or import a synthetic receipt into the protected Android attachment queue.
 - **Rules and use cases:** BR-OFFL-002, BR-OFFL-003, BR-OFFL-013, BR-OFFL-015, BR-PRIV-016, BR-PRIV-020, UC-OFFL-03, REQ-10.1
 - **Depends on:** EMP-DOC-002, EMP-OFFL-005

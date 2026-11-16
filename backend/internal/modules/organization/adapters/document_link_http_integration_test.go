@@ -87,9 +87,11 @@ func TestDocumentLinksOverTheCompanyAPI(t *testing.T) {
 	matrixCall(t, fx, router, driver, base+driverDoc+"/links/create", create(onboardingID(t), "METER_READING", installed.OpeningReadingID), 403, "FORBIDDEN", "meter.reading.record", nil)
 	matrixCall(t, fx, router, driver, base+driverDoc+"/links/create", create(onboardingID(t), "ASSET", active), 403, "FORBIDDEN", "fleet.asset.manage", nil)
 	matrixCall(t, fx, router, driver, base+managerDoc+"/links/create", create(onboardingID(t), "ASSET", active), 403, "FORBIDDEN", "doc.document.attach", nil)
-	for _, kind := range []string{"FUELING", "EXPENSE", "WORK_ORDER", "TRIP", "BOGUS"} {
+	for _, kind := range []string{"EXPENSE", "WORK_ORDER", "TRIP", "BOGUS"} {
 		matrixCall(t, fx, router, manager, base+managerDoc+"/links/create", create(onboardingID(t), kind, active), 422, "VALIDATION_FAILED", "", nil)
 	}
+	// FUELING has an owner since EMP-FUEL-011: an asset identifier is not a fueling.
+	matrixCall(t, fx, router, manager, base+managerDoc+"/links/create", create(onboardingID(t), "FUELING", active), 404, "NOT_FOUND", "", nil)
 	matrixCall(t, fx, router, manager, base+managerDoc+"/links/create", create(onboardingID(t), "METER_READING", active), 404, "NOT_FOUND", "", nil)
 	ownerDeclaration, _ := d.declare(t, owner, d.raw)
 	ownerDoc := ownerDeclaration["document_id"].(string)
@@ -121,7 +123,8 @@ func TestDocumentLinksOverTheCompanyAPI(t *testing.T) {
 		t.Fatal("asset links", byAsset)
 	}
 	matrixCall(t, fx, router, supervisor, base+"links/by-target", map[string]any{"target": target("ASSET", active)}, 403, "FORBIDDEN", "fleet.asset.manage", nil)
-	matrixCall(t, fx, router, manager, base+"links/by-target", map[string]any{"target": target("FUELING", active)}, 422, "VALIDATION_FAILED", "", nil)
+	matrixCall(t, fx, router, manager, base+"links/by-target", map[string]any{"target": target("EXPENSE", active)}, 422, "VALIDATION_FAILED", "", nil)
+	matrixCall(t, fx, router, manager, base+"links/by-target", map[string]any{"target": target("FUELING", active)}, 404, "NOT_FOUND", "", nil)
 	matrixCall(t, fx, router, owner, base+"links/by-target", map[string]any{"target": target("EMPLOYEE", otherEmployee)}, 404, "NOT_FOUND", "", nil)
 
 	// B-BR-EMP-242: the supervisor sees the reading's link but not the

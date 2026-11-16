@@ -170,10 +170,14 @@ func TestDocumentLinkContractRefusesAuthorityAmountsContentAndUnregisteredKinds(
 		})
 	}
 	target := doc.Components.Schemas["EnterpriseDocumentLinkTarget"].Value
-	for _, kind := range []string{"FUELING", "EXPENSE", "WORK_ORDER", "TRIP", "asset", "BOGUS"} {
+	for _, kind := range []string{"EXPENSE", "WORK_ORDER", "TRIP", "asset", "fueling", "BOGUS"} {
 		if target.VisitJSON(map[string]any{"kind": kind, "id": "7b0e2a54-0000-4000-8000-000000020902"}) == nil {
 			t.Fatal("unregistered link target kind admitted", kind)
 		}
+	}
+	// EMP-FUEL-011 registered the FUELING owner (EDR-297).
+	if err := target.VisitJSON(map[string]any{"kind": "FUELING", "id": "7b0e2a54-0000-4000-8000-000000020902"}); err != nil {
+		t.Fatal("registered FUELING link target refused", err)
 	}
 	if target.VisitJSON(map[string]any{"kind": "ASSET", "id": "00000000-0000-0000-0000-000000000000"}) == nil {
 		t.Fatal("nil link target admitted")

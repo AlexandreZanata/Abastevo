@@ -29627,7 +29627,7 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         target_kind:
           type: string
-          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT]
+          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING]
         target_id:
           $ref: '#/components/schemas/EnterpriseUUID'
       required:
@@ -45929,7 +45929,7 @@ components:
       properties:
         kind:
           type: string
-          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT]
+          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING]
         id:
           $ref: '#/components/schemas/EnterpriseUUID'
       example:

@@ -538,7 +538,8 @@ func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler,
 	// EMP-DOC-003: the closed registry of linkable kinds, each resolved by
 	// the module that owns the target record (EDR-162).
 	targets := documentapp.Targets{documentdomain.Asset: fleetpg.DocumentTargets{}, documentdomain.MeterReading: fleetpg.DocumentTargets{},
-		documentdomain.Employee: member.EmployeeDocumentTargets{}, documentdomain.Incident: maintpg.IncidentDocumentTargets{}}
+		documentdomain.Employee: member.EmployeeDocumentTargets{}, documentdomain.Incident: maintpg.IncidentDocumentTargets{},
+		documentdomain.Fueling: fuelpg.FuelingDocumentTargets{}}
 	store := &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore, Targets: targets}
 	// EMP-DOC-014: the ingress runs the same safety check as the queued job,
 	// over the same bucket and inspector, so STORED never skips it.

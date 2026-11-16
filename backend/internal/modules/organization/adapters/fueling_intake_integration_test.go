@@ -612,8 +612,9 @@ func TestFuelingSchemaIsForcedRLSAndInsertOnly(t *testing.T) {
 	}
 	role := pgx.Identifier{x.f.RuntimeRole}.Sanitize()
 	// EMP-EXP-002: TRUNCATE ... CASCADE also reaches org_expenses, which keeps
-	// its own insert-only guard; grant it too so only the guards can refuse.
-	if _, err := x.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_fuelings,org_fueling_warnings,org_fueling_review_entries,org_expenses TO "+role); err != nil {
+	// its own insert-only guard, and since EMP-FUEL-011 (000245) org_document_links,
+	// which keeps its retained guard; grant them too so only the guards can refuse.
+	if _, err := x.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_fuelings,org_fueling_warnings,org_fueling_review_entries,org_expenses,org_document_links TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	for _, statement := range []string{`UPDATE org_fuelings SET paid_centavos=97350`, `DELETE FROM org_fuelings`, `TRUNCATE org_fuelings CASCADE`, `UPDATE org_fueling_review_entries SET state='SUBMITTED'`, `DELETE FROM org_fueling_warnings`, `TRUNCATE org_fueling_review_entries`} {

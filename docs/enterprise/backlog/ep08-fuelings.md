@@ -184,7 +184,7 @@ real PostGIS. Retained: held fuelings, receipt link, read routes, expense.
 - **Done when:** The stated outcomes and negative cases pass the applicable profiles at the affected entry points.
 
 ### EMP-FUEL-011 — App: add a fueling offline with receipt and meter reading
-- **Meta:** module FUEL · phase F3 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module FUEL · phase F3 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Record a fueling offline in the approved Android partition.
 - **Rules and use cases:** BR-FUEL-002, BR-FUEL-007, BR-FUEL-024, BR-OFFL-002, BR-OFFL-003, BR-OFFL-015, OQ-04, UC-FUEL-01
 - **Depends on:** EMP-FUEL-002, EMP-OFFL-005, EMP-FLEET-013, EMP-DOC-004

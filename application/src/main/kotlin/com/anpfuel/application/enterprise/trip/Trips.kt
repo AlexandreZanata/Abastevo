@@ -1,6 +1,9 @@
 package com.anpfuel.application.enterprise.trip
 
 import com.anpfuel.application.enterprise.*
+import com.anpfuel.application.enterprise.attachment.EnterpriseReceipts
+import com.anpfuel.application.enterprise.attachment.ReceiptDraft
+import com.anpfuel.application.enterprise.attachment.ReceiptSaveRefused
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueAccountLease
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueAttempt
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueProducer
@@ -11,6 +14,9 @@ import com.anpfuel.domain.enterprise.EnterpriseDeviceClock
 import com.anpfuel.domain.enterprise.EnterpriseLocalRecord
 import com.anpfuel.domain.enterprise.EnterprisePartition
 import com.anpfuel.domain.enterprise.TimeDeclaration
+import com.anpfuel.domain.enterprise.attachment.AttachmentLocalFailure
+import com.anpfuel.domain.enterprise.attachment.AttachmentTarget
+import com.anpfuel.domain.enterprise.attachment.AttachmentView
 import com.anpfuel.domain.enterprise.fleet.EnterpriseAssetChoice
 import com.anpfuel.domain.enterprise.meter.MeterDomainException
 import com.anpfuel.domain.enterprise.meter.MeterEntryForm
@@ -309,6 +315,14 @@ data class TripViewState(
     val error: EnterpriseAccessError? = null,
     val unlockRequired: Boolean = false,
     val unrecoverable: Boolean = false,
+    /** EMP-DOC-004: the partition's attachments by owning operation, each with its own label (B-BR-EMP-454). */
+    val attachments: Map<String, List<AttachmentView>> = emptyMap(),
+    /** The attachment index could not be read; the trips themselves are still shown. */
+    val attachmentsUnavailable: Boolean = false,
+    /** The latest photo was refused on the device with this reason; nothing was saved (B-BR-EMP-453). */
+    val attachmentRefusal: AttachmentLocalFailure? = null,
+    /** The owning operation of the latest durably saved photo, for one polite announcement. */
+    val lastAttached: String? = null,
 ) {
     val openTrip: TripView? get() = openTripId?.let { id -> trips.firstOrNull { it.trip.tripId == id } }
     override fun toString(): String = "TripViewState(redacted)"
@@ -319,6 +333,8 @@ class TripFlow(
     private val source: EnterpriseQueueSource,
     private val service: EnterpriseTripService,
     private val fence: EnterpriseSessionFence,
+    /** EMP-DOC-004 photos of trip readings; absent when the attachment queue is not composed. */
+    private val receipts: EnterpriseReceipts? = null,
     private val deliver: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> Unit,
 ) {
     private val mutable = MutableStateFlow(TripViewState())
@@ -361,7 +377,7 @@ class TripFlow(
             val request = Owner(next(), before.context, before.epoch, before.background, before.account)
             owner = request
             mutable.value = mutable.value.copy(generation = request.token, busy = true, refusal = null, captureInvalid = false,
-                saveFailed = false, driverUnknown = false, lastSaved = null, sendFailed = false)
+                saveFailed = false, driverUnknown = false, lastSaved = null, sendFailed = false, attachmentRefusal = null, lastAttached = null)
             request
         }
     }
@@ -374,14 +390,22 @@ class TripFlow(
         return account
     }
 
-    private suspend fun publish(request: Owner, saved: String? = null, sendFailed: Boolean = false) {
+    private suspend fun publish(request: Owner, saved: String? = null, sendFailed: Boolean = false, attached: String? = null) {
         val trips = service.trips(account(request), request.context.partition)
+        // EMP-DOC-004: photos are read beside the trips; an unreadable index never hides the trips (B-BR-EMP-454).
+        val photos = receipts?.takeIf { it.enabled }?.let {
+            try { it.byOwner(request.context.partition) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (denied: EnterpriseLocalDenied) { throw denied }
+            catch (_: Exception) { null }
+        }
         if (!retained(request)) { invalidateIfStale(); return }
         synchronized(monitor) {
             if (owner !== request || !viewCurrent(request)) return
             val open = mutable.value.openTripId?.takeIf { id -> trips.any { it.trip.tripId == id } }
             mutable.value = mutable.value.copy(busy = false, loaded = true, trips = trips, openTripId = open, lastSaved = saved,
-                sendFailed = sendFailed, error = null, unlockRequired = false, unrecoverable = false)
+                sendFailed = sendFailed, error = null, unlockRequired = false, unrecoverable = false,
+                attachments = photos ?: emptyMap(), attachmentsUnavailable = receipts?.enabled == true && photos == null, lastAttached = attached)
         }
     }
 
@@ -393,6 +417,7 @@ class TripFlow(
             mutable.value = when {
                 failure is EnterpriseLocalDenied || !sourceCurrent || !viewCurrent(request) -> { clearLocked(EnterpriseAccessError.STALE); return }
                 failure is TripLocalException -> current.copy(busy = false, refusal = failure.failure)
+                failure is ReceiptSaveRefused -> current.copy(busy = false, attachmentRefusal = failure.failure)
                 failure is TripCaptureInvalid -> current.copy(busy = false, captureInvalid = true)
                 failure is TripDriverUnknown -> current.copy(busy = false, driverUnknown = true)
                 failure is EnterpriseUnlockRequired || failure is EnterpriseVaultUnrecoverable -> current.copy(busy = false, loaded = false,
@@ -460,6 +485,18 @@ class TripFlow(
             catch (_: Exception) { true }
             if (!retained(request)) { invalidateIfStale(); return@perform }
             publish(request, sendFailed = failedSend)
+        }
+    }
+
+    /** EMP-DOC-004: seals [draft] beside the record [ownerOperationId] of the visible partition (EDR-293). */
+    suspend fun attach(ownerOperationId: String, target: AttachmentTarget, draft: ReceiptDraft, renderedEpoch: Long, generation: Long) {
+        val request = begin(renderedEpoch, generation) ?: return
+        perform(request, write = true) {
+            val photos = receipts ?: throw ReceiptSaveRefused(AttachmentLocalFailure.DISABLED)
+            // The record's own partition: the capture is refused unless its operation is queued there (BR-OFFL-003).
+            photos.save(request.context.partition, ownerOperationId, target, draft)
+            if (!retained(request)) { invalidateIfStale(); return@perform }
+            publish(request, attached = ownerOperationId)
         }
     }
 

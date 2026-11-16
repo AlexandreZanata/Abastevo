@@ -7895,3 +7895,171 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   reservation, whose `NO_SHOW` stays; a start delivered at 08:59 while the
   job waits behind it consumes the reservation, and the job then finds it
   `FULFILLED` and changes nothing.
+
+## EMP-DOC-004 — App: capture and import with offline queue and legibility check (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-doc004-app-capture.md).
+
+- **B-BR-EMP-450 — Two ways to bring an original, both without a new
+  dependency.** Beside a record already saved in the partition's protected
+  queue whose evidence has an EMP-DOC-003 link target (C1: the departure or
+  final reading of a trip, target `METER_READING`; later owners add their own
+  targets), the app offers "Fotografar" — the system camera writing into a
+  private cache file of the app, only after the `CAMERA` permission is
+  granted — and "Importar foto" — the Android photo picker, images only,
+  which needs no storage permission. A denied camera permission, a cancelled
+  camera or picker, or an empty selection saves nothing, says so, and keeps
+  the other way available. Capture is shown only when the attachment queue is
+  enabled (`ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED`) and the rollback switch
+  `ENTERPRISE_RECEIPT_CAPTURE_UI_ENABLED` (default on) is on; switching it off
+  hides the entry points and keeps every saved attachment and its delivery.
+- **B-BR-EMP-451 — The type is decided by content and the original is kept
+  unmodified.** The selected file is read once, bounded to 5 MiB plus one
+  byte, and judged by its bytes, never by its name or declared type: a JPEG
+  (start-of-image and end-of-image markers) of up to 5 MiB is accepted
+  exactly as read — no re-encoding, cropping, resizing or metadata change;
+  no readable bytes (file gone, access revoked, empty) is "file not found on
+  the device, choose again"; more than 5 MiB is "too large"; anything else
+  (PNG, HEIC, WebP, PDF, a renamed file) is "unsupported in this phase". A
+  refused file is never queued, listed or shown as saved. The camera's
+  temporary file is deleted as soon as its bytes are read, and any leftover
+  is deleted when capture opens again.
+- **B-BR-EMP-452 — Legibility is a hint, never a validation.** Before saving,
+  the device decodes a downscaled luminance sample of the accepted original
+  and reports either that the image looks sharp or the problems it sees (low
+  resolution, too dark, too bright, low contrast, blurred), always with the
+  statement that the check does not validate the receipt. It never blocks
+  saving, never claims fiscal, legal or document validity, performs no text
+  recognition, and its result is neither stored nor sent. An image that
+  cannot be decoded is "could not be checked" and may still be saved; the
+  person keeps the photo or takes another one.
+- **B-BR-EMP-453 — Saved means sealed in the creation partition.** "Salvar
+  no aparelho" hands the exact original to the EMP-OFFL-005 capture of the
+  record's own partition (account, origin, organization, membership,
+  enrollment) with the target fixed; "Salvo no aparelho" appears only after
+  that protected write returns. A failed write says that nothing was saved
+  and keeps the unsaved photo in memory for another attempt; a local refusal
+  (record not in this partition, index full, byte budget, another
+  enrollment, capture disabled) is shown with its reason. An unsaved photo
+  lives only in memory and is gone after a context change or a process death;
+  only sealed originals survive, and nothing else of the photo is written.
+- **B-BR-EMP-454 — Each attachment shows its own state.** Under its record,
+  each attachment is shown "Salvo no aparelho", "Enviando", "Arquivo em
+  verificação", "Arquivo guardado pela empresa" (only after the server
+  reported it `STORED`; it says the file arrived intact, never that the
+  receipt is valid), "Não aceito" with its reason, "Comprovante não encontrado
+  no aparelho" with the offer to photograph it again, or "Precisa de atenção"
+  after repeated failures — always independent of the record's own sync
+  state, which never waits for or changes with its attachments. Every capture
+  screen states that the C1 phase takes synthetic images only.
+- **BUC-EMP-228 — Photograph a reading offline and send it later.** Bruno
+  starts a trip with no signal, opens the start record, takes a photo of the
+  odometer, sees "A imagem parece nítida — esta conferência não valida o
+  comprovante", saves it ("Salvo no aparelho"), the phone restarts, the photo
+  is still saved, and after reconnection the start is "Aceito pela empresa"
+  while the photo moves to "Arquivo guardado pela empresa" only when the
+  server stored it; an interrupted upload stays pending and is retried.
+- **BUC-EMP-229 — Import, refused types and hints.** Bruno imports a PNG
+  screenshot: "Formato não aceito nesta fase", nothing saved; he imports a
+  dark JPEG: "A imagem pode estar escura", he keeps it anyway and it is
+  saved unmodified.
+- **BUC-EMP-230 — Negatives.** Camera permission denied (import still
+  offered, nothing saved), a picked file that disappeared before reading
+  ("não encontrado no aparelho"), a protected write that fails ("Nada foi
+  salvo"), a record of another organization or enrollment (refused, never
+  listed in the other partition), a sealed original missing at delivery
+  (shown "Comprovante não encontrado no aparelho", never sent, never
+  verified).
+
+## EMP-FUEL-011 — App: add a fueling offline with receipt and meter reading (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-fuel011-app-fueling.md).
+
+- **B-BR-EMP-455 — The device builds the exact `fueling.submit` the intake
+  reads.** The app produces only schema 1 of `fueling.submit` (EDR-175):
+  entity `fueling` with a new device identifier and no expected revision, no
+  dependency, soft reference or envelope attachment, and the exact 17-key
+  payload — the chosen asset, the member's own employee record as
+  responsible, the product and its unit, quantity in milli-units, paid total
+  and optional discount in centavos, optional unit price in milli-BRL, fill,
+  payer, payment method, exactly one of a reading (meter, segment, a new
+  reading identifier, kind and base value) or the reason for its absence, an
+  optional typed `NOT_FOUND` place name, and `trip_id`,
+  `contracted_supplier_id` and `unit_price_text` null. The device decoder
+  refuses, in the intake's order and class, everything the Go parser refuses
+  (`MALFORMED`) or keeps unavailable (`UNSUPPORTED`: trip, contracted
+  supplier, catalog station, organization supplier, internal tank); the
+  registered producer admits only an operation the decoder reads back, inside
+  the protected write. One shared oracle pins the bytes for both languages.
+- **B-BR-EMP-456 — A fueling is saved durably in its creation partition.**
+  "Salvar abastecimento" queues the operation through the EMP-OFFL-003
+  protected write of the selected organization's partition (account, origin,
+  organization, membership, enrollment); "Salvo no aparelho" appears only
+  after that write returns; a failed write says that nothing was saved and
+  keeps the form. Nothing else of the fueling is stored: the list and detail
+  are read back from the partition's retained `fueling.submit` entries, so
+  the original scope and every entered amount survive restart exactly as
+  queued. Another organization or account never lists or sends it.
+- **B-BR-EMP-457 — Entry is exact and offline.** The asset comes from the
+  EMP-FLEET-013 picker (implements excluded); the products offered are the
+  cached asset's accepted products (all nine when the cache lists none, the
+  server then warns `PRODUCT_NOT_ACCEPTED`); quantities and unit prices take
+  up to three decimals and money two, with a decimal comma or point and no
+  grouping, converted to integers without rounding, anything else refused
+  before saving ("confira os valores"); the paid total is never recomputed.
+  Fill `FULL`/`PARTIAL`/`UNKNOWN`, payer `COMPANY`/`EMPLOYEE` and the offline
+  payment methods (fuel card, credit, debit, Pix, cash, supplier account,
+  other — an agreement voucher is online-only and internal stock belongs to
+  F6) are explicit choices. A member without an employee record in the
+  selected context is told to confirm the company again; nothing is saved.
+- **B-BR-EMP-458 — Warnings inform; acceptance follows the server.** The form
+  shows the BR-MONEY-005 arithmetic warning when the entered price, quantity,
+  discount and paid total differ by more than one centavo, and the METER-003
+  warning when the reading is below or implies an implausible rate against
+  the latest reading of the same meter and segment among this device's own
+  fuelings; neither blocks saving. The fueling shows "Salvo no aparelho"
+  until its own final receipt: "Aceito pela empresa" with the review line
+  "Aguardando aprovação" only from an `ACCEPTED` receipt, "Precisa de
+  revisão" or "Não aceito" with the reason otherwise; a held fueling (changed
+  rights, after disposal) stays saved and retried (EDR-177). Nothing is shown
+  as accepted before its acknowledgement.
+- **B-BR-EMP-459 — The receipt is a separate, optional photo linked to the
+  fueling.** In the form, "Comprovante (opcional)" uses the EMP-DOC-004 sheet
+  (camera or import, legibility hint, keep or retake, synthetic images only);
+  "Sem comprovante agora" is simply not taking one. After the fueling is
+  saved, its photo is sealed in a second protected write with target
+  `FUELING` (the fueling identifier) and owner the `fueling.submit` operation;
+  if that second write fails or is refused the fueling stays saved and the
+  screen says the receipt was not saved, keeping the photo for another
+  attempt; a receipt can also be added later from the fueling's detail. The
+  photo is declared only after the fueling's final receipt (EDR-268/269): it
+  links only to a stored fueling, through the new `FUELING` link kind of
+  EMP-DOC-003 resolved by the fueling owner under `fuel.fueling.record`
+  (the author's own fueling; another member's is `FORBIDDEN`, another
+  organization's or a missing one `NOT_FOUND`); its progress is shown
+  separately and never changes the fueling's state.
+- **B-BR-EMP-460 — Rollback and scope.** `ENTERPRISE_FUELING_UI_ENABLED`
+  (default on) hides the entry; queued fuelings and receipts keep their
+  delivery. No personal-ledger record is read, copied or converted (BR-FUEL-
+  024); no real receipt is captured before OQ-04 is decided; no trip, place
+  reference other than a typed name, contracted supplier or envelope
+  attachment is produced.
+- **BUC-EMP-231 — Fuel offline with a receipt.** Bruno, with no signal,
+  opens "Abastecimentos", chooses his truck, enters 150 L of Diesel S10
+  for R$ 970,00 at R$ 6,490/L (the arithmetic warning appears; he keeps the
+  paid total), full tank, company fuel card, odometer 184 600 km, photographs
+  the synthetic receipt ("A imagem parece nítida"), saves: "Abastecimento
+  salvo no aparelho com o comprovante". The phone restarts; both are still
+  saved. On reconnection the fueling becomes "Aceito pela empresa —
+  aguardando aprovação"; the first upload of the photo is interrupted and
+  shows "Enviando" while the fueling stays accepted; the retry stores it
+  ("Arquivo guardado pela empresa").
+- **BUC-EMP-232 — Without reading, without receipt, later receipt.** The
+  odometer is broken: Bruno states why; he skips the photo and adds it the
+  next morning from the fueling's detail.
+- **BUC-EMP-233 — Negatives.** A failed protected write (nothing saved), a
+  fueling of organization A never listed or sent under B, a member without an
+  employee record, a value with too many decimals, a receipt refused locally
+  (fueling kept, receipt not saved), an attempt to link a receipt to another
+  member's or another organization's fueling on the server, and the shared
+  oracle rows that the intake refuses.

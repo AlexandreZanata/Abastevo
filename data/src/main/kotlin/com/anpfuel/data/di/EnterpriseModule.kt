@@ -10,6 +10,8 @@ import com.anpfuel.application.enterprise.EnterpriseSessionFence
 import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentService
 import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentStore
 import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentTransport
+import com.anpfuel.application.enterprise.attachment.EnterpriseReceipts
+import com.anpfuel.application.enterprise.attachment.ReceiptOriginals
 import com.anpfuel.application.enterprise.checklist.ChecklistFlow
 import com.anpfuel.application.enterprise.checklist.EnterpriseChecklistGateway
 import com.anpfuel.application.enterprise.checklist.EnterpriseChecklistProducers
@@ -30,6 +32,10 @@ import com.anpfuel.application.enterprise.queue.EnterpriseReviewTransport
 import com.anpfuel.application.enterprise.sync.EnterpriseDeliveryActivity
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncFlow
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncStatusStore
+import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingProducer
+import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingService
+import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingStore
+import com.anpfuel.application.enterprise.fueling.FuelingFlow
 import com.anpfuel.application.enterprise.trip.EnterpriseTripProducers
 import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
@@ -39,6 +45,7 @@ import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.data.BuildConfig
 import com.anpfuel.data.enterprise.*
+import com.anpfuel.data.enterprise.attachment.AndroidReceiptOriginals
 import com.anpfuel.data.enterprise.attachment.EnterpriseAttachmentHttpClient
 import com.anpfuel.data.enterprise.attachment.ProtectedAttachmentStore
 import com.anpfuel.data.enterprise.checklist.ProtectedChecklistStore
@@ -46,6 +53,7 @@ import com.anpfuel.data.enterprise.fleet.EnterpriseReferenceHttpClient
 import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
+import com.anpfuel.data.enterprise.fueling.ProtectedFuelingStore
 import com.anpfuel.data.enterprise.trip.ProtectedTripStore
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
@@ -241,7 +249,8 @@ object EnterpriseModule {
     @Provides
     @Singleton
     fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry =
-        EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), *EnterpriseChecklistProducers.all())
+        // EMP-FUEL-011 adds the `fueling.submit` producer (EDR-295).
+        EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), *EnterpriseChecklistProducers.all(), EnterpriseFuelingProducer())
 
     /** The sealed trip book and the entries it names, never a plaintext table (EDR-242). */
     @Provides
@@ -259,7 +268,24 @@ object EnterpriseModule {
     /** Each visible trip owner is independent, like "Meus ativos"; "Enviar agora" is one dispatch of its partition. */
     @Provides
     fun tripFlow(source: EnterpriseQueueSource, service: EnterpriseTripService, fence: EnterpriseSessionFence,
-        delivery: EnterpriseQueueService): TripFlow = TripFlow(source, service, fence) { account, partition -> delivery.dispatch(account, partition) }
+        delivery: EnterpriseQueueService, receipts: EnterpriseReceipts): TripFlow =
+        TripFlow(source, service, fence, receipts) { account, partition -> delivery.dispatch(account, partition) }
+
+    /** EMP-FUEL-011: the partition's retained `fueling.submit` entries, never a plaintext table (EDR-295). */
+    @Provides
+    @Singleton
+    fun fuelingStore(store: ProtectedEnterprisePersistence): EnterpriseFuelingStore = ProtectedFuelingStore(store)
+
+    @Provides
+    @Singleton
+    fun fuelingService(source: EnterpriseQueueSource, delivery: EnterpriseQueueService, store: EnterpriseFuelingStore): EnterpriseFuelingService =
+        EnterpriseFuelingService(source, { partition, operation -> delivery.save(partition, operation) }, store, { ZoneId.systemDefault() })
+
+    /** Each visible fueling owner is independent, like the trip owner; its receipts go through EMP-DOC-004. */
+    @Provides
+    fun fuelingFlow(source: EnterpriseQueueSource, service: EnterpriseFuelingService, fence: EnterpriseSessionFence,
+        delivery: EnterpriseQueueService, receipts: EnterpriseReceipts): FuelingFlow =
+        FuelingFlow(source, service, fence, receipts) { account, partition -> delivery.dispatch(account, partition) }
 
     /** The sealed checklist book and the entries it names, never a plaintext table (EDR-283). */
     @Provides
@@ -328,6 +354,17 @@ object EnterpriseModule {
         entropy = { bound -> Random.Default.nextLong(bound) }, newId = { UUID.randomUUID().toString() },
         enabled = BuildConfig.ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED,
     )
+
+    /** EMP-DOC-004: the thin capture face of the attachment queue, off with it (EDR-293). */
+    @Provides
+    @Singleton
+    fun receipts(attachments: EnterpriseAttachmentService): EnterpriseReceipts =
+        EnterpriseReceipts(attachments, BuildConfig.ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED)
+
+    /** EMP-DOC-004: the private camera file, bounded reads and the decoded legibility sample (EDR-291/292). */
+    @Provides
+    @Singleton
+    fun receiptOriginals(@ApplicationContext context: Context): ReceiptOriginals = AndroidReceiptOriginals(context)
 
     @Provides
     @Singleton

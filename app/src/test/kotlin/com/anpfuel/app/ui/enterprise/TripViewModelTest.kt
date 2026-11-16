@@ -110,4 +110,18 @@ class TripViewModelTest {
         verify(exactly = 1) { flow.withdraw() }
         coVerify(exactly = 0) { flow.start(any(), any(), any(), any(), any()) }
     }
+
+    @Test fun `a photo save is forwarded only for the current gesture and works offline`(): Unit = runTest(dispatcher) {
+        val model = model(); advanceUntilIdle(); clearMocks(flow, answers = false)
+        val bytes = ByteArray(32) { 7 }.also { it[0] = 0xff.toByte(); it[1] = 0xd8.toByte(); it[2] = 0xff.toByte(); it[30] = 0xff.toByte(); it[31] = 0xd9.toByte() }
+        val original = (com.anpfuel.domain.enterprise.attachment.ReceiptIntake.inspect(bytes, com.anpfuel.domain.enterprise.attachment.ReceiptSource.CAMERA)
+            as com.anpfuel.domain.enterprise.attachment.ReceiptInspection.Accepted).original
+        val draft = com.anpfuel.application.enterprise.attachment.ReceiptDraft(original, com.anpfuel.domain.enterprise.attachment.LegibilityHint.NOT_CHECKED)
+        val target = com.anpfuel.domain.enterprise.attachment.AttachmentTarget(com.anpfuel.domain.enterprise.document.DocumentTargetKind.METER_READING,
+            "10000000-0000-4000-8000-000000000062")
+        model.attach(trip, target, draft, 0, 6); model.attach(trip, target, draft, 1, 7); advanceUntilIdle()
+        coVerify(exactly = 0) { flow.attach(any(), any(), any(), any(), any()) }
+        model.attach(trip, target, draft, 0, 7); advanceUntilIdle()
+        coVerify(exactly = 1) { flow.attach(trip, target, draft, 0, 7) }
+    }
 }

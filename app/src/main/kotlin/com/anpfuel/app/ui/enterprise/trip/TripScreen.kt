@@ -42,17 +42,25 @@ import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.enterprise.attachment.AttachmentRows
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureCard
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureUi
+import com.anpfuel.app.ui.enterprise.attachment.localFailureText
 import com.anpfuel.app.ui.enterprise.checklist.DepartureChecklistLine
 import com.anpfuel.app.ui.enterprise.checklist.departureBlocks
 import com.anpfuel.app.ui.enterprise.fleet.EnterpriseAssetPicker
 import com.anpfuel.app.ui.enterprise.reasonText
 import com.anpfuel.app.ui.enterprise.statusText
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
+import com.anpfuel.application.enterprise.attachment.ReceiptDraft
 import com.anpfuel.application.enterprise.checklist.ChecklistViewState
 import com.anpfuel.application.enterprise.fleet.MyAssetsViewState
 import com.anpfuel.application.enterprise.trip.TripCapture
 import com.anpfuel.application.enterprise.trip.TripMeterChoice
 import com.anpfuel.application.enterprise.trip.TripViewState
+import com.anpfuel.domain.enterprise.attachment.AttachmentTarget
+import com.anpfuel.domain.enterprise.attachment.AttachmentView
+import com.anpfuel.domain.enterprise.document.DocumentTargetKind
 import com.anpfuel.domain.enterprise.fleet.AssetKind
 import com.anpfuel.domain.enterprise.fleet.EnterpriseAssetChoice
 import com.anpfuel.domain.enterprise.meter.MeterEntryForm
@@ -86,6 +94,8 @@ private sealed interface TripMode {
     class Start(val choice: EnterpriseAssetChoice, val label: TripAssetLabel) : TripMode
     class Event(val tripId: String) : TripMode
     class Finish(val tripId: String) : TripMode
+    /** EMP-DOC-004: a photo of the reading carried by one record (owner operation and its METER_READING target). */
+    class Photo(val ownerOperationId: String, val target: AttachmentTarget) : TripMode
     /** EMP-CHECK-002: the chosen vehicle's departure checklist, returning to the same start form. */
     class Checklist(val start: Start) : TripMode
 }
@@ -111,6 +121,9 @@ internal fun TripPanel(
     onReady: (String) -> Unit,
     onSend: () -> Unit,
     modifier: Modifier = Modifier,
+    /** EMP-DOC-004 capture; null when it is switched off (B-BR-EMP-450). */
+    capture: ReceiptCaptureUi? = null,
+    onAttach: (String, AttachmentTarget, ReceiptDraft) -> Unit = { _, _, _ -> },
     /** EMP-CHECK-002 (B-BR-EMP-443): the departure checklist owner's state; null hides the departure line (rollback flag). */
     checklist: ChecklistViewState? = null,
     onDepartureCheck: (assetId: String) -> Unit = {},
@@ -119,7 +132,10 @@ internal fun TripPanel(
     var mode by remember { mutableStateOf<TripMode>(TripMode.Home) }
     // A durable save closes the form it came from; a refusal or failure keeps the entered values.
     LaunchedEffect(state.lastSaved) { if (state.lastSaved != null && mode !is TripMode.Picker) mode = TripMode.Home }
-    LaunchedEffect(state.context?.partition, state.epoch) { mode = TripMode.Home }
+    // A sealed photo closes its sheet and drops the unsaved copy; a refusal or failure keeps it for another attempt.
+    LaunchedEffect(state.lastAttached) { if (state.lastAttached != null && mode is TripMode.Photo) { capture?.reset?.invoke(); mode = TripMode.Home } }
+    LaunchedEffect(state.context?.partition, state.epoch) { capture?.reset?.invoke(); mode = TripMode.Home }
+    val photo: (String, AttachmentTarget) -> Unit = { owner, target -> capture?.reset?.invoke(); mode = TripMode.Photo(owner, target) }
     when (val current = mode) {
         TripMode.Picker -> EnterpriseAssetPicker(
             state = assets, connected = connected,
@@ -173,9 +189,15 @@ internal fun TripPanel(
                 is TripMode.Finish -> state.trips.firstOrNull { it.trip.tripId == current.tripId }?.let { trip ->
                     item { FinishForm(trip, assets, state.busy, finishWarnings, onCancel = { mode = TripMode.Home }) { onFinish(current.tripId, it) } }
                 }
+                is TripMode.Photo -> if (capture != null) item {
+                    ReceiptCaptureCard(stringResource(R.string.enterprise_receipts_title_reading), capture, state.busy,
+                        onSave = { onAttach(current.ownerOperationId, current.target, it) },
+                        onCancel = { capture.reset(); mode = TripMode.Home })
+                }
                 else -> if (open != null) {
                     tripDetail(open, connected, state.busy, onEvent = { mode = TripMode.Event(open.trip.tripId) },
-                        onFinish = { mode = TripMode.Finish(open.trip.tripId) }, onReady = { onReady(open.trip.tripId) }, onSend = onSend)
+                        onFinish = { mode = TripMode.Finish(open.trip.tripId) }, onReady = { onReady(open.trip.tripId) }, onSend = onSend,
+                        photos = state.attachments, onPhoto = photo.takeIf { capture != null })
                 } else {
                     item {
                         Button(onClick = { onPick(); mode = TripMode.Picker }, enabled = !state.busy,
@@ -199,16 +221,24 @@ private fun Feedback(state: TripViewState, connected: Boolean) {
     if (!connected) Notice(stringResource(R.string.enterprise_trips_send_offline), Modifier.testTag("enterprise-trip-offline"))
     if (state.busy) CircularProgressIndicator()
     val refusal = state.refusal
+    val photoRefusal = state.attachmentRefusal
     val message = when {
         state.saveFailed -> R.string.enterprise_trips_save_failed
         state.captureInvalid -> R.string.enterprise_trips_capture_invalid
         state.driverUnknown -> R.string.enterprise_trips_driver_unknown
         state.sendFailed -> R.string.enterprise_trips_send_failed
         refusal != null -> refusalText(refusal)
+        photoRefusal != null -> localFailureText(photoRefusal)
+        state.lastAttached != null -> R.string.enterprise_receipts_saved
         state.lastSaved != null -> R.string.enterprise_trips_saved
         else -> null
     }
-    message?.let { Notice(stringResource(it), Modifier.testTag(if (it == R.string.enterprise_trips_saved) "enterprise-trip-saved" else "enterprise-trip-feedback")) }
+    message?.let { Notice(stringResource(it), Modifier.testTag(when (it) {
+        R.string.enterprise_trips_saved -> "enterprise-trip-saved"
+        R.string.enterprise_receipts_saved -> "enterprise-trip-photo-saved"
+        else -> "enterprise-trip-feedback"
+    })) }
+    if (state.attachmentsUnavailable) Notice(stringResource(R.string.enterprise_receipts_unavailable), Modifier.testTag("enterprise-trip-photos-unavailable"))
 }
 
 private fun refusalText(failure: TripLocalFailure): Int = when (failure) {
@@ -273,7 +303,8 @@ private fun StatusChip(record: TripRecordView, tag: String) {
 
 /** The open trip as separate list items, so a long timeline scrolls record by record. */
 private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: Boolean, onEvent: () -> Unit, onFinish: () -> Unit,
-    onReady: () -> Unit, onSend: () -> Unit) {
+    onReady: () -> Unit, onSend: () -> Unit, photos: Map<String, List<AttachmentView>> = emptyMap(),
+    onPhoto: ((String, AttachmentTarget) -> Unit)? = null) {
     item(key = "detail-header") {
         TripCard(Modifier.testTag("enterprise-trip-detail")) {
             Text(label(view.trip.label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
@@ -288,12 +319,12 @@ private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: B
     item(key = "detail-timeline") {
         Text(stringResource(R.string.enterprise_trips_timeline), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
     }
-    item(key = "record-start") { Record(view.start, stringResource(R.string.enterprise_trips_record_start), "start") }
+    item(key = "record-start") { Record(view.start, stringResource(R.string.enterprise_trips_record_start), "start", busy, photos, onPhoto) }
     items(view.events, key = { "record-" + it.fact.operationId }) { event ->
         val fact = event.fact as TripOperationFact.Event
         Record(event, listOfNotNull(stringResource(eventText(fact.type)), fact.text).joinToString(": "), "event-${fact.eventId}")
     }
-    view.finish?.let { item(key = "record-finish") { Record(it, stringResource(R.string.enterprise_trips_record_finish), "finish") } }
+    view.finish?.let { item(key = "record-finish") { Record(it, stringResource(R.string.enterprise_trips_record_finish), "finish", busy, photos, onPhoto) } }
     view.submission?.let { item(key = "record-submission") { Record(it, stringResource(R.string.enterprise_trips_record_submission), "submission") } }
     item(key = "detail-actions") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -315,16 +346,28 @@ private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: B
 }
 
 @Composable
-private fun Record(record: TripRecordView, title: String, tag: String) {
+private fun Record(record: TripRecordView, title: String, tag: String, busy: Boolean = false, photos: Map<String, List<AttachmentView>> = emptyMap(),
+    onPhoto: ((String, AttachmentTarget) -> Unit)? = null) {
     TripCard(Modifier.testTag("enterprise-trip-record-$tag")) {
         Text(title, style = MaterialTheme.typography.titleSmall)
         Text(formatted(record.fact.declared.occurredAt))
-        when (val fact = record.fact) {
-            is TripOperationFact.Start -> Text(evidenceText(fact.evidence))
-            is TripOperationFact.Finish -> Text(evidenceText(fact.evidence))
-            else -> Unit
+        val evidence = when (val fact = record.fact) {
+            is TripOperationFact.Start -> fact.evidence
+            is TripOperationFact.Finish -> fact.evidence
+            else -> null
         }
+        evidence?.let { Text(evidenceText(it)) }
         StatusChip(record, "enterprise-trip-sync-$tag")
+        // EMP-DOC-004: a recorded reading may carry photos, each with its own state (B-BR-EMP-454).
+        if (evidence is TripEvidence.Reading) {
+            val owner = record.fact.operationId
+            val target = AttachmentTarget(DocumentTargetKind.METER_READING, evidence.readingId)
+            AttachmentRows(photos[owner].orEmpty(), "enterprise-trip-photo-$tag", onPhoto?.let { { it(owner, target) } })
+            if (onPhoto != null) OutlinedButton(onClick = { onPhoto(owner, target) }, enabled = !busy,
+                modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("enterprise-trip-add-photo-$tag")) {
+                Text(stringResource(R.string.enterprise_receipts_add_reading_photo))
+            }
+        }
     }
 }
 

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-DOC-004 SCR-DOC-01; generated from one table by f4-logs/doc004-scripts/gen_receipt_strings.py -->
+<resources>
+    <string name="enterprise_receipts_synthetic_notice">Тестовый этап: используйте только синтетические изображения, никогда не настоящий чек.</string>
+    <string name="enterprise_receipts_camera">Сделать фото</string>
+    <string name="enterprise_receipts_import">Импортировать фото</string>
+    <string name="enterprise_receipts_reading">Чтение фото…</string>
+    <string name="enterprise_receipts_camera_denied">Доступ к камере запрещён. Вместо этого можно импортировать фото. Ничего не сохранено.</string>
+    <string name="enterprise_receipts_cancelled">Фото не выбрано. Ничего не сохранено.</string>
+    <string name="enterprise_receipts_refused_missing">Файл не найден на устройстве. Выберите его ещё раз. Ничего не сохранено.</string>
+    <string name="enterprise_receipts_refused_too_large">Этот файл больше 5 МБ. Ничего не сохранено.</string>
+    <string name="enterprise_receipts_refused_unsupported">Формат не поддерживается на этом этапе (только фото JPEG). Ничего не сохранено.</string>
+    <string name="enterprise_receipts_hint_sharp">Изображение выглядит чётким.</string>
+    <string name="enterprise_receipts_hint_low_resolution">В изображении может быть слишком мало пикселей.</string>
+    <string name="enterprise_receipts_hint_dark">Изображение может быть слишком тёмным.</string>
+    <string name="enterprise_receipts_hint_bright">Изображение может быть слишком светлым.</string>
+    <string name="enterprise_receipts_hint_contrast">У изображения может быть низкий контраст.</string>
+    <string name="enterprise_receipts_hint_blurred">Изображение может быть размытым.</string>
+    <string name="enterprise_receipts_hint_not_checked">Не удалось проверить изображение.</string>
+    <string name="enterprise_receipts_hint_disclaimer">Эта проверка — только подсказка; она не подтверждает чек.</string>
+    <string name="enterprise_receipts_keep_or_retake">Оставьте это фото или сделайте другое.</string>
+    <string name="enterprise_receipts_save">Сохранить на устройстве</string>
+    <string name="enterprise_receipts_cancel">Отмена</string>
+    <string name="enterprise_receipts_preview_description">Выбранное фото</string>
+    <string name="enterprise_receipts_photos">Фото</string>
+    <string name="enterprise_receipts_photo_status">Фото %1$d: %2$s</string>
+    <string name="enterprise_receipts_reason">Причина: %1$s</string>
+    <string name="enterprise_receipts_retake">Сделать фото заново</string>
+    <string name="enterprise_receipts_label_saved">Сохранено на устройстве</string>
+    <string name="enterprise_receipts_label_sending">Отправка</string>
+    <string name="enterprise_receipts_label_verifying">Файл проверяется</string>
+    <string name="enterprise_receipts_label_stored">Файл сохранён компанией</string>
+    <string name="enterprise_receipts_label_refused">Не принято</string>
+    <string name="enterprise_receipts_label_missing">Чек не найден на устройстве. Сделайте фото заново.</string>
+    <string name="enterprise_receipts_label_attention">Требует внимания</string>
+    <string name="enterprise_receipts_refusal_owner">запись не была принята</string>
+    <string name="enterprise_receipts_refusal_forbidden">не разрешено для этой записи</string>
+    <string name="enterprise_receipts_refusal_validation">не принимается на этом этапе</string>
+    <string name="enterprise_receipts_refusal_conflict">конфликтует с другим фото</string>
+    <string name="enterprise_receipts_refusal_reused">отправлено повторно с другим содержимым</string>
+    <string name="enterprise_receipts_refusal_quarantined">задержано проверкой безопасности</string>
+    <string name="enterprise_receipts_refusal_failed">загрузка закрыта без файла</string>
+    <string name="enterprise_receipts_local_unknown_record">Эта запись не сохранена для этой компании на устройстве.</string>
+    <string name="enterprise_receipts_local_full">На этом устройстве слишком много фото. Отправьте их, прежде чем добавлять новые.</string>
+    <string name="enterprise_receipts_local_budget">Неотправленные фото уже занимают доступное место. Сначала отправьте их.</string>
+    <string name="enterprise_receipts_local_foreign">Эти фото принадлежат другой регистрации этого устройства.</string>
+    <string name="enterprise_receipts_local_disabled">Съёмка фото отключена в этой версии.</string>
+    <string name="enterprise_receipts_local_invalid">Не удалось сохранить это фото. Ничего не сохранено.</string>
+    <string name="enterprise_receipts_add_reading_photo">Добавить фото показания</string>
+    <string name="enterprise_receipts_title_reading">Фото показания</string>
+    <string name="enterprise_receipts_saved">Фото сохранено на устройстве.</string>
+    <string name="enterprise_receipts_unavailable">Сейчас не удаётся прочитать фото этой компании. Сохранённые фото не теряются.</string>
+</resources>
