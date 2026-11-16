@@ -23,6 +23,13 @@ func OffboardingPolicy(write bool) access.Policy {
 	return MembershipAccessPolicy(MembershipAccessRead)
 }
 
+// OpenWork is an owning module's actual open work of one membership at
+// offboarding (EMP-TRIP-018, EDR-260): handover keys read inside the
+// caller's transaction. It never closes, reassigns or deletes the work.
+type OpenWork interface {
+	OpenWorkKeysTx(context.Context, pgx.Tx, kernel.OrgScope, string) ([]string, error)
+}
+
 type OffboardingAuthority interface {
 	CheckOffboardingTx(context.Context, pgx.Tx, kernel.OrgScope, EmployeeActor, string, bool, bool) error
 }

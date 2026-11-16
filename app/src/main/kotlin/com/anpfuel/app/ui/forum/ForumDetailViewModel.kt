@@ -17,6 +17,9 @@ import com.anpfuel.application.usecase.forum.ReportForumTargetUseCase
 import com.anpfuel.application.usecase.forum.SetForumReactionUseCase
 import com.anpfuel.application.usecase.forum.SubmitForumCommentUseCase
 import com.anpfuel.application.usecase.forum.ValidateForumSafeLinkUseCase
+import com.anpfuel.application.usecase.safety.BlockCommunityUserUseCase
+import com.anpfuel.application.usecase.safety.FilterHiddenContentUseCase
+import com.anpfuel.application.usecase.safety.ReportCommunityUserUseCase
 import com.anpfuel.domain.forum.ForumComment
 import com.anpfuel.domain.forum.ForumCommentReceipt
 import com.anpfuel.domain.forum.ForumException
@@ -29,6 +32,11 @@ import com.anpfuel.domain.forum.ForumReactionTarget
 import com.anpfuel.domain.forum.ForumReplySort
 import com.anpfuel.domain.forum.ForumReportReason
 import com.anpfuel.domain.forum.ForumReportReceipt
+import com.anpfuel.domain.safety.CommunitySafetyException
+import com.anpfuel.domain.safety.SafetyContentKind
+import com.anpfuel.domain.safety.SafetyContentRef
+import com.anpfuel.domain.safety.UserReportReason
+import com.anpfuel.domain.safety.UserReportReceipt
 import dagger.hilt.android.lifecycle.HiltViewModel
 import java.net.URI
 import java.util.UUID
@@ -92,7 +100,24 @@ data class ForumDetailUiState(
     /** Replies published while reading, offered behind "new replies". */
     val pendingLiveComments: List<ForumComment> = emptyList(),
     val liveConnected: Boolean = false,
-)
+
+    // Community safety (B-BR-SAFE-04..06, BUC-SAFE-01..03)
+    /** The opened topic was written by an account the viewer blocked: a neutral notice replaces it. */
+    val topicHidden: Boolean = false,
+    val userReportTarget: SafetyContentRef? = null,
+    val isSubmittingUserReport: Boolean = false,
+    val userReportReceipt: UserReportReceipt? = null,
+    val blockTarget: SafetyContentRef? = null,
+    val isBlocking: Boolean = false,
+    val blockedNotice: Boolean = false,
+) {
+    /**
+     * Report and block actions for the opened post: only forum topics
+     * (B-BR-SAFE-01) the viewer does not own (BUC-SAFE-02), while shown.
+     */
+    val showsTopicSafetyActions: Boolean
+        get() = post?.kind == ForumPostKind.TOPIC && !isTopicOwner && !topicHidden
+}
 
 sealed interface ForumActionError {
     data object Conflict : ForumActionError
@@ -100,6 +125,12 @@ sealed interface ForumActionError {
     data object TargetMissing : ForumActionError
     data object Offline : ForumActionError
     data class Generic(val message: String?) : ForumActionError
+
+    /** The viewer tried to report or block their own content (B-BR-SAFE-02). */
+    data object SelfTarget : ForumActionError
+
+    /** The account holds the maximum number of blocks (B-BR-SAFE-05). */
+    data object BlockLimit : ForumActionError
 }
 
 enum class ForumDetailError {
@@ -126,6 +157,9 @@ class ForumDetailViewModel @Inject constructor(
     private val observeConversation: ObserveForumConversationUseCase,
     private val sessionStore: AuthSessionStore? = null,
     savedStateHandle: SavedStateHandle,
+    private val filterHiddenContent: FilterHiddenContentUseCase? = null,
+    private val reportCommunityUser: ReportCommunityUserUseCase? = null,
+    private val blockCommunityUser: BlockCommunityUserUseCase? = null,
 ) : ViewModel() {
 
     private val postIdArg: String = savedStateHandle.get<String>("postId").orEmpty()
@@ -143,6 +177,12 @@ class ForumDetailViewModel @Inject constructor(
     private var writeJob: Job? = null
     private var liveJob: Job? = null
     private var reactionsJob: Job? = null
+    private var safetyJob: Job? = null
+    private var refilterJob: Job? = null
+
+    // Content the server said was written by accounts the viewer blocked
+    // (B-BR-SAFE-06). Only ever touched on the main thread.
+    private val hiddenRefs = mutableSetOf<SafetyContentRef>()
 
     // Reaction writes go out in tap order; only the newest answer per target
     // reconciles the optimistic state.
@@ -223,7 +263,11 @@ class ForumDetailViewModel @Inject constructor(
             commentsJob?.cancel()
             writeJob?.cancel()
             ownershipJob?.cancel()
+            safetyJob?.cancel()
+            refilterJob?.cancel()
             pendingWrite = null
+            val wasTopicHidden = _state.value.topicHidden
+            hiddenRefs.clear()
             _state.update {
                 it.copy(
                     isAuthenticated = isAuthed,
@@ -239,14 +283,25 @@ class ForumDetailViewModel @Inject constructor(
                     isSubmittingReport = false,
                     postReaction = ForumReaction.NONE,
                     commentReactions = emptyMap(),
+                    topicHidden = false,
+                    userReportTarget = null,
+                    isSubmittingUserReport = false,
+                    userReportReceipt = null,
+                    blockTarget = null,
+                    isBlocking = false,
+                    blockedNotice = false,
                 )
             }
             lastKnownAccountId = currentAccountId
-            if (isAuthed) {
+            if (wasTopicHidden && _state.value.postId.isNotBlank()) {
+                // The hidden topic skipped its conversation: load it for the new identity.
+                load(_state.value.postId)
+            } else if (isAuthed) {
                 _state.value.post?.let {
                     refreshOwnership(it)
                     refreshOwnReactions(it.id)
                 }
+                refilterShown()
             }
         } else if (wasAuthed != isAuthed) {
             _state.update { it.copy(isAuthenticated = isAuthed) }
@@ -260,15 +315,7 @@ class ForumDetailViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             try {
                 val detail = getForumPostDetail(postId)
-                _state.update {
-                    it.copy(
-                        post = detail,
-                        loading = false,
-                        refreshing = false,
-                        error = null,
-                        isOffline = false,
-                    )
-                }
+                if (showDetail(detail)) return@launch
                 // B-BR-FOR-18: the post first, then its replies.
                 if (!_state.value.isSocialEnabled) {
                     setSocialEnabled(true)
@@ -312,15 +359,7 @@ class ForumDetailViewModel @Inject constructor(
         loadJob = viewModelScope.launch {
             try {
                 val detail = getForumPostDetail(id)
-                _state.update {
-                    it.copy(
-                        post = detail,
-                        loading = false,
-                        refreshing = false,
-                        error = null,
-                        isOffline = false,
-                    )
-                }
+                if (showDetail(detail)) return@launch
                 // B-BR-FOR-18: the post first, then its replies.
                 if (!_state.value.isSocialEnabled) {
                     setSocialEnabled(true)
@@ -355,12 +394,68 @@ class ForumDetailViewModel @Inject constructor(
         }
     }
 
+    /**
+     * Publishes a freshly read post after asking whether its author is
+     * blocked (B-BR-SAFE-06). Returns true when the topic is hidden: the
+     * neutral notice replaces it and its conversation is not loaded.
+     */
+    private suspend fun showDetail(detail: ForumPostDetail): Boolean {
+        hiddenRefs.clear()
+        lookupHidden(listOfNotNull(detail.safetyRef()))
+        _state.update {
+            it.copy(
+                post = detail,
+                loading = false,
+                refreshing = false,
+                error = null,
+                isOffline = false,
+                topicHidden = false,
+            ).withoutHidden(hiddenRefs)
+        }
+        if (_state.value.topicHidden) {
+            stopLive()
+            _state.update {
+                it.copy(comments = emptyList(), repliesMap = emptyMap(), pendingLiveComments = emptyList(), commentsCursor = null)
+            }
+            return true
+        }
+        return false
+    }
+
+    /** Asks which of [refs] are hidden for the viewer; fails open (B-BR-SAFE-06). */
+    private suspend fun lookupHidden(refs: Collection<SafetyContentRef>): Set<SafetyContentRef> {
+        val filter = filterHiddenContent ?: return emptySet()
+        if (refs.isEmpty()) return emptySet()
+        val found = try {
+            filter(refs)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            emptySet()
+        }
+        hiddenRefs += found
+        return found
+    }
+
+    /** Filters everything on screen again, e.g. after a block or an account change. */
+    private fun refilterShown() {
+        if (filterHiddenContent == null) return
+        refilterJob?.cancel()
+        refilterJob = viewModelScope.launch {
+            lookupHidden(_state.value.shownSafetyRefs())
+            _state.update { it.withoutHidden(hiddenRefs) }
+        }
+    }
+
     fun loadComments(postId: String) {
+        // A hidden topic shows only the neutral notice, never its conversation.
+        if (_state.value.topicHidden) return
         commentsJob?.cancel()
         _state.update { it.copy(commentsLoading = true) }
         commentsJob = viewModelScope.launch {
             try {
                 val page = getRankedComments(postId, _state.value.replySort)
+                lookupHidden(page.items.safetyRefs())
                 _state.update {
                     it.copy(
                         comments = page.items,
@@ -368,7 +463,7 @@ class ForumDetailViewModel @Inject constructor(
                         commentsLoading = false,
                         // Everything new is now in the list itself.
                         pendingLiveComments = emptyList(),
-                    )
+                    ).withoutHidden(hiddenRefs)
                 }
                 refreshOwnReactions(postId)
             } catch (e: ForumException.Offline) {
@@ -397,13 +492,14 @@ class ForumDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val page = getRankedComments(cur.postId, cur.replySort, cursor = cursor)
+                lookupHidden(page.items.safetyRefs())
                 _state.update { state ->
                     val known = state.comments.map { it.id }.toSet()
                     state.copy(
                         comments = state.comments + page.items.filterNot { it.id in known },
                         commentsCursor = page.nextCursor,
                         loadingMoreComments = false,
-                    )
+                    ).withoutHidden(hiddenRefs)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -514,7 +610,7 @@ class ForumDetailViewModel @Inject constructor(
 
     /** Opens the live stream while the conversation is on screen. */
     fun startLive() {
-        if (liveJob?.isActive == true) return
+        if (liveJob?.isActive == true || _state.value.topicHidden) return
         val postId = _state.value.postId
         if (postId.isBlank()) return
         liveJob = viewModelScope.launch {
@@ -574,6 +670,19 @@ class ForumDetailViewModel @Inject constructor(
     }
 
     private fun onLiveComment(comment: ForumComment) {
+        if (_state.value.topicHidden) return
+        applyLiveComment(comment)
+        if (filterHiddenContent != null && comment.safetyRef() !in hiddenRefs) {
+            viewModelScope.launch {
+                if (lookupHidden(listOf(comment.safetyRef())).isNotEmpty()) {
+                    _state.update { it.withoutHidden(hiddenRefs) }
+                }
+            }
+        }
+    }
+
+    private fun applyLiveComment(comment: ForumComment) {
+        if (comment.safetyRef() in hiddenRefs) return
         _state.update { state ->
             val parentId = comment.parentId
             when {
@@ -617,11 +726,12 @@ class ForumDetailViewModel @Inject constructor(
         viewModelScope.launch {
             try {
                 val replies = getForumReplies(commentId)
+                lookupHidden(replies.items.safetyRefs())
                 _state.update {
                     it.copy(
                         repliesMap = it.repliesMap + (commentId to replies.items),
                         repliesLoading = it.repliesLoading - commentId,
-                    )
+                    ).withoutHidden(hiddenRefs)
                 }
             } catch (e: ForumException.Offline) {
                 _state.update {
@@ -861,6 +971,113 @@ class ForumDetailViewModel @Inject constructor(
         }
     }
 
+    /** Signed actions need an account; visitors go to the sign-in journey (B-BR-SAFE-03). */
+    private fun requireSignedIn(): Boolean {
+        checkSessionConsistency()
+        if (sessionStore?.load() == null) {
+            _state.update { it.copy(requireAuthPrompt = true, isAuthenticated = false) }
+            return false
+        }
+        return true
+    }
+
+    /** BUC-SAFE-02: report the author of a topic, comment or reply. */
+    fun openReportUser(ref: SafetyContentRef) {
+        if (!requireSignedIn()) return
+        _state.update { it.copy(userReportTarget = ref, actionError = null) }
+    }
+
+    fun cancelReportUser() {
+        _state.update { it.copy(userReportTarget = null) }
+    }
+
+    fun submitReportUser(reason: UserReportReason, detail: String? = null) {
+        val cur = _state.value
+        val target = cur.userReportTarget ?: return
+        val report = reportCommunityUser ?: return
+        if (cur.isSubmittingUserReport) return
+        if (!requireSignedIn()) return
+        _state.update { it.copy(isSubmittingUserReport = true, actionError = null) }
+        safetyJob = viewModelScope.launch {
+            try {
+                val receipt = report(target, reason, detail)
+                _state.update {
+                    it.copy(isSubmittingUserReport = false, userReportTarget = null, userReportReceipt = receipt)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val error = safetyError(e)
+                _state.update { it.copy(isSubmittingUserReport = false, userReportTarget = null, actionError = error) }
+            }
+        }
+    }
+
+    fun dismissUserReportReceipt() {
+        _state.update { it.copy(userReportReceipt = null) }
+    }
+
+    /** BUC-SAFE-03: asks for confirmation before blocking the author. */
+    fun openBlockUser(ref: SafetyContentRef) {
+        if (!requireSignedIn()) return
+        _state.update { it.copy(blockTarget = ref, actionError = null) }
+    }
+
+    fun cancelBlockUser() {
+        _state.update { it.copy(blockTarget = null) }
+    }
+
+    /**
+     * Blocks the author, drops the source content at once and filters
+     * everything still on screen again, so the author's other topics,
+     * comments and replies disappear too (B-BR-SAFE-05, B-BR-SAFE-06).
+     */
+    fun confirmBlockUser() {
+        val cur = _state.value
+        val target = cur.blockTarget ?: return
+        val block = blockCommunityUser ?: return
+        if (cur.isBlocking) return
+        if (!requireSignedIn()) return
+        _state.update { it.copy(isBlocking = true, actionError = null) }
+        safetyJob = viewModelScope.launch {
+            try {
+                block(target)
+                hiddenRefs += target
+                _state.update {
+                    it.copy(isBlocking = false, blockTarget = null, blockedNotice = true, userReportReceipt = null)
+                        .withoutHidden(hiddenRefs)
+                }
+                if (_state.value.topicHidden) stopLive()
+                lookupHidden(_state.value.shownSafetyRefs())
+                _state.update { it.withoutHidden(hiddenRefs) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                val error = safetyError(e)
+                _state.update { it.copy(isBlocking = false, blockTarget = null, actionError = error) }
+            }
+        }
+    }
+
+    fun dismissBlockedNotice() {
+        _state.update { it.copy(blockedNotice = false) }
+    }
+
+    /** Maps a safety refusal to the shared notice; auth sends the visitor to sign in. */
+    private fun safetyError(e: Exception): ForumActionError? = when (e) {
+        is CommunitySafetyException.AuthRequired -> {
+            _state.update { it.copy(requireAuthPrompt = true, isAuthenticated = false) }
+            null
+        }
+        is CommunitySafetyException.SelfTarget -> ForumActionError.SelfTarget
+        is CommunitySafetyException.BlockLimit -> ForumActionError.BlockLimit
+        is CommunitySafetyException.RateLimited -> ForumActionError.RateLimited(e.retryAfterSeconds)
+        is CommunitySafetyException.NotFound -> ForumActionError.TargetMissing
+        is CommunitySafetyException.Offline -> ForumActionError.Offline
+        // Never a server body or code on screen.
+        else -> ForumActionError.Generic(null)
+    }
+
     fun dismissReportReceipt() {
         _state.update { it.copy(reportReceipt = null) }
     }
@@ -943,5 +1160,42 @@ internal fun ForumDetailUiState.removingComment(commentId: String, parentId: Str
         },
         pendingLiveComments = pendingLiveComments.filterNot { it.id == commentId },
         repliesMap = if (wasReplyListed) repliesMap + (parentId!! to repliesMap.getValue(parentId).filterNot { it.id == commentId }) else repliesMap,
+    )
+}
+
+/** Topics are the only posts a user report or block may name (B-BR-SAFE-01). */
+internal fun ForumPostDetail.safetyRef(): SafetyContentRef? =
+    if (kind == ForumPostKind.TOPIC) SafetyContentRef(SafetyContentKind.FORUM_POST, id) else null
+
+internal fun ForumComment.safetyRef(): SafetyContentRef = SafetyContentRef(SafetyContentKind.FORUM_COMMENT, id)
+
+/** Comments plus their best answer previews. */
+internal fun List<ForumComment>.safetyRefs(): List<SafetyContentRef> =
+    flatMap { listOfNotNull(it.safetyRef(), it.topReply?.safetyRef()) }
+
+/** Every user-written item currently shown: topic, replies, previews, threads, pending. */
+internal fun ForumDetailUiState.shownSafetyRefs(): List<SafetyContentRef> = buildList {
+    post?.safetyRef()?.let(::add)
+    addAll(comments.safetyRefs())
+    repliesMap.values.forEach { replies -> replies.forEach { add(it.safetyRef()) } }
+    addAll(pendingLiveComments.safetyRefs())
+}.distinct()
+
+/**
+ * Removes content written by blocked accounts from every place it shows
+ * (B-BR-SAFE-06): the topic becomes a neutral notice, comments, replies,
+ * best answer previews and pending live replies disappear.
+ */
+internal fun ForumDetailUiState.withoutHidden(hidden: Set<SafetyContentRef>): ForumDetailUiState {
+    if (hidden.isEmpty()) return this
+    fun ForumComment.isHidden() = safetyRef() in hidden
+    return copy(
+        topicHidden = topicHidden || post?.safetyRef()?.let { it in hidden } == true,
+        comments = comments.filterNot { it.isHidden() }.map { c ->
+            if (c.topReply?.isHidden() == true) c.copy(topReply = null) else c
+        },
+        repliesMap = repliesMap.mapValues { (_, replies) -> replies.filterNot { it.isHidden() } },
+        pendingLiveComments = pendingLiveComments.filterNot { it.isHidden() },
+        replyingTo = replyingTo?.takeUnless { it.isHidden() },
     )
 }

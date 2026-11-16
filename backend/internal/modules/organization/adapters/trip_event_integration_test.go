@@ -40,6 +40,7 @@ func eventGrants(t *testing.T, x tripState) {
 	if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_events,org_trip_held_events TO "+role+";GRANT SELECT ON org_trip_review_entries TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	tripClosureGrant(t, x.f)
 	// EMP-CHECK-003 (EDR-240): the timeline reads the trip's reports once the
 	// 000230 table exists (an upgrade rehearsal may stop at an earlier image).
 	var reports bool

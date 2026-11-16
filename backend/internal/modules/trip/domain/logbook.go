@@ -165,6 +165,11 @@ func (t Trip) Log(scope kernel.OrgScope, in LogbookInput) (LogbookEntry, error) 
 	if end, ok := t.Cancellation(); ok && declared.OccurredAt.After(end.Declared().OccurredAt) {
 		return LogbookEntry{}, ErrEventAfterFinish
 	}
+	// EMP-TRIP-014 (B-BR-EMP-402): a closure has no device instant, so every
+	// later event is after it and is kept for review.
+	if t.closure != nil {
+		return LogbookEntry{}, ErrEventAfterFinish
+	}
 	return LogbookEntry{trip: t.reference, reference: in.Reference, author: in.Author, kind: kind, text: copyPointer(in.Text), declared: declared}, nil
 }
 

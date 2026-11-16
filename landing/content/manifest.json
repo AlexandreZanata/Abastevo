@@ -4,7 +4,7 @@
     { "route": "/", "label": "Página inicial do abastevo", "source": "index.html", "chrome": "home", "lastmod": "2026-11-14" },
     { "route": "/privacidade/", "label": "Política de privacidade", "source": "privacidade/index.html", "chrome": "shared", "lastmod": "2026-11-05" },
     { "route": "/excluir-conta/", "label": "Exclusão de conta e dados", "source": "excluir-conta/index.html", "chrome": "shared", "lastmod": "2026-11-05" },
-    { "route": "/termos/", "label": "Termos de uso e moderação", "source": "termos/index.html", "chrome": "shared", "lastmod": "2026-11-05" },
+    { "route": "/termos/", "label": "Termos de uso e moderação", "source": "termos/index.html", "chrome": "shared", "lastmod": "2026-11-15" },
     { "route": "/contribuidores/", "label": "Contribuidores do projeto", "source": "contribuidores/index.html", "chrome": "footer", "lastmod": "2026-11-05" },
     {
       "route": "/guias/pesquisa-anp/", "source": "guias/pesquisa-anp/index.html", "chrome": "shared", "lastmod": "2026-11-05",

@@ -28,7 +28,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.outlined.ChatBubbleOutline
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Edit
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
@@ -39,6 +38,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -74,11 +74,17 @@ import com.anpfuel.app.ui.components.SkeletonGroup
 import com.anpfuel.app.ui.designsystem.Button
 import com.anpfuel.app.ui.designsystem.OutlinedButton
 import com.anpfuel.app.ui.designsystem.TextButton
+import com.anpfuel.app.ui.safety.BlockUserDialog
+import com.anpfuel.app.ui.safety.ContentMenuAction
+import com.anpfuel.app.ui.safety.ContentOverflowMenu
+import com.anpfuel.app.ui.safety.ReportUserDialog
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.domain.forum.ForumComment
 import com.anpfuel.domain.forum.ForumReaction
 import com.anpfuel.domain.forum.ForumReplySort
 import com.anpfuel.domain.forum.ForumReportReason
+import com.anpfuel.domain.safety.SafetyContentRef
+import com.anpfuel.domain.safety.UserReportReason
 import kotlinx.coroutines.launch
 
 @Composable
@@ -135,6 +141,14 @@ fun ForumDetailScreen(
         onSortChange = viewModel::setReplySort,
         onLoadMoreComments = viewModel::loadMoreComments,
         onShowNewReplies = viewModel::showNewReplies,
+        onOpenReportUser = viewModel::openReportUser,
+        onCancelReportUser = viewModel::cancelReportUser,
+        onSubmitReportUser = viewModel::submitReportUser,
+        onDismissUserReportReceipt = viewModel::dismissUserReportReceipt,
+        onOpenBlockUser = viewModel::openBlockUser,
+        onCancelBlockUser = viewModel::cancelBlockUser,
+        onConfirmBlockUser = viewModel::confirmBlockUser,
+        onDismissBlockedNotice = viewModel::dismissBlockedNotice,
         modifier = modifier,
     )
 }
@@ -173,6 +187,14 @@ internal fun ForumDetailContent(
     onSortChange: (ForumReplySort) -> Unit = {},
     onLoadMoreComments: () -> Unit = {},
     onShowNewReplies: () -> Unit = {},
+    onOpenReportUser: (SafetyContentRef) -> Unit = {},
+    onCancelReportUser: () -> Unit = {},
+    onSubmitReportUser: (UserReportReason, String?) -> Unit = { _, _ -> },
+    onDismissUserReportReceipt: () -> Unit = {},
+    onOpenBlockUser: (SafetyContentRef) -> Unit = {},
+    onCancelBlockUser: () -> Unit = {},
+    onConfirmBlockUser: () -> Unit = {},
+    onDismissBlockedNotice: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var selectedReportReason by remember { mutableStateOf(ForumReportReason.SPAM) }
@@ -204,6 +226,22 @@ internal fun ForumDetailContent(
                         Icon(
                             Icons.Default.Refresh,
                             contentDescription = stringResource(R.string.forum_retry),
+                        )
+                    }
+                    // BUC-SAFE-01..03: a topic the viewer did not write can be
+                    // reported and its author reported or blocked.
+                    val topicRef = state.post?.safetyRef()
+                    if (state.showsTopicSafetyActions && topicRef != null) {
+                        ContentOverflowMenu(
+                            actions = listOf(
+                                ContentMenuAction(stringResource(R.string.safety_report_topic)) {
+                                    onOpenReport("FORUM_POST", topicRef.id)
+                                },
+                                ContentMenuAction(stringResource(R.string.safety_report_user)) { onOpenReportUser(topicRef) },
+                                ContentMenuAction(stringResource(R.string.safety_block_user)) { onOpenBlockUser(topicRef) },
+                            ),
+                            contentDescription = stringResource(R.string.safety_more_actions),
+                            tint = LocalContentColor.current,
                         )
                     }
                 },
@@ -255,6 +293,8 @@ internal fun ForumDetailContent(
                         is ForumActionError.TargetMissing -> stringResource(R.string.forum_post_not_found_hint)
                         is ForumActionError.Offline -> stringResource(R.string.forum_offline_notice)
                         is ForumActionError.Generic -> currentActionError.message ?: stringResource(R.string.forum_unavailable_hint)
+                        is ForumActionError.SelfTarget -> stringResource(R.string.safety_error_self_target)
+                        is ForumActionError.BlockLimit -> stringResource(R.string.safety_error_block_limit)
                     }
                     Card(
                         modifier = Modifier.fillMaxWidth(),
@@ -352,6 +392,27 @@ internal fun ForumDetailContent(
                 }
             }
 
+            if (state.userReportReceipt != null) {
+                item {
+                    ForumNoticeCard(
+                        text = stringResource(
+                            if (state.userReportReceipt.replayed) {
+                                R.string.safety_report_user_replayed
+                            } else {
+                                R.string.safety_report_user_received
+                            },
+                        ),
+                        onDismiss = onDismissUserReportReceipt,
+                    )
+                }
+            }
+
+            if (state.blockedNotice) {
+                item {
+                    ForumNoticeCard(text = stringResource(R.string.safety_block_done), onDismiss = onDismissBlockedNotice)
+                }
+            }
+
             when {
                 state.loading && state.post == null -> {
                     item {
@@ -365,6 +426,17 @@ internal fun ForumDetailContent(
                         ForumMessageCard(
                             title = stringResource(R.string.forum_post_not_found_title),
                             description = stringResource(R.string.forum_post_not_found_hint),
+                            actionLabel = stringResource(R.string.action_back),
+                            onAction = onBack,
+                        )
+                    }
+                }
+                state.post != null && state.topicHidden -> {
+                    // B-BR-SAFE-06: a topic by a blocked author shows a neutral notice instead of its text.
+                    item {
+                        ForumMessageCard(
+                            title = stringResource(R.string.safety_topic_hidden_title),
+                            description = stringResource(R.string.safety_topic_hidden_message),
                             actionLabel = stringResource(R.string.action_back),
                             onAction = onBack,
                         )
@@ -744,8 +816,10 @@ internal fun ForumDetailContent(
                                     onReact = onReactToComment,
                                     onToggleReplies = { onToggleReplies(comment.id) },
                                     onReply = { onStartReply(comment) },
-                                    onReport = { onOpenReport("FORUM_COMMENT", comment.id) },
-                                    onReportReply = { replyId -> onOpenReport("FORUM_COMMENT", replyId) },
+                                    onReport = { target -> onOpenReport("FORUM_COMMENT", target.id) },
+                                    onReportUser = { target -> onOpenReportUser(target.safetyRef()) },
+                                    onBlockUser = { target -> onOpenBlockUser(target.safetyRef()) },
+                                    ownCommentIds = state.ownCommentIds,
                                     isOwn = state.ownCommentIds.contains(comment.id),
                                     onEdit = { onStartEdit(comment) },
                                     onDelete = { onConfirmRemove(comment) },
@@ -950,6 +1024,54 @@ internal fun ForumDetailContent(
             },
         )
     }
+
+    if (state.userReportTarget != null) {
+        ReportUserDialog(
+            submitting = state.isSubmittingUserReport,
+            onDismiss = onCancelReportUser,
+            onSubmit = onSubmitReportUser,
+        )
+    }
+
+    if (state.blockTarget != null) {
+        BlockUserDialog(
+            blocking = state.isBlocking,
+            onDismiss = onCancelBlockUser,
+            onConfirm = onConfirmBlockUser,
+        )
+    }
+}
+
+/** Dismissible confirmation in the conversation list, like the report receipt. */
+@Composable
+private fun ForumNoticeCard(text: String, onDismiss: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = AnpContainerDefaults.containerShape(),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                modifier = Modifier.weight(1f),
+            )
+            IconButton(onClick = onDismiss, modifier = Modifier.size(48.dp)) {
+                Icon(
+                    Icons.Default.Close,
+                    contentDescription = stringResource(R.string.action_cancel),
+                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                )
+            }
+        }
+    }
 }
 
 /** "Comentários" with the live dot and the reply order menu, as on X. */
@@ -1031,14 +1153,22 @@ private fun CommentItemView(
     onReact: (ForumComment, ForumReaction) -> Unit,
     onToggleReplies: () -> Unit,
     onReply: () -> Unit,
-    onReport: () -> Unit,
-    onReportReply: (String) -> Unit,
+    onReport: (ForumComment) -> Unit,
+    onReportUser: (ForumComment) -> Unit,
+    onBlockUser: (ForumComment) -> Unit,
+    ownCommentIds: Set<String>,
     isOwn: Boolean,
     onEdit: () -> Unit,
     onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val author = forumCommentAuthor(comment.publicAlias)
+    fun safetyFor(target: ForumComment) = ForumCommentSafety(
+        isOwn = target.id in ownCommentIds,
+        onReport = { onReport(target) },
+        onReportUser = { onReportUser(target) },
+        onBlockUser = { onBlockUser(target) },
+    )
     val preview = comment.topReply?.takeIf { !isExpanded }
     val threadBelow = preview != null || (isExpanded && (replies.isNotEmpty() || repliesLoading))
     Column(modifier = modifier.fillMaxWidth()) {
@@ -1058,7 +1188,7 @@ private fun CommentItemView(
                     reaction = reactions[comment.id] ?: ForumReaction.NONE,
                     onReact = onReact,
                     onReply = onReply,
-                    onReport = onReport,
+                    safety = safetyFor(comment),
                     isOwn = isOwn,
                     onEdit = onEdit,
                     onDelete = onDelete,
@@ -1070,7 +1200,7 @@ private fun CommentItemView(
                 reply = preview,
                 reaction = reactions[preview.id] ?: ForumReaction.NONE,
                 onReact = onReact,
-                onReport = { onReportReply(preview.id) },
+                safety = safetyFor(preview),
                 connectBelow = false,
             )
         }
@@ -1092,7 +1222,7 @@ private fun CommentItemView(
                     reply = reply,
                     reaction = reactions[reply.id] ?: ForumReaction.NONE,
                     onReact = onReact,
-                    onReport = { onReportReply(reply.id) },
+                    safety = safetyFor(reply),
                     connectBelow = index < replies.lastIndex,
                 )
             }
@@ -1103,14 +1233,26 @@ private fun CommentItemView(
     }
 }
 
-/** Reply, like, dislike, report and the owner's edit/remove, in one row of icons. */
+/** Report and block entry points of one comment or reply (BUC-SAFE-02, BUC-SAFE-03). */
+private class ForumCommentSafety(
+    val isOwn: Boolean,
+    val onReport: () -> Unit,
+    val onReportUser: () -> Unit,
+    val onBlockUser: () -> Unit,
+)
+
+/**
+ * Reply, like, dislike, the owner's edit/remove and a "more" menu with
+ * report and block, in one row of icons. Own content shows no report or
+ * block action (BUC-SAFE-02).
+ */
 @Composable
 private fun ForumCommentActions(
     comment: ForumComment,
     reaction: ForumReaction,
     onReact: (ForumComment, ForumReaction) -> Unit,
     onReply: (() -> Unit)?,
-    onReport: () -> Unit,
+    safety: ForumCommentSafety,
     isOwn: Boolean = false,
     onEdit: () -> Unit = {},
     onDelete: () -> Unit = {},
@@ -1156,11 +1298,16 @@ private fun ForumCommentActions(
                 onClick = onDelete,
             )
         }
-        ForumIconAction(
-            icon = Icons.Outlined.Flag,
-            contentDescription = stringResource(R.string.forum_report_button),
-            onClick = onReport,
-        )
+        if (!safety.isOwn) {
+            ContentOverflowMenu(
+                actions = listOf(
+                    ContentMenuAction(stringResource(R.string.safety_report_comment), safety.onReport),
+                    ContentMenuAction(stringResource(R.string.safety_report_user), safety.onReportUser),
+                    ContentMenuAction(stringResource(R.string.safety_block_user), safety.onBlockUser),
+                ),
+                contentDescription = stringResource(R.string.safety_more_actions),
+            )
+        }
     }
 }
 
@@ -1170,7 +1317,7 @@ private fun ReplyItemView(
     reply: ForumComment,
     reaction: ForumReaction,
     onReact: (ForumComment, ForumReaction) -> Unit,
-    onReport: () -> Unit,
+    safety: ForumCommentSafety,
     connectBelow: Boolean,
     modifier: Modifier = Modifier,
 ) {
@@ -1194,7 +1341,7 @@ private fun ReplyItemView(
                 reaction = reaction,
                 onReact = onReact,
                 onReply = null,
-                onReport = onReport,
+                safety = safety,
             )
         }
     }
