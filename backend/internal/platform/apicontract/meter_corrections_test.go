@@ -71,7 +71,12 @@ func TestMeterCorrectionContractExamplesAndExactShapes(t *testing.T) {
 	for k, v := range example {
 		bad[k] = v
 	}
-	bad["flags"] = []any{"POSSIBLE_ROLLOVER"}
+	// EMP-METER-005 made POSSIBLE_ROLLOVER a real flag (B-BR-EMP-483).
+	bad["flags"], bad["state"] = []any{"POSSIBLE_ROLLOVER"}, "SUSPECT"
+	if err := item.VisitJSON(bad); err != nil {
+		t.Fatal("the rollover flag refused", err)
+	}
+	bad["flags"] = []any{"SYNTHETIC_UNKNOWN_FLAG"}
 	if item.VisitJSON(bad) == nil {
 		t.Fatal("unknown flag accepted")
 	}

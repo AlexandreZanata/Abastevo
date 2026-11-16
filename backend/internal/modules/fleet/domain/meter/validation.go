@@ -13,10 +13,13 @@ const (
 	ReadingAboveNext     Flag = "READING_ABOVE_NEXT"
 	ImplausibleRate      Flag = "IMPLAUSIBLE_RATE"
 	FutureInstant        Flag = "FUTURE_INSTANT"
+	// PossibleRollover marks a lower reading that a wrap at the modulus would
+	// explain (B-BR-EMP-483); only CheckMeter/ReevaluateMeter produce it.
+	PossibleRollover Flag = "POSSIBLE_ROLLOVER"
 )
 
 // flagOrder is the canonical order of stored and returned flags.
-var flagOrder = [...]Flag{ReadingBelowPrevious, ReadingAboveNext, ImplausibleRate, FutureInstant}
+var flagOrder = [...]Flag{ReadingBelowPrevious, ReadingAboveNext, ImplausibleRate, FutureInstant, PossibleRollover}
 
 // NoteRetroactive marks a reading placed before a later valid reading.
 const NoteRetroactive = "RETROACTIVE"
@@ -98,11 +101,13 @@ func before(a, b Point) bool {
 	return a.ID < b.ID
 }
 
-func (p Plausibility) validPoint(kind Kind, v Point) bool {
-	return v.ID != "" && v.Value >= 0 && v.Value <= bound(kind) && validInstant(v.OccurredAt) && validInstant(v.ReceivedAt)
+func validPoint(kind Kind, modulus *int64, v Point) bool {
+	return v.ID != "" && v.Value >= 0 && v.Value <= bound(kind) && (modulus == nil || v.Value < *modulus) && validInstant(v.OccurredAt) && validInstant(v.ReceivedAt)
 }
 
-func canonicalFlags(state State, flags []Flag) bool {
+// canonicalFlags admits POSSIBLE_ROLLOVER only on a meter with a modulus
+// (B-BR-EMP-483); without one the flag is invalid input, as before.
+func canonicalFlags(state State, flags []Flag, rollover bool) bool {
 	switch state {
 	case Valid, Voided:
 		return len(flags) == 0
@@ -115,6 +120,9 @@ func canonicalFlags(state State, flags []Flag) bool {
 	}
 	next := 0
 	for _, f := range flags {
+		if f == PossibleRollover && !rollover {
+			return false
+		}
 		found := false
 		for next < len(flagOrder) {
 			next++
@@ -131,15 +139,23 @@ func canonicalFlags(state State, flags []Flag) bool {
 }
 
 // series copies and validates a caller series: non-empty, strictly ordered,
-// unique identifiers, bounded values and canonical states and flags.
-func (p Plausibility) series(kind Kind, in []Entry) ([]Entry, error) {
-	if !p.set || bound(kind) < 0 || len(in) == 0 {
+// unique identifiers, bounded values (below the modulus when one is given)
+// and canonical states and flags.
+func (p Plausibility) series(kind Kind, in []Entry, modulus *int64) ([]Entry, error) {
+	if !p.set {
+		return nil, ErrInvalid
+	}
+	return memberSeries(kind, in, modulus)
+}
+
+func memberSeries(kind Kind, in []Entry, modulus *int64) ([]Entry, error) {
+	if bound(kind) < 0 || len(in) == 0 || modulus != nil && *modulus <= 0 {
 		return nil, ErrInvalid
 	}
 	out := make([]Entry, len(in))
 	seen := make(map[string]bool, len(in))
 	for i, e := range in {
-		if !p.validPoint(kind, e.Point) || seen[e.ID] || !canonicalFlags(e.State, e.Flags) || i > 0 && !before(in[i-1].Point, e.Point) {
+		if !validPoint(kind, modulus, e.Point) || seen[e.ID] || !canonicalFlags(e.State, e.Flags, modulus != nil) || i > 0 && !before(in[i-1].Point, e.Point) {
 			return nil, ErrInvalid
 		}
 		seen[e.ID] = true
@@ -156,8 +172,13 @@ func elapsed(a, b time.Time) *big.Int {
 
 // plausible applies §10.2 to a non-decreasing ordered pair.
 func (p Plausibility) plausible(kind Kind, a, b Point) bool {
-	delta := big.NewInt(b.Value - a.Value)
-	dt := elapsed(a.OccurredAt, b.OccurredAt)
+	return p.plausibleUsage(kind, big.NewInt(b.Value-a.Value), a.OccurredAt, b.OccurredAt)
+}
+
+// plausibleUsage applies §10.2 to a usage over the elapsed time from a to b,
+// exactly, for any usage (the wrap usage of B-BR-EMP-483 may exceed int64).
+func (p Plausibility) plausibleUsage(kind Kind, delta *big.Int, a, b time.Time) bool {
+	dt := elapsed(a, b)
 	if kind == Odometer {
 		left := new(big.Int).Mul(delta, secondsPerHour)
 		left.Mul(left, nanosPerSecond)
@@ -179,7 +200,9 @@ func (p Plausibility) future(v Point) bool {
 
 // verdict classifies c against the VALID members of series (which must not
 // contain c). keepFuture is nil to decide FUTURE_INSTANT from c's receipt.
-func (p Plausibility) verdict(kind Kind, series []Entry, c Point, keepFuture *bool) Verdict {
+// With a modulus, a lower candidate without a valid successor whose wrap
+// usage is plausible is POSSIBLE_ROLLOVER (B-BR-EMP-483).
+func (p Plausibility) verdict(kind Kind, modulus *int64, series []Entry, c Point, keepFuture *bool) Verdict {
 	var prev, next *Point
 	for i := range series {
 		e := &series[i]
@@ -195,7 +218,11 @@ func (p Plausibility) verdict(kind Kind, series []Entry, c Point, keepFuture *bo
 	raised := map[Flag]bool{}
 	if prev != nil {
 		if c.Value < prev.Value {
-			raised[ReadingBelowPrevious] = true
+			if modulus != nil && next == nil && p.plausibleUsage(kind, wrapUsage(*modulus, prev.Value, c.Value), prev.OccurredAt, c.OccurredAt) {
+				raised[PossibleRollover] = true
+			} else {
+				raised[ReadingBelowPrevious] = true
+			}
 		} else if !p.plausible(kind, *prev, c) {
 			raised[ImplausibleRate] = true
 		}
@@ -228,14 +255,25 @@ func (p Plausibility) verdict(kind Kind, series []Entry, c Point, keepFuture *bo
 	return v
 }
 
+// wrapUsage is (M − v₁) + v₂ exactly.
+func wrapUsage(modulus, previous, value int64) *big.Int {
+	n := new(big.Int).Sub(big.NewInt(modulus), big.NewInt(previous))
+	return n.Add(n, big.NewInt(value))
+}
+
 // Check classifies a candidate against the ordered segment series, whose
 // first entry is the opening reading (B-BR-EMP-280..284).
 func (p Plausibility) Check(kind Kind, series []Entry, candidate Point) (Verdict, error) {
-	members, err := p.series(kind, series)
+	return p.CheckMeter(kind, nil, series, candidate)
+}
+
+// CheckMeter is Check on a meter with an optional modulus (B-BR-EMP-483).
+func (p Plausibility) CheckMeter(kind Kind, modulus *int64, series []Entry, candidate Point) (Verdict, error) {
+	members, err := p.series(kind, series, modulus)
 	if err != nil {
 		return Verdict{}, err
 	}
-	if !p.validPoint(kind, candidate) || !before(members[0].Point, candidate) {
+	if !validPoint(kind, modulus, candidate) || !before(members[0].Point, candidate) {
 		return Verdict{}, ErrInvalid
 	}
 	for _, e := range members {
@@ -243,7 +281,7 @@ func (p Plausibility) Check(kind Kind, series []Entry, candidate Point) (Verdict
 			return Verdict{}, ErrInvalid
 		}
 	}
-	return p.verdict(kind, members, candidate, nil), nil
+	return p.verdict(kind, modulus, members, candidate, nil), nil
 }
 
 func sameFlags(a, b []Flag) bool {
@@ -261,7 +299,12 @@ func sameFlags(a, b []Flag) bool {
 // Reevaluate re-checks every SUSPECT member until no promotion happens
 // (B-BR-EMP-285) and returns the members whose state or flags changed.
 func (p Plausibility) Reevaluate(kind Kind, series []Entry) ([]Change, error) {
-	members, err := p.series(kind, series)
+	return p.ReevaluateMeter(kind, nil, series)
+}
+
+// ReevaluateMeter is Reevaluate on a meter with an optional modulus.
+func (p Plausibility) ReevaluateMeter(kind Kind, modulus *int64, series []Entry) ([]Change, error) {
+	members, err := p.series(kind, series, modulus)
 	if err != nil {
 		return nil, err
 	}
@@ -278,7 +321,7 @@ func (p Plausibility) Reevaluate(kind Kind, series []Entry) ([]Change, error) {
 				future = future || f == FutureInstant
 			}
 			others := append(append([]Entry(nil), members[:i]...), members[i+1:]...)
-			v := p.verdict(kind, others, e.Point, &future)
+			v := p.verdict(kind, modulus, others, e.Point, &future)
 			if v.State == e.State && sameFlags(v.Flags, e.Flags) {
 				continue
 			}

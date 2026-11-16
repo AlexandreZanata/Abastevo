@@ -43,7 +43,7 @@ type MeterRecalculation struct {
 	Consumers []string
 }
 
-var meterDecisionActions = map[app.MeterDecision]string{app.MeterSupersede: "meter.reading.corrected", app.MeterVoid: "meter.reading.voided", app.MeterConfirm: "meter.reading.confirmed"}
+var meterDecisionActions = map[app.MeterDecision]string{app.MeterSupersede: "meter.reading.corrected", app.MeterVoid: "meter.reading.voided", app.MeterConfirm: "meter.reading.confirmed", app.MeterConfirmRollover: meterRolloverAction}
 
 func MeterCorrectionEventDefinitions(consumers []string) []event.Definition {
 	return []event.Definition{{Name: MeterRecalculatedEvent, TargetType: meterReadingTarget, Consumers: slices.Clone(consumers)}}
@@ -129,6 +129,9 @@ func (s *MeterStore) DecideMeterReading(ctx context.Context, scope kernel.OrgSco
 			if err != nil {
 				return err
 			}
+			if err := rolloverBoundary(ctx, tx, scope, v, &result); err != nil {
+				return err
+			}
 			replay = true
 			return s.check(ctx, tx, scope, source, member, v.AssetID, app.MeterCorrectAction)
 		}
@@ -142,6 +145,13 @@ func (s *MeterStore) DecideMeterReading(ctx context.Context, scope kernel.OrgSco
 		if target.Origin == string(meter.Installation) {
 			return meter.ErrInvalid
 		}
+		// EMP-METER-005: every opening or closing reading of a segment is an
+		// anchor (B-BR-EMP-486).
+		if anchor, err := queries.MeterReadingIsAnchor(ctx, q.MeterReadingIsAnchorParams{OrgID: org, MeterID: v.MeterID, ReadingID: v.ReadingID}); err != nil {
+			return err
+		} else if anchor {
+			return meter.ErrInvalid
+		}
 		approved, err := s.Parents.ApprovedParentTx(ctx, syncapp.Borrow(tx), scope, v.ReadingID)
 		if err != nil {
 			return app.ErrUnavailable
@@ -152,12 +162,12 @@ func (s *MeterStore) DecideMeterReading(ctx context.Context, scope kernel.OrgSco
 		if int64(target.Revision) != v.ExpectedRevision {
 			return app.ErrConflict
 		}
-		if v.Decision == app.MeterConfirm {
+		if v.Decision == app.MeterConfirm || v.Decision == app.MeterConfirmRollover {
 			if target.State != string(meter.Suspect) {
 				return app.ErrConflict
 			}
 			for _, f := range target.Flags {
-				if f == string(meter.ReadingBelowPrevious) || f == string(meter.ReadingAboveNext) {
+				if v.Decision == app.MeterConfirm && (f == string(meter.ReadingBelowPrevious) || f == string(meter.ReadingAboveNext) || f == string(meter.PossibleRollover)) {
 					return meter.ErrInvalid
 				}
 			}
@@ -175,8 +185,10 @@ func (s *MeterStore) DecideMeterReading(ctx context.Context, scope kernel.OrgSco
 				}
 			}
 			var err error
-			result, err = decisionResult(ctx, tx, scope, view, v)
-			return err
+			if result, err = decisionResult(ctx, tx, scope, view, v); err != nil {
+				return err
+			}
+			return rolloverBoundary(ctx, tx, scope, v, &result)
 		})
 		if err != nil {
 			return err
@@ -206,6 +218,8 @@ func (s *MeterStore) applyDecision(ctx context.Context, tx pgx.Tx, scope kernel.
 		state.State, state.Cause = string(meter.Valid), causeConfirmed
 	case app.MeterSupersede:
 		return s.supersede(ctx, tx, scope, view, source, member, newID, v, digest, target, state)
+	case app.MeterConfirmRollover:
+		return s.confirmRollover(ctx, tx, scope, view, member, newID, v, target)
 	default:
 		return meter.ErrInvalid
 	}
@@ -279,7 +293,7 @@ func (s *MeterStore) supersede(ctx context.Context, tx pgx.Tx, scope kernel.OrgS
 			}
 		}
 		candidate := candidatePoint(newID, value.Count(), declared.OccurredAt, now)
-		if verdict, err = s.Plausibility.Check(view.Reference.Kind(), entries, candidate); err != nil {
+		if verdict, err = s.Plausibility.CheckMeter(view.Reference.Kind(), view.Reference.Modulus(), entries, candidate); err != nil {
 			return meter.ErrInvalid
 		}
 		with := make([]meter.Entry, 0, len(entries)+1)
@@ -294,7 +308,7 @@ func (s *MeterStore) supersede(ctx context.Context, tx pgx.Tx, scope kernel.OrgS
 		if !placed {
 			with = append(with, meter.Entry{Point: candidate, State: verdict.State, Flags: verdict.Flags})
 		}
-		if changes, err = s.Plausibility.Reevaluate(view.Reference.Kind(), with); err != nil {
+		if changes, err = s.Plausibility.ReevaluateMeter(view.Reference.Kind(), view.Reference.Modulus(), with); err != nil {
 			return app.ErrUnavailable
 		}
 		for _, c := range changes {

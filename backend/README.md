@@ -1194,6 +1194,34 @@ recorded_at) ON org_meter_reading_states` to export the state as of its
 supplies its consumers; production composes none (EDR-189). Nothing here
 provisions live grants.
 
+### Meter replacement, reset and rollover (EMP-METER-005)
+
+Migration251 closes a segment and removes a meter by one guarded `UPDATE` each.
+The meter principal additionally needs `UPDATE (removed_at, removed_submicro,
+removal_operation_id) ON org_meters` and `UPDATE (closed_at, closed_submicro,
+closing_kind, closing_value, closing_reading_id, closing_operation_id,
+closing_previous_reading_id, closing_implied_usage) ON org_meter_segments`;
+`POST …/meters/{meter_id}/change` and the `CONFIRM_ROLLOVER` decision run under
+`meter.reading.correct` with the existing meter grants. The migrator needs
+ownership of `org_meters`, `org_meter_segments`, `org_meter_reading_states`,
+`org_meter_flags_canonical(text[])` and `org_meter_reading_state_guard()`, and
+`REFERENCES ON org_audit_events, org_meter_readings`. Nothing here provisions
+live grants.
+
+### Meter current-value projection and usage port (EMP-METER-006)
+
+Migration252 adds the forced-RLS `org_meter_current_values`, written only by
+`SECURITY DEFINER` trigger functions owned by the migrator. The runtime role
+needs `SELECT ON org_meter_current_values` for `MeterStore.UsageBetween`; the
+operator role needs `EXECUTE ON FUNCTION org_meter_current_rebuild(uuid)` for
+`ops meter rebuild-projection --org <uuid>`. The migrator needs `SELECT,
+REFERENCES, TRIGGER ON org_meters, org_meter_segments, org_meter_readings`,
+`SELECT, TRIGGER ON org_meter_reading_states` and `SELECT, UPDATE ON
+organizations` (the rebuild locks the organization root). Existing meters have
+no projection until `ops meter rebuild-projection` runs for their organization
+(forced RLS lets no migration enumerate organizations); until then the usage
+port answers unavailable. Nothing here provisions live grants.
+
 ### Asset lifecycle (EMP-FLEET-003)
 
 Migration201 adds nullable acquisition/disposal columns to `org_assets` and the

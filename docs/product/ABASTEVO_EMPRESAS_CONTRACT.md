@@ -8260,3 +8260,161 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   finish and the vehicle is blocked for the next use until released. A
   finish naming a return run the server does not hold yet still completes
   the trip and links nothing.
+
+## EMP-METER-005 — Meter replacement, reset and rollover with cumulative usage (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-meter005-replacement-rollover.md).
+
+- **B-BR-EMP-481 — Segments and the segment a reading counts in.** A meter
+  counts in ordered, contiguous segments. A segment opens for a reason
+  (`INSTALLATION`, `RESET`, `ROLLOVER`) at an instant with an opening value
+  (the value of its opening reading for `INSTALLATION` and `RESET`; zero for
+  `ROLLOVER`) and closes at most once, with a closing kind (`REMOVAL`,
+  `RESET`, `ROLLOVER`), the closing instant and the closing value (`REMOVAL`:
+  the observed final value, or unknown; `RESET`: the value observed before;
+  `ROLLOVER`: the meter's modulus). A reset or rollover closes the open
+  segment and opens the next one at the same instant; a removal closes the
+  meter's last segment and the meter at the same instant. A reading counts in
+  the segment of its meter whose half-open interval `[opened, closed)`
+  contains its instant, except a `METER_REMOVAL` reading, which counts in the
+  segment it was recorded in (the segment its removal closes). The segment recorded on the
+  reading row is the one that was open at intake and never changes; a reading
+  whose instant lies after a later boundary counts in the next segment.
+  Classification, re-evaluation, the current value, the history, the suspect
+  list and decisions use this segment, so monotonicity and plausibility are
+  checked inside one segment only (BR-METER-007, BR-METER-009).
+- **B-BR-EMP-482 — Cumulative usage, usage between instants and the
+  equivalent display.** For one asset and one kind, take its meters in
+  installation order and their segments in order, and only `VALID`
+  readings. The anchor at instant `t` is the latest such reading at or before
+  `t` (segment order, then BR-METER-008 order). `U(t)` is the sum of
+  `close − open` of every segment before the anchor's segment plus
+  `anchor − open` of the anchor's segment; `E(t) = open(first segment) +
+  U(t)`; `usage(t1, t2)` runs from the anchor at `t1` to the anchor at `t2`:
+  inside one segment the difference, across segments `close − anchor₁` of the
+  first, `close − open` of every segment between and `anchor₂ − open` of the
+  last. A missing anchor gives `INSUFFICIENT_DATA` with `NO_READING_BEFORE`
+  (an anchor that exists is still named); a segment in the summed span that
+  closed with an unknown value gives `INSUFFICIENT_DATA` with `METER_GAP`;
+  `t1` after `t2` is invalid; nothing is interpolated and kinds are never
+  mixed (BR-METER-021, BR-TRUTH-003). Example C gives `U = 1 944 000` m,
+  usage R4′ → M2 reading `= 754 000` m and `E = 184 944 000` m; example D
+  gives usage S1 → S2 `= 170 000` m and `E = 1 000 120 000` m.
+- **B-BR-EMP-483 — A rollover is only a candidate until a person confirms
+  it.** When the meter has a modulus `M`, a candidate below its valid
+  predecessor `v₁`, with no valid successor in its segment, whose wrap usage
+  `(M − v₁) + v₂` passes the §10.2 rate check over the elapsed time, is
+  stored `SUSPECT` with `POSSIBLE_ROLLOVER` instead of
+  `READING_BELOW_PREVIOUS` (canonical flag order: after `FUTURE_INSTANT`).
+  The same rule applies at intake, at correction and at re-evaluation; a
+  meter without a modulus never produces the flag. Nothing applies a
+  rollover by itself; a `CONFIRM` of a reading flagged `POSSIBLE_ROLLOVER` is
+  `VALIDATION_FAILED`, like a monotonicity flag.
+- **B-BR-EMP-484 — Replacing a meter.** A member with `meter.reading.correct`
+  replaces the meter in service by one company command naming the meter, its
+  expected segment count (the meter's revision for these commands), the
+  removal instant, the final value of the old meter or `unknown`, and the new
+  meter's label, optional modulus and opening value (exact base units of the
+  same kind). It is `VALIDATION_FAILED` when the instant is not after the open
+  segment's opening, is later than the database clock, or has a not-`VOIDED`
+  reading of the old meter at or after it; when the final value is below the
+  latest `VALID` reading before the instant or not below the old modulus;
+  when the new modulus is not positive or the opening value is not below it.
+  In one transaction it stores the final value as a `METER_REMOVAL` reading
+  (the closing reading; none when unknown), closes the last segment
+  (`REMOVAL`), removes the meter at the instant, installs the new meter with
+  its `INSTALLATION` segment and `METER_INSTALLATION` opening reading at the
+  same instant, and returns and stores the implied usage (`final − latest
+  valid reading`, or `INSUFFICIENT_DATA`/`METER_GAP` when unknown). A second
+  meter of the same kind in service stays impossible
+  (`METER_ALREADY_IN_SERVICE`, BR-METER-005).
+- **B-BR-EMP-485 — Resetting a meter.** The same command with `RESET` names
+  the instant, the value observed before and the value observed after. It is
+  `VALIDATION_FAILED` when the instant is not after the open segment's
+  opening or is later than the database clock, when a `VALID` reading of the
+  open segment lies at or after it or any not-`VOIDED` reading lies exactly
+  at it, when the before value is below the latest `VALID` reading before the
+  instant, or when a value is not below the modulus. It closes the open
+  segment at the instant with the before value as its closing value and
+  stores the after value as the opening reading of a new `RESET` segment
+  opened at the instant (`STANDALONE`, `TYPED`, by the deciding member
+  through the company session; one operation carries one reading per meter),
+  re-evaluates the `SUSPECT` readings now counting in the new
+  segment (BR-METER-012: a segment boundary between two readings clears a
+  monotonicity flag), and returns and stores the implied usage `before −
+  latest valid reading`.
+- **B-BR-EMP-486 — Confirming a rollover, anchors and audit.** The decision
+  `CONFIRM_ROLLOVER` on a reading of the open segment (expected revision and
+  reason, as every decision) is `VALIDATION_FAILED` on a meter without a
+  modulus, on a reading not flagged `POSSIBLE_ROLLOVER`, when a `VALID`
+  reading of the segment follows it, or when another not-`VOIDED` reading or
+  its valid predecessor lies at its instant; a reading that is not `SUSPECT`
+  is `CONFLICT`. It closes the open segment at the reading's instant with the
+  modulus, opens a `ROLLOVER` segment there whose opening value is zero and
+  whose first reading is the confirmed one, makes the reading `VALID` (cause
+  `ROLLOVER`, actor and reason), re-evaluates the new segment and returns and
+  stores the implied usage `(M − v₁) + v₂`. Every opening or closing reading of a
+  segment is an anchor and refuses any decision with `VALIDATION_FAILED`.
+  Each command writes one audit event (`meter.replaced`, `meter.reset`,
+  `meter.rollover.confirmed`; actor, target, command digest; no value or
+  reason) and commits with all its effects or not at all, serialised by the
+  root, asset and meter locks; the same operation and digest returns the
+  first result, another digest is `OPERATION_ID_REUSED`; a stale segment
+  count is `CONFLICT`; another organization's or asset's meter is
+  `NOT_FOUND`.
+- **BUC-EMP-245 — Replace an instrument panel.** A fleet manager records the
+  replacement of "Caminhão 07" at 184 532 km with a new odometer at 0; a
+  reading of 412 km on the new meter gives 1 944 000 m of cumulative usage
+  and 754 000 m since R4′ (example C).
+- **BUC-EMP-246 — Record a reset.** A supervisor records that an hour meter
+  restarted: before, after and the instant; readings typed after the restart
+  and flagged below their predecessor return to `VALID` in the new segment.
+- **BUC-EMP-247 — Confirm a rollover.** A supervisor opens the reading of
+  120 km flagged `POSSIBLE_ROLLOVER` on "Caminhão 11", sees the implied
+  170 000 m and confirms; the reading becomes `VALID` in the new segment
+  (example D).
+
+## EMP-METER-006 — Current-value projection and usage-between-instants query (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-meter006-current-value-projection.md).
+
+- **B-BR-EMP-487 — The current value is a maintained projection.** Every meter
+  has one projection row: its open segment (none once removed), the latest
+  currently `VALID` reading counting in that segment (B-BR-EMP-481) with its
+  value and instant (none when there is no such reading), and a revision equal
+  to the number of the meter's source facts (readings, history revisions,
+  segments, segment closures and the removal). The database writes it in the
+  transaction of every such fact, so intake, fuelings, trips, held reviews,
+  decisions, rollovers, replacements, resets and EMP-TRIP-015 amendment
+  supersessions all maintain it; a change of any fact raises the revision.
+  The projection is never the source of truth (BR-METER-006): a figure is
+  computed from readings, and any doubt is settled by a rebuild.
+- **B-BR-EMP-488 — Rebuild.** An operator rebuild deletes one organization's
+  projection rows and recomputes them from the readings in one transaction;
+  the rebuilt rows equal the incrementally maintained rows (values and
+  revisions) and a second rebuild changes nothing. The rebuild needs an
+  operator identity and changes no business fact.
+- **B-BR-EMP-489 — Usage between two instants.** A server port takes an asset,
+  a kind and two instants (`from` at or before `to`) and answers with the
+  B-BR-EMP-482 figure over the asset's meters of that kind, their segment
+  chain and their currently `VALID` readings: status (`OK` or
+  `INSUFFICIENT_DATA`), reason (`NO_READING_BEFORE`, `METER_GAP`), usage
+  (absent unless `OK`), both anchor readings that exist (identifier, value,
+  instant), the method version `meter-usage-v1` and the projection revision
+  (the sum of the revisions of the asset's meters of that kind) read with
+  them. It never interpolates. Instants
+  in reverse order are `VALIDATION_FAILED`; another organization's asset, or
+  an asset without a meter of that kind, is `NOT_FOUND`.
+- **B-BR-EMP-490 — Consistency and recalculation.** A usage answer reads
+  readings, history, segments and projection under a shared lock of the
+  asset's meters of that kind, which every reading change locks for update,
+  so a concurrent correction is either wholly before or wholly after it. A correction raises the projection revision in its own
+  transaction and, when consumers are composed, emits
+  `meter.usage.recalculated` once (EMP-METER-004); the projection itself needs
+  no event.
+- **BUC-EMP-248 — Ask for usage between two instants.** A module asks for the
+  odometer usage of an asset between a trip's start and finish and receives
+  the figure, both readings it used and the projection revision, or
+  `INSUFFICIENT_DATA` with the reason.
+- **BUC-EMP-249 — Rebuild the projection.** An operator suspects drift and
+  rebuilds one organization's projection; nothing changes when it was right.
