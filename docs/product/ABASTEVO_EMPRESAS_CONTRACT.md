@@ -8968,3 +8968,55 @@ EMP-GPS-002 (the service and its session operations) and EMP-GPS-004 (the
   process death, organization switch, reconnection, a planned trip linked and
   completed, and a reassigned mission whose answer is denied without holding
   any other record.
+
+## EMP-ROUTE-004 — Navigation phase 1: open the existing in-app route and guidance for a trip destination (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-route004-navigation-handoff.md).
+
+- **B-BR-EMP-532 — Only the approved destination of the member's own
+  mission or trip is handed to the app's own route.** "Navegar" exists on a
+  mission of the partition's missions copy (EMP-TRIP-021) and on a trip of the
+  partition's trip book whose start names that mission (EMP-TRIP-023
+  reference). It hands over exactly one thing: the free-text destination of
+  that mission's current plan (EMP-TRIP-009), as the query of the existing
+  in-app route preview's destination search (`MapRouteTarget.Address`), where
+  the driver confirms a search result before any route is computed by the
+  existing on-device engine (BR-ROUTE-009). No coordinate is guessed or
+  parsed from the text, no other trip's or mission's destination is ever used,
+  and a trip or mission that is not in the visible partition's own records
+  opens nothing (wrong trip).
+- **B-BR-EMP-533 — Unsupported destinations say so and open nothing.** A plan
+  whose destination is a company unit (the device holds neither the unit's
+  name nor its location), a mission without a plan, a trip that executes no
+  mission and a trip whose mission is no longer in the copy offer no
+  "Navegar" and show why; nothing is opened, searched or recorded.
+- **B-BR-EMP-534 — Guidance alone records and sends nothing.** Opening the
+  route preview or guidance from a mission or trip writes no operation, starts,
+  stops or pauses no tracking session, changes no trip or mission state and
+  sends no position to the server (BR-ROUTE-011, BR-ROUTE-015); the screen says
+  that this navigation is not recorded on the trip. The trip stays in the
+  partition's book and is reopened from the company screen.
+- **B-BR-EMP-535 — No external hand-off.** The mission and trip screens never
+  send a destination or a position to an external maps application: no
+  external intent, `geo:` or navigation URI is built; the hand-off is the app's
+  own map tab (BR-ROUTE-012). A failure to open it leaves the planned flow as
+  it was.
+- **BUC-EMP-273 — Navigate to a planned trip's destination (UC-ROUTE-03,
+  SCR-ROUTE-06).** Actor: assigned driver with the mission's trip in
+  progress. Main flow: open the trip → "Navegar" (with the notice that this
+  navigation is not recorded) → the app's map opens its route preview with the
+  plan's destination as the search query → the driver picks the result → the
+  existing engine computes the route with the downloaded map region and
+  guidance starts. Alternatives: the destination is a company unit, the
+  mission has no plan or the trip has no mission → no "Navegar", with the
+  reason; guidance active elsewhere → the map's own "stop the current route
+  first" message.
+- **BUC-EMP-274 — Prove that navigation is local.** Pure tests of the
+  destination resolution (own record, text only, unit and absent
+  destinations, wrong trip); a source guard that the enterprise mission/trip
+  screens build no external intent and reference no tracking or network
+  port; presentation device tests that "Navegar" hands exactly the plan text
+  to the in-app map and calls nothing else; and native acceptance on the
+  owned API 36 emulator through the real app map: the route preview opens
+  with the destination query while the enterprise queue, trip book and
+  intake stay unchanged.

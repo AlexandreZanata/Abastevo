@@ -91,6 +91,8 @@ fun EnterpriseContextScreen(
     fuelingViewModel: FuelingViewModel = hiltViewModel(),
     checklistViewModel: ChecklistViewModel = hiltViewModel(),
     expenseViewModel: ExpenseViewModel = hiltViewModel(),
+    /** EMP-ROUTE-004: opens the app's own route preview with an approved destination query; last, so positional callers stay valid. */
+    onNavigate: (String) -> Unit = {},
 ) {
     // These are cheap local invalidation flows; keep private presentation current
     // while stopped rather than briefly resuming an earlier confirmed context.
@@ -404,6 +406,8 @@ fun EnterpriseContextScreen(
                     if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) departureRun(renderedChecklist, choice.assetId) else null)
             },
             onLifecycle = { trip, command, reason -> if (tripsMatch) tripViewModel.lifecycle(trip, command, reason, renderedEpoch, tripState.generation) },
+            // EMP-ROUTE-004 (B-BR-EMP-532..535): the visible partition's own approved destination only; nothing is recorded or sent.
+            onNavigate = if (BuildConfig.ENTERPRISE_MISSION_UI_ENABLED) { query -> if (tripsMatch) onNavigate(query) } else null,
         ) else if (showAssets && resumed && renderedSelected != null && !choosing &&
             assetsFor?.partition == renderedSelected.partition && assetsFor?.membershipId == renderedSelected.membershipId) MyAssetsPanel(
             // A source loss clears the owner; keep only its safe message and withhold every cached fact.

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-ROUTE-004 SCR-ROUTE-06; generated from one table by f4-logs/route004-scripts/gen_route_strings.py -->
+<resources>
+    <string name="enterprise_route_navigate">Navigieren</string>
+    <string name="enterprise_route_not_recorded">Diese Navigation wird nicht in der Fahrt erfasst und sendet keine Position.</string>
+    <string name="enterprise_route_unsupported_unit">Das Ziel ist ein Standort des Unternehmens; die Karte der App kann ihn nicht finden. Nutzen Sie die Kartensuche.</string>
+    <string name="enterprise_route_unsupported_no_plan">Kein vom Unternehmen geplantes Ziel.</string>
+    <string name="enterprise_route_unsupported_no_mission">Diese Fahrt hat keinen Auftrag mit Ziel.</string>
+    <string name="enterprise_route_unsupported_not_in_copy">Aktualisieren Sie die Aufträge, um das Ziel dieser Fahrt zu sehen.</string>
+</resources>

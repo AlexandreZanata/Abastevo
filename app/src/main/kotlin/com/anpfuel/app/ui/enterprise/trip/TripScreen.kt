@@ -78,6 +78,7 @@ import com.anpfuel.domain.enterprise.tracking.TrackingDevice
 import com.anpfuel.domain.enterprise.trip.TripAssetLabel
 import com.anpfuel.domain.enterprise.trip.TripCommand
 import com.anpfuel.domain.enterprise.trip.TripMissionResponse
+import com.anpfuel.domain.enterprise.trip.TripNavigation
 import com.anpfuel.domain.enterprise.trip.TripEvidence
 import com.anpfuel.domain.enterprise.trip.TripLocalFailure
 import com.anpfuel.domain.enterprise.trip.TripLocalState
@@ -154,9 +155,11 @@ internal fun TripPanel(
     onRespond: (missionId: String, TripMissionResponse, reason: String?) -> Unit = { _, _, _ -> },
     onStartMission: (missionId: String, EnterpriseAssetChoice, TripAssetLabel, TripCapture) -> Unit = { _, _, _, _ -> },
     onLifecycle: (tripId: String, TripCommand, reason: String?) -> Unit = { _, _, _ -> },
-    /** Extra mission actions owned by other tasks (EMP-ROUTE-004 navigation); none by default. */
+    /** Extra mission actions owned by other tasks; none by default. */
     missionExtra: @Composable (MissionView) -> Unit = {},
     tripExtra: @Composable (TripView) -> Unit = {},
+    /** EMP-ROUTE-004: hands an approved destination to the app's own route preview; null offers no navigation. */
+    onNavigate: ((String) -> Unit)? = null,
 ) {
     var mode by remember { mutableStateOf<TripMode>(TripMode.Home) }
     // A durable save closes the form it came from; a refusal or failure keeps the entered values.
@@ -234,7 +237,11 @@ internal fun TripPanel(
                             onDecline = { mode = TripMode.Decline(mission.missionId) },
                             onStart = { onPick(); mode = TripMode.Picker(mission.missionId, mission.item?.assetId) },
                             onOpenTrip = { mode = TripMode.Home; onOpenTrip(it) },
-                            extra = { missionExtra(mission) })
+                            extra = {
+                                missionExtra(mission)
+                                // EMP-ROUTE-004: only this mission's approved text destination, to the app's own route preview.
+                                onNavigate?.let { TripNavigationAction(TripNavigation.forMission(state.missions, mission.missionId), state.busy, it) }
+                            })
                     }
                 }
                 is TripMode.Decline -> item {
@@ -260,7 +267,11 @@ internal fun TripPanel(
                         state = state, tracking = tracking,
                         onLifecycle = if (missionsEnabled) { command -> mode = TripMode.Lifecycle(open.trip.tripId, command) } else null,
                         missionTitle = open.missionId?.let { id -> state.missions?.missions?.firstOrNull { it.missionId == id }?.item?.title },
-                        extra = { tripExtra(open) })
+                        extra = {
+                            tripExtra(open)
+                            // EMP-ROUTE-004: the destination of the mission this trip's own start names, never another trip's.
+                            onNavigate?.let { TripNavigationAction(TripNavigation.forTrip(state.trips, state.missions, open.trip.tripId), state.busy, it) }
+                        })
                 } else {
                     if (missionsEnabled) missionsSection(state.missions, state.missionsUnavailable, connected, state.busy, state.refreshed,
                         state.refreshFailed, onRefresh = onRefreshMissions, onOpen = { mode = TripMode.Mission(it) })
