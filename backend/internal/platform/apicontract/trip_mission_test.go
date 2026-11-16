@@ -114,7 +114,7 @@ func TestTripMissionContractOwnerShapesAndGuards(t *testing.T) {
 		prefix + "{mission_id}/assignees/list": read,
 		// EMP-TRIP-023 (EDR-266): the mission's reservation request.
 		prefix + "{mission_id}/reservations/request": {"permission": "trip.mission.manage", "write": true, "fresh": true, "require_revision": true, "company_only": true, "success": 201},
-		prefix + "mine/list":                   {"permission": "trip.trip.start", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
+		prefix + "mine/list":                         {"permission": "trip.trip.start", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
 	} {
 		operation := doc.Paths.Value(path).Post
 		if operation == nil {
