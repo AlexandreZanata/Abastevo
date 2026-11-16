@@ -1527,3 +1527,176 @@ Android host suites on the merged tree: domain 4374, application (enterprise)
 gate reason and run in the TRIP-007 conflict view and the panel, linking the
 run when a reviewer accepts a held start, the app's return-checklist line on
 finish, production grants and native acceptance.
+
+Merge verification for TRIP-019: focused PostGIS race on `c68f3537` (`cmd/api`,
+`apicontract`, `maintenance`, `trip`, `fleet`, `fueling`, `orgsync`,
+`enterprisesuite`, `organization/adapters`, disposable MinIO): 25 packages,
+1190 top-level / 9381 named passed; one failure,
+`cmd/api TestPublicProcessIdentityAndSignedWrites` (a public worker poll
+timeout under host load, outside enterprise code), passed 3/3 alone on
+`7b869304`.
+
+### EMP-METER-005 — meter replacement, reset and rollover: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-meter005-replacement-rollover.md), commit `d3d755db`, migration
+000251 (`organization_meter_segments`). A segment closes and a meter is removed
+at most once through one guarded update; a reading counts in the segment whose
+interval holds its instant; reading rows never change. Go and Kotlin share one
+segment model over `meter/segments-v1.psv` (143 cases: cumulative usage, usage
+between instants, equivalent display, replace/reset/rollover planners).
+`POSSIBLE_ROLLOVER` only on a meter with a modulus and applied only by a
+person's `CONFIRM_ROLLOVER`; new route `meters/{meter_id}/change` (REPLACE or
+RESET) under `meter.reading.correct`. METER-005 and METER-006 together use
+B-BR-EMP-481..490, BUC-EMP-245..249 and EDR-311..317 (the split is in each
+evidence file). RED Go domain 2/25 with 143/143 vectors, Kotlin 144/575, PostGIS
+6/6 → GREEN.
+
+### EMP-METER-006 — current-value projection and usage-between-instants port: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-meter006-current-value-projection.md), commit `cd45f37a`,
+migration 000252 (`organization_meter_current_values`, written by SECURITY
+DEFINER triggers in the transaction of every reading change, including
+METER-004 decisions, METER-005 boundaries and TRIP-015 amendments; revision =
+count of the meter's facts, so a rebuild reproduces it). `ops meter
+rebuild-projection --org <uuid>` (operator identity required) and
+`MeterStore.UsageBetween` (both anchors, `NO_READING_BEFORE`/`METER_GAP`, the
+projection revision, share lock). The concurrency test caught a mixed read
+(old revision with new readings), fixed by a separate locking statement.
+Existing organizations have no projection until the rebuild runs (forced RLS
+stops the migration from listing organizations); until then the port answers
+unavailable. RED PostGIS 3/4 → GREEN. The task branch's GPS-006 was not started
+there (see GPS-006). Unused: 000253.
+
+Integration: merged on `7b869304` as `7eae7bb1` (contract and EDR union,
+EDR-311..317 sorted; both METER-005 and CHECK-004 had moved the route counts
+162 → 163, so they were set by hand to 164 normal and the 164/33/131 auditor
+walk). Go build/vet (all tags), gofmt, sqlc vet/diff, cmd/api and apicontract
+passed; focused PostGIS race on `7eae7bb1` (`cmd/api`, `cmd/ops`,
+`apicontract`, `fleet`, `trip`, `maintenance`, `fueling`, `orgsync`,
+`enterprisesuite`, `organization/adapters`, disposable MinIO): 26 packages,
+1228 top-level / 9564 named, 0 failures. Retained: re-targeting device
+readings that name a closed segment, closed-segment history and SCR-METER-04
+(METER-007), undoing a rollover or boundary, in-trip usage across a boundary,
+consumers of `meter.usage.recalculated`, running the projection rebuild for
+existing organizations after deploy, production grants.
+
+### EMP-TRIP-010 — stops and legs, planned versus observed: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip010-stops-legs.md), commit `7599e11e`, migration 000256
+(insert-only forced-RLS `org_trip_mission_plan_stops`, admitted only in their
+own `PLAN` transaction, deferred receipt check; no function or usage change).
+A `PLAN` may carry 1–20 ordered free-text stops (plans without stops keep the
+v1 digest byte for byte; with stops a v2 digest). Observed stops and legs are
+derived at read time from the trip's start, finish or cancellation and its
+accepted `STOP`/`ARRIVAL`/`DEPARTURE` events, never matched to planned stops;
+incoherent observations are shown (`ARRIVAL_MISSING`, `DEPARTURE_MISSING`,
+`after_receipt`, `after_end`, held events with their code). New read
+`trips/mine/{trip_id}/stops/read` under `trip.trip.start` and the own-trips
+policy. Shared `trip/stops-v1.psv` (54 rows) hash-checked by Go and Kotlin.
+B-BR-EMP-475..480, BUC-EMP-242..244, EDR-307..310. One rule changed during the
+task (events after the end are listed, not refused) with a genuine RED on the
+old code. Task union 24 packages 1269/10050, 0 failures; untagged 230 ok.
+
+Integration: merged on `7eae7bb1` as `be3d6493` (contract union, EDR-307..310
+sorted; counts set by hand to 165 normal and 165/33/132). Retained: panel and
+Android presentation, a supervisor's planned-versus-observed read, typed places
+and per-stop planned times, matching observations to planned stops, held
+review state, a server clock-skew estimate, a finish-after-events guard,
+production grants.
+
+### Sync-context intermittent (EDR-335): fixed, LOCAL_DONE
+
+[Evidence](f4-fix-sync-context-intermittent.md), commit `bfc6fcca`. Root cause
+in the product: `MyAssetsFlow.pull` checked currency against the lease that
+`open()` captured after `deliveryAccount()` had refreshed the session within
+the family, so the first online "Meus ativos" in the token's last minute
+cleared the view as STALE. It now adopts the fresh delivery lease first, as the
+trip, fueling and checklist owners do. Test infrastructure: the device runner
+initializes WorkManager with a delegating factory and cancels earlier classes'
+work. RED host 1/13 and native 3/3 with the recorded diagnostic → GREEN host
+13/13; the 20-run native GREEN is OWED (emulator locked, see below).
+
+### EMP-EXP-004 — app expense with receipt: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-exp004-app-expense.md), commit `db972eef`, migration 000257
+(`org_document_links.expense_id` with a same-organization foreign key and
+widened checks; `ExpenseDocumentTargets` resolves DIRECT expenses only, under
+`exp.expense.record`, author as SELF). Kotlin domain/application/data/app
+(`ExpenseFlow`, `ProtectedExpenseStore`, `ExpenseScreen`, flag
+`ENTERPRISE_EXPENSE_UI_ENABLED`, 52 strings × 8 locales). B-BR-EMP-517..521,
+BUC-EMP-264..266, EDR-336..338. RED Go 1/1 and PostGIS (503 stub), Kotlin
+domain 2/283, application 7/7, data 1/1 → GREEN; union 24 packages 1049/8397.
+Native OWED.
+
+### EMP-TRIP-020 — closing conference before sending a trip: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip020-closing-conference.md), commit `0dcbcfe1`, no migration
+(000258 unused). Device-local conference (EDR-339) over the partition's own
+fuelings and expenses for the trip's vehicle between start and finish; per-item
+record and evidence state (MISSING, PENDING, AVAILABLE — stored, never
+"verified" — or UNREADABLE), amounts per item with no total; submission stays
+the first `trip.submit`. B-BR-EMP-522..526, BUC-EMP-267..269, EDR-339..341.
+RED domain 3/3, application 2/2 → GREEN. Native OWED.
+
+Integration of the three: merged on `be3d6493` as `78de91be` (contract union,
+EDR-335..341 sorted; no route change). Go build/vet (all tags), sqlc, cmd/api,
+check_plan clean; Android host suites domain 4579, application 168, data 206,
+app 31, 0 failures; lint and `:app:assembleDebug` pass. Retained: EXP-003
+categories, EXP-005, real receipts (OQ-04), a server trip reference for
+fuelings and expenses, resubmission after RETURN, checklist runs and incidents
+in the conference, TalkBack/visual review, production grants (`SELECT` on
+`org_expenses` for the resolver, `REFERENCES` for the migrator).
+
+### EMP-GPS-002 — tracking service: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps002-tracking-service.md), commit `de8e2eaf` (DI defect fixed in
+`d971686f`), no migration. Driver read `tracking/policy/mine` under
+`trip.trip.start` over the member's own record (AUDITOR, FINANCE, APPROVER 403;
+another organization 404; writes nothing). Kotlin `TrackingOperations` builds
+the six `gps.session.*` operations replayed through a sealed tracking book; the
+non-exported `OrganizationTrackingService` (location type, `START_NOT_STICKY`)
+listens only after a one-time grant armed by the visible trip screen, shows an
+ongoing notification with a stop action and a 30-second watchdog; process
+death or restart is interrupted as `PROCESS_STOPPED`/`DEVICE_RESTARTED` at the
+next opening. `check-mobile.sh` §5 admits exactly this fourth subscription and
+still refuses background location, boot receivers and sticky starts. Shared
+`tracking/session-operations-v1.psv` (41 rows).
+
+### EMP-GPS-003 — sampling, buffer and batches: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps003-sampling-buffer.md), commit `d971686f`, no migration.
+`sampling-v1` defaults after a device filter counting mock, stale, inaccurate
+and impossible fixes; a sealed `tracking-buffer` survives restarts; gaps
+(`SIGNAL_LOST`, `PROVIDER_DISABLED`, `MOCK_LOCATION`) open after 180 s without a
+good fix and are never bridged; batches of at most 200 fixes / 8 KiB leave the
+buffer in the same write as their operation. A same-millisecond stop/fix
+defect was fixed. Shared `tracking/track-batch-v1.psv` (24 rows). GPS-002/003
+IDs B-BR-EMP-495..505, BUC-EMP-252..257, EDR-321..327. Task union 32 packages
+1199/8524 (two load-only failures, 3/3 alone each); untagged 231 ok; `make
+quick-verify` ok. Native OWED with a ready one-line driver.
+
+Integration: merged on `78de91be` as `19e681a3`. Kotlin unions kept every
+feature: the trip view state carries DOC-004 photos, TRIP-020 conference
+sources and GPS-002 tracking; `TripFlow(source, service, fence, receipts,
+related, tracking) { deliver }`; the trip detail keeps photos, closing and the
+tracking card; the queue registry adds the `gps.session` producers; all rollback
+flags kept. EDR-321..327 inserted in order (the branch still carried the old
+EDR-265/266 placement). Counts set by hand to 166 normal and 166/33/133. Go
+build/vet (all tags), sqlc, cmd/api and tracking tests pass; Android full module
+suites domain 5608, application 739, data 979, app 829, 0 failures; lint, normal
+and enterprise validation builds (`-PenterpriseDeviceValidation=true` with both
+androidTest APKs) and `scripts/check-mobile.sh` pass. Retained: emulator and
+real-device acceptance, Android trip pause/cancel/handover feeds (TRIP-021), a
+handover end cause on the server (EDR-256), a server intake for device gap
+reasons, battery economy, GPS-010/015, GOV-006, production grants.
+
+### Emulator incident (2026-11-16)
+
+Around 10:33–10:51Z the owned emulator `emulator-5588` stalled under host
+memory pressure (~1 GB available, ~24 GB swap) and its system server crashed;
+the EXP-004 agent rebooted it holding the emulator lock. It came back with user
+0 `RUNNING_LOCKED` behind its synthetic lock-screen credential, which no agent
+holds or may enter, and the coordinator does not wipe it or change its lock
+settings. Every native acceptance after that point (flake 20-run GREEN, EXP-004,
+TRIP-020, GPS-002/003 and later app tasks) is OWED with prepared drivers until
+the owner unlocks the emulator once. The physical phone was never used.
