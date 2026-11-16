@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-DOC-004 SCR-DOC-01; generated from one table by f4-logs/doc004-scripts/gen_receipt_strings.py -->
+<resources>
+    <string name="enterprise_receipts_synthetic_notice">テスト段階: 合成画像のみを使用し、実際の領収書は使用しないでください。</string>
+    <string name="enterprise_receipts_camera">写真を撮る</string>
+    <string name="enterprise_receipts_import">写真を取り込む</string>
+    <string name="enterprise_receipts_reading">写真を読み込んでいます…</string>
+    <string name="enterprise_receipts_camera_denied">カメラの権限が拒否されました。代わりに写真を取り込めます。何も保存されていません。</string>
+    <string name="enterprise_receipts_cancelled">写真が選択されませんでした。何も保存されていません。</string>
+    <string name="enterprise_receipts_refused_missing">端末にファイルが見つかりません。もう一度選んでください。何も保存されていません。</string>
+    <string name="enterprise_receipts_refused_too_large">このファイルは 5 MB を超えています。何も保存されていません。</string>
+    <string name="enterprise_receipts_refused_unsupported">この段階では対応していない形式です (JPEG 写真のみ)。何も保存されていません。</string>
+    <string name="enterprise_receipts_hint_sharp">画像は鮮明に見えます。</string>
+    <string name="enterprise_receipts_hint_low_resolution">画像の画素数が少ない可能性があります。</string>
+    <string name="enterprise_receipts_hint_dark">画像が暗すぎる可能性があります。</string>
+    <string name="enterprise_receipts_hint_bright">画像が明るすぎる可能性があります。</string>
+    <string name="enterprise_receipts_hint_contrast">画像のコントラストが低い可能性があります。</string>
+    <string name="enterprise_receipts_hint_blurred">画像がぼやけている可能性があります。</string>
+    <string name="enterprise_receipts_hint_not_checked">画像を確認できませんでした。</string>
+    <string name="enterprise_receipts_hint_disclaimer">この確認はヒントにすぎず、領収書を検証するものではありません。</string>
+    <string name="enterprise_receipts_keep_or_retake">この写真を使うか、撮り直してください。</string>
+    <string name="enterprise_receipts_save">端末に保存</string>
+    <string name="enterprise_receipts_cancel">キャンセル</string>
+    <string name="enterprise_receipts_preview_description">選択した写真</string>
+    <string name="enterprise_receipts_photos">写真</string>
+    <string name="enterprise_receipts_photo_status">写真 %1$d: %2$s</string>
+    <string name="enterprise_receipts_reason">理由: %1$s</string>
+    <string name="enterprise_receipts_retake">写真を撮り直す</string>
+    <string name="enterprise_receipts_label_saved">端末に保存済み</string>
+    <string name="enterprise_receipts_label_sending">送信中</string>
+    <string name="enterprise_receipts_label_verifying">ファイルを確認中</string>
+    <string name="enterprise_receipts_label_stored">会社がファイルを保管済み</string>
+    <string name="enterprise_receipts_label_refused">受理されませんでした</string>
+    <string name="enterprise_receipts_label_missing">端末に領収書が見つかりません。写真を撮り直してください。</string>
+    <string name="enterprise_receipts_label_attention">確認が必要です</string>
+    <string name="enterprise_receipts_refusal_owner">記録が受理されませんでした</string>
+    <string name="enterprise_receipts_refusal_forbidden">この記録には許可されていません</string>
+    <string name="enterprise_receipts_refusal_validation">この段階では受理されません</string>
+    <string name="enterprise_receipts_refusal_conflict">別の写真と競合しています</string>
+    <string name="enterprise_receipts_refusal_reused">異なる内容で再送信されました</string>
+    <string name="enterprise_receipts_refusal_quarantined">安全確認で保留されました</string>
+    <string name="enterprise_receipts_refusal_failed">ファイルなしで送信が終了しました</string>
+    <string name="enterprise_receipts_local_unknown_record">この記録はこの端末にこの会社の記録として保存されていません。</string>
+    <string name="enterprise_receipts_local_full">この端末の写真が多すぎます。追加する前に送信してください。</string>
+    <string name="enterprise_receipts_local_budget">未送信の写真が使用可能な容量をすでに使っています。先に送信してください。</string>
+    <string name="enterprise_receipts_local_foreign">これらの写真はこの端末の別の登録に属しています。</string>
+    <string name="enterprise_receipts_local_disabled">このバージョンでは写真の撮影がオフになっています。</string>
+    <string name="enterprise_receipts_local_invalid">この写真を保存できませんでした。何も保存されていません。</string>
+    <string name="enterprise_receipts_add_reading_photo">計器値の写真を追加</string>
+    <string name="enterprise_receipts_title_reading">計器値の写真</string>
+    <string name="enterprise_receipts_saved">写真を端末に保存しました。</string>
+    <string name="enterprise_receipts_unavailable">現在この会社の写真を読み込めません。保存済みの写真は保持されます。</string>
+</resources>

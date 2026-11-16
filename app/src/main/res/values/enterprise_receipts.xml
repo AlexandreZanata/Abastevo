@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-DOC-004 SCR-DOC-01; generated from one table by f4-logs/doc004-scripts/gen_receipt_strings.py -->
+<resources>
+    <string name="enterprise_receipts_synthetic_notice">Test phase: use synthetic images only, never a real receipt.</string>
+    <string name="enterprise_receipts_camera">Take photo</string>
+    <string name="enterprise_receipts_import">Import photo</string>
+    <string name="enterprise_receipts_reading">Reading the photo…</string>
+    <string name="enterprise_receipts_camera_denied">Camera permission denied. You can import a photo instead. Nothing was saved.</string>
+    <string name="enterprise_receipts_cancelled">No photo was chosen. Nothing was saved.</string>
+    <string name="enterprise_receipts_refused_missing">File not found on the device. Choose it again. Nothing was saved.</string>
+    <string name="enterprise_receipts_refused_too_large">This file is larger than 5 MB. Nothing was saved.</string>
+    <string name="enterprise_receipts_refused_unsupported">Format not accepted in this phase (JPEG photos only). Nothing was saved.</string>
+    <string name="enterprise_receipts_hint_sharp">The image looks sharp.</string>
+    <string name="enterprise_receipts_hint_low_resolution">The image may have too few pixels.</string>
+    <string name="enterprise_receipts_hint_dark">The image may be too dark.</string>
+    <string name="enterprise_receipts_hint_bright">The image may be too bright.</string>
+    <string name="enterprise_receipts_hint_contrast">The image may have low contrast.</string>
+    <string name="enterprise_receipts_hint_blurred">The image may be blurred.</string>
+    <string name="enterprise_receipts_hint_not_checked">The image could not be checked.</string>
+    <string name="enterprise_receipts_hint_disclaimer">This check is only a hint; it does not validate the receipt.</string>
+    <string name="enterprise_receipts_keep_or_retake">Keep this photo or take another one.</string>
+    <string name="enterprise_receipts_save">Save on the device</string>
+    <string name="enterprise_receipts_cancel">Cancel</string>
+    <string name="enterprise_receipts_preview_description">Selected photo</string>
+    <string name="enterprise_receipts_photos">Photos</string>
+    <string name="enterprise_receipts_photo_status">Photo %1$d: %2$s</string>
+    <string name="enterprise_receipts_reason">Reason: %1$s</string>
+    <string name="enterprise_receipts_retake">Take the photo again</string>
+    <string name="enterprise_receipts_label_saved">Saved on the device</string>
+    <string name="enterprise_receipts_label_sending">Sending</string>
+    <string name="enterprise_receipts_label_verifying">File being checked</string>
+    <string name="enterprise_receipts_label_stored">File stored by the company</string>
+    <string name="enterprise_receipts_label_refused">Not accepted</string>
+    <string name="enterprise_receipts_label_missing">Receipt not found on the device. Take the photo again.</string>
+    <string name="enterprise_receipts_label_attention">Needs attention</string>
+    <string name="enterprise_receipts_refusal_owner">the record was not accepted</string>
+    <string name="enterprise_receipts_refusal_forbidden">not allowed for this record</string>
+    <string name="enterprise_receipts_refusal_validation">not accepted in this phase</string>
+    <string name="enterprise_receipts_refusal_conflict">conflicts with another photo</string>
+    <string name="enterprise_receipts_refusal_reused">sent again with different content</string>
+    <string name="enterprise_receipts_refusal_quarantined">held by the safety check</string>
+    <string name="enterprise_receipts_refusal_failed">the upload was closed without the file</string>
+    <string name="enterprise_receipts_local_unknown_record">This record is not saved for this company on the device.</string>
+    <string name="enterprise_receipts_local_full">This device holds too many photos. Send them before adding more.</string>
+    <string name="enterprise_receipts_local_budget">Unsent photos already use the space available. Send them first.</string>
+    <string name="enterprise_receipts_local_foreign">These photos belong to another enrollment of this device.</string>
+    <string name="enterprise_receipts_local_disabled">Photo capture is switched off in this version.</string>
+    <string name="enterprise_receipts_local_invalid">This photo could not be saved. Nothing was saved.</string>
+    <string name="enterprise_receipts_add_reading_photo">Add a photo of the reading</string>
+    <string name="enterprise_receipts_title_reading">Photo of the reading</string>
+    <string name="enterprise_receipts_saved">Photo saved on the device.</string>
+    <string name="enterprise_receipts_unavailable">The photos of this company cannot be read now. Saved photos are kept.</string>
+</resources>

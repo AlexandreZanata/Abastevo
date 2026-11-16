@@ -49,6 +49,9 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.auth.SecureAccountWindow
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureUi
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureViewModel
+import com.anpfuel.app.ui.enterprise.attachment.rememberSystemReceiptPickers
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsHomeCard
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsPanel
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsViewModel
@@ -70,6 +73,7 @@ fun EnterpriseContextScreen(
     syncViewModel: EnterpriseSyncViewModel = hiltViewModel(),
     assetsViewModel: MyAssetsViewModel = hiltViewModel(),
     tripViewModel: TripViewModel = hiltViewModel(),
+    receiptViewModel: ReceiptCaptureViewModel = hiltViewModel(),
 ) {
     // These are cheap local invalidation flows; keep private presentation current
     // while stopped rather than briefly resuming an earlier confirmed context.
@@ -80,6 +84,9 @@ fun EnterpriseContextScreen(
     var showAssets by remember { mutableStateOf(false) }
     var assetsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val tripState by tripViewModel.state.collectAsState()
+    // EMP-DOC-004: one capture sheet owner; its unsaved photo stays in memory only (B-BR-EMP-453).
+    val receiptState by receiptViewModel.state.collectAsState()
+    val receiptPickers = rememberSystemReceiptPickers(receiptViewModel)
     var showTrips by remember { mutableStateOf(false) }
     var tripsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val renderedGeneration = syncState.generation
@@ -110,6 +117,8 @@ fun EnterpriseContextScreen(
     // SCR-TRIP-01 (EMP-TRIP-005): withdrawn with the same gestures and lifecycle as "Meus ativos".
     fun closeTrips() {
         tripViewModel.withdraw()
+        // An unsaved photo never survives its context (B-BR-EMP-453).
+        receiptViewModel.reset()
         showTrips = false
         tripsFor = null
     }
@@ -238,6 +247,8 @@ fun EnterpriseContextScreen(
             finishWarnings = { trip, final -> if (tripsMatch) tripViewModel.finishWarnings(trip, final) else emptyList() },
             onReady = { trip -> if (tripsMatch) tripViewModel.markReady(trip, renderedEpoch, tripState.generation) },
             onSend = { if (tripsMatch) tripViewModel.sendNow(renderedEpoch, tripState.generation) },
+            capture = if (receiptViewModel.enabled) ReceiptCaptureUi(receiptState, receiptPickers, receiptViewModel::reset) else null,
+            onAttach = { owner, target, draft -> if (tripsMatch) tripViewModel.attach(owner, target, draft, renderedEpoch, tripState.generation) },
             modifier = Modifier.fillMaxSize().padding(padding),
         ) else if (showAssets && resumed && renderedSelected != null && !choosing &&
             assetsFor?.partition == renderedSelected.partition && assetsFor?.membershipId == renderedSelected.membershipId) MyAssetsPanel(

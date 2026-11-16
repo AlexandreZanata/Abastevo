@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.anpfuel.application.enterprise.EnterpriseContextSummary
 import com.anpfuel.application.enterprise.EnterpriseSessionFence
+import com.anpfuel.application.enterprise.attachment.ReceiptDraft
 import com.anpfuel.application.enterprise.sync.EnterpriseDeliveryActivity
 import com.anpfuel.application.enterprise.trip.TripCapture
 import com.anpfuel.application.enterprise.trip.TripFlow
 import com.anpfuel.application.port.NetworkConnectivityGateway
+import com.anpfuel.domain.enterprise.attachment.AttachmentTarget
 import com.anpfuel.domain.enterprise.fleet.EnterpriseAssetChoice
 import com.anpfuel.domain.enterprise.meter.ReadingFlag
 import com.anpfuel.domain.enterprise.trip.TripAssetLabel
@@ -74,6 +76,9 @@ class TripViewModel @Inject constructor(
         action(renderedEpoch, generation) { flow.finish(tripId, final, renderedEpoch, generation) }
     fun markReady(tripId: String, renderedEpoch: Long, generation: Long) =
         action(renderedEpoch, generation) { flow.markReady(tripId, renderedEpoch, generation) }
+    /** EMP-DOC-004: seals an unsaved photo beside its record; offline like every other save (EDR-293). */
+    fun attach(ownerOperationId: String, target: AttachmentTarget, draft: ReceiptDraft, renderedEpoch: Long, generation: Long) =
+        action(renderedEpoch, generation) { flow.attach(ownerOperationId, target, draft, renderedEpoch, generation) }
     /** "Enviar agora" exists only with a connection (12-ux-app §6). */
     fun sendNow(renderedEpoch: Long, generation: Long) = action(renderedEpoch, generation, online = true) { flow.sendNow(renderedEpoch, generation) }
     fun openTrip(tripId: String?, renderedEpoch: Long, generation: Long) {

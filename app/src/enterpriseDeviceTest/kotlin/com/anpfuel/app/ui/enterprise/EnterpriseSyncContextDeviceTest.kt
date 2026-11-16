@@ -1,6 +1,8 @@
 package com.anpfuel.app.ui.enterprise
 
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureViewModel
 import com.anpfuel.app.ui.enterprise.trip.TripViewModel
+import com.anpfuel.data.enterprise.attachment.AndroidReceiptOriginals
 import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
 import com.anpfuel.application.enterprise.trip.TripFlow
@@ -105,19 +107,23 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var syncModel: EnterpriseSyncViewModel
             lateinit var assetsModel: MyAssetsViewModel
             lateinit var tripModel: TripViewModel
+            lateinit var receiptModel: ReceiptCaptureViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
                 assetsModel = MyAssetsViewModel(graph.assetsFlow, graph.network, fence)
                 tripModel = TripViewModel(graph.tripFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                // EMP-DOC-004: capture stays off here (no attachment queue in this graph).
+                receiptModel = ReceiptCaptureViewModel(AndroidReceiptOriginals(InstrumentationRegistry.getInstrumentation().targetContext), false)
                 models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel); models.put("trips", tripModel)
+                models.put("receipts", receiptModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
                     MaterialTheme { EnterpriseContextScreen({ personal = true }, { sourceCalls.incrementAndGet() },
-                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel) }
+                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel, receiptModel) }
                 }
             }
             awaitTag(option(graph.a))
@@ -223,18 +229,22 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var syncModel: EnterpriseSyncViewModel
             lateinit var assetsModel: MyAssetsViewModel
             lateinit var tripModel: TripViewModel
+            lateinit var receiptModel: ReceiptCaptureViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
                 assetsModel = MyAssetsViewModel(graph.assetsFlow, graph.network, fence)
                 tripModel = TripViewModel(graph.tripFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                // EMP-DOC-004: capture stays off here (no attachment queue in this graph).
+                receiptModel = ReceiptCaptureViewModel(AndroidReceiptOriginals(InstrumentationRegistry.getInstrumentation().targetContext), false)
                 models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel); models.put("trips", tripModel)
+                models.put("receipts", receiptModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
-                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel) }
+                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel, receiptModel) }
                 }
             }
             fun names() = assetsModel.state.value.snapshot?.assets?.map { it.asset.name }

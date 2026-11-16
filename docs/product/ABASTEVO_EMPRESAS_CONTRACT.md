@@ -7045,3 +7045,78 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   member's later operations; a lost device; another organization; the trip
   never deleted or closed by the offboarding; a populated upgrade with
   injected failure and recovery.
+
+## EMP-DOC-004 — App: capture and import with offline queue and legibility check (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-doc004-app-capture.md).
+
+- **B-BR-EMP-450 — Two ways to bring an original, both without a new
+  dependency.** Beside a record already saved in the partition's protected
+  queue whose evidence has an EMP-DOC-003 link target (C1: the departure or
+  final reading of a trip, target `METER_READING`; later owners add their own
+  targets), the app offers "Fotografar" — the system camera writing into a
+  private cache file of the app, only after the `CAMERA` permission is
+  granted — and "Importar foto" — the Android photo picker, images only,
+  which needs no storage permission. A denied camera permission, a cancelled
+  camera or picker, or an empty selection saves nothing, says so, and keeps
+  the other way available. Capture is shown only when the attachment queue is
+  enabled (`ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED`) and the rollback switch
+  `ENTERPRISE_RECEIPT_CAPTURE_UI_ENABLED` (default on) is on; switching it off
+  hides the entry points and keeps every saved attachment and its delivery.
+- **B-BR-EMP-451 — The type is decided by content and the original is kept
+  unmodified.** The selected file is read once, bounded to 5 MiB plus one
+  byte, and judged by its bytes, never by its name or declared type: a JPEG
+  (start-of-image and end-of-image markers) of up to 5 MiB is accepted
+  exactly as read — no re-encoding, cropping, resizing or metadata change;
+  no readable bytes (file gone, access revoked, empty) is "file not found on
+  the device, choose again"; more than 5 MiB is "too large"; anything else
+  (PNG, HEIC, WebP, PDF, a renamed file) is "unsupported in this phase". A
+  refused file is never queued, listed or shown as saved. The camera's
+  temporary file is deleted as soon as its bytes are read, and any leftover
+  is deleted when capture opens again.
+- **B-BR-EMP-452 — Legibility is a hint, never a validation.** Before saving,
+  the device decodes a downscaled luminance sample of the accepted original
+  and reports either that the image looks sharp or the problems it sees (low
+  resolution, too dark, too bright, low contrast, blurred), always with the
+  statement that the check does not validate the receipt. It never blocks
+  saving, never claims fiscal, legal or document validity, performs no text
+  recognition, and its result is neither stored nor sent. An image that
+  cannot be decoded is "could not be checked" and may still be saved; the
+  person keeps the photo or takes another one.
+- **B-BR-EMP-453 — Saved means sealed in the creation partition.** "Salvar
+  no aparelho" hands the exact original to the EMP-OFFL-005 capture of the
+  record's own partition (account, origin, organization, membership,
+  enrollment) with the target fixed; "Salvo no aparelho" appears only after
+  that protected write returns. A failed write says that nothing was saved
+  and keeps the unsaved photo in memory for another attempt; a local refusal
+  (record not in this partition, index full, byte budget, another
+  enrollment, capture disabled) is shown with its reason. An unsaved photo
+  lives only in memory and is gone after a context change or a process death;
+  only sealed originals survive, and nothing else of the photo is written.
+- **B-BR-EMP-454 — Each attachment shows its own state.** Under its record,
+  each attachment is shown "Salvo no aparelho", "Enviando", "Arquivo em
+  verificação", "Arquivo guardado pela empresa" (only after the server
+  reported it `STORED`; it says the file arrived intact, never that the
+  receipt is valid), "Não aceito" with its reason, "Comprovante não encontrado
+  no aparelho" with the offer to photograph it again, or "Precisa de atenção"
+  after repeated failures — always independent of the record's own sync
+  state, which never waits for or changes with its attachments. Every capture
+  screen states that the C1 phase takes synthetic images only.
+- **BUC-EMP-228 — Photograph a reading offline and send it later.** Bruno
+  starts a trip with no signal, opens the start record, takes a photo of the
+  odometer, sees "A imagem parece nítida — esta conferência não valida o
+  comprovante", saves it ("Salvo no aparelho"), the phone restarts, the photo
+  is still saved, and after reconnection the start is "Aceito pela empresa"
+  while the photo moves to "Arquivo guardado pela empresa" only when the
+  server stored it; an interrupted upload stays pending and is retried.
+- **BUC-EMP-229 — Import, refused types and hints.** Bruno imports a PNG
+  screenshot: "Formato não aceito nesta fase", nothing saved; he imports a
+  dark JPEG: "A imagem pode estar escura", he keeps it anyway and it is
+  saved unmodified.
+- **BUC-EMP-230 — Negatives.** Camera permission denied (import still
+  offered, nothing saved), a picked file that disappeared before reading
+  ("não encontrado no aparelho"), a protected write that fails ("Nada foi
+  salvo"), a record of another organization or enrollment (refused, never
+  listed in the other partition), a sealed original missing at delivery
+  (shown "Comprovante não encontrado no aparelho", never sent, never
+  verified).

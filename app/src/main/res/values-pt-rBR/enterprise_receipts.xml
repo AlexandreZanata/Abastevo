@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-DOC-004 SCR-DOC-01; generated from one table by f4-logs/doc004-scripts/gen_receipt_strings.py -->
+<resources>
+    <string name="enterprise_receipts_synthetic_notice">Fase de teste: use apenas imagens sintéticas, nunca um comprovante real.</string>
+    <string name="enterprise_receipts_camera">Fotografar</string>
+    <string name="enterprise_receipts_import">Importar foto</string>
+    <string name="enterprise_receipts_reading">Lendo a foto…</string>
+    <string name="enterprise_receipts_camera_denied">Permissão da câmera negada. Você pode importar uma foto. Nada foi salvo.</string>
+    <string name="enterprise_receipts_cancelled">Nenhuma foto foi escolhida. Nada foi salvo.</string>
+    <string name="enterprise_receipts_refused_missing">Arquivo não encontrado no aparelho. Escolha de novo. Nada foi salvo.</string>
+    <string name="enterprise_receipts_refused_too_large">Este arquivo é maior que 5 MB. Nada foi salvo.</string>
+    <string name="enterprise_receipts_refused_unsupported">Formato não aceito nesta fase (apenas fotos JPEG). Nada foi salvo.</string>
+    <string name="enterprise_receipts_hint_sharp">A imagem parece nítida.</string>
+    <string name="enterprise_receipts_hint_low_resolution">A imagem pode ter poucos pixels.</string>
+    <string name="enterprise_receipts_hint_dark">A imagem pode estar escura.</string>
+    <string name="enterprise_receipts_hint_bright">A imagem pode estar clara demais.</string>
+    <string name="enterprise_receipts_hint_contrast">A imagem pode ter pouco contraste.</string>
+    <string name="enterprise_receipts_hint_blurred">A imagem pode estar borrada.</string>
+    <string name="enterprise_receipts_hint_not_checked">Não foi possível conferir a imagem.</string>
+    <string name="enterprise_receipts_hint_disclaimer">Esta conferência é só uma dica; ela não valida o comprovante.</string>
+    <string name="enterprise_receipts_keep_or_retake">Mantenha esta foto ou tire outra.</string>
+    <string name="enterprise_receipts_save">Salvar no aparelho</string>
+    <string name="enterprise_receipts_cancel">Cancelar</string>
+    <string name="enterprise_receipts_preview_description">Foto escolhida</string>
+    <string name="enterprise_receipts_photos">Fotos</string>
+    <string name="enterprise_receipts_photo_status">Foto %1$d: %2$s</string>
+    <string name="enterprise_receipts_reason">Motivo: %1$s</string>
+    <string name="enterprise_receipts_retake">Fotografar de novo</string>
+    <string name="enterprise_receipts_label_saved">Salvo no aparelho</string>
+    <string name="enterprise_receipts_label_sending">Enviando</string>
+    <string name="enterprise_receipts_label_verifying">Arquivo em verificação</string>
+    <string name="enterprise_receipts_label_stored">Arquivo guardado pela empresa</string>
+    <string name="enterprise_receipts_label_refused">Não aceito</string>
+    <string name="enterprise_receipts_label_missing">Comprovante não encontrado no aparelho. Fotografe de novo.</string>
+    <string name="enterprise_receipts_label_attention">Precisa de atenção</string>
+    <string name="enterprise_receipts_refusal_owner">o registro não foi aceito</string>
+    <string name="enterprise_receipts_refusal_forbidden">não permitido para este registro</string>
+    <string name="enterprise_receipts_refusal_validation">não aceito nesta fase</string>
+    <string name="enterprise_receipts_refusal_conflict">conflita com outra foto</string>
+    <string name="enterprise_receipts_refusal_reused">reenviado com outro conteúdo</string>
+    <string name="enterprise_receipts_refusal_quarantined">retido pela verificação de segurança</string>
+    <string name="enterprise_receipts_refusal_failed">o envio foi encerrado sem o arquivo</string>
+    <string name="enterprise_receipts_local_unknown_record">Este registro não está salvo para esta empresa no aparelho.</string>
+    <string name="enterprise_receipts_local_full">Este aparelho tem fotos demais. Envie-as antes de adicionar mais.</string>
+    <string name="enterprise_receipts_local_budget">As fotos não enviadas já ocupam o espaço disponível. Envie-as primeiro.</string>
+    <string name="enterprise_receipts_local_foreign">Estas fotos pertencem a outra inscrição deste aparelho.</string>
+    <string name="enterprise_receipts_local_disabled">A captura de fotos está desligada nesta versão.</string>
+    <string name="enterprise_receipts_local_invalid">Não foi possível salvar esta foto. Nada foi salvo.</string>
+    <string name="enterprise_receipts_add_reading_photo">Adicionar foto da leitura</string>
+    <string name="enterprise_receipts_title_reading">Foto da leitura</string>
+    <string name="enterprise_receipts_saved">Foto salva no aparelho.</string>
+    <string name="enterprise_receipts_unavailable">Não é possível ler as fotos desta empresa agora. As fotos salvas são mantidas.</string>
+</resources>
