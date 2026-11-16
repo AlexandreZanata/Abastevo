@@ -10,6 +10,11 @@ import com.anpfuel.application.enterprise.EnterpriseSessionFence
 import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentService
 import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentStore
 import com.anpfuel.application.enterprise.attachment.EnterpriseAttachmentTransport
+import com.anpfuel.application.enterprise.checklist.ChecklistFlow
+import com.anpfuel.application.enterprise.checklist.EnterpriseChecklistGateway
+import com.anpfuel.application.enterprise.checklist.EnterpriseChecklistProducers
+import com.anpfuel.application.enterprise.checklist.EnterpriseChecklistService
+import com.anpfuel.application.enterprise.checklist.EnterpriseChecklistStore
 import com.anpfuel.application.enterprise.fleet.EnterpriseReferenceCacheStore
 import com.anpfuel.application.enterprise.fleet.EnterpriseReferenceService
 import com.anpfuel.application.enterprise.fleet.EnterpriseReferenceTransport
@@ -36,6 +41,7 @@ import com.anpfuel.data.BuildConfig
 import com.anpfuel.data.enterprise.*
 import com.anpfuel.data.enterprise.attachment.EnterpriseAttachmentHttpClient
 import com.anpfuel.data.enterprise.attachment.ProtectedAttachmentStore
+import com.anpfuel.data.enterprise.checklist.ProtectedChecklistStore
 import com.anpfuel.data.enterprise.fleet.EnterpriseReferenceHttpClient
 import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
@@ -229,11 +235,13 @@ object EnterpriseModule {
 
     /**
      * Owning offline business producers are registered only after their own acceptance: the four EMP-TRIP-005
-     * `trip.*` producers (EDR-242) are the first. Their queued work keeps its delivery whatever the UI flag says.
+     * `trip.*` producers (EDR-242) are the first, then the EMP-CHECK-002 `check.run.complete` producer (EDR-283).
+     * Their queued work keeps its delivery whatever the UI flags say.
      */
     @Provides
     @Singleton
-    fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry = EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints))
+    fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry =
+        EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), *EnterpriseChecklistProducers.all())
 
     /** The sealed trip book and the entries it names, never a plaintext table (EDR-242). */
     @Provides
@@ -252,6 +260,23 @@ object EnterpriseModule {
     @Provides
     fun tripFlow(source: EnterpriseQueueSource, service: EnterpriseTripService, fence: EnterpriseSessionFence,
         delivery: EnterpriseQueueService): TripFlow = TripFlow(source, service, fence) { account, partition -> delivery.dispatch(account, partition) }
+
+    /** The sealed checklist book and the entries it names, never a plaintext table (EDR-283). */
+    @Provides
+    @Singleton
+    fun checklistStore(store: ProtectedEnterprisePersistence): EnterpriseChecklistStore = ProtectedChecklistStore(store)
+
+    @Provides
+    @Singleton
+    fun checklistService(source: EnterpriseQueueSource, delivery: EnterpriseQueueService, store: EnterpriseChecklistStore,
+        gateway: EnterpriseChecklistGateway): EnterpriseChecklistService = EnterpriseChecklistService(
+        source, { partition, operation -> delivery.save(partition, operation) }, store, gateway, { ZoneId.systemDefault() },
+    )
+
+    /** Each visible checklist owner is independent, like the trip owner; "Enviar agora" is one dispatch of its partition. */
+    @Provides
+    fun checklistFlow(source: EnterpriseQueueSource, service: EnterpriseChecklistService, fence: EnterpriseSessionFence,
+        delivery: EnterpriseQueueService): ChecklistFlow = ChecklistFlow(source, service, fence) { account, partition -> delivery.dispatch(account, partition) }
 
     @Provides
     @Singleton

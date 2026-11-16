@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/fleet"
@@ -65,6 +66,19 @@ func (NoMaintenanceHolds) MaintenanceHoldsDBTX(ctx context.Context, db syncapp.D
 		return app.HoldAnswer{}, app.ErrUnavailable
 	}
 	return app.HoldAnswer{}, nil
+}
+
+// NoChecklistBlocks is the explicit "no checklist-block source" adapter
+// (EDR-285); the answer reports the missing source CHECKLIST_RUN.
+type NoChecklistBlocks struct{}
+
+var _ app.ChecklistBlockPort = NoChecklistBlocks{}
+
+func (NoChecklistBlocks) ChecklistBlocksDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) (app.ChecklistBlockAnswer, error) {
+	if syncapp.Borrow(db) == nil || scope.Validate() != nil || !validID(asset) || at.IsZero() {
+		return app.ChecklistBlockAnswer{}, app.ErrUnavailable
+	}
+	return app.ChecklistBlockAnswer{}, nil
 }
 
 // reservationError maps the B-BR-EMP-295 exclusion refusals (a backstop
@@ -651,7 +665,7 @@ func (s *AssetStore) assetRead(ctx context.Context, scope kernel.OrgScope, actor
 // availabilityFacts collects the stored facts of the asset at instant at and
 // the sources that answered "no source" (B-BR-EMP-299).
 func (s *AssetStore) availabilityFacts(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) (fleet.AvailabilityFacts, []app.AvailabilitySource, error) {
-	if meterIntakeAbsent(s.ActiveUse) || meterIntakeAbsent(s.MaintenanceHolds) {
+	if meterIntakeAbsent(s.ActiveUse) || meterIntakeAbsent(s.MaintenanceHolds) || meterIntakeAbsent(s.ChecklistBlocks) {
 		return fleet.AvailabilityFacts{}, nil, app.ErrUnavailable
 	}
 	queries := q.New(db)
@@ -713,6 +727,14 @@ func (s *AssetStore) availabilityFacts(ctx context.Context, db syncapp.DBTX, sco
 		}
 		facts.Blocks = append(facts.Blocks, fleet.BlockFact{ID: row.ID, Reason: fleet.BlockReason(row.ReasonKind), Period: period})
 	}
+	checklists, err := s.ChecklistBlocks.ChecklistBlocksDBTX(ctx, db, scope, asset, at)
+	if err != nil {
+		return fleet.AvailabilityFacts{}, nil, app.ErrUnavailable
+	}
+	if !checklists.Sourced {
+		missing = append(missing, app.ChecklistBlockSource)
+	}
+	facts.Checklists = append([]fleet.ChecklistBlockFact(nil), checklists.Blocks...)
 	reservations, err := queries.AvailabilityReservations(ctx, q.AvailabilityReservationsParams{OrgID: org, AssetID: asset, At: timestamp(at)})
 	if err != nil {
 		return fleet.AvailabilityFacts{}, nil, err
@@ -724,6 +746,7 @@ func (s *AssetStore) availabilityFacts(ctx context.Context, db syncapp.DBTX, sco
 		}
 		facts.Reservations = append(facts.Reservations, fleet.ReservationFact{ID: row.ID, EmployeeID: row.EmployeeID, Reservation: r})
 	}
+	slices.Sort(missing)
 	return facts, missing, nil
 }
 

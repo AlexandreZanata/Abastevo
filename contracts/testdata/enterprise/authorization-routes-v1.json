@@ -98,6 +98,7 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/incidents/reports/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/checklists/runs/{run_id}/release",
         "POST /v1/orgs/{org_id}/incidents/reports/list",
         "POST /v1/orgs/{org_id}/incidents/reports/{report_id}/decide",
         "POST /v1/orgs/{org_id}/incidents/reports/{report_id}/read"
@@ -304,6 +305,7 @@
       "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/list",
       "routes": [
         "POST /v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable",
+        "POST /v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read",
         "POST /v1/orgs/{org_id}/fleet/assets/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/list",

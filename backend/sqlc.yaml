@@ -723,6 +723,7 @@ sql:
       - db/migrations/000220_organization_trips.sql
       - db/migrations/000223_organization_checklist_templates.sql
       - db/migrations/000230_organization_incident_reports.sql
+      - db/migrations/000242_organization_checklist_runs.sql
     gen:
       go:
         package: maintenance

@@ -51,6 +51,7 @@ func tripStateOn(t *testing.T, f *orgtest.Fixture) tripState {
 	x.authority = (*orgpg.TripAuthority)(meterAuthority)
 	x.store = &trippg.Store{Allocations: x.assets, NewID: func() (string, error) { return onboardingID(t), nil }, PreLifecycleImage: !lifecycleImage(t, x.legalFixtureState)}
 	x.assets.OpenWork, x.assets.ActiveUse, x.assets.MaintenanceHolds = trippg.OpenWork{}, trippg.ActiveUse{PreLifecycleImage: x.store.PreLifecycleImage}, fleetpg.NoMaintenanceHolds{}
+	x.assets.ChecklistBlocks = checklistBlockSource(t, x.legalFixtureState)
 	x.start, x.finish = x.handlers(t, x.meters, x.store)
 	x.trips = syncpg.NewStore(tripIntakeConfig(x.syncFixtureState))
 	input := fleetCreateInput()

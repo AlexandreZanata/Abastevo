@@ -27,6 +27,9 @@ const (
 	ActiveUseCause   CauseKind = "ACTIVE_USE"
 	MaintenanceCause CauseKind = "MAINTENANCE_HOLD"
 	BlockCause       CauseKind = "BLOCK"
+	// ChecklistCause is a BLOCKING checklist run of the asset (BR-CHECK-010,
+	// EMP-CHECK-002): row 4, after the manual blocks.
+	ChecklistCause   CauseKind = "CHECKLIST_RUN"
 	ReservationCause CauseKind = "RESERVATION"
 )
 
@@ -72,6 +75,14 @@ type BlockFact struct {
 	Period AssignmentPeriod
 }
 
+// ChecklistBlockFact is a BLOCKING checklist run (row 4): from its declared
+// completion until its release, answered by the checklist-block port.
+type ChecklistBlockFact struct {
+	ID   string
+	From time.Time
+	To   *time.Time
+}
+
 // ReservationFact is one stored reservation (row 5). EmployeeID is the
 // reserved employee record, empty when the reservation names nobody.
 type ReservationFact struct {
@@ -86,6 +97,7 @@ type AvailabilityFacts struct {
 	Uses         []UseFact
 	Holds        []HoldFact
 	Blocks       []BlockFact
+	Checklists   []ChecklistBlockFact
 	Reservations []ReservationFact
 }
 
@@ -125,7 +137,7 @@ func Assess(f AvailabilityFacts, at, now time.Time) (Assessment, error) {
 	if f.Lifecycle != Active {
 		causes = append(causes, Cause{Availability: Unavailable, Kind: LifecycleCause, Lifecycle: f.Lifecycle})
 	}
-	var uses, holds, blocks, reservations []Cause
+	var uses, holds, blocks, checklists, reservations []Cause
 	for _, use := range f.Uses {
 		if !validFactID(use.ID) || use.From.IsZero() || use.Via != "" && !validFactID(use.Via) {
 			return Assessment{}, ErrInvalid
@@ -155,6 +167,14 @@ func Assess(f AvailabilityFacts, at, now time.Time) (Assessment, error) {
 			blocks = append(blocks, Cause{Availability: Blocked, Kind: BlockCause, ID: block.ID, Block: block.Reason, From: period.From, To: copyEnd(period.To)})
 		}
 	}
+	for _, run := range f.Checklists {
+		if !validFactID(run.ID) || run.From.IsZero() || run.To != nil && run.To.Before(run.From) {
+			return Assessment{}, ErrInvalid
+		}
+		if !at.Before(run.From) && (run.To == nil || at.Before(*run.To)) {
+			checklists = append(checklists, Cause{Availability: Blocked, Kind: ChecklistCause, ID: run.ID, From: run.From.UTC(), To: copyEnd(run.To)})
+		}
+	}
 	for _, fact := range f.Reservations {
 		if !validFactID(fact.ID) || fact.EmployeeID != "" && !validFactID(fact.EmployeeID) || fact.Reservation.Validate() != nil {
 			return Assessment{}, ErrInvalid
@@ -164,7 +184,7 @@ func Assess(f AvailabilityFacts, at, now time.Time) (Assessment, error) {
 			reservations = append(reservations, Cause{Availability: Reserved, Kind: ReservationCause, ID: fact.ID, From: fact.Reservation.Window.From, To: &end})
 		}
 	}
-	for _, kind := range [][]Cause{uses, holds, blocks, reservations} {
+	for _, kind := range [][]Cause{uses, holds, blocks, checklists, reservations} {
 		sortCauses(kind)
 		causes = append(causes, kind...)
 	}

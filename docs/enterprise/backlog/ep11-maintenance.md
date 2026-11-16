@@ -41,7 +41,7 @@ extension (EMP-OFFL-006), template events and policy history reads, the panel
 (EMP-CHECK-004). [Evidence](../evidence/f4-check001-checklist-templates.md).
 
 ### EMP-CHECK-002 — Checklist execution offline with the critical-item policy
-- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Run a checklist offline and preserve the server's independent outcome.
 - **Rules and use cases:** BR-CHECK-004, BR-CHECK-005, BR-CHECK-006, BR-CHECK-007, BR-CHECK-008, BR-OFFL-002
 - **Depends on:** EMP-CHECK-001, EMP-OFFL-002, EMP-OFFL-003
@@ -55,6 +55,26 @@ extension (EMP-OFFL-006), template events and policy history reads, the panel
 - **Validation:** V-APP, V-SYNC, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Detailed rules and exact thresholds come from the maintenance specification. Attachments and real-data activation retain their own gates.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+EMP-CHECK-002 LOCAL_DONE (pending integration): the device caches the
+CHECK-001 applicable read sealed (`checklist-book` v1), saves each answer
+before showing it saved and computes the outcome from the cached version and
+policy revision, shown at once; the completed run is one signed
+`check.run.complete` (EDR-283/284) rechecked at receipt by the pure
+`RecheckRun` against the server's version and policy history and again by the
+database (migration 000242, forced RLS): a well-formed run is always ACCEPTED
+with the field fact, the server outcome, `TEMPLATE_SUPERSEDED` and a
+disagreement held for review; a BLOCKING run blocks the asset through the new
+FLEET-007 cause `CHECKLIST_RUN` until another member releases it under fresh
+`check.incident.manage` (`SELF_APPROVAL` for the author, one audit event);
+the author reads the server outcome through the run read under
+`fleet.asset.read` (EDR-285). Android execution screen from the enterprise
+context and the trip start form, 8 locales; native acceptance on the emulator
+(EDR-286). The `run-v1.psv` oracle pins the bytes for Go and Kotlin.
+Retained: the trip gate (EMP-TRIP-019), run photos (DOC-003 link kind),
+damages from issues, report blocks and panel lists (EMP-CHECK-004), the
+reference-feed entity type, events.
+[Evidence](../evidence/f4-check002-checklist-execution.md).
 
 ### EMP-CHECK-003 — Damage and incident reports with photos
 - **Meta:** module CHECK · phase F4 · cut - · priority P1 · type API · size M · state TODO

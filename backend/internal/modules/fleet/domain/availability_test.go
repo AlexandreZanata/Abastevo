@@ -135,3 +135,47 @@ func TestStartDecisionHoldsWithAPreciseCode(t *testing.T) {
 		t.Fatal("malformed starter admitted")
 	}
 }
+
+// EMP-CHECK-002 (BR-CHECK-010, EDR-285): a BLOCKING checklist run blocks the
+// asset from its declared completion until its release, as row 4 after the
+// manual blocks, and a new start is held ASSET_UNAVAILABLE.
+func TestAvailabilityBlocksOnABlockingChecklistRun(t *testing.T) {
+	at := resAt(20)
+	released := resAt(20)
+	run := fleet.ChecklistBlockFact{ID: "run-1", From: resAt(10)}
+	block := blockFact(t, "block-1", fleet.SafetyBlock, 0, nil)
+	reservation := confirmedFact(t, "res-1", "emp-1", 10, 130)
+	got, err := fleet.Assess(fleet.AvailabilityFacts{Lifecycle: fleet.Active, Blocks: []fleet.BlockFact{block}, Checklists: []fleet.ChecklistBlockFact{run}, Reservations: []fleet.ReservationFact{reservation}}, at, at)
+	if err != nil || got.Availability != fleet.Blocked || len(got.Causes) != 3 || got.Causes[0].Kind != fleet.BlockCause || got.Causes[1].Kind != fleet.ChecklistCause ||
+		got.Causes[1].ID != "run-1" || got.Causes[1].Availability != fleet.Blocked || !got.Causes[1].From.Equal(resAt(10)) || got.Causes[1].To != nil || got.Causes[2].Kind != fleet.ReservationCause {
+		t.Fatalf("blocking run: %+v %v", got, err)
+	}
+	only, err := fleet.Assess(fleet.AvailabilityFacts{Lifecycle: fleet.Active, Checklists: []fleet.ChecklistBlockFact{run}}, at, at)
+	if err != nil || only.Availability != fleet.Blocked || len(only.Causes) != 1 {
+		t.Fatalf("run alone: %+v %v", only, err)
+	}
+	decision, err := fleet.DecideStart(fleet.AvailabilityFacts{Lifecycle: fleet.Active, Checklists: []fleet.ChecklistBlockFact{run}}, fleet.Starter{EmployeeID: "emp-1", Assigned: true}, at, at)
+	if err != nil || decision.Admitted || decision.Code != fleet.AssetUnavailable {
+		t.Fatalf("start on a blocked asset: %+v %v", decision, err)
+	}
+	for name, facts := range map[string]fleet.ChecklistBlockFact{
+		"released at the instant": {ID: "run-2", From: resAt(10), To: &released},
+		"completed later":         {ID: "run-3", From: resAt(21)},
+	} {
+		got, err := fleet.Assess(fleet.AvailabilityFacts{Lifecycle: fleet.Active, Checklists: []fleet.ChecklistBlockFact{facts}}, at, at)
+		if err != nil || got.Availability != fleet.Available || len(got.Causes) != 0 {
+			t.Fatal(name, got, err)
+		}
+	}
+	early := resAt(5)
+	for name, bad := range map[string]fleet.ChecklistBlockFact{
+		"empty id":   {From: resAt(10)},
+		"zero start": {ID: "run-4"},
+		"end before": {ID: "run-5", From: resAt(10), To: &early},
+		"spaced id":  {ID: " run-6", From: resAt(10)},
+	} {
+		if _, err := fleet.Assess(fleet.AvailabilityFacts{Lifecycle: fleet.Active, Checklists: []fleet.ChecklistBlockFact{bad}}, at, at); !errors.Is(err, fleet.ErrInvalid) {
+			t.Fatal("invalid run fact accepted", name, err)
+		}
+	}
+}

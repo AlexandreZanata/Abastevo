@@ -122,7 +122,13 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	handlers := []app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse, report}
+	// EMP-CHECK-002 (EDR-284): the author's signed checklist run, rechecked at
+	// receipt against the server's template and policy history.
+	run, err := maintpg.NewRunHandler((*orgpg.RunAuthority)(meterAuthority), meters, assets, &maintpg.RunStore{})
+	if err != nil {
+		return err
+	}
+	handlers := []app.Handler{meterHandler, fuelingHandler, tripStart, tripFinish, tripEvent, tripSubmit, missionResponse, report, run}
 	// EMP-TRIP-011 (EDR-253): pause, resume and cancellation of the member's
 	// own trip at the expected revision; held commands use the same OFFL-008
 	// review items.
@@ -198,6 +204,12 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[reportKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	// EMP-CHECK-002: a run has no consumer and no held path (EDR-284).
+	runKey := app.OperationKey{Type: maintapp.RunOperationType, Schema: 1}
+	if _, exists := noAsync[runKey]; exists {
+		return app.ErrUnavailable
+	}
+	noAsync[runKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
 	catalog, _, err := IntakeEvents(o.Pool, o.IntakeConsumers)
 	if err != nil {
 		return err

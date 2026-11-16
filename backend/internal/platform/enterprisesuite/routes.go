@@ -148,6 +148,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, reviewpg.PeriodAuditDefinitions()...)
 	definitions = append(definitions, maintpg.ChecklistAuditDefinitions()...)
 	definitions = append(definitions, maintpg.IncidentAuditDefinitions()...)
+	definitions = append(definitions, maintpg.RunAuditDefinitions()...)
 	definitions = append(definitions, trippg.ReviewAuditDefinitions()...)
 	definitions = append(definitions, trippg.MissionAuditDefinitions()...)
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
@@ -219,7 +220,7 @@ func Register(router chi.Router, o Options) error {
 	// work orders join this source when the maintenance epic delivers them.
 	// Trips are the FLEET-007 active-use source (EDR-206); NoMaintenanceHolds
 	// stays the explicit "no source" answer until maintenance holds exist.
-	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}}
+	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}, ChecklistBlocks: maintpg.ChecklistBlocks{}}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}
@@ -267,6 +268,15 @@ func Register(router chi.Router, o Options) error {
 	incidentQueue := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Now: time.Now}
 	incidentReports := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Structure: incidentStructure, Now: time.Now}
 	if err := maintweb.RegisterIncidents(router, maintapp.IncidentService{Enabled: true, Repository: incidents}, cookies, gateway, incidentQueue, incidentReports, incidentQueue); err != nil {
+		return err
+	}
+	// EMP-CHECK-002 (EDR-285): a run is read on its asset with the applicable
+	// read's authorization; a blocking run is released under fresh
+	// check.incident.manage through the run's stored snapshot.
+	runStructure := &orgpg.ResourceStructure{Kind: orgpg.ChecklistRunStructure, Pool: o.Pool}
+	runs := &maintpg.RunStore{Pool: o.Pool, Authority: &orgpg.RunCompanyAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags, AssetStructure: assetStructure, Assignee: assetAssignee, RunStructure: runStructure}, Audit: auditStore}
+	runRelease := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Structure: runStructure, Now: time.Now}
+	if err := maintweb.RegisterRuns(router, maintapp.RunService{Enabled: true, Repository: runs}, cookies, gateway, applicableAuthorization, runRelease); err != nil {
 		return err
 	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
