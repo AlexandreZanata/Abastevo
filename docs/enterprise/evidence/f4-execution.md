@@ -1900,3 +1900,26 @@ Second F4 batch on `codex/enterprise-f4`, built on main `b0ab7d33`. Every F4
 implementation task is LOCAL_DONE / INTEGRATION_PENDING; EMP-REL-005 is
 BLOCKED and M4 is NOT accepted (EDR-361/362). Nothing here is INTEGRATED or
 RELEASE_CERTIFIED. Final gates on the delivered head are recorded below.
+
+### Final gates on the delivered head `b17dc3d8`
+
+- `make quick-verify`: ok, selection full, 268 s.
+- `scripts/check-backend-fast.sh` on `69915314` (the code is identical at
+  `b17dc3d8`; later commits are records): gofmt, build/vet/unit tests,
+  whole-backend staticcheck, sqlc vet/drift, OpenAPI lint 0 errors (1 139
+  warnings), tracked and changed-file secret scans pass.
+- `business-web`: typecheck, 68/68 tests, build and the 29-file artifact check.
+- Full backend race/integration union (`go test -race -tags=integration -p 2
+  ./...`, real PostGIS, disposable MinIO): 317 packages (243 ok, 66 without
+  tests), 4 899 top-level / 15 953 named passed, 16 top-level failures: 15 are
+  the known tests that need the pinned Rust preparer CLIs this machine lacks
+  (`cmd/worker` 5, `directory` 3, `quality` 7; CI builds the CLIs) and one is
+  `TestTripAmendmentPopulatedUpgradeFailureRecoveryAndPreviousImage`
+  ("orgsync: unavailable" under the full-suite load), which passed 3/3 alone on
+  the same head and in every earlier merged-tree run.
+- Android full module suites on `1ee50c9e` (code identical): domain 5671,
+  application 767, data 999, app 842, 0 failures; lint, the enterprise
+  validation build and `check-mobile.sh` pass.
+
+Native and real-device acceptance stays OWED (emulator incident above); the
+phase is LOCAL_DONE / INTEGRATION_PENDING with M4 NOT accepted.
