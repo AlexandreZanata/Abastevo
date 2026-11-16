@@ -261,6 +261,7 @@ var auditorPositiveRoutes = []string{
 	"/v1/orgs/{org_id}/settings/history",
 	"/v1/orgs/{org_id}/settings/read",
 	"/v1/orgs/{org_id}/settings/revision/read",
+	"/v1/orgs/{org_id}/tracking/policy/read",
 	"/v1/orgs/{org_id}/trips/{trip_id}/track/read",
 }
 
@@ -330,6 +331,14 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	call("/v1/orgs/{org_id}/settings/read", map[string]any{}, 200, "", "")
 	call("/v1/orgs/{org_id}/settings/history", map[string]any{"limit": 1}, 200, "", "")
 	call("/v1/orgs/{org_id}/settings/revision/read", map[string]any{"revision": 1}, 200, "", "")
+	// The tracking policy read is an org.settings.read (EDR-302): nothing
+	// recorded reads as OFF at revision 0.
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_tracking_policies TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+	if policy := call("/v1/orgs/{org_id}/tracking/policy/read", map[string]any{}, 200, "", ""); policy["revision"] != float64(0) || policy["policy"] != "OFF" {
+		t.Fatal("auditor tracking policy read", policy)
+	}
 	if items, _ := call("/v1/orgs/{org_id}/fleet/assets/list", map[string]any{"limit": 20}, 200, "", "")["items"].([]any); len(items) != 1 {
 		t.Fatal("auditor asset list", len(items))
 	}
@@ -477,7 +486,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 153 || positive != 31 || denied != 122 {
+	if len(routes) != 155 || positive != 32 || denied != 123 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 

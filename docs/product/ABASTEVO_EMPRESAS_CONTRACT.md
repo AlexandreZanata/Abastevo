@@ -7210,3 +7210,63 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   another driver's trip, a finance member who reads trips, a supervisor of
   another unit, a platform staff account, another organization and a failing
   access log all get nothing; a driver reads only its own trips.
+
+## EMP-GPS-002 prerequisite — Tracking policy command (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps-policy-command.md). Coordinator-assigned
+prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
+`org_tracking_policies`, so no organization could turn tracking on.
+
+- **B-BR-EMP-467 — Only a fresh organization administrator changes the
+  tracking policy.** The company route
+  `POST /v1/orgs/{org_id}/tracking/policy/change` requires the current
+  company proof with fresh authentication, `org.settings.manage` covering the
+  organization itself (OWNER and ADMIN; the catalog key that the tracking
+  specification names for the tracking policy), the organizations capability
+  and an `ACTIVE` organization. The body names `schema_version` 1, an
+  `operation_id`, the expected current `revision` (absent only while the
+  organization has no recorded version), the `policy` (`OFF`, `OPTIONAL`,
+  `EXPECTED`) and, for `OPTIONAL` and `EXPECTED`, the employee notice
+  (`notice_version`, `notice_in_force_at`). One accepted change writes, in one
+  transaction, the next insert-only policy version (revision + 1, effective at
+  the database clock), one immutable command receipt (actor account and
+  membership, request digest, resulting revision) and one audit event
+  `gps.policy.changed`. Another role (including `AUDITOR`), a member without
+  coverage and a stale or premature revision change nothing: `FORBIDDEN`
+  naming `org.settings.manage`, `CONFLICT`. Another organization, an unknown
+  organization and an account without a current membership are `NOT_FOUND`.
+  The same operation and digest returns the first result with
+  `replayed: true` and no second version or audit event; the same operation
+  with another body is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-468 — Tracking is enabled only with the employee notice in
+  force.** `OPTIONAL` and `EXPECTED` require a notice version
+  (`^[a-z0-9][a-z0-9._-]{0,63}$`) and the instant it entered into force,
+  which must be at or before the effective instant the database assigns to
+  the new version; a missing notice, a malformed version, a notice that is
+  not yet in force and any notice field sent with `OFF` are
+  `VALIDATION_FAILED` naming the field with a frozen code and write nothing.
+  The platform stores only the version identifier and instant that the
+  organization declares for its own employee notice (EDR-271); the notice
+  text is the organization's publication and is shown to the driver by
+  EMP-GPS-002/015, never stored or invented here. A new version governs new
+  sessions only; existing sessions keep the policy revision they opened under
+  and their stored data (BR-GPS-006). Policy `OFF` carries no notice.
+- **B-BR-EMP-469 — The policy read states the stored and the effective
+  policy.** `POST /v1/orgs/{org_id}/tracking/policy/read` requires
+  `org.settings.read` covering the organization (OWNER, ADMIN, FLEET_MANAGER,
+  SUPERVISOR, FINANCE, APPROVER, AUDITOR) and answers the current revision
+  (`0` with `OFF` and no notice when nothing was recorded), the stored policy,
+  notice version and in-force instant, the version's effective instant and the
+  policy in force now (the EMP-GPS-004 rule: `OFF` until a notice is in
+  force). `DRIVER` and the other roles are `FORBIDDEN` naming
+  `org.settings.read`. The read carries no session, member or location data.
+- **BUC-EMP-237 — An administrator turns tracking on.** After publishing the
+  employee notice, an owner or administrator reads the current policy, sets
+  `EXPECTED` with the notice version and its in-force instant on the read
+  revision, and from then on drivers' trips open tracking sessions under that
+  version; turning it `OFF` later stops new sessions and keeps what was stored.
+- **BUC-EMP-238 — The policy cannot be changed around its owners.** A
+  supervisor, a fleet manager, an auditor, a driver, another organization, a
+  stale revision, two administrators racing on one revision (one wins, the
+  other is `CONFLICT`) and a notice not yet in force all leave the policy
+  unchanged.

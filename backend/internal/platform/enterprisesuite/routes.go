@@ -158,6 +158,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
 	definitions = append(definitions, exportpg.AuditDefinitions()...)
 	definitions = append(definitions, trackingpg.AuditDefinitions()...)
+	definitions = append(definitions, trackingpg.PolicyAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -423,6 +424,13 @@ func Register(router chi.Router, o Options) error {
 		Access: auditpg.AccessLog{Runner: auditStore}, NewID: jobs.NewUUIDv4}
 	trackAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.TrackRecords{}, Structure: tripStructure, Now: time.Now}
 	if err := trackingweb.RegisterTrack(router, trackingapp.TrackService{Enabled: true, Repository: tracks}, cookies, gateway, trackAuthorization, tracks); err != nil {
+		return err
+	}
+	// Tracking policy writer (EDR-302/303): fresh org.settings.manage and
+	// org.settings.read over the organization itself.
+	trackingPolicies := &trackingpg.PolicyStore{Pool: o.Pool, Authority: &orgpg.TrackingPolicyAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore}
+	policyAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.PolicyRecords{}, Now: time.Now}
+	if err := trackingweb.RegisterPolicy(router, trackingapp.PolicyService{Enabled: true, Repository: trackingPolicies}, cookies, gateway, policyAuthorization); err != nil {
 		return err
 	}
 

@@ -595,7 +595,8 @@
       "routes": [
         "POST /v1/orgs/{org_id}/organization/activate",
         "POST /v1/orgs/{org_id}/settings/change",
-        "POST /v1/orgs/{org_id}/settings/responsibility-members/list"
+        "POST /v1/orgs/{org_id}/settings/responsibility-members/list",
+        "POST /v1/orgs/{org_id}/tracking/policy/change"
       ],
       "reason": ""
     },
@@ -606,7 +607,8 @@
       "routes": [
         "POST /v1/orgs/{org_id}/settings/history",
         "POST /v1/orgs/{org_id}/settings/read",
-        "POST /v1/orgs/{org_id}/settings/revision/read"
+        "POST /v1/orgs/{org_id}/settings/revision/read",
+        "POST /v1/orgs/{org_id}/tracking/policy/read"
       ],
       "reason": ""
     },
