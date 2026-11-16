@@ -77,7 +77,7 @@ Gate tasks require actual executed evidence. Recovery of this backlog accepts no
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-REL-005 — M4 gate: trips, logbook, sync and tracking fundamentals acceptance
-- **Meta:** module REL · phase F4 · cut - · priority P1 · type TEST · size M · state TODO
+- **Meta:** module REL · phase F4 · cut - · priority P1 · type TEST · size M · state BLOCKED
 - **Objective:** Accept M4 trips, sync resilience and authorized tracking fundamentals.
 - **Rules and use cases:** BR-OFFL-011, BR-AMD-001, VAL-04, VAL-22, VAL-23, VAL-26, VAL-27, VAL-28
 - **Depends on:** EMP-OFFL-013, EMP-TRIP-015, EMP-GPS-006, EMP-GPS-010
@@ -91,6 +91,18 @@ Gate tasks require actual executed evidence. Recovery of this backlog accepts no
 - **Validation:** V-E2E, V-SQL, V-APP, V-AUTHZ, V-ISO, V-SYNC, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Each gate retains immediate critical checks, current-head evidence and distinct local, integration and production states.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[M4 gate run](../evidence/f4-rel005-m4-gate.md) on `1ee50c9e`, 2026-11-16:
+**M4 NOT ACCEPTED**; the task is BLOCKED (EDR-361). B-BR-EMP-552..555,
+BUC-EMP-283/284 and EDR-360..362 precede the run; no behaviour, test or
+migration. The source/host scenario union (real PostGIS, pure Go, Kotlin host
+suites, mobile guard) passes; owed and blocking: the native stages on
+`emulator-5588` (locked behind its synthetic credential), the real-device
+tracking interruption matrix on at least three manufacturers (EMP-GOV-006,
+owner or pilot users), held fuelings for VAL-04/VAL-22 (EMP-FUEL-003), VAL-23
+(f) clock skew, VAL-27 display and review (EMP-TRIP-006, UC-GPS-08), a single
+cross-surface VAL-02 sweep, and the M3 gate (EMP-REL-004). Tracking collects
+from no real employee until the matrix passes (EDR-362).
 
 ### EMP-REL-006 — M5 gate: navigation and live operations acceptance
 - **Meta:** module REL · phase F5 · cut - · priority P1 · type TEST · size M · state TODO
