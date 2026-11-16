@@ -146,9 +146,17 @@ kubectl -n "$NS" patch deploy "$DEPLOY" --type=strategic -p '{"spec":{"template"
 kubectl -n "$NS" rollout status deploy/"$DEPLOY" --timeout=300s
 ```
 
-With `maxUnavailable: 0` the previous pod keeps serving until the new one is
-ready; a new pod that cannot log in or read the schema ledger never becomes
-ready. If the rollout does not finish, go to Rollback.
+Check the live strategy first (`kubectl -n "$NS" get deploy "$DEPLOY" -o
+jsonpath='{.spec.strategy}'`). The repository manifest asks for `maxSurge: 1,
+maxUnavailable: 0`, but the deploy agent switches the live deployment to the
+gap strategy (`maxSurge: 0, maxUnavailable: 1`) whenever the namespace CPU
+quota leaves no surge headroom (`ABASTEVO_ALLOW_SURGE`), and it does not
+restore it afterwards (receipt field `strategy_restored`). Under the gap
+strategy the previous pod stops before the new one starts, exactly as in every
+agent deploy: the API is unavailable for the start-up time, and a new pod that
+cannot log in or read the schema ledger never becomes ready, so the API stays
+down until Rollback finishes. Run step 5 only when the rollback block is ready
+to paste, and go to Rollback at once if the rollout does not finish.
 
 ## 6. Smoke
 
