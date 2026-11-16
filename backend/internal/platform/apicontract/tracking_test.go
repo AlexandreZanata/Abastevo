@@ -112,3 +112,95 @@ func TestTrackingIntakeContractOwnersAndPayloads(t *testing.T) {
 			"caller precision":  batch(func(v map[string]any) { v["precision"] = "FINE" }),
 		})
 }
+
+// EMP-GPS-012 (EDR-281): the recorded-track read is an actual company route
+// under gps.track.read only, with a closed page request and a closed view
+// that carries no live or derived value.
+func TestTrackReadContractRouteAndView(t *testing.T) {
+	doc := loadSpec(t)
+	_, router := companyRoutes(t)
+	if err := ValidateOrganizationRoutes(router, doc); err != nil {
+		t.Fatal(err)
+	}
+	path := "/v1/orgs/{org_id}/trips/{trip_id}/track/read"
+	want := map[string]any{"permission": "gps.track.read", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200}
+	operation := doc.Paths.Value(path).Post
+	if operation == nil {
+		t.Fatal("missing actual track route")
+	}
+	raw, _ := json.Marshal(operation.Extensions["x-abastevo-organization"])
+	var got map[string]any
+	if json.Unmarshal(raw, &got) != nil || len(got) != len(want) {
+		t.Fatal("track guard metadata drift", got)
+	}
+	for k, v := range want {
+		if want, _ := json.Marshal(v); string(want) != string(mustJSON(t, got[k])) {
+			t.Fatal("track guard metadata drift", k)
+		}
+	}
+	for _, permission := range []string{"trip.trip.read", "gps.location.read_live"} {
+		document, actual := companyRoutes(t)
+		metadata := map[string]any{}
+		for k, v := range want {
+			metadata[k] = v
+		}
+		metadata["permission"] = permission
+		document.Paths.Value(path).Post.Extensions["x-abastevo-organization"] = metadata
+		if ValidateOrganizationRoutes(actual, document) == nil {
+			t.Fatal("track authority derived from another permission", permission)
+		}
+	}
+	request := doc.Components.Schemas["EnterpriseTrackReadRequest"].Value
+	for _, v := range []map[string]any{{}, {"limit": 20}, {"limit": 1, "cursor": "opaque"}} {
+		if err := request.VisitJSON(v); err != nil {
+			t.Fatal("a valid track page request is refused", err)
+		}
+	}
+	for name, v := range map[string]map[string]any{"limit 21": {"limit": 21}, "limit 0": {"limit": 0}, "trip driver": {"trip_driver": "x"}, "live": {"live": true}} {
+		if request.VisitJSON(v) == nil {
+			t.Fatal("an invalid track page request was admitted", name)
+		}
+	}
+	view := doc.Components.Schemas["EnterpriseTrackView"].Value
+	example := func() map[string]any {
+		raw, _ := json.Marshal(view.Example)
+		var v map[string]any
+		if json.Unmarshal(raw, &v) != nil {
+			t.Fatal("track view example")
+		}
+		return v
+	}
+	if err := view.VisitJSON(example()); err != nil {
+		t.Fatal("invalid track view example", err)
+	}
+	untracked := example()
+	untracked["session"], untracked["segments"] = nil, []any{}
+	if err := view.VisitJSON(untracked); err != nil {
+		t.Fatal("an untracked trip page is refused", err)
+	}
+	for name, mutate := range map[string]func(map[string]any){
+		"live position": func(v map[string]any) { v["live_position"] = map[string]any{} },
+		"distance":      func(v map[string]any) { v["gps_distance_m"] = 1 },
+		"freshness":     func(v map[string]any) { v["freshness"] = "CURRENT" },
+		"latitude":      func(v map[string]any) { segmentFix(v)["lat_e7"] = 900000001 },
+		"fix address":   func(v map[string]any) { segmentFix(v)["address"] = "Rua" },
+		"other source":  func(v map[string]any) { v["segments"].([]any)[0].(map[string]any)["source"] = "TELEMATICS" },
+		"too many segments": func(v map[string]any) {
+			list := v["segments"].([]any)
+			for len(list) <= 20 {
+				list = append(list, list[0])
+			}
+			v["segments"] = list
+		},
+	} {
+		v := example()
+		mutate(v)
+		if view.VisitJSON(v) == nil {
+			t.Fatal("an invalid track view was admitted", name)
+		}
+	}
+}
+
+func segmentFix(v map[string]any) map[string]any {
+	return v["segments"].([]any)[0].(map[string]any)["fixes"].([]any)[0].(map[string]any)
+}

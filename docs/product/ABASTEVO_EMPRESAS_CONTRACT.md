@@ -7027,3 +7027,51 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   instant once; a foreign trip, a personal or implicit start, a fix while the
   trip is paused or after it ended or was cancelled, an oversized batch and
   policy `OFF` store nothing.
+
+## EMP-GPS-012 — Location access permission and access audit (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps012-location-access-audit.md).
+
+- **B-BR-EMP-435 — Recorded tracks are read only under `gps.track.read`.**
+  The company route `POST /v1/orgs/{org_id}/trips/{trip_id}/track/read`
+  serves a stored trip's recorded track only to a current member whose
+  `gps.track.read` grant covers that trip, evaluated on server facts: the
+  trip's author membership is its own record and its driver, the read is a
+  recorded track, and structural grants use the trip's stored asset, unit,
+  cost centre and teams. A `DRIVER` reads only the tracks of trips it drives
+  (`OWN_TRIPS_ONLY`); an `AUDITOR` reads recorded tracks (`RECORDED_TRACKS_ONLY`);
+  `trip.trip.read`, another permission, a platform staff assignment or a
+  support role never substitutes. A member without the permission, or whose
+  scope does not cover the trip, is `FORBIDDEN` naming `gps.track.read`; a
+  trip not stored in the organization, another organization and an account
+  without a current membership are `NOT_FOUND`. Authority is proved again
+  inside the read transaction with the company proof.
+- **B-BR-EMP-436 — Every read is recorded before any byte is served.** Each
+  successful authorization records, through the PRIV-005 access log, one
+  `LOCATION_TRACK` issuance (`location.track.issued`) and then one served
+  access (`location.track.accessed`) referencing it, each with a
+  server-generated request identifier, the reader's account and membership,
+  the trip as target and a 64-hex digest of the served page's identities
+  (trip, session, segment sequences) — never a coordinate. Only after both
+  records commit is the response written; a failed or refused record answers
+  `UNAVAILABLE` and serves no track byte. Live positions (`LOCATION_LIVE`,
+  `gps.location.read_live`) have no route in F4: the live projection belongs
+  to EMP-GPS-007, and an `AUDITOR` holds no live grant.
+- **B-BR-EMP-437 — The read serves what was recorded, page by page.** A
+  page names the trip, its session (identity, current state, policy, opening
+  instant and every transition with state, cause, actor, permission and
+  instant) and up to 20 segments in sequence order (default 20) with their
+  source `PHONE`, receipt instant, counters and fixes (instant, 10⁻⁷ degree
+  latitude and longitude, accuracy, optional speed and bearing, coarse flag);
+  a cursor bound to the reader, trip and page size continues after the last
+  sequence. A trip without a session or segments is an empty page. Nothing is
+  derived (no distance, gap, quality or live position) and no coordinate
+  appears in an error, log or audit record.
+- **BUC-EMP-220 — A supervisor or an auditor replays a recorded track.** A
+  fleet manager, a supervisor of the trip's unit or an auditor opens a trip's
+  track page by page; each page is recorded as issued and accessed before it
+  is shown.
+- **BUC-EMP-221 — Location reads refuse without a grant.** A driver opening
+  another driver's trip, a finance member who reads trips, a supervisor of
+  another unit, a platform staff account, another organization and a failing
+  access log all get nothing; a driver reads only its own trips.

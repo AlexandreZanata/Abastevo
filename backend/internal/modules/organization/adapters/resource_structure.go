@@ -192,7 +192,8 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 		out.Teams = teams
 	// EMP-TRIP-015 (EDR-236): an amendment corrects the trip's readings under
 	// meter.reading.correct over the same stored structure.
-	case r.Kind == TripStructure && (policy.Permission == "trip.trip.review" || policy.Permission == "meter.reading.correct"):
+	// EMP-GPS-012 (EDR-281): a recorded-track read uses the same snapshot.
+	case r.Kind == TripStructure && (policy.Permission == "trip.trip.review" || policy.Permission == "meter.reading.correct" || policy.Permission == "gps.track.read"):
 		var teams []string
 		if err := tx.QueryRow(ctx, tripStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {

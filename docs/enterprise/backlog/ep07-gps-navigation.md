@@ -215,7 +215,7 @@ producer remain open; real-device acceptance is owed (EDR-271).
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-GPS-012 — Location access permission and access audit
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module GPS · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Gate and audit live and historical location reads separately.
 - **Rules and use cases:** BR-GPS-033, BR-AUTH-011, BR-AUD-003, BR-PRIV-021
 - **Depends on:** EMP-GPS-004, EMP-PRIV-005
@@ -229,6 +229,16 @@ producer remain open; real-device acceptance is owed (EDR-271).
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 location access audit](../evidence/f4-gps012-location-access-audit.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Recorded tracks are read through
+`POST /v1/orgs/{org_id}/trips/{trip_id}/track/read` only under
+`gps.track.read` (a driver its own trips, an auditor recorded tracks, structural
+grants through the trip's stored unit), never from `trip.trip.read`, a staff
+assignment or another organization; every page is recorded as
+`LOCATION_TRACK` issued and accessed before it is served, and a failed record
+serves nothing. Live positions stay with EMP-GPS-007/008; real-device
+acceptance is owed (EDR-271).
 
 ### EMP-GPS-013 — Geofences with server-side evaluation and alerts
 - **Meta:** module GPS · phase F5 · cut - · priority P2 · type JOB · size M · state TODO

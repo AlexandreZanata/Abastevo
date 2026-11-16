@@ -381,14 +381,16 @@
       "status": "NOT_YET_ROUTED",
       "representative_route": "",
       "routes": [],
-      "reason": "Location, track and geofence routes have not been delivered."
+      "reason": "The live position projection belongs to EMP-GPS-007 (F5); no live location route has been delivered."
     },
     {
       "permission": "gps.track.read",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Location, track and geofence routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/trips/{trip_id}/track/read",
+      "routes": [
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/track/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "idn.credential.manage",

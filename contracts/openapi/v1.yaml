@@ -19788,6 +19788,72 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/{trip_id}/track/read:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripTrackRead
+      summary: Read one page of a trip's recorded track
+      description: Current company cookie and exact Origin/CSRF. Fixed gps.track.read permission covering the stored
+        trip, never trip.trip.read (EMP-GPS-012, B-BR-EMP-435..437). The trip's author is its own record and its
+        driver; a DRIVER reads only its own trips (OWN_TRIPS_ONLY), an AUDITOR recorded tracks (RECORDED_TRACKS_ONLY);
+        structural grants use the trip's stored asset, start unit and cost centre and the teams of its author or
+        driver. Each page is recorded in the organization access log as LOCATION_TRACK issued and accessed before it
+        is written; a failed record serves nothing (UNAVAILABLE). Returns the session with its transitions and up to
+        20 segments in sequence order with their fixes; a cursor continues after the last sequence. No live position,
+        distance or derived value. An unknown or another organization's trip is NOT_FOUND.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: gps.track.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTrackReadRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: One audited page of the recorded track.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTrackView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/{trip_id}/review/decide:
     post:
       tags:
@@ -24532,6 +24598,283 @@ components:
         fixes; more is REJECTED/MALFORMED. Only fixes inside a recording period of the stored session and inside the
         trip are stored, coarse when the period is approximate; ACCEPTED carries seq as entity revision and no counter
         or position.
+    EnterpriseTrackReadRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 20
+        cursor:
+          type: string
+          maxLength: 2048
+      example:
+        limit: 20
+      description: Page of a recorded-track read (EMP-GPS-012). limit 1..20 segments (default 20); cursor is the
+        opaque next_cursor of the previous page, bound to the reader, trip and limit.
+    EnterpriseTrackFix:
+      type: object
+      additionalProperties: false
+      properties:
+        collected_at:
+          type: string
+          format: date-time
+        lat_e7:
+          type: integer
+          minimum: -900000000
+          maximum: 900000000
+        lon_e7:
+          type: integer
+          minimum: -1800000000
+          maximum: 1800000000
+        accuracy_m:
+          type: integer
+          minimum: 0
+          maximum: 10000
+        speed_cm_s:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 100000
+        bearing_deg:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+          maximum: 359
+        coarse:
+          type: boolean
+      required:
+      - collected_at
+      - lat_e7
+      - lon_e7
+      - accuracy_m
+      - speed_cm_s
+      - bearing_deg
+      - coarse
+    EnterpriseTrackSegment:
+      type: object
+      additionalProperties: false
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        source:
+          type: string
+          enum:
+          - PHONE
+        received_at:
+          type: string
+          format: date-time
+        received_count:
+          type: integer
+          minimum: 1
+          maximum: 200
+        stored_count:
+          type: integer
+          minimum: 0
+          maximum: 200
+        duplicate_count:
+          type: integer
+          minimum: 0
+          maximum: 200
+        outside_session_count:
+          type: integer
+          minimum: 0
+          maximum: 200
+        mock_count:
+          type: integer
+          minimum: 0
+          maximum: 200
+        fixes:
+          type: array
+          maxItems: 200
+          items:
+            $ref: '#/components/schemas/EnterpriseTrackFix'
+      required:
+      - sequence
+      - source
+      - received_at
+      - received_count
+      - stored_count
+      - duplicate_count
+      - outside_session_count
+      - mock_count
+      - fixes
+    EnterpriseTrackTransition:
+      type: object
+      additionalProperties: false
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        state:
+          type: string
+          enum:
+          - NOT_STARTED
+          - RECORDING
+          - SUSPENDED
+          - INTERRUPTED
+          - ENDED
+        cause:
+          type:
+          - string
+          - 'null'
+          enum:
+          - NOT_STARTED
+          - PERMISSION_DENIED
+          - NOTIFICATION_BLOCKED
+          - TRIP_PAUSED
+          - LONG_STATIONARY
+          - PERMISSION_REVOKED
+          - PROCESS_STOPPED
+          - DEVICE_RESTARTED
+          - STOPPED_BY_DRIVER
+          - OWNER_CHANGED
+          - PRECISION_REDUCED
+          - TRIP_COMPLETED
+          - TRIP_CANCELLED
+          - MEMBERSHIP_ENDED
+          - DEVICE_REVOKED
+          - null
+        actor:
+          type: string
+          enum:
+          - DRIVER
+          - DEVICE
+          - TRIP
+          - SERVER
+        permission:
+          type:
+          - string
+          - 'null'
+          enum:
+          - PRECISE
+          - APPROXIMATE
+          - NONE
+          - null
+        occurred_at:
+          type: string
+          format: date-time
+      required:
+      - sequence
+      - state
+      - cause
+      - actor
+      - permission
+      - occurred_at
+    EnterpriseTrackSession:
+      type: object
+      additionalProperties: false
+      properties:
+        session_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        state:
+          type: string
+          enum:
+          - NOT_STARTED
+          - RECORDING
+          - SUSPENDED
+          - INTERRUPTED
+          - ENDED
+        policy:
+          type: string
+          enum:
+          - OPTIONAL
+          - EXPECTED
+        opened_at:
+          type: string
+          format: date-time
+        transitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseTrackTransition'
+      required:
+      - session_id
+      - state
+      - policy
+      - opened_at
+      - transitions
+    EnterpriseTrackView:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        session:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTrackSession'
+          - type: 'null'
+        segments:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/EnterpriseTrackSegment'
+        next_cursor:
+          type: string
+          maxLength: 2048
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - trip_id
+      - session
+      - segments
+      - next_cursor
+      - data_mode
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000008701
+        session:
+          session_id: 7b0e2a54-0000-4000-8000-000000008702
+          state: RECORDING
+          policy: EXPECTED
+          opened_at: '2026-11-15T12:00:01Z'
+          transitions:
+          - sequence: 1
+            state: NOT_STARTED
+            cause: NOT_STARTED
+            actor: DRIVER
+            permission: null
+            occurred_at: '2026-11-15T12:00:01Z'
+          - sequence: 2
+            state: RECORDING
+            cause: null
+            actor: DRIVER
+            permission: PRECISE
+            occurred_at: '2026-11-15T12:00:01Z'
+        segments:
+        - sequence: 1
+          source: PHONE
+          received_at: '2026-11-15T12:01:05Z'
+          received_count: 2
+          stored_count: 2
+          duplicate_count: 0
+          outside_session_count: 0
+          mock_count: 0
+          fixes:
+          - collected_at: '2026-11-15T12:00:05Z'
+            lat_e7: -100000000
+            lon_e7: -500000000
+            accuracy_m: 8
+            speed_cm_s: 1389
+            bearing_deg: 270
+            coarse: false
+          - collected_at: '2026-11-15T12:00:15Z'
+            lat_e7: -100000000
+            lon_e7: -500012670
+            accuracy_m: 6
+            speed_cm_s: null
+            bearing_deg: null
+            coarse: false
+        next_cursor: ''
+        data_mode: SYNTHETIC
+      description: One audited page of a trip's recorded track (EMP-GPS-012). session is null when the trip was never
+        tracked; segments are in sequence order; next_cursor is empty on the last page. Raw stored values only; no
+        live position, distance, gap or quality is derived here.
     EnterpriseFuelingSubmitPayload:
       type: object
       additionalProperties: false
