@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-002/003 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<resources>
+    <string name="enterprise_tracking_title">行程追踪</string>
+    <string name="enterprise_tracking_policy_expected">公司希望追踪此行程。不追踪也可以继续行程。</string>
+    <string name="enterprise_tracking_policy_optional">如果你愿意，公司允许追踪此行程。</string>
+    <string name="enterprise_tracking_policy_unknown">无法追踪：本设备尚未读取公司政策。请联网更新。</string>
+    <string name="enterprise_tracking_policy_refresh">更新追踪政策</string>
+    <string name="enterprise_tracking_policy_failed">现在无法读取政策。继续使用上次读取的政策。</string>
+    <string name="enterprise_tracking_notice">追踪开启时，应用仅在本次行程中记录此手机的位置，直到你停止。公司通知版本：%1$s。</string>
+    <string name="enterprise_tracking_start">开始追踪</string>
+    <string name="enterprise_tracking_resume">恢复追踪</string>
+    <string name="enterprise_tracking_resume_question">要恢复追踪吗？</string>
+    <string name="enterprise_tracking_stop">停止追踪</string>
+    <string name="enterprise_tracking_without">不追踪继续</string>
+    <string name="enterprise_tracking_state_not_started">追踪未开始</string>
+    <string name="enterprise_tracking_state_recording">追踪中</string>
+    <string name="enterprise_tracking_state_suspended">追踪已暂停</string>
+    <string name="enterprise_tracking_state_interrupted">追踪已中断</string>
+    <string name="enterprise_tracking_state_ended">追踪已结束</string>
+    <string name="enterprise_tracking_since">自 %1$s</string>
+    <string name="enterprise_tracking_approximate">大致位置：本次行程不会计算 GPS 距离。</string>
+    <string name="enterprise_tracking_cause_permission_denied">未授予位置权限。行程将在不追踪的情况下继续。</string>
+    <string name="enterprise_tracking_cause_notification_blocked">通知被阻止，追踪无法在显示通知的情况下运行。请允许通知。</string>
+    <string name="enterprise_tracking_cause_process_stopped">追踪期间应用已关闭。</string>
+    <string name="enterprise_tracking_cause_device_restarted">追踪期间手机已重启。</string>
+    <string name="enterprise_tracking_cause_stopped_by_driver">你已停止追踪。行程继续。</string>
+    <string name="enterprise_tracking_cause_owner_changed">此手机上的账户或公司已更改。</string>
+    <string name="enterprise_tracking_cause_permission_revoked">行程中位置权限被撤销。</string>
+    <string name="enterprise_tracking_cause_other">追踪已随行程停止。</string>
+    <string name="enterprise_tracking_refused">公司拒绝追踪此行程（%1$s）。行程继续。</string>
+    <string name="enterprise_tracking_refusal_off">公司已关闭追踪。</string>
+    <string name="enterprise_tracking_refusal_other">无法在本设备上更改追踪；没有保存任何内容。</string>
+    <string name="enterprise_tracking_record">%1$s — %2$s</string>
+    <string name="enterprise_tracking_notification_channel">公司行程追踪</string>
+    <string name="enterprise_tracking_notification_title">追踪中 — %1$s</string>
+    <string name="enterprise_tracking_notification_text">行程中正在记录此手机的位置。</string>
+    <string name="enterprise_tracking_pending">等待发送的位置：%1$d</string>
+    <string name="enterprise_tracking_batches">位置批次：公司已接受 %1$d 个，设备上 %2$d 个</string>
+    <string name="enterprise_tracking_gap_signal_lost">自 %1$s 起没有 GPS 信号。此期间不记录任何内容。</string>
+    <string name="enterprise_tracking_gap_provider_disabled">自 %1$s 起位置已关闭。此期间不记录任何内容。</string>
+    <string name="enterprise_tracking_gap_mock_location">自 %1$s 起忽略模拟位置。此期间不记录任何内容。</string>
+    <string name="enterprise_tracking_gaps_count">本次行程中无信号的时段：%1$d</string>
+</resources>

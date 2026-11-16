@@ -85,7 +85,7 @@ func classifyCandidate(ctx context.Context, db syncapp.DBTX, scope kernel.OrgSco
 			return valid, nil
 		}
 	}
-	verdict, err := policy.Check(view.Reference.Kind(), seriesEntries(members), candidate)
+	verdict, err := policy.CheckMeter(view.Reference.Kind(), view.Reference.Modulus(), seriesEntries(members), candidate)
 	if errors.Is(err, meter.ErrInvalid) {
 		// Every candidate input was validated before; only stored evidence
 		// that no longer satisfies the series contract can reach this.
@@ -119,7 +119,7 @@ func reevaluateSegment(ctx context.Context, db syncapp.DBTX, scope kernel.OrgSco
 	if err != nil {
 		return err
 	}
-	changes, err := policy.Reevaluate(view.Reference.Kind(), seriesEntries(members))
+	changes, err := policy.ReevaluateMeter(view.Reference.Kind(), view.Reference.Modulus(), seriesEntries(members))
 	if err != nil {
 		return app.ErrUnavailable
 	}

@@ -280,6 +280,8 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 				Uploads   map[string]int `json:"uploads"`
 				Fuelings  int            `json:"fuelings"`
 				Trips     int            `json:"trips"`
+				// EMP-EXP-004: direct expenses of the member (a fueling's own FUEL expense is not counted).
+				Expenses int `json:"expenses"`
 			}
 			if err := json.Unmarshal(raw, &expect); err != nil {
 				t.Fatal(err)
@@ -300,7 +302,7 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 					t.Fatalf("native ingress attempts differ: %v, expected %v", observed, expect.Uploads)
 				}
 			}
-			var documents, stored, received, storedEvents, fuelings, trips, foreign int
+			var documents, stored, received, storedEvents, fuelings, trips, expenses, foreign int
 			if err := x.f.Admin.QueryRow(t.Context(), `SELECT
 				(SELECT count(*) FROM org_documents WHERE org_id=$1 AND created_by=$2),
 				(SELECT count(*) FROM org_documents WHERE org_id=$1 AND created_by=$2 AND storage_state='STORED'),
@@ -308,8 +310,9 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 				(SELECT count(*) FROM org_audit_events WHERE org_id=$1 AND action='document.upload.stored'),
 				(SELECT count(*) FROM org_fuelings WHERE org_id=$1 AND author_membership_id=$2),
 				(SELECT count(*) FROM org_trips WHERE org_id=$1 AND author_membership_id=$2),
+				(SELECT count(*) FROM org_expenses WHERE org_id=$1 AND author_membership_id=$2 AND origin_kind='DIRECT'),
 				(SELECT count(*) FROM org_documents WHERE org_id=$3)`,
-				orgA, person.member, orgB).Scan(&documents, &stored, &received, &storedEvents, &fuelings, &trips, &foreign); err != nil {
+				orgA, person.member, orgB).Scan(&documents, &stored, &received, &storedEvents, &fuelings, &trips, &expenses, &foreign); err != nil {
 				t.Fatal(err)
 			}
 			links := map[string]int{}
@@ -327,11 +330,11 @@ func TestReceiptNativeSourceFixture(t *testing.T) {
 				links[kind] = count
 			}
 			rows.Close()
-			t.Logf("native receipt effects documents=%d stored=%d received=%d stored_events=%d links=%v fuelings=%d trips=%d foreign=%d",
-				documents, stored, received, storedEvents, links, fuelings, trips, foreign)
+			t.Logf("native receipt effects documents=%d stored=%d received=%d stored_events=%d links=%v fuelings=%d trips=%d expenses=%d foreign=%d",
+				documents, stored, received, storedEvents, links, fuelings, trips, expenses, foreign)
 			// Every capture declared, linked, received and stored exactly once; B holds nothing.
 			if documents != expect.Documents || stored != expect.Stored || received != expect.Stored || storedEvents != expect.Stored ||
-				fuelings != expect.Fuelings || trips != expect.Trips || foreign != 0 || len(links) != len(expect.Links) {
+				fuelings != expect.Fuelings || trips != expect.Trips || expenses != expect.Expenses || foreign != 0 || len(links) != len(expect.Links) {
 				t.Fatalf("native receipt effects differ from %+v", expect)
 			}
 			for kind, count := range expect.Links {

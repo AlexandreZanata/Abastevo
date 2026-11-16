@@ -514,6 +514,7 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/change",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/suspect/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/{reading_id}/decide",
         "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
@@ -791,7 +792,9 @@
       "representative_route": "POST /v1/orgs/{org_id}/missions/mine/list",
       "routes": [
         "POST /v1/orgs/{org_id}/missions/mine/list",
-        "POST /v1/orgs/{org_id}/trips/mine/list"
+        "POST /v1/orgs/{org_id}/tracking/policy/mine",
+        "POST /v1/orgs/{org_id}/trips/mine/list",
+        "POST /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read"
       ],
       "reason": ""
     }

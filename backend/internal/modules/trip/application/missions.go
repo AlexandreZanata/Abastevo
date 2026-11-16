@@ -125,7 +125,9 @@ const (
 
 // MissionPlanFields is the content of one PLAN command (EMP-TRIP-009,
 // B-BR-EMP-382): exactly one destination (text or unit), a reason, an
-// optional cost centre and the load token with its only field.
+// optional cost centre and the load token with its only field; and, from
+// EMP-TRIP-010 (B-BR-EMP-475), the optional ordered planned stops (nil is
+// none; 1..20 free-text places).
 type MissionPlanFields struct {
 	private
 	DestinationText   *string
@@ -135,10 +137,14 @@ type MissionPlanFields struct {
 	Load              string
 	CargoDescription  *string
 	Passengers        *int
+	Stops             []string
 }
 
 func (p MissionPlanFields) copy() MissionPlanFields {
 	p.DestinationText, p.CargoDescription, p.Passengers = copyPointer(p.DestinationText), copyPointer(p.CargoDescription), copyPointer(p.Passengers)
+	if p.Stops != nil {
+		p.Stops = append([]string{}, p.Stops...)
+	}
 	return p
 }
 
@@ -154,6 +160,9 @@ func (p MissionPlanFields) validate() error {
 		}
 	}
 	if err := trip.ValidPlanText(p.Reason); err != nil {
+		return err
+	}
+	if _, err := trip.NewPlannedStops(p.Stops); err != nil {
 		return err
 	}
 	load, err := trip.ParseMissionLoad(p.Load)
@@ -305,9 +314,15 @@ func (c MissionCommand) Snapshot() (MissionCommandInput, error) {
 }
 
 // planDigest is the canonical PLAN intent; CREATE, ASSIGN and CANCEL keep the
-// EMP-TRIP-008 form so stored receipts replay unchanged.
+// EMP-TRIP-008 form so stored receipts replay unchanged. A plan without stops
+// keeps the EMP-TRIP-009 v1 form byte for byte; planned stops (EMP-TRIP-010,
+// B-BR-EMP-475) are bound by the v2 form.
 func planDigest(scope kernel.OrgScope, in MissionCommandInput) []any {
 	p := in.Plan
+	if p.Stops != nil {
+		return []any{"trip.mission.plan.v2", scope.OrgID().String(), in.Kind, in.OperationID, in.MissionID, in.ExpectedRevision, p.DestinationText, p.DestinationUnitID, p.Reason,
+			p.CostCentreID, p.Load, p.CargoDescription, p.Passengers, p.Stops}
+	}
 	return []any{"trip.mission.plan.v1", scope.OrgID().String(), in.Kind, in.OperationID, in.MissionID, in.ExpectedRevision, p.DestinationText, p.DestinationUnitID, p.Reason,
 		p.CostCentreID, p.Load, p.CargoDescription, p.Passengers}
 }

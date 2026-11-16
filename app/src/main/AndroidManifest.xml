@@ -101,6 +101,12 @@
             android:name=".ui.map.TripRecordingService"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- EMP-GPS-002 organization trip tracking: started only from the visible trip screen (EDR-323). -->
+        <service
+            android:name=".ui.enterprise.tracking.OrganizationTrackingService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
     </application>
 
 </manifest>

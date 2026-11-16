@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-EXP-004 SCR-EXP-01; generated from one table by f4-logs/exp004-scripts/gen_expense_strings.py -->
+<resources>
+    <string name="enterprise_expenses_title">Расходы</string>
+    <string name="enterprise_expenses_home_copy">Записывайте плату за проезд, парковку и другие расходы на транспорт с чеком даже без связи.</string>
+    <string name="enterprise_expenses_open_list">Открыть расходы</string>
+    <string name="enterprise_expenses_back_home">Назад к компании</string>
+    <string name="enterprise_expenses_back_list">Назад к расходам</string>
+    <string name="enterprise_expenses_synthetic_notice">Тестовый этап: только синтетические данные и изображения.</string>
+    <string name="enterprise_expenses_new">Записать расход</string>
+    <string name="enterprise_expenses_empty">На этом устройстве пока нет расходов этой компании.</string>
+    <string name="enterprise_expenses_loading">Чтение расходов, сохранённых на этом устройстве…</string>
+    <string name="enterprise_expenses_unavailable">Сейчас нельзя прочитать расходы на этом устройстве. Сохранённые записи сохраняются.</string>
+    <string name="enterprise_expenses_retry">Повторить</string>
+    <string name="enterprise_expenses_open">Открыть расход</string>
+    <string name="enterprise_expenses_form_title">Новый расход</string>
+    <string name="enterprise_expenses_asset_chosen">Транспорт: %1$s</string>
+    <string name="enterprise_expenses_change_asset">Сменить транспорт</string>
+    <string name="enterprise_expenses_category">Вид расхода</string>
+    <string name="enterprise_expenses_category_toll">Плата за проезд</string>
+    <string name="enterprise_expenses_category_parking">Парковка</string>
+    <string name="enterprise_expenses_category_maintenance">Обслуживание</string>
+    <string name="enterprise_expenses_category_lease">Аренда</string>
+    <string name="enterprise_expenses_category_insurance">Страховка</string>
+    <string name="enterprise_expenses_category_fine">Штраф</string>
+    <string name="enterprise_expenses_category_other">Другое</string>
+    <string name="enterprise_expenses_paid">Оплачено всего (R$)</string>
+    <string name="enterprise_expenses_company">Сумма для компании (R$)</string>
+    <string name="enterprise_expenses_company_hint">Не больше оплаченной суммы.</string>
+    <string name="enterprise_expenses_payer">Кто заплатил</string>
+    <string name="enterprise_expenses_payer_company">Компания</string>
+    <string name="enterprise_expenses_payer_employee">Я заплатил</string>
+    <string name="enterprise_expenses_receipt_optional">Чек (необязательно)</string>
+    <string name="enterprise_expenses_receipt_title">Чек расхода</string>
+    <string name="enterprise_expenses_add_receipt">Добавить чек</string>
+    <string name="enterprise_expenses_save">Сохранить расход</string>
+    <string name="enterprise_expenses_cancel">Отмена</string>
+    <string name="enterprise_expenses_saved">Расход сохранён на устройстве.</string>
+    <string name="enterprise_expenses_saved_with_receipt">Расход сохранён на устройстве вместе с чеком.</string>
+    <string name="enterprise_expenses_saved_receipt_not_saved">Расход сохранён на устройстве, но чек не сохранён. Попробуйте сохранить чек ещё раз.</string>
+    <string name="enterprise_expenses_save_failed">Ничего не сохранено. Попробуйте ещё раз.</string>
+    <string name="enterprise_expenses_capture_invalid">Проверьте значения: реалы не более чем с двумя знаками после запятой и без разделителя тысяч; сумма для компании не может превышать оплаченную. Ничего не сохранено.</string>
+    <string name="enterprise_expenses_send_now">Отправить сейчас</string>
+    <string name="enterprise_expenses_send_offline">Нет связи. Записи остаются на устройстве и будут отправлены, когда связь вернётся.</string>
+    <string name="enterprise_expenses_send_failed">Отправка не завершилась. Записи остаются сохранёнными на устройстве.</string>
+    <string name="enterprise_expenses_record_status">Отправка: %1$s</string>
+    <string name="enterprise_expenses_reason">Причина: %1$s</string>
+    <string name="enterprise_expenses_review_not_sent">Проверка: ещё не отправлено</string>
+    <string name="enterprise_expenses_review_awaiting">Проверка: ожидает утверждения</string>
+    <string name="enterprise_expenses_review_needs">Проверка: требует проверки</string>
+    <string name="enterprise_expenses_review_refused">Проверка: не принято</string>
+    <string name="enterprise_expenses_amounts">Оплачено R$ %1$s · компания R$ %2$s</string>
+    <string name="enterprise_expenses_paid_value">Оплачено всего: R$ %1$s</string>
+    <string name="enterprise_expenses_company_value">Сумма для компании: R$ %1$s</string>
+    <string name="enterprise_expenses_decided_by_company">Утверждает или возвращает расход только компания; это устройство так никогда не делает.</string>
+</resources>

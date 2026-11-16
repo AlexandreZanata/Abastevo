@@ -81,7 +81,7 @@ class EnterpriseMeterValidationVectorsTest {
         val vectors = load(raw)
         assertEquals(setOf("POLICY", "CHECK", "REEVALUATE"), vectors.map { it.operation }.toSet())
         val text = vectors.joinToString { it.expected.values.joinToString() }
-        ReadingFlag.entries.forEach { assertTrue(it.name in text, "flag ${it.name} has no vector") }
+        ReadingFlag.entries.filter { it != ReadingFlag.POSSIBLE_ROLLOVER }.forEach { assertTrue(it.name in text, "flag ${it.name} has no vector") } // POSSIBLE_ROLLOVER: segments-v1
         assertTrue(vectors.any { it.expected["error"] == "INVALID" })
         return vectors.map { vector -> DynamicTest.dynamicTest(vector.id) {
             val actual = try { apply(vector) } catch (failure: MeterDomainException) { mapOf("error" to failure.failure.name) }

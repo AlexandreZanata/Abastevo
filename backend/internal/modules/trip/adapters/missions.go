@@ -519,6 +519,11 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 		}
 		return app.MissionAck{}, err
 	}
+	if planned != nil {
+		if err := insertPlanStops(ctx, tx, org, in.MissionID, planned.Revision, in.Plan.Stops); err != nil {
+			return app.MissionAck{}, err
+		}
+	}
 	ack := app.MissionAck{MissionID: in.MissionID, Revision: v.Revision, State: v.State, AssigneeEmployeeID: employee, Warning: warning}
 	if reserved != nil {
 		ack.ReservationID = reserved.ID
@@ -622,8 +627,63 @@ func (s *MissionStore) CommandMission(ctx context.Context, scope kernel.OrgScope
 	return ack, replayed, nil
 }
 
-// withPlans attaches each mission's current planning revision (EMP-TRIP-009).
-func withPlans(ctx context.Context, queries *q.Queries, org string, views []app.MissionView) error {
+// insertPlanStops stores the planned stops of the planning revision a PLAN
+// produced (EMP-TRIP-010, B-BR-EMP-475), after the head moved and before the
+// receipt; the database re-proves the transaction, the head and the order
+// (migration 000256). The mission sqlc stanza does not include the stop
+// table, so these are raw parametrized statements (EDR-310).
+func insertPlanStops(ctx context.Context, tx pgx.Tx, org, mission string, revision int64, places []string) error {
+	stops, err := trip.NewPlannedStops(places)
+	if err != nil {
+		return err
+	}
+	for i, place := range stops.Places() {
+		if _, err := tx.Exec(ctx, `INSERT INTO org_trip_mission_plan_stops(org_id,mission_id,revision,sequence,place_text) VALUES($1::uuid,$2::uuid,$3,$4,$5)`,
+			org, mission, revision, i+1, place); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// planStops reads the planned stops of the given planning revisions, keyed
+// by mission; a revision without stops is absent.
+func planStops(ctx context.Context, db q.DBTX, org string, revisions map[string]int64) (map[string][]string, error) {
+	out := map[string][]string{}
+	if len(revisions) == 0 {
+		return out, nil
+	}
+	ids := make([]string, 0, len(revisions))
+	for id := range revisions {
+		ids = append(ids, id)
+	}
+	rows, err := db.Query(ctx, `SELECT mission_id::text,revision,sequence,place_text FROM org_trip_mission_plan_stops
+WHERE org_id=$1::uuid AND mission_id=ANY($2::uuid[]) ORDER BY mission_id,revision,sequence`, org, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var mission, place string
+		var revision int64
+		var sequence int16
+		if err := rows.Scan(&mission, &revision, &sequence, &place); err != nil {
+			return nil, err
+		}
+		if revisions[mission] != revision {
+			continue
+		}
+		if int(sequence) != len(out[mission])+1 {
+			return nil, app.ErrUnavailable
+		}
+		out[mission] = append(out[mission], place)
+	}
+	return out, rows.Err()
+}
+
+// withPlans attaches each mission's current planning revision (EMP-TRIP-009)
+// with its planned stops (EMP-TRIP-010).
+func withPlans(ctx context.Context, db q.DBTX, queries *q.Queries, org string, views []app.MissionView) error {
 	if len(views) == 0 {
 		return nil
 	}
@@ -652,19 +712,26 @@ func withPlans(ctx context.Context, queries *q.Queries, org string, views []app.
 		}
 		plans[r.MissionID] = &app.MissionPlanView{Revision: r.Revision, Fields: fields, PlannedAt: planned}
 	}
+	revisions := make(map[string]int64, len(plans))
+	for mission, plan := range plans {
+		revisions[mission] = plan.Revision
+	}
+	stops, err := planStops(ctx, db, org, revisions)
+	if err != nil {
+		return err
+	}
+	for mission, places := range stops {
+		plans[mission].Fields.Stops = places
+	}
 	for i := range views {
 		views[i].Plan = plans[views[i].MissionID]
 	}
 	return nil
 }
 
-// read runs one read between two authority checks of the action and target.
-func (s *MissionStore) read(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, target string, action app.MissionAction, call func(*q.Queries) error) error {
-	return s.readTx(ctx, scope, actor, member, target, action, func(_ pgx.Tx, queries *q.Queries) error { return call(queries) })
-}
-
-// readTx is read with the transaction itself, for reads that consult the
-// authority per row (EDR-304).
+// readTx runs one read between two authority checks of the action and
+// target, with the transaction itself for reads that consult the authority
+// per row (EDR-304) or read the stop table (EDR-310).
 func (s *MissionStore) readTx(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, target string, action app.MissionAction, call func(pgx.Tx, *q.Queries) error) error {
 	if err := validMissionCall(scope, actor, member); err != nil {
 		return err
@@ -694,7 +761,7 @@ func (s *MissionStore) ListMissions(ctx context.Context, scope kernel.OrgScope, 
 		action, target = app.MissionOwnRead, member
 	}
 	var page app.MissionPage
-	err := s.read(ctx, scope, actor, member, target, action, func(queries *q.Queries) error {
+	err := s.readTx(ctx, scope, actor, member, target, action, func(tx pgx.Tx, queries *q.Queries) error {
 		org := scope.OrgID().String()
 		var rows []missionRow
 		if own {
@@ -726,7 +793,7 @@ func (s *MissionStore) ListMissions(ctx context.Context, scope kernel.OrgScope, 
 			}
 			page.Missions = append(page.Missions, record.View)
 		}
-		return withPlans(ctx, queries, org, page.Missions)
+		return withPlans(ctx, tx, queries, org, page.Missions)
 	})
 	if err != nil {
 		return app.MissionPage{}, err
@@ -737,13 +804,13 @@ func (s *MissionStore) ListMissions(ctx context.Context, scope kernel.OrgScope, 
 // ReadMission reads one mission of the scope.
 func (s *MissionStore) ReadMission(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, mission string) (app.MissionView, error) {
 	var v app.MissionView
-	err := s.read(ctx, scope, actor, member, mission, app.MissionRead, func(queries *q.Queries) error {
+	err := s.readTx(ctx, scope, actor, member, mission, app.MissionRead, func(tx pgx.Tx, queries *q.Queries) error {
 		record, err := s.head(ctx, queries, scope.OrgID().String(), mission, false)
 		if err != nil {
 			return err
 		}
 		views := []app.MissionView{record.View}
-		if err := withPlans(ctx, queries, scope.OrgID().String(), views); err != nil {
+		if err := withPlans(ctx, tx, queries, scope.OrgID().String(), views); err != nil {
 			return err
 		}
 		v = views[0]

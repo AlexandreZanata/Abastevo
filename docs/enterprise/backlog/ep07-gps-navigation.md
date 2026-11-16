@@ -55,6 +55,22 @@ service, intake, processing and real-device acceptance remain open (EDR-271).
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 organization trip tracking service](../evidence/f4-gps002-tracking-service.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-16. The driver reads the policy
+in force (`tracking/policy/mine` under `trip.trip.start`); the open trip offers
+tracking only under `OPTIONAL`/`EXPECTED`, shows the notice at each start and
+records denied permission or blocked notifications as attempts; the
+non-exported, never-sticky `location` foreground service listens only after
+consuming the visible trip screen's one-time grant, holds one listener, shows
+an ongoing notification with a stop action and re-checks permission,
+precision, notification, owner and trip every 30 seconds; every transition is
+a signed `gps.session.*` operation in the protected queue with the sealed
+tracking book, replayed through the GPS-001 domain; the finish ends the
+session at its own instant and a process death is found at the next opening
+as `PROCESS_STOPPED`/`DEVICE_RESTARTED`. The mobile guard allows exactly this
+fourth subscription. Trip pause/cancel/handover feeds (EMP-TRIP-021) and
+real-device acceptance remain open (EDR-271).
+
 ### EMP-GPS-003 — Adaptive sampling, local buffer and batch envelope
 - **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size M · state TODO
 - **Objective:** Buffer bounded quality-labelled fixes durably for batch transport.
@@ -70,6 +86,20 @@ service, intake, processing and real-device acceptance remain open (EDR-271).
 - **Validation:** V-APP, V-SYNC, V-IDEM, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 adaptive sampling, local buffer and batch envelope](../evidence/f4-gps003-sampling-buffer.md)
+is LOCAL_DONE / INTEGRATION_PENDING (emulator acceptance OWED), 2026-11-16.
+The service records fixes by the documented `sampling-v1` defaults after a
+device-side filter (mock, stale, accuracy, implied speed counted, never
+stored), writes each recorded fix to the sealed `tracking-buffer` record
+before it counts (it survives a process death and is the recovery
+checkpoint), opens fix-level gaps (`SIGNAL_LOST`, `PROVIDER_DISABLED`,
+`MOCK_LOCATION`) after 180 s without an accepted fix and never records or
+seals across them, and seals pending fixes into `gps.track.batch`
+operations of at most 200 fixes and 8 KiB, pinned with Go by
+`track-batch-v1.psv`, removed from the buffer in the same protected write. The
+emulator acceptance is owed (the emulator is locked behind a credential nobody
+may enter); real-device acceptance remains owed (EDR-271).
 
 ### EMP-GPS-004 — Track intake: batch endpoint, de-duplication and segment storage
 - **Meta:** module GPS · phase F4 · cut - · priority P1 · type DB · size L · state LOCAL_DONE

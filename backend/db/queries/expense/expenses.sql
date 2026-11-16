@@ -56,3 +56,10 @@ FROM org_expenses x WHERE x.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND x.id
 -- name: ExpenseIDByOrigin :one
 SELECT x.id::text AS id FROM org_expenses x
 WHERE x.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND x.origin_kind=sqlc.arg(origin_kind)::text AND x.source_id=CAST(sqlc.arg(source_id)::text AS uuid);
+
+-- name: ExpenseDocumentAuthor :one
+-- EMP-EXP-004 (EDR-338): the authoring membership of one stored DIRECT
+-- expense, the SELF subject of an EXPENSE document link. A FUELING-origin
+-- expense is documented through its fueling (FUELING), never here.
+SELECT author_membership_id::text AS author_membership_id FROM org_expenses
+WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(id)::text AS uuid) AND origin_kind='DIRECT';

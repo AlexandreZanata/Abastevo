@@ -1458,3 +1458,72 @@ conflicts. Retained: real receipts (OQ-04), trip/place/supplier references and
 the capacity warning in the app, FUEL-003/004/012/015, DOC-011, TRIP-020, the
 recurring `EnterpriseSyncContextDeviceTest` intermittent, two physical devices,
 TalkBack/visual review.
+
+### EMP-CHECK-004 — panel: checklists, damages and incidents: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-check004-checklist-incident-panel.md), commit `7467fb2f`, no
+migration (000254 unused). One company read `checklists/runs/list` under the
+incident-queue policy (`check.incident.manage`, `ORG` grant only, not fresh;
+BLOCKING first, then disagreements held for review, newest completion first,
+sealed cursor; EDR-328); `contexts/read` hints `doc.document.view_content` for
+an `ORG` assignment so the panel never offers a photo it may not open
+(EDR-329); `business-web` `checks.ts`/`checkpanel.ts` (EDR-330): availability
+always as the server reads it (a failed read is "not confirmed"), release and
+report actions with revision checks (`SELF_APPROVAL` named and never retried,
+`CONFLICT` re-reads, `FORBIDDEN`/`NOT_FOUND` clear), photos only through the
+audited `content/access` + `content/read` path into a saved file (CSP).
+B-BR-EMP-506..510, BUC-EMP-258..260, EDR-328..330. RED domain 1/2, apicontract
+2/3, cmd/api 3 + 1 subtest, PostGIS 2/2, web 8/8 → GREEN. Task-tree union
+903/7596 and untagged 230 packages; merged-tree (TRIP-023) union 1183/9592 with
+one load-only TRIP-023 failure (`TestTripMissionReferenceOrphanAndUnsupportedForms`,
+3/3 alone).
+
+Integration: merged into the F4 branch as `c219b165` (contract union only;
+route counts 163 normal, auditor walk 163/33/130 set by the task branch).
+Integration fix `b2dfc674`: the TRIP-022 mission board parser refused the
+`CHECKLIST_RUN` availability source that CHECK-002 made the server report, so
+the whole availability read failed for a vehicle with a blocking run and its
+cause showed as "Outro motivo"; RED 1/9 missions tests → GREEN business-web
+68/68, typecheck, build, 29-file artifact check. Focused PostGIS race on
+`c219b165` (`cmd/api`, `apicontract`, `orgaccess`, `maintenance`, `document`,
+`fleet`, `organization/adapters`, disposable MinIO): 22 packages, 1167
+top-level / 9197 named, 0 failures. Retained: blocks from open reports with
+`blocks_use`, run-disagreement acknowledgement, unit-scoped queues and filters,
+a queue-order index, `CHECKLIST_RUN` document links and work-order links, an
+inline photo viewer (CSP decision), the actual-API HTTPS browser flow.
+
+### EMP-TRIP-019 — checklist gate on trip start and finish: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip019-checklist-gate.md), commit `c28e050d`, migration 000255
+(insert-only forced-RLS `org_trip_checklist_links` and
+`org_trip_checklist_holds` with rule-checking guards; four new functions; no
+existing function or usage change). `trip.start` (schema 1) may name its
+departure run as one `checklist_run` soft reference beside the TRIP-023 mission
+reference and `trip.finish` one return run; a run is required only when a
+CHECK-001 departure template applies under the current configuration; only
+the author's own unlinked departure run of that vehicle counts, judged at the
+declared start from server history (blocking until its release was recorded,
+valid for the policy revision's validity). Failures keep the closed ACK
+vocabulary (held `ASSET_UNAVAILABLE`, or `ORPHAN_REFERENCE`) and store the
+reason (`CHECKLIST_REQUIRED`, `CHECKLIST_BLOCKING`, `CHECKLIST_EXPIRED`,
+`ORPHAN_REFERENCE`); a finish links a qualifying return run and is never held
+by it. Shared `trip/trip-operations-v2.psv` (61 rows, v1's 54 unchanged)
+hash-checked by Go and Kotlin; Android carries the form's valid non-blocking
+departure run behind the existing checklist flag. B-BR-EMP-511..516,
+BUC-EMP-261..263, EDR-331..334. RED Go application 4, PostGIS 7/7 (codec and
+store stubs), Kotlin 7/63 → GREEN; task union 42 packages 1418/9653 (two
+fixes/reruns: a TRUNCATE grant in the CHECK-001 schema fixture and a load-only
+401 in an unrelated legal-declarations test, 17/17 alone); untagged 230
+packages. EMP-TRIP-010 was not started by that agent (IDs stay reserved) and
+runs as its own task.
+
+Integration: merged on top of `b2dfc674` as `c68f3537` (union of the
+maintenance run queries — CHECK-004's queue and TRIP-019's gate facts; sqlc
+output unchanged — contract sections and EDR-328..334, no duplicates; no route
+change). Go build/vet (plain, `integration`, `integration nativefixture`),
+toolchain gofmt, sqlc vet/diff, check_plan 0 and `git diff --check` clean;
+Android host suites on the merged tree: domain 4374, application (enterprise)
+158, data 205, app 30, 0 failures, `:app:assembleDebug` passes. Retained: the
+gate reason and run in the TRIP-007 conflict view and the panel, linking the
+run when a reviewer accepts a held start, the app's return-checklist line on
+finish, production grants and native acceptance.

@@ -10,6 +10,10 @@ import com.anpfuel.application.enterprise.queue.EnterpriseQueueProducer
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueProducerDescriptor
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueTransaction
+import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingService
+import com.anpfuel.application.enterprise.tracking.TrackingLocalException
+import com.anpfuel.application.enterprise.tracking.TrackingLocalFailure
+import com.anpfuel.application.enterprise.tracking.TrackingScreen
 import com.anpfuel.domain.enterprise.EnterpriseDeviceClock
 import com.anpfuel.domain.enterprise.EnterpriseLocalRecord
 import com.anpfuel.domain.enterprise.EnterprisePartition
@@ -17,6 +21,8 @@ import com.anpfuel.domain.enterprise.TimeDeclaration
 import com.anpfuel.domain.enterprise.attachment.AttachmentLocalFailure
 import com.anpfuel.domain.enterprise.attachment.AttachmentTarget
 import com.anpfuel.domain.enterprise.attachment.AttachmentView
+import com.anpfuel.domain.enterprise.expense.ExpenseView
+import com.anpfuel.domain.enterprise.fueling.FuelingView
 import com.anpfuel.domain.enterprise.fleet.EnterpriseAssetChoice
 import com.anpfuel.domain.enterprise.meter.MeterDomainException
 import com.anpfuel.domain.enterprise.meter.MeterEntryForm
@@ -35,6 +41,7 @@ import com.anpfuel.domain.enterprise.sync.EnterpriseQueueEntry
 import com.anpfuel.domain.enterprise.sync.OperationAcknowledgement
 import com.anpfuel.domain.enterprise.sync.SyncBinding
 import com.anpfuel.domain.enterprise.sync.SyncResult
+import com.anpfuel.domain.enterprise.tracking.TrackingDevice
 import com.anpfuel.domain.enterprise.trip.*
 import java.time.Instant
 import java.time.ZoneId
@@ -354,6 +361,19 @@ class EnterpriseTripService(
     override fun toString(): String = "EnterpriseTripService(redacted)"
 }
 
+/**
+ * EMP-TRIP-020 (EDR-339): this partition's own fuelings and expenses, read for the closing conference only. They are
+ * grouped with a trip on the device by vehicle and interval; no reference is sent and nothing is added up.
+ */
+class TripRelatedRecords(
+    private val fuelings: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> List<FuelingView>,
+    private val expenses: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> List<ExpenseView>,
+) {
+    suspend fun fuelings(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): List<FuelingView> = fuelings.invoke(account, partition)
+    suspend fun expenses(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): List<ExpenseView> = expenses.invoke(account, partition)
+    override fun toString(): String = "TripRelatedRecords(redacted)"
+}
+
 data class TripViewState(
     val generation: Long = 0,
     val epoch: Long? = null,
@@ -383,6 +403,16 @@ data class TripViewState(
     val attachmentRefusal: AttachmentLocalFailure? = null,
     /** The owning operation of the latest durably saved photo, for one polite announcement. */
     val lastAttached: String? = null,
+    /** EMP-TRIP-020: the conference reads related records; null lists were unreadable (said, never shown as none). */
+    val relatedEnabled: Boolean = false,
+    val fuelings: List<FuelingView>? = null,
+    val expenses: List<ExpenseView>? = null,
+    /** EMP-GPS-002: the partition's tracking state; null when tracking is not wired or could not be read. */
+    val tracking: TrackingScreen? = null,
+    /** The latest tracking action was refused on the device (B-BR-EMP-495/496); nothing was saved. */
+    val trackingRefusal: TrackingLocalFailure? = null,
+    /** The latest online policy read failed; the cached policy, if any, stays shown. */
+    val trackingPolicyFailed: Boolean = false,
     /** EMP-TRIP-021: the missions inbox; null when it is switched off or could not be read. */
     val missions: MissionInboxView? = null,
     /** The inbox could not be read; the trips themselves are still shown. */
@@ -395,7 +425,18 @@ data class TripViewState(
     val refreshed: Boolean = false,
 ) {
     val openTrip: TripView? get() = openTripId?.let { id -> trips.firstOrNull { it.trip.tripId == id } }
+    /** The device-local closing conference of one listed trip (B-BR-EMP-522..526); null when it is not listed or not enabled. */
+    fun closing(tripId: String): TripClosing? {
+        if (!relatedEnabled) return null
+        val view = trips.firstOrNull { it.trip.tripId == tripId } ?: return null
+        return TripClosings.of(view, attachments.takeUnless { attachmentsUnavailable }, fuelings, expenses)
+    }
     override fun toString(): String = "TripViewState(redacted)"
+}
+
+/** EMP-GPS-002 hooks of the trip screen: the tracking service and the process's running-collector and boot facts. */
+class TripTracking(val service: EnterpriseTrackingService, val running: (String) -> Boolean, val bootId: () -> String) {
+    override fun toString(): String = "TripTracking(redacted)"
 }
 
 /** One visible trip owner per screen, bound to account, epoch and background lease like "Meus ativos". */
@@ -405,7 +446,11 @@ class TripFlow(
     private val fence: EnterpriseSessionFence,
     /** EMP-DOC-004 photos of trip readings; absent when the attachment queue is not composed. */
     private val receipts: EnterpriseReceipts? = null,
-    /** EMP-TRIP-021 missions inbox; absent when it is switched off (`ENTERPRISE_MISSION_UI_ENABLED`). */
+    /** EMP-TRIP-020 closing conference sources; absent when the trip screen composes no conference. */
+    private val related: TripRelatedRecords? = null,
+    /** EMP-GPS-002 hooks; null when tracking is not wired. Before [deliver] so existing trailing-lambda callers stay valid. */
+    private val tracking: TripTracking? = null,
+    /** EMP-TRIP-021 missions inbox; absent when it is switched off (`ENTERPRISE_MISSION_UI_ENABLED`). Before [deliver] too. */
     private val missions: EnterpriseMissionService? = null,
     private val deliver: suspend (EnterpriseQueueAccountLease, EnterprisePartition) -> Unit,
 ) {
@@ -450,7 +495,7 @@ class TripFlow(
             owner = request
             mutable.value = mutable.value.copy(generation = request.token, busy = true, refusal = null, captureInvalid = false,
                 saveFailed = false, driverUnknown = false, lastSaved = null, sendFailed = false, attachmentRefusal = null, lastAttached = null,
-                missionRefusal = null, refreshFailed = null, refreshed = false)
+                trackingRefusal = null, trackingPolicyFailed = false, missionRefusal = null, refreshFailed = null, refreshed = false)
             request
         }
     }
@@ -464,11 +509,12 @@ class TripFlow(
     }
 
     private suspend fun publish(request: Owner, saved: String? = null, sendFailed: Boolean = false, attached: String? = null,
-        refreshed: Boolean = false, refreshFailed: EnterpriseAccessError? = null) {
-        val trips = service.trips(account(request), request.context.partition)
+        policyFailed: Boolean = false, refreshed: Boolean = false, refreshFailed: EnterpriseAccessError? = null) {
+        val account = account(request)
+        val trips = service.trips(account, request.context.partition)
         // EMP-TRIP-021: the inbox is read beside the trips; an unreadable copy never hides the trips.
         val inbox = missions?.let {
-            try { it.inbox(account(request), request.context.partition) }
+            try { it.inbox(account, request.context.partition) }
             catch (cancelled: CancellationException) { throw cancelled }
             catch (denied: EnterpriseLocalDenied) { throw denied }
             catch (_: Exception) { null }
@@ -480,6 +526,20 @@ class TripFlow(
             catch (denied: EnterpriseLocalDenied) { throw denied }
             catch (_: Exception) { null }
         }
+        // A tracking read failure never hides the trips (BR-GPS-005); the screen then shows no tracking control.
+        val screen = tracking?.let { hooks ->
+            try { hooks.service.screen(account, request.context.partition) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (denied: EnterpriseLocalDenied) { throw denied }
+            catch (_: Exception) { null }
+        }
+        // EMP-TRIP-020: the same partition's own fuelings and expenses; an unreadable list is kept as unknown (null).
+        suspend fun <T> readable(read: suspend () -> List<T>): List<T>? = try { read() }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (denied: EnterpriseLocalDenied) { throw denied }
+            catch (_: Exception) { null }
+        val fuelings = related?.let { r -> readable { r.fuelings(account, request.context.partition) } }
+        val expenses = related?.let { r -> readable { r.expenses(account, request.context.partition) } }
         if (!retained(request)) { invalidateIfStale(); return }
         synchronized(monitor) {
             if (owner !== request || !viewCurrent(request)) return
@@ -487,8 +547,19 @@ class TripFlow(
             mutable.value = mutable.value.copy(busy = false, loaded = true, trips = trips, openTripId = open, lastSaved = saved,
                 sendFailed = sendFailed, error = null, unlockRequired = false, unrecoverable = false,
                 attachments = photos ?: emptyMap(), attachmentsUnavailable = receipts?.enabled == true && photos == null, lastAttached = attached,
+                relatedEnabled = related != null, fuelings = fuelings, expenses = expenses, tracking = screen,
+                trackingPolicyFailed = policyFailed,
                 missions = inbox, missionsUnavailable = missions != null && inbox == null, refreshed = refreshed, refreshFailed = refreshFailed)
         }
+    }
+
+    /** BR-GPS-011/012 at the opening: a recording session with no running collector is interrupted, a finished trip followed. */
+    private suspend fun recoverTracking(request: Owner) {
+        val hooks = tracking ?: return
+        try { hooks.service.recover(account(request), request.context.partition, hooks.running, hooks.bootId()) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (denied: EnterpriseLocalDenied) { throw denied }
+        catch (_: Exception) { /* The checkpoint stays; the next opening tries again. */ }
     }
 
     private fun failed(request: Owner, failure: Exception, write: Boolean) {
@@ -501,6 +572,7 @@ class TripFlow(
                 failure is TripLocalException -> current.copy(busy = false, refusal = failure.failure)
                 failure is MissionLocalException -> current.copy(busy = false, missionRefusal = failure.failure)
                 failure is ReceiptSaveRefused -> current.copy(busy = false, attachmentRefusal = failure.failure)
+                failure is TrackingLocalException -> current.copy(busy = false, trackingRefusal = failure.failure)
                 failure is TripCaptureInvalid -> current.copy(busy = false, captureInvalid = true)
                 failure is TripDriverUnknown -> current.copy(busy = false, driverUnknown = true)
                 failure is EnterpriseUnlockRequired || failure is EnterpriseVaultUnrecoverable -> current.copy(busy = false, loaded = false,
@@ -529,7 +601,7 @@ class TripFlow(
             mutable.value = TripViewState(generation = created.token, epoch = created.epoch, context = context, busy = true)
             created
         }
-        perform(request, write = false) { publish(request) }
+        perform(request, write = false) { recoverTracking(request); publish(request) }
     }
 
     suspend fun reload(renderedEpoch: Long, generation: Long) {
@@ -554,7 +626,44 @@ class TripFlow(
         write(renderedEpoch, generation) { request, account -> service.log(account, request.context.partition, tripId, type, text) }
 
     suspend fun finish(tripId: String, final: TripCapture, renderedEpoch: Long, generation: Long) =
-        write(renderedEpoch, generation) { request, account -> service.finish(account, request.context.partition, tripId, final) }
+        write(renderedEpoch, generation) { request, account ->
+            val saved = service.finish(account, request.context.partition, tripId, final)
+            // The session ends at the finish's own instant (B-BR-EMP-499); a failure here is retried at the next opening.
+            tracking?.let { hooks ->
+                try { hooks.service.follow(account, request.context.partition, tripId) }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (denied: EnterpriseLocalDenied) { throw denied }
+                catch (_: Exception) { }
+            }
+            saved
+        }
+
+    /** EMP-GPS-002: the driver's tap on "Iniciar/Retomar rastreamento" on this visible screen (B-BR-EMP-496). */
+    suspend fun startTracking(tripId: String, device: TrackingDevice, renderedEpoch: Long, generation: Long) {
+        val hooks = tracking ?: return
+        write(renderedEpoch, generation) { request, account ->
+            hooks.service.start(account, request.context, tripId, device).records.last().operationId
+        }
+    }
+
+    /** "Parar rastreamento" on the trip screen: interrupted by the driver, the trip continues (B-BR-EMP-499). */
+    suspend fun stopTracking(tripId: String, renderedEpoch: Long, generation: Long) {
+        val hooks = tracking ?: return
+        write(renderedEpoch, generation) { request, account ->
+            hooks.service.stop(account, request.context.partition, tripId).records.last().operationId
+        }
+    }
+
+    /** Online only: reads the policy in force for this member and keeps it on the device (B-BR-EMP-495). */
+    suspend fun refreshTrackingPolicy(renderedEpoch: Long, generation: Long) {
+        val hooks = tracking ?: return
+        val request = begin(renderedEpoch, generation) ?: return
+        perform(request, write = false) {
+            val read = hooks.service.refreshPolicy(account(request, delivery = true), request.context)
+            if (!retained(request)) { invalidateIfStale(); return@perform }
+            publish(request, policyFailed = read == null)
+        }
+    }
 
     suspend fun markReady(tripId: String, renderedEpoch: Long, generation: Long) =
         write(renderedEpoch, generation) { request, account -> service.markReady(account, request.context.partition, tripId) }
@@ -590,9 +699,22 @@ class TripFlow(
         service.start(account, request.context, choice, label, departure, departureRunId, missionId)
     }
 
-    /** EMP-TRIP-011 pause, resume or cancel of the visible partition's trip (B-BR-EMP-530). */
+    /**
+     * EMP-TRIP-011 pause, resume or cancel of the visible partition's trip (B-BR-EMP-530). A pause suspends and a cancellation
+     * ends the trip's recording session at the command's own instant (EMP-GPS-002 follow); a failure there is retried at the
+     * next opening, like the finish's.
+     */
     suspend fun lifecycle(tripId: String, command: TripCommand, reason: String?, renderedEpoch: Long, generation: Long) =
-        write(renderedEpoch, generation) { request, account -> service.lifecycle(account, request.context.partition, tripId, command, reason) }
+        write(renderedEpoch, generation) { request, account ->
+            val saved = service.lifecycle(account, request.context.partition, tripId, command, reason)
+            if (command != TripCommand.RESUME) tracking?.let { hooks ->
+                try { hooks.service.follow(account, request.context.partition, tripId) }
+                catch (cancelled: CancellationException) { throw cancelled }
+                catch (denied: EnterpriseLocalDenied) { throw denied }
+                catch (_: Exception) { }
+            }
+            saved
+        }
 
     /** Offline answer to an assigned mission (B-BR-EMP-528). */
     suspend fun respond(missionId: String, response: TripMissionResponse, reason: String?, renderedEpoch: Long, generation: Long) =

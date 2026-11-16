@@ -28,6 +28,18 @@ import com.anpfuel.domain.enterprise.sync.EnterpriseQueueEntry
 import com.anpfuel.domain.enterprise.sync.OperationAcknowledgement
 import com.anpfuel.domain.enterprise.sync.SyncBinding
 import com.anpfuel.domain.enterprise.trip.*
+import com.anpfuel.domain.enterprise.attachment.AttachmentPresentation
+import com.anpfuel.domain.enterprise.attachment.AttachmentState
+import com.anpfuel.domain.enterprise.attachment.AttachmentTarget
+import com.anpfuel.domain.enterprise.attachment.EnterpriseAttachment
+import com.anpfuel.domain.enterprise.document.DocumentTargetKind
+import com.anpfuel.domain.enterprise.expense.ExpenseEnvelope
+import com.anpfuel.domain.enterprise.expense.ExpenseOperations
+import com.anpfuel.domain.enterprise.expense.ExpensePresentation
+import com.anpfuel.domain.enterprise.fueling.FuelingEnvelope
+import com.anpfuel.domain.enterprise.fueling.FuelingOperations
+import com.anpfuel.domain.enterprise.fueling.FuelingPresentation
+import com.anpfuel.domain.enterprise.fueling.FuelingSubmitInput
 import java.util.Locale
 import org.junit.Assert.*
 import org.junit.Rule
@@ -207,5 +219,38 @@ class EnterpriseTripPresentationDeviceTest {
         render(state(view(book(finished = false, submitted = false)), saveFailed = true))
         compose.onNodeWithTag("enterprise-trip-feedback").assertTextEquals("Nada foi salvo. Tente de novo.")
         compose.onAllNodesWithTag("enterprise-trip-saved").assertCountEquals(0)
+    }
+
+    /** EMP-TRIP-020 (B-BR-EMP-522..526): the closing conference shows each item's own states, no total and no decision. */
+    @Test fun theClosingConferenceShowsEachItemsOwnStatesAndNeverATotal() {
+        val fueling = FuelingOperations.submit(FuelingEnvelope(binding, id(3), id(4), id(500), TimeDeclaration(EnterpriseTime.parseInstant("2026-11-15T13:30:00Z"), "UTC", 0)),
+            id(510), FuelingSubmitInput(id(20), id(5), "DIESEL_S10", "L", "150000", "97000", null, null, null, "FULL", "COMPANY", "FUEL_CARD", null, "Painel apagado"))
+        val toll = ExpenseOperations.submit(ExpenseEnvelope(binding, id(3), id(4), id(600), TimeDeclaration(EnterpriseTime.parseInstant("2026-11-15T14:00:00Z"), "UTC", 0)),
+            id(610), id(20), "TOLL", "1250", "1250", "EMPLOYEE", null)
+        val photo = AttachmentPresentation.view(EnterpriseAttachment(id(700), id(701), id(702), fueling.operationId, AttachmentTarget(DocumentTargetKind.FUELING, id(510)),
+            "ab".repeat(32), 2048, EnterpriseTime.parseInstant("2026-11-15T13:31:00Z"), AttachmentState.STORED, null, 1), ack(fueling))
+        val ready = state(view(book(finished = true, submitted = false)), open = id(10)).copy(relatedEnabled = true,
+            fuelings = listOf(FuelingPresentation.view(EnterpriseQueueEntry(fueling, acknowledgement = ack(fueling)))),
+            expenses = listOf(ExpensePresentation.view(EnterpriseQueueEntry(toll))), attachments = mapOf(fueling.operationId to listOf(photo)))
+        val (calls, update) = render(ready)
+        scrollTo("enterprise-trip-closing")
+        compose.onNodeWithTag("enterprise-trip-closing").assertExists()
+        compose.onNodeWithTag("enterprise-trip-closing-fueling-${id(510)}", useUnmergedTree = true).onChildren().apply {
+            assertAny(hasText("Abastecimento · R$ 970,00")); assertAny(hasText("Aceito pela empresa")); assertAny(hasText("Comprovante: guardado pela empresa"))
+        }
+        compose.onNodeWithTag("enterprise-trip-closing-expense-${id(610)}", useUnmergedTree = true).onChildren().apply {
+            assertAny(hasText("Despesa · R$ 12,50")); assertAny(hasText("Salvo neste aparelho")); assertAny(hasText("Comprovante: faltando"))
+        }
+        compose.onAllNodesWithText("Total", substring = true).assertCountEquals(0)
+        compose.onAllNodesWithText("válid", substring = true, ignoreCase = true).assertCountEquals(0)
+        compose.onAllNodesWithText("Aprovad", substring = true).assertCountEquals(0)
+        scrollTo("enterprise-trip-ready")
+        compose.onNodeWithTag("enterprise-trip-ready").performClick()
+        assertEquals(listOf(id(10)), calls.ready)
+        // An unreadable attachment index is never shown as stored.
+        update(ready.copy(attachmentsUnavailable = true, attachments = emptyMap()))
+        scrollTo("enterprise-trip-closing")
+        compose.onAllNodesWithText("Comprovante: guardado pela empresa").assertCountEquals(0)
+        compose.onAllNodesWithText("Comprovantes: não é possível ler neste aparelho").fetchSemanticsNodes().isNotEmpty().let { assertTrue(it) }
     }
 }

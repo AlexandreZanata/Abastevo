@@ -8260,6 +8260,599 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   finish and the vehicle is blocked for the next use until released. A
   finish naming a return run the server does not hold yet still completes
   the trip and links nothing.
+
+## EMP-METER-005 — Meter replacement, reset and rollover with cumulative usage (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-meter005-replacement-rollover.md).
+
+- **B-BR-EMP-481 — Segments and the segment a reading counts in.** A meter
+  counts in ordered, contiguous segments. A segment opens for a reason
+  (`INSTALLATION`, `RESET`, `ROLLOVER`) at an instant with an opening value
+  (the value of its opening reading for `INSTALLATION` and `RESET`; zero for
+  `ROLLOVER`) and closes at most once, with a closing kind (`REMOVAL`,
+  `RESET`, `ROLLOVER`), the closing instant and the closing value (`REMOVAL`:
+  the observed final value, or unknown; `RESET`: the value observed before;
+  `ROLLOVER`: the meter's modulus). A reset or rollover closes the open
+  segment and opens the next one at the same instant; a removal closes the
+  meter's last segment and the meter at the same instant. A reading counts in
+  the segment of its meter whose half-open interval `[opened, closed)`
+  contains its instant, except a `METER_REMOVAL` reading, which counts in the
+  segment it was recorded in (the segment its removal closes). The segment recorded on the
+  reading row is the one that was open at intake and never changes; a reading
+  whose instant lies after a later boundary counts in the next segment.
+  Classification, re-evaluation, the current value, the history, the suspect
+  list and decisions use this segment, so monotonicity and plausibility are
+  checked inside one segment only (BR-METER-007, BR-METER-009).
+- **B-BR-EMP-482 — Cumulative usage, usage between instants and the
+  equivalent display.** For one asset and one kind, take its meters in
+  installation order and their segments in order, and only `VALID`
+  readings. The anchor at instant `t` is the latest such reading at or before
+  `t` (segment order, then BR-METER-008 order). `U(t)` is the sum of
+  `close − open` of every segment before the anchor's segment plus
+  `anchor − open` of the anchor's segment; `E(t) = open(first segment) +
+  U(t)`; `usage(t1, t2)` runs from the anchor at `t1` to the anchor at `t2`:
+  inside one segment the difference, across segments `close − anchor₁` of the
+  first, `close − open` of every segment between and `anchor₂ − open` of the
+  last. A missing anchor gives `INSUFFICIENT_DATA` with `NO_READING_BEFORE`
+  (an anchor that exists is still named); a segment in the summed span that
+  closed with an unknown value gives `INSUFFICIENT_DATA` with `METER_GAP`;
+  `t1` after `t2` is invalid; nothing is interpolated and kinds are never
+  mixed (BR-METER-021, BR-TRUTH-003). Example C gives `U = 1 944 000` m,
+  usage R4′ → M2 reading `= 754 000` m and `E = 184 944 000` m; example D
+  gives usage S1 → S2 `= 170 000` m and `E = 1 000 120 000` m.
+- **B-BR-EMP-483 — A rollover is only a candidate until a person confirms
+  it.** When the meter has a modulus `M`, a candidate below its valid
+  predecessor `v₁`, with no valid successor in its segment, whose wrap usage
+  `(M − v₁) + v₂` passes the §10.2 rate check over the elapsed time, is
+  stored `SUSPECT` with `POSSIBLE_ROLLOVER` instead of
+  `READING_BELOW_PREVIOUS` (canonical flag order: after `FUTURE_INSTANT`).
+  The same rule applies at intake, at correction and at re-evaluation; a
+  meter without a modulus never produces the flag. Nothing applies a
+  rollover by itself; a `CONFIRM` of a reading flagged `POSSIBLE_ROLLOVER` is
+  `VALIDATION_FAILED`, like a monotonicity flag.
+- **B-BR-EMP-484 — Replacing a meter.** A member with `meter.reading.correct`
+  replaces the meter in service by one company command naming the meter, its
+  expected segment count (the meter's revision for these commands), the
+  removal instant, the final value of the old meter or `unknown`, and the new
+  meter's label, optional modulus and opening value (exact base units of the
+  same kind). It is `VALIDATION_FAILED` when the instant is not after the open
+  segment's opening, is later than the database clock, or has a not-`VOIDED`
+  reading of the old meter at or after it; when the final value is below the
+  latest `VALID` reading before the instant or not below the old modulus;
+  when the new modulus is not positive or the opening value is not below it.
+  In one transaction it stores the final value as a `METER_REMOVAL` reading
+  (the closing reading; none when unknown), closes the last segment
+  (`REMOVAL`), removes the meter at the instant, installs the new meter with
+  its `INSTALLATION` segment and `METER_INSTALLATION` opening reading at the
+  same instant, and returns and stores the implied usage (`final − latest
+  valid reading`, or `INSUFFICIENT_DATA`/`METER_GAP` when unknown). A second
+  meter of the same kind in service stays impossible
+  (`METER_ALREADY_IN_SERVICE`, BR-METER-005).
+- **B-BR-EMP-485 — Resetting a meter.** The same command with `RESET` names
+  the instant, the value observed before and the value observed after. It is
+  `VALIDATION_FAILED` when the instant is not after the open segment's
+  opening or is later than the database clock, when a `VALID` reading of the
+  open segment lies at or after it or any not-`VOIDED` reading lies exactly
+  at it, when the before value is below the latest `VALID` reading before the
+  instant, or when a value is not below the modulus. It closes the open
+  segment at the instant with the before value as its closing value and
+  stores the after value as the opening reading of a new `RESET` segment
+  opened at the instant (`STANDALONE`, `TYPED`, by the deciding member
+  through the company session; one operation carries one reading per meter),
+  re-evaluates the `SUSPECT` readings now counting in the new
+  segment (BR-METER-012: a segment boundary between two readings clears a
+  monotonicity flag), and returns and stores the implied usage `before −
+  latest valid reading`.
+- **B-BR-EMP-486 — Confirming a rollover, anchors and audit.** The decision
+  `CONFIRM_ROLLOVER` on a reading of the open segment (expected revision and
+  reason, as every decision) is `VALIDATION_FAILED` on a meter without a
+  modulus, on a reading not flagged `POSSIBLE_ROLLOVER`, when a `VALID`
+  reading of the segment follows it, or when another not-`VOIDED` reading or
+  its valid predecessor lies at its instant; a reading that is not `SUSPECT`
+  is `CONFLICT`. It closes the open segment at the reading's instant with the
+  modulus, opens a `ROLLOVER` segment there whose opening value is zero and
+  whose first reading is the confirmed one, makes the reading `VALID` (cause
+  `ROLLOVER`, actor and reason), re-evaluates the new segment and returns and
+  stores the implied usage `(M − v₁) + v₂`. Every opening or closing reading of a
+  segment is an anchor and refuses any decision with `VALIDATION_FAILED`.
+  Each command writes one audit event (`meter.replaced`, `meter.reset`,
+  `meter.rollover.confirmed`; actor, target, command digest; no value or
+  reason) and commits with all its effects or not at all, serialised by the
+  root, asset and meter locks; the same operation and digest returns the
+  first result, another digest is `OPERATION_ID_REUSED`; a stale segment
+  count is `CONFLICT`; another organization's or asset's meter is
+  `NOT_FOUND`.
+- **BUC-EMP-245 — Replace an instrument panel.** A fleet manager records the
+  replacement of "Caminhão 07" at 184 532 km with a new odometer at 0; a
+  reading of 412 km on the new meter gives 1 944 000 m of cumulative usage
+  and 754 000 m since R4′ (example C).
+- **BUC-EMP-246 — Record a reset.** A supervisor records that an hour meter
+  restarted: before, after and the instant; readings typed after the restart
+  and flagged below their predecessor return to `VALID` in the new segment.
+- **BUC-EMP-247 — Confirm a rollover.** A supervisor opens the reading of
+  120 km flagged `POSSIBLE_ROLLOVER` on "Caminhão 11", sees the implied
+  170 000 m and confirms; the reading becomes `VALID` in the new segment
+  (example D).
+
+## EMP-METER-006 — Current-value projection and usage-between-instants query (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-meter006-current-value-projection.md).
+
+- **B-BR-EMP-487 — The current value is a maintained projection.** Every meter
+  has one projection row: its open segment (none once removed), the latest
+  currently `VALID` reading counting in that segment (B-BR-EMP-481) with its
+  value and instant (none when there is no such reading), and a revision equal
+  to the number of the meter's source facts (readings, history revisions,
+  segments, segment closures and the removal). The database writes it in the
+  transaction of every such fact, so intake, fuelings, trips, held reviews,
+  decisions, rollovers, replacements, resets and EMP-TRIP-015 amendment
+  supersessions all maintain it; a change of any fact raises the revision.
+  The projection is never the source of truth (BR-METER-006): a figure is
+  computed from readings, and any doubt is settled by a rebuild.
+- **B-BR-EMP-488 — Rebuild.** An operator rebuild deletes one organization's
+  projection rows and recomputes them from the readings in one transaction;
+  the rebuilt rows equal the incrementally maintained rows (values and
+  revisions) and a second rebuild changes nothing. The rebuild needs an
+  operator identity and changes no business fact.
+- **B-BR-EMP-489 — Usage between two instants.** A server port takes an asset,
+  a kind and two instants (`from` at or before `to`) and answers with the
+  B-BR-EMP-482 figure over the asset's meters of that kind, their segment
+  chain and their currently `VALID` readings: status (`OK` or
+  `INSUFFICIENT_DATA`), reason (`NO_READING_BEFORE`, `METER_GAP`), usage
+  (absent unless `OK`), both anchor readings that exist (identifier, value,
+  instant), the method version `meter-usage-v1` and the projection revision
+  (the sum of the revisions of the asset's meters of that kind) read with
+  them. It never interpolates. Instants
+  in reverse order are `VALIDATION_FAILED`; another organization's asset, or
+  an asset without a meter of that kind, is `NOT_FOUND`.
+- **B-BR-EMP-490 — Consistency and recalculation.** A usage answer reads
+  readings, history, segments and projection under a shared lock of the
+  asset's meters of that kind, which every reading change locks for update,
+  so a concurrent correction is either wholly before or wholly after it. A correction raises the projection revision in its own
+  transaction and, when consumers are composed, emits
+  `meter.usage.recalculated` once (EMP-METER-004); the projection itself needs
+  no event.
+- **BUC-EMP-248 — Ask for usage between two instants.** A module asks for the
+  odometer usage of an asset between a trip's start and finish and receives
+  the figure, both readings it used and the projection revision, or
+  `INSUFFICIENT_DATA` with the reason.
+- **BUC-EMP-249 — Rebuild the projection.** An operator suspects drift and
+  rebuilds one organization's projection; nothing changes when it was right.
+
+## EMP-TRIP-010 — Stops and legs: planned versus actual (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-trip010-stops-legs.md).
+
+- **B-BR-EMP-475 — Planned stops belong to the planning revision.** A
+  `PLAN` command (EMP-TRIP-009) may carry `stops`: 1 to 20 ordered
+  intermediate stops between the trip's start and the plan's destination
+  (a technical bound, not a product rule), each a free-text place with the
+  plan text profile (B-BR-EMP-382: nonblank, control-free, at most 280
+  characters, no standalone CPF-shaped token). No unit, coordinate, time,
+  person or contact is accepted; an absent list means no planned stop and
+  an empty list is refused. The stops are stored insert-only with the
+  planning revision their `PLAN` produced (sequence 1..n), in the `PLAN`
+  transaction and before its receipt; a re-plan appends a new revision with
+  its own stops and keeps every earlier one. The plan of an `ACCEPTED`,
+  `IN_PROGRESS`, `COMPLETED` or `CANCELLED` mission cannot change
+  (B-BR-EMP-381, B-BR-EMP-413), so the stops shown beside a trip are those
+  the member accepted. A plan without stops keeps the `trip.mission.plan.v1`
+  digest byte for byte, so stored receipts replay; a plan with stops binds
+  them in `trip.mission.plan.v2`. Every plan projection carries `stops` only
+  when the revision has stops. The planned legs are derived, never stored:
+  start → stop 1 → … → stop n → destination; no planned distance, duration
+  or route estimate is shown or compared with travel (BR-ROUTE-008).
+- **B-BR-EMP-476 — Observed stops and legs are derived from the trip's
+  typed facts.** Nothing new is recorded on the device: the observed side is
+  derived at read time from the trip's start, its end (the finish, or the
+  cancellation; a supervisor closure has no device instant and ends
+  nothing) and its accepted `STOP`, `ARRIVAL` and `DEPARTURE` logbook events
+  (EMP-TRIP-003), in the shared timeline order (B-BR-EMP-324: declared
+  instant, then identity; the receipt is never an ordering key). A `STOP`
+  or an `ARRIVAL` opens a stop and ends the leg that led to it; a
+  `DEPARTURE` closes the open stop and opens the next leg; the trip's start
+  opens the first leg and its end closes the last one; a trip that ends
+  while stopped ends at that stop. Every boundary keeps its fact identity,
+  type, declared instant, entry zone and device offset (BR-TIME-001) and the
+  server receipt (BR-TIME-002). Notes, pauses, incidents and other facts are
+  not stops. No distance, duration or pairing with a planned stop is
+  derived. The derivation is shared by Go and Kotlin through
+  `trip/stops-v1.psv`.
+- **B-BR-EMP-477 — Incoherent observations are surfaced, never paired,
+  reordered or dropped.** A `DEPARTURE` with no open stop yields a stop
+  without arrival (`ARRIVAL_MISSING`), and the leg that should have ended
+  there ends without arrival (`ARRIVAL_MISSING`); a `STOP` or `ARRIVAL`
+  while a stop is still open leaves that stop without departure
+  (`DEPARTURE_MISSING`) and starts the next leg without departure
+  (`DEPARTURE_MISSING`). A boundary declared after its own server receipt
+  is flagged `after_receipt` (BR-TIME-006: reported, never rewritten).
+  Observations outside the trip keep their EMP-TRIP-003/015 handling: before
+  the start `MALFORMED` (nothing stored); after the finish or on a decided
+  revision held for review (`TRIP_ALREADY_CLOSED`, `STALE_REVISION`); the
+  read lists the trip's held `STOP`, `ARRIVAL` and `DEPARTURE` observations
+  with their code and declared time, never as stops. An observation accepted
+  while the trip was open but declared after the end that was recorded later
+  (a device clock that moved) is listed apart as `after_end`, in timeline
+  order, never as a stop or leg boundary and never dropped.
+- **B-BR-EMP-478 — The member reads the plan beside the observed stops and
+  legs of an own trip.** `POST
+  /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read` (company session,
+  `trip.trip.start`, read; the target is the requesting membership, the
+  EMP-TRIP-012 own-trips policy) answers for a trip whose starting member or
+  current responsible member is the requester: the trip summary with its
+  start and end boundaries; `planned` — `null` when the trip executes no
+  mission (EMP-TRIP-023 link) or its mission has no planning revision, else
+  the mission's current planning revision (revision, planning instant,
+  mission window, destination, stops, derived legs); and `observed` — stops,
+  legs and held observations with their recorded times. Another member's trip,
+  another organization's trip and an unknown trip are the same `NOT_FOUND`
+  with nothing revealed; a member without `trip.trip.start` is `FORBIDDEN`.
+- **B-BR-EMP-479 — Planned data never rewrites observations.** Planning
+  revisions and their stops live in their own insert-only tables; the
+  observations are the insert-only logbook rows. A re-plan before
+  acceptance, or a `PLAN` refused on an executing mission (`CONFLICT`),
+  changes no trip, event, held event or observed stop or leg. The database
+  refuses a stop row outside its `PLAN` transaction (after its receipt, on
+  a head at another revision or state, out of sequence), a stop row without
+  its published `PLAN` receipt, and any change or deletion.
+- **B-BR-EMP-480 — Replays change nothing.** The same `PLAN` operation with
+  the same digest replays its stored receipt and stores no second stop; the
+  same operation with other stops is `OPERATION_ID_REUSED`. An observation
+  resend returns the stored acknowledgement byte for byte and the same
+  identifier with another digest is `OPERATION_ID_REUSED` (EMP-TRIP-003);
+  the observed stops and legs read after a replay are identical.
+- **BUC-EMP-242 — Plan the stops of a delivery.** A planner plans a mission
+  to the destination "Centro de distribuição Norte" with the stops "Cliente
+  Jardim Primavera" and "Posto de apoio BR-163", then, before assigning it,
+  re-plans with a third stop "Cliente Vila Rica". The second planning
+  revision holds three stops and four planned legs; the first keeps its two
+  stops. After the driver accepts, a re-plan is refused.
+- **BUC-EMP-243 — Distinguish the plan from what happened.** The assigned
+  driver starts the linked trip at 08:00 (America/Cuiaba, −04:00), records
+  `ARRIVAL` 09:10, `DEPARTURE` 09:40, `STOP` 11:00, `DEPARTURE` 11:15 and
+  finishes at 12:30. The member's read shows the three planned stops and
+  four planned legs and, separately, two observed stops (09:10–09:40,
+  11:00–11:15) and three observed legs (08:00–09:10, 09:40–11:00,
+  11:15–12:30), each time with its zone, offset and receipt; nothing says
+  which planned stop was visited.
+- **BUC-EMP-244 — Incoherent observations stay visible.** The driver forgets
+  an arrival and records two departures in a row, then two arrivals in a
+  row, and a device clock ahead of the server declares one arrival after it
+  was received; an arrival recorded after the finish is held. The read shows
+  a stop without arrival and a stop without departure with their legs
+  flagged, the arrival flagged `after_receipt` and, because the finish was
+  then declared before it, listed apart as `after_end`, and the held arrival
+  with `TRIP_ALREADY_CLOSED`; no time is moved and no event is dropped.
+
+## EMP-EXP-004 — App: add an expense with receipt (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-exp004-app-expense.md).
+
+- **B-BR-EMP-517 — The device builds the exact `expense.submit` the intake
+  reads.** The app produces only schema 1 of `expense.submit` through the
+  EMP-EXP-002 Kotlin builder (EDR-289): entity `expense` with a new device
+  identifier and no expected revision, no dependency, soft reference or
+  envelope attachment, and the exact six-key payload — the chosen asset, a
+  v1 direct category, the paid total and the company amount as exact
+  centavos texts, the payer and `trip_id` null. The registered producer
+  admits only an operation the device decoder reads back, inside the
+  protected write; the shared oracle `expense/expense-submit-v1.psv` pins the
+  bytes for both languages.
+- **B-BR-EMP-518 — An expense is saved durably in its creation partition.**
+  "Salvar despesa" queues the operation through the EMP-OFFL-003 protected
+  write of the selected organization's partition (account, origin,
+  organization, membership, enrollment); "Salvo no aparelho" appears only
+  after that write returns; a failed write says that nothing was saved and
+  keeps the form. Nothing else of the expense is stored: list and detail are
+  read back from the partition's retained `expense.submit` entries, so the
+  original scope and both amounts survive restart exactly as queued. Another
+  organization or account never lists or sends it.
+- **B-BR-EMP-519 — Entry is exact and offline.** The asset comes from the
+  EMP-FLEET-013 picker (implements excluded); the category is one of the
+  EMP-EXP-002 accepted direct categories (toll, parking, maintenance, lease,
+  insurance, fine, other — a fuel cost is a fueling, recorded in
+  "Abastecimentos"); "Valor pago" and "Valor para a empresa" are both
+  required, take reais with at most two decimals, a decimal comma or point
+  and no grouping, and are converted to integer centavos without rounding;
+  a company amount above the paid total, a third decimal, a grouping
+  separator, a currency sign or a value beyond the money profile is refused
+  before saving ("confira os valores") and nothing is saved; the payer
+  (company or employee) is an explicit choice. Nothing is recomputed.
+- **B-BR-EMP-520 — The receipt is a separate, optional photo linked to the
+  expense.** In the form, "Comprovante (opcional)" uses the EMP-DOC-004 sheet
+  (camera or import, legibility hint, keep or retake; synthetic images only
+  until OQ-04); not taking one is allowed. After the expense is saved, its
+  photo is sealed in a second protected write with target `EXPENSE` (the
+  expense identifier) and owner the `expense.submit` operation of the same
+  partition — a receipt can never name an operation of another organization
+  or account (`UNKNOWN_OPERATION`, nothing saved). If that second write fails
+  or is refused the expense stays saved and the screen says the receipt was
+  not saved, keeping the photo for another attempt; a receipt can also be
+  added later from the expense's detail. The photo is declared only after
+  the expense's final receipt (EDR-268/269) and links only to a stored
+  direct expense, through the new `EXPENSE` link kind of EMP-DOC-003 resolved
+  by the expense owner under `exp.expense.record` (the author's own expense;
+  another member's is `FORBIDDEN`; another organization's, a missing one or a
+  fueling's own expense `NOT_FOUND`). A link is evidence, never a cost: it
+  changes no amount and creates no expense; its progress is shown
+  separately and never changes the expense's state.
+- **B-BR-EMP-521 — Acceptance follows the server; rollback and scope.** The
+  expense shows "Salvo no aparelho" until its own final receipt: "Aceito pela
+  empresa" with "Aguardando aprovação" only from an `ACCEPTED` receipt, "Não
+  aceito" with the reason otherwise; a held expense (changed rights, after
+  disposal) stays saved and retried. No approval, return or decision is ever
+  made or shown as made on the device. `ENTERPRISE_EXPENSE_UI_ENABLED`
+  (default on) hides the entry; queued expenses and receipts keep their
+  delivery. No trip reference (`trip_id` stays null; EMP-TRIP-020 decides),
+  configured category (EMP-EXP-003) or real receipt is produced.
+- **BUC-EMP-264 — Record a toll offline with a receipt.** Bruno, with no
+  signal, opens "Despesas", chooses his truck, picks "Pedágio", enters
+  R$ 12,50 paid and R$ 12,50 for the company, paid by himself, photographs
+  the synthetic receipt and saves: "Despesa salva no aparelho com o
+  comprovante". The phone restarts; both are still saved. On reconnection the
+  expense becomes "Aceito pela empresa — aguardando aprovação"; the receipt
+  shows "Enviando" until it is stored ("Arquivo guardado pela empresa").
+- **BUC-EMP-265 — Without receipt now, receipt later.** Parking of R$ 8,00
+  paid by the company is saved without a photo; the receipt is added the next
+  morning from the expense's detail.
+- **BUC-EMP-266 — Negatives.** A failed protected write (nothing saved), an
+  expense of organization A never listed or sent under B, "12,345", "1.234,56"
+  or a company amount above the paid total (nothing saved), a receipt refused
+  locally (expense kept, receipt not saved), a receipt naming an operation of
+  another partition, an attempt to link a receipt to another member's,
+  another organization's or a fueling's expense on the server, a saved
+  expense never shown as accepted before its receipt, and the shared oracle
+  rows that the intake refuses.
+
+## EMP-TRIP-020 — Trip closing conference: expenses and documents before submission (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip020-closing-conference.md).
+
+- **B-BR-EMP-522 — The conference is device-local.** Before a finished trip
+  is marked ready to send, the trip detail shows "Conferência de
+  fechamento": the trip's own departure and final readings and the
+  fuelings and expenses saved on this device in the trip's organization
+  (its own protected partition) for the trip's vehicle, declared between the
+  trip's start and its finish (since the start while it is open). This
+  grouping exists only on the device: no trip reference is sent with a
+  fueling or an expense (`trip_id` stays null and RETRY/UNAVAILABLE at the
+  intake), the server learns nothing new, and records of another vehicle,
+  organization or account, or outside the interval, never appear.
+- **B-BR-EMP-523 — Each item keeps its own record state.** A reading, fueling
+  or expense shows only what its own retained receipt proves: "Salvo neste
+  aparelho", "Enviando", "Aceito pela empresa", "Precisa de revisão" or "Não
+  aceito" with the reason. Nothing is shown as accepted, approved or
+  returned without that receipt.
+- **B-BR-EMP-524 — Evidence is missing, pending or available, never
+  certified.** Each item's evidence comes only from the photos that its own
+  operation owns and that target that record: no usable photo (none, a
+  missing file or a refused transfer) is "faltando"; a photo saved on the
+  device or still being sent or checked is "pendente"; every photo stored by
+  the company is "guardado pela empresa" — stored, never "válido",
+  "verificado" or "certificado". A photo of another record never counts; an
+  attachment index this device cannot read shows every item's evidence as
+  unreadable, never as available; unreadable fuelings or expenses are said
+  ("a lista pode estar incompleta"), never shown as nothing to confer.
+- **B-BR-EMP-525 — A link is never a cost.** Each fueling or expense shows its
+  own entered paid amount; the conference adds nothing up, and a fueling's
+  own expense (projected on the server by EMP-EXP-002) is never listed as a
+  second item. Duplicated entries count once.
+- **B-BR-EMP-526 — Submission names the right revision and decides
+  nothing.** From the conference, "Marcar como pronta para enviar" queues the
+  trip's first `trip.submit` exactly as EMP-TRIP-005 does: entity
+  `trip_review` at revision 1, depending on the finish; a trip already marked
+  queues nothing more (`ALREADY_SUBMITTED`). Approval, return and rejection
+  stay the company's: the device never shows or makes a decision offline. A
+  resubmission after a return names the returned revision (EMP-TRIP-015) and
+  needs the author's own review read, which does not exist yet: retained.
+- **BUC-EMP-267 — Confer before sending.** Bruno finishes the trip, opens it
+  and sees the departure reading with its photo "guardado pela empresa", the
+  fueling of R$ 970,00 "Aceito pela empresa" with its receipt "pendente", the
+  toll of R$ 12,50 "Salvo neste aparelho" with "Comprovante: faltando" and
+  the final reading; he adds the toll's receipt from "Despesas", returns and
+  marks the trip ready to send.
+- **BUC-EMP-268 — Incomplete device data.** The device cannot read its
+  fuelings: the conference says the list may be incomplete and still lists
+  the readings and the expenses; marking ready remains possible and nothing
+  is invented.
+- **BUC-EMP-269 — Negatives.** A fueling of another vehicle, a parking of
+  another organization and an expense saved after the finish are absent; a
+  photo owned by the fueling but targeting the expense documents neither; a
+  missing file is never "guardado"; an unreadable index never shows
+  "guardado"; the amounts are never summed; marking twice queues nothing.
+
+## EMP-GPS-002 — Organization trip tracking service: explicit start from the trip screen, visible notification, location-guard update (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps002-tracking-service.md). Owner
+decision EDR-271: tracking is implemented for real and is active per
+organization only with its employee notice in force; real-device acceptance
+is owed.
+
+- **B-BR-EMP-495 — The driver sees the organization's tracking policy in
+  force.** `POST /v1/orgs/{org_id}/tracking/policy/mine` (company session,
+  empty body) requires `trip.trip.start` covering the requesting membership's
+  own record (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR, DRIVER) and answers the
+  policy in force now (`OFF` until the version's employee notice is in force;
+  revision `0` and `OFF` when nothing was recorded) with, only when it is not
+  `OFF`, the notice version and its in-force instant. AUDITOR, FINANCE,
+  APPROVER and members without the key are `FORBIDDEN` naming
+  `trip.trip.start`; another or unknown organization is `NOT_FOUND`; the read
+  writes nothing and carries no session, member or location data. The app
+  keeps the last read and its read instant in the partition's sealed
+  tracking book: `OFF` and a policy never read hide every tracking control,
+  `OPTIONAL` offers "Iniciar rastreamento" beside "Continuar sem rastrear",
+  `EXPECTED` says that the company expects this trip to be tracked and still
+  lets the trip run without it (BR-GPS-005). The cached value is a display
+  hint; the intake decides (B-BR-EMP-428).
+- **B-BR-EMP-496 — Recording starts only from the visible trip screen.** Only
+  the open trip screen of an `IN_PROGRESS` organization trip of the driver's
+  own trip book offers the control, whose text names tracking; before each
+  start or resume the screen shows what is collected and the organization's
+  notice version (BR-GPS-034), requests fine and coarse location together and,
+  on Android 13 and later, the notification permission. The result is
+  recorded as it is: permission `NONE` (`PERMISSION_DENIED`) or a notification
+  that cannot be shown (`NOTIFICATION_BLOCKED`) keeps the session where it was
+  and starts no service. Recording runs only in the non-exported foreground
+  service of type `location`, which starts listening only after consuming a
+  one-time start grant armed by the resumed trip screen for that exact
+  partition and session (valid 30 seconds); a start intent at boot, from a
+  worker, a push, a notification, another process or with an expired or
+  foreign grant starts nothing. The service is never sticky and never
+  restarts itself; the app never declares or requests
+  `ACCESS_BACKGROUND_LOCATION`; the static mobile guard fails the build when
+  the background permission, an unlisted continuous subscription, a boot
+  receiver, an exported or untyped tracking service or a sticky tracking
+  service appears.
+- **B-BR-EMP-497 — Every session transition is a signed queued operation.**
+  The six `gps.session.start|resume|suspend|interrupt|reduce|end` schema-1
+  operations are built exactly as the EMP-GPS-004 intake parses them (entity
+  `tracking_session` with the session identifier, payload
+  `{trip_id, origin, permission, notification_visible}` for start and resume
+  with origin `TRIP_SCREEN`, `{trip_id, cause}` for the others) and saved in
+  the protected queue together with the partition's sealed `tracking-book`
+  record in one write; a failed write saves neither. The transition is
+  decided again inside that write by replaying the stored transitions through
+  the EMP-GPS-001 session domain with the trip facts of the partition's trip
+  book, so the device never stores a transition the domain refuses. The first
+  start depends on the trip's `trip.start`, each later session operation on
+  the previous one and the end also on the trip's `trip.finish`; instants
+  never go back. The trip screen states each record's sync state from its own
+  receipt only ("Salvo no aparelho" until the server answers). A final
+  refusal of any session operation stops the session on this device: nothing
+  is collected or continued for it, and the screen shows the refusal with its
+  code while the trip continues.
+- **B-BR-EMP-498 — One listener, safe stop, bound owner.** The service holds
+  at most one location listener for the one recording session of the
+  process; a repeated start adds no listener and resets no counter; a stop
+  releases only this service's listener before leaving the foreground. The
+  session and its collection are bound to the account, origin, organization,
+  membership, enrollment and trip that started it; a change of account or
+  context, a locked or lost partition, or another responsible member of the
+  trip stops collection at once, and when the partition is still writable the
+  session is interrupted `OWNER_CHANGED`; nothing is ever rebound to another
+  owner (BR-GPS-014, BR-OFFL-003).
+- **B-BR-EMP-499 — The session follows the trip and the device, never
+  silently.** Finishing the trip ends the session at the finish's own instant
+  (`TRIP_COMPLETED`) and stops the service; a trip start finally refused by
+  the server ends it `TRIP_CANCELLED`. "Parar rastreamento" in the
+  notification or on the trip screen interrupts it `STOPPED_BY_DRIVER` while
+  the trip continues. Every 30 seconds while recording the service re-checks
+  permission (lost: `PERMISSION_REVOKED`), precision (fine reduced to
+  approximate: the session keeps recording with `PRECISION_REDUCED`),
+  notification visibility (`NOTIFICATION_BLOCKED`), owner and trip state, and
+  writes a checkpoint with its boot identity and instant. After a process
+  death, a force-stop or a restart the service does not come back; at the
+  next opening of the trip screen a `RECORDING` session with no running
+  service is interrupted at its last checkpoint instant with
+  `DEVICE_RESTARTED` (another boot) or `PROCESS_STOPPED`, and the screen asks
+  "Retomar rastreamento?"; recording returns only by that tap.
+- **B-BR-EMP-500 — Never for personal or foreign trips; always visible.**
+  Personal mode, a trip of another organization or membership, a trip that is
+  not `IN_PROGRESS`, policy `OFF` and a policy never read start nothing. While
+  recording, the ongoing notification names the organization, says that
+  tracking is active and offers the stop action; the trip screen shows
+  "Rastreamento ativo", "Rastreamento suspenso" or "Rastreamento
+  interrompido" with its reason in text, not colour only. No coordinate
+  appears in notifications, logs, errors or the trip screen; in this task the
+  service only counts accepted platform fixes in memory (the buffer and the
+  batches are EMP-GPS-003).
+- **BUC-EMP-252 — A driver starts a trip and its tracking.** With the
+  organization's policy `OPTIONAL` or `EXPECTED` read, the driver opens the
+  trip in progress, reads what is collected and the notice version, taps
+  "Iniciar rastreamento", grants location and notifications, and sees the
+  ongoing notification and "Rastreamento ativo"; the start operation waits in
+  the queue as "Salvo no aparelho" until the server accepts it. Denied
+  location or blocked notifications leave the trip running without tracking,
+  with the reason shown; policy `OFF` shows no tracking control.
+- **BUC-EMP-253 — The driver stops tracking, resumes it and finishes the
+  trip.** "Parar rastreamento" interrupts the session and removes the
+  notification while the trip continues; "Retomar rastreamento" on the trip
+  screen records again after the same checks; finishing the trip ends the
+  session and stops the service; every transition is one queued operation
+  delivered in order.
+- **BUC-EMP-254 — Tracking after a process death or restart.** The app is
+  killed while recording; nothing restarts it. When the driver opens the trip
+  again, the session is shown interrupted with its reason and the instant of
+  the last checkpoint, and "Retomar rastreamento" is offered; the driver may
+  also continue without tracking.
+
+## EMP-GPS-003 — Adaptive sampling, local buffer and batch envelope (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-gps003-sampling-buffer.md). Builds on
+EMP-GPS-002 (the service and its session operations) and EMP-GPS-004 (the
+`gps.track.batch` intake); owner decision EDR-271.
+
+- **B-BR-EMP-501 — Approved sampling `sampling-v1`.** While a session records,
+  the service requests a location every 5 seconds (GPS for precise, the fused
+  or network provider for approximate) and records, among the fixes that pass
+  the filter: the first fix of the session; while moving (speed of at least
+  1.5 m/s) a fix 10 seconds after the last recorded one, or earlier on a turn
+  of at least 30° once 5 seconds have passed; while slow, a fix 50 m away from
+  the last recorded one; a heartbeat every 120 seconds; with approximate
+  precision the heartbeat only. Below 15 % battery and not charging the
+  routine interval becomes 30 seconds and the turn trigger is off; the trip
+  screen says so and no battery-optimisation exemption is requested. The
+  values are the documented defaults of the specification (§10.2) and change
+  only through a new policy version.
+- **B-BR-EMP-502 — Each fix is filtered and flagged before it counts.** A
+  report with non-finite or out-of-range coordinates is ignored; a mock
+  report is never recorded and is counted `mock`; a report older than 15
+  seconds at collection, or earlier than the start of the recording period,
+  is counted `stale`; a report without accuracy or, with precise permission,
+  less accurate than 50 m is counted `accuracy`; a precise report implying
+  more than 70 m/s from the previous accepted fix is counted `jump`. A fix's
+  instant is the device clock at collection minus the report's monotonic age;
+  fixes of an approximate period carry the coarse flag. Rejected reports are
+  counted, never stored; no fix is ever created, moved or interpolated.
+- **B-BR-EMP-503 — A sealed local buffer survives restarts.** Every recorded
+  fix is written to the partition's sealed `tracking-buffer` record before it
+  counts, with the session's next batch sequence, the counters since the last
+  batch, the sampler's anchors and the fix-level gaps; the last recorded or
+  accepted fix is the checkpoint that an interruption after a process death
+  starts from. The buffer belongs to its account, organization, membership,
+  enrollment and session and is never rebound. At most 2 000 fixes wait
+  unsealed: past that bound a fix is not recorded and is counted as overflow;
+  the app never deletes an unsent fix by itself.
+- **B-BR-EMP-504 — Batches are bounded envelopes delivered in order.**
+  Pending fixes are sealed into `gps.track.batch` schema-1 operations exactly
+  as the EMP-GPS-004 intake parses them: at most 200 fixes and 8 KiB per
+  operation, the first fix as base and declared instant, deltas in 10⁻⁷
+  degrees, strictly increasing offsets of at most 24 hours, the boot identity
+  and base elapsed time, source `PHONE`, the device counters since the
+  previous batch, consecutive sequences per session from 1, and a dependency
+  on the session operation that opened the fixes' recording period. Sealing
+  removes exactly those fixes from the buffer in the same protected write as
+  the queued operation; a refused or failed write keeps both unchanged.
+  Fixes are sealed when the oldest has waited 60 seconds, when 200 wait, when
+  a gap opens, when recording stops, ends or is found interrupted, and before
+  a new boot's fixes; delivery is the ordinary queue's, after the session
+  operations it depends on. Go and Kotlin share the batch vectors.
+- **B-BR-EMP-505 — Gaps are data; coverage is never claimed through them.**
+  Inside a recording period, more than 180 seconds without an accepted fix
+  opens a fix-level gap from the last accepted fix (or the period start):
+  `MOCK_LOCATION` when only mock reports arrived, `SIGNAL_LOST` otherwise;
+  a disabled provider opens `PROVIDER_DISABLED` at once. The next accepted fix
+  closes the gap at its own instant; the end of the period closes an open one.
+  No batch spans the start of a gap, and nothing is recorded inside one. The
+  trip screen shows the open gap with its reason and start. The gap reasons
+  stay on the device in this task (the `gps.track.batch` format carries only
+  fixes and counters; the server derives its own gaps from the stored fixes,
+  EMP-GPS-005).
+- **BUC-EMP-255 — A tracked trip is recorded and uploaded in batches.** The
+  driver drives with tracking active; fixes are recorded by the sampling
+  policy, sealed into batches every minute and sent with the trip's other
+  operations when online; each batch shows "Salvo no aparelho" until its own
+  receipt; the server stores each fix once.
+- **BUC-EMP-256 — Signal, provider and mock problems become gaps.** In a
+  tunnel, with the location provider off or with a mock location app, nothing
+  is recorded; after 180 seconds (at once for the provider) the screen shows
+  the gap and its reason; the next good fix closes it; the batches before and
+  after never claim the interval.
+- **BUC-EMP-257 — A restart keeps the buffer.** The app dies with fixes not
+  yet sealed; at the next opening the session is interrupted at the last
+  recorded fix, the waiting fixes are sealed into a batch and queued, and the
+  driver may resume; nothing is lost, duplicated or invented.
+
 ## EMP-TRIP-021 — App: missions inbox and planned-trip execution (2026-11-16)
 
 [Evidence](../enterprise/evidence/f4-trip021-missions-inbox.md).

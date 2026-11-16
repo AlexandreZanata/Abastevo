@@ -218,6 +218,8 @@ func TestTrackingPolicyContractRoutesAndSchemas(t *testing.T) {
 	for path, want := range map[string]map[string]any{
 		"/v1/orgs/{org_id}/tracking/policy/read":   {"permission": "org.settings.read", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
 		"/v1/orgs/{org_id}/tracking/policy/change": {"permission": "org.settings.manage", "write": true, "fresh": true, "require_revision": false, "company_only": true, "success": 200},
+		// EMP-GPS-002: the member's own read of the policy in force.
+		"/v1/orgs/{org_id}/tracking/policy/mine": {"permission": "trip.trip.start", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
 	} {
 		operation := doc.Paths.Value(path).Post
 		if operation == nil {
@@ -233,7 +235,10 @@ func TestTrackingPolicyContractRoutesAndSchemas(t *testing.T) {
 				t.Fatal("tracking policy guard metadata drift", path, k)
 			}
 		}
-		for _, permission := range []string{"gps.track.read", "trip.trip.start", "org.structure.manage"} {
+		for _, permission := range []string{"gps.track.read", "trip.trip.start", "org.structure.manage", "org.settings.read"} {
+			if permission == want["permission"] {
+				continue
+			}
 			document, actual := companyRoutes(t)
 			metadata := map[string]any{}
 			for k, v := range want {
@@ -320,6 +325,43 @@ func TestTrackingPolicyContractRoutesAndSchemas(t *testing.T) {
 			if visit(target, v) == nil {
 				t.Fatal("an invalid tracking policy result was admitted", label, name)
 			}
+		}
+	}
+	// EMP-GPS-002: the member's own read is the policy in force only, closed,
+	// with no member, session, notice text or location.
+	mine := "EnterpriseTrackingPolicyInForce"
+	inForce := schema(mine)
+	if mineOp := doc.Paths.Value("/v1/orgs/{org_id}/tracking/policy/mine").Post; mineOp.RequestBody == nil ||
+		mineOp.RequestBody.Value.Content.Get("application/json").Schema.Ref != "#/components/schemas/EnterpriseTrackingPolicyReadRequest" ||
+		mineOp.Responses.Value("200").Value.Content.Get("application/json").Schema.Ref != "#/components/schemas/"+mine {
+		t.Fatal("the own policy read route does not use its closed request and view")
+	}
+	for name, v := range map[string]map[string]any{
+		"nothing recorded": {"revision": 0, "policy": "OFF", "notice_version": nil, "notice_in_force_at": nil, "data_mode": "SYNTHETIC"},
+		"turned off":       {"revision": 3, "policy": "OFF", "notice_version": nil, "notice_in_force_at": nil, "data_mode": "SYNTHETIC"},
+		"optional":         {"revision": 2, "policy": "OPTIONAL", "notice_version": "notice-2026.11", "notice_in_force_at": "2026-11-01T00:00:00Z", "data_mode": "SYNTHETIC"},
+	} {
+		if err := visit(mine, v); err != nil {
+			t.Fatal("a valid policy in force is refused", name, err)
+		}
+	}
+	for name, mutate := range map[string]func(map[string]any){
+		"member":       func(v map[string]any) { v["membership_id"] = "7b0e2a54-0000-4000-8000-000000000601" },
+		"session":      func(v map[string]any) { v["sessions"] = []any{} },
+		"notice text":  func(v map[string]any) { v["notice_text"] = "x" },
+		"position":     func(v map[string]any) { v["lat_e7"] = 1 },
+		"other policy": func(v map[string]any) { v["policy"] = "ON" },
+		"stored view":  func(v map[string]any) { v["in_force"] = map[string]any{"policy": "OFF", "revision": 0} },
+		"no revision":  func(v map[string]any) { delete(v, "revision") },
+		"no notice":    func(v map[string]any) { delete(v, "notice_version") },
+	} {
+		v := map[string]any{}
+		for k, x := range inForce {
+			v[k] = x
+		}
+		mutate(v)
+		if visit(mine, v) == nil {
+			t.Fatal("an invalid policy in force was admitted", name)
 		}
 	}
 }

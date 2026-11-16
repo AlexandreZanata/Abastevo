@@ -103,6 +103,13 @@ class EnterpriseMissionHttpGatewayTest {
         assertNull(read.items[2].plan); assertEquals(TripMissionResponse.ACCEPT, read.items[2].answer)
         assertFalse(read.toString().contains("Norte") || first.toString().contains(id(70)))
         assertTrue((answering(page(mission(70), cursor = "next-page")).gateway.mine(context) as EnterpriseAccessResult.Ok).value.truncated)
+        // EMP-TRIP-010 planned stops are accepted with their exact shape and not kept; a malformed stop refuses the page.
+        val stops = JSONArray().put(JSONObject().put("sequence", 1).put("kind", "TEXT").put("text", "Posto da rodovia"))
+        val withStops = (answering(page(mission(70).apply { getJSONObject("plan").put("stops", stops) })).gateway.mine(context) as EnterpriseAccessResult.Ok).value
+        assertEquals("Cliente Norte, doca 3", withStops.items.single().plan!!.destinationText)
+        val badStop = JSONArray().put(JSONObject().put("sequence", 2).put("kind", "TEXT").put("text", "Posto"))
+        assertEquals(EnterpriseAccessResult.Err(EnterpriseAccessError.UNAVAILABLE),
+            answering(page(mission(70).apply { getJSONObject("plan").put("stops", badStop) })).gateway.mine(context))
     }
 
     @Test fun `a malformed page is refused whole and another member's mission is a denial`() = runBlocking {

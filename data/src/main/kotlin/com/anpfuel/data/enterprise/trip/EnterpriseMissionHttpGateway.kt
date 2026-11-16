@@ -82,7 +82,17 @@ class EnterpriseMissionHttpGateway(private val client: CompanyAccessClient) : En
     }
 
     private fun plan(value: JSONObject): MissionPlanView {
-        keys(value, setOf("revision", "destination", "reason", "load", "planned_at"), setOf("cost_centre_id"))
+        keys(value, setOf("revision", "destination", "reason", "load", "planned_at"), setOf("cost_centre_id", "stops"))
+        // EMP-TRIP-010 planned stops are checked for their shape and not kept: the inbox shows the destination only.
+        if (value.has("stops")) {
+            val stops = value.getJSONArray("stops")
+            require(stops.length() in 1..20)
+            for (index in 0 until stops.length()) {
+                val stop = stops.getJSONObject(index)
+                keys(stop, setOf("sequence", "kind", "text"))
+                require(stop.get("sequence") == index + 1 && stop.strictString("kind") == "TEXT" && stop.strictString("text").isNotBlank())
+            }
+        }
         val destination = value.getJSONObject("destination")
         val (text, unit) = when (destination.strictString("kind")) {
             "TEXT" -> { keys(destination, setOf("kind", "text")); destination.strictString("text") to null }

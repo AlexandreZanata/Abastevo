@@ -238,7 +238,7 @@ texts refuse CPF-shaped tokens. Shared with Kotlin through `mission-v2.psv`
 remains EMP-TRIP-021.
 
 ### EMP-TRIP-010 — Stops and legs: planned versus actual
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DB · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DB · size M · state LOCAL_DONE
 - **Objective:** Preserve planned and actual stops and legs in the timeline.
 - **Rules and use cases:** REQ-07.3, BR-TIME-001, BR-TIME-002, BR-OFFL-007
 - **Depends on:** EMP-TRIP-003
@@ -252,6 +252,17 @@ remains EMP-TRIP-021.
 - **Validation:** V-DOM, V-API, V-SQL, V-SYNC, V-ISO · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 stops and legs](../evidence/f4-trip010-stops-legs.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-16. `PLAN` may carry 1..20 ordered free-text
+planned stops stored insert-only per planning revision (v1 digest kept for
+plans without stops); the observed stops and legs are derived at read time
+from the trip's accepted `STOP`, `ARRIVAL` and `DEPARTURE` events in the
+shared order, with missing boundaries, `after_receipt` and `after_end`
+surfaced and held observations listed (`trip/stops-v1.psv`, Go and Kotlin).
+`POST /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read` (own trips,
+`trip.trip.start`) shows the plan beside the observations, never paired.
+Migration 000256.
 
 ### EMP-TRIP-011 — Pause, resume and cancellation
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
@@ -471,7 +482,7 @@ reason (`CHECKLIST_REQUIRED`, `CHECKLIST_BLOCKING`, `CHECKLIST_EXPIRED`,
 counting return run and is never held for it. Migration 000255; no route.
 
 ### EMP-TRIP-020 — Trip closing conference: expenses and documents before submission
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Review trip-related expenses and documents before submission.
 - **Rules and use cases:** REQ-07.2, REQ-07.3, BR-PRIV-004, BR-REV-002, BR-TRUTH-001
 - **Depends on:** EMP-TRIP-005, EMP-FUEL-011, EMP-EXP-004

@@ -144,12 +144,20 @@ type missionLoad struct {
 	Description *string `json:"description"`
 	Count       *int    `json:"count"`
 }
+
+// missionStop is one planned stop (EMP-TRIP-010, B-BR-EMP-475): a closed
+// object whose only kind is TEXT; no unit, coordinate, time or person.
+type missionStop struct {
+	Kind string  `json:"kind"`
+	Text *string `json:"text"`
+}
 type missionPlanRequest struct {
 	missionCommandFields
 	Destination  *missionDestination `json:"destination"`
 	Reason       string              `json:"reason"`
 	CostCentreID *string             `json:"cost_centre_id"`
 	Load         *missionLoad        `json:"load"`
+	Stops        *[]missionStop      `json:"stops"`
 }
 
 // fields maps the wire plan onto the command; a kind/field mismatch is a
@@ -172,6 +180,15 @@ func (v missionPlanRequest) fields() (app.MissionPlanFields, error) {
 			return app.MissionPlanFields{}, orgapi.ValidationFailed
 		}
 		out.CostCentreID = *v.CostCentreID
+	}
+	if v.Stops != nil {
+		out.Stops = make([]string, 0, len(*v.Stops))
+		for _, stop := range *v.Stops {
+			if stop.Kind != "TEXT" || stop.Text == nil {
+				return app.MissionPlanFields{}, orgapi.ValidationFailed
+			}
+			out.Stops = append(out.Stops, *stop.Text)
+		}
 	}
 	return out, nil
 }
@@ -383,7 +400,20 @@ func projectPlan(p app.MissionPlanView) map[string]any {
 	if f.CostCentreID != "" {
 		out["cost_centre_id"] = f.CostCentreID
 	}
+	// EMP-TRIP-010: the planned stops only when the revision has stops.
+	if len(f.Stops) > 0 {
+		out["stops"] = projectPlannedStops(f.Stops)
+	}
 	return out
+}
+
+// projectPlannedStops is the ordered planned stops with their sequence.
+func projectPlannedStops(places []string) []map[string]any {
+	stops := make([]map[string]any, 0, len(places))
+	for i, place := range places {
+		stops = append(stops, map[string]any{"sequence": i + 1, "kind": "TEXT", "text": place})
+	}
+	return stops
 }
 
 // RegisterMissions mounts the eight trip.mission.manage routes and the own

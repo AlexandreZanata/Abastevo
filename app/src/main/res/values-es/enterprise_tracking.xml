@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-002/003 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<resources>
+    <string name="enterprise_tracking_title">Seguimiento del viaje</string>
+    <string name="enterprise_tracking_policy_expected">La empresa espera que este viaje se siga. El viaje continúa también sin seguimiento.</string>
+    <string name="enterprise_tracking_policy_optional">La empresa permite seguir este viaje si lo deseas.</string>
+    <string name="enterprise_tracking_policy_unknown">Seguimiento no disponible: la política de la empresa aún no se leyó en este dispositivo. Conéctate para actualizarla.</string>
+    <string name="enterprise_tracking_policy_refresh">Actualizar política de seguimiento</string>
+    <string name="enterprise_tracking_policy_failed">No se pudo leer la política ahora. Sigue valiendo la última leída.</string>
+    <string name="enterprise_tracking_notice">Con el seguimiento activo, la app registra la posición de este teléfono solo durante este viaje y hasta que lo detengas. Versión del aviso de la empresa: %1$s.</string>
+    <string name="enterprise_tracking_start">Iniciar seguimiento</string>
+    <string name="enterprise_tracking_resume">Reanudar seguimiento</string>
+    <string name="enterprise_tracking_resume_question">¿Reanudar seguimiento?</string>
+    <string name="enterprise_tracking_stop">Detener seguimiento</string>
+    <string name="enterprise_tracking_without">Continuar sin seguimiento</string>
+    <string name="enterprise_tracking_state_not_started">Seguimiento no iniciado</string>
+    <string name="enterprise_tracking_state_recording">Seguimiento activo</string>
+    <string name="enterprise_tracking_state_suspended">Seguimiento suspendido</string>
+    <string name="enterprise_tracking_state_interrupted">Seguimiento interrumpido</string>
+    <string name="enterprise_tracking_state_ended">Seguimiento finalizado</string>
+    <string name="enterprise_tracking_since">Desde %1$s</string>
+    <string name="enterprise_tracking_approximate">Ubicación aproximada: no habrá distancia por GPS en este viaje.</string>
+    <string name="enterprise_tracking_cause_permission_denied">No se concedió el permiso de ubicación. El viaje continúa sin seguimiento.</string>
+    <string name="enterprise_tracking_cause_notification_blocked">Las notificaciones están bloqueadas, así que el seguimiento no puede funcionar con su aviso visible. Permite las notificaciones para seguir.</string>
+    <string name="enterprise_tracking_cause_process_stopped">La app se cerró durante el seguimiento.</string>
+    <string name="enterprise_tracking_cause_device_restarted">El teléfono se reinició durante el seguimiento.</string>
+    <string name="enterprise_tracking_cause_stopped_by_driver">Detuviste el seguimiento. El viaje continúa.</string>
+    <string name="enterprise_tracking_cause_owner_changed">La cuenta o la empresa cambió en este teléfono.</string>
+    <string name="enterprise_tracking_cause_permission_revoked">Se quitó el permiso de ubicación durante el viaje.</string>
+    <string name="enterprise_tracking_cause_other">El seguimiento se detuvo con el viaje.</string>
+    <string name="enterprise_tracking_refused">La empresa rechazó el seguimiento de este viaje (%1$s). El viaje continúa.</string>
+    <string name="enterprise_tracking_refusal_off">La empresa desactivó el seguimiento.</string>
+    <string name="enterprise_tracking_refusal_other">No se pudo cambiar el seguimiento en este dispositivo; no se guardó nada.</string>
+    <string name="enterprise_tracking_record">%1$s — %2$s</string>
+    <string name="enterprise_tracking_notification_channel">Seguimiento de viaje de la empresa</string>
+    <string name="enterprise_tracking_notification_title">Seguimiento activo — %1$s</string>
+    <string name="enterprise_tracking_notification_text">La posición de este teléfono se registra durante el viaje.</string>
+    <string name="enterprise_tracking_pending">Posiciones pendientes de envío: %1$d</string>
+    <string name="enterprise_tracking_batches">Lotes de posiciones: %1$d aceptados por la empresa, %2$d en el dispositivo</string>
+    <string name="enterprise_tracking_gap_signal_lost">Sin señal GPS desde %1$s. No se registra nada en este intervalo.</string>
+    <string name="enterprise_tracking_gap_provider_disabled">Ubicación desactivada desde %1$s. No se registra nada en este intervalo.</string>
+    <string name="enterprise_tracking_gap_mock_location">Ubicaciones simuladas ignoradas desde %1$s. No se registra nada en este intervalo.</string>
+    <string name="enterprise_tracking_gaps_count">Intervalos sin señal en este viaje: %1$d</string>
+</resources>

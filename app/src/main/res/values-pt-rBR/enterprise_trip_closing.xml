@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-TRIP-020 closing conference; generated from one table by f4-logs/exp004-scripts/gen_closing_strings.py -->
+<resources>
+    <string name="enterprise_trip_closing_title">Conferência de fechamento</string>
+    <string name="enterprise_trip_closing_intro">Antes de marcar a viagem como pronta, confira o que este aparelho registrou para ela. Abastecimentos e despesas aparecem pelo veículo e pelo horário da viagem; nada aqui é somado, vinculado no servidor ou aprovado.</string>
+    <string name="enterprise_trip_closing_departure">Leitura de partida</string>
+    <string name="enterprise_trip_closing_final">Leitura de chegada</string>
+    <string name="enterprise_trip_closing_fueling">Abastecimento · R$ %1$s</string>
+    <string name="enterprise_trip_closing_expense">Despesa · R$ %1$s</string>
+    <string name="enterprise_trip_closing_record_saved">Salvo neste aparelho</string>
+    <string name="enterprise_trip_closing_record_sending">Enviando</string>
+    <string name="enterprise_trip_closing_record_accepted">Aceito pela empresa</string>
+    <string name="enterprise_trip_closing_record_needs_review">Precisa de revisão</string>
+    <string name="enterprise_trip_closing_record_refused">Não aceito</string>
+    <string name="enterprise_trip_closing_evidence_missing">Comprovante: faltando</string>
+    <string name="enterprise_trip_closing_evidence_pending">Comprovante: pendente (no aparelho ou enviando)</string>
+    <string name="enterprise_trip_closing_evidence_available">Comprovante: guardado pela empresa</string>
+    <string name="enterprise_trip_closing_evidence_unreadable">Comprovantes: não é possível ler neste aparelho</string>
+    <string name="enterprise_trip_closing_related_unavailable">Não é possível ler agora os abastecimentos ou as despesas deste aparelho; esta lista pode estar incompleta.</string>
+    <string name="enterprise_trip_closing_none">Nenhum abastecimento ou despesa deste veículo durante a viagem neste aparelho.</string>
+    <string name="enterprise_trip_closing_no_decision">A aprovação ou a devolução é decidida pela empresa, nunca neste aparelho.</string>
+    <string name="enterprise_trip_closing_photos">Fotos: %1$d</string>
+</resources>

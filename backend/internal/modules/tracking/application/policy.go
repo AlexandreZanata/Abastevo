@@ -22,6 +22,10 @@ const (
 	// the specification gives the tracking policy (gps-navigation §7).
 	PolicyReadPermission   = "org.settings.read"
 	PolicyManagePermission = "org.settings.manage"
+	// PolicyOwnPermission is the driver's own-trip key (gps-navigation §7:
+	// trip.trip.start starts, resumes and ends tracking of the member's own
+	// trip); it reads only the policy in force for that member (EMP-GPS-002).
+	PolicyOwnPermission = "trip.trip.start"
 	// PolicyAuditAction and PolicyTargetType name the audit vocabulary.
 	PolicyAuditAction = "gps.policy.changed"
 	PolicyTargetType  = "tracking_policy"
@@ -35,13 +39,19 @@ type PolicyAction uint8
 const (
 	PolicyRead PolicyAction = iota + 1
 	PolicyManage
+	// PolicyOwn is the member's own read of the policy in force
+	// (EMP-GPS-002): trip.trip.start over the requesting membership itself.
+	PolicyOwn
 )
 
 // PolicySettingsPolicy returns the fixed access policy of an action: the
 // read is org.settings.read; the change a fresh configuration write under
-// org.settings.manage (B-BR-EMP-467/469).
+// org.settings.manage (B-BR-EMP-467/469); the member's own read is a read
+// under trip.trip.start (EMP-GPS-002).
 func PolicySettingsPolicy(action PolicyAction) access.Policy {
 	switch action {
+	case PolicyOwn:
+		return access.Policy{Permission: PolicyOwnPermission, Capability: "organizations", Effect: access.Read}
 	case PolicyRead:
 		return access.Policy{Permission: PolicyReadPermission, Capability: "organizations", Effect: access.Read}
 	case PolicyManage:
@@ -210,8 +220,20 @@ type PolicyView struct {
 	InForceRevision int64
 }
 
+// PolicyInForce is the policy in force now as a member's device reads it
+// (EMP-GPS-002): OFF at revision 0 when nothing was recorded, OFF until a
+// notice is in force, and the notice only while the policy is enabled.
+type PolicyInForce struct {
+	private
+	Revision      int64
+	Policy        domain.Policy
+	NoticeVersion string
+	NoticeInForce *time.Time
+}
+
 // PolicyAuthority re-proves the company authority of an action over the
-// organization itself inside the caller's transaction.
+// organization itself (or, for PolicyOwn, over the member's own record)
+// inside the caller's transaction.
 type PolicyAuthority interface {
 	CheckPolicyTx(context.Context, pgx.Tx, kernel.OrgScope, PolicyActor, string, PolicyAction) error
 }
@@ -220,6 +242,7 @@ type PolicyAuthority interface {
 type PolicyRepository interface {
 	ChangePolicy(context.Context, kernel.OrgScope, PolicyActor, string, PolicyCommand) (PolicyAck, bool, error)
 	ReadPolicy(context.Context, kernel.OrgScope, PolicyActor, string) (PolicyView, error)
+	ReadPolicyInForce(context.Context, kernel.OrgScope, PolicyActor, string) (PolicyInForce, error)
 }
 
 // PolicyService exposes the change and the read when enabled.
@@ -236,8 +259,14 @@ func (s PolicyService) bound(ctx context.Context, scope kernel.OrgScope, actor P
 		return err
 	}
 	policy := PolicySettingsPolicy(action)
+	// The settings actions target the organization itself; the own read
+	// targets the requesting membership's own record.
+	target := scope.OrgID().String()
+	if action == PolicyOwn {
+		target = decision.Subject().MembershipID()
+	}
 	if scope.Validate() != nil || actor.Validate() != nil || decision.Subject().Channel() != "web" || decision.Policy() != policy ||
-		decision.Check(ctx, scope, actor.AccountID, policy.Permission, scope.OrgID().String()) != nil {
+		decision.Check(ctx, scope, actor.AccountID, policy.Permission, target) != nil {
 		return ErrPolicyUnauthorized
 	}
 	return nil
@@ -333,4 +362,34 @@ func (s PolicyService) Read(ctx context.Context, scope kernel.OrgScope, actor Po
 		return PolicyView{}, ErrUnavailable
 	}
 	return v, nil
+}
+
+// Mine reads the policy in force for the requesting member under
+// trip.trip.start over its own record (EMP-GPS-002).
+func (s PolicyService) Mine(ctx context.Context, scope kernel.OrgScope, actor PolicyActor, decision access.Decision) (PolicyInForce, error) {
+	var v PolicyInForce
+	err := s.guarded(ctx, scope, actor, decision, PolicyOwn, func() error {
+		var err error
+		v, err = s.Repository.ReadPolicyInForce(ctx, scope, actor, decision.Subject().MembershipID())
+		return err
+	})
+	if err != nil {
+		return PolicyInForce{}, err
+	}
+	if !validInForce(v) {
+		return PolicyInForce{}, ErrUnavailable
+	}
+	return v, nil
+}
+
+// validInForce re-proves the served shape: OFF carries no notice; an enabled
+// policy carries its notice and exists only from revision 1.
+func validInForce(v PolicyInForce) bool {
+	if _, err := domain.ParsePolicy(string(v.Policy)); err != nil || v.Revision < 0 {
+		return false
+	}
+	if v.Policy == domain.PolicyOff {
+		return v.NoticeVersion == "" && v.NoticeInForce == nil
+	}
+	return v.Revision >= 1 && noticeVersion.MatchString(v.NoticeVersion) && v.NoticeInForce != nil && validPolicyInstant(*v.NoticeInForce)
 }

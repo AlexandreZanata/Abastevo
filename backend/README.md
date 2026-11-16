@@ -1194,6 +1194,34 @@ recorded_at) ON org_meter_reading_states` to export the state as of its
 supplies its consumers; production composes none (EDR-189). Nothing here
 provisions live grants.
 
+### Meter replacement, reset and rollover (EMP-METER-005)
+
+Migration251 closes a segment and removes a meter by one guarded `UPDATE` each.
+The meter principal additionally needs `UPDATE (removed_at, removed_submicro,
+removal_operation_id) ON org_meters` and `UPDATE (closed_at, closed_submicro,
+closing_kind, closing_value, closing_reading_id, closing_operation_id,
+closing_previous_reading_id, closing_implied_usage) ON org_meter_segments`;
+`POST …/meters/{meter_id}/change` and the `CONFIRM_ROLLOVER` decision run under
+`meter.reading.correct` with the existing meter grants. The migrator needs
+ownership of `org_meters`, `org_meter_segments`, `org_meter_reading_states`,
+`org_meter_flags_canonical(text[])` and `org_meter_reading_state_guard()`, and
+`REFERENCES ON org_audit_events, org_meter_readings`. Nothing here provisions
+live grants.
+
+### Meter current-value projection and usage port (EMP-METER-006)
+
+Migration252 adds the forced-RLS `org_meter_current_values`, written only by
+`SECURITY DEFINER` trigger functions owned by the migrator. The runtime role
+needs `SELECT ON org_meter_current_values` for `MeterStore.UsageBetween`; the
+operator role needs `EXECUTE ON FUNCTION org_meter_current_rebuild(uuid)` for
+`ops meter rebuild-projection --org <uuid>`. The migrator needs `SELECT,
+REFERENCES, TRIGGER ON org_meters, org_meter_segments, org_meter_readings`,
+`SELECT, TRIGGER ON org_meter_reading_states` and `SELECT, UPDATE ON
+organizations` (the rebuild locks the organization root). Existing meters have
+no projection until `ops meter rebuild-projection` runs for their organization
+(forced RLS lets no migration enumerate organizations); until then the usage
+port answers unavailable. Nothing here provisions live grants.
+
 ### Asset lifecycle (EMP-FLEET-003)
 
 Migration201 adds nullable acquisition/disposal columns to `org_assets` and the
@@ -1652,6 +1680,25 @@ org_checklist_template_versions, org_checklist_template_targets,
 org_checklist_policy_revisions, org_assets`. The migrator needs `REFERENCES
 ON org_trips, org_checklist_runs, org_sync_operations, org_trip_held_starts,
 org_sync_review_items`. No route is added. Nothing here provisions live
+grants.
+
+### Stops and legs: planned versus actual (EMP-TRIP-010)
+
+Migration 256 adds only forced-RLS, insert-only `org_trip_mission_plan_stops`
+(the ordered free-text planned stops of one planning revision, written by its
+own `PLAN` transaction after the head moves and before the receipt, published
+only with that receipt); no existing table, function, row or usage source
+changes. The observed stops and legs are derived at read time from the trip's
+accepted `STOP`, `ARRIVAL` and `DEPARTURE` events and are never stored.
+`POST /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read` uses
+`trip.trip.start` over the requesting membership (the EMP-TRIP-012 own-trips
+policy). Production grants (not provisioned here): the company runtime of the
+mission commands and reads `SELECT, INSERT ON org_trip_mission_plan_stops`;
+the own-trip read `SELECT ON org_trip_mission_plan_stops,
+org_trip_mission_plans, org_trip_missions, org_trip_mission_links,
+org_trip_events, org_trip_held_events, org_sync_review_items, org_trips,
+org_trip_finishes, org_trip_transitions, org_trip_handovers`. The migrator
+needs `REFERENCES ON org_trip_mission_plans`. Nothing here provisions live
 grants.
 
 ### Finance periods (EMP-APPR-006)

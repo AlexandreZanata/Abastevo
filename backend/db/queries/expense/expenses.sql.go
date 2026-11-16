@@ -29,6 +29,26 @@ func (q *Queries) ExpenseAuthorEmployee(ctx context.Context, arg ExpenseAuthorEm
 	return employee_id, err
 }
 
+const expenseDocumentAuthor = `-- name: ExpenseDocumentAuthor :one
+SELECT author_membership_id::text AS author_membership_id FROM org_expenses
+WHERE org_id=CAST($1::text AS uuid) AND id=CAST($2::text AS uuid) AND origin_kind='DIRECT'
+`
+
+type ExpenseDocumentAuthorParams struct {
+	OrgID string `json:"org_id"`
+	ID    string `json:"id"`
+}
+
+// EMP-EXP-004 (EDR-338): the authoring membership of one stored DIRECT
+// expense, the SELF subject of an EXPENSE document link. A FUELING-origin
+// expense is documented through its fueling (FUELING), never here.
+func (q *Queries) ExpenseDocumentAuthor(ctx context.Context, arg ExpenseDocumentAuthorParams) (string, error) {
+	row := q.db.QueryRow(ctx, expenseDocumentAuthor, arg.OrgID, arg.ID)
+	var author_membership_id string
+	err := row.Scan(&author_membership_id)
+	return author_membership_id, err
+}
+
 const expenseFuelingSource = `-- name: ExpenseFuelingSource :one
 SELECT f.id::text AS id,f.operation_id::text AS operation_id,f.payload_digest,f.revision,f.asset_id::text AS asset_id,
  f.author_membership_id::text AS author_membership_id,f.author_employee_id::text AS author_employee_id,f.enrollment_id::text AS enrollment_id,

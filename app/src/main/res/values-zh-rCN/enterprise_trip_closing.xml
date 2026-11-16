@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-TRIP-020 closing conference; generated from one table by f4-logs/exp004-scripts/gen_closing_strings.py -->
+<resources>
+    <string name="enterprise_trip_closing_title">结束核对</string>
+    <string name="enterprise_trip_closing_intro">在将行程标记为就绪之前，请核对本设备为其记录的内容。加油和费用按行程的车辆和时间列出；这里不会合计、不会在服务器上关联，也不会批准。</string>
+    <string name="enterprise_trip_closing_departure">出发读数</string>
+    <string name="enterprise_trip_closing_final">到达读数</string>
+    <string name="enterprise_trip_closing_fueling">加油 · R$ %1$s</string>
+    <string name="enterprise_trip_closing_expense">费用 · R$ %1$s</string>
+    <string name="enterprise_trip_closing_record_saved">已保存在本设备</string>
+    <string name="enterprise_trip_closing_record_sending">正在发送</string>
+    <string name="enterprise_trip_closing_record_accepted">公司已接受</string>
+    <string name="enterprise_trip_closing_record_needs_review">需要审核</string>
+    <string name="enterprise_trip_closing_record_refused">未被接受</string>
+    <string name="enterprise_trip_closing_evidence_missing">票据：缺失</string>
+    <string name="enterprise_trip_closing_evidence_pending">票据：待处理（在设备上或正在发送）</string>
+    <string name="enterprise_trip_closing_evidence_available">票据：公司已保存</string>
+    <string name="enterprise_trip_closing_evidence_unreadable">票据：本设备无法读取</string>
+    <string name="enterprise_trip_closing_related_unavailable">现在无法读取本设备上的加油或费用；此列表可能不完整。</string>
+    <string name="enterprise_trip_closing_none">本设备上没有该车辆在行程期间的加油或费用。</string>
+    <string name="enterprise_trip_closing_no_decision">批准或退回由公司决定，绝不在本设备上进行。</string>
+    <string name="enterprise_trip_closing_photos">照片：%1$d</string>
+</resources>

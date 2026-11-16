@@ -18481,7 +18481,9 @@ paths:
         meter.reading.correct covering the asset. One audited decision on one reading of the open segment at its
         expected history revision (0 without history), with a reason. SUPERSEDE records a new reading (corrected
         value of the stated kind, optional corrected declaration) and voids the original with a link; VOID makes it
-        VOIDED; CONFIRM makes a SUSPECT reading with only IMPLAUSIBLE_RATE/FUTURE_INSTANT VALID. Suspect neighbours
+        VOIDED; CONFIRM makes a SUSPECT reading with only IMPLAUSIBLE_RATE/FUTURE_INSTANT VALID; CONFIRM_ROLLOVER
+        makes a POSSIBLE_ROLLOVER reading VALID in a new ROLLOVER segment opened at it and returns the boundary
+        (EMP-METER-005; no modulus or no flag → VALIDATION_FAILED; segment anchors are not decided). Suspect neighbours
         are re-evaluated in the same transaction. VOIDED → READING_ALREADY_SUPERSEDED, installation opening or
         monotonicity confirmation → VALIDATION_FAILED, approved parent record → AMENDMENT_REQUIRED, stale revision
         → CONFLICT. Same operation and digest returns the first result (EMP-METER-004, B-BR-EMP-286..290).
@@ -18537,6 +18539,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseMeterDecision'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/change:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseMeterChange
+      summary: Replace or reset a meter
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, enabled capability and
+        meter.reading.correct covering the asset. REPLACE records the final value (or declares it unknown), closes
+        the meter's last segment, removes it and installs the new meter of the same kind at the same instant;
+        RESET closes the open segment with the value before and opens a RESET segment with the value after. The
+        implied usage is returned and stored. revision is the meter's segment count (stale → CONFLICT); an instant
+        not after the open segment's opening or later than the server clock, a live reading after it, a final
+        value below the latest valid reading or a value not below a modulus → VALIDATION_FAILED; a removed or
+        foreign meter → NOT_FOUND. Same operation and digest returns the first result (EMP-METER-005,
+        B-BR-EMP-484/485).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: meter.reading.correct
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      - name: meter_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008511
+              revision: 1
+              change: RESET
+              kind: ODOMETER
+              occurred_at: '2026-11-08T13:00:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              before_value: '184532000'
+              after_value: '0'
+      responses:
+        '200':
+          description: Private audited boundary or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMeterChange'
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
         '401':
@@ -20329,6 +20412,66 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/policy/mine:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTrackingPolicyMine
+      summary: Read the tracking policy in force for the requesting member
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.start covering the requesting
+        membership's own record (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR, DRIVER); members without trip.trip.start
+        (AUDITOR, FINANCE, APPROVER, OPERATIONS_STAFF) are FORBIDDEN. Returns only the policy in force now with
+        its revision (OFF at revision 0 when nothing was recorded; OFF until a notice is in force, EMP-GPS-004)
+        and, only while it is OPTIONAL or EXPECTED, the employee notice version and in-force instant the
+        organization declared. The Android trip screen hides tracking when it is OFF, offers it when OPTIONAL and
+        asks for it when EXPECTED (EMP-GPS-002). Writes nothing; no session, member, notice text or location.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.start
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: An empty object; the member's own read takes no field.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTrackingPolicyReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: The tracking policy in force for the member's trips.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTrackingPolicyInForce'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/tracking/policy/change:
     post:
       tags:
@@ -20781,6 +20924,74 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseTripOwnPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripMineStopsRead
+      summary: Read the plan beside the observed stops and legs of an own trip
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.start permission over the requesting
+        membership itself (the EMP-TRIP-012 own-trips policy). Answers only for a trip the member started or currently
+        holds after a handover; another member's, another organization's or an unknown trip is the same NOT_FOUND.
+        Returns the trip summary with its start and end boundaries, `planned` (null when the trip executes no mission
+        or the mission has no planning revision, else the mission's current planning revision with its window,
+        destination, ordered stops and derived legs, without distance or duration) and `observed` (the stops and legs
+        derived from the trip's accepted STOP, ARRIVAL and DEPARTURE events, each boundary with its declared instant,
+        entry zone, device offset and server receipt, `after_receipt` when declared after its own receipt, an issue
+        `ARRIVAL_MISSING` or `DEPARTURE_MISSING` for an incoherent sequence, the accepted observations declared after
+        the recorded end listed apart, and the held stop observations with their code). Planned and observed stops are
+        never paired (EMP-TRIP-010, B-BR-EMP-475..478).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.start
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripStopsReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current planned-versus-observed read of the member's own trip.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripStopsView'
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
         '401':
@@ -22878,8 +23089,9 @@ paths:
       description: Dedicated company cookie, exact Origin/CSRF and doc.document.attach covering the document (own
         documents for SELF roles), plus, in the same transaction, the target owner's own permission covering the
         target record (fleet.asset.manage for ASSET, meter.reading.record for METER_READING with own readings for
-        SELF roles, idn.employee.manage for EMPLOYEE). Only kinds with a registered owner resolver are accepted;
-        FUELING, EXPENSE, WORK_ORDER and TRIP are VALIDATION_FAILED until their owners register. A foreign, missing
+        SELF roles, idn.employee.manage for EMPLOYEE, fuel.fueling.record for FUELING and exp.expense.record for a
+        DIRECT EXPENSE, each covering only the author's own record for SELF roles). Only kinds with a registered owner
+        resolver are accepted; WORK_ORDER and TRIP are VALIDATION_FAILED until their owners register. A foreign, missing
         or wrong-table target is NOT_FOUND; a DRAFT asset or a FAILED, REPLACED or DELETED document is CONFLICT. A
         pending (UPLOADING) document can be linked and stays pending. The operation UUID replays the first link,
         the same operation with other facts or member is OPERATION_ID_REUSED, and another operation naming an
@@ -25484,6 +25696,14 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         load:
           $ref: '#/components/schemas/EnterpriseMissionLoad'
+        stops:
+          description: Optional ordered intermediate stops (EMP-TRIP-010, B-BR-EMP-475); absent is none, an empty list
+            is refused.
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionPlannedStopRequest'
       required:
       - schema_version
       - operation_id
@@ -25522,6 +25742,13 @@ components:
         planned_at:
           type: string
           format: date-time
+        stops:
+          description: The revision's ordered planned stops, present only when it has stops (EMP-TRIP-010).
+          type: array
+          minItems: 1
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionPlannedStop'
       required:
       - revision
       - destination
@@ -25538,6 +25765,467 @@ components:
           kind: PASSENGERS
           count: 4
         planned_at: '2026-11-15T10:10:00.123456Z'
+    EnterpriseMissionPlannedStopRequest:
+      description: One planned stop of a PLAN command, a free-text place only (EMP-TRIP-010, EDR-307); no unit,
+        coordinate, time, person or contact.
+      type: object
+      additionalProperties: false
+      properties:
+        kind:
+          type: string
+          const: TEXT
+        text:
+          type: string
+          minLength: 1
+          maxLength: 1120
+      required:
+      - kind
+      - text
+      example:
+        kind: TEXT
+        text: Cliente Jardim Primavera
+    EnterpriseMissionPlannedStop:
+      description: One stored planned stop with its 1-based order (EMP-TRIP-010).
+      type: object
+      additionalProperties: false
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+          maximum: 20
+        kind:
+          type: string
+          const: TEXT
+        text:
+          type: string
+      required:
+      - sequence
+      - kind
+      - text
+      example:
+        sequence: 1
+        kind: TEXT
+        text: Cliente Jardim Primavera
+    EnterpriseTripStopsReadRequest:
+      description: Empty body; the trip is the path selector.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseTripPlannedPoint:
+      description: One end of a derived planned leg; a stop names its sequence.
+      oneOf:
+      - type: object
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            enum:
+            - START
+            - DESTINATION
+        required:
+        - kind
+      - type: object
+        additionalProperties: false
+        properties:
+          kind:
+            type: string
+            const: STOP
+          sequence:
+            type: integer
+            minimum: 1
+            maximum: 20
+        required:
+        - kind
+        - sequence
+    EnterpriseTripStopsPlan:
+      type: object
+      additionalProperties: false
+      description: The current planning revision of the mission the trip executes, with its derived legs; no distance,
+        duration or route estimate (EMP-TRIP-010, B-BR-EMP-475).
+      properties:
+        mission_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 2
+        planned_at:
+          type: string
+          format: date-time
+        starts_at:
+          type: string
+          format: date-time
+        ends_at:
+          type: string
+          format: date-time
+        destination:
+          $ref: '#/components/schemas/EnterpriseMissionDestination'
+        stops:
+          type: array
+          maxItems: 20
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionPlannedStop'
+        legs:
+          type: array
+          minItems: 1
+          maxItems: 21
+          items:
+            type: object
+            additionalProperties: false
+            properties:
+              sequence:
+                type: integer
+                minimum: 1
+              from:
+                $ref: '#/components/schemas/EnterpriseTripPlannedPoint'
+              to:
+                $ref: '#/components/schemas/EnterpriseTripPlannedPoint'
+            required:
+            - sequence
+            - from
+            - to
+      required:
+      - mission_id
+      - revision
+      - planned_at
+      - starts_at
+      - ends_at
+      - destination
+      - stops
+      - legs
+    EnterpriseTripObservedBoundary:
+      type: object
+      additionalProperties: false
+      description: One recorded boundary of an observed stop or leg - the trip start or end, or a STOP, ARRIVAL or
+        DEPARTURE event - with its declared instant, entry zone and device offset (BR-TIME-001) and server receipt
+        (BR-TIME-002); `after_receipt` flags a boundary declared after its own receipt (BR-TIME-006), never rewritten.
+      properties:
+        kind:
+          type: string
+          enum:
+          - START
+          - STOP
+          - ARRIVAL
+          - DEPARTURE
+          - FINISH
+          - CANCEL
+        fact_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        received_at:
+          type: string
+          format: date-time
+        after_receipt:
+          type: boolean
+      required:
+      - kind
+      - fact_id
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      - received_at
+      - after_receipt
+    EnterpriseTripObservedIssue:
+      description: An incoherent observed boundary (B-BR-EMP-477), null when coherent.
+      type:
+      - string
+      - 'null'
+      enum:
+      - ARRIVAL_MISSING
+      - DEPARTURE_MISSING
+      - null
+    EnterpriseTripObservedStop:
+      type: object
+      additionalProperties: false
+      description: One derived stop; a missing or not yet recorded boundary is null.
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        arrival:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        departure:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        issue:
+          $ref: '#/components/schemas/EnterpriseTripObservedIssue'
+      required:
+      - sequence
+      - arrival
+      - departure
+      - issue
+    EnterpriseTripObservedLeg:
+      type: object
+      additionalProperties: false
+      description: One derived leg between two consecutive boundaries; no distance or duration.
+      properties:
+        sequence:
+          type: integer
+          minimum: 1
+        departure:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        arrival:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        issue:
+          $ref: '#/components/schemas/EnterpriseTripObservedIssue'
+      required:
+      - sequence
+      - departure
+      - arrival
+      - issue
+    EnterpriseTripHeldObservation:
+      type: object
+      additionalProperties: false
+      description: One STOP, ARRIVAL or DEPARTURE event of the trip held for review (EMP-TRIP-003/015); never a stop.
+      properties:
+        event_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        type:
+          type: string
+          enum:
+          - STOP
+          - ARRIVAL
+          - DEPARTURE
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        code:
+          type: string
+          enum:
+          - TRIP_ALREADY_CLOSED
+          - STALE_REVISION
+      required:
+      - event_id
+      - type
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      - code
+    EnterpriseTripStopsView:
+      type: object
+      additionalProperties: false
+      description: The member's planned-versus-observed read of one own trip (EMP-TRIP-010, B-BR-EMP-478); the plan and
+        the observations are never paired.
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operational_state:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - PAUSED
+          - COMPLETED
+          - CANCELLED
+        start:
+          $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+        end:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+          - type: 'null'
+        planned:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripStopsPlan'
+          - type: 'null'
+        observed:
+          type: object
+          additionalProperties: false
+          properties:
+            stops:
+              type: array
+              items:
+                $ref: '#/components/schemas/EnterpriseTripObservedStop'
+            legs:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/EnterpriseTripObservedLeg'
+            after_end:
+              description: Accepted STOP, ARRIVAL or DEPARTURE events declared after the recorded end (a device clock
+                that moved), in timeline order; never a stop or leg boundary, never dropped (B-BR-EMP-477).
+              type: array
+              items:
+                $ref: '#/components/schemas/EnterpriseTripObservedBoundary'
+            held:
+              type: array
+              items:
+                $ref: '#/components/schemas/EnterpriseTripHeldObservation'
+          required:
+          - stops
+          - legs
+          - after_end
+          - held
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - trip_id
+      - asset_id
+      - operational_state
+      - start
+      - end
+      - planned
+      - observed
+      - data_mode
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000009001
+        asset_id: 7b0e2a54-0000-4000-8000-000000009201
+        operational_state: COMPLETED
+        start:
+          kind: START
+          fact_id: 7b0e2a54-0000-4000-8000-000000009001
+          occurred_at: '2026-11-15T12:00:00Z'
+          entry_zone: America/Cuiaba
+          device_offset_seconds: -14400
+          received_at: '2026-11-15T12:00:01.123456Z'
+          after_receipt: false
+        end:
+          kind: FINISH
+          fact_id: 7b0e2a54-0000-4000-8000-000000009001
+          occurred_at: '2026-11-15T16:30:00Z'
+          entry_zone: America/Cuiaba
+          device_offset_seconds: -14400
+          received_at: '2026-11-15T16:31:00Z'
+          after_receipt: false
+        planned:
+          mission_id: 7b0e2a54-0000-4000-8000-000000009401
+          revision: 3
+          planned_at: '2026-11-14T18:00:00Z'
+          starts_at: '2026-11-15T12:00:00Z'
+          ends_at: '2026-11-15T18:00:00Z'
+          destination:
+            kind: TEXT
+            text: Centro de distribuição Norte
+          stops:
+          - sequence: 1
+            kind: TEXT
+            text: Cliente Jardim Primavera
+          legs:
+          - sequence: 1
+            from:
+              kind: START
+            to:
+              kind: STOP
+              sequence: 1
+          - sequence: 2
+            from:
+              kind: STOP
+              sequence: 1
+            to:
+              kind: DESTINATION
+        observed:
+          stops:
+          - sequence: 1
+            arrival:
+              kind: ARRIVAL
+              fact_id: 7b0e2a54-0000-4000-8000-000000009501
+              occurred_at: '2026-11-15T13:10:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T13:10:02Z'
+              after_receipt: false
+            departure: null
+            issue: DEPARTURE_MISSING
+          - sequence: 2
+            arrival:
+              kind: STOP
+              fact_id: 7b0e2a54-0000-4000-8000-000000009502
+              occurred_at: '2026-11-15T15:00:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T15:00:03Z'
+              after_receipt: false
+            departure:
+              kind: DEPARTURE
+              fact_id: 7b0e2a54-0000-4000-8000-000000009503
+              occurred_at: '2026-11-15T15:15:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T15:14:00Z'
+              after_receipt: true
+            issue: null
+          legs:
+          - sequence: 1
+            departure:
+              kind: START
+              fact_id: 7b0e2a54-0000-4000-8000-000000009001
+              occurred_at: '2026-11-15T12:00:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T12:00:01.123456Z'
+              after_receipt: false
+            arrival:
+              kind: ARRIVAL
+              fact_id: 7b0e2a54-0000-4000-8000-000000009501
+              occurred_at: '2026-11-15T13:10:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T13:10:02Z'
+              after_receipt: false
+            issue: null
+          - sequence: 2
+            departure: null
+            arrival:
+              kind: STOP
+              fact_id: 7b0e2a54-0000-4000-8000-000000009502
+              occurred_at: '2026-11-15T15:00:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T15:00:03Z'
+              after_receipt: false
+            issue: DEPARTURE_MISSING
+          - sequence: 3
+            departure:
+              kind: DEPARTURE
+              fact_id: 7b0e2a54-0000-4000-8000-000000009503
+              occurred_at: '2026-11-15T15:15:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T15:14:00Z'
+              after_receipt: true
+            arrival:
+              kind: FINISH
+              fact_id: 7b0e2a54-0000-4000-8000-000000009001
+              occurred_at: '2026-11-15T16:30:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              received_at: '2026-11-15T16:31:00Z'
+              after_receipt: false
+            issue: null
+          after_end: []
+          held:
+          - event_id: 7b0e2a54-0000-4000-8000-000000009504
+            type: ARRIVAL
+            occurred_at: '2026-11-15T16:40:00Z'
+            entry_zone: America/Cuiaba
+            device_offset_seconds: -14400
+            code: TRIP_ALREADY_CLOSED
+        data_mode: SYNTHETIC
     EnterpriseMissionVehicleRequest:
       type: object
       additionalProperties: false
@@ -26610,6 +27298,47 @@ components:
         data_mode: SYNTHETIC
       description: The newest stored tracking policy version and the policy in force now (B-BR-EMP-469). revision 0
         with OFF, null notice and null effective_at when nothing was recorded.
+    EnterpriseTrackingPolicyInForce:
+      type: object
+      additionalProperties: false
+      description: The tracking policy in force for the requesting member (EMP-GPS-002); the notice only while
+        tracking is OPTIONAL or EXPECTED. No member, session, notice text or location.
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        policy:
+          type: string
+          enum:
+          - 'OFF'
+          - OPTIONAL
+          - EXPECTED
+        notice_version:
+          type:
+          - string
+          - 'null'
+          pattern: ^[a-z0-9][a-z0-9._-]{0,63}$
+        notice_in_force_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - revision
+      - policy
+      - notice_version
+      - notice_in_force_at
+      - data_mode
+      example:
+        revision: 2
+        policy: EXPECTED
+        notice_version: notice-2026.11
+        notice_in_force_at: '2026-11-01T00:00:00Z'
+        data_mode: SYNTHETIC
     EnterpriseFuelingSubmitPayload:
       type: object
       additionalProperties: false
@@ -29753,7 +30482,7 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         target_kind:
           type: string
-          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING]
+          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING, EXPENSE]
         target_id:
           $ref: '#/components/schemas/EnterpriseUUID'
       required:
@@ -30114,6 +30843,7 @@ components:
       - READING_ABOVE_NEXT
       - IMPLAUSIBLE_RATE
       - FUTURE_INSTANT
+      - POSSIBLE_ROLLOVER
     EnterpriseMeterHistoryItem:
       type: object
       additionalProperties: false
@@ -30314,6 +31044,7 @@ components:
           - SUPERSEDE
           - VOID
           - CONFIRM
+          - CONFIRM_ROLLOVER
         reason:
           type: string
           minLength: 1
@@ -30349,6 +31080,260 @@ components:
         revision: 1
         decision: VOID
         reason: Leitura do ativo errado
+    EnterpriseMeterChangeRequest:
+      type: object
+      additionalProperties: false
+      description: revision is the meter's segment count. REPLACE states the final value (or final_unknown true),
+        the new meter's label, optional modulus and opening value; RESET states the values before and after. All
+        values are exact base units of the stated kind; occurred_at, entry_zone and device_offset_seconds are the
+        boundary instant and the declaration of the readings it records.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 999999
+        change:
+          type: string
+          enum:
+          - REPLACE
+          - RESET
+        kind:
+          type: string
+          enum:
+          - ODOMETER
+          - HOUR_METER
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        final_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        final_unknown:
+          type: boolean
+        label:
+          type: string
+          minLength: 1
+          maxLength: 320
+        modulus:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        opening_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        before_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        after_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - change
+      - kind
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008511
+        revision: 1
+        change: REPLACE
+        kind: ODOMETER
+        occurred_at: '2026-11-08T13:00:00Z'
+        entry_zone: America/Cuiaba
+        device_offset_seconds: -14400
+        final_value: '184532000'
+        label: Painel novo
+        opening_value: '0'
+    EnterpriseMeterImpliedUsage:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - OK
+          - INSUFFICIENT_DATA
+        reason:
+          oneOf:
+          - type: string
+            enum:
+            - METER_GAP
+          - type: 'null'
+        value:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseMeterCount'
+          - type: 'null'
+        from_reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - status
+      - reason
+      - value
+      - from_reading_id
+    EnterpriseMeterCount:
+      type: string
+      pattern: ^(0|[1-9][0-9]*)$
+      maxLength: 19
+    EnterpriseMeterBoundary:
+      type: object
+      additionalProperties: false
+      description: One recorded segment boundary (EMP-METER-005). closing_value is null for an unknown final value,
+        whose implied usage is INSUFFICIENT_DATA with METER_GAP; the implied usage is measured from the latest VALID
+        reading before the boundary and stored with it.
+      properties:
+        change:
+          type: string
+          enum:
+          - REPLACE
+          - RESET
+          - ROLLOVER
+        meter_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        closed_segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        at:
+          type: string
+          format: date-time
+        closing_value:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseMeterCount'
+          - type: 'null'
+        closing_reading_id:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        implied_usage:
+          $ref: '#/components/schemas/EnterpriseMeterImpliedUsage'
+        new_meter_id:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        opened_segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        opening_reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        opening_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        segments:
+          type: integer
+          minimum: 1
+        reevaluated:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseMeterReadingState'
+      required:
+      - change
+      - meter_id
+      - closed_segment_id
+      - at
+      - closing_value
+      - closing_reading_id
+      - implied_usage
+      - new_meter_id
+      - opened_segment_id
+      - opening_reading_id
+      - opening_value
+      - segments
+      - reevaluated
+    EnterpriseMeterChange:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        change:
+          type: string
+          enum:
+          - REPLACE
+          - RESET
+        meter_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        closed_segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        at:
+          type: string
+          format: date-time
+        closing_value:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseMeterCount'
+          - type: 'null'
+        closing_reading_id:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        implied_usage:
+          $ref: '#/components/schemas/EnterpriseMeterImpliedUsage'
+        new_meter_id:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        opened_segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        opening_reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        opening_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        segments:
+          type: integer
+          minimum: 1
+        reevaluated:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseMeterReadingState'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - asset_id
+      - change
+      - meter_id
+      - closed_segment_id
+      - at
+      - closing_value
+      - closing_reading_id
+      - implied_usage
+      - new_meter_id
+      - opened_segment_id
+      - opening_reading_id
+      - opening_value
+      - segments
+      - reevaluated
+      - replayed
+      - data_mode
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        change: REPLACE
+        meter_id: 7b0e2a54-0000-4000-8000-000000008401
+        closed_segment_id: 7b0e2a54-0000-4000-8000-000000008402
+        at: '2026-11-08T13:00:00Z'
+        closing_value: '184532000'
+        closing_reading_id: 7b0e2a54-0000-4000-8000-000000008512
+        implied_usage:
+          status: OK
+          reason: null
+          value: '342000'
+          from_reading_id: 7b0e2a54-0000-4000-8000-000000008405
+        new_meter_id: 7b0e2a54-0000-4000-8000-000000008513
+        opened_segment_id: 7b0e2a54-0000-4000-8000-000000008514
+        opening_reading_id: 7b0e2a54-0000-4000-8000-000000008515
+        opening_value: '0'
+        segments: 1
+        reevaluated: []
+        replayed: false
+        data_mode: SYNTHETIC
     EnterpriseMeterReadingState:
       type: object
       additionalProperties: false
@@ -30363,7 +31348,7 @@ components:
           - VOIDED
         flags:
           type: array
-          maxItems: 4
+          maxItems: 5
           uniqueItems: true
           items:
             $ref: '#/components/schemas/EnterpriseMeterFlag'
@@ -30389,6 +31374,7 @@ components:
           - SUPERSEDE
           - VOID
           - CONFIRM
+          - CONFIRM_ROLLOVER
         reading:
           $ref: '#/components/schemas/EnterpriseMeterReadingState'
         replacement:
@@ -30399,6 +31385,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EnterpriseMeterReadingState'
+        boundary:
+          $ref: '#/components/schemas/EnterpriseMeterBoundary'
         replayed:
           type: boolean
         data_mode:
@@ -46058,7 +47046,7 @@ components:
       properties:
         kind:
           type: string
-          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING]
+          enum: [ASSET, EMPLOYEE, METER_READING, INCIDENT, FUELING, EXPENSE]
         id:
           $ref: '#/components/schemas/EnterpriseUUID'
       example:

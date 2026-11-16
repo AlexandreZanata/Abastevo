@@ -219,11 +219,11 @@ func (q *Queries) DocumentLinksByTarget(ctx context.Context, arg DocumentLinksBy
 }
 
 const insertDocumentLink = `-- name: InsertDocumentLink :exec
-INSERT INTO org_document_links(org_id, document_id, target_kind, target_id, asset_id, employee_id, reading_id, held_reading_id, incident_report_id, fueling_id, operation_id, created_by)
+INSERT INTO org_document_links(org_id, document_id, target_kind, target_id, asset_id, employee_id, reading_id, held_reading_id, incident_report_id, fueling_id, expense_id, operation_id, created_by)
 VALUES(CAST($1::text AS UUID), CAST($2::text AS UUID), $3::text, CAST($4::text AS UUID),
  CAST($5::text AS UUID), CAST($6::text AS UUID), CAST($7::text AS UUID),
  CAST($8::text AS UUID), CAST($9::text AS UUID), CAST($10::text AS UUID),
- CAST($11::text AS UUID), CAST($12::text AS UUID))
+ CAST($11::text AS UUID), CAST($12::text AS UUID), CAST($13::text AS UUID))
 `
 
 type InsertDocumentLinkParams struct {
@@ -237,6 +237,7 @@ type InsertDocumentLinkParams struct {
 	HeldReadingID    pgtype.Text `json:"held_reading_id"`
 	IncidentReportID pgtype.Text `json:"incident_report_id"`
 	FuelingID        pgtype.Text `json:"fueling_id"`
+	ExpenseID        pgtype.Text `json:"expense_id"`
 	OperationID      string      `json:"operation_id"`
 	CreatedBy        string      `json:"created_by"`
 }
@@ -253,6 +254,7 @@ func (q *Queries) InsertDocumentLink(ctx context.Context, arg InsertDocumentLink
 		arg.HeldReadingID,
 		arg.IncidentReportID,
 		arg.FuelingID,
+		arg.ExpenseID,
 		arg.OperationID,
 		arg.CreatedBy,
 	)

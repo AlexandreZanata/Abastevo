@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-002/003 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<resources>
+    <string name="enterprise_tracking_title">Trip tracking</string>
+    <string name="enterprise_tracking_policy_expected">The company expects this trip to be tracked. The trip continues without tracking too.</string>
+    <string name="enterprise_tracking_policy_optional">The company allows tracking this trip if you choose to.</string>
+    <string name="enterprise_tracking_policy_unknown">Tracking is unavailable: the company policy has not been read on this device. Connect to update it.</string>
+    <string name="enterprise_tracking_policy_refresh">Update tracking policy</string>
+    <string name="enterprise_tracking_policy_failed">The policy could not be read now. The last one read stays in use.</string>
+    <string name="enterprise_tracking_notice">While tracking is active, the app records the position of this phone only during this trip and until you stop it. Company notice version: %1$s.</string>
+    <string name="enterprise_tracking_start">Start tracking</string>
+    <string name="enterprise_tracking_resume">Resume tracking</string>
+    <string name="enterprise_tracking_resume_question">Resume tracking?</string>
+    <string name="enterprise_tracking_stop">Stop tracking</string>
+    <string name="enterprise_tracking_without">Continue without tracking</string>
+    <string name="enterprise_tracking_state_not_started">Tracking not started</string>
+    <string name="enterprise_tracking_state_recording">Tracking active</string>
+    <string name="enterprise_tracking_state_suspended">Tracking suspended</string>
+    <string name="enterprise_tracking_state_interrupted">Tracking interrupted</string>
+    <string name="enterprise_tracking_state_ended">Tracking ended</string>
+    <string name="enterprise_tracking_since">Since %1$s</string>
+    <string name="enterprise_tracking_approximate">Approximate location: no GPS distance will be calculated for this trip.</string>
+    <string name="enterprise_tracking_cause_permission_denied">Location permission was not granted. The trip continues without tracking.</string>
+    <string name="enterprise_tracking_cause_notification_blocked">Notifications are blocked, so tracking cannot run with its visible notice. Allow notifications to track.</string>
+    <string name="enterprise_tracking_cause_process_stopped">The app was closed while tracking.</string>
+    <string name="enterprise_tracking_cause_device_restarted">The phone restarted while tracking.</string>
+    <string name="enterprise_tracking_cause_stopped_by_driver">You stopped tracking. The trip continues.</string>
+    <string name="enterprise_tracking_cause_owner_changed">The account or company changed on this phone.</string>
+    <string name="enterprise_tracking_cause_permission_revoked">Location permission was removed during the trip.</string>
+    <string name="enterprise_tracking_cause_other">Tracking stopped with the trip.</string>
+    <string name="enterprise_tracking_refused">The company refused tracking for this trip (%1$s). The trip continues.</string>
+    <string name="enterprise_tracking_refusal_off">Tracking is turned off by the company.</string>
+    <string name="enterprise_tracking_refusal_other">Tracking could not be changed on this device; nothing was saved.</string>
+    <string name="enterprise_tracking_record">%1$s — %2$s</string>
+    <string name="enterprise_tracking_notification_channel">Company trip tracking</string>
+    <string name="enterprise_tracking_notification_title">Tracking active — %1$s</string>
+    <string name="enterprise_tracking_notification_text">The position of this phone is recorded during the trip.</string>
+    <string name="enterprise_tracking_pending">Positions waiting to be sent: %1$d</string>
+    <string name="enterprise_tracking_batches">Position batches: %1$d accepted by the company, %2$d on this device</string>
+    <string name="enterprise_tracking_gap_signal_lost">No GPS signal since %1$s. Nothing is recorded for this interval.</string>
+    <string name="enterprise_tracking_gap_provider_disabled">Location is turned off since %1$s. Nothing is recorded for this interval.</string>
+    <string name="enterprise_tracking_gap_mock_location">Simulated locations ignored since %1$s. Nothing is recorded for this interval.</string>
+    <string name="enterprise_tracking_gaps_count">Intervals without signal in this trip: %1$d</string>
+</resources>

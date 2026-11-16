@@ -51,6 +51,7 @@ import com.anpfuel.app.ui.enterprise.checklist.departureBlocks
 import com.anpfuel.app.ui.enterprise.fleet.EnterpriseAssetPicker
 import com.anpfuel.app.ui.enterprise.reasonText
 import com.anpfuel.app.ui.enterprise.statusText
+import com.anpfuel.app.ui.enterprise.tracking.TrackingCard
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.enterprise.attachment.ReceiptDraft
 import com.anpfuel.application.enterprise.checklist.ChecklistViewState
@@ -68,6 +69,12 @@ import com.anpfuel.domain.enterprise.meter.MeterKind
 import com.anpfuel.domain.enterprise.meter.ReadingFlag
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncStatus
 import com.anpfuel.domain.enterprise.trip.MissionView
+import com.anpfuel.domain.enterprise.trip.ClosingEvidenceState
+import com.anpfuel.domain.enterprise.trip.ClosingItem
+import com.anpfuel.domain.enterprise.trip.ClosingItemKind
+import com.anpfuel.domain.enterprise.trip.ClosingRecordState
+import com.anpfuel.domain.enterprise.trip.TripClosing
+import com.anpfuel.domain.enterprise.tracking.TrackingDevice
 import com.anpfuel.domain.enterprise.trip.TripAssetLabel
 import com.anpfuel.domain.enterprise.trip.TripCommand
 import com.anpfuel.domain.enterprise.trip.TripMissionResponse
@@ -108,6 +115,10 @@ private sealed interface TripMode {
     class Checklist(val start: Start) : TripMode
 }
 
+/** EMP-GPS-002 (B-BR-EMP-496): the tracking gestures of the open trip; null hides the card (rollback flag). */
+internal class TripTrackingActions(val onStart: (tripId: String, TrackingDevice) -> Unit, val onStop: (tripId: String) -> Unit,
+    val onRefresh: () -> Unit)
+
 /** The meters the driver may read for a choice: the picker's in-service meters, by kind. */
 internal fun meterChoices(choice: EnterpriseAssetChoice): List<TripMeterChoice> =
     choice.meters.map { TripMeterChoice(it.id, it.segmentId, MeterKind.parse(it.kind.name), it.modulus) }
@@ -136,6 +147,7 @@ internal fun TripPanel(
     checklist: ChecklistViewState? = null,
     onDepartureCheck: (assetId: String) -> Unit = {},
     departureContent: (@Composable (assetId: String, label: String, onDone: () -> Unit) -> Unit)? = null,
+    tracking: TripTrackingActions? = null,
     /** EMP-TRIP-021: the missions inbox and the pause/resume/cancel actions; false hides them (`ENTERPRISE_MISSION_UI_ENABLED`). */
     missionsEnabled: Boolean = false,
     onRefreshMissions: () -> Unit = {},
@@ -244,7 +256,8 @@ internal fun TripPanel(
                 else -> if (open != null) {
                     tripDetail(open, connected, state.busy, onEvent = { mode = TripMode.Event(open.trip.tripId) },
                         onFinish = { mode = TripMode.Finish(open.trip.tripId) }, onReady = { onReady(open.trip.tripId) }, onSend = onSend,
-                        photos = state.attachments, onPhoto = photo.takeIf { capture != null },
+                        photos = state.attachments, onPhoto = photo.takeIf { capture != null }, closing = state.closing(open.trip.tripId),
+                        state = state, tracking = tracking,
                         onLifecycle = if (missionsEnabled) { command -> mode = TripMode.Lifecycle(open.trip.tripId, command) } else null,
                         missionTitle = open.missionId?.let { id -> state.missions?.missions?.firstOrNull { it.missionId == id }?.item?.title },
                         extra = { tripExtra(open) })
@@ -362,8 +375,9 @@ private fun StatusChip(record: TripRecordView, tag: String) {
 
 /** The open trip as separate list items, so a long timeline scrolls record by record. */
 private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: Boolean, onEvent: () -> Unit, onFinish: () -> Unit,
-    onReady: () -> Unit, onSend: () -> Unit, photos: Map<String, List<AttachmentView>> = emptyMap(),
-    onPhoto: ((String, AttachmentTarget) -> Unit)? = null, onLifecycle: ((TripCommand) -> Unit)? = null, missionTitle: String? = null,
+    onReady: () -> Unit, onSend: () -> Unit, state: TripViewState, tracking: TripTrackingActions?,
+    photos: Map<String, List<AttachmentView>> = emptyMap(), onPhoto: ((String, AttachmentTarget) -> Unit)? = null,
+    closing: TripClosing? = null, onLifecycle: ((TripCommand) -> Unit)? = null, missionTitle: String? = null,
     extra: @Composable () -> Unit = {}) {
     item(key = "detail-header") {
         TripCard(Modifier.testTag("enterprise-trip-detail")) {
@@ -376,6 +390,13 @@ private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: B
             if (view.trip.state == TripLocalState.START_REFUSED) Notice(stringResource(R.string.enterprise_trips_start_refused_notice))
             missionTitle?.let { Text(stringResource(R.string.enterprise_missions_trip_mission, it), modifier = Modifier.testTag("enterprise-trip-mission")) }
         }
+    }
+    // EMP-GPS-002: shown for an organization trip in progress or one that already has a session; never for personal trips.
+    if (tracking != null && (view.trip.state == TripLocalState.IN_PROGRESS || state.tracking?.session(view.trip.tripId) != null)) item(key = "detail-tracking") {
+        val tripId = view.trip.tripId
+        TrackingCard(tripId, view.trip.state == TripLocalState.IN_PROGRESS, state.tracking, state.trackingRefusal, state.trackingPolicyFailed,
+            connected, busy, { formatted(it) }, onStart = { tracking.onStart(tripId, it) }, onStop = { tracking.onStop(tripId) },
+            onRefresh = tracking.onRefresh)
     }
     item(key = "detail-timeline") {
         Text(stringResource(R.string.enterprise_trips_timeline), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
@@ -396,6 +417,8 @@ private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: B
     }
     view.finish?.let { item(key = "record-finish") { Record(it, stringResource(R.string.enterprise_trips_record_finish), "finish", busy, photos, onPhoto) } }
     view.submission?.let { item(key = "record-submission") { Record(it, stringResource(R.string.enterprise_trips_record_submission), "submission") } }
+    // EMP-TRIP-020: the closing conference of a finished trip, before and after it is marked ready (B-BR-EMP-522..526).
+    if (closing != null && view.trip.state == TripLocalState.FINISHED) item(key = "detail-closing") { ClosingConference(closing) }
     item(key = "detail-actions") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (view.trip.open) {
@@ -573,6 +596,61 @@ internal fun TripsHomeCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
         Text(stringResource(R.string.enterprise_trips_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         Text(stringResource(R.string.enterprise_trips_home_copy))
         Button(onClick = onOpen, modifier = Modifier.fillMaxWidth().testTag("enterprise-trips-open")) { Text(stringResource(R.string.enterprise_trips_open)) }
+    }
+}
+
+private fun closingRecordText(state: ClosingRecordState): Int = when (state) {
+    ClosingRecordState.SAVED_ON_DEVICE -> R.string.enterprise_trip_closing_record_saved
+    ClosingRecordState.SENDING -> R.string.enterprise_trip_closing_record_sending
+    ClosingRecordState.ACCEPTED -> R.string.enterprise_trip_closing_record_accepted
+    ClosingRecordState.NEEDS_REVIEW -> R.string.enterprise_trip_closing_record_needs_review
+    ClosingRecordState.REFUSED -> R.string.enterprise_trip_closing_record_refused
+}
+
+private fun closingEvidenceText(state: ClosingEvidenceState): Int = when (state) {
+    ClosingEvidenceState.MISSING -> R.string.enterprise_trip_closing_evidence_missing
+    ClosingEvidenceState.PENDING -> R.string.enterprise_trip_closing_evidence_pending
+    ClosingEvidenceState.AVAILABLE -> R.string.enterprise_trip_closing_evidence_available
+    ClosingEvidenceState.UNREADABLE -> R.string.enterprise_trip_closing_evidence_unreadable
+}
+
+/** Exact centavos as reais with a decimal comma, never rounded and never added to another item. */
+private fun closingReais(centavos: Long): String = java.math.BigDecimal.valueOf(centavos, 2).toPlainString().replace('.', ',')
+
+/** SCR-TRIP-01 closing conference (EMP-TRIP-020): each item with its own record and evidence state; no total, no decision. */
+@Composable
+private fun ClosingConference(closing: TripClosing) {
+    TripCard(Modifier.testTag("enterprise-trip-closing")) {
+        Text(stringResource(R.string.enterprise_trip_closing_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
+        Text(stringResource(R.string.enterprise_trip_closing_intro), style = MaterialTheme.typography.bodySmall)
+        if (closing.relatedUnavailable) Notice(stringResource(R.string.enterprise_trip_closing_related_unavailable), Modifier.testTag("enterprise-trip-closing-unavailable"))
+        if (!closing.relatedUnavailable && closing.items.none { it.kind == ClosingItemKind.FUELING || it.kind == ClosingItemKind.EXPENSE })
+            Text(stringResource(R.string.enterprise_trip_closing_none), modifier = Modifier.testTag("enterprise-trip-closing-none"))
+        closing.items.forEach { ClosingRow(it) }
+        Text(stringResource(R.string.enterprise_trip_closing_no_decision), style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun ClosingRow(item: ClosingItem) {
+    val title = when (item.kind) {
+        ClosingItemKind.DEPARTURE_READING -> stringResource(R.string.enterprise_trip_closing_departure)
+        ClosingItemKind.FINAL_READING -> stringResource(R.string.enterprise_trip_closing_final)
+        ClosingItemKind.FUELING -> stringResource(R.string.enterprise_trip_closing_fueling, closingReais(item.paidCentavos ?: 0))
+        ClosingItemKind.EXPENSE -> stringResource(R.string.enterprise_trip_closing_expense, closingReais(item.paidCentavos ?: 0))
+    }
+    val record = stringResource(closingRecordText(item.record))
+    val evidence = stringResource(closingEvidenceText(item.evidence))
+    val reason = item.code?.takeIf { item.record == ClosingRecordState.NEEDS_REVIEW || item.record == ClosingRecordState.REFUSED }
+        ?.let { stringResource(reasonText(it)) }
+    Column(Modifier.fillMaxWidth().testTag("enterprise-trip-closing-${item.kind.name.lowercase()}-${item.recordId}")
+        .semantics(mergeDescendants = true) { stateDescription = listOfNotNull(record, reason, evidence).joinToString(". ") }) {
+        Text(title, style = MaterialTheme.typography.labelLarge)
+        Text(formatted(item.occurredAt), style = MaterialTheme.typography.bodySmall)
+        Text(record)
+        reason?.let { Text(stringResource(R.string.enterprise_trips_reason, it)) }
+        Text(evidence)
+        if (item.photos > 0) Text(stringResource(R.string.enterprise_trip_closing_photos, item.photos), style = MaterialTheme.typography.bodySmall)
     }
 }
 

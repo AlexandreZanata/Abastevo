@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-TRIP-020 closing conference; generated from one table by f4-logs/exp004-scripts/gen_closing_strings.py -->
+<resources>
+    <string name="enterprise_trip_closing_title">Closing check</string>
+    <string name="enterprise_trip_closing_intro">Before marking the trip ready, check what this device recorded for it. Fuelings and expenses are listed by the trip\'s vehicle and time; nothing here is added up, linked on the server or approved.</string>
+    <string name="enterprise_trip_closing_departure">Departure reading</string>
+    <string name="enterprise_trip_closing_final">Final reading</string>
+    <string name="enterprise_trip_closing_fueling">Fueling · R$ %1$s</string>
+    <string name="enterprise_trip_closing_expense">Expense · R$ %1$s</string>
+    <string name="enterprise_trip_closing_record_saved">Saved on this device</string>
+    <string name="enterprise_trip_closing_record_sending">Sending</string>
+    <string name="enterprise_trip_closing_record_accepted">Accepted by the company</string>
+    <string name="enterprise_trip_closing_record_needs_review">Needs review</string>
+    <string name="enterprise_trip_closing_record_refused">Not accepted</string>
+    <string name="enterprise_trip_closing_evidence_missing">Receipt: missing</string>
+    <string name="enterprise_trip_closing_evidence_pending">Receipt: pending (on this device or sending)</string>
+    <string name="enterprise_trip_closing_evidence_available">Receipt: stored by the company</string>
+    <string name="enterprise_trip_closing_evidence_unreadable">Receipts: cannot be read on this device</string>
+    <string name="enterprise_trip_closing_related_unavailable">The fuelings or expenses on this device cannot be read now; this list may be incomplete.</string>
+    <string name="enterprise_trip_closing_none">No fueling or expense of this vehicle during the trip on this device.</string>
+    <string name="enterprise_trip_closing_no_decision">Approval or return is decided by the company, never on this device.</string>
+    <string name="enterprise_trip_closing_photos">Photos: %1$d</string>
+</resources>

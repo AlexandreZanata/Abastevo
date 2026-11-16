@@ -32,6 +32,10 @@ import com.anpfuel.application.enterprise.queue.EnterpriseReviewTransport
 import com.anpfuel.application.enterprise.sync.EnterpriseDeliveryActivity
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncFlow
 import com.anpfuel.application.enterprise.sync.EnterpriseSyncStatusStore
+import com.anpfuel.application.enterprise.expense.EnterpriseExpenseProducer
+import com.anpfuel.application.enterprise.expense.EnterpriseExpenseService
+import com.anpfuel.application.enterprise.expense.EnterpriseExpenseStore
+import com.anpfuel.application.enterprise.expense.ExpenseFlow
 import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingProducer
 import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingService
 import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingStore
@@ -45,6 +49,14 @@ import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStore
 import com.anpfuel.application.enterprise.trip.TripFlow
+import com.anpfuel.application.enterprise.trip.TripRelatedRecords
+import com.anpfuel.application.enterprise.trip.TripTracking
+import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingPolicyGateway
+import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingProducers
+import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingService
+import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingStore
+import com.anpfuel.application.enterprise.tracking.TrackingRuntime
+import com.anpfuel.application.enterprise.tracking.TrackingStartGate
 import com.anpfuel.application.portable.AuthFlow
 import com.anpfuel.application.portable.AuthSessionStore
 import com.anpfuel.data.BuildConfig
@@ -57,9 +69,11 @@ import com.anpfuel.data.enterprise.fleet.EnterpriseReferenceHttpClient
 import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
+import com.anpfuel.data.enterprise.expense.ProtectedExpenseStore
 import com.anpfuel.data.enterprise.fueling.ProtectedFuelingStore
 import com.anpfuel.data.enterprise.trip.ProtectedMissionStore
 import com.anpfuel.data.enterprise.trip.ProtectedTripStore
+import com.anpfuel.data.enterprise.tracking.ProtectedTrackingStore
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
 import com.anpfuel.domain.enterprise.sync.SyncLimits
@@ -248,16 +262,17 @@ object EnterpriseModule {
 
     /**
      * Owning offline business producers are registered only after their own acceptance: the four EMP-TRIP-005
-     * `trip.*` producers (EDR-242) are the first, then the EMP-CHECK-002 `check.run.complete` producer (EDR-283).
-     * Their queued work keeps its delivery whatever the UI flags say.
+     * `trip.*` producers (EDR-242) are the first, then the EMP-CHECK-002 `check.run.complete` producer (EDR-283), then the
+     * six EMP-GPS-002 `gps.session.*` producers (EDR-322). Their queued work keeps its delivery whatever the UI flags say.
      */
     @Provides
     @Singleton
     fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry =
-        // EMP-FUEL-011 adds the `fueling.submit` producer (EDR-295); EMP-TRIP-021 the lifecycle producers (inside the trip
-        // producers) and the `trip.mission.respond` producer delivered alone (EDR-343).
+        // EMP-FUEL-011 adds the `fueling.submit` producer (EDR-295), EMP-EXP-004 the `expense.submit` producer (EDR-336),
+        // EMP-GPS-002 the `gps.session.*` producers (EDR-321); EMP-TRIP-021 the lifecycle producers (inside the trip producers)
+        // and the `trip.mission.respond` producer delivered alone (EDR-343).
         EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), *EnterpriseChecklistProducers.all(), EnterpriseFuelingProducer(),
-            *EnterpriseMissionProducers.all())
+            EnterpriseExpenseProducer(), *EnterpriseTrackingProducers.all(), *EnterpriseMissionProducers.all())
 
     /** The sealed trip book and the entries it names, never a plaintext table (EDR-242). */
     @Provides
@@ -286,9 +301,16 @@ object EnterpriseModule {
 
     /** Each visible trip owner is independent, like "Meus ativos"; "Enviar agora" is one dispatch of its partition. */
     @Provides
-    fun tripFlow(source: EnterpriseQueueSource, service: EnterpriseTripService, fence: EnterpriseSessionFence,
-        delivery: EnterpriseQueueService, receipts: EnterpriseReceipts, missions: EnterpriseMissionService): TripFlow =
-        TripFlow(source, service, fence, receipts, missions) { account, partition -> delivery.dispatch(account, partition) }
+    fun tripFlow(@ApplicationContext context: Context, source: EnterpriseQueueSource, service: EnterpriseTripService,
+        fence: EnterpriseSessionFence, delivery: EnterpriseQueueService, receipts: EnterpriseReceipts, fuelings: EnterpriseFuelingService,
+        expenses: EnterpriseExpenseService, tracking: EnterpriseTrackingService, runtime: TrackingRuntime,
+        missions: EnterpriseMissionService): TripFlow =
+        // EMP-TRIP-020: the closing conference reads the same partition's own fuelings and expenses (EDR-339);
+        // EMP-GPS-002: the tracking hooks of the open trip (EDR-323); EMP-TRIP-021: the missions inbox (EDR-342).
+        TripFlow(source, service, fence, receipts, TripRelatedRecords(fuelings::fuelings, expenses::expenses),
+            TripTracking(tracking, runtime::running) { AndroidEnterpriseDeviceClock(context).read().boot }, missions) { account, partition ->
+            delivery.dispatch(account, partition)
+        }
 
     /** EMP-FUEL-011: the partition's retained `fueling.submit` entries, never a plaintext table (EDR-295). */
     @Provides
@@ -305,6 +327,39 @@ object EnterpriseModule {
     fun fuelingFlow(source: EnterpriseQueueSource, service: EnterpriseFuelingService, fence: EnterpriseSessionFence,
         delivery: EnterpriseQueueService, receipts: EnterpriseReceipts): FuelingFlow =
         FuelingFlow(source, service, fence, receipts) { account, partition -> delivery.dispatch(account, partition) }
+
+    /** EMP-EXP-004: the partition's retained `expense.submit` entries, never a plaintext table (EDR-336). */
+    @Provides
+    @Singleton
+    fun expenseStore(store: ProtectedEnterprisePersistence): EnterpriseExpenseStore = ProtectedExpenseStore(store)
+
+    @Provides
+    @Singleton
+    fun expenseService(source: EnterpriseQueueSource, delivery: EnterpriseQueueService, store: EnterpriseExpenseStore): EnterpriseExpenseService =
+        EnterpriseExpenseService(source, { partition, operation -> delivery.save(partition, operation) }, store, { ZoneId.systemDefault() })
+
+    /** Each visible expense owner is independent, like the fueling owner; its receipts go through EMP-DOC-004. */
+    @Provides
+    fun expenseFlow(source: EnterpriseQueueSource, service: EnterpriseExpenseService, fence: EnterpriseSessionFence,
+        delivery: EnterpriseQueueService, receipts: EnterpriseReceipts): ExpenseFlow =
+        ExpenseFlow(source, service, fence, receipts) { account, partition -> delivery.dispatch(account, partition) }
+
+    /** The sealed tracking book, its trip book and the entries they name, never a plaintext table (EDR-322). */
+    @Provides
+    @Singleton
+    fun trackingStore(store: ProtectedEnterprisePersistence): EnterpriseTrackingStore = ProtectedTrackingStore(store)
+
+    @Provides
+    @Singleton
+    fun trackingService(source: EnterpriseQueueSource, delivery: EnterpriseQueueService, store: EnterpriseTrackingStore,
+        gateway: EnterpriseTrackingPolicyGateway): EnterpriseTrackingService = EnterpriseTrackingService(
+        source, { partition, operation -> delivery.save(partition, operation) }, store, gateway, { ZoneId.systemDefault() },
+    )
+
+    /** The process's one tracking runtime: the visible start gate (elapsed time) and the running collector (EDR-323). */
+    @Provides
+    @Singleton
+    fun trackingRuntime(): TrackingRuntime = TrackingRuntime(TrackingStartGate { android.os.SystemClock.elapsedRealtime() })
 
     /** The sealed checklist book and the entries it names, never a plaintext table (EDR-283). */
     @Provides

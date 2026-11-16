@@ -18,7 +18,10 @@ import (
 // policy command and read (B-BR-EMP-467/469, EDR-302). The policy is
 // organization-level, so both actions target the organization itself and a
 // unit-, cost-centre-, asset-, team- or SELF-scoped grant never covers them;
-// the change also requires an ACTIVE root.
+// the change also requires an ACTIVE root. The member's own read of the
+// policy in force (EMP-GPS-002) is trip.trip.start over the requesting
+// membership's own record, so a SELF-scoped driver is covered and nothing
+// else is readable through it.
 type TrackingPolicyAuthority struct {
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
@@ -41,8 +44,14 @@ func (g *TrackingPolicyAuthority) CheckPolicyTx(ctx context.Context, tx pgx.Tx, 
 	if database.ValidateOrgDBTX(ctx, tx, scope) != nil {
 		return trackingapp.ErrUnavailable
 	}
-	guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}
-	err := guard.check(ctx, tx, scope, org.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, scope.OrgID().String(), policy)
+	// The settings actions target the organization itself; the member's own
+	// read (EMP-GPS-002) is trip.trip.start over the membership's own record.
+	guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities, OwnTarget: action == trackingapp.PolicyOwn}
+	target := scope.OrgID().String()
+	if guard.OwnTarget {
+		target = member
+	}
+	err := guard.check(ctx, tx, scope, org.CompanyActor{AccountID: actor.AccountID, SessionID: actor.SessionID}, member, target, policy)
 	switch {
 	case err == nil:
 	case errors.Is(err, capability.ErrEntitlementRequired):

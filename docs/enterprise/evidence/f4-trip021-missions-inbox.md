@@ -319,3 +319,52 @@ host-side gates only and no wait. What exists and was exercised:
 - The EDR rows were placed after EDR-334 (the last row); note that the
   EMP-TRIP-019 rows EDR-331..334 sit after a blank line that splits the table
   (left for the coordinator).
+
+## Merged-tree validation (F4 head `19e681a3`)
+
+The task commit `e2c47185` was merged with the F4 integration head `19e681a3`
+(EXP-004, TRIP-020, TRIP-010, METER-005/006, GPS-002/003) on the
+coordinator's request. Conflicts resolved as unions keeping every feature:
+the contract and the EDR table (EDR-335..341 before EDR-342..344), the build
+flags, the queue registry (expense, tracking and mission producers), the
+`TripFlow` constructor (`receipts, related, tracking, missions`, then the
+trailing delivery lambda), its state, `begin` and `publish` (closing, tracking
+and inbox read side by side), the trip detail (`state`, `tracking`, `photos`,
+`closing` and the lifecycle actions) and the company screen.
+
+Two behaviours the merged features required, made in the merge commit and
+tested:
+
+- **Tracking follows the device lifecycle commands (EMP-GPS-002 × EMP-TRIP-021,
+  BR-PRIV-006).** `TrackingLocalTrip` gains `PAUSED` and `CANCELLED`; the
+  tracking `follow` suspends a recording session `TRIP_PAUSED` at a device
+  pause and ends it `TRIP_CANCELLED` at a device cancellation, each at the
+  command's own instant and depending on it (the server's FOLLOW applies the
+  same causes); `TripFlow.lifecycle` calls it like the finish does; recovery
+  follows a paused trip; tracking is not started while paused (the existing
+  `TRIP_NOT_OPEN`). Test: `EnterpriseTrackingServiceTest` "a trip pause
+  suspends and a cancellation ends the session at the command's own instant".
+  Its first merged run failed (the producer's dependency rule admitted only
+  the finish), the rule now admits the latest lifecycle command for those two
+  causes; no expectation changed.
+- **EMP-TRIP-010 planned stops in the own list.** `EnterpriseMissionPlan`
+  gained an optional `stops` array; the strict gateway would have refused
+  every page with stops. It now checks their exact shape (1..20 objects
+  `{sequence, kind: TEXT, text}` in order) and does not keep them (the inbox
+  shows the destination only; stops belong to EMP-TRIP-010). Test: the gateway
+  test's stops case.
+
+Merged-tree gates: Kotlin host suites domain enterprise 4706, application
+enterprise 194, data enterprise 219, app enterprise 34 tests, 0 failures
+(`trip021-merged-host-1.log`, `trip021-merged-application-2.log`);
+`:app:assembleDebug` passes; Go `gofmt`, build, vet (plain, integration,
+`integration nativefixture`) and staticcheck clean
+(`trip021-merged-staticcheck.log`), the v3 oracle consumer passes, the trip
+packages under race 1194 named tests, 0 failures
+(`trip021-merged-go-trip-race.jsonl`); `:app:lintDebug :data:lintDebug`
+0 errors, 355 app and 17 data existing warnings, none in a touched file
+(`trip021-merged-lint.log`); the enterprise validation build passes
+(`trip021-merged-validation-build.log`, APK hashes in
+`trip021-merged-validation-apks.sha256`). The
+native acceptance stays OWED (emulator locked); the native fixture still
+compiles on the merged tree.

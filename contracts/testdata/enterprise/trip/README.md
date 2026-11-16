@@ -644,3 +644,40 @@ vocabulary both consumers assert is `INVALID`, `SCOPE`, `FORBIDDEN`,
 `CONFLICT`, `INVALID_TRANSITION`. `START` and `COMPLETE` are produced only by
 the server from the linked trip; the link, the reservation consumption and
 the database proofs stay on real PostGIS.
+
+# Stops oracle v1
+
+EMP-TRIP-010 / B-BR-EMP-475..477, EDR-307/308. `stops-v1.psv` is consumed by
+Go (`stops_vectors_test.go`) and Kotlin (`EnterpriseTripStopsVectorsTest`):
+54 rows (PLANNED 21, OBSERVE 33), SHA-256
+`128d45271fef1b7f8b5c53003fdc96a74f6cd506d68f6869eea7d53d01105ae5`. It uses
+the four-column grammar above. Aliases add E1..E9 (suffixes 81..89, logbook
+events) and C (91, a cancellation operation) to the trip aliases.
+
+- PLANNED: `stops_hex` is a comma-separated list of UTF-8 hex places, `?`
+  for an absent list and the empty value for an empty list. An absent list
+  is no stop; otherwise 1..20 places, each with the plan text profile
+  (nonblank, control-free, at most 280 scalars, no standalone CPF-shaped
+  token); an empty list, a 21st place or an invalid place is `INVALID`. The
+  result is the count and the derived legs `START>STOP1,…,STOPn>DESTINATION`.
+- OBSERVE: `start=<alias>/<instant>`, optional `end=<FINISH|CANCEL>/<alias>/
+  <instant>` and `facts=<STOP|ARRIVAL|DEPARTURE>/<alias>/<instant>,…` in any
+  delivery order. Facts are ordered by instant, then identity (B-BR-EMP-324).
+  `STOP`/`ARRIVAL` open a stop and end the moving leg; `DEPARTURE` closes the
+  open stop and opens the next leg; the end closes the moving leg or leaves
+  the trip at its open stop. A `DEPARTURE` with no open stop is a stop and an
+  incoming leg with `ARRIVAL_MISSING`; an opening while a stop is open marks
+  that stop and the next leg `DEPARTURE_MISSING`. A fact declared after the
+  end is listed in `after_end` (timeline order), never a boundary. Results
+  are `stops=<seq>:<arrival>:<departure>:<issue>,…`,
+  `legs=<seq>:<departure>:<arrival>:<issue>,…` and `after_end=<mark>/<alias>,…`
+  with `-` for a missing boundary or no issue. A start that is not a start,
+  an end before the start or of another kind, another fact kind (NOTE,
+  START), a fact before the start or a repeated identity is `INVALID`.
+
+The only error code is `INVALID`; consumers assert the hash, counts, unique
+IDs, allowed arguments, that both issue codes and the error code have
+vectors, that the derivation does not depend on the delivery order and that
+planned stops are independent of the caller's list. Receipts, zones, the
+`after_receipt` flag and held observations are server facts proved on real
+PostGIS, not by this oracle.
