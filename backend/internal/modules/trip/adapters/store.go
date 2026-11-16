@@ -361,7 +361,7 @@ func heldBinding(source syncapp.Source, op protocol.Operation) bool {
 
 func heldCode(kind, code string) bool {
 	if kind == app.StartOperationType {
-		return code == app.AssetBusy || code == app.AssetUnavailable || code == app.PermissionChanged
+		return app.StartHeldCode(code)
 	}
 	// EMP-TRIP-018: a late finish of an ended period (EMP-OFFL-009).
 	return kind == app.FinishOperationType && (code == app.TripAlreadyClosed || code == syncapp.LateHeldCode)
@@ -535,6 +535,78 @@ func (s *Store) checkOwnStartOrFinish(ctx context.Context, db syncapp.DBTX, sour
 		return false, err
 	}
 	return true, nil
+}
+
+// MissionForStartTx locks the mission a start names under the caller's root
+// and asset locks and reads its state, current assignee, vehicle and whether
+// a trip is linked to it (EMP-TRIP-023); another organization's mission is
+// indistinguishable from a missing one under forced RLS.
+func (s *Store) MissionForStartTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, mission string) (app.MissionStart, error) {
+	db = syncapp.Borrow(db)
+	if s == nil || db == nil || database.ValidateOrgDBTX(ctx, db, scope) != nil || !canonicalID(mission) {
+		return app.MissionStart{}, app.ErrUnavailable
+	}
+	var m app.MissionStart
+	var state string
+	err := db.QueryRow(ctx, `SELECT m.state,COALESCE(m.assignee_membership_id::text,''),COALESCE(m.assignee_employee_id::text,''),COALESCE(m.asset_id::text,''),
+ EXISTS(SELECT 1 FROM org_trip_mission_links l WHERE l.org_id=m.org_id AND l.mission_id=m.id)
+FROM org_trip_missions m WHERE m.org_id=$1::uuid AND m.id=$2::uuid FOR UPDATE OF m`, scope.OrgID().String(), mission).Scan(&state, &m.AssigneeMembershipID, &m.AssigneeEmployeeID, &m.AssetID, &m.Linked)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.MissionStart{}, app.ErrNotFound
+	}
+	if err != nil {
+		return app.MissionStart{}, storeError(err)
+	}
+	if m.State, err = trip.ParseMissionState(state); err != nil {
+		return app.MissionStart{}, app.ErrUnavailable
+	}
+	return m, nil
+}
+
+// LinkMissionTx stores, in the accepted start's transaction, its link to the
+// eligible mission it names, the mission's START revision (source TRIP: the
+// trip, its start operation, author membership and account) and the head at
+// IN_PROGRESS (EMP-TRIP-023, B-BR-EMP-412/413). The database re-proves the
+// mission against the stored trip.
+func (s *Store) LinkMissionTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, command app.StartCommand) error {
+	db = syncapp.Borrow(db)
+	v, err := command.Snapshot()
+	if s == nil || db == nil || err != nil || source.Validate() != nil || database.ValidateOrgDBTX(ctx, db, source.Scope) != nil || !canonicalID(v.MissionID) {
+		return app.ErrUnavailable
+	}
+	org := source.Scope.OrgID().String()
+	var state, employee, member string
+	var revision int64
+	if err := db.QueryRow(ctx, `SELECT state,revision,COALESCE(assignee_employee_id::text,''),COALESCE(assignee_membership_id::text,'') FROM org_trip_missions
+WHERE org_id=$1::uuid AND id=$2::uuid FOR UPDATE`, org, v.MissionID).Scan(&state, &revision, &employee, &member); err != nil {
+		return storeError(err)
+	}
+	from, err := trip.ParseMissionState(state)
+	if err != nil {
+		return app.ErrUnavailable
+	}
+	next, err := trip.MissionTransition(from, trip.MissionStart)
+	if err != nil {
+		return app.ErrUnavailable
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO org_trip_mission_links(org_id,trip_id,mission_id,operation_id) VALUES($1::uuid,$2::uuid,$3::uuid,$4::uuid)`,
+		org, v.TripID, v.MissionID, v.OperationID); err != nil {
+		return storeError(err)
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO org_trip_mission_transitions(org_id,mission_id,revision,kind,from_state,to_state,source,actor_account_id,actor_membership_id,operation_id,
+ assignee_employee_id,assignee_membership_id,trip_id)
+VALUES($1::uuid,$2::uuid,$3,'START',$4,$5,'TRIP',$6::uuid,$7::uuid,$8::uuid,$9::uuid,$10::uuid,$11::uuid)`,
+		org, v.MissionID, revision+1, string(from), string(next), source.Actor.AccountID, source.MembershipID, v.OperationID, employee, member, v.TripID); err != nil {
+		return storeError(err)
+	}
+	tag, err := db.Exec(ctx, `UPDATE org_trip_missions SET state=$4,revision=revision+1 WHERE org_id=$1::uuid AND id=$2::uuid AND revision=$3`, org, v.MissionID, revision, string(next))
+	if err != nil {
+		return storeError(err)
+	}
+	if tag.RowsAffected() != 1 {
+		return app.ErrUnavailable
+	}
+	return nil
 }
 
 // OpenWork is the trip-backed FLEET-003 open-work source (EDR-206): an

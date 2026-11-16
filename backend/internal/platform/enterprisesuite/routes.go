@@ -459,7 +459,7 @@ func Register(router chi.Router, o Options) error {
 	// (structure: the mission's stored unit and asset) and the assignee's own
 	// list under trip.trip.start; the FLEET-007 start decision is a warning.
 	missionStructure := &orgpg.ResourceStructure{Kind: orgpg.MissionStructure, Pool: o.Pool}
-	missions := &trippg.MissionStore{Pool: o.Pool, Authority: &orgpg.MissionAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: missionStructure}, Audit: auditStore, Availability: assets}
+	missions := &trippg.MissionStore{Pool: o.Pool, Authority: &orgpg.MissionAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: missionStructure}, Audit: auditStore, Availability: assets, Reservations: assets}
 	missionAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.MissionRecords{}, Structure: missionStructure, Now: time.Now}
 	if err := tripweb.RegisterMissions(router, tripapp.MissionService{Enabled: true, Repository: missions, NewID: jobs.NewUUIDv4}, cookies, gateway, missionAuthorization); err != nil {
 		return err

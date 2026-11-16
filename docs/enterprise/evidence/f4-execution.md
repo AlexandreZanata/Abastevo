@@ -1367,3 +1367,41 @@ routed / 54 not routed / 26 special) and the auditor walk 161 / 33 / 128;
 build, vet, gofmt, `sqlc diff`, cmd/api, apicontract and trip unit tests
 green; business-web typecheck, 59/59 tests, build and the 27-file artifact
 check pass on the merged tree.
+
+### EMP-TRIP-023 — reservation-to-trip integration and no-show release: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip023-reservation-trip-link.md), commit `bc118de6`, migration
+000249 (000238 unused; six functions redefined from their latest bodies with
+a builder that fails on any lost line — `org_asset_reservation_guard` 217,
+mission next/transition/guard/complete 231/232, `org_trip_held_source` 243
+gaining `ORPHAN_REFERENCE`). Coordinator decision: `trip.start` stays schema 1
+and may carry one envelope soft reference `{type:"mission", id}`, eligible only
+for an ACCEPTED mission whose assignee is the trip's author and driver, whose
+vehicle (if any) is the trip's asset and which has no linked trip; otherwise an
+admissible start is held `ORPHAN_REFERENCE` (existing held codes keep
+priority). Insert-only `org_trip_mission_links`; the linked start moves the
+mission ACCEPTED → IN_PROGRESS and a trigger completes it with the trip's
+finish or supervisor closure (a cancelled trip leaves it IN_PROGRESS); oracle
+`mission-v3.psv`. New `missions/{mission_id}/reservations/request` (fresh
+`trip.mission.manage`, revision) reserves the mission's vehicle for its
+window; a confirmed mission reservation admits that mission's start and is
+FULFILLED once by the linked start received before the no-show deadline and
+declared within `[start − 30 min, end)`; the FLEET-007 outcome job takes the
+organization root lock first so release and start resolve to one outcome in
+both orders (EDR-265/266). RED oracle 21 vectors, domain/application/cmd/api/
+contract, PostGIS 8/8 twice → GREEN 8/25 PostGIS, unit 232/1380; union 37
+packages 1313/9276 (one fixture-only fix, `TestTrip*` rerun 104/223).
+EMP-TRIP-010 was not started (context); its IDs (475..480 / 242..244 /
+307..310, migration 000250) stay reserved.
+
+Integration (`c7e407e6`): conflicts with TRIP-022 and CHECK-002 resolved — both
+mission routes kept (162 normal routes; auditor walk 162 / 33 / 129); the
+OpenAPI path blocks of `assignees/list` and `reservations/request` were
+interleaved by the merge and restored verbatim from their branches after the
+contract test caught a lost 400 response; the CHECK-002 integration test call
+of `StartDecisionDBTX` gained the new `mission` argument; fleet store fields and
+availability tests of both tasks kept. Build, vet (all tags), gofmt,
+`sqlc diff`, cmd/api, apicontract, trip, fleet and maintenance unit tests green;
+focused PostGIS race tests
+`Mission|Reservation|Checklist|TripIntake|TripClosure|Auditor|AuthorizationMatrix|FleetStore|Availability`
+with a disposable MinIO: 6 packages, 106 top-level / 4893 named, 0 failures.

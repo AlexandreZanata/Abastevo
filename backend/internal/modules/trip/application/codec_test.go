@@ -167,8 +167,10 @@ func TestParseRefusesMalformedAndKeepsUnsupportedForms(t *testing.T) {
 	}
 	for name, change := range map[string]func(e, p map[string]any){
 		"dependency": func(e, _ map[string]any) { e["depends_on"] = []any{id(21)} },
+		// EMP-TRIP-023 (B-BR-EMP-412) admits one mission reference; any
+		// other reference type stays a recognised but unsupported form.
 		"soft": func(e, _ map[string]any) {
-			e["soft_references"] = []any{map[string]any{"type": "mission", "id": id(22)}}
+			e["soft_references"] = []any{map[string]any{"type": "fueling", "id": id(22)}}
 		},
 	} {
 		t.Run("start-unsupported-"+name, func(t *testing.T) {

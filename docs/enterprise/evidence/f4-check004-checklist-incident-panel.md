@@ -258,6 +258,61 @@ digest-pinned Caddy image.
   names, labels and a four-byte synthetic JPEG only; the MinIO validation
   credentials live only in the log environment file (not committed).
 
+## Merged-tree validation
+
+The F4 head `03c803c4` (`c7e407e6`, EMP-TRIP-023 with migration 000249 and
+the mission reservation request route, plus its ledger-only commit) was merged
+into this branch after the task commit
+`7467fb2f` (merge commit "Merge codex/enterprise-f4 (TRIP-023) into
+EMP-CHECK-004"). The only textual conflict was the end of the product contract,
+resolved as a union (the EMP-TRIP-023 section, then this one). Both sides had
+changed the same count lines from 161 to 162, so git kept 162 silently; they now
+count both new routes: normal 163 (routed 30 / signed 1 / not routed 54),
+specials 26, AUTH-011 auditor walk 163 routes / 33 positive / 130 FORBIDDEN
+(the F4 head had 162 / 33 / 129); the authorization matrix is unchanged (300
+cells). The route inventory, router
+path list, OpenAPI and enterprise composition merged without conflict (both
+blocks present). The F4 head's `apicontract/trip_mission_test.go` was not
+gofmt-clean (one map key alignment from EMP-TRIP-023); it is reformatted here,
+whitespace only. TRIP-023 changes no business-web file and no field the panel
+parses (the availability missing-source enum is unchanged).
+
+On the merged tree:
+
+- Toolchain `gofmt -l ./internal ./cmd ./db` empty (after the reformat);
+  `go build ./...`, `go vet` (both tags), `sqlc vet` and `sqlc diff` clean;
+  staticcheck plain on maintenance, orgaccess, organization, trip, fleet,
+  enterprisesuite, apicontract, cmd/api and `db/queries/{maintenance,fleet}`,
+  and with `-tags=integration` on maintenance, orgaccess,
+  organization/adapters and enterprisesuite: no findings
+  (`check004-staticcheck-merged.log`).
+- OpenAPI vacuum: 0 errors, 1,130 warnings / 682 informs vs 1,129 / 682 at the
+  F4 head (`check004-vacuum-merged.log`, `check004-vacuum-head.log`).
+- Unit: `cmd/api`, maintenance and orgaccess/domain 110/110 top-level, 1,502
+  subtests (`check004-merged-unit.jsonl`).
+- Race/integration union `go test -json -race -tags=integration -count=1
+  -timeout=150m -p 2 ./internal/modules/organization/adapters
+  ./internal/modules/{maintenance,orgaccess,trip,fleet}/...
+  ./internal/platform/{enterprisesuite,apicontract}/... ./cmd/api/...` with
+  PostGIS and the throwaway MinIO (`check004-db-union-merged.jsonl`): 1,183
+  top-level / 9,592 subtests passed, 1 failed:
+  EMP-TRIP-023's `TestTripMissionReferenceOrphanAndUnsupportedForms` at its
+  last step ("expected a held review receipt ASSET_UNAVAILABLE"), which builds
+  a reservation that must start 10 s after the database clock and then waits
+  for it; under this run's load (`organization/adapters` 3,449 s,
+  `apicontract` 2,556 s, 74 min wall with other agents' suites) that window is
+  not reliable. It touches no code of this task and passed 3/3 when rerun
+  alone on the same tree (`check004-db-union-merged-rerun-{1,2,3}.jsonl`, 8
+  subtests each). Reported to the coordinator as a load-sensitive test; the
+  auditor walk (163 / 33 / 130) and the authorization matrix (300 cells)
+  passed.
+- Untagged `GOFLAGS=-p=2 go test -count=1 -timeout=45m ./...`
+  (`check004-untagged-merged.log`): exit 0, 230 packages ok, 86 without tests,
+  0 FAIL.
+- Web: typecheck, `npm test` 67/67, build and artifact check (29 files)
+  (`check004-web-merged.log`).
+- `check_plan.py` 0 problems; `git diff --check` clean.
+
 ## Retained
 
 - The asset block from open damages/incidents with `blocks_use` and a release

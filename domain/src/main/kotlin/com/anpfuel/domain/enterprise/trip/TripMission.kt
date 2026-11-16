@@ -5,8 +5,8 @@ import com.anpfuel.domain.enterprise.meter.MeterDomainException
 import com.anpfuel.domain.enterprise.meter.MeterPresence
 import java.time.Instant
 
-/** Closed mission failure vocabulary shared with the Go package through mission-v2 (EMP-TRIP-008/009). */
-enum class TripMissionFailure { INVALID, SCOPE, FORBIDDEN, CONFLICT, INVALID_TRANSITION, UNSUPPORTED_COMMAND }
+/** Closed mission failure vocabulary shared with the Go package through mission-v3 (EMP-TRIP-008/009/023). */
+enum class TripMissionFailure { INVALID, SCOPE, FORBIDDEN, CONFLICT, INVALID_TRANSITION }
 
 class TripMissionException(val failure: TripMissionFailure = TripMissionFailure.INVALID) :
     IllegalArgumentException("trip mission: ${failure.name.lowercase()}")
@@ -253,16 +253,25 @@ class TripMission private constructor(
 }
 
 /**
- * The EDR-228 transition table with the EDR-246 PLAN rows, first failure first: a terminal state; START, COMPLETE and
- * every IN_PROGRESS change (later owners); ACCEPT and DECLINE only from ASSIGNED; PLAN never from ACCEPTED, else to
- * PLANNED; ASSIGN and CANCEL from the five open states.
+ * The EDR-228 transition table with the EDR-246 PLAN rows and the EDR-265 trip rows, first failure first: a terminal
+ * state; from IN_PROGRESS only COMPLETE (the linked trip completed) and CANCEL; START only from ACCEPTED (the linked
+ * trip started) and COMPLETE only from IN_PROGRESS; ACCEPT and DECLINE only from ASSIGNED; PLAN never from ACCEPTED,
+ * else to PLANNED; ASSIGN and CANCEL from the five open states. Every refused pair is INVALID_TRANSITION.
  */
 object TripMissionLifecycle {
     fun transition(from: TripMissionState, command: TripMissionCommand): TripMissionState {
         if (from.terminal) throw mission(TripMissionFailure.INVALID_TRANSITION)
-        if (command == TripMissionCommand.START || command == TripMissionCommand.COMPLETE ||
-            from == TripMissionState.IN_PROGRESS) throw mission(TripMissionFailure.UNSUPPORTED_COMMAND)
+        if (from == TripMissionState.IN_PROGRESS) return when (command) {
+            TripMissionCommand.COMPLETE -> TripMissionState.COMPLETED
+            TripMissionCommand.CANCEL -> TripMissionState.CANCELLED
+            else -> throw mission(TripMissionFailure.INVALID_TRANSITION)
+        }
         return when (command) {
+            TripMissionCommand.START -> {
+                if (from != TripMissionState.ACCEPTED) throw mission(TripMissionFailure.INVALID_TRANSITION)
+                TripMissionState.IN_PROGRESS
+            }
+            TripMissionCommand.COMPLETE -> throw mission(TripMissionFailure.INVALID_TRANSITION)
             TripMissionCommand.PLAN -> {
                 if (from == TripMissionState.ACCEPTED) throw mission(TripMissionFailure.INVALID_TRANSITION)
                 TripMissionState.PLANNED

@@ -7797,6 +7797,105 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   or stale assignment is not offered, a conflict refreshes server state, an
   unconfirmed state is never shown as accepted and a `403` clears the board.
 
+## EMP-TRIP-023 — Reservation-to-trip integration and no-show release (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip023-reservation-trip-link.md).
+
+- **B-BR-EMP-412 — A trip start may name the mission it executes.** A
+  signed `trip.start` keeps operation schema 1 and its exact payload; it may
+  carry in its envelope `soft_references` exactly one reference
+  `{type: "mission", id}` (BR-OFFL-007). No reference keeps the earlier
+  behaviour; another reference type or more than one reference stays a
+  recognised but unsupported form (`RETRY`/`UNAVAILABLE`, nothing stored).
+  The reference is decided at receipt, under the organization root and
+  asset locks and after the existing final refusals (`MALFORMED`,
+  `FORBIDDEN`, `DEPENDENCY_PENDING`): it is eligible only when the mission
+  belongs to the organization, is `ACCEPTED`, its current assignee is the
+  start's author membership and driver employee, its current vehicle (when
+  it names one) is the start's asset, and no trip is linked to it yet. An
+  eligible reference admits the start inside a confirmed reservation of that
+  mission (BR-FLEET-031, as a reservation naming the starter does). The
+  existing held codes keep their order (`PERMISSION_CHANGED`,
+  `ASSET_UNAVAILABLE`, `ASSET_BUSY`); a start that would otherwise be
+  accepted with a missing, foreign or ineligible mission is held
+  `ORPHAN_REFERENCE` (`ACCEPTED_FOR_REVIEW`, no trip, no link). A held start
+  never links: when the EMP-TRIP-007 resolution accepts it, the trip it
+  declared is created without the mission (the link removed) and consumes no
+  reservation. An accepted start with an eligible mission stores, in the same
+  transaction as the trip, one insert-only link (one trip, one mission, the
+  start operation); the database refuses a link whose mission is not
+  `ACCEPTED` for the trip's author, driver and asset, a second link of the
+  trip or of the mission, and any change or deletion of a link. Replays
+  return the stored acknowledgement byte for byte.
+- **B-BR-EMP-413 — The mission follows its linked trip.** The shared mission
+  table (Go and Kotlin, `trip/mission-v3.psv` superseding v2) gains
+  `START` (`ACCEPTED` → `IN_PROGRESS`) and `COMPLETE` (`IN_PROGRESS` →
+  `COMPLETED`); `CANCEL` is also allowed from `IN_PROGRESS`; every other
+  command on an `IN_PROGRESS` mission, and `START` or `COMPLETE` from any
+  other open state, is `INVALID_TRANSITION` (the mission table no longer
+  answers `UNSUPPORTED_COMMAND`). No company or device command produces
+  `START` or `COMPLETE`: the linked start appends the mission's `START`
+  transition (source `TRIP`: the trip, its start operation, the author
+  membership and account) and moves the mission to `IN_PROGRESS` at the next
+  revision in the start's transaction; the transaction that completes the
+  linked trip — the driver's finish or a supervisor closure (EMP-TRIP-014) —
+  appends `COMPLETE` (source `TRIP`: the finish or closure operation and its
+  member) and moves the mission to `COMPLETED`. A cancelled trip leaves the
+  mission `IN_PROGRESS`; its planner may cancel it with a reason, and a
+  later completion of a trip whose mission was cancelled changes nothing.
+  A planner command other than `CANCEL` on an `IN_PROGRESS` mission is
+  `CONFLICT`; the vehicle change stays refused.
+- **B-BR-EMP-414 — A mission's reservation is consumed once by its linked
+  start or released once.** A planner holding fresh `trip.mission.manage`
+  over the mission's structure requests the reservation of the mission's
+  vehicle: `POST /v1/orgs/{org_id}/missions/{mission_id}/reservations/request`
+  with `schema_version` 1, `operation_id`, the mission's `revision` and a
+  `purpose` (nonblank, control-free, at most 280 characters). The mission
+  must be `PLANNED`, `ASSIGNED`, `ACCEPTED` or `DECLINED` and name a
+  vehicle (else `VALIDATION_FAILED`); `DRAFT`, `IN_PROGRESS`, terminal or a
+  stale revision is `CONFLICT`. One `REQUESTED` reservation of that vehicle
+  for the mission's planned window is created, linked to the mission, with
+  no reserved employee and the 60-minute no-show tolerance, after settling
+  the vehicle's due outcomes; a window that has started is
+  `VALIDATION_FAILED`, an overlap with a confirmed window or a block is
+  `RESERVATION_CONFLICT` showing only that window. The mission gains a
+  `RESERVE` revision keeping its state, assignee and answer; one
+  `trip.mission.reservation_requested` audit event, the mission command and
+  the fleet `REQUEST` receipts are written and the outcome job is queued.
+  Confirmation and cancellation stay under `fleet.reservation.manage`. In
+  the linked start's transaction, the mission's reservation on the trip's
+  asset that is stored `CONFIRMED`, not yet due at the receipt instant
+  (before its no-show deadline) and whose window extended by the 30-minute
+  early tolerance (`[start − 30 min, end)`) contains the declared start
+  becomes `FULFILLED` with that trip (the earliest such window); it is an
+  effect of the start operation, covered by that operation's receipt and
+  audit event, with no event of its own. The FLEET-007 outcome job,
+  which now takes the organization root lock before the reservation, records
+  `NO_SHOW` once at the deadline; a `FULFILLED` reservation is never missed
+  and a `NO_SHOW`, `EXPIRED` or `CANCELLED` one is never consumed (the start
+  is decided without it). The database refuses `FULFILLED` from any state
+  but `CONFIRMED`, at or after the deadline, without the linked trip of the
+  reservation's mission on its asset with a declared start inside the
+  extended window, or for a second trip.
+- **BUC-EMP-209 — Execute an accepted mission offline.** A planner creates
+  a mission for the synthetic vehicle tomorrow 08:00–12:00, assigns the
+  driver, who accepts on the phone, and reserves the vehicle; a fleet
+  manager confirms. At 07:50 the driver, offline, starts the trip naming
+  the mission; on reconnect the start is accepted, the mission is
+  `IN_PROGRESS` and the reservation `FULFILLED` with the trip; another
+  driver's start on the vehicle at 09:00 is held `ASSET_BUSY`. The finish at
+  184 610 000 m completes the trip and the mission. A start naming a
+  cancelled mission, another driver's mission or a mission of another
+  organization is held `ORPHAN_REFERENCE`; nothing is linked.
+- **BUC-EMP-210 — Release a no-show.** The driver never starts: at 09:00
+  (start plus the 60-minute tolerance) the outcome job records `NO_SHOW`
+  once and the vehicle is free for others from then on; running the job
+  again changes nothing. A start the driver declared at 08:30 and delivered
+  at 09:05 is decided normally and is not linked to the released
+  reservation, whose `NO_SHOW` stays; a start delivered at 08:59 while the
+  job waits behind it consumes the reservation, and the job then finds it
+  `FULFILLED` and changes nothing.
+
 ## EMP-CHECK-004 — Panel: checklists, damages and incidents (2026-11-16)
 
 [Evidence](../enterprise/evidence/f4-check004-checklist-incident-panel.md).

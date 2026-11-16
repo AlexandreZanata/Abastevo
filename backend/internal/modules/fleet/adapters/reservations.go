@@ -21,6 +21,8 @@ import (
 var _ app.ReservationRepository = (*AssetStore)(nil)
 var _ app.ReservationOutcomes = (*AssetStore)(nil)
 var _ app.StartAvailabilityPort = (*AssetStore)(nil)
+var _ app.MissionReservationPort = (*AssetStore)(nil)
+var _ app.MissionReservationFulfilment = (*AssetStore)(nil)
 
 // The fleet.md §9 reservation and block facts are the exact audit actions;
 // expired and missed are the time-driven outcomes (EDR-193).
@@ -512,6 +514,12 @@ func (s *AssetStore) SettleReservation(ctx context.Context, scope kernel.OrgScop
 	}
 	var state fleet.ReservationState
 	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
+		// EMP-TRIP-023: the organization root lock first, as every command
+		// and the trip start take it before a reservation row, so a release
+		// and a qualifying start serialize instead of deadlocking.
+		if _, err := q.New(tx).AssetRootLock(ctx, scope.OrgID().String()); err != nil {
+			return err
+		}
 		now, err := txNow(ctx, q.New(tx))
 		if err != nil {
 			return err
@@ -739,12 +747,22 @@ func (s *AssetStore) availabilityFacts(ctx context.Context, db syncapp.DBTX, sco
 	if err != nil {
 		return fleet.AvailabilityFacts{}, nil, err
 	}
+	missions := map[string]string{}
+	if !s.PreMissionLinkImage {
+		rows, err := queries.AvailabilityReservationMissions(ctx, q.AvailabilityReservationMissionsParams{OrgID: org, AssetID: asset, At: timestamp(at)})
+		if err != nil {
+			return fleet.AvailabilityFacts{}, nil, err
+		}
+		for _, row := range rows {
+			missions[row.ID] = row.MissionID
+		}
+	}
 	for _, row := range reservations {
 		r, err := reservationFacts(row.State, row.StartsAt, row.EndsAt, row.NoShowTolerance, row.Confirmed, row.EndedAt)
 		if err != nil {
 			return fleet.AvailabilityFacts{}, nil, err
 		}
-		facts.Reservations = append(facts.Reservations, fleet.ReservationFact{ID: row.ID, EmployeeID: row.EmployeeID, Reservation: r})
+		facts.Reservations = append(facts.Reservations, fleet.ReservationFact{ID: row.ID, EmployeeID: row.EmployeeID, MissionID: missions[row.ID], Reservation: r})
 	}
 	slices.Sort(missing)
 	return facts, missing, nil
@@ -776,9 +794,10 @@ func (s *AssetStore) ReadAvailability(ctx context.Context, scope kernel.OrgScope
 // StartDecisionDBTX answers the intake check of a start (B-BR-EMP-300) on
 // the borrowed intake transaction: the asset's current lifecycle, the facts
 // covering the declared instant and whether the membership's employee record
-// is named by an ACTIVE assignment then. It takes no locks.
-func (s *AssetStore) StartDecisionDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset, member string, at time.Time) (fleet.StartDecision, error) {
-	if s == nil || !validID(asset) {
+// is named by an ACTIVE assignment then. It takes no locks. A mission names
+// the mission the start executes, eligible at receipt (EMP-TRIP-023).
+func (s *AssetStore) StartDecisionDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset, member, mission string, at time.Time) (fleet.StartDecision, error) {
+	if s == nil || !validID(asset) || mission != "" && !validID(mission) {
 		return fleet.StartDecision{}, app.ErrUnavailable
 	}
 	queries, instant, err := portQueries(ctx, db, scope, member, at)
@@ -798,7 +817,7 @@ func (s *AssetStore) StartDecisionDBTX(ctx context.Context, db syncapp.DBTX, sco
 	if err != nil {
 		return fleet.StartDecision{}, reservationError(ctx, err)
 	}
-	starter := fleet.Starter{}
+	starter := fleet.Starter{MissionID: mission}
 	employee, err := queries.MemberEmployee(ctx, q.MemberEmployeeParams{OrgID: scope.OrgID().String(), MembershipID: member, At: instant})
 	switch {
 	case err == nil:
@@ -814,4 +833,97 @@ func (s *AssetStore) StartDecisionDBTX(ctx context.Context, db syncapp.DBTX, sco
 		return fleet.StartDecision{}, app.ErrUnavailable
 	}
 	return decision, nil
+}
+
+// RequestMissionReservationTx creates the REQUESTED reservation of a
+// mission's vehicle for its planned window inside the mission command's
+// transaction, after its RESERVE revision (EMP-TRIP-023, B-BR-EMP-414): due
+// outcomes of the vehicle are settled first, a confirmed window or a block
+// overlapping it is a ReservationConflict with only that window, the outcome
+// job is queued and the fleet REQUEST receipt is written under the mission
+// command's audit event.
+func (s *AssetStore) RequestMissionReservationTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, in app.MissionReservation) error {
+	if s == nil || tx == nil || s.Audit == nil || s.NewID == nil || scope.Validate() != nil {
+		return app.ErrUnavailable
+	}
+	for _, id := range []string{in.ID, in.OperationID, in.ActorAccountID, in.AssetID, in.MissionID} {
+		if !validID(id) {
+			return fleet.ErrInvalid
+		}
+	}
+	if len(in.Digest) != 64 {
+		return fleet.ErrInvalid
+	}
+	queries := q.New(tx)
+	org := scope.OrgID().String()
+	now, err := txNow(ctx, queries)
+	if err != nil {
+		return err
+	}
+	window, err := fleet.NewReservationWindow(in.Window.From, in.Window.To)
+	if err != nil {
+		return fleet.ErrInvalid
+	}
+	if err := fleet.ValidNewReservation(window, fleet.DefaultNoShowTolerance, now); err != nil {
+		return err
+	}
+	if err := s.settleDueTx(ctx, tx, scope, in.AssetID, now); err != nil {
+		return err
+	}
+	if err := windowConflict(ctx, queries, org, in.AssetID, in.ID, window); err != nil {
+		return err
+	}
+	if err := queries.InsertMissionReservation(ctx, q.InsertMissionReservationParams{OrgID: org, ID: in.ID, AssetID: in.AssetID, Purpose: in.Purpose, StartsAt: timestamp(window.From),
+		EndsAt: timestamp(window.To), NoShowTolerance: int32(fleet.DefaultNoShowTolerance / time.Second), OperationID: in.OperationID, RequestedBy: in.ActorAccountID, MissionID: in.MissionID}); err != nil {
+		return err
+	}
+	if err := enqueueOutcome(ctx, tx, scope, in.ID, fleet.Reservation{State: fleet.ReservationRequested, Window: window, Tolerance: fleet.DefaultNoShowTolerance}); err != nil {
+		return err
+	}
+	return queries.InsertReservationCommand(ctx, q.InsertReservationCommandParams{OrgID: org, OperationID: in.OperationID, ActorID: in.ActorAccountID, AssetID: in.AssetID,
+		Kind: "REQUEST", RequestHash: in.Digest, TargetID: in.ID, ResultState: string(fleet.ReservationRequested)})
+}
+
+// MissionReservationOfTx answers the mission reservation an earlier request
+// operation created (a replayed mission command).
+func (s *AssetStore) MissionReservationOfTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, operation string) (string, error) {
+	if s == nil || tx == nil || scope.Validate() != nil || !validID(operation) {
+		return "", app.ErrUnavailable
+	}
+	id, err := q.New(tx).MissionReservationByOperation(ctx, q.MissionReservationByOperationParams{OrgID: scope.OrgID().String(), OperationID: operation})
+	if err != nil {
+		return "", storeError(ctx, err)
+	}
+	return id, nil
+}
+
+// FulfilMissionReservationDBTX consumes, on the start intake's borrowed
+// transaction (which holds the organization root lock), the mission's
+// reservation the linked start qualifies for (B-BR-EMP-414): CONFIRMED, on
+// the trip's asset, not yet due at the transaction instant, its window
+// extended by the early tolerance containing the declared start; "" when
+// none. A NO_SHOW, EXPIRED or CANCELLED reservation is never consumed.
+func (s *AssetStore) FulfilMissionReservationDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, mission, trip, asset string, declared time.Time) (string, error) {
+	db = syncapp.Borrow(db)
+	if s == nil || db == nil || database.ValidateOrgDBTX(ctx, db, scope) != nil || !validID(mission) || !validID(trip) || !validID(asset) || declared.IsZero() {
+		return "", app.ErrUnavailable
+	}
+	queries := q.New(db)
+	org := scope.OrgID().String()
+	row, err := queries.FulfillableMissionReservation(ctx, q.FulfillableMissionReservationParams{OrgID: org, MissionID: mission, AssetID: asset,
+		EarlySeconds: int32(app.EarlyStartTolerance / time.Second), Declared: timestamp(declared.Truncate(time.Microsecond))})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", nil
+	}
+	if err != nil {
+		return "", storeError(ctx, err)
+	}
+	n, err := queries.FulfilReservationRow(ctx, q.FulfilReservationRowParams{TripID: trip, OrgID: org, ID: row.ID, Revision: row.Revision})
+	if err != nil {
+		return "", storeError(ctx, err)
+	}
+	if n != 1 {
+		return "", app.ErrUnavailable
+	}
+	return row.ID, nil
 }

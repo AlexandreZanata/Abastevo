@@ -86,8 +86,11 @@ type ChecklistBlockFact struct {
 // ReservationFact is one stored reservation (row 5). EmployeeID is the
 // reserved employee record, empty when the reservation names nobody.
 type ReservationFact struct {
-	ID          string
-	EmployeeID  string
+	ID         string
+	EmployeeID string
+	// MissionID is the mission the reservation holds the asset for
+	// (EMP-TRIP-023); empty for an asset or employee reservation.
+	MissionID   string
 	Reservation Reservation
 }
 
@@ -176,7 +179,7 @@ func Assess(f AvailabilityFacts, at, now time.Time) (Assessment, error) {
 		}
 	}
 	for _, fact := range f.Reservations {
-		if !validFactID(fact.ID) || fact.EmployeeID != "" && !validFactID(fact.EmployeeID) || fact.Reservation.Validate() != nil {
+		if !validFactID(fact.ID) || fact.EmployeeID != "" && !validFactID(fact.EmployeeID) || fact.MissionID != "" && !validFactID(fact.MissionID) || fact.Reservation.Validate() != nil {
 			return Assessment{}, ErrInvalid
 		}
 		if fact.Reservation.HoldsAt(at, now) {
@@ -203,11 +206,14 @@ const (
 	AssetUnavailable HoldCode = "ASSET_UNAVAILABLE"
 )
 
-// Starter is the author of a start: the employee record and whether an
-// ACTIVE assignment of the asset names it at the declared instant.
+// Starter is the author of a start: the employee record, whether an ACTIVE
+// assignment of the asset names it at the declared instant and the mission
+// the start executes when its reference was eligible at receipt
+// (EMP-TRIP-023; empty otherwise).
 type Starter struct {
 	EmployeeID string
 	Assigned   bool
+	MissionID  string
 }
 
 // StartDecision admits a start or holds it for review with a precise code.
@@ -222,8 +228,10 @@ type StartDecision struct {
 // not assigned → ASSET_UNAVAILABLE; another trip holds it → ASSET_BUSY. A
 // reservation that names the starter admits the start; otherwise an ACTIVE
 // assignment is required. A trip already in progress is never re-decided.
+// A reservation of the mission the start executes admits it like one naming
+// the starter (BR-FLEET-031, EMP-TRIP-023).
 func DecideStart(f AvailabilityFacts, starter Starter, at, now time.Time) (StartDecision, error) {
-	if starter.EmployeeID != "" && !validFactID(starter.EmployeeID) {
+	if starter.EmployeeID != "" && !validFactID(starter.EmployeeID) || starter.MissionID != "" && !validFactID(starter.MissionID) {
 		return StartDecision{}, ErrInvalid
 	}
 	assessment, err := Assess(f, at, now)
@@ -240,7 +248,8 @@ func DecideStart(f AvailabilityFacts, starter Starter, at, now time.Time) (Start
 		return out, nil
 	case Reserved:
 		for _, fact := range f.Reservations {
-			if fact.Reservation.HoldsAt(at, now) && (starter.EmployeeID == "" || fact.EmployeeID != starter.EmployeeID) {
+			mission := starter.MissionID != "" && fact.MissionID == starter.MissionID
+			if fact.Reservation.HoldsAt(at, now) && !mission && (starter.EmployeeID == "" || fact.EmployeeID != starter.EmployeeID) {
 				out.Code = AssetUnavailable
 				return out, nil
 			}
