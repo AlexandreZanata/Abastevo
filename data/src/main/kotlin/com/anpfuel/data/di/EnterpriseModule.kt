@@ -400,6 +400,8 @@ object EnterpriseModule {
         source, store::discover, { account, partition -> service.dispatch(account, partition) },
         { account, partition -> reviews.poll(account, partition) },
         if (BuildConfig.ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED) { account, partition -> attachments.deliver(account, partition) } else null,
+        // EMP-OFFL-011: on-contact cleanup of the exact revoked partition (EDR-348/349).
+        cleanup = { account, partition, hinted -> store.revocationCleanup(account, partition, hinted) },
     )
 
     @Provides

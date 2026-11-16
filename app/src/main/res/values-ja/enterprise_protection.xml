@@ -12,4 +12,6 @@
     <string name="enterprise_protection_recovery_title">以前のローカル作業を破棄しますか？</string>
     <string name="enterprise_protection_recovery_copy">この企業のローカルデータと未送信の操作が削除されます。空のローカルデータで開始する前に、サーバーがアクセスを確認します。</string>
     <string name="enterprise_protection_recovery_confirm">破棄してアクセスを確認</string>
+    <!-- EMP-OFFL-011: an access-ended lock; locked and still sending, nothing removed yet (B-BR-EMP-539). -->
+    <string name="enterprise_protection_access_ended">この端末でのこの会社へのアクセスは終了しました。それ以前に保存された記録は、会社の確認のために引き続き送信されます。この会社のデータはこの端末でロックされ、送信後に削除されます。まだ何も削除されていません。</string>
 </resources>

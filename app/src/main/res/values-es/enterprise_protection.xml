@@ -12,4 +12,6 @@
     <string name="enterprise_protection_recovery_title">¿Descartar el trabajo local anterior?</string>
     <string name="enterprise_protection_recovery_copy">Esta acción elimina los datos locales de esta empresa, incluidas las operaciones aún no enviadas. El servidor verificará el acceso antes de empezar con datos locales vacíos.</string>
     <string name="enterprise_protection_recovery_confirm">Descartar y verificar acceso</string>
+    <!-- EMP-OFFL-011: an access-ended lock; locked and still sending, nothing removed yet (B-BR-EMP-539). -->
+    <string name="enterprise_protection_access_ended">El acceso a esta empresa en este dispositivo terminó. Los registros guardados antes se siguen enviando para revisión de la empresa. Los datos de esta empresa quedan bloqueados en este dispositivo y se eliminarán después del envío; todavía no se eliminó nada.</string>
 </resources>

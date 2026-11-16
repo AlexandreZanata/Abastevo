@@ -89,7 +89,7 @@ class AndroidEnterpriseVaultKeys : EnterpriseVaultKeys {
     }
 
     companion object {
-        private val aliasPattern = Regex("abastevo_enterprise_v1_[0-9a-f]{64}-[0-9a-f]{64}|abastevo_enterprise_v2_[0-9a-f]{64}-[0-9a-f]{64}_[0-9]{19}_[dmh]|abastevo_enterprise_v2_(denied|lock)_[0-9a-f]{64}(-[0-9a-f]{64})?")
+        private val aliasPattern = Regex("abastevo_enterprise_v1_[0-9a-f]{64}-[0-9a-f]{64}|abastevo_enterprise_v2_[0-9a-f]{64}-[0-9a-f]{64}_[0-9]{19}_[dmh]|abastevo_enterprise_v2_(denied|lock)_[0-9a-f]{64}(-[0-9a-f]{64})?|abastevo_enterprise_v2_ended_[0-9a-f]{64}-[0-9a-f]{64}")
     }
 }
 

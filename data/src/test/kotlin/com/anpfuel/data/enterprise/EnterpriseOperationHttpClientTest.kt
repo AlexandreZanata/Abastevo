@@ -27,7 +27,7 @@ import org.junit.jupiter.api.Test
 class EnterpriseOperationHttpClientTest {
     init {
         val tests = EnterpriseOperationHttpClientTest::class.java.declaredMethods.filter { it.isAnnotationPresent(Test::class.java) }
-        check(tests.size == 10 && tests.all { it.returnType == Void.TYPE }) { "Queue HTTP tests must all be discoverable void methods" }
+        check(tests.size == 11 && tests.all { it.returnType == Void.TYPE }) { "Queue HTTP tests must all be discoverable void methods" }
     }
 
     private val account = "7b0e2a54-0000-4000-8000-000000000001"
@@ -200,6 +200,24 @@ class EnterpriseOperationHttpClientTest {
             assertThrows(EnterpriseQueueDeliveryFailure::class.java) { runBlocking { fixture.client.deliver(fixture.attempt(), listOf(op)) } }
             assertEquals(1, fixture.requests.size)
         }
+    }
+
+    /** EMP-OFFL-011 (EDR-348): a whole-response 403/404 only asks for one exact contact; nothing else does. */
+    @Test fun `whole response refusals are revocation hints never acknowledgements or verdicts`(): Unit = runBlocking {
+        val op = operation()
+        for (status in listOf(401, 403, 404, 409, 429, 503)) {
+            val fixture = Fixture { response(it, "{\"error\":{\"code\":\"DEVICE_REVOKED\"}}", status) }
+            val failure = assertThrows(EnterpriseQueueDeliveryFailure::class.java) { runBlocking { fixture.client.deliver(fixture.attempt(), listOf(op)) } }
+            assertEquals(status == 403 || status == 404, failure.revocationHint, "status $status")
+        }
+        // An unusable refusal (cookies, cacheable or non-JSON) is a plain failure, not even a hint.
+        for (headers in listOf(mapOf("Set-Cookie" to "synthetic=unexpected"), mapOf("Cache-Control" to "public"))) {
+            val fixture = Fixture { response(it, "{}", 403, headers) }
+            val failure = assertThrows(EnterpriseQueueDeliveryFailure::class.java) { runBlocking { fixture.client.deliver(fixture.attempt(), listOf(op)) } }
+            assertFalse(failure.revocationHint)
+        }
+        val delivered = Fixture { response(it, answer(acknowledgement(op))) }
+        assertEquals(1, delivered.client.deliver(delivered.attempt(), listOf(op)).acknowledgements.size)
     }
 
     @Test fun `retry after is honored up to its documented bound without overflow and invalid values are ignored`(): Unit = runBlocking {

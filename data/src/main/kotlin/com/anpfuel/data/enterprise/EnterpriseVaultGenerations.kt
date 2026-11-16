@@ -20,6 +20,8 @@ internal object EnterpriseVaultGenerationNames {
     fun head(token: String, generation: Long) = prefix(token) + digits(generation) + "_h"
     fun denied(token: String) = PREFIX + "denied_" + token
     fun retained(token: String) = PREFIX + "lock_" + token
+    /** EMP-OFFL-011 (EDR-349): the durable ACCESS_ENDED intake-only lock of one partition. */
+    fun ended(token: String) = PREFIX + "ended_" + token
     private fun digits(value: Long): String { require(value > 0); return value.toString().padStart(19, '0') }
     private val generation = Regex("([0-9]{19})_[dmh]")
     private val token = Regex("[0-9a-f]{64}-[0-9a-f]{64}")
@@ -29,7 +31,7 @@ internal object EnterpriseVaultGenerationNames {
         }
     fun token(alias: String): String? {
         if (!alias.startsWith(PREFIX)) return null
-        val rest = alias.removePrefix(PREFIX).removePrefix("denied_").removePrefix("lock_")
+        val rest = alias.removePrefix(PREFIX).removePrefix("denied_").removePrefix("lock_").removePrefix("ended_")
         return rest.take(129).takeIf { token.matches(it) }
     }
 }

@@ -3,6 +3,13 @@ package com.anpfuel.data.enterprise
 import com.anpfuel.application.enterprise.*
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueAccountLease
 import com.anpfuel.application.enterprise.queue.EnterpriseQueueAttempt
+import com.anpfuel.application.enterprise.queue.EnterpriseRevocationOutcome
+import com.anpfuel.data.enterprise.protectedqueue.ProtectedQueueCodec
+import com.anpfuel.domain.enterprise.sync.EnterpriseRevocationClass
+import com.anpfuel.domain.enterprise.sync.RevocationCleanup
+import com.anpfuel.domain.enterprise.sync.RevocationCleanupAction
+import com.anpfuel.domain.enterprise.sync.RevocationCleanupState
+import com.anpfuel.domain.enterprise.sync.RevocationQueueFacts
 import com.anpfuel.domain.enterprise.*
 import java.io.IOException
 import javax.crypto.AEADBadTagException
@@ -123,11 +130,14 @@ class ProtectedEnterprisePersistence(
         return QueueCandidate(descriptor)
     }
 
-    internal suspend fun <T> queueAccess(attempt: EnterpriseQueueAttempt,
+    /** EMP-OFFL-011 (EDR-349): an ACCESS_ENDED lock leaves only the delivery of sealed unsent work. */
+    internal enum class QueueUse { DELIVERY, FEATURE }
+
+    internal suspend fun <T> queueAccess(attempt: EnterpriseQueueAttempt, use: QueueUse = QueueUse.FEATURE,
         work: (VaultSnapshot) -> VaultQueueChange<T>): T {
         attempt.assertCurrent()
         val result = access(attempt.partition, true, commitWhen = { it.changed },
-            afterCommit = { checkedQueueAttempt(attempt, it) }) { snapshot ->
+            afterCommit = { checkedQueueAttempt(attempt, it) }, delivery = use == QueueUse.DELIVERY) { snapshot ->
             checkedQueueAttempt(attempt, snapshot)
             val change = work(snapshot)
             checkedQueueAttempt(attempt, snapshot)
@@ -226,7 +236,10 @@ class ProtectedEnterprisePersistence(
                     when (reply) {
                         is EnterpriseContactReply.Erase -> { erasure.eraseLocked(token); throw EnterpriseVaultUnrecoverable() }
                         is EnterpriseContactReply.Lock -> {
-                            erasure.requireContactLocked(token); throw EnterpriseLocalDenied()
+                            // EMP-OFFL-011 (EDR-349): locked for every use but intake-only delivery; nothing is removed
+                            // here. This selection has already withdrawn its context; every access rechecks the lock.
+                            if (prior != null) erasure.endAccessLocked(token)
+                            throw EnterpriseAccessEndedLocked()
                         }
                         is EnterpriseContactReply.Active -> {
                             val grant = reply.grant
@@ -253,6 +266,8 @@ class ProtectedEnterprisePersistence(
                             if (checkedOwner(target, binding, contact) != before.first) throw EnterpriseLocalDenied()
                             if (fresh) erasure.permitFreshLocked(token)
                             keys.delete(EnterpriseVaultGenerationNames.retained(token))
+                            // An exact ACTIVE proof for the same enrollment keeps EMP-PRIV-003's reopening (EDR-349).
+                            keys.delete(EnterpriseVaultGenerationNames.ended(token))
                             fence.commitHandoff(contact, binding.epoch)
                         }
                     }
@@ -275,7 +290,8 @@ class ProtectedEnterprisePersistence(
     }
 
     private suspend fun <T> access(p: EnterprisePartition, write: Boolean,
-        commitWhen: (T) -> Boolean = { write }, afterCommit: (VaultSnapshot) -> Unit = { }, work: (VaultSnapshot) -> T): T {
+        commitWhen: (T) -> Boolean = { write }, afterCommit: (VaultSnapshot) -> Unit = { }, delivery: Boolean = false,
+        work: (VaultSnapshot) -> T): T {
         val epoch = fence.epoch
         return guarded {
             fence.access {
@@ -292,6 +308,7 @@ class ProtectedEnterprisePersistence(
                         EnterpriseLeaseDecision.ALLOW -> Unit
                     }
                     if (keys.existing(EnterpriseVaultGenerationNames.retained(token)) != null) throw EnterpriseLocalDenied()
+                    if (!delivery && keys.existing(EnterpriseVaultGenerationNames.ended(token)) != null) throw EnterpriseAccessEndedLocked()
                     val s = generations.load(p) ?: throw EnterpriseLocalDenied()
                     if (s.bound == null) throw EnterpriseVaultUnrecoverable()
                     val result = work(s)
@@ -354,6 +371,106 @@ class ProtectedEnterprisePersistence(
             s.entries[(if (cache) "CACHE:" else "ATTACHMENT:") + id]?.bytes?.copyOf()
         }
     }
+
+    /**
+     * EMP-OFFL-011 (EDR-348/349): after one partition's delivery. A hint asks the exact signed contact once and only
+     * its ERASE or LOCK verdict changes custody; a locked partition is erased in the same vault lock once its sealed
+     * queue has nothing unsent or the server closed its intake window.
+     */
+    suspend fun revocationCleanup(account: EnterpriseQueueAccountLease, partition: EnterprisePartition,
+        hinted: Boolean): EnterpriseRevocationOutcome {
+        val token = EnterpriseVaultCodec.token(partition)
+        val tag = EnterpriseVaultCodec.accountTag(partition.ownerAccount, partition.origin)
+        val probe = guarded {
+            fence.access {
+                checkedQueueAccount(account, partition)
+                files.locked(tag) {
+                    checkedQueueAccount(account, partition)
+                    when {
+                        erasure.deniedLocked(token) -> RevocationProbe(EnterpriseRevocationOutcome.NONE)
+                        keys.existing(EnterpriseVaultGenerationNames.ended(token)) != null ->
+                            RevocationProbe(settleEndedLocked(partition, token, account.identity.family))
+                        !hinted -> RevocationProbe(EnterpriseRevocationOutcome.NONE)
+                        else -> RevocationProbe(descriptor = generations.descriptor(token)?.takeIf {
+                            it.partition == partition && it.lease.time.sessionFamily == account.identity.family
+                        })
+                    }
+                }
+            }
+        }
+        probe.settled?.let { return it }
+        val observed = probe.descriptor ?: return EnterpriseRevocationOutcome.NONE
+        val enrollment = observed.enrollment()
+        val binding = EnterpriseAccessBinding(account.identity.account, account.identity.origin, account.identity.family, account.epoch)
+        // Network never holds a vault or fence lock; a refusal, an outage or a late answer is no verdict (B-BR-EMP-536).
+        val reply = try { authority.confirm(EnterpriseContactRequest(binding, enrollment.target, enrollment)) }
+        catch (cancelled: CancellationException) { throw cancelled }
+        catch (_: Exception) { return EnterpriseRevocationOutcome.NONE }
+        return guarded {
+            fence.access {
+                checkedVerdictOwner(account, partition)
+                files.locked(tag) {
+                    checkedVerdictOwner(account, partition)
+                    applyVerdictLocked(partition, token, observed, reply)
+                }
+            }
+        }
+    }
+
+    private class RevocationProbe(val settled: EnterpriseRevocationOutcome? = null, val descriptor: VaultMaintenance? = null) {
+        override fun toString() = "RevocationProbe(redacted)"
+    }
+
+    /** The contact binds the verdict to this exact family; a same-family token refresh during it keeps the owner. */
+    private fun checkedVerdictOwner(account: EnterpriseQueueAccountLease, partition: EnterprisePartition) {
+        val current = try { identity() } catch (_: Exception) { null }
+        if (current != account.identity || fence.epoch != account.epoch || fence.backgroundEpoch != account.background ||
+            !account.identity.owns(partition)) throw EnterpriseLocalDenied()
+    }
+
+    /** Only an exact ERASE or LOCK for the observed enrollment changes custody, and only of this partition. */
+    private fun applyVerdictLocked(p: EnterprisePartition, token: String, observed: VaultMaintenance,
+        reply: EnterpriseContactReply): EnterpriseRevocationOutcome {
+        if (erasure.deniedLocked(token) || generations.descriptor(token) != observed) return EnterpriseRevocationOutcome.NONE
+        val expected = observed.enrollment()
+        val (bound, family) = when (reply) {
+            is EnterpriseContactReply.Active -> return EnterpriseRevocationOutcome.NONE
+            is EnterpriseContactReply.Erase -> reply.enrollment to reply.family
+            is EnterpriseContactReply.Lock -> reply.enrollment to reply.family
+        }
+        if (bound.target != expected.target || bound.enrollmentId != expected.enrollmentId || bound.revision < expected.revision ||
+            family != observed.lease.time.sessionFamily) return EnterpriseRevocationOutcome.NONE
+        if (reply is EnterpriseContactReply.Erase) return cleanupLocked(EnterpriseRevocationClass.LOST_OR_COMPROMISED, null, token)
+        val created = erasure.endAccessLocked(token)
+        val settled = settleEndedLocked(p, token, family)
+        // A new lock withdraws live contexts once (EDR-122): this invocation then resumes with a fresh lease.
+        if (created) fence.lock()
+        return settled
+    }
+
+    /** Under the account lock: an ended partition is erased once nothing is unsent or its window closed (EDR-349). */
+    private fun settleEndedLocked(p: EnterprisePartition, token: String, family: String): EnterpriseRevocationOutcome {
+        val descriptor = generations.descriptor(token) ?: return EnterpriseRevocationOutcome.NONE
+        if (descriptor.partition != p || descriptor.lease.time.sessionFamily != family) throw EnterpriseLocalDenied()
+        when (EnterpriseOfflineProtection.evaluate(descriptor.lease.time, clock())) {
+            EnterpriseLeaseDecision.ERASE -> return cleanupLocked(EnterpriseRevocationClass.OFFLINE_EXPIRED, null, token)
+            // Retained (EDR-350): a reboot or clock rollback still waits for a reconfirmation; no claim meanwhile.
+            EnterpriseLeaseDecision.RECONFIRM -> { erasure.requireContactLocked(token); return EnterpriseRevocationOutcome.NONE }
+            EnterpriseLeaseDecision.ALLOW -> Unit
+        }
+        if (keys.existing(EnterpriseVaultGenerationNames.retained(token)) != null) return EnterpriseRevocationOutcome.NONE
+        val snapshot = generations.load(p) ?: return EnterpriseRevocationOutcome.NONE
+        val facts = RevocationCleanup.facts(snapshot.entries.values.filter { it.kind == VaultKind.QUEUE }
+            .map { ProtectedQueueCodec.decode(it.bytes, snapshot, it.id) })
+        return cleanupLocked(EnterpriseRevocationClass.ACCESS_ENDED, facts, token)
+    }
+
+    /** The pure rule decides; CLEANED only when the existing erasure verified every key, file and marker gone (B-BR-EMP-539). */
+    private fun cleanupLocked(revocation: EnterpriseRevocationClass, facts: RevocationQueueFacts?, token: String): EnterpriseRevocationOutcome =
+        when (RevocationCleanup.decide(revocation, facts)) {
+            RevocationCleanupAction.DELIVER_INTAKE_ONLY -> EnterpriseRevocationOutcome(RevocationCleanupState.INTAKE_ONLY, requireNotNull(facts).unsent)
+            RevocationCleanupAction.ERASE -> EnterpriseRevocationOutcome(RevocationCleanup.state(RevocationCleanupAction.ERASE, erasure.eraseLocked(token)))
+        }
 
     private companion object {
         val ABSENT = QueueCandidate()
