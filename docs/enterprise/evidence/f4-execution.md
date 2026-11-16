@@ -1700,3 +1700,58 @@ holds or may enter, and the coordinator does not wipe it or change its lock
 settings. Every native acceptance after that point (flake 20-run GREEN, EXP-004,
 TRIP-020, GPS-002/003 and later app tasks) is OWED with prepared drivers until
 the owner unlocks the emulator once. The physical phone was never used.
+
+Merged-tree verification of `19e681a3` (CHECK-004, TRIP-019, METER-005/006,
+TRIP-010, EXP-004, TRIP-020, the sync-context fix and GPS-002/003 together):
+focused PostGIS race over `cmd/api`, `cmd/ops`, `apicontract`, `orgaccess`,
+`maintenance`, `document`, `fleet`, `trip`, `fueling`, `expense`, `tracking`,
+`orgsync`, `enterprisesuite` and `organization/adapters` with a disposable
+MinIO: 43 packages, 1504 top-level / 12556 named, 0 failures.
+
+### EMP-OFFL-011 — cleanup of revoked sessions and devices on next contact: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-offl011-revocation-cleanup.md), commit `90bcb693`, Kotlin only, no
+migration (000260 unused). A whole-response 403/404 on delivery or a late-intake
+code (`ACCESS_ENDED_BEFORE_RECEIPT`, `MEMBERSHIP_ENDED`, `INTAKE_WINDOW_CLOSED`,
+`DEVICE_REVOKED`) is only a hint; the worker then asks the exact signed device
+contact once. ERASE (lost or compromised) erases only that partition and sends
+none of its work again; LOCK (access ended) writes a durable Keystore marker,
+refuses every use except delivering sealed unsent work intake-only, and erases
+the partition once nothing is unsent or the server closed its intake window.
+Before this a LOCK stopped all delivery (eligible pre-end work was erased at
+the 30-day expiry) and a lost phone retried its refused queue forever. The app
+says "removed" only after verified disposal. B-BR-EMP-536..539,
+BUC-EMP-275..276, EDR-348..350. RED 15/15 new tests → GREEN on the first run;
+full suites domain 4585, application 723, data 980, app 827; lint 0 errors;
+validation build passes. Merged on `112e24b3` as `0adb235d` (contract union);
+Android full module suites domain 5614, application 741, data 986, app 829, 0
+failures; validation build and `check-mobile.sh` pass. Retained: native
+acceptance (OWED, emulator locked), a reboot or clock rollback during
+intake-only delivery (re-anchoring from a contact's server time), attachment
+bytes not yet stored, suspension, a per-partition "locked, N sending" view,
+notifications, the manager-side lost-records message.
+
+### EMP-GPS-006 — distance sources on a trip and the divergence signal: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps006-distance-sources.md), commit `db937ab6`, no route and no
+migration (000253 unused). Coordinator decision (EDR-318): the backlog types
+GPS-006 as DOM (V-DOM, V-MONEY), so it is a pure tracking-domain evaluation plus
+a server port, and the first `trip.trip.read` route with its structural, self
+and auditor semantics stays with EMP-TRIP-006. The odometer, GPS, planned and
+estimated distances stay apart; the basis is the odometer, else a PRECISE GPS
+distance, else `INSUFFICIENT_DATA` with a reason; divergence is integer
+arithmetic (defaults 2 000 m and 10 %) with `RAISED`/`NOT_RAISED`/
+`NOT_EVALUATED` and never a misconduct verdict. `DistanceStore` proves
+`gps.track.read` through GPS-012's `CheckTrackTx` (a denial withholds the GPS
+source), reads the latest GPS-005 summary, takes the odometer from METER-006's
+`UsageBetween` and records the `LOCATION_TRACK` ISSUED/SERVED pair before
+answering. EDR-319: a trip finished without its own reading has no odometer
+distance (the port's "known 0 m" is not accepted). EDR-320: server-only, no
+Kotlin mirror. B-BR-EMP-491..494, BUC-EMP-250..251, EDR-318..320. RED unit
+13/13, PostGIS 3/3 → GREEN; task union 21 packages 1098/9083. Merged on
+`0adb235d` as `843f647a` (contract union, EDR-318..320 in order); build, vet,
+staticcheck, tracking and `cmd/api` tests pass; focused PostGIS race
+`TestTripDistance|TestTracking|TestTrack|TestLocation|TestMeter` on the merged
+tree passes. Retained: composing the port behind TRIP-006's route, organization
+divergence thresholds, UC-GPS-08 and `gps.divergence.detected`, planned and
+estimated sources (`NO_ROUTE_PLAN`/`NO_ROUTE_COMPUTATION`), production grants.
