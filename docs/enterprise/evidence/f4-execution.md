@@ -1115,3 +1115,44 @@ on the exact head `5407e478`, `make quick-verify` passed locally on it
 (`b55157a2`) without conflicts; 000239 redefines no function used by F4.
 The owner also asked for an unattended run: recommended decisions are taken
 without questions and recorded here.
+
+### EMP-TRIP-014 — missing final reading and supervisor closure: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip014-supervisor-closure.md), commit `f837b42d` (+ merge
+alignment `cc5b5985` onto the 000233 bodies), migration 000235 (insert-only,
+forced-RLS `org_trip_closures`; completion guard, logbook and held-logbook
+sources and `org_trip_revision` from their 000233 bodies; review-entry source
+from 000229 with the closer excluded from review). Routes `trips/open/list`
+(ORG grants only) and `trips/{trip_id}/close` (fresh write, revision CAS,
+`reason` + `missing_reading_reason`) under `trip.trip.close_for_other`; no
+reading, value or distance is accepted or created (usage stays NOT_MEASURED /
+READING_ABSENT); the closer is never the author or driver and never reviews
+the trip; the driver's later finish and events are held
+`TRIP_ALREADY_CLOSED`; PAUSED trips are closable, CANCELLED ones `CONFLICT`; a
+closed trip frees its asset without an invented end instant (EDR-257..259).
+RED domain 3/3, application 3/4, PostGIS 6/6 → GREEN.
+
+### EMP-TRIP-018 — open trips when a membership ends: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip018-membership-end-open-trips.md), commit `b07973c6`,
+migration 000236 (`org_offboarding_guard` from 191 with `TRIP:<id>` flags and
+a refusal to leave an open trip unflagged; `org_trip_held_source` from 233
+with a late-finish branch). Trips enter the IDN-010 open-responsibilities
+source through an explicit port as mandatory `TRIP:<id>` items; offboarding
+never closes or deletes a trip; the open-trip list shows the author's
+membership state for a scoped supervisor closure; a pre-end late finish is
+held `ACCESS_ENDED_BEFORE_RECEIPT`, later work `MEMBERSHIP_ENDED`, a lost
+device `DEVICE_REVOKED` for the whole response (EDR-260/261). RED membership
+domain 1/1, PostGIS 4/4 → GREEN; the IDN-010 offboarding fixture gained the
+`org_trips` grant (no expectation weakened). Final merged-tree union on
+`8effb2e8`: 37 packages, 1311 top-level / 9873 named, 0 failures; untagged 224
+packages. Counts: 152 normal routes (29 routed / 55 not routed / 26
+special), auditor walk 152/30/122, matrix 290 cells (116/174). Note: 000235
+and 000236 apply before 000237 by number; no function is redefined by both
+sides. Retained: linking a later reading to a closed trip by amendment,
+held-item resolution for finishes/events/late finishes, late holders for
+start/event/submit, successor handover (TRIP-012), notifications, panel,
+TEAM-scope fixture, production grants.
+
+Integration (`05971894`): clean merge; build, vet (both tags), gofmt,
+`sqlc diff`, cmd/api, apicontract, trip and membership unit tests green.
