@@ -100,6 +100,8 @@ internal fun TrackingCard(
     onStart: (TrackingDevice) -> Unit,
     onStop: () -> Unit,
     onRefresh: () -> Unit,
+    /** EMP-GPS-015: the session this phone collects now; null when not known (nothing is said then). */
+    collecting: (() -> String?)? = null,
 ) {
     val context = LocalContext.current
     val session: TrackingSessionView? = tracking?.session(tripId)
@@ -134,6 +136,9 @@ internal fun TrackingCard(
                         Text(stringResource(R.string.enterprise_tracking_approximate))
                     if (session.refused) Text(stringResource(R.string.enterprise_tracking_refused, session.refusalCode ?: "-"),
                         modifier = Modifier.testTag("enterprise-tracking-refused"))
+                    // B-BR-EMP-548: a stored recording session is not shown as collected when this phone does not listen for it.
+                    if (session.state == TrackingSessionState.RECORDING && collecting != null && collecting() != session.sessionId)
+                        Text(stringResource(R.string.enterprise_tracking_not_collecting_here), modifier = Modifier.testTag("enterprise-tracking-not-collecting"))
                 }
                 // EMP-GPS-003 (B-BR-EMP-503..505): counts and gaps only, never a position.
                 session.openGap?.let { gap ->

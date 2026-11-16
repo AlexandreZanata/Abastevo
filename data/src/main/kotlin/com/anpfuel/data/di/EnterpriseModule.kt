@@ -55,6 +55,7 @@ import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingPolicyGatew
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingProducers
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingService
 import com.anpfuel.application.enterprise.tracking.EnterpriseTrackingStore
+import com.anpfuel.application.enterprise.tracking.MyTrackingFlow
 import com.anpfuel.application.enterprise.tracking.TrackingDeviceObserver
 import com.anpfuel.application.enterprise.tracking.TrackingRuntime
 import com.anpfuel.application.enterprise.tracking.TrackingStartGate
@@ -358,6 +359,11 @@ object EnterpriseModule {
         gateway: EnterpriseTrackingPolicyGateway): EnterpriseTrackingService = EnterpriseTrackingService(
         source, { partition, operation -> delivery.save(partition, operation) }, store, gateway, { ZoneId.systemDefault() },
     )
+
+    /** EMP-GPS-015 (EDR-358): "Meu rastreamento" over the selected partition's sealed tracking records, offline. */
+    @Provides
+    fun myTrackingFlow(source: EnterpriseQueueSource, tracking: EnterpriseTrackingService, fence: EnterpriseSessionFence): MyTrackingFlow =
+        MyTrackingFlow(source, tracking, fence)
 
     /** The process's one tracking runtime: the visible start gate (elapsed time) and the running collector (EDR-323). */
     @Provides

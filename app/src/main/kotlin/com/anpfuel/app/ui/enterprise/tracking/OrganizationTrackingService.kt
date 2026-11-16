@@ -208,7 +208,8 @@ class OrganizationTrackingService : Service() {
         val active = collector ?: TrackingCollector(installed.service, installed.source, installed.runtime.gate,
             AndroidTrackingPlatform(this).also { platform = it }, installed.deliver).also { collector = it }
         scope.launch {
-            when (active.begin(partition, sessionId)) {
+            // EMP-GPS-015: the organization's name travels with the visible start, for the indicator of every enterprise screen.
+            when (active.begin(partition, sessionId, name)) {
                 TrackingBeginResult.STARTED -> {
                     installed.runtime.collector = active
                     // EMP-GPS-003: reports are recorded durably, in arrival order, off the platform callback.

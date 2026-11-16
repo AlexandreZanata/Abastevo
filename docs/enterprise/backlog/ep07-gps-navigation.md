@@ -374,6 +374,21 @@ acceptance is owed (EDR-271).
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 tracking transparency](../evidence/f4-gps015-tracking-transparency.md) is
+LOCAL_DONE / INTEGRATION_PENDING (emulator acceptance OWED), 2026-11-16. While
+this phone's organization collector listens, the header that every
+enterprise screen shares shows one indicator (organization, since when,
+precise or approximate, this phone's position and not the vehicle's, an open
+location-off or no-signal gap) derived only from the running collector, never
+from a stored session or the personal recorder; a stored recording session
+that the phone does not collect says so on the trip card. "Meu rastreamento"
+(SCR-GPS-04) shows, offline from the partition's sealed records, what is and
+is not collected, who sees it, the default retention, what stays on the phone
+(erased at the next contact after a revocation, never remotely when
+offline), the policy and notice last read, and the member's own sessions on
+this phone with their interruptions, gaps and approximate parts. No server
+read, route or migration; real-device acceptance owed (EDR-271).
+
 ### EMP-ROUTE-001 — Map components: reuse the Android map engine port and add the panel web map
 - **Meta:** module ROUTE · phase F5 · cut - · priority P1 · type INT · size M · state TODO
 - **Objective:** Reuse native map ports and admit a reviewed web map boundary.

@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-015 tracking transparency; generated from one table by f4-logs/gps015-scripts/gen_transparency_strings.py -->
+<resources>
+    <string name="enterprise_tracking_indicator_active">Rastreamento da empresa ativo — %1$s</string>
+    <string name="enterprise_tracking_indicator_detail">Desde %1$s · posição deste celular, não do veículo</string>
+    <string name="enterprise_tracking_indicator_precise">Localização precisa</string>
+    <string name="enterprise_tracking_indicator_approximate">Localização aproximada</string>
+    <string name="enterprise_tracking_indicator_open">Ver meu rastreamento</string>
+    <string name="enterprise_tracking_not_collecting_here">Este celular não está coletando posições desta viagem agora.</string>
+    <string name="enterprise_tracking_mine_title">Meu rastreamento</string>
+    <string name="enterprise_tracking_mine_home">Veja o que a empresa coleta e quando o rastreamento esteve ativo neste celular.</string>
+    <string name="enterprise_tracking_mine_back">Voltar ao início da empresa</string>
+    <string name="enterprise_tracking_mine_now_active">Este celular está rastreando uma viagem da empresa agora.</string>
+    <string name="enterprise_tracking_mine_now_inactive">Nenhum rastreamento da empresa está ativo neste celular.</string>
+    <string name="enterprise_tracking_mine_collected_title">O que é coletado</string>
+    <string name="enterprise_tracking_mine_collected">Somente durante uma viagem da empresa em que você iniciou o rastreamento, e enquanto ele está ativo: a posição deste celular (não do veículo), a precisão, a velocidade, a direção e o horário, cerca de a cada 10 segundos em movimento e a cada 2 minutos parado, além de quando o rastreamento começou, foi interrompido e terminou.</string>
+    <string name="enterprise_tracking_mine_not_collected_title">O que não é coletado</string>
+    <string name="enterprise_tracking_mine_not_collected">Nada fora de uma viagem rastreada, no modo pessoal ou depois que você para o rastreamento ou encerra a viagem. O app nunca pede localização em segundo plano e nunca inicia o rastreamento sozinho.</string>
+    <string name="enterprise_tracking_mine_who_title">Quem vê</string>
+    <string name="enterprise_tracking_mine_who">Pessoas da empresa com permissão de rastreamento veem as viagens do seu escopo, e cada acesso fica registrado. Aqui você vê as suas próprias sessões.</string>
+    <string name="enterprise_tracking_mine_retention_title">Por quanto tempo</string>
+    <string name="enterprise_tracking_mine_retention">A empresa guarda as posições por 90 dias após a viagem, salvo outro prazo que ela definir entre 30 e 365 dias; o resumo da viagem segue a viagem.</string>
+    <string name="enterprise_tracking_mine_device_title">Neste celular</string>
+    <string name="enterprise_tracking_mine_device">As posições ficam protegidas neste celular até serem enviadas. Se a empresa revogar este celular ou você sair dela, a cópia deste celular é apagada quando o app voltar a se conectar; um celular sem conexão não é apagado a distância, e o que a empresa já recebeu segue a retenção dela.</string>
+    <string name="enterprise_tracking_mine_policy">Política da empresa: %1$s · aviso %2$s</string>
+    <string name="enterprise_tracking_mine_policy_expected">rastreamento esperado</string>
+    <string name="enterprise_tracking_mine_policy_optional">rastreamento opcional</string>
+    <string name="enterprise_tracking_mine_policy_off">rastreamento desligado</string>
+    <string name="enterprise_tracking_mine_policy_unknown">Política da empresa ainda não lida neste celular.</string>
+    <string name="enterprise_tracking_mine_sessions_title">Suas sessões neste celular</string>
+    <string name="enterprise_tracking_mine_empty">Nenhuma viagem rastreada</string>
+    <string name="enterprise_tracking_mine_unavailable">Não foi possível ler os registros de rastreamento deste celular agora.</string>
+    <string name="enterprise_tracking_mine_retry">Tentar de novo</string>
+    <string name="enterprise_tracking_mine_session_vehicle">Viagem com %1$s</string>
+    <string name="enterprise_tracking_mine_session_started">Início do rastreamento: %1$s</string>
+    <string name="enterprise_tracking_mine_session_never">O rastreamento não chegou a começar nesta viagem.</string>
+    <string name="enterprise_tracking_mine_session_ended">Fim: %1$s</string>
+    <string name="enterprise_tracking_mine_session_ongoing">Em andamento</string>
+    <string name="enterprise_tracking_mine_gap_signal">Sem sinal de GPS de %1$s a %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_provider">Localização desligada de %1$s a %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_mock">Localizações simuladas ignoradas de %1$s a %2$s.</string>
+</resources>

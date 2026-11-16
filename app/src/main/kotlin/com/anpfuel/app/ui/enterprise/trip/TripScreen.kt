@@ -118,7 +118,9 @@ private sealed interface TripMode {
 
 /** EMP-GPS-002 (B-BR-EMP-496): the tracking gestures of the open trip; null hides the card (rollback flag). */
 internal class TripTrackingActions(val onStart: (tripId: String, TrackingDevice) -> Unit, val onStop: (tripId: String) -> Unit,
-    val onRefresh: () -> Unit)
+    val onRefresh: () -> Unit,
+    /** EMP-GPS-015 (B-BR-EMP-548): the session this phone collects now; null when the screen does not know the collector. */
+    val collecting: (() -> String?)? = null)
 
 /** The meters the driver may read for a choice: the picker's in-service meters, by kind. */
 internal fun meterChoices(choice: EnterpriseAssetChoice): List<TripMeterChoice> =
@@ -407,7 +409,7 @@ private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: B
         val tripId = view.trip.tripId
         TrackingCard(tripId, view.trip.state == TripLocalState.IN_PROGRESS, state.tracking, state.trackingRefusal, state.trackingPolicyFailed,
             connected, busy, { formatted(it) }, onStart = { tracking.onStart(tripId, it) }, onStop = { tracking.onStop(tripId) },
-            onRefresh = tracking.onRefresh)
+            onRefresh = tracking.onRefresh, collecting = tracking.collecting)
     }
     item(key = "detail-timeline") {
         Text(stringResource(R.string.enterprise_trips_timeline), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })

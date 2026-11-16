@@ -67,6 +67,10 @@ import com.anpfuel.app.ui.enterprise.fueling.FuelingViewModel
 import com.anpfuel.app.ui.enterprise.fueling.FuelingsHomeCard
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsPanel
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsViewModel
+import com.anpfuel.app.ui.enterprise.tracking.EnterpriseTrackingIndicator
+import com.anpfuel.app.ui.enterprise.tracking.MyTrackingHomeCard
+import com.anpfuel.app.ui.enterprise.tracking.MyTrackingPanel
+import com.anpfuel.app.ui.enterprise.tracking.MyTrackingViewModel
 import com.anpfuel.app.ui.enterprise.trip.TripPanel
 import com.anpfuel.app.ui.enterprise.trip.TripViewModel
 import com.anpfuel.app.ui.enterprise.trip.TripsHomeCard
@@ -93,6 +97,8 @@ fun EnterpriseContextScreen(
     expenseViewModel: ExpenseViewModel = hiltViewModel(),
     /** EMP-ROUTE-004: opens the app's own route preview with an approved destination query; last, so positional callers stay valid. */
     onNavigate: (String) -> Unit = {},
+    /** EMP-GPS-015: the tracking indicator and "Meu rastreamento"; last, so positional callers stay valid. */
+    trackingViewModel: MyTrackingViewModel = hiltViewModel(),
 ) {
     // These are cheap local invalidation flows; keep private presentation current
     // while stopped rather than briefly resuming an earlier confirmed context.
@@ -115,6 +121,11 @@ fun EnterpriseContextScreen(
     var showExpenses by remember { mutableStateOf(false) }
     var expensesFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val checklistState by checklistViewModel.state.collectAsState()
+    // EMP-GPS-015 (B-BR-EMP-548): the running organization collector of this process, for the indicator of every screen.
+    val trackingActivity by trackingViewModel.activity.collectAsState()
+    val myTrackingState by trackingViewModel.state.collectAsState()
+    var showMyTracking by remember { mutableStateOf(false) }
+    var myTrackingFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     var showChecklists by remember { mutableStateOf(false) }
     var checklistsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val renderedGeneration = syncState.generation
@@ -172,6 +183,12 @@ fun EnterpriseContextScreen(
         showChecklists = false
         checklistsFor = null
     }
+    // "Meu rastreamento" (EMP-GPS-015): withdrawn with the same gestures and lifecycle as the other panels.
+    fun closeMyTracking() {
+        trackingViewModel.withdraw()
+        showMyTracking = false
+        myTrackingFor = null
+    }
     fun withdrawForGesture(): Boolean {
         if (!currentGesture()) return false
         syncViewModel.withdraw()
@@ -182,6 +199,7 @@ fun EnterpriseContextScreen(
         closeFuelings()
         closeExpenses()
         closeChecklists()
+        closeMyTracking()
         return true
     }
     fun requestUnlock() {
@@ -241,7 +259,7 @@ fun EnterpriseContextScreen(
     SecureAccountWindow()
     DisposableEffect(viewModel, syncViewModel, assetsViewModel, tripViewModel, fuelingViewModel, checklistViewModel, expenseViewModel) {
         onDispose { syncViewModel.withdraw(); assetsViewModel.withdraw(); tripViewModel.withdraw(); fuelingViewModel.withdraw()
-            checklistViewModel.withdraw(); expenseViewModel.withdraw(); viewModel.unconfirm() }
+            checklistViewModel.withdraw(); expenseViewModel.withdraw(); trackingViewModel.withdraw(); viewModel.unconfirm() }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         resumed = true; syncViewModel.invalidateIfStale(); assetsViewModel.invalidateIfStale(); tripViewModel.invalidateIfStale()
@@ -249,7 +267,7 @@ fun EnterpriseContextScreen(
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
         resumed = false; showSync = false; openedFor = null; recovery = null; syncViewModel.withdraw(); closeAssets(); closeTrips(); closeFuelings()
-        closeExpenses(); closeChecklists(); viewModel.unconfirm()
+        closeExpenses(); closeChecklists(); closeMyTracking(); viewModel.unconfirm()
     }
     LaunchedEffect(renderedSelected, renderedEpoch, resumed, choosing, state.busy, state.selectionConfirmed) {
         val selected = renderedSelected
@@ -263,6 +281,7 @@ fun EnterpriseContextScreen(
         if (fuelingsFor != null && (fuelingsFor?.partition != selected?.partition || fuelingsFor?.membershipId != selected?.membershipId)) closeFuelings()
         if (expensesFor != null && (expensesFor?.partition != selected?.partition || expensesFor?.membershipId != selected?.membershipId)) closeExpenses()
         if (checklistsFor != null && (checklistsFor?.partition != selected?.partition || checklistsFor?.membershipId != selected?.membershipId)) closeChecklists()
+        if (myTrackingFor != null && (myTrackingFor?.partition != selected?.partition || myTrackingFor?.membershipId != selected?.membershipId)) closeMyTracking()
         if (!resumed || selected == null) { syncViewModel.withdraw(); showSync = false; openedFor = null }
         else if (!choosing && !state.busy && resumed && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
             !viewModel.state.value.busy && viewModel.state.value.selected == selected && viewModel.epochs.value == renderedEpoch) {
@@ -284,6 +303,7 @@ fun EnterpriseContextScreen(
     }
     BackHandler {
         when {
+            showMyTracking && resumed -> closeMyTracking()
             showChecklists && resumed -> closeChecklists()
             showTrips && resumed -> if (tripsMatch && tripState.openTripId != null) tripViewModel.openTrip(null, renderedEpoch, tripState.generation)
                 else closeTrips()
@@ -313,10 +333,30 @@ fun EnterpriseContextScreen(
                             .testTag("enterprise-context-header-name").semantics { heading() },
                     )
                 }
+                // EMP-GPS-015 (B-BR-EMP-548): drawn once in the header that every enterprise screen shares, only while this phone collects.
+                if (BuildConfig.ENTERPRISE_TRACKING_UI_ENABLED) EnterpriseTrackingIndicator(trackingActivity, state.selected?.organizationName, onOpen = {
+                    val selected = state.selected
+                    if (selected != null && resumed && !choosing && withdrawForGesture()) {
+                        trackingViewModel.open(selected, renderedEpoch)
+                        myTrackingFor = selected
+                        showMyTracking = true
+                    }
+                })
             }
         },
     ) { padding ->
-        if (showChecklists && resumed && renderedSelected != null && !choosing &&
+        // "Meu rastreamento" is shown only for the exact selected partition, member and epoch.
+        val myTrackingMatches = resumed && renderedSelected != null && myTrackingState.epoch == renderedEpoch &&
+            myTrackingState.context?.partition == renderedSelected.partition && myTrackingState.context?.membershipId == renderedSelected.membershipId
+        if (showMyTracking && resumed && renderedSelected != null && !choosing &&
+            myTrackingFor?.partition == renderedSelected.partition && myTrackingFor?.membershipId == renderedSelected.membershipId) MyTrackingPanel(
+            // A source loss clears the owner; keep only its safe message and withhold every session.
+            state = if (myTrackingMatches) myTrackingState else myTrackingState.copy(history = null, error = myTrackingState.error ?: EnterpriseAccessError.STALE),
+            activity = trackingActivity,
+            onBack = { closeMyTracking() },
+            onRetry = { trackingViewModel.open(renderedSelected, renderedEpoch) },
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) else if (showChecklists && resumed && renderedSelected != null && !choosing &&
             checklistsFor?.partition == renderedSelected.partition && checklistsFor?.membershipId == renderedSelected.membershipId) ChecklistHomePanel(
             assets = if (assetsMatches) assetsState else assetsState.copy(snapshot = null, detailAssetId = null,
                 error = assetsState.error ?: EnterpriseAccessError.STALE),
@@ -396,6 +436,8 @@ fun EnterpriseContextScreen(
                 onStart = { trip, device -> if (tripsMatch) tripViewModel.startTracking(trip, device, renderedEpoch, tripState.generation) },
                 onStop = { trip -> if (tripsMatch) tripViewModel.stopTracking(trip, renderedEpoch, tripState.generation) },
                 onRefresh = { if (tripsMatch) tripViewModel.refreshTrackingPolicy(renderedEpoch, tripState.generation) },
+                // EMP-GPS-015: a stored recording session that this phone does not collect says so on its card.
+                collecting = { trackingActivity?.sessionId },
             ),
             // EMP-TRIP-021: the missions inbox, answers, planned starts and the trip lifecycle, with the same exact-partition guards.
             missionsEnabled = BuildConfig.ENTERPRISE_MISSION_UI_ENABLED,
@@ -495,6 +537,13 @@ fun EnterpriseContextScreen(
                             if (BuildConfig.ENTERPRISE_FLEET_UI_ENABLED) assetsViewModel.open(selected, renderedEpoch)
                             expensesFor = selected
                             showExpenses = true
+                        }
+                    })
+                    if (BuildConfig.ENTERPRISE_TRACKING_UI_ENABLED) MyTrackingHomeCard(onOpen = {
+                        if (currentGesture() && !viewModel.state.value.busy) {
+                            trackingViewModel.open(selected, renderedEpoch)
+                            myTrackingFor = selected
+                            showMyTracking = true
                         }
                     })
                     if (BuildConfig.ENTERPRISE_FLEET_UI_ENABLED) MyAssetsHomeCard(onOpen = {

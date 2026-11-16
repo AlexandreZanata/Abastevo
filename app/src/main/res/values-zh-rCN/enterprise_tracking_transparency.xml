@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-015 tracking transparency; generated from one table by f4-logs/gps015-scripts/gen_transparency_strings.py -->
+<resources>
+    <string name="enterprise_tracking_indicator_active">公司追踪中 — %1$s</string>
+    <string name="enterprise_tracking_indicator_detail">自 %1$s 起 · 此手机的位置，而非车辆的位置</string>
+    <string name="enterprise_tracking_indicator_precise">精确位置</string>
+    <string name="enterprise_tracking_indicator_approximate">大致位置</string>
+    <string name="enterprise_tracking_indicator_open">查看我的追踪</string>
+    <string name="enterprise_tracking_not_collecting_here">此手机目前没有为本行程收集位置。</string>
+    <string name="enterprise_tracking_mine_title">我的追踪</string>
+    <string name="enterprise_tracking_mine_home">查看公司收集哪些数据以及此手机上的追踪何时开启。</string>
+    <string name="enterprise_tracking_mine_back">返回公司首页</string>
+    <string name="enterprise_tracking_mine_now_active">此手机正在追踪一个公司行程。</string>
+    <string name="enterprise_tracking_mine_now_inactive">此手机上没有开启的公司追踪。</string>
+    <string name="enterprise_tracking_mine_collected_title">收集哪些内容</string>
+    <string name="enterprise_tracking_mine_collected">仅在你开启追踪的公司行程中且追踪开启期间：此手机（而非车辆）的位置、精度、速度、方向和时间，行驶时约每 10 秒、停止时每 2 分钟一次，以及追踪的开始、中断和结束。</string>
+    <string name="enterprise_tracking_mine_not_collected_title">不收集哪些内容</string>
+    <string name="enterprise_tracking_mine_not_collected">在被追踪的行程之外、个人模式下、停止追踪或结束行程后都不收集任何内容。应用从不请求后台位置，也从不自行开始追踪。</string>
+    <string name="enterprise_tracking_mine_who_title">谁可以查看</string>
+    <string name="enterprise_tracking_mine_who">公司中拥有追踪权限的人员可以查看其范围内的行程，每次访问都会被记录。你可以在这里查看自己的追踪记录。</string>
+    <string name="enterprise_tracking_mine_retention_title">保存多久</string>
+    <string name="enterprise_tracking_mine_retention">公司在行程结束后保存位置 90 天，除非公司设定 30 至 365 天之间的其他期限；行程摘要随行程保存。</string>
+    <string name="enterprise_tracking_mine_device_title">在此手机上</string>
+    <string name="enterprise_tracking_mine_device">位置在发送前受保护地保存在此手机上。如果公司撤销此手机或你离开公司，此手机上的副本会在应用下次联网时删除；未联网的手机不会被远程删除，公司已收到的数据按其保存期限处理。</string>
+    <string name="enterprise_tracking_mine_policy">公司政策：%1$s · 通知 %2$s</string>
+    <string name="enterprise_tracking_mine_policy_expected">期望追踪</string>
+    <string name="enterprise_tracking_mine_policy_optional">追踪可选</string>
+    <string name="enterprise_tracking_mine_policy_off">追踪已关闭</string>
+    <string name="enterprise_tracking_mine_policy_unknown">此手机尚未读取公司政策。</string>
+    <string name="enterprise_tracking_mine_sessions_title">你在此手机上的追踪记录</string>
+    <string name="enterprise_tracking_mine_empty">没有被追踪的行程</string>
+    <string name="enterprise_tracking_mine_unavailable">现在无法读取此手机的追踪记录。</string>
+    <string name="enterprise_tracking_mine_retry">重试</string>
+    <string name="enterprise_tracking_mine_session_vehicle">使用 %1$s 的行程</string>
+    <string name="enterprise_tracking_mine_session_started">追踪开始：%1$s</string>
+    <string name="enterprise_tracking_mine_session_never">本行程的追踪从未开始。</string>
+    <string name="enterprise_tracking_mine_session_ended">结束：%1$s</string>
+    <string name="enterprise_tracking_mine_session_ongoing">进行中</string>
+    <string name="enterprise_tracking_mine_gap_signal">%1$s 至 %2$s 没有 GPS 信号。</string>
+    <string name="enterprise_tracking_mine_gap_provider">%1$s 至 %2$s 位置已关闭。</string>
+    <string name="enterprise_tracking_mine_gap_mock">%1$s 至 %2$s 忽略模拟位置。</string>
+</resources>

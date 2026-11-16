@@ -378,6 +378,22 @@ class EnterpriseTrackingService(
         return TrackingScreen(book.policy, book.sessions.map { view(it, snapshot.entries, snapshot.buffers?.session(it.sessionId)) })
     }
 
+    /**
+     * EMP-GPS-015 (B-BR-EMP-549): this member's own sessions on this phone, newest first, from the partition's sealed book,
+     * buffer and trip book only (bound to this membership and enrollment); never a coordinate, never another partition.
+     */
+    suspend fun history(account: EnterpriseQueueAccountLease, partition: EnterprisePartition): TrackingHistory {
+        val attempt = attempt(account, partition)
+        val snapshot = snapshot(attempt)
+        val book = snapshot.book ?: return TrackingHistory(null, emptyList())
+        val entries = book.sessions.sortedByDescending { it.transitions.first().at }.map { local ->
+            TrackingHistoryEntry(view(local, snapshot.entries, snapshot.buffers?.session(local.sessionId)), snapshot.trips?.trip(local.tripId)?.label,
+                local.transitions.firstOrNull { it.state == TrackingSessionState.RECORDING }?.at,
+                local.transitions.lastOrNull { it.state == TrackingSessionState.ENDED }?.at)
+        }
+        return TrackingHistory(book.policy, entries)
+    }
+
     /** B-BR-EMP-495: one online read of the policy in force, kept in the book; null when it could not be read. */
     suspend fun refreshPolicy(account: EnterpriseQueueAccountLease, context: EnterpriseContextSummary): TrackingPolicyRead? {
         val attempt = attempt(account, context.partition)

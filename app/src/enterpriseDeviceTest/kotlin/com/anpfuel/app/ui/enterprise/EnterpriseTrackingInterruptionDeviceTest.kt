@@ -59,6 +59,7 @@ import com.anpfuel.domain.enterprise.trip.TripBook
 import java.time.Instant
 import java.time.ZoneId
 import java.util.UUID
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.*
@@ -208,6 +209,19 @@ class EnterpriseTrackingInterruptionDeviceTest {
         assertFalse("No coordinate in the notification", trackingNotification()!!.notification.extras.toString().contains("-15."))
         trackingNotification()!!.notification.actions.single().actionIntent.send()
         waitFor("the stop from the notification") { trackingNotification() == null && runtime.collector == null }
+    }
+
+    /** EMP-GPS-015 (B-BR-EMP-548): the indicator's source follows the shipped service from its listener to its stop. */
+    @Test fun theIndicatorSourceFollowsTheShippedServiceFromItsListenerToItsStop(): Unit = runBlocking {
+        assertNull(runtime.activity.first())
+        val trip = startTrip()
+        val session = listen(trip)
+        val active = runtime.activity.first()!!
+        assertEquals(session, active.sessionId); assertEquals(trip, active.tripId); assertEquals(partition, active.partition)
+        assertEquals(summary.organizationName, active.organizationName); assertEquals(LocationPermission.PRECISE, active.precision)
+        trackingNotification()!!.notification.actions.single().actionIntent.send()
+        waitFor("the stop from the notification") { trackingNotification() == null && runtime.collector == null }
+        assertNull("hidden at once when the listener is released", runtime.activity.first())
     }
 
     @Test fun aSessionGrantedWhileAnotherIsCollectedIsInterruptedNeverShownRecording(): Unit = runBlocking {

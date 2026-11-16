@@ -9236,3 +9236,65 @@ every cause used here is already accepted by the EMP-GPS-004 intake.
   coarse positions at the heartbeat rate inside an approximate period, the
   screen says that no GPS distance is derived from those parts, and precise
   recording returns only through a stop and a resume with precise permission.
+
+## EMP-GPS-015 — App: tracking transparency (indicator, what is collected, session history) (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-gps015-tracking-transparency.md). Builds on
+EMP-GPS-002 (the service and its notification), EMP-GPS-003 (the sealed
+buffer) and EMP-GPS-010 (interruptions); owner decision EDR-271. No server
+change: no driver-facing read of one's own sessions exists, so the history is
+the phone's own sealed records.
+
+- **B-BR-EMP-548 — One indicator on every enterprise screen, only while this
+  phone collects.** While this phone's organization collector listens, the
+  header shared by every enterprise screen (the home and the trips, fuelings,
+  expenses, assets, checklists, sync and "Meu rastreamento" panels) shows one
+  indicator in text and icon, never colour alone: "Rastreamento da empresa
+  ativo" with the organization's name, since when, precise or approximate,
+  that the position is this phone's and not the vehicle's, and an open
+  location-off, no-signal or simulated-location gap; a tap opens "Meu
+  rastreamento". It is derived only from the process's running organization
+  collector, never from a stored session alone and never from the personal
+  recorder; it appears when the listener attaches and disappears when it is
+  released. On the trip screen a session stored as recording that this phone is
+  not collecting says so instead of looking active, until the next opening
+  records the interruption (B-BR-EMP-544). The ongoing notification stays the
+  indicator outside the app (EMP-GPS-002/010).
+- **B-BR-EMP-549 — "Meu rastreamento" shows what is collected and one's own
+  sessions, from this phone only.** Any member in enterprise mode can open it
+  offline from the selected organization's sealed tracking book and buffer:
+  what is collected and when, what is not collected, who can see it, the
+  default retention, what stays on this phone, the policy and notice version
+  last read, whether this phone collects now, and the member's own sessions on
+  this phone, newest first, each with its vehicle, tracking start, end or "em
+  andamento", interruptions with cause, start and end, location gaps with
+  reason, approximate parts, and positions waiting or batches accepted and still
+  on the phone; never a coordinate, never another member's or another
+  organization's session (the book is bound to this membership and
+  enrollment). After a stop or a finish nothing more is recorded for that
+  session and its end is shown. Empty: "Nenhuma viagem rastreada"; the list says
+  it is this phone's.
+- **B-BR-EMP-550 — Organization and personal tracking are never mixed up.**
+  Organization tracking is always labelled with the organization's name and as
+  this phone's position, in enterprise screens and its own notification
+  channel only; the personal Abastevo recorder ("Gravar percurso") and the
+  driver suite never feed the enterprise indicator or "Meu rastreamento", and
+  the organization collector never feeds the personal recorder's state or its
+  saved tracks.
+- **B-BR-EMP-551 — No false promise about erasure.** The transparency copy says
+  that positions stay protected on this phone until sent; that after a device
+  revocation or leaving the organization this phone's copy is erased when the
+  app next reaches the server; that a phone without a connection is not erased
+  remotely; and that what the organization received follows its retention
+  (raw positions 90 days after the trip by default, 30 to 365 by organization
+  choice). No tracking text in any locale promises remote or immediate erasure
+  of a disconnected phone or deletion of what the organization received
+  (BR-PRIV-018, BR-OFFL-014).
+- **BUC-EMP-281 — See my tracking.** In enterprise mode the member opens "Meu
+  rastreamento" from the home or from the indicator, reads what is collected,
+  sees whether this phone collects now and goes through their own sessions on
+  this phone with their interruptions and gaps, offline.
+- **BUC-EMP-282 — Know from any screen that tracking is on.** While a trip is
+  tracked, the member moves between the enterprise screens and the indicator
+  stays visible on each, naming the organization and since when; when tracking
+  stops, ends or is interrupted it disappears at once.
