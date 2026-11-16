@@ -11,6 +11,7 @@ import com.anpfuel.domain.enterprise.meter.MeterKind
 import com.anpfuel.domain.enterprise.meter.MeterPresence
 import com.anpfuel.domain.enterprise.meter.MeterValue
 import com.anpfuel.domain.enterprise.meter.ReadingRef
+import java.time.Instant
 
 private fun foreignScope(): TripDomainException = TripDomainException(TripFailure.SCOPE)
 
@@ -81,8 +82,24 @@ class TripEvent internal constructor(val author: MembershipRef, val declared: Ti
     override fun toString(): String = "EnterpriseTripEvent(redacted)"
 }
 
+/** A pause, resume or cancellation by a member at the expected revision; CANCEL needs a reason (EMP-TRIP-011). */
+data class TripLifecycleInput(
+    val author: MembershipRef? = null,
+    val expected: Long = 0,
+    val reason: String? = null,
+    val declared: TimeDeclaration? = null,
+) {
+    override fun toString(): String = "EnterpriseTripLifecycleInput(redacted)"
+}
+
+/** One accepted lifecycle command of a trip. */
+class TripLifecycleFact internal constructor(val command: TripCommand, val revision: Long, val from: TripState, val to: TripState,
+    val author: MembershipRef, val declared: TimeDeclaration, val reason: String?) {
+    override fun toString(): String = "EnterpriseTripLifecycleFact(redacted)"
+}
+
 enum class TripUsageStatus { MEASURED, NOT_MEASURED }
-enum class TripUsageReason { NOT_FINISHED, READING_ABSENT, DIFFERENT_SEGMENT, DECREASING }
+enum class TripUsageReason { NOT_FINISHED, READING_ABSENT, DIFFERENT_SEGMENT, DECREASING, CANCELLED }
 
 /** The trip's own meter evidence; it is never invented. */
 class TripMeterUsage internal constructor(val status: TripUsageStatus, val reason: TripUsageReason?, val kind: MeterKind?, val delta: Long?) {
@@ -100,11 +117,17 @@ class Trip private constructor(
     val finished: TripEvent?,
     /** The informational local day of the finish in the stored reporting zone (EMP-TRIP-017). */
     internal val endDay: String?,
+    /** The operational revision: 1 after START, one more per lifecycle command or FINISH (EMP-TRIP-011). */
+    val revision: Long,
+    private val facts: List<TripLifecycleFact>,
+    /** The accepted handovers in revision order (EMP-TRIP-012). */
+    private val handoverFacts: List<TripHandoverFact> = emptyList(),
 ) {
     val organizationId: String get() = reference.organizationId
 
     /** BR-TRIP-004: the exact difference of the trip's own two readings on one segment, or why there is none. */
     val meterUsage: TripMeterUsage get() {
+        if (state == TripState.CANCELLED) return TripMeterUsage(TripUsageStatus.NOT_MEASURED, TripUsageReason.CANCELLED, null, null)
         val end = finished ?: return TripMeterUsage(TripUsageStatus.NOT_MEASURED, TripUsageReason.NOT_FINISHED, null, null)
         val from = started.evidence
         val to = end.evidence
@@ -141,13 +164,96 @@ class Trip private constructor(
         val declared = input.declared?.let(::declaration)
         if (declared == null) missing += TripMissing.DECLARATION
         if (missing.isNotEmpty()) throw TripDomainException(TripFailure.INCOMPLETE, missing)
-        if (author != started.author) throw TripDomainException(TripFailure.FORBIDDEN)
+        if (author != responsible) throw TripDomainException(TripFailure.FORBIDDEN)
         val next = TripLifecycle.transition(state, TripCommand.FINISH)
         if (declared!!.occurredAt < started.declared.occurredAt) throw TripDomainException(TripFailure.FINISH_BEFORE_START)
         // The trip keeps its start attribution; the end day is informational, in the stored zone (B-BR-EMP-276).
         val endDay = try { EnterpriseTime.attributeReportingDay(declared.occurredAt, ReportingZones(reporting.zone)).day }
         catch (_: EnterpriseTimeException) { throw invalid() }
-        return Trip(reference, asset, driver, next, started, reporting, TripEvent(author, declared, final!!, input.clock), endDay)
+        return Trip(reference, asset, driver, next, started, reporting, TripEvent(author, declared, final!!, input.clock), endDay, revision + 1, facts,
+            handoverFacts)
+    }
+
+    /** The accepted PAUSE, RESUME and CANCEL facts in revision order. */
+    val lifecycle: List<TripLifecycleFact> get() = facts.toList()
+
+    /** The member who may change the trip now: the receiver of the latest handover, else the starter (EMP-TRIP-012). */
+    val responsible: MembershipRef get() = handoverFacts.lastOrNull()?.to ?: started.author
+
+    /** The accepted handovers in revision order (EMP-TRIP-012). */
+    val handovers: List<TripHandoverFact> get() = handoverFacts.toList()
+
+    /**
+     * The member responsible at an instant (B-BR-EMP-395): the receiver of the latest handover recorded at or before
+     * it, else the member who started the trip.
+     */
+    fun responsibleAt(at: Instant): MembershipRef = handoverFacts.lastOrNull { !it.at.isAfter(at) }?.to ?: started.author
+
+    /**
+     * Records a handover (B-BR-EMP-394), first failure first: scope and trip, recorder, receiver and receiving
+     * employee, present reason and instant, expected revision, the absent reason, a terminal trip, a stale revision,
+     * a recorder who is the current responsible member or the receiver, a receiver who already is responsible, then
+     * an instant before the previous handover. The receiver never changes.
+     */
+    fun handover(scope: String, input: TripHandoverInput): Trip {
+        requireScope(scope)
+        if (organizationId != scope) throw foreignScope()
+        val recorder = input.recorder ?: throw invalid()
+        if (recorder.organizationId != scope) throw foreignScope()
+        val receiver = input.receiver ?: throw invalid()
+        if (receiver.organizationId != scope) throw foreignScope()
+        val employee = input.receiverEmployee ?: throw invalid()
+        if (employee.organizationId != scope) throw foreignScope()
+        input.reason?.let { reason -> try { MeterPresence.missing(reason) } catch (_: IllegalArgumentException) { throw invalid() } }
+        val at = input.at ?: throw invalid()
+        if (!at.isAfter(unsetInstant) || !at.isBefore(endInstant) || input.expected < 1) throw invalid()
+        val reason = input.reason ?: throw TripDomainException(TripFailure.INCOMPLETE, listOf(TripMissing.REASON))
+        if (state.terminal) throw TripDomainException(TripFailure.INVALID_TRANSITION)
+        if (input.expected != revision) throw TripDomainException(TripFailure.CONFLICT)
+        val current = responsible
+        if (recorder == current || recorder == receiver) throw TripDomainException(TripFailure.FORBIDDEN)
+        if (receiver == current) throw invalid()
+        if (handoverFacts.isNotEmpty() && at.isBefore(handoverFacts.last().at)) throw invalid()
+        val fact = TripHandoverFact(revision + 1, current, receiver, employee, recorder, at, reason)
+        return Trip(reference, asset, driver, state, started, reporting, finished, endDay, revision + 1, facts, handoverFacts + fact)
+    }
+
+    /** The CANCEL fact of a cancelled trip. */
+    val cancellation: TripLifecycleFact? get() = facts.lastOrNull()?.takeIf { state == TripState.CANCELLED && it.command == TripCommand.CANCEL }
+
+    /** Moves an IN_PROGRESS trip to PAUSED (B-BR-EMP-390). */
+    fun pause(scope: String, input: TripLifecycleInput): Trip = change(scope, TripCommand.PAUSE, input)
+
+    /** Moves a PAUSED trip back to IN_PROGRESS. */
+    fun resume(scope: String, input: TripLifecycleInput): Trip = change(scope, TripCommand.RESUME, input)
+
+    /** Ends an IN_PROGRESS or PAUSED trip as CANCELLED, with a reason. */
+    fun cancel(scope: String, input: TripLifecycleInput): Trip = change(scope, TripCommand.CANCEL, input)
+
+    /**
+     * One lifecycle command, first failure first: scope and trip, author, present reason and declaration, expected
+     * revision, absent parts, the responsible member, a terminal trip, a stale revision, the table, then an instant
+     * before the start. The receiver never changes.
+     */
+    private fun change(scope: String, command: TripCommand, input: TripLifecycleInput): Trip {
+        requireScope(scope)
+        if (organizationId != scope) throw foreignScope()
+        val author = input.author ?: throw invalid()
+        if (author.organizationId != scope) throw foreignScope()
+        input.reason?.let { reason -> try { MeterPresence.missing(reason) } catch (_: IllegalArgumentException) { throw invalid() } }
+        val declared = input.declared?.let(::declaration)
+        if (input.expected < 1) throw invalid()
+        val missing = mutableListOf<TripMissing>()
+        if (command == TripCommand.CANCEL && input.reason == null) missing += TripMissing.REASON
+        if (declared == null) missing += TripMissing.DECLARATION
+        if (missing.isNotEmpty()) throw TripDomainException(TripFailure.INCOMPLETE, missing)
+        if (author != responsible) throw TripDomainException(TripFailure.FORBIDDEN)
+        if (state.terminal) throw TripDomainException(TripFailure.INVALID_TRANSITION)
+        if (input.expected != revision) throw TripDomainException(TripFailure.CONFLICT)
+        val next = TripLifecycle.transition(state, command)
+        if (declared!!.occurredAt < started.declared.occurredAt) throw TripDomainException(TripFailure.BEFORE_START)
+        val fact = TripLifecycleFact(command, revision + 1, state, next, author, declared, input.reason)
+        return Trip(reference, asset, driver, next, started, reporting, finished, endDay, revision + 1, facts + fact, handoverFacts)
     }
 
     override fun toString(): String = "EnterpriseTrip(redacted)"
@@ -177,8 +283,13 @@ class Trip private constructor(
             val zones = input.zones ?: throw invalid()
             val reporting = try { EnterpriseTime.attributeReportingDay(declared!!.occurredAt, zones) }
             catch (_: EnterpriseTimeException) { throw invalid() }
-            return Trip(reference, asset!!, driver!!, TripState.IN_PROGRESS, TripEvent(author, declared, departure!!, input.clock), reporting, null, null)
+            return Trip(reference, asset!!, driver!!, TripState.IN_PROGRESS, TripEvent(author, declared, departure!!, input.clock), reporting, null, null,
+                1, emptyList())
         }
+
+        /** Go's unset instant and the first instant after year 9999 bound a server handover instant. */
+        private val unsetInstant: Instant = Instant.parse("0001-01-01T00:00:00Z")
+        private val endInstant: Instant = Instant.parse("+10000-01-01T00:00:00Z")
 
         private fun declaration(declared: TimeDeclaration): TimeDeclaration =
             try { EnterpriseTime.validateDeclaration(declared) } catch (_: EnterpriseTimeException) { throw invalid() }

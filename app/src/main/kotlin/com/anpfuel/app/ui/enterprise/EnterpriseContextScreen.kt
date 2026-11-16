@@ -49,9 +49,28 @@ import com.anpfuel.app.R
 import com.anpfuel.app.ui.auth.SecureAccountWindow
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureUi
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureViewModel
+import com.anpfuel.app.ui.enterprise.attachment.rememberSystemReceiptPickers
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistActions
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistHomePanel
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistRunPanel
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistViewModel
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistsHomeCard
+import com.anpfuel.app.ui.enterprise.checklist.departureRun
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsHomeCard
+import com.anpfuel.app.ui.enterprise.expense.ExpensePanel
+import com.anpfuel.app.ui.enterprise.expense.ExpenseViewModel
+import com.anpfuel.app.ui.enterprise.expense.ExpensesHomeCard
+import com.anpfuel.app.ui.enterprise.fueling.FuelingPanel
+import com.anpfuel.app.ui.enterprise.fueling.FuelingViewModel
+import com.anpfuel.app.ui.enterprise.fueling.FuelingsHomeCard
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsPanel
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsViewModel
+import com.anpfuel.app.ui.enterprise.tracking.EnterpriseTrackingIndicator
+import com.anpfuel.app.ui.enterprise.tracking.MyTrackingHomeCard
+import com.anpfuel.app.ui.enterprise.tracking.MyTrackingPanel
+import com.anpfuel.app.ui.enterprise.tracking.MyTrackingViewModel
 import com.anpfuel.app.ui.enterprise.trip.TripPanel
 import com.anpfuel.app.ui.enterprise.trip.TripViewModel
 import com.anpfuel.app.ui.enterprise.trip.TripsHomeCard
@@ -59,6 +78,8 @@ import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.enterprise.EnterpriseAccessError
 import com.anpfuel.application.enterprise.EnterpriseContextState
 import com.anpfuel.application.enterprise.EnterpriseContextSummary
+import com.anpfuel.application.enterprise.checklist.ChecklistViewState
+import com.anpfuel.domain.enterprise.maintenance.checklist.ChecklistContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -70,6 +91,14 @@ fun EnterpriseContextScreen(
     syncViewModel: EnterpriseSyncViewModel = hiltViewModel(),
     assetsViewModel: MyAssetsViewModel = hiltViewModel(),
     tripViewModel: TripViewModel = hiltViewModel(),
+    receiptViewModel: ReceiptCaptureViewModel = hiltViewModel(),
+    fuelingViewModel: FuelingViewModel = hiltViewModel(),
+    checklistViewModel: ChecklistViewModel = hiltViewModel(),
+    expenseViewModel: ExpenseViewModel = hiltViewModel(),
+    /** EMP-ROUTE-004: opens the app's own route preview with an approved destination query; last, so positional callers stay valid. */
+    onNavigate: (String) -> Unit = {},
+    /** EMP-GPS-015: the tracking indicator and "Meu rastreamento"; last, so positional callers stay valid. */
+    trackingViewModel: MyTrackingViewModel = hiltViewModel(),
 ) {
     // These are cheap local invalidation flows; keep private presentation current
     // while stopped rather than briefly resuming an earlier confirmed context.
@@ -80,8 +109,25 @@ fun EnterpriseContextScreen(
     var showAssets by remember { mutableStateOf(false) }
     var assetsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val tripState by tripViewModel.state.collectAsState()
+    // EMP-DOC-004: one capture sheet owner; its unsaved photo stays in memory only (B-BR-EMP-453).
+    val receiptState by receiptViewModel.state.collectAsState()
+    val receiptPickers = rememberSystemReceiptPickers(receiptViewModel)
     var showTrips by remember { mutableStateOf(false) }
     var tripsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
+    val fuelingState by fuelingViewModel.state.collectAsState()
+    var showFuelings by remember { mutableStateOf(false) }
+    var fuelingsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
+    val expenseState by expenseViewModel.state.collectAsState()
+    var showExpenses by remember { mutableStateOf(false) }
+    var expensesFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
+    val checklistState by checklistViewModel.state.collectAsState()
+    // EMP-GPS-015 (B-BR-EMP-548): the running organization collector of this process, for the indicator of every screen.
+    val trackingActivity by trackingViewModel.activity.collectAsState()
+    val myTrackingState by trackingViewModel.state.collectAsState()
+    var showMyTracking by remember { mutableStateOf(false) }
+    var myTrackingFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
+    var showChecklists by remember { mutableStateOf(false) }
+    var checklistsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val renderedGeneration = syncState.generation
     val renderedSelected = state.selected
     var showSync by remember { mutableStateOf(false) }
@@ -110,8 +156,38 @@ fun EnterpriseContextScreen(
     // SCR-TRIP-01 (EMP-TRIP-005): withdrawn with the same gestures and lifecycle as "Meus ativos".
     fun closeTrips() {
         tripViewModel.withdraw()
+        // An unsaved photo never survives its context (B-BR-EMP-453).
+        receiptViewModel.reset()
+        // The trip start's departure line borrows the checklist owner (EMP-CHECK-002); it leaves with the trips.
+        if (!showChecklists) checklistViewModel.withdraw()
         showTrips = false
         tripsFor = null
+    }
+    // SCR-FUEL-01/02 (EMP-FUEL-011): withdrawn with the same gestures and lifecycle as the trips.
+    fun closeFuelings() {
+        fuelingViewModel.withdraw()
+        receiptViewModel.reset()
+        showFuelings = false
+        fuelingsFor = null
+    }
+    // SCR-EXP-01 (EMP-EXP-004): withdrawn with the same gestures and lifecycle as the fuelings.
+    fun closeExpenses() {
+        expenseViewModel.withdraw()
+        receiptViewModel.reset()
+        showExpenses = false
+        expensesFor = null
+    }
+    // Checklists (EMP-CHECK-002): withdrawn with the same gestures and lifecycle as the trips.
+    fun closeChecklists() {
+        checklistViewModel.withdraw()
+        showChecklists = false
+        checklistsFor = null
+    }
+    // "Meu rastreamento" (EMP-GPS-015): withdrawn with the same gestures and lifecycle as the other panels.
+    fun closeMyTracking() {
+        trackingViewModel.withdraw()
+        showMyTracking = false
+        myTrackingFor = null
     }
     fun withdrawForGesture(): Boolean {
         if (!currentGesture()) return false
@@ -120,6 +196,10 @@ fun EnterpriseContextScreen(
         openedFor = null
         closeAssets()
         closeTrips()
+        closeFuelings()
+        closeExpenses()
+        closeChecklists()
+        closeMyTracking()
         return true
     }
     fun requestUnlock() {
@@ -153,15 +233,41 @@ fun EnterpriseContextScreen(
     // Trips are shown only for the exact selected partition, member and epoch; their writes keep their creation partition.
     val tripsMatch = resumed && renderedSelected != null && tripState.epoch == renderedEpoch &&
         tripState.context?.partition == renderedSelected.partition && tripState.context?.membershipId == renderedSelected.membershipId
+    // Fuelings likewise: the exact selected partition, member and epoch only.
+    val fuelingsMatch = resumed && renderedSelected != null && fuelingState.epoch == renderedEpoch &&
+        fuelingState.context?.partition == renderedSelected.partition && fuelingState.context?.membershipId == renderedSelected.membershipId
+    // Expenses likewise: the exact selected partition, member and epoch only.
+    val expensesMatch = resumed && renderedSelected != null && expenseState.epoch == renderedEpoch &&
+        expenseState.context?.partition == renderedSelected.partition && expenseState.context?.membershipId == renderedSelected.membershipId
+    // Checklists are shown only for the exact selected partition, member and epoch; their writes keep their creation partition.
+    val checklistMatch = resumed && renderedSelected != null && checklistState.epoch == renderedEpoch &&
+        checklistState.context?.partition == renderedSelected.partition && checklistState.context?.membershipId == renderedSelected.membershipId
+    // A source loss clears the owner; keep only its safe message and withhold every checklist fact.
+    val renderedChecklist = if (checklistMatch) checklistState else ChecklistViewState(error = checklistState.error)
+    fun checklistActions(selected: EnterpriseContextSummary) = ChecklistActions(
+        onRefresh = { if (checklistMatch) checklistViewModel.refresh(renderedEpoch, checklistState.generation) },
+        onRetry = {
+            val asset = checklistState.assetId
+            val moment = checklistState.checklistContext
+            if (asset != null && moment != null) checklistViewModel.open(selected, asset, moment, renderedEpoch)
+        },
+        onStart = { if (checklistMatch) checklistViewModel.start(renderedEpoch, checklistState.generation) },
+        onAnswer = { run, position, answer, note -> if (checklistMatch) checklistViewModel.answer(run, position, answer, note, renderedEpoch, checklistState.generation) },
+        onComplete = { run, acknowledged -> if (checklistMatch) checklistViewModel.complete(run, acknowledged, renderedEpoch, checklistState.generation) },
+        onSend = { if (checklistMatch) checklistViewModel.sendNow(renderedEpoch, checklistState.generation) },
+    )
     SecureAccountWindow()
-    DisposableEffect(viewModel, syncViewModel, assetsViewModel, tripViewModel) {
-        onDispose { syncViewModel.withdraw(); assetsViewModel.withdraw(); tripViewModel.withdraw(); viewModel.unconfirm() }
+    DisposableEffect(viewModel, syncViewModel, assetsViewModel, tripViewModel, fuelingViewModel, checklistViewModel, expenseViewModel) {
+        onDispose { syncViewModel.withdraw(); assetsViewModel.withdraw(); tripViewModel.withdraw(); fuelingViewModel.withdraw()
+            checklistViewModel.withdraw(); expenseViewModel.withdraw(); trackingViewModel.withdraw(); viewModel.unconfirm() }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
-        resumed = true; syncViewModel.invalidateIfStale(); assetsViewModel.invalidateIfStale(); tripViewModel.invalidateIfStale(); viewModel.invalidateIfStale()
+        resumed = true; syncViewModel.invalidateIfStale(); assetsViewModel.invalidateIfStale(); tripViewModel.invalidateIfStale()
+        fuelingViewModel.invalidateIfStale(); checklistViewModel.invalidateIfStale(); expenseViewModel.invalidateIfStale(); viewModel.invalidateIfStale()
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-        resumed = false; showSync = false; openedFor = null; recovery = null; syncViewModel.withdraw(); closeAssets(); closeTrips(); viewModel.unconfirm()
+        resumed = false; showSync = false; openedFor = null; recovery = null; syncViewModel.withdraw(); closeAssets(); closeTrips(); closeFuelings()
+        closeExpenses(); closeChecklists(); closeMyTracking(); viewModel.unconfirm()
     }
     LaunchedEffect(renderedSelected, renderedEpoch, resumed, choosing, state.busy, state.selectionConfirmed) {
         val selected = renderedSelected
@@ -172,6 +278,10 @@ fun EnterpriseContextScreen(
         }
         if (assetsFor != null && (assetsFor?.partition != selected?.partition || assetsFor?.membershipId != selected?.membershipId)) closeAssets()
         if (tripsFor != null && (tripsFor?.partition != selected?.partition || tripsFor?.membershipId != selected?.membershipId)) closeTrips()
+        if (fuelingsFor != null && (fuelingsFor?.partition != selected?.partition || fuelingsFor?.membershipId != selected?.membershipId)) closeFuelings()
+        if (expensesFor != null && (expensesFor?.partition != selected?.partition || expensesFor?.membershipId != selected?.membershipId)) closeExpenses()
+        if (checklistsFor != null && (checklistsFor?.partition != selected?.partition || checklistsFor?.membershipId != selected?.membershipId)) closeChecklists()
+        if (myTrackingFor != null && (myTrackingFor?.partition != selected?.partition || myTrackingFor?.membershipId != selected?.membershipId)) closeMyTracking()
         if (!resumed || selected == null) { syncViewModel.withdraw(); showSync = false; openedFor = null }
         else if (!choosing && !state.busy && resumed && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
             !viewModel.state.value.busy && viewModel.state.value.selected == selected && viewModel.epochs.value == renderedEpoch) {
@@ -193,8 +303,14 @@ fun EnterpriseContextScreen(
     }
     BackHandler {
         when {
+            showMyTracking && resumed -> closeMyTracking()
+            showChecklists && resumed -> closeChecklists()
             showTrips && resumed -> if (tripsMatch && tripState.openTripId != null) tripViewModel.openTrip(null, renderedEpoch, tripState.generation)
                 else closeTrips()
+            showFuelings && resumed -> if (fuelingsMatch && fuelingState.openFuelingId != null) fuelingViewModel.openFueling(null, renderedEpoch, fuelingState.generation)
+                else closeFuelings()
+            showExpenses && resumed -> if (expensesMatch && expenseState.openExpenseId != null) expenseViewModel.openExpense(null, renderedEpoch, expenseState.generation)
+                else closeExpenses()
             showAssets && resumed -> if (assetsMatches && assetsState.detail != null) assetsViewModel.backToList(renderedEpoch, assetsState.generation)
                 else closeAssets()
             showSync && resumed && openedFor?.partition == renderedSelected?.partition &&
@@ -217,13 +333,78 @@ fun EnterpriseContextScreen(
                             .testTag("enterprise-context-header-name").semantics { heading() },
                     )
                 }
+                // EMP-GPS-015 (B-BR-EMP-548): drawn once in the header that every enterprise screen shares, only while this phone collects.
+                if (BuildConfig.ENTERPRISE_TRACKING_UI_ENABLED) EnterpriseTrackingIndicator(trackingActivity, state.selected?.organizationName, onOpen = {
+                    val selected = state.selected
+                    if (selected != null && resumed && !choosing && withdrawForGesture()) {
+                        trackingViewModel.open(selected, renderedEpoch)
+                        myTrackingFor = selected
+                        showMyTracking = true
+                    }
+                })
             }
         },
     ) { padding ->
-        if (showTrips && resumed && renderedSelected != null && !choosing &&
+        // "Meu rastreamento" is shown only for the exact selected partition, member and epoch.
+        val myTrackingMatches = resumed && renderedSelected != null && myTrackingState.epoch == renderedEpoch &&
+            myTrackingState.context?.partition == renderedSelected.partition && myTrackingState.context?.membershipId == renderedSelected.membershipId
+        if (showMyTracking && resumed && renderedSelected != null && !choosing &&
+            myTrackingFor?.partition == renderedSelected.partition && myTrackingFor?.membershipId == renderedSelected.membershipId) MyTrackingPanel(
+            // A source loss clears the owner; keep only its safe message and withhold every session.
+            state = if (myTrackingMatches) myTrackingState else myTrackingState.copy(history = null, error = myTrackingState.error ?: EnterpriseAccessError.STALE),
+            activity = trackingActivity,
+            onBack = { closeMyTracking() },
+            onRetry = { trackingViewModel.open(renderedSelected, renderedEpoch) },
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) else if (showChecklists && resumed && renderedSelected != null && !choosing &&
+            checklistsFor?.partition == renderedSelected.partition && checklistsFor?.membershipId == renderedSelected.membershipId) ChecklistHomePanel(
+            assets = if (assetsMatches) assetsState else assetsState.copy(snapshot = null, detailAssetId = null,
+                error = assetsState.error ?: EnterpriseAccessError.STALE),
+            state = renderedChecklist,
+            connected = connected,
+            actions = checklistActions(renderedSelected),
+            onOpenRun = { asset, moment -> checklistViewModel.open(renderedSelected, asset, moment, renderedEpoch) },
+            onBack = { closeChecklists() },
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) else if (showExpenses && resumed && renderedSelected != null && !choosing &&
+            expensesFor?.partition == renderedSelected.partition && expensesFor?.membershipId == renderedSelected.membershipId) ExpensePanel(
+            // A source loss clears the owner; keep only its safe message and withhold every expense fact.
+            state = if (expensesMatch) expenseState else expenseState.copy(expenses = emptyList(), openExpenseId = null,
+                error = expenseState.error ?: EnterpriseAccessError.STALE),
+            connected = connected,
+            assets = if (assetsMatches) assetsState else assetsState.copy(snapshot = null, detailAssetId = null),
+            onBack = { closeExpenses() },
+            onRetry = { expenseViewModel.open(renderedSelected, renderedEpoch) },
+            onOpen = { id -> if (expensesMatch) expenseViewModel.openExpense(id, renderedEpoch, expenseState.generation) },
+            onPick = { if (currentGesture()) assetsViewModel.open(renderedSelected, renderedEpoch) },
+            onChoose = { id, warning -> if (assetsMatches) assetsViewModel.choose(id, warning, renderedEpoch, assetsState.generation) else null },
+            onSave = { choice, form, draft -> if (expensesMatch) expenseViewModel.record(choice, form, draft, renderedEpoch, expenseState.generation) },
+            onSend = { if (expensesMatch) expenseViewModel.sendNow(renderedEpoch, expenseState.generation) },
+            modifier = Modifier.fillMaxSize().padding(padding),
+            capture = if (receiptViewModel.enabled) ReceiptCaptureUi(receiptState, receiptPickers, receiptViewModel::reset) else null,
+            onAttach = { expense, draft -> if (expensesMatch) expenseViewModel.attach(expense, draft, renderedEpoch, expenseState.generation) },
+        ) else if (showFuelings && resumed && renderedSelected != null && !choosing &&
+            fuelingsFor?.partition == renderedSelected.partition && fuelingsFor?.membershipId == renderedSelected.membershipId) FuelingPanel(
+            // A source loss clears the owner; keep only its safe message and withhold every fueling fact.
+            state = if (fuelingsMatch) fuelingState else fuelingState.copy(fuelings = emptyList(), openFuelingId = null,
+                error = fuelingState.error ?: EnterpriseAccessError.STALE),
+            connected = connected,
+            assets = if (assetsMatches) assetsState else assetsState.copy(snapshot = null, detailAssetId = null),
+            onBack = { closeFuelings() },
+            onRetry = { fuelingViewModel.open(renderedSelected, renderedEpoch) },
+            onOpen = { id -> if (fuelingsMatch) fuelingViewModel.openFueling(id, renderedEpoch, fuelingState.generation) },
+            onPick = { if (currentGesture()) assetsViewModel.open(renderedSelected, renderedEpoch) },
+            onChoose = { id, warning -> if (assetsMatches) assetsViewModel.choose(id, warning, renderedEpoch, assetsState.generation) else null },
+            onSave = { choice, form, draft -> if (fuelingsMatch) fuelingViewModel.record(choice, form, draft, renderedEpoch, fuelingState.generation) },
+            warnings = { form -> fuelingViewModel.warnings(form) },
+            onSend = { if (fuelingsMatch) fuelingViewModel.sendNow(renderedEpoch, fuelingState.generation) },
+            modifier = Modifier.fillMaxSize().padding(padding),
+            capture = if (receiptViewModel.enabled) ReceiptCaptureUi(receiptState, receiptPickers, receiptViewModel::reset) else null,
+            onAttach = { fueling, draft -> if (fuelingsMatch) fuelingViewModel.attach(fueling, draft, renderedEpoch, fuelingState.generation) },
+        ) else if (showTrips && resumed && renderedSelected != null && !choosing &&
             tripsFor?.partition == renderedSelected.partition && tripsFor?.membershipId == renderedSelected.membershipId) TripPanel(
             // A source loss clears the owner; keep only its safe message and withhold every trip fact.
-            state = if (tripsMatch) tripState else tripState.copy(trips = emptyList(), openTripId = null,
+            state = if (tripsMatch) tripState else tripState.copy(trips = emptyList(), openTripId = null, missions = null,
                 error = tripState.error ?: EnterpriseAccessError.STALE),
             connected = connected,
             assets = if (assetsMatches) assetsState else assetsState.copy(snapshot = null, detailAssetId = null),
@@ -232,13 +413,43 @@ fun EnterpriseContextScreen(
             onOpenTrip = { id -> if (tripsMatch) tripViewModel.openTrip(id, renderedEpoch, tripState.generation) },
             onPick = { if (currentGesture()) assetsViewModel.open(renderedSelected, renderedEpoch) },
             onChoose = { id, warning -> if (assetsMatches) assetsViewModel.choose(id, warning, renderedEpoch, assetsState.generation) else null },
-            onStart = { choice, label, departure -> if (tripsMatch) tripViewModel.start(choice, label, departure, renderedEpoch, tripState.generation) },
+            // EMP-TRIP-019: the start names the chosen vehicle's latest valid, non-blocking departure run shown on the form.
+            onStart = { choice, label, departure ->
+                if (tripsMatch) tripViewModel.start(choice, label, departure, renderedEpoch, tripState.generation,
+                    if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) departureRun(renderedChecklist, choice.assetId) else null)
+            },
             onLog = { trip, type, text -> if (tripsMatch) tripViewModel.log(trip, type, text, renderedEpoch, tripState.generation) },
             onFinish = { trip, final -> if (tripsMatch) tripViewModel.finish(trip, final, renderedEpoch, tripState.generation) },
             finishWarnings = { trip, final -> if (tripsMatch) tripViewModel.finishWarnings(trip, final) else emptyList() },
             onReady = { trip -> if (tripsMatch) tripViewModel.markReady(trip, renderedEpoch, tripState.generation) },
             onSend = { if (tripsMatch) tripViewModel.sendNow(renderedEpoch, tripState.generation) },
+            capture = if (receiptViewModel.enabled) ReceiptCaptureUi(receiptState, receiptPickers, receiptViewModel::reset) else null,
+            onAttach = { owner, target, draft -> if (tripsMatch) tripViewModel.attach(owner, target, draft, renderedEpoch, tripState.generation) },
             modifier = Modifier.fillMaxSize().padding(padding),
+            checklist = if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) renderedChecklist else null,
+            onDepartureCheck = { asset -> checklistViewModel.open(renderedSelected, asset, ChecklistContext.DEPARTURE, renderedEpoch) },
+            departureContent = if (!BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) null else { _, label, onDone ->
+                ChecklistRunPanel(renderedChecklist, connected, label, checklistActions(renderedSelected), onBack = onDone,
+                    modifier = Modifier.fillMaxSize().padding(padding))
+            },
+            tracking = if (!BuildConfig.ENTERPRISE_TRACKING_UI_ENABLED) null else com.anpfuel.app.ui.enterprise.trip.TripTrackingActions(
+                onStart = { trip, device -> if (tripsMatch) tripViewModel.startTracking(trip, device, renderedEpoch, tripState.generation) },
+                onStop = { trip -> if (tripsMatch) tripViewModel.stopTracking(trip, renderedEpoch, tripState.generation) },
+                onRefresh = { if (tripsMatch) tripViewModel.refreshTrackingPolicy(renderedEpoch, tripState.generation) },
+                // EMP-GPS-015: a stored recording session that this phone does not collect says so on its card.
+                collecting = { trackingActivity?.sessionId },
+            ),
+            // EMP-TRIP-021: the missions inbox, answers, planned starts and the trip lifecycle, with the same exact-partition guards.
+            missionsEnabled = BuildConfig.ENTERPRISE_MISSION_UI_ENABLED,
+            onRefreshMissions = { if (tripsMatch) tripViewModel.refreshMissions(renderedEpoch, tripState.generation) },
+            onRespond = { mission, response, reason -> if (tripsMatch) tripViewModel.respond(mission, response, reason, renderedEpoch, tripState.generation) },
+            onStartMission = { mission, choice, label, departure ->
+                if (tripsMatch) tripViewModel.startMission(mission, choice, label, departure, renderedEpoch, tripState.generation,
+                    if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) departureRun(renderedChecklist, choice.assetId) else null)
+            },
+            onLifecycle = { trip, command, reason -> if (tripsMatch) tripViewModel.lifecycle(trip, command, reason, renderedEpoch, tripState.generation) },
+            // EMP-ROUTE-004 (B-BR-EMP-532..535): the visible partition's own approved destination only; nothing is recorded or sent.
+            onNavigate = if (BuildConfig.ENTERPRISE_MISSION_UI_ENABLED) { query -> if (tripsMatch) onNavigate(query) } else null,
         ) else if (showAssets && resumed && renderedSelected != null && !choosing &&
             assetsFor?.partition == renderedSelected.partition && assetsFor?.membershipId == renderedSelected.membershipId) MyAssetsPanel(
             // A source loss clears the owner; keep only its safe message and withhold every cached fact.
@@ -302,6 +513,39 @@ fun EnterpriseContextScreen(
                             showTrips = true
                         }
                     })
+                    if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) ChecklistsHomeCard(onOpen = {
+                        if (currentGesture() && !viewModel.state.value.busy) {
+                            // The asset is chosen with the FLEET-013 picker from the protected reference cache, offline first.
+                            assetsViewModel.open(selected, renderedEpoch)
+                            checklistsFor = selected
+                            showChecklists = true
+                        }
+                    })
+                    if (BuildConfig.ENTERPRISE_FUELING_UI_ENABLED) FuelingsHomeCard(onOpen = {
+                        if (currentGesture() && !viewModel.state.value.busy) {
+                            fuelingViewModel.open(selected, renderedEpoch)
+                            // The picker reads the protected reference cache, offline first.
+                            if (BuildConfig.ENTERPRISE_FLEET_UI_ENABLED) assetsViewModel.open(selected, renderedEpoch)
+                            fuelingsFor = selected
+                            showFuelings = true
+                        }
+                    })
+                    if (BuildConfig.ENTERPRISE_EXPENSE_UI_ENABLED) ExpensesHomeCard(onOpen = {
+                        if (currentGesture() && !viewModel.state.value.busy) {
+                            expenseViewModel.open(selected, renderedEpoch)
+                            // The picker reads the protected reference cache, offline first.
+                            if (BuildConfig.ENTERPRISE_FLEET_UI_ENABLED) assetsViewModel.open(selected, renderedEpoch)
+                            expensesFor = selected
+                            showExpenses = true
+                        }
+                    })
+                    if (BuildConfig.ENTERPRISE_TRACKING_UI_ENABLED) MyTrackingHomeCard(onOpen = {
+                        if (currentGesture() && !viewModel.state.value.busy) {
+                            trackingViewModel.open(selected, renderedEpoch)
+                            myTrackingFor = selected
+                            showMyTracking = true
+                        }
+                    })
                     if (BuildConfig.ENTERPRISE_FLEET_UI_ENABLED) MyAssetsHomeCard(onOpen = {
                         if (currentGesture() && !viewModel.state.value.busy) {
                             assetsViewModel.open(selected, renderedEpoch)
@@ -328,6 +572,10 @@ fun EnterpriseContextScreen(
                     FreshContextSignIn(state, signIn)
                 }
             }
+            if (state.accessEndedLocked) Text(
+                stringResource(R.string.enterprise_protection_access_ended),
+                modifier = Modifier.testTag("enterprise-protection-access-ended").semantics { liveRegion = LiveRegionMode.Polite },
+            )
             if (state.unlockRequired) {
                 Text(stringResource(R.string.enterprise_protection_unlock_required))
                 Button(onClick = ::requestUnlock, enabled = !state.busy, modifier = Modifier.fillMaxWidth().testTag("enterprise-protection-unlock")) {
@@ -438,7 +686,8 @@ private fun ContextStatus(state: EnterpriseContextState, connected: Boolean, cat
         CircularProgressIndicator()
         Text(stringResource(R.string.enterprise_context_busy), modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite })
     }
-    state.error?.let { error -> Text(
+    // EMP-OFFL-011: an access-ended lock has its own message instead of the generic denial.
+    state.error?.takeUnless { state.accessEndedLocked }?.let { error -> Text(
         stringResource(when (error) {
             EnterpriseAccessError.ACCESS_DENIED -> R.string.enterprise_context_denied
             EnterpriseAccessError.SIGN_IN_REQUIRED, EnterpriseAccessError.FRESH_AUTH_REQUIRED -> R.string.enterprise_invitation_fresh_required

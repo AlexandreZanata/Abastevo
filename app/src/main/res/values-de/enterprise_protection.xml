@@ -12,4 +12,6 @@
     <string name="enterprise_protection_recovery_title">Bisherige lokale Arbeit verwerfen?</string>
     <string name="enterprise_protection_recovery_copy">Diese Aktion entfernt die lokalen Daten dieses Unternehmens, einschließlich noch nicht gesendeter Vorgänge. Der Server prüft den Zugriff, bevor mit leeren lokalen Daten begonnen wird.</string>
     <string name="enterprise_protection_recovery_confirm">Verwerfen und Zugriff prüfen</string>
+    <!-- EMP-OFFL-011: an access-ended lock; locked and still sending, nothing removed yet (B-BR-EMP-539). -->
+    <string name="enterprise_protection_access_ended">Der Zugang zu diesem Unternehmen auf diesem Gerät wurde beendet. Vorher gespeicherte Einträge werden weiter zur Prüfung durch das Unternehmen gesendet. Die Daten dieses Unternehmens bleiben auf diesem Gerät gesperrt und werden nach dem Senden entfernt; bisher wurde nichts entfernt.</string>
 </resources>

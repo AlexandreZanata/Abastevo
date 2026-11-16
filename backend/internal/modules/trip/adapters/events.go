@@ -72,8 +72,9 @@ func (h *eventHandler) trip(ctx context.Context, db syncapp.DBTX, source syncapp
 	if err != nil {
 		return app.Record{}, syncapp.ErrUnavailable
 	}
-	target := app.Target{TripID: record.ID, AssetID: record.AssetID, UnitID: record.UnitID, CostCentreID: record.CostCentreID, AuthorMembershipID: record.AuthorMembershipID}
-	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, target, action(mode)); err != nil {
+	// EMP-TRIP-012: the member responsible for the trip at the declared instant.
+	at := v.Declared.OccurredAt
+	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, tripTarget(record, source, mode, &at), action(mode)); err != nil {
 		return app.Record{}, denied(err)
 	}
 	return record, nil
@@ -96,7 +97,7 @@ func (h *eventHandler) Admit(ctx context.Context, db syncapp.DBTX, source syncap
 		}
 		return err
 	}
-	_, err = h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+	_, err = h.classify(ctx, db, source, record.AssetID, record.DriverAt(v.Declared.OccurredAt), v.Declared.OccurredAt)
 	return err
 }
 
@@ -128,7 +129,7 @@ func (h *eventHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
-	disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+	disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverAt(v.Declared.OccurredAt), v.Declared.OccurredAt)
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
@@ -177,13 +178,13 @@ func (h *eventHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	employee, err := h.store.AuthorEmployeeTx(ctx, syncapp.Borrow(db), source.Scope, source.MembershipID)
-	if err != nil || employee != record.AuthorEmployeeID {
+	if _, responsible := record.ResponsibleAt(v.Declared.OccurredAt); err != nil || employee != responsible {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	if err := h.events.InsertEventTx(ctx, syncapp.Borrow(db), source.Scope, source, command, employee); err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt); err != nil || disposition != app.Apply {
+	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverAt(v.Declared.OccurredAt), v.Declared.OccurredAt); err != nil || disposition != app.Apply {
 		if err == nil {
 			err = syncapp.ErrUnavailable
 		}
@@ -222,7 +223,7 @@ func (h *eventHandler) Confirm(ctx context.Context, db syncapp.DBTX, source sync
 		return err
 	}
 	if mode == syncapp.Write {
-		disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+		disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverAt(v.Declared.OccurredAt), v.Declared.OccurredAt)
 		if err != nil {
 			return err
 		}
@@ -331,8 +332,9 @@ func (s *EventStore) ReadEventTx(ctx context.Context, db syncapp.DBTX, scope ker
 }
 
 // TimelineTx reads one stored trip's timeline (B-BR-EMP-324): its start, its
-// accepted logbook facts, the reports made inside it (EMP-CHECK-003, as
-// INCIDENT or DAMAGE facts without text) and its finish, each with fact
+// accepted logbook facts, its pause, resume and cancellation (EMP-TRIP-011),
+// the reports made inside it (EMP-CHECK-003, as INCIDENT or DAMAGE facts
+// without text) and its finish, each with fact
 // type, actor, declaration and server receipt, in the shared domain order.
 // It computes no working time (EDR-028) and lists no held event.
 func (s *EventStore) TimelineTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, tripID string) ([]app.TimelineEntry, error) {
@@ -357,6 +359,12 @@ func (s *EventStore) TimelineTx(ctx context.Context, db syncapp.DBTX, scope kern
 		}
 		entries = append(entries, app.TimelineEntry{Item: trip.TimelineItem{Kind: trip.TimelineEvent, ID: e.ID, At: e.Declared.OccurredAt}, FactType: string(e.Type),
 			AuthorMembershipID: e.AuthorMembershipID, Declared: e.Declared, ReceivedAt: e.ReceivedAt, Text: e.Text})
+	}
+	// EMP-TRIP-011: each lifecycle command is a timeline fact (its command as
+	// the fact type, its reason as text), identified by its operation.
+	for _, x := range record.Transitions {
+		entries = append(entries, app.TimelineEntry{Item: trip.TimelineItem{Kind: trip.TimelineEvent, ID: x.OperationID, At: x.Declared.OccurredAt}, FactType: string(x.Command),
+			AuthorMembershipID: x.AuthorMembershipID, Declared: x.Declared, ReceivedAt: x.ReceivedAt, Text: copyText(x.Reason)})
 	}
 	reports, err := s.Reports.TripReportsTx(ctx, syncapp.Borrow(db), scope, record.ID)
 	if err != nil {
@@ -498,4 +506,12 @@ func (s *EventStore) ReviewEntriesTx(ctx context.Context, db syncapp.DBTX, scope
 		return nil, err
 	}
 	return reviewEntries(ctx, queries, scope, tripID)
+}
+
+func copyText(v *string) *string {
+	if v == nil {
+		return nil
+	}
+	c := *v
+	return &c
 }

@@ -188,13 +188,18 @@ func merge(people ...Person) review.Identity {
 
 // DecideRevision applies one decision to the current segment (EDR-222/235):
 // a SUBMITTED revision is opened and decided, an IN_REVIEW one decided. The
-// reviewer is never the trip's author, its driver or, for an amendment, the
-// amendment's author. It returns the absolute entries to append.
-func DecideRevision(r Revisions, in DecisionInput, reviewer, author, driver Person, amender *Person) ([]review.Entry, error) {
-	authors := merge(author)
+// reviewer is never the trip's author, its driver, for an amendment the
+// amendment's author, nor any other party given (EMP-TRIP-014: the closer;
+// EMP-TRIP-012: every party of a handover). It returns the absolute entries
+// to append.
+func DecideRevision(r Revisions, in DecisionInput, reviewer, author, driver Person, amender *Person, others ...Person) ([]review.Entry, error) {
+	people := []Person{author}
 	if amender != nil {
-		authors = merge(author, *amender)
+		people = append(people, *amender)
 	}
+	// EMP-TRIP-014 (B-BR-EMP-401): the member who closed the trip is one of
+	// its authors for every review decision.
+	authors := merge(append(people, others...)...)
 	beneficiary := driver.identity()
 	facts := review.Facts{Actor: reviewer.identity(), Author: authors, Beneficiary: &beneficiary, Permitted: true}
 	// A revision of an earlier segment is stale; keep APPR-001's own order.

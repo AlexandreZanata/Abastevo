@@ -99,6 +99,33 @@ func (g *MissionAuthority) EligibleAssigneeTx(ctx context.Context, tx pgx.Tx, sc
 	return true, nil
 }
 
+// CoversMissionTx proves that the planner's current trip.mission.manage
+// covers the mission with the given structure (EMP-TRIP-013: the mission with
+// its new vehicle); ORG grants cover it, UNIT and ASSET grants by equality. A
+// denial is the PermissionDenial naming the key.
+func (g *MissionAuthority) CoversMissionTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, member string, facts tripapp.MissionFacts) error {
+	if g == nil || meterMissing(tx) || meterMissing(g.Roles) || legalIdentity(scope, member) != nil || legalIdentity(scope, facts.MissionID) != nil || legalIdentity(scope, facts.UnitID) != nil ||
+		facts.AssetID != "" && legalIdentity(scope, facts.AssetID) != nil || database.ValidateOrgDBTX(ctx, tx, scope) != nil {
+		return tripapp.ErrUnavailable
+	}
+	assignments, err := g.Roles.CandidatesTx(ctx, tx, scope, member)
+	if err != nil {
+		return tripapp.ErrUnavailable
+	}
+	var now time.Time
+	if err := tx.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&now); err != nil {
+		return tripapp.ErrUnavailable
+	}
+	resource := permission.ResourceFacts{OrgID: scope.OrgID(), ID: facts.MissionID, UnitID: facts.UnitID, AssetID: facts.AssetID}
+	if _, err := permission.CoveringRules(scope, member, assignments, tripapp.MissionManagePermission, resource, now); err != nil {
+		if errors.Is(err, permission.ErrPermissionDenied) {
+			return err
+		}
+		return tripapp.ErrUnavailable
+	}
+	return nil
+}
+
 func missionAuthorityError(err error) error {
 	switch {
 	case errors.Is(err, capability.ErrEntitlementRequired):

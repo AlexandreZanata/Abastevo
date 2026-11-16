@@ -74,10 +74,10 @@ func TestFinishRefusalsUseTheFrozenVocabulary(t *testing.T) {
 }
 
 func TestOwnersNeedRealPortsAndDeclareTheirResults(t *testing.T) {
-	if _, err := NewStartHandler(nil, nil, nil, nil); !errors.Is(err, syncapp.ErrUnavailable) {
+	if _, err := NewStartHandler(nil, nil, nil, nil, nil); !errors.Is(err, syncapp.ErrUnavailable) {
 		t.Fatal("start owner without ports")
 	}
-	if _, err := NewFinishHandler(nil, nil, (*Store)(nil)); !errors.Is(err, syncapp.ErrUnavailable) {
+	if _, err := NewFinishHandler(nil, nil, nil, (*Store)(nil)); !errors.Is(err, syncapp.ErrUnavailable) {
 		t.Fatal("finish owner without ports")
 	}
 	for kind, d := range map[string]syncapp.Descriptor{app.StartOperationType: (&startHandler{}).Descriptor(), app.FinishOperationType: (&finishHandler{}).Descriptor()} {
@@ -155,5 +155,61 @@ func TestEventOwnerPortsRefusalsAndUnboundStore(t *testing.T) {
 	}
 	if _, err := (StartImplements{}).ImplementsAtStartDBTX(ctx, nil, kernel.OrgScope{}, "x"); !errors.Is(err, app.ErrUnavailable) {
 		t.Fatal("start implements without ports", err)
+	}
+}
+
+// EMP-TRIP-011 (EDR-253): the lifecycle owners need real ports and a known
+// kind, declare the trip policies, and map a refusal at receipt onto a held
+// code or the frozen vocabulary.
+func TestLifecycleOwnerPortsHoldsAndRefusals(t *testing.T) {
+	if _, err := NewTransitionHandler(app.PauseOperationType, nil, nil, nil, nil); !errors.Is(err, syncapp.ErrUnavailable) {
+		t.Fatal("lifecycle owner without ports")
+	}
+	if _, err := NewTransitionHandler(app.FinishOperationType, nil, nil, nil, nil); !errors.Is(err, syncapp.ErrUnavailable) {
+		t.Fatal("finish accepted as a lifecycle kind")
+	}
+	for _, kind := range app.LifecycleOperationTypes {
+		if d := (&transitionHandler{kind: kind}).Descriptor(); d.Validate() != nil || d.Type != kind || len(d.Results()) != 3 ||
+			d.WritePolicy.Permission != "trip.trip.start" || d.ReadPolicy.Permission != "trip.trip.read" {
+			t.Fatal("lifecycle descriptor drift", kind)
+		}
+	}
+	open, closed := app.Record{State: trip.InProgress}, app.Record{State: trip.Cancelled}
+	for _, c := range []struct {
+		record app.Record
+		err    error
+		code   string
+	}{
+		{closed, trip.ErrInvalidTransition, app.TripAlreadyClosed}, {app.Record{State: trip.Completed}, trip.ErrInvalidTransition, app.TripAlreadyClosed},
+		{open, trip.ErrInvalidTransition, app.StaleRevision}, {open, trip.ErrConflict, app.StaleRevision},
+		{open, trip.ErrForbidden, ""}, {open, trip.ErrBeforeStart, ""}, {open, nil, ""},
+	} {
+		if got := transitionHold(c.record, c.err); got != c.code {
+			t.Fatal("held code", c.record.State, c.err, got)
+		}
+	}
+	if _, err := transitionRefusal(trip.ErrForbidden); !errors.Is(err, syncapp.ErrSourceDenied) {
+		t.Fatal("another member's command is not a whole-response refusal", err)
+	} else if code, _ := orgapi.Registered(err); code != orgapi.Forbidden {
+		t.Fatal("refusal code", code)
+	}
+	for _, cause := range []error{trip.ErrBeforeStart, trip.ErrInvalid, trip.ErrScope, trip.ErrIncomplete} {
+		if outcome, err := transitionRefusal(cause); err != nil || outcome.Result != protocol.Rejected || outcome.Code != "MALFORMED" {
+			t.Fatal("refusal is not MALFORMED", cause, outcome, err)
+		}
+	}
+	if _, err := transitionRefusal(errors.New("other")); !errors.Is(err, syncapp.ErrUnavailable) {
+		t.Fatal("an unknown cause is not a retry", err)
+	}
+	ctx := context.Background()
+	var s *Store
+	if _, err := s.TransitionFactsTx(ctx, nil, kernel.OrgScope{}, "x"); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("nil store answered lifecycle facts", err)
+	}
+	if _, err := s.HoldTransitionTx(ctx, nil, syncapp.Source{}, protocol.Operation{}, app.TransitionCommand{}, app.StaleRevision); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("nil store held a lifecycle command", err)
+	}
+	if err := s.InsertTransitionTx(ctx, nil, kernel.OrgScope{}, syncapp.Source{}, app.TransitionCommand{}, trip.Trip{}, "x"); !errors.Is(err, app.ErrUnavailable) {
+		t.Fatal("nil store inserted a lifecycle row", err)
 	}
 }

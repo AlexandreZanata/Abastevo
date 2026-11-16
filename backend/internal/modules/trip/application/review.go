@@ -277,6 +277,9 @@ type ReviewView struct {
 	EffectiveRevision                               int64
 	EffectiveUsage                                  *RevisionUsage
 	Amendments                                      []AmendmentView
+	// Closure is the supervisor closure of a trip completed without a
+	// finish (EMP-TRIP-014, B-BR-EMP-400); never beside FinishedAt.
+	Closure *ClosureRecord
 }
 
 func (v ReviewView) Clone() ReviewView {
@@ -286,6 +289,7 @@ func (v ReviewView) Clone() ReviewView {
 	}
 	v.History = slices.Clone(v.History)
 	v.EffectiveUsage = copyPointer(v.EffectiveUsage)
+	v.Closure = copyPointer(v.Closure)
 	if v.Amendments != nil {
 		amendments := make([]AmendmentView, len(v.Amendments))
 		for i, a := range v.Amendments {
@@ -468,7 +472,8 @@ func (s ReviewService) Read(ctx context.Context, scope kernel.OrgScope, actor Re
 	}
 	r, err := TripRevisions(view.History)
 	if err != nil || view.TripID != tripID || !canonicalID(view.AssetID) || !canonicalID(view.DriverEmployeeID) || view.StartedAt.IsZero() || view.ReportingDay == "" ||
-		trip.ReviewState(r.State()) != view.Review || r.Latest() != view.Revision || (view.Operational == trip.Completed) != (view.FinishedAt != nil) ||
+		trip.ReviewState(r.State()) != view.Review || r.Latest() != view.Revision || (view.Operational == trip.Completed) != (view.FinishedAt != nil || view.Closure != nil) ||
+		view.FinishedAt != nil && view.Closure != nil ||
 		view.EffectiveRevision != r.Effective() || (view.EffectiveUsage == nil) != (r.Effective() == 0) || view.EffectiveUsage != nil && view.EffectiveUsage.Revision != r.Effective() {
 		return ReviewView{}, ErrUnavailable
 	}

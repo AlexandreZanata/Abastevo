@@ -25,7 +25,7 @@ checks font provenance, preserves OFL notices and fingerprints the complete
 ES-module graph after rewriting imports. Fonts and brand assets are read-only
 inputs from landing/static/assets. No runtime dependency, remote font,
 inline script, service worker, persisted account proof or client data cache
-is supplied. Dist contains only 25 allowlisted static files. Credentials,
+is supplied. Dist contains only 29 allowlisted static files. Credentials,
 source maps, TypeScript and package metadata are excluded. No `_headers`
 file ships: Caddy ignored it and served it as a public file. The artifact
 check reads the served company policy from the staging web Caddyfile.
@@ -227,3 +227,79 @@ operator capability changes are explicit synthetic fixture actions. Caddy tests
 verify the exact restricted deep links/security headers against both policy
 representations, leaving unknown suffixes as real404 responses. Task evidence:
 [EMP-ORG-014](../docs/enterprise/evidence/f2-org014-onboarding-settings-panel.md).
+
+
+## Mission planning board
+
+EMP-TRIP-022 adds the mission planning and assignment board (SCR-TRIP-03) to
+the organization workspace. It is opened on demand: no mission request is sent
+until the member asks, because the context hints carry no `trip.mission.manage`
+key and the server decides every read and command (a `403`/`404` clears the
+board and shows fixed copy that names no target). The board composes the
+existing routes: `missions/list` and `{id}/read`, the eligible-assignee read
+`missions/{id}/assignees/list`, `fleet/assets/list` (ACTIVE, implements
+filtered out), `cost-centres/list` (optional: a refusal only disables that
+picker), and the vehicle's `availability/read`, `reservations/list` and
+`blocks/list` as a read-only agenda list view (SCR-FLEET-06; purposes, notes
+and reservation people are not kept). Commands are the existing create, plan,
+assign, vehicle change and cancel routes with schema 1, one immutable
+operation per decision and the revision the planner saw.
+
+Shown state is only the latest server read with its read instant. A pending
+command never changes it; an acknowledgement is checked against the decision
+(an assignment must answer `ASSIGNED` for the requested employee) and is
+followed by a new read. `ACCEPTED`/`DECLINED` appear only from a read carrying
+the answer. An unknown outcome may be retried only as the same operation, and
+blocks new decisions until it is retried or the mission is read again;
+`CONFLICT` never retries and re-reads the current server state; validation
+refusals keep the form. Creation binds the mission unit to the chosen vehicle's
+current unit and needs a vehicle; destinations are entered as text and times
+in the browser time zone, which is named on screen.
+
+`tests/missions.test.mjs` runs the actual parsers and controller against an
+in-memory synthetic server (foreign/stale choices, conflict refresh,
+unconfirmed acceptance, 403/404/fresh refusals, exact bodies, allowlisted
+paths). `tests/missionboard.py` is a local-only Chromium check of the built
+DOM with intercepted synthetic routes (keyboard flow, focus, labels, mobile
+width, conflict and 403); it needs no Go API or database and never targets a
+remote host:
+
+```sh
+npm run build && python3 tests/missionboard.py
+```
+
+[Executed evidence](../docs/enterprise/evidence/f4-trip022-mission-board.md).
+
+## Checklist and incident panel
+
+EMP-CHECK-004 adds SCR-CHECK-04/05 to the organization workspace, opened on
+demand. It lists the organization's checklist runs from
+`checklists/runs/list` (BLOCKING first, then runs whose outcome the server
+recalculated, as the server orders them) and the damage and incident queue
+`incidents/reports/list` (open reports first, blocking marks first), opens a
+run through its asset's run read or a report through its read, and always shows
+the asset's FLEET-007 `availability/read` as the server answered it, naming a
+`CHECKLIST_RUN` cause that is the opened run; a failed read is "not confirmed",
+never available. Release of a BLOCKING run and the handling steps (ciente,
+action, resolution note, dismissal reason, optionally a listed duplicate of the
+same asset) use the existing routes with schema 1, one immutable operation per
+decision and the revision read; `SELF_APPROVAL` is named and never retried,
+`CONFLICT` re-reads the record and its availability, `403`/`404` clear the
+panel. Photo content is offered only with the `doc.document.view_content`
+context hint and a `STORED` attachment, and only through the audited
+`content/access` + `content/read` path (`privateContent`, its own 8 MiB bound);
+the capability and bytes are never kept: the file is handed to the browser to
+save because the company CSP admits no `blob:`/`data:` images.
+
+`tests/checks.test.mjs` runs the actual parsers and controller against an
+in-memory synthetic server (self-release, hidden block, content permission,
+foreign report, conflict, exact bodies, transport allowlist and bounds).
+`tests/checkpanel.py` is a local-only Chromium check of the built DOM with
+intercepted synthetic routes; it needs no Go API or database and never targets
+a remote host:
+
+```sh
+npm run build && python3 tests/checkpanel.py
+```
+
+[Executed evidence](../docs/enterprise/evidence/f4-check004-checklist-incident-panel.md).

@@ -14,6 +14,7 @@ import com.anpfuel.application.enterprise.queue.EnterpriseQueueSource
 import com.anpfuel.application.enterprise.queue.EnterpriseReviewDelivery
 import com.anpfuel.application.enterprise.queue.EnterpriseReviewTransport
 import com.anpfuel.domain.enterprise.sync.ReviewExpectation
+import com.anpfuel.domain.enterprise.sync.RevocationCleanup
 import com.anpfuel.domain.enterprise.sync.ReviewResultsRequest
 import com.anpfuel.domain.enterprise.sync.ReviewResultsRequestSnapshot
 import com.anpfuel.domain.enterprise.sync.ReviewResultsResponse
@@ -194,7 +195,8 @@ class EnterpriseOperationHttpClient(
                 require(response.headers.values("Content-Type").size == 1 && body.contentType()?.let {
                     it.type == "application" && it.subtype == "json"
                 } == true)
-                if (response.code != 200) throw EnterpriseQueueDeliveryFailure(retryAfter)
+                // EMP-OFFL-011 (EDR-348): a whole-response 403/404 only asks for one exact contact.
+                if (response.code != 200) throw EnterpriseQueueDeliveryFailure(retryAfter, RevocationCleanup.hint(response.code))
                 val input = body.source()
                 require(!input.request(limits.maxBatchBytes.toLong() + 1))
                 val decoded = SyncBatchResponse.parse(input.readByteArray(), expected, limits)

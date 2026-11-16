@@ -74,6 +74,25 @@ android {
         // EMP-TRIP-005 rollback switch (EDR-242): hides the trip entry; queued trip work keeps its delivery.
         buildConfigField("boolean", "ENTERPRISE_TRIP_UI_ENABLED",
             providers.gradleProperty("enterpriseTripUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-CHECK-002 rollback switch (EDR-286): hides the checklist entry and the trip start's departure line; queued runs keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_CHECKLIST_UI_ENABLED",
+            providers.gradleProperty("enterpriseChecklistUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-DOC-004 rollback switch (EDR-293): hides receipt capture; saved photos keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_RECEIPT_CAPTURE_UI_ENABLED",
+            providers.gradleProperty("enterpriseReceiptCaptureUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-FUEL-011 rollback switch (EDR-295): hides the fueling entry; queued fuelings and receipts keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_FUELING_UI_ENABLED",
+            providers.gradleProperty("enterpriseFuelingUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-EXP-004 rollback switch (EDR-336): hides the expense entry; queued expenses and receipts keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_EXPENSE_UI_ENABLED",
+            providers.gradleProperty("enterpriseExpenseUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-GPS-002 rollback switch (EDR-323): hides the trip tracking card; queued session operations keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_TRACKING_UI_ENABLED",
+            providers.gradleProperty("enterpriseTrackingUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-TRIP-021 rollback switch (EDR-344): hides the missions inbox and the pause/resume/cancel actions; queued answers
+        // and commands keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_MISSION_UI_ENABLED",
+            providers.gradleProperty("enterpriseMissionUiEnabled").orElse("true").get().toBooleanStrict().toString())
         testInstrumentationRunner = if (enterpriseDeviceValidation) {
             "com.anpfuel.app.ui.enterprise.EnterpriseDeviceTestRunner"
         } else {

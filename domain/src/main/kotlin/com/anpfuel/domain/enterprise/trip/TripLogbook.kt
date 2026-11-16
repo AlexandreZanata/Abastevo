@@ -62,8 +62,9 @@ class TripLogbookEntry internal constructor(
 
 /**
  * Validates one logbook event against this trip (B-BR-EMP-320/323), first failure first: scope, event identity
- * and author, the type (unknown INVALID, reserved UNSUPPORTED_EVENT), the text, the declaration, the starting
- * member, then the time window (before the start; after the finish of a completed trip). The trip is unchanged.
+ * and author, the type (unknown INVALID, reserved UNSUPPORTED_EVENT), the text, the declaration, the member
+ * responsible at the declared instant (EMP-TRIP-012), then the time window (before the start; after the finish of
+ * a completed trip). The trip is unchanged.
  */
 fun Trip.log(scope: String, input: TripLogbookInput): TripLogbookEntry {
     try { EnterprisePartition.requireId(scope) } catch (_: IllegalArgumentException) { throw logbook(TripLogbookFailure.SCOPE) }
@@ -81,10 +82,12 @@ fun Trip.log(scope: String, input: TripLogbookInput): TripLogbookEntry {
     }
     val declared = input.declared ?: throw logbook()
     try { EnterpriseTime.validateDeclaration(declared) } catch (_: EnterpriseTimeException) { throw logbook() }
-    if (author != started.author) throw logbook(TripLogbookFailure.FORBIDDEN)
+    // EMP-TRIP-012: the member responsible at the declared instant.
+    if (author != responsibleAt(declared.occurredAt)) throw logbook(TripLogbookFailure.FORBIDDEN)
     if (declared.occurredAt < started.declared.occurredAt) throw logbook(TripLogbookFailure.EVENT_BEFORE_START)
-    val end = finished
-    if (end != null && declared.occurredAt > end.declared.occurredAt) throw logbook(TripLogbookFailure.EVENT_AFTER_FINISH)
+    // EMP-TRIP-011: a cancellation closes the logbook like a finish.
+    val end = finished?.declared ?: cancellation?.declared
+    if (end != null && declared.occurredAt > end.occurredAt) throw logbook(TripLogbookFailure.EVENT_AFTER_FINISH)
     return TripLogbookEntry(reference, event, author, type, text, declared)
 }
 

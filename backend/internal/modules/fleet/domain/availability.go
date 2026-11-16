@@ -27,6 +27,9 @@ const (
 	ActiveUseCause   CauseKind = "ACTIVE_USE"
 	MaintenanceCause CauseKind = "MAINTENANCE_HOLD"
 	BlockCause       CauseKind = "BLOCK"
+	// ChecklistCause is a BLOCKING checklist run of the asset (BR-CHECK-010,
+	// EMP-CHECK-002): row 4, after the manual blocks.
+	ChecklistCause   CauseKind = "CHECKLIST_RUN"
 	ReservationCause CauseKind = "RESERVATION"
 )
 
@@ -72,11 +75,22 @@ type BlockFact struct {
 	Period AssignmentPeriod
 }
 
+// ChecklistBlockFact is a BLOCKING checklist run (row 4): from its declared
+// completion until its release, answered by the checklist-block port.
+type ChecklistBlockFact struct {
+	ID   string
+	From time.Time
+	To   *time.Time
+}
+
 // ReservationFact is one stored reservation (row 5). EmployeeID is the
 // reserved employee record, empty when the reservation names nobody.
 type ReservationFact struct {
-	ID          string
-	EmployeeID  string
+	ID         string
+	EmployeeID string
+	// MissionID is the mission the reservation holds the asset for
+	// (EMP-TRIP-023); empty for an asset or employee reservation.
+	MissionID   string
 	Reservation Reservation
 }
 
@@ -86,6 +100,7 @@ type AvailabilityFacts struct {
 	Uses         []UseFact
 	Holds        []HoldFact
 	Blocks       []BlockFact
+	Checklists   []ChecklistBlockFact
 	Reservations []ReservationFact
 }
 
@@ -125,7 +140,7 @@ func Assess(f AvailabilityFacts, at, now time.Time) (Assessment, error) {
 	if f.Lifecycle != Active {
 		causes = append(causes, Cause{Availability: Unavailable, Kind: LifecycleCause, Lifecycle: f.Lifecycle})
 	}
-	var uses, holds, blocks, reservations []Cause
+	var uses, holds, blocks, checklists, reservations []Cause
 	for _, use := range f.Uses {
 		if !validFactID(use.ID) || use.From.IsZero() || use.Via != "" && !validFactID(use.Via) {
 			return Assessment{}, ErrInvalid
@@ -155,8 +170,16 @@ func Assess(f AvailabilityFacts, at, now time.Time) (Assessment, error) {
 			blocks = append(blocks, Cause{Availability: Blocked, Kind: BlockCause, ID: block.ID, Block: block.Reason, From: period.From, To: copyEnd(period.To)})
 		}
 	}
+	for _, run := range f.Checklists {
+		if !validFactID(run.ID) || run.From.IsZero() || run.To != nil && run.To.Before(run.From) {
+			return Assessment{}, ErrInvalid
+		}
+		if !at.Before(run.From) && (run.To == nil || at.Before(*run.To)) {
+			checklists = append(checklists, Cause{Availability: Blocked, Kind: ChecklistCause, ID: run.ID, From: run.From.UTC(), To: copyEnd(run.To)})
+		}
+	}
 	for _, fact := range f.Reservations {
-		if !validFactID(fact.ID) || fact.EmployeeID != "" && !validFactID(fact.EmployeeID) || fact.Reservation.Validate() != nil {
+		if !validFactID(fact.ID) || fact.EmployeeID != "" && !validFactID(fact.EmployeeID) || fact.MissionID != "" && !validFactID(fact.MissionID) || fact.Reservation.Validate() != nil {
 			return Assessment{}, ErrInvalid
 		}
 		if fact.Reservation.HoldsAt(at, now) {
@@ -164,7 +187,7 @@ func Assess(f AvailabilityFacts, at, now time.Time) (Assessment, error) {
 			reservations = append(reservations, Cause{Availability: Reserved, Kind: ReservationCause, ID: fact.ID, From: fact.Reservation.Window.From, To: &end})
 		}
 	}
-	for _, kind := range [][]Cause{uses, holds, blocks, reservations} {
+	for _, kind := range [][]Cause{uses, holds, blocks, checklists, reservations} {
 		sortCauses(kind)
 		causes = append(causes, kind...)
 	}
@@ -183,11 +206,14 @@ const (
 	AssetUnavailable HoldCode = "ASSET_UNAVAILABLE"
 )
 
-// Starter is the author of a start: the employee record and whether an
-// ACTIVE assignment of the asset names it at the declared instant.
+// Starter is the author of a start: the employee record, whether an ACTIVE
+// assignment of the asset names it at the declared instant and the mission
+// the start executes when its reference was eligible at receipt
+// (EMP-TRIP-023; empty otherwise).
 type Starter struct {
 	EmployeeID string
 	Assigned   bool
+	MissionID  string
 }
 
 // StartDecision admits a start or holds it for review with a precise code.
@@ -202,8 +228,10 @@ type StartDecision struct {
 // not assigned → ASSET_UNAVAILABLE; another trip holds it → ASSET_BUSY. A
 // reservation that names the starter admits the start; otherwise an ACTIVE
 // assignment is required. A trip already in progress is never re-decided.
+// A reservation of the mission the start executes admits it like one naming
+// the starter (BR-FLEET-031, EMP-TRIP-023).
 func DecideStart(f AvailabilityFacts, starter Starter, at, now time.Time) (StartDecision, error) {
-	if starter.EmployeeID != "" && !validFactID(starter.EmployeeID) {
+	if starter.EmployeeID != "" && !validFactID(starter.EmployeeID) || starter.MissionID != "" && !validFactID(starter.MissionID) {
 		return StartDecision{}, ErrInvalid
 	}
 	assessment, err := Assess(f, at, now)
@@ -220,7 +248,8 @@ func DecideStart(f AvailabilityFacts, starter Starter, at, now time.Time) (Start
 		return out, nil
 	case Reserved:
 		for _, fact := range f.Reservations {
-			if fact.Reservation.HoldsAt(at, now) && (starter.EmployeeID == "" || fact.EmployeeID != starter.EmployeeID) {
+			mission := starter.MissionID != "" && fact.MissionID == starter.MissionID
+			if fact.Reservation.HoldsAt(at, now) && !mission && (starter.EmployeeID == "" || fact.EmployeeID != starter.EmployeeID) {
 				out.Code = AssetUnavailable
 				return out, nil
 			}

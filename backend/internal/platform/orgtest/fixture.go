@@ -319,6 +319,16 @@ func (f *Fixture) GrantOffboardingCommands(t *testing.T) {
 			t.Fatal(e)
 		}
 	}
+	// EMP-TRIP-018: the open-work source and the offboarding guard read the
+	// trips in progress of the ending membership.
+	if e := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trips') IS NOT NULL`).Scan(&installed); e != nil {
+		t.Fatal(e)
+	}
+	if installed {
+		if _, e := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,author_membership_id,state) ON org_trips TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); e != nil {
+			t.Fatal(e)
+		}
+	}
 }
 
 // GrantRehireCommands provisions only the disposable ordinary test role.
@@ -471,6 +481,15 @@ func (f *Fixture) GrantMeterUsage(t *testing.T) {
 		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
 		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,id,asset_id,state,occurred_at,occurred_submicro) ON org_trips TO "+role+
 			";GRANT SELECT(org_id,trip_id,occurred_at,occurred_submicro) ON org_trip_finishes TO "+role+";GRANT SELECT(org_id,asset_id) ON org_trip_held_starts TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_transitions') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		// EMP-TRIP-011: a cancelled trip holds its asset until its cancellation.
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,trip_id,command,occurred_at,occurred_submicro) ON org_trip_transitions TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
 			t.Fatal(err)
 		}
 	}

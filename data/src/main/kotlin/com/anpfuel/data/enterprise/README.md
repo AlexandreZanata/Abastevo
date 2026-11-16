@@ -65,6 +65,17 @@ foreign identities, malformed wire and late replies never become wipe commands.
 Managed server policy remains unavailable until its owning AUTH/GOV source
 exists; no managed timeout is guessed.
 
+EMP-OFFL-011 applies those verdicts on next contact. The operation worker treats
+a whole-response 403/404 or a late-intake acknowledgement code only as a hint to
+ask the exact contact once for that partition's retained enrollment. ERASE
+erases that partition alone. LOCK writes the opaque Keystore marker
+`abastevo_enterprise_v2_ended_<token>`: records, feature reads/writes, new
+operations, status, review lookups and uploads are refused, while queue delivery
+(pending, entry, acknowledge, retry) keeps sending sealed unsent work through the
+EMP-OFFL-009 intake-only path. Under the vault lock the partition is erased once
+nothing is unsent or the server answered `INTAKE_WINDOW_CLOSED`; the marker is
+erased with it. ACTIVE, refusals and outages change nothing (EDR-348..350).
+
 The native request-start clock anchors validity conservatively through network
 and durable I/O. Same-boot elapsed time enforces expiry. Reboot, backward wall
 time or decreasing elapsed observations require fresh contact and a durable
@@ -127,6 +138,26 @@ EMP-TRIP-005 registers the first business producers (`trip.start`,
 `trip.event.record`, `trip.finish`, `trip.submit`); their projection is one sealed
 `RECORD` per partition (`trip-book` v1, bound to membership and enrollment)
 written in the same protected write as each operation; no plaintext table exists.
+
+EMP-OFFL-005 seals attachment bytes as `ATTACHMENT` entries and their index as one
+`attachment-book` v1 `RECORD` per partition, written together beside an operation
+already queued; verified bytes are removed in the write that records `STORED`; the
+operation worker delivers them after the queue behind
+`ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED` (default off).
+
+EMP-DOC-004 adds `AndroidReceiptOriginals` (a FileProvider camera file under
+`cache/enterprise-receipts/`, deleted once read; bounded content reads; a decoded
+luminance sample) and `EnterpriseReceipts`; nothing of an unsaved photo is written.
+EMP-FUEL-011 registers the `fueling.submit` producer; fuelings are read back from
+the partition's retained queue entries (`ProtectedFuelingStore`), with no separate index.
+
+EMP-CHECK-002 registers `check.run.complete`; its projection is one sealed
+`checklist-book` v1 RECORD per partition, holding cached applicable reads, answers
+written without an operation, and completions written in the queue's own write.
+
+EMP-TRIP-021 adds the `trip.pause`, `trip.resume` and `trip.cancel` producers (the index becomes `trip-book` v2, which reads v1) and the
+`trip.mission.respond` producer, delivered alone after every other due operation; the missions copy is one sealed `mission-inbox` v1 RECORD per
+partition, replaced by a refresh without an operation and indexed by the answer producer in the queue's own write; no plaintext table exists.
 
 The separate operation WorkManager uses empty system input and discovers only
 the current account/origin through authenticated protected descriptors. The

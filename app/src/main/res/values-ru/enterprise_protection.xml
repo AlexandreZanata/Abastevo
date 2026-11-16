@@ -12,4 +12,6 @@
     <string name="enterprise_protection_recovery_title">Удалить прежнюю локальную работу?</string>
     <string name="enterprise_protection_recovery_copy">Будут удалены локальные данные этой компании, включая неотправленные операции. Сервер проверит доступ перед началом с пустыми локальными данными.</string>
     <string name="enterprise_protection_recovery_confirm">Удалить и проверить доступ</string>
+    <!-- EMP-OFFL-011: an access-ended lock; locked and still sending, nothing removed yet (B-BR-EMP-539). -->
+    <string name="enterprise_protection_access_ended">Доступ к этой компании на этом устройстве прекращён. Записи, сохранённые раньше, продолжают отправляться на проверку компании. Данные этой компании остаются заблокированными на устройстве и будут удалены после отправки; пока ничего не удалено.</string>
 </resources>

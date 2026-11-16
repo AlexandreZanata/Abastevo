@@ -31,6 +31,12 @@ const (
 	AssetUnavailable  = "ASSET_UNAVAILABLE"
 	PermissionChanged = "PERMISSION_CHANGED"
 	TripAlreadyClosed = "TRIP_ALREADY_CLOSED"
+	// OrphanReference holds a start whose mission reference was missing,
+	// foreign or ineligible at receipt (EMP-TRIP-023, BR-OFFL-007).
+	OrphanReference = "ORPHAN_REFERENCE"
+	// MissionReferenceType is the soft-reference type naming the mission a
+	// start executes (EMP-TRIP-023, EDR-265).
+	MissionReferenceType = "mission"
 )
 
 var (
@@ -130,16 +136,21 @@ func (e Event) copy() Event {
 	return e
 }
 
-// StartInput is a parsed trip.start.
+// StartInput is a parsed trip.start; MissionID is the mission named by its
+// soft reference, "" when it names none (EMP-TRIP-023); DepartureRunID the
+// departure checklist run it names, "" when none (EMP-TRIP-019).
 type StartInput struct {
 	Event
-	AssetID, DriverID string
+	AssetID, DriverID, MissionID, DepartureRunID string
 }
 
 // FinishInput is a parsed trip.finish; its trip and asset come from storage.
+// ReturnRunID is the return checklist run it names, "" when none
+// (EMP-TRIP-019).
 type FinishInput struct {
 	Event
-	DependsOn []string
+	DependsOn   []string
+	ReturnRunID string
 }
 
 type StartCommand struct {
@@ -209,7 +220,8 @@ type FinishRecord struct {
 	EndDay                                                       string
 }
 
-// Record is one stored trip with its optional finish.
+// Record is one stored trip with its optional finish or, for a trip closed by
+// a supervisor, its closure (EMP-TRIP-014); never both.
 type Record struct {
 	private
 	ID, OperationID, PayloadDigest, AssetID, DriverID, AuthorMembershipID, AuthorEmployeeID, EnrollmentID string
@@ -222,6 +234,13 @@ type Record struct {
 	Reporting                                                                                             orgtime.ReportingAttribution
 	State                                                                                                 trip.State
 	Finish                                                                                                *FinishRecord
+	// Transitions are the trip's lifecycle rows in revision order (EMP-TRIP-011).
+	Transitions []TransitionRecord
+	// Closure is the supervisor closure of a trip completed without a finish
+	// (EMP-TRIP-014); never beside a finish.
+	Closure *ClosureRecord
+	// Handovers are the trip's driver handovers in revision order (EMP-TRIP-012).
+	Handovers []HandoverRecord
 }
 
 // Store persists trips, finishes and held facts in the intake transaction.
@@ -233,5 +252,53 @@ type Store interface {
 	ReadTripTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) (Record, error)
 	InsertFinishTx(context.Context, syncapp.DBTX, kernel.OrgScope, syncapp.Source, FinishCommand, string) error
 	HoldFinishTx(context.Context, syncapp.DBTX, syncapp.Source, protocol.Operation, FinishCommand, string) (string, error)
+	// MissionForStartTx locks and reads the mission a start names
+	// (EMP-TRIP-023); ErrNotFound for none in the organization.
+	MissionForStartTx(context.Context, syncapp.DBTX, kernel.OrgScope, string) (MissionStart, error)
+	// LinkMissionTx stores the accepted start's link to its eligible mission
+	// and the mission's START revision in the start's transaction.
+	LinkMissionTx(context.Context, syncapp.DBTX, syncapp.Source, StartCommand) error
+	// ChecklistLinkedTx answers whether a trip is linked to the checklist
+	// run (EMP-TRIP-019: one run, one trip).
+	ChecklistLinkedTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, run string) (bool, error)
+	// ChecklistLinkTx reads the run linked to the trip for the context kind,
+	// "" when none.
+	ChecklistLinkTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, trip, kind string) (string, error)
+	// LinkChecklistTx stores the trip's departure (its start operation) or
+	// return (its finish operation) run link in that operation's transaction.
+	LinkChecklistTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, trip, kind, run, operation string) error
+	// HoldChecklistTx stores the gate reason beside a held start; run is the
+	// named run when it is stored in the organization, else "".
+	HoldChecklistTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, operation, review, reason, run string) error
 	syncapp.ReviewProof
+}
+
+// MissionStart are the facts of a named mission read at a start's receipt.
+type MissionStart struct {
+	private
+	State                                    trip.MissionState
+	AssigneeMembershipID, AssigneeEmployeeID string
+	AssetID                                  string
+	Linked                                   bool
+}
+
+// MissionEligible is the EMP-TRIP-023 eligibility of a start's mission
+// reference at receipt (B-BR-EMP-412): an ACCEPTED mission whose current
+// assignee is the start's author membership and driver employee, whose
+// vehicle (when named) is the start's asset and which no trip executes yet.
+func MissionEligible(m MissionStart, author, driver, asset string) bool {
+	return m.State == trip.MissionAccepted && !m.Linked && m.AssigneeMembershipID != "" && m.AssigneeMembershipID == author &&
+		m.AssigneeEmployeeID == driver && (m.AssetID == "" || m.AssetID == asset)
+}
+
+// StartAvailability is the FLEET-007 start decision with the EMP-TRIP-023
+// consumption of a mission's reservation by its linked start.
+type StartAvailability interface {
+	fleetapp.StartAvailabilityPort
+	fleetapp.MissionReservationFulfilment
+}
+
+// StartHeldCode reports the held codes of a trip start (B-BR-EMP-313/412).
+func StartHeldCode(code string) bool {
+	return code == AssetBusy || code == AssetUnavailable || code == PermissionChanged || code == OrphanReference
 }

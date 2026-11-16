@@ -154,7 +154,7 @@ physical devices (OWED), visual/TalkBack review.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-007 — Asset-overlap conflict resolution
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Resolve overlapping asset claims through the review queue.
 - **Rules and use cases:** REQ-07.5, BR-OFFL-006, BR-REV-003, BR-REV-007, VAL-07
 - **Depends on:** EMP-TRIP-002, EMP-OFFL-008
@@ -168,6 +168,19 @@ physical devices (OWED), visual/TalkBack review.
 - **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 conflict resolution](../evidence/f4-trip007-conflict-resolution.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Held trip starts, finishes,
+events, submissions and EMP-TRIP-011 lifecycle commands are listed, read and resolved once under
+`trip.trip.review` (`/v1/orgs/{org_id}/sync/reviews/trips/…`, structure
+through the held fact): refuse with a reason, or accept a held start as the
+trip it declared (in progress, its reading at the original receipt, its
+pending finish then accepted) only when no trip of the asset is in progress
+or paused, or finished or cancelled after its declared start; migration
+000237 re-proves every
+acceptance; the held evidence stays and the author's review-results read
+answers trip items. Accept with another asset and the Android presentation
+of trip resolutions remain retained.
 
 ### EMP-TRIP-008 — Missions: create, assign, accept and decline
 - **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
@@ -197,7 +210,7 @@ NOT_FOUND, CONFLICT store nothing). No response starts a trip; the trip link,
 planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 
 ### EMP-TRIP-009 — Manager-planned trips: destination, reason, customer or project, cargo or passengers
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Record manager-planned trip inputs separately from field facts.
 - **Rules and use cases:** REQ-07.2, REQ-07.3, BR-PRIV-005, BR-AUD-001
 - **Depends on:** EMP-TRIP-008
@@ -212,8 +225,20 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 planned trips](../evidence/f4-trip009-planned-trips.md) are LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. `PLAN` moves a DRAFT, PLANNED, ASSIGNED or
+DECLINED mission to PLANNED (assignee and answer withdrawn; ACCEPTED,
+IN_PROGRESS and terminal refused) and appends an insert-only planning revision
+(migration 000231) bound to its transition, receipt and audit event:
+destination text or unit, reason, the cost centre as customer or project, and
+a load NONE, CARGO with a description or PASSENGERS with only a count; free
+texts refuse CPF-shaped tokens. Shared with Kotlin through `mission-v2.psv`
+(superseding v1); `POST …/missions/{mission_id}/plan` under fresh
+`trip.mission.manage`; the plan is read with the mission. The app display
+remains EMP-TRIP-021.
+
 ### EMP-TRIP-010 — Stops and legs: planned versus actual
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DB · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DB · size M · state LOCAL_DONE
 - **Objective:** Preserve planned and actual stops and legs in the timeline.
 - **Rules and use cases:** REQ-07.3, BR-TIME-001, BR-TIME-002, BR-OFFL-007
 - **Depends on:** EMP-TRIP-003
@@ -228,8 +253,19 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 stops and legs](../evidence/f4-trip010-stops-legs.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-16. `PLAN` may carry 1..20 ordered free-text
+planned stops stored insert-only per planning revision (v1 digest kept for
+plans without stops); the observed stops and legs are derived at read time
+from the trip's accepted `STOP`, `ARRIVAL` and `DEPARTURE` events in the
+shared order, with missing boundaries, `after_receipt` and `after_end`
+surfaced and held observations listed (`trip/stops-v1.psv`, Go and Kotlin).
+`POST /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read` (own trips,
+`trip.trip.start`) shows the plan beside the observations, never paired.
+Migration 000256.
+
 ### EMP-TRIP-011 — Pause, resume and cancellation
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DOM · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Apply scoped pause, resume and cancellation as lifecycle events.
 - **Rules and use cases:** REQ-07.5, BR-REV-001, BR-AUD-001, BR-OFFL-004
 - **Depends on:** EMP-TRIP-002
@@ -244,8 +280,17 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 pause, resume and cancellation](../evidence/f4-trip011-pause-resume-cancel.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Signed `trip.pause`,
+`trip.resume` and `trip.cancel` (migration 000233) move the member's own trip
+at the named trip revision (IN_PROGRESS ↔ PAUSED, either to CANCELLED with a
+reason; a paused trip may be finished) with one insert-only lifecycle row each;
+a closed trip holds the command `TRIP_ALREADY_CLOSED`, a stale revision
+`STALE_REVISION`; a paused trip keeps its asset, a cancelled one releases it
+and reports no distance. Pure rules in Go and Kotlin over `trip-v2.psv`.
+
 ### EMP-TRIP-012 — Driver handover during a trip
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Record driver handover without moving historical responsibility.
 - **Rules and use cases:** REQ-07.6, BR-TEN-003, BR-AUD-005, BR-TIME-002
 - **Depends on:** EMP-TRIP-002
@@ -260,8 +305,19 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 driver handover](../evidence/f4-trip012-driver-handover.md) is
+LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. A supervisor holding
+`trip.trip.close_for_other` hands an open trip over at its revision to an
+eligible, assigned member (`/v1/orgs/{org_id}/trips/{trip_id}/handover`);
+lifecycle, finish and submission then come from the receiver, logbook events
+from the member responsible at their declared instant, and every earlier fact
+keeps its actor; every handover party is excluded from the trip's review;
+migration 000243 re-proves the revision, responsibility and separation. The
+receiver lists its trips under `trip.trip.start`; tracking session handover
+and the Android trip book remain retained (EDR-256, EMP-TRIP-021).
+
 ### EMP-TRIP-013 — Vehicle change within a mission
-- **Meta:** module TRIP · phase F4 · cut - · priority P2 · type DOM · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P2 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Change the assigned vehicle while preserving each vehicle's trip evidence.
 - **Rules and use cases:** REQ-07.1, REQ-07.6, BR-TEN-005, BR-TIME-002
 - **Depends on:** EMP-TRIP-008
@@ -276,8 +332,18 @@ planning edits, inbox and board remain EMP-TRIP-009/013/021/022/023.
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 vehicle change](../evidence/f4-trip013-vehicle-change.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. A server-only mission operation replaces the
+vehicle of a PLANNED, ASSIGNED, ACCEPTED or DECLINED mission (state,
+assignee, answer and plan kept) with an insert-only change record (migration
+000232); it is refused while the assignee runs a trip on the current
+vehicle, for a vehicle that is not an ACTIVE main asset, is unavailable at the
+planned start or runs another trip, and when the planner or the assignee does
+not cover the mission with it. `POST …/missions/{mission_id}/vehicle/change`
+under fresh `trip.mission.manage`; trips, readings and meters never move.
+
 ### EMP-TRIP-014 — Missing final reading and supervisor closure
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Close an eligible open trip with explicit missing-reading evidence.
 - **Rules and use cases:** REQ-07.6, JRN-07, BR-TRUTH-003, BR-REV-003, BR-AUD-001
 - **Depends on:** EMP-TRIP-004, EMP-METER-004
@@ -370,7 +436,7 @@ or flagged as a gap; all 66 shared Go/Kotlin vectors pass with 100% Go
 statements. The Android clock source and persistence remain open.
 
 ### EMP-TRIP-018 — Open trips when a membership ends
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Hand over open trips when access ends.
 - **Rules and use cases:** REQ-18.4, BR-IDN-027, BR-IDN-028, BR-OFFL-011, JRN-04
 - **Depends on:** EMP-TRIP-014, EMP-IDN-010
@@ -386,7 +452,7 @@ statements. The Android clock source and persistence remain open.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-019 — Checklist gate at trip start and finish
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
 - **Objective:** Apply recorded checklist policy at trip boundaries.
 - **Rules and use cases:** REQ-07.2, BR-CHECK-005, BR-CHECK-007, BR-CHECK-008, BR-CHECK-013
 - **Depends on:** EMP-TRIP-002, EMP-CHECK-002
@@ -401,8 +467,22 @@ statements. The Android clock source and persistence remain open.
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 checklist gate](../evidence/f4-trip019-checklist-gate.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-16. `trip.start` (schema 1) may name its
+departure run and `trip.finish` its return run through one `checklist_run`
+soft reference (Android builders and `trip-operations-v2.psv`). At receipt
+the server requires a departure run when a CHECK-001 DEPARTURE template
+applies now, counts only the author's own unlinked DEPARTURE run of the
+asset, and judges it at the declared start by history (BLOCKING until its
+release was recorded; valid for the policy in force then); a failed gate
+holds the start with the closed codes (`ASSET_UNAVAILABLE`, or
+`ORPHAN_REFERENCE` for a named run that does not count) and stores the
+reason (`CHECKLIST_REQUIRED`, `CHECKLIST_BLOCKING`, `CHECKLIST_EXPIRED`,
+`ORPHAN_REFERENCE`); an accepted start links its run once. A finish links a
+counting return run and is never held for it. Migration 000255; no route.
+
 ### EMP-TRIP-020 — Trip closing conference: expenses and documents before submission
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Review trip-related expenses and documents before submission.
 - **Rules and use cases:** REQ-07.2, REQ-07.3, BR-PRIV-004, BR-REV-002, BR-TRUTH-001
 - **Depends on:** EMP-TRIP-005, EMP-FUEL-011, EMP-EXP-004
@@ -418,7 +498,7 @@ statements. The Android clock source and persistence remain open.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-TRIP-021 — App: missions inbox and planned-trip execution
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Let drivers act on scoped missions and planned trips in Android.
 - **Rules and use cases:** REQ-07.2, BR-OFFL-003, BR-OFFL-016, BR-OFFL-017, JRN-06
 - **Depends on:** EMP-TRIP-008, EMP-TRIP-009, EMP-TRIP-011, EMP-TRIP-005
@@ -433,8 +513,20 @@ statements. The Android clock source and persistence remain open.
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 missions inbox](../evidence/f4-trip021-missions-inbox.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-16. The app keeps a sealed `mission-inbox` copy
+of the member's own list (one page of 100, refused whole for another
+assignee) and always states its age from the device receipt clock (labelled
+at 24 h or when unknown); refreshing is online only. Answers are the signed
+`trip.mission.respond`, delivered alone after every other due operation (a
+transport denial holds nothing else; a denied answer stays unconfirmed and is
+explained after a refresh). A planned trip starts only from a confirmed
+acceptance with the mission soft reference on the mission's vehicle, and the
+trip records `trip.pause`/`trip.resume`/`trip.cancel` (`trip-book` v2,
+`trip-operations-v3.psv`). No server change, route or migration.
+
 ### EMP-TRIP-022 — Panel: mission planning and assignment board
-- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type WEB · size M · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P1 · type WEB · size M · state LOCAL_DONE
 - **Objective:** Present scoped mission planning and assignment in the company panel.
 - **Rules and use cases:** REQ-07.2, BR-AUTH-004, BR-AUTH-013, BR-TRUTH-006
 - **Depends on:** EMP-TRIP-009, EMP-FLEET-007, EMP-PLAT-008
@@ -449,8 +541,20 @@ statements. The Android clock source and persistence remain open.
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+[F4 mission board](../evidence/f4-trip022-mission-board.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. The company panel opens a mission board on
+demand that lists missions, creates (vehicle-bound unit), plans (text
+destination, reason, optional cost centre, load), assigns from the new
+server read `POST …/missions/{mission_id}/assignees/list` (exactly the
+employees the assignment command accepts), changes the vehicle and cancels
+through the existing routes with revision CAS; it shows only server-read state
+with its read time, the FLEET-007 warning and the vehicle's read-only agenda
+(SCR-FLEET-06 list view). `CONFLICT` re-reads, `FORBIDDEN`/`NOT_FOUND` clear
+the board. No migration. Reservation/block commands, the grid calendar,
+filters and history stay retained.
+
 ### EMP-TRIP-023 — Reservation-to-trip integration and no-show release
-- **Meta:** module TRIP · phase F4 · cut - · priority P2 · type DOM · size S · state TODO
+- **Meta:** module TRIP · phase F4 · cut - · priority P2 · type DOM · size S · state LOCAL_DONE
 - **Objective:** Convert eligible reservations into trip use and release no-shows safely.
 - **Rules and use cases:** REQ-07.1, BR-TEN-005, BR-OFFL-004, BR-TRUTH-006
 - **Depends on:** EMP-FLEET-007, EMP-TRIP-008
@@ -464,3 +568,16 @@ statements. The Android clock source and persistence remain open.
 - **Validation:** V-API, V-SQL, V-JOB, V-AUTHZ, V-ISO, V-IDEM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** The [trip design](../modules/trips.md) supplies the transition and policy boundaries. C1 remains driver-initiated and the logbook remains operational.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 reservation-to-trip link](../evidence/f4-trip023-reservation-trip-link.md)
+is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. A signed `trip.start`
+(schema 1) may name its mission through one envelope soft reference; an
+eligible ACCEPTED mission of the author, driver and vehicle is linked at
+receipt (insert-only link, migration 000249), moves to IN_PROGRESS and is
+completed by the transaction that completes the trip; a missing, foreign or
+ineligible mission holds the start `ORPHAN_REFERENCE`. The planner requests
+the mission vehicle's reservation (`POST …/missions/{mission_id}/reservations/request`,
+fresh `trip.mission.manage`); the linked start consumes the confirmed
+reservation once (`FULFILLED`) only before its no-show deadline, and the
+outcome job (now taking the root lock first) records `NO_SHOW` once; both
+race orders resolve to one outcome. Shared mission table `mission-v3.psv`.

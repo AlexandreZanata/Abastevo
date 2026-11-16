@@ -1,6 +1,9 @@
 package application_test
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"testing"
 	"time"
@@ -140,4 +143,168 @@ func missionScope(t *testing.T, n int) kernel.OrgScope {
 		t.Fatal(err)
 	}
 	return scope
+}
+
+// EMP-TRIP-009 (B-BR-EMP-382, EDR-249): PLAN carries exactly its plan; the
+// command repeats the domain plan profile without a scope; its digest binds
+// every plan field while CREATE, ASSIGN and CANCEL keep the EMP-TRIP-008
+// digest form, so receipts stored before 000231 replay unchanged.
+func TestMissionPlanCommandIsExactAndDigestStable(t *testing.T) {
+	text := func(v string) *string { return &v }
+	count := func(v int) *int { return &v }
+	plan := app.MissionPlanFields{DestinationText: text("Centro de distribuição Norte"), Reason: "Entrega de peças", CostCentreID: id(6), Load: "CARGO", CargoDescription: text("Peças")}
+	base := app.MissionCommandInput{Kind: app.MissionPlanCommand, OperationID: id(1), MissionID: id(4), ExpectedRevision: 2, Plan: &plan}
+	valid := map[string]app.MissionPlanFields{
+		"text-cargo":      plan,
+		"unit-passengers": {DestinationUnitID: id(7), Reason: "Transporte da equipe", Load: "PASSENGERS", Passengers: count(12)},
+		"none":            {DestinationText: text("Pátio"), Reason: "Vistoria", Load: "NONE"},
+		"999":             {DestinationText: text("Pátio"), Reason: "Evento", Load: "PASSENGERS", Passengers: count(999)},
+	}
+	for name, p := range valid {
+		in := base
+		in.Plan = &p
+		if _, err := app.NewMissionCommand(in); err != nil {
+			t.Fatal("valid plan refused", name, err)
+		}
+	}
+	bad := map[string]func(*app.MissionCommandInput){
+		"no-plan":              func(v *app.MissionCommandInput) { v.Plan = nil },
+		"plan-on-cancel":       func(v *app.MissionCommandInput) { v.Kind, v.Reason = app.MissionCancelCommand, "Motivo" },
+		"revision-zero":        func(v *app.MissionCommandInput) { v.ExpectedRevision = 0 },
+		"with-unit":            func(v *app.MissionCommandInput) { v.UnitID = id(2) },
+		"with-assignee":        func(v *app.MissionCommandInput) { v.AssigneeEmployeeID = id(5) },
+		"with-reason":          func(v *app.MissionCommandInput) { v.Reason = "x" },
+		"both-destinations":    func(v *app.MissionCommandInput) { v.Plan.DestinationUnitID = id(7) },
+		"no-destination":       func(v *app.MissionCommandInput) { v.Plan.DestinationText = nil },
+		"non-canonical-unit":   func(v *app.MissionCommandInput) { v.Plan.DestinationText, v.Plan.DestinationUnitID = nil, "X" },
+		"non-canonical-centre": func(v *app.MissionCommandInput) { v.Plan.CostCentreID = "centre" },
+		"cpf-destination":      func(v *app.MissionCommandInput) { v.Plan.DestinationText = text("Casa 12345678909") },
+		"cpf-reason":           func(v *app.MissionCommandInput) { v.Plan.Reason = "Cliente 123.456.789-09" },
+		"cpf-cargo":            func(v *app.MissionCommandInput) { v.Plan.CargoDescription = text("Pacote 12345678909") },
+		"blank-reason":         func(v *app.MissionCommandInput) { v.Plan.Reason = " " },
+		"unknown-load":         func(v *app.MissionCommandInput) { v.Plan.Load = "BOTH" },
+		"cargo-without-text":   func(v *app.MissionCommandInput) { v.Plan.CargoDescription = nil },
+		"cargo-with-count":     func(v *app.MissionCommandInput) { v.Plan.Passengers = count(2) },
+		"none-with-text":       func(v *app.MissionCommandInput) { v.Plan.Load = "NONE" },
+		"passengers-zero": func(v *app.MissionCommandInput) {
+			v.Plan.Load, v.Plan.CargoDescription, v.Plan.Passengers = "PASSENGERS", nil, count(0)
+		},
+		"passengers-1000": func(v *app.MissionCommandInput) {
+			v.Plan.Load, v.Plan.CargoDescription, v.Plan.Passengers = "PASSENGERS", nil, count(1000)
+		},
+		"passengers-description":   func(v *app.MissionCommandInput) { v.Plan.Load, v.Plan.Passengers = "PASSENGERS", count(2) },
+		"passengers-without-count": func(v *app.MissionCommandInput) { v.Plan.Load, v.Plan.CargoDescription = "PASSENGERS", nil },
+		"unknown-kind":             func(v *app.MissionCommandInput) { v.Kind = "START" },
+	}
+	for name, change := range bad {
+		in := base
+		p := plan
+		in.Plan = &p
+		change(&in)
+		if _, err := app.NewMissionCommand(in); !errors.Is(err, trip.ErrInvalid) {
+			t.Fatal("invalid plan command admitted", name, err)
+		}
+	}
+	scope := missionScope(t, 1)
+	c, err := app.NewMissionCommand(base)
+	if err != nil {
+		t.Fatal(err)
+	}
+	digests := map[string]bool{c.Digest(scope): true}
+	for name, change := range map[string]func(*app.MissionPlanFields){
+		"destination": func(p *app.MissionPlanFields) { p.DestinationText = text("Outro destino") },
+		"unit":        func(p *app.MissionPlanFields) { p.DestinationText, p.DestinationUnitID = nil, id(7) },
+		"reason":      func(p *app.MissionPlanFields) { p.Reason = "Outro motivo" },
+		"centre":      func(p *app.MissionPlanFields) { p.CostCentreID = "" },
+		"cargo":       func(p *app.MissionPlanFields) { p.CargoDescription = text("Outra carga") },
+		"passengers":  func(p *app.MissionPlanFields) { p.Load, p.CargoDescription, p.Passengers = "PASSENGERS", nil, count(3) },
+	} {
+		p := plan
+		change(&p)
+		in := base
+		in.Plan = &p
+		other, err := app.NewMissionCommand(in)
+		if err != nil {
+			t.Fatal(name, err)
+		}
+		if d := other.Digest(scope); len(d) != 64 || digests[d] {
+			t.Fatal("plan digest does not bind", name)
+		}
+		digests[other.Digest(scope)] = true
+	}
+	if c.Digest(missionScope(t, 2)) == c.Digest(scope) {
+		t.Fatal("plan digest does not bind the organization")
+	}
+	plan.Reason = "changed after validation"
+	if again, _ := c.Snapshot(); again.Plan.Reason != "Entrega de peças" {
+		t.Fatal("the command shares the caller's plan")
+	}
+	cancel := app.MissionCommandInput{Kind: app.MissionCancelCommand, OperationID: id(1), MissionID: id(4), ExpectedRevision: 2, Reason: "Cliente cancelou"}
+	cc, _ := app.NewMissionCommand(cancel)
+	raw, _ := json.Marshal([]any{"trip.mission.command.v1", scope.OrgID().String(), app.MissionCancelCommand, id(1), id(4), int64(2), "", "", "", "", "", "", "Cliente cancelou"})
+	if sum := sha256.Sum256(raw); cc.Digest(scope) != hex.EncodeToString(sum[:]) {
+		t.Fatal("the EMP-TRIP-008 digest form changed")
+	}
+}
+
+// EMP-TRIP-013 (B-BR-EMP-387, EDR-251): VEHICLE carries exactly the mission,
+// the expected revision, the new vehicle and a reason; its digest binds them.
+func TestMissionVehicleCommandIsExact(t *testing.T) {
+	base := app.MissionCommandInput{Kind: app.MissionVehicleCommand, OperationID: id(1), MissionID: id(4), ExpectedRevision: 3, AssetID: id(8), Reason: "Veículo em manutenção"}
+	if _, err := app.NewMissionCommand(base); err != nil {
+		t.Fatal("valid vehicle change refused", err)
+	}
+	for name, change := range map[string]func(*app.MissionCommandInput){
+		"no-asset":       func(v *app.MissionCommandInput) { v.AssetID = "" },
+		"bad-asset":      func(v *app.MissionCommandInput) { v.AssetID = "asset" },
+		"no-reason":      func(v *app.MissionCommandInput) { v.Reason = "" },
+		"control-reason": func(v *app.MissionCommandInput) { v.Reason = "Motivo\u0000" },
+		"revision-zero":  func(v *app.MissionCommandInput) { v.ExpectedRevision = 0 },
+		"no-mission":     func(v *app.MissionCommandInput) { v.MissionID = "" },
+		"with-unit":      func(v *app.MissionCommandInput) { v.UnitID = id(2) },
+		"with-assignee":  func(v *app.MissionCommandInput) { v.AssigneeEmployeeID = id(5) },
+		"with-title":     func(v *app.MissionCommandInput) { v.Title = "x" },
+		"with-plan":      func(v *app.MissionCommandInput) { v.Plan = &app.MissionPlanFields{Reason: "x"} },
+		"with-window":    func(v *app.MissionCommandInput) { v.StartsAt = time.Date(2026, 11, 20, 11, 0, 0, 0, time.UTC) },
+	} {
+		in := base
+		change(&in)
+		if _, err := app.NewMissionCommand(in); !errors.Is(err, trip.ErrInvalid) {
+			t.Fatal("invalid vehicle change admitted", name, err)
+		}
+	}
+	scope := missionScope(t, 1)
+	c, _ := app.NewMissionCommand(base)
+	other := base
+	other.AssetID = id(9)
+	o, _ := app.NewMissionCommand(other)
+	cancel := base
+	cancel.Kind, cancel.AssetID = app.MissionCancelCommand, ""
+	cc, _ := app.NewMissionCommand(cancel)
+	if d := c.Digest(scope); len(d) != 64 || d == o.Digest(scope) || d == cc.Digest(scope) || d == c.Digest(missionScope(t, 2)) {
+		t.Fatal("vehicle digest does not bind the vehicle, the kind and the organization")
+	}
+}
+
+// EMP-TRIP-022 (EDR-304): the eligible-assignee page is bounded and keyed by
+// a canonical employee identifier; the service refuses a non-canonical
+// mission before any repository call.
+func TestMissionAssigneeFilterIsBounded(t *testing.T) {
+	const id = "7b0e2a54-0000-4000-8000-000000008301"
+	for _, f := range []app.MissionAssigneeFilter{{Limit: 0}, {Limit: app.MaxMissionPage + 1}, {Limit: 1, AfterID: "not-a-uuid"}, {Limit: 1, AfterID: "7B0E2A54-0000-4000-8000-000000008301"}} {
+		if f.Validate() == nil {
+			t.Fatal("an unbounded or non-canonical assignee filter was accepted", f.Limit)
+		}
+	}
+	for _, f := range []app.MissionAssigneeFilter{{Limit: 1}, {Limit: app.MaxMissionPage, AfterID: id}} {
+		if f.Validate() != nil {
+			t.Fatal("a valid assignee filter was refused", f.Limit)
+		}
+	}
+	if _, err := (app.MissionService{Enabled: true}).Assignees(t.Context(), kernel.OrgScope{}, app.MissionActor{}, access.Decision{}, "not-a-mission", app.MissionAssigneeFilter{Limit: 1}); !errors.Is(err, app.ErrNotFound) {
+		t.Fatal("a non-canonical mission is not found before any call", err)
+	}
+	if _, err := (app.MissionService{Enabled: true}).Assignees(t.Context(), kernel.OrgScope{}, app.MissionActor{}, access.Decision{}, id, app.MissionAssigneeFilter{}); !errors.Is(err, trip.ErrInvalid) {
+		t.Fatal("an invalid filter is refused before any call", err)
+	}
 }

@@ -612,6 +612,8 @@ sql:
       - db/migrations/000209_org_document_links.sql
       - db/migrations/000212_org_document_upload_safety.sql
       - db/migrations/000230_organization_incident_reports.sql
+      - db/migrations/000245_organization_fueling_document_links.sql
+      - db/migrations/000257_organization_expense_document_links.sql
     gen:
       go:
         package: document
@@ -705,6 +707,15 @@ sql:
       - db/migrations/000216_organization_meter_reading_states.sql
       - db/migrations/000217_organization_asset_reservations.sql
       - db/migrations/000222_organization_implement_attachments.sql
+      # EMP-TRIP-023: the reservation's mission and trip links (000249) and
+      # the trip and mission tables they reference.
+      - db/migrations/000220_organization_trips.sql
+      - db/migrations/000227_organization_trip_missions.sql
+      - db/migrations/000231_organization_trip_mission_plans.sql
+      - db/migrations/000232_organization_trip_mission_vehicles.sql
+      - db/migrations/000249_organization_trip_reservation_links.sql
+      - db/migrations/000251_organization_meter_segments.sql
+      - db/migrations/000252_organization_meter_current_values.sql
     gen:
       go:
         package: fleet
@@ -736,6 +747,7 @@ sql:
       - db/migrations/000220_organization_trips.sql
       - db/migrations/000223_organization_checklist_templates.sql
       - db/migrations/000230_organization_incident_reports.sql
+      - db/migrations/000242_organization_checklist_runs.sql
     gen:
       go:
         package: maintenance
@@ -770,6 +782,32 @@ sql:
         omit_unused_structs: true
 
   - engine: postgresql
+    queries: db/queries/expense
+    schema:
+      - db/migrations/000004_identity.sql
+      - db/migrations/000020_accounts.sql
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000170_membership_periods.sql
+      - db/migrations/000172_organization_onboarding.sql
+      - db/migrations/000174_operating_units.sql
+      - db/migrations/000175_cost_centres.sql
+      - db/migrations/000194_organization_devices.sql
+      - db/migrations/000196_organization_sync_intake.sql
+      - db/migrations/000197_organization_assets.sql
+      - db/migrations/000198_organization_meters.sql
+      - db/migrations/000201_organization_asset_lifecycle.sql
+      - db/migrations/000215_organization_fuelings.sql
+      - db/migrations/000244_organization_expenses.sql
+    gen:
+      go:
+        package: expense
+        out: db/queries/expense
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+
+  - engine: postgresql
     queries: db/queries/trip
     schema:
       - db/migrations/000004_identity.sql
@@ -791,6 +829,9 @@ sql:
       - db/migrations/000216_organization_meter_reading_states.sql
       - db/migrations/000226_organization_trip_reviews.sql
       - db/migrations/000229_organization_trip_amendments.sql
+      - db/migrations/000233_organization_trip_lifecycle.sql
+      - db/migrations/000235_organization_trip_closures.sql
+      - db/migrations/000243_organization_trip_handovers.sql
     gen:
       go:
         package: trip
@@ -811,6 +852,7 @@ sql:
       - db/migrations/000172_organization_onboarding.sql
       - db/migrations/000174_operating_units.sql
       - db/migrations/000175_cost_centres.sql
+      - db/migrations/000176_employee_profiles.sql
       - db/migrations/000194_organization_devices.sql
       - db/migrations/000196_organization_sync_intake.sql
       - db/migrations/000197_organization_assets.sql
@@ -819,6 +861,8 @@ sql:
       - db/migrations/000201_organization_asset_lifecycle.sql
       - db/migrations/000220_organization_trips.sql
       - db/migrations/000227_organization_trip_missions.sql
+      - db/migrations/000231_organization_trip_mission_plans.sql
+      - db/migrations/000232_organization_trip_mission_vehicles.sql
     gen:
       go:
         package: mission

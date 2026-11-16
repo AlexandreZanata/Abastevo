@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-DOC-004 SCR-DOC-01; generated from one table by f4-logs/doc004-scripts/gen_receipt_strings.py -->
+<resources>
+    <string name="enterprise_receipts_synthetic_notice">Phase de test : utilisez uniquement des images synthétiques, jamais un vrai justificatif.</string>
+    <string name="enterprise_receipts_camera">Prendre une photo</string>
+    <string name="enterprise_receipts_import">Importer une photo</string>
+    <string name="enterprise_receipts_reading">Lecture de la photo…</string>
+    <string name="enterprise_receipts_camera_denied">Autorisation de l’appareil photo refusée. Vous pouvez importer une photo. Rien n’a été enregistré.</string>
+    <string name="enterprise_receipts_cancelled">Aucune photo choisie. Rien n’a été enregistré.</string>
+    <string name="enterprise_receipts_refused_missing">Fichier introuvable sur l’appareil. Choisissez-le de nouveau. Rien n’a été enregistré.</string>
+    <string name="enterprise_receipts_refused_too_large">Ce fichier dépasse 5 Mo. Rien n’a été enregistré.</string>
+    <string name="enterprise_receipts_refused_unsupported">Format non accepté dans cette phase (photos JPEG uniquement). Rien n’a été enregistré.</string>
+    <string name="enterprise_receipts_hint_sharp">L’image semble nette.</string>
+    <string name="enterprise_receipts_hint_low_resolution">L’image a peut-être trop peu de pixels.</string>
+    <string name="enterprise_receipts_hint_dark">L’image est peut-être trop sombre.</string>
+    <string name="enterprise_receipts_hint_bright">L’image est peut-être trop claire.</string>
+    <string name="enterprise_receipts_hint_contrast">L’image manque peut-être de contraste.</string>
+    <string name="enterprise_receipts_hint_blurred">L’image est peut-être floue.</string>
+    <string name="enterprise_receipts_hint_not_checked">L’image n’a pas pu être vérifiée.</string>
+    <string name="enterprise_receipts_hint_disclaimer">Cette vérification n’est qu’une indication ; elle ne valide pas le justificatif.</string>
+    <string name="enterprise_receipts_keep_or_retake">Gardez cette photo ou prenez-en une autre.</string>
+    <string name="enterprise_receipts_save">Enregistrer sur l’appareil</string>
+    <string name="enterprise_receipts_cancel">Annuler</string>
+    <string name="enterprise_receipts_preview_description">Photo choisie</string>
+    <string name="enterprise_receipts_photos">Photos</string>
+    <string name="enterprise_receipts_photo_status">Photo %1$d : %2$s</string>
+    <string name="enterprise_receipts_reason">Motif : %1$s</string>
+    <string name="enterprise_receipts_retake">Reprendre la photo</string>
+    <string name="enterprise_receipts_label_saved">Enregistré sur l’appareil</string>
+    <string name="enterprise_receipts_label_sending">Envoi en cours</string>
+    <string name="enterprise_receipts_label_verifying">Fichier en vérification</string>
+    <string name="enterprise_receipts_label_stored">Fichier conservé par l’entreprise</string>
+    <string name="enterprise_receipts_label_refused">Non accepté</string>
+    <string name="enterprise_receipts_label_missing">Justificatif introuvable sur l’appareil. Reprenez la photo.</string>
+    <string name="enterprise_receipts_label_attention">À vérifier</string>
+    <string name="enterprise_receipts_refusal_owner">l’enregistrement n’a pas été accepté</string>
+    <string name="enterprise_receipts_refusal_forbidden">non autorisé pour cet enregistrement</string>
+    <string name="enterprise_receipts_refusal_validation">non accepté dans cette phase</string>
+    <string name="enterprise_receipts_refusal_conflict">en conflit avec une autre photo</string>
+    <string name="enterprise_receipts_refusal_reused">renvoyé avec un autre contenu</string>
+    <string name="enterprise_receipts_refusal_quarantined">retenu par le contrôle de sécurité</string>
+    <string name="enterprise_receipts_refusal_failed">l’envoi a été clos sans le fichier</string>
+    <string name="enterprise_receipts_local_unknown_record">Cet enregistrement n’est pas enregistré pour cette entreprise sur l’appareil.</string>
+    <string name="enterprise_receipts_local_full">Cet appareil contient trop de photos. Envoyez-les avant d’en ajouter.</string>
+    <string name="enterprise_receipts_local_budget">Les photos non envoyées occupent déjà l’espace disponible. Envoyez-les d’abord.</string>
+    <string name="enterprise_receipts_local_foreign">Ces photos appartiennent à une autre inscription de cet appareil.</string>
+    <string name="enterprise_receipts_local_disabled">La prise de photos est désactivée dans cette version.</string>
+    <string name="enterprise_receipts_local_invalid">Cette photo n’a pas pu être enregistrée. Rien n’a été enregistré.</string>
+    <string name="enterprise_receipts_add_reading_photo">Ajouter une photo du relevé</string>
+    <string name="enterprise_receipts_title_reading">Photo du relevé</string>
+    <string name="enterprise_receipts_saved">Photo enregistrée sur l’appareil.</string>
+    <string name="enterprise_receipts_unavailable">Les photos de cette entreprise ne peuvent pas être lues pour le moment. Les photos enregistrées sont conservées.</string>
+</resources>

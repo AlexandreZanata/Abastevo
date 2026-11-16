@@ -51,6 +51,60 @@ Target quick gate: format/build/vet, actual short critical/platform suites, refe
 
 Full gate before backend release: all unit/static/coverage/race tests, real PostGIS, empty/upgrade migrations, end-to-end/auth/evidence, dependency/image/security scans, deploy/restore/load evidence, existing Android regression baseline and frozen cross-language fixture expectations. Select the immutable candidate after phase integration and record the complete expected-result manifest. Reuse expensive evidence only for demonstrably matching artifacts/config/inputs under CI_PLAN. Full Kotlin↔Go↔Swift parity starts P12/P10 after G09-LOCAL; native/macOS evidence is mandatory where applicable.
 
+## Enterprise sync resilience suite (EMP-OFFL-013)
+
+One repeatable suite proves convergence of the enterprise sync failure cases
+(lost response, wrong dependency order, duplicate and concurrent effects,
+missing acknowledgement, killed process, truncated receipt upload and stale
+cross-scope state) on both boundaries; see the
+[evidence](../enterprise/evidence/f4-offl013-sync-resilience.md) and EDR-351..353.
+
+```sh
+# backend/: real PostGIS (ANPFUEL_TEST_DATABASE_URL) and the disposable
+# ANPFUEL_TEST_STORAGE_* bucket of infra/compose.validation.yml (receipt test)
+go test -race -count=1 -tags=integration -p 2 -run '^TestSyncResilience' ./internal/modules/organization/adapters/
+# repository root, JDK 17: ordering rule, queue service and the device half
+./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.EnterpriseQueueTest' \
+  :application:test --tests 'com.anpfuel.application.enterprise.EnterpriseOperationQueueTest' \
+  :data:testDebugUnitTest --tests 'com.anpfuel.data.enterprise.EnterpriseSyncResilienceTest'
+```
+
+The device half runs the real protected vault, queue, product producers,
+queue service and signed HTTP client (a real child JVM for process death)
+behind an edge ledger of the 10-offline-sync §10.2 rows; the server half runs
+the real default enterprise runtime. The emulator stage is
+`EnterpriseSyncResilienceNativeDeviceTest` (data androidTest, validation
+build) against `TestReceiptNativeSourceFixture` (tags `integration
+nativefixture`); it is owed until it runs on the owned emulator.
+
+## Enterprise M4 gate scenario union (EMP-REL-005)
+
+The M4 gate runs the owners' scenario tests for VAL-04, VAL-22 (part 2),
+VAL-23, VAL-26, VAL-27, VAL-28 and VAL-02/VAL-21 over the F4 routes as one
+command set; it adds no test. The mapping of each scenario clause to named
+tests, the counts on the tested head and the owed device evidence are in the
+[gate evidence](../enterprise/evidence/f4-rel005-m4-gate.md) (EDR-360..362).
+
+```sh
+# backend/: real PostGIS (ANPFUEL_TEST_DATABASE_URL) and a disposable
+# ANPFUEL_TEST_STORAGE_* bucket of infra/compose.validation.yml (down -v afterwards)
+go test -race -count=1 -tags=integration -p 2 -timeout=150m \
+  -run '^(TestLateIntake|TestTripLateIntake|TestStateIntake|TestSuspensionPreservesPersistedFieldReviewAfterReactivation|TestFuelingIntake|TestSyncResilience|TestSyncIntake|TestTrip|TestTracking|TestTrackProcessing|TestTrackRead|TestMeterCorrectionSuspectReplacementAmendmentIsolationAndRecalculation|TestMeterProjection|TestMeterSegment|TestChecklist|TestIncident|TestFleetReservation|TestAuthorizationMatrixActualCompanyHTTP|TestAuditorReadWriteMatrixActualCompanyHTTP)' \
+  ./internal/modules/organization/adapters/
+go test -race -count=1 -tags=integration -p 2 ./internal/modules/orgsync/adapters/ ./internal/modules/orgaudit/adapters/ ./internal/modules/fleet/adapters/
+go test -race -count=1 -p 2 ./internal/modules/trip/... ./internal/modules/tracking/... ./internal/modules/orgsync/... \
+  ./internal/modules/fleet/domain/... ./internal/modules/maintenance/... ./internal/platform/apicontract/...
+go test -race -count=1 -run '^(TestAuthorizationInventory|TestFullProductionRouterEnterpriseContractAndDefaultOff)' ./cmd/api/
+# repository root, JDK 17, serialized Gradle
+./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.*' :application:test --tests 'com.anpfuel.application.enterprise.*' \
+  :data:testDebugUnitTest --tests 'com.anpfuel.data.enterprise.*' :app:testDebugUnitTest --tests 'com.anpfuel.app.ui.enterprise.*'
+bash scripts/check-mobile.sh --static-only
+```
+
+These are host and PostGIS proofs. The emulator stages and the real-device
+tracking interruption matrix (at least three manufacturers) are listed in the
+gate evidence as owed; a gate never records them as passed until they run.
+
 ## Fixture boundaries and anti-flakiness
 
 `contracts/testdata/`: ANP normalization, price/condition/unit/fuel compatibility, identity signed-byte vectors, invalid signatures/replay, API errors, enum forward compatibility and consensus examples. Each fixture has ID/version/provenance and intentional Android differences. Synthetic identities/images only; never export production photos, keys or contributor traces.

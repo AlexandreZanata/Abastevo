@@ -9,6 +9,7 @@ import com.anpfuel.application.enterprise.queue.EnterpriseQueueTransaction
 import com.anpfuel.application.enterprise.queue.EnterpriseReviewQueue
 import com.anpfuel.domain.enterprise.sync.ReviewResolution
 import com.anpfuel.data.enterprise.*
+import com.anpfuel.data.enterprise.ProtectedEnterprisePersistence.QueueUse
 import com.anpfuel.domain.enterprise.EnterpriseLocalRecord
 import com.anpfuel.domain.enterprise.EnterprisePartition
 import com.anpfuel.domain.enterprise.sync.EnterpriseQueueEntry
@@ -36,20 +37,20 @@ class ProtectedEnterpriseQueue(private val store: ProtectedEnterprisePersistence
         }
     }
 
-    override suspend fun pending(attempt: EnterpriseQueueAttempt): List<EnterpriseQueueEntry> = store.queueAccess(attempt) { snapshot ->
+    override suspend fun pending(attempt: EnterpriseQueueAttempt): List<EnterpriseQueueEntry> = store.queueAccess(attempt, QueueUse.DELIVERY) { snapshot ->
         VaultQueueChange(snapshot.entries.values.filter { it.kind == VaultKind.QUEUE }
             .map { ProtectedQueueCodec.decode(it.bytes, snapshot, it.id) }.filter { it.acknowledgement == null })
     }
 
     override suspend fun entry(attempt: EnterpriseQueueAttempt, operationId: String): EnterpriseQueueEntry? {
         EnterprisePartition.requireId(operationId)
-        return store.queueAccess(attempt) { snapshot ->
+        return store.queueAccess(attempt, QueueUse.DELIVERY) { snapshot ->
             VaultQueueChange(snapshot.entries["QUEUE:$operationId"]?.let { ProtectedQueueCodec.decode(it.bytes, snapshot, it.id) })
         }
     }
 
     override suspend fun acknowledge(attempt: EnterpriseQueueAttempt, operation: EnterpriseOperation,
-        ack: OperationAcknowledgement, project: (EnterpriseQueueTransaction) -> Unit): Boolean = store.queueAccess(attempt) { snapshot ->
+        ack: OperationAcknowledgement, project: (EnterpriseQueueTransaction) -> Unit): Boolean = store.queueAccess(attempt, QueueUse.DELIVERY) { snapshot ->
         ProtectedQueueCodec.checkBinding(operation, snapshot)
         if (!ack.isFinal || !ack.matches(operation)) throw EnterprisePersistenceUnavailable()
         val key = "QUEUE:" + operation.operationId
@@ -70,7 +71,7 @@ class ProtectedEnterpriseQueue(private val store: ProtectedEnterprisePersistence
     }
 
     override suspend fun retry(attempt: EnterpriseQueueAttempt, operation: EnterpriseOperation,
-        expected: QueueRetryState, next: QueueRetryState): Boolean = store.queueAccess(attempt) { snapshot ->
+        expected: QueueRetryState, next: QueueRetryState): Boolean = store.queueAccess(attempt, QueueUse.DELIVERY) { snapshot ->
         ProtectedQueueCodec.checkBinding(operation, snapshot)
         val key = "QUEUE:" + operation.operationId
         val stored = snapshot.entries[key] ?: throw EnterprisePersistenceUnavailable()

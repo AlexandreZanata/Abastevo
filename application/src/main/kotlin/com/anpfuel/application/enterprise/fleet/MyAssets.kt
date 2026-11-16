@@ -196,10 +196,12 @@ class MyAssetsFlow(
         val refreshed = try {
             // Delivery proof may refresh the session; its failure is a failed pull, not a lost list.
             val account = source.deliveryAccount()
-            if (!retained(request)) { invalidateIfStale(); return }
             if (!account.identity.owns(request.context.partition) || account.epoch != request.epoch || account.background != request.background)
                 throw EnterpriseLocalDenied()
+            // A same-family refresh replaces the stored credentials without moving the fence and retires the lease
+            // `open` captured: adopt the fresh delivery lease first, then ask whether the view is current (EDR-335).
             synchronized(monitor) { if (owner === request) request.account = account }
+            if (!retained(request)) { invalidateIfStale(); return }
             service.refresh(account, request.context.partition)
         }
         catch (cancelled: CancellationException) { throw cancelled }

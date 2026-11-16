@@ -34,6 +34,14 @@ type AssetStore struct {
 	// explicitly; a nil port fails every availability read and start check.
 	ActiveUse        app.ActiveUsePort
 	MaintenanceHolds app.MaintenanceHoldPort
+	// ChecklistBlocks answers the BLOCKING checklist runs of row 4
+	// (EMP-CHECK-002, EDR-285); NoChecklistBlocks is the explicit no-source
+	// adapter, a nil port fails every availability read and start check.
+	ChecklistBlocks app.ChecklistBlockPort
+	// PreMissionLinkImage is set only by rehearsals that populate a schema
+	// image before 000249 (EMP-TRIP-023): the availability facts then read no
+	// reservation mission. Production leaves it false.
+	PreMissionLinkImage bool
 }
 
 var _ app.AssetRepository = (*AssetStore)(nil)

@@ -6,6 +6,8 @@ import (
 	"fmt"
 
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
+	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	guarded "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/adapters/http"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
@@ -18,15 +20,24 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
-// EMP-TRIP-008 mission routes (EDR-231).
+// EMP-TRIP-008 mission routes (EDR-231) and the EMP-TRIP-009 plan (EDR-249).
 const (
 	MissionPrefix     = "/v1/orgs/{org_id}/missions"
 	MissionCreatePath = MissionPrefix + "/create"
 	MissionListPath   = MissionPrefix + "/list"
 	MissionMinePath   = MissionPrefix + "/mine/list"
 	MissionReadPath   = MissionPrefix + "/{mission_id}/read"
+	MissionPlanPath   = MissionPrefix + "/{mission_id}/plan"
 	MissionAssignPath = MissionPrefix + "/{mission_id}/assign"
 	MissionCancelPath = MissionPrefix + "/{mission_id}/cancel"
+	// MissionVehiclePath replaces the mission's vehicle (EMP-TRIP-013, EDR-251).
+	MissionVehiclePath = MissionPrefix + "/{mission_id}/vehicle/change"
+	// MissionAssigneesPath lists the employees eligible for the mission
+	// (EMP-TRIP-022, EDR-304).
+	MissionAssigneesPath = MissionPrefix + "/{mission_id}/assignees/list"
+	// MissionReservePath requests the reservation of the mission's vehicle
+	// for its planned window (EMP-TRIP-023, EDR-266).
+	MissionReservePath = MissionPrefix + "/{mission_id}/reservations/request"
 )
 
 // MissionRecords accepts only the mission policies on their own targets: the
@@ -120,10 +131,92 @@ type missionAssignRequest struct {
 	missionCommandFields
 	AssigneeEmployeeID string `json:"assignee_employee_id"`
 }
+
+// missionDestination and missionLoad are closed nested objects: the strict
+// decoder refuses any other field, such as a passenger identity.
+type missionDestination struct {
+	Kind   string  `json:"kind"`
+	Text   *string `json:"text"`
+	UnitID *string `json:"unit_id"`
+}
+type missionLoad struct {
+	Kind        string  `json:"kind"`
+	Description *string `json:"description"`
+	Count       *int    `json:"count"`
+}
+
+// missionStop is one planned stop (EMP-TRIP-010, B-BR-EMP-475): a closed
+// object whose only kind is TEXT; no unit, coordinate, time or person.
+type missionStop struct {
+	Kind string  `json:"kind"`
+	Text *string `json:"text"`
+}
+type missionPlanRequest struct {
+	missionCommandFields
+	Destination  *missionDestination `json:"destination"`
+	Reason       string              `json:"reason"`
+	CostCentreID *string             `json:"cost_centre_id"`
+	Load         *missionLoad        `json:"load"`
+	Stops        *[]missionStop      `json:"stops"`
+}
+
+// fields maps the wire plan onto the command; a kind/field mismatch is a
+// validation failure (B-BR-EMP-382).
+func (v missionPlanRequest) fields() (app.MissionPlanFields, error) {
+	if v.Destination == nil || v.Load == nil {
+		return app.MissionPlanFields{}, orgapi.Malformed
+	}
+	out := app.MissionPlanFields{Reason: v.Reason, Load: v.Load.Kind, CargoDescription: v.Load.Description, Passengers: v.Load.Count}
+	switch d := v.Destination; {
+	case d.Kind == "TEXT" && d.Text != nil && d.UnitID == nil:
+		out.DestinationText = d.Text
+	case d.Kind == "UNIT" && d.UnitID != nil && d.Text == nil && *d.UnitID != "":
+		out.DestinationUnitID = *d.UnitID
+	default:
+		return app.MissionPlanFields{}, orgapi.ValidationFailed
+	}
+	if v.CostCentreID != nil {
+		if *v.CostCentreID == "" {
+			return app.MissionPlanFields{}, orgapi.ValidationFailed
+		}
+		out.CostCentreID = *v.CostCentreID
+	}
+	if v.Stops != nil {
+		out.Stops = make([]string, 0, len(*v.Stops))
+		for _, stop := range *v.Stops {
+			if stop.Kind != "TEXT" || stop.Text == nil {
+				return app.MissionPlanFields{}, orgapi.ValidationFailed
+			}
+			out.Stops = append(out.Stops, *stop.Text)
+		}
+	}
+	return out, nil
+}
+
+type missionVehicleRequest struct {
+	missionCommandFields
+	AssetID string `json:"asset_id"`
+	Reason  string `json:"reason"`
+}
 type missionCancelRequest struct {
 	missionCommandFields
 	Reason string `json:"reason"`
 }
+type missionReserveRequest struct {
+	missionCommandFields
+	Purpose string `json:"purpose"`
+}
+
+func (v *missionReserveRequest) UnmarshalJSON(raw []byte) error {
+	type plain missionReserveRequest
+	var in plain
+	if err := decodeStrict(raw, &in); err != nil {
+		return err
+	}
+	*v = missionReserveRequest(in)
+	return nil
+}
+
 type missionListRequest struct {
 	companyRequest
 	orgapi.Page
@@ -146,6 +239,24 @@ func (v *missionAssignRequest) UnmarshalJSON(raw []byte) error {
 		return err
 	}
 	*v = missionAssignRequest(in)
+	return nil
+}
+func (v *missionPlanRequest) UnmarshalJSON(raw []byte) error {
+	type plain missionPlanRequest
+	var in plain
+	if err := decodeStrict(raw, &in); err != nil {
+		return err
+	}
+	*v = missionPlanRequest(in)
+	return nil
+}
+func (v *missionVehicleRequest) UnmarshalJSON(raw []byte) error {
+	type plain missionVehicleRequest
+	var in plain
+	if err := decodeStrict(raw, &in); err != nil {
+		return err
+	}
+	*v = missionVehicleRequest(in)
 	return nil
 }
 func (v *missionCancelRequest) UnmarshalJSON(raw []byte) error {
@@ -182,6 +293,17 @@ func missionMapped(err error) error {
 	if errors.As(err, &denied) {
 		return orgapi.MissingPermission(string(denied.Permission()))
 	}
+	// EMP-TRIP-023: a reservation request reports only the conflicting window.
+	var window fleetapp.ReservationConflict
+	if errors.As(err, &window) {
+		return orgapi.ReservationWindowConflict(window.From, window.To)
+	}
+	if errors.Is(err, fleetapp.ErrReservationConflict) {
+		return orgapi.ReservationConflict
+	}
+	if errors.Is(err, fleet.ErrInvalid) {
+		return orgapi.ValidationFailed
+	}
 	if code, ok := orgapi.Registered(err); ok {
 		return code
 	}
@@ -190,6 +312,7 @@ func missionMapped(err error) error {
 		code   orgapi.Code
 	}{
 		{trip.ErrConflict, orgapi.Conflict}, {trip.ErrInvalidTransition, orgapi.Conflict}, {trip.ErrUnsupportedCommand, orgapi.Conflict},
+		{app.ErrMissionAssetBusy, orgapi.Conflict}, {app.ErrMissionTripInProgress, orgapi.Conflict},
 		{trip.ErrInvalid, orgapi.ValidationFailed}, {trip.ErrScope, orgapi.NotFound}, {app.ErrMissionIneligible, orgapi.ValidationFailed},
 		{app.ErrMissionDisabled, orgapi.NotFound}, {app.ErrNotFound, orgapi.NotFound}, {app.ErrMissionUnauthenticated, orgapi.Unauthenticated},
 		{app.ErrOperationReused, orgapi.OperationReused},
@@ -221,6 +344,9 @@ func MissionRule(action app.MissionAction, revision bool, success int) orgapi.Ru
 
 func missionAck(v app.MissionAck, replayed bool) map[string]any {
 	out := map[string]any{"mission_id": v.MissionID, "revision": v.Revision, "state": v.State, "replayed": replayed, "data_mode": "SYNTHETIC"}
+	if v.ReservationID != "" {
+		out["reservation_id"] = v.ReservationID
+	}
 	if v.AssigneeEmployeeID != "" {
 		out["assignee_employee_id"] = v.AssigneeEmployeeID
 	}
@@ -247,10 +373,50 @@ func projectMission(v app.MissionView) map[string]any {
 		}
 		out["answer"] = answer
 	}
+	if v.Plan != nil {
+		out["plan"] = projectPlan(*v.Plan)
+	}
 	return out
 }
 
-// RegisterMissions mounts the five trip.mission.manage routes and the own
+// projectPlan is the current planning revision; the planner stays in the
+// stored transition, planning record and audit event (EDR-249).
+func projectPlan(p app.MissionPlanView) map[string]any {
+	f := p.Fields
+	destination := map[string]any{"kind": "TEXT"}
+	if f.DestinationText != nil {
+		destination["text"] = *f.DestinationText
+	} else {
+		destination["kind"], destination["unit_id"] = "UNIT", f.DestinationUnitID
+	}
+	load := map[string]any{"kind": f.Load}
+	if f.CargoDescription != nil {
+		load["description"] = *f.CargoDescription
+	}
+	if f.Passengers != nil {
+		load["count"] = *f.Passengers
+	}
+	out := map[string]any{"revision": p.Revision, "destination": destination, "reason": f.Reason, "load": load, "planned_at": orgtime.FormatInstant(p.PlannedAt)}
+	if f.CostCentreID != "" {
+		out["cost_centre_id"] = f.CostCentreID
+	}
+	// EMP-TRIP-010: the planned stops only when the revision has stops.
+	if len(f.Stops) > 0 {
+		out["stops"] = projectPlannedStops(f.Stops)
+	}
+	return out
+}
+
+// projectPlannedStops is the ordered planned stops with their sequence.
+func projectPlannedStops(places []string) []map[string]any {
+	stops := make([]map[string]any, 0, len(places))
+	for i, place := range places {
+		stops = append(stops, map[string]any{"sequence": i + 1, "kind": "TEXT", "text": place})
+	}
+	return stops
+}
+
+// RegisterMissions mounts the eight trip.mission.manage routes and the own
 // list. The organization and mission routes share the MissionStructure
 // authorization; the own list carries no structure or assignee source.
 func RegisterMissions(router chi.Router, service app.MissionService, cookies company.Handler, gateway orgapi.Gateway, authorization access.Authorization) error {
@@ -317,6 +483,47 @@ func RegisterMissions(router chi.Router, service app.MissionService, cookies com
 	}); err != nil {
 		return err
 	}
+	if err := guarded.Register(owned, MissionPlanPath, gateway, MissionRule(app.MissionManage, true, 200), authorization, app.MissionPolicy(app.MissionManage), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionPlanRequest) (any, error) {
+		mission, err := missionPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if input.Revision == nil {
+			return nil, orgapi.Malformed
+		}
+		plan, err := input.fields()
+		if err != nil {
+			return nil, err
+		}
+		return command(ctx, p, decision, app.MissionCommandInput{Kind: app.MissionPlanCommand, OperationID: input.OperationID, MissionID: mission, ExpectedRevision: *input.Revision, Plan: &plan})
+	}); err != nil {
+		return err
+	}
+	if err := guarded.Register(owned, MissionVehiclePath, gateway, MissionRule(app.MissionManage, true, 200), authorization, app.MissionPolicy(app.MissionManage), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionVehicleRequest) (any, error) {
+		mission, err := missionPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if input.Revision == nil {
+			return nil, orgapi.Malformed
+		}
+		return command(ctx, p, decision, app.MissionCommandInput{Kind: app.MissionVehicleCommand, OperationID: input.OperationID, MissionID: mission, ExpectedRevision: *input.Revision,
+			AssetID: input.AssetID, Reason: input.Reason})
+	}); err != nil {
+		return err
+	}
+	if err := guarded.Register(owned, MissionReservePath, gateway, MissionRule(app.MissionManage, true, 201), authorization, app.MissionPolicy(app.MissionManage), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionReserveRequest) (any, error) {
+		mission, err := missionPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		if input.Revision == nil {
+			return nil, orgapi.Malformed
+		}
+		return command(ctx, p, decision, app.MissionCommandInput{Kind: app.MissionReserveCommand, OperationID: input.OperationID, MissionID: mission, ExpectedRevision: *input.Revision, Reason: input.Purpose})
+	}); err != nil {
+		return err
+	}
 	if err := guarded.Register(owned, MissionCancelPath, gateway, MissionRule(app.MissionManage, true, 200), authorization, app.MissionPolicy(app.MissionManage), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionCancelRequest) (any, error) {
 		mission, err := missionPathID(ctx)
 		if err != nil {
@@ -367,6 +574,43 @@ func RegisterMissions(router chi.Router, service app.MissionService, cookies com
 		}
 	}
 	if err := guarded.Register(owned, MissionListPath, gateway, MissionRule(app.MissionRead, false, 200), authorization, app.MissionPolicy(app.MissionRead), missionRoot{}, list(MissionListPath, false)); err != nil {
+		return err
+	}
+	if err := guarded.Register(owned, MissionAssigneesPath, gateway, MissionRule(app.MissionRead, false, 200), authorization, app.MissionPolicy(app.MissionRead), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionListRequest) (any, error) {
+		actor, err := missionActor(ctx)
+		if err != nil {
+			return nil, err
+		}
+		mission, err := missionPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		page, err := input.Page.Normalize()
+		if err != nil {
+			return nil, orgapi.Malformed
+		}
+		// The cursor is bound to the route, this mission and the limit.
+		binding := fmt.Sprintf("trip.mission.assignees.v1:%s:%d", mission, page.Limit)
+		filter := app.MissionAssigneeFilter{Limit: page.Limit}
+		if filter.AfterID, err = gateway.OpenCursor(p, MissionAssigneesPath, binding, page.Cursor); err != nil || filter.Validate() != nil {
+			return nil, orgapi.Malformed
+		}
+		result, err := service.Assignees(ctx, p.Scope, actor, decision, mission, filter)
+		if err != nil {
+			return nil, missionMapped(err)
+		}
+		items := make([]map[string]any, 0, len(result.Assignees))
+		for _, v := range result.Assignees {
+			items = append(items, map[string]any{"employee_id": v.EmployeeID, "display_name": v.DisplayName, "registration_number": v.RegistrationNumber})
+		}
+		next := ""
+		if result.NextID != "" {
+			if next, err = gateway.SealCursor(p, MissionAssigneesPath, binding, result.NextID); err != nil {
+				return nil, orgapi.Unavailable
+			}
+		}
+		return map[string]any{"items": items, "next_cursor": next, "data_mode": "SYNTHETIC"}, nil
+	}); err != nil {
 		return err
 	}
 	if err := guarded.Register(owned, MissionReadPath, gateway, MissionRule(app.MissionRead, false, 200), authorization, app.MissionPolicy(app.MissionRead), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, _ missionReadRequest) (any, error) {

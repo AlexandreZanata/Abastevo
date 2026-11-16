@@ -13,7 +13,9 @@ import com.anpfuel.domain.enterprise.fleet.AssetKind
 import com.anpfuel.domain.enterprise.fleet.EnterpriseAssetChoice
 import com.anpfuel.domain.enterprise.fleet.UsageBasis
 import com.anpfuel.domain.enterprise.trip.TripAssetLabel
+import com.anpfuel.domain.enterprise.trip.TripCommand
 import com.anpfuel.domain.enterprise.trip.TripLogbookType
+import com.anpfuel.domain.enterprise.trip.TripMissionResponse
 import io.mockk.*
 import java.time.Instant
 import kotlinx.coroutines.Dispatchers
@@ -109,5 +111,40 @@ class TripViewModelTest {
         model.withdraw(); model.start(choice, label, TripCapture.Absent("x"), 0, 7); advanceUntilIdle()
         verify(exactly = 1) { flow.withdraw() }
         coVerify(exactly = 0) { flow.start(any(), any(), any(), any(), any()) }
+    }
+
+    @Test fun `a photo save is forwarded only for the current gesture and works offline`(): Unit = runTest(dispatcher) {
+        val model = model(); advanceUntilIdle(); clearMocks(flow, answers = false)
+        val bytes = ByteArray(32) { 7 }.also { it[0] = 0xff.toByte(); it[1] = 0xd8.toByte(); it[2] = 0xff.toByte(); it[30] = 0xff.toByte(); it[31] = 0xd9.toByte() }
+        val original = (com.anpfuel.domain.enterprise.attachment.ReceiptIntake.inspect(bytes, com.anpfuel.domain.enterprise.attachment.ReceiptSource.CAMERA)
+            as com.anpfuel.domain.enterprise.attachment.ReceiptInspection.Accepted).original
+        val draft = com.anpfuel.application.enterprise.attachment.ReceiptDraft(original, com.anpfuel.domain.enterprise.attachment.LegibilityHint.NOT_CHECKED)
+        val target = com.anpfuel.domain.enterprise.attachment.AttachmentTarget(com.anpfuel.domain.enterprise.document.DocumentTargetKind.METER_READING,
+            "10000000-0000-4000-8000-000000000062")
+        model.attach(trip, target, draft, 0, 6); model.attach(trip, target, draft, 1, 7); advanceUntilIdle()
+        coVerify(exactly = 0) { flow.attach(any(), any(), any(), any(), any()) }
+        model.attach(trip, target, draft, 0, 7); advanceUntilIdle()
+        coVerify(exactly = 1) { flow.attach(trip, target, draft, 0, 7) }
+    }
+
+    @Test fun `EMP-TRIP-021 answers and lifecycle commands are offline while the mission refresh needs a connection`(): Unit = runTest(dispatcher) {
+        val model = model(); advanceUntilIdle()
+        val mission = "10000000-0000-4000-8000-000000000070"
+        val departure = TripCapture.Absent("Painel apagado")
+        model.respond(mission, TripMissionResponse.DECLINE, "Folga", 0, 7)
+        model.startMission(mission, choice, label, departure, 0, 7)
+        model.lifecycle(trip, TripCommand.PAUSE, null, 0, 7)
+        advanceUntilIdle()
+        coVerify(exactly = 1) { flow.respond(mission, TripMissionResponse.DECLINE, "Folga", 0, 7) }
+        coVerify(exactly = 1) { flow.startMission(mission, choice, label, departure, 0, 7, null) }
+        coVerify(exactly = 1) { flow.lifecycle(trip, TripCommand.PAUSE, null, 0, 7) }
+        // Online-only: never attempted, never reported, without a connection (BR-OFFL-017).
+        model.refreshMissions(0, 7); advanceUntilIdle()
+        coVerify(exactly = 0) { flow.refreshMissions(any(), any()) }
+        online.value = true; advanceUntilIdle()
+        model.refreshMissions(0, 6); advanceUntilIdle()
+        coVerify(exactly = 0) { flow.refreshMissions(any(), any()) }
+        model.refreshMissions(0, 7); advanceUntilIdle()
+        coVerify(exactly = 1) { flow.refreshMissions(0, 7) }
     }
 }

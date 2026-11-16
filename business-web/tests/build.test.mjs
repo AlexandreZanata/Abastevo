@@ -9,7 +9,7 @@ test('build is deterministic, self-contained under /empresas, content-hashed and
  const tmp=fs.mkdtempSync(path.join(os.tmpdir(),'empresas-artifact-'));
  try{
   const {outDir,assets}=build({outDir:path.join(tmp,'dist')});
-  assert.equal(checkDist(outDir),25);
+  assert.equal(checkDist(outDir),29);
   assert.equal(fs.existsSync(path.join(outDir,'_headers')),false);
   const original=fs.readFileSync(path.join(outDir,'assets',assets['main.js']),'utf8');
   fs.writeFileSync(path.join(outDir,'stale.js'),'stale');
@@ -34,7 +34,7 @@ test('build is deterministic, self-contained under /empresas, content-hashed and
    assert.ok(served.includes(from),from);fs.writeFileSync(drifted,served.replace(from,to));
    assert.throws(()=>checkDist(outDir,drifted),/Served company policy/,from);
   }
-  assert.equal(checkDist(outDir),25);
+  assert.equal(checkDist(outDir),29);
   assert.throws(()=>build({outDir:root}),/Unsafe output/);
  }finally{fs.rmSync(tmp,{recursive:true,force:true});}
 });
@@ -44,5 +44,9 @@ test('runtime source never uses unsafe DOM, persistence, console, privileged rou
   for(const pattern of [/innerHTML/,/outerHTML/,/insertAdjacentHTML/,/document\.write/,/\beval\s*\(/,/localStorage/,/sessionStorage/,/indexedDB/,/console\./,/serviceWorker/,/\/v1\/admin/,/X-Admin-CSRF/])assert.doesNotMatch(source,pattern,file);
  }
  const html=fs.readFileSync(path.join(root,'static/index.html'),'utf8');
- for(const required of ['for="account-key"','type="password"','for="organization-select"','aria-describedby="organization-help"','aria-live="polite"','Pular para o conteúdo'])assert.ok(html.includes(required));
+ for(const required of ['for="account-key"','type="password"','for="organization-select"','aria-describedby="organization-help"','aria-live="polite"','Pular para o conteúdo',
+  // EMP-TRIP-022 board: labelled choices and an announced status.
+  'aria-labelledby="missions-title"','id="mission-status" role="status"','for="mission-vehicle"','for="assign-employee"','for="vehicle-asset"','for="plan-cost-centre"','for="cancel-reason"','aria-label="Reservas do veículo"',
+  // EMP-CHECK-004 panel: labelled release and treatment, an announced status, the block list.
+  'aria-labelledby="checks-title"','id="checks-status" role="status"','for="release-reason"','for="decide-action"','for="decide-note"','for="decide-duplicate"','aria-label="Motivos da disponibilidade do veículo"'])assert.ok(html.includes(required),required);
 });

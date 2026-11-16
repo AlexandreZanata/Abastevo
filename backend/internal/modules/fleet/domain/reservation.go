@@ -14,7 +14,8 @@ var ErrReservationEnded = errors.New("fleet: reservation already ended")
 var ErrBlockEnded = errors.New("fleet: block already ended")
 
 // ReservationState is the closed 08-state-model vocabulary. FULFILLED is
-// reached only through a qualifying trip start (EMP-TRIP-023).
+// reached only through the qualifying linked start of the reservation's
+// mission (EMP-TRIP-023).
 type ReservationState string
 
 const (
@@ -45,13 +46,14 @@ const (
 	FulfilReservation  ReservationCommand = "FULFIL"
 )
 
-// reservationRows is fleet.md §6.4. FULFIL has no source before a trip
-// intake exists (EMP-TRIP-023), so it has no row here.
+// reservationRows is fleet.md §6.4. FULFIL's source is the linked start of
+// the reservation's mission (EMP-TRIP-023, B-BR-EMP-414).
 var reservationRows = map[ReservationCommand]map[ReservationState]ReservationState{
 	ConfirmReservation: {ReservationRequested: ReservationConfirmed},
 	CancelReservation:  {ReservationRequested: ReservationCancelled, ReservationConfirmed: ReservationCancelled},
 	ExpireReservation:  {ReservationRequested: ReservationExpired},
 	MissReservation:    {ReservationConfirmed: ReservationNoShow},
+	FulfilReservation:  {ReservationConfirmed: ReservationFulfilled},
 }
 
 // ReservationTransition answers the target of a command from a stored state.

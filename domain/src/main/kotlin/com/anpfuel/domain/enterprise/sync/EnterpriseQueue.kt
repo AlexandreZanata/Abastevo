@@ -83,14 +83,21 @@ class QueueOrder internal constructor(ordered: List<EnterpriseOperation>, blocke
 }
 
 object EnterpriseQueueOrdering {
-    fun order(operations: List<EnterpriseOperation>): QueueOrder {
+    fun order(operations: List<EnterpriseOperation>): QueueOrder = order(operations, emptyMap())
+
+    /**
+     * [localParents] adds same-queue ordering parents (EDR-352: [localReferences]) to the declared dependencies; an
+     * operation in, or below, a cycle through either kind of parent is [QueueOrder.cycleBlocked].
+     */
+    fun order(operations: List<EnterpriseOperation>, localParents: Map<String, Set<String>>): QueueOrder {
         require(operations.size <= 10000)
         val byId = linkedMapOf<String, EnterpriseOperation>()
         for (operation in operations) require(byId.put(operation.operationId, operation) == null)
         val degree = linkedMapOf<String, Int>()
         val children = mutableMapOf<String, MutableList<String>>()
         for (operation in operations) {
-            val parents = operation.dependsOn.filter { it in byId }
+            val parents = (operation.dependsOn + localParents[operation.operationId].orEmpty())
+                .filter { it in byId && it != operation.operationId }.distinct()
             degree[operation.operationId] = parents.size
             for (parent in parents) children.getOrPut(parent) { mutableListOf() }.add(operation.operationId)
         }
@@ -106,5 +113,27 @@ object EnterpriseQueueOrdering {
             }
         }
         return QueueOrder(ordered, degree.filterValues { it != 0 }.keys)
+    }
+
+    /**
+     * EDR-352 (B-BR-EMP-541): a soft reference names an entity, not an operation, and the server holds a reference to a
+     * target it has not stored yet `ORPHAN_REFERENCE` (BR-OFFL-007). Every other unacknowledged operation of the same
+     * queue whose entity (type and identifier) one of an operation's soft references names is therefore a local parent
+     * that must be finally acknowledged before that operation is sent. Operations without such parents are absent.
+     */
+    fun localReferences(operations: List<EnterpriseOperation>): Map<String, Set<String>> {
+        require(operations.size <= 10000)
+        val byEntity = mutableMapOf<Pair<String, String>, MutableList<String>>()
+        for (operation in operations) {
+            val entity = operation.entity.reference
+            byEntity.getOrPut(entity.type to entity.id) { mutableListOf() }.add(operation.operationId)
+        }
+        val parents = linkedMapOf<String, Set<String>>()
+        for (operation in operations) {
+            val named = operation.softReferences.flatMap { byEntity[it.type to it.id].orEmpty() }
+                .filter { it != operation.operationId }.toCollection(linkedSetOf())
+            if (named.isNotEmpty()) parents[operation.operationId] = named
+        }
+        return parents
     }
 }

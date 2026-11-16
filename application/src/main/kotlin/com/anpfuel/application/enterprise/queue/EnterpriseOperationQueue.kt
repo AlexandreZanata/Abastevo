@@ -71,7 +71,12 @@ interface EnterpriseOperationQueue {
     suspend fun stats(attempt: EnterpriseQueueAttempt): EnterpriseQueueStats
 }
 
-class EnterpriseQueueProducerDescriptor(val type: String, val schema: Long = 1) {
+/**
+ * [alone] (EMP-TRIP-021, EDR-343): an operation the server may answer with a whole-request transport denial that names
+ * only itself. Dispatch sends every due ordinary operation first and such an operation only as the single operation of
+ * its batch, so a denial never holds another record. Its operations carry no dependency and nothing depends on them.
+ */
+class EnterpriseQueueProducerDescriptor(val type: String, val schema: Long = 1, val alone: Boolean = false) {
     init {
         val segments = type.split('.')
         fun valid(segment: String): Boolean {
@@ -116,7 +121,11 @@ class EnterpriseOperationDelivery(acknowledgements: List<OperationAcknowledgemen
     override fun toString(): String = "EnterpriseOperationDelivery(redacted)"
 }
 
-class EnterpriseQueueDeliveryFailure(val retryAfterMillis: Long? = null) : IllegalStateException("Enterprise operation delivery unavailable") {
+class EnterpriseQueueDeliveryFailure(
+    val retryAfterMillis: Long? = null,
+    /** EMP-OFFL-011 (EDR-348): a whole-response 403/404 asks for one exact contact; it is never a verdict. */
+    val revocationHint: Boolean = false,
+) : IllegalStateException("Enterprise operation delivery unavailable") {
     init { require(retryAfterMillis == null || retryAfterMillis >= 0) }
 }
 
@@ -125,8 +134,20 @@ fun interface EnterpriseOperationTransport {
 }
 
 class EnterpriseQueueDispatchResult(val attempted: Int = 0, val completed: Int = 0, val retryable: Int = 0,
-    val attention: Int = 0, val retryAfterMillis: Long? = null) {
+    val attention: Int = 0, val retryAfterMillis: Long? = null,
+    /** EMP-OFFL-011 (EDR-348): this delivery saw a revocation hint; the worker may ask for one exact contact. */
+    val revocationHint: Boolean = false) {
     override fun toString(): String = "EnterpriseQueueDispatchResult(redacted)"
+}
+
+/**
+ * EMP-OFFL-011 (EDR-348..350): what the worker's revocation step established for one partition. A null state means
+ * no verdict changed anything (no claim); [unsent] counts the sealed work still being delivered intake-only.
+ */
+class EnterpriseRevocationOutcome(val state: RevocationCleanupState? = null, val unsent: Int = 0) {
+    init { require(unsent >= 0 && (state == RevocationCleanupState.INTAKE_ONLY || unsent == 0)) }
+    override fun toString(): String = "EnterpriseRevocationOutcome(state=$state,unsent=$unsent)"
+    companion object { val NONE = EnterpriseRevocationOutcome() }
 }
 
 class EnterpriseQueueService(private val source: EnterpriseQueueSource, private val queue: EnterpriseOperationQueue,
@@ -183,10 +204,17 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
         entries.forEach { matches(attempt, it.operation) }
         val byId = entries.associateBy { it.operation.operationId }.toMutableMap()
         if (byId.size != entries.size) throw EnterprisePersistenceUnavailable()
-        val order = EnterpriseQueueOrdering.order(entries.map { it.operation })
+        // EDR-352 (B-BR-EMP-541): an operation naming the entity of another unacknowledged operation of this queue in a
+        // soft reference waits for that operation's final receipt; the server would otherwise hold it ORPHAN_REFERENCE.
+        val references = EnterpriseQueueOrdering.localReferences(entries.map { it.operation })
+        val order = EnterpriseQueueOrdering.order(entries.map { it.operation }, references)
         val attention = order.cycleBlocked.toMutableSet()
+        // Held operation -> the operations it waits on, in order; its delay is theirs (settled again after a batch).
+        val held = linkedMapOf<String, List<String>>()
         val capturedClock = clock()
         val selected = mutableListOf<EnterpriseOperation>()
+        // EDR-343: due operations whose producer is `alone`, sent one per batch only when no ordinary operation is due.
+        val alone = mutableListOf<EnterpriseOperation>()
         val remainingDelay = mutableMapOf<String, Long>()
         val completed = mutableSetOf<String>()
         suspend fun result(value: EnterpriseQueueDispatchResult): EnterpriseQueueDispatchResult {
@@ -209,7 +237,8 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             return current.also { byId[operation.operationId] = it }
         }
         for (operation in order.ordered) {
-            if (registry.producer(operation) == null) { attention.add(operation.operationId); continue }
+            val producer = registry.producer(operation)
+            if (producer == null) { attention.add(operation.operationId); continue }
             var retry = byId.getValue(operation.operationId).retry
             val priorClock = retry.clock
             if (priorClock != null && (priorClock.boot != capturedClock.boot || capturedClock.elapsedMillis < priorClock.elapsedMillis)) {
@@ -232,7 +261,18 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
                 remainingDelay[operation.operationId] = delayFor(retry, capturedClock)
                 continue
             }
+            // Referenced operations come first in the order; their own delay (or 0 when sent now) is known here. A
+            // dependent of a held operation is held with it, never sent to collect a DEPENDENCY_PENDING answer.
+            val waiting = references[operation.operationId].orEmpty().filter { it !in completed } +
+                operation.dependsOn.filter { it in held }
+            if (waiting.isNotEmpty()) {
+                if (waiting.any { it in attention }) { attention.add(operation.operationId); continue }
+                held[operation.operationId] = waiting
+                remainingDelay[operation.operationId] = waiting.maxOf { remainingDelay[it] ?: 0 }
+                continue
+            }
             remainingDelay[operation.operationId] = 0
+            if (producer.descriptor().alone) { alone.add(operation); continue }
             if (selected.size == limits.maxOperations) continue
             val candidate = selected + operation
             try {
@@ -241,6 +281,13 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             } catch (_: SyncProtocolException) {
                 if (selected.isEmpty()) { attention.add(operation.operationId); remainingDelay.remove(operation.operationId) }
             }
+        }
+        if (selected.isEmpty()) for (operation in alone) {
+            try {
+                account.proofBudget.batchBytes(listOf(operation), limits)
+                selected.add(operation)
+                break
+            } catch (_: SyncProtocolException) { attention.add(operation.operationId); remainingDelay.remove(operation.operationId) }
         }
         if (selected.isEmpty()) return@guarded result(EnterpriseQueueDispatchResult(completed = completed.size, attention = attention.size,
             retryable = entries.size - attention.size - completed.size, retryAfterMillis = remainingDelay.values.minOrNull()))
@@ -278,7 +325,12 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
                 remainingDelay[operation.operationId] = floor ?: retryPolicy.baseMillis
             }
         }
+        // A held operation is due when everything it waits on is final (0) or due again after its own retry delay.
+        fun settleHeld() {
+            for ((id, waiting) in held) remainingDelay[id] = waiting.maxOf { if (it in completed) 0 else remainingDelay[it] ?: 0 }
+        }
         var floor: Long? = null
+        var hinted = false
         val acknowledgements = try {
             attempt.assertCurrent()
             val delivery = transport.deliver(attempt, selected.toList())
@@ -292,11 +344,14 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
         catch (denied: EnterpriseLocalDenied) { throw denied }
         catch (failure: Exception) {
             attempt.assertCurrent()
-            if (failure is EnterpriseQueueDeliveryFailure) floor = failure.retryAfterMillis
+            if (failure is EnterpriseQueueDeliveryFailure) { floor = failure.retryAfterMillis; hinted = failure.revocationHint }
             for (operation in selected) retainForRetry(operation, floor)
+            settleHeld()
             return@guarded result(EnterpriseQueueDispatchResult(selected.size, completed.size, retryable = entries.size - attention.size - completed.size,
-                attention = attention.size, retryAfterMillis = remainingDelay.values.minOrNull()))
+                attention = attention.size, retryAfterMillis = remainingDelay.values.minOrNull(), revocationHint = hinted))
         }
+        // EMP-OFFL-011 (EDR-348): a late-intake answer only asks the worker for one exact contact.
+        hinted = acknowledgements.any(RevocationCleanup::hint)
         for ((index, ack) in acknowledgements.withIndex()) {
             val operation = selected[index]
             attempt.assertCurrent()
@@ -313,8 +368,9 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             catch (denied: EnterpriseLocalDenied) { throw denied }
             catch (_: Exception) { retainForRetry(operation, floor, ack) }
         }
+        settleHeld()
         result(EnterpriseQueueDispatchResult(selected.size, completed.size, entries.size - attention.size - completed.size,
-            attention.size, remainingDelay.values.minOrNull()))
+            attention.size, remainingDelay.values.minOrNull(), hinted))
         } finally {
             // Publication/retry processing is finished before an observer refreshes.
             // A retiring attempt can remove only its own progress ticket.

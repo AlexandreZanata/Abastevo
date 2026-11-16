@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-EXP-004 SCR-EXP-01; generated from one table by f4-logs/exp004-scripts/gen_expense_strings.py -->
+<resources>
+    <string name="enterprise_expenses_title">Dépenses</string>
+    <string name="enterprise_expenses_home_copy">Enregistrez un péage, un stationnement ou un autre coût du véhicule avec son justificatif, même sans connexion.</string>
+    <string name="enterprise_expenses_open_list">Ouvrir les dépenses</string>
+    <string name="enterprise_expenses_back_home">Retour à l’entreprise</string>
+    <string name="enterprise_expenses_back_list">Retour aux dépenses</string>
+    <string name="enterprise_expenses_synthetic_notice">Phase de test : données et images synthétiques uniquement.</string>
+    <string name="enterprise_expenses_new">Enregistrer une dépense</string>
+    <string name="enterprise_expenses_empty">Aucune dépense de cette entreprise sur cet appareil pour l’instant.</string>
+    <string name="enterprise_expenses_loading">Lecture des dépenses enregistrées sur cet appareil…</string>
+    <string name="enterprise_expenses_unavailable">Les dépenses de cet appareil ne peuvent pas être lues maintenant. Les enregistrements sont conservés.</string>
+    <string name="enterprise_expenses_retry">Réessayer</string>
+    <string name="enterprise_expenses_open">Ouvrir la dépense</string>
+    <string name="enterprise_expenses_form_title">Nouvelle dépense</string>
+    <string name="enterprise_expenses_asset_chosen">Actif : %1$s</string>
+    <string name="enterprise_expenses_change_asset">Changer d’actif</string>
+    <string name="enterprise_expenses_category">Type de dépense</string>
+    <string name="enterprise_expenses_category_toll">Péage</string>
+    <string name="enterprise_expenses_category_parking">Stationnement</string>
+    <string name="enterprise_expenses_category_maintenance">Entretien</string>
+    <string name="enterprise_expenses_category_lease">Location</string>
+    <string name="enterprise_expenses_category_insurance">Assurance</string>
+    <string name="enterprise_expenses_category_fine">Amende</string>
+    <string name="enterprise_expenses_category_other">Autre</string>
+    <string name="enterprise_expenses_paid">Total payé (R$)</string>
+    <string name="enterprise_expenses_company">Montant pour l’entreprise (R$)</string>
+    <string name="enterprise_expenses_company_hint">Au plus le total payé.</string>
+    <string name="enterprise_expenses_payer">Qui a payé</string>
+    <string name="enterprise_expenses_payer_company">L’entreprise</string>
+    <string name="enterprise_expenses_payer_employee">J’ai payé</string>
+    <string name="enterprise_expenses_receipt_optional">Justificatif (facultatif)</string>
+    <string name="enterprise_expenses_receipt_title">Justificatif de la dépense</string>
+    <string name="enterprise_expenses_add_receipt">Ajouter un justificatif</string>
+    <string name="enterprise_expenses_save">Enregistrer la dépense</string>
+    <string name="enterprise_expenses_cancel">Annuler</string>
+    <string name="enterprise_expenses_saved">Dépense enregistrée sur l’appareil.</string>
+    <string name="enterprise_expenses_saved_with_receipt">Dépense enregistrée sur l’appareil avec son justificatif.</string>
+    <string name="enterprise_expenses_saved_receipt_not_saved">Dépense enregistrée sur l’appareil ; son justificatif n’a pas été enregistré. Réessayez le justificatif.</string>
+    <string name="enterprise_expenses_save_failed">Rien n’a été enregistré. Réessayez.</string>
+    <string name="enterprise_expenses_capture_invalid">Vérifiez les valeurs : des reais avec au plus deux décimales et sans séparateur de milliers, et le montant de l’entreprise ne peut pas dépasser le total payé. Rien n’a été enregistré.</string>
+    <string name="enterprise_expenses_send_now">Envoyer maintenant</string>
+    <string name="enterprise_expenses_send_offline">Hors ligne. Les enregistrements restent sur cet appareil et sont envoyés au retour de la connexion.</string>
+    <string name="enterprise_expenses_send_failed">L’envoi ne s’est pas terminé. Les enregistrements restent sur cet appareil.</string>
+    <string name="enterprise_expenses_record_status">Envoi : %1$s</string>
+    <string name="enterprise_expenses_reason">Motif : %1$s</string>
+    <string name="enterprise_expenses_review_not_sent">Examen : pas encore envoyé</string>
+    <string name="enterprise_expenses_review_awaiting">Examen : en attente d’approbation</string>
+    <string name="enterprise_expenses_review_needs">Examen : à examiner</string>
+    <string name="enterprise_expenses_review_refused">Examen : non accepté</string>
+    <string name="enterprise_expenses_amounts">Payé R$ %1$s · entreprise R$ %2$s</string>
+    <string name="enterprise_expenses_paid_value">Total payé : R$ %1$s</string>
+    <string name="enterprise_expenses_company_value">Montant pour l’entreprise : R$ %1$s</string>
+    <string name="enterprise_expenses_decided_by_company">Seule l’entreprise approuve ou renvoie une dépense ; cet appareil ne le fait jamais.</string>
+</resources>

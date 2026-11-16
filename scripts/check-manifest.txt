@@ -30,6 +30,8 @@ backend/internal/modules/fueling/application
 backend/internal/modules/fueling/adapters
 backend/internal/modules/expense/domain
 backend/internal/modules/expense/domain/payable
+backend/internal/modules/expense/application
+backend/internal/modules/expense/adapters
 backend/internal/modules/budget/domain
 backend/internal/modules/document/domain
 backend/internal/modules/document/domain/fiscal
@@ -45,6 +47,9 @@ backend/internal/modules/trip/domain
 backend/internal/modules/trip/application
 backend/internal/modules/trip/adapters
 backend/internal/modules/trip/adapters/http
+backend/internal/modules/tracking/domain
+backend/internal/modules/tracking/application
+backend/internal/modules/tracking/adapters
 backend/internal/modules/maintenance/domain/checklist
 backend/internal/modules/maintenance/application
 backend/internal/modules/maintenance/adapters

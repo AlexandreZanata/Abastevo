@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-015 tracking transparency; generated from one table by f4-logs/gps015-scripts/gen_transparency_strings.py -->
+<resources>
+    <string name="enterprise_tracking_indicator_active">Company tracking active — %1$s</string>
+    <string name="enterprise_tracking_indicator_detail">Since %1$s · this phone’s position, not the vehicle’s</string>
+    <string name="enterprise_tracking_indicator_precise">Precise location</string>
+    <string name="enterprise_tracking_indicator_approximate">Approximate location</string>
+    <string name="enterprise_tracking_indicator_open">See my tracking</string>
+    <string name="enterprise_tracking_not_collecting_here">This phone is not collecting positions for this trip right now.</string>
+    <string name="enterprise_tracking_mine_title">My tracking</string>
+    <string name="enterprise_tracking_mine_home">See what the company collects and when tracking was active on this phone.</string>
+    <string name="enterprise_tracking_mine_back">Back to the company home</string>
+    <string name="enterprise_tracking_mine_now_active">This phone is tracking a company trip now.</string>
+    <string name="enterprise_tracking_mine_now_inactive">No company tracking is active on this phone.</string>
+    <string name="enterprise_tracking_mine_collected_title">What is collected</string>
+    <string name="enterprise_tracking_mine_collected">Only during a company trip on which you started tracking, and while it is active: the position of this phone (not of the vehicle), its accuracy, speed, direction and time, about every 10 seconds when moving and every 2 minutes when stopped, plus when tracking started, was interrupted and ended.</string>
+    <string name="enterprise_tracking_mine_not_collected_title">What is not collected</string>
+    <string name="enterprise_tracking_mine_not_collected">Nothing outside a tracked trip, in personal mode, or after you stop tracking or finish the trip. The app never asks for background location and never starts tracking by itself.</string>
+    <string name="enterprise_tracking_mine_who_title">Who can see it</string>
+    <string name="enterprise_tracking_mine_who">People in the company with tracking permission see the trips in their scope, and each access is recorded. Here you see your own sessions.</string>
+    <string name="enterprise_tracking_mine_retention_title">How long it is kept</string>
+    <string name="enterprise_tracking_mine_retention">The company keeps the positions for 90 days after the trip, unless it sets another period between 30 and 365 days; the trip summary follows the trip.</string>
+    <string name="enterprise_tracking_mine_device_title">On this phone</string>
+    <string name="enterprise_tracking_mine_device">Positions stay protected on this phone until they are sent. If the company revokes this phone or you leave the company, this phone’s copy is erased when the app next connects; a phone without a connection is not erased remotely, and what the company already received follows its retention.</string>
+    <string name="enterprise_tracking_mine_policy">Company policy: %1$s · notice %2$s</string>
+    <string name="enterprise_tracking_mine_policy_expected">tracking expected</string>
+    <string name="enterprise_tracking_mine_policy_optional">tracking optional</string>
+    <string name="enterprise_tracking_mine_policy_off">tracking off</string>
+    <string name="enterprise_tracking_mine_policy_unknown">Company policy not read on this phone yet.</string>
+    <string name="enterprise_tracking_mine_sessions_title">Your sessions on this phone</string>
+    <string name="enterprise_tracking_mine_empty">No tracked trip</string>
+    <string name="enterprise_tracking_mine_unavailable">The tracking records of this phone could not be read now.</string>
+    <string name="enterprise_tracking_mine_retry">Try again</string>
+    <string name="enterprise_tracking_mine_session_vehicle">Trip with %1$s</string>
+    <string name="enterprise_tracking_mine_session_started">Tracking started: %1$s</string>
+    <string name="enterprise_tracking_mine_session_never">Tracking never started on this trip.</string>
+    <string name="enterprise_tracking_mine_session_ended">End: %1$s</string>
+    <string name="enterprise_tracking_mine_session_ongoing">In progress</string>
+    <string name="enterprise_tracking_mine_gap_signal">No GPS signal from %1$s to %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_provider">Location off from %1$s to %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_mock">Simulated locations ignored from %1$s to %2$s.</string>
+</resources>

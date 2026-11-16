@@ -1194,6 +1194,34 @@ recorded_at) ON org_meter_reading_states` to export the state as of its
 supplies its consumers; production composes none (EDR-189). Nothing here
 provisions live grants.
 
+### Meter replacement, reset and rollover (EMP-METER-005)
+
+Migration251 closes a segment and removes a meter by one guarded `UPDATE` each.
+The meter principal additionally needs `UPDATE (removed_at, removed_submicro,
+removal_operation_id) ON org_meters` and `UPDATE (closed_at, closed_submicro,
+closing_kind, closing_value, closing_reading_id, closing_operation_id,
+closing_previous_reading_id, closing_implied_usage) ON org_meter_segments`;
+`POST …/meters/{meter_id}/change` and the `CONFIRM_ROLLOVER` decision run under
+`meter.reading.correct` with the existing meter grants. The migrator needs
+ownership of `org_meters`, `org_meter_segments`, `org_meter_reading_states`,
+`org_meter_flags_canonical(text[])` and `org_meter_reading_state_guard()`, and
+`REFERENCES ON org_audit_events, org_meter_readings`. Nothing here provisions
+live grants.
+
+### Meter current-value projection and usage port (EMP-METER-006)
+
+Migration252 adds the forced-RLS `org_meter_current_values`, written only by
+`SECURITY DEFINER` trigger functions owned by the migrator. The runtime role
+needs `SELECT ON org_meter_current_values` for `MeterStore.UsageBetween`; the
+operator role needs `EXECUTE ON FUNCTION org_meter_current_rebuild(uuid)` for
+`ops meter rebuild-projection --org <uuid>`. The migrator needs `SELECT,
+REFERENCES, TRIGGER ON org_meters, org_meter_segments, org_meter_readings`,
+`SELECT, TRIGGER ON org_meter_reading_states` and `SELECT, UPDATE ON
+organizations` (the rebuild locks the organization root). Existing meters have
+no projection until `ops meter rebuild-projection` runs for their organization
+(forced RLS lets no migration enumerate organizations); until then the usage
+port answers unavailable. Nothing here provisions live grants.
+
 ### Asset lifecycle (EMP-FLEET-003)
 
 Migration201 adds nullable acquisition/disposal columns to `org_assets` and the
@@ -1424,6 +1452,59 @@ intake principal needs the same three. Commands use fresh `trip.mission.manage`
 (admission class `trip.mission`); reads current `trip.mission.manage`; the own
 list current `trip.trip.start`. Nothing here provisions live grants.
 
+### Planned missions (EMP-TRIP-009)
+
+Migration 231 adds forced-RLS, insert-only `org_trip_mission_plans` (one
+planning revision per `PLAN` transition: destination text or unit, reason,
+optional cost centre, load, planner and command), widens the mission
+transition and receipt kind/state checks by name, replaces
+`org_trip_mission_next`, `org_trip_mission_transition_source`,
+`org_trip_mission_guard` and `org_trip_mission_complete` keeping every 227 line
+plus the `PLAN` clauses, and redefines `org_unit_current_usage` and
+`org_cost_centre_current_usage` (both from the 230 bodies) keeping every line and
+recognising the two plan keys as associations. The migration owner needs ownership of
+`org_trip_mission_transitions`, `org_trip_mission_commands` and the six
+replaced functions, and `REFERENCES` on `accounts`, `org_units`,
+`org_cost_centres` and `org_memberships`. The company principal needs `SELECT,
+INSERT ON org_trip_mission_plans` and `SELECT ON org_cost_centres` (plus the
+EMP-TRIP-008 grants). `POST /v1/orgs/{org_id}/missions/{mission_id}/plan` uses
+fresh `trip.mission.manage` (admission class `trip.mission`). Nothing here
+provisions live grants.
+
+### Mission vehicle change (EMP-TRIP-013)
+
+Migration 232 adds forced-RLS, insert-only `org_trip_mission_vehicles` (one
+record per `VEHICLE` transition: previous and new vehicle, reason, planner and
+command; its guard re-proves the current vehicle, an `ACTIVE` non-implement
+new vehicle that runs no trip, and no trip of the assignee running on the
+previous vehicle), widens the mission transition and receipt kind/state
+checks by name, replaces `org_trip_mission_next` (231 body plus the `VEHICLE`
+row), `org_trip_mission_guard` and `org_trip_mission_complete` (231 bodies plus
+the `VEHICLE` clauses) and redefines `org_asset_current_usage` from the 230
+body keeping every line and recognising the two change keys as associations.
+The migration owner needs ownership of `org_trip_mission_transitions`,
+`org_trip_mission_commands` and the four replaced functions, and `REFERENCES`
+on `accounts`, `org_assets` and `org_memberships`. The company principal needs
+`SELECT, INSERT ON org_trip_mission_vehicles` and `SELECT ON org_trips` (plus
+the EMP-TRIP-008/009 grants and the FLEET-007 availability reads).
+`POST /v1/orgs/{org_id}/missions/{mission_id}/vehicle/change` uses fresh
+`trip.mission.manage` (admission class `trip.mission`). Nothing here
+provisions live grants.
+
+### Mission eligible assignees (EMP-TRIP-022)
+
+`POST /v1/orgs/{org_id}/missions/{mission_id}/assignees/list` lists, under
+current (not fresh) `trip.mission.manage` covering the mission, the employees
+the assignment command would accept now: ACTIVE, unmerged, with an ACTIVE
+account-linked membership whose current `trip.trip.start` covers the mission
+(the command's own `EligibleAssigneeTx`, evaluated per candidate in the read
+transaction between two authority checks). Items carry only `employee_id`,
+`display_name` and `registration_number`; the sealed cursor is bound to the
+mission and limit and advances by the last scanned employee, so a page may be
+empty while a cursor remains. No migration; the company principal needs
+`SELECT ON org_employee_profiles` (already held by the employee reads) besides
+the EMP-TRIP-008 grants. Nothing here provisions live grants.
+
 ### Trip review, period lock and amendments (EMP-TRIP-004, EMP-TRIP-016, EMP-TRIP-015)
 
 Migration 226 adds forced-RLS, append-only `org_trip_review_entries`; 228
@@ -1444,6 +1525,181 @@ org_trip_amendments, org_trip_review_entries`. The migrator needs `REFERENCES
 ON org_trips, org_memberships, org_employee_identities, org_meter_readings,
 org_sync_review_items` and ownership of the replaced functions and of
 `org_trip_review_entries`. Nothing here provisions live grants.
+
+### Trip pause, resume and cancellation (EMP-TRIP-011)
+
+Migration 233 admits `PAUSED` and `CANCELLED` in `org_trips.state`, rebuilds
+the one-active-asset index (same name) over `IN_PROGRESS` and `PAUSED`, adds
+forced-RLS, insert-only `org_trip_transitions` (one row per accepted
+`trip.pause`, `trip.resume` or `trip.cancel` at the trip's next revision; its
+insert moves the trip's state) and `org_trip_held_transitions`
+(`TRIP_ALREADY_CLOSED` / `STALE_REVISION` held commands with OFFL-008 review
+items), the functions `org_trip_revision` and `org_trip_lifecycle_next`, and
+redefines the 220 completion guard, finish source, finish apply, publication
+and held source, the 229 logbook and held-logbook sources and review-source
+hook and the 232 mission vehicle source, keeping every other line. The
+migration owner needs ownership of `org_trips` and of the nine replaced
+functions and `REFERENCES ON org_sync_operations, org_memberships,
+org_employee_identities, org_device_enrollments, org_sync_review_items`. The
+signed intake principal needs `SELECT, INSERT ON org_trip_transitions,
+org_trip_held_transitions` (with its existing trip grants, including `UPDATE
+(state) ON org_trips`); the FLEET-007 active-use reader needs `SELECT (org_id,
+trip_id, command, occurred_at, occurred_submicro) ON org_trip_transitions`.
+No route is added. Nothing here provisions live grants.
+
+### Trip conflict resolution (EMP-TRIP-007)
+
+Migration 237 adds no table: it widens the `org_sync_review_resolutions`
+outcome check and replaces the resolution source and publication guards, the
+observation guard, the effect source and the trip source and publication so a
+held trip fact is resolved once and an accepted held start becomes its trip.
+Production runtime grants for the company conflict routes (not provisioned
+here): `SELECT, INSERT ON org_sync_review_resolutions, org_sync_effects,
+org_trips, org_meter_readings`; `SELECT ON org_sync_review_items,
+org_trip_held_starts, org_trip_held_finishes, org_trip_held_events,
+org_trip_held_submissions, org_trip_finishes, org_team_links,
+org_asset_unit_periods, org_asset_cost_centre_periods, org_units, org_meters,
+org_meter_segments, org_device_enrollments, company_web_sessions,
+org_trip_transitions, org_trip_held_transitions` plus the
+EMP-TRIP-004 review grants, the OFFL-008 item row-lock privilege
+(`UPDATE(id) ON org_sync_review_items`) and the existing asset row-lock
+privilege. The migrator needs ownership of `org_sync_review_resolutions`
+and of the six replaced functions. `/v1/orgs/{org_id}/sync/reviews/trips/{list,
+{review_item_id}/read, {review_item_id}/resolve}` use `trip.trip.review`
+(fresh for the resolution). Nothing here provisions live grants.
+
+### Expense intake and fueling projection (EMP-EXP-002)
+
+Migration 244 adds forced-RLS, insert-only `org_expenses`. Every principal
+that inserts fuelings (the signed intake) needs `SELECT, INSERT ON
+org_expenses`: a fueling commits only with its one FUEL expense. The same
+principal records `expense.submit` with the meter/fueling sources it already
+has. The migrator needs `REFERENCES` on organizations, org_sync_operations,
+org_fuelings, org_assets, org_memberships, org_employee_identities,
+org_device_enrollments, org_units and org_cost_centres, `TRIGGER` on
+org_fuelings and ownership of `org_asset_current_usage`,
+`org_unit_current_usage` and `org_cost_centre_current_usage`. Fuelings
+accepted before 000244 receive their expense from the per-organization
+catch-up; nothing provisions live grants.
+
+### Trip driver handover (EMP-TRIP-012)
+
+Migration 243 adds forced-RLS, insert-only `org_trip_handovers` (one row per
+handover at the trip's next revision; it moves no trip column), the functions
+`org_trip_responsible` and `org_trip_responsible_member`, the handover source
+and its deferred publication guard (the `trip.trip.handed_over` audit event),
+and redefines, keeping every other line, the 233 transition, held-transition
+and finish sources, the 235 revision, logbook, held-logbook, review-entry and
+closure sources, the 236 held source and offboarding guard, the 229
+held-submission source and the 230 incident report source. Production grants
+(not provisioned here): the company runtime `SELECT, INSERT ON
+org_trip_handovers` with `SELECT ON org_asset_assignments` for the receiver's
+eligibility; every principal that reads a trip, its revision or its
+responsible member (the signed intake, the trip review, closure, conflict,
+incident, tracking and offboarding stores) `SELECT ON org_trip_handovers`. The
+migrator needs `REFERENCES ON org_trips, org_memberships,
+org_employee_identities, org_audit_events` and ownership of the twelve
+replaced functions. `/v1/orgs/{org_id}/trips/{trip_id}/handover` (fresh) and
+`/v1/orgs/{org_id}/trips/handovers/list` use `trip.trip.close_for_other`;
+`/v1/orgs/{org_id}/trips/mine/list` uses `trip.trip.start` on the requesting
+membership. Nothing here provisions live grants.
+
+### Checklist runs (EMP-CHECK-002)
+
+Migration 242 adds forced-RLS `org_checklist_runs`, `org_checklist_run_answers`
+and `org_checklist_run_releases`. Production runtime grants (not provisioned
+here): `SELECT, INSERT` on the three tables, `UPDATE(outcome, revision,
+updated_at)` on `org_checklist_runs`, and `SELECT` on the checklist template
+tables it reads.
+
+### Checklist run queue and the content hint (EMP-CHECK-004)
+
+`POST /v1/orgs/{org_id}/checklists/runs/list` pages every run of the
+organization under current (not fresh) `check.incident.manage` on the
+organization, exactly the incident queue's policy (an ORG grant; structural
+holders read runs through the run read of their assets). Items are the run
+read's projection; order: current outcome BLOCKING, then `review_required`,
+then the rest, newest declared completion first, then the run id; the sealed
+cursor carries that key and is bound to the route and limit. No migration and
+no grant beyond EMP-CHECK-002's. `contexts/read` now hints
+`doc.document.view_content` when an ORG assignment covers it (a read hint, not
+authority). Nothing here provisions live grants.
+
+### Tracking policy and processing (EMP-GPS-002 prerequisite, EMP-GPS-005)
+
+Migration 247 adds the receipt table `org_tracking_policy_commands`; the policy
+command writes insert-only `org_tracking_policies` rows (000240). Migration 246
+adds insert-only `org_tracking_summaries`, written by the `org-tracking-process`
+job on the general worker. Production grants for these tables, the 000240
+tracking tables and `org_sensitive_access_events` are not provisioned here.
+
+### Reservation-to-trip integration (EMP-TRIP-023)
+
+Migration 249 (000238 stays unused) adds forced-RLS, insert-only
+`org_trip_mission_links` (one per executing trip and per mission, bound to
+the trip's start operation, published only with the mission's `START`
+revision), the columns `mission_id`, `trip_id` and `fulfilled_at` of
+`org_asset_reservations`, the mission transition kinds `RESERVE`, `START`,
+`COMPLETE`, the source `TRIP` and `trip_id`, an `AFTER UPDATE OF state`
+trigger on `org_trips` completing a linked `IN_PROGRESS` mission, and
+redefines, keeping every earlier line, the 217 reservation guard, the 232
+mission table, head guard and publication, the 231 transition source and the
+243 held source (`ORPHAN_REFERENCE` for held starts). Production grants (not
+provisioned here): the signed intake (`trip.start`) `SELECT, INSERT ON
+org_trip_mission_links`, `SELECT, UPDATE ON org_trip_missions`, `SELECT,
+INSERT ON org_trip_mission_transitions` and `SELECT, UPDATE ON
+org_asset_reservations`; every principal that completes a trip (the finish
+intake and the supervisor closure store) `SELECT ON org_trip_mission_links`
+and, for a linked mission, the same mission grants; the company runtime of
+the mission commands `SELECT, INSERT, UPDATE ON org_asset_reservations`,
+`SELECT, INSERT ON org_asset_reservation_commands, job_queue`; the
+reservation outcome job the existing root lock on `organizations` (it now
+takes it first). The migrator needs `REFERENCES ON org_trips,
+org_trip_missions, org_sync_operations`, `TRIGGER ON org_trips`, ownership
+of `org_asset_reservations`, `org_trip_mission_transitions`,
+`org_trip_mission_commands` and of the six replaced functions.
+`/v1/orgs/{org_id}/missions/{mission_id}/reservations/request` (fresh) uses
+`trip.mission.manage`. Nothing here provisions live grants.
+
+### Checklist gate at trip start and finish (EMP-TRIP-019)
+
+Migration 255 (EMP-TRIP-010 moves to 256; 000250 stays unused) adds
+forced-RLS, insert-only `org_trip_checklist_links` (one departure link per
+trip from its start operation and one return link from its finish
+operation, one trip per run, re-proved against the stored trip and the run's
+history) and `org_trip_checklist_holds` (the gate reason beside a held
+start), with the functions `org_trip_checklist_validity` and
+`org_trip_checklist_blocking_at`; no existing function or row changes.
+`trip.start` may name one `checklist_run` (beside its mission) and
+`trip.finish` one; the acknowledgement keeps the closed held codes
+(`ASSET_UNAVAILABLE`, `ORPHAN_REFERENCE`). Production grants (not
+provisioned here): the signed intake (`trip.start`, `trip.finish`) `SELECT,
+INSERT ON org_trip_checklist_links, org_trip_checklist_holds` and `SELECT ON
+org_checklist_runs, org_checklist_run_releases, org_checklist_templates,
+org_checklist_template_versions, org_checklist_template_targets,
+org_checklist_policy_revisions, org_assets`. The migrator needs `REFERENCES
+ON org_trips, org_checklist_runs, org_sync_operations, org_trip_held_starts,
+org_sync_review_items`. No route is added. Nothing here provisions live
+grants.
+
+### Stops and legs: planned versus actual (EMP-TRIP-010)
+
+Migration 256 adds only forced-RLS, insert-only `org_trip_mission_plan_stops`
+(the ordered free-text planned stops of one planning revision, written by its
+own `PLAN` transaction after the head moves and before the receipt, published
+only with that receipt); no existing table, function, row or usage source
+changes. The observed stops and legs are derived at read time from the trip's
+accepted `STOP`, `ARRIVAL` and `DEPARTURE` events and are never stored.
+`POST /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read` uses
+`trip.trip.start` over the requesting membership (the EMP-TRIP-012 own-trips
+policy). Production grants (not provisioned here): the company runtime of the
+mission commands and reads `SELECT, INSERT ON org_trip_mission_plan_stops`;
+the own-trip read `SELECT ON org_trip_mission_plan_stops,
+org_trip_mission_plans, org_trip_missions, org_trip_mission_links,
+org_trip_events, org_trip_held_events, org_sync_review_items, org_trips,
+org_trip_finishes, org_trip_transitions, org_trip_handovers`. The migrator
+needs `REFERENCES ON org_trip_mission_plans`. Nothing here provisions live
+grants.
 
 ### Finance periods (EMP-APPR-006)
 
@@ -1517,6 +1773,14 @@ SELECT(org_id,reading_id,operation_id) ON org_meter_held_readings`, `GRANT
 SELECT(org_id,operation_id,membership_id) ON org_sync_operations` and `GRANT
 SELECT(org_id,id) ON org_employee_identities`. Links are never updated or
 deleted; only ASSET, EMPLOYEE and METER_READING targets are registered.
+
+The signed device attachment session (EMP-OFFL-005) reuses the DOC-002 and
+DOC-003 grants; no new grant.
+
+Migration 245 adds the `FUELING` link kind (`fueling_id`, composite foreign key to
+`org_fuelings`); the link principal needs `SELECT (org_id,id,author_membership_id)
+ON org_fuelings` and the migrator `REFERENCES ON org_fuelings` and ownership of
+`org_document_links`. Nothing here provisions live grants.
 
 ### Document upload safety (EMP-DOC-014)
 

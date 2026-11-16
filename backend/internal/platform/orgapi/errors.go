@@ -121,6 +121,17 @@ func SettingsValidation(field string) error {
 	return fieldFailure{field, code}
 }
 
+// TrackingPolicyValidation exposes only the frozen tracking policy fields and
+// codes (B-BR-EMP-468), never a submitted value.
+func TrackingPolicyValidation(field, reason string) error {
+	switch field + ":" + reason {
+	case "policy:OFF_OPTIONAL_OR_EXPECTED", "notice_version:REQUIRED_WHEN_ENABLED", "notice_version:ABSENT_WHEN_OFF", "notice_version:NOTICE_VERSION_FORMAT",
+		"notice_in_force_at:REQUIRED_WHEN_ENABLED", "notice_in_force_at:ABSENT_WHEN_OFF", "notice_in_force_at:NOT_IN_FORCE":
+		return fieldFailure{field, reason}
+	}
+	return Unavailable
+}
+
 // UnitDuplicate accepts only the source-owned active uniqueness fields.
 func UnitDuplicate(field string) error {
 	if field != "name" && field != "code" {

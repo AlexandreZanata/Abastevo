@@ -32,6 +32,14 @@ func (i HandoverItem) Validate() error {
 			return nil
 		}
 	}
+	// EMP-TRIP-018: a trip in progress the membership started, at its
+	// operational revision 1 (B-BR-EMP-404).
+	if len(parts) == 2 && parts[0] == "TRIP" && i.Revision == 1 {
+		id, e := canonicalID(parts[1])
+		if e == nil && id == parts[1] {
+			return nil
+		}
+	}
 	if len(parts) == 3 && parts[0] == "SETTING" && slices.Contains([]string{"review_fallback", "platform_notices", "data_protection", "billing"}, parts[1]) && slices.Contains([]string{"primary", "substitute"}, parts[2]) {
 		return nil
 	}

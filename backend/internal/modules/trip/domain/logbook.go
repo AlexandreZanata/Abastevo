@@ -117,9 +117,11 @@ func (e LogbookEntry) Declared() orgtime.Declaration { return e.declared }
 
 // Log validates one logbook event against the trip (B-BR-EMP-320/323), first
 // failure first: scope and trip, event identity, author, type (unknown
-// ErrInvalid, reserved ErrUnsupportedEvent), text, declaration, the starting
-// member (ErrForbidden), then time (ErrEventBeforeStart; after the finish of
-// a completed trip ErrEventAfterFinish). The trip is never changed.
+// ErrInvalid, reserved ErrUnsupportedEvent), text, declaration, the member
+// responsible at the declared instant (ErrForbidden, EMP-TRIP-012), then
+// time (ErrEventBeforeStart; after the finish of a completed trip or the
+// cancellation of a cancelled one ErrEventAfterFinish). The trip is never
+// changed.
 func (t Trip) Log(scope kernel.OrgScope, in LogbookInput) (LogbookEntry, error) {
 	if scope.Validate() != nil {
 		return LogbookEntry{}, ErrScope
@@ -151,16 +153,23 @@ func (t Trip) Log(scope kernel.OrgScope, in LogbookInput) (LogbookEntry, error) 
 	if err != nil {
 		return LogbookEntry{}, ErrInvalid
 	}
-	if in.Author != t.start.author {
+	// EMP-TRIP-012: the member responsible at the declared instant.
+	if in.Author != t.ResponsibleAt(declared.OccurredAt) {
 		return LogbookEntry{}, ErrForbidden
-	}
-	if t.state != InProgress && t.state != Completed {
-		return LogbookEntry{}, ErrInvalid
 	}
 	if declared.OccurredAt.Before(t.start.declared.OccurredAt) {
 		return LogbookEntry{}, ErrEventBeforeStart
 	}
 	if end, ok := t.Finished(); ok && declared.OccurredAt.After(end.Declared().OccurredAt) {
+		return LogbookEntry{}, ErrEventAfterFinish
+	}
+	// EMP-TRIP-011: a cancellation closes the logbook like a finish.
+	if end, ok := t.Cancellation(); ok && declared.OccurredAt.After(end.Declared().OccurredAt) {
+		return LogbookEntry{}, ErrEventAfterFinish
+	}
+	// EMP-TRIP-014 (B-BR-EMP-402): a closure has no device instant, so every
+	// later event is after it and is kept for review.
+	if t.closure != nil {
 		return LogbookEntry{}, ErrEventAfterFinish
 	}
 	return LogbookEntry{trip: t.reference, reference: in.Reference, author: in.Author, kind: kind, text: copyPointer(in.Text), declared: declared}, nil

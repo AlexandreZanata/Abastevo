@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-TRIP-020 closing conference; generated from one table by f4-logs/exp004-scripts/gen_closing_strings.py -->
+<resources>
+    <string name="enterprise_trip_closing_title">Abschlussprüfung</string>
+    <string name="enterprise_trip_closing_intro">Bevor du die Fahrt als bereit markierst, prüfe, was dieses Gerät dafür erfasst hat. Tankvorgänge und Ausgaben werden nach Fahrzeug und Fahrtzeit aufgeführt; hier wird nichts addiert, auf dem Server verknüpft oder genehmigt.</string>
+    <string name="enterprise_trip_closing_departure">Abfahrtsstand</string>
+    <string name="enterprise_trip_closing_final">Ankunftsstand</string>
+    <string name="enterprise_trip_closing_fueling">Tankvorgang · R$ %1$s</string>
+    <string name="enterprise_trip_closing_expense">Ausgabe · R$ %1$s</string>
+    <string name="enterprise_trip_closing_record_saved">Auf diesem Gerät gespeichert</string>
+    <string name="enterprise_trip_closing_record_sending">Wird gesendet</string>
+    <string name="enterprise_trip_closing_record_accepted">Vom Unternehmen angenommen</string>
+    <string name="enterprise_trip_closing_record_needs_review">Muss geprüft werden</string>
+    <string name="enterprise_trip_closing_record_refused">Nicht angenommen</string>
+    <string name="enterprise_trip_closing_evidence_missing">Beleg: fehlt</string>
+    <string name="enterprise_trip_closing_evidence_pending">Beleg: ausstehend (auf dem Gerät oder wird gesendet)</string>
+    <string name="enterprise_trip_closing_evidence_available">Beleg: vom Unternehmen gespeichert</string>
+    <string name="enterprise_trip_closing_evidence_unreadable">Belege: auf diesem Gerät nicht lesbar</string>
+    <string name="enterprise_trip_closing_related_unavailable">Die Tankvorgänge oder Ausgaben dieses Geräts können gerade nicht gelesen werden; diese Liste kann unvollständig sein.</string>
+    <string name="enterprise_trip_closing_none">Kein Tankvorgang und keine Ausgabe dieses Fahrzeugs während der Fahrt auf diesem Gerät.</string>
+    <string name="enterprise_trip_closing_no_decision">Über Genehmigung oder Rückgabe entscheidet das Unternehmen, nie dieses Gerät.</string>
+    <string name="enterprise_trip_closing_photos">Fotos: %1$d</string>
+</resources>

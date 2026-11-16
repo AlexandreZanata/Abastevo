@@ -25,6 +25,7 @@ import (
 	tripdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trip/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -34,6 +35,7 @@ type tripState struct {
 	selfIntakeState
 	authority     *orgpg.TripAuthority
 	store         *trippg.Store
+	gate          tripapp.ChecklistGate
 	start, finish syncapp.Handler
 	trips         *syncpg.Store
 	vehicle       fa.MeterInstallResult
@@ -48,11 +50,87 @@ func tripGrants(t *testing.T, fx legalFixtureState) {
 		";GRANT SELECT,INSERT,UPDATE ON org_asset_reservations,org_asset_blocks TO "+role+";GRANT SELECT,INSERT ON org_asset_reservation_commands TO "+role+";GRANT SELECT,INSERT ON job_queue TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	// EMP-TRIP-011: every trip read loads the lifecycle rows once 000233 exists.
+	if lifecycleImage(t, fx) {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_transitions,org_trip_held_transitions TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
+	tripClosureGrant(t, fx.f)
+	tripHandoverGrant(t, fx.f)
+	tripMissionLinkGrant(t, fx.f)
+}
+
+// tripMissionLinkGrant is EMP-TRIP-023's runtime use of the trip-mission
+// links once 000249 exists: the start stores them and every trip completion
+// (finish or closure) reads them to complete a linked mission.
+func tripMissionLinkGrant(t *testing.T, f *orgtest.Fixture) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_mission_links') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_mission_links TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// tripClosureGrant grants the EMP-TRIP-014 closures once the 000235 table
+// exists: the completion, logbook and review guards read them, the closure
+// owner inserts them (an upgrade rehearsal may stop at an earlier image).
+func tripClosureGrant(t *testing.T, f *orgtest.Fixture) {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_closures') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_closures TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// tripHandoverGrant is EMP-TRIP-012's runtime read of the handover facts once
+// 000243 exists: every trip read, the trip revision and the responsible
+// member (lifecycle, finish, logbook and review guards) read them.
+func tripHandoverGrant(t *testing.T, f *orgtest.Fixture) {
+	t.Helper()
+	if !handoverImage(t, f) {
+		return
+	}
+	if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT ON org_trip_handovers TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// handoverImage reports whether the fixture's schema image has the
+// EMP-TRIP-012 handover facts (an upgrade rehearsal may stop earlier).
+func handoverImage(t *testing.T, f *orgtest.Fixture) bool {
+	t.Helper()
+	var installed bool
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_handovers') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	return installed
+}
+
+// lifecycleImage reports whether the fixture's schema image has the
+// EMP-TRIP-011 lifecycle rows (an upgrade rehearsal may stop earlier).
+func lifecycleImage(t *testing.T, fx legalFixtureState) bool {
+	t.Helper()
+	var installed bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_transitions') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	return installed
 }
 
 func tripIntakeConfig(fx syncFixtureState) syncpg.Config {
 	config := meterReviewIntakeConfig(fx)
-	for _, kind := range []string{tripapp.StartOperationType, tripapp.FinishOperationType} {
+	for _, kind := range append([]string{tripapp.StartOperationType, tripapp.FinishOperationType}, tripapp.LifecycleOperationTypes...) {
 		config.NoAsyncPlans[syncapp.OperationKey{Type: kind, Schema: 1}] = map[string]syncapp.FollowupMode{protocol.Accepted: syncapp.NoAsyncFollowup, protocol.Rejected: syncapp.NoAsyncFollowup, protocol.AcceptedForReview: syncapp.AtomicReview}
 	}
 	return config
@@ -60,11 +138,11 @@ func tripIntakeConfig(fx syncFixtureState) syncpg.Config {
 
 func (x *tripState) handlers(t *testing.T, readings tripapp.Readings, store tripapp.Store) (syncapp.Handler, syncapp.Handler) {
 	t.Helper()
-	start, err := trippg.NewStartHandler(x.authority, readings, x.assets, store)
+	start, err := trippg.NewStartHandler(x.authority, readings, x.assets, x.gate, store)
 	if err != nil {
 		t.Fatal(err)
 	}
-	finish, err := trippg.NewFinishHandler(x.authority, readings, store)
+	finish, err := trippg.NewFinishHandler(x.authority, readings, x.gate, store)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,8 +164,11 @@ func tripFixtureOn(t *testing.T, base selfIntakeState) tripState {
 		t.Fatal("fixture meter authority is not the real one")
 	}
 	x.authority = (*orgpg.TripAuthority)(meterAuthority)
-	x.store = &trippg.Store{Allocations: x.assets, NewID: func() (string, error) { return onboardingID(t), nil }}
-	x.assets.OpenWork, x.assets.ActiveUse, x.assets.MaintenanceHolds = trippg.OpenWork{}, trippg.ActiveUse{}, fleetpg.NoMaintenanceHolds{}
+	x.store = &trippg.Store{Allocations: x.assets, NewID: func() (string, error) { return onboardingID(t), nil }, PreLifecycleImage: !lifecycleImage(t, x.legalFixtureState),
+		PreHandoverImage: !handoverImage(t, x.f)}
+	x.assets.OpenWork, x.assets.ActiveUse, x.assets.MaintenanceHolds = trippg.OpenWork{}, trippg.ActiveUse{PreLifecycleImage: x.store.PreLifecycleImage}, fleetpg.NoMaintenanceHolds{}
+	x.assets.ChecklistBlocks = checklistBlockSource(t, x.legalFixtureState)
+	x.gate = checklistGateSource(t, x.legalFixtureState)
 	x.start, x.finish = x.handlers(t, x.meters, x.store)
 	x.trips = syncpg.NewStore(tripIntakeConfig(x.syncFixtureState))
 	input := fleetCreateInput()

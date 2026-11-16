@@ -7,6 +7,7 @@ import (
 
 	q "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/mission"
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
+	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	permission "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
@@ -27,16 +28,19 @@ import (
 const MissionTargetType = "trip_mission"
 
 var missionActions = map[app.MissionCommandKind]string{
-	app.MissionCreate:        "trip.mission.created",
-	app.MissionAssignCommand: "trip.mission.assigned",
-	app.MissionCancelCommand: "trip.mission.cancelled",
+	app.MissionCreate:         "trip.mission.created",
+	app.MissionPlanCommand:    "trip.mission.planned",
+	app.MissionAssignCommand:  "trip.mission.assigned",
+	app.MissionCancelCommand:  "trip.mission.cancelled",
+	app.MissionVehicleCommand: "trip.mission.vehicle_changed",
+	app.MissionReserveCommand: "trip.mission.reservation_requested",
 }
 
 // MissionAuditDefinitions registers one action per company command kind
-// (B-BR-EMP-358); responses are audited by their intake receipt.
+// (B-BR-EMP-358, B-BR-EMP-385); responses are audited by their intake receipt.
 func MissionAuditDefinitions() []audit.Definition {
 	out := []audit.Definition{}
-	for _, kind := range []app.MissionCommandKind{app.MissionCreate, app.MissionAssignCommand, app.MissionCancelCommand} {
+	for _, kind := range []app.MissionCommandKind{app.MissionCreate, app.MissionPlanCommand, app.MissionAssignCommand, app.MissionCancelCommand, app.MissionVehicleCommand, app.MissionReserveCommand} {
 		out = append(out, audit.Definition{Action: missionActions[kind], TargetType: MissionTargetType})
 	}
 	return out
@@ -44,12 +48,14 @@ func MissionAuditDefinitions() []audit.Definition {
 
 // MissionStore owns the mission commands and reads (company) and the
 // response facts of the signed intake (EMP-TRIP-008, migration 000227).
-// Availability is the EMP-FLEET-007 start decision used only as a warning.
+// Availability is the EMP-FLEET-007 start decision used only as a warning;
+// Reservations creates a mission's reservation (EMP-TRIP-023).
 type MissionStore struct {
 	Pool         *pgxpool.Pool
 	Authority    app.MissionAuthority
 	Audit        auditing.TransactionRunner
 	Availability fleetapp.StartAvailabilityPort
+	Reservations fleetapp.MissionReservationPort
 }
 
 var (
@@ -78,7 +84,10 @@ func missionError(ctx context.Context, err error) error {
 	}
 	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrSetupIncomplete, access.ErrFreshAuthRequired,
 		access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrOperationReused, app.ErrNotFound, app.ErrUnavailable,
-		app.ErrMissionUnauthenticated, app.ErrMissionIneligible, trip.ErrConflict, trip.ErrInvalidTransition, trip.ErrUnsupportedCommand, trip.ErrInvalid, trip.ErrScope, trip.ErrForbidden} {
+		app.ErrMissionUnauthenticated, app.ErrMissionIneligible, app.ErrMissionAssetBusy, app.ErrMissionTripInProgress, trip.ErrConflict, trip.ErrInvalidTransition, trip.ErrUnsupportedCommand, trip.ErrInvalid, trip.ErrScope, trip.ErrForbidden,
+		// EMP-TRIP-023: the reservation request keeps its window conflict
+		// (only the window) and a window that has already started.
+		fleetapp.ErrReservationConflict, fleet.ErrInvalid} {
 		if errors.Is(err, known) {
 			return err
 		}
@@ -184,7 +193,7 @@ func (s *MissionStore) warning(ctx context.Context, tx pgx.Tx, scope kernel.OrgS
 	if record.View.AssetID == "" {
 		return nil, nil
 	}
-	decision, err := s.Availability.StartDecisionDBTX(ctx, syncapp.Borrow(tx), scope, record.View.AssetID, member, record.View.StartsAt)
+	decision, err := s.Availability.StartDecisionDBTX(ctx, syncapp.Borrow(tx), scope, record.View.AssetID, member, record.View.MissionID, record.View.StartsAt)
 	if err != nil {
 		return nil, app.ErrUnavailable
 	}
@@ -256,8 +265,132 @@ func (s *MissionStore) create(ctx context.Context, queries *q.Queries, scope ker
 	return app.MissionAck{MissionID: mission, Revision: 1, State: trip.MissionDraft}, nil
 }
 
-// change applies ASSIGN or CANCEL to the locked head through the pure rules.
-func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries, scope kernel.OrgScope, actor app.MissionActor, member string, in app.MissionCommandInput) (app.MissionAck, error) {
+// planInput resolves the plan's unit and cost centre of the organization
+// (else not found; archived is ineligible) and builds the domain input
+// (EMP-TRIP-009, B-BR-EMP-382).
+func planInput(ctx context.Context, queries *q.Queries, scope kernel.OrgScope, p app.MissionPlanFields) (trip.PlanInput, error) {
+	org := scope.OrgID().String()
+	for _, ref := range []struct {
+		id   string
+		read func() (string, error)
+	}{
+		{p.DestinationUnitID, func() (string, error) {
+			return queries.MissionUnitState(ctx, q.MissionUnitStateParams{OrgID: org, ID: p.DestinationUnitID})
+		}},
+		{p.CostCentreID, func() (string, error) {
+			return queries.MissionCostCentreState(ctx, q.MissionCostCentreStateParams{OrgID: org, ID: p.CostCentreID})
+		}},
+	} {
+		if ref.id == "" {
+			continue
+		}
+		state, err := ref.read()
+		if errors.Is(err, pgx.ErrNoRows) {
+			return trip.PlanInput{}, app.ErrNotFound
+		}
+		if err != nil {
+			return trip.PlanInput{}, err
+		}
+		if state != "ACTIVE" {
+			return trip.PlanInput{}, app.ErrMissionIneligible
+		}
+	}
+	return p.Domain(scope)
+}
+
+func int4(v *int) pgtype.Int4 {
+	if v == nil {
+		return pgtype.Int4{}
+	}
+	return pgtype.Int4{Int32: int32(*v), Valid: true}
+}
+
+// planRow is the planning revision of a decided PLAN.
+func planRow(org string, actor app.MissionActor, member string, in app.MissionCommandInput, revision int64, plan trip.Plan) q.InsertMissionPlanParams {
+	v := plan.Snapshot()
+	row := q.InsertMissionPlanParams{OrgID: org, MissionID: in.MissionID, Revision: revision, OperationID: in.OperationID, DestinationText: text(v.DestinationText), Reason: v.Reason,
+		LoadKind: string(v.Load), CargoDescription: text(v.CargoDescription), PassengerCount: int4(v.Passengers), PlannedBy: actor.AccountID, PlannedByMembershipID: member}
+	if v.DestinationUnit != nil {
+		row.DestinationUnitID = nullable(v.DestinationUnit.ID())
+	}
+	if v.CostCentre != nil {
+		row.CostCentreID = nullable(v.CostCentre.ID())
+	}
+	return row
+}
+
+// vehicle decides a vehicle change (EMP-TRIP-013, B-BR-EMP-387/388), first
+// failure first: the new vehicle of the organization (else not found), the
+// planner's coverage of the mission with it, its lifecycle and kind, the pure
+// rules, a current assignee's coverage, a trip the assignee runs on the
+// current vehicle, then the new vehicle's FLEET-007 assessment at the planned
+// start. The assessment does not depend on the starter, so a mission without
+// an assignee reads it with the planner's membership.
+func (s *MissionStore) vehicle(ctx context.Context, tx pgx.Tx, queries *q.Queries, scope kernel.OrgScope, actor app.MissionActor, member string, in app.MissionCommandInput,
+	record app.MissionRecord, current trip.Mission) (trip.Mission, q.InsertMissionVehicleParams, error) {
+	org := scope.OrgID().String()
+	asset, err := queries.MissionAssetFacts(ctx, q.MissionAssetFactsParams{OrgID: org, ID: in.AssetID})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrNotFound
+	}
+	if err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+	}
+	after := facts(record)
+	after.AssetID = in.AssetID
+	if err := s.Authority.CoversMissionTx(ctx, tx, scope, member, after); err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+	}
+	if asset.State != "ACTIVE" || asset.Kind == "IMPLEMENT" {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionIneligible
+	}
+	ref, err := trip.NewMissionAssetRef(scope, in.AssetID)
+	if err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+	}
+	next, err := current.ChangeVehicle(scope, in.ExpectedRevision, ref, in.Reason)
+	if err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+	}
+	if state := record.View.State; record.AssigneeMembershipID != "" && (state == trip.MissionAssigned || state == trip.MissionAccepted) {
+		eligible, err := s.Authority.EligibleAssigneeTx(ctx, tx, scope, record.AssigneeMembershipID, after)
+		if err != nil {
+			return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+		}
+		if !eligible {
+			return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionIneligible
+		}
+	}
+	if record.View.AssetID != "" && record.View.AssigneeEmployeeID != "" {
+		running, err := queries.MissionAssigneeTripRunning(ctx, q.MissionAssigneeTripRunningParams{OrgID: org, AssetID: record.View.AssetID, EmployeeID: record.View.AssigneeEmployeeID})
+		if err != nil {
+			return trip.Mission{}, q.InsertMissionVehicleParams{}, err
+		}
+		if running {
+			return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionTripInProgress
+		}
+	}
+	starter := record.AssigneeMembershipID
+	if starter == "" {
+		starter = member
+	}
+	decision, err := s.Availability.StartDecisionDBTX(ctx, syncapp.Borrow(tx), scope, in.AssetID, starter, record.View.MissionID, record.View.StartsAt)
+	if err != nil {
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrUnavailable
+	}
+	switch decision.Assessment.Availability {
+	case fleet.InUse:
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionAssetBusy
+	case fleet.Unavailable, fleet.InMaintenance, fleet.Blocked:
+		return trip.Mission{}, q.InsertMissionVehicleParams{}, app.ErrMissionIneligible
+	}
+	return next, q.InsertMissionVehicleParams{OrgID: org, MissionID: in.MissionID, Revision: record.View.Revision + 1, OperationID: in.OperationID, PreviousAssetID: nullable(record.View.AssetID),
+		AssetID: in.AssetID, Reason: in.Reason, ChangedBy: actor.AccountID, ChangedByMembershipID: member}, nil
+}
+
+// change applies PLAN, ASSIGN, CANCEL, VEHICLE or RESERVE to the locked head
+// through the pure rules; reservation is the new reservation of a RESERVE.
+func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries, scope kernel.OrgScope, actor app.MissionActor, member, reservation, digest string, in app.MissionCommandInput) (app.MissionAck, error) {
 	org := scope.OrgID().String()
 	record, err := s.head(ctx, queries, org, in.MissionID, true)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -274,7 +407,42 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 		FromState: nullable(string(record.View.State)), Source: "COMPANY", ActorAccountID: actor.AccountID, ActorMembershipID: member, OperationID: in.OperationID}
 	var next trip.Mission
 	var warning *app.MissionWarning
+	var planned *q.InsertMissionPlanParams
+	var changed *q.InsertMissionVehicleParams
+	var reserved *fleetapp.MissionReservation
 	switch in.Kind {
+	case app.MissionReserveCommand:
+		// EMP-TRIP-023 (B-BR-EMP-414): the mission's vehicle for its planned
+		// window; the reservation follows the RESERVE revision.
+		if absent(s.Reservations) || !canonicalID(reservation) {
+			return app.MissionAck{}, app.ErrUnavailable
+		}
+		if next, err = current.Reserve(scope, in.ExpectedRevision); err != nil {
+			return app.MissionAck{}, err
+		}
+		window, err := fleet.NewReservationWindow(record.View.StartsAt, record.View.EndsAt)
+		if err != nil {
+			return app.MissionAck{}, app.ErrUnavailable
+		}
+		reserved = &fleetapp.MissionReservation{ID: reservation, OperationID: in.OperationID, ActorAccountID: actor.AccountID, AssetID: record.View.AssetID,
+			MissionID: in.MissionID, Purpose: in.Reason, Window: window}
+	case app.MissionVehicleCommand:
+		var row q.InsertMissionVehicleParams
+		if next, row, err = s.vehicle(ctx, tx, queries, scope, actor, member, in, record, current); err != nil {
+			return app.MissionAck{}, err
+		}
+		changed = &row
+	case app.MissionPlanCommand:
+		input, err := planInput(ctx, queries, scope, *in.Plan)
+		if err != nil {
+			return app.MissionAck{}, err
+		}
+		var plan trip.Plan
+		if next, plan, err = current.Plan(scope, in.ExpectedRevision, input); err != nil {
+			return app.MissionAck{}, err
+		}
+		row := planRow(org, actor, member, in, record.View.Revision+1, plan)
+		planned = &row
 	case app.MissionAssignCommand:
 		target, err := assignee(ctx, queries, org, in.AssigneeEmployeeID)
 		if err != nil {
@@ -317,6 +485,30 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 	if err := queries.InsertMissionTransition(ctx, transition); err != nil {
 		return app.MissionAck{}, err
 	}
+	if reserved != nil {
+		reserved.Digest = digest
+		if err := s.Reservations.RequestMissionReservationTx(ctx, tx, scope, *reserved); err != nil {
+			return app.MissionAck{}, err
+		}
+	}
+	if planned != nil {
+		if err := queries.InsertMissionPlan(ctx, *planned); err != nil {
+			return app.MissionAck{}, err
+		}
+	}
+	if changed != nil {
+		if err := queries.InsertMissionVehicle(ctx, *changed); err != nil {
+			return app.MissionAck{}, err
+		}
+		// Only the vehicle and the revision move (EDR-251).
+		if n, err := queries.ChangeMissionVehicle(ctx, q.ChangeMissionVehicleParams{OrgID: org, ID: in.MissionID, Revision: record.View.Revision, AssetID: changed.AssetID}); err != nil || n != 1 {
+			if err == nil {
+				err = trip.ErrConflict
+			}
+			return app.MissionAck{}, err
+		}
+		return app.MissionAck{MissionID: in.MissionID, Revision: v.Revision, State: v.State, AssigneeEmployeeID: employee}, nil
+	}
 	advance := q.AdvanceMissionParams{OrgID: org, ID: in.MissionID, Revision: record.View.Revision, State: string(v.State), AssigneeEmployeeID: nullable(employee), AssigneeMembershipID: nullable(membership)}
 	if v.Answer != nil {
 		advance.Answer, advance.AnswerReason = nullable(string(v.Answer.Kind)), text(v.Answer.Reason)
@@ -327,7 +519,16 @@ func (s *MissionStore) change(ctx context.Context, tx pgx.Tx, queries *q.Queries
 		}
 		return app.MissionAck{}, err
 	}
-	return app.MissionAck{MissionID: in.MissionID, Revision: v.Revision, State: v.State, AssigneeEmployeeID: employee, Warning: warning}, nil
+	if planned != nil {
+		if err := insertPlanStops(ctx, tx, org, in.MissionID, planned.Revision, in.Plan.Stops); err != nil {
+			return app.MissionAck{}, err
+		}
+	}
+	ack := app.MissionAck{MissionID: in.MissionID, Revision: v.Revision, State: v.State, AssigneeEmployeeID: employee, Warning: warning}
+	if reserved != nil {
+		ack.ReservationID = reserved.ID
+	}
+	return ack, nil
 }
 
 // CommandMission runs one command under the organization root lock:
@@ -345,7 +546,11 @@ func (s *MissionStore) CommandMission(ctx context.Context, scope kernel.OrgScope
 	if in.Kind == app.MissionCreate {
 		mission, target = newID, scope.OrgID().String()
 	}
-	if !canonicalID(mission) || in.Kind != app.MissionCreate && newID != "" {
+	reservation := ""
+	if in.Kind == app.MissionReserveCommand {
+		reservation = newID
+	}
+	if !canonicalID(mission) || in.Kind != app.MissionCreate && in.Kind != app.MissionReserveCommand && newID != "" || in.Kind == app.MissionReserveCommand && !canonicalID(newID) {
 		return app.MissionAck{}, false, trip.ErrInvalid
 	}
 	if !s.ready(true) {
@@ -375,6 +580,14 @@ func (s *MissionStore) CommandMission(ctx context.Context, scope kernel.OrgScope
 			if prior.WarningCode != "" {
 				ack.Warning = &app.MissionWarning{Code: prior.WarningCode, Availability: prior.WarningAvailability}
 			}
+			if in.Kind == app.MissionReserveCommand {
+				if absent(s.Reservations) {
+					return app.ErrUnavailable
+				}
+				if ack.ReservationID, err = s.Reservations.MissionReservationOfTx(ctx, tx, scope, in.OperationID); err != nil {
+					return err
+				}
+			}
 			replayed = true
 			return s.Authority.CheckMissionTx(ctx, tx, scope, actor, member, target, app.MissionManage)
 		}
@@ -388,7 +601,7 @@ func (s *MissionStore) CommandMission(ctx context.Context, scope kernel.OrgScope
 			if in.Kind == app.MissionCreate {
 				ack, err = s.create(ctx, queries, scope, actor, member, mission, in)
 			} else {
-				ack, err = s.change(ctx, tx, queries, scope, actor, member, in)
+				ack, err = s.change(ctx, tx, queries, scope, actor, member, reservation, digest, in)
 			}
 			if err != nil {
 				return err
@@ -414,8 +627,112 @@ func (s *MissionStore) CommandMission(ctx context.Context, scope kernel.OrgScope
 	return ack, replayed, nil
 }
 
-// read runs one read between two authority checks of the action and target.
-func (s *MissionStore) read(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, target string, action app.MissionAction, call func(*q.Queries) error) error {
+// insertPlanStops stores the planned stops of the planning revision a PLAN
+// produced (EMP-TRIP-010, B-BR-EMP-475), after the head moved and before the
+// receipt; the database re-proves the transaction, the head and the order
+// (migration 000256). The mission sqlc stanza does not include the stop
+// table, so these are raw parametrized statements (EDR-310).
+func insertPlanStops(ctx context.Context, tx pgx.Tx, org, mission string, revision int64, places []string) error {
+	stops, err := trip.NewPlannedStops(places)
+	if err != nil {
+		return err
+	}
+	for i, place := range stops.Places() {
+		if _, err := tx.Exec(ctx, `INSERT INTO org_trip_mission_plan_stops(org_id,mission_id,revision,sequence,place_text) VALUES($1::uuid,$2::uuid,$3,$4,$5)`,
+			org, mission, revision, i+1, place); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// planStops reads the planned stops of the given planning revisions, keyed
+// by mission; a revision without stops is absent.
+func planStops(ctx context.Context, db q.DBTX, org string, revisions map[string]int64) (map[string][]string, error) {
+	out := map[string][]string{}
+	if len(revisions) == 0 {
+		return out, nil
+	}
+	ids := make([]string, 0, len(revisions))
+	for id := range revisions {
+		ids = append(ids, id)
+	}
+	rows, err := db.Query(ctx, `SELECT mission_id::text,revision,sequence,place_text FROM org_trip_mission_plan_stops
+WHERE org_id=$1::uuid AND mission_id=ANY($2::uuid[]) ORDER BY mission_id,revision,sequence`, org, ids)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var mission, place string
+		var revision int64
+		var sequence int16
+		if err := rows.Scan(&mission, &revision, &sequence, &place); err != nil {
+			return nil, err
+		}
+		if revisions[mission] != revision {
+			continue
+		}
+		if int(sequence) != len(out[mission])+1 {
+			return nil, app.ErrUnavailable
+		}
+		out[mission] = append(out[mission], place)
+	}
+	return out, rows.Err()
+}
+
+// withPlans attaches each mission's current planning revision (EMP-TRIP-009)
+// with its planned stops (EMP-TRIP-010).
+func withPlans(ctx context.Context, db q.DBTX, queries *q.Queries, org string, views []app.MissionView) error {
+	if len(views) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(views))
+	for _, v := range views {
+		ids = append(ids, v.MissionID)
+	}
+	rows, err := queries.MissionPlans(ctx, q.MissionPlansParams{OrgID: org, MissionIds: ids})
+	if err != nil {
+		return err
+	}
+	plans := make(map[string]*app.MissionPlanView, len(rows))
+	for _, r := range rows {
+		planned, err := at(r.RecordedAt)
+		if err != nil {
+			return err
+		}
+		fields := app.MissionPlanFields{DestinationText: optionalText(r.DestinationText), DestinationUnitID: r.DestinationUnitID, Reason: r.Reason, CostCentreID: r.CostCentreID,
+			Load: r.LoadKind, CargoDescription: optionalText(r.CargoDescription)}
+		if r.PassengerCount.Valid {
+			n := int(r.PassengerCount.Int32)
+			fields.Passengers = &n
+		}
+		if _, seen := plans[r.MissionID]; seen {
+			return app.ErrUnavailable
+		}
+		plans[r.MissionID] = &app.MissionPlanView{Revision: r.Revision, Fields: fields, PlannedAt: planned}
+	}
+	revisions := make(map[string]int64, len(plans))
+	for mission, plan := range plans {
+		revisions[mission] = plan.Revision
+	}
+	stops, err := planStops(ctx, db, org, revisions)
+	if err != nil {
+		return err
+	}
+	for mission, places := range stops {
+		plans[mission].Fields.Stops = places
+	}
+	for i := range views {
+		views[i].Plan = plans[views[i].MissionID]
+	}
+	return nil
+}
+
+// readTx runs one read between two authority checks of the action and
+// target, with the transaction itself for reads that consult the authority
+// per row (EDR-304) or read the stop table (EDR-310).
+func (s *MissionStore) readTx(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, target string, action app.MissionAction, call func(pgx.Tx, *q.Queries) error) error {
 	if err := validMissionCall(scope, actor, member); err != nil {
 		return err
 	}
@@ -426,7 +743,7 @@ func (s *MissionStore) read(ctx context.Context, scope kernel.OrgScope, actor ap
 		if err := s.Authority.CheckMissionTx(ctx, tx, scope, actor, member, target, action); err != nil {
 			return err
 		}
-		if err := call(q.New(tx)); err != nil {
+		if err := call(tx, q.New(tx)); err != nil {
 			return err
 		}
 		return s.Authority.CheckMissionTx(ctx, tx, scope, actor, member, target, action)
@@ -444,7 +761,7 @@ func (s *MissionStore) ListMissions(ctx context.Context, scope kernel.OrgScope, 
 		action, target = app.MissionOwnRead, member
 	}
 	var page app.MissionPage
-	err := s.read(ctx, scope, actor, member, target, action, func(queries *q.Queries) error {
+	err := s.readTx(ctx, scope, actor, member, target, action, func(tx pgx.Tx, queries *q.Queries) error {
 		org := scope.OrgID().String()
 		var rows []missionRow
 		if own {
@@ -476,7 +793,7 @@ func (s *MissionStore) ListMissions(ctx context.Context, scope kernel.OrgScope, 
 			}
 			page.Missions = append(page.Missions, record.View)
 		}
-		return nil
+		return withPlans(ctx, tx, queries, org, page.Missions)
 	})
 	if err != nil {
 		return app.MissionPage{}, err
@@ -487,18 +804,77 @@ func (s *MissionStore) ListMissions(ctx context.Context, scope kernel.OrgScope, 
 // ReadMission reads one mission of the scope.
 func (s *MissionStore) ReadMission(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, mission string) (app.MissionView, error) {
 	var v app.MissionView
-	err := s.read(ctx, scope, actor, member, mission, app.MissionRead, func(queries *q.Queries) error {
+	err := s.readTx(ctx, scope, actor, member, mission, app.MissionRead, func(tx pgx.Tx, queries *q.Queries) error {
 		record, err := s.head(ctx, queries, scope.OrgID().String(), mission, false)
 		if err != nil {
 			return err
 		}
-		v = record.View
+		views := []app.MissionView{record.View}
+		if err := withPlans(ctx, tx, queries, scope.OrgID().String(), views); err != nil {
+			return err
+		}
+		v = views[0]
 		return nil
 	})
 	if err != nil {
 		return app.MissionView{}, err
 	}
 	return v, nil
+}
+
+// ListMissionAssignees pages the employees eligible for one mission
+// (EMP-TRIP-022, EDR-304): it scans at most filter.Limit candidates (ACTIVE,
+// unmerged, with an ACTIVE account-linked membership) in employee order
+// between two authority checks of the mission read and keeps those the
+// assignment command would accept (EligibleAssigneeTx); NextID is the last
+// scanned employee when more remain.
+func (s *MissionStore) ListMissionAssignees(ctx context.Context, scope kernel.OrgScope, actor app.MissionActor, member, mission string, filter app.MissionAssigneeFilter) (app.MissionAssigneePage, error) {
+	if err := filter.Validate(); err != nil {
+		return app.MissionAssigneePage{}, err
+	}
+	if !canonicalID(mission) {
+		return app.MissionAssigneePage{}, app.ErrNotFound
+	}
+	page := app.MissionAssigneePage{Assignees: []app.MissionAssignee{}}
+	err := s.readTx(ctx, scope, actor, member, mission, app.MissionRead, func(tx pgx.Tx, queries *q.Queries) error {
+		org := scope.OrgID().String()
+		record, err := s.head(ctx, queries, org, mission, false)
+		if err != nil {
+			return err
+		}
+		rows, err := queries.ListMissionAssigneeCandidates(ctx, q.ListMissionAssigneeCandidatesParams{OrgID: org, AfterID: filter.AfterID, PageLimit: int32(filter.Limit) + 1})
+		if err != nil {
+			return err
+		}
+		more := len(rows) > filter.Limit
+		if more {
+			rows = rows[:filter.Limit]
+		}
+		prior := filter.AfterID
+		for _, row := range rows {
+			// One live membership per employee; a repeated or unordered row
+			// is not a usable source.
+			if !canonicalID(row.EmployeeID) || !canonicalID(row.MembershipID) || row.EmployeeID <= prior {
+				return app.ErrUnavailable
+			}
+			prior = row.EmployeeID
+			eligible, err := s.Authority.EligibleAssigneeTx(ctx, tx, scope, row.MembershipID, facts(record))
+			if err != nil {
+				return err
+			}
+			if eligible {
+				page.Assignees = append(page.Assignees, app.MissionAssignee{EmployeeID: row.EmployeeID, DisplayName: row.DisplayName, RegistrationNumber: row.RegistrationNumber})
+			}
+		}
+		if more {
+			page.NextID = prior
+		}
+		return nil
+	})
+	if err != nil {
+		return app.MissionAssigneePage{}, err
+	}
+	return page, nil
 }
 
 // ---- response facts on the borrowed intake transaction (EDR-229) ----

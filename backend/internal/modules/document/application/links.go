@@ -30,6 +30,10 @@ const (
 	BindHeldMeterReading Binding = "HELD_METER_READING"
 	// BindIncident carries an EMP-CHECK-003 report (EDR-239).
 	BindIncident Binding = "INCIDENT"
+	// BindFueling carries an EMP-FUEL-002 fueling (EMP-FUEL-011, EDR-297).
+	BindFueling Binding = "FUELING"
+	// BindExpense carries an EMP-EXP-002 direct expense (EMP-EXP-004, EDR-338).
+	BindExpense Binding = "EXPENSE"
 )
 
 // Kind reports the target kind a binding may carry.
@@ -43,6 +47,10 @@ func (b Binding) Kind() (domain.TargetKind, bool) {
 		return domain.MeterReading, true
 	case BindIncident:
 		return domain.Incident, true
+	case BindFueling:
+		return domain.Fueling, true
+	case BindExpense:
+		return domain.Expense, true
 	}
 	return "", false
 }

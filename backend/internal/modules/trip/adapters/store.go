@@ -29,6 +29,14 @@ import (
 type Store struct {
 	Allocations fleetapp.AllocationSnapshotPort
 	NewID       func() (string, error)
+	// PreLifecycleImage is set only by rehearsals that populate a schema image
+	// before migration 000233, where no lifecycle row (EMP-TRIP-011) can
+	// exist; every production store reads a trip's lifecycle rows.
+	PreLifecycleImage bool
+	// PreHandoverImage is set only by rehearsals that populate a schema image
+	// before migration 000243, where no handover (EMP-TRIP-012) can exist;
+	// every production store reads a trip's handovers.
+	PreHandoverImage bool
 }
 
 var _ app.Store = (*Store)(nil)
@@ -219,7 +227,7 @@ func (s *Store) InsertTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.
 	return nil
 }
 
-// ReadTripTx reads one stored trip of the scope with its finish.
+// ReadTripTx reads one stored trip of the scope with its lifecycle rows and finish.
 func (s *Store) ReadTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, tripID string) (app.Record, error) {
 	queries, _, err := s.port(ctx, db, scope)
 	if err != nil {
@@ -245,11 +253,60 @@ func (s *Store) ReadTripTx(ctx context.Context, db syncapp.DBTX, scope kernel.Or
 		n := row.ReadingValue.Int64
 		record.ReadingValue = &n
 	}
+	// EMP-TRIP-011: the lifecycle rows, in revision order.
+	if !s.PreLifecycleImage {
+		transitions, err := queries.ListTripTransitions(ctx, q.ListTripTransitionsParams{OrgID: scope.OrgID().String(), TripID: tripID})
+		if err != nil {
+			return app.Record{}, storeError(err)
+		}
+		if record.Transitions, err = transitionRecords(transitions); err != nil {
+			return app.Record{}, err
+		}
+	}
+	// EMP-TRIP-012: the handovers, in revision order.
+	if !s.PreHandoverImage {
+		handovers, err := queries.ListTripHandovers(ctx, q.ListTripHandoversParams{OrgID: scope.OrgID().String(), TripID: tripID})
+		if err != nil {
+			return app.Record{}, storeError(err)
+		}
+		if record.Handovers, err = handoverRecords(handovers); err != nil {
+			return app.Record{}, err
+		}
+	}
+	// Lifecycle rows and handovers share one revision sequence from 2; a
+	// handover keeps the state.
+	current, next, handovers := trip.InProgress, int64(2), record.Handovers
+	for _, x := range record.Transitions {
+		for len(handovers) > 0 && handovers[0].Revision == next {
+			handovers, next = handovers[1:], next+1
+		}
+		if x.Revision != next || x.From != current {
+			return app.Record{}, app.ErrUnavailable
+		}
+		current, next = x.To, next+1
+	}
+	for _, h := range handovers {
+		if h.Revision != next {
+			return app.Record{}, app.ErrUnavailable
+		}
+		next++
+	}
 	if row.FinishOperationID == "" {
-		if state != trip.InProgress {
+		// EMP-TRIP-014: a completed trip without a finish was closed by a
+		// supervisor from IN_PROGRESS or PAUSED.
+		if state == trip.Completed && (current == trip.InProgress || current == trip.Paused) {
+			if record.Closure, err = tripClosure(ctx, queries, scope, tripID); err != nil {
+				return app.Record{}, err
+			}
+			return record, nil
+		}
+		if state != current {
 			return app.Record{}, app.ErrUnavailable
 		}
 		return record, nil
+	}
+	if current != trip.InProgress && current != trip.Paused {
+		return app.Record{}, app.ErrUnavailable
 	}
 	finishAt, ok := exact(row.FinishOccurredAt, row.FinishOccurredSubmicro.Int16)
 	finishClock, okClock := clockOf(row.FinishBootID, row.FinishElapsedMillis)
@@ -304,9 +361,10 @@ func heldBinding(source syncapp.Source, op protocol.Operation) bool {
 
 func heldCode(kind, code string) bool {
 	if kind == app.StartOperationType {
-		return code == app.AssetBusy || code == app.AssetUnavailable || code == app.PermissionChanged
+		return app.StartHeldCode(code)
 	}
-	return kind == app.FinishOperationType && code == app.TripAlreadyClosed
+	// EMP-TRIP-018: a late finish of an ended period (EMP-OFFL-009).
+	return kind == app.FinishOperationType && (code == app.TripAlreadyClosed || code == syncapp.LateHeldCode)
 }
 
 // sameHeld compares a stored held fact with the operation's parsed event.
@@ -411,9 +469,9 @@ func (s *Store) HoldFinishTx(ctx context.Context, db syncapp.DBTX, source syncap
 	return s.hold(ctx, db, source, op, v.Event, "", "", code)
 }
 
-// CheckHeldTx proves a held outcome against the stored held fact and, once
-// written, its exact receipt (OFFL-008 ReviewProof).
-func (s *Store) CheckHeldTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, outcome syncapp.Outcome) error {
+// checkHeldStartOrFinish proves a held start or finish outcome against the
+// stored held fact and, once written, its exact receipt (OFFL-008).
+func (s *Store) checkHeldStartOrFinish(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, outcome syncapp.Outcome) error {
 	db = syncapp.Borrow(db)
 	if s == nil || db == nil || database.ValidateOrgDBTX(ctx, db, source.Scope) != nil || !heldBinding(source, op) {
 		return app.ErrUnavailable
@@ -451,9 +509,10 @@ func heldReceipt(op protocol.Operation, row q.ReadTripHeldProofRow) error {
 	return nil
 }
 
-// CheckOwnReceiptTx lets the author re-read its own held receipt without the
-// record read permission (OFFL-008); anything else is not an own receipt.
-func (s *Store) CheckOwnReceiptTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation) (bool, error) {
+// checkOwnStartOrFinish lets the author re-read its own held start or finish
+// receipt without the record read permission (OFFL-008); anything else is not
+// an own receipt.
+func (s *Store) checkOwnStartOrFinish(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation) (bool, error) {
 	db = syncapp.Borrow(db)
 	if s == nil || db == nil || source.Validate() != nil || database.ValidateOrgDBTX(ctx, db, source.Scope) != nil {
 		return false, app.ErrUnavailable
@@ -478,6 +537,78 @@ func (s *Store) CheckOwnReceiptTx(ctx context.Context, db syncapp.DBTX, source s
 	return true, nil
 }
 
+// MissionForStartTx locks the mission a start names under the caller's root
+// and asset locks and reads its state, current assignee, vehicle and whether
+// a trip is linked to it (EMP-TRIP-023); another organization's mission is
+// indistinguishable from a missing one under forced RLS.
+func (s *Store) MissionForStartTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, mission string) (app.MissionStart, error) {
+	db = syncapp.Borrow(db)
+	if s == nil || db == nil || database.ValidateOrgDBTX(ctx, db, scope) != nil || !canonicalID(mission) {
+		return app.MissionStart{}, app.ErrUnavailable
+	}
+	var m app.MissionStart
+	var state string
+	err := db.QueryRow(ctx, `SELECT m.state,COALESCE(m.assignee_membership_id::text,''),COALESCE(m.assignee_employee_id::text,''),COALESCE(m.asset_id::text,''),
+ EXISTS(SELECT 1 FROM org_trip_mission_links l WHERE l.org_id=m.org_id AND l.mission_id=m.id)
+FROM org_trip_missions m WHERE m.org_id=$1::uuid AND m.id=$2::uuid FOR UPDATE OF m`, scope.OrgID().String(), mission).Scan(&state, &m.AssigneeMembershipID, &m.AssigneeEmployeeID, &m.AssetID, &m.Linked)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return app.MissionStart{}, app.ErrNotFound
+	}
+	if err != nil {
+		return app.MissionStart{}, storeError(err)
+	}
+	if m.State, err = trip.ParseMissionState(state); err != nil {
+		return app.MissionStart{}, app.ErrUnavailable
+	}
+	return m, nil
+}
+
+// LinkMissionTx stores, in the accepted start's transaction, its link to the
+// eligible mission it names, the mission's START revision (source TRIP: the
+// trip, its start operation, author membership and account) and the head at
+// IN_PROGRESS (EMP-TRIP-023, B-BR-EMP-412/413). The database re-proves the
+// mission against the stored trip.
+func (s *Store) LinkMissionTx(ctx context.Context, db syncapp.DBTX, source syncapp.Source, command app.StartCommand) error {
+	db = syncapp.Borrow(db)
+	v, err := command.Snapshot()
+	if s == nil || db == nil || err != nil || source.Validate() != nil || database.ValidateOrgDBTX(ctx, db, source.Scope) != nil || !canonicalID(v.MissionID) {
+		return app.ErrUnavailable
+	}
+	org := source.Scope.OrgID().String()
+	var state, employee, member string
+	var revision int64
+	if err := db.QueryRow(ctx, `SELECT state,revision,COALESCE(assignee_employee_id::text,''),COALESCE(assignee_membership_id::text,'') FROM org_trip_missions
+WHERE org_id=$1::uuid AND id=$2::uuid FOR UPDATE`, org, v.MissionID).Scan(&state, &revision, &employee, &member); err != nil {
+		return storeError(err)
+	}
+	from, err := trip.ParseMissionState(state)
+	if err != nil {
+		return app.ErrUnavailable
+	}
+	next, err := trip.MissionTransition(from, trip.MissionStart)
+	if err != nil {
+		return app.ErrUnavailable
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO org_trip_mission_links(org_id,trip_id,mission_id,operation_id) VALUES($1::uuid,$2::uuid,$3::uuid,$4::uuid)`,
+		org, v.TripID, v.MissionID, v.OperationID); err != nil {
+		return storeError(err)
+	}
+	if _, err := db.Exec(ctx, `INSERT INTO org_trip_mission_transitions(org_id,mission_id,revision,kind,from_state,to_state,source,actor_account_id,actor_membership_id,operation_id,
+ assignee_employee_id,assignee_membership_id,trip_id)
+VALUES($1::uuid,$2::uuid,$3,'START',$4,$5,'TRIP',$6::uuid,$7::uuid,$8::uuid,$9::uuid,$10::uuid,$11::uuid)`,
+		org, v.MissionID, revision+1, string(from), string(next), source.Actor.AccountID, source.MembershipID, v.OperationID, employee, member, v.TripID); err != nil {
+		return storeError(err)
+	}
+	tag, err := db.Exec(ctx, `UPDATE org_trip_missions SET state=$4,revision=revision+1 WHERE org_id=$1::uuid AND id=$2::uuid AND revision=$3`, org, v.MissionID, revision, string(next))
+	if err != nil {
+		return storeError(err)
+	}
+	if tag.RowsAffected() != 1 {
+		return app.ErrUnavailable
+	}
+	return nil
+}
+
 // OpenWork is the trip-backed FLEET-003 open-work source (EDR-206): an
 // IN_PROGRESS trip of the asset is TRIP open work.
 type OpenWork struct{}
@@ -500,18 +631,30 @@ func (OpenWork) OpenAssetWorkTx(ctx context.Context, tx pgx.Tx, scope kernel.Org
 
 // ActiveUse is the trip-backed FLEET-007 active-use source (EDR-206): the
 // stored trips holding the asset at an instant (started at or before it and
-// not finished at or before it).
-type ActiveUse struct{}
+// neither finished nor cancelled at or before it, B-BR-EMP-392).
+// PreLifecycleImage is set only by rehearsals that populate a schema image
+// before migration 000233, where no trip is cancelled.
+type ActiveUse struct{ PreLifecycleImage bool }
 
 var _ fleetapp.ActiveUsePort = ActiveUse{}
 
-func (ActiveUse) ActiveUseDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) (fleetapp.UseAnswer, error) {
+func (u ActiveUse) ActiveUseDBTX(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, asset string, at time.Time) (fleetapp.UseAnswer, error) {
 	db = syncapp.Borrow(db)
 	if db == nil || scope.Validate() != nil || !canonicalID(asset) || at.IsZero() || database.ValidateOrgDBTX(ctx, db, scope) != nil {
 		return fleetapp.UseAnswer{}, fleetapp.ErrUnavailable
 	}
 	stamp, sub := instant(at)
-	rows, err := q.New(db).TripUsesOfAssetAt(ctx, q.TripUsesOfAssetAtParams{OrgID: scope.OrgID().String(), AssetID: asset, At: stamp, AtSubmicro: sub})
+	var rows []q.TripUsesOfAssetAtRow
+	var err error
+	if u.PreLifecycleImage {
+		var before []q.TripUsesOfAssetAtBeforeLifecycleRow
+		before, err = q.New(db).TripUsesOfAssetAtBeforeLifecycle(ctx, q.TripUsesOfAssetAtBeforeLifecycleParams{OrgID: scope.OrgID().String(), AssetID: asset, At: stamp, AtSubmicro: sub})
+		for _, row := range before {
+			rows = append(rows, q.TripUsesOfAssetAtRow(row))
+		}
+	} else {
+		rows, err = q.New(db).TripUsesOfAssetAt(ctx, q.TripUsesOfAssetAtParams{OrgID: scope.OrgID().String(), AssetID: asset, At: stamp, AtSubmicro: sub})
+	}
 	if err != nil {
 		return fleetapp.UseAnswer{}, fleetapp.ErrUnavailable
 	}

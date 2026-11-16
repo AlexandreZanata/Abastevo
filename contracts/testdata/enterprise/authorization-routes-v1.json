@@ -98,6 +98,8 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/incidents/reports/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/checklists/runs/list",
+        "POST /v1/orgs/{org_id}/checklists/runs/{run_id}/release",
         "POST /v1/orgs/{org_id}/incidents/reports/list",
         "POST /v1/orgs/{org_id}/incidents/reports/{report_id}/decide",
         "POST /v1/orgs/{org_id}/incidents/reports/{report_id}/read"
@@ -304,6 +306,7 @@
       "representative_route": "POST /v1/orgs/{org_id}/fleet/assets/list",
       "routes": [
         "POST /v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable",
+        "POST /v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read",
         "POST /v1/orgs/{org_id}/fleet/assets/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/assignments/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/attachments/list",
@@ -381,14 +384,16 @@
       "status": "NOT_YET_ROUTED",
       "representative_route": "",
       "routes": [],
-      "reason": "Location, track and geofence routes have not been delivered."
+      "reason": "The live position projection belongs to EMP-GPS-007 (F5); no live location route has been delivered."
     },
     {
       "permission": "gps.track.read",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Location, track and geofence routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/trips/{trip_id}/track/read",
+      "routes": [
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/track/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "idn.credential.manage",
@@ -509,6 +514,7 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/change",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/suspect/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/{reading_id}/decide",
         "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
@@ -593,7 +599,8 @@
       "routes": [
         "POST /v1/orgs/{org_id}/organization/activate",
         "POST /v1/orgs/{org_id}/settings/change",
-        "POST /v1/orgs/{org_id}/settings/responsibility-members/list"
+        "POST /v1/orgs/{org_id}/settings/responsibility-members/list",
+        "POST /v1/orgs/{org_id}/tracking/policy/change"
       ],
       "reason": ""
     },
@@ -604,7 +611,8 @@
       "routes": [
         "POST /v1/orgs/{org_id}/settings/history",
         "POST /v1/orgs/{org_id}/settings/read",
-        "POST /v1/orgs/{org_id}/settings/revision/read"
+        "POST /v1/orgs/{org_id}/settings/revision/read",
+        "POST /v1/orgs/{org_id}/tracking/policy/read"
       ],
       "reason": ""
     },
@@ -736,17 +744,26 @@
         "POST /v1/orgs/{org_id}/missions/create",
         "POST /v1/orgs/{org_id}/missions/list",
         "POST /v1/orgs/{org_id}/missions/{mission_id}/assign",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/assignees/list",
         "POST /v1/orgs/{org_id}/missions/{mission_id}/cancel",
-        "POST /v1/orgs/{org_id}/missions/{mission_id}/read"
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/plan",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/read",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/reservations/request",
+        "POST /v1/orgs/{org_id}/missions/{mission_id}/vehicle/change"
       ],
       "reason": ""
     },
     {
       "permission": "trip.trip.close_for_other",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Mission and trip-operation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/trips/open/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/trips/handovers/list",
+        "POST /v1/orgs/{org_id}/trips/open/list",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/close",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/handover"
+      ],
+      "reason": ""
     },
     {
       "permission": "trip.trip.read",
@@ -760,6 +777,9 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/trips/review/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/sync/reviews/trips/list",
+        "POST /v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/read",
+        "POST /v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/resolve",
         "POST /v1/orgs/{org_id}/trips/review/list",
         "POST /v1/orgs/{org_id}/trips/{trip_id}/review/decide",
         "POST /v1/orgs/{org_id}/trips/{trip_id}/review/read"
@@ -771,7 +791,10 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/missions/mine/list",
       "routes": [
-        "POST /v1/orgs/{org_id}/missions/mine/list"
+        "POST /v1/orgs/{org_id}/missions/mine/list",
+        "POST /v1/orgs/{org_id}/tracking/policy/mine",
+        "POST /v1/orgs/{org_id}/trips/mine/list",
+        "POST /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read"
       ],
       "reason": ""
     }
@@ -864,6 +887,10 @@
     {
       "route": "POST /v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/{notice_id}/read",
       "boundary": "SELF_NOTICE"
+    },
+    {
+      "route": "POST /v1/orgs/{org_id}/sync/attachments",
+      "boundary": "SIGNED_ATTACHMENT_SESSION"
     },
     {
       "route": "POST /v1/orgs/{org_id}/sync/operations",

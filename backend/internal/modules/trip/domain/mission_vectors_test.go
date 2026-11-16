@@ -20,21 +20,28 @@ import (
 )
 
 const (
-	missionCorpusPath = "../../../../../contracts/testdata/enterprise/trip/mission-v1.psv"
-	missionCorpusHash = "d591d9e496cb686e24658f59f91896892e323afaa35f1d5ba4bf2c752021c21f"
+	missionCorpusPath = "../../../../../contracts/testdata/enterprise/trip/mission-v3.psv"
+	missionCorpusHash = "6b29bcbf3359066c553e371e1c054d2dba56632d99a1b05cc258fad45e1ef18c"
 )
 
 var (
-	missionCounts     = map[string]int{"STATE": 20, "COMMAND": 15, "RESPONSE": 8, "TRANSITION": 62, "CREATE": 29, "RESTORE": 34, "ASSIGN": 23, "RESPOND": 32, "CANCEL": 15}
-	missionErrorCodes = []string{"INVALID", "SCOPE", "FORBIDDEN", "CONFLICT", "INVALID_TRANSITION", "UNSUPPORTED_COMMAND"}
+	missionCounts = map[string]int{"STATE": 20, "COMMAND": 15, "RESPONSE": 8, "TRANSITION": 62, "CREATE": 29, "RESTORE": 34, "ASSIGN": 23, "RESPOND": 32, "CANCEL": 15,
+		"LOAD": 8, "PLAN_VALUE": 50, "PLAN": 21}
+	// EMP-TRIP-023 (EDR-265): the mission table no longer answers
+	// UNSUPPORTED_COMMAND; every refused pair is INVALID_TRANSITION.
+	missionErrorCodes = []string{"INVALID", "SCOPE", "FORBIDDEN", "CONFLICT", "INVALID_TRANSITION"}
 	missionStored     = "scope id id_org unit unit_org asset asset_org title_hex starts ends state revision assignee assignee_org member member_org answer answer_member answer_reason_hex"
 	missionArgs       = map[string]string{"STATE": "value_hex", "COMMAND": "value_hex", "RESPONSE": "value_hex", "TRANSITION": "state command",
-		"CREATE":  "scope id id_org unit unit_org asset asset_org title_hex starts ends omit",
-		"RESTORE": missionStored,
-		"ASSIGN":  missionStored + " to to_org to_member to_member_org expected",
-		"RESPOND": missionStored + " by by_org kind_hex reason_hex expected",
-		"CANCEL":  missionStored + " reason_hex expected"}
-	missionAliases = map[string]int{"MI": 91, "U": 95}
+		"CREATE":     "scope id id_org unit unit_org asset asset_org title_hex starts ends omit",
+		"RESTORE":    missionStored,
+		"ASSIGN":     missionStored + " to to_org to_member to_member_org expected",
+		"RESPOND":    missionStored + " by by_org kind_hex reason_hex expected",
+		"CANCEL":     missionStored + " reason_hex expected",
+		"LOAD":       "value_hex",
+		"PLAN_VALUE": "scope " + missionPlanArgs,
+		"PLAN":       missionStored + " " + missionPlanArgs + " expected"}
+	missionPlanArgs = "dest_text_hex dest_unit dest_unit_org plan_reason_hex project project_org load cargo_hex passengers"
+	missionAliases  = map[string]int{"MI": 91, "U": 95, "U2": 96, "CC": 97}
 )
 
 func missionID(raw string) string {
@@ -198,6 +205,65 @@ func missionCommand(t *testing.T, f fields, run func(trip.Mission) (trip.Mission
 	return missionFields(next), nil
 }
 
+// missionPlanInput builds the PLAN_VALUE arguments; a reference constructor
+// error is the result, as in missionContent.
+func missionPlanInput(t *testing.T, f fields) (trip.PlanInput, error) {
+	t.Helper()
+	in := trip.PlanInput{Reason: mustHex(t, f.get("plan_reason_hex", hex.EncodeToString([]byte("Entrega de peças de reposição")))), Load: f.get("load", "CARGO")}
+	if raw := f.get("dest_text_hex", hex.EncodeToString([]byte("Centro de distribuição Norte"))); raw != "?" {
+		v := mustHex(t, raw)
+		in.DestinationText = &v
+	}
+	if raw := f.get("dest_unit", "?"); raw != "?" {
+		unit, e := trip.NewUnitRef(vectorScope(f.get("dest_unit_org", "A")), missionID(raw))
+		if e != nil {
+			return in, e
+		}
+		in.DestinationUnit = &unit
+	}
+	if raw := f.get("project", "CC"); raw != "?" {
+		centre, e := trip.NewCostCentreRef(vectorScope(f.get("project_org", "A")), missionID(raw))
+		if e != nil {
+			return in, e
+		}
+		in.CostCentre = &centre
+	}
+	if raw := f.get("cargo_hex", hex.EncodeToString([]byte("Peças de reposição"))); raw != "?" {
+		v := mustHex(t, raw)
+		in.CargoDescription = &v
+	}
+	if raw := f.get("passengers", "?"); raw != "?" {
+		n, e := strconv.Atoi(raw)
+		if e != nil {
+			t.Fatal("malformed fixture passenger count", raw)
+		}
+		in.Passengers = &n
+	}
+	return in, nil
+}
+
+func missionPlanFields(p trip.Plan) fields {
+	s := p.Snapshot()
+	out := fields{"dest_kind": "TEXT", "dest_text_hex": "?", "dest_unit": "?", "plan_reason_hex": hex.EncodeToString([]byte(s.Reason)), "project": "?", "load": string(s.Load),
+		"cargo_hex": "?", "passengers": "?"}
+	if s.DestinationText != nil {
+		out["dest_text_hex"] = hex.EncodeToString([]byte(*s.DestinationText))
+	}
+	if s.DestinationUnit != nil {
+		out["dest_kind"], out["dest_unit"] = "UNIT", missionLabel(s.DestinationUnit.ID())
+	}
+	if s.CostCentre != nil {
+		out["project"] = missionLabel(s.CostCentre.ID())
+	}
+	if s.CargoDescription != nil {
+		out["cargo_hex"] = hex.EncodeToString([]byte(*s.CargoDescription))
+	}
+	if s.Passengers != nil {
+		out["passengers"] = strconv.Itoa(*s.Passengers)
+	}
+	return out
+}
+
 func runMissionVector(t *testing.T, op string, f fields) (fields, error) {
 	t.Helper()
 	switch op {
@@ -286,6 +352,40 @@ func runMissionVector(t *testing.T, op string, f fields) (fields, error) {
 		return missionCommand(t, f, func(m trip.Mission) (trip.Mission, error) {
 			return m.Cancel(vectorScope(f.get("scope", "A")), expected(t, f), mustHex(t, f.get("reason_hex", hex.EncodeToString([]byte("Cliente cancelou")))))
 		})
+	case "LOAD":
+		l, e := trip.ParseMissionLoad(mustHex(t, f["value_hex"]))
+		if e != nil {
+			return nil, e
+		}
+		return fields{"load": string(l)}, nil
+	case "PLAN_VALUE":
+		in, e := missionPlanInput(t, f)
+		if e != nil {
+			return nil, e
+		}
+		p, e := trip.NewPlan(vectorScope(f.get("scope", "A")), in)
+		if e != nil {
+			return nil, e
+		}
+		return missionPlanFields(p), nil
+	case "PLAN":
+		var plan trip.Plan
+		out, e := missionCommand(t, f, func(m trip.Mission) (trip.Mission, error) {
+			in, e := missionPlanInput(t, f)
+			if e != nil {
+				return trip.Mission{}, e
+			}
+			next, p, e := m.Plan(vectorScope(f.get("scope", "A")), expected(t, f), in)
+			plan = p
+			return next, e
+		})
+		if e != nil {
+			return nil, e
+		}
+		for k, v := range missionPlanFields(plan) {
+			out[k] = v
+		}
+		return out, nil
 	}
 	t.Fatal("unknown operation")
 	return nil, nil
@@ -301,7 +401,8 @@ func missionErrorFields(e error) fields {
 	return fields{"error": "UNEXPECTED"}
 }
 
-// EMP-TRIP-008: the shared mission-v1 oracle, consumed byte for byte by Kotlin.
+// EMP-TRIP-008/009/023: the shared mission-v3 oracle (superseding v2 and
+// v1), consumed byte for byte by Kotlin.
 func TestSharedTripMissionVectors(t *testing.T) {
 	raw, e := os.ReadFile(missionCorpusPath)
 	if e != nil {
@@ -317,7 +418,7 @@ func TestSharedTripMissionVectors(t *testing.T) {
 	}
 	ids, counts, codes := map[string]bool{}, map[string]int{}, map[string]bool{}
 	pairs := map[string]bool{}
-	enums := map[string]map[string]bool{"STATE": {}, "COMMAND": {}, "RESPONSE": {}}
+	enums := map[string]map[string]bool{"STATE": {}, "COMMAND": {}, "RESPONSE": {}, "LOAD": {}}
 	type row struct{ id, op, args, expected string }
 	var rows []row
 	for scanner.Scan() {
@@ -350,7 +451,7 @@ func TestSharedTripMissionVectors(t *testing.T) {
 		if parts[1] == "TRANSITION" {
 			pairs[args["state"]+"/"+args["command"]] = true
 		}
-		for _, key := range []string{"state", "command", "response"} {
+		for _, key := range []string{"state", "command", "response", "load"} {
 			if v, ok := want[key]; ok && enums[parts[1]] != nil {
 				enums[parts[1]][v] = true
 			}
@@ -360,7 +461,7 @@ func TestSharedTripMissionVectors(t *testing.T) {
 	if e := scanner.Err(); e != nil {
 		t.Fatal(e)
 	}
-	if !reflect.DeepEqual(counts, missionCounts) || len(rows) != 238 {
+	if !reflect.DeepEqual(counts, missionCounts) || len(rows) != 317 {
 		t.Fatal("mission corpus counts", counts, len(rows))
 	}
 	for _, code := range missionErrorCodes {
@@ -392,7 +493,12 @@ func TestSharedTripMissionVectors(t *testing.T) {
 			t.Error("mission response without a RESPONSE vector", r)
 		}
 	}
-	if len(enums["STATE"]) != 8 || len(enums["COMMAND"]) != 7 || len(enums["RESPONSE"]) != 2 {
+	for _, l := range trip.MissionLoads() {
+		if !enums["LOAD"][string(l)] {
+			t.Error("mission load without a LOAD vector", l)
+		}
+	}
+	if len(enums["STATE"]) != 8 || len(enums["COMMAND"]) != 7 || len(enums["RESPONSE"]) != 2 || len(enums["LOAD"]) != 3 || len(trip.MissionLoads()) != 3 {
 		t.Error("enum vectors name a token outside the domain vocabulary", enums)
 	}
 	for _, r := range rows {

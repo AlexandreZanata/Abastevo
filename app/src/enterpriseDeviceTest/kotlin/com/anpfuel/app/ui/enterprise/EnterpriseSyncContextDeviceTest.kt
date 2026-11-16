@@ -1,6 +1,24 @@
 package com.anpfuel.app.ui.enterprise
 
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureViewModel
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistViewModel
+import com.anpfuel.application.enterprise.checklist.ChecklistFlow
+import com.anpfuel.application.enterprise.checklist.EnterpriseChecklistGateway
+import com.anpfuel.application.enterprise.checklist.EnterpriseChecklistService
+import com.anpfuel.data.enterprise.checklist.ProtectedChecklistStore
+import com.anpfuel.domain.enterprise.maintenance.checklist.ChecklistApplicable
+import com.anpfuel.domain.enterprise.maintenance.checklist.ChecklistContext
+import com.anpfuel.domain.enterprise.maintenance.checklist.ChecklistServerRun
+import com.anpfuel.app.ui.enterprise.fueling.FuelingViewModel
+import com.anpfuel.app.ui.enterprise.expense.ExpenseViewModel
+import com.anpfuel.application.enterprise.expense.EnterpriseExpenseService
+import com.anpfuel.application.enterprise.expense.ExpenseFlow
+import com.anpfuel.data.enterprise.expense.ProtectedExpenseStore
+import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingService
+import com.anpfuel.application.enterprise.fueling.FuelingFlow
+import com.anpfuel.data.enterprise.fueling.ProtectedFuelingStore
 import com.anpfuel.app.ui.enterprise.trip.TripViewModel
+import com.anpfuel.data.enterprise.attachment.AndroidReceiptOriginals
 import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
 import com.anpfuel.application.enterprise.trip.TripFlow
@@ -105,19 +123,36 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var syncModel: EnterpriseSyncViewModel
             lateinit var assetsModel: MyAssetsViewModel
             lateinit var tripModel: TripViewModel
+            lateinit var receiptModel: ReceiptCaptureViewModel
+            lateinit var fuelingModel: FuelingViewModel
+            lateinit var checklistModel: ChecklistViewModel
+            lateinit var expenseModel: ExpenseViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
                 assetsModel = MyAssetsViewModel(graph.assetsFlow, graph.network, fence)
                 tripModel = TripViewModel(graph.tripFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                // EMP-DOC-004: capture stays off here (no attachment queue in this graph).
+                receiptModel = ReceiptCaptureViewModel(AndroidReceiptOriginals(InstrumentationRegistry.getInstrumentation().targetContext), false)
                 models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel); models.put("trips", tripModel)
+                models.put("receipts", receiptModel)
+                // EMP-FUEL-011: the fueling owner over the same protected store; no fueling action runs here.
+                fuelingModel = FuelingViewModel(graph.fuelingFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("fuelings", fuelingModel)
+                // EMP-CHECK-002: the checklist owner over the same protected store; no checklist action runs here.
+                checklistModel = ChecklistViewModel(graph.checklistFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("checklists", checklistModel)
+                // EMP-EXP-004: the expense owner over the same protected store; no expense action runs here.
+                expenseModel = ExpenseViewModel(graph.expenseFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("expenses", expenseModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
                     MaterialTheme { EnterpriseContextScreen({ personal = true }, { sourceCalls.incrementAndGet() },
-                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel) }
+                        { sourceCalls.incrementAndGet() }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel, checklistModel,
+                        expenseModel) }
                 }
             }
             awaitTag(option(graph.a))
@@ -215,6 +250,12 @@ class EnterpriseSyncContextDeviceTest {
         // The synthetic account API answers a refresh only for its in-process family. Align it with the
         // retained session so the delivery-proof refresh takes the real path, never a synthetic revocation.
         scenario.familyId = checkNotNull(sessions.load()).familyId
+        // EDR-335: start the online stage inside the synthetic access token's last minute on every run, so the
+        // delivery proof's same-family refresh (a credential rotation that retires the lease "Meus ativos" opened
+        // with) is always exercised, not only on the first run 14 idle minutes after the previous refresh.
+        val expiring = checkNotNull(sessions.load()).let { it.copy(accessExpiresAt = System.currentTimeMillis() / 1000L + 30L) }
+        sessions.save(expiring)
+        check(sessions.load() == expiring)
         try {
             graph.seed()
             graph.serverAssets[graph.a.partition.organizationId] = listOf(graph.asset("Caminhão sintético A1"), graph.asset("Van sintética A2"))
@@ -223,18 +264,35 @@ class EnterpriseSyncContextDeviceTest {
             lateinit var syncModel: EnterpriseSyncViewModel
             lateinit var assetsModel: MyAssetsViewModel
             lateinit var tripModel: TripViewModel
+            lateinit var receiptModel: ReceiptCaptureViewModel
+            lateinit var fuelingModel: FuelingViewModel
+            lateinit var checklistModel: ChecklistViewModel
+            lateinit var expenseModel: ExpenseViewModel
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 contextModel = EnterpriseContextViewModel(graph.contexts, graph.network, fence)
                 syncModel = EnterpriseSyncViewModel(graph.statusFlow, graph.network, fence)
                 assetsModel = MyAssetsViewModel(graph.assetsFlow, graph.network, fence)
                 tripModel = TripViewModel(graph.tripFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                // EMP-DOC-004: capture stays off here (no attachment queue in this graph).
+                receiptModel = ReceiptCaptureViewModel(AndroidReceiptOriginals(InstrumentationRegistry.getInstrumentation().targetContext), false)
                 models.put("context", contextModel); models.put("status", syncModel); models.put("assets", assetsModel); models.put("trips", tripModel)
+                models.put("receipts", receiptModel)
+                // EMP-FUEL-011: the fueling owner over the same protected store; no fueling action runs here.
+                fuelingModel = FuelingViewModel(graph.fuelingFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("fuelings", fuelingModel)
+                // EMP-CHECK-002: the checklist owner over the same protected store; no checklist action runs here.
+                checklistModel = ChecklistViewModel(graph.checklistFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("checklists", checklistModel)
+                // EMP-EXP-004: the expense owner over the same protected store; no expense action runs here.
+                expenseModel = ExpenseViewModel(graph.expenseFlow, graph.network, fence, EnterpriseDeliveryActivity())
+                models.put("expenses", expenseModel)
             }
             val configuration = Configuration(compose.activity.resources.configuration).apply { setLocale(Locale.ENGLISH) }
             val localized = ContextThemeWrapper(compose.activity, 0).apply { applyOverrideConfiguration(configuration) }
             compose.setContent {
                 CompositionLocalProvider(LocalContext provides localized, LocalConfiguration provides configuration) {
-                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel) }
+                    MaterialTheme { EnterpriseContextScreen({ }, { }, { }, contextModel, syncModel, assetsModel, tripModel, receiptModel, fuelingModel, checklistModel,
+                        expenseModel) }
                 }
             }
             fun names() = assetsModel.state.value.snapshot?.assets?.map { it.asset.name }
@@ -259,6 +317,9 @@ class EnterpriseSyncContextDeviceTest {
             compose.onNodeWithTag("enterprise-assets-open").performScrollTo().performClick()
             awaitAssets(graph.a, listOf("Caminhão sintético A1", "Van sintética A2"), "online")
             assertEquals(1, graph.referencePulls.get())
+            val refreshed = checkNotNull(sessions.load())
+            assertEquals("The refresh changed the account or family", expiring.accountId to expiring.familyId, refreshed.accountId to refreshed.familyId)
+            assertTrue("The online pull did not refresh the expiring session", refreshed.accessExpiresAt > System.currentTimeMillis() / 1000L + 60L)
             compose.onNodeWithText("Caminhão sintético A1").assertIsDisplayed()
             compose.onNodeWithTag("enterprise-assets-confirmed-at").assertExists()
             compose.onNodeWithTag("enterprise-assets-back").performClick()
@@ -387,6 +448,19 @@ class EnterpriseSyncContextDeviceTest {
         /** EMP-TRIP-005: the trip owner over the same protected store; no trip action runs in these methods. */
         val tripFlow = TripFlow(source, EnterpriseTripService(source, delivery::save, ProtectedTripStore(store), EnterpriseTripStartHints(),
             clock::read, { ZoneId.systemDefault() }), fence) { account, partition -> delivery.dispatch(account, partition) }
+        val fuelingFlow = FuelingFlow(source, EnterpriseFuelingService(source, delivery::save, ProtectedFuelingStore(store), { ZoneId.systemDefault() }),
+            fence) { account, partition -> delivery.dispatch(account, partition) }
+        val expenseFlow = ExpenseFlow(source, EnterpriseExpenseService(source, delivery::save, ProtectedExpenseStore(store), { ZoneId.systemDefault() }),
+            fence) { account, partition -> delivery.dispatch(account, partition) }
+        /** EMP-CHECK-002: the validation graph has no company cookie client, so checklist company reads are unavailable. */
+        private val checklistGateway = object : EnterpriseChecklistGateway {
+            override suspend fun applicable(context: EnterpriseContextSummary, assetId: String, checklistContext: ChecklistContext):
+                EnterpriseAccessResult<ChecklistApplicable> = EnterpriseAccessResult.Err(EnterpriseAccessError.UNAVAILABLE)
+            override suspend fun run(context: EnterpriseContextSummary, assetId: String, runId: String): EnterpriseAccessResult<ChecklistServerRun> =
+                EnterpriseAccessResult.Err(EnterpriseAccessError.UNAVAILABLE)
+        }
+        val checklistFlow = ChecklistFlow(source, EnterpriseChecklistService(source, delivery::save, ProtectedChecklistStore(store), checklistGateway,
+            { ZoneId.systemDefault() }), fence) { account, partition -> delivery.dispatch(account, partition) }
         fun asset(name: String): String = """{"id":"${UUID.randomUUID()}","revision":1,"kind":"VEHICLE","usage_basis":"DISTANCE","state":"ACTIVE","name":"$name","fleet_number":"SYN-1","plate":"","catalog":"fuel-products-v1","products":["DIESEL_S10"],"meters":[],"assignment":{"kind":"PRIMARY","valid_to":null}}"""
         lateinit var first: EnterpriseOperation
         lateinit var second: EnterpriseOperation

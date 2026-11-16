@@ -5,8 +5,8 @@ import com.anpfuel.domain.enterprise.meter.MeterDomainException
 import com.anpfuel.domain.enterprise.meter.MeterPresence
 import java.time.Instant
 
-/** Closed mission failure vocabulary shared with the Go package through mission-v1 (EMP-TRIP-008). */
-enum class TripMissionFailure { INVALID, SCOPE, FORBIDDEN, CONFLICT, INVALID_TRANSITION, UNSUPPORTED_COMMAND }
+/** Closed mission failure vocabulary shared with the Go package through mission-v3 (EMP-TRIP-008/009/023). */
+enum class TripMissionFailure { INVALID, SCOPE, FORBIDDEN, CONFLICT, INVALID_TRANSITION }
 
 class TripMissionException(val failure: TripMissionFailure = TripMissionFailure.INVALID) :
     IllegalArgumentException("trip mission: ${failure.name.lowercase()}")
@@ -105,12 +105,12 @@ data class TripMissionSnapshot(
     override fun toString(): String = "EnterpriseTripMissionSnapshot(redacted)"
 }
 
-private fun requireScope(scope: String) {
+internal fun requireMissionScope(scope: String) {
     try { EnterprisePartition.requireId(scope) } catch (_: IllegalArgumentException) { throw mission(TripMissionFailure.SCOPE) }
 }
 
 /** An absent reference is INVALID, another organization's SCOPE. */
-private fun <T : ScopedTripRef> owned(scope: String, ref: T?): T {
+internal fun <T : ScopedTripRef> ownedByScope(scope: String, ref: T?): T {
     val value = ref ?: throw mission()
     if (value.organizationId != scope) throw mission(TripMissionFailure.SCOPE)
     return value
@@ -143,7 +143,7 @@ class TripMission private constructor(
         TripMission(reference, unit, asset, title, window, state, revision + 1, assignee, answer)
 
     private fun subject(scope: String) {
-        requireScope(scope)
+        requireMissionScope(scope)
         if (reference.organizationId != scope) throw mission(TripMissionFailure.SCOPE)
     }
 
@@ -159,8 +159,8 @@ class TripMission private constructor(
      */
     fun assign(scope: String, expected: Long, to: TripMissionAssignee): TripMission {
         subject(scope)
-        val employee = owned(scope, to.employee)
-        val member = owned(scope, to.member)
+        val employee = ownedByScope(scope, to.employee)
+        val member = ownedByScope(scope, to.member)
         if (expected < 1) throw mission()
         val next = decide(expected, TripMissionCommand.ASSIGN)
         if ((state == TripMissionState.ASSIGNED || state == TripMissionState.ACCEPTED) && assignee?.member == member) {
@@ -176,13 +176,25 @@ class TripMission private constructor(
      */
     fun respond(scope: String, expected: Long, member: MembershipRef?, kind: String, reason: String?): TripMission {
         subject(scope)
-        val by = owned(scope, member)
+        val by = ownedByScope(scope, member)
         val response = TripMissionResponse.parse(kind)
         requireReason(response, reason)
         if (expected < 1) throw mission()
         if (assignee?.member != by) throw mission(TripMissionFailure.FORBIDDEN)
         val next = decide(expected, response.command)
         return copy(next, assignee, TripMissionAnswer(response.name, by, reason))
+    }
+
+    /**
+     * Records a planning revision (B-BR-EMP-381): scope, the plan content, a positive expected revision, CONFLICT for a
+     * stale revision, then the table; PLANNED at the next revision with the assignee and answer withdrawn.
+     */
+    fun plan(scope: String, expected: Long, input: TripMissionPlanInput): Pair<TripMission, TripMissionPlan> {
+        subject(scope)
+        val plan = TripMissionPlan.create(scope, input)
+        if (expected < 1) throw mission()
+        val next = decide(expected, TripMissionCommand.PLAN)
+        return copy(next, null, null) to plan
     }
 
     /** Ends the mission with a reason, keeping assignee and answer: scope, reason, expected revision, CONFLICT, table. */
@@ -197,10 +209,10 @@ class TripMission private constructor(
     companion object {
         private fun content(scope: String, reference: MissionRef?, unit: UnitRef?, asset: MissionAssetRef?, title: String,
                             window: TripMissionWindow): Triple<MissionRef, UnitRef, TripMissionWindow> {
-            requireScope(scope)
-            val id = owned(scope, reference)
-            val place = owned(scope, unit)
-            if (asset != null) owned(scope, asset)
+            requireMissionScope(scope)
+            val id = ownedByScope(scope, reference)
+            val place = ownedByScope(scope, unit)
+            if (asset != null) ownedByScope(scope, asset)
             TripMissionText.validate(title)
             return Triple(id, place, window.validated())
         }
@@ -228,9 +240,9 @@ class TripMission private constructor(
             val (id, place, window) = content(scope, snapshot.reference, snapshot.unit, snapshot.asset, snapshot.title, snapshot.window)
             val state = TripMissionState.parse(snapshot.state)
             if (snapshot.revision < 1) throw mission()
-            val assignee = snapshot.assignee?.let { TripMissionAssignee(owned(scope, it.employee), owned(scope, it.member)) }
+            val assignee = snapshot.assignee?.let { TripMissionAssignee(ownedByScope(scope, it.employee), ownedByScope(scope, it.member)) }
             val answer = snapshot.answer?.let {
-                val by = owned(scope, it.member)
+                val by = ownedByScope(scope, it.member)
                 requireReason(TripMissionResponse.parse(it.kind), it.reason)
                 TripMissionAnswer(it.kind, by, it.reason)
             }
@@ -241,15 +253,29 @@ class TripMission private constructor(
 }
 
 /**
- * The EDR-228 transition table, first failure first: a terminal state; PLAN, START, COMPLETE and every IN_PROGRESS
- * change (later owners); ACCEPT and DECLINE only from ASSIGNED; ASSIGN and CANCEL from the five open states.
+ * The EDR-228 transition table with the EDR-246 PLAN rows and the EDR-265 trip rows, first failure first: a terminal
+ * state; from IN_PROGRESS only COMPLETE (the linked trip completed) and CANCEL; START only from ACCEPTED (the linked
+ * trip started) and COMPLETE only from IN_PROGRESS; ACCEPT and DECLINE only from ASSIGNED; PLAN never from ACCEPTED,
+ * else to PLANNED; ASSIGN and CANCEL from the five open states. Every refused pair is INVALID_TRANSITION.
  */
 object TripMissionLifecycle {
     fun transition(from: TripMissionState, command: TripMissionCommand): TripMissionState {
         if (from.terminal) throw mission(TripMissionFailure.INVALID_TRANSITION)
-        if (command == TripMissionCommand.PLAN || command == TripMissionCommand.START || command == TripMissionCommand.COMPLETE ||
-            from == TripMissionState.IN_PROGRESS) throw mission(TripMissionFailure.UNSUPPORTED_COMMAND)
+        if (from == TripMissionState.IN_PROGRESS) return when (command) {
+            TripMissionCommand.COMPLETE -> TripMissionState.COMPLETED
+            TripMissionCommand.CANCEL -> TripMissionState.CANCELLED
+            else -> throw mission(TripMissionFailure.INVALID_TRANSITION)
+        }
         return when (command) {
+            TripMissionCommand.START -> {
+                if (from != TripMissionState.ACCEPTED) throw mission(TripMissionFailure.INVALID_TRANSITION)
+                TripMissionState.IN_PROGRESS
+            }
+            TripMissionCommand.COMPLETE -> throw mission(TripMissionFailure.INVALID_TRANSITION)
+            TripMissionCommand.PLAN -> {
+                if (from == TripMissionState.ACCEPTED) throw mission(TripMissionFailure.INVALID_TRANSITION)
+                TripMissionState.PLANNED
+            }
             TripMissionCommand.ACCEPT, TripMissionCommand.DECLINE -> {
                 if (from != TripMissionState.ASSIGNED) throw mission(TripMissionFailure.INVALID_TRANSITION)
                 if (command == TripMissionCommand.ACCEPT) TripMissionState.ACCEPTED else TripMissionState.DECLINED

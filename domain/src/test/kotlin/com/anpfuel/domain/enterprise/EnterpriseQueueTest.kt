@@ -57,6 +57,51 @@ class EnterpriseQueueTest {
         assertEquals(setOf(a.operationId, b.operationId, child.operationId), result.cycleBlocked)
     }
 
+    /** A queued operation of an entity, with soft references (type to entity number) and dependencies. */
+    private fun entityOp(n: Int, type: String, entity: Int, references: List<Pair<String, Int>> = emptyList(), dependencies: List<Int> = emptyList()): EnterpriseOperation {
+        val refs = references.joinToString { (kind, target) -> """{"type":"$kind","id":"${id(target)}"}""" }
+        val raw = """{"schema_version":1,"operation_id":"${id(n)}","owner_account_id":"${id(1)}","api_origin":"https://sync.example.invalid","org_id":"${id(3)}","membership_id":"${id(4)}","enrollment_id":"${id(5)}","type":"validation.queue","operation_schema":1,"entity":{"type":"$type","id":"${id(entity)}","expected_revision":null},"occurred_at":"2026-11-13T00:00:00Z","entry_zone":"UTC","device_offset_seconds":0,"depends_on":[${dependencies.joinToString { "\"${id(it)}\"" }}],"soft_references":[$refs],"attachments":[],"payload":{"value":"synthetic"}}"""
+        return EnterpriseOperation.seal(raw.toByteArray(), SyncBinding.of(id(1), "https://sync.example.invalid", id(3)))
+    }
+
+    // EMP-OFFL-013 (B-BR-EMP-541, EDR-352): a soft reference to the entity of another queued operation is a local parent.
+    @Test fun softReferencesToQueuedEntitiesAreLocalParentsOrderedFirst() {
+        val start = entityOp(11, "trip", 600, listOf("checklist_run" to 500, "mission" to 700))
+        val run = entityOp(10, "checklist_run", 500)
+        val response = entityOp(15, "mission", 700)
+        val external = entityOp(12, "trip", 601, listOf("checklist_run" to 501))
+        val finish = entityOp(13, "trip", 600, listOf("checklist_run" to 502), listOf(11))
+        val returnRun = entityOp(14, "checklist_run", 502)
+        val self = entityOp(16, "checklist_run", 503, listOf("checklist_run" to 503))
+        val sameIdOtherType = entityOp(17, "expense", 500)
+        val queue = listOf(start, finish, external, returnRun, run, response, self, sameIdOtherType)
+        val references = EnterpriseQueueOrdering.localReferences(queue)
+        assertEquals(mapOf(start.operationId to setOf(run.operationId, response.operationId), finish.operationId to setOf(returnRun.operationId)), references)
+        val ordered = EnterpriseQueueOrdering.order(queue, references)
+        val position = ordered.ordered.map { it.operationId }
+        assertEquals(queue.size, position.size)
+        assertTrue(position.indexOf(run.operationId) < position.indexOf(start.operationId))
+        assertTrue(position.indexOf(response.operationId) < position.indexOf(start.operationId))
+        assertTrue(position.indexOf(returnRun.operationId) < position.indexOf(finish.operationId))
+        assertTrue(position.indexOf(start.operationId) < position.indexOf(finish.operationId))
+        assertTrue(ordered.cycleBlocked.isEmpty())
+        // Without the local parents the declared dependencies alone keep the old order.
+        assertEquals(EnterpriseQueueOrdering.order(queue).ordered.map { it.operationId }, EnterpriseQueueOrdering.order(queue, emptyMap()).ordered.map { it.operationId })
+    }
+
+    @Test fun referenceCyclesAndEverythingBelowThemAreBlockedWhileUnrelatedWorkProgresses() {
+        val a = entityOp(10, "checklist_run", 500, listOf("trip" to 600))
+        val b = entityOp(11, "trip", 600, listOf("checklist_run" to 500))
+        val below = entityOp(12, "trip_event", 601, dependencies = listOf(11))
+        val mixedHard = entityOp(13, "trip", 602, dependencies = listOf(14))
+        val mixedSoft = entityOp(14, "checklist_run", 503, listOf("trip" to 602))
+        val unrelated = entityOp(15, "expense", 900)
+        val queue = listOf(a, b, below, mixedHard, mixedSoft, unrelated)
+        val result = EnterpriseQueueOrdering.order(queue, EnterpriseQueueOrdering.localReferences(queue))
+        assertEquals(listOf(unrelated.operationId), result.ordered.map { it.operationId })
+        assertEquals(setOf(a.operationId, b.operationId, below.operationId, mixedHard.operationId, mixedSoft.operationId), result.cycleBlocked)
+    }
+
     @Test fun equalJitterBackoffSaturatesWithoutCeilingAndNeverShortensRetryAfter() {
         val policy = QueueRetryPolicy()
         assertEquals(15000L, policy.delayMillis(1, { 0 }))

@@ -52,3 +52,9 @@ FROM org_fuelings f WHERE f.org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND f.id
 -- name: FuelingReviewStateByReading :many
 -- EMP-METER-004 (B-BR-EMP-290): the review state of the fueling that carries a reading.
 SELECT review_state FROM org_fuelings WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND reading_id=CAST(sqlc.arg(reading_id)::text AS uuid);
+
+-- name: FuelingDocumentAuthor :one
+-- EMP-FUEL-011 (EDR-297): the authoring membership of one stored fueling, the
+-- SELF subject of a FUELING document link.
+SELECT author_membership_id::text AS author_membership_id FROM org_fuelings
+WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND id=CAST(sqlc.arg(id)::text AS uuid);

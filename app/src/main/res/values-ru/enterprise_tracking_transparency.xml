@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-015 tracking transparency; generated from one table by f4-logs/gps015-scripts/gen_transparency_strings.py -->
+<resources>
+    <string name="enterprise_tracking_indicator_active">Отслеживание компании включено — %1$s</string>
+    <string name="enterprise_tracking_indicator_detail">С %1$s · положение этого телефона, а не транспортного средства</string>
+    <string name="enterprise_tracking_indicator_precise">Точное местоположение</string>
+    <string name="enterprise_tracking_indicator_approximate">Приблизительное местоположение</string>
+    <string name="enterprise_tracking_indicator_open">Посмотреть моё отслеживание</string>
+    <string name="enterprise_tracking_not_collecting_here">Этот телефон сейчас не собирает позиции для этой поездки.</string>
+    <string name="enterprise_tracking_mine_title">Моё отслеживание</string>
+    <string name="enterprise_tracking_mine_home">Узнайте, что собирает компания и когда на этом телефоне было включено отслеживание.</string>
+    <string name="enterprise_tracking_mine_back">Назад на главную компании</string>
+    <string name="enterprise_tracking_mine_now_active">Этот телефон сейчас отслеживает поездку компании.</string>
+    <string name="enterprise_tracking_mine_now_inactive">На этом телефоне нет включённого отслеживания компании.</string>
+    <string name="enterprise_tracking_mine_collected_title">Что собирается</string>
+    <string name="enterprise_tracking_mine_collected">Только во время поездки компании, для которой вы включили отслеживание, и пока оно включено: положение этого телефона (а не транспортного средства), точность, скорость, направление и время — примерно каждые 10 секунд в движении и каждые 2 минуты на стоянке, а также начало, прерывания и окончание отслеживания.</string>
+    <string name="enterprise_tracking_mine_not_collected_title">Что не собирается</string>
+    <string name="enterprise_tracking_mine_not_collected">Ничего вне отслеживаемой поездки, в личном режиме, после остановки отслеживания или завершения поездки. Приложение никогда не запрашивает фоновое местоположение и никогда не включает отслеживание само.</string>
+    <string name="enterprise_tracking_mine_who_title">Кто это видит</string>
+    <string name="enterprise_tracking_mine_who">Сотрудники компании с правом на отслеживание видят поездки в своей зоне, и каждый доступ записывается. Здесь вы видите свои собственные сеансы.</string>
+    <string name="enterprise_tracking_mine_retention_title">Как долго хранится</string>
+    <string name="enterprise_tracking_mine_retention">Компания хранит позиции 90 дней после поездки, если не установит другой срок от 30 до 365 дней; сводка поездки хранится вместе с поездкой.</string>
+    <string name="enterprise_tracking_mine_device_title">На этом телефоне</string>
+    <string name="enterprise_tracking_mine_device">Позиции защищены на этом телефоне, пока не отправлены. Если компания отзовёт этот телефон или вы уйдёте из неё, копия на этом телефоне удаляется, когда приложение снова подключится; телефон без подключения не очищается удалённо, а то, что компания уже получила, хранится по её сроку.</string>
+    <string name="enterprise_tracking_mine_policy">Политика компании: %1$s · уведомление %2$s</string>
+    <string name="enterprise_tracking_mine_policy_expected">отслеживание ожидается</string>
+    <string name="enterprise_tracking_mine_policy_optional">отслеживание по желанию</string>
+    <string name="enterprise_tracking_mine_policy_off">отслеживание выключено</string>
+    <string name="enterprise_tracking_mine_policy_unknown">Политика компании ещё не загружена на этот телефон.</string>
+    <string name="enterprise_tracking_mine_sessions_title">Ваши сеансы на этом телефоне</string>
+    <string name="enterprise_tracking_mine_empty">Нет отслеженных поездок</string>
+    <string name="enterprise_tracking_mine_unavailable">Сейчас не удалось прочитать записи отслеживания этого телефона.</string>
+    <string name="enterprise_tracking_mine_retry">Повторить</string>
+    <string name="enterprise_tracking_mine_session_vehicle">Поездка на %1$s</string>
+    <string name="enterprise_tracking_mine_session_started">Начало отслеживания: %1$s</string>
+    <string name="enterprise_tracking_mine_session_never">Отслеживание этой поездки так и не началось.</string>
+    <string name="enterprise_tracking_mine_session_ended">Окончание: %1$s</string>
+    <string name="enterprise_tracking_mine_session_ongoing">Идёт</string>
+    <string name="enterprise_tracking_mine_gap_signal">Нет сигнала GPS с %1$s по %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_provider">Геолокация выключена с %1$s по %2$s.</string>
+    <string name="enterprise_tracking_mine_gap_mock">Имитированные местоположения игнорировались с %1$s по %2$s.</string>
+</resources>

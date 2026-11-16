@@ -185,10 +185,25 @@ func ParseStart(op protocol.Operation) (StartCommand, error) {
 	if _, err := StartDomain(v, StartInput{Event: e, AssetID: asset, DriverID: driver}, orgtime.ReportingZones{Organization: "UTC"}); err != nil {
 		return StartCommand{}, ErrMalformed
 	}
-	if len(v.Attachments) != 0 || len(v.DependsOn) != 0 || len(v.SoftReferences) != 0 {
+	if len(v.Attachments) != 0 || len(v.DependsOn) != 0 || len(v.SoftReferences) > 2 {
 		return StartCommand{}, ErrUnsupported
 	}
-	return StartCommand{valid: true, value: StartInput{Event: e, AssetID: asset, DriverID: driver}}, nil
+	// EMP-TRIP-023 (EDR-265) and EMP-TRIP-019 (EDR-331): at most one soft
+	// reference naming the mission the start executes and one naming its
+	// departure checklist run; any other reference stays a recognised but
+	// unsupported form.
+	mission, run := "", ""
+	for _, ref := range v.SoftReferences {
+		switch {
+		case ref.Type == MissionReferenceType && mission == "" && canonicalID(ref.ID):
+			mission = ref.ID
+		case ref.Type == ChecklistRunReferenceType && run == "" && canonicalID(ref.ID):
+			run = ref.ID
+		default:
+			return StartCommand{}, ErrUnsupported
+		}
+	}
+	return StartCommand{valid: true, value: StartInput{Event: e, AssetID: asset, DriverID: driver, MissionID: mission, DepartureRunID: run}}, nil
 }
 
 // StartDomain builds the EMP-TRIP-001 trip of a start with the resolved zones.
@@ -235,16 +250,27 @@ func ParseFinish(op protocol.Operation) (FinishCommand, error) {
 	if !ok {
 		return FinishCommand{}, ErrMalformed
 	}
-	if len(v.Attachments) != 0 || len(v.SoftReferences) != 0 {
+	if len(v.Attachments) != 0 || len(v.SoftReferences) > 1 {
 		return FinishCommand{}, ErrUnsupported
 	}
-	return FinishCommand{valid: true, value: FinishInput{Event: e, DependsOn: v.DependsOn}}, nil
+	// EMP-TRIP-019 (EDR-331): at most one soft reference, naming the return
+	// checklist run.
+	run := ""
+	if len(v.SoftReferences) == 1 {
+		ref := v.SoftReferences[0]
+		if ref.Type != ChecklistRunReferenceType || !canonicalID(ref.ID) {
+			return FinishCommand{}, ErrUnsupported
+		}
+		run = ref.ID
+	}
+	return FinishCommand{valid: true, value: FinishInput{Event: e, DependsOn: v.DependsOn, ReturnRunID: run}}, nil
 }
 
-// FinishDomain rebuilds the stored trip through the pure domain and finishes
-// it with this event (EMP-TRIP-001 rules at receipt).
+// FinishDomain rebuilds the stored trip, with its lifecycle rows and without
+// a final cancellation, through the pure domain and finishes it with this
+// event (EMP-TRIP-001/011 rules at receipt).
 func FinishDomain(scope kernel.OrgScope, record Record, in FinishInput) (trip.Trip, error) {
-	started, err := startedDomain(scope, record)
+	started, err := openDomain(scope, record)
 	if err != nil {
 		return trip.Trip{}, err
 	}

@@ -1,4 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="capture" path="capture/" />
+    <!-- EMP-DOC-004: the system camera's private file for a receipt original, deleted once read (EDR-291). -->
+    <cache-path name="enterprise_receipts" path="enterprise-receipts/" />
 </paths>

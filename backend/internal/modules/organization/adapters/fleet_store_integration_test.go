@@ -38,7 +38,13 @@ func fleetStore(t *testing.T, fx legalFixtureState) *fleetpg.AssetStore {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &fleetpg.AssetStore{Pool: fx.f.Runtime, Authority: &adapters.FleetAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles, Capabilities: fx.flags}, Audit: auditpg.NewStore(fx.f.Runtime, catalog), NewID: jobs.NewUUIDv4}
+	// EMP-TRIP-023: a rehearsal image before 000249 has no reservation mission.
+	var links bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_trip_mission_links') IS NOT NULL`).Scan(&links); err != nil {
+		t.Fatal(err)
+	}
+	return &fleetpg.AssetStore{Pool: fx.f.Runtime, Authority: &adapters.FleetAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles, Capabilities: fx.flags}, Audit: auditpg.NewStore(fx.f.Runtime, catalog), NewID: jobs.NewUUIDv4,
+		PreMissionLinkImage: !links}
 }
 func fleetActor(fx legalFixtureState) fa.FleetActor {
 	return fa.FleetActor{AccountID: fx.actor.AccountID, SessionID: fx.actor.SessionID}

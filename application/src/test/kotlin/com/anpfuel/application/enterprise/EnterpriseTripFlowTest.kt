@@ -34,6 +34,7 @@ internal class TripServerFake {
     val delivered = mutableListOf<String>()
     val accepted = mutableSetOf<String>()
     val active = mutableMapOf<String, String>()
+    val revisions = mutableMapOf<String, Long>()
     var unavailable = false
     fun busy(asset: String) { active[asset] = tid(9999) }
     private fun ack(op: EnterpriseOperation, result: String, code: String? = null, revision: Long? = null): OperationAcknowledgement {
@@ -57,6 +58,16 @@ internal class TripServerFake {
                 active.values.remove(fact.tripId); accepted += op.operationId; ack(op, "ACCEPTED", revision = 2)
             }
             is TripOperationFact.Submit -> if (!parentReady) ack(op, "RETRY", "DEPENDENCY_PENDING") else { accepted += op.operationId; ack(op, "ACCEPTED", revision = 1) }
+            // EMP-TRIP-011 in miniature (EMP-TRIP-021): a cancellation frees the asset; a revision other than expected is held.
+            is TripOperationFact.Lifecycle -> when {
+                !parentReady -> ack(op, "RETRY", "DEPENDENCY_PENDING")
+                fact.revision != (revisions[fact.tripId] ?: 1L) -> ack(op, "ACCEPTED_FOR_REVIEW", "STALE_REVISION")
+                else -> {
+                    revisions[fact.tripId] = fact.revision + 1
+                    if (fact.command == TripCommand.CANCEL) active.values.remove(fact.tripId)
+                    accepted += op.operationId; ack(op, "ACCEPTED", revision = fact.revision + 1)
+                }
+            }
         }
     }
 }
@@ -279,6 +290,23 @@ class EnterpriseTripFlowTest {
         assertTrue((listOf(view.start, view.finish!!, view.submission!!) + view.events).all { it.sync == EnterpriseSyncStatus.SAVED_ON_DEVICE })
         flow.sendNow(restarted.fence.epoch, flow.state.value.generation)
         assertEquals(TripReviewLine.AWAITING_APPROVAL, flow.state.value.trips.single().review)
+    }
+
+    @Test fun `EMP-TRIP-019 a start names its departure run as its one checklist-run reference`() = runTest {
+        val f = TripFlowFixture(); val flow = f.flow()
+        flow.open(f.a, f.fence.epoch)
+        flow.start(f.choice(), f.label, f.km("1000"), f.fence.epoch, flow.state.value.generation, "not-a-run")
+        assertTrue(flow.state.value.captureInvalid, "an invalid run identifier saves nothing"); assertTrue(f.entries().isEmpty())
+        flow.start(f.choice(), f.label, f.km("184320"), f.fence.epoch, flow.state.value.generation, tid(90))
+        val start = flow.state.value.trips.single().start.fact as TripOperationFact.Start
+        assertEquals(tid(90), start.departureRunId)
+        val queued = f.entries().getValue(start.operationId).operation
+        assertEquals(listOf("checklist_run" to tid(90)), queued.softReferences.map { it.type to it.id })
+        val trip = flow.state.value.trips.single().trip.tripId
+        f.later(60); flow.finish(trip, f.km("184610"), f.fence.epoch, flow.state.value.generation)
+        val finish = flow.state.value.trips.single().finish!!.fact as TripOperationFact.Finish
+        assertNull(finish.returnRunId)
+        assertTrue(f.entries().getValue(finish.operationId).operation.softReferences.isEmpty())
     }
 
     @Test fun `a missing driver identifier or an invalid entry saves nothing`() = runTest {

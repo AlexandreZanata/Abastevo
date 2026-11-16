@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-DOC-004 SCR-DOC-01; generated from one table by f4-logs/doc004-scripts/gen_receipt_strings.py -->
+<resources>
+    <string name="enterprise_receipts_synthetic_notice">测试阶段：只使用合成图像，切勿使用真实票据。</string>
+    <string name="enterprise_receipts_camera">拍照</string>
+    <string name="enterprise_receipts_import">导入照片</string>
+    <string name="enterprise_receipts_reading">正在读取照片…</string>
+    <string name="enterprise_receipts_camera_denied">相机权限被拒绝。你可以改为导入照片。没有保存任何内容。</string>
+    <string name="enterprise_receipts_cancelled">未选择照片。没有保存任何内容。</string>
+    <string name="enterprise_receipts_refused_missing">设备上找不到该文件。请重新选择。没有保存任何内容。</string>
+    <string name="enterprise_receipts_refused_too_large">此文件大于 5 MB。没有保存任何内容。</string>
+    <string name="enterprise_receipts_refused_unsupported">此阶段不支持该格式（仅限 JPEG 照片）。没有保存任何内容。</string>
+    <string name="enterprise_receipts_hint_sharp">图像看起来清晰。</string>
+    <string name="enterprise_receipts_hint_low_resolution">图像的像素可能过少。</string>
+    <string name="enterprise_receipts_hint_dark">图像可能太暗。</string>
+    <string name="enterprise_receipts_hint_bright">图像可能太亮。</string>
+    <string name="enterprise_receipts_hint_contrast">图像的对比度可能较低。</string>
+    <string name="enterprise_receipts_hint_blurred">图像可能模糊。</string>
+    <string name="enterprise_receipts_hint_not_checked">无法检查该图像。</string>
+    <string name="enterprise_receipts_hint_disclaimer">此检查只是提示，不会验证票据。</string>
+    <string name="enterprise_receipts_keep_or_retake">保留这张照片或重新拍一张。</string>
+    <string name="enterprise_receipts_save">保存到设备</string>
+    <string name="enterprise_receipts_cancel">取消</string>
+    <string name="enterprise_receipts_preview_description">已选照片</string>
+    <string name="enterprise_receipts_photos">照片</string>
+    <string name="enterprise_receipts_photo_status">照片 %1$d：%2$s</string>
+    <string name="enterprise_receipts_reason">原因：%1$s</string>
+    <string name="enterprise_receipts_retake">重新拍照</string>
+    <string name="enterprise_receipts_label_saved">已保存在设备上</string>
+    <string name="enterprise_receipts_label_sending">正在发送</string>
+    <string name="enterprise_receipts_label_verifying">文件检查中</string>
+    <string name="enterprise_receipts_label_stored">公司已保存文件</string>
+    <string name="enterprise_receipts_label_refused">未被接受</string>
+    <string name="enterprise_receipts_label_missing">设备上找不到票据。请重新拍照。</string>
+    <string name="enterprise_receipts_label_attention">需要注意</string>
+    <string name="enterprise_receipts_refusal_owner">记录未被接受</string>
+    <string name="enterprise_receipts_refusal_forbidden">此记录不允许</string>
+    <string name="enterprise_receipts_refusal_validation">此阶段不接受</string>
+    <string name="enterprise_receipts_refusal_conflict">与另一张照片冲突</string>
+    <string name="enterprise_receipts_refusal_reused">以不同内容重新发送</string>
+    <string name="enterprise_receipts_refusal_quarantined">被安全检查保留</string>
+    <string name="enterprise_receipts_refusal_failed">上传在没有文件的情况下结束</string>
+    <string name="enterprise_receipts_local_unknown_record">此记录未作为该公司的记录保存在本设备上。</string>
+    <string name="enterprise_receipts_local_full">本设备上的照片过多。请先发送再添加。</string>
+    <string name="enterprise_receipts_local_budget">未发送的照片已占用可用空间。请先发送。</string>
+    <string name="enterprise_receipts_local_foreign">这些照片属于本设备的另一个注册。</string>
+    <string name="enterprise_receipts_local_disabled">此版本已关闭拍照功能。</string>
+    <string name="enterprise_receipts_local_invalid">无法保存这张照片。没有保存任何内容。</string>
+    <string name="enterprise_receipts_add_reading_photo">添加读数照片</string>
+    <string name="enterprise_receipts_title_reading">读数照片</string>
+    <string name="enterprise_receipts_saved">照片已保存在设备上。</string>
+    <string name="enterprise_receipts_unavailable">现在无法读取该公司的照片。已保存的照片会保留。</string>
+</resources>

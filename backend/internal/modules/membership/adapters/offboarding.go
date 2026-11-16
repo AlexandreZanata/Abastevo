@@ -14,6 +14,8 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"slices"
+	"strings"
 )
 
 type OffboardingStore struct {
@@ -21,6 +23,9 @@ type OffboardingStore struct {
 	Authority   app.OffboardingAuthority
 	Memberships app.TransactionRepository
 	Audit       auditing.TransactionRunner
+	// Work lists the trips in progress of the membership (EMP-TRIP-018);
+	// without it the database guard refuses to leave an open trip unflagged.
+	Work app.OpenWork
 }
 
 var _ app.OffboardingRepository = (*OffboardingStore)(nil)
@@ -102,6 +107,16 @@ func (s *OffboardingStore) view(ctx context.Context, tx pgx.Tx, scope kernel.Org
 	items := make([]d.HandoverItem, 0, len(rows))
 	for _, r := range rows {
 		items = append(items, d.HandoverItem{Key: r.Key, Revision: r.SourceRevision})
+	}
+	if s.Work != nil && v.State != d.MembershipEnded {
+		keys, e := s.Work.OpenWorkKeysTx(ctx, tx, scope, v.ID)
+		if e != nil {
+			return app.OffboardingView{}, app.ErrRegisterUnavailable
+		}
+		for _, k := range keys {
+			items = append(items, d.HandoverItem{Key: k, Revision: 1})
+		}
+		slices.SortFunc(items, func(a, b d.HandoverItem) int { return strings.Compare(a.Key, b.Key) })
 	}
 	if v.State == d.MembershipEnded {
 		raw, e := q.New(tx).ReadOffboardingHandover(ctx, q.ReadOffboardingHandoverParams{OrgID: scope.OrgID().String(), ID: v.ID})

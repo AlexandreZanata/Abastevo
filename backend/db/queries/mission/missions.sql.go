@@ -45,6 +45,31 @@ func (q *Queries) AdvanceMission(ctx context.Context, arg AdvanceMissionParams) 
 	return result.RowsAffected(), nil
 }
 
+const changeMissionVehicle = `-- name: ChangeMissionVehicle :execrows
+UPDATE org_trip_missions SET revision=revision+1,asset_id=CAST($1::text AS uuid)
+WHERE org_id=CAST($2::text AS uuid) AND id=CAST($3::text AS uuid) AND revision=$4::bigint
+`
+
+type ChangeMissionVehicleParams struct {
+	AssetID  string `json:"asset_id"`
+	OrgID    string `json:"org_id"`
+	ID       string `json:"id"`
+	Revision int64  `json:"revision"`
+}
+
+func (q *Queries) ChangeMissionVehicle(ctx context.Context, arg ChangeMissionVehicleParams) (int64, error) {
+	result, err := q.db.Exec(ctx, changeMissionVehicle,
+		arg.AssetID,
+		arg.OrgID,
+		arg.ID,
+		arg.Revision,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getMission = `-- name: GetMission :one
 SELECT id::text,unit_id::text,COALESCE(asset_id::text,'')::text AS asset_id,title,starts_at,ends_at,state,revision,COALESCE(assignee_employee_id::text,'')::text AS assignee_employee_id,
  COALESCE(assignee_membership_id::text,'')::text AS assignee_membership_id,COALESCE(answer,'')::text AS answer,answer_reason,created_at,updated_at
@@ -163,6 +188,48 @@ func (q *Queries) InsertMissionCommand(ctx context.Context, arg InsertMissionCom
 	return err
 }
 
+const insertMissionPlan = `-- name: InsertMissionPlan :exec
+INSERT INTO org_trip_mission_plans(org_id,mission_id,revision,operation_id,destination_text,destination_unit_id,reason,cost_centre_id,load_kind,cargo_description,passenger_count,planned_by,planned_by_membership_id)
+VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),$3::bigint,CAST($4::text AS uuid),$5::text,
+ CAST($6::text AS uuid),$7::text,CAST($8::text AS uuid),$9::text,$10::text,
+ $11::integer,CAST($12::text AS uuid),CAST($13::text AS uuid))
+`
+
+type InsertMissionPlanParams struct {
+	OrgID                 string      `json:"org_id"`
+	MissionID             string      `json:"mission_id"`
+	Revision              int64       `json:"revision"`
+	OperationID           string      `json:"operation_id"`
+	DestinationText       pgtype.Text `json:"destination_text"`
+	DestinationUnitID     pgtype.Text `json:"destination_unit_id"`
+	Reason                string      `json:"reason"`
+	CostCentreID          pgtype.Text `json:"cost_centre_id"`
+	LoadKind              string      `json:"load_kind"`
+	CargoDescription      pgtype.Text `json:"cargo_description"`
+	PassengerCount        pgtype.Int4 `json:"passenger_count"`
+	PlannedBy             string      `json:"planned_by"`
+	PlannedByMembershipID string      `json:"planned_by_membership_id"`
+}
+
+func (q *Queries) InsertMissionPlan(ctx context.Context, arg InsertMissionPlanParams) error {
+	_, err := q.db.Exec(ctx, insertMissionPlan,
+		arg.OrgID,
+		arg.MissionID,
+		arg.Revision,
+		arg.OperationID,
+		arg.DestinationText,
+		arg.DestinationUnitID,
+		arg.Reason,
+		arg.CostCentreID,
+		arg.LoadKind,
+		arg.CargoDescription,
+		arg.PassengerCount,
+		arg.PlannedBy,
+		arg.PlannedByMembershipID,
+	)
+	return err
+}
+
 const insertMissionTransition = `-- name: InsertMissionTransition :exec
 INSERT INTO org_trip_mission_transitions(org_id,mission_id,revision,kind,from_state,to_state,source,actor_account_id,actor_membership_id,operation_id,enrollment_id,assignee_employee_id,assignee_membership_id,reason)
 VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),$3::bigint,$4::text,$5::text,$6::text,$7::text,CAST($8::text AS uuid),CAST($9::text AS uuid),
@@ -204,6 +271,89 @@ func (q *Queries) InsertMissionTransition(ctx context.Context, arg InsertMission
 		arg.Reason,
 	)
 	return err
+}
+
+const insertMissionVehicle = `-- name: InsertMissionVehicle :exec
+INSERT INTO org_trip_mission_vehicles(org_id,mission_id,revision,operation_id,previous_asset_id,asset_id,reason,changed_by,changed_by_membership_id)
+VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),$3::bigint,CAST($4::text AS uuid),
+ CAST($5::text AS uuid),CAST($6::text AS uuid),$7::text,CAST($8::text AS uuid),CAST($9::text AS uuid))
+`
+
+type InsertMissionVehicleParams struct {
+	OrgID                 string      `json:"org_id"`
+	MissionID             string      `json:"mission_id"`
+	Revision              int64       `json:"revision"`
+	OperationID           string      `json:"operation_id"`
+	PreviousAssetID       pgtype.Text `json:"previous_asset_id"`
+	AssetID               string      `json:"asset_id"`
+	Reason                string      `json:"reason"`
+	ChangedBy             string      `json:"changed_by"`
+	ChangedByMembershipID string      `json:"changed_by_membership_id"`
+}
+
+func (q *Queries) InsertMissionVehicle(ctx context.Context, arg InsertMissionVehicleParams) error {
+	_, err := q.db.Exec(ctx, insertMissionVehicle,
+		arg.OrgID,
+		arg.MissionID,
+		arg.Revision,
+		arg.OperationID,
+		arg.PreviousAssetID,
+		arg.AssetID,
+		arg.Reason,
+		arg.ChangedBy,
+		arg.ChangedByMembershipID,
+	)
+	return err
+}
+
+const listMissionAssigneeCandidates = `-- name: ListMissionAssigneeCandidates :many
+SELECT e.id::text AS employee_id,m.id::text AS membership_id,COALESCE(p.display_name,'')::text AS display_name,COALESCE(p.registration_number,'')::text AS registration_number
+FROM org_employee_identities e
+JOIN org_memberships m ON m.org_id=e.org_id AND m.employee_id=e.id AND m.state='ACTIVE' AND m.account_id IS NOT NULL
+LEFT JOIN org_employee_profiles p ON p.org_id=e.org_id AND p.employee_id=e.id
+WHERE e.org_id=CAST($1::text AS uuid) AND e.state='ACTIVE' AND e.merged_into IS NULL
+ AND($2::text='' OR e.id>CAST(NULLIF($2::text,'') AS uuid))
+ORDER BY e.id,m.id LIMIT $3::integer
+`
+
+type ListMissionAssigneeCandidatesParams struct {
+	OrgID     string `json:"org_id"`
+	AfterID   string `json:"after_id"`
+	PageLimit int32  `json:"page_limit"`
+}
+
+type ListMissionAssigneeCandidatesRow struct {
+	EmployeeID         string `json:"employee_id"`
+	MembershipID       string `json:"membership_id"`
+	DisplayName        string `json:"display_name"`
+	RegistrationNumber string `json:"registration_number"`
+}
+
+// EMP-TRIP-022 (EDR-304): candidates the assignment command could resolve, in
+// employee order; the store keeps the ones EligibleAssigneeTx accepts.
+func (q *Queries) ListMissionAssigneeCandidates(ctx context.Context, arg ListMissionAssigneeCandidatesParams) ([]ListMissionAssigneeCandidatesRow, error) {
+	rows, err := q.db.Query(ctx, listMissionAssigneeCandidates, arg.OrgID, arg.AfterID, arg.PageLimit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListMissionAssigneeCandidatesRow
+	for rows.Next() {
+		var i ListMissionAssigneeCandidatesRow
+		if err := rows.Scan(
+			&i.EmployeeID,
+			&i.MembershipID,
+			&i.DisplayName,
+			&i.RegistrationNumber,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const listMissions = `-- name: ListMissions :many
@@ -386,6 +536,26 @@ func (q *Queries) MissionAssigneeFacts(ctx context.Context, arg MissionAssigneeF
 	return i, err
 }
 
+const missionAssigneeTripRunning = `-- name: MissionAssigneeTripRunning :one
+
+SELECT EXISTS(SELECT 1 FROM org_trips WHERE org_id=CAST($1::text AS uuid) AND asset_id=CAST($2::text AS uuid)
+ AND driver_employee_id=CAST($3::text AS uuid) AND state IN('IN_PROGRESS','PAUSED'))::boolean AS running
+`
+
+type MissionAssigneeTripRunningParams struct {
+	OrgID      string `json:"org_id"`
+	AssetID    string `json:"asset_id"`
+	EmployeeID string `json:"employee_id"`
+}
+
+// EMP-TRIP-013 vehicle changes (migration 000232).
+func (q *Queries) MissionAssigneeTripRunning(ctx context.Context, arg MissionAssigneeTripRunningParams) (bool, error) {
+	row := q.db.QueryRow(ctx, missionAssigneeTripRunning, arg.OrgID, arg.AssetID, arg.EmployeeID)
+	var running bool
+	err := row.Scan(&running)
+	return running, err
+}
+
 const missionCommandReceipt = `-- name: MissionCommandReceipt :one
 SELECT operation_id::text,actor_id::text,mission_id::text,kind,request_hash,result_revision,result_state,COALESCE(warning_code,'')::text AS warning_code,
  COALESCE(warning_availability,'')::text AS warning_availability,
@@ -427,6 +597,24 @@ func (q *Queries) MissionCommandReceipt(ctx context.Context, arg MissionCommandR
 		&i.AssigneeEmployeeID,
 	)
 	return i, err
+}
+
+const missionCostCentreState = `-- name: MissionCostCentreState :one
+
+SELECT state FROM org_cost_centres WHERE org_id=CAST($1::text AS uuid) AND id=CAST($2::text AS uuid)
+`
+
+type MissionCostCentreStateParams struct {
+	OrgID string `json:"org_id"`
+	ID    string `json:"id"`
+}
+
+// EMP-TRIP-009 planning revisions (migration 000231).
+func (q *Queries) MissionCostCentreState(ctx context.Context, arg MissionCostCentreStateParams) (string, error) {
+	row := q.db.QueryRow(ctx, missionCostCentreState, arg.OrgID, arg.ID)
+	var state string
+	err := row.Scan(&state)
+	return state, err
 }
 
 const missionForUpdate = `-- name: MissionForUpdate :one
@@ -477,6 +665,62 @@ func (q *Queries) MissionForUpdate(ctx context.Context, arg MissionForUpdatePara
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const missionPlans = `-- name: MissionPlans :many
+SELECT DISTINCT ON(mission_id) mission_id::text,revision,destination_text,COALESCE(destination_unit_id::text,'')::text AS destination_unit_id,reason,COALESCE(cost_centre_id::text,'')::text AS cost_centre_id,
+ load_kind,cargo_description,passenger_count,recorded_at
+FROM org_trip_mission_plans WHERE org_id=CAST($1::text AS uuid) AND mission_id=ANY(CAST($2::text[] AS uuid[]))
+ORDER BY mission_id,revision DESC
+`
+
+type MissionPlansParams struct {
+	OrgID      string   `json:"org_id"`
+	MissionIds []string `json:"mission_ids"`
+}
+
+type MissionPlansRow struct {
+	MissionID         string             `json:"mission_id"`
+	Revision          int64              `json:"revision"`
+	DestinationText   pgtype.Text        `json:"destination_text"`
+	DestinationUnitID string             `json:"destination_unit_id"`
+	Reason            string             `json:"reason"`
+	CostCentreID      string             `json:"cost_centre_id"`
+	LoadKind          string             `json:"load_kind"`
+	CargoDescription  pgtype.Text        `json:"cargo_description"`
+	PassengerCount    pgtype.Int4        `json:"passenger_count"`
+	RecordedAt        pgtype.Timestamptz `json:"recorded_at"`
+}
+
+func (q *Queries) MissionPlans(ctx context.Context, arg MissionPlansParams) ([]MissionPlansRow, error) {
+	rows, err := q.db.Query(ctx, missionPlans, arg.OrgID, arg.MissionIds)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []MissionPlansRow
+	for rows.Next() {
+		var i MissionPlansRow
+		if err := rows.Scan(
+			&i.MissionID,
+			&i.Revision,
+			&i.DestinationText,
+			&i.DestinationUnitID,
+			&i.Reason,
+			&i.CostCentreID,
+			&i.LoadKind,
+			&i.CargoDescription,
+			&i.PassengerCount,
+			&i.RecordedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const missionResponse = `-- name: MissionResponse :one

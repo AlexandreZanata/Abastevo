@@ -3,8 +3,8 @@ package adapters
 import (
 	"context"
 	"errors"
+	"time"
 
-	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	fleet "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain"
 	meter "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
@@ -16,27 +16,77 @@ import (
 
 type startHandler struct {
 	ports
-	availability fleetapp.StartAvailabilityPort
+	availability app.StartAvailability
+	gate         app.ChecklistGate
 }
-type finishHandler struct{ ports }
+type finishHandler struct {
+	ports
+	gate app.ChecklistGate
+}
 
 // NewStartHandler composes the trip.start owner from real ports only; the
-// FLEET-007 start decision is consulted under the asset lock.
-func NewStartHandler(authority app.Authority, readings app.Readings, availability fleetapp.StartAvailabilityPort, store app.Store) (syncapp.Handler, error) {
+// FLEET-007 start decision is consulted under the asset lock, the linked
+// start consumes its mission's reservation (EMP-TRIP-023) and the checklist
+// gate decides its departure run (EMP-TRIP-019).
+func NewStartHandler(authority app.Authority, readings app.Readings, availability app.StartAvailability, gate app.ChecklistGate, store app.Store) (syncapp.Handler, error) {
 	p := ports{authority: authority, readings: readings, store: store}
-	if !p.ready() || absent(availability) {
+	if !p.ready() || absent(availability) || absent(gate) {
 		return nil, syncapp.ErrUnavailable
 	}
-	return &startHandler{ports: p, availability: availability}, nil
+	return &startHandler{ports: p, availability: availability, gate: gate}, nil
 }
 
-// NewFinishHandler composes the trip.finish owner from real ports only.
-func NewFinishHandler(authority app.Authority, readings app.Readings, store app.Store) (syncapp.Handler, error) {
+// NewFinishHandler composes the trip.finish owner from real ports only; the
+// checklist gate reads the return run a finish names (EMP-TRIP-019).
+func NewFinishHandler(authority app.Authority, readings app.Readings, gate app.ChecklistGate, store app.Store) (syncapp.Handler, error) {
 	p := ports{authority: authority, readings: readings, store: store}
-	if !p.ready() {
+	if !p.ready() || absent(gate) {
 		return nil, syncapp.ErrUnavailable
 	}
-	return &finishHandler{p}, nil
+	return &finishHandler{ports: p, gate: gate}, nil
+}
+
+// checklistRun reads a named run at the instant with whether a trip is
+// already linked to it; nil when it is not stored in the organization.
+func checklistRun(ctx context.Context, db syncapp.DBTX, gate app.ChecklistGate, store app.Store, source syncapp.Source, named string, at time.Time) (*app.ChecklistRun, error) {
+	if named == "" {
+		return nil, nil
+	}
+	run, err := gate.ChecklistRunDBTX(ctx, syncapp.Borrow(db), source.Scope, named, at)
+	switch {
+	case errors.Is(err, app.ErrNotFound):
+		return nil, nil
+	case errors.Is(err, syncapp.ErrSourceDenied):
+		return nil, err
+	case err != nil:
+		return nil, syncapp.ErrUnavailable
+	}
+	if run.Linked, err = store.ChecklistLinkedTx(ctx, syncapp.Borrow(db), source.Scope, run.ID); err != nil {
+		return nil, syncapp.ErrUnavailable
+	}
+	return &run, nil
+}
+
+// departure decides the start's checklist gate under the root and asset
+// locks (EMP-TRIP-019, B-BR-EMP-512): the requirement from the current
+// configuration and the named run at the declared start instant.
+func (h *startHandler) departure(ctx context.Context, db syncapp.DBTX, source syncapp.Source, v app.StartInput) (app.GateDecision, string, error) {
+	required, err := h.gate.DepartureRequiredDBTX(ctx, syncapp.Borrow(db), source.Scope, v.AssetID)
+	if errors.Is(err, syncapp.ErrSourceDenied) {
+		return app.GateDecision{}, "", err
+	}
+	if err != nil {
+		return app.GateDecision{}, "", syncapp.ErrUnavailable
+	}
+	run, err := checklistRun(ctx, db, h.gate, h.store, source, v.DepartureRunID, v.Declared.OccurredAt)
+	if err != nil {
+		return app.GateDecision{}, "", err
+	}
+	stored := ""
+	if run != nil {
+		stored = run.ID
+	}
+	return app.DepartureGate(required, v.DepartureRunID, run, source.MembershipID, v.AssetID, v.Declared.OccurredAt), stored, nil
 }
 
 func descriptor(kind string) syncapp.Descriptor {
@@ -54,7 +104,7 @@ func (h *finishHandler) ReviewProof() syncapp.ReviewProof { return h.store }
 // ---- trip.start (B-BR-EMP-312/313) ----
 
 func (h *startHandler) request(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, mode syncapp.Mode) (app.StartCommand, app.StartInput, error) {
-	if h == nil || !h.ready() || absent(h.availability) {
+	if h == nil || !h.ready() || absent(h.availability) || absent(h.gate) {
 		return app.StartCommand{}, app.StartInput{}, syncapp.ErrUnavailable
 	}
 	if err := bound(ctx, db, source, op, mode, app.StartOperationType); err != nil {
@@ -106,6 +156,25 @@ func (h *startHandler) Admit(ctx context.Context, db syncapp.DBTX, source syncap
 	}
 	_, _, err = h.meterTarget(ctx, db, source, v.AssetID, v.DriverID, v.Event)
 	return err
+}
+
+// mission answers the mission an admissible start executes (EMP-TRIP-023,
+// B-BR-EMP-412): the referenced mission locked under the root and asset
+// locks and eligible for this author, driver and asset, else "".
+func (h *startHandler) mission(ctx context.Context, db syncapp.DBTX, source syncapp.Source, v app.StartInput) (string, error) {
+	if v.MissionID == "" {
+		return "", nil
+	}
+	m, err := h.store.MissionForStartTx(ctx, syncapp.Borrow(db), source.Scope, v.MissionID)
+	switch {
+	case errors.Is(err, app.ErrNotFound):
+		return "", nil
+	case err != nil:
+		return "", syncapp.ErrUnavailable
+	case !app.MissionEligible(m, source.MembershipID, v.DriverID, v.AssetID):
+		return "", nil
+	}
+	return v.MissionID, nil
 }
 
 // startHold decides the held condition of an admissible start under the
@@ -166,15 +235,38 @@ func (h *startHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 	if facts.AssetState == "DRAFT" || fleet.MainAssetAllowed(fleet.Kind(facts.AssetKind)) != nil || !facts.DriverActive || facts.ExistingOperation != "" || facts.HeldOperation != "" || !readingFits(v.Event, view) {
 		return malformed(), nil
 	}
-	decision, err := h.availability.StartDecisionDBTX(ctx, syncapp.Borrow(db), source.Scope, v.AssetID, source.MembershipID, v.Declared.OccurredAt)
+	mission, err := h.mission(ctx, db, source, v)
+	if err != nil {
+		return syncapp.Outcome{}, err
+	}
+	decision, err := h.availability.StartDecisionDBTX(ctx, syncapp.Borrow(db), source.Scope, v.AssetID, source.MembershipID, mission, v.Declared.OccurredAt)
 	if err != nil {
 		if errors.Is(err, syncapp.ErrSourceDenied) {
 			return syncapp.Outcome{}, err
 		}
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if code := startHold(disposition, facts, decision, v); code != "" {
+	gate, run, err := h.departure(ctx, db, source, v)
+	if err != nil {
+		return syncapp.Outcome{}, err
+	}
+	code := startHold(disposition, facts, decision, v)
+	// EMP-TRIP-019 (B-BR-EMP-513): a failed checklist gate holds an otherwise
+	// accepted start with the closed vocabulary.
+	if code == "" {
+		code = gate.Code
+	}
+	// EMP-TRIP-023 (B-BR-EMP-412): an otherwise accepted start naming a
+	// missing, foreign or ineligible mission is held with the link removed.
+	if code == "" && v.MissionID != "" && mission == "" {
+		code = app.OrphanReference
+	}
+	if code != "" {
 		review, err := h.store.HoldStartTx(ctx, syncapp.Borrow(db), source, op, command, code)
+		if err == nil && gate.Reason != "" {
+			// The gate reason is stored whatever held code won.
+			err = h.store.HoldChecklistTx(ctx, syncapp.Borrow(db), source, v.OperationID, review, gate.Reason, run)
+		}
 		return held(review, code, err)
 	}
 	started, err := app.StartDomain(op.Snapshot(), v, facts.Zones)
@@ -192,6 +284,22 @@ func (h *startHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 			err = syncapp.ErrUnavailable
 		}
 		return syncapp.Outcome{}, err
+	}
+	if mission != "" {
+		// EMP-TRIP-023 (B-BR-EMP-413/414): the link, the mission's START and
+		// the consumption of its qualifying reservation, in this transaction.
+		if err := h.store.LinkMissionTx(ctx, syncapp.Borrow(db), source, command); err != nil {
+			return syncapp.Outcome{}, syncapp.ErrUnavailable
+		}
+		if _, err := h.availability.FulfilMissionReservationDBTX(ctx, syncapp.Borrow(db), source.Scope, mission, v.TripID, v.AssetID, v.Declared.OccurredAt); err != nil {
+			return syncapp.Outcome{}, syncapp.ErrUnavailable
+		}
+	}
+	// EMP-TRIP-019 (B-BR-EMP-514): the departure run gates this start only.
+	if gate.Link {
+		if err := h.store.LinkChecklistTx(ctx, syncapp.Borrow(db), source, v.TripID, app.ChecklistDeparture, v.DepartureRunID, v.OperationID); err != nil {
+			return syncapp.Outcome{}, syncapp.ErrUnavailable
+		}
 	}
 	revision := int64(1)
 	return syncapp.Outcome{Result: protocol.Accepted, EntityRevision: &revision}, nil
@@ -223,7 +331,7 @@ func (h *startHandler) Confirm(ctx context.Context, db syncapp.DBTX, source sync
 		disposition, _, err := h.meterTarget(ctx, db, source, v.AssetID, v.DriverID, v.Event)
 		if err != nil || outcome.Result != protocol.Accepted {
 			if err == nil && outcome.Result == protocol.AcceptedForReview {
-				return h.checkHeld(ctx, db, source, op, outcome, outcome.Code == app.AssetBusy || outcome.Code == app.AssetUnavailable || outcome.Code == app.PermissionChanged)
+				return h.checkHeld(ctx, db, source, op, outcome, app.StartHeldCode(outcome.Code))
 			}
 			return err
 		}
@@ -240,7 +348,7 @@ func (h *startHandler) Confirm(ctx context.Context, db syncapp.DBTX, source sync
 			return denied(err)
 		}
 		if outcome.Result == protocol.AcceptedForReview {
-			return h.checkHeld(ctx, db, source, op, outcome, outcome.Code == app.AssetBusy || outcome.Code == app.AssetUnavailable || outcome.Code == app.PermissionChanged)
+			return h.checkHeld(ctx, db, source, op, outcome, app.StartHeldCode(outcome.Code))
 		}
 	}
 	if outcome.Result != protocol.Accepted {
@@ -249,13 +357,20 @@ func (h *startHandler) Confirm(ctx context.Context, db syncapp.DBTX, source sync
 	if outcome.EntityRevision == nil || *outcome.EntityRevision != 1 || outcome.Code != "" || len(outcome.Warnings) != 0 || record == nil || !storedStart(source, v, *record) {
 		return syncapp.ErrUnavailable
 	}
+	// EMP-TRIP-019: an accepted start naming a run passed the gate and linked it.
+	if v.DepartureRunID != "" {
+		linked, err := h.store.ChecklistLinkTx(ctx, syncapp.Borrow(db), source.Scope, v.TripID, app.ChecklistDeparture)
+		if err != nil || linked != v.DepartureRunID {
+			return syncapp.ErrUnavailable
+		}
+	}
 	return nil
 }
 
 // ---- trip.finish (B-BR-EMP-315) ----
 
 func (h *finishHandler) request(ctx context.Context, db syncapp.DBTX, source syncapp.Source, op protocol.Operation, mode syncapp.Mode) (app.FinishCommand, app.FinishInput, error) {
-	if h == nil || !h.ready() {
+	if h == nil || !h.ready() || absent(h.gate) {
 		return app.FinishCommand{}, app.FinishInput{}, syncapp.ErrUnavailable
 	}
 	if err := bound(ctx, db, source, op, mode, app.FinishOperationType); err != nil {
@@ -286,8 +401,8 @@ func (h *finishHandler) trip(ctx context.Context, db syncapp.DBTX, source syncap
 	if err != nil {
 		return app.Record{}, syncapp.ErrUnavailable
 	}
-	target := app.Target{TripID: record.ID, AssetID: record.AssetID, UnitID: record.UnitID, CostCentreID: record.CostCentreID, AuthorMembershipID: record.AuthorMembershipID}
-	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, target, action(mode)); err != nil {
+	// EMP-TRIP-012: the member currently responsible for the trip.
+	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, tripTarget(record, source, mode, nil), action(mode)); err != nil {
 		return app.Record{}, denied(err)
 	}
 	return record, nil
@@ -310,7 +425,7 @@ func (h *finishHandler) Admit(ctx context.Context, db syncapp.DBTX, source synca
 		}
 		return err
 	}
-	_, _, err = h.meterTarget(ctx, db, source, record.AssetID, record.DriverID, v.Event)
+	_, _, err = h.meterTarget(ctx, db, source, record.AssetID, record.Driver(), v.Event)
 	return err
 }
 
@@ -342,7 +457,7 @@ func (h *finishHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
-	disposition, view, err := h.meterTarget(ctx, db, source, record.AssetID, record.DriverID, v.Event)
+	disposition, view, err := h.meterTarget(ctx, db, source, record.AssetID, record.Driver(), v.Event)
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
@@ -363,7 +478,9 @@ func (h *finishHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if !readingFits(v.Event, view) {
 		return malformed(), nil
 	}
-	if record.Finish != nil {
+	// EMP-TRIP-011: a cancelled trip is closed like a completed one; so is a
+	// trip a supervisor closed (EMP-TRIP-014).
+	if record.Finish != nil || record.State == trip.Cancelled || record.Closure != nil {
 		review, err := h.store.HoldFinishTx(ctx, syncapp.Borrow(db), source, op, command, app.TripAlreadyClosed)
 		return held(review, app.TripAlreadyClosed, err)
 	}
@@ -377,13 +494,26 @@ func (h *finishHandler) Apply(ctx context.Context, db syncapp.DBTX, source synca
 	if err := h.store.InsertFinishTx(ctx, syncapp.Borrow(db), source.Scope, source, command, finished.Crossing().EndDay()); err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt); err != nil || disposition != app.Apply {
+	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt); err != nil || disposition != app.Apply {
 		if err == nil {
 			err = syncapp.ErrUnavailable
 		}
 		return syncapp.Outcome{}, err
 	}
-	revision := int64(2)
+	// EMP-TRIP-019 (B-BR-EMP-515): a return run never holds the finish; a
+	// counting one is linked, anything else links nothing.
+	run, err := checklistRun(ctx, db, h.gate, h.store, source, v.ReturnRunID, v.Declared.OccurredAt)
+	if err != nil {
+		return syncapp.Outcome{}, err
+	}
+	if app.ReturnLinkable(v.ReturnRunID, run, source.MembershipID, record.AssetID, record.Declared.OccurredAt, v.Declared.OccurredAt) {
+		if err := h.store.LinkChecklistTx(ctx, syncapp.Borrow(db), source, v.TripID, app.ChecklistReturn, v.ReturnRunID, v.OperationID); err != nil {
+			return syncapp.Outcome{}, syncapp.ErrUnavailable
+		}
+	}
+	// EMP-TRIP-011: the finish is acknowledged at the trip's next revision (2
+	// without lifecycle commands).
+	revision := finished.Revision()
 	return syncapp.Outcome{Result: protocol.Accepted, EntityRevision: &revision}, nil
 }
 
@@ -417,7 +547,7 @@ func (h *finishHandler) Confirm(ctx context.Context, db syncapp.DBTX, source syn
 		return err
 	}
 	if mode == syncapp.Write {
-		disposition, _, err := h.meterTarget(ctx, db, source, record.AssetID, record.DriverID, v.Event)
+		disposition, _, err := h.meterTarget(ctx, db, source, record.AssetID, record.Driver(), v.Event)
 		if err != nil {
 			return err
 		}
@@ -429,8 +559,15 @@ func (h *finishHandler) Confirm(ctx context.Context, db syncapp.DBTX, source syn
 	case protocol.AcceptedForReview:
 		return h.checkHeld(ctx, db, source, op, outcome, outcome.Code == app.TripAlreadyClosed)
 	case protocol.Accepted:
-		if outcome.EntityRevision == nil || *outcome.EntityRevision != 2 || outcome.Code != "" || len(outcome.Warnings) != 0 || !storedFinish(source, v, record) {
+		if outcome.EntityRevision == nil || *outcome.EntityRevision != record.Revision() || outcome.Code != "" || len(outcome.Warnings) != 0 || !storedFinish(source, v, record) {
 			return syncapp.ErrUnavailable
+		}
+		// EMP-TRIP-019: a finish links only the return run it names, if any.
+		if v.ReturnRunID != "" {
+			linked, err := h.store.ChecklistLinkTx(ctx, syncapp.Borrow(db), source.Scope, v.TripID, app.ChecklistReturn)
+			if err != nil || linked != "" && linked != v.ReturnRunID {
+				return syncapp.ErrUnavailable
+			}
 		}
 	}
 	return nil

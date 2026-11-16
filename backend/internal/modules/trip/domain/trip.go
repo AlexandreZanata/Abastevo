@@ -184,6 +184,11 @@ type Trip struct {
 	reporting orgtime.ReportingAttribution
 	finish    *Event
 	endDay    string
+	revision  int64
+	lifecycle []LifecycleFact
+	closure   *Closure // EMP-TRIP-014: a supervisor closure, never beside a finish
+	// handovers are the accepted handovers in revision order (EMP-TRIP-012).
+	handovers []HandoverFact
 }
 
 // Start creates a C1 driver-initiated trip in IN_PROGRESS (B-BR-EMP-269/270).
@@ -239,11 +244,11 @@ func Start(scope kernel.OrgScope, in StartInput) (Trip, error) {
 		return Trip{}, ErrInvalid
 	}
 	return Trip{reference: in.Reference, asset: in.Asset, driver: in.Driver, state: InProgress,
-		start: Event{author: in.Author, declared: declared, evidence: in.Departure, clock: clock}, reporting: reporting}, nil
+		start: Event{author: in.Author, declared: declared, evidence: in.Departure, clock: clock}, reporting: reporting, revision: 1}, nil
 }
 
-// Finish completes the trip operationally and returns the next value
-// (B-BR-EMP-271/272). The receiver never changes; on error no trip is built.
+// Finish completes the trip operationally, from IN_PROGRESS or PAUSED, and
+// returns the next value at the next revision (B-BR-EMP-271/272/390). The receiver never changes; on error no trip is built.
 func (t Trip) Finish(scope kernel.OrgScope, in FinishInput) (Trip, error) {
 	if scope.Validate() != nil {
 		return Trip{}, ErrScope
@@ -281,7 +286,7 @@ func (t Trip) Finish(scope kernel.OrgScope, in FinishInput) (Trip, error) {
 	if len(missing) != 0 {
 		return Trip{}, &IncompleteError{missing: missing}
 	}
-	if in.Author != t.start.author {
+	if in.Author != t.Responsible() {
 		return Trip{}, ErrForbidden
 	}
 	next, e := Transition(t.state, CommandFinish)
@@ -298,7 +303,7 @@ func (t Trip) Finish(scope kernel.OrgScope, in FinishInput) (Trip, error) {
 		return Trip{}, e
 	}
 	out := t
-	out.state, out.endDay = next, endDay
+	out.state, out.endDay, out.revision = next, endDay, t.revision+1
 	out.finish = &Event{author: in.Author, declared: declared, evidence: in.Final, clock: clock}
 	return out, nil
 }
@@ -333,6 +338,8 @@ const (
 	ReasonReadingAbsent    UsageReason = "READING_ABSENT"
 	ReasonDifferentSegment UsageReason = "DIFFERENT_SEGMENT"
 	ReasonDecreasing       UsageReason = "DECREASING"
+	// ReasonCancelled: a cancelled trip has no final evidence (EMP-TRIP-011).
+	ReasonCancelled UsageReason = "CANCELLED"
 )
 
 // MeterUsage is the trip's own meter evidence; it is never invented.
@@ -352,6 +359,13 @@ func (u MeterUsage) Delta() (int64, bool) { return u.delta, u.status == Measured
 // MeterUsage reports the trip's meter evidence (BR-TRIP-004): the exact
 // difference of its own two readings on one segment, or why there is none.
 func (t Trip) MeterUsage() MeterUsage {
+	if t.state == Cancelled {
+		return MeterUsage{status: NotMeasured, reason: ReasonCancelled}
+	}
+	if t.closure != nil {
+		// EMP-TRIP-014 (B-BR-EMP-400): a closure has no final reading.
+		return MeterUsage{status: NotMeasured, reason: ReasonReadingAbsent}
+	}
 	if t.finish == nil {
 		return MeterUsage{status: NotMeasured, reason: ReasonNotFinished}
 	}

@@ -102,7 +102,7 @@ execution. Eight localized catalogs retain identical keys. Runtime feature and
 upload producers remain separate; protected integration is pending.
 
 ### EMP-OFFL-005 — Attachment upload: offline queue, retry and resume, linkage to operations
-- **Meta:** module OFFL · phase F3 · cut C1 · priority P0 · type APP · size M · state TODO
+- **Meta:** module OFFL · phase F3 · cut C1 · priority P0 · type APP · size M · state LOCAL_DONE
 - **Objective:** Deliver private synthetic C1 attachments independently of operation acknowledgement.
 - **Rules and use cases:** BR-OFFL-003, BR-OFFL-013, BR-OFFL-015, BR-PRIV-004, BR-PRIV-020, OQ-04, UC-OFFL-03
 - **Depends on:** EMP-OFFL-002, EMP-OFFL-003, EMP-PLAT-006
@@ -116,6 +116,15 @@ upload producers remain separate; protected integration is pending.
 - **Validation:** V-APP, V-SYNC, V-IDEM, V-ISO, V-PRIV · migration: rehearse any attachment queue upgrade · rollback: stop new uploads and preserve pending references
 - **Risks and assumptions:** Synthetic receipts are the approved C1 validation scope. Keep private bytes out of diagnostics and backups.
 - **Done when:** Interrupted uploads converge under retry and the accepted file matches its declaration.
+
+[F4 attachment upload](../evidence/f4-offl005-attachment-upload.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-415..420, BUC-EMP-211..213 and
+EDR-267..270 precede behaviour; no migration. Attachments are sealed beside
+their operation in the protected generation and delivered after it through the
+signed attachment session and the capability-bound ingress; native acceptance
+ran on `emulator-5588` only. Retained: capture screens (DOC-004), producers
+(FUEL-011, CHECK-003 Android), an encrypted blob store for real receipts,
+dismissal and retention, production bucket and grants.
 
 ### EMP-OFFL-006 — Reference data pull for the active organization: versioned deltas
 - **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type API · size M · state LOCAL_DONE
@@ -216,7 +225,7 @@ suspended organization, Android presentation of the codes, production grants.
 - **Done when:** Context and logout tests pass with two accounts, two organizations and pending writes.
 
 ### EMP-OFFL-011 — Cleanup of revoked sessions and devices on next contact
-- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type APP · size S · state TODO
+- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type APP · size S · state LOCAL_DONE
 - **Objective:** Apply local cleanup after server revocation or expiration of approved offline access.
 - **Rules and use cases:** BR-OFFL-011, BR-OFFL-012, BR-OFFL-013, BR-OFFL-014, BR-IDN-038, BR-PRIV-018, UC-PRIV-03
 - **Depends on:** EMP-OFFL-003, EMP-IDN-015
@@ -230,6 +239,12 @@ suspended organization, Android presentation of the codes, production grants.
 - **Validation:** V-APP, V-SYNC, V-ISO, V-PRIV · migration: preserve unrelated partitions · rollback: keep revoked local data locked and preserve recovery evidence
 - **Risks and assumptions:** Offline key expiry requires the approved clock and device protections.
 - **Done when:** Revocation class, denied access and resumable local cleanup pass on isolated fixtures.
+
+[F4 revocation cleanup](../evidence/f4-offl011-revocation-cleanup.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-536..539, BUC-EMP-275..276 and
+EDR-348..350 precede behaviour; no server change or migration. Retained:
+native acceptance on the owned emulator (OWED), reboot re-anchoring of an
+intake-only partition, late attachments, suspension locking.
 
 ### EMP-OFFL-012 — Organization-state and plan-change handling for queued operations
 - **Meta:** module OFFL · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
@@ -254,7 +269,7 @@ Retained: a real plan history (subscriptions), plan limits, mixed-batch
 withholding (OFFL-008 L2), Android presentation of the codes, production grants.
 
 ### EMP-OFFL-013 — Sync resilience suite: duplicates, reordering, partial uploads, process death
-- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type TEST · size M · state TODO
+- **Meta:** module OFFL · phase F4 · cut - · priority P1 · type TEST · size M · state LOCAL_DONE
 - **Objective:** Prove end-to-end convergence across the enterprise sync failure cases.
 - **Rules and use cases:** BR-OFFL-002, BR-OFFL-004, BR-OFFL-005, BR-OFFL-007, BR-OFFL-013, BR-OFFL-015, VAL-06, VAL-23
 - **Depends on:** EMP-OFFL-002, EMP-OFFL-003, EMP-OFFL-005
@@ -268,6 +283,15 @@ withholding (OFFL-008 L2), Android presentation of the codes, production grants.
 - **Validation:** V-SQL, V-SYNC, V-IDEM, V-ISO, V-PRIV · migration: none · rollback: keep the regression suite and fixture contracts
 - **Risks and assumptions:** Use synthetic content and the normal entry points. Keep device and production evidence separate from this task.
 - **Done when:** All documented resilience cases pass against a named revision with equivalent final state.
+
+[F4 sync resilience suite](../evidence/f4-offl013-sync-resilience.md) is
+LOCAL_DONE / INTEGRATION_PENDING: B-BR-EMP-540..543, BUC-EMP-277/278 and
+EDR-351..353 precede behaviour; no migration. The server half runs the real
+signed operations of one field day through the default runtime on real
+PostGIS; the device half runs the real vault, queue, producers and HTTP
+client. The suite found and fixed one defect: the device sent a trip start
+before its departure run's final receipt (EDR-352). Retained: the native
+emulator stage (owed while the emulator is locked) and VAL-23 (f) clock skew.
 
 ### EMP-OFFL-014 — Panel: sync review queue
 - **Meta:** module OFFL · phase F2 · cut C1 · priority P0 · type WEB · size S · state TODO

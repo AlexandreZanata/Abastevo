@@ -41,7 +41,7 @@ extension (EMP-OFFL-006), template events and policy history reads, the panel
 (EMP-CHECK-004). [Evidence](../evidence/f4-check001-checklist-templates.md).
 
 ### EMP-CHECK-002 — Checklist execution offline with the critical-item policy
-- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type APP · size M · state TODO
+- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
 - **Objective:** Run a checklist offline and preserve the server's independent outcome.
 - **Rules and use cases:** BR-CHECK-004, BR-CHECK-005, BR-CHECK-006, BR-CHECK-007, BR-CHECK-008, BR-OFFL-002
 - **Depends on:** EMP-CHECK-001, EMP-OFFL-002, EMP-OFFL-003
@@ -56,8 +56,28 @@ extension (EMP-OFFL-006), template events and policy history reads, the panel
 - **Risks and assumptions:** Detailed rules and exact thresholds come from the maintenance specification. Attachments and real-data activation retain their own gates.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
+EMP-CHECK-002 LOCAL_DONE (pending integration): the device caches the
+CHECK-001 applicable read sealed (`checklist-book` v1), saves each answer
+before showing it saved and computes the outcome from the cached version and
+policy revision, shown at once; the completed run is one signed
+`check.run.complete` (EDR-283/284) rechecked at receipt by the pure
+`RecheckRun` against the server's version and policy history and again by the
+database (migration 000242, forced RLS): a well-formed run is always ACCEPTED
+with the field fact, the server outcome, `TEMPLATE_SUPERSEDED` and a
+disagreement held for review; a BLOCKING run blocks the asset through the new
+FLEET-007 cause `CHECKLIST_RUN` until another member releases it under fresh
+`check.incident.manage` (`SELF_APPROVAL` for the author, one audit event);
+the author reads the server outcome through the run read under
+`fleet.asset.read` (EDR-285). Android execution screen from the enterprise
+context and the trip start form, 8 locales; native acceptance on the emulator
+(EDR-286). The `run-v1.psv` oracle pins the bytes for Go and Kotlin.
+Retained: the trip gate (EMP-TRIP-019), run photos (DOC-003 link kind),
+damages from issues, report blocks and panel lists (EMP-CHECK-004), the
+reference-feed entity type, events.
+[Evidence](../evidence/f4-check002-checklist-execution.md).
+
 ### EMP-CHECK-003 — Damage and incident reports with photos
-- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type API · size M · state TODO
+- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type API · size M · state LOCAL_DONE
 - **Objective:** Record scoped damage or incident evidence without directly recognizing costs.
 - **Rules and use cases:** BR-CHECK-014, BR-CHECK-015, BR-CHECK-016, BR-CHECK-018, BR-PRIV-004, OQ-04
 - **Depends on:** EMP-DOC-003, EMP-TRIP-003
@@ -91,7 +111,7 @@ attachment path (EMP-OFFL-005/EMP-DOC-004), notifications, the panel
 [Evidence](../evidence/f4-check003-incident-reports.md).
 
 ### EMP-CHECK-004 — Panel: checklists, damages and incidents
-- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type WEB · size M · state TODO
+- **Meta:** module CHECK · phase F4 · cut - · priority P1 · type WEB · size M · state LOCAL_DONE
 - **Objective:** Let authorized company users review checklists, incidents and damages.
 - **Rules and use cases:** BR-CHECK-010, BR-CHECK-011, BR-CHECK-017, BR-AUTH-011
 - **Depends on:** EMP-CHECK-002, EMP-CHECK-003, EMP-PLAT-008
@@ -105,6 +125,24 @@ attachment path (EMP-OFFL-005/EMP-DOC-004), notifications, the panel
 - **Validation:** V-WEB, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Detailed rules and exact thresholds come from the maintenance specification. Attachments and real-data activation retain their own gates.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+EMP-CHECK-004 LOCAL_DONE (pending integration), 2026-11-16: the company panel
+opens on demand a checklist and incident section that lists the organization's
+runs from the new server queue `POST …/checklists/runs/list` (EDR-328, under
+the incident queue's `check.incident.manage` policy: BLOCKING first, then
+`review_required`, newest first) and the damage/incident queue (open and
+blocking first); it opens records through their scoped reads, always shows the
+asset's FLEET-007 availability as the server read it (the `CHECKLIST_RUN` cause
+named; a failed read is "not confirmed"), releases a BLOCKING run and records
+ciente/action/resolution/dismissal through the existing routes with revision
+CAS. `SELF_APPROVAL` is named and never retried, `CONFLICT` re-reads,
+`FORBIDDEN`/`NOT_FOUND` clear the panel; photo content is offered only with the
+new `doc.document.view_content` context hint (EDR-329) and a STORED attachment,
+through the audited content path, and nothing is kept. No migration.
+Retained: the asset block from open reports with `blocks_use`, the review
+acknowledgement of a disagreement, structural queues and SCR-CHECK-04 filters,
+run photos, work-order links (EDR-330).
+[Evidence](../evidence/f4-check004-checklist-incident-panel.md).
 
 ### EMP-MAINT-001 — Maintenance domain: plans, triggers and work orders
 - **Meta:** module MAINT · phase F6 · cut - · priority P1 · type DOM · size M · state TODO

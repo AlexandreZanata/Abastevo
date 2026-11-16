@@ -16,14 +16,19 @@ func TestEnterpriseSyncComponents(t *testing.T) {
 	doc := loadSpec(t)
 	// Exactly the delivered sync routes: the OFFL-002 batch, the OFFL-008
 	// company Meter review and signed own-result endpoints and the OFFL-006
-	// signed reference feed.
+	// signed reference feed and the OFFL-005 signed attachment session.
 	delivered := map[string]bool{
+		"/v1/orgs/{org_id}/sync/attachments":                                     false,
 		"/v1/orgs/{org_id}/sync/operations":                                      false,
 		"/v1/orgs/{org_id}/sync/reference":                                       false,
 		"/v1/orgs/{org_id}/sync/review-results":                                  false,
 		"/v1/orgs/{org_id}/sync/reviews/meter-readings/list":                     false,
 		"/v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/read":    false,
 		"/v1/orgs/{org_id}/sync/reviews/meter-readings/{review_item_id}/resolve": false,
+		// EMP-TRIP-007: the trip conflict queue of the same mechanism.
+		"/v1/orgs/{org_id}/sync/reviews/trips/list":                     false,
+		"/v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/read":    false,
+		"/v1/orgs/{org_id}/sync/reviews/trips/{review_item_id}/resolve": false,
 	}
 	for path := range doc.Paths.Map() {
 		if strings.Contains(path, "/sync") && strings.Contains(path, "/orgs/") {

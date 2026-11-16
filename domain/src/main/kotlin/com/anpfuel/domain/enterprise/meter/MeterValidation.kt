@@ -4,7 +4,7 @@ import java.math.BigInteger
 import java.time.Instant
 
 /** Reasons for SUSPECT (fleet §10.5), in canonical order. Never a refusal. */
-enum class ReadingFlag { READING_BELOW_PREVIOUS, READING_ABOVE_NEXT, IMPLAUSIBLE_RATE, FUTURE_INSTANT }
+enum class ReadingFlag { READING_BELOW_PREVIOUS, READING_ABOVE_NEXT, IMPLAUSIBLE_RATE, FUTURE_INSTANT, POSSIBLE_ROLLOVER }
 
 private fun invalid(): MeterDomainException = MeterDomainException()
 
@@ -49,38 +49,47 @@ object MeterValidation {
     private val ORDER = compareBy<MeterPoint> { it.occurredAt }.thenBy { it.receivedAt }.thenBy { it.id }
 
     private fun bound(kind: MeterKind): Long = if (kind == MeterKind.ODOMETER) 1_000_000_000_000L else 3_600_000_000L
-    private fun validPoint(kind: MeterKind, p: MeterPoint): Boolean = p.id.isNotEmpty() && p.value in 0..bound(kind) &&
-        p.occurredAt in MIN_INSTANT..MAX_INSTANT && p.receivedAt in MIN_INSTANT..MAX_INSTANT
-    private fun canonical(state: ReadingState, flags: List<ReadingFlag>): Boolean = when (state) {
+    internal fun bounded(kind: MeterKind, modulus: Long?, value: Long): Boolean = value in 0..bound(kind) && (modulus == null || value < modulus)
+    internal fun validInstant(at: Instant): Boolean = at in MIN_INSTANT..MAX_INSTANT
+    private fun validPoint(kind: MeterKind, modulus: Long?, p: MeterPoint): Boolean = p.id.isNotEmpty() && bounded(kind, modulus, p.value) &&
+        validInstant(p.occurredAt) && validInstant(p.receivedAt)
+    /** POSSIBLE_ROLLOVER is admitted only on a meter with a modulus (B-BR-EMP-483). */
+    private fun canonical(state: ReadingState, flags: List<ReadingFlag>, rollover: Boolean): Boolean = when (state) {
         ReadingState.VALID, ReadingState.VOIDED -> flags.isEmpty()
-        ReadingState.SUSPECT -> flags.isNotEmpty() && flags.zipWithNext().all { (a, b) -> a.ordinal < b.ordinal }
+        ReadingState.SUSPECT -> flags.isNotEmpty() && flags.zipWithNext().all { (a, b) -> a.ordinal < b.ordinal } &&
+            (rollover || ReadingFlag.POSSIBLE_ROLLOVER !in flags)
     }
-    private fun members(kind: MeterKind, series: List<MeterSeriesEntry>): List<MeterSeriesEntry> {
+    internal fun members(kind: MeterKind, series: List<MeterSeriesEntry>, modulus: Long? = null): List<MeterSeriesEntry> {
         val copy = series.map { it.copy(flags = it.flags.toList()) }
-        if (copy.isEmpty() || copy.map { it.point.id }.toSet().size != copy.size) throw invalid()
+        if (copy.isEmpty() || modulus != null && modulus <= 0 || copy.map { it.point.id }.toSet().size != copy.size) throw invalid()
         copy.forEachIndexed { i, e ->
-            if (!validPoint(kind, e.point) || !canonical(e.state, e.flags) || i > 0 && ORDER.compare(copy[i - 1].point, e.point) >= 0) throw invalid()
+            if (!validPoint(kind, modulus, e.point) || !canonical(e.state, e.flags, modulus != null) || i > 0 && ORDER.compare(copy[i - 1].point, e.point) >= 0) throw invalid()
         }
         return copy
     }
+    internal val order: Comparator<MeterPoint> get() = ORDER
     private fun elapsed(a: Instant, b: Instant): BigInteger = BigInteger.valueOf(b.epochSecond - a.epochSecond).multiply(NANOS)
         .add(BigInteger.valueOf((b.nano - a.nano).toLong()))
-    private fun plausible(policy: MeterPlausibility, kind: MeterKind, a: MeterPoint, b: MeterPoint): Boolean {
-        val delta = BigInteger.valueOf(b.value - a.value)
-        val dt = elapsed(a.occurredAt, b.occurredAt)
+    private fun plausible(policy: MeterPlausibility, kind: MeterKind, a: MeterPoint, b: MeterPoint): Boolean =
+        plausibleUsage(policy, kind, BigInteger.valueOf(b.value - a.value), a.occurredAt, b.occurredAt)
+    private fun plausibleUsage(policy: MeterPlausibility, kind: MeterKind, delta: BigInteger, from: Instant, to: Instant): Boolean {
+        val dt = elapsed(from, to)
         return if (kind == MeterKind.ODOMETER) delta.multiply(HOUR).multiply(NANOS) <= BigInteger.valueOf(policy.distancePerHour).multiply(dt).add(DISPLAY)
         else delta.multiply(NANOS) <= dt.add(HOUR_TOLERANCE)
     }
     private fun future(policy: MeterPlausibility, p: MeterPoint): Boolean =
         elapsed(p.receivedAt, p.occurredAt) > BigInteger.valueOf(policy.clockSkewSeconds).multiply(NANOS)
-    private fun verdict(policy: MeterPlausibility, kind: MeterKind, others: List<MeterSeriesEntry>, c: MeterPoint, keepFuture: Boolean?): MeterVerdict {
+    private fun verdict(policy: MeterPlausibility, kind: MeterKind, modulus: Long?, others: List<MeterSeriesEntry>, c: MeterPoint, keepFuture: Boolean?): MeterVerdict {
         val valid = others.filter { it.state == ReadingState.VALID }.map { it.point }
         val previous = valid.lastOrNull { ORDER.compare(it, c) < 0 }
         val next = valid.firstOrNull { ORDER.compare(it, c) > 0 }
         val raised = mutableSetOf<ReadingFlag>()
         if (previous != null) {
-            if (c.value < previous.value) raised += ReadingFlag.READING_BELOW_PREVIOUS
-            else if (!plausible(policy, kind, previous, c)) raised += ReadingFlag.IMPLAUSIBLE_RATE
+            if (c.value < previous.value) {
+                val wrap = BigInteger.valueOf(modulus ?: 0).subtract(BigInteger.valueOf(previous.value)).add(BigInteger.valueOf(c.value))
+                raised += if (modulus != null && next == null && plausibleUsage(policy, kind, wrap, previous.occurredAt, c.occurredAt)) ReadingFlag.POSSIBLE_ROLLOVER
+                else ReadingFlag.READING_BELOW_PREVIOUS
+            } else if (!plausible(policy, kind, previous, c)) raised += ReadingFlag.IMPLAUSIBLE_RATE
         }
         if (next != null) {
             if (next.value < c.value) raised += ReadingFlag.READING_ABOVE_NEXT
@@ -91,14 +100,22 @@ object MeterValidation {
         return MeterVerdict(if (flags.isEmpty()) ReadingState.VALID else ReadingState.SUSPECT, flags, next != null, previous?.id, next?.id)
     }
 
-    fun check(policy: MeterPlausibility, kind: MeterKind, series: List<MeterSeriesEntry>, candidate: MeterPoint): MeterVerdict {
-        val all = members(kind, series)
-        if (!validPoint(kind, candidate) || ORDER.compare(all.first().point, candidate) >= 0 || all.any { it.point.id == candidate.id }) throw invalid()
-        return verdict(policy, kind, all, candidate, null)
+    fun check(policy: MeterPlausibility, kind: MeterKind, series: List<MeterSeriesEntry>, candidate: MeterPoint): MeterVerdict =
+        checkMeter(policy, kind, null, series, candidate)
+
+    /** [check] on a meter with an optional modulus (B-BR-EMP-483). */
+    fun checkMeter(policy: MeterPlausibility, kind: MeterKind, modulus: Long?, series: List<MeterSeriesEntry>, candidate: MeterPoint): MeterVerdict {
+        val all = members(kind, series, modulus)
+        if (!validPoint(kind, modulus, candidate) || ORDER.compare(all.first().point, candidate) >= 0 || all.any { it.point.id == candidate.id }) throw invalid()
+        return verdict(policy, kind, modulus, all, candidate, null)
     }
 
-    fun reevaluate(policy: MeterPlausibility, kind: MeterKind, series: List<MeterSeriesEntry>): List<MeterVerdictChange> {
-        val work = members(kind, series).toMutableList()
+    fun reevaluate(policy: MeterPlausibility, kind: MeterKind, series: List<MeterSeriesEntry>): List<MeterVerdictChange> =
+        reevaluateMeter(policy, kind, null, series)
+
+    /** [reevaluate] on a meter with an optional modulus. */
+    fun reevaluateMeter(policy: MeterPlausibility, kind: MeterKind, modulus: Long?, series: List<MeterSeriesEntry>): List<MeterVerdictChange> {
+        val work = members(kind, series, modulus).toMutableList()
         val final = mutableMapOf<String, MeterVerdict>()
         var promoted = true
         while (promoted) {
@@ -106,7 +123,7 @@ object MeterValidation {
             for (i in work.indices) {
                 val e = work[i]
                 if (e.state != ReadingState.SUSPECT) continue
-                val v = verdict(policy, kind, work.filterIndexed { j, _ -> j != i }, e.point, ReadingFlag.FUTURE_INSTANT in e.flags)
+                val v = verdict(policy, kind, modulus, work.filterIndexed { j, _ -> j != i }, e.point, ReadingFlag.FUTURE_INSTANT in e.flags)
                 if (v.state == e.state && v.flags == e.flags) continue
                 work[i] = e.copy(state = v.state, flags = v.flags)
                 final[e.point.id] = v
