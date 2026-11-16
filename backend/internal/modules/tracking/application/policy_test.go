@@ -90,6 +90,7 @@ func policyDecision(t *testing.T, action app.PolicyAction) (context.Context, ker
 type policyRepository struct {
 	ack      app.PolicyAck
 	view     app.PolicyView
+	inForce  app.PolicyInForce
 	err      error
 	calls    int
 	member   string
@@ -106,6 +107,12 @@ func (r *policyRepository) ReadPolicy(_ context.Context, _ kernel.OrgScope, _ ap
 	r.calls++
 	r.member = member
 	return r.view, r.err
+}
+
+func (r *policyRepository) ReadPolicyInForce(_ context.Context, _ kernel.OrgScope, _ app.PolicyActor, member string) (app.PolicyInForce, error) {
+	r.calls++
+	r.member = member
+	return r.inForce, r.err
 }
 
 func text(s string) *string { return &s }
@@ -334,5 +341,106 @@ func TestTrackingPolicyValuesAreRedacted(t *testing.T) {
 				t.Fatal("a private policy value printed", s)
 			}
 		}
+	}
+}
+
+type policyOwnTarget struct{}
+
+func (policyOwnTarget) Resolve(_ context.Context, s kernel.OrgScope, subject access.Subject) (permissions.ResourceFacts, error) {
+	return permissions.ResourceFacts{OrgID: s.OrgID(), ID: subject.MembershipID(), AssignedTo: subject.MembershipID()}, nil
+}
+
+// policyOwnDecision completes a real SELF-scoped DRIVER decision for the
+// member's own read.
+func policyOwnDecision(t *testing.T) (context.Context, access.Decision) {
+	t.Helper()
+	s := policyScope(t, 1)
+	now := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
+	role, err := permissions.RehydrateAssignment(s, permissions.AssignmentSnapshot{OrgID: s.OrgID(), ID: policyID(7), MembershipID: policyID(4), AssignedBy: policyID(4), Role: permissions.Driver, Scope: permissions.SelfScope, TargetID: policyID(4), ValidFrom: now.Add(-time.Hour), Reason: "Synthetic driver fixture", Revision: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	a := access.Authorization{Source: policyAuthority{access.Authority{OrgID: s.OrgID(), AccountID: policyID(2), MembershipID: policyID(4), EmployeeID: policyID(5), MembershipState: members.MembershipActive, EmployeeState: members.EmployeeActive, Model: members.ExistingAccount, OrganizationState: organization.Active, Assignments: []permissions.Assignment{role}}}, Capabilities: policyCapability{}, Records: policyRecords{}, Now: func() time.Time { return now }}
+	ctx, finish := access.BeginRequest(t.Context())
+	t.Cleanup(finish)
+	prepared, err := a.Prepare(ctx, s, access.Actor{AccountID: policyID(2), Channel: "web"}, app.PolicySettingsPolicy(app.PolicyOwn), policyOwnTarget{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	d, err := a.Complete(ctx, prepared, policyProof{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return ctx, d
+}
+
+// EMP-GPS-002: the member's own read of the policy in force is a read under
+// trip.trip.start (the catalog key of the driver's own trip, no invented
+// key), never org.settings.read, and is bound to the member's own record.
+func TestTrackingPolicyOwnReadIsTripStartOverTheOwnRecord(t *testing.T) {
+	own := app.PolicySettingsPolicy(app.PolicyOwn)
+	if own != (access.Policy{Permission: "trip.trip.start", Capability: "organizations", Effect: access.Read}) || app.PolicyOwnPermission != "trip.trip.start" || own.Validate() != nil {
+		t.Fatal("own policy read", own)
+	}
+	if own == app.PolicySettingsPolicy(app.PolicyRead) || own == app.PolicySettingsPolicy(app.PolicyManage) {
+		t.Fatal("the own read reuses a settings policy")
+	}
+	ctx, d := policyOwnDecision(t)
+	s := policyScope(t, 1)
+	actor := app.PolicyActor{AccountID: policyID(2), SessionID: policyID(3)}
+	at := noticeAt
+	repo := &policyRepository{inForce: app.PolicyInForce{Revision: 2, Policy: domain.PolicyExpected, NoticeVersion: "notice-2026.11", NoticeInForce: &at}}
+	if _, err := (app.PolicyService{Repository: repo}).Mine(ctx, s, actor, d); !errors.Is(err, app.ErrPolicyDisabled) || repo.calls != 0 {
+		t.Fatal("a disabled service reached the repository", err)
+	}
+	service := app.PolicyService{Enabled: true, Repository: repo}
+	v, err := service.Mine(ctx, s, actor, d)
+	if err != nil || v.Revision != 2 || v.Policy != domain.PolicyExpected || v.NoticeVersion != "notice-2026.11" || !v.NoticeInForce.Equal(noticeAt) || repo.calls != 1 || repo.member != policyID(4) {
+		t.Fatal("own read", err, v.Revision, repo.calls, repo.member)
+	}
+	repo.inForce = app.PolicyInForce{Policy: domain.PolicyOff}
+	if v, err := service.Mine(ctx, s, actor, d); err != nil || v.Revision != 0 || v.Policy != domain.PolicyOff || v.NoticeVersion != "" || v.NoticeInForce != nil {
+		t.Fatal("nothing recorded", err, v.Revision)
+	}
+	repo.inForce = app.PolicyInForce{Revision: 3, Policy: domain.PolicyOff}
+	if v, err := service.Mine(ctx, s, actor, d); err != nil || v.Revision != 3 || v.Policy != domain.PolicyOff {
+		t.Fatal("turned off", err)
+	}
+	// Another decision, another organization or an actor without proof read nothing.
+	readCtx, _, _, read := policyDecision(t, app.PolicyRead)
+	repo.calls = 0
+	if _, err := service.Mine(readCtx, s, actor, read); !errors.Is(err, app.ErrPolicyUnauthorized) || repo.calls != 0 {
+		t.Fatal("a settings read decision read the member's policy", err)
+	}
+	if _, err := service.Read(ctx, s, actor, d); !errors.Is(err, app.ErrPolicyUnauthorized) || repo.calls != 0 {
+		t.Fatal("the member's decision read the stored policy", err)
+	}
+	if _, err := service.Mine(ctx, policyScope(t, 9), actor, d); !errors.Is(err, app.ErrPolicyUnauthorized) || repo.calls != 0 {
+		t.Fatal("another organization used the decision", err)
+	}
+	if _, err := service.Mine(ctx, s, app.PolicyActor{AccountID: policyID(2)}, d); !errors.Is(err, app.ErrPolicyUnauthorized) || repo.calls != 0 {
+		t.Fatal("an actor without proof read the policy", err)
+	}
+	// An incoherent stored answer is never served.
+	for name, bad := range map[string]app.PolicyInForce{
+		"unknown policy":        {Revision: 1, Policy: "ON"},
+		"enabled at revision 0": {Policy: domain.PolicyOptional, NoticeVersion: "notice-1", NoticeInForce: &at},
+		"enabled no notice":     {Revision: 1, Policy: domain.PolicyExpected},
+		"enabled no instant":    {Revision: 1, Policy: domain.PolicyExpected, NoticeVersion: "notice-1"},
+		"off with notice":       {Revision: 1, Policy: domain.PolicyOff, NoticeVersion: "notice-1", NoticeInForce: &at},
+		"negative revision":     {Revision: -1, Policy: domain.PolicyOff},
+		"bad notice version":    {Revision: 1, Policy: domain.PolicyExpected, NoticeVersion: "Aviso 1", NoticeInForce: &at},
+	} {
+		repo.inForce = bad
+		if _, err := service.Mine(ctx, s, actor, d); !errors.Is(err, app.ErrUnavailable) {
+			t.Fatal("an incoherent policy in force was served", name, err)
+		}
+	}
+	repo.inForce, repo.err = app.PolicyInForce{Policy: domain.PolicyOff}, app.ErrNotFound
+	if _, err := service.Mine(ctx, s, actor, d); !errors.Is(err, app.ErrNotFound) {
+		t.Fatal("a refusal was lost", err)
+	}
+	if text := fmt.Sprintf("%v %+v", app.PolicyInForce{Revision: 1, Policy: domain.PolicyExpected, NoticeVersion: "notice-2026.11"}, app.PolicyInForce{NoticeVersion: "notice-x"}); strings.Contains(text, "notice") {
+		t.Fatal("the policy in force printed its notice", text)
 	}
 }

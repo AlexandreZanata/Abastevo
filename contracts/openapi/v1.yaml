@@ -20412,6 +20412,66 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/policy/mine:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTrackingPolicyMine
+      summary: Read the tracking policy in force for the requesting member
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.start covering the requesting
+        membership's own record (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR, DRIVER); members without trip.trip.start
+        (AUDITOR, FINANCE, APPROVER, OPERATIONS_STAFF) are FORBIDDEN. Returns only the policy in force now with
+        its revision (OFF at revision 0 when nothing was recorded; OFF until a notice is in force, EMP-GPS-004)
+        and, only while it is OPTIONAL or EXPECTED, the employee notice version and in-force instant the
+        organization declared. The Android trip screen hides tracking when it is OFF, offers it when OPTIONAL and
+        asks for it when EXPECTED (EMP-GPS-002). Writes nothing; no session, member, notice text or location.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.start
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: An empty object; the member's own read takes no field.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTrackingPolicyReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: The tracking policy in force for the member's trips.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTrackingPolicyInForce'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/tracking/policy/change:
     post:
       tags:
@@ -27238,6 +27298,47 @@ components:
         data_mode: SYNTHETIC
       description: The newest stored tracking policy version and the policy in force now (B-BR-EMP-469). revision 0
         with OFF, null notice and null effective_at when nothing was recorded.
+    EnterpriseTrackingPolicyInForce:
+      type: object
+      additionalProperties: false
+      description: The tracking policy in force for the requesting member (EMP-GPS-002); the notice only while
+        tracking is OPTIONAL or EXPECTED. No member, session, notice text or location.
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        policy:
+          type: string
+          enum:
+          - 'OFF'
+          - OPTIONAL
+          - EXPECTED
+        notice_version:
+          type:
+          - string
+          - 'null'
+          pattern: ^[a-z0-9][a-z0-9._-]{0,63}$
+        notice_in_force_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - revision
+      - policy
+      - notice_version
+      - notice_in_force_at
+      - data_mode
+      example:
+        revision: 2
+        policy: EXPECTED
+        notice_version: notice-2026.11
+        notice_in_force_at: '2026-11-01T00:00:00Z'
+        data_mode: SYNTHETIC
     EnterpriseFuelingSubmitPayload:
       type: object
       additionalProperties: false

@@ -86,6 +86,9 @@ android {
         // EMP-EXP-004 rollback switch (EDR-336): hides the expense entry; queued expenses and receipts keep their delivery.
         buildConfigField("boolean", "ENTERPRISE_EXPENSE_UI_ENABLED",
             providers.gradleProperty("enterpriseExpenseUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-GPS-002 rollback switch (EDR-323): hides the trip tracking card; queued session operations keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_TRACKING_UI_ENABLED",
+            providers.gradleProperty("enterpriseTrackingUiEnabled").orElse("true").get().toBooleanStrict().toString())
         testInstrumentationRunner = if (enterpriseDeviceValidation) {
             "com.anpfuel.app.ui.enterprise.EnterpriseDeviceTestRunner"
         } else {

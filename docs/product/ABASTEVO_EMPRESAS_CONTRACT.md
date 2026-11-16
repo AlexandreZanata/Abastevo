@@ -8660,3 +8660,195 @@ prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
   photo owned by the fueling but targeting the expense documents neither; a
   missing file is never "guardado"; an unreadable index never shows
   "guardado"; the amounts are never summed; marking twice queues nothing.
+
+## EMP-GPS-002 — Organization trip tracking service: explicit start from the trip screen, visible notification, location-guard update (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps002-tracking-service.md). Owner
+decision EDR-271: tracking is implemented for real and is active per
+organization only with its employee notice in force; real-device acceptance
+is owed.
+
+- **B-BR-EMP-495 — The driver sees the organization's tracking policy in
+  force.** `POST /v1/orgs/{org_id}/tracking/policy/mine` (company session,
+  empty body) requires `trip.trip.start` covering the requesting membership's
+  own record (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR, DRIVER) and answers the
+  policy in force now (`OFF` until the version's employee notice is in force;
+  revision `0` and `OFF` when nothing was recorded) with, only when it is not
+  `OFF`, the notice version and its in-force instant. AUDITOR, FINANCE,
+  APPROVER and members without the key are `FORBIDDEN` naming
+  `trip.trip.start`; another or unknown organization is `NOT_FOUND`; the read
+  writes nothing and carries no session, member or location data. The app
+  keeps the last read and its read instant in the partition's sealed
+  tracking book: `OFF` and a policy never read hide every tracking control,
+  `OPTIONAL` offers "Iniciar rastreamento" beside "Continuar sem rastrear",
+  `EXPECTED` says that the company expects this trip to be tracked and still
+  lets the trip run without it (BR-GPS-005). The cached value is a display
+  hint; the intake decides (B-BR-EMP-428).
+- **B-BR-EMP-496 — Recording starts only from the visible trip screen.** Only
+  the open trip screen of an `IN_PROGRESS` organization trip of the driver's
+  own trip book offers the control, whose text names tracking; before each
+  start or resume the screen shows what is collected and the organization's
+  notice version (BR-GPS-034), requests fine and coarse location together and,
+  on Android 13 and later, the notification permission. The result is
+  recorded as it is: permission `NONE` (`PERMISSION_DENIED`) or a notification
+  that cannot be shown (`NOTIFICATION_BLOCKED`) keeps the session where it was
+  and starts no service. Recording runs only in the non-exported foreground
+  service of type `location`, which starts listening only after consuming a
+  one-time start grant armed by the resumed trip screen for that exact
+  partition and session (valid 30 seconds); a start intent at boot, from a
+  worker, a push, a notification, another process or with an expired or
+  foreign grant starts nothing. The service is never sticky and never
+  restarts itself; the app never declares or requests
+  `ACCESS_BACKGROUND_LOCATION`; the static mobile guard fails the build when
+  the background permission, an unlisted continuous subscription, a boot
+  receiver, an exported or untyped tracking service or a sticky tracking
+  service appears.
+- **B-BR-EMP-497 — Every session transition is a signed queued operation.**
+  The six `gps.session.start|resume|suspend|interrupt|reduce|end` schema-1
+  operations are built exactly as the EMP-GPS-004 intake parses them (entity
+  `tracking_session` with the session identifier, payload
+  `{trip_id, origin, permission, notification_visible}` for start and resume
+  with origin `TRIP_SCREEN`, `{trip_id, cause}` for the others) and saved in
+  the protected queue together with the partition's sealed `tracking-book`
+  record in one write; a failed write saves neither. The transition is
+  decided again inside that write by replaying the stored transitions through
+  the EMP-GPS-001 session domain with the trip facts of the partition's trip
+  book, so the device never stores a transition the domain refuses. The first
+  start depends on the trip's `trip.start`, each later session operation on
+  the previous one and the end also on the trip's `trip.finish`; instants
+  never go back. The trip screen states each record's sync state from its own
+  receipt only ("Salvo no aparelho" until the server answers). A final
+  refusal of any session operation stops the session on this device: nothing
+  is collected or continued for it, and the screen shows the refusal with its
+  code while the trip continues.
+- **B-BR-EMP-498 — One listener, safe stop, bound owner.** The service holds
+  at most one location listener for the one recording session of the
+  process; a repeated start adds no listener and resets no counter; a stop
+  releases only this service's listener before leaving the foreground. The
+  session and its collection are bound to the account, origin, organization,
+  membership, enrollment and trip that started it; a change of account or
+  context, a locked or lost partition, or another responsible member of the
+  trip stops collection at once, and when the partition is still writable the
+  session is interrupted `OWNER_CHANGED`; nothing is ever rebound to another
+  owner (BR-GPS-014, BR-OFFL-003).
+- **B-BR-EMP-499 — The session follows the trip and the device, never
+  silently.** Finishing the trip ends the session at the finish's own instant
+  (`TRIP_COMPLETED`) and stops the service; a trip start finally refused by
+  the server ends it `TRIP_CANCELLED`. "Parar rastreamento" in the
+  notification or on the trip screen interrupts it `STOPPED_BY_DRIVER` while
+  the trip continues. Every 30 seconds while recording the service re-checks
+  permission (lost: `PERMISSION_REVOKED`), precision (fine reduced to
+  approximate: the session keeps recording with `PRECISION_REDUCED`),
+  notification visibility (`NOTIFICATION_BLOCKED`), owner and trip state, and
+  writes a checkpoint with its boot identity and instant. After a process
+  death, a force-stop or a restart the service does not come back; at the
+  next opening of the trip screen a `RECORDING` session with no running
+  service is interrupted at its last checkpoint instant with
+  `DEVICE_RESTARTED` (another boot) or `PROCESS_STOPPED`, and the screen asks
+  "Retomar rastreamento?"; recording returns only by that tap.
+- **B-BR-EMP-500 — Never for personal or foreign trips; always visible.**
+  Personal mode, a trip of another organization or membership, a trip that is
+  not `IN_PROGRESS`, policy `OFF` and a policy never read start nothing. While
+  recording, the ongoing notification names the organization, says that
+  tracking is active and offers the stop action; the trip screen shows
+  "Rastreamento ativo", "Rastreamento suspenso" or "Rastreamento
+  interrompido" with its reason in text, not colour only. No coordinate
+  appears in notifications, logs, errors or the trip screen; in this task the
+  service only counts accepted platform fixes in memory (the buffer and the
+  batches are EMP-GPS-003).
+- **BUC-EMP-252 — A driver starts a trip and its tracking.** With the
+  organization's policy `OPTIONAL` or `EXPECTED` read, the driver opens the
+  trip in progress, reads what is collected and the notice version, taps
+  "Iniciar rastreamento", grants location and notifications, and sees the
+  ongoing notification and "Rastreamento ativo"; the start operation waits in
+  the queue as "Salvo no aparelho" until the server accepts it. Denied
+  location or blocked notifications leave the trip running without tracking,
+  with the reason shown; policy `OFF` shows no tracking control.
+- **BUC-EMP-253 — The driver stops tracking, resumes it and finishes the
+  trip.** "Parar rastreamento" interrupts the session and removes the
+  notification while the trip continues; "Retomar rastreamento" on the trip
+  screen records again after the same checks; finishing the trip ends the
+  session and stops the service; every transition is one queued operation
+  delivered in order.
+- **BUC-EMP-254 — Tracking after a process death or restart.** The app is
+  killed while recording; nothing restarts it. When the driver opens the trip
+  again, the session is shown interrupted with its reason and the instant of
+  the last checkpoint, and "Retomar rastreamento" is offered; the driver may
+  also continue without tracking.
+
+## EMP-GPS-003 — Adaptive sampling, local buffer and batch envelope (2026-11-16)
+
+[Evidence](../enterprise/evidence/f4-gps003-sampling-buffer.md). Builds on
+EMP-GPS-002 (the service and its session operations) and EMP-GPS-004 (the
+`gps.track.batch` intake); owner decision EDR-271.
+
+- **B-BR-EMP-501 — Approved sampling `sampling-v1`.** While a session records,
+  the service requests a location every 5 seconds (GPS for precise, the fused
+  or network provider for approximate) and records, among the fixes that pass
+  the filter: the first fix of the session; while moving (speed of at least
+  1.5 m/s) a fix 10 seconds after the last recorded one, or earlier on a turn
+  of at least 30° once 5 seconds have passed; while slow, a fix 50 m away from
+  the last recorded one; a heartbeat every 120 seconds; with approximate
+  precision the heartbeat only. Below 15 % battery and not charging the
+  routine interval becomes 30 seconds and the turn trigger is off; the trip
+  screen says so and no battery-optimisation exemption is requested. The
+  values are the documented defaults of the specification (§10.2) and change
+  only through a new policy version.
+- **B-BR-EMP-502 — Each fix is filtered and flagged before it counts.** A
+  report with non-finite or out-of-range coordinates is ignored; a mock
+  report is never recorded and is counted `mock`; a report older than 15
+  seconds at collection, or earlier than the start of the recording period,
+  is counted `stale`; a report without accuracy or, with precise permission,
+  less accurate than 50 m is counted `accuracy`; a precise report implying
+  more than 70 m/s from the previous accepted fix is counted `jump`. A fix's
+  instant is the device clock at collection minus the report's monotonic age;
+  fixes of an approximate period carry the coarse flag. Rejected reports are
+  counted, never stored; no fix is ever created, moved or interpolated.
+- **B-BR-EMP-503 — A sealed local buffer survives restarts.** Every recorded
+  fix is written to the partition's sealed `tracking-buffer` record before it
+  counts, with the session's next batch sequence, the counters since the last
+  batch, the sampler's anchors and the fix-level gaps; the last recorded or
+  accepted fix is the checkpoint that an interruption after a process death
+  starts from. The buffer belongs to its account, organization, membership,
+  enrollment and session and is never rebound. At most 2 000 fixes wait
+  unsealed: past that bound a fix is not recorded and is counted as overflow;
+  the app never deletes an unsent fix by itself.
+- **B-BR-EMP-504 — Batches are bounded envelopes delivered in order.**
+  Pending fixes are sealed into `gps.track.batch` schema-1 operations exactly
+  as the EMP-GPS-004 intake parses them: at most 200 fixes and 8 KiB per
+  operation, the first fix as base and declared instant, deltas in 10⁻⁷
+  degrees, strictly increasing offsets of at most 24 hours, the boot identity
+  and base elapsed time, source `PHONE`, the device counters since the
+  previous batch, consecutive sequences per session from 1, and a dependency
+  on the session operation that opened the fixes' recording period. Sealing
+  removes exactly those fixes from the buffer in the same protected write as
+  the queued operation; a refused or failed write keeps both unchanged.
+  Fixes are sealed when the oldest has waited 60 seconds, when 200 wait, when
+  a gap opens, when recording stops, ends or is found interrupted, and before
+  a new boot's fixes; delivery is the ordinary queue's, after the session
+  operations it depends on. Go and Kotlin share the batch vectors.
+- **B-BR-EMP-505 — Gaps are data; coverage is never claimed through them.**
+  Inside a recording period, more than 180 seconds without an accepted fix
+  opens a fix-level gap from the last accepted fix (or the period start):
+  `MOCK_LOCATION` when only mock reports arrived, `SIGNAL_LOST` otherwise;
+  a disabled provider opens `PROVIDER_DISABLED` at once. The next accepted fix
+  closes the gap at its own instant; the end of the period closes an open one.
+  No batch spans the start of a gap, and nothing is recorded inside one. The
+  trip screen shows the open gap with its reason and start. The gap reasons
+  stay on the device in this task (the `gps.track.batch` format carries only
+  fixes and counters; the server derives its own gaps from the stored fixes,
+  EMP-GPS-005).
+- **BUC-EMP-255 — A tracked trip is recorded and uploaded in batches.** The
+  driver drives with tracking active; fixes are recorded by the sampling
+  policy, sealed into batches every minute and sent with the trip's other
+  operations when online; each batch shows "Salvo no aparelho" until its own
+  receipt; the server stores each fix once.
+- **BUC-EMP-256 — Signal, provider and mock problems become gaps.** In a
+  tunnel, with the location provider off or with a mock location app, nothing
+  is recorded; after 180 seconds (at once for the provider) the screen shows
+  the gap and its reason; the next good fix closes it; the batches before and
+  after never claim the interval.
+- **BUC-EMP-257 — A restart keeps the buffer.** The app dies with fixes not
+  yet sealed; at the next opening the session is interrupted at the last
+  recorded fix, the waiting fixes are sealed into a batch and queued, and the
+  driver may resume; nothing is lost, duplicated or invented.

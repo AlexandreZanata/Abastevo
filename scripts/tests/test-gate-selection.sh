@@ -148,6 +148,12 @@ MAP_SOURCES=app/src/main/kotlin/com/anpfuel/app/ui/map
 mkdir -p "$SKELETON/$MAP_SOURCES" "$SKELETON/data/src/main"
 cp app/src/main/AndroidManifest.xml "$SKELETON/app/src/main/AndroidManifest.xml"
 cp "$MAP_SOURCES/GuidanceService.kt" "$MAP_SOURCES/RouteCurrentFix.kt" "$SKELETON/$MAP_SOURCES/"
+# The manifest declares the EMP-GPS-002 tracking service, so the skeleton carries its pinned sources too.
+TRACKING_SOURCES=app/src/main/kotlin/com/anpfuel/app/ui/enterprise/tracking
+COLLECTOR=application/src/main/kotlin/com/anpfuel/application/enterprise/tracking/TrackingCollector.kt
+mkdir -p "$SKELETON/$TRACKING_SOURCES" "$SKELETON/$(dirname "$COLLECTOR")"
+cp "$TRACKING_SOURCES/OrganizationTrackingService.kt" "$SKELETON/$TRACKING_SOURCES/"
+cp "$COLLECTOR" "$SKELETON/$COLLECTOR"
 assert_pass "one-shot preview and approved foreground guidance accepted" \
     env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
 printf '\nmanager.requestLocationUpdates(provider, listener)\n' >> "$SKELETON/$MAP_SOURCES/RouteCurrentFix.kt"
@@ -161,6 +167,44 @@ assert_fail "unapproved continuous provider in foreground guidance refused" \
 sed 's/LocationRequestCompat.Builder(1_000L)/LocationRequestCompat.Builder(100L)/' \
     "$MAP_SOURCES/GuidanceService.kt" > "$SKELETON/$MAP_SOURCES/GuidanceService.kt"
 assert_fail "unexpected guidance interval refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+cp "$MAP_SOURCES/GuidanceService.kt" "$SKELETON/$MAP_SOURCES/"
+# EMP-GPS-002 (EDR-323): the organization tracking service is the only fourth continuous subscription, pinned, explicit
+# and never sticky; the background permission and boot receivers stay refused.
+assert_pass "explicit organization tracking service accepted" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+sed 's/LocationManagerCompat.requestLocationUpdates(manager, provider, request, listener, Looper.getMainLooper())/LocationManagerCompat.requestLocationUpdates(manager, LocationManager.PASSIVE_PROVIDER, request, listener, Looper.getMainLooper())/' \
+    "$TRACKING_SOURCES/OrganizationTrackingService.kt" > "$SKELETON/$TRACKING_SOURCES/OrganizationTrackingService.kt"
+assert_fail "unpinned tracking subscription refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+sed 's/return START_NOT_STICKY/return START_STICKY/' \
+    "$TRACKING_SOURCES/OrganizationTrackingService.kt" > "$SKELETON/$TRACKING_SOURCES/OrganizationTrackingService.kt"
+assert_fail "sticky tracking service refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+sed 's/LocationRequestCompat.Builder(5_000L)/LocationRequestCompat.Builder(500L)/' \
+    "$TRACKING_SOURCES/OrganizationTrackingService.kt" > "$SKELETON/$TRACKING_SOURCES/OrganizationTrackingService.kt"
+assert_fail "unexpected tracking interval refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+cp "$TRACKING_SOURCES/OrganizationTrackingService.kt" "$SKELETON/$TRACKING_SOURCES/"
+sed 's/val granted = gate.consume(partition, sessionId)/val granted = true/' "$COLLECTOR" > "$SKELETON/$COLLECTOR"
+assert_fail "tracking start without the visible grant refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+cp "$COLLECTOR" "$SKELETON/$COLLECTOR"
+sed 's|android:name=".ui.enterprise.tracking.OrganizationTrackingService"|android:name=".ui.enterprise.tracking.OrganizationTrackingService" android:exported="true"|; /OrganizationTrackingService/,/\/>/ s/android:exported="false"//' \
+    app/src/main/AndroidManifest.xml > "$SKELETON/app/src/main/AndroidManifest.xml"
+assert_fail "exported tracking service refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+sed 's|<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />|<uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" /><uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />|' \
+    app/src/main/AndroidManifest.xml > "$SKELETON/app/src/main/AndroidManifest.xml"
+assert_fail "background location permission refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+sed 's|<application|<receiver android:name=".Boot" android:exported="false"><intent-filter><action android:name="android.intent.action.BOOT_COMPLETED" /></intent-filter></receiver><application|' \
+    app/src/main/AndroidManifest.xml > "$SKELETON/app/src/main/AndroidManifest.xml"
+assert_fail "boot receiver refused" \
+    env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
+cp app/src/main/AndroidManifest.xml "$SKELETON/app/src/main/AndroidManifest.xml"
+rm "$SKELETON/$TRACKING_SOURCES/OrganizationTrackingService.kt"
+assert_fail "declared tracking service without its pinned source refused" \
     env MOBILE_ROOT="$SKELETON" bash "$ROOT/scripts/check-mobile.sh" --static-only
 rm -rf "$SKELETON"
 

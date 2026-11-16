@@ -5,6 +5,7 @@ package adapters_test
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -270,4 +271,94 @@ func mustPolicyJSON(t *testing.T, v any) []byte {
 		t.Fatal(err)
 	}
 	return raw
+}
+
+// EMP-GPS-002: the member's own read of the policy in force through the
+// actual composed company route. A driver (SELF) and every other holder of
+// trip.trip.start read OFF at revision 0 before any version, the in-force
+// policy with its notice after the owner turns tracking on, and OFF with no
+// notice after it is turned off; members without trip.trip.start are
+// FORBIDDEN naming it; an unknown organization is NOT_FOUND; no read writes a
+// row or an audit event, and no body carries a member, session or location.
+func TestTrackingPolicyMineReadsThePolicyInForceForTheDriver(t *testing.T) {
+	x := trackingFixture(t)
+	router := trackingPolicyRouter(t, x)
+	fx := x.deviceFixtureState
+	org := x.scope.OrgID().String()
+	mine, change := "/v1/orgs/"+org+"/tracking/policy/mine", "/v1/orgs/"+org+"/tracking/policy/change"
+	person := func(role, scope string) matrixPerson {
+		p := matrixNewPerson(t, fx, router)
+		matrixAssign(t, fx, p, role, scope, "ACTIVE")
+		return p
+	}
+	owner, driver := person("OWNER", "ORG"), person("DRIVER", "SELF")
+	holders := []matrixPerson{driver, owner, person("ADMIN", "ORG"), person("FLEET_MANAGER", "ORG"), person("SUPERVISOR", "ORG")}
+	others := []matrixPerson{person("AUDITOR", "ORG"), person("FINANCE", "ORG"), person("APPROVER", "ORG")}
+	audits := func() int {
+		t.Helper()
+		var n int
+		if err := x.f.Admin.QueryRow(t.Context(), `SELECT count(*) FROM org_audit_events WHERE org_id::text=$1`, org).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
+	read := func(p matrixPerson) map[string]any {
+		t.Helper()
+		policy, events := x.policyState(t), audits()
+		status, v := policyCall(t, x, router, p, mine, map[string]any{})
+		keys := make([]string, 0, len(v))
+		for k := range v {
+			keys = append(keys, k)
+		}
+		slices.Sort(keys)
+		if status != 200 || !slices.Equal(keys, []string{"data_mode", "notice_in_force_at", "notice_version", "policy", "revision"}) || v["data_mode"] != "SYNTHETIC" {
+			t.Fatal("own policy read", status, v)
+		}
+		if x.policyState(t) != policy || audits() != events {
+			t.Fatal("the own policy read wrote state")
+		}
+		return v
+	}
+	for _, p := range holders {
+		if v := read(p); v["revision"] != float64(0) || v["policy"] != "OFF" || v["notice_version"] != nil || v["notice_in_force_at"] != nil {
+			t.Fatal("nothing recorded", v)
+		}
+	}
+	for _, p := range others {
+		matrixCall(t, fx, router, p, mine, map[string]any{}, 403, "FORBIDDEN", "trip.trip.start", nil)
+	}
+	matrixCall(t, fx, router, driver, "/v1/orgs/"+onboardingID(t)+"/tracking/policy/mine", map[string]any{}, 404, "NOT_FOUND", "", nil)
+	if status, v := policyCall(t, x, router, driver, mine, map[string]any{"revision": 1}); status != 400 || v["error"].(map[string]any)["code"] != "MALFORMED" {
+		t.Fatal("an open own read body was admitted", status, v)
+	}
+
+	// The owner turns tracking on with the notice in force: the driver reads it.
+	now := lifecycleDBNow(t, x.legalFixtureState)
+	inForce := now.Add(-time.Hour)
+	if status, v := policyCall(t, x, router, owner, change, policyBody(onboardingID(t), nil, "EXPECTED", "notice-2026.11", inForce.Format(time.RFC3339Nano))); status != 200 || v["revision"] != float64(1) {
+		t.Fatal("turn on", status, v)
+	}
+	for _, p := range holders {
+		v := read(p)
+		at, err := time.Parse(time.RFC3339Nano, fmt.Sprint(v["notice_in_force_at"]))
+		if v["revision"] != float64(1) || v["policy"] != "EXPECTED" || v["notice_version"] != "notice-2026.11" || err != nil || !at.Equal(inForce) {
+			t.Fatal("expected policy in force", v)
+		}
+	}
+	for _, p := range others {
+		matrixCall(t, fx, router, p, mine, map[string]any{}, 403, "FORBIDDEN", "trip.trip.start", nil)
+	}
+	// Turned off on revision 1: OFF with no notice at revision 2.
+	if status, v := policyCall(t, x, router, owner, change, policyBody(onboardingID(t), 1, "OFF", nil, nil)); status != 200 || v["revision"] != float64(2) {
+		t.Fatal("turn off", status, v)
+	}
+	if v := read(driver); v["revision"] != float64(2) || v["policy"] != "OFF" || v["notice_version"] != nil || v["notice_in_force_at"] != nil {
+		t.Fatal("policy off", v)
+	}
+	raw := mustPolicyJSON(t, read(driver))
+	for _, private := range []string{driver.member, driver.account, "lat", "lon", "session"} {
+		if strings.Contains(string(raw), private) {
+			t.Fatal("the own policy read carried private data")
+		}
+	}
 }

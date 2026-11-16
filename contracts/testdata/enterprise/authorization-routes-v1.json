@@ -792,6 +792,7 @@
       "representative_route": "POST /v1/orgs/{org_id}/missions/mine/list",
       "routes": [
         "POST /v1/orgs/{org_id}/missions/mine/list",
+        "POST /v1/orgs/{org_id}/tracking/policy/mine",
         "POST /v1/orgs/{org_id}/trips/mine/list",
         "POST /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read"
       ],

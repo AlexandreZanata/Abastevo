@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- EMP-GPS-002/003 organization trip tracking; generated from one table by f4-logs/gps002-scripts/gen_tracking_strings.py -->
+<resources>
+    <string name="enterprise_tracking_title">運行の位置記録</string>
+    <string name="enterprise_tracking_policy_expected">会社はこの運行の位置記録を求めています。記録しなくても運行は続けられます。</string>
+    <string name="enterprise_tracking_policy_optional">希望する場合、会社はこの運行の位置記録を認めています。</string>
+    <string name="enterprise_tracking_policy_unknown">位置記録は利用できません: この端末では会社のポリシーをまだ読み込んでいません。接続して更新してください。</string>
+    <string name="enterprise_tracking_policy_refresh">位置記録ポリシーを更新</string>
+    <string name="enterprise_tracking_policy_failed">現在ポリシーを読み込めません。最後に読み込んだものが引き続き使われます。</string>
+    <string name="enterprise_tracking_notice">位置記録中、アプリはこの運行の間、停止するまでこのスマートフォンの位置だけを記録します。会社のお知らせのバージョン: %1$s。</string>
+    <string name="enterprise_tracking_start">位置記録を開始</string>
+    <string name="enterprise_tracking_resume">位置記録を再開</string>
+    <string name="enterprise_tracking_resume_question">位置記録を再開しますか?</string>
+    <string name="enterprise_tracking_stop">位置記録を停止</string>
+    <string name="enterprise_tracking_without">記録せずに続ける</string>
+    <string name="enterprise_tracking_state_not_started">位置記録は開始されていません</string>
+    <string name="enterprise_tracking_state_recording">位置記録中</string>
+    <string name="enterprise_tracking_state_suspended">位置記録は一時停止中</string>
+    <string name="enterprise_tracking_state_interrupted">位置記録は中断されました</string>
+    <string name="enterprise_tracking_state_ended">位置記録は終了しました</string>
+    <string name="enterprise_tracking_since">%1$s から</string>
+    <string name="enterprise_tracking_approximate">おおよその位置: この運行の GPS 距離は計算されません。</string>
+    <string name="enterprise_tracking_cause_permission_denied">位置情報の権限が許可されませんでした。運行は記録なしで続きます。</string>
+    <string name="enterprise_tracking_cause_notification_blocked">通知がブロックされているため、表示付きの位置記録を実行できません。通知を許可してください。</string>
+    <string name="enterprise_tracking_cause_process_stopped">位置記録中にアプリが終了しました。</string>
+    <string name="enterprise_tracking_cause_device_restarted">位置記録中にスマートフォンが再起動しました。</string>
+    <string name="enterprise_tracking_cause_stopped_by_driver">位置記録を停止しました。運行は続きます。</string>
+    <string name="enterprise_tracking_cause_owner_changed">このスマートフォンでアカウントまたは会社が変更されました。</string>
+    <string name="enterprise_tracking_cause_permission_revoked">運行中に位置情報の権限が取り消されました。</string>
+    <string name="enterprise_tracking_cause_other">位置記録は運行とともに停止しました。</string>
+    <string name="enterprise_tracking_refused">会社はこの運行の位置記録を拒否しました (%1$s)。運行は続きます。</string>
+    <string name="enterprise_tracking_refusal_off">会社が位置記録をオフにしています。</string>
+    <string name="enterprise_tracking_refusal_other">この端末では位置記録を変更できませんでした。何も保存されていません。</string>
+    <string name="enterprise_tracking_record">%1$s — %2$s</string>
+    <string name="enterprise_tracking_notification_channel">会社の運行の位置記録</string>
+    <string name="enterprise_tracking_notification_title">位置記録中 — %1$s</string>
+    <string name="enterprise_tracking_notification_text">運行中、このスマートフォンの位置が記録されています。</string>
+    <string name="enterprise_tracking_pending">送信待ちの位置: %1$d</string>
+    <string name="enterprise_tracking_batches">位置のまとまり: 会社が受理 %1$d、端末に %2$d</string>
+    <string name="enterprise_tracking_gap_signal_lost">%1$s から GPS 信号がありません。この間は何も記録されません。</string>
+    <string name="enterprise_tracking_gap_provider_disabled">%1$s から位置情報がオフです。この間は何も記録されません。</string>
+    <string name="enterprise_tracking_gap_mock_location">%1$s から疑似位置を無視しています。この間は何も記録されません。</string>
+    <string name="enterprise_tracking_gaps_count">この運行の信号なしの区間: %1$d</string>
+</resources>
