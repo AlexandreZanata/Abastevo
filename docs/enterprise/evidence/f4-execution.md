@@ -1755,3 +1755,107 @@ staticcheck, tracking and `cmd/api` tests pass; focused PostGIS race
 tree passes. Retained: composing the port behind TRIP-006's route, organization
 divergence thresholds, UC-GPS-08 and `gps.divergence.detected`, planned and
 estimated sources (`NO_ROUTE_PLAN`/`NO_ROUTE_COMPUTATION`), production grants.
+
+### EMP-TRIP-021 — app: missions inbox and planned-trip execution: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip021-missions-inbox.md), commit `e2c47185` (after merging
+`c68f3537` as `a690216d`), no migration (000259 unused), no server production
+change. `TripOperations` carries the mission reference on `trip.start` beside
+TRIP-019's departure run, plus `trip.pause`/`trip.resume`/`trip.cancel`;
+`TripMissionOperations` signs `trip.mission.respond`; `TripBook` v2 (still reads
+v1); `TripMissionInbox` is a sealed copy with its age and the offline
+eligibility matrix (refresh online only; a planned trip starts only from a
+confirmed acceptance). The queue producer descriptor gained `alone` (answers in
+a batch of their own after every other due operation, EDR-343). Shared
+`trip/trip-operations-v3.psv` (94 rows; v2's 61 rows byte for byte) consumed by
+Go and Kotlin. Flag `ENTERPRISE_MISSION_UI_ENABLED`, strings × 8 locales. The
+merge with `19e681a3` (`30a3a99f`) made tracking follow device trip commands (a
+pause suspends a recording session as `TRIP_PAUSED`, a cancel ends it as
+`TRIP_CANCELLED`) and let the mission gateway accept TRIP-010's `plan.stops`.
+RED domain 50/119, application/data 14/14 → GREEN.
+
+### EMP-ROUTE-004 — navigation phase 1: in-app route to a planned destination: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-route004-navigation-handoff.md), commit `cd133382`, no migration.
+`TripNavigation` hands an authorized trip/mission destination to the existing
+map route engine as `MapRouteTarget.Address`; guidance uploads nothing and
+starts no tracking session; a source guard keeps tracking out of the navigation
+code. TRIP-021/ROUTE-004 IDs B-BR-EMP-527..535, BUC-EMP-270..274,
+EDR-342..347. RED domain 3/3, guard 2/2 → GREEN. Task-tree gates: domain
+enterprise 4709, application enterprise 194, data enterprise 219, app
+enterprise 36; lint 0 errors; normal and validation builds; Go build/vet (all
+tags), staticcheck, trip race 1194 named.
+
+Integration: merged on `843f647a` as `fac846c3` (contract union, EDR-342..347
+before EDR-348, the offline-sync paragraph keeps both the missions-inbox and
+revoked-partition sentences). Go trip and `cmd/api` pass; Android full module
+suites domain 5665, application 749, data 993, app 832, 0 failures; lint,
+validation build and `check-mobile.sh` pass. Retained: native runs (OWED,
+drivers `trip021-scripts/native-run.sh`, `route004-scripts/native-run.sh`), an
+end-to-end run through the real map tab, a final local state for a
+transport-denied answer, mission list paging beyond 100, planned stops in the
+inbox, unit destinations and next-stop navigation (ROUTE-005..008), server
+answer history, TalkBack/visual review.
+
+### EMP-OFFL-013 — sync resilience suite: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-offl013-sync-resilience.md), commit `dd8588c8`, no migration
+(000261 unused). Server half `TestSyncResilience*` drives one field day of real
+signed operations (mission respond, checklist run, `trip.start` naming mission
+and run, events, a meter reading, a fueling, an expense, finish and submit)
+through the default runtime's signed TLS intake under a lost response, a
+whole-queue resend after a killed client, reversed dependencies, sequential and
+concurrent duplicates in both orders behind a held org-root lock, reused
+identifiers, a missing acknowledgement, truncated `FUELING`/`EXPENSE` uploads
+and cross-organization state; the final effect signature equals the in-order
+one. Device host half `EnterpriseSyncResilienceTest` uses the real vault, queue,
+producers, queue service and HTTP client with real child-JVM process death. It
+found a real defect, fixed RED → GREEN (EDR-352): the Android dispatcher sent a
+`trip.start` before its departure checklist run had a final receipt when the run
+was in backoff or answered `RETRY` in the same batch, and the server then held
+the start `ORPHAN_REFERENCE` with nothing linked; the dispatcher now holds an
+operation until every queued operation it names in a soft reference is final.
+B-BR-EMP-540..543, BUC-EMP-277..278, EDR-351..353. Merged on `66164d53` as
+`98d76e98`; the dispatcher combines the soft-reference holds with TRIP-021's
+`alone` producers (a start naming a mission waits for the answer's final
+receipt). On the merged tree: PostGIS race
+`TestSyncResilience|TestTripMission|TestTripChecklist` passes; Android domain
+enterprise 4717, application 752, data 999, app enterprise 36, 0 failures;
+lint and the validation build pass. Retained: the native stage (OWED,
+`offl013-scripts/native-run.sh`), VAL-23 (f) `CLOCK_SKEW`, proposed shared-doc
+text in the evidence file.
+
+### EMP-GPS-010 — tracking interruptions: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps010-tracking-interruptions.md), commits `68ad54ce` and
+`c0dacaf6` (after merging `fac846c3` as `6e0cbc89`), no migration (000262
+unused). Permission loss, approximate-only precision, provider loss, process
+death and restart each leave a recorded interruption or gap, never bridged; a
+resume needs an explicit visible gesture plus a current policy and
+one-collector check on every tap (EDR-356: the device is stricter than the
+server); approximate fixes are bounded and never reported as precise; the
+sealed buffer splits runs around a pause and accounts for every fix. The
+composition with TRIP-021 releases the listener right after a pause or cancel.
+RED domain 4/4, application 8/10, collector 1/12, app 1/3 → GREEN.
+
+### EMP-GPS-015 — app: tracking transparency: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps015-tracking-transparency.md), commit `763a498d`, no migration
+(000263 unused). A tracking indicator in the top bar of every enterprise screen,
+a home card and the "Meu rastreamento" panel (what is collected, why, and this
+phone's own sessions and gaps; EDR-358: no server read of own sessions exists,
+so only this device's records); copy never presents a personal session as
+corporate and never promises remote erasure. GPS-010/015 IDs B-BR-EMP-544..551,
+BUC-EMP-279..282, EDR-354..359. RED application 4/4, app 2/8 → GREEN.
+
+Integration: merged on `98d76e98` as `a02e3273` (contract union, EDR-354..359
+after EDR-353). `1ee50c9e` hardens `scripts/check-mobile.sh`: the agent saw the
+static guard fail once under load at the GuidanceService check with an unchanged
+manifest (three reruns passed; cause unconfirmed); the eight service-block
+checks now read a here-string instead of `echo | grep -q` under `pipefail`;
+static guard and `test-gate-selection.sh` (34/34) pass. Retained: native and
+real-device acceptance (drivers `gps010-scripts/native-{source,driver}.sh`,
+`gps015-scripts/native-driver.sh`; `DEVICE_RESTARTED` proven on the host only),
+a local "tracking interrupted" notification, the long-stationary guard
+(BR-GPS-016), a server policy check on resume, a server read of own sessions,
+SCR-PRIV-01.
