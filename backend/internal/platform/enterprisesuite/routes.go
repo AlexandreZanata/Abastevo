@@ -284,7 +284,9 @@ func Register(router chi.Router, o Options) error {
 	runStructure := &orgpg.ResourceStructure{Kind: orgpg.ChecklistRunStructure, Pool: o.Pool}
 	runs := &maintpg.RunStore{Pool: o.Pool, Authority: &orgpg.RunCompanyAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags, AssetStructure: assetStructure, Assignee: assetAssignee, RunStructure: runStructure}, Audit: auditStore}
 	runRelease := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Structure: runStructure, Now: time.Now}
-	if err := maintweb.RegisterRuns(router, maintapp.RunService{Enabled: true, Repository: runs}, cookies, gateway, applicableAuthorization, runRelease); err != nil {
+	// EMP-CHECK-004 (EDR-328): the run queue under the incident queue's
+	// authorization (check.incident.manage on the organization).
+	if err := maintweb.RegisterRuns(router, maintapp.RunService{Enabled: true, Repository: runs}, cookies, gateway, applicableAuthorization, runRelease, incidentQueue); err != nil {
 		return err
 	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}

@@ -13,7 +13,7 @@ type ContextGrant struct {
 }
 
 func ContextHints(scope kernel.OrgScope, member string, assignments []Assignment, now time.Time, fresh bool) ([]Permission, []ContextGrant, error) {
-	permissions := make([]Permission, 0, 3)
+	permissions := make([]Permission, 0, 4)
 	grants := make([]ContextGrant, 0)
 	if scope.Validate() != nil || now.IsZero() {
 		return nil, nil, ErrAssignmentInvalid
@@ -29,6 +29,11 @@ func ContextHints(scope kernel.OrgScope, member string, assignments []Assignment
 		if _, e := CoveringRules(scope, member, assignments, permission, facts, now); e == nil {
 			permissions = append(permissions, permission)
 		}
+	}
+	// EMP-CHECK-004 (B-BR-EMP-507, EDR-329): a read hint, whatever the proof
+	// freshness, when an ORG assignment covers document content.
+	if _, e := CoveringRules(scope, member, assignments, "doc.document.view_content", facts, now); e == nil {
+		permissions = append(permissions, "doc.document.view_content")
 	}
 	if !fresh {
 		return permissions, grants, nil

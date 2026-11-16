@@ -10,7 +10,7 @@ export class ApiError extends Error {
     this.fields = Object.freeze(fields.filter(safeField));
   }
 }
-const SAFE_CODES = new Set(['ORG_SETUP_INCOMPLETE','OWNER_REQUIRES_PERSONAL_ACCOUNT','OPERATION_ID_REUSED','CONFLICT','ENTITLEMENT_REQUIRED','ORG_SUSPENDED','ORG_ARCHIVED','VALIDATION_FAILED','FRESH_AUTH_REQUIRED','FORBIDDEN','NOT_FOUND','UNAUTHENTICATED','RATE_LIMITED','DUPLICATE_REVIEW_REQUIRED']);
+const SAFE_CODES = new Set(['ORG_SETUP_INCOMPLETE','OWNER_REQUIRES_PERSONAL_ACCOUNT','OPERATION_ID_REUSED','CONFLICT','ENTITLEMENT_REQUIRED','ORG_SUSPENDED','ORG_ARCHIVED','VALIDATION_FAILED','FRESH_AUTH_REQUIRED','FORBIDDEN','NOT_FOUND','UNAUTHENTICATED','RATE_LIMITED','DUPLICATE_REVIEW_REQUIRED','SELF_APPROVAL']);
 const safeField = (value: string): boolean => ['name','time_zone','active_unit','active_owner','terms','reason','consumption_display','approval_levels_default','closure_period_days','review_required.trips','review_required.fuelings','review_required.expenses','policies.intake_window_days','policies.clock_skew_limit_seconds','policies.delegation_maximum_days','policies.invitation_validity_days','policies.activation_validity_hours','policies.require_invitation_confirmation'].includes(value) || /^responsibilities\.(?:review_fallback|platform_notices|data_protection|billing)\.(?:primary|substitute)$/.test(value);
 export interface SessionView { accountId: string; authenticatedAt: string; expiresAt: string }
 export interface SessionPort {
@@ -24,9 +24,16 @@ export interface SessionPort {
 export interface CompanyTransport {
   privatePost(path: string, body: unknown, signal?: AbortSignal): Promise<Record<string, unknown>>;
 }
+// EMP-CHECK-004 (EDR-329): the audited document content path only.
+export interface ContentTransport {
+  privateContent(path: string, body: unknown, signal?: AbortSignal): Promise<Record<string, unknown>>;
+}
 type Fetch = (path: string, init: RequestInit) => Promise<Response>;
 const PREFIX = '/v1/org-access/session/';
 const IDLE = 30 * 60_000;
+const JSON_LIMIT = 64 * 1024;
+// EMP-CHECK-004 (EDR-329): one audited JPEG of at most 5 MiB, base64 in JSON.
+const CONTENT_LIMIT = 8 * 1024 * 1024;
 const TIMEOUT = 10_000;
 
 // AbortSignal.any is missing before Safari 17.4, Chrome 116 and Firefox 124.
@@ -72,8 +79,9 @@ export class CompanyApi implements SessionPort {
     }
     throw new ApiError('unavailable');
   }
-  // JSON bodies are bounded at 64 KiB; an oversized body is refused unread.
-  async #json(response: Response): Promise<Record<string, unknown>> {
+  // JSON bodies are bounded at 64 KiB (the audited content read at 8 MiB);
+  // an oversized body is refused unread.
+  async #json(response: Response, limit = JSON_LIMIT): Promise<Record<string, unknown>> {
     if (!response.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) throw new ApiError('unavailable');
     const reader = response.body?.getReader();
     if (!reader) throw new ApiError('unavailable');
@@ -84,7 +92,7 @@ export class CompanyApi implements SessionPort {
         const part = await reader.read();
         if (part.done) break;
         size += part.value.length;
-        if (size > 64 * 1024) { await reader.cancel(); throw new ApiError('unavailable'); }
+        if (size > limit) { await reader.cancel(); throw new ApiError('unavailable'); }
         chunks.push(part.value);
       }
     } finally { reader.releaseLock(); }
@@ -99,7 +107,7 @@ export class CompanyApi implements SessionPort {
     try { return record((await this.#json(response)).error).code === 'FRESH_AUTH_REQUIRED' ? 'fresh' : 'unauthenticated'; }
     catch { return 'unauthenticated'; }
   }
-  async #post(path: string, body: unknown, csrf: string, signal?: AbortSignal, keepalive = false): Promise<Record<string, unknown>> {
+  async #post(path: string, body: unknown, csrf: string, signal?: AbortSignal, keepalive = false, limit = JSON_LIMIT): Promise<Record<string, unknown>> {
     try {
       const response = await this.#request(path, body, csrf, signal, keepalive);
       if (!response.ok) {
@@ -115,7 +123,7 @@ export class CompanyApi implements SessionPort {
         throw new ApiError('unavailable');
       }
       if (!response.headers.get('Cache-Control')?.split(',').map(v => v.trim().toLowerCase()).includes('no-store')) throw new ApiError('unavailable');
-      return await this.#json(response);
+      return await this.#json(response, limit);
     } catch (error) {
       if (signal?.aborted) throw new ApiError('cancelled');
       if (error instanceof ApiError) throw error;
@@ -178,11 +186,22 @@ export class CompanyApi implements SessionPort {
         !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:organization\/activate|settings\/(?:read|change|history|revision\/read|responsibility-members\/list))$/.test(path) &&
         !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:employees\/(?:list|create|matches|[0-9a-f-]{36}\/read)|invitations\/(?:list|issue|[0-9a-f-]{36}\/(?:read|resend|revoke|confirm|reject|acceptance\/read)))$/.test(path) &&
         // EMP-TRIP-022 board: mission reads/commands and the reads it composes.
-        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:missions\/(?:list|create|[0-9a-f-]{36}\/(?:read|plan|assign|cancel|vehicle\/change|assignees\/list))|fleet\/assets\/(?:list|[0-9a-f-]{36}\/(?:availability\/read|reservations\/list|blocks\/list))|cost-centres\/list)$/.test(path)) throw new ApiError('denied');
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:missions\/(?:list|create|[0-9a-f-]{36}\/(?:read|plan|assign|cancel|vehicle\/change|assignees\/list))|fleet\/assets\/(?:list|[0-9a-f-]{36}\/(?:availability\/read|reservations\/list|blocks\/list))|cost-centres\/list)$/.test(path) &&
+        // EMP-CHECK-004 panel: run queue, run read and release, incident queue, read and decide.
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:checklists\/(?:runs\/(?:list|[0-9a-f-]{36}\/release)|assets\/[0-9a-f-]{36}\/runs\/[0-9a-f-]{36}\/read)|incidents\/reports\/(?:list|[0-9a-f-]{36}\/(?:read|decide)))$/.test(path)) throw new ApiError('denied');
+    return this.#private(path, body, signal, JSON_LIMIT);
+  }
+  // EMP-CHECK-004 (EDR-329): only the audited document content path, with its
+  // own bound; never reachable through privatePost.
+  async privateContent(path: string, body: unknown, signal?: AbortSignal): Promise<Record<string, unknown>> {
+    if (!/^\/v1\/orgs\/[0-9a-f-]{36}\/documents\/[0-9a-f-]{36}\/content\/(?:access|read)$/.test(path)) throw new ApiError('denied');
+    return this.#private(path, body, signal, CONTENT_LIMIT);
+  }
+  async #private(path: string, body: unknown, signal: AbortSignal | undefined, limit: number): Promise<Record<string, unknown>> {
     if (!this.authenticated) { this.forget(); throw new ApiError('unauthenticated'); }
     const epoch = this.#epoch;
     try {
-      const raw = await this.#post(path, body, this.#csrf, signal);
+      const raw = await this.#post(path, body, this.#csrf, signal, false, limit);
       this.#current(epoch);
       if (!this.authenticated) { this.forget(); throw new ApiError('unauthenticated'); }
       this.#seen = this.now();

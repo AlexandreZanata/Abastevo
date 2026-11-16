@@ -19770,6 +19770,68 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/runs/list:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistRunQueue
+      summary: List the organization's checklist runs, blocking and held for review first
+      description: EMP-CHECK-004. Current company cookie and exact Origin/CSRF. Fixed check.incident.manage permission
+        on the whole organization, exactly as the incident queue (an ORG grant; structural holders open each run
+        through the run read of its asset); AUDITOR, DRIVER, FINANCE and APPROVER are FORBIDDEN. Pages every run of
+        the organization with the run read's projection (both outcomes, policy revisions, flags, issue positions,
+        revision and release instant; never a note, a photo, the reason or the author's identity) in queue order - the
+        current outcome BLOCKING first, then runs whose device and server outcomes differ (review_required), then the
+        rest; the newest declared completion first inside each group, then the run identifier. Keyset cursor bound to
+        the caller, the route and the limit. The read changes nothing; responses are private no-store
+        (B-BR-EMP-506, EDR-328).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.incident.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistRunListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current run queue page.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistRunPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/incidents/reports/list:
     post:
       tags:
@@ -28389,6 +28451,67 @@ components:
       additionalProperties: false
       properties: {}
       example: {}
+    EnterpriseChecklistRunListRequest:
+      type: object
+      additionalProperties: false
+      description: One page of the organization's run queue; no client filter or target is accepted.
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          minLength: 1
+      example:
+        limit: 20
+    EnterpriseChecklistRunPage:
+      type: object
+      additionalProperties: false
+      description: Runs in queue order (B-BR-EMP-506); each item is exactly the run read's projection.
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseChecklistRun'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - run_id: 7b0e2a54-0000-4000-8000-000000009711
+          asset_id: 7b0e2a54-0000-4000-8000-000000009721
+          template_id: 7b0e2a54-0000-4000-8000-000000009731
+          context: DEPARTURE
+          template_version: 1
+          policy_revision: 2
+          server_policy_revision: 3
+          revision: 1
+          started_at: '2026-11-15T11:40:00Z'
+          completed_at: '2026-11-15T12:00:00.123Z'
+          received_at: '2026-11-15T12:30:00.5Z'
+          device_outcome: COMPLETED_WITH_ISSUES
+          recheck_outcome: BLOCKING
+          outcome: BLOCKING
+          outcome_differs: true
+          review_required: true
+          template_superseded: false
+          acknowledged: true
+          issues:
+          - 2
+          critical_issues:
+          - 2
+          data_mode: SYNTHETIC
+        next_cursor: ''
+        data_mode: SYNTHETIC
     EnterpriseChecklistRunReleaseRequest:
       type: object
       additionalProperties: false
@@ -36469,13 +36592,16 @@ components:
         permissions:
           type: array
           uniqueItems: true
-          maxItems: 3
+          maxItems: 4
+          description: Current UI hints, never authority. doc.document.view_content is a read hint present when a
+            current ORG assignment covers it (EMP-CHECK-004, B-BR-EMP-507).
           items:
             type: string
             enum:
             - idn.employee.read
             - idn.employee.manage
             - idn.invitation.manage
+            - doc.document.view_content
         invitation_grants:
           type: array
           uniqueItems: true

@@ -10,6 +10,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
@@ -298,6 +300,9 @@ const (
 	RunRead RunCompanyAction = iota + 1
 	// RunRelease releases a blocking run (fresh check.incident.manage).
 	RunRelease
+	// RunQueue lists the organization's runs (EMP-CHECK-004, EDR-328)
+	// exactly under the incident queue's policy.
+	RunQueue
 )
 
 // RunCompanyPolicy returns the fixed policy of a company run action.
@@ -309,6 +314,9 @@ func RunCompanyPolicy(action RunCompanyAction) access.Policy {
 	case RunRelease:
 		// Exactly the incident handling step: fresh check.incident.manage.
 		return IncidentPolicy(IncidentDecide)
+	case RunQueue:
+		// Exactly the incident queue: check.incident.manage on the organization.
+		return IncidentPolicy(IncidentQueue)
 	}
 	return access.Policy{}
 }
@@ -389,6 +397,117 @@ type RunView struct {
 type RunRepository interface {
 	ReadRun(context.Context, kernel.OrgScope, IncidentActor, string, string, string) (RunView, error)
 	ReleaseRun(context.Context, kernel.OrgScope, IncidentActor, string, ReleaseCommand) (RunView, bool, error)
+	ListRuns(context.Context, kernel.OrgScope, IncidentActor, string, RunQueueFilter) (RunQueuePage, error)
+}
+
+// ---- organization run queue (EMP-CHECK-004, B-BR-EMP-506) ----
+
+// Run queue groups: the current outcome BLOCKING first, then a disagreement
+// held for review, then every other run.
+const (
+	RunGroupBlocking = 0
+	RunGroupReview   = 1
+	RunGroupOther    = 2
+)
+
+// RunGroup is the attention group of a run view.
+func RunGroup(v RunView) int {
+	switch {
+	case v.Outcome == checklist.Blocking:
+		return RunGroupBlocking
+	case v.Differs:
+		return RunGroupReview
+	}
+	return RunGroupOther
+}
+
+// RunQueueKey is the queue order of one run: group, then the newest declared
+// completion, then the run identifier.
+type RunQueueKey struct {
+	private
+	Group       int
+	CompletedAt time.Time
+	RunID       string
+}
+
+// KeyOf returns the queue key of a run view.
+func KeyOf(v RunView) RunQueueKey {
+	return RunQueueKey{Group: RunGroup(v), CompletedAt: v.CompletedAt.UTC().Truncate(time.Microsecond), RunID: v.RunID}
+}
+
+func (k RunQueueKey) valid() bool {
+	return k.Group >= RunGroupBlocking && k.Group <= RunGroupOther && validInstant(k.CompletedAt) && k.CompletedAt.Equal(k.CompletedAt.Truncate(time.Microsecond)) &&
+		checklist.CanonicalID(k.RunID)
+}
+
+// Same reports whether both keys name the same queue position.
+func (k RunQueueKey) Same(other RunQueueKey) bool {
+	return k.Group == other.Group && k.CompletedAt.Equal(other.CompletedAt) && k.RunID == other.RunID
+}
+
+// Before reports whether k precedes other in the queue order.
+func (k RunQueueKey) Before(other RunQueueKey) bool {
+	if k.Group != other.Group {
+		return k.Group < other.Group
+	}
+	if !k.CompletedAt.Equal(other.CompletedAt) {
+		return k.CompletedAt.After(other.CompletedAt)
+	}
+	return k.RunID < other.RunID
+}
+
+// Cursor is the cursor form of a key (sealed by the transport).
+func (k RunQueueKey) Cursor() string {
+	if !k.valid() {
+		return ""
+	}
+	return strconv.Itoa(k.Group) + "|" + strconv.FormatInt(k.CompletedAt.UnixMicro(), 10) + "|" + k.RunID
+}
+
+// ParseRunQueueKey reads the cursor form; the empty string is no key.
+func ParseRunQueueKey(raw string) (*RunQueueKey, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	parts := strings.Split(raw, "|")
+	if len(parts) != 3 || len(parts[0]) != 1 {
+		return nil, checklist.ErrInvalid
+	}
+	group, err := strconv.Atoi(parts[0])
+	if err != nil {
+		return nil, checklist.ErrInvalid
+	}
+	micros, err := strconv.ParseInt(parts[1], 10, 64)
+	if err != nil {
+		return nil, checklist.ErrInvalid
+	}
+	key := RunQueueKey{Group: group, CompletedAt: time.UnixMicro(micros).UTC(), RunID: parts[2]}
+	if !key.valid() || key.Cursor() != raw {
+		return nil, checklist.ErrInvalid
+	}
+	return &key, nil
+}
+
+// RunQueueFilter is one page request of the queue.
+type RunQueueFilter struct {
+	private
+	After *RunQueueKey
+	Limit int
+}
+
+func (f RunQueueFilter) Validate() error {
+	if f.Limit < 1 || f.Limit > MaxReportPage || f.After != nil && !f.After.valid() {
+		return checklist.ErrInvalid
+	}
+	return nil
+}
+
+// RunQueuePage is one page of the queue; Next is the last item's key when
+// more runs may follow.
+type RunQueuePage struct {
+	private
+	Items []RunView
+	Next  *RunQueueKey
 }
 
 type RunService struct {
@@ -488,6 +607,48 @@ func (s RunService) Read(ctx context.Context, scope kernel.OrgScope, actor Incid
 		return RunView{}, ErrUnavailable
 	}
 	return copyRun(v), nil
+}
+
+// List pages the organization's runs under the incident queue's policy
+// (B-BR-EMP-506): every item valid, strictly in queue order after the
+// requested key, at most the limit, and a next key only on a full page.
+func (s RunService) List(ctx context.Context, scope kernel.OrgScope, actor IncidentActor, decision access.Decision, filter RunQueueFilter) (RunQueuePage, error) {
+	if err := filter.Validate(); err != nil {
+		return RunQueuePage{}, err
+	}
+	var v RunQueuePage
+	err := s.guarded(ctx, scope, actor, decision, RunQueue, scope.OrgID().String(), func() error {
+		var err error
+		v, err = s.Repository.ListRuns(ctx, scope, actor, decision.Subject().MembershipID(), filter)
+		return err
+	})
+	if err != nil {
+		return RunQueuePage{}, err
+	}
+	if len(v.Items) > filter.Limit || v.Next != nil && (len(v.Items) != filter.Limit || !v.Next.valid()) {
+		return RunQueuePage{}, ErrUnavailable
+	}
+	prior := filter.After
+	out := RunQueuePage{Items: make([]RunView, 0, len(v.Items))}
+	for _, item := range v.Items {
+		if !validRun(item) {
+			return RunQueuePage{}, ErrUnavailable
+		}
+		key := KeyOf(item)
+		if prior != nil && !prior.Before(key) {
+			return RunQueuePage{}, ErrUnavailable
+		}
+		prior = &key
+		out.Items = append(out.Items, copyRun(item))
+	}
+	if v.Next != nil {
+		if !v.Next.Same(*prior) {
+			return RunQueuePage{}, ErrUnavailable
+		}
+		next := *v.Next
+		out.Next = &next
+	}
+	return out, nil
 }
 
 // Release releases a blocking run under fresh check.incident.manage.

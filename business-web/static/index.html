@@ -183,6 +183,47 @@
             </section>
           </section>
         </section>
+        <section id="checks-panel" class="mission-board" aria-labelledby="checks-title" hidden>
+          <div class="section-heading"><div><p class="eyebrow">CHECKLISTS E OCORRÊNCIAS</p><h2 id="checks-title" tabindex="-1">Checklists, danos e ocorrências</h2></div><button id="checks-load" class="button-quiet" type="button">Consultar checklists e ocorrências</button></div>
+          <p class="field-help">Mostra somente o que o servidor confirmou. Liberar um veículo e tratar uma ocorrência exigem confirmação recente do seu acesso, e o servidor confere cada operação.</p>
+          <p id="checks-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <button id="checks-retry" class="button-quiet" type="button" hidden>Tentar novamente</button>
+          <h3 id="checks-runs-title">Checklists realizados</h3>
+          <p id="checks-runs-at" class="field-help"></p>
+          <ul id="checks-runs" class="record-list" aria-labelledby="checks-runs-title"></ul>
+          <button id="checks-runs-next" class="button-quiet" type="button" hidden>Mais checklists</button>
+          <h3 id="checks-reports-title">Danos e ocorrências</h3>
+          <p id="checks-reports-at" class="field-help"></p>
+          <ul id="checks-reports" class="record-list" aria-labelledby="checks-reports-title"></ul>
+          <button id="checks-reports-next" class="button-quiet" type="button" hidden>Mais ocorrências</button>
+          <section id="checks-detail" class="employee-detail" aria-labelledby="checks-detail-title" hidden>
+            <div class="section-heading"><h3 id="checks-detail-title" tabindex="-1"></h3><button id="checks-reload" class="button-quiet" type="button">Atualizar registro</button></div>
+            <dl id="checks-fields" class="record-fields"></dl>
+            <p id="checks-read-at" class="field-help"></p>
+            <section id="checks-block" class="mission-agenda" aria-labelledby="checks-block-title">
+              <h4 id="checks-block-title">Disponibilidade do veículo</h4>
+              <p id="checks-availability" class="setup-notice"></p>
+              <ul id="checks-causes" class="record-list" aria-label="Motivos da disponibilidade do veículo"></ul>
+              <p id="checks-availability-note" class="field-help"></p>
+            </section>
+            <section id="checks-report-body" aria-labelledby="checks-description-title" hidden>
+              <h4 id="checks-description-title">Descrição informada</h4><p id="checks-description"></p>
+              <h4 id="checks-history-title">Histórico do tratamento</h4><ul id="checks-history" class="record-list" aria-labelledby="checks-history-title"></ul>
+              <h4 id="checks-attachments-title">Fotos e documentos</h4><ul id="checks-attachments" class="record-list" aria-labelledby="checks-attachments-title"></ul>
+              <p id="checks-content-help" class="field-help"></p>
+            </section>
+            <form id="checks-release-form" autocomplete="off" hidden><fieldset><legend>Liberação do veículo</legend>
+              <label for="release-reason">Motivo da liberação</label><input id="release-reason" maxlength="500" required aria-describedby="release-help">
+              <p id="release-help" class="field-help">A liberação fica no histórico com o motivo; as respostas e os resultados do checklist não mudam. Quem registrou o checklist não pode liberá-lo.</p>
+              <button id="checks-release-submit" class="button-primary" type="submit">Liberar o veículo</button>
+            </fieldset></form>
+            <form id="checks-decide-form" autocomplete="off" hidden><fieldset><legend>Tratamento da ocorrência</legend>
+              <div class="field-grid"><div><label for="decide-action">Ação</label><select id="decide-action"></select></div><div><label for="decide-note">Ação tomada, solução ou motivo</label><input id="decide-note" maxlength="500" aria-describedby="decide-help"></div><div><label for="decide-duplicate">Duplicata de (somente ao descartar)</label><select id="decide-duplicate"></select></div></div>
+              <p id="decide-help" class="field-help">"Ciente" não leva texto; tratar, resolver e descartar exigem o texto. Não informe dados de saúde de pessoas.</p>
+              <button id="checks-decide-submit" class="button-primary" type="submit">Registrar tratamento</button>
+            </fieldset></form>
+          </section>
+        </section>
       </section>
       <p id="live-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
       <noscript>Ative o JavaScript para entrar no painel com segurança.</noscript>

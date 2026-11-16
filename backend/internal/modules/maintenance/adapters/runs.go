@@ -367,6 +367,58 @@ func (s *RunStore) ReadRun(ctx context.Context, scope kernel.OrgScope, actor app
 	return view, nil
 }
 
+// ListRuns pages the organization's runs in queue order (B-BR-EMP-506)
+// between two queue authority checks; each item is the run read's view.
+func (s *RunStore) ListRuns(ctx context.Context, scope kernel.OrgScope, actor app.IncidentActor, member string, filter app.RunQueueFilter) (app.RunQueuePage, error) {
+	if err := validIncidentCall(scope, actor, member); err != nil {
+		return app.RunQueuePage{}, err
+	}
+	if err := filter.Validate(); err != nil {
+		return app.RunQueuePage{}, err
+	}
+	if !s.ready(false) {
+		return app.RunQueuePage{}, app.ErrUnavailable
+	}
+	org := scope.OrgID().String()
+	params := q.ListChecklistRunQueueParams{OrgID: org, RowLimit: int32(filter.Limit + 1)}
+	if filter.After != nil {
+		params.AfterID, params.AfterGroup = filter.After.RunID, int32(filter.After.Group)
+		params.AfterAt = pgtype.Timestamptz{Time: filter.After.CompletedAt.UTC(), Valid: true}
+	}
+	page := app.RunQueuePage{Items: []app.RunView{}}
+	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
+		if _, err := s.Authority.CheckRunCompanyTx(ctx, tx, scope, actor, member, org, app.RunQueue); err != nil {
+			return err
+		}
+		queries := q.New(tx)
+		ids, err := queries.ListChecklistRunQueue(ctx, params)
+		if err != nil {
+			return err
+		}
+		more := len(ids) > filter.Limit
+		if more {
+			ids = ids[:filter.Limit]
+		}
+		for _, id := range ids {
+			r, err := readRun(ctx, queries, org, id)
+			if err != nil {
+				return err
+			}
+			page.Items = append(page.Items, viewOf(r))
+		}
+		if more {
+			next := app.KeyOf(page.Items[len(page.Items)-1])
+			page.Next = &next
+		}
+		_, err = s.Authority.CheckRunCompanyTx(ctx, tx, scope, actor, member, org, app.RunQueue)
+		return err
+	})
+	if err != nil {
+		return app.RunQueuePage{}, incidentError(ctx, err)
+	}
+	return page, nil
+}
+
 // ReleaseRun releases a blocking run (B-BR-EMP-442) under the organization
 // root and the run row lock: authority, replay by operation, state and
 // revision, separation of releaser and author, then one release row and one

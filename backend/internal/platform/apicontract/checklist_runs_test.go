@@ -147,6 +147,8 @@ func TestChecklistRunContractBindsActualCurrentCompanyGuards(t *testing.T) {
 	routes := map[string]map[string]any{
 		"/v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read": {"permission": "fleet.asset.read", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
 		"/v1/orgs/{org_id}/checklists/runs/{run_id}/release":                {"permission": "check.incident.manage", "write": true, "fresh": true, "require_revision": true, "company_only": true, "success": 200},
+		// EMP-CHECK-004 (EDR-328): the queue under the incident queue's policy.
+		"/v1/orgs/{org_id}/checklists/runs/list": {"permission": "check.incident.manage", "write": false, "fresh": false, "require_revision": false, "company_only": true, "success": 200},
 	}
 	for path, want := range routes {
 		if document.Paths.Value(path) == nil || document.Paths.Value(path).Post == nil {

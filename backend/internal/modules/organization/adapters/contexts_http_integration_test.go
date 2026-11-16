@@ -132,8 +132,10 @@ func TestAccountContextsThroughActualCompanyHTTP(t *testing.T) {
 		t.Fatal(e)
 	}
 	view = call("/v1/org-access/contexts/read", selected, 200, nil)
-	if len(view["permissions"].([]any)) != 1 || view["permissions"].([]any)[0] != "idn.employee.read" || len(view["invitation_grants"].([]any)) != 0 {
-		t.Fatal("stale proof enabled private management")
+	// A stale proof keeps only the read hints: the employee read and, since
+	// EMP-CHECK-004 (B-BR-EMP-507), the owner's document-content read hint.
+	if hints := view["permissions"].([]any); len(hints) != 2 || hints[0] != "idn.employee.read" || hints[1] != "doc.document.view_content" || len(view["invitation_grants"].([]any)) != 0 {
+		t.Fatal("stale proof enabled private management", hints)
 	}
 	if view["employee_id"] != ownEmployee {
 		t.Fatal("a stale-proof read lost the member's own employee record")
