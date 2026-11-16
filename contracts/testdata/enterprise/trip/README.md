@@ -358,7 +358,32 @@ SHA256: `d591d9e496cb686e24658f59f91896892e323afaa35f1d5ba4bf2c752021c21f`.
 ./gradlew :domain:test --tests 'com.anpfuel.domain.enterprise.trip.EnterpriseTripMission*'
 ```
 
+## Device trip operations v3 (`trip-operations-v3.psv`)
+
+EMP-TRIP-021 / B-BR-EMP-528..530, BUC-EMP-272, EDR-344. Supersedes
+`trip-operations-v2.psv` (kept unchanged, no longer consumed): its first 61
+rows are every v2 row byte for byte and in order, then 33 rows add the
+`trip.start` mission soft reference of EMP-TRIP-023 (`mission=` puts one
+`{"type": "mission", "id": mission}` in the envelope `soft_references`, alone
+or beside the departure run in canonical set order; START 5), the EMP-TRIP-011
+lifecycle commands `trip.pause`, `trip.resume` and `trip.cancel` (PAUSE 8,
+RESUME 3, CANCEL 6: entity `trip` with `revision=` as `expected_revision`,
+payload exactly `reason`, optional for a pause or resume and required for a
+cancellation, at most the start as dependency) and the EMP-TRIP-008 answer
+`trip.mission.respond` (RESPOND 11: entity `mission` with `revision=`, payload
+exactly `response` and `reason`, no dependency, reference or attachment). Same
+header, grammar, envelope and classes as v1; the Go consumer runs the new rows
+through `ParseStart` (`MissionID`), `ParseTransition` and `ParseRespond`. 94
+rows (START 34: OK 13, MALFORMED 18, PROTOCOL 3; EVENT 17; FINISH 11; SUBMIT
+4; PAUSE 8; RESUME 3; CANCEL 6; RESPOND 11), SHA-256
+`5f4acc4b31c82580c9484a29e13baef92950d5ccfa3023cb58ba39d7eb629f54`, generated
+by `f4-logs/trip021-scripts/gen_trip_operation_vectors_v3.py` (the v2 oracle
+extended; it regenerates v2 byte for byte).
+
 ## Device trip operations v2 (`trip-operations-v2.psv`)
+
+Superseded by `trip-operations-v3.psv` (EMP-TRIP-021, EDR-344); the file is
+kept unchanged and is no longer consumed.
 
 EMP-TRIP-019 / B-BR-EMP-511, BUC-EMP-261..263, EDR-331. `trip-operations-v2.psv`
 supersedes v1 (kept unchanged and no longer consumed). It contains every v1

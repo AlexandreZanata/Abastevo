@@ -27,7 +27,13 @@ class TripView(
     val review: TripReviewLine,
     /** The start needs review and later records still wait on it. */
     val waitingForStartReview: Boolean,
+    /** EMP-TRIP-021: the pause, resume and cancel records in recorded order, each with its own sync state. */
+    lifecycle: List<TripRecordView> = emptyList(),
 ) {
+    private val commands = lifecycle.toList()
+    val lifecycle: List<TripRecordView> get() = commands.toList()
+    /** The mission the trip executes, from its start's own reference (B-BR-EMP-529). */
+    val missionId: String? get() = (start.fact as? TripOperationFact.Start)?.missionId
     private val values = events.toList()
     /** Logbook events in occurrence order (B-BR-EMP-324). */
     val events: List<TripRecordView> get() = values.toList()
@@ -44,6 +50,7 @@ object TripPresentation {
             is TripOperationFact.Event -> fact.tripId.takeIf { operationId in trip.eventOperationIds }
             is TripOperationFact.Finish -> fact.tripId.takeIf { operationId == trip.finishOperationId }
             is TripOperationFact.Submit -> fact.tripId.takeIf { operationId == trip.submitOperationId }
+            is TripOperationFact.Lifecycle -> fact.tripId.takeIf { trip.lifecycle.any { it.operationId == operationId && it.command == fact.command } }
         }
         require(owner == trip.tripId) { "Foreign trip record" }
         val receipt = entry.acknowledgement
@@ -57,6 +64,7 @@ object TripPresentation {
             { it.fact.declared.occurredAt }, { (it.fact as TripOperationFact.Event).eventId }))
         val finish = trip.finishOperationId?.let { record(entries, it, trip) }
         val submission = trip.submitOperationId?.let { record(entries, it, trip) }
+        val lifecycle = trip.lifecycle.map { record(entries, it.operationId, trip) }
         val review = when (submission?.sync) {
             null -> TripReviewLine.NOT_READY
             EnterpriseSyncStatus.ACCEPTED -> TripReviewLine.AWAITING_APPROVAL
@@ -65,8 +73,8 @@ object TripPresentation {
             else -> TripReviewLine.READY_TO_SEND
         }
         val unsent = setOf(EnterpriseSyncStatus.SAVED_ON_DEVICE, EnterpriseSyncStatus.SENDING, EnterpriseSyncStatus.SENT)
-        val waiting = start.sync == EnterpriseSyncStatus.NEEDS_REVIEW && (events + listOfNotNull(finish, submission)).any { it.sync in unsent }
-        return TripView(trip, start, events, finish, submission, review, waiting)
+        val waiting = start.sync == EnterpriseSyncStatus.NEEDS_REVIEW && (events + lifecycle + listOfNotNull(finish, submission)).any { it.sync in unsent }
+        return TripView(trip, start, events, finish, submission, review, waiting, lifecycle)
     }
 
     /** Newest start first; equal instants by trip identifier. */

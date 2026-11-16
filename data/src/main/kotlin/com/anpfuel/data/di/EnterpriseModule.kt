@@ -36,6 +36,10 @@ import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingProducer
 import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingService
 import com.anpfuel.application.enterprise.fueling.EnterpriseFuelingStore
 import com.anpfuel.application.enterprise.fueling.FuelingFlow
+import com.anpfuel.application.enterprise.trip.EnterpriseMissionGateway
+import com.anpfuel.application.enterprise.trip.EnterpriseMissionProducers
+import com.anpfuel.application.enterprise.trip.EnterpriseMissionService
+import com.anpfuel.application.enterprise.trip.EnterpriseMissionStore
 import com.anpfuel.application.enterprise.trip.EnterpriseTripProducers
 import com.anpfuel.application.enterprise.trip.EnterpriseTripService
 import com.anpfuel.application.enterprise.trip.EnterpriseTripStartHints
@@ -54,6 +58,7 @@ import com.anpfuel.data.enterprise.fleet.ProtectedReferenceCacheStore
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseQueue
 import com.anpfuel.data.enterprise.protectedqueue.ProtectedEnterpriseSyncStatusStore
 import com.anpfuel.data.enterprise.fueling.ProtectedFuelingStore
+import com.anpfuel.data.enterprise.trip.ProtectedMissionStore
 import com.anpfuel.data.enterprise.trip.ProtectedTripStore
 import com.anpfuel.data.remote.ApiEnvironment
 import com.anpfuel.data.remote.PhotoProofTransport
@@ -249,27 +254,41 @@ object EnterpriseModule {
     @Provides
     @Singleton
     fun queueRegistry(hints: EnterpriseTripStartHints): EnterpriseQueueRegistry =
-        // EMP-FUEL-011 adds the `fueling.submit` producer (EDR-295).
-        EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), *EnterpriseChecklistProducers.all(), EnterpriseFuelingProducer())
+        // EMP-FUEL-011 adds the `fueling.submit` producer (EDR-295); EMP-TRIP-021 the lifecycle producers (inside the trip
+        // producers) and the `trip.mission.respond` producer delivered alone (EDR-343).
+        EnterpriseQueueRegistry(*EnterpriseTripProducers.all(hints), *EnterpriseChecklistProducers.all(), EnterpriseFuelingProducer(),
+            *EnterpriseMissionProducers.all())
 
     /** The sealed trip book and the entries it names, never a plaintext table (EDR-242). */
     @Provides
     @Singleton
     fun tripStore(store: ProtectedEnterprisePersistence): EnterpriseTripStore = ProtectedTripStore(store)
 
+    /** EMP-TRIP-021: the sealed mission-inbox copy and the entries of its saved answers, never a plaintext table (EDR-342). */
+    @Provides
+    @Singleton
+    fun missionStore(store: ProtectedEnterprisePersistence): EnterpriseMissionStore = ProtectedMissionStore(store)
+
     @Provides
     @Singleton
     fun tripService(@ApplicationContext context: Context, source: EnterpriseQueueSource, delivery: EnterpriseQueueService,
-        store: EnterpriseTripStore, hints: EnterpriseTripStartHints): EnterpriseTripService = EnterpriseTripService(
+        store: EnterpriseTripStore, hints: EnterpriseTripStartHints, missions: EnterpriseMissionStore): EnterpriseTripService = EnterpriseTripService(
         source, { partition, operation -> delivery.save(partition, operation) }, store, hints,
-        AndroidEnterpriseDeviceClock(context)::read, { ZoneId.systemDefault() },
+        AndroidEnterpriseDeviceClock(context)::read, { ZoneId.systemDefault() }, missions = missions,
     )
+
+    @Provides
+    @Singleton
+    fun missionService(@ApplicationContext context: Context, source: EnterpriseQueueSource, delivery: EnterpriseQueueService,
+        store: EnterpriseMissionStore, gateway: EnterpriseMissionGateway, trips: EnterpriseTripStore): EnterpriseMissionService =
+        EnterpriseMissionService(source, { partition, operation -> delivery.save(partition, operation) }, store, gateway, trips,
+            AndroidEnterpriseDeviceClock(context)::read, { ZoneId.systemDefault() })
 
     /** Each visible trip owner is independent, like "Meus ativos"; "Enviar agora" is one dispatch of its partition. */
     @Provides
     fun tripFlow(source: EnterpriseQueueSource, service: EnterpriseTripService, fence: EnterpriseSessionFence,
-        delivery: EnterpriseQueueService, receipts: EnterpriseReceipts): TripFlow =
-        TripFlow(source, service, fence, receipts) { account, partition -> delivery.dispatch(account, partition) }
+        delivery: EnterpriseQueueService, receipts: EnterpriseReceipts, missions: EnterpriseMissionService): TripFlow =
+        TripFlow(source, service, fence, receipts, missions) { account, partition -> delivery.dispatch(account, partition) }
 
     /** EMP-FUEL-011: the partition's retained `fueling.submit` entries, never a plaintext table (EDR-295). */
     @Provides

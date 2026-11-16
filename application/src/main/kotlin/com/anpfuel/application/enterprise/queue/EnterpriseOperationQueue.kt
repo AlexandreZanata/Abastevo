@@ -71,7 +71,12 @@ interface EnterpriseOperationQueue {
     suspend fun stats(attempt: EnterpriseQueueAttempt): EnterpriseQueueStats
 }
 
-class EnterpriseQueueProducerDescriptor(val type: String, val schema: Long = 1) {
+/**
+ * [alone] (EMP-TRIP-021, EDR-343): an operation the server may answer with a whole-request transport denial that names
+ * only itself. Dispatch sends every due ordinary operation first and such an operation only as the single operation of
+ * its batch, so a denial never holds another record. Its operations carry no dependency and nothing depends on them.
+ */
+class EnterpriseQueueProducerDescriptor(val type: String, val schema: Long = 1, val alone: Boolean = false) {
     init {
         val segments = type.split('.')
         fun valid(segment: String): Boolean {
@@ -187,6 +192,8 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
         val attention = order.cycleBlocked.toMutableSet()
         val capturedClock = clock()
         val selected = mutableListOf<EnterpriseOperation>()
+        // EDR-343: due operations whose producer is `alone`, sent one per batch only when no ordinary operation is due.
+        val alone = mutableListOf<EnterpriseOperation>()
         val remainingDelay = mutableMapOf<String, Long>()
         val completed = mutableSetOf<String>()
         suspend fun result(value: EnterpriseQueueDispatchResult): EnterpriseQueueDispatchResult {
@@ -209,7 +216,8 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             return current.also { byId[operation.operationId] = it }
         }
         for (operation in order.ordered) {
-            if (registry.producer(operation) == null) { attention.add(operation.operationId); continue }
+            val producer = registry.producer(operation)
+            if (producer == null) { attention.add(operation.operationId); continue }
             var retry = byId.getValue(operation.operationId).retry
             val priorClock = retry.clock
             if (priorClock != null && (priorClock.boot != capturedClock.boot || capturedClock.elapsedMillis < priorClock.elapsedMillis)) {
@@ -233,6 +241,7 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
                 continue
             }
             remainingDelay[operation.operationId] = 0
+            if (producer.descriptor().alone) { alone.add(operation); continue }
             if (selected.size == limits.maxOperations) continue
             val candidate = selected + operation
             try {
@@ -241,6 +250,13 @@ class EnterpriseQueueService(private val source: EnterpriseQueueSource, private 
             } catch (_: SyncProtocolException) {
                 if (selected.isEmpty()) { attention.add(operation.operationId); remainingDelay.remove(operation.operationId) }
             }
+        }
+        if (selected.isEmpty()) for (operation in alone) {
+            try {
+                account.proofBudget.batchBytes(listOf(operation), limits)
+                selected.add(operation)
+                break
+            } catch (_: SyncProtocolException) { attention.add(operation.operationId); remainingDelay.remove(operation.operationId) }
         }
         if (selected.isEmpty()) return@guarded result(EnterpriseQueueDispatchResult(completed = completed.size, attention = attention.size,
             retryable = entries.size - attention.size - completed.size, retryAfterMillis = remainingDelay.values.minOrNull()))

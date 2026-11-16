@@ -67,7 +67,10 @@ import com.anpfuel.domain.enterprise.meter.MeterEntryForm
 import com.anpfuel.domain.enterprise.meter.MeterKind
 import com.anpfuel.domain.enterprise.meter.ReadingFlag
 import com.anpfuel.domain.enterprise.sync.EnterpriseSyncStatus
+import com.anpfuel.domain.enterprise.trip.MissionView
 import com.anpfuel.domain.enterprise.trip.TripAssetLabel
+import com.anpfuel.domain.enterprise.trip.TripCommand
+import com.anpfuel.domain.enterprise.trip.TripMissionResponse
 import com.anpfuel.domain.enterprise.trip.TripEvidence
 import com.anpfuel.domain.enterprise.trip.TripLocalFailure
 import com.anpfuel.domain.enterprise.trip.TripLocalState
@@ -90,8 +93,13 @@ import java.time.format.FormatStyle
 
 private sealed interface TripMode {
     data object Home : TripMode
-    data object Picker : TripMode
-    class Start(val choice: EnterpriseAssetChoice, val label: TripAssetLabel) : TripMode
+    /** [missionId] and [assetId] narrow the picker to a planned trip's vehicle (EMP-TRIP-021, B-BR-EMP-529). */
+    class Picker(val missionId: String? = null, val assetId: String? = null) : TripMode
+    class Start(val choice: EnterpriseAssetChoice, val label: TripAssetLabel, val missionId: String? = null) : TripMode
+    /** EMP-TRIP-021: one mission of the inbox, its decline reason and a trip's lifecycle reason. */
+    class Mission(val missionId: String) : TripMode
+    class Decline(val missionId: String) : TripMode
+    class Lifecycle(val tripId: String, val command: TripCommand) : TripMode
     class Event(val tripId: String) : TripMode
     class Finish(val tripId: String) : TripMode
     /** EMP-DOC-004: a photo of the reading carried by one record (owner operation and its METER_READING target). */
@@ -128,25 +136,41 @@ internal fun TripPanel(
     checklist: ChecklistViewState? = null,
     onDepartureCheck: (assetId: String) -> Unit = {},
     departureContent: (@Composable (assetId: String, label: String, onDone: () -> Unit) -> Unit)? = null,
+    /** EMP-TRIP-021: the missions inbox and the pause/resume/cancel actions; false hides them (`ENTERPRISE_MISSION_UI_ENABLED`). */
+    missionsEnabled: Boolean = false,
+    onRefreshMissions: () -> Unit = {},
+    onRespond: (missionId: String, TripMissionResponse, reason: String?) -> Unit = { _, _, _ -> },
+    onStartMission: (missionId: String, EnterpriseAssetChoice, TripAssetLabel, TripCapture) -> Unit = { _, _, _, _ -> },
+    onLifecycle: (tripId: String, TripCommand, reason: String?) -> Unit = { _, _, _ -> },
+    /** Extra mission actions owned by other tasks (EMP-ROUTE-004 navigation); none by default. */
+    missionExtra: @Composable (MissionView) -> Unit = {},
+    tripExtra: @Composable (TripView) -> Unit = {},
 ) {
     var mode by remember { mutableStateOf<TripMode>(TripMode.Home) }
     // A durable save closes the form it came from; a refusal or failure keeps the entered values.
-    LaunchedEffect(state.lastSaved) { if (state.lastSaved != null && mode !is TripMode.Picker) mode = TripMode.Home }
+    LaunchedEffect(state.lastSaved) {
+        // An answer returns to its mission, where its own state is shown; any other save returns to the list.
+        if (state.lastSaved != null && mode !is TripMode.Picker) mode = when (val saved = mode) {
+            is TripMode.Decline -> TripMode.Mission(saved.missionId)
+            is TripMode.Mission -> saved
+            else -> TripMode.Home
+        }
+    }
     // A sealed photo closes its sheet and drops the unsaved copy; a refusal or failure keeps it for another attempt.
     LaunchedEffect(state.lastAttached) { if (state.lastAttached != null && mode is TripMode.Photo) { capture?.reset?.invoke(); mode = TripMode.Home } }
     LaunchedEffect(state.context?.partition, state.epoch) { capture?.reset?.invoke(); mode = TripMode.Home }
     val photo: (String, AttachmentTarget) -> Unit = { owner, target -> capture?.reset?.invoke(); mode = TripMode.Photo(owner, target) }
     when (val current = mode) {
-        TripMode.Picker -> EnterpriseAssetPicker(
+        is TripMode.Picker -> EnterpriseAssetPicker(
             state = assets, connected = connected,
             onChoose = { id, warning ->
                 val choice = onChoose(id, warning)
                 val asset = assets.snapshot?.assets?.firstOrNull { it.asset.id == id }?.asset
-                if (choice != null && asset != null) mode = TripMode.Start(choice, TripAssetLabel(asset.name, asset.fleetNumber, asset.plate))
+                if (choice != null && asset != null) mode = TripMode.Start(choice, TripAssetLabel(asset.name, asset.fleetNumber, asset.plate), current.missionId)
             },
-            onCancel = { mode = TripMode.Home },
+            onCancel = { mode = current.missionId?.let { TripMode.Mission(it) } ?: TripMode.Home },
             modifier = modifier.testTag("enterprise-trip-picker"),
-            accepts = { it.kind != AssetKind.IMPLEMENT },
+            accepts = { it.kind != AssetKind.IMPLEMENT && (current.assetId == null || it.id == current.assetId) },
         )
         is TripMode.Checklist -> if (departureContent != null) departureContent(current.start.choice.assetId, label(current.start.label)) { mode = current.start }
             else LaunchedEffect(current) { mode = current.start }
@@ -182,12 +206,35 @@ internal fun TripPanel(
                     Notice(stringResource(R.string.enterprise_trips_loading))
                 }
             } else when (current) {
-                is TripMode.Start -> item { StartForm(current, state.busy, onStart, onChange = { onPick(); mode = TripMode.Picker },
+                is TripMode.Start -> item { StartForm(current, state.busy, { choice, label, capture ->
+                        current.missionId?.let { onStartMission(it, choice, label, capture) } ?: onStart(choice, label, capture) },
+                    onChange = { onPick(); mode = TripMode.Picker(current.missionId, state.missions?.missions?.firstOrNull { it.missionId == current.missionId }?.item?.assetId) },
                     onCancel = { mode = TripMode.Home }, checklist = checklist.takeIf { departureContent != null },
                     onDepartureCheck = onDepartureCheck, onDepartureOpen = { mode = TripMode.Checklist(current) }) }
                 is TripMode.Event -> item { EventForm(state.busy, onCancel = { mode = TripMode.Home }) { type, text -> onLog(current.tripId, type, text) } }
                 is TripMode.Finish -> state.trips.firstOrNull { it.trip.tripId == current.tripId }?.let { trip ->
                     item { FinishForm(trip, assets, state.busy, finishWarnings, onCancel = { mode = TripMode.Home }) { onFinish(current.tripId, it) } }
+                }
+                is TripMode.Mission -> state.missions?.missions?.firstOrNull { it.missionId == current.missionId }?.let { mission ->
+                    item(key = "mission-detail") {
+                        MissionDetail(mission, assets, state.busy,
+                            onAccept = { onRespond(mission.missionId, TripMissionResponse.ACCEPT, null) },
+                            onDecline = { mode = TripMode.Decline(mission.missionId) },
+                            onStart = { onPick(); mode = TripMode.Picker(mission.missionId, mission.item?.assetId) },
+                            onOpenTrip = { mode = TripMode.Home; onOpenTrip(it) },
+                            extra = { missionExtra(mission) })
+                    }
+                }
+                is TripMode.Decline -> item {
+                    ReasonForm(R.string.enterprise_missions_decline, R.string.enterprise_missions_decline_reason, R.string.enterprise_missions_save_decline,
+                        required = true, busy = state.busy, tag = "enterprise-mission-decline-form", onCancel = { mode = TripMode.Mission(current.missionId) }) {
+                        onRespond(current.missionId, TripMissionResponse.DECLINE, it)
+                    }
+                }
+                is TripMode.Lifecycle -> item {
+                    val (title, label, save) = lifecycleForm(current.command)
+                    ReasonForm(title, label, save, required = current.command == TripCommand.CANCEL, busy = state.busy,
+                        tag = "enterprise-trip-lifecycle-form", onCancel = { mode = TripMode.Home }) { onLifecycle(current.tripId, current.command, it) }
                 }
                 is TripMode.Photo -> if (capture != null) item {
                     ReceiptCaptureCard(stringResource(R.string.enterprise_receipts_title_reading), capture, state.busy,
@@ -197,10 +244,15 @@ internal fun TripPanel(
                 else -> if (open != null) {
                     tripDetail(open, connected, state.busy, onEvent = { mode = TripMode.Event(open.trip.tripId) },
                         onFinish = { mode = TripMode.Finish(open.trip.tripId) }, onReady = { onReady(open.trip.tripId) }, onSend = onSend,
-                        photos = state.attachments, onPhoto = photo.takeIf { capture != null })
+                        photos = state.attachments, onPhoto = photo.takeIf { capture != null },
+                        onLifecycle = if (missionsEnabled) { command -> mode = TripMode.Lifecycle(open.trip.tripId, command) } else null,
+                        missionTitle = open.missionId?.let { id -> state.missions?.missions?.firstOrNull { it.missionId == id }?.item?.title },
+                        extra = { tripExtra(open) })
                 } else {
+                    if (missionsEnabled) missionsSection(state.missions, state.missionsUnavailable, connected, state.busy, state.refreshed,
+                        state.refreshFailed, onRefresh = onRefreshMissions, onOpen = { mode = TripMode.Mission(it) })
                     item {
-                        Button(onClick = { onPick(); mode = TripMode.Picker }, enabled = !state.busy,
+                        Button(onClick = { onPick(); mode = TripMode.Picker() }, enabled = !state.busy,
                             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("enterprise-trip-start")) {
                             Text(stringResource(R.string.enterprise_trips_start))
                         }
@@ -222,12 +274,14 @@ private fun Feedback(state: TripViewState, connected: Boolean) {
     if (state.busy) CircularProgressIndicator()
     val refusal = state.refusal
     val photoRefusal = state.attachmentRefusal
+    val missionRefusal = state.missionRefusal
     val message = when {
         state.saveFailed -> R.string.enterprise_trips_save_failed
         state.captureInvalid -> R.string.enterprise_trips_capture_invalid
         state.driverUnknown -> R.string.enterprise_trips_driver_unknown
         state.sendFailed -> R.string.enterprise_trips_send_failed
         refusal != null -> refusalText(refusal)
+        missionRefusal != null -> missionRefusalText(missionRefusal)
         photoRefusal != null -> localFailureText(photoRefusal)
         state.lastAttached != null -> R.string.enterprise_receipts_saved
         state.lastSaved != null -> R.string.enterprise_trips_saved
@@ -251,10 +305,15 @@ private fun refusalText(failure: TripLocalFailure): Int = when (failure) {
     TripLocalFailure.DUPLICATE -> R.string.enterprise_trips_save_failed
     TripLocalFailure.FULL -> R.string.enterprise_trips_refusal_full
     TripLocalFailure.FOREIGN -> R.string.enterprise_trips_refusal_foreign
+    TripLocalFailure.NOT_RUNNING -> R.string.enterprise_missions_refusal_not_running
+    TripLocalFailure.NOT_PAUSED -> R.string.enterprise_missions_refusal_not_paused
+    TripLocalFailure.MISSION_ALREADY_STARTED -> R.string.enterprise_missions_start_already
 }
 
 private fun stateText(state: TripLocalState): Int = when (state) {
     TripLocalState.IN_PROGRESS -> R.string.enterprise_trips_in_progress
+    TripLocalState.PAUSED -> R.string.enterprise_missions_paused
+    TripLocalState.CANCELLED -> R.string.enterprise_missions_cancelled_local
     TripLocalState.FINISHED -> R.string.enterprise_trips_finished_local
     TripLocalState.START_REFUSED -> R.string.enterprise_trips_start_refused_local
 }
@@ -304,7 +363,8 @@ private fun StatusChip(record: TripRecordView, tag: String) {
 /** The open trip as separate list items, so a long timeline scrolls record by record. */
 private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: Boolean, onEvent: () -> Unit, onFinish: () -> Unit,
     onReady: () -> Unit, onSend: () -> Unit, photos: Map<String, List<AttachmentView>> = emptyMap(),
-    onPhoto: ((String, AttachmentTarget) -> Unit)? = null) {
+    onPhoto: ((String, AttachmentTarget) -> Unit)? = null, onLifecycle: ((TripCommand) -> Unit)? = null, missionTitle: String? = null,
+    extra: @Composable () -> Unit = {}) {
     item(key = "detail-header") {
         TripCard(Modifier.testTag("enterprise-trip-detail")) {
             Text(label(view.trip.label), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
@@ -314,28 +374,50 @@ private fun LazyListScope.tripDetail(view: TripView, connected: Boolean, busy: B
             if (view.review == TripReviewLine.AWAITING_APPROVAL) Text(stringResource(R.string.enterprise_trips_review_not_received))
             if (view.waitingForStartReview) Notice(stringResource(R.string.enterprise_trips_waiting_start_review), Modifier.testTag("enterprise-trip-waiting"))
             if (view.trip.state == TripLocalState.START_REFUSED) Notice(stringResource(R.string.enterprise_trips_start_refused_notice))
+            missionTitle?.let { Text(stringResource(R.string.enterprise_missions_trip_mission, it), modifier = Modifier.testTag("enterprise-trip-mission")) }
         }
     }
     item(key = "detail-timeline") {
         Text(stringResource(R.string.enterprise_trips_timeline), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
     }
     item(key = "record-start") { Record(view.start, stringResource(R.string.enterprise_trips_record_start), "start", busy, photos, onPhoto) }
-    items(view.events, key = { "record-" + it.fact.operationId }) { event ->
-        val fact = event.fact as TripOperationFact.Event
-        Record(event, listOfNotNull(stringResource(eventText(fact.type)), fact.text).joinToString(": "), "event-${fact.eventId}")
+    // Events and the EMP-TRIP-011 lifecycle commands in occurrence order, each with its own sync state.
+    val timeline = (view.events + view.lifecycle).sortedWith(compareBy({ it.fact.declared.occurredAt }, { it.fact.operationId }))
+    items(timeline, key = { "record-" + it.fact.operationId }) { record ->
+        when (val fact = record.fact) {
+            is TripOperationFact.Event -> Record(record, listOfNotNull(stringResource(eventText(fact.type)), fact.text).joinToString(": "), "event-${fact.eventId}")
+            is TripOperationFact.Lifecycle -> Record(record, listOfNotNull(stringResource(when (fact.command) {
+                TripCommand.PAUSE -> R.string.enterprise_missions_record_pause
+                TripCommand.RESUME -> R.string.enterprise_missions_record_resume
+                else -> R.string.enterprise_missions_record_cancel
+            }), fact.reason).joinToString(": "), "lifecycle-${fact.operationId}")
+            else -> Unit
+        }
     }
     view.finish?.let { item(key = "record-finish") { Record(it, stringResource(R.string.enterprise_trips_record_finish), "finish", busy, photos, onPhoto) } }
     view.submission?.let { item(key = "record-submission") { Record(it, stringResource(R.string.enterprise_trips_record_submission), "submission") } }
     item(key = "detail-actions") {
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (view.trip.state == TripLocalState.IN_PROGRESS) {
+            if (view.trip.open) {
                 Button(onClick = onEvent, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("enterprise-trip-add-event")) {
                     Text(stringResource(R.string.enterprise_trips_add_event))
+                }
+                if (onLifecycle != null) {
+                    val command = if (view.trip.state == TripLocalState.PAUSED) TripCommand.RESUME else TripCommand.PAUSE
+                    OutlinedButton(onClick = { onLifecycle(command) }, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                        .testTag(if (command == TripCommand.PAUSE) "enterprise-trip-pause" else "enterprise-trip-resume")) {
+                        Text(stringResource(if (command == TripCommand.PAUSE) R.string.enterprise_missions_pause else R.string.enterprise_missions_resume))
+                    }
                 }
                 OutlinedButton(onClick = onFinish, enabled = !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("enterprise-trip-finish")) {
                     Text(stringResource(R.string.enterprise_trips_finish))
                 }
+                if (onLifecycle != null) OutlinedButton(onClick = { onLifecycle(TripCommand.CANCEL) }, enabled = !busy,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("enterprise-trip-cancel-trip")) {
+                    Text(stringResource(R.string.enterprise_missions_cancel_trip))
+                }
             }
+            extra()
             if (view.trip.state == TripLocalState.FINISHED && view.submission == null) Button(onClick = onReady, enabled = !busy,
                 modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("enterprise-trip-ready")) { Text(stringResource(R.string.enterprise_trips_mark_ready)) }
             OutlinedButton(onClick = onSend, enabled = connected && !busy, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("enterprise-trip-send")) {
@@ -495,7 +577,7 @@ internal fun TripsHomeCard(onOpen: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun TripCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
+internal fun TripCard(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val fill = MaterialTheme.colorScheme.surfaceContainerLow
     Card(modifier.fillMaxWidth(), shape = AnpContainerDefaults.containerShape(),
         colors = CardDefaults.cardColors(containerColor = fill), border = AnpContainerDefaults.borderStroke(fill)) {
@@ -504,12 +586,12 @@ private fun TripCard(modifier: Modifier = Modifier, content: @Composable () -> U
 }
 
 @Composable
-private fun Notice(message: String, modifier: Modifier = Modifier) {
+internal fun Notice(message: String, modifier: Modifier = Modifier) {
     Text(message, modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite })
 }
 
 @Composable
-private fun formatted(instant: Instant): String {
+internal fun formatted(instant: Instant): String {
     val locale = LocalConfiguration.current.locales[0]
     val zone = remember { ZoneId.systemDefault() }
     val formatter = remember(locale, zone) { DateTimeFormatter.ofLocalizedDateTime(FormatStyle.MEDIUM).withLocale(locale).withZone(zone) }

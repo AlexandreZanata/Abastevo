@@ -16,12 +16,14 @@ import (
 
 // EMP-TRIP-005 (B-BR-EMP-375, EDR-245): the Android producer's exact operation
 // bytes, v2 with the EMP-TRIP-019 checklist-run references (B-BR-EMP-511,
-// EDR-331; v1 is kept unconsumed). Every OK row must parse through the real protocol and intake parsers
+// EDR-331; v1 is kept unconsumed), v3 with the EMP-TRIP-021 mission reference,
+// lifecycle commands and mission answer (B-BR-EMP-528..530, EDR-344; v2 is kept
+// unconsumed and its rows open v3 byte for byte). Every OK row must parse through the real protocol and intake parsers
 // with exactly the row's fields; every refused row must be refused by the same
 // parser with the same class.
 const (
-	operationsCorpusPath = "../../../../../contracts/testdata/enterprise/trip/trip-operations-v2.psv"
-	operationsCorpusHash = "08e0c63235a470ce11756f9700f99d29ec640cf03e8803e3e845e6341dda04ef"
+	operationsCorpusPath = "../../../../../contracts/testdata/enterprise/trip/trip-operations-v3.psv"
+	operationsCorpusHash = "5f4acc4b31c82580c9484a29e13baef92950d5ccfa3023cb58ba39d7eb629f54"
 	vectorAccount        = "7b0e2a54-0000-4000-8000-000000009501"
 	vectorOrigin         = "https://api.example.invalid"
 	vectorOrg            = "7b0e2a54-0000-4000-8000-000000009502"
@@ -100,9 +102,11 @@ func TestSharedTripOperationVectors(t *testing.T) {
 	for _, v := range vectors {
 		counts[v.operation+"/"+v.outcome]++
 	}
-	want := map[string]int{"START/OK": 10, "START/MALFORMED": 17, "START/PROTOCOL": 2, "EVENT/OK": 7, "EVENT/MALFORMED": 7, "EVENT/UNSUPPORTED": 3,
-		"FINISH/OK": 6, "FINISH/MALFORMED": 4, "FINISH/PROTOCOL": 1, "SUBMIT/OK": 2, "SUBMIT/MALFORMED": 1, "SUBMIT/PROTOCOL": 1}
-	if len(vectors) != 61 || fmt.Sprint(counts) != fmt.Sprint(want) {
+	want := map[string]int{"START/OK": 13, "START/MALFORMED": 18, "START/PROTOCOL": 3, "EVENT/OK": 7, "EVENT/MALFORMED": 7, "EVENT/UNSUPPORTED": 3,
+		"FINISH/OK": 6, "FINISH/MALFORMED": 4, "FINISH/PROTOCOL": 1, "SUBMIT/OK": 2, "SUBMIT/MALFORMED": 1, "SUBMIT/PROTOCOL": 1,
+		"PAUSE/OK": 4, "PAUSE/MALFORMED": 3, "PAUSE/PROTOCOL": 1, "RESUME/OK": 2, "RESUME/MALFORMED": 1,
+		"CANCEL/OK": 3, "CANCEL/MALFORMED": 3, "RESPOND/OK": 4, "RESPOND/MALFORMED": 6, "RESPOND/PROTOCOL": 1}
+	if len(vectors) != 94 || fmt.Sprint(counts) != fmt.Sprint(want) {
 		t.Fatalf("trip operation corpus counts %v", counts)
 	}
 	for _, v := range vectors {
@@ -142,6 +146,9 @@ func TestSharedTripOperationVectors(t *testing.T) {
 			want := []string{}
 			if run, ok := v.args["run"]; ok {
 				want = append(want, app.ChecklistRunReferenceType+":"+run)
+			}
+			if mission, ok := v.args["mission"]; ok && v.operation == "START" {
+				want = append(want, app.MissionReferenceType+":"+mission)
 			}
 			if fmt.Sprint(refs) != fmt.Sprint(want) {
 				t.Fatal("soft references", refs)
@@ -191,7 +198,7 @@ func checkOperationVector(t *testing.T, v operationVector, op protocol.Operation
 			return err
 		}
 		s, err := command.Snapshot()
-		if err != nil || s.TripID != v.args["trip"] || s.AssetID != v.args["asset"] || s.DriverID != v.args["driver"] || s.DepartureRunID != v.args["run"] || s.MissionID != "" ||
+		if err != nil || s.TripID != v.args["trip"] || s.AssetID != v.args["asset"] || s.DriverID != v.args["driver"] || s.DepartureRunID != v.args["run"] || s.MissionID != v.args["mission"] ||
 			!readingMatches(s.Reading) || !sameText(s.MissingReason, vectorText(t, v, "reason")) || !clockMatches(s.Event) {
 			t.Fatal("parsed start differs from the row")
 		}
@@ -221,6 +228,26 @@ func checkOperationVector(t *testing.T, v operationVector, op protocol.Operation
 		s, err := command.Snapshot()
 		if err != nil || s.TripID != v.args["trip"] || fmt.Sprint(s.Revision) != v.args["revision"] {
 			t.Fatal("parsed submission differs from the row")
+		}
+	case "PAUSE", "RESUME", "CANCEL":
+		command, err := app.ParseTransition(op)
+		if err != nil {
+			return err
+		}
+		s, err := command.Snapshot()
+		if err != nil || s.TripID != v.args["trip"] || string(s.Command) != v.operation || fmt.Sprint(s.Expected) != v.args["revision"] ||
+			!sameText(s.Reason, vectorText(t, v, "reason")) || s.AuthorMembershipID != "7b0e2a54-0000-4000-8000-000000009503" {
+			t.Fatal("parsed lifecycle command differs from the row")
+		}
+	case "RESPOND":
+		command, err := app.ParseRespond(op)
+		if err != nil {
+			return err
+		}
+		s, err := command.Snapshot()
+		if err != nil || s.MissionID != v.args["mission"] || string(s.Response) != v.args["response"] || fmt.Sprint(s.ExpectedRevision) != v.args["revision"] ||
+			!sameText(s.Reason, vectorText(t, v, "reason")) || s.AuthorMembershipID != "7b0e2a54-0000-4000-8000-000000009503" {
+			t.Fatal("parsed mission response differs from the row")
 		}
 	default:
 		t.Fatal("unknown operation", v.operation)

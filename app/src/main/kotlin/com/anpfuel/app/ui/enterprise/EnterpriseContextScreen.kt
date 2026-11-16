@@ -324,7 +324,7 @@ fun EnterpriseContextScreen(
         ) else if (showTrips && resumed && renderedSelected != null && !choosing &&
             tripsFor?.partition == renderedSelected.partition && tripsFor?.membershipId == renderedSelected.membershipId) TripPanel(
             // A source loss clears the owner; keep only its safe message and withhold every trip fact.
-            state = if (tripsMatch) tripState else tripState.copy(trips = emptyList(), openTripId = null,
+            state = if (tripsMatch) tripState else tripState.copy(trips = emptyList(), openTripId = null, missions = null,
                 error = tripState.error ?: EnterpriseAccessError.STALE),
             connected = connected,
             assets = if (assetsMatches) assetsState else assetsState.copy(snapshot = null, detailAssetId = null),
@@ -352,6 +352,15 @@ fun EnterpriseContextScreen(
                 ChecklistRunPanel(renderedChecklist, connected, label, checklistActions(renderedSelected), onBack = onDone,
                     modifier = Modifier.fillMaxSize().padding(padding))
             },
+            // EMP-TRIP-021: the missions inbox, answers, planned starts and the trip lifecycle, with the same exact-partition guards.
+            missionsEnabled = BuildConfig.ENTERPRISE_MISSION_UI_ENABLED,
+            onRefreshMissions = { if (tripsMatch) tripViewModel.refreshMissions(renderedEpoch, tripState.generation) },
+            onRespond = { mission, response, reason -> if (tripsMatch) tripViewModel.respond(mission, response, reason, renderedEpoch, tripState.generation) },
+            onStartMission = { mission, choice, label, departure ->
+                if (tripsMatch) tripViewModel.startMission(mission, choice, label, departure, renderedEpoch, tripState.generation,
+                    if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) departureRun(renderedChecklist, choice.assetId) else null)
+            },
+            onLifecycle = { trip, command, reason -> if (tripsMatch) tripViewModel.lifecycle(trip, command, reason, renderedEpoch, tripState.generation) },
         ) else if (showAssets && resumed && renderedSelected != null && !choosing &&
             assetsFor?.partition == renderedSelected.partition && assetsFor?.membershipId == renderedSelected.membershipId) MyAssetsPanel(
             // A source loss clears the owner; keep only its safe message and withhold every cached fact.

@@ -144,6 +144,10 @@ EMP-CHECK-002 registers `check.run.complete`; its projection is one sealed
 `checklist-book` v1 RECORD per partition, holding cached applicable reads, answers
 written without an operation, and completions written in the queue's own write.
 
+EMP-TRIP-021 adds the `trip.pause`, `trip.resume` and `trip.cancel` producers (the index becomes `trip-book` v2, which reads v1) and the
+`trip.mission.respond` producer, delivered alone after every other due operation; the missions copy is one sealed `mission-inbox` v1 RECORD per
+partition, replaced by a refresh without an operation and indexed by the answer producer in the queue's own write; no plaintext table exists.
+
 The separate operation WorkManager uses empty system input and discovers only
 the current account/origin through authenticated protected descriptors. The
 actual Android provider accepts exact scoped normal/denial/lock prefixes;
