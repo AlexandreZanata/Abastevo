@@ -238,6 +238,9 @@ func RegisterMeterCorrections(router chi.Router, service app.MeterCorrectionServ
 	}); e != nil {
 		return e
 	}
+	if e := registerMeterChange(owned, service, gateway, authorization); e != nil {
+		return e
+	}
 	return guarded.Register(owned, MeterDecidePath, gateway, meterCorrectionRule(true), authorization, app.MeterReviewPolicy(true), resource, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input meterDecideRequest) (any, error) {
 		actor, e := currentActor(ctx)
 		if e != nil {
@@ -270,6 +273,10 @@ func RegisterMeterCorrections(router chi.Router, service app.MeterCorrectionServ
 		out := map[string]any{"asset_id": assetID, "meter_id": meterID, "decision": input.Decision, "reading": projectReadingState(v.Target), "replacement": nil, "reevaluated": reevaluated, "replayed": replay, "data_mode": "SYNTHETIC"}
 		if v.Replacement != nil {
 			out["replacement"] = projectReadingState(*v.Replacement)
+		}
+		if v.Boundary != nil {
+			// EMP-METER-005: a confirmed rollover also returns its boundary.
+			out["boundary"] = projectBoundary(*v.Boundary)
 		}
 		return out, nil
 	})

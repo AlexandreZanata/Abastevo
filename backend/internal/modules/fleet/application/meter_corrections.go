@@ -28,6 +28,8 @@ const (
 	MeterSupersede MeterDecision = "SUPERSEDE"
 	MeterVoid      MeterDecision = "VOID"
 	MeterConfirm   MeterDecision = "CONFIRM"
+	// MeterConfirmRollover confirms a POSSIBLE_ROLLOVER reading (B-BR-EMP-486).
+	MeterConfirmRollover MeterDecision = "CONFIRM_ROLLOVER"
 )
 
 type MeterDecisionInput struct {
@@ -79,7 +81,7 @@ func NewMeterDecisionCommand(v MeterDecisionInput) (MeterDecisionCommand, error)
 			}
 			v.Declared = &declared
 		}
-	case MeterVoid, MeterConfirm:
+	case MeterVoid, MeterConfirm, MeterConfirmRollover:
 		if v.Value != (meter.Value{}) || v.Declared != nil {
 			return MeterDecisionCommand{}, meter.ErrInvalid
 		}
@@ -134,6 +136,8 @@ type MeterDecisionResult struct {
 	Target      MeterReadingState
 	Replacement *MeterReadingState
 	Reevaluated []MeterReadingState
+	// Boundary is the rollover a CONFIRM_ROLLOVER recorded (EMP-METER-005).
+	Boundary *MeterBoundaryResult
 }
 
 func (r MeterDecisionResult) Clone() MeterDecisionResult {
@@ -147,6 +151,10 @@ func (r MeterDecisionResult) Clone() MeterDecisionResult {
 		out[i] = v.Clone()
 	}
 	r.Reevaluated = out
+	if r.Boundary != nil {
+		b := r.Boundary.Clone()
+		r.Boundary = &b
+	}
 	return r
 }
 
@@ -196,6 +204,8 @@ type MeterHistoryPage struct {
 // history read selects the suspect list (current SUSPECT with neighbours).
 type MeterCorrectionRepository interface {
 	DecideMeterReading(context.Context, kernel.OrgScope, FleetActor, string, string, MeterDecisionCommand) (MeterDecisionResult, bool, error)
+	// ChangeMeter replaces or resets a meter (EMP-METER-005).
+	ChangeMeter(context.Context, kernel.OrgScope, FleetActor, string, MeterChangeIDs, MeterChangeCommand) (MeterBoundaryResult, bool, error)
 	MeterReadingHistory(context.Context, kernel.OrgScope, FleetActor, string, string, string, MeterHistoryFilter, bool) (MeterHistoryPage, error)
 }
 
@@ -238,8 +248,9 @@ func (s MeterCorrectionService) Decide(ctx context.Context, scope kernel.OrgScop
 	if e != nil {
 		return MeterDecisionResult{}, false, e
 	}
-	want := map[MeterDecision]meter.State{MeterSupersede: meter.Voided, MeterVoid: meter.Voided, MeterConfirm: meter.Valid}[in.Decision]
-	if result.Target.ReadingID != in.ReadingID || result.Target.State != want || result.Target.Revision != in.ExpectedRevision+1 || !validDecisionState(result.Target) || (result.Replacement != nil) != (in.Decision == MeterSupersede) {
+	want := map[MeterDecision]meter.State{MeterSupersede: meter.Voided, MeterVoid: meter.Voided, MeterConfirm: meter.Valid, MeterConfirmRollover: meter.Valid}[in.Decision]
+	if result.Target.ReadingID != in.ReadingID || result.Target.State != want || result.Target.Revision != in.ExpectedRevision+1 || !validDecisionState(result.Target) || (result.Replacement != nil) != (in.Decision == MeterSupersede) ||
+		(result.Boundary != nil) != (in.Decision == MeterConfirmRollover) || result.Boundary != nil && !validBoundary(*result.Boundary, in.MeterID, MeterRollover) {
 		return MeterDecisionResult{}, false, ErrUnavailable
 	}
 	if result.Replacement != nil && (!validDecisionState(*result.Replacement) || result.Replacement.State == meter.Voided || result.Replacement.ReadingID == in.ReadingID) {

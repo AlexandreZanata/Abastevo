@@ -513,6 +513,7 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",
       "routes": [
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/change",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/suspect/list",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/{reading_id}/decide",
         "POST /v1/orgs/{org_id}/sync/reviews/meter-readings/list",

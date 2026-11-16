@@ -40,7 +40,8 @@ var _ app.MeterCorrectionRepository = (*MeterStore)(nil)
 
 func MeterAuditDefinitions() []audit.Definition {
 	return []audit.Definition{{Action: "meter.installed", TargetType: "meter"},
-		{Action: "meter.reading.corrected", TargetType: meterReadingTarget}, {Action: "meter.reading.voided", TargetType: meterReadingTarget}, {Action: "meter.reading.confirmed", TargetType: meterReadingTarget}}
+		{Action: "meter.reading.corrected", TargetType: meterReadingTarget}, {Action: "meter.reading.voided", TargetType: meterReadingTarget}, {Action: "meter.reading.confirmed", TargetType: meterReadingTarget},
+		{Action: meterReplacedAction, TargetType: meterBoundaryTarget}, {Action: meterResetAction, TargetType: meterBoundaryTarget}, {Action: meterRolloverAction, TargetType: meterReadingTarget}}
 }
 func meterError(ctx context.Context, err error) error {
 	if err == nil {

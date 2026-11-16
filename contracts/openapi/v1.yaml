@@ -18481,7 +18481,9 @@ paths:
         meter.reading.correct covering the asset. One audited decision on one reading of the open segment at its
         expected history revision (0 without history), with a reason. SUPERSEDE records a new reading (corrected
         value of the stated kind, optional corrected declaration) and voids the original with a link; VOID makes it
-        VOIDED; CONFIRM makes a SUSPECT reading with only IMPLAUSIBLE_RATE/FUTURE_INSTANT VALID. Suspect neighbours
+        VOIDED; CONFIRM makes a SUSPECT reading with only IMPLAUSIBLE_RATE/FUTURE_INSTANT VALID; CONFIRM_ROLLOVER
+        makes a POSSIBLE_ROLLOVER reading VALID in a new ROLLOVER segment opened at it and returns the boundary
+        (EMP-METER-005; no modulus or no flag → VALIDATION_FAILED; segment anchors are not decided). Suspect neighbours
         are re-evaluated in the same transaction. VOIDED → READING_ALREADY_SUPERSEDED, installation opening or
         monotonicity confirmation → VALIDATION_FAILED, approved parent record → AMENDMENT_REQUIRED, stale revision
         → CONFLICT. Same operation and digest returns the first result (EMP-METER-004, B-BR-EMP-286..290).
@@ -18537,6 +18539,87 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseMeterDecision'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/change:
+    post:
+      tags:
+      - enterprise-fleet
+      operationId: enterpriseMeterChange
+      summary: Replace or reset a meter
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, enabled capability and
+        meter.reading.correct covering the asset. REPLACE records the final value (or declares it unknown), closes
+        the meter's last segment, removes it and installs the new meter of the same kind at the same instant;
+        RESET closes the open segment with the value before and opens a RESET segment with the value after. The
+        implied usage is returned and stored. revision is the meter's segment count (stale → CONFLICT); an instant
+        not after the open segment's opening or later than the server clock, a live reading after it, a final
+        value below the latest valid reading or a value not below a modulus → VALIDATION_FAILED; a removed or
+        foreign meter → NOT_FOUND. Same operation and digest returns the first result (EMP-METER-005,
+        B-BR-EMP-484/485).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: meter.reading.correct
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      - name: meter_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMeterChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008511
+              revision: 1
+              change: RESET
+              kind: ODOMETER
+              occurred_at: '2026-11-08T13:00:00Z'
+              entry_zone: America/Cuiaba
+              device_offset_seconds: -14400
+              before_value: '184532000'
+              after_value: '0'
+      responses:
+        '200':
+          description: Private audited boundary or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMeterChange'
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
         '401':
@@ -29988,6 +30071,7 @@ components:
       - READING_ABOVE_NEXT
       - IMPLAUSIBLE_RATE
       - FUTURE_INSTANT
+      - POSSIBLE_ROLLOVER
     EnterpriseMeterHistoryItem:
       type: object
       additionalProperties: false
@@ -30188,6 +30272,7 @@ components:
           - SUPERSEDE
           - VOID
           - CONFIRM
+          - CONFIRM_ROLLOVER
         reason:
           type: string
           minLength: 1
@@ -30223,6 +30308,260 @@ components:
         revision: 1
         decision: VOID
         reason: Leitura do ativo errado
+    EnterpriseMeterChangeRequest:
+      type: object
+      additionalProperties: false
+      description: revision is the meter's segment count. REPLACE states the final value (or final_unknown true),
+        the new meter's label, optional modulus and opening value; RESET states the values before and after. All
+        values are exact base units of the stated kind; occurred_at, entry_zone and device_offset_seconds are the
+        boundary instant and the declaration of the readings it records.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 999999
+        change:
+          type: string
+          enum:
+          - REPLACE
+          - RESET
+        kind:
+          type: string
+          enum:
+          - ODOMETER
+          - HOUR_METER
+        occurred_at:
+          type: string
+          format: date-time
+        entry_zone:
+          type: string
+          minLength: 1
+        device_offset_seconds:
+          type: integer
+          minimum: -64800
+          maximum: 64800
+        final_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        final_unknown:
+          type: boolean
+        label:
+          type: string
+          minLength: 1
+          maxLength: 320
+        modulus:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        opening_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        before_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        after_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - change
+      - kind
+      - occurred_at
+      - entry_zone
+      - device_offset_seconds
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008511
+        revision: 1
+        change: REPLACE
+        kind: ODOMETER
+        occurred_at: '2026-11-08T13:00:00Z'
+        entry_zone: America/Cuiaba
+        device_offset_seconds: -14400
+        final_value: '184532000'
+        label: Painel novo
+        opening_value: '0'
+    EnterpriseMeterImpliedUsage:
+      type: object
+      additionalProperties: false
+      properties:
+        status:
+          type: string
+          enum:
+          - OK
+          - INSUFFICIENT_DATA
+        reason:
+          oneOf:
+          - type: string
+            enum:
+            - METER_GAP
+          - type: 'null'
+        value:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseMeterCount'
+          - type: 'null'
+        from_reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      required:
+      - status
+      - reason
+      - value
+      - from_reading_id
+    EnterpriseMeterCount:
+      type: string
+      pattern: ^(0|[1-9][0-9]*)$
+      maxLength: 19
+    EnterpriseMeterBoundary:
+      type: object
+      additionalProperties: false
+      description: One recorded segment boundary (EMP-METER-005). closing_value is null for an unknown final value,
+        whose implied usage is INSUFFICIENT_DATA with METER_GAP; the implied usage is measured from the latest VALID
+        reading before the boundary and stored with it.
+      properties:
+        change:
+          type: string
+          enum:
+          - REPLACE
+          - RESET
+          - ROLLOVER
+        meter_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        closed_segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        at:
+          type: string
+          format: date-time
+        closing_value:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseMeterCount'
+          - type: 'null'
+        closing_reading_id:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        implied_usage:
+          $ref: '#/components/schemas/EnterpriseMeterImpliedUsage'
+        new_meter_id:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        opened_segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        opening_reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        opening_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        segments:
+          type: integer
+          minimum: 1
+        reevaluated:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseMeterReadingState'
+      required:
+      - change
+      - meter_id
+      - closed_segment_id
+      - at
+      - closing_value
+      - closing_reading_id
+      - implied_usage
+      - new_meter_id
+      - opened_segment_id
+      - opening_reading_id
+      - opening_value
+      - segments
+      - reevaluated
+    EnterpriseMeterChange:
+      type: object
+      additionalProperties: false
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        change:
+          type: string
+          enum:
+          - REPLACE
+          - RESET
+        meter_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        closed_segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        at:
+          type: string
+          format: date-time
+        closing_value:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseMeterCount'
+          - type: 'null'
+        closing_reading_id:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        implied_usage:
+          $ref: '#/components/schemas/EnterpriseMeterImpliedUsage'
+        new_meter_id:
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseUUID'
+          - type: 'null'
+        opened_segment_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        opening_reading_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        opening_value:
+          $ref: '#/components/schemas/EnterpriseMeterCount'
+        segments:
+          type: integer
+          minimum: 1
+        reevaluated:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseMeterReadingState'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - asset_id
+      - change
+      - meter_id
+      - closed_segment_id
+      - at
+      - closing_value
+      - closing_reading_id
+      - implied_usage
+      - new_meter_id
+      - opened_segment_id
+      - opening_reading_id
+      - opening_value
+      - segments
+      - reevaluated
+      - replayed
+      - data_mode
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000008201
+        change: REPLACE
+        meter_id: 7b0e2a54-0000-4000-8000-000000008401
+        closed_segment_id: 7b0e2a54-0000-4000-8000-000000008402
+        at: '2026-11-08T13:00:00Z'
+        closing_value: '184532000'
+        closing_reading_id: 7b0e2a54-0000-4000-8000-000000008512
+        implied_usage:
+          status: OK
+          reason: null
+          value: '342000'
+          from_reading_id: 7b0e2a54-0000-4000-8000-000000008405
+        new_meter_id: 7b0e2a54-0000-4000-8000-000000008513
+        opened_segment_id: 7b0e2a54-0000-4000-8000-000000008514
+        opening_reading_id: 7b0e2a54-0000-4000-8000-000000008515
+        opening_value: '0'
+        segments: 1
+        reevaluated: []
+        replayed: false
+        data_mode: SYNTHETIC
     EnterpriseMeterReadingState:
       type: object
       additionalProperties: false
@@ -30237,7 +30576,7 @@ components:
           - VOIDED
         flags:
           type: array
-          maxItems: 4
+          maxItems: 5
           uniqueItems: true
           items:
             $ref: '#/components/schemas/EnterpriseMeterFlag'
@@ -30263,6 +30602,7 @@ components:
           - SUPERSEDE
           - VOID
           - CONFIRM
+          - CONFIRM_ROLLOVER
         reading:
           $ref: '#/components/schemas/EnterpriseMeterReadingState'
         replacement:
@@ -30273,6 +30613,8 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/EnterpriseMeterReadingState'
+        boundary:
+          $ref: '#/components/schemas/EnterpriseMeterBoundary'
         replayed:
           type: boolean
         data_mode:
