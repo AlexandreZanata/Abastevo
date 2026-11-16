@@ -121,9 +121,9 @@ type TransitionRecord struct {
 }
 
 // Revision is the stored trip's operational revision: 1 after the start, one
-// more per lifecycle row or finish.
+// more per lifecycle row, handover (EMP-TRIP-012) or finish.
 func (r Record) Revision() int64 {
-	revision := 1 + int64(len(r.Transitions))
+	revision := 1 + int64(len(r.Transitions)) + int64(len(r.Handovers))
 	// EMP-TRIP-014: a supervisor closure ends the trip at the next revision too.
 	if r.Finish != nil || r.Closure != nil {
 		revision++
@@ -131,17 +131,25 @@ func (r Record) Revision() int64 {
 	return revision
 }
 
-// replayDomain rebuilds the stored start and its lifecycle rows through the
-// pure domain; open stops before a final cancellation, giving the trip as a
-// finish would find it. Each row must be exactly the domain's next fact.
+// replayDomain rebuilds the stored start, its lifecycle rows and its
+// handovers (EMP-TRIP-012) in revision order through the pure domain; open
+// stops before a final cancellation, giving the trip as a finish would find
+// it. Each row must be exactly the domain's next fact.
 func replayDomain(scope kernel.OrgScope, record Record, open bool) (trip.Trip, error) {
 	current, err := startedDomain(scope, record)
 	if err != nil {
 		return trip.Trip{}, err
 	}
+	handovers := record.Handovers
 	for _, x := range record.Transitions {
+		for len(handovers) > 0 && handovers[0].Revision < x.Revision {
+			if current, err = handoverStep(scope, current, handovers[0]); err != nil {
+				return trip.Trip{}, err
+			}
+			handovers = handovers[1:]
+		}
 		if open && x.Command == trip.CommandCancel {
-			break
+			return current, nil
 		}
 		author, err := trip.NewMembershipRef(scope, x.AuthorMembershipID)
 		if err != nil {
@@ -153,6 +161,11 @@ func replayDomain(scope kernel.OrgScope, record Record, open bool) (trip.Trip, e
 			return trip.Trip{}, ErrUnavailable
 		}
 		current = next
+	}
+	for _, h := range handovers {
+		if current, err = handoverStep(scope, current, h); err != nil {
+			return trip.Trip{}, err
+		}
 	}
 	return current, nil
 }

@@ -47,14 +47,16 @@ func timeline(record tripapp.Record) ([]tripEvent, error) {
 // (EDR-278): IN_PROGRESS from its start, then the state of its latest
 // pause, resume, cancellation or finish at or before the instant. An instant
 // before the trip started is ErrMalformed; an inconsistent stored trip is
-// ErrUnavailable. The driver is the trip's author until a handover owner
-// exists (EDR-279).
+// ErrUnavailable. The driver is the member responsible for the trip at the
+// instant: its author, or the receiver of a handover (EDR-279, EMP-TRIP-012
+// EDR-256), so a giving member's session collects nothing after it.
 func TripFactsAt(scope kernel.OrgScope, record tripapp.Record, at time.Time) (domain.TripFacts, error) {
 	ref, err := trip.NewTripRef(scope, record.ID)
 	if err != nil {
 		return domain.TripFacts{}, ErrUnavailable
 	}
-	driver, err := trip.NewMembershipRef(scope, record.AuthorMembershipID)
+	responsible, _ := record.ResponsibleAt(at)
+	driver, err := trip.NewMembershipRef(scope, responsible)
 	if err != nil {
 		return domain.TripFacts{}, ErrUnavailable
 	}

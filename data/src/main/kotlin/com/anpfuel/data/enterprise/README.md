@@ -134,6 +134,10 @@ already queued; verified bytes are removed in the write that records `STORED`; t
 operation worker delivers them after the queue behind
 `ENTERPRISE_ATTACHMENT_UPLOAD_ENABLED` (default off).
 
+EMP-CHECK-002 registers `check.run.complete`; its projection is one sealed
+`checklist-book` v1 RECORD per partition, holding cached applicable reads, answers
+written without an operation, and completions written in the queue's own write.
+
 The separate operation WorkManager uses empty system input and discovers only
 the current account/origin through authenticated protected descriptors. The
 actual Android provider accepts exact scoped normal/denial/lock prefixes;

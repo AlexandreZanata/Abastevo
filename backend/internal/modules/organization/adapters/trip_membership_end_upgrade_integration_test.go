@@ -141,6 +141,7 @@ func TestTripMembershipEndPopulatedUpgradeFailureRecoveryAndPreviousImage(t *tes
 	}
 	// The pre-existing open trip under the upgraded guards.
 	tripClosureGrant(t, f)
+	tripHandoverGrant(t, f)
 	closure := tripClosureState{tripAmendState: tripAmendState{tripPeriodState: tripPeriodState{tripReviewState: x}}}
 	end := tripEndState{tripClosureState: closure, offboarding: tripEndOffboardingStore(t, closure, trippg.MembershipOpenWork{})}
 	f.GrantLateIntake(t)

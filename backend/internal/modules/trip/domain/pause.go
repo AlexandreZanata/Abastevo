@@ -55,9 +55,14 @@ func (t Trip) Lifecycle() []LifecycleFact {
 	return out
 }
 
-// Responsible is the member who may change the trip: the member who started
-// it (EMP-TRIP-012 hands it over).
-func (t Trip) Responsible() MembershipRef { return t.start.author }
+// Responsible is the member who may change the trip now: the receiver of
+// the latest handover (EMP-TRIP-012), else the member who started it.
+func (t Trip) Responsible() MembershipRef {
+	if n := len(t.handovers); n > 0 {
+		return t.handovers[n-1].to
+	}
+	return t.start.author
+}
 
 // Cancellation returns the CANCEL fact of a cancelled trip.
 func (t Trip) Cancellation() (LifecycleFact, bool) {

@@ -73,8 +73,8 @@ func (h *transitionHandler) trip(ctx context.Context, db syncapp.DBTX, source sy
 	if err != nil {
 		return app.Record{}, syncapp.ErrUnavailable
 	}
-	target := app.Target{TripID: record.ID, AssetID: record.AssetID, UnitID: record.UnitID, CostCentreID: record.CostCentreID, AuthorMembershipID: record.AuthorMembershipID}
-	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, target, action(mode)); err != nil {
+	// EMP-TRIP-012: the member currently responsible for the trip.
+	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, tripTarget(record, source, mode, nil), action(mode)); err != nil {
 		return app.Record{}, denied(err)
 	}
 	return record, nil
@@ -97,7 +97,7 @@ func (h *transitionHandler) Admit(ctx context.Context, db syncapp.DBTX, source s
 		}
 		return err
 	}
-	_, err = h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+	_, err = h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt)
 	return err
 }
 
@@ -142,7 +142,7 @@ func (h *transitionHandler) Apply(ctx context.Context, db syncapp.DBTX, source s
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
-	disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+	disposition, err := h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt)
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
@@ -174,13 +174,13 @@ func (h *transitionHandler) Apply(ctx context.Context, db syncapp.DBTX, source s
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	employee, err := h.store.AuthorEmployeeTx(ctx, syncapp.Borrow(db), source.Scope, source.MembershipID)
-	if err != nil || employee != record.AuthorEmployeeID {
+	if _, responsible := record.Responsible(); err != nil || employee != responsible {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	if err := h.lifecycle.InsertTransitionTx(ctx, syncapp.Borrow(db), source.Scope, source, command, next, employee); err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt); err != nil || disposition != app.Apply {
+	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt); err != nil || disposition != app.Apply {
 		if err == nil {
 			err = syncapp.ErrUnavailable
 		}
@@ -190,12 +190,19 @@ func (h *transitionHandler) Apply(ctx context.Context, db syncapp.DBTX, source s
 	return syncapp.Outcome{Result: protocol.Accepted, EntityRevision: &revision}, nil
 }
 
+// responsibleEmployeeBefore is the employee record of the member responsible
+// just before a revision (EMP-TRIP-012).
+func responsibleEmployeeBefore(record app.Record, revision int64) string {
+	_, employee := record.ResponsibleBefore(revision)
+	return employee
+}
+
 // storedTransition proves the stored lifecycle row is exactly this operation's.
 func storedTransition(source syncapp.Source, v app.TransitionInput, record app.Record, revision int64) bool {
 	for _, x := range record.Transitions {
 		if x.OperationID == v.OperationID {
 			return x.Revision == revision && x.Revision == v.Expected+1 && x.Command == v.Command && x.PayloadDigest == v.PayloadDigest &&
-				sameText(x.Reason, v.Reason) && x.AuthorMembershipID == source.MembershipID && x.AuthorEmployeeID == record.AuthorEmployeeID &&
+				sameText(x.Reason, v.Reason) && x.AuthorMembershipID == source.MembershipID && x.AuthorEmployeeID == responsibleEmployeeBefore(record, x.Revision) &&
 				x.EnrollmentID == source.EnrollmentID && x.Declared.OccurredAt.Equal(v.Declared.OccurredAt) && x.Declared.EntryZone == v.Declared.EntryZone &&
 				x.Declared.DeviceOffsetSeconds == v.Declared.DeviceOffsetSeconds && !x.ReceivedAt.IsZero()
 		}
@@ -224,7 +231,7 @@ func (h *transitionHandler) Confirm(ctx context.Context, db syncapp.DBTX, source
 		return err
 	}
 	if mode == syncapp.Write {
-		disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+		disposition, err := h.classify(ctx, db, source, record.AssetID, record.Driver(), v.Declared.OccurredAt)
 		if err != nil {
 			return err
 		}

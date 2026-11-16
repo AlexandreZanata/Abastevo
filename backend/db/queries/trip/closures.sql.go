@@ -156,9 +156,10 @@ func (q *Queries) OpenTrips(ctx context.Context, arg OpenTripsParams) ([]OpenTri
 }
 
 const openTripsOfAuthor = `-- name: OpenTripsOfAuthor :many
-SELECT id::text AS id FROM org_trips
-WHERE org_id=CAST($1::text AS uuid) AND author_membership_id=CAST($2::text AS uuid) AND state IN('IN_PROGRESS','PAUSED')
-ORDER BY id LIMIT 501
+SELECT t.id::text AS id FROM org_trips t
+WHERE t.org_id=CAST($1::text AS uuid) AND t.state IN('IN_PROGRESS','PAUSED')
+ AND org_trip_responsible_member(t.org_id,t.id)=CAST($2::text AS uuid)
+ORDER BY t.id LIMIT 501
 `
 
 type OpenTripsOfAuthorParams struct {
@@ -166,8 +167,9 @@ type OpenTripsOfAuthorParams struct {
 	MembershipID string `json:"membership_id"`
 }
 
-// EMP-TRIP-018: the trips in progress a membership started (offboarding
-// handover items), bounded like the offboarding review.
+// EMP-TRIP-018: the trips in progress a membership is responsible for
+// (offboarding handover items; EMP-TRIP-012: the receiver of the latest
+// handover, else the starter), bounded like the offboarding review.
 func (q *Queries) OpenTripsOfAuthor(ctx context.Context, arg OpenTripsOfAuthorParams) ([]string, error) {
 	rows, err := q.db.Query(ctx, openTripsOfAuthor, arg.OrgID, arg.MembershipID)
 	if err != nil {

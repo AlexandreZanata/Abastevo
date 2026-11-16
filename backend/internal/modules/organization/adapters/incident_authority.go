@@ -43,6 +43,19 @@ func (f *ReportAuthority) ready() bool {
 // reporter when given). An empty ReportID is the root selector and considers
 // ORG grants only.
 func (f *ReportAuthority) CheckReportTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, source syncapp.Source, target incidents.ReportTarget, action incidents.ReportAction) error {
+	return f.checkRecordTx(ctx, db, scope, source, recordTarget{ID: target.ReportID, AssetID: target.AssetID, UnitID: target.UnitID, CostCentreID: target.CostCentreID,
+		AuthorMembershipID: target.AuthorMembershipID}, incidents.ReportPolicy(action), action == incidents.ReportWrite)
+}
+
+// recordTarget names the server-resolved facts of a member's own signed
+// record (a report or a checklist run); an empty ID is the root selector.
+type recordTarget struct {
+	ID, AssetID, UnitID, CostCentreID, AuthorMembershipID string
+}
+
+// checkRecordTx is the shared own-record intake check of the S-cell
+// maintenance keys (check.incident.report, check.checklist.execute).
+func (f *ReportAuthority) checkRecordTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, source syncapp.Source, target recordTarget, policy access.Policy, write bool) error {
 	if !f.ready() || meterMissing(db) {
 		return fleet.ErrUnavailable
 	}
@@ -50,12 +63,11 @@ func (f *ReportAuthority) CheckReportTx(ctx context.Context, db syncapp.DBTX, sc
 	if source.Validate() != nil || source.Scope != scope || legalIdentity(scope, member) != nil {
 		return fleet.ErrUnauthenticated
 	}
-	policy := incidents.ReportPolicy(action)
 	if policy.Permission == "" {
 		return fleet.ErrUnavailable
 	}
-	root := target.ReportID == ""
-	for _, id := range []string{target.ReportID, target.AssetID, target.UnitID, target.CostCentreID, target.AuthorMembershipID} {
+	root := target.ID == ""
+	for _, id := range []string{target.ID, target.AssetID, target.UnitID, target.CostCentreID, target.AuthorMembershipID} {
 		if id != "" && legalIdentity(scope, id) != nil {
 			return fleet.ErrUnavailable
 		}
@@ -71,7 +83,6 @@ func (f *ReportAuthority) CheckReportTx(ctx context.Context, db syncapp.DBTX, sc
 		return fleet.ErrUnavailable
 	}
 	g := (*MeterAuthority)(f)
-	write := action == incidents.ReportWrite
 	if _, err := g.currentMeterDevice(ctx, db, scope, source, member, write); err != nil {
 		return err
 	}
@@ -103,7 +114,7 @@ func (f *ReportAuthority) CheckReportTx(ctx context.Context, db syncapp.DBTX, sc
 	}
 	facts := permission.ResourceFacts{OrgID: scope.OrgID(), ID: scope.OrgID().String(), AuthoredBy: member}
 	if !root {
-		facts.ID, facts.AssetID, facts.UnitID, facts.CostCentreID = target.ReportID, target.AssetID, target.UnitID, target.CostCentreID
+		facts.ID, facts.AssetID, facts.UnitID, facts.CostCentreID = target.ID, target.AssetID, target.UnitID, target.CostCentreID
 		if target.AuthorMembershipID != "" {
 			facts.AuthoredBy = target.AuthorMembershipID
 		}
@@ -115,6 +126,11 @@ func (f *ReportAuthority) CheckReportTx(ctx context.Context, db syncapp.DBTX, sc
 // ClassifyReportTx decides a new report from retained role and assignment
 // history with the unchanged EDR-118 continuity.
 func (f *ReportAuthority) ClassifyReportTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, source syncapp.Source, asset string, declared time.Time) (incidents.ReportDisposition, error) {
+	return f.classifyRecordTx(ctx, db, scope, source, asset, declared, reportHistoryRule)
+}
+
+// classifyRecordTx is the shared EDR-118 classification of a new own record.
+func (f *ReportAuthority) classifyRecordTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, source syncapp.Source, asset string, declared time.Time, rule historyRule) (incidents.ReportDisposition, error) {
 	if !f.ready() || meterMissing(db) {
 		return "", fleet.ErrUnavailable
 	}
@@ -144,7 +160,7 @@ func (f *ReportAuthority) ClassifyReportTx(ctx context.Context, db syncapp.DBTX,
 		return "", fleet.ErrUnavailable
 	}
 	var assigned []meterAssignedPeriod
-	if f.Assignee != nil && !meterMissing(f.Assignee.Assignments) && selfRecorded(scope, recorded, reportHistoryRule.permission) {
+	if f.Assignee != nil && !meterMissing(f.Assignee.Assignments) && selfRecorded(scope, recorded, rule.permission) {
 		spans, err := f.Assignee.Assignments.AssignmentPeriodsDBTX(ctx, db, scope, member, asset)
 		if err != nil {
 			return "", fleet.ErrUnavailable
@@ -165,7 +181,7 @@ func (f *ReportAuthority) ClassifyReportTx(ctx context.Context, db syncapp.DBTX,
 	for _, period := range recorded {
 		periods = append(periods, meterPermissionPeriod{assignment: period.Assignment, createdAt: period.CreatedAt})
 	}
-	disposition, err := historyDisposition(reportHistoryRule, scope, member, asset, declared, now, periods, assigned)
+	disposition, err := historyDisposition(rule, scope, member, asset, declared, now, periods, assigned)
 	if err != nil {
 		return "", err
 	}
@@ -195,13 +211,10 @@ type IncidentAuthority struct {
 var _ incidents.IncidentAuthority = (*IncidentAuthority)(nil)
 
 func (g *IncidentAuthority) CheckIncidentTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor incidents.IncidentActor, member, target string, action incidents.IncidentAction) (incidents.Handler, error) {
-	if g == nil || meterMissing(tx) || meterMissing(g.Memberships) || meterMissing(g.Roles) || meterMissing(g.Capabilities) || g.Structure != nil && g.Structure.Kind != IncidentStructure || legalIdentity(scope, target) != nil {
+	if g == nil || g.Structure != nil && g.Structure.Kind != IncidentStructure || legalIdentity(scope, target) != nil {
 		return incidents.Handler{}, incidents.ErrUnavailable
 	}
-	if actor.Validate() != nil || legalIdentity(scope, member) != nil {
-		return incidents.Handler{}, incidents.ErrUnauthenticated
-	}
-	guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}
+	var scoped *companyAuthority
 	switch action {
 	case incidents.IncidentQueue:
 		if target != scope.OrgID().String() {
@@ -211,16 +224,33 @@ func (g *IncidentAuthority) CheckIncidentTx(ctx context.Context, tx pgx.Tx, scop
 		if target == scope.OrgID().String() {
 			return incidents.Handler{}, incidents.ErrUnavailable
 		}
-		guard.Structure = g.Structure
+		scoped = &companyAuthority{Structure: g.Structure}
 	case incidents.IncidentOwn:
 		if target != member {
 			return incidents.Handler{}, incidents.ErrUnavailable
 		}
-		guard.OwnTarget = true
+		scoped = &companyAuthority{OwnTarget: true}
 	default:
 		return incidents.Handler{}, incidents.ErrUnavailable
 	}
-	policy := incidents.IncidentPolicy(action)
+	return g.checkTx(ctx, tx, scope, actor, member, target, incidents.IncidentPolicy(action), action == incidents.IncidentDecide, scoped)
+}
+
+// checkTx is the shared company check of the maintenance policies: the
+// account/proof → capability → root → membership/role order with the given
+// structural or own lookups, and for a handling command an ACTIVE root and
+// the actual handler (account, membership, active canonical employee).
+func (g *IncidentAuthority) checkTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor incidents.IncidentActor, member, target string, policy access.Policy, command bool, scoped *companyAuthority) (incidents.Handler, error) {
+	if g == nil || meterMissing(tx) || meterMissing(g.Memberships) || meterMissing(g.Roles) || meterMissing(g.Capabilities) || legalIdentity(scope, target) != nil {
+		return incidents.Handler{}, incidents.ErrUnavailable
+	}
+	if actor.Validate() != nil || legalIdentity(scope, member) != nil {
+		return incidents.Handler{}, incidents.ErrUnauthenticated
+	}
+	guard := companyAuthority{Memberships: g.Memberships, Roles: g.Roles, Capabilities: g.Capabilities}
+	if scoped != nil {
+		guard.Structure, guard.Assignee, guard.OwnTarget = scoped.Structure, scoped.Assignee, scoped.OwnTarget
+	}
 	if policy.Validate() != nil || database.ValidateOrgDBTX(ctx, tx, scope) != nil {
 		return incidents.Handler{}, incidents.ErrUnavailable
 	}
@@ -228,7 +258,7 @@ func (g *IncidentAuthority) CheckIncidentTx(ctx context.Context, tx pgx.Tx, scop
 	if err := guard.check(ctx, tx, scope, proof, member, target, policy); err != nil {
 		return incidents.Handler{}, incidentAuthorityError(err)
 	}
-	if action != incidents.IncidentDecide {
+	if !command {
 		return incidents.Handler{AccountID: actor.AccountID, MembershipID: member}, nil
 	}
 	var state string

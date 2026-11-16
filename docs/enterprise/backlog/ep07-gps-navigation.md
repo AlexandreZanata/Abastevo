@@ -103,7 +103,7 @@ Held and late tracking, the policy writer, processing and the Android
 producer remain open; real-device acceptance is owed (EDR-271).
 
 ### EMP-GPS-005 — Track processing: filtering, gaps, GPS distance and simplified geometry
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type JOB · size M · state TODO
+- **Meta:** module GPS · phase F4 · cut - · priority P1 · type JOB · size M · state LOCAL_DONE
 - **Objective:** Derive quality, gaps and simplified tracks from retained raw evidence.
 - **Rules and use cases:** BR-GPS-017, BR-GPS-023, BR-GPS-024, BR-GPS-025, BR-GPS-026
 - **Depends on:** EMP-GPS-004
@@ -117,6 +117,26 @@ producer remain open; real-device acceptance is owed (EDR-271).
 - **Validation:** V-SQL, V-JOB, V-IDEM, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
+
+[F4 track processing](../evidence/f4-gps005-track-processing.md) is LOCAL_DONE /
+INTEGRATION_PENDING, 2026-11-15. Storing a session's end, or a segment of an
+ended session, queues one `org-tracking-process` job keyed by the stored input
+(EDR-298); the job holds its queue row under its lease and the trip row, and
+writes one insert-only summary revision (migration 000246): fixes filtered and
+counted by reason (outside, accuracy above 50 m, implied speed above 70 m/s;
+coarse fixes never measured), gaps with reason and detector (not-recording
+spans with the session cause, `SIGNAL_LOST` after 180 s without a fix),
+coverage and quality through the EMP-GPS-001 function, GPS distance on the
+6 371 008.8 m sphere inside runs only (10 m steps, floored, method recorded,
+absent when unmeasurable) and a Douglas–Peucker geometry at 20 m (at most
+1 000 vertices, tolerance recorded, a derived `MULTILINESTRING` of SRID 4326).
+The database re-proves the exact stored input, the session's own totals and a
+strictly newer input, so retries, a job run twice, concurrent runs (both
+orders on real PostGIS) and stale jobs converge on one revision per input and
+a late batch supersedes with a new revision. The distance sources and
+divergence (GPS-006), replay (GPS-009), retention (GPS-011), a trip-finish
+trigger without the device's end and real-device acceptance (EDR-271) remain
+open.
 
 ### EMP-GPS-006 — Distance sources on a trip and the divergence signal
 - **Meta:** module GPS · phase F4 · cut - · priority P1 · type DOM · size S · state TODO

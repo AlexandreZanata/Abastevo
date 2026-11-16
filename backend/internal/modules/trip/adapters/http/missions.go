@@ -30,6 +30,9 @@ const (
 	MissionCancelPath = MissionPrefix + "/{mission_id}/cancel"
 	// MissionVehiclePath replaces the mission's vehicle (EMP-TRIP-013, EDR-251).
 	MissionVehiclePath = MissionPrefix + "/{mission_id}/vehicle/change"
+	// MissionAssigneesPath lists the employees eligible for the mission
+	// (EMP-TRIP-022, EDR-304).
+	MissionAssigneesPath = MissionPrefix + "/{mission_id}/assignees/list"
 )
 
 // MissionRecords accepts only the mission policies on their own targets: the
@@ -349,7 +352,7 @@ func projectPlan(p app.MissionPlanView) map[string]any {
 	return out
 }
 
-// RegisterMissions mounts the seven trip.mission.manage routes and the own
+// RegisterMissions mounts the eight trip.mission.manage routes and the own
 // list. The organization and mission routes share the MissionStructure
 // authorization; the own list carries no structure or assignee source.
 func RegisterMissions(router chi.Router, service app.MissionService, cookies company.Handler, gateway orgapi.Gateway, authorization access.Authorization) error {
@@ -495,6 +498,43 @@ func RegisterMissions(router chi.Router, service app.MissionService, cookies com
 		}
 	}
 	if err := guarded.Register(owned, MissionListPath, gateway, MissionRule(app.MissionRead, false, 200), authorization, app.MissionPolicy(app.MissionRead), missionRoot{}, list(MissionListPath, false)); err != nil {
+		return err
+	}
+	if err := guarded.Register(owned, MissionAssigneesPath, gateway, MissionRule(app.MissionRead, false, 200), authorization, app.MissionPolicy(app.MissionRead), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, input missionListRequest) (any, error) {
+		actor, err := missionActor(ctx)
+		if err != nil {
+			return nil, err
+		}
+		mission, err := missionPathID(ctx)
+		if err != nil {
+			return nil, err
+		}
+		page, err := input.Page.Normalize()
+		if err != nil {
+			return nil, orgapi.Malformed
+		}
+		// The cursor is bound to the route, this mission and the limit.
+		binding := fmt.Sprintf("trip.mission.assignees.v1:%s:%d", mission, page.Limit)
+		filter := app.MissionAssigneeFilter{Limit: page.Limit}
+		if filter.AfterID, err = gateway.OpenCursor(p, MissionAssigneesPath, binding, page.Cursor); err != nil || filter.Validate() != nil {
+			return nil, orgapi.Malformed
+		}
+		result, err := service.Assignees(ctx, p.Scope, actor, decision, mission, filter)
+		if err != nil {
+			return nil, missionMapped(err)
+		}
+		items := make([]map[string]any, 0, len(result.Assignees))
+		for _, v := range result.Assignees {
+			items = append(items, map[string]any{"employee_id": v.EmployeeID, "display_name": v.DisplayName, "registration_number": v.RegistrationNumber})
+		}
+		next := ""
+		if result.NextID != "" {
+			if next, err = gateway.SealCursor(p, MissionAssigneesPath, binding, result.NextID); err != nil {
+				return nil, orgapi.Unavailable
+			}
+		}
+		return map[string]any{"items": items, "next_cursor": next, "data_mode": "SYNTHETIC"}, nil
+	}); err != nil {
 		return err
 	}
 	if err := guarded.Register(owned, MissionReadPath, gateway, MissionRule(app.MissionRead, false, 200), authorization, app.MissionPolicy(app.MissionRead), missionResource{}, func(ctx context.Context, p orgapi.Principal, decision access.Decision, _ missionReadRequest) (any, error) {

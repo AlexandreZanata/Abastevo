@@ -46,11 +46,14 @@ import com.anpfuel.app.ui.enterprise.attachment.AttachmentRows
 import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureCard
 import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureUi
 import com.anpfuel.app.ui.enterprise.attachment.localFailureText
+import com.anpfuel.app.ui.enterprise.checklist.DepartureChecklistLine
+import com.anpfuel.app.ui.enterprise.checklist.departureBlocks
 import com.anpfuel.app.ui.enterprise.fleet.EnterpriseAssetPicker
 import com.anpfuel.app.ui.enterprise.reasonText
 import com.anpfuel.app.ui.enterprise.statusText
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.enterprise.attachment.ReceiptDraft
+import com.anpfuel.application.enterprise.checklist.ChecklistViewState
 import com.anpfuel.application.enterprise.fleet.MyAssetsViewState
 import com.anpfuel.application.enterprise.trip.TripCapture
 import com.anpfuel.application.enterprise.trip.TripMeterChoice
@@ -93,6 +96,8 @@ private sealed interface TripMode {
     class Finish(val tripId: String) : TripMode
     /** EMP-DOC-004: a photo of the reading carried by one record (owner operation and its METER_READING target). */
     class Photo(val ownerOperationId: String, val target: AttachmentTarget) : TripMode
+    /** EMP-CHECK-002: the chosen vehicle's departure checklist, returning to the same start form. */
+    class Checklist(val start: Start) : TripMode
 }
 
 /** The meters the driver may read for a choice: the picker's in-service meters, by kind. */
@@ -119,6 +124,10 @@ internal fun TripPanel(
     /** EMP-DOC-004 capture; null when it is switched off (B-BR-EMP-450). */
     capture: ReceiptCaptureUi? = null,
     onAttach: (String, AttachmentTarget, ReceiptDraft) -> Unit = { _, _, _ -> },
+    /** EMP-CHECK-002 (B-BR-EMP-443): the departure checklist owner's state; null hides the departure line (rollback flag). */
+    checklist: ChecklistViewState? = null,
+    onDepartureCheck: (assetId: String) -> Unit = {},
+    departureContent: (@Composable (assetId: String, label: String, onDone: () -> Unit) -> Unit)? = null,
 ) {
     var mode by remember { mutableStateOf<TripMode>(TripMode.Home) }
     // A durable save closes the form it came from; a refusal or failure keeps the entered values.
@@ -139,6 +148,8 @@ internal fun TripPanel(
             modifier = modifier.testTag("enterprise-trip-picker"),
             accepts = { it.kind != AssetKind.IMPLEMENT },
         )
+        is TripMode.Checklist -> if (departureContent != null) departureContent(current.start.choice.assetId, label(current.start.label)) { mode = current.start }
+            else LaunchedEffect(current) { mode = current.start }
         else -> LazyColumn(modifier.testTag("enterprise-trip-panel").padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             val open = state.openTrip
             item {
@@ -172,7 +183,8 @@ internal fun TripPanel(
                 }
             } else when (current) {
                 is TripMode.Start -> item { StartForm(current, state.busy, onStart, onChange = { onPick(); mode = TripMode.Picker },
-                    onCancel = { mode = TripMode.Home }) }
+                    onCancel = { mode = TripMode.Home }, checklist = checklist.takeIf { departureContent != null },
+                    onDepartureCheck = onDepartureCheck, onDepartureOpen = { mode = TripMode.Checklist(current) }) }
                 is TripMode.Event -> item { EventForm(state.busy, onCancel = { mode = TripMode.Home }) { type, text -> onLog(current.tripId, type, text) } }
                 is TripMode.Finish -> state.trips.firstOrNull { it.trip.tripId == current.tripId }?.let { trip ->
                     item { FinishForm(trip, assets, state.busy, finishWarnings, onCancel = { mode = TripMode.Home }) { onFinish(current.tripId, it) } }
@@ -404,15 +416,19 @@ private fun Choice(text: String, selected: Boolean, tag: String, onSelect: () ->
 
 @Composable
 private fun StartForm(mode: TripMode.Start, busy: Boolean, onStart: (EnterpriseAssetChoice, TripAssetLabel, TripCapture) -> Unit, onChange: () -> Unit,
-    onCancel: () -> Unit) {
+    onCancel: () -> Unit, checklist: ChecklistViewState? = null, onDepartureCheck: (String) -> Unit = {}, onDepartureOpen: () -> Unit = {}) {
     var capture by remember(mode) { mutableStateOf<TripCapture?>(null) }
+    // EMP-CHECK-002: the chosen vehicle's latest valid departure run; a BLOCKING one keeps the start disabled here.
+    if (checklist != null) LaunchedEffect(mode.choice.assetId) { onDepartureCheck(mode.choice.assetId) }
+    val blocked = departureBlocks(checklist, mode.choice.assetId)
     TripCard(Modifier.testTag("enterprise-trip-start-form")) {
         Text(stringResource(R.string.enterprise_trips_start_title), style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         Text(stringResource(R.string.enterprise_trips_asset_chosen, label(mode.label)), modifier = Modifier.testTag("enterprise-trip-chosen"))
         if (mode.choice.reviewWarningAccepted) Text(stringResource(R.string.enterprise_trips_asset_warning_recorded))
         TextButton(onClick = onChange, enabled = !busy, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.enterprise_trips_change_asset)) }
+        if (checklist != null) DepartureChecklistLine(checklist, mode.choice.assetId, onDepartureOpen)
         ReadingEntry(meterChoices(mode.choice), R.string.enterprise_trips_departure_value) { capture = it }
-        Button(onClick = { capture?.let { onStart(mode.choice, mode.label, it) } }, enabled = !busy && capture != null,
+        Button(onClick = { capture?.takeIf { !blocked }?.let { onStart(mode.choice, mode.label, it) } }, enabled = !busy && capture != null && !blocked,
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("enterprise-trip-save-start")) { Text(stringResource(R.string.enterprise_trips_save_start)) }
         CancelButton(onCancel)
     }

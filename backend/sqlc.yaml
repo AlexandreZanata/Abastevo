@@ -737,6 +737,7 @@ sql:
       - db/migrations/000220_organization_trips.sql
       - db/migrations/000223_organization_checklist_templates.sql
       - db/migrations/000230_organization_incident_reports.sql
+      - db/migrations/000242_organization_checklist_runs.sql
     gen:
       go:
         package: maintenance
@@ -820,6 +821,7 @@ sql:
       - db/migrations/000229_organization_trip_amendments.sql
       - db/migrations/000233_organization_trip_lifecycle.sql
       - db/migrations/000235_organization_trip_closures.sql
+      - db/migrations/000243_organization_trip_handovers.sql
     gen:
       go:
         package: trip
@@ -840,6 +842,7 @@ sql:
       - db/migrations/000172_organization_onboarding.sql
       - db/migrations/000174_operating_units.sql
       - db/migrations/000175_cost_centres.sql
+      - db/migrations/000176_employee_profiles.sql
       - db/migrations/000194_organization_devices.sql
       - db/migrations/000196_organization_sync_intake.sql
       - db/migrations/000197_organization_assets.sql

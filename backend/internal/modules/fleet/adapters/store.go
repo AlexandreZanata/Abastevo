@@ -34,6 +34,10 @@ type AssetStore struct {
 	// explicitly; a nil port fails every availability read and start check.
 	ActiveUse        app.ActiveUsePort
 	MaintenanceHolds app.MaintenanceHoldPort
+	// ChecklistBlocks answers the BLOCKING checklist runs of row 4
+	// (EMP-CHECK-002, EDR-285); NoChecklistBlocks is the explicit no-source
+	// adapter, a nil port fails every availability read and start check.
+	ChecklistBlocks app.ChecklistBlockPort
 }
 
 var _ app.AssetRepository = (*AssetStore)(nil)

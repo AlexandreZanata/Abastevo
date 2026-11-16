@@ -293,7 +293,7 @@ explicit policy exists. See B-BR-EMP-115..122, EDR-076..080 and
 | Switch context | Offline (cached, marked unconfirmed) | — | — | — | Fresh membership list |
 | My assets, assignments, missions | Offline (cached) | — | — | — | Latest assignments |
 | Accept or decline a mission | Offline | Offline | — | Offline | Mission still assigned to me |
-| Checklist | Offline | Offline | Offline until completed | Offline | Blocking policy is applied locally from cached policy and rechecked on the server |
+| Checklist | Offline | Offline | Offline until completed | Offline | Blocking policy is applied locally from cached policy and rechecked on the server The server stores its own outcome and flags a disagreement for review (EMP-CHECK-002, EDR-284). |
 | Start trip | — | Offline | — | — | Asset availability; one active trip per asset |
 | Logbook events, stops, pause, resume | Offline | Offline | Offline (new operation) | Offline | Trip not closed by someone else |
 | Meter reading | Offline (own history cached) | Offline | Online (correction by authorized role) | — | Monotonicity against readings from other devices |

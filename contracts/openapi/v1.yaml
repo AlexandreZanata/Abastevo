@@ -15105,6 +15105,14 @@ paths:
         batch sequence (gps.track.batch); a batch stores one segment whose fixes outside the recording periods, while
         the trip is paused, at or after the trip's finish or cancellation, mock-flagged or already stored are counted on
         the segment, never in the receipt.
+        The check.run.complete owner (EMP-CHECK-002) stores one completed checklist run of an asset with its answers,
+        the device outcome and the named policy revision as declared, and the server's recheck against the named
+        template version and the policy in force at the declared completion by its own history (server outcome,
+        server policy revision, template_superseded, outcome_differs held for review); a well-formed run is always
+        ACCEPTED at entity revision 1 and never rewritten. An unknown or another organization's asset is NOT_FOUND, no
+        check.checklist.execute FORBIDDEN, a DRAFT asset, a wrong shape, an unknown version or policy revision, another
+        context, a version whose target does not cover the asset or an answer set the shared rule refuses MALFORMED;
+        changed rights, a photo declaration, attachments and soft references stay RETRY/UNAVAILABLE.
         Current source failure is a transport denial; if it occurs after earlier commits their private ACKs are
         withheld and those commits remain durable. A later authorized retry can recover the original ACKs.
         Signing covers exact transmitted bytes; cookie/Authorization fallback and query parameters are refused.
@@ -15214,6 +15222,17 @@ paths:
           entity_type: incident_report
           payload:
             $ref: '#/components/schemas/EnterpriseIncidentReportPayload'
+          terminal_results:
+          - ACCEPTED
+          - REJECTED
+          followup_by_result:
+            ACCEPTED: NO_ASYNC_FOLLOWUP
+            REJECTED: NO_ASYNC_FOLLOWUP
+        check.run.complete:
+          schema: 1
+          entity_type: checklist_run
+          payload:
+            $ref: '#/components/schemas/EnterpriseChecklistRunPayload'
           terminal_results:
           - ACCEPTED
           - REJECTED
@@ -17771,7 +17790,8 @@ paths:
         reservation holding the asset) or AVAILABLE, and every applying cause in that order with its kind, record
         identifier and period (no person, purpose or note). missing_sources names the sources that could not be
         consulted; until maintenance holds exist, MAINTENANCE_HOLD, so the answer never claims their absence (trips
-        are the ACTIVE_USE source since EMP-TRIP-002). Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server
+        are the ACTIVE_USE source since EMP-TRIP-002). BLOCKED also comes from a BLOCKING checklist run (kind
+        CHECKLIST_RUN, from its declared completion until its release; EMP-CHECK-002). Dedicated company cookie, exact HTTPS Origin/Host and CSRF are required. The server
         rechecks current fleet.asset.read and same-organization membership; a SELF grant covers an asset assigned to
         the member at the server instant (EMP-FLEET-006). Responses are private no-store.
       security:
@@ -19610,6 +19630,146 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistRunRead
+      summary: Read one checklist run of an asset
+      description: EMP-CHECK-002. The stored run of the asset with the device outcome and the named policy revision as
+        declared, the server's recheck (recheck_outcome, server_policy_revision, template_superseded, outcome_differs,
+        review_required), the current outcome after a release and the positions of the issues and critical issues;
+        never a note, a photo or the author's identity. Dedicated company cookie, exact HTTPS Origin/Host and CSRF are
+        required. The server rechecks current fleet.asset.read on the asset exactly as the applicable read (UNIT,
+        COST_CENTRE or ASSET grants through the allocation, a SELF grant on an assigned asset); a run of another asset,
+        another organization or none is NOT_FOUND (B-BR-EMP-441). Responses are private no-store.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fleet.asset.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: asset_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private asset selector; a selector is not proof of an asset or a run.
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        description: Canonical private run selector; foreign or missing runs remain hidden.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistRunReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: Private current authorized read.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistRun'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/checklists/runs/{run_id}/release:
+    post:
+      tags:
+      - enterprise-checklists
+      operationId: enterpriseChecklistRunRelease
+      summary: Release a blocking checklist run
+      description: EMP-CHECK-002. Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE
+        organization, enabled capability and check.incident.manage covering the run's stored asset, unit or cost centre.
+        A BLOCKING run at the named revision becomes COMPLETED_WITH_ISSUES at revision 2 with the reason (1..500
+        scalars without control characters), its block on the asset ends at the release instant and one audit event
+        check.run.released is written; the answers, the device outcome and the recheck outcome never change. The
+        author of the run (same account, membership or canonical employee record) is SELF_APPROVAL; a run that is not
+        BLOCKING or a stale revision is CONFLICT; a missing or blank reason is VALIDATION_FAILED. Same operation and
+        digest returns the first result with replayed=true; another digest is OPERATION_ID_REUSED (B-BR-EMP-442).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: check.incident.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: run_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseChecklistRunReleaseRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009601
+              revision: 1
+              reason: Freios verificados na oficina
+      responses:
+        '200':
+          description: Private audited release or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseChecklistRunRelease'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/incidents/reports/list:
     post:
       tags:
@@ -20049,6 +20209,132 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/policy/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTrackingPolicyRead
+      summary: Read the organization tracking policy
+      description: Current company cookie and exact Origin/CSRF. Fixed org.settings.read covering the organization
+        itself (OWNER, ADMIN, FLEET_MANAGER, SUPERVISOR, FINANCE, APPROVER, AUDITOR); a structural or SELF grant
+        never covers it (B-BR-EMP-469). Returns the newest stored version (revision 0 with OFF and no notice when
+        nothing was recorded), its employee notice version and in-force instant, its effective instant and the
+        policy in force now (OFF until a notice is in force, EMP-GPS-004). No session, member or location data.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.settings.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: An empty object; the read takes no field.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTrackingPolicyReadRequest'
+            example: {}
+      responses:
+        '200':
+          description: The stored and effective tracking policy.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTrackingPolicyView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/policy/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTrackingPolicyChange
+      summary: Change the organization tracking policy
+      description: Current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        organizations capability and org.settings.manage covering the organization itself (OWNER, ADMIN);
+        admission class org.setup (B-BR-EMP-467). revision is the expected current version and is omitted only
+        while none exists; a stale or premature revision is CONFLICT. OPTIONAL and EXPECTED need the employee
+        notice version and its in-force instant at or before the database's effective instant; a missing,
+        malformed or not yet in-force notice, or a notice sent with OFF, is VALIDATION_FAILED with a frozen field
+        code (B-BR-EMP-468). Writes the next insert-only version, its receipt and one gps.policy.changed audit
+        event; the same operation and digest returns the first result with replayed=true, another digest is
+        OPERATION_ID_REUSED. Existing sessions keep the version they opened under. No notice text is stored.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.settings.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: One tracking policy change with the expected revision and, when enabled, the employee notice.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTrackingPolicyChangeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000008801
+              revision: 1
+              policy: EXPECTED
+              notice_version: notice-2026.11
+              notice_in_force_at: '2026-11-01T00:00:00Z'
+      responses:
+        '200':
+          description: The written (or replayed) tracking policy version.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTrackingPolicyAcknowledgement'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/{trip_id}/review/decide:
     post:
       tags:
@@ -20240,6 +20526,199 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseTripCloseResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/{trip_id}/handover:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripHandover
+      summary: Hand an open trip over to another member
+      description: Dedicated current company cookie, exact Origin/CSRF, fresh company proof, ACTIVE organization, enabled
+        capability and trip.trip.close_for_other covering the trip (ORG, or UNIT/COST_CENTRE/TEAM/ASSET through the
+        trip's stored asset, start unit and cost centre and the teams of its author or driver at the start receipt).
+        Moves the responsibility for an open (IN_PROGRESS or PAUSED) trip at its current operational revision to the
+        receiving membership with a reason (1..280 scalars, no control character); the instant is the server's and the
+        body has no time field (an unknown key is MALFORMED). The receiver must be another ACTIVE membership whose
+        employee record is ACTIVE and not merged, holding trip.trip.start for the trip as its own record and assigned
+        to the trip's asset at the handover instant; otherwise (unknown, foreign, ended, suspended, unassigned, already
+        responsible) VALIDATION_FAILED. The trip keeps its state at the next revision; later lifecycle commands,
+        finish and submission come from the receiver, logbook events from the member responsible at their declared
+        instant, and every earlier fact keeps its actor. A recorder who is the current responsible member or the
+        receiver is SELF_APPROVAL; a stale revision or a trip already finished, cancelled or closed is CONFLICT; an
+        unknown or another organization's trip NOT_FOUND. Every party of a handover never decides the trip's review.
+        Same operation and digest returns the first result with replayed=true and no second audit event; another
+        digest is OPERATION_ID_REUSED (EMP-TRIP-012, B-BR-EMP-394..397).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.close_for_other
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripHandoverRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009101
+              revision: 1
+              receiver_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+              reason: Troca de turno
+      responses:
+        '200':
+          description: Private audited handover or the first result of a replay.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripHandoverResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/handovers/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripHandoverList
+      summary: List the organization's trip handovers
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.close_for_other permission on the whole
+        organization (an ORG grant; structural supervisors hand each trip over through its path). Returns the recorded
+        handovers in recording order with only trip, asset, revision, instant, giving, receiving and recording
+        memberships and the reason; keyset cursor bound to the caller and the limit. No reading, coordinate or event
+        (EMP-TRIP-012, B-BR-EMP-398).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.close_for_other
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripOpenListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current page of handovers.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripHandoverPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/mine/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseTripMineList
+      summary: List the open trips the requesting member is responsible for
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.trip.start permission over the requesting
+        membership itself (its own record). Returns the open (IN_PROGRESS or PAUSED) trips whose current responsible
+        member is the requesting member (the receiver of the latest handover, else the starter), by trip identity, with
+        only trip, asset, operational state, revision, start instant, start reporting day and, when it was handed over
+        to the member, that handover; keyset cursor bound to the caller and the limit (EMP-TRIP-012, B-BR-EMP-398).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.trip.start
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTripOpenListRequest'
+            example:
+              limit: 20
+      responses:
+        '200':
+          description: Private current page of the member's own open trips.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseTripOwnPage'
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
         '401':
@@ -20778,6 +21257,72 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseMissionAck'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/missions/{mission_id}/assignees/list:
+    post:
+      tags:
+      - enterprise-trips
+      operationId: enterpriseMissionAssigneeList
+      summary: List the employees eligible for a mission
+      description: Current company cookie and exact Origin/CSRF. Fixed trip.mission.manage permission covering the mission (the
+        mission read's structure; an unknown or another organization's mission is NOT_FOUND). Lists exactly the employees
+        the assignment command would accept now - ACTIVE, unmerged, with an ACTIVE account-linked membership whose current
+        trip.trip.start covers the mission as its own record - each with only its employee identifier, display name and
+        registration number (empty strings when the profile has none). Pages scan candidates in employee order; the keyset
+        cursor is bound to the caller, the route, the mission and the limit and advances by the last scanned employee, so
+        a page may be empty while next_cursor is set. Eligibility shown here is not authority; the assignment re-decides it
+        (EMP-TRIP-022, B-BR-EMP-470).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: trip.mission.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: mission_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseMissionAssigneesRequest'
+            example:
+              limit: 50
+      responses:
+        '200':
+          description: Private current page of eligible assignees.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseMissionAssigneePage'
         '400':
           $ref: '#/components/responses/EnterprisePrivateError'
         '401':
@@ -24178,6 +24723,235 @@ components:
           distance: null
         replayed: false
         data_mode: SYNTHETIC
+    EnterpriseTripHandoverRequest:
+      type: object
+      additionalProperties: false
+      description: The operational revision the recorder saw (the open trip's current revision), the receiving
+        membership and why the trip is handed over. There is no time field; the instant is the server's.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+        receiver_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 1120
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - receiver_membership_id
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009101
+        revision: 1
+        receiver_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+        reason: Troca de turno
+    EnterpriseTripHandover:
+      type: object
+      additionalProperties: false
+      description: One recorded handover of a trip; earlier facts keep their actors.
+      properties:
+        revision:
+          description: The trip revision the handover created.
+          type: integer
+          minimum: 2
+        handed_over_at:
+          type: string
+          format: date-time
+        from_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        to_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        recorder_membership_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        reason:
+          type: string
+      required:
+      - revision
+      - handed_over_at
+      - from_membership_id
+      - to_membership_id
+      - recorder_membership_id
+      - reason
+      example:
+        revision: 2
+        handed_over_at: '2026-11-15T13:00:00.123456Z'
+        from_membership_id: 7b0e2a54-0000-4000-8000-000000009301
+        to_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+        recorder_membership_id: 7b0e2a54-0000-4000-8000-000000009303
+        reason: Troca de turno
+    EnterpriseTripHandoverResult:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operational_state:
+          description: A handover keeps the open trip's state.
+          type: string
+          enum:
+          - IN_PROGRESS
+          - PAUSED
+        revision:
+          description: The trip's operational revision after the handover (the named revision plus one).
+          type: integer
+          minimum: 2
+        handover:
+          $ref: '#/components/schemas/EnterpriseTripHandover'
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - trip_id
+      - operational_state
+      - revision
+      - handover
+      - replayed
+      - data_mode
+      example:
+        trip_id: 7b0e2a54-0000-4000-8000-000000009001
+        operational_state: IN_PROGRESS
+        revision: 2
+        handover:
+          revision: 2
+          handed_over_at: '2026-11-15T13:00:00.123456Z'
+          from_membership_id: 7b0e2a54-0000-4000-8000-000000009301
+          to_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+          recorder_membership_id: 7b0e2a54-0000-4000-8000-000000009303
+          reason: Troca de turno
+        replayed: false
+        data_mode: SYNTHETIC
+    EnterpriseTripHandoverItem:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        handover:
+          $ref: '#/components/schemas/EnterpriseTripHandover'
+      required:
+      - trip_id
+      - asset_id
+      - handover
+    EnterpriseTripHandoverPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseTripHandoverItem'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - trip_id: 7b0e2a54-0000-4000-8000-000000009001
+          asset_id: 7b0e2a54-0000-4000-8000-000000009201
+          handover:
+            revision: 2
+            handed_over_at: '2026-11-15T13:00:00.123456Z'
+            from_membership_id: 7b0e2a54-0000-4000-8000-000000009301
+            to_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+            recorder_membership_id: 7b0e2a54-0000-4000-8000-000000009303
+            reason: Troca de turno
+        next_cursor: ''
+        data_mode: SYNTHETIC
+    EnterpriseTripOwnItem:
+      type: object
+      additionalProperties: false
+      properties:
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        operational_state:
+          type: string
+          enum:
+          - IN_PROGRESS
+          - PAUSED
+        revision:
+          description: The trip's operational revision, named by the member's next lifecycle command.
+          type: integer
+          minimum: 1
+        started_at:
+          type: string
+          format: date-time
+        reporting_day:
+          type: string
+          format: date
+        handover:
+          description: The latest handover when it handed the trip to the requesting member; null for its own start.
+          oneOf:
+          - $ref: '#/components/schemas/EnterpriseTripHandover'
+          - type: 'null'
+      required:
+      - trip_id
+      - asset_id
+      - operational_state
+      - revision
+      - started_at
+      - reporting_day
+      - handover
+    EnterpriseTripOwnPage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseTripOwnItem'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - trip_id: 7b0e2a54-0000-4000-8000-000000009001
+          asset_id: 7b0e2a54-0000-4000-8000-000000009201
+          operational_state: IN_PROGRESS
+          revision: 2
+          started_at: '2026-11-15T08:00:00Z'
+          reporting_day: '2026-11-15'
+          handover:
+            revision: 2
+            handed_over_at: '2026-11-15T13:00:00.123456Z'
+            from_membership_id: 7b0e2a54-0000-4000-8000-000000009301
+            to_membership_id: 7b0e2a54-0000-4000-8000-000000009302
+            recorder_membership_id: 7b0e2a54-0000-4000-8000-000000009303
+            reason: Troca de turno
+        next_cursor: ''
+        data_mode: SYNTHETIC
     EnterpriseTripRevisionUsage:
       type: object
       additionalProperties: false
@@ -24671,6 +25445,65 @@ components:
         operation_id: 7b0e2a54-0000-4000-8000-000000008803
         revision: 2
         reason: Cliente cancelou a entrega
+    EnterpriseMissionAssigneesRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          minLength: 1
+      example:
+        limit: 50
+    EnterpriseMissionAssignee:
+      type: object
+      additionalProperties: false
+      description: An employee the assignment command would accept now; descriptive fields only (EDR-304).
+      properties:
+        employee_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        display_name:
+          type: string
+          maxLength: 200
+        registration_number:
+          type: string
+          maxLength: 64
+      required:
+      - employee_id
+      - display_name
+      - registration_number
+    EnterpriseMissionAssigneePage:
+      type: object
+      additionalProperties: false
+      properties:
+        items:
+          type: array
+          maxItems: 100
+          items:
+            $ref: '#/components/schemas/EnterpriseMissionAssignee'
+        next_cursor:
+          type: string
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - items
+      - next_cursor
+      - data_mode
+      example:
+        items:
+        - employee_id: 7b0e2a54-0000-4000-8000-000000008301
+          display_name: Bruno Sintético
+          registration_number: SYN-001
+        - employee_id: 7b0e2a54-0000-4000-8000-000000008302
+          display_name: ''
+          registration_number: ''
+        next_cursor: ''
+        data_mode: SYNTHETIC
     EnterpriseMissionListRequest:
       type: object
       additionalProperties: false
@@ -25434,6 +26267,173 @@ components:
       description: One audited page of a trip's recorded track (EMP-GPS-012). session is null when the trip was never
         tracked; segments are in sequence order; next_cursor is empty on the last page. Raw stored values only; no
         live position, distance, gap or quality is derived here.
+    EnterpriseTrackingPolicyReadRequest:
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+      description: The tracking policy read takes no field (B-BR-EMP-469).
+    EnterpriseTrackingPolicyChangeRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        schema_version:
+          type: integer
+          enum:
+          - 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+        policy:
+          type: string
+          enum:
+          - 'OFF'
+          - OPTIONAL
+          - EXPECTED
+        notice_version:
+          type:
+          - string
+          - 'null'
+          pattern: ^[a-z0-9][a-z0-9._-]{0,63}$
+        notice_in_force_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+      required:
+      - schema_version
+      - operation_id
+      - policy
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000008801
+        revision: 1
+        policy: EXPECTED
+        notice_version: notice-2026.11
+        notice_in_force_at: '2026-11-01T00:00:00Z'
+      description: One tracking policy change (B-BR-EMP-467/468). revision is the expected current version, omitted
+        only while none exists. notice_version and notice_in_force_at are required for OPTIONAL and EXPECTED and
+        absent (or null) for OFF; the instant must be at or before the database's effective instant. No notice
+        text, session, member or location field exists.
+    EnterpriseTrackingPolicyAcknowledgement:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 1
+        policy:
+          type: string
+          enum:
+          - 'OFF'
+          - OPTIONAL
+          - EXPECTED
+        notice_version:
+          type:
+          - string
+          - 'null'
+          pattern: ^[a-z0-9][a-z0-9._-]{0,63}$
+        notice_in_force_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        effective_at:
+          type: string
+          format: date-time
+        replayed:
+          type: boolean
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - revision
+      - policy
+      - notice_version
+      - notice_in_force_at
+      - effective_at
+      - replayed
+      - data_mode
+      example:
+        revision: 2
+        policy: EXPECTED
+        notice_version: notice-2026.11
+        notice_in_force_at: '2026-11-01T00:00:00Z'
+        effective_at: '2026-11-15T12:00:00Z'
+        replayed: false
+        data_mode: SYNTHETIC
+      description: The written tracking policy version, or the first result of a replay (replayed=true).
+    EnterpriseTrackingPolicyView:
+      type: object
+      additionalProperties: false
+      properties:
+        revision:
+          type: integer
+          minimum: 0
+        policy:
+          type: string
+          enum:
+          - 'OFF'
+          - OPTIONAL
+          - EXPECTED
+        notice_version:
+          type:
+          - string
+          - 'null'
+          pattern: ^[a-z0-9][a-z0-9._-]{0,63}$
+        notice_in_force_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        effective_at:
+          type:
+          - string
+          - 'null'
+          format: date-time
+        in_force:
+          type: object
+          additionalProperties: false
+          properties:
+            policy:
+              type: string
+              enum:
+              - 'OFF'
+              - OPTIONAL
+              - EXPECTED
+            revision:
+              type: integer
+              minimum: 0
+          required:
+          - policy
+          - revision
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - revision
+      - policy
+      - notice_version
+      - notice_in_force_at
+      - effective_at
+      - in_force
+      - data_mode
+      example:
+        revision: 2
+        policy: EXPECTED
+        notice_version: notice-2026.11
+        notice_in_force_at: '2026-11-01T00:00:00Z'
+        effective_at: '2026-11-15T12:00:00Z'
+        in_force:
+          policy: EXPECTED
+          revision: 2
+        data_mode: SYNTHETIC
+      description: The newest stored tracking policy version and the policy in force now (B-BR-EMP-469). revision 0
+        with OFF, null notice and null effective_at when nothing was recorded.
     EnterpriseFuelingSubmitPayload:
       type: object
       additionalProperties: false
@@ -27178,6 +28178,375 @@ components:
           effective_at: '2026-11-15T12:05:00Z'
         evaluated_at: '2026-11-15T12:30:00Z'
         data_mode: SYNTHETIC
+    EnterpriseChecklistRunOutcome:
+      type: string
+      enum:
+      - COMPLETED_OK
+      - COMPLETED_WITH_ISSUES
+      - BLOCKING
+    EnterpriseChecklistRunAnswer:
+      type: object
+      additionalProperties: false
+      description: One answer per item in item order. NOT_APPLICABLE only on optional items (rechecked). photo is a
+        declaration of a photo of a NOT_OK item; it is RETRY/UNAVAILABLE until the run-photo channel exists.
+      properties:
+        answer:
+          type: string
+          enum:
+          - OK
+          - NOT_OK
+          - NOT_APPLICABLE
+        note:
+          type:
+          - string
+          - 'null'
+          minLength: 1
+          maxLength: 560
+          description: 1..140 Unicode scalars, no control character, not only white space, or null.
+        photo:
+          type: boolean
+      required:
+      - answer
+      - note
+      - photo
+    EnterpriseChecklistRunPayload:
+      type: object
+      additionalProperties: false
+      description: Owner schema1 for check.run.complete (EMP-CHECK-002, B-BR-EMP-439). Entity type checklist_run with the
+        device run UUID and no expected revision; no depends_on, soft_references or attachments. The envelope declaration
+        is the completion. template_version and policy_revision are the cached ones the device used; device_outcome is
+        the device's own computation and never governs; acknowledged ("Estou ciente das pendências") is true only with
+        COMPLETED_WITH_ISSUES. The server recheck and its flags are never fields of the payload.
+      properties:
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        template_version:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        policy_revision:
+          type: integer
+          minimum: 1
+          maximum: 2147483647
+        started_at:
+          type: string
+          format: date-time
+          description: Canonical UTC instant with at most microsecond precision, not after the completion.
+        answers:
+          type: array
+          minItems: 1
+          maxItems: 40
+          items:
+            $ref: '#/components/schemas/EnterpriseChecklistRunAnswer'
+        device_outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        acknowledged:
+          type: boolean
+      required:
+      - asset_id
+      - context
+      - template_id
+      - template_version
+      - policy_revision
+      - started_at
+      - answers
+      - device_outcome
+      - acknowledged
+      example:
+        asset_id: 7b0e2a54-0000-4000-8000-000000009721
+        context: DEPARTURE
+        template_id: 7b0e2a54-0000-4000-8000-000000009731
+        template_version: 1
+        policy_revision: 1
+        started_at: '2026-11-15T11:40:00Z'
+        answers:
+        - answer: OK
+          note: null
+          photo: false
+        - answer: NOT_OK
+          note: Freios rangendo
+          photo: false
+        device_outcome: BLOCKING
+        acknowledged: false
+    EnterpriseChecklistRunReadRequest:
+      description: Empty body; the asset and the run are the path selectors.
+      type: object
+      additionalProperties: false
+      properties: {}
+      example: {}
+    EnterpriseChecklistRunReleaseRequest:
+      type: object
+      additionalProperties: false
+      description: The run revision released and the reason; the outcome is never chosen.
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 2
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: 1..500 Unicode scalars, no control character, not only white space.
+      required:
+      - schema_version
+      - operation_id
+      - revision
+      - reason
+      example:
+        schema_version: 1
+        operation_id: 7b0e2a54-0000-4000-8000-000000009601
+        revision: 1
+        reason: Freios verificados na oficina
+    EnterpriseChecklistRun:
+      type: object
+      additionalProperties: false
+      description: One run as stored (B-BR-EMP-441); review_required equals outcome_differs. released_at is present exactly
+        at revision 2.
+      properties:
+        run_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        template_version:
+          type: integer
+          minimum: 1
+        policy_revision:
+          type: integer
+          minimum: 1
+        server_policy_revision:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          minimum: 1
+          maximum: 2
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        received_at:
+          type: string
+          format: date-time
+        device_outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        recheck_outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        outcome_differs:
+          type: boolean
+        review_required:
+          type: boolean
+        template_superseded:
+          type: boolean
+        acknowledged:
+          type: boolean
+        issues:
+          type: array
+          maxItems: 40
+          items:
+            type: integer
+            minimum: 1
+            maximum: 40
+        critical_issues:
+          type: array
+          maxItems: 40
+          items:
+            type: integer
+            minimum: 1
+            maximum: 40
+        released_at:
+          type: string
+          format: date-time
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+      required:
+      - run_id
+      - asset_id
+      - template_id
+      - context
+      - template_version
+      - policy_revision
+      - server_policy_revision
+      - revision
+      - started_at
+      - completed_at
+      - received_at
+      - device_outcome
+      - recheck_outcome
+      - outcome
+      - outcome_differs
+      - review_required
+      - template_superseded
+      - acknowledged
+      - issues
+      - critical_issues
+      - data_mode
+      example:
+        run_id: 7b0e2a54-0000-4000-8000-000000009711
+        asset_id: 7b0e2a54-0000-4000-8000-000000009721
+        template_id: 7b0e2a54-0000-4000-8000-000000009731
+        context: DEPARTURE
+        template_version: 1
+        policy_revision: 2
+        server_policy_revision: 3
+        revision: 1
+        started_at: '2026-11-15T11:40:00Z'
+        completed_at: '2026-11-15T12:00:00.123Z'
+        received_at: '2026-11-15T12:30:00.5Z'
+        device_outcome: COMPLETED_WITH_ISSUES
+        recheck_outcome: BLOCKING
+        outcome: BLOCKING
+        outcome_differs: true
+        review_required: true
+        template_superseded: false
+        acknowledged: true
+        issues:
+        - 2
+        critical_issues:
+        - 2
+        data_mode: SYNTHETIC
+    EnterpriseChecklistRunRelease:
+      type: object
+      additionalProperties: false
+      description: The released run (revision 2) and whether this was a replay.
+      properties:
+        run_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        asset_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        template_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        context:
+          $ref: '#/components/schemas/EnterpriseChecklistContext'
+        template_version:
+          type: integer
+          minimum: 1
+        policy_revision:
+          type: integer
+          minimum: 1
+        server_policy_revision:
+          type: integer
+          minimum: 1
+        revision:
+          type: integer
+          const: 2
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+        received_at:
+          type: string
+          format: date-time
+        device_outcome:
+          $ref: '#/components/schemas/EnterpriseChecklistRunOutcome'
+        recheck_outcome:
+          type: string
+          const: BLOCKING
+        outcome:
+          type: string
+          const: COMPLETED_WITH_ISSUES
+        outcome_differs:
+          type: boolean
+        review_required:
+          type: boolean
+        template_superseded:
+          type: boolean
+        acknowledged:
+          type: boolean
+        issues:
+          type: array
+          maxItems: 40
+          items:
+            type: integer
+            minimum: 1
+            maximum: 40
+        critical_issues:
+          type: array
+          maxItems: 40
+          items:
+            type: integer
+            minimum: 1
+            maximum: 40
+        released_at:
+          type: string
+          format: date-time
+        data_mode:
+          type: string
+          enum:
+          - SYNTHETIC
+        replayed:
+          type: boolean
+      required:
+      - run_id
+      - asset_id
+      - template_id
+      - context
+      - template_version
+      - policy_revision
+      - server_policy_revision
+      - revision
+      - started_at
+      - completed_at
+      - received_at
+      - device_outcome
+      - recheck_outcome
+      - outcome
+      - outcome_differs
+      - review_required
+      - template_superseded
+      - acknowledged
+      - issues
+      - critical_issues
+      - released_at
+      - data_mode
+      - replayed
+      example:
+        run_id: 7b0e2a54-0000-4000-8000-000000009711
+        asset_id: 7b0e2a54-0000-4000-8000-000000009721
+        template_id: 7b0e2a54-0000-4000-8000-000000009731
+        context: DEPARTURE
+        template_version: 1
+        policy_revision: 1
+        server_policy_revision: 1
+        revision: 2
+        started_at: '2026-11-15T11:40:00Z'
+        completed_at: '2026-11-15T12:00:00.123Z'
+        received_at: '2026-11-15T12:30:00.5Z'
+        device_outcome: BLOCKING
+        recheck_outcome: BLOCKING
+        outcome: COMPLETED_WITH_ISSUES
+        outcome_differs: false
+        review_required: false
+        template_superseded: false
+        acknowledged: false
+        issues:
+        - 2
+        critical_issues:
+        - 2
+        released_at: '2026-11-15T14:00:00Z'
+        data_mode: SYNTHETIC
+        replayed: false
     EnterpriseFinancePeriodListRequest:
       description: Keyset page of months with lock history, optionally filtered by current state.
       type: object
@@ -30637,6 +32006,7 @@ components:
           - ACTIVE_USE
           - MAINTENANCE_HOLD
           - BLOCK
+          - CHECKLIST_RUN
           - RESERVATION
         lifecycle_state:
           type: string
@@ -30695,12 +32065,13 @@ components:
             $ref: '#/components/schemas/EnterpriseFleetAvailabilityCause'
         missing_sources:
           type: array
-          maxItems: 2
+          maxItems: 3
           uniqueItems: true
           items:
             type: string
             enum:
             - ACTIVE_USE
+            - CHECKLIST_RUN
             - MAINTENANCE_HOLD
         evaluated_at:
           type: string

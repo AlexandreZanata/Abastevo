@@ -151,13 +151,16 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, reviewpg.PeriodAuditDefinitions()...)
 	definitions = append(definitions, maintpg.ChecklistAuditDefinitions()...)
 	definitions = append(definitions, maintpg.IncidentAuditDefinitions()...)
+	definitions = append(definitions, maintpg.RunAuditDefinitions()...)
 	definitions = append(definitions, trippg.ReviewAuditDefinitions()...)
 	definitions = append(definitions, trippg.ClosureAuditDefinitions()...)
+	definitions = append(definitions, trippg.HandoverAuditDefinitions()...)
 	definitions = append(definitions, trippg.MissionAuditDefinitions()...)
 	definitions = append(definitions, documentpg.AuditDefinitions()...)
 	definitions = append(definitions, mediapg.AuditDefinitions()...)
 	definitions = append(definitions, exportpg.AuditDefinitions()...)
 	definitions = append(definitions, trackingpg.AuditDefinitions()...)
+	definitions = append(definitions, trackingpg.PolicyAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -192,7 +195,7 @@ func Register(router chi.Router, o Options) error {
 		{Class: "idn.device", Permissions: []string{"idn.credential.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic scoped device enrollment and revocation inherit identity v1 write200/hour on every axis; current source membership precedes admission and production measurement remains required."},
 		{Class: "auth.role", Permissions: []string{"auth.role.assign"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic role management only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "trip.mission", Permissions: []string{"trip.mission.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic mission create, assign and cancel commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
-		{Class: "trip.close", Permissions: []string{"trip.trip.close_for_other"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic supervisor trip closures inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "trip.close", Permissions: []string{"trip.trip.close_for_other"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic supervisor trip closures and handovers (EMP-TRIP-012) inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "trip.review", Permissions: []string{"trip.trip.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic trip review decisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
@@ -225,7 +228,7 @@ func Register(router chi.Router, o Options) error {
 	// work orders join this source when the maintenance epic delivers them.
 	// Trips are the FLEET-007 active-use source (EDR-206); NoMaintenanceHolds
 	// stays the explicit "no source" answer until maintenance holds exist.
-	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}}
+	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}, ChecklistBlocks: maintpg.ChecklistBlocks{}}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}
@@ -273,6 +276,15 @@ func Register(router chi.Router, o Options) error {
 	incidentQueue := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Now: time.Now}
 	incidentReports := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Structure: incidentStructure, Now: time.Now}
 	if err := maintweb.RegisterIncidents(router, maintapp.IncidentService{Enabled: true, Repository: incidents}, cookies, gateway, incidentQueue, incidentReports, incidentQueue); err != nil {
+		return err
+	}
+	// EMP-CHECK-002 (EDR-285): a run is read on its asset with the applicable
+	// read's authorization; a blocking run is released under fresh
+	// check.incident.manage through the run's stored snapshot.
+	runStructure := &orgpg.ResourceStructure{Kind: orgpg.ChecklistRunStructure, Pool: o.Pool}
+	runs := &maintpg.RunStore{Pool: o.Pool, Authority: &orgpg.RunCompanyAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags, AssetStructure: assetStructure, Assignee: assetAssignee, RunStructure: runStructure}, Audit: auditStore}
+	runRelease := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: maintweb.IncidentRecords{}, Structure: runStructure, Now: time.Now}
+	if err := maintweb.RegisterRuns(router, maintapp.RunService{Enabled: true, Repository: runs}, cookies, gateway, applicableAuthorization, runRelease); err != nil {
 		return err
 	}
 	centres := &orgpg.CostCentreStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
@@ -406,6 +418,14 @@ func Register(router chi.Router, o Options) error {
 	if err := tripweb.RegisterClosure(router, tripapp.ClosureService{Enabled: true, Repository: tripClosures}, cookies, gateway, tripClosureAuthorization); err != nil {
 		return err
 	}
+	// EMP-TRIP-012 (EDR-255): the supervisor handover and the organization's
+	// handover list under trip.trip.close_for_other through the same trip
+	// structure; the receiver's own open trips under trip.trip.start.
+	tripHandovers := &trippg.HandoverStore{Pool: o.Pool, Authority: &orgpg.TripHandoverAuthority{Review: tripReviewAuthority, Assignments: assets}, Audit: auditStore}
+	tripHandoverAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: tripweb.HandoverRecords{}, Structure: tripStructure, Now: time.Now}
+	if err := tripweb.RegisterHandover(router, tripapp.HandoverService{Enabled: true, Repository: tripHandovers}, cookies, gateway, tripHandoverAuthorization); err != nil {
+		return err
+	}
 	// EMP-TRIP-007 (EDR-263): held trip facts resolved once under
 	// trip.trip.review; structure through the held fact (HeldTripStructure);
 	// an accepted start's reading through the meter review store.
@@ -423,6 +443,13 @@ func Register(router chi.Router, o Options) error {
 		Access: auditpg.AccessLog{Runner: auditStore}, NewID: jobs.NewUUIDv4}
 	trackAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.TrackRecords{}, Structure: tripStructure, Now: time.Now}
 	if err := trackingweb.RegisterTrack(router, trackingapp.TrackService{Enabled: true, Repository: tracks}, cookies, gateway, trackAuthorization, tracks); err != nil {
+		return err
+	}
+	// Tracking policy writer (EDR-302/303): fresh org.settings.manage and
+	// org.settings.read over the organization itself.
+	trackingPolicies := &trackingpg.PolicyStore{Pool: o.Pool, Authority: &orgpg.TrackingPolicyAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore}
+	policyAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.PolicyRecords{}, Now: time.Now}
+	if err := trackingweb.RegisterPolicy(router, trackingapp.PolicyService{Enabled: true, Repository: trackingPolicies}, cookies, gateway, policyAuthorization); err != nil {
 		return err
 	}
 

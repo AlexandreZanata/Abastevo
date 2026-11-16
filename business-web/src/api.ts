@@ -176,7 +176,9 @@ export class CompanyApi implements SessionPort {
   async privatePost(path: string, body: unknown, signal?: AbortSignal): Promise<Record<string, unknown>> {
     if (!/^\/v1\/org-access\/(?:contexts\/(?:list|read)|organizations\/(?:create|setups\/list))$/.test(path) &&
         !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:organization\/activate|settings\/(?:read|change|history|revision\/read|responsibility-members\/list))$/.test(path) &&
-        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:employees\/(?:list|create|matches|[0-9a-f-]{36}\/read)|invitations\/(?:list|issue|[0-9a-f-]{36}\/(?:read|resend|revoke|confirm|reject|acceptance\/read)))$/.test(path)) throw new ApiError('denied');
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:employees\/(?:list|create|matches|[0-9a-f-]{36}\/read)|invitations\/(?:list|issue|[0-9a-f-]{36}\/(?:read|resend|revoke|confirm|reject|acceptance\/read)))$/.test(path) &&
+        // EMP-TRIP-022 board: mission reads/commands and the reads it composes.
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:missions\/(?:list|create|[0-9a-f-]{36}\/(?:read|plan|assign|cancel|vehicle\/change|assignees\/list))|fleet\/assets\/(?:list|[0-9a-f-]{36}\/(?:availability\/read|reservations\/list|blocks\/list))|cost-centres\/list)$/.test(path)) throw new ApiError('denied');
     if (!this.authenticated) { this.forget(); throw new ApiError('unauthenticated'); }
     const epoch = this.#epoch;
     try {

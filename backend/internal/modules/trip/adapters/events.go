@@ -72,8 +72,9 @@ func (h *eventHandler) trip(ctx context.Context, db syncapp.DBTX, source syncapp
 	if err != nil {
 		return app.Record{}, syncapp.ErrUnavailable
 	}
-	target := app.Target{TripID: record.ID, AssetID: record.AssetID, UnitID: record.UnitID, CostCentreID: record.CostCentreID, AuthorMembershipID: record.AuthorMembershipID}
-	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, target, action(mode)); err != nil {
+	// EMP-TRIP-012: the member responsible for the trip at the declared instant.
+	at := v.Declared.OccurredAt
+	if err := h.authority.CheckTripTx(ctx, syncapp.Borrow(db), source.Scope, source, tripTarget(record, source, mode, &at), action(mode)); err != nil {
 		return app.Record{}, denied(err)
 	}
 	return record, nil
@@ -96,7 +97,7 @@ func (h *eventHandler) Admit(ctx context.Context, db syncapp.DBTX, source syncap
 		}
 		return err
 	}
-	_, err = h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+	_, err = h.classify(ctx, db, source, record.AssetID, record.DriverAt(v.Declared.OccurredAt), v.Declared.OccurredAt)
 	return err
 }
 
@@ -128,7 +129,7 @@ func (h *eventHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
-	disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+	disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverAt(v.Declared.OccurredAt), v.Declared.OccurredAt)
 	if err != nil {
 		return syncapp.Outcome{}, err
 	}
@@ -177,13 +178,13 @@ func (h *eventHandler) Apply(ctx context.Context, db syncapp.DBTX, source syncap
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	employee, err := h.store.AuthorEmployeeTx(ctx, syncapp.Borrow(db), source.Scope, source.MembershipID)
-	if err != nil || employee != record.AuthorEmployeeID {
+	if _, responsible := record.ResponsibleAt(v.Declared.OccurredAt); err != nil || employee != responsible {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
 	if err := h.events.InsertEventTx(ctx, syncapp.Borrow(db), source.Scope, source, command, employee); err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt); err != nil || disposition != app.Apply {
+	if disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverAt(v.Declared.OccurredAt), v.Declared.OccurredAt); err != nil || disposition != app.Apply {
 		if err == nil {
 			err = syncapp.ErrUnavailable
 		}
@@ -222,7 +223,7 @@ func (h *eventHandler) Confirm(ctx context.Context, db syncapp.DBTX, source sync
 		return err
 	}
 	if mode == syncapp.Write {
-		disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverID, v.Declared.OccurredAt)
+		disposition, err := h.classify(ctx, db, source, record.AssetID, record.DriverAt(v.Declared.OccurredAt), v.Declared.OccurredAt)
 		if err != nil {
 			return err
 		}

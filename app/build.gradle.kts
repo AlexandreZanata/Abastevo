@@ -74,6 +74,9 @@ android {
         // EMP-TRIP-005 rollback switch (EDR-242): hides the trip entry; queued trip work keeps its delivery.
         buildConfigField("boolean", "ENTERPRISE_TRIP_UI_ENABLED",
             providers.gradleProperty("enterpriseTripUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        // EMP-CHECK-002 rollback switch (EDR-286): hides the checklist entry and the trip start's departure line; queued runs keep their delivery.
+        buildConfigField("boolean", "ENTERPRISE_CHECKLIST_UI_ENABLED",
+            providers.gradleProperty("enterpriseChecklistUiEnabled").orElse("true").get().toBooleanStrict().toString())
         // EMP-DOC-004 rollback switch (EDR-293): hides receipt capture; saved photos keep their delivery.
         buildConfigField("boolean", "ENTERPRISE_RECEIPT_CAPTURE_UI_ENABLED",
             providers.gradleProperty("enterpriseReceiptCaptureUiEnabled").orElse("true").get().toBooleanStrict().toString())

@@ -1240,3 +1240,130 @@ production grants.
 Integration (`a27a30f4`): the branch already contained `0912b48a`; clean
 merge; build, vet, gofmt, `sqlc diff`, check_plan green; proposed shared text
 applied (backend README, 09-architecture, fuelings §9, 10-offline-sync).
+
+### EMP-TRIP-012 — driver handover during a trip: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip012-driver-handover.md), commit `a30ad444`, migration
+000243 (insert-only, forced-RLS `org_trip_handovers`; new
+`org_trip_responsible`, `org_trip_responsible_member`,
+`org_trip_handover_source`, `org_trip_handover_published`; twelve
+redefinitions each from its latest body including 000235/000236/000239/000240,
+every original line kept — line log `f4-logs/trip012-migration-lines.log`; no
+usage-function line, so 000244 is untouched; 000234 stays unused). Routes
+`POST /trips/{trip_id}/handover` (supervisor, fresh `trip.trip.close_for_other`
+covering the trip structure, receiver an eligible member assigned to the asset,
+revision CAS), `/trips/handovers/list` and `/trips/mine/list`. Responsibility
+is derived from the handover rows: the current responsible member gates
+pause/resume/cancel/finish/submit/late finish; logbook events, incidents in
+trips and tracking facts are checked against the member responsible at the
+declared instant; each handover adds one to the trip revision; every past
+responsible member is excluded from review; handovers respect supervisor
+closures and offboarding flags; after a handover the old tracking owner is
+refused and the receiver opens a new session (EDR-254..256). New 87-case
+`trip/handover-v1.psv` with Kotlin `TripHandover.kt`. RED Go 5/31 and 81/87,
+Kotlin 83/954, PostGIS 7/7 and 4/4 → GREEN Go 36/896 (99.9%), Kotlin 954 and
+enterprise 4227, PostGIS incl. races; merged-tree union on `2f031276` + this
+change: 55 packages, 1476 top-level / 10379 named, 0 failures; untagged 229
+packages. Counts: 156 normal routes (30 routed / 54 not routed / 26 special),
+auditor walk 156/31/125, matrix 300 cells (121/179). Retained: Android/panel
+handover screens (TRIP-021/022), real-device acceptance.
+
+Integration: the commit's parent is the F4 head `2f031276`; clean merge;
+build, vet, gofmt, `sqlc diff`, check_plan green.
+
+### EMP-CHECK-002 — checklist execution offline: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-check002-checklist-execution.md), commit `3e91dab5`, migration
+000242 (three forced-RLS run tables and a deferred database recheck; the
+000244 usage bodies gained the three run keys at integration so the later
+redefinition keeps them). Pure server recheck
+(`maintenance/domain/checklist/run.go`) and a signed `check.run.complete`:
+a well-formed run is always ACCEPTED with what the device recorded and the
+server's outcome by the policy in force from its own history;
+`TEMPLATE_SUPERSEDED` is flagged; a disagreement is kept as `review_required`
+and never dropped (EDR-283..286). A BLOCKING run blocks the asset through a new
+availability cause `CHECKLIST_RUN` (`ChecklistBlockPort`), so a new trip start
+is held `ASSET_UNAVAILABLE`; routes: run read (`fleet.asset.read`) and release
+(fresh `check.incident.manage`, `SELF_APPROVAL`, CAS, replay, one audit event).
+Shared 56-row `checklist/run-v1.psv`. Android: Kotlin builder, sealed
+`checklist-book` v1, producer and store, `ChecklistRunScreen` reachable from the
+context screen and the trip start form (disabled while BLOCKING), 66 strings ×
+8 locales, flag `ENTERPRISE_CHECKLIST_UI_ENABLED`. RED → GREEN across Go
+(recheck 7/35 → 16/162, vectors 54/56, availability, contract, router, PostGIS
+8/8 twice) and Android (vectors 55/58, book, flow, gateway, store, process
+death, ViewModel); merged-tree union on `3fdab0b8` 46 packages 1387/10075, 0
+failures; Kotlin domain 4204. Native acceptance on `emulator-5588` (7 stages:
+offline BLOCKING run with process death, server agreement, a WARN-vs-BLOCK
+disagreement shown as "A empresa recalculou o resultado"; exact server counts)
+— run before the emulator-lock rule existed. Retained: the trip gate
+(TRIP-019), run photos (DOC-003 `CHECKLIST_RUN` link kind), damages and
+incident blocks and the panel (CHECK-004), the feed entity type, events,
+protocol-level ACCEPTED_FOR_REVIEW, production grants; OWED: real Hilt UI end
+to end, release while the device watches, a second device, visual/TalkBack.
+
+### Tracking policy command (EMP-GPS-002 prerequisite): LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps-policy-command.md), commit `4d5159c7`, migration 000247
+(receipt table only). `tracking/policy/change` under fresh
+`org.settings.manage` (the key the spec names for SCR-GPS-09) and
+`tracking/policy/read` under `org.settings.read`; each change writes the next
+insert-only `org_tracking_policies` version with a receipt and one
+`gps.policy.changed` audit event under revision CAS; OPTIONAL/EXPECTED need a
+notice version already in force (a future notice is refused); no notice text is
+stored (EDR-302/303). RED unit 3/4, PostGIS 3/4, contract 2+2 → GREEN.
+
+### EMP-GPS-005 — track processing: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-gps005-track-processing.md), commit `90ee8c83`, migration
+000246. Storing a session END (or a segment of an ended session) queues
+`org-tracking-process` in the intake transaction; the job, under its lease,
+writes one insert-only `org_tracking_summaries` revision: fixes filtered and
+counted (outside session, accuracy > 50 m, implied speed > 70 m/s), gaps with
+reason and detector (SIGNAL_LOST after 180 s), coverage and quality from the
+GPS-001 function, haversine distance inside runs only with its method,
+Douglas–Peucker at 20 m (≤ 1000 vertices) plus a database-built
+MULTILINESTRING; the database re-proves the exact stored input and accepts only
+a strictly newer input at the next revision (EDR-298..301). RED unit 16/17,
+PostGIS 4/4 → GREEN; union 33 packages 1173/8319 on a tree containing
+`2f031276`. Retained: processing for trips ending without the device's
+`gps.session.end` (needs a trip-completion consumer), summary reads
+(GPS-006/009), purge/trim recomputation (GPS-011), held/late tracking,
+production grants, real-device acceptance (OWED).
+
+Integration (CHECK-002 merge `2e3b02e6`; tracking merge `eca80543`): route
+counts merged as unions — 160 normal routes (30 routed / 54 not routed / 26
+special), auditor walk 160 / 33 / 127, matrix 300 cells (121/179), 20 signed
+owners; the router test lists both TRIP-012 and tracking routes; duplicated EDR
+rows 262..264 removed again. Build, vet (incl. `nativefixture`), gofmt,
+`sqlc diff`, cmd/api, apicontract and tracking unit tests green; proposed shared
+text applied (10-offline-sync checklist row, data and backend READMEs).
+
+### EMP-TRIP-022 — panel: mission planning and assignment board: LOCAL_DONE / INTEGRATION_PENDING
+
+[Evidence](f4-trip022-mission-board.md), commit `ebcf9bd0`, no migration
+(000248 unused). Business-web mission board (SCR-TRIP-03) in the organization
+workspace: sends nothing until the planner opens it; lists, creates (unit =
+the chosen vehicle's current unit), plans, assigns, changes the vehicle and
+cancels through the existing routes with schema 1, one fixed operation id per
+decision and the revision the planner saw; shows only server-read state with
+its read time (ACCEPTED/DECLINED only from a read carrying the answer);
+CONFLICT re-reads and never retries, FORBIDDEN/NOT_FOUND clear the board,
+FRESH_AUTH_REQUIRED resets the session. SCR-FLEET-06 is delivered as a
+read-only vehicle agenda (availability with causes, reservations and blocks,
+without purposes, notes or people). One missing backend read was added:
+`POST /missions/{mission_id}/assignees/list` under the mission read policy,
+reusing the assignment eligibility check and returning only employee id,
+display name and registration number (EDR-304..306; the company principal
+also needs `SELECT ON org_employee_profiles`). RED router 4, contract 1/2,
+PostGIS 3/3, web 8/8 → GREEN router 24/24, contract 2/2, PostGIS 3/3, web
+59/59; a local Chromium DOM check found and fixed a focus bug. Union 8 packages
+820/7052 on its base. Retained: the actual-API HTTPS browser flow
+(`tests/browser.py`) not extended, reservation/block commands and grid
+calendar, filters, history, missions without a vehicle, a
+`trip.mission.manage` context hint, production grants.
+
+Integration (merge onto `1a566b45`): counts merged to 161 normal routes (30
+routed / 54 not routed / 26 special) and the auditor walk 161 / 33 / 128;
+build, vet, gofmt, `sqlc diff`, cmd/api, apicontract and trip unit tests
+green; business-web typecheck, 59/59 tests, build and the 27-file artifact
+check pass on the merged tree.

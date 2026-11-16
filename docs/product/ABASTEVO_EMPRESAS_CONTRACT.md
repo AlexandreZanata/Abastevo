@@ -7321,6 +7321,482 @@ corrections; migration 000200 is append-only after the committed 184–199 chain
   forced RLS and insert-only history, and a populated upgrade from the 000237
   head with injected failure, recovery and the catch-up run twice.
 
+## EMP-TRIP-012 — Driver handover during a trip (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip012-driver-handover.md).
+
+- **B-BR-EMP-394 — A handover is a supervisor's online command on an open
+  trip.** A handover moves the responsibility for one open trip
+  (`IN_PROGRESS` or `PAUSED`) of the organization from its current
+  responsible member to another member. It is recorded online on a company
+  session by a member holding `trip.trip.close_for_other` with fresh proof
+  over the trip's stored structure (ORG, or the unit, cost centre, team or
+  asset of the start snapshot) on an `ACTIVE` organization:
+  `POST /v1/orgs/{org_id}/trips/{trip_id}/handover` with `schema_version`
+  1, `operation_id`, the trip's operational `revision` the supervisor saw,
+  `receiver_membership_id` and a `reason` (nonblank, control-free, at most
+  280 characters). Its instant is the server clock at recording, never a
+  device claim (BR-TIME-003). The receiver must be an `ACTIVE` membership of
+  the organization other than the current responsible member, whose
+  employee record is `ACTIVE` and not merged, who currently holds
+  `trip.trip.start` for the trip as its own record and who is assigned
+  (FLEET-006) to the trip's asset at the handover instant; an unknown,
+  ended, suspended, foreign or otherwise ineligible receiver is
+  `VALIDATION_FAILED` with no detail about the person. A closed trip
+  (`COMPLETED` or `CANCELLED`) or a revision that is not the current one is
+  `CONFLICT`; a trip not stored in the organization is `NOT_FOUND`; a
+  body with another field is `MALFORMED`. An accepted handover is one
+  insert-only fact (trip, the revision it creates, giving membership and
+  employee, receiving membership and employee, recorder account,
+  membership and employee, reason, operation and request digest, instant)
+  and one `trip.trip.handed_over` audit event carrying the digest and no
+  reason text; the identical request returns the stored answer marked
+  `replayed`, the same operation with another body is
+  `OPERATION_ID_REUSED`. The pure trip (Go `trip/domain`, Kotlin
+  `enterprise.trip`) applies a handover with the order scope and trip,
+  recorder, receiver and receiving employee (absent `INVALID`, another
+  organization `SCOPE`), present reason and instant (`INVALID`), a
+  non-positive expected revision (`INVALID`), a missing reason
+  (`INCOMPLETE` `REASON`), a terminal trip (`INVALID_TRANSITION`), a stale
+  revision (`CONFLICT`), a recorder who is the current responsible member
+  or the receiver (`FORBIDDEN`), a receiver who already is responsible
+  (`INVALID`), then an instant before the previous handover's (`INVALID`);
+  both languages execute the shared `trip/handover-v1.psv` oracle.
+- **B-BR-EMP-395 — Future actions use the new responsibility; history keeps
+  its actors.** After a handover accepted at instant h: `trip.pause`,
+  `trip.resume`, `trip.cancel`, `trip.finish` and `trip.submit` are
+  admitted only from the current responsible member (the receiver of the
+  latest handover); a logbook event (`trip.event.record`) is admitted only
+  from the member responsible at its declared instant (the giving member
+  before h, the receiver at or after h), so field facts the giving member
+  declared offline before the handover still arrive; any other member is
+  `FORBIDDEN` and stores nothing, also on a held path (a late finish of a
+  member that is no longer responsible is `MALFORMED`, as for any other
+  member). The authority, the history continuity rule (EDR-118), an
+  incident report inside the trip, the tracking trip facts and the database
+  consult the member responsible at that point and that member's employee
+  as the trip's current driver. When a membership ends, its open work
+  (`TRIP:<id>` flags, EMP-TRIP-018) is the trips it is currently
+  responsible for: a giving member's offboarding no longer needs the
+  handed-over trip's flag, the receiver's does. Nothing is rewritten: the start, its readings, every
+  stored event, lifecycle row, finish, review entry and acknowledgement
+  keep their original actor, instants and receipt; the trip keeps its
+  identity, asset, start driver, structure snapshot, reporting day and
+  usage rule. A member who was responsible may still re-read the receipts
+  of the operations it sent.
+- **B-BR-EMP-396 — One revision, one responsible member.** A handover is a
+  trip revision: the operational revision is 1 after the start and one
+  more per lifecycle command, finish and handover (08-state-model rule 7).
+  Of two commands naming the same revision under the organization root and
+  trip row locks exactly one applies: a second handover is `CONFLICT`, a
+  device lifecycle command is held `STALE_REVISION` (or `FORBIDDEN` when
+  its author no longer holds the trip), so at no instant two members are
+  responsible. The database re-proves, under the same locks, the open
+  state, the next revision, the giving member as the current responsible
+  member, the receiver's active membership and employee and the
+  separation, and moves no trip column (responsibility is derived from the
+  handover facts).
+- **B-BR-EMP-397 — Separation.** The recorder is neither the current
+  responsible member nor the receiver, by account, membership or canonical
+  employee (`SELF_APPROVAL`, nothing written). Every party of every
+  handover of a trip — giving member, receiving member and recorder, by
+  account, membership and canonical employee — is excluded from every
+  review decision of that trip like its author (BR-REV-003), in the
+  application and in the review-entry guard. The member currently
+  responsible for a trip never closes it for another (EMP-TRIP-014,
+  `SELF_APPROVAL`), and a closed trip takes no handover (`CONFLICT`). The
+  resolution of a held fact (EMP-TRIP-007) keeps its own author and driver
+  separation.
+- **B-BR-EMP-398 — Who sees the handover; tracking ownership.** Under
+  `trip.trip.close_for_other` the organization's handovers are listed
+  (`POST /v1/orgs/{org_id}/trips/handovers/list`, organization level, only
+  an ORG grant covers it, keyset by instant and operation). The receiving
+  member learns its responsibility through
+  `POST /v1/orgs/{org_id}/trips/mine/list` under `trip.trip.start` on its
+  own membership: the open trips it is currently responsible for, with the
+  asset, state, revision, start instant and, when it was handed over, the
+  latest handover's instant, giving member and reason. A tracking session
+  belongs to the member who opened it (B-BR-EMP-421): after a handover the
+  giving member's session collects nothing and cannot start or resume (the
+  pure session refuses an owner who no longer runs the trip); the device
+  of the giving member stops collection and ends its session, and the
+  receiving member's device opens its own session for the remaining trip,
+  which the tracking owner must admit (EDR-256).
+- **BUC-EMP-199 — Hand a trip over at a shift change.** A driver started a
+  trip at 184 320 000 m; at 13:00 the supervisor, who is not driving,
+  hands it over at revision 1 to a second driver assigned to the same
+  vehicle with the reason "Troca de turno": the trip stays one trip at
+  revision 2, the audit trail names the supervisor and the second driver
+  sees it in the own list. A second handover of the same revision, a
+  handover to a driver not assigned to the vehicle, to someone outside the
+  organization or of a finished trip changes nothing.
+- **BUC-EMP-200 — Continue a handed-over trip.** The second driver pauses
+  (revision 3), resumes, records stops and finishes at 184 610 000 m; a
+  stop the first driver noted offline at 12:40 still arrives under the
+  first driver, while the first driver's later pause or stop is
+  `FORBIDDEN`. The timeline shows each fact with the member who recorded
+  it.
+- **BUC-EMP-201 — Review a handed-over trip.** The second driver submits
+  the trip; neither driver nor the supervisor who recorded the handover
+  can approve, return or reject it (`SELF_APPROVAL`); another reviewer
+  decides. Proven on real PostGIS with the races between two handovers and
+  between a handover and a pause, in both orders.
+
+## EMP-CHECK-002 — Checklist execution offline with the critical-item policy (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-check002-checklist-execution.md).
+
+- **B-BR-EMP-438 — A run is filled offline from the cached template and
+  decided on the device.** The app obtains the applicable template of an
+  asset and context (version, ordered items, policy revision, mode and
+  validity) from the EMP-CHECK-001 applicable read under `fleet.asset.read`
+  while online and keeps it sealed in the protected store with the server
+  instant that confirmed it; offline is the normal state and shows that age.
+  A run is started for one asset, context and cached template; every answer
+  (`OK`, `NOT_OK`, `NOT_APPLICABLE`, an optional note of at most 140
+  characters) is written to the sealed run before the screen shows it as
+  saved, so answers survive closing the app or process death; a failed write
+  reports that nothing was saved. Completion is refused locally with the
+  shared EMP-CHECK-001 answer rule (`ANSWER_NOT_ALLOWED`, `PHOTO_REQUIRED`,
+  `INCOMPLETE`) and when the run is older than the cached policy validity
+  (`CHECKLIST_EXPIRED`, a new run is started). The device computes the
+  outcome (B-BR-EMP-334) from the cached version and policy revision, names
+  both in the run and shows it at once: `BLOCKING` is stated in text and
+  icon with the items that block, `COMPLETED_WITH_ISSUES` with critical items
+  under `WARN` asks the driver to confirm "Estou ciente das pendências". The
+  completed run is one durable `check.run.complete` operation queued in the
+  same protected write as the run's local record (BR-OFFL-002); the run is
+  attachable by its identifier (the departure gate of a trip start is
+  EMP-TRIP-019).
+- **B-BR-EMP-439 — The signed run operation.** `check.run.complete` schema 1:
+  envelope entity `checklist_run` with the run identity and no expected
+  revision, no dependency, no soft reference or attachment (those are
+  `RETRY`/`UNAVAILABLE`), `occurred_at` the completion instant, payload
+  exactly `asset_id`, `context`, `template_id`, `template_version` (≥ 1),
+  `policy_revision` (≥ 1), `started_at` (not after the completion),
+  `answers` (1..40 objects of exactly `answer`, `note` — null or 1..140
+  nonblank control-free characters — and `photo`, true only with `NOT_OK`),
+  `device_outcome` and `acknowledged` (true only with
+  `COMPLETED_WITH_ISSUES`). Anything else is a final `MALFORMED`. A `photo`
+  declaration is `RETRY`/`UNAVAILABLE` until the run-photo channel exists
+  (retained), so a photo is never claimed without its bytes.
+- **B-BR-EMP-440 — The server rechecks by its own history.** On receipt the
+  server reads the named template version of this organization, its items
+  and target, every version's publication instant, the archive instant and
+  the whole policy history, and recomputes with one pure rule (Go
+  `maintenance/domain/checklist.RecheckRun`, mirrored by the database):
+  an unknown version or policy revision, another context, an answer count
+  other than the version's items, a version whose target does not cover the
+  asset (organization default, the asset, or the asset's category), a start
+  after the completion, or an answer set the shared rule refuses is
+  `MALFORMED`; the policy is the revision in force at the declared completion
+  instant (the first revision when the instant precedes it); the run is
+  `TEMPLATE_SUPERSEDED` when a later version of that template was published,
+  or the template archived, at or before the completion. The server outcome
+  is stored and governs; the device's own claim never does, so a critical
+  `NOT_OK` under `BLOCK` declared `COMPLETED_OK` is stored `BLOCKING`.
+- **B-BR-EMP-441 — A disagreement keeps the field fact.** A well-formed run
+  is always stored and acknowledged `ACCEPTED` at revision 1, with the
+  answers, the device outcome and the named policy revision as declared, the
+  server outcome, the server policy revision, `template_superseded` and
+  `outcome_differs`; a run whose outcomes differ is held for review
+  (`review_required`) and never dropped or rewritten. The author is told by
+  reading the run: `POST /v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read`
+  under `fleet.asset.read` on the asset exactly as the applicable read (its
+  allocation for structural grants; an assigned driver through the
+  assignment; a run of another asset is not found) returns both
+  outcomes, the flags and the positions of the issues — never a note, a
+  photo or the author's identity. A run whose asset is another
+  organization's, unknown or not covered is not found; a `DRAFT` asset is
+  `MALFORMED`; changed rights store nothing (`RETRY`/`UNAVAILABLE`); the same
+  operation returns the stored acknowledgement byte for byte and another
+  digest is `OPERATION_ID_REUSED`; a second operation for a stored run
+  identity is `MALFORMED`. The intake authority is `check.checklist.execute`
+  with the EDR-177 history rule (S: own records and assigned assets).
+- **B-BR-EMP-442 — A blocking run blocks the asset until another member
+  releases it.** From the declared completion instant a run stored
+  `BLOCKING` makes the asset `BLOCKED` for every member (FLEET-007 §6.2 row
+  4, new cause kind `CHECKLIST_RUN` with the run as record and its period; a
+  new start is held `ASSET_UNAVAILABLE` by the existing start check; the
+  `CHECKLIST_BLOCKING` gate code is EMP-TRIP-019). `POST
+  /v1/orgs/{org_id}/checklists/runs/{run_id}/release` under fresh
+  `check.incident.manage` covering the run's stored asset, unit or cost
+  centre takes an operation identifier, the expected revision and a reason
+  (1..500): a `BLOCKING` run at that revision becomes `COMPLETED_WITH_ISSUES`
+  at revision 2, the block ends at the release instant, one audit event
+  `check.run.released` is written and the answers, device outcome and
+  recheck outcome never change. The author of the run (same account,
+  membership or canonical employee record) is refused `SELF_APPROVAL`; a run
+  that is not `BLOCKING` or a stale revision is `CONFLICT`; a missing or
+  blank reason is `VALIDATION_FAILED`; replay returns the first answer and
+  another intent is `OPERATION_ID_REUSED`. Migration 000242 stores runs,
+  answers and releases with forced RLS, same-organization keys to the
+  template version, items and policy revisions, insert-only answers and
+  releases, a database recheck of the outcome, the flags and the in-force
+  policy, publication only with the `ACCEPTED` receipt or the release audit
+  event, and the asset, unit and cost-centre usage sources redefined from
+  their latest bodies with the run keys as associations.
+- **B-BR-EMP-443 — The execution screens.** An enterprise "Checklists" entry
+  and the trip start form open the execution screen for an asset: one item
+  per row with large targets, critical marks, the three answers and the note,
+  progress, the cached template's confirmation age, and "Nenhum checklist
+  exigido para este veículo" when none applies. The outcome screen shows the
+  local outcome, the blocking items and that the company rechecks it; after
+  delivery it shows the server outcome and, when it differs, "A empresa
+  recalculou o resultado" with both outcomes. The trip start form shows the
+  latest valid departure run of the chosen vehicle and disables the start
+  while it is `BLOCKING` (the device effect of BR-CHECK-006). Items that
+  require a photo when not OK cannot be completed `NOT_OK` until the
+  run-photo channel exists, and the screen says so. Strings exist in the
+  eight app locales; the visual direction is the app's (black solid header
+  and bars, white containers, light by default, no grey fills).
+- **BUC-EMP-222 — Fill a departure checklist with no connection.** A driver
+  opens the cached template of a vehicle (BLOCK, item 2 "Freios" critical),
+  answers item 1 OK, closes the app, reopens it and finds the answer, answers
+  "Freios" NOT_OK with a note and completes: the screen shows "Bloqueando o
+  uso" with "Freios" as the blocking item and the trip start of that vehicle
+  is disabled; the run waits in the queue.
+- **BUC-EMP-223 — The company rechecks the run.** On reconnection the run is
+  accepted; the server stores `BLOCKING` and the vehicle is `BLOCKED` for a
+  second member. A run computed on a cached `WARN` revision while the
+  server's policy at that time was `BLOCK` is stored `BLOCKING` with the
+  device's `COMPLETED_WITH_ISSUES`, held for review, and the author's screen
+  shows both outcomes; nothing was refused or rewritten.
+- **BUC-EMP-224 — Release a blocked vehicle.** A fleet manager of the
+  vehicle's unit, not the author, releases the run with the reason "Freios
+  verificados na oficina"; the vehicle is available again, the run reads
+  `COMPLETED_WITH_ISSUES` at revision 2 with its answers unchanged, and the
+  audit trail has the release. The author trying the same is refused
+  `SELF_APPROVAL`.
+
+## EMP-GPS-002 prerequisite — Tracking policy command (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps-policy-command.md). Coordinator-assigned
+prerequisite of the EMP-GPS-002 activation: since EMP-GPS-004 nothing wrote
+`org_tracking_policies`, so no organization could turn tracking on.
+
+- **B-BR-EMP-467 — Only a fresh organization administrator changes the
+  tracking policy.** The company route
+  `POST /v1/orgs/{org_id}/tracking/policy/change` requires the current
+  company proof with fresh authentication, `org.settings.manage` covering the
+  organization itself (OWNER and ADMIN; the catalog key that the tracking
+  specification names for the tracking policy), the organizations capability
+  and an `ACTIVE` organization. The body names `schema_version` 1, an
+  `operation_id`, the expected current `revision` (absent only while the
+  organization has no recorded version), the `policy` (`OFF`, `OPTIONAL`,
+  `EXPECTED`) and, for `OPTIONAL` and `EXPECTED`, the employee notice
+  (`notice_version`, `notice_in_force_at`). One accepted change writes, in one
+  transaction, the next insert-only policy version (revision + 1, effective at
+  the database clock), one immutable command receipt (actor account and
+  membership, request digest, resulting revision) and one audit event
+  `gps.policy.changed`. Another role (including `AUDITOR`), a member without
+  coverage and a stale or premature revision change nothing: `FORBIDDEN`
+  naming `org.settings.manage`, `CONFLICT`. Another organization, an unknown
+  organization and an account without a current membership are `NOT_FOUND`.
+  The same operation and digest returns the first result with
+  `replayed: true` and no second version or audit event; the same operation
+  with another body is `OPERATION_ID_REUSED`.
+- **B-BR-EMP-468 — Tracking is enabled only with the employee notice in
+  force.** `OPTIONAL` and `EXPECTED` require a notice version
+  (`^[a-z0-9][a-z0-9._-]{0,63}$`) and the instant it entered into force,
+  which must be at or before the effective instant the database assigns to
+  the new version; a missing notice, a malformed version, a notice that is
+  not yet in force and any notice field sent with `OFF` are
+  `VALIDATION_FAILED` naming the field with a frozen code and write nothing.
+  The platform stores only the version identifier and instant that the
+  organization declares for its own employee notice (EDR-271); the notice
+  text is the organization's publication and is shown to the driver by
+  EMP-GPS-002/015, never stored or invented here. A new version governs new
+  sessions only; existing sessions keep the policy revision they opened under
+  and their stored data (BR-GPS-006). Policy `OFF` carries no notice.
+- **B-BR-EMP-469 — The policy read states the stored and the effective
+  policy.** `POST /v1/orgs/{org_id}/tracking/policy/read` requires
+  `org.settings.read` covering the organization (OWNER, ADMIN, FLEET_MANAGER,
+  SUPERVISOR, FINANCE, APPROVER, AUDITOR) and answers the current revision
+  (`0` with `OFF` and no notice when nothing was recorded), the stored policy,
+  notice version and in-force instant, the version's effective instant and the
+  policy in force now (the EMP-GPS-004 rule: `OFF` until a notice is in
+  force). `DRIVER` and the other roles are `FORBIDDEN` naming
+  `org.settings.read`. The read carries no session, member or location data.
+- **BUC-EMP-237 — An administrator turns tracking on.** After publishing the
+  employee notice, an owner or administrator reads the current policy, sets
+  `EXPECTED` with the notice version and its in-force instant on the read
+  revision, and from then on drivers' trips open tracking sessions under that
+  version; turning it `OFF` later stops new sessions and keeps what was stored.
+- **BUC-EMP-238 — The policy cannot be changed around its owners.** A
+  supervisor, a fleet manager, an auditor, a driver, another organization, a
+  stale revision, two administrators racing on one revision (one wins, the
+  other is `CONFLICT`) and a notice not yet in force all leave the policy
+  unchanged.
+
+## EMP-GPS-005 — Track processing: filtering, gaps, GPS distance and simplified geometry (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-gps005-track-processing.md).
+
+- **B-BR-EMP-461 — An ended session is processed by one fenced job.** When
+  a session's `ENDED` transition is stored, or a segment is stored for a
+  session that already ended, the tracking store queues one
+  `org-tracking-process` job in the same transaction; its payload names only
+  the organization and the session, and its de-duplication key names the
+  input (the session's stored segment and transition counts), so a resend
+  converges and a new input is a new job. The job runs in one
+  organization-scoped transaction that first holds its own queue row under
+  its lease token (a superseded lease writes nothing) and then the trip row
+  (the lock of the intake and of the trip finish). A session not stored in
+  the job's organization, and a session not ended yet, complete with no
+  effect.
+- **B-BR-EMP-462 — Fixes are filtered, counted and never edited.** In
+  instant order, a stored fix outside the trip's running time or the
+  session's recording periods, or whose coarse flag disagrees with its
+  period, is counted `OUTSIDE`; a precise fix whose accuracy is above 50 m is
+  counted `ACCURACY`; a precise fix whose speed implied from the previous
+  accepted precise fix is above 70 m/s is counted `SPEED`; a coarse fix is
+  accepted without those checks and is never measured (BR-GPS-007/017). The
+  device's own dropped counters (accuracy, stale, jump, mock) and the intake
+  counters (duplicates, outside the session, mock) of the session's segments
+  are summed into the summary. Raw fixes are never edited, reordered in
+  storage or deleted by processing (BR-GPS-023).
+- **B-BR-EMP-463 — Gaps are data with a reason and a detector.** Inside the
+  trip's `IN_PROGRESS` time — from its start until its finish, cancellation
+  or supervisor closure, pauses excluded, and until the session's end when the
+  trip has none stored — every interval without recording is a gap whose
+  reason is the session's cause (before the session opened `NOT_STARTED`;
+  after an early end its end cause), detected by the device when the driver
+  or the device reported it and by the server otherwise; inside a recording
+  period any interval longer than 180 s without an accepted fix (from the
+  period's start, between accepted fixes, until its end) is a `SIGNAL_LOST`
+  gap detected by the server. Gaps are ordered, never overlap, merge only
+  with an adjacent gap of the same reason and detector, and store start, end,
+  reason and detector (BR-GPS-024). Expected seconds are the whole seconds of
+  that time (floor), gap seconds the ceiling of the gaps' length bounded by
+  it, and coverage and quality are the EMP-GPS-001 classification (any
+  approximate recording period caps it at `APPROXIMATE`, BR-GPS-026).
+- **B-BR-EMP-464 — GPS distance is measured inside runs only.** When the
+  quality is not `INSUFFICIENT` and a precise run holds two accepted fixes,
+  the GPS distance is the sum, on a sphere of 6 371 008.8 m, of the
+  great-circle lengths between consecutive accepted precise fixes of one run
+  (one precise recording period split at every `SIGNAL_LOST` gap), a step
+  counted only once it reaches 10 m from the last counted fix, floored to
+  whole metres, with method `haversine-r6371008.8-step10-v1`
+  (BR-GPS-025). Nothing is added across a gap or from a coarse period; when no
+  precise run can be measured, or the quality is `INSUFFICIENT`, the distance
+  is absent, never zero.
+- **B-BR-EMP-465 — One insert-only summary revision records its basis.**
+  Each processed input stores one summary revision (method `gps-track-v1`)
+  with the input it names, the job and lease that wrote it, the database
+  processing instant, expected and gap seconds, coverage, quality, the filter
+  and intake counters, the count of `CLOCK_UNCERTAIN` segments (no boot
+  identity, or a wall base more than 2 s away from its boot's monotonic base;
+  instants are never rewritten), the gaps, the distance with its method and
+  the simplified geometry with its tolerance: every precise run of at least
+  two accepted fixes simplified with Douglas–Peucker at 20 m on a local
+  projection, the tolerance doubled until at most 1 000 vertices remain, kept
+  as integer arrays and a database-derived `MULTILINESTRING` of SRID 4326 whose
+  parts break at every gap; no geometry when the quality is `INSUFFICIENT`, no
+  run has two fixes or the run end points alone exceed 1 000 vertices. No
+  coordinate appears in the job payload, a log or an error.
+- **B-BR-EMP-466 — Retries converge and a stale job never overwrites.** The
+  database stores a summary only for an ended session, only when it names
+  exactly the stored input (segment and transition counts) under the trip
+  lock, only when that input is strictly newer than the current revision's
+  and at the next revision, and only when its fix, intake and device totals
+  are the session's own; a summary of an older or equal input, of another
+  session's fixes or of another organization is refused, and summaries are
+  never updated or deleted. A job whose input is already summarized, a job
+  run twice, two concurrent runs and a retried job converge on one revision
+  per input; a late batch makes a newer input whose revision supersedes the
+  previous one (BR-TRUTH-004), which stays stored.
+- **BUC-EMP-234 — A finished trip's track is summarized.** The driver
+  finishes the trip and the device ends the session; the job filters the
+  stored fixes, records the gaps, measures the runs, simplifies the line and
+  stores the summary with its quality, coverage and methods.
+- **BUC-EMP-235 — A late batch supersedes the summary.** Fixes collected
+  before the end arrive later; a new job writes the next revision over the
+  complete input and the earlier revision stays as history.
+- **BUC-EMP-236 — Retries, duplicates and races converge.** A redelivered
+  job, a job run twice, two workers on one session, a superseded lease and a
+  foreign organization's job leave one revision per input and nothing else.
+
+## EMP-TRIP-022 — Panel: mission planning and assignment board (2026-11-15)
+
+[Evidence](../enterprise/evidence/f4-trip022-mission-board.md).
+
+- **B-BR-EMP-470 — Eligible assignees of a mission are a server read.** `POST
+  /v1/orgs/{org_id}/missions/{mission_id}/assignees/list` lists, under current
+  `trip.mission.manage` covering the mission (read, not fresh; structural scope
+  as the mission read: another organization's or an unknown mission
+  `NOT_FOUND`, a planner whose grant does not cover it, `AUDITOR` and `DRIVER`
+  `FORBIDDEN`), exactly the employees the assignment command would accept: an
+  `ACTIVE`, unmerged employee of the organization with an `ACTIVE`
+  account-linked membership whose current `trip.trip.start` covers the mission
+  (the EMP-TRIP-008 `EligibleAssigneeTx` rule, evaluated per candidate inside
+  the read transaction). Each item carries only `employee_id`, `display_name`
+  and `registration_number` (empty strings when the profile has none); no
+  contact, membership, role, scope or account data. Pages scan candidates in
+  employee order and return the eligible ones; the opaque cursor is bound to
+  the route, mission and limit and advances by the last scanned employee, so a
+  page can be empty while a cursor remains. The read changes nothing and is
+  answered `no-store` like every private company read. Eligibility shown here
+  is never authority: the assignment command re-decides it.
+- **B-BR-EMP-471 — The board reports server state only.** The company panel
+  board (SCR-TRIP-03) shows a mission's state, revision, vehicle, assignee,
+  answer and plan only as returned by the latest successful mission list or
+  read, with the instant it was read (BR-TRUTH-006). A pending command never
+  changes the shown mission; an acknowledged command is followed by a new read
+  of that mission and only that read replaces it. `ACCEPTED` and `DECLINED`
+  appear only when a server read says so; an assignment acknowledgement must
+  say `ASSIGNED` for the requested employee, otherwise it is unusable. The
+  FLEET-007 assignment warning (`ASSET_UNAVAILABLE`/`ASSET_BUSY` with the
+  availability) is shown as returned and is never a refusal.
+- **B-BR-EMP-472 — Only eligible scoped choices are offered.** Vehicles offered
+  for creation and vehicle change are the planner's server-listed `ACTIVE`
+  assets that are not `IMPLEMENT` (never the mission's current vehicle for a
+  change); assignees offered are only those of B-BR-EMP-470 for that mission
+  (never the current assignee again). A choice that is not in the current
+  server list is refused before any request. Cost centres are offered only
+  from the server's `ACTIVE` cost-centre list when the member can read it;
+  otherwise the plan is saved without one. The vehicle's agenda (SCR-FLEET-06
+  list view) shows its FLEET-007 availability with causes and evaluation
+  instant, and its reservations and blocks by state and window; free-text
+  purposes and notes are not displayed. A displayed option or control is not
+  authorization: the server decides every read and command.
+- **B-BR-EMP-473 — Commands keep their contracts.** Create, plan, assign,
+  vehicle change and cancel use the existing routes with schema 1, one
+  immutable operation id and body per decision, and the mission revision the
+  planner saw. An unknown outcome may be retried only with the same id and
+  body; a new decision gets a new id. `CONFLICT` (stale revision, a state that
+  no longer allows the action, a busy vehicle) clears the pending decision,
+  never retries, and re-reads the mission so the current server state is
+  shown with the conflict. `FORBIDDEN` and `NOT_FOUND` clear every private
+  board record and show fixed copy that reveals nothing about the target;
+  `FRESH_AUTH_REQUIRED` and `UNAUTHENTICATED` end the company session view;
+  `VALIDATION_FAILED` keeps the planner's input.
+- **B-BR-EMP-474 — Isolation, freshness and privacy of the board.** Changing
+  organization, losing authority, signing out or reloading clears the board
+  and aborts its requests; a late response of an earlier scope or decision is
+  discarded. Nothing is kept in browser storage; private responses must be
+  `no-store`; the board displays no personal data beyond the fields the routes
+  return and never sends a value it did not receive from the server as a
+  reference.
+- **BUC-EMP-239 — Plan and hand over a mission from the panel.** A fleet
+  manager opens the board, creates "Entrega sintética no cliente" with FR-001
+  for tomorrow 08:00–10:00, plans destination text, reason, cost centre and
+  cargo, sees FR-001's agenda (a confirmed reservation the same morning),
+  assigns Bruno from the eligible list and reads the server's
+  `ASSET_UNAVAILABLE` warning; the mission shows `ASSIGNED` (awaiting answer)
+  until a later read shows Bruno's `ACCEPTED`.
+- **BUC-EMP-240 — A concurrent change is never hidden.** Two planners open the
+  same mission at revision 3; the first reassigns it; the second's cancel gets
+  `CONFLICT`, the board re-reads and shows revision 4 assigned to the other
+  member with the conflict message, and the second planner decides again.
+- **BUC-EMP-241 — Prove the board and its read.** Real PostGIS proves the
+  eligible-assignee read (FINANCE, AUDITOR, suspended, inactive, merged and
+  account-less candidates excluded; unit-scoped coverage; empty pages with a
+  cursor; another organization and out-of-scope planners refused; the read
+  changes nothing) and its composed HTTP route; the web tests prove a foreign
+  or stale assignment is not offered, a conflict refreshes server state, an
+  unconfirmed state is never shown as accepted and a `403` clears the board.
+
 ## EMP-DOC-004 — App: capture and import with offline queue and legibility check (2026-11-15)
 
 [Evidence](../enterprise/evidence/f4-doc004-app-capture.md).

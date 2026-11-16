@@ -1463,6 +1463,20 @@ the EMP-TRIP-008/009 grants and the FLEET-007 availability reads).
 `trip.mission.manage` (admission class `trip.mission`). Nothing here
 provisions live grants.
 
+### Mission eligible assignees (EMP-TRIP-022)
+
+`POST /v1/orgs/{org_id}/missions/{mission_id}/assignees/list` lists, under
+current (not fresh) `trip.mission.manage` covering the mission, the employees
+the assignment command would accept now: ACTIVE, unmerged, with an ACTIVE
+account-linked membership whose current `trip.trip.start` covers the mission
+(the command's own `EligibleAssigneeTx`, evaluated per candidate in the read
+transaction between two authority checks). Items carry only `employee_id`,
+`display_name` and `registration_number`; the sealed cursor is bound to the
+mission and limit and advances by the last scanned employee, so a page may be
+empty while a cursor remains. No migration; the company principal needs
+`SELECT ON org_employee_profiles` (already held by the employee reads) besides
+the EMP-TRIP-008 grants. Nothing here provisions live grants.
+
 ### Trip review, period lock and amendments (EMP-TRIP-004, EMP-TRIP-016, EMP-TRIP-015)
 
 Migration 226 adds forced-RLS, append-only `org_trip_review_entries`; 228
@@ -1539,6 +1553,44 @@ org_fuelings and ownership of `org_asset_current_usage`,
 `org_unit_current_usage` and `org_cost_centre_current_usage`. Fuelings
 accepted before 000244 receive their expense from the per-organization
 catch-up; nothing provisions live grants.
+
+### Trip driver handover (EMP-TRIP-012)
+
+Migration 243 adds forced-RLS, insert-only `org_trip_handovers` (one row per
+handover at the trip's next revision; it moves no trip column), the functions
+`org_trip_responsible` and `org_trip_responsible_member`, the handover source
+and its deferred publication guard (the `trip.trip.handed_over` audit event),
+and redefines, keeping every other line, the 233 transition, held-transition
+and finish sources, the 235 revision, logbook, held-logbook, review-entry and
+closure sources, the 236 held source and offboarding guard, the 229
+held-submission source and the 230 incident report source. Production grants
+(not provisioned here): the company runtime `SELECT, INSERT ON
+org_trip_handovers` with `SELECT ON org_asset_assignments` for the receiver's
+eligibility; every principal that reads a trip, its revision or its
+responsible member (the signed intake, the trip review, closure, conflict,
+incident, tracking and offboarding stores) `SELECT ON org_trip_handovers`. The
+migrator needs `REFERENCES ON org_trips, org_memberships,
+org_employee_identities, org_audit_events` and ownership of the twelve
+replaced functions. `/v1/orgs/{org_id}/trips/{trip_id}/handover` (fresh) and
+`/v1/orgs/{org_id}/trips/handovers/list` use `trip.trip.close_for_other`;
+`/v1/orgs/{org_id}/trips/mine/list` uses `trip.trip.start` on the requesting
+membership. Nothing here provisions live grants.
+
+### Checklist runs (EMP-CHECK-002)
+
+Migration 242 adds forced-RLS `org_checklist_runs`, `org_checklist_run_answers`
+and `org_checklist_run_releases`. Production runtime grants (not provisioned
+here): `SELECT, INSERT` on the three tables, `UPDATE(outcome, revision,
+updated_at)` on `org_checklist_runs`, and `SELECT` on the checklist template
+tables it reads.
+
+### Tracking policy and processing (EMP-GPS-002 prerequisite, EMP-GPS-005)
+
+Migration 247 adds the receipt table `org_tracking_policy_commands`; the policy
+command writes insert-only `org_tracking_policies` rows (000240). Migration 246
+adds insert-only `org_tracking_summaries`, written by the `org-tracking-process`
+job on the general worker. Production grants for these tables, the 000240
+tracking tables and `org_sensitive_access_events` are not provisioned here.
 
 ### Finance periods (EMP-APPR-006)
 

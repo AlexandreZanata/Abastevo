@@ -173,6 +173,16 @@ func (s *ClosureStore) CloseTrip(ctx context.Context, scope kernel.OrgScope, act
 		if self.AccountID == author.AccountID || self.MembershipID == author.MembershipID || sharesEmployee(self, author) || sharesEmployee(self, driver) {
 			return trip.ErrSelfClosure
 		}
+		// EMP-TRIP-012: nor the member currently responsible after a handover.
+		if member, staff := record.Responsible(); member != record.AuthorMembershipID {
+			current, err := person(ctx, queries, org, member, staff)
+			if err != nil {
+				return err
+			}
+			if samePerson(self, current) {
+				return trip.ErrSelfClosure
+			}
+		}
 		if _, err := app.CloseDomain(scope, record, closer.MembershipID, closer.EmployeeID, v.MissingReason); err != nil {
 			return err
 		}

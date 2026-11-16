@@ -228,6 +228,8 @@ type Record struct {
 	// Closure is the supervisor closure of a trip completed without a finish
 	// (EMP-TRIP-014); never beside a finish.
 	Closure *ClosureRecord
+	// Handovers are the trip's driver handovers in revision order (EMP-TRIP-012).
+	Handovers []HandoverRecord
 }
 
 // Store persists trips, finishes and held facts in the intake transaction.

@@ -66,7 +66,8 @@ func (h *finishHandler) HoldLate(ctx context.Context, db syncapp.DBTX, source sy
 	if err != nil {
 		return syncapp.Outcome{}, syncapp.ErrUnavailable
 	}
-	if record.AuthorMembershipID != source.MembershipID {
+	// EMP-TRIP-012: a finish comes from the member currently responsible.
+	if responsible, _ := record.Responsible(); responsible != source.MembershipID {
 		return malformed(), nil
 	}
 	if _, err := app.FinishDomain(source.Scope, record, v); err != nil {

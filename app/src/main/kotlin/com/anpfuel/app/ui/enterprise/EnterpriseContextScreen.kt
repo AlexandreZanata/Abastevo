@@ -52,6 +52,11 @@ import com.anpfuel.app.ui.components.AnpTopAppBar
 import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureUi
 import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureViewModel
 import com.anpfuel.app.ui.enterprise.attachment.rememberSystemReceiptPickers
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistActions
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistHomePanel
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistRunPanel
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistViewModel
+import com.anpfuel.app.ui.enterprise.checklist.ChecklistsHomeCard
 import com.anpfuel.app.ui.enterprise.fleet.MyAssetsHomeCard
 import com.anpfuel.app.ui.enterprise.fueling.FuelingPanel
 import com.anpfuel.app.ui.enterprise.fueling.FuelingViewModel
@@ -65,6 +70,8 @@ import com.anpfuel.app.ui.theme.AnpContainerDefaults
 import com.anpfuel.application.enterprise.EnterpriseAccessError
 import com.anpfuel.application.enterprise.EnterpriseContextState
 import com.anpfuel.application.enterprise.EnterpriseContextSummary
+import com.anpfuel.application.enterprise.checklist.ChecklistViewState
+import com.anpfuel.domain.enterprise.maintenance.checklist.ChecklistContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +85,7 @@ fun EnterpriseContextScreen(
     tripViewModel: TripViewModel = hiltViewModel(),
     receiptViewModel: ReceiptCaptureViewModel = hiltViewModel(),
     fuelingViewModel: FuelingViewModel = hiltViewModel(),
+    checklistViewModel: ChecklistViewModel = hiltViewModel(),
 ) {
     // These are cheap local invalidation flows; keep private presentation current
     // while stopped rather than briefly resuming an earlier confirmed context.
@@ -96,6 +104,9 @@ fun EnterpriseContextScreen(
     val fuelingState by fuelingViewModel.state.collectAsState()
     var showFuelings by remember { mutableStateOf(false) }
     var fuelingsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
+    val checklistState by checklistViewModel.state.collectAsState()
+    var showChecklists by remember { mutableStateOf(false) }
+    var checklistsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val renderedGeneration = syncState.generation
     val renderedSelected = state.selected
     var showSync by remember { mutableStateOf(false) }
@@ -126,6 +137,8 @@ fun EnterpriseContextScreen(
         tripViewModel.withdraw()
         // An unsaved photo never survives its context (B-BR-EMP-453).
         receiptViewModel.reset()
+        // The trip start's departure line borrows the checklist owner (EMP-CHECK-002); it leaves with the trips.
+        if (!showChecklists) checklistViewModel.withdraw()
         showTrips = false
         tripsFor = null
     }
@@ -136,6 +149,12 @@ fun EnterpriseContextScreen(
         showFuelings = false
         fuelingsFor = null
     }
+    // Checklists (EMP-CHECK-002): withdrawn with the same gestures and lifecycle as the trips.
+    fun closeChecklists() {
+        checklistViewModel.withdraw()
+        showChecklists = false
+        checklistsFor = null
+    }
     fun withdrawForGesture(): Boolean {
         if (!currentGesture()) return false
         syncViewModel.withdraw()
@@ -144,6 +163,7 @@ fun EnterpriseContextScreen(
         closeAssets()
         closeTrips()
         closeFuelings()
+        closeChecklists()
         return true
     }
     fun requestUnlock() {
@@ -180,16 +200,35 @@ fun EnterpriseContextScreen(
     // Fuelings likewise: the exact selected partition, member and epoch only.
     val fuelingsMatch = resumed && renderedSelected != null && fuelingState.epoch == renderedEpoch &&
         fuelingState.context?.partition == renderedSelected.partition && fuelingState.context?.membershipId == renderedSelected.membershipId
+    // Checklists are shown only for the exact selected partition, member and epoch; their writes keep their creation partition.
+    val checklistMatch = resumed && renderedSelected != null && checklistState.epoch == renderedEpoch &&
+        checklistState.context?.partition == renderedSelected.partition && checklistState.context?.membershipId == renderedSelected.membershipId
+    // A source loss clears the owner; keep only its safe message and withhold every checklist fact.
+    val renderedChecklist = if (checklistMatch) checklistState else ChecklistViewState(error = checklistState.error)
+    fun checklistActions(selected: EnterpriseContextSummary) = ChecklistActions(
+        onRefresh = { if (checklistMatch) checklistViewModel.refresh(renderedEpoch, checklistState.generation) },
+        onRetry = {
+            val asset = checklistState.assetId
+            val moment = checklistState.checklistContext
+            if (asset != null && moment != null) checklistViewModel.open(selected, asset, moment, renderedEpoch)
+        },
+        onStart = { if (checklistMatch) checklistViewModel.start(renderedEpoch, checklistState.generation) },
+        onAnswer = { run, position, answer, note -> if (checklistMatch) checklistViewModel.answer(run, position, answer, note, renderedEpoch, checklistState.generation) },
+        onComplete = { run, acknowledged -> if (checklistMatch) checklistViewModel.complete(run, acknowledged, renderedEpoch, checklistState.generation) },
+        onSend = { if (checklistMatch) checklistViewModel.sendNow(renderedEpoch, checklistState.generation) },
+    )
     SecureAccountWindow()
-    DisposableEffect(viewModel, syncViewModel, assetsViewModel, tripViewModel, fuelingViewModel) {
-        onDispose { syncViewModel.withdraw(); assetsViewModel.withdraw(); tripViewModel.withdraw(); fuelingViewModel.withdraw(); viewModel.unconfirm() }
+    DisposableEffect(viewModel, syncViewModel, assetsViewModel, tripViewModel, fuelingViewModel, checklistViewModel) {
+        onDispose { syncViewModel.withdraw(); assetsViewModel.withdraw(); tripViewModel.withdraw(); fuelingViewModel.withdraw()
+            checklistViewModel.withdraw(); viewModel.unconfirm() }
     }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
         resumed = true; syncViewModel.invalidateIfStale(); assetsViewModel.invalidateIfStale(); tripViewModel.invalidateIfStale()
-        fuelingViewModel.invalidateIfStale(); viewModel.invalidateIfStale()
+        fuelingViewModel.invalidateIfStale(); checklistViewModel.invalidateIfStale(); viewModel.invalidateIfStale()
     }
     LifecycleEventEffect(Lifecycle.Event.ON_STOP) {
-        resumed = false; showSync = false; openedFor = null; recovery = null; syncViewModel.withdraw(); closeAssets(); closeTrips(); closeFuelings(); viewModel.unconfirm()
+        resumed = false; showSync = false; openedFor = null; recovery = null; syncViewModel.withdraw(); closeAssets(); closeTrips(); closeFuelings()
+        closeChecklists(); viewModel.unconfirm()
     }
     LaunchedEffect(renderedSelected, renderedEpoch, resumed, choosing, state.busy, state.selectionConfirmed) {
         val selected = renderedSelected
@@ -201,6 +240,7 @@ fun EnterpriseContextScreen(
         if (assetsFor != null && (assetsFor?.partition != selected?.partition || assetsFor?.membershipId != selected?.membershipId)) closeAssets()
         if (tripsFor != null && (tripsFor?.partition != selected?.partition || tripsFor?.membershipId != selected?.membershipId)) closeTrips()
         if (fuelingsFor != null && (fuelingsFor?.partition != selected?.partition || fuelingsFor?.membershipId != selected?.membershipId)) closeFuelings()
+        if (checklistsFor != null && (checklistsFor?.partition != selected?.partition || checklistsFor?.membershipId != selected?.membershipId)) closeChecklists()
         if (!resumed || selected == null) { syncViewModel.withdraw(); showSync = false; openedFor = null }
         else if (!choosing && !state.busy && resumed && lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) &&
             !viewModel.state.value.busy && viewModel.state.value.selected == selected && viewModel.epochs.value == renderedEpoch) {
@@ -222,6 +262,7 @@ fun EnterpriseContextScreen(
     }
     BackHandler {
         when {
+            showChecklists && resumed -> closeChecklists()
             showTrips && resumed -> if (tripsMatch && tripState.openTripId != null) tripViewModel.openTrip(null, renderedEpoch, tripState.generation)
                 else closeTrips()
             showFuelings && resumed -> if (fuelingsMatch && fuelingState.openFuelingId != null) fuelingViewModel.openFueling(null, renderedEpoch, fuelingState.generation)
@@ -251,7 +292,17 @@ fun EnterpriseContextScreen(
             }
         },
     ) { padding ->
-        if (showFuelings && resumed && renderedSelected != null && !choosing &&
+        if (showChecklists && resumed && renderedSelected != null && !choosing &&
+            checklistsFor?.partition == renderedSelected.partition && checklistsFor?.membershipId == renderedSelected.membershipId) ChecklistHomePanel(
+            assets = if (assetsMatches) assetsState else assetsState.copy(snapshot = null, detailAssetId = null,
+                error = assetsState.error ?: EnterpriseAccessError.STALE),
+            state = renderedChecklist,
+            connected = connected,
+            actions = checklistActions(renderedSelected),
+            onOpenRun = { asset, moment -> checklistViewModel.open(renderedSelected, asset, moment, renderedEpoch) },
+            onBack = { closeChecklists() },
+            modifier = Modifier.fillMaxSize().padding(padding),
+        ) else if (showFuelings && resumed && renderedSelected != null && !choosing &&
             fuelingsFor?.partition == renderedSelected.partition && fuelingsFor?.membershipId == renderedSelected.membershipId) FuelingPanel(
             // A source loss clears the owner; keep only its safe message and withhold every fueling fact.
             state = if (fuelingsMatch) fuelingState else fuelingState.copy(fuelings = emptyList(), openFuelingId = null,
@@ -290,6 +341,12 @@ fun EnterpriseContextScreen(
             capture = if (receiptViewModel.enabled) ReceiptCaptureUi(receiptState, receiptPickers, receiptViewModel::reset) else null,
             onAttach = { owner, target, draft -> if (tripsMatch) tripViewModel.attach(owner, target, draft, renderedEpoch, tripState.generation) },
             modifier = Modifier.fillMaxSize().padding(padding),
+            checklist = if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) renderedChecklist else null,
+            onDepartureCheck = { asset -> checklistViewModel.open(renderedSelected, asset, ChecklistContext.DEPARTURE, renderedEpoch) },
+            departureContent = if (!BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) null else { _, label, onDone ->
+                ChecklistRunPanel(renderedChecklist, connected, label, checklistActions(renderedSelected), onBack = onDone,
+                    modifier = Modifier.fillMaxSize().padding(padding))
+            },
         ) else if (showAssets && resumed && renderedSelected != null && !choosing &&
             assetsFor?.partition == renderedSelected.partition && assetsFor?.membershipId == renderedSelected.membershipId) MyAssetsPanel(
             // A source loss clears the owner; keep only its safe message and withhold every cached fact.
@@ -351,6 +408,14 @@ fun EnterpriseContextScreen(
                             if (BuildConfig.ENTERPRISE_FLEET_UI_ENABLED) assetsViewModel.open(selected, renderedEpoch)
                             tripsFor = selected
                             showTrips = true
+                        }
+                    })
+                    if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) ChecklistsHomeCard(onOpen = {
+                        if (currentGesture() && !viewModel.state.value.busy) {
+                            // The asset is chosen with the FLEET-013 picker from the protected reference cache, offline first.
+                            assetsViewModel.open(selected, renderedEpoch)
+                            checklistsFor = selected
+                            showChecklists = true
                         }
                     })
                     if (BuildConfig.ENTERPRISE_FUELING_UI_ENABLED) FuelingsHomeCard(onOpen = {

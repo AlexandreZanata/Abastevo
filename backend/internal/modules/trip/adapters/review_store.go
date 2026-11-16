@@ -137,6 +137,10 @@ type ReviewStore struct {
 	Periods   reviewapp.PeriodGate
 	Amenders  AmendAuthority
 	Readings  AmendmentReadings
+	// PreHandoverImage is set only by rehearsals that populate a schema image
+	// before migration 000243, where no handover (EMP-TRIP-012) can exist;
+	// every production store excludes the handover parties it reads.
+	PreHandoverImage bool
 }
 
 var _ app.ReviewRepository = (*ReviewStore)(nil)
@@ -186,6 +190,29 @@ func employee(ctx context.Context, queries *q.Queries, org, id string) (app.Pers
 		return app.Person{}, app.ErrUnavailable
 	}
 	return app.Person{Employees: []string{id, canonical}}, nil
+}
+
+// handoverParties are the giving, receiving and recording members of every
+// handover of a trip, each with its account and employee merge chain.
+func handoverParties(ctx context.Context, queries *q.Queries, org, tripID string) ([]app.Person, error) {
+	rows, err := queries.ListTripHandovers(ctx, q.ListTripHandoversParams{OrgID: org, TripID: tripID})
+	if err != nil {
+		return nil, err
+	}
+	records, err := handoverRecords(rows)
+	if err != nil {
+		return nil, err
+	}
+	parties := app.Record{Handovers: records}.HandoverParties()
+	out := make([]app.Person, 0, len(parties))
+	for _, p := range parties {
+		party, err := person(ctx, queries, org, p[0], p[1])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, party)
+	}
+	return out, nil
 }
 
 // decisionOf rebuilds the result of one operation from its stored entries.
@@ -306,6 +333,15 @@ func (s *ReviewStore) DecideTripReview(ctx context.Context, scope kernel.OrgScop
 				return err
 			}
 			others = append(others, closer)
+		}
+		// EMP-TRIP-012 (B-BR-EMP-397): every party of every handover of the
+		// trip is excluded like an author.
+		if !s.PreHandoverImage {
+			parties, err := handoverParties(ctx, queries, org, v.TripID)
+			if err != nil {
+				return err
+			}
+			others = append(others, parties...)
 		}
 		added, err := app.DecideRevision(revisions, v, self, author, driver, amender, others...)
 		if err != nil {
