@@ -1,5 +1,14 @@
 # Current execution state
-- Android release publication, 2026-11-17: LOCAL_DONE / INTEGRATION_PENDING on
+- Payments switch replay race, 2026-11-17: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/android-publish-draft` (dev). Main `fe1b3481` backend failed
+  `TestSourceSwitchConcurrentRequestAndStaleQuote`: a concurrent insert of the
+  same switch operation tripped the non-arbiter one-open index and returned
+  `ErrConflict` instead of replaying. Store fix plus a deterministic race test
+  (RED 3/3 → GREEN). [PAY-14 correction](../backend/evidence/payments/PAY-14.md).
+  Main `fe1b3481` therefore did not release; the merge of this fix does.
+
+- Android release publication, 2026-11-17: INTEGRATED through PR #229 (main
+  `fe1b3481`); formerly LOCAL_DONE / INTEGRATION_PENDING on
   `codex/android-publish-draft` from `origin/dev` `e7975967` (Claude Code). Main
   `e7975967` (PRs #225–#228) passed quick/CI/backend, released and was applied
   by the VPS agent (receipt 2026-11-16T21:13Z, schema 000257; health, portal,

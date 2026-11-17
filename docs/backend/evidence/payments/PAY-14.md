@@ -113,6 +113,22 @@ Results:
 - No real Stripe/Asaas account, cancellation, subscription, mandate, charge or
   deployment was used. All sale channels remain disabled.
 
+## Concurrency correction (2026-11-17)
+
+Main `fe1b3481` failed `TestSourceSwitchConcurrentRequestAndStaleQuote` with
+`payments: conflict`. Two inserts of one operation could both pass the
+operation-key pre-check of `ON CONFLICT (account_id,environment,merchant,
+operation_key) DO NOTHING`; the later one then hit the non-arbiter
+`payment_source_switches_one_open` index (SQLSTATE 23505), which mapped to
+`ErrConflict` and broke B-BR-PAY-09/10 replay. `Store.CreateSourceSwitch` now
+treats that violation as a replay when the committed open row has the same
+operation key, and keeps `ErrConflict` for any other operation. No migration.
+`TestSourceSwitchSameOperationInsertRaceReplays` (40 rounds × 8 racers plus a
+different-operation refusal) failed 3/3 before the fix and passes; the switch
+tests passed 5×, and the payments race suites, vet and staticcheck pass.
+Refund and billing-exit operation inserts have no second unique index, so the
+pattern does not recur there.
+
 ## Remaining obligations
 
 - PAY-15 completes account exit/deletion recovery; PAY-16 completes refunds,
