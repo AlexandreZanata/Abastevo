@@ -25,8 +25,11 @@ class ResourceTests(unittest.TestCase):
         cases = [
             ('raise SystemExit(7)', {}),
             ('import time; time.sleep(5)', dict(max_wall_seconds=0.1)),
-            ('open("large", "wb").write(b"x"*16384)', dict(max_output_file_bytes=1024)),
-            ('import time; open("large", "wb").write(b"x"*16384); time.sleep(2)', dict(max_working_disk_bytes=1024)),
+            # Close/flush explicitly: an error raised while flushing an
+            # unclosed file at interpreter exit is ignored (exit status 0),
+            # and Python's default buffer can hold the whole write.
+            ('with open("large", "wb") as f: f.write(b"x"*16384)', dict(max_output_file_bytes=1024)),
+            ('import time\nwith open("large", "wb") as f: f.write(b"x"*16384)\ntime.sleep(2)', dict(max_working_disk_bytes=1024)),
             ('x=bytearray(256*1024*1024)', dict(max_memory_bytes=64 << 20)),
         ]
         for code, changes in cases:
