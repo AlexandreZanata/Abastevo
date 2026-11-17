@@ -353,7 +353,7 @@ Owner scope: replace the 1220 × 2712 gallery and tutorial captures with the
 17 Nov 2026 Android captures under the
 [capture contract](../../assets/app-tutorial/CAPTURE_CONTRACT.md), finish every
 published `/como-usar/` chapter, add in-app steps to every guide and
-calculator, and keep the LH08–LH10 style.
+calculator, and polish sections inside the LH08–LH10 style.
 
 - **Gallery.** `#aplicativo` shows six 9:16 captures in product order: ANP
   weekly prices, community and ANP on a station page, route to a station,
@@ -379,6 +379,10 @@ calculator, and keep the LH08–LH10 style.
   "No aplicativo". Wording follows the claim classes above: development
   status, dated ANP reference, community apart from ANP. Station ratings and
   comments stay "em breve" while the app keeps them behind its feature flag.
+- **Polish.** Spacing, alignment, frames, hover/focus/pressed states and
+  responsive fixes only. Tokens, fonts, brand, URLs, titles and structured
+  data are unchanged; a chapter meta description changes only when the old
+  one described the retired captures.
 
 ## Legal pages shared UI — 2026-11-05
 

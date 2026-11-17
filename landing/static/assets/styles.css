@@ -1464,6 +1464,82 @@ a.store-pill {
   .landing-home .footer-states { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* LH11: 9:16 app captures (17 Nov 2026) and section polish. Every authentic
+   capture shares one device frame: black ring, rounded corners, no retouching. */
+
+/* Top bar between 64rem and 72rem: labels stay on one line. */
+.landing-home .topnav a, .landing-home .topbar-link, .landing-home .pill-light { white-space: nowrap; }
+@media (min-width: 64rem) and (max-width: 71.999rem) {
+  .landing-home .topbar-inner { gap: 1rem; }
+  .landing-home .topnav a { padding-inline: 0.5rem; }
+}
+
+/* State grid: four columns until five fit without breaking most names. */
+@media (min-width: 64rem) and (max-width: 79.999rem) { .home-states .state-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+/* Home gallery: six captures, 3 x 2 on wide screens, 2 x 3 on tablets, one
+   snapping row on phones. */
+.landing-home .app-shot figcaption { flex: 1; }
+@media (min-width: 48rem) and (max-width: 63.999rem) { .landing-home .app-gallery { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.landing-home .app-gallery-actions { margin-bottom: 2.5rem; }
+@media (max-width: 47.999rem) {
+  .landing-home .app-gallery { grid-auto-flow: column; grid-auto-columns: min(76%, 19rem); margin-inline: calc(-1 * clamp(1rem, 4vw, 4rem)); padding: 0 clamp(1rem, 4vw, 4rem) 0.5rem; overflow-x: auto; scroll-snap-type: x mandatory; scroll-padding-inline: clamp(1rem, 4vw, 4rem); scrollbar-width: none; }
+  .landing-home .app-gallery::-webkit-scrollbar { display: none; }
+  .landing-home .app-shot { scroll-snap-align: start; }
+  .landing-home .app-gallery:focus-visible { outline-offset: -3px; }
+}
+
+/* Channel cards: below 75rem the action labels stack in two lines instead of
+   wrapping word by word; on phones the actions take the full card width. */
+.landing-home .channel-card { grid-template-columns: 56px minmax(0, 1fr); }
+.landing-home .channel-card .store-btn-text strong, .landing-home .channel-card .btn-copy { white-space: nowrap; }
+@media (max-width: 74.999rem) {
+  .landing-home .channel-actions { flex-wrap: wrap; }
+  .landing-home .channel-card .store-btn { border-radius: 14px; padding-block: 0.5rem; }
+  .landing-home .channel-card .store-btn-text { flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; }
+  .landing-home .channel-card .store-btn-text small::before { content: none; }
+  .landing-home .channel-card .btn-copy { flex: none; min-height: 48px; border-radius: 14px; }
+}
+@media (max-width: 39.999rem) {
+  .landing-home .channel-card { grid-template-columns: 48px minmax(0, 1fr); }
+  .landing-home .channel-card > .store-btn, .landing-home .channel-actions { grid-column: 1 / -1; justify-self: stretch; }
+  .landing-home .channel-actions .btn-github { flex: 1 1 12rem; }
+}
+
+/* Tutorial chapters: copy beside the capture on wide screens, stacked on phones. */
+.learning-page .lesson-article { max-width: 60rem; }
+.learning-page .legal-article > .lesson-steps { max-width: none; margin: 2rem 0 2.5rem; padding: 0; font-size: 1rem; color: var(--ink); }
+.learning-page .legal-article > .lesson-context { max-width: 48rem; font-size: 0.9375rem; }
+.learning-page .lesson-article .lesson-step { display: grid; grid-template-columns: minmax(0, 1fr); gap: 0.875rem; margin: 0; padding: clamp(1.25rem, 4vw, 2rem); }
+.learning-page .lesson-article .lesson-step > * { min-width: 0; margin: 0; }
+.learning-page .lesson-article .lesson-step h2 { font-size: 1.25rem; line-height: 1.3; letter-spacing: -0.02em; }
+.learning-page .lesson-article .lesson-step p { max-width: 40rem; font-size: 1.0625rem; line-height: 1.6; color: var(--muted); }
+.learning-page .lesson-article .lesson-step h2 + p, .learning-page .lesson-article .lesson-step p strong { color: var(--ink); }
+.learning-page .tutorial-visual { width: 100%; max-width: 17rem; margin: 0.5rem auto; padding: 0; border: 0; border-radius: 0; background: transparent; }
+.learning-page .lesson-article .lesson-step > .tutorial-visual { justify-self: center; margin-block: 0.5rem; }
+.learning-page .tutorial-frame { border-radius: 22px; background: #111111; box-shadow: 0 0 0 5px #111111, 0 24px 40px -24px #0008; }
+.learning-page .lesson-article .tutorial-visual .lesson-meta { max-width: none; margin-top: 1rem; font-size: 0.8125rem; line-height: 1.45; text-align: center; }
+.learning-page .lesson-article .lesson-step .lesson-note { padding: 0.875rem 1rem; border-left: 4px solid #8a8a8a; border-radius: 0 12px 12px 0; background: var(--page); font-size: 1rem; }
+@media (min-width: 56rem) {
+  .learning-page .lesson-article .lesson-step:not([data-text-only]) { grid-template-columns: minmax(0, 1fr) 17rem; grid-template-rows: auto auto auto auto 1fr; column-gap: 2.5rem; }
+  .learning-page .lesson-article .lesson-step:not([data-text-only]) > * { grid-column: 1; }
+  .learning-page .lesson-article .lesson-step:not([data-text-only]) > .tutorial-visual { grid-column: 2; grid-row: 1 / -1; margin-block: 0; }
+}
+.learning-page .lesson-nav { display: grid; gap: 0.75rem; margin-block: 0 3rem; }
+.learning-page .lesson-nav :is(.btn-primary, .btn-secondary) { min-height: 56px; padding: 0.875rem 1.25rem; border: 0; border-radius: 12px; font-family: var(--display); font-size: 1rem; font-weight: 600; line-height: 1.3; transition: background-color 160ms ease; }
+.learning-page .lesson-nav .btn-primary { justify-content: flex-end; background: var(--btn); color: var(--on-btn); text-align: right; }
+.learning-page .lesson-nav .btn-primary:hover { background: var(--btn-hover); }
+.learning-page .lesson-nav .btn-secondary { justify-content: flex-start; background: var(--surface); color: var(--ink); }
+.learning-page .lesson-nav .btn-secondary:hover { background: var(--surface-2); }
+@media (min-width: 40rem) { .learning-page .lesson-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* Tutorial hub: chapter cards share one rhythm; unpublished ones stay quiet. */
+.learning-hub .lesson-step { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin: 0; }
+.learning-hub .lesson-step h3 { margin: 0; }
+.learning-hub .lesson-step .lesson-meta { margin: 0; font-size: 0.9375rem; line-height: 1.5; }
+.learning-hub .lesson-step:has(a) { transition: background-color 160ms ease; }
+.learning-hub .lesson-step:has(a):hover { background: var(--surface-2); }
+
 /* Guide and calculator captures: one strip that snaps sideways on phones. */
 .article-figures { display: flex; gap: 1rem; max-width: 52rem; margin-block: 1.5rem; padding: 0.25rem 0.25rem 0.75rem; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: 0.25rem; }
 .article-figures .article-figure { flex: 0 0 min(62vw, 13rem); max-width: none; margin: 0; scroll-snap-align: start; }
@@ -1472,6 +1548,13 @@ a.store-pill {
 .app-capture img { width: 100%; border: 4px solid #111111; border-radius: 18px; background: #111111; }
 .app-capture figcaption { margin-top: 0.75rem; line-height: 1.45; }
 .article-figures:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
+/* Cards and chips: one quiet hover, focus and pressed treatment. */
+.topic-card, .state-grid a, .chip-list a, .learning-page .step-card, .landing-home .channel-card .store-btn, .landing-home .btn-dark, .landing-home .btn-copy, .landing-home .pill-light { transition: background-color 160ms ease; }
+.topic-card:active, .state-grid a:active, .chip-list a:active, .learning-page .step-card:active { background: var(--surface-2); }
+.topic-card strong { text-wrap: balance; }
+.landing-home .h2, :is(.learning-page, .legal-document) .legal-article :is(h1, h2) { text-wrap: balance; }
+.landing-home .block-head p, .landing-home .feature-copy > p, :is(.learning-page, .legal-document) .legal-article > .article-lead { text-wrap: pretty; }
 
 /* Guide formula/source helpers (replace former inline styles blocked by CSP). */
 .formula-expression {
