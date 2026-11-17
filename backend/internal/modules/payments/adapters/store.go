@@ -1678,11 +1678,21 @@ func (s *Store) CreateSourceSwitch(ctx context.Context, input app.SourceSwitchRe
 		OldCancellation: string(input.OldCancellation), RequestedAt: stamp(input.RequestedAt),
 		LastEventAt: stamp(input.LastEventAt),
 	})
-	if errors.Is(err, pgx.ErrNoRows) {
+	// A concurrent insert of this same operation can pass the operation-key
+	// pre-check and then trip the one-open index, which ON CONFLICT does not
+	// arbitrate. That violation is raised only after the other insert
+	// committed, so its row is visible: the same operation replays, while an
+	// open switch of any other operation stays a conflict.
+	var pgErr *pgconn.PgError
+	openRace := errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "payment_source_switches_one_open"
+	if errors.Is(err, pgx.ErrNoRows) || openRace {
 		existing, err := qpay.New(s.Pool).GetPaymentSourceSwitchByOperation(ctx, qpay.GetPaymentSourceSwitchByOperationParams{
 			AccountID: accountID, Environment: string(input.Environment),
 			Merchant: input.Merchant, OperationKey: input.OperationKey,
 		})
+		if openRace && errors.Is(err, pgx.ErrNoRows) {
+			return app.SourceSwitchRecord{}, false, domain.ErrConflict
+		}
 		if err != nil {
 			return app.SourceSwitchRecord{}, false, dbError(err)
 		}

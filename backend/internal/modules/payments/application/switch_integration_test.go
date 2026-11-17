@@ -5,6 +5,7 @@ package application_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"testing"
 	"time"
@@ -311,6 +312,73 @@ func TestSourceSwitchConcurrentRequestAndStaleQuote(t *testing.T) {
 	pixAuto.Config.CatalogVersion = "pay-catalog-v2"
 	if _, err := pixAuto.Start(context.Background(), app.Principal{AccountID: owner}, pixAutoRequest()); !errors.Is(err, paydomain.ErrStale) {
 		t.Fatalf("stale quote err=%v", err)
+	}
+}
+
+// Two inserts of one operation can both pass the operation-key pre-check; the
+// later one then trips the one-open-switch index instead of the ON CONFLICT
+// arbiter. That is the same operation, so it must replay, never conflict
+// (main fe1b3481 failed TestSourceSwitchConcurrentRequestAndStaleQuote on it).
+func TestSourceSwitchSameOperationInsertRaceReplays(t *testing.T) {
+	pool := freshCheckoutDB(t)
+	store := payadapters.NewStore(pool)
+	owner := seedCheckoutOwner(t, pool)
+	now := time.Now().UTC()
+	const rounds, racers = 40, 8
+	for round := range rounds {
+		record := app.SourceSwitchRecord{
+			AccountID: owner, OfferID: fmt.Sprintf("race-offer-%d", round),
+			Environment: paydomain.EnvironmentTest, Merchant: switchMerchant,
+			OperationKey: fmt.Sprintf("race-operation-%d", round),
+			NewSource:    paydomain.ChannelPixAutomatic, OldSource: paydomain.ChannelCard,
+			OldOfferID: fmt.Sprintf("race-offer-%d", round), OldCancellation: paydomain.CancellationUnknown,
+			TargetCatalogVersion: "pay-catalog-v1", TargetAmount: paydomain.BRL(1234),
+			TargetCapabilities: paydomain.PremiumCapabilityList(), State: app.SourceSwitchPending,
+			RequestedAt: now, LastEventAt: now,
+		}
+		start := make(chan struct{})
+		created := make([]app.SourceSwitchRecord, racers)
+		replays := make([]bool, racers)
+		errs := make([]error, racers)
+		var wg sync.WaitGroup
+		for i := range racers {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				<-start
+				created[i], replays[i], errs[i] = store.CreateSourceSwitch(context.Background(), record)
+			}()
+		}
+		close(start)
+		wg.Wait()
+		fresh := 0
+		for i := range racers {
+			if errs[i] != nil {
+				t.Fatalf("round %d racer %d err=%v", round, i, errs[i])
+			}
+			if created[i].ID != created[0].ID {
+				t.Fatalf("round %d created two switches", round)
+			}
+			if !replays[i] {
+				fresh++
+			}
+		}
+		if fresh != 1 {
+			t.Fatalf("round %d fresh inserts=%d", round, fresh)
+		}
+	}
+	other := app.SourceSwitchRecord{
+		AccountID: owner, OfferID: "race-offer-0", Environment: paydomain.EnvironmentTest,
+		Merchant: switchMerchant, OperationKey: "race-operation-other",
+		NewSource: paydomain.ChannelPixAutomatic, OldSource: paydomain.ChannelCard,
+		OldOfferID: "race-offer-0", OldCancellation: paydomain.CancellationUnknown,
+		TargetCatalogVersion: "pay-catalog-v1", TargetAmount: paydomain.BRL(1234),
+		TargetCapabilities: paydomain.PremiumCapabilityList(), State: app.SourceSwitchPending,
+		RequestedAt: now, LastEventAt: now,
+	}
+	// A different operation against the same open switch still conflicts.
+	if _, _, err := store.CreateSourceSwitch(context.Background(), other); !errors.Is(err, paydomain.ErrConflict) {
+		t.Fatalf("other operation err=%v", err)
 	}
 }
 
