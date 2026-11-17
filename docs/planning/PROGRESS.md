@@ -1,4 +1,17 @@
 # Current execution state
+- Android release publication, 2026-11-17: LOCAL_DONE / INTEGRATION_PENDING on
+  `codex/android-publish-draft` from `origin/dev` `e7975967` (Claude Code). Main
+  `e7975967` (PRs #225–#228) passed quick/CI/backend, released and was applied
+  by the VPS agent (receipt 2026-11-16T21:13Z, schema 000257; health, portal,
+  forum and TBG smoke 200). Its `android-release` then failed in
+  `scripts/android/publish.py`: GitHub's tag endpoint never resolves a draft,
+  so the draft it had just created read back as `None` (`TypeError`). First
+  run of that path on main; earlier runs stopped at sdkmanager. Fix: also
+  search the release list, complete an existing draft, refuse several
+  releases claiming one tag (`test_publish.py`, RED reproduced the runner
+  error). Draft `android-v3.1.18` (no assets, tag → `e7975967`) stays
+  stranded; the merge of this fix releases the next version.
+
 - Play UGC safety, 2026-11-15: INTEGRATED through PR #225 (main `b0ab7d33`); built on
   `claude/inspiring-clarke-396e18` from `origin/dev` `db43e949` (Claude Code;
   readiness item 2.5). [Community safety contract](../product/COMMUNITY_SAFETY_CONTRACT.md)
