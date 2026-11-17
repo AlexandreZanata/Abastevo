@@ -45,6 +45,12 @@ keys/passwords never enter logs, artifacts, source or release attachments.
 The existing `ANPFUEL_KEYSTORE_*`/`ANPFUEL_KEY_*` local environment interface is
 retained, with PKCS12 store type. Never use the Android debug key for releases.
 
+## Local signed build
+
+With `signing.properties` (or the signing environment variables) in place,
+`bash scripts/validate-release-build.sh` builds the signed release APK and AAB
+and verifies the signature; use it for the owner-signed Play upload.
+
 ## Official owner distribution
 
 The original copyright holder's official APK has no forced creator-credit strip.
