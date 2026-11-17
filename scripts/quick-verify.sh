@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# P01-T13 quick verification: bounded integration gate shared locally/remotely.
+# Quick verification: bounded integration gate shared locally/remotely.
 # Composes existing gates instead of duplicating logic in YAML.
 # Fails loudly; never hides tool/parser errors. Docs-only changes run a
 # meaningful docs + contract subset; code changes run the full quick set.
@@ -69,6 +69,10 @@ bash "$ROOT/scripts/check-release-workflow.sh"
 echo "== Android release guards =="
 python3 -m unittest discover -s "$ROOT/scripts/android" -p 'test_*.py'
 
+echo "== documentation links =="
+python3 "$ROOT/scripts/check-doc-links.py" --self-test
+python3 "$ROOT/scripts/check-doc-links.py"
+
 echo "== staging deploy agent =="
 make -C "$ROOT" test-deploy-agent
 python3 "$ROOT/infra/k8s/staging/test-manifests.py"
@@ -132,7 +136,7 @@ echo "== secret scan (working tree + PR diff) =="
 # prose the same way the tracked scanner excludes them. This step covers the
 # committed diff so a clean CI checkout still detects a merged secret.
 SECRET_PATTERN='ghp_[A-Za-z0-9]{20,}|github_pat_|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY|sk_live_|AKIA[0-9A-Z]{16}|xox[bap]-'
-SCAN_LIST="$(printf "%s" "$CHANGED_ALL" | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' -e '^scripts/quick-verify.sh$' -e '^scripts/check-security.sh$' -e '^scripts/verify-release.sh$' -e '^scripts/wiki.sh$' -e '^scripts/tests/test-gate-selection.sh$' || true)"
+SCAN_LIST="$(printf "%s" "$CHANGED_ALL" | grep -v -e '^scripts/check-backend-fast.sh$' -e '^scripts/scan-secrets.sh$' -e '^scripts/quick-verify.sh$' -e '^scripts/check-security.sh$' -e '^scripts/tests/test-gate-selection.sh$' || true)"
 if [[ -n "$SCAN_LIST" ]]; then
     FILES=()
     while IFS= read -r f; do
@@ -161,11 +165,6 @@ if [[ "$SELECTION" == "docs-only" ]]; then
     echo "== docs-only subset: contract reference integrity =="
     (cd backend && go test -count=1 ./internal/platform/apicontract/...)
     vacuum lint -r contracts/openapi/vacuum-rules.yaml contracts/openapi/v1.yaml --no-update-check
-    echo "== docs refs =="
-    if ! grep -q "P01-T13" ROADMAP.md; then
-        echo "ERROR: ROADMAP missing P01-T13 task marker" >&2
-        exit 1
-    fi
 else
     echo "== full quick: existing fast gate =="
     bash scripts/check-backend-fast.sh

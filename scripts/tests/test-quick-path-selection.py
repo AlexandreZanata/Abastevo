@@ -34,7 +34,7 @@ class QuickPathSelection(unittest.TestCase):
             with self.subTest(path=path):
                 result = classify(path)
                 self.assertEqual((0, '0'), (result.returncode, result.stdout.strip()))
-        for path in ['docs/planning/PROGRESS.md', 'README.md']:
+        for path in ['docs/architecture/overview.md', 'README.md']:
             with self.subTest(path=path):
                 result = classify(path)
                 self.assertEqual((0, '1'), (result.returncode, result.stdout.strip()))
