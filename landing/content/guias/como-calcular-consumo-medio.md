@@ -7,7 +7,7 @@ slug: como-calcular-consumo-medio
 category: economia
 tags: [consumo, economia, custo-por-km, carro-flex, medicao]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /ferramentas/consumo-medio/
   - /ferramentas/etanol-ou-gasolina/
@@ -102,6 +102,21 @@ custo por km = preço do litro ÷ consumo (km/l)
 ```
 
 Esse número é a base para planejar o orçamento do mês, estimar viagens com a [calculadora de custo de viagem](/ferramentas/custo-de-viagem/) e comparar o seu carro com outras opções na [calculadora de custo por km](/ferramentas/custo-por-km/). Se o resultado não agradar, veja os hábitos que mais reduzem o consumo no guia [como economizar combustível](/guias/como-economizar-combustivel/).
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. O aplicativo guarda os abastecimentos de cada veículo, o que facilita aplicar o método tanque a tanque:
+
+1. Em "Veículos", toque no ícone de lista ao lado do veículo para abrir os registros e escolha "Abastecimento".
+2. Em "Novo lançamento", informe a "Quantidade (L)", marque "Cheio" quando completar o tanque e anote o "Odômetro (km)". O campo "Total (R$)" guarda o valor pago.
+3. Toque em "Salvar". O registro aparece em "Lançamentos" e fica guardado só no aparelho.
+4. Com dois abastecimentos de tanque cheio registrados, divida os quilômetros rodados entre eles pelos litros do segundo abastecimento, como na fórmula deste guia.
+
+![Tela do veículo Meu carro com os botões “Abastecimento” e “Despesa”, o campo “Eficiência estimada (km/L, opcional)” e a seção “Lançamentos” vazia.](/assets/app/vehicles-06-fuel-log-720w.webp "Passo 1: registros do veículo, com “Abastecimento” e “Despesa”.")
+![Formulário “Novo lançamento” de abastecimento com 40 L, tanque “Cheio”, total de R$ 250,00 e odômetro de 12500 km.](/assets/app/vehicles-07-add-fill-up-720w.webp "Passo 2: abastecimento de exemplo, com valores fictícios.")
+![Seção “Lançamentos” do veículo mostrando um abastecimento de R$ 250,00 e 40 L, com a marca “Local”.](/assets/app/vehicles-08-fuel-log-entry-720w.webp "Passo 3: o registro guardado em “Lançamentos”.")
+
+O passo a passo completo está no tutorial [Veículos e estimativa do tanque](/como-usar/veiculos/).
 
 ## Fontes
 

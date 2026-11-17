@@ -90,6 +90,47 @@ test('validateLesson rejects duplicates, overflow, bad hash and unknown availabi
   }
 });
 
+function textOnlyStep(overrides = {}) {
+  const { image, imageSha256, nativeWidth, nativeHeight, altPtBr, target, ...rest } = validStep();
+  return {
+    ...rest,
+    stepId: 's2',
+    textOnly: true,
+    textOnlyReasonPtBr: 'Tela protegida contra captura de tela.',
+    claimClass: 'text-only',
+    ...overrides,
+  };
+}
+
+test('validateLesson accepts a text-only step that carries its reason and no image fields', async () => {
+  const { tmpDir, modPath } = compileValidator();
+  try {
+    const { validateLesson } = await import(modPath);
+    assert.deepEqual(validateLesson(validLesson({ steps: [validStep(), textOnlyStep()] })), []);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
+test('validateLesson rejects text-only steps with pixels, no reason or a misplaced reason', async () => {
+  const { tmpDir, modPath } = compileValidator();
+  try {
+    const { validateLesson } = await import(modPath);
+    const check = (step) => validateLesson(validLesson({ steps: [step] })).join(';');
+    assert.match(check(textOnlyStep({ image: '/assets/app/city-picker-720w.webp' })), /text-only and must not declare image/);
+    assert.match(check(textOnlyStep({ target: { x: 1, y: 1, width: 10, height: 10 } })), /must not declare target/);
+    assert.match(check(textOnlyStep({ altPtBr: 'Texto alternativo sem imagem.' })), /must not declare altPtBr/);
+    assert.match(check(textOnlyStep({ textOnlyReasonPtBr: ' ' })), /textOnlyReasonPtBr/);
+    assert.match(check(textOnlyStep({ instructionPtBr: '' })), /instructionPtBr/);
+    assert.match(check(validStep({ textOnly: 'yes' })), /textOnly must be a boolean/);
+    assert.match(check(validStep({ textOnlyReasonPtBr: 'Motivo fora de lugar.' })), /only allowed on text-only steps/);
+    // textOnly: false keeps every capture rule.
+    assert.match(check(validStep({ textOnly: false, image: '' })), /missing or empty image/);
+  } finally {
+    fs.rmSync(tmpDir, { recursive: true, force: true });
+  }
+});
+
 test('every shipped lesson.json validates', async () => {
   const { tmpDir, modPath } = compileValidator();
   try {
@@ -108,7 +149,7 @@ test('every shipped lesson.json validates', async () => {
       assert.deepEqual(errors, [], `${slug}/lesson.json invalid: ${errors.join('; ')}`);
       count += 1;
     }
-    assert.ok(count >= 0);
+    assert.equal(count, 16, 'every published chapter ships a lesson.json');
   } finally {
     fs.rmSync(tmpDir, { recursive: true, force: true });
   }

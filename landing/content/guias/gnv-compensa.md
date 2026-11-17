@@ -7,7 +7,7 @@ slug: gnv-compensa
 category: escolher-combustivel
 tags: [gnv, consumo, economia, custo-por-km, inmetro]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /ferramentas/custo-por-km/
   - /ferramentas/consumo-medio/
@@ -80,6 +80,19 @@ O GNV entra na pesquisa semanal de preços da ANP nas localidades onde é encont
 O perfil típico de quem recupera o investimento mais rápido é o de quem roda muito, como motoristas de aplicativo, taxistas e pequenas frotas, em regiões com oferta de gás e boa diferença de custo por quilômetro. Para quem usa o carro pouco, a economia mensal tende a ser pequena demais para pagar o kit em um prazo razoável.
 
 Se o GNV não fizer sentido para você, ainda há muito a ganhar com hábitos de direção e manutenção. Veja o guia [como economizar combustível](/guias/como-economizar-combustivel/).
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. Para levantar os números da conta com a referência da sua cidade:
+
+1. Em "Preços na sua cidade", role até o cartão "GNV". O valor é por metro cúbico, e o cartão informa quantos postos com GNV foram pesquisados na cidade naquela semana. É uma amostra, não o total de postos.
+2. Anote a referência do GNV e a da gasolina ou do etanol na mesma semana e faça a conta do custo por quilômetro deste guia.
+3. Em "Veículos", cadastre o carro com o "Nome do veículo", a "Propulsão" e a "Capacidade do tanque (litros)" para acompanhar o custo do combustível que você usa.
+
+![Cartões de Diesel S500, Diesel S10, GNV e GLP (13 kg) com valor de referência, número de postos pesquisados e selo ANP.](/assets/app/fuel-prices-02-more-fuels-720w.webp "Passo 1: cartão do GNV na referência ANP de São Paulo, SP, semana de 8 a 14 de nov. de 2026.")
+![Formulário “Adicionar veículo” com o nome Meu carro, a propulsão “Combustão (ICE)” escolhida e a capacidade do tanque de 50 litros.](/assets/app/vehicles-02-name-and-tank-720w.webp "Passo 3: cadastro do veículo.")
+
+O passo a passo completo está nos tutoriais [Consultar a tabela ANP](/como-usar/precos-anp/) e [Veículos e estimativa do tanque](/como-usar/veiculos/).
 
 ## Fontes
 

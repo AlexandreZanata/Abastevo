@@ -7,7 +7,7 @@ slug: diesel-s10-ou-s500
 category: escolher-combustivel
 tags: [diesel, diesel-s10, emissoes, qualidade, manutencao]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /guias/combustivel-adulterado/
   - /guias/como-economizar-combustivel/
@@ -79,6 +79,19 @@ Se o diesel parecer fora do normal, com falhas no motor ou perda de potência lo
 Como os dois produtos têm especificações diferentes, os preços também costumam ser diferentes. Para comparar com dados oficiais, use os [preços de referência por estado e cidade](/precos/), que trazem S10 e S500 separados e com a data da coleta. Para estimar o gasto de uma rota, a [calculadora de custo de viagem](/ferramentas/custo-de-viagem/) funciona com qualquer combustível vendido por litro.
 
 O consumo de um veículo a diesel também depende muito da forma de dirigir e da manutenção. As dicas do guia [como economizar combustível](/guias/como-economizar-combustivel/) valem para carros, caminhonetes e caminhões.
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. Para comparar o custo dos dois tipos na mesma semana, como este guia recomenda:
+
+1. Em "Preços na sua cidade", role a lista até os cartões "Diesel S500" e "Diesel S10" e compare os dois valores de referência.
+2. Abra "Histórico" e escolha "Diesel S10" no seletor "Combustível" para ver a média da cidade nas semanas baixadas.
+3. Repita com "Diesel S500" para ver a diferença entre os dois ao longo das semanas.
+
+![Cartões de Diesel S500, Diesel S10, GNV e GLP (13 kg) com valor de referência, número de postos pesquisados e selo ANP.](/assets/app/fuel-prices-02-more-fuels-720w.webp "Passo 1: Diesel S500 e Diesel S10 na referência ANP de São Paulo, SP, semana de 8 a 14 de nov. de 2026.")
+![Tela “Histórico” de Diesel S10 em Sorriso, MT, com gráfico de barras e a média de cada semana.](/assets/app/history-03-diesel-s10-trend-720w.webp "Passo 2: histórico do Diesel S10 em Sorriso, MT.")
+
+O passo a passo completo está nos tutoriais [Consultar a tabela ANP](/como-usar/precos-anp/) e [Ler o histórico](/como-usar/historico/).
 
 ## Fontes
 

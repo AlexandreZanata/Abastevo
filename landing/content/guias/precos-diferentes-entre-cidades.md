@@ -7,7 +7,7 @@ slug: precos-diferentes-entre-cidades
 category: precos
 tags: [precos, concorrencia, logistica, icms, pesquisa-de-precos]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /precos/
   - /guias/como-e-formado-o-preco-da-gasolina/
@@ -81,6 +81,22 @@ A conta muda se você já vai passar pela outra cidade por outro motivo. Para si
 - Preço de referência é amostra da semana pesquisada, não o preço do posto hoje.
 - Diferenças de poucos centavos podem desaparecer de uma semana para outra.
 - Condição de pagamento importa: o preço à vista pode ser diferente do preço no cartão, e a placa precisa informar isso.
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. Para comparar a referência de duas cidades na mesma semana:
+
+1. Na tela inicial, toque no nome da cidade no topo para abrir "Selecionar localização" e escolha o estado.
+2. Use "Buscar município" para achar a cidade vizinha e toque nela.
+3. A tela inicial passa a mostrar a referência ANP daquela cidade. Compare sempre a mesma semana, indicada ao lado do nome da cidade.
+4. Em "Histórico", veja como a média da cidade variou nas semanas baixadas.
+
+![Tela “Selecionar localização” com o botão “Usar localização atual”, o campo “Buscar estado” e a lista de estados.](/assets/app/choose-city-01-state-list-720w.webp "Passo 1: lista de estados em “Selecionar localização”.")
+![Campo “Buscar município” com o texto sao paulo e o resultado SÃO PAULO na lista.](/assets/app/choose-city-04-search-municipality-720w.webp "Passo 2: busca do município pelo nome.")
+![Tela inicial com SÃO PAULO, SP e a semana 8–14 nov. 2026 no topo e a seção “Preços na sua cidade”.](/assets/app/choose-city-05-home-with-city-720w.webp "Passo 3: São Paulo, SP, na semana de 8 a 14 de nov. de 2026.")
+![Tela “Histórico” de gasolina comum em Sorriso, MT, com gráfico de barras de quatro semanas e a média de cada semana.](/assets/app/history-01-weekly-history-720w.webp "Passo 4: histórico da gasolina comum em Sorriso, MT.")
+
+O passo a passo completo está nos tutoriais [Escolher cidade](/como-usar/escolher-cidade/) e [Ler o histórico](/como-usar/historico/).
 
 ## Fontes
 

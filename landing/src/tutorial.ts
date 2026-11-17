@@ -14,17 +14,24 @@ export interface LessonTarget {
 
 export interface LessonStep {
   stepId: string;
-  image: string;
-  imageSha256: string;
-  nativeWidth: number;
-  nativeHeight: number;
+  /**
+   * True for a step described in words only: the screen is protected against
+   * capture, shows an emulator artefact or shows a known app defect. Such a
+   * step carries `textOnlyReasonPtBr` and none of the image fields.
+   */
+  textOnly?: boolean;
+  textOnlyReasonPtBr?: string;
+  image?: string;
+  imageSha256?: string;
+  nativeWidth?: number;
+  nativeHeight?: number;
   state: string;
   prerequisite: string;
   instructionPtBr: string;
   controlLabelPtBr: string;
   expectedPtBr: string;
   recoveryPtBr: string;
-  altPtBr: string;
+  altPtBr?: string;
   target?: LessonTarget;
   availability: string;
   claimClass: string;
@@ -45,6 +52,11 @@ export interface Lesson {
 
 const AVAILABILITY = new Set(['Disponível', 'Em breve', 'Planejado']);
 const HEX64 = /^[a-f0-9]{64}$/;
+const TEXT_FIELDS = [
+  'state', 'prerequisite', 'instructionPtBr', 'controlLabelPtBr',
+  'expectedPtBr', 'recoveryPtBr', 'availability', 'claimClass', 'capturedAt',
+];
+const IMAGE_FIELDS = ['image', 'imageSha256', 'nativeWidth', 'nativeHeight', 'altPtBr', 'target'];
 
 function isNonEmptyString(value: unknown): value is string {
   return typeof value === 'string' && value.trim().length > 0;
@@ -86,20 +98,33 @@ export function validateLesson(data: unknown): string[] {
     } else {
       seen.add(step['stepId'] as string);
     }
-    for (const field of [
-      'image', 'state', 'prerequisite', 'instructionPtBr', 'controlLabelPtBr',
-      'expectedPtBr', 'recoveryPtBr', 'altPtBr', 'availability', 'claimClass', 'capturedAt',
-    ]) {
+    if (step['textOnly'] !== undefined && typeof step['textOnly'] !== 'boolean') {
+      errors.push(`${where} textOnly must be a boolean`);
+    }
+    const textOnly = step['textOnly'] === true;
+    for (const field of textOnly ? [...TEXT_FIELDS, 'textOnlyReasonPtBr'] : [...TEXT_FIELDS, 'image', 'altPtBr']) {
       if (!isNonEmptyString(step[field])) {
         errors.push(`${where} missing or empty ${field}`);
       }
     }
-    if (typeof step['imageSha256'] !== 'string' || !HEX64.test(step['imageSha256'])) {
-      errors.push(`${where} imageSha256 must be lowercase hex64`);
-    }
-    if (!Number.isInteger(step['nativeWidth']) || (step['nativeWidth'] as number) <= 0 ||
-        !Number.isInteger(step['nativeHeight']) || (step['nativeHeight'] as number) <= 0) {
-      errors.push(`${where} native dimensions must be positive integers`);
+    if (textOnly) {
+      // A text-only step never points at pixels: no image, hash, size, alt or target.
+      for (const field of IMAGE_FIELDS) {
+        if (step[field] !== undefined) {
+          errors.push(`${where} is text-only and must not declare ${field}`);
+        }
+      }
+    } else {
+      if (step['textOnlyReasonPtBr'] !== undefined) {
+        errors.push(`${where} textOnlyReasonPtBr is only allowed on text-only steps`);
+      }
+      if (typeof step['imageSha256'] !== 'string' || !HEX64.test(step['imageSha256'])) {
+        errors.push(`${where} imageSha256 must be lowercase hex64`);
+      }
+      if (!Number.isInteger(step['nativeWidth']) || (step['nativeWidth'] as number) <= 0 ||
+          !Number.isInteger(step['nativeHeight']) || (step['nativeHeight'] as number) <= 0) {
+        errors.push(`${where} native dimensions must be positive integers`);
+      }
     }
     if (typeof step['availability'] === 'string' && !AVAILABILITY.has(step['availability'])) {
       errors.push(`${where} unknown availability ${step['availability']}`);
@@ -110,7 +135,7 @@ export function validateLesson(data: unknown): string[] {
     if (typeof step['privacyReviewed'] !== 'boolean' || typeof step['demoOnly'] !== 'boolean') {
       errors.push(`${where} privacyReviewed and demoOnly must be booleans`);
     }
-    if (step['target'] !== undefined) {
+    if (!textOnly && step['target'] !== undefined) {
       const target = step['target'] as Record<string, unknown>;
       const dimsOk = typeof step['nativeWidth'] === 'number' && typeof step['nativeHeight'] === 'number';
       for (const field of ['x', 'y', 'width', 'height']) {

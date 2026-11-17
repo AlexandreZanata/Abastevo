@@ -5,7 +5,7 @@ description: Descubra se etanol ou gasolina compensa no seu carro flex: digite o
 summary: Compare os preços na bomba pela regra dos 70% ou pelo consumo real do seu carro flex.
 slug: etanol-ou-gasolina
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /guias/etanol-ou-gasolina/
   - /guias/como-calcular-consumo-medio/
@@ -48,3 +48,17 @@ Os preços acima são ilustrativos, não são preços de nenhum posto ou semana.
 - O preço muda entre postos e semanas. Para comparar a sua cidade, consulte os [preços de referência por estado](/precos/) com a data da coleta.
 
 Para entender de onde vêm os 70% e quando eles variam, leia o guia [etanol ou gasolina: a regra dos 70%](/guias/etanol-ou-gasolina/).
+
+## No aplicativo
+
+O aplicativo Android do abastevo, em desenvolvimento, mostra os dois preços de referência da mesma semana:
+
+1. Em "Preços na sua cidade", veja os cartões "Etanol" e "Gasolina comum" e use os dois valores na calculadora desta página.
+2. Em "Filtros", "Menor preço" mostra o menor valor pesquisado de cada combustível. Compare sempre valores do mesmo tipo: média com média, menor com menor.
+3. No "Fórum Abastevo", a publicação editorial sobre etanol ou gasolina explica a mesma conta.
+
+![Seção “Preços na sua cidade” em São Paulo, SP, com cartões de etanol, gasolina comum e gasolina aditivada, cada um com o selo ANP e o número de postos pesquisados.](/assets/app/fuel-prices-01-anp-average-cards-720w.webp "Passo 1: médias da ANP em São Paulo, SP, semana de 8 a 14 de nov. de 2026.")
+![Lista “Preços na sua cidade” em São Paulo, SP, com o filtro em “Menor preço” e cartões de etanol, gasolina comum e gasolina aditivada.](/assets/app/fuel-prices-05-lowest-price-720w.webp "Passo 2: os mesmos cartões com “Menor preço”.")
+![Tela “Publicação” com um texto editorial do abastevo sobre como fazer a conta entre etanol e gasolina antes de abastecer.](/assets/app/forum-03-read-article-720w.webp "Passo 3: publicação editorial no “Fórum Abastevo”.")
+
+No exemplo da primeira captura, a média do etanol dividida pela da gasolina comum é 4,09 ÷ 6,34 ≈ 0,65. As capturas são de 17 de novembro de 2026. Veja o tutorial [Consultar a tabela ANP](/como-usar/precos-anp/).

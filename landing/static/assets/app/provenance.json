@@ -1,6 +1,6 @@
 {
-  "date": "2026-10-11",
-  "tool": "PIL",
+  "date": "2026-11-17",
+  "tool": "PIL 12.2.0",
   "params": {
     "format": "WEBP",
     "quality": 85,
@@ -12,609 +12,1800 @@
       1080
     ]
   },
-  "need": "Responsive gallery/tutorial delivery without shipping 1220px masters; masters stay canonical under docs/assets.",
-  "note": "Downscale-only, aspect preserved, no crop/retouch/upscale. Not yet referenced by pages or fingerprinted by the build; wiring arrives at LR09. Alt text and per-page choice land with LR11/LR14.",
-  "license": "Same app-capture provenance as masters (manifest); no third-party device templates.",
+  "need": "Responsive gallery, tutorial, guide and calculator delivery of the Android tutorial captures without shipping the 1080 x 1920 PNG masters; masters stay canonical under docs/assets/app-tutorial.",
+  "note": "Downscale-only, aspect preserved, no crop/retouch/upscale; the 1080w file is a same-size re-encode. Names keep the capture stem (<feature>-<NN-slug>-<width>w.webp, capture contract rule C3). A 1080w derivative above the 120 KiB per-file budget enforced by scripts/check.mjs is not shipped; those captures (listed in skipped1080w) are served at 360w and 720w only.",
+  "license": "Same app-capture provenance as the masters (docs/assets/app-tutorial/manifest.json); no third-party device templates.",
+  "skipped1080w": [
+    "map-01-stations-on-map",
+    "map-05-route-preview",
+    "map-06-route-maneuvers",
+    "map-07-turn-by-turn-navigation",
+    "map-offline-04-offline-map-ready"
+  ],
   "outputs": [
     {
-      "file": "anp-prices-360w.webp",
-      "master": "anp-prices.png",
+      "file": "first-open-01-terms-gate-360w.webp",
+      "master": "docs/assets/app-tutorial/first-open/01-terms-gate.png",
       "width": 360,
-      "height": 800,
-      "bytes": 19068,
-      "sha256": "1b95cbd3e2bed02efbb853b8ac001a159fb2efb64ceaac7be795fe7ade548a56"
+      "height": 640,
+      "bytes": 28394,
+      "sha256": "40ea55fc85a92af2e6ce99d6da96e4d47ac64bc1c749e79e12f86038dd934f73"
     },
     {
-      "file": "anp-prices-720w.webp",
-      "master": "anp-prices.png",
+      "file": "first-open-01-terms-gate-720w.webp",
+      "master": "docs/assets/app-tutorial/first-open/01-terms-gate.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 43720,
-      "sha256": "6c06aa6db6b83ff8dd2de0fc504d189d7d889f1e8eac1946c96ae83293c75e8f"
+      "height": 1280,
+      "bytes": 66918,
+      "sha256": "ee078326d05f348b6341caad72cbecdd1f82456ae096e2037989e9d6c4fa5a20"
     },
     {
-      "file": "anp-prices-1080w.webp",
-      "master": "anp-prices.png",
+      "file": "first-open-01-terms-gate-1080w.webp",
+      "master": "docs/assets/app-tutorial/first-open/01-terms-gate.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 68840,
-      "sha256": "5e668ab0059cbfbf2aa2b9747c1ea4d3f8132a2756b834b5be9dabd679a6b982"
+      "height": 1920,
+      "bytes": 103842,
+      "sha256": "d39b4c7ee68a8d2ba6d8e6e1002a7534f01f4fedacafbfa5c62f97b6a09673fd"
     },
     {
-      "file": "city-picker-360w.webp",
-      "master": "city-picker.png",
+      "file": "first-open-02-accept-terms-360w.webp",
+      "master": "docs/assets/app-tutorial/first-open/02-accept-terms.png",
       "width": 360,
-      "height": 800,
-      "bytes": 11946,
-      "sha256": "f49e47e98fe734bdbcee484a430147c293384ee0f822aed87c94c38505f1df22"
+      "height": 640,
+      "bytes": 25986,
+      "sha256": "dc045dc4fa55434b6d51c1b1b16caababbdaab8ff1540ce80a445ea4004622de"
     },
     {
-      "file": "city-picker-720w.webp",
-      "master": "city-picker.png",
+      "file": "first-open-02-accept-terms-720w.webp",
+      "master": "docs/assets/app-tutorial/first-open/02-accept-terms.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 27740,
-      "sha256": "bbd84e5fdebecc06050e4e7c554cc36ae3bdd24a3bf4c3898f90b0978a073455"
+      "height": 1280,
+      "bytes": 63242,
+      "sha256": "137846b5b0719f0672ff69fc8b03764630373051915bdc83de7846f7a8bd4c34"
     },
     {
-      "file": "city-picker-1080w.webp",
-      "master": "city-picker.png",
+      "file": "first-open-02-accept-terms-1080w.webp",
+      "master": "docs/assets/app-tutorial/first-open/02-accept-terms.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 44810,
-      "sha256": "6638550dc42a2870a4a8773cd9b724adee024aa3f9fa69f99a2493fba0946e8c"
+      "height": 1920,
+      "bytes": 97660,
+      "sha256": "92e544d1557482ffb412d78be6c9ec4e7ba0f4757916eeb582e02d27a4243302"
     },
     {
-      "file": "community-empty-360w.webp",
-      "master": "community-empty.png",
+      "file": "first-open-05-community-rules-360w.webp",
+      "master": "docs/assets/app-tutorial/first-open/05-community-rules.png",
       "width": 360,
-      "height": 800,
-      "bytes": 24194,
-      "sha256": "ab78e69728c749a4e26d9e8b4efbb460dd6f58a3502c28202455dfd07512cefe"
+      "height": 640,
+      "bytes": 11600,
+      "sha256": "e04dafe607d50936b08938a6ff082c2a53974f56d96d67d619c8addd48c2f79f"
     },
     {
-      "file": "community-empty-720w.webp",
-      "master": "community-empty.png",
+      "file": "first-open-05-community-rules-720w.webp",
+      "master": "docs/assets/app-tutorial/first-open/05-community-rules.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 58088,
-      "sha256": "d9e9a9d3530932d0740c87bf470688eaab102fa8e011be54dacfc4bed965a52a"
+      "height": 1280,
+      "bytes": 27382,
+      "sha256": "91fadde14b3d2a3c7f9cc22567681b4dda865d9577de62aed3419935cb907157"
     },
     {
-      "file": "community-empty-1080w.webp",
-      "master": "community-empty.png",
+      "file": "first-open-05-community-rules-1080w.webp",
+      "master": "docs/assets/app-tutorial/first-open/05-community-rules.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 88914,
-      "sha256": "04fd68fad8f45fbe1b7dc871ba82d115dc6ceef81311c8a27b73e68d7400d555"
+      "height": 1920,
+      "bytes": 42454,
+      "sha256": "2414b76e1449b8b6e9f9ef49bdde9aa4b2feb10659ab7f44f10bd613418cda29"
     },
     {
-      "file": "community-feed-360w.webp",
-      "master": "community-feed.png",
+      "file": "first-open-06-choose-survey-week-360w.webp",
+      "master": "docs/assets/app-tutorial/first-open/06-choose-survey-week.png",
       "width": 360,
-      "height": 800,
-      "bytes": 24588,
-      "sha256": "1669a446e607d9cbc0683a53f70be00ffbe95643c7188c1a8d06f1d53de5453b"
+      "height": 640,
+      "bytes": 10650,
+      "sha256": "fae9d60d39dcd32371d044620f0863aea5a86d5dcca06597fd641a630db93203"
     },
     {
-      "file": "community-feed-720w.webp",
-      "master": "community-feed.png",
+      "file": "first-open-06-choose-survey-week-720w.webp",
+      "master": "docs/assets/app-tutorial/first-open/06-choose-survey-week.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 57502,
-      "sha256": "b1577c52ca6ce80b50fd95d5b1ad4564af491fa92d109544dd95813f5651f2cb"
+      "height": 1280,
+      "bytes": 24032,
+      "sha256": "51f2b823a1467de18255d97cda6cf5ab9de99daa721355768c8c2b9819c4a110"
     },
     {
-      "file": "community-feed-1080w.webp",
-      "master": "community-feed.png",
+      "file": "first-open-06-choose-survey-week-1080w.webp",
+      "master": "docs/assets/app-tutorial/first-open/06-choose-survey-week.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 90536,
-      "sha256": "450dea486b32c5a7fb2356c5bc140832074792490a669acb9d1c6d2c964dd207"
+      "height": 1920,
+      "bytes": 37346,
+      "sha256": "3328b9d1012407698acee1ea4649faf16715b2432ac1e76f44dc8d5be49dc157"
     },
     {
-      "file": "contributions-empty-360w.webp",
-      "master": "contributions-empty.png",
+      "file": "first-open-07-find-city-360w.webp",
+      "master": "docs/assets/app-tutorial/first-open/07-find-city.png",
       "width": 360,
-      "height": 800,
-      "bytes": 12212,
-      "sha256": "5704ce8c60aedbb863ac87c4417e6f4b7f8c53a2c3f5b1228e110c81be2a6af0"
+      "height": 640,
+      "bytes": 16902,
+      "sha256": "db627bab84f4d6b5cce9e445b5f43f4630b69663dd808b8b6ea5846c5b58dae0"
     },
     {
-      "file": "contributions-empty-720w.webp",
-      "master": "contributions-empty.png",
+      "file": "first-open-07-find-city-720w.webp",
+      "master": "docs/assets/app-tutorial/first-open/07-find-city.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 28568,
-      "sha256": "e05481aac64f3c17a0d62a2be35bb8198cdb23fff65d4b1dcdcf5c20b608bae4"
+      "height": 1280,
+      "bytes": 38666,
+      "sha256": "d941b5a6727a54452762e5552ac0fb3e7086b1b1e14fa67c7b190b377724449b"
     },
     {
-      "file": "contributions-empty-1080w.webp",
-      "master": "contributions-empty.png",
+      "file": "first-open-07-find-city-1080w.webp",
+      "master": "docs/assets/app-tutorial/first-open/07-find-city.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 45738,
-      "sha256": "6bc60525437bb64bdc5c461b05bff1cd9c417e37531f64a2b2fe760d0cce574a"
+      "height": 1920,
+      "bytes": 61230,
+      "sha256": "3c7ee9355da1afb64c4fd0f6cd1c7967ffb040b0ca1989e7b21e06bb9c88b1f9"
     },
     {
-      "file": "explore-dark-360w.webp",
-      "master": "explore-dark.png",
+      "file": "choose-city-01-state-list-360w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/01-state-list.png",
       "width": 360,
-      "height": 800,
-      "bytes": 27222,
-      "sha256": "58c861db9d8b8e58b0a74c3a5b923f6ada6ce9811d39ec7b32a0de9157bbc45f"
+      "height": 640,
+      "bytes": 8834,
+      "sha256": "494510ae929bcf92de39b03d29c84db98da8cc06f492949f8f51a876e4e921ff"
     },
     {
-      "file": "explore-dark-720w.webp",
-      "master": "explore-dark.png",
+      "file": "choose-city-01-state-list-720w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/01-state-list.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 61280,
-      "sha256": "c41047b6eaf72f33b34c57960ca8d961c4a8802d3bbe71d0d11ca45663e3a99f"
+      "height": 1280,
+      "bytes": 20170,
+      "sha256": "7d5664069f9baa728ef095efdfab884599093705f06e6112106dd2a28e538447"
     },
     {
-      "file": "explore-dark-1080w.webp",
-      "master": "explore-dark.png",
+      "file": "choose-city-01-state-list-1080w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/01-state-list.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 95430,
-      "sha256": "303ccf6080efd473a8eae2fc6ca4f3fa00b7654e73d8116b32db7d662fc9c85c"
+      "height": 1920,
+      "bytes": 33958,
+      "sha256": "24ef15e5b04e2bfe783a9b77212eff2c2a8517b21f6d1928dd46afd315323598"
     },
     {
-      "file": "explore-light-360w.webp",
-      "master": "explore-light.png",
+      "file": "choose-city-02-search-state-360w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/02-search-state.png",
       "width": 360,
-      "height": 800,
-      "bytes": 27366,
-      "sha256": "a3a22321940f7c0d2d7256bbd80d2824dd9f01a02fd37ce4946f11e6c64f052a"
+      "height": 640,
+      "bytes": 13528,
+      "sha256": "4aca32778b692c7b41915364009b06b8c51d2b40f0d5a89c8607c32edc43adfe"
     },
     {
-      "file": "explore-light-720w.webp",
-      "master": "explore-light.png",
+      "file": "choose-city-02-search-state-720w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/02-search-state.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 61896,
-      "sha256": "51935d2a4f18032e0a8951221ee4e15e9020f0db0b566e731280539dc626d5ed"
+      "height": 1280,
+      "bytes": 28076,
+      "sha256": "e3a2a7a69ea975649b1168812b410a6d6577cfc2e6aa97f4913995562167d95e"
     },
     {
-      "file": "explore-light-1080w.webp",
-      "master": "explore-light.png",
+      "file": "choose-city-02-search-state-1080w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/02-search-state.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 97168,
-      "sha256": "2799f5a9c697f51e841dbf03b38ee2d1ff05d972ae124b88e077c42c48ff75e6"
+      "height": 1920,
+      "bytes": 43938,
+      "sha256": "c3168fe82052f02ad3685140bb6dd9844bc9287d67bddb17da5cd269db1b2d4c"
     },
     {
-      "file": "history-360w.webp",
-      "master": "history.png",
+      "file": "choose-city-03-municipality-list-360w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/03-municipality-list.png",
       "width": 360,
-      "height": 800,
-      "bytes": 18460,
-      "sha256": "145982ed289a6617ea3128f2f8d9929cdcd8eab2655f99dfac4f795356a98260"
+      "height": 640,
+      "bytes": 9642,
+      "sha256": "446fb0e6ad83da774c84a228b99c243b5a4221e1998663a1d329c4d40ce25c8c"
     },
     {
-      "file": "history-720w.webp",
-      "master": "history.png",
+      "file": "choose-city-03-municipality-list-720w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/03-municipality-list.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 40720,
-      "sha256": "a9718db7a3bdd410de483d8e09a1851a62c6974a38548f0f475ea74aeea8ec66"
+      "height": 1280,
+      "bytes": 21912,
+      "sha256": "87dace86eeb1562b517581781ad21246913fa8e3d1f1e04ab6b9dea255324f5d"
     },
     {
-      "file": "history-1080w.webp",
-      "master": "history.png",
+      "file": "choose-city-03-municipality-list-1080w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/03-municipality-list.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 63820,
-      "sha256": "09fb618830ebbbfa90cc047ceaceff28216fda8050df4628f27785d6b3f6f0e4"
+      "height": 1920,
+      "bytes": 34600,
+      "sha256": "9e43b8c29f3b8b9ea9c15796887797794be65d1d182e054ac7a2a8012115c75f"
     },
     {
-      "file": "profile-guest-360w.webp",
-      "master": "profile-guest.png",
+      "file": "choose-city-04-search-municipality-360w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/04-search-municipality.png",
       "width": 360,
-      "height": 800,
-      "bytes": 25186,
-      "sha256": "6bd448ad621b8e9c02f26b56d3d316a20f77fbabbdd368ccf800b72d13a526be"
+      "height": 640,
+      "bytes": 13122,
+      "sha256": "921e83f4a49c4e08e559c523241a5c2672c22ff4fde127356d38aa371c944b2e"
     },
     {
-      "file": "profile-guest-720w.webp",
-      "master": "profile-guest.png",
+      "file": "choose-city-04-search-municipality-720w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/04-search-municipality.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 60904,
-      "sha256": "36bf55d06275d993efabb018d96ae74e32b3c8bdc109626f938fda76c316e3c6"
+      "height": 1280,
+      "bytes": 27688,
+      "sha256": "b0c4f6acac0613f294f00856338273f8f9013119bac7c6228042c6c8157143c8"
     },
     {
-      "file": "profile-guest-1080w.webp",
-      "master": "profile-guest.png",
+      "file": "choose-city-04-search-municipality-1080w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/04-search-municipality.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 95832,
-      "sha256": "5115aba8b1d1c83ee79fd1f1155dc9742bfe0b76fc499046191e6237644e37ab"
+      "height": 1920,
+      "bytes": 41786,
+      "sha256": "ed63833ef3839f96a128577a10a84c43d2199e9ec875af8147893b202df4f999"
     },
     {
-      "file": "settings-360w.webp",
-      "master": "settings.png",
+      "file": "choose-city-05-home-with-city-360w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/05-home-with-city.png",
       "width": 360,
-      "height": 800,
-      "bytes": 26452,
-      "sha256": "0f50725c9e1addde0465be8003fee248afb15c7cc60d48f436ee2bc307c5fdba"
+      "height": 640,
+      "bytes": 24408,
+      "sha256": "4acf763bd4b5e9d8d6d0299e8961e1dbc5d40a70da961a7f02dc80db26d4f34d"
     },
     {
-      "file": "settings-720w.webp",
-      "master": "settings.png",
+      "file": "choose-city-05-home-with-city-720w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/05-home-with-city.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 55598,
-      "sha256": "f4ae8cb50108102b9af753768418a26defd49ee04bfbf615100aa022c605b7ec"
+      "height": 1280,
+      "bytes": 54514,
+      "sha256": "e78edbb6a897028d723f368a94dc017db86ddab12a3604562f4053869f0628a1"
     },
     {
-      "file": "settings-1080w.webp",
-      "master": "settings.png",
+      "file": "choose-city-05-home-with-city-1080w.webp",
+      "master": "docs/assets/app-tutorial/choose-city/05-home-with-city.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 87728,
-      "sha256": "dca8567870699c526bb490f42e7daec3376693d494e6389aff2de9fd673a2d68"
+      "height": 1920,
+      "bytes": 85042,
+      "sha256": "7e649a901561a205036f3952872c642cb695e9cfe9f5e62fe447ba287334ea26"
     },
     {
-      "file": "station-detail-360w.webp",
-      "master": "station-detail.png",
+      "file": "fuel-prices-01-anp-average-cards-360w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/01-anp-average-cards.png",
       "width": 360,
-      "height": 800,
-      "bytes": 23704,
-      "sha256": "ea04d50313fe937e468451a148e2a79b57c18384a9aa03c3c6188815594345e3"
+      "height": 640,
+      "bytes": 18776,
+      "sha256": "0998bfc635f6b46eb036786c91d6dfada2b5da6a3a0a6b290a4b26452bb7c2c9"
     },
     {
-      "file": "station-detail-720w.webp",
-      "master": "station-detail.png",
+      "file": "fuel-prices-01-anp-average-cards-720w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/01-anp-average-cards.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 51194,
-      "sha256": "b368795a9497a195cc41916c9b15390dfdfa8f7d93b98d5c1ed881b6db9ce238"
+      "height": 1280,
+      "bytes": 41604,
+      "sha256": "f3591fde22c0809c5e6622830253cf3d728dcbe4d8061f5f5eaf4ba6309d9705"
     },
     {
-      "file": "station-detail-1080w.webp",
-      "master": "station-detail.png",
+      "file": "fuel-prices-01-anp-average-cards-1080w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/01-anp-average-cards.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 79842,
-      "sha256": "2c0ae2497bedefce4430864b89af1c61431d6f9e857e3b08555f2935d3e543a8"
+      "height": 1920,
+      "bytes": 63828,
+      "sha256": "8d82fac959582987d936570d9429dcefba474154891d021335510cb6f41f9591"
     },
     {
-      "file": "station-sources-360w.webp",
-      "master": "station-sources.png",
+      "file": "fuel-prices-02-more-fuels-360w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/02-more-fuels.png",
       "width": 360,
-      "height": 800,
-      "bytes": 24238,
-      "sha256": "23e8dc5bc149a5f128b942a871ade70103b431fe25dc7c5c80cd5fca7ab40464"
+      "height": 640,
+      "bytes": 17024,
+      "sha256": "e989cbcb0d58d0f5b99868451f4589dc6082f4f758c426f89fc02a37aa003583"
     },
     {
-      "file": "station-sources-720w.webp",
-      "master": "station-sources.png",
+      "file": "fuel-prices-02-more-fuels-720w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/02-more-fuels.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 54718,
-      "sha256": "58c35fb1d8dce2b31d5dd5a90eea6c4526f4cb4f8300a4677520b133d93f9db0"
+      "height": 1280,
+      "bytes": 37324,
+      "sha256": "ea712274c1f49d7c25f1919a71fe7fc725da10a83bc6acb686fea4e8160a86d7"
     },
     {
-      "file": "station-sources-1080w.webp",
-      "master": "station-sources.png",
+      "file": "fuel-prices-02-more-fuels-1080w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/02-more-fuels.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 84172,
-      "sha256": "bd8251090163f64382996b9779b538893a8b634c151e251ed6bbcbdf81dbd810"
+      "height": 1920,
+      "bytes": 58266,
+      "sha256": "6932810ab0eacde6d64f0d0a786a935496d846c80345d53a517af18cc2a04358"
     },
     {
-      "file": "stations-list-360w.webp",
-      "master": "stations-list.png",
+      "file": "fuel-prices-03-home-shortcuts-360w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/03-home-shortcuts.png",
       "width": 360,
-      "height": 800,
-      "bytes": 23434,
-      "sha256": "64b1a75f1b86613d99c9da516495a1121c823d4f80d3b3552a922d2d407aea5d"
+      "height": 640,
+      "bytes": 17748,
+      "sha256": "52dbc497f0419e6ec1255b3fe84765a0d793bf39d7ada57d363b56cd334b6dc1"
     },
     {
-      "file": "stations-list-720w.webp",
-      "master": "stations-list.png",
+      "file": "fuel-prices-03-home-shortcuts-720w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/03-home-shortcuts.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 52216,
-      "sha256": "550bbc733b9bb0440e56469c94d55d6c54c5010f4abcdd73ea87bc602d486244"
+      "height": 1280,
+      "bytes": 39084,
+      "sha256": "b6d321d4225cc6391f07418706196c9413325a47ff9e8429c9dd31b11d482204"
     },
     {
-      "file": "stations-list-1080w.webp",
-      "master": "stations-list.png",
+      "file": "fuel-prices-03-home-shortcuts-1080w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/03-home-shortcuts.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 81968,
-      "sha256": "e7fb134c3d98b004aca4fd23b38f18d9d168f45868f7e8171b6f85146b0a321f"
+      "height": 1920,
+      "bytes": 61094,
+      "sha256": "f2793f85f54c1efbb80a60e8819ab62be3ffe8e29bedc2666b8c6be93ff4d47a"
     },
     {
-      "file": "vehicle-form-360w.webp",
-      "master": "vehicle-form.png",
+      "file": "fuel-prices-04-sort-prices-360w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/04-sort-prices.png",
       "width": 360,
-      "height": 800,
-      "bytes": 18880,
-      "sha256": "5a6e48fafded536336aedf4d484e85bc03740a6488f87b3ca0aa4ae1e8ad5134"
+      "height": 640,
+      "bytes": 11894,
+      "sha256": "94c57e638a53524f99e4d014831b24fa0c1764a23876f6c7b81f72a80131a94e"
     },
     {
-      "file": "vehicle-form-720w.webp",
-      "master": "vehicle-form.png",
+      "file": "fuel-prices-04-sort-prices-720w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/04-sort-prices.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 41986,
-      "sha256": "4b2c8806b21d8d018b406705ed9555d7c0cb05251dbe6cb6b522317101b3f810"
+      "height": 1280,
+      "bytes": 25050,
+      "sha256": "81cadd935c344ba48c78d93662bed7993f444d9ab51d7f475e4129addfdacdf1"
     },
     {
-      "file": "vehicle-form-1080w.webp",
-      "master": "vehicle-form.png",
+      "file": "fuel-prices-04-sort-prices-1080w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/04-sort-prices.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 68616,
-      "sha256": "112afb6a5ff44c0cf1c3f49b89f758059800c0992478b91543cf3e04c2b2598d"
+      "height": 1920,
+      "bytes": 38338,
+      "sha256": "573c6d5cf4509a9d5ca93cd5190e8504a7a18d965276fd0265f9b5a1d524437c"
     },
     {
-      "file": "vehicles-empty-360w.webp",
-      "master": "vehicles-empty.png",
+      "file": "fuel-prices-05-lowest-price-360w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/05-lowest-price.png",
       "width": 360,
-      "height": 800,
-      "bytes": 7870,
-      "sha256": "147c083a9ec4d9d6c8a73e407336c4b26c87c4afd175b48bb4b8c01dfe8f8b0f"
+      "height": 640,
+      "bytes": 18330,
+      "sha256": "fc3c671480a57965857aaa56a58118ecf24247e4be954a521d16396f7d929062"
     },
     {
-      "file": "vehicles-empty-720w.webp",
-      "master": "vehicles-empty.png",
+      "file": "fuel-prices-05-lowest-price-720w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/05-lowest-price.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 18470,
-      "sha256": "48e344418f1e1effa204038ffa60cf1c473e0e6b7764d08222deccc59ad1cdce"
+      "height": 1280,
+      "bytes": 40958,
+      "sha256": "c529414f476dc2af0c4a8e35049f8a1fd78718a39c4fb457f79b17a70d9c8abd"
     },
     {
-      "file": "vehicles-empty-1080w.webp",
-      "master": "vehicles-empty.png",
+      "file": "fuel-prices-05-lowest-price-1080w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/05-lowest-price.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 30668,
-      "sha256": "b3b619b3a1602c1253fc9476abbc466521b1827bc4991fab52a5ff7abb64c242"
+      "height": 1920,
+      "bytes": 63624,
+      "sha256": "765e21b2bb565fb925aeaad6b5a11a1bafff7cc47f9bf76cdbb274977a1fbd08"
     },
     {
-      "file": "week-picker-360w.webp",
-      "master": "week-picker.png",
+      "file": "fuel-prices-06-community-prices-360w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/06-community-prices.png",
       "width": 360,
-      "height": 800,
-      "bytes": 21968,
-      "sha256": "33e58ce13894d95e8150b42639764e4784ca3a5d88c8cd9159a454e90bf0eccd"
+      "height": 640,
+      "bytes": 16384,
+      "sha256": "17f721968abbc9d05758f20837effd33aaa30b02c82b926cf588d9f1973686d8"
     },
     {
-      "file": "week-picker-720w.webp",
-      "master": "week-picker.png",
+      "file": "fuel-prices-06-community-prices-720w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/06-community-prices.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 50838,
-      "sha256": "44713d5f6b2a6e726ef1bfb8fd2a4c6c5db9ebefb27d6ca537961e46657a4d88"
+      "height": 1280,
+      "bytes": 36542,
+      "sha256": "0398c5a397a1e4813672b6fa12212bdf64c209bd355f3eb3b146e50897f64004"
     },
     {
-      "file": "week-picker-1080w.webp",
-      "master": "week-picker.png",
+      "file": "fuel-prices-06-community-prices-1080w.webp",
+      "master": "docs/assets/app-tutorial/fuel-prices/06-community-prices.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 79210,
-      "sha256": "aa68b51c0b4eb6a2b6fee1d348f4a9f38f15ec9687a8eec721cdae9d7de397df"
+      "height": 1920,
+      "bytes": 58010,
+      "sha256": "5495b402e391bf74f22fd055ef4791a534808727f584bb957a1f58091e8c1e7a"
     },
     {
-      "file": "municipios-mt-360w.webp",
-      "master": "municipios-mt.png",
+      "file": "stations-01-stations-for-fuel-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/01-stations-for-fuel.png",
       "width": 360,
-      "height": 800,
-      "bytes": 13990,
-      "sha256": "0e25a1b264fa694f892f013b9cfc31d00bee8f5552b55cce6f2515e4a3afd86c"
+      "height": 640,
+      "bytes": 16686,
+      "sha256": "d3598855abfb9499b758141de667188967af5e1c6b838ea23bc5517c0d635ea3"
     },
     {
-      "file": "municipios-mt-720w.webp",
-      "master": "municipios-mt.png",
+      "file": "stations-01-stations-for-fuel-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/01-stations-for-fuel.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 30964,
-      "sha256": "5f1c4c91f982aeeda612c52c4f9b2811cbc0ef883bbfbce457f80c5c74be6edc"
+      "height": 1280,
+      "bytes": 38152,
+      "sha256": "b9c2a56d3e1ceb21fed8d5256744b5df0ac0a3c37302d8e022801a53b49f4966"
     },
     {
-      "file": "municipios-mt-1080w.webp",
-      "master": "municipios-mt.png",
+      "file": "stations-01-stations-for-fuel-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/01-stations-for-fuel.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 49474,
-      "sha256": "dd1c7c169957a5880604cb636efb31d2ca8bcee448226e3a2970205d4f8a3900"
+      "height": 1920,
+      "bytes": 59326,
+      "sha256": "fc99b4a86d448981b7be6a98150185a808f8175230478de2987c19ee575b35d7"
     },
     {
-      "file": "profile-connected-360w.webp",
-      "master": "profile-connected.png",
+      "file": "stations-02-station-cards-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/02-station-cards.png",
       "width": 360,
-      "height": 800,
-      "bytes": 24668,
-      "sha256": "92c21ca20650476add31af5ed1d11a5e3a3892aea994275e852615f465341cb2"
+      "height": 640,
+      "bytes": 22080,
+      "sha256": "b769e4c122d9d539beb1cfb53ccb576868a55b90f961f767127bee2ce195ff24"
     },
     {
-      "file": "profile-connected-720w.webp",
-      "master": "profile-connected.png",
+      "file": "stations-02-station-cards-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/02-station-cards.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 58754,
-      "sha256": "8301f88e6858cd7e7bbf81a4c3e50bcce6e5216361af325a92bb3acbf2a3f119"
+      "height": 1280,
+      "bytes": 49258,
+      "sha256": "14840e22617bd38f063b3a59119711df40dcb283f365b6bd95443330520e7583"
     },
     {
-      "file": "profile-connected-1080w.webp",
-      "master": "profile-connected.png",
+      "file": "stations-02-station-cards-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/02-station-cards.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 93436,
-      "sha256": "88cb91b1517b91047a1b70fb621e9bae024ba636bdff2b9ef485c2e65767ccba"
+      "height": 1920,
+      "bytes": 74790,
+      "sha256": "d4d98b447775b2f167007278164bb9e5fe0f869dfa794fe349edf4570dca32cb"
     },
     {
-      "file": "capture-entry-360w.webp",
-      "master": "capture-entry.png",
+      "file": "stations-03-choose-fuel-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/03-choose-fuel.png",
       "width": 360,
-      "height": 800,
-      "bytes": 14034,
-      "sha256": "a36f0d5d7a73baf408d017a06274cdef037bb475e5ee0aa261916e86cdfb3513"
+      "height": 640,
+      "bytes": 13562,
+      "sha256": "c75f2510818ed101f142f26ad624ce43df594d7bfcdbc1e0ea1585c17fc3544c"
     },
     {
-      "file": "capture-entry-720w.webp",
-      "master": "capture-entry.png",
+      "file": "stations-03-choose-fuel-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/03-choose-fuel.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 34292,
-      "sha256": "b5c2f1061d7c9b3bef3735b0fa49c37a17c99e8af6f54b5d04ac43a5ee8aad21"
+      "height": 1280,
+      "bytes": 29104,
+      "sha256": "bea111f46ba9a0b2fa2dfa4f6edfcece5804dda45714c5db4da5107f4773960a"
     },
     {
-      "file": "capture-entry-1080w.webp",
-      "master": "capture-entry.png",
+      "file": "stations-03-choose-fuel-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/03-choose-fuel.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 55254,
-      "sha256": "4f9741775d4f1da56c7b45384f1fe5ac3dd3e4b385b1d295a49755cdd7070140"
+      "height": 1920,
+      "bytes": 45532,
+      "sha256": "2761b32cad8b436222be321e1224338af74f934509636f92d77265971ca81ac9"
     },
     {
-      "file": "rules-dialog-360w.webp",
-      "master": "rules-dialog.png",
+      "file": "stations-04-search-by-name-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/04-search-by-name.png",
       "width": 360,
-      "height": 800,
-      "bytes": 23838,
-      "sha256": "f950f5e185c7716921e94b7665ba24e38a15b9b1f289366caf7d14c1e94a6fae"
+      "height": 640,
+      "bytes": 18468,
+      "sha256": "8c001e6a0831b2b47da597d10dedad1cb4d68e1037dc532bc9a260a1a0ef4606"
     },
     {
-      "file": "rules-dialog-720w.webp",
-      "master": "rules-dialog.png",
+      "file": "stations-04-search-by-name-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/04-search-by-name.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 54528,
-      "sha256": "e39c54a664dbd9f1024e9a1afe37bb5cf4299e35831953c91ab94842e372648f"
+      "height": 1280,
+      "bytes": 42490,
+      "sha256": "8c57fd7bf35c68b751908a11d6c7f507eb907b0dfb304233aec132ad5d05b82b"
     },
     {
-      "file": "rules-dialog-1080w.webp",
-      "master": "rules-dialog.png",
+      "file": "stations-04-search-by-name-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/04-search-by-name.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 84690,
-      "sha256": "ae31bb7ec1bc1b3bb731782affddd07f25898b5330dbcf785e29aff60308b979"
+      "height": 1920,
+      "bytes": 65212,
+      "sha256": "791e1d0c2afaa045bec6dd95ce51d116ece8dafbafaf1184142a57bcb1f981dd"
     },
     {
-      "file": "vehicle-form-dark-360w.webp",
-      "master": "vehicle-form-dark.png",
+      "file": "stations-05-station-profile-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/05-station-profile.png",
       "width": 360,
-      "height": 800,
-      "bytes": 19168,
-      "sha256": "18b98c4063baa7e2718785f098e9a0b9b8499fcd5ea93dd7dda33cbf7dde1bc6"
+      "height": 640,
+      "bytes": 15622,
+      "sha256": "c577845456c9b559baa11d99a734bb8d7d6489c4b562a1e806055cc39261affb"
     },
     {
-      "file": "vehicle-form-dark-720w.webp",
-      "master": "vehicle-form-dark.png",
+      "file": "stations-05-station-profile-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/05-station-profile.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 42734,
-      "sha256": "7eda4001a55966592ad8adce3977f7f879a75602f718da6632684b19541423d3"
+      "height": 1280,
+      "bytes": 34528,
+      "sha256": "3dbda3402d32d46cec29f729c69b1685ec456b86d4617339fb73fb3677279b48"
     },
     {
-      "file": "vehicle-form-dark-1080w.webp",
-      "master": "vehicle-form-dark.png",
+      "file": "stations-05-station-profile-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/05-station-profile.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 69230,
-      "sha256": "bede0331f2b85e695cdedac91d0e379fde1442b3582d94ac4d2b4d5ce399916f"
+      "height": 1920,
+      "bytes": 53498,
+      "sha256": "f37fa19655ca7ccbac464bcc9f5e9cfd66c23415423f66932d3695d89fb6bf65"
     },
     {
-      "file": "offline-cached-360w.webp",
-      "master": "offline-cached.png",
+      "file": "stations-06-community-and-anp-prices-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/06-community-and-anp-prices.png",
       "width": 360,
-      "height": 800,
-      "bytes": 19018,
-      "sha256": "c54bf9472ed2965da19d0154b3858e8586d69a759bf23253a0e6b2c3380a8607"
+      "height": 640,
+      "bytes": 20920,
+      "sha256": "4780b4e433965f6bc434fe998e9bc8ba4a3cdc7810529b9dc472a6111fc96488"
     },
     {
-      "file": "offline-cached-720w.webp",
-      "master": "offline-cached.png",
+      "file": "stations-06-community-and-anp-prices-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/06-community-and-anp-prices.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 43324,
-      "sha256": "e25d940a95a8fd021fb2f733fca467028861a4ca160a71574dff0bba111b0369"
+      "height": 1280,
+      "bytes": 47352,
+      "sha256": "d87772a567da9c68ab22d17bb6b3ea5de3b33b0cb034b523b6767e476fbdbd69"
     },
     {
-      "file": "offline-cached-1080w.webp",
-      "master": "offline-cached.png",
+      "file": "stations-06-community-and-anp-prices-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/06-community-and-anp-prices.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 68292,
-      "sha256": "f10bbda3033d2e94b42798bdcf63c00248ec5e81fb8fbe5d22d99095d37cb8aa"
+      "height": 1920,
+      "bytes": 73460,
+      "sha256": "8cc461e43c786aa092fd3d716774234fdb4af5bf9d7d81a16984a4836be83478"
     },
     {
-      "file": "search-empty-360w.webp",
-      "master": "search-empty.png",
+      "file": "stations-07-anp-reference-price-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/07-anp-reference-price.png",
       "width": 360,
-      "height": 800,
-      "bytes": 21780,
-      "sha256": "6c4e8d6a159267dfd8e67c9dd726455e0d846e991cf0af1cb0c84538b3661726"
+      "height": 640,
+      "bytes": 19418,
+      "sha256": "93f7487b8cdeb35ff4b01b57c345f968df0de1fbbdec4350ebaeaf4dcc0d90f7"
     },
     {
-      "file": "search-empty-720w.webp",
-      "master": "search-empty.png",
+      "file": "stations-07-anp-reference-price-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/07-anp-reference-price.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 46140,
-      "sha256": "4961cc48897391442c54bf4705d705ebd2b8fbee3ee38a3fbaceaf12615fa542"
+      "height": 1280,
+      "bytes": 43606,
+      "sha256": "d978e8b62418bda3868c49e83f25e8bed3194eaf8b062628442eee7313e9d77c"
     },
     {
-      "file": "search-empty-1080w.webp",
-      "master": "search-empty.png",
+      "file": "stations-07-anp-reference-price-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/07-anp-reference-price.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 71832,
-      "sha256": "66ac298fe955bfe91a574a5f3192efdfe41e271c17e205ae99dd83ceb6b08778"
+      "height": 1920,
+      "bytes": 67586,
+      "sha256": "943e49c07b6eabca91e40cf44b2ceebd0489058ae0f64d98f3d0f1568936a05a"
     },
     {
-      "file": "nearby-failure-360w.webp",
-      "master": "nearby-failure.png",
+      "file": "stations-08-fuel-quality-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/08-fuel-quality.png",
       "width": 360,
-      "height": 800,
-      "bytes": 22866,
-      "sha256": "d1d1dad4ea58a81b63eb165d416bc54fb5f81e402ba3f4c6a6f41309da72790a"
+      "height": 640,
+      "bytes": 27810,
+      "sha256": "79ffdcfc07c7c94f4669e26bf64e3bc8556a7acda73cb968c76c933513dcfd9b"
     },
     {
-      "file": "nearby-failure-720w.webp",
-      "master": "nearby-failure.png",
+      "file": "stations-08-fuel-quality-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/08-fuel-quality.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 51714,
-      "sha256": "0e0e7bc48f5ce0209d2f55593267d7f5e862a4995f2b810aa758f189fb6461bb"
+      "height": 1280,
+      "bytes": 64840,
+      "sha256": "c1423563033171477dec6038d735503a89aef13fcc14af2376c78fdc3fe47cde"
     },
     {
-      "file": "nearby-failure-1080w.webp",
-      "master": "nearby-failure.png",
+      "file": "stations-08-fuel-quality-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/08-fuel-quality.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 81222,
-      "sha256": "b53080cb34c13d6a9d14dd6229e3dca4e417868b97260f7ae96c45f7048e4e0f"
+      "height": 1920,
+      "bytes": 102172,
+      "sha256": "4d9b76dbe678a9eb213365b291b554e1aa4309858b8020f112bbd401636b02e8"
     },
     {
-      "file": "help-rules-360w.webp",
-      "master": "help-rules.png",
+      "file": "stations-10-driver-experience-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/10-driver-experience.png",
       "width": 360,
-      "height": 800,
-      "bytes": 26964,
-      "sha256": "16e510a094ca963941b02b72c747e648fb7d9c26a96bbcc4375abf27ca5c35ef"
+      "height": 640,
+      "bytes": 19610,
+      "sha256": "949a286fc03045108eb1aed3ff071391383155c240d2f3ae63719cf4c890ca28"
     },
     {
-      "file": "help-rules-720w.webp",
-      "master": "help-rules.png",
+      "file": "stations-10-driver-experience-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/10-driver-experience.png",
       "width": 720,
-      "height": 1601,
-      "bytes": 67684,
-      "sha256": "a3cf6ac9674796e8514da173a623c538bc0655f26c812f9d9382989807c5fb05"
+      "height": 1280,
+      "bytes": 45246,
+      "sha256": "be449f4abafae19c80c7d4f2cde0be7b6c21c4999447140d12b2a32f2f452c0e"
     },
     {
-      "file": "help-rules-1080w.webp",
-      "master": "help-rules.png",
+      "file": "stations-10-driver-experience-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/10-driver-experience.png",
       "width": 1080,
-      "height": 2401,
-      "bytes": 105256,
-      "sha256": "fd467763f5d4d02795f94a66c52c21efad2b0c0be58e3588f06fce0d50d7cf69"
+      "height": 1920,
+      "bytes": 70622,
+      "sha256": "cbd17cc152205588db486091903d9b05031570661cd24fc9f5764c96bd282aaf"
+    },
+    {
+      "file": "stations-11-suggest-correction-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/11-suggest-correction.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 14202,
+      "sha256": "e19b2d65e59c22fc8e289ead2e18ea73254c3cc99167d57ac242c7b9b72d44e7"
+    },
+    {
+      "file": "stations-11-suggest-correction-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/11-suggest-correction.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 31996,
+      "sha256": "202aa3d36beee63e6518cd375a5e185bc0f5b6bf53cfe8371a06ecbdfd164352"
+    },
+    {
+      "file": "stations-11-suggest-correction-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/11-suggest-correction.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 51284,
+      "sha256": "c31e5ba185c86f7961c83ff6fa289fe70c994fcc5a75006fd43795dfd0d38f5b"
+    },
+    {
+      "file": "stations-12-represent-your-station-360w.webp",
+      "master": "docs/assets/app-tutorial/stations/12-represent-your-station.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 20892,
+      "sha256": "ae023e7d9c5544b5eb5c91e50b27d3ccbbf56f9045473715c09ef3b73feeb26a"
+    },
+    {
+      "file": "stations-12-represent-your-station-720w.webp",
+      "master": "docs/assets/app-tutorial/stations/12-represent-your-station.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 51074,
+      "sha256": "8a6cac530b31abbcea233e6fa9412cc34db8cf725fd2174360d10c6d862c07b1"
+    },
+    {
+      "file": "stations-12-represent-your-station-1080w.webp",
+      "master": "docs/assets/app-tutorial/stations/12-represent-your-station.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 82152,
+      "sha256": "3711d6287cd912b9f8dce31f429866c9d2e6e592c6888e7f79b362ca9e1dad8b"
+    },
+    {
+      "file": "map-offline-01-download-suggestion-360w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/01-download-suggestion.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 13744,
+      "sha256": "c062f2218e48cc5b9c902a82a5f8d2c827db74d94136ea80d9d98466761f2e7a"
+    },
+    {
+      "file": "map-offline-01-download-suggestion-720w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/01-download-suggestion.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 31282,
+      "sha256": "cef0eee6eadcadfd875e3b14227077b9e70664f0804b6cb34e0fb770e54bdbca"
+    },
+    {
+      "file": "map-offline-01-download-suggestion-1080w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/01-download-suggestion.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 50112,
+      "sha256": "74f22adb46c371a1fff21f5aabc5cb2382779ed3b320e7a5db9c35955cf99c69"
+    },
+    {
+      "file": "map-offline-02-download-progress-360w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/02-download-progress.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 18094,
+      "sha256": "934e23a4cf4614e6d46ee6e6f96d30efb82caba98d4ce57af135cf6cfbdcb949"
+    },
+    {
+      "file": "map-offline-02-download-progress-720w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/02-download-progress.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 41652,
+      "sha256": "bf5d43e841b3a8a3a262e2289793ce321adcabd6eb37546a866d5463c2de8943"
+    },
+    {
+      "file": "map-offline-02-download-progress-1080w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/02-download-progress.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 66638,
+      "sha256": "57fa579f3e5e5fa0c6807035eaeb64fb3019e715752448fb0fd19afa1d8af90c"
+    },
+    {
+      "file": "map-offline-03-offline-pack-active-360w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/03-offline-pack-active.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 11254,
+      "sha256": "807c4bf8ec53d4f8c100c2505ccec0497849b893f0d6938633c3a91eff40567f"
+    },
+    {
+      "file": "map-offline-03-offline-pack-active-720w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/03-offline-pack-active.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 26032,
+      "sha256": "e5864398c069c027ed09af40a716070bba8c79158bd8360c96d61002cd4dee50"
+    },
+    {
+      "file": "map-offline-03-offline-pack-active-1080w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/03-offline-pack-active.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 41138,
+      "sha256": "bdfd05a4636e80d2c17f94486f25fc714cad52197fd8079cf75a5582fdd5f287"
+    },
+    {
+      "file": "map-offline-04-offline-map-ready-360w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/04-offline-map-ready.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 31854,
+      "sha256": "623eb9861ee04511477ede633faa8ba417ea462be86b1548571657ee4fc519b9"
+    },
+    {
+      "file": "map-offline-04-offline-map-ready-720w.webp",
+      "master": "docs/assets/app-tutorial/map-offline/04-offline-map-ready.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 81162,
+      "sha256": "d3e9adf23da920a5bbf949da80035240b5ce669de22cb00113228ba40bd205ce"
+    },
+    {
+      "file": "map-01-stations-on-map-360w.webp",
+      "master": "docs/assets/app-tutorial/map/01-stations-on-map.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 32778,
+      "sha256": "8766fa3ea5bf3e797d2bdfd5e0c4eb02c3d06ce5be584d10bdaf7a90ae38d49b"
+    },
+    {
+      "file": "map-01-stations-on-map-720w.webp",
+      "master": "docs/assets/app-tutorial/map/01-stations-on-map.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 85734,
+      "sha256": "8e0853649e5b449a54517d190376dcf614b6cc93690a7417f045916d83291dff"
+    },
+    {
+      "file": "map-02-map-filters-360w.webp",
+      "master": "docs/assets/app-tutorial/map/02-map-filters.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 14752,
+      "sha256": "7a04fb3fda3c543b6c8cccdaf570604e5a1bbe70c5dd761c51e9f7ad8647b94c"
+    },
+    {
+      "file": "map-02-map-filters-720w.webp",
+      "master": "docs/assets/app-tutorial/map/02-map-filters.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 33138,
+      "sha256": "67d84638dcf909d534a82b48ea62c14c4fc1b30ac238110bdcbee0f8f9f39448"
+    },
+    {
+      "file": "map-02-map-filters-1080w.webp",
+      "master": "docs/assets/app-tutorial/map/02-map-filters.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 54072,
+      "sha256": "22c14a20580ff636a37fed79e04b702b79f37fb58ef6c70aa609e597136f46dc"
+    },
+    {
+      "file": "map-03-station-sheet-360w.webp",
+      "master": "docs/assets/app-tutorial/map/03-station-sheet.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 18858,
+      "sha256": "ce3289fe63f90d196db5938923787c1f7dba04ff3d04aba87e70345ea68a09bf"
+    },
+    {
+      "file": "map-03-station-sheet-720w.webp",
+      "master": "docs/assets/app-tutorial/map/03-station-sheet.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 43106,
+      "sha256": "4a2f8d38955c0468a57df3ee4cd2067a825c9a2d257c9e3ae5a3ffbe18bb4108"
+    },
+    {
+      "file": "map-03-station-sheet-1080w.webp",
+      "master": "docs/assets/app-tutorial/map/03-station-sheet.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 66838,
+      "sha256": "6b73853564d46be30165e93808da1b6527cb64f182fb62dc7322496fd9e203e4"
+    },
+    {
+      "file": "map-05-route-preview-360w.webp",
+      "master": "docs/assets/app-tutorial/map/05-route-preview.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 36262,
+      "sha256": "f5c3038ab316911aa4ca551d603582cd18720839db181f35fa46740c6aba271a"
+    },
+    {
+      "file": "map-05-route-preview-720w.webp",
+      "master": "docs/assets/app-tutorial/map/05-route-preview.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 103544,
+      "sha256": "2df54ebd8fada9c514abe4fa44899e7f344a4c0282ae8c1e3bb13772070add07"
+    },
+    {
+      "file": "map-06-route-maneuvers-360w.webp",
+      "master": "docs/assets/app-tutorial/map/06-route-maneuvers.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 34032,
+      "sha256": "2764d3b61697d103d443e743240cf913cf266e0099d752c7963ace520841a976"
+    },
+    {
+      "file": "map-06-route-maneuvers-720w.webp",
+      "master": "docs/assets/app-tutorial/map/06-route-maneuvers.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 88278,
+      "sha256": "8b0b0d733a9e3a9502c5857e623fc4e1c6135ccc9b1d7a4246bbf6420d6a207c"
+    },
+    {
+      "file": "map-07-turn-by-turn-navigation-360w.webp",
+      "master": "docs/assets/app-tutorial/map/07-turn-by-turn-navigation.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 30836,
+      "sha256": "924fda3809d713821ac157bbce84e472e74a965df9699627671f0c813d13e0ba"
+    },
+    {
+      "file": "map-07-turn-by-turn-navigation-720w.webp",
+      "master": "docs/assets/app-tutorial/map/07-turn-by-turn-navigation.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 90116,
+      "sha256": "2407da5bcf55a8b784a3687364d8e6f7f7fb0cde0a6d23d002d1267e2dd30c9c"
+    },
+    {
+      "file": "survey-weeks-01-open-week-picker-360w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/01-open-week-picker.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 20220,
+      "sha256": "94c8846aaec83fc220814996a637672baf1240569ed075e8f82b3bfb731f0714"
+    },
+    {
+      "file": "survey-weeks-01-open-week-picker-720w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/01-open-week-picker.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 46540,
+      "sha256": "4c0a2ece0b66f7f76258c43a118e5ccfe5ed1b94e5a8e59ead33ef231045d373"
+    },
+    {
+      "file": "survey-weeks-01-open-week-picker-1080w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/01-open-week-picker.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 72638,
+      "sha256": "557e579ef47619adac4cb62a09ac3cdd6a1362640c9684d87b8866d71c3c7328"
+    },
+    {
+      "file": "survey-weeks-02-week-list-360w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/02-week-list.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 17756,
+      "sha256": "b52358ec79736d758081214feebcbe7986a8bcb31200b3fb44ca2533a955a6a8"
+    },
+    {
+      "file": "survey-weeks-02-week-list-720w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/02-week-list.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 40120,
+      "sha256": "423ef15e106b7e807fc35370ad3b9756ba9d55d2d9cfaf673f894dc1bb641457"
+    },
+    {
+      "file": "survey-weeks-02-week-list-1080w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/02-week-list.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 63378,
+      "sha256": "bc7f453aba8eb11425743a059cea19b6199fb8119f8b8cd8747c968a5bd210b9"
+    },
+    {
+      "file": "survey-weeks-03-downloading-week-360w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/03-downloading-week.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 12442,
+      "sha256": "07577fcdcff5433f540bc6ed841ebc98ebee53068a87b3a9574b8908ab69646d"
+    },
+    {
+      "file": "survey-weeks-03-downloading-week-720w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/03-downloading-week.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 27584,
+      "sha256": "6f4f97da26013145b58871ec5b0f2223b2c243557b56f53386fb2320be8153de"
+    },
+    {
+      "file": "survey-weeks-03-downloading-week-1080w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/03-downloading-week.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 42696,
+      "sha256": "69902aa6f645564a35f79376c7a76f206a2cfba3cded491970f4e7f35403daa0"
+    },
+    {
+      "file": "survey-weeks-04-week-downloaded-360w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/04-week-downloaded.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 17948,
+      "sha256": "b733f738e494ada24f18e372b14e212ad00531df1903092d45c930f731fccba0"
+    },
+    {
+      "file": "survey-weeks-04-week-downloaded-720w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/04-week-downloaded.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 40688,
+      "sha256": "1ca549a0c1d2546c4b645b0eb5418365d9ff3a3448f88fcf1719c3cad6c21ad0"
+    },
+    {
+      "file": "survey-weeks-04-week-downloaded-1080w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/04-week-downloaded.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 64266,
+      "sha256": "769e8d67d03c12ed6cd69f0eca23a6122ec0604a9eaf82bcbf162d7a5ee180ca"
+    },
+    {
+      "file": "survey-weeks-05-older-week-active-360w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/05-older-week-active.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 18272,
+      "sha256": "3c955c46bf6526fc21d4731c8b3aa41bbdef91c712742b00ae54564c2f6e9e07"
+    },
+    {
+      "file": "survey-weeks-05-older-week-active-720w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/05-older-week-active.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 40742,
+      "sha256": "623d757f7ff2cd74d9e6726dbd095c829c7cf4fa964595a41cbc05cd4847680b"
+    },
+    {
+      "file": "survey-weeks-05-older-week-active-1080w.webp",
+      "master": "docs/assets/app-tutorial/survey-weeks/05-older-week-active.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 62712,
+      "sha256": "2801e6d49f1fcd9ab28c016294cc737cf5aaa64e73acb87428ddcacf1c2760d7"
+    },
+    {
+      "file": "history-01-weekly-history-360w.webp",
+      "master": "docs/assets/app-tutorial/history/01-weekly-history.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 12350,
+      "sha256": "33ef09a621ece0002c1fa2f644cbe93d647651c010746d5cf30fd95788e88fc0"
+    },
+    {
+      "file": "history-01-weekly-history-720w.webp",
+      "master": "docs/assets/app-tutorial/history/01-weekly-history.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 27824,
+      "sha256": "6c5bb960d75d18ebf7828368cbdea5ff94d5c8c48702b0f9731aca3643062df1"
+    },
+    {
+      "file": "history-01-weekly-history-1080w.webp",
+      "master": "docs/assets/app-tutorial/history/01-weekly-history.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 43034,
+      "sha256": "7e4f7def54c5b0da168340e368649f37adf8007e6d3b7628ec51c2631e527349"
+    },
+    {
+      "file": "history-02-choose-fuel-360w.webp",
+      "master": "docs/assets/app-tutorial/history/02-choose-fuel.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 13436,
+      "sha256": "7a941ab53770668c511f742cbcc1f413e3f2ff1a2010995a943019ba47f1d89a"
+    },
+    {
+      "file": "history-02-choose-fuel-720w.webp",
+      "master": "docs/assets/app-tutorial/history/02-choose-fuel.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 28718,
+      "sha256": "cbf39a5f7f1e533846d0d55e85211eb1d284cd4aba1e640c979529879ab0deae"
+    },
+    {
+      "file": "history-02-choose-fuel-1080w.webp",
+      "master": "docs/assets/app-tutorial/history/02-choose-fuel.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 44756,
+      "sha256": "a3241085f9883876950689ab10dc2b658f6f80e816c2b4b1672ca5b9f2d44a2a"
+    },
+    {
+      "file": "history-03-diesel-s10-trend-360w.webp",
+      "master": "docs/assets/app-tutorial/history/03-diesel-s10-trend.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 12012,
+      "sha256": "231867da86b323cd88b1caeea7483f3c9f1b704b7e02d505b063d25b67502994"
+    },
+    {
+      "file": "history-03-diesel-s10-trend-720w.webp",
+      "master": "docs/assets/app-tutorial/history/03-diesel-s10-trend.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 26632,
+      "sha256": "9f0e50eb6c11215e98ad108a81e6fcae3b0dc36199914f3f72343d515db4cad5"
+    },
+    {
+      "file": "history-03-diesel-s10-trend-1080w.webp",
+      "master": "docs/assets/app-tutorial/history/03-diesel-s10-trend.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 41544,
+      "sha256": "5e0c65d49b5e7b8f79029439e9747ef9881861838b9b6a26763ea830dec83083"
+    },
+    {
+      "file": "history-04-tap-a-week-360w.webp",
+      "master": "docs/assets/app-tutorial/history/04-tap-a-week.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 12952,
+      "sha256": "96d27c532983a6f92947b43e4973e792592b8c2a520789726d7238873163ea91"
+    },
+    {
+      "file": "history-04-tap-a-week-720w.webp",
+      "master": "docs/assets/app-tutorial/history/04-tap-a-week.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 28060,
+      "sha256": "5d8095881e5a062968a19da8df915434424b8b37724357d9fd625bb471597d62"
+    },
+    {
+      "file": "history-04-tap-a-week-1080w.webp",
+      "master": "docs/assets/app-tutorial/history/04-tap-a-week.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 44206,
+      "sha256": "d0f65459bbdf37954c3a3bf3bfcda53b99c111ee8522f99fe07685ed2890a45c"
+    },
+    {
+      "file": "vehicles-01-no-vehicles-360w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/01-no-vehicles.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 8380,
+      "sha256": "a240d51112f7f94e2989717dcf8fca91ae15652e75bb8e7180258b60a6b1527b"
+    },
+    {
+      "file": "vehicles-01-no-vehicles-720w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/01-no-vehicles.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 19710,
+      "sha256": "819e82f3a8b7f4652b0855fb375a4fe35ced17f2afc6004ee5f0c63034e84e34"
+    },
+    {
+      "file": "vehicles-01-no-vehicles-1080w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/01-no-vehicles.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 31818,
+      "sha256": "cedd3671511b51509460974b7238f77a8fde47fccd76d48b64548937131a5063"
+    },
+    {
+      "file": "vehicles-02-name-and-tank-360w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/02-name-and-tank.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 13914,
+      "sha256": "6ba2a6ed307bfe015da3f016acf2a864ab2172ff930a368f131310d349738353"
+    },
+    {
+      "file": "vehicles-02-name-and-tank-720w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/02-name-and-tank.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 31402,
+      "sha256": "d19f33a0c6d06969b9b4b1888c4d1faf8bcfdf2eb7ab7a999b283e35bde8f568"
+    },
+    {
+      "file": "vehicles-02-name-and-tank-1080w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/02-name-and-tank.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 49276,
+      "sha256": "e55021fd07c7651281e2c2170ef7cb9b9a4b25d802b61b3dd1b1381a3bca54b6"
+    },
+    {
+      "file": "vehicles-03-fuel-and-price-alert-360w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/03-fuel-and-price-alert.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 15662,
+      "sha256": "f50fc07c09b9694102e6060b55563d880d40934f0e961c72a2cf7951e8db291a"
+    },
+    {
+      "file": "vehicles-03-fuel-and-price-alert-720w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/03-fuel-and-price-alert.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 35250,
+      "sha256": "1e1351dbe2753dce1d4dff8f6f698d9984552929cd0643e2dc67c928157f4227"
+    },
+    {
+      "file": "vehicles-03-fuel-and-price-alert-1080w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/03-fuel-and-price-alert.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 56258,
+      "sha256": "129581d30fdbe6b001f65135913ee4cd3385f07c8e9b2aa15d0c7c147259d1b2"
+    },
+    {
+      "file": "vehicles-04-vehicle-saved-360w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/04-vehicle-saved.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 6878,
+      "sha256": "c7fd7b74a28f76c9f6dca92b2d0b5438b6b561f2548573b089e8f1d05c33525c"
+    },
+    {
+      "file": "vehicles-04-vehicle-saved-720w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/04-vehicle-saved.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 15984,
+      "sha256": "e151a95d736f8127f7538728b9f57fcc576a23d179d300a587b1049b3b879e12"
+    },
+    {
+      "file": "vehicles-04-vehicle-saved-1080w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/04-vehicle-saved.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 25500,
+      "sha256": "95ef1335fa13223e6d9f4e1a8ecda2a7f8c7813a83c4d38da4309b19ded4e126"
+    },
+    {
+      "file": "vehicles-05-tank-fill-cost-360w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/05-tank-fill-cost.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 19234,
+      "sha256": "03b10d20a4177089d81d3c5110d09d1aaeff804ceb7b31719c0ef076038e4050"
+    },
+    {
+      "file": "vehicles-05-tank-fill-cost-720w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/05-tank-fill-cost.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 41704,
+      "sha256": "3f20f968ed170c2f61e744b98d1b00fef78dc1a6d80672f2d90504510e974471"
+    },
+    {
+      "file": "vehicles-05-tank-fill-cost-1080w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/05-tank-fill-cost.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 64036,
+      "sha256": "91f86ef11ef9034b67c2b261d854f83e97a13c842367be9288224499e1e803c1"
+    },
+    {
+      "file": "vehicles-06-fuel-log-360w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/06-fuel-log.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 11002,
+      "sha256": "259fbfc80b4cdbe635e0e5234f60bf86a2cbcd961435716199828bda4c99db76"
+    },
+    {
+      "file": "vehicles-06-fuel-log-720w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/06-fuel-log.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 25094,
+      "sha256": "af9dee7192e6f3897a06965b792a08ffa4e3eac2552f9132e9ac053978461f66"
+    },
+    {
+      "file": "vehicles-06-fuel-log-1080w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/06-fuel-log.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 40592,
+      "sha256": "1929011e780f14278d702fb3d2a4aca78a43040ae2331b29e3617c59f8cb29ea"
+    },
+    {
+      "file": "vehicles-07-add-fill-up-360w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/07-add-fill-up.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 13780,
+      "sha256": "30d380f22d7111727fbda1f7e72b9597822210deb2ac6418b4fe65df57cab2f9"
+    },
+    {
+      "file": "vehicles-07-add-fill-up-720w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/07-add-fill-up.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 31546,
+      "sha256": "e1a6d5a93ad6b3e4371c17bb4758c9045640df2d8e3b538d11c058850a92067c"
+    },
+    {
+      "file": "vehicles-07-add-fill-up-1080w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/07-add-fill-up.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 50330,
+      "sha256": "5f31885c8a6f9f51ed3dda925e9f10d52804883f0afff9b762082c12a14bacb0"
+    },
+    {
+      "file": "vehicles-08-fuel-log-entry-360w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/08-fuel-log-entry.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 11574,
+      "sha256": "a5f40e9c5ba64aa1ecb722447c29f8d101119392ff3c5d2a3f3b5f9b53e01eae"
+    },
+    {
+      "file": "vehicles-08-fuel-log-entry-720w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/08-fuel-log-entry.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 26484,
+      "sha256": "81438c9be38e5dcdf3f95f67ef08c2721cbf60c6e2b1805725fb138973bf8259"
+    },
+    {
+      "file": "vehicles-08-fuel-log-entry-1080w.webp",
+      "master": "docs/assets/app-tutorial/vehicles/08-fuel-log-entry.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 42420,
+      "sha256": "7ebc914b6a4bc60a9a40402742839ebe20ff95c44eafa3ddbaedaddb6fcbba69"
+    },
+    {
+      "file": "settings-01-sync-and-preferences-360w.webp",
+      "master": "docs/assets/app-tutorial/settings/01-sync-and-preferences.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 16982,
+      "sha256": "c2fe1446d3205c5bd1249488a71fadabddbfc7d66def0484eec9c952e6eb819f"
+    },
+    {
+      "file": "settings-01-sync-and-preferences-720w.webp",
+      "master": "docs/assets/app-tutorial/settings/01-sync-and-preferences.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 38822,
+      "sha256": "fb01922bd94c3636f7fe6e49a03bbcaf84a60665293f04d9498d1729721f3a72"
+    },
+    {
+      "file": "settings-01-sync-and-preferences-1080w.webp",
+      "master": "docs/assets/app-tutorial/settings/01-sync-and-preferences.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 60938,
+      "sha256": "14416de9d657869fd922237d715ddb515ad12178ea568657c33c99b0a1d33440"
+    },
+    {
+      "file": "settings-02-language-and-search-distance-360w.webp",
+      "master": "docs/assets/app-tutorial/settings/02-language-and-search-distance.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 20054,
+      "sha256": "9bbff56bea29f00193b0ea4a42dcc3d770647fbb9431491cb01c88809f18e9ad"
+    },
+    {
+      "file": "settings-02-language-and-search-distance-720w.webp",
+      "master": "docs/assets/app-tutorial/settings/02-language-and-search-distance.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 43936,
+      "sha256": "7780e21091f599440abc7e1003c25dd51a484f2160c768c53db8061ab3fce6c1"
+    },
+    {
+      "file": "settings-02-language-and-search-distance-1080w.webp",
+      "master": "docs/assets/app-tutorial/settings/02-language-and-search-distance.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 68240,
+      "sha256": "0d0a916122ff8d1f66be5fcbf6a419b65489dd121b5340a243ad06eec6d599f2"
+    },
+    {
+      "file": "settings-03-data-retention-and-city-directory-360w.webp",
+      "master": "docs/assets/app-tutorial/settings/03-data-retention-and-city-directory.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 19950,
+      "sha256": "dec3fc9fe344f8946a4e30513f3da9e531016cd30ccf75695638f4874d3e80f7"
+    },
+    {
+      "file": "settings-03-data-retention-and-city-directory-720w.webp",
+      "master": "docs/assets/app-tutorial/settings/03-data-retention-and-city-directory.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 48604,
+      "sha256": "4e431eea299b5151dcb5703861bc19f5eddb3bb6bb91929d1ce7157c2e8e3691"
+    },
+    {
+      "file": "settings-03-data-retention-and-city-directory-1080w.webp",
+      "master": "docs/assets/app-tutorial/settings/03-data-retention-and-city-directory.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 75918,
+      "sha256": "9b059df9d5fd8ac32926186a6e90a0cc932ceed14adbd0c3c341f8083465f1f8"
+    },
+    {
+      "file": "settings-04-storage-account-and-about-360w.webp",
+      "master": "docs/assets/app-tutorial/settings/04-storage-account-and-about.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 16978,
+      "sha256": "2045e94105a01976008978295e9f8351352a6f7a8a4459e7bd895611db584d40"
+    },
+    {
+      "file": "settings-04-storage-account-and-about-720w.webp",
+      "master": "docs/assets/app-tutorial/settings/04-storage-account-and-about.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 38730,
+      "sha256": "528ba5d25ae1b80d042ab80b510a460c3af91b81d564a5002440616369421b96"
+    },
+    {
+      "file": "settings-04-storage-account-and-about-1080w.webp",
+      "master": "docs/assets/app-tutorial/settings/04-storage-account-and-about.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 61780,
+      "sha256": "4ac21e5436d3816fb9e7afcd578aedd2ac5e03497a024de51b7c5089dc33d015"
+    },
+    {
+      "file": "help-and-privacy-01-help-and-community-rules-360w.webp",
+      "master": "docs/assets/app-tutorial/help-and-privacy/01-help-and-community-rules.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 24100,
+      "sha256": "284f367038c3bbabc82b4593540d4a9171815cdda3b43e216edb637583dbbf61"
+    },
+    {
+      "file": "help-and-privacy-01-help-and-community-rules-720w.webp",
+      "master": "docs/assets/app-tutorial/help-and-privacy/01-help-and-community-rules.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 58672,
+      "sha256": "6d841156f3dd4ead86e9070d22b50642c6563698b31258eca9cdfcf7ff7aa31b"
+    },
+    {
+      "file": "help-and-privacy-01-help-and-community-rules-1080w.webp",
+      "master": "docs/assets/app-tutorial/help-and-privacy/01-help-and-community-rules.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 90960,
+      "sha256": "f1d51755bbf9aaf6b946e78410066ca04b99d31d6cbeacb13d8da5c8261db7e6"
+    },
+    {
+      "file": "help-and-privacy-02-privacy-and-terms-360w.webp",
+      "master": "docs/assets/app-tutorial/help-and-privacy/02-privacy-and-terms.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 22006,
+      "sha256": "596dc4a0bbf859a07bbdad6d4d76bea0fa9746f03ebba8e7a919f8bad42ccac7"
+    },
+    {
+      "file": "help-and-privacy-02-privacy-and-terms-720w.webp",
+      "master": "docs/assets/app-tutorial/help-and-privacy/02-privacy-and-terms.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 52648,
+      "sha256": "d150e4de7aef68e5bac22a0b3d7ca9261a055c29482e16916e678fb3aee54d8b"
+    },
+    {
+      "file": "help-and-privacy-02-privacy-and-terms-1080w.webp",
+      "master": "docs/assets/app-tutorial/help-and-privacy/02-privacy-and-terms.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 82414,
+      "sha256": "e326fbd50b106090c4259a2fe93b4c53625e75372c3e7b7e9d23f73aa63e1640"
+    },
+    {
+      "file": "account-01-guest-profile-360w.webp",
+      "master": "docs/assets/app-tutorial/account/01-guest-profile.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 17490,
+      "sha256": "899ee9b3b3094dfabd00ca65922e8d33974c9f306247af27b974551e71a39a7e"
+    },
+    {
+      "file": "account-01-guest-profile-720w.webp",
+      "master": "docs/assets/app-tutorial/account/01-guest-profile.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 41402,
+      "sha256": "87a1d2308ea9daaf1e2d7b563e136ed17ed8bfb6147021669b8a6927262802e2"
+    },
+    {
+      "file": "account-01-guest-profile-1080w.webp",
+      "master": "docs/assets/app-tutorial/account/01-guest-profile.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 64036,
+      "sha256": "c795ffd17e9714d65ed5a6d9619cc28ff83a81981f9eef6ab336458e93d80930"
+    },
+    {
+      "file": "account-02-signed-in-profile-360w.webp",
+      "master": "docs/assets/app-tutorial/account/02-signed-in-profile.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 17072,
+      "sha256": "c440eb2fc628272ad614213c09bdad2f1b658d5987cf1bf12608b422ba072a83"
+    },
+    {
+      "file": "account-02-signed-in-profile-720w.webp",
+      "master": "docs/assets/app-tutorial/account/02-signed-in-profile.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 41412,
+      "sha256": "9f3c4308be000f5330d0ad8e7d4ac4a79a050146b3ccccd608dc43684ee693aa"
+    },
+    {
+      "file": "account-02-signed-in-profile-1080w.webp",
+      "master": "docs/assets/app-tutorial/account/02-signed-in-profile.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 64076,
+      "sha256": "4580830bfbc17c2f8da46f6448f47d63aef9b8fd029e21d112e60ce93154008e"
+    },
+    {
+      "file": "account-03-after-account-deletion-360w.webp",
+      "master": "docs/assets/app-tutorial/account/03-after-account-deletion.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 17490,
+      "sha256": "899ee9b3b3094dfabd00ca65922e8d33974c9f306247af27b974551e71a39a7e"
+    },
+    {
+      "file": "account-03-after-account-deletion-720w.webp",
+      "master": "docs/assets/app-tutorial/account/03-after-account-deletion.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 41402,
+      "sha256": "87a1d2308ea9daaf1e2d7b563e136ed17ed8bfb6147021669b8a6927262802e2"
+    },
+    {
+      "file": "account-03-after-account-deletion-1080w.webp",
+      "master": "docs/assets/app-tutorial/account/03-after-account-deletion.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 64036,
+      "sha256": "c795ffd17e9714d65ed5a6d9619cc28ff83a81981f9eef6ab336458e93d80930"
+    },
+    {
+      "file": "community-01-community-tab-360w.webp",
+      "master": "docs/assets/app-tutorial/community/01-community-tab.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 18846,
+      "sha256": "92d541c71022b9375d9f404a99d7787305671c74b96a290c8eca424f25f7fd9e"
+    },
+    {
+      "file": "community-01-community-tab-720w.webp",
+      "master": "docs/assets/app-tutorial/community/01-community-tab.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 41908,
+      "sha256": "2933328d0b369367fa5ef79e6b5848f0d856b5424d4405d7f42c205d2dd4c392"
+    },
+    {
+      "file": "community-01-community-tab-1080w.webp",
+      "master": "docs/assets/app-tutorial/community/01-community-tab.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 63790,
+      "sha256": "194f507ac478de2743aeaae966862b40482b8b8e3dd09981eccd9b1e9d79fbab"
+    },
+    {
+      "file": "community-02-community-prices-empty-360w.webp",
+      "master": "docs/assets/app-tutorial/community/02-community-prices-empty.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 17894,
+      "sha256": "e8633b41eda6737a2585a35c2eb6486b43d27c0786647548fa5c5e35d986083d"
+    },
+    {
+      "file": "community-02-community-prices-empty-720w.webp",
+      "master": "docs/assets/app-tutorial/community/02-community-prices-empty.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 40402,
+      "sha256": "68ad3514299f43168b77e993dd354361b056ae64946e93ded14d259851b2a8f9"
+    },
+    {
+      "file": "community-02-community-prices-empty-1080w.webp",
+      "master": "docs/assets/app-tutorial/community/02-community-prices-empty.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 63542,
+      "sha256": "073478997b986af104f31daf1a90829d16144c0756c9081f474e30d7d75f7c83"
+    },
+    {
+      "file": "forum-01-forum-feed-360w.webp",
+      "master": "docs/assets/app-tutorial/forum/01-forum-feed.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 29144,
+      "sha256": "0f89537783f4e7733b5cc1a0133c27fbe4df105a4e58658b60481e478c991401"
+    },
+    {
+      "file": "forum-01-forum-feed-720w.webp",
+      "master": "docs/assets/app-tutorial/forum/01-forum-feed.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 69948,
+      "sha256": "1714a8fd2cf55743c82a06d791a3b55765c2a84b43ef8a722c3bb81dc3d70e49"
+    },
+    {
+      "file": "forum-01-forum-feed-1080w.webp",
+      "master": "docs/assets/app-tutorial/forum/01-forum-feed.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 108850,
+      "sha256": "ce5735edff1221f23a395ff9abe4f47708da240df720c34c415bbd3c873ca762"
+    },
+    {
+      "file": "forum-02-filter-by-category-360w.webp",
+      "master": "docs/assets/app-tutorial/forum/02-filter-by-category.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 17396,
+      "sha256": "bd7fe1fe91a5642815ce301336ea2d426f9609158cdbab00b659a90f86ab001f"
+    },
+    {
+      "file": "forum-02-filter-by-category-720w.webp",
+      "master": "docs/assets/app-tutorial/forum/02-filter-by-category.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 41332,
+      "sha256": "82478412d6477c0d78d6041db6db80093160dbc25fc6532594f64b9b71431c86"
+    },
+    {
+      "file": "forum-02-filter-by-category-1080w.webp",
+      "master": "docs/assets/app-tutorial/forum/02-filter-by-category.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 65660,
+      "sha256": "0185db95d4b3c563b5fc428633af8b149693e9478bc542a7b3f8cf66aa97bc73"
+    },
+    {
+      "file": "forum-03-read-article-360w.webp",
+      "master": "docs/assets/app-tutorial/forum/03-read-article.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 33902,
+      "sha256": "0d06988c55e868a92ce1b003602ac87747ed5cfbc0f5ab9c94002e962eb15b67"
+    },
+    {
+      "file": "forum-03-read-article-720w.webp",
+      "master": "docs/assets/app-tutorial/forum/03-read-article.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 79102,
+      "sha256": "df1331e85df3688c94dc24781e10b1eae92d8f2e12bae9839998b29d95e07a88"
+    },
+    {
+      "file": "forum-03-read-article-1080w.webp",
+      "master": "docs/assets/app-tutorial/forum/03-read-article.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 121568,
+      "sha256": "9efe0dae3be0d9c1b01111d87156b0116b2534b97a22b06d1e15a80fa8c311b0"
+    },
+    {
+      "file": "forum-04-reactions-and-comments-360w.webp",
+      "master": "docs/assets/app-tutorial/forum/04-reactions-and-comments.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 17414,
+      "sha256": "b4ae18157449a96f20d346b42307b413a364ab16f0c4da02b65a979adfbbeeca"
+    },
+    {
+      "file": "forum-04-reactions-and-comments-720w.webp",
+      "master": "docs/assets/app-tutorial/forum/04-reactions-and-comments.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 39850,
+      "sha256": "b02ff1f352d7424ff19b9a2f2b2d3ac76346ec54e6338a7a0547704e1c6d230a"
+    },
+    {
+      "file": "forum-04-reactions-and-comments-1080w.webp",
+      "master": "docs/assets/app-tutorial/forum/04-reactions-and-comments.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 64316,
+      "sha256": "d35e63840ae8ba6e9e7708d091060c857a9f478b3f564072e48f25a2c5c87866"
+    },
+    {
+      "file": "forum-05-write-comment-360w.webp",
+      "master": "docs/assets/app-tutorial/forum/05-write-comment.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 17658,
+      "sha256": "b2f9734a653aebb4f4eb914126b72b454fbd31e3a1d2dde538cf92fca6949c1c"
+    },
+    {
+      "file": "forum-05-write-comment-720w.webp",
+      "master": "docs/assets/app-tutorial/forum/05-write-comment.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 39994,
+      "sha256": "9b4a3a712caa0bd9456d6e8fec5248c0067e7180b003233f8f87b81e3f58de1a"
+    },
+    {
+      "file": "forum-05-write-comment-1080w.webp",
+      "master": "docs/assets/app-tutorial/forum/05-write-comment.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 64420,
+      "sha256": "8bfc358b690a50914872cb4b9772ea5002bee9aa5f3aace082016781159762fc"
+    },
+    {
+      "file": "forum-08-blocked-users-360w.webp",
+      "master": "docs/assets/app-tutorial/forum/08-blocked-users.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 13096,
+      "sha256": "6ea2f76444357ca44b27e5fc41b1685769fbd6e0a84fde7033fa857a2cbd847e"
+    },
+    {
+      "file": "forum-08-blocked-users-720w.webp",
+      "master": "docs/assets/app-tutorial/forum/08-blocked-users.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 30410,
+      "sha256": "0f8b0d3c9b3bee9813eb345f1cf7b5d523e2add91459c133ebe39df1e60dee84"
+    },
+    {
+      "file": "forum-08-blocked-users-1080w.webp",
+      "master": "docs/assets/app-tutorial/forum/08-blocked-users.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 47948,
+      "sha256": "3d46ef4d8a99c8e8e84f9edc03ae9ecc5443dd7bd477ed6ebb66f562edcf8584"
+    },
+    {
+      "file": "contribute-price-01-choose-station-360w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/01-choose-station.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 20404,
+      "sha256": "076a22c874cffe7cb0030ead8fb6d5b05f0bade5b1151fddb71dfa48827c2d3c"
+    },
+    {
+      "file": "contribute-price-01-choose-station-720w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/01-choose-station.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 46672,
+      "sha256": "fc24e2ba69b582d1e333439c4d8685260a927978f1022989e65c90c59e07041a"
+    },
+    {
+      "file": "contribute-price-01-choose-station-1080w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/01-choose-station.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 71704,
+      "sha256": "cb3e3b7b8fe8f7a992e82e94b3ce8728b72c5a086252f79ee7095fcc1a5c349b"
+    },
+    {
+      "file": "contribute-price-02-search-station-360w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/02-search-station.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 12272,
+      "sha256": "a9bab088f6485a3598705f2ffcc2cea8c0ade50f2ef245102b3f75d8c2cd064a"
+    },
+    {
+      "file": "contribute-price-02-search-station-720w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/02-search-station.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 27682,
+      "sha256": "ec10e2a6c6501577006cb54470230b4f94e0afa9392ec135184c87ebaaa406ae"
+    },
+    {
+      "file": "contribute-price-02-search-station-1080w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/02-search-station.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 44682,
+      "sha256": "371298bf4995f78ebcfc67cf2b02e49a3afe0608af469ac93cd0656837919e35"
+    },
+    {
+      "file": "contribute-price-03-station-selected-360w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/03-station-selected.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 13044,
+      "sha256": "78c626e04a4c51a1a1c725ba7af2367c45da4d90c950fdca37c5457044fdfcd9"
+    },
+    {
+      "file": "contribute-price-03-station-selected-720w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/03-station-selected.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 30468,
+      "sha256": "8aad30e79f99466f8b941b5782277dd81934d301dbbc9fa8f7b32b6ab8954943"
+    },
+    {
+      "file": "contribute-price-03-station-selected-1080w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/03-station-selected.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 47198,
+      "sha256": "828e675173bd29f73191ef273ba6ff0e6213694ae8da4ad1ad4e05a3e78b14d0"
+    },
+    {
+      "file": "contribute-price-04-allow-camera-360w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/04-allow-camera.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 11416,
+      "sha256": "1809b10cd7cfa2965d5caec3e587f72606ae580f60bb84ffd0fb16f402c359ea"
+    },
+    {
+      "file": "contribute-price-04-allow-camera-720w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/04-allow-camera.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 25114,
+      "sha256": "71a3bc3969e33babb104e256879b8e7b65e4f5c6bcc315fcc06d5fb5ae03affb"
+    },
+    {
+      "file": "contribute-price-04-allow-camera-1080w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/04-allow-camera.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 39570,
+      "sha256": "87a6d9b38fc0798c59e084c0a177064d3f0e7ab199d6e5d591328f191412ae42"
+    },
+    {
+      "file": "contribute-price-08-my-contributions-360w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/08-my-contributions.png",
+      "width": 360,
+      "height": 640,
+      "bytes": 11864,
+      "sha256": "a38165f879ff4591c48b8cfc3f201bce64ce5b9808b638c615902dde17ea67f2"
+    },
+    {
+      "file": "contribute-price-08-my-contributions-720w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/08-my-contributions.png",
+      "width": 720,
+      "height": 1280,
+      "bytes": 26326,
+      "sha256": "dab384d65cc7c8aa7d366d1770bd7be504b8efb4706ce1a85ebd0f07b7f50237"
+    },
+    {
+      "file": "contribute-price-08-my-contributions-1080w.webp",
+      "master": "docs/assets/app-tutorial/contribute-price/08-my-contributions.png",
+      "width": 1080,
+      "height": 1920,
+      "bytes": 42338,
+      "sha256": "913c78bd770bc6d34d3857dcb2b468a554dd3031324f77abdc47991e8dcd9d8b"
     }
   ]
 }

@@ -4,20 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Escolher cidade | Como usar | abastevo</title>
-  <meta name="description" content="Como escolher a cidade no aplicativo abastevo: Minha cidade, busca de estado e lista de municípios, com capturas reais.">
+  <meta name="description" content="Como escolher a cidade no aplicativo abastevo: localização do aparelho ou escolha manual, busca de estado e lista de municípios.">
   <link rel="canonical" href="{{CANONICAL_ORIGIN}}/como-usar/escolher-cidade/">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="abastevo">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:url" content="{{CANONICAL_ORIGIN}}/como-usar/escolher-cidade/">
   <meta property="og:title" content="Escolher cidade | Como usar | abastevo">
-  <meta property="og:description" content="Como escolher a cidade no aplicativo abastevo: Minha cidade, busca de estado e lista de municípios, com capturas reais.">
+  <meta property="og:description" content="Como escolher a cidade no aplicativo abastevo: localização do aparelho ou escolha manual, busca de estado e lista de municípios.">
   <meta property="og:image" content="{{CANONICAL_ORIGIN}}/assets/brand/og-image-v1.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Escolher cidade | Como usar | abastevo">
-  <meta name="twitter:description" content="Como escolher a cidade no aplicativo abastevo: Minha cidade, busca de estado e lista de municípios, com capturas reais.">
+  <meta name="twitter:description" content="Como escolher a cidade no aplicativo abastevo: localização do aparelho ou escolha manual, busca de estado e lista de municípios.">
   <link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/brand/apple-touch-icon.png">
@@ -63,69 +63,97 @@
           <li><span aria-current="page">Escolher cidade</span></li>
         </ol>
       </nav>
-      <article class="legal-article">
+      <article class="legal-article lesson-article">
         <p><span class="lesson-availability">Disponível</span></p>
         <h1>Escolher cidade</h1>
-        <p>Como escolher a cidade no aplicativo abastevo: Minha cidade, busca de estado e lista de municípios, com capturas reais. Lição TU02 · 4 passos · somente leitura: estes passos nunca criam conta, votam ou enviam dados.</p>
+        <p class="article-lead">Como escolher a cidade no aplicativo abastevo: localização do aparelho ou escolha manual, busca de estado e lista de municípios.</p>
+        <p class="lesson-context">Lição TU02 · 6 passos. Capturas reais do aplicativo Android em desenvolvimento, feitas em 17 de novembro de 2026 em um emulador, com dados públicos da ANP.</p>
         <ol class="lesson-steps">
           <li class="lesson-step" id="tu02-s1">
-            <h2>Passo 1: Minha cidade</h2>
-            <p>No Explorar, toque em Minha cidade.</p>
+            <h2>Passo 1: Escolher manualmente</h2>
+            <p>Na primeira abertura, o app pergunta "Encontrar sua cidade automaticamente?". Toque em "Usar minha localização" para detectar a cidade uma única vez ou em "Escolher manualmente" para escolher na lista.</p>
             <div class="tutorial-visual">
               <div class="tutorial-frame">
-                <img src="/assets/app/explore-dark-720w.webp" srcset="/assets/app/explore-dark-360w.webp 360w, /assets/app/explore-dark-720w.webp 720w, /assets/app/explore-dark-1080w.webp 1080w" sizes="(max-width: 48rem) 80vw, 400px" width="360" height="800" loading="lazy" decoding="async" alt="Explorar com cidade Sorriso MT e link Minha cidade destacado.">
-                <svg class="tutorial-overlay" viewBox="0 0 1220 2712" role="img" aria-label="Destaque do controle Minha cidade"><rect x="877" y="378" width="259" height="60"></rect><circle cx="1006" cy="288" r="60"></circle><text x="1006" y="288" font-size="64">1</text></svg>
+                <img src="/assets/app/first-open-07-find-city-720w.webp" srcset="/assets/app/first-open-07-find-city-360w.webp 360w, /assets/app/first-open-07-find-city-720w.webp 720w, /assets/app/first-open-07-find-city-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela “Encontrar sua cidade automaticamente?” com o botão “Usar minha localização” e o link “Escolher manualmente”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Escolher manualmente"><rect x="290" y="1168" width="500" height="104" rx="24"></rect><circle cx="290" cy="1168" r="48"></circle><text x="290" y="1168" font-size="52">1</text></svg>
               </div>
-              <p class="lesson-meta">Estado: Visible state · App 3.1.0-debug · captura 2026-10-11</p>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026</p>
             </div>
-            <p><strong>Resultado esperado:</strong> Abre Selecionar localização com a cidade atual.</p>
-            <p><strong>Se não funcionar:</strong> Volte com o botão do sistema.</p>
+            <p><strong>Resultado esperado:</strong> Com "Escolher manualmente", abre a tela "Selecionar localização" com a lista de estados.</p>
+            <p><strong>Se não funcionar:</strong> Se você negar a permissão de localização, nada se perde: a escolha manual continua disponível.</p>
           </li>
           <li class="lesson-step" id="tu02-s2">
-            <h2>Passo 2: Buscar estado</h2>
-            <p>Busque o estado ou toque na linha do estado.</p>
+            <h2>Passo 2: Usar localização atual</h2>
+            <p>A tela "Selecionar localização" lista os estados. Toque no seu estado ou use "Usar localização atual" para o app detectar a cidade.</p>
             <div class="tutorial-visual">
               <div class="tutorial-frame">
-                <img src="/assets/app/city-picker-720w.webp" srcset="/assets/app/city-picker-360w.webp 360w, /assets/app/city-picker-720w.webp 720w, /assets/app/city-picker-1080w.webp 1080w" sizes="(max-width: 48rem) 80vw, 400px" width="360" height="800" loading="lazy" decoding="async" alt="Busca de estado e lista de estados com Sorriso MT atual.">
-                <svg class="tutorial-overlay" viewBox="0 0 1220 2712" role="img" aria-label="Destaque do controle Buscar estado"><rect x="96" y="600" width="325" height="72"></rect><circle cx="258" cy="510" r="60"></circle><text x="258" y="510" font-size="64">2</text></svg>
+                <img src="/assets/app/choose-city-01-state-list-720w.webp" srcset="/assets/app/choose-city-01-state-list-360w.webp 360w, /assets/app/choose-city-01-state-list-720w.webp 720w, /assets/app/choose-city-01-state-list-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela “Selecionar localização” com o botão “Usar localização atual”, o campo “Buscar estado” e a lista de estados começando por Acre e Alagoas.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Usar localização atual"><rect x="36" y="246" width="1006" height="136" rx="24"></rect><circle cx="56" cy="246" r="48"></circle><text x="56" y="246" font-size="52">2</text></svg>
               </div>
-              <p class="lesson-meta">Estado: Visible state · App 3.1.0-debug · captura 2026-10-11</p>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · São Paulo, SP</p>
             </div>
-            <p><strong>Resultado esperado:</strong> Mostra a lista de estados com a cidade atual indicada.</p>
-            <p><strong>Se não funcionar:</strong> Limpe a busca para ver todos os estados.</p>
+            <p><strong>Resultado esperado:</strong> Ao tocar em um estado, o app passa para a lista de municípios daquele estado.</p>
+            <p><strong>Se não funcionar:</strong> A seta no topo volta para a tela anterior sem mudar a cidade.</p>
           </li>
           <li class="lesson-step" id="tu02-s3">
-            <h2>Passo 3: Buscar município</h2>
-            <p>Dentro do estado, busque o município na lista agrupada.</p>
+            <h2>Passo 3: Buscar estado</h2>
+            <p>Para achar mais rápido, digite parte do nome em "Buscar estado" e toque no estado.</p>
             <div class="tutorial-visual">
               <div class="tutorial-frame">
-                <img src="/assets/app/municipios-mt-720w.webp" srcset="/assets/app/municipios-mt-360w.webp 360w, /assets/app/municipios-mt-720w.webp 720w, /assets/app/municipios-mt-1080w.webp 1080w" sizes="(max-width: 48rem) 80vw, 400px" width="360" height="800" loading="lazy" decoding="async" alt="Busca e lista de municípios de Mato Grosso.">
-                <svg class="tutorial-overlay" viewBox="0 0 1220 2712" role="img" aria-label="Destaque do controle Buscar município"><rect x="96" y="408" width="394" height="72"></rect><circle cx="293" cy="318" r="60"></circle><text x="293" y="318" font-size="64">3</text></svg>
+                <img src="/assets/app/choose-city-02-search-state-720w.webp" srcset="/assets/app/choose-city-02-search-state-360w.webp 360w, /assets/app/choose-city-02-search-state-720w.webp 720w, /assets/app/choose-city-02-search-state-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Campo “Buscar estado” com o texto Sao digitado e a lista filtrada mostrando apenas São Paulo, SP.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Buscar estado"><rect x="34" y="432" width="1012" height="170" rx="24"></rect><circle cx="56" cy="432" r="48"></circle><text x="56" y="432" font-size="52">3</text></svg>
               </div>
-              <p class="lesson-meta">Estado: Visible state · App 3.1.0-debug · captura 2026-10-11</p>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · São Paulo, SP</p>
             </div>
-            <p><strong>Resultado esperado:</strong> Mostra os municípios do estado em grupos alfabéticos.</p>
-            <p><strong>Se não funcionar:</strong> Volte para trocar de estado sem alterar a cidade.</p>
+            <p><strong>Resultado esperado:</strong> A lista mostra só os estados que combinam com o texto; no exemplo, "São Paulo".</p>
+            <p><strong>Se não funcionar:</strong> Apague o texto para ver todos os estados de novo.</p>
           </li>
           <li class="lesson-step" id="tu02-s4">
-            <h2>Passo 4: SORRISO, MT</h2>
-            <p>Confirme a cidade no Explorar com a semana ativa.</p>
+            <h2>Passo 4: Buscar município</h2>
+            <p>Depois do estado, aparecem os municípios em ordem alfabética, sob o título "Municípios em São Paulo". Role a lista ou use "Buscar município".</p>
             <div class="tutorial-visual">
               <div class="tutorial-frame">
-                <img src="/assets/app/explore-dark-720w.webp" srcset="/assets/app/explore-dark-360w.webp 360w, /assets/app/explore-dark-720w.webp 720w, /assets/app/explore-dark-1080w.webp 1080w" sizes="(max-width: 48rem) 80vw, 400px" width="360" height="800" loading="lazy" decoding="async" alt="Explorar confirmando a cidade verificada.">
-
+                <img src="/assets/app/choose-city-03-municipality-list-720w.webp" srcset="/assets/app/choose-city-03-municipality-list-360w.webp 360w, /assets/app/choose-city-03-municipality-list-720w.webp 720w, /assets/app/choose-city-03-municipality-list-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Lista “Municípios em São Paulo” em ordem alfabética, com o campo “Buscar município” no topo.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Buscar município"><rect x="36" y="266" width="1008" height="166" rx="24"></rect><circle cx="56" cy="266" r="48"></circle><text x="56" y="266" font-size="52">4</text></svg>
               </div>
-              <p class="lesson-meta">Estado: Result state · App 3.1.0-debug · captura 2026-10-11</p>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · São Paulo, SP</p>
             </div>
-            <p><strong>Resultado esperado:</strong> Explorar exibe SORRISO, MT com a semana de pesquisa atual.</p>
-            <p><strong>Se não funcionar:</strong> Reabra Minha cidade para corrigir.</p>
+            <p><strong>Resultado esperado:</strong> A lista é agrupada pela letra inicial de cada município.</p>
+            <p><strong>Se não funcionar:</strong> Escolheu o estado errado? Volte com a seta e toque em outro.</p>
+          </li>
+          <li class="lesson-step" id="tu02-s5">
+            <h2>Passo 5: Resultado da busca de município</h2>
+            <p>Digite o nome do município em "Buscar município" e toque no resultado.</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/choose-city-04-search-municipality-720w.webp" srcset="/assets/app/choose-city-04-search-municipality-360w.webp 360w, /assets/app/choose-city-04-search-municipality-720w.webp 720w, /assets/app/choose-city-04-search-municipality-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Campo “Buscar município” com o texto sao paulo e o resultado SÃO PAULO na lista.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Resultado da busca de município"><rect x="24" y="632" width="1032" height="136" rx="24"></rect><circle cx="56" cy="632" r="48"></circle><text x="56" y="632" font-size="52">5</text></svg>
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · São Paulo, SP</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> O app guarda a cidade e volta para a tela inicial.</p>
+            <p><strong>Se não funcionar:</strong> Sem resultado? Confira a grafia; a busca aceita o nome sem acentos.</p>
+          </li>
+          <li class="lesson-step" id="tu02-s6">
+            <h2>Passo 6: Cidade no topo da tela inicial</h2>
+            <p>A tela inicial passa a mostrar a cidade e a semana de pesquisa ativa no topo. Para trocar de cidade depois, toque no nome da cidade.</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/choose-city-05-home-with-city-720w.webp" srcset="/assets/app/choose-city-05-home-with-city-360w.webp 360w, /assets/app/choose-city-05-home-with-city-720w.webp 720w, /assets/app/choose-city-05-home-with-city-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela inicial do abastevo com SÃO PAULO, SP e a semana 8–14 nov. 2026 no topo, o seletor “ANP” e “Comunidade” e o título “Preços na sua cidade”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Cidade no topo da tela inicial"><rect x="44" y="232" width="560" height="124" rx="24"></rect><circle cx="56" cy="232" r="48"></circle><text x="56" y="232" font-size="52">6</text></svg>
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · São Paulo, SP</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> Preços, postos e mapa passam a usar a cidade escolhida; no exemplo, São Paulo, SP, na semana de 8 a 14 de nov. de 2026.</p>
+            <p><strong>Se não funcionar:</strong> A cidade fica salva no aparelho; não é preciso escolher de novo a cada abertura.</p>
           </li>
         </ol>
         <nav class="lesson-nav" aria-label="Navegar entre capítulos">
-          <a href="/como-usar/" class="btn-secondary">← Anterior: Todos os tutoriais</a>
-          <a href="/como-usar/precos-do-posto/" class="btn-primary">Próximo: Entender os preços de um posto →</a>
+          <a href="/como-usar/" class="btn-secondary"><span class="lesson-nav-label"><span aria-hidden="true">←</span> Índice</span><span class="lesson-nav-title">Todos os tutoriais</span></a>
+          <a href="/como-usar/precos-anp/" class="btn-primary"><span class="lesson-nav-label">Próximo <span aria-hidden="true">→</span></span><span class="lesson-nav-title">Consultar a tabela ANP</span></a>
         </nav>
-        <p><a href="/como-usar/">Todos os tutoriais</a> · <a href="/guias/">Guias educativos</a></p>
+        <h2 id="continue-explorando">Continue explorando</h2>
+        <ul class="link-list"><li><a href="/precos/">Preços de referência por estado</a></li><li><a href="/guias/precos-diferentes-entre-cidades/">Por que os preços mudam entre cidades</a></li><li><a href="/como-usar/">Todos os tutoriais</a></li><li><a href="/guias/">Guias educativos</a></li></ul>
       </article>
     </div>
   </main>

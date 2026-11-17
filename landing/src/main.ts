@@ -121,6 +121,72 @@ function setupMobileNav(): void {
   });
 }
 
+/**
+ * App captures open enlarged in a native modal dialog. Without JavaScript the
+ * captures stay as plain images. The dialog closes with its button, a click on
+ * the blurred backdrop or Escape, and focus returns to the capture.
+ */
+function setupCaptureZoom(): void {
+  const captures = document.querySelectorAll<HTMLImageElement>(
+    '.app-gallery img, .tutorial-frame img, .app-capture img',
+  );
+  if (captures.length === 0 || typeof HTMLDialogElement === 'undefined') return;
+
+  const dialog = document.createElement('dialog');
+  dialog.className = 'capture-zoom';
+  dialog.setAttribute('aria-label', 'Captura do aplicativo ampliada');
+  const close = document.createElement('button');
+  close.type = 'button';
+  close.className = 'capture-zoom-close';
+  close.setAttribute('aria-label', 'Fechar captura ampliada');
+  close.textContent = '\u00d7';
+  const figure = document.createElement('figure');
+  const large = document.createElement('img');
+  large.width = 360;
+  large.height = 640;
+  const caption = document.createElement('figcaption');
+  figure.append(large, caption);
+  dialog.append(close, figure);
+  document.body.append(dialog);
+
+  let opener: HTMLElement | null = null;
+  close.addEventListener('click', () => dialog.close());
+  // A click outside the capture and its caption closes the dialog.
+  dialog.addEventListener('click', (event) => {
+    if (event.target === dialog || event.target === figure) dialog.close();
+  });
+  dialog.addEventListener('close', () => {
+    document.documentElement.classList.remove('capture-zoom-open');
+    opener?.focus();
+    opener = null;
+  });
+
+  const open = (img: HTMLImageElement): void => {
+    opener = img;
+    large.srcset = img.srcset;
+    large.sizes = '(min-width: 40rem) 420px, 86vw';
+    large.src = img.currentSrc || img.src;
+    large.alt = img.alt;
+    caption.textContent = img.alt;
+    document.documentElement.classList.add('capture-zoom-open');
+    dialog.showModal();
+  };
+
+  for (const img of captures) {
+    img.tabIndex = 0;
+    img.setAttribute('role', 'button');
+    img.setAttribute('aria-haspopup', 'dialog');
+    img.classList.add('capture-zoomable');
+    img.addEventListener('click', () => open(img));
+    img.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        open(img);
+      }
+    });
+  }
+}
+
 function init(): void {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
@@ -128,12 +194,14 @@ function init(): void {
       setupNavigationHighlight();
       setupCopyHelper();
       setupBackToTop();
+      setupCaptureZoom();
     });
   } else {
     setupMobileNav();
     setupNavigationHighlight();
     setupCopyHelper();
     setupBackToTop();
+    setupCaptureZoom();
   }
 }
 

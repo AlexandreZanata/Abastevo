@@ -3,85 +3,104 @@
   "slug": "denunciar-abuso",
   "titlePtBr": "Denunciar abuso",
   "appVersion": "3.1.0-debug",
-  "appSourceSha": null,
+  "appSourceSha": "fd0a691283f6dc4c0970e39a4602bd8a8d248a36",
   "steps": [
     {
       "stepId": "tu21-s1",
-      "image": "/assets/app/community-feed-720w.webp",
-      "imageSha256": "37c8f41edc0b3eab74f0afd25e552e57c59324b244b858fff91ad47eca87f9a2",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "Conta demo conectada; nada denunciado.",
-      "instructionPtBr": "Na Comunidade, abra as regras de verificação.",
-      "controlLabelPtBr": "Regras de verificação comunitária",
-      "expectedPtBr": "Abre o diálogo somente-leitura com consenso, denúncia e recurso.",
-      "recoveryPtBr": "Feche e reabra se dispensar sem ler.",
-      "altPtBr": "Entrada das regras de verificação destacada.",
-      "target": {
-        "x": 322,
-        "y": 1968,
-        "width": 655,
-        "height": 60
-      },
+      "textOnly": true,
+      "state": "Menu de ações de um conteúdo",
+      "prerequisite": "Conta gratuita conectada; tópico ou comentário de outra pessoa aberto.",
+      "instructionPtBr": "Em um tópico ou comentário escrito por outra pessoa, abra o menu de três pontos (\"Mais ações\") e escolha \"Denunciar tópico\", \"Denunciar comentário\" ou \"Denunciar usuário\". Escolha o motivo e toque em \"Enviar denúncia\".",
+      "controlLabelPtBr": "Denunciar tópico",
+      "expectedPtBr": "A denúncia é privada e analisada pela moderação. O conteúdo continua visível até a análise: denúncias nunca apagam nada sozinhas.",
+      "recoveryPtBr": "Não é possível denunciar o próprio conteúdo. Sem conexão, tente de novo quando estiver on-line.",
+      "textOnlyReasonPtBr": "O ambiente de testes tinha apenas publicações editoriais oficiais, que não mostram esse menu.",
       "availability": "Disponível",
-      "claimClass": "visible-state-only",
+      "claimClass": "text-only",
       "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+        "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumDetailScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/safety/CommunitySafetyUi.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
     },
     {
       "stepId": "tu21-s2",
-      "image": "/assets/app/rules-dialog-720w.webp",
-      "imageSha256": "942ab74db464956026253ce4b75f87a5ac9ebb07973a42b7909366f6888ca842",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "Conta demo conectada; nada denunciado.",
-      "instructionPtBr": "Leia: denúncia nunca apaga conteúdo sozinha.",
-      "controlLabelPtBr": "Denúncias nunca apagam conteúdo sozinhas",
-      "expectedPtBr": "Moderadores restritos revisam cada caso com motivos registrados.",
-      "recoveryPtBr": "Recursos viram novo caso; histórico nunca editado.",
-      "altPtBr": "Parágrafo de denúncia e moderação destacado.",
+      "textOnly": true,
+      "state": "Confirmação de bloqueio",
+      "prerequisite": "Menu \"Mais ações\" aberto.",
+      "instructionPtBr": "No mesmo menu, \"Bloquear usuário\" abre a pergunta \"Bloquear este usuário?\". Confirme em \"Bloquear\".",
+      "controlLabelPtBr": "Bloquear usuário",
+      "expectedPtBr": "O conteúdo daquela pessoa no fórum e nos comentários de postos fica oculto para você. Ela não é avisada, e as outras pessoas continuam vendo o conteúdo.",
+      "recoveryPtBr": "Bloqueou por engano? Desfaça em \"Usuários bloqueados\".",
+      "textOnlyReasonPtBr": "O ambiente de testes tinha apenas publicações editoriais oficiais, que não mostram esse menu.",
+      "availability": "Disponível",
+      "claimClass": "text-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumDetailScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/safety/CommunitySafetyUi.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu21-s3",
+      "image": "/assets/app/forum-08-blocked-users-720w.webp",
+      "imageSha256": "0f8b0d3c9b3bee9813eb345f1cf7b5d523e2add91459c133ebe39df1e60dee84",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Lista de bloqueados vazia",
+      "prerequisite": "Conta gratuita conectada.",
+      "instructionPtBr": "Para rever os bloqueios, abra \"Perfil\", toque em \"Gerenciar conta\" e depois em \"Usuários bloqueados\".",
+      "controlLabelPtBr": "Usuários bloqueados",
+      "expectedPtBr": "A tela explica: \"O conteúdo de usuários bloqueados fica oculto para você no fórum e nas páginas de postos. Essas pessoas não são avisadas.\" Quem foi bloqueado pode ser desbloqueado a qualquer momento.",
+      "recoveryPtBr": "A lista só aparece com uma conta conectada.",
+      "altPtBr": "Tela “Usuários bloqueados” com a explicação de que o conteúdo bloqueado fica oculto e o aviso “Nenhum usuário bloqueado”.",
       "target": {
-        "x": 202,
-        "y": 1207,
-        "width": 816,
-        "height": 300
+        "x": 36,
+        "y": 470,
+        "width": 1008,
+        "height": 542
       },
       "availability": "Disponível",
       "claimClass": "visible-state-only",
       "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+        "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/safety/BlockedUsersScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
     },
     {
-      "stepId": "tu21-s3",
-      "image": "/assets/app/rules-dialog-720w.webp",
-      "imageSha256": "942ab74db464956026253ce4b75f87a5ac9ebb07973a42b7909366f6888ca842",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Result state",
-      "prerequisite": "Conta demo conectada; nada denunciado.",
-      "instructionPtBr": "Recorra com novo motivo em vez de repetir a denúncia.",
-      "controlLabelPtBr": "Discorda de uma decisão?",
-      "expectedPtBr": "Novo motivo abre novo caso revisado.",
-      "recoveryPtBr": "Nunca denuncie usuários reais para obter capturas.",
-      "altPtBr": "Recurso e honestidade explicados.",
+      "stepId": "tu21-s4",
+      "image": "/assets/app/help-and-privacy-01-help-and-community-rules-720w.webp",
+      "imageSha256": "6d841156f3dd4ead86e9070d22b50642c6563698b31258eca9cdfcf7ff7aa31b",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Regras de denúncia na ajuda",
+      "prerequisite": "Aba \"Perfil\" aberta.",
+      "instructionPtBr": "As regras ficam em \"Perfil\", na entrada \"Ajuda e regras da comunidade\". Leia o cartão \"Denúncia e recurso\".",
+      "controlLabelPtBr": "Denúncia e recurso",
+      "expectedPtBr": "O cartão resume: qualquer conta ativa pode denunciar abuso, moderadores revisam cada caso e, se você discordar da decisão, uma nova denúncia com o novo motivo vira um novo caso revisado.",
+      "recoveryPtBr": "Fora do app, as regras completas estão nos Termos de uso e moderação deste site.",
+      "altPtBr": "Tela “Ajuda e regras da comunidade” com os cartões “Colabore bem”, “Regras da comunidade” e “Denúncia e recurso”.",
+      "target": {
+        "x": 36,
+        "y": 1238,
+        "width": 1008,
+        "height": 442
+      },
       "availability": "Disponível",
       "claimClass": "visible-state-only",
       "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+        "app/src/main/kotlin/com/anpfuel/app/ui/help/HelpScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
     }
   ]
 }

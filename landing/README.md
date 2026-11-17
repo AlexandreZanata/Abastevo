@@ -47,7 +47,17 @@ changes.
   categories, duplicate slugs or links to routes that are neither landing
   pages nor known portal routes.
 - The Markdown subset is rendered in-house and HTML-escaped; raw HTML is never
-  passed through. Images need alt text.
+  passed through. Images need alt text. An app capture is written as
+  `![alt](/assets/app/<feature>-<NN-slug>-720w.webp "caption")` and must be
+  listed in `static/assets/app/provenance.json`: the renderer adds the 9:16
+  dimensions and the `srcset`. Image lines that follow each other without a
+  blank line render as one strip.
+- A tutorial chapter is `static/como-usar/<slug>/index.html` (authored HTML)
+  plus `lesson.json` (its steps, validated by `src/tutorial.ts`). A step
+  either shows a capture, with the highlighted control measured on the
+  1080 × 1920 master, or is `textOnly` with the reason no capture exists.
+  Captures and quoted app labels follow the
+  [capture contract](../docs/assets/app-tutorial/CAPTURE_CONTRACT.md).
 - `sitemap.xml` lists indexable pages only, with `lastmod` from front matter or
   the manifest (never the build time).
 - `npm run build` emits `dist/assets/search.<hash>.js` and the same bytes as

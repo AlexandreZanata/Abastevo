@@ -69,6 +69,14 @@ bash "$ROOT/scripts/check-release-workflow.sh"
 echo "== Android release guards =="
 python3 -m unittest discover -s "$ROOT/scripts/android" -p 'test_*.py'
 
+# App tutorial capture contract (docs/assets/app-tutorial/CAPTURE_CONTRACT.md):
+# the manifest must match the captures, sources and README; the freshness
+# report is informational here and strict only before a landing update.
+echo "== app tutorial capture contract =="
+python3 -m unittest discover -s "$ROOT/scripts/app_tutorial" -p 'test_*.py'
+python3 "$ROOT/scripts/app_tutorial/tutorial_contract.py" validate
+python3 "$ROOT/scripts/app_tutorial/tutorial_contract.py" stale --report-only
+
 echo "== documentation links =="
 python3 "$ROOT/scripts/check-doc-links.py" --self-test
 python3 "$ROOT/scripts/check-doc-links.py"

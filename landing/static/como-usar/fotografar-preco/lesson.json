@@ -3,85 +3,181 @@
   "slug": "fotografar-preco",
   "titlePtBr": "Fotografar um preço",
   "appVersion": "3.1.0-debug",
-  "appSourceSha": null,
+  "appSourceSha": "fd0a691283f6dc4c0970e39a4602bd8a8d248a36",
   "steps": [
     {
       "stepId": "tu14-s1",
-      "image": "/assets/app/capture-entry-720w.webp",
-      "imageSha256": "f42a818bea634be4817eee4651f039ede3a5e86da8f414a176626fa437c2f788",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "Conta demo conectada; câmera e localização já permitidas, obturador não acionado.",
-      "instructionPtBr": "Antes de fotografar, escolha o posto deste preço.",
-      "controlLabelPtBr": "Escolha o posto deste preço",
-      "expectedPtBr": "Mostra a exigência de posto e o estado da lista próxima.",
-      "recoveryPtBr": "Sem conexão, a lista degrada com aviso honesto; reconecte.",
-      "altPtBr": "Exigência de escolha do posto destacada.",
+      "image": "/assets/app/contribute-price-01-choose-station-720w.webp",
+      "imageSha256": "fc24e2ba69b582d1e333439c4d8685260a927978f1022989e65c90c59e07041a",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Escolha do posto",
+      "prerequisite": "Conta gratuita conectada.",
+      "instructionPtBr": "Na aba \"Comunidade\", toque em \"Colaborar com preço\". A tela \"Fotografar preço\" pede primeiro o posto: confira a cidade (\"Escolher cidade\" troca) e veja a lista.",
+      "controlLabelPtBr": "Escolher cidade",
+      "expectedPtBr": "A lista mostra os postos da cidade com o endereço público.",
+      "recoveryPtBr": "Se o app pedir para entrar, crie uma conta gratuita na aba \"Perfil\"; consultar preços continua livre.",
+      "altPtBr": "Tela “Fotografar preço” com o título “Escolha o posto deste preço”, a cidade Sorriso, MT, o link “Escolher cidade”, o campo “Nome do posto” e a lista de postos.",
       "target": {
-        "x": 48,
-        "y": 660,
-        "width": 543,
-        "height": 60
+        "x": 32,
+        "y": 372,
+        "width": 1014,
+        "height": 176
       },
       "availability": "Disponível",
       "claimClass": "visible-state-only",
       "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+        "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationCorrectionDialog.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/suggest/SuggestStationScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
     },
     {
       "stepId": "tu14-s2",
-      "image": "/assets/app/capture-entry-720w.webp",
-      "imageSha256": "f42a818bea634be4817eee4651f039ede3a5e86da8f414a176626fa437c2f788",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "Conta demo conectada; câmera e localização já permitidas, obturador não acionado.",
-      "instructionPtBr": "Sem posto, o obturador fica desabilitado. Nunca ative o modo desenvolvedor para burlar.",
-      "controlLabelPtBr": "Fotografar preço (desabilitado)",
-      "expectedPtBr": "Botão desabilitado até haver posto elegível.",
-      "recoveryPtBr": "Não fotografe ambientes privados nem ative bypass de debug.",
-      "altPtBr": "Botão de captura desabilitado destacado.",
+      "image": "/assets/app/contribute-price-02-search-station-720w.webp",
+      "imageSha256": "ec10e2a6c6501577006cb54470230b4f94e0afa9392ec135184c87ebaaa406ae",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Busca do posto",
+      "prerequisite": "Tela \"Fotografar preço\" aberta.",
+      "instructionPtBr": "Use o campo \"Nome do posto\" para buscar e toque no posto certo.",
+      "controlLabelPtBr": "Nome do posto",
+      "expectedPtBr": "A lista mostra só os postos que combinam com o texto.",
+      "recoveryPtBr": "Não achou? Confira a cidade em \"Escolher cidade\".",
+      "altPtBr": "Campo “Nome do posto” com a busca dallas e um posto no resultado, com o endereço público em Sorriso, MT.",
       "target": {
-        "x": 449,
-        "y": 1230,
-        "width": 322,
-        "height": 60
+        "x": 38,
+        "y": 574,
+        "width": 1002,
+        "height": 158
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationCorrectionDialog.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/suggest/SuggestStationScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu14-s3",
+      "image": "/assets/app/contribute-price-03-station-selected-720w.webp",
+      "imageSha256": "8aad30e79f99466f8b941b5782277dd81934d301dbbc9fa8f7b32b6ab8954943",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Posto escolhido",
+      "prerequisite": "Posto tocado na lista.",
+      "instructionPtBr": "Com o posto escolhido, toque em \"Fotografar preço\". Se escolheu errado, use \"Trocar posto\".",
+      "controlLabelPtBr": "Fotografar preço",
+      "expectedPtBr": "O app abre a câmera do aparelho.",
+      "recoveryPtBr": "A foto só vale para o posto escolhido; confira o nome antes de fotografar.",
+      "altPtBr": "Tela “Fotografar preço” com o posto escolhido em destaque, a ação “Trocar posto” e o botão “Fotografar preço”.",
+      "target": {
+        "x": 32,
+        "y": 874,
+        "width": 1014,
+        "height": 154
       },
       "availability": "Disponível",
       "claimClass": "visible-state-only",
       "sourceFiles": [
         "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
     },
     {
-      "stepId": "tu14-s3",
-      "image": "/assets/app/capture-entry-720w.webp",
-      "imageSha256": "f42a818bea634be4817eee4651f039ede3a5e86da8f414a176626fa437c2f788",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Result state",
-      "prerequisite": "Conta demo conectada; câmera e localização já permitidas, obturador não acionado.",
-      "instructionPtBr": "Leia a verificação da área e fotografe só painéis próprios e sintéticos.",
-      "controlLabelPtBr": "Verificação da área do posto",
-      "expectedPtBr": "Área verificada antes do obturador; foto e OCR ficam para ambiente com imagem sintética.",
-      "recoveryPtBr": "Captura, OCR e fila pendentes de fixture descartável, nunca no aparelho do usuário.",
-      "altPtBr": "Resultado de elegibilidade e pendências.",
+      "stepId": "tu14-s4",
+      "image": "/assets/app/contribute-price-04-allow-camera-720w.webp",
+      "imageSha256": "71a3bc3969e33babb104e256879b8e7b65e4f5c6bcc315fcc06d5fb5ae03affb",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Diálogo de permissão do Android",
+      "prerequisite": "Botão \"Fotografar preço\" tocado pela primeira vez.",
+      "instructionPtBr": "Na primeira vez, o Android pergunta se o app pode tirar fotos. Escolha \"Durante o uso do app\" ou \"Apenas esta vez\".",
+      "controlLabelPtBr": "Permissão da câmera",
+      "expectedPtBr": "Com a permissão, a câmera abre em seguida.",
+      "recoveryPtBr": "Se escolher \"Não permitir\", a contribuição continua possível sem foto.",
+      "altPtBr": "Diálogo do Android perguntando se o app abastevo pode tirar fotos e gravar vídeos, com as opções “Durante o uso do app”, “Apenas esta vez” e “Não permitir”.",
+      "target": {
+        "x": 134,
+        "y": 890,
+        "width": 812,
+        "height": 300
+      },
       "availability": "Disponível",
-      "claimClass": "visible-state-only",
+      "claimClass": "system-dialog",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/capture/CameraPermissionHandler.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu14-s5",
+      "textOnly": true,
+      "state": "Câmera aberta",
+      "prerequisite": "Permissão de câmera concedida.",
+      "instructionPtBr": "A câmera do aparelho abre. Fotografe só o painel de preços, de frente e com os valores legíveis. Evite pessoas e placas de veículos.",
+      "controlLabelPtBr": "Câmera do aparelho",
+      "expectedPtBr": "A foto volta para a tela \"Fotografar preço\", já anexada.",
+      "recoveryPtBr": "Ficou tremida ou cortada? Use \"Tirar outra foto\".",
+      "textOnlyReasonPtBr": "A câmera do emulador mostra uma cena de teste, não um painel de preços de verdade.",
+      "availability": "Disponível",
+      "claimClass": "text-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/capture/PrivateCaptureFiles.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu14-s6",
+      "textOnly": true,
+      "state": "Foto anexada",
+      "prerequisite": "Foto tirada.",
+      "instructionPtBr": "Com a foto anexada, use \"Recortar na moldura\" para focar nos preços ou \"Ler esta foto novamente\" para repetir a leitura.",
+      "controlLabelPtBr": "Recortar na moldura",
+      "expectedPtBr": "O app avisa \"Foto anexada — ela vai com seu preço para a caixa.\" e tenta ler os valores.",
+      "recoveryPtBr": "Se a leitura não for possível, o app pede para digitar os preços manualmente.",
+      "textOnlyReasonPtBr": "A foto de exemplo viria da cena de teste do emulador, não de um painel de preços de verdade.",
+      "availability": "Disponível",
+      "claimClass": "text-only",
       "sourceFiles": [
         "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu14-s7",
+      "textOnly": true,
+      "state": "Revisão e envio",
+      "prerequisite": "Foto anexada.",
+      "instructionPtBr": "Confira os valores lidos ou toque em \"Adicionar combustível\" e digite o preço de cada combustível da foto. Depois toque no botão de envio.",
+      "controlLabelPtBr": "Adicionar combustível",
+      "expectedPtBr": "Combustíveis em branco não são enviados. O envio entra na fila de verificação da comunidade e aparece em \"Minhas contribuições\".",
+      "recoveryPtBr": "Se o envio falhar, o app avisa e nada é enviado; tente de novo.",
+      "textOnlyReasonPtBr": "Nesta versão do app, o botão de envio mostra o plural errado (\"Enviar 1 preços\"). A tela será capturada depois da correção.",
+      "availability": "Disponível",
+      "claimClass": "text-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
     }
   ]
 }

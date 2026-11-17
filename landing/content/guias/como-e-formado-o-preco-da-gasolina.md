@@ -7,7 +7,7 @@ slug: como-e-formado-o-preco-da-gasolina
 category: precos
 tags: [gasolina, impostos, icms, composicao-de-precos, petrobras]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /guias/icms-sobre-combustiveis/
   - /guias/precos-diferentes-entre-cidades/
@@ -94,6 +94,19 @@ A forma mais segura de saber se o preço da sua região subiu ou caiu é compara
 Lembre que essa pesquisa é uma amostra: ela não visita todos os postos nem registra o preço de agora. O que ela mede, e o que ela não mede, está explicado na [metodologia dos dados](/metodologia/) e no guia [como funciona a pesquisa semanal da ANP](/guias/pesquisa-anp/).
 
 Se a dúvida é qual combustível colocar no tanque, a [calculadora etanol ou gasolina](/ferramentas/etanol-ou-gasolina/) faz a conta com os preços que você encontrar.
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. O aplicativo mostra o preço final ao consumidor, já com todas as parcelas descritas neste guia:
+
+1. Em "Preços na sua cidade", o cartão "Gasolina comum" mostra a média semanal da ANP na cidade e o número de postos pesquisados.
+2. Toque no cartão, escolha um posto e role até "Preço de referência ANP": o valor vem com a data da coleta e a semana da pesquisa.
+3. No mesmo perfil, "Preços da comunidade (beta)" fica em um cartão separado, com o que motoristas enviaram.
+
+![Seção “Preços na sua cidade” em São Paulo, SP, com cartões de etanol, gasolina comum e gasolina aditivada, cada um com o selo ANP e o número de postos pesquisados.](/assets/app/fuel-prices-01-anp-average-cards-720w.webp "Passo 1: média semanal da ANP em São Paulo, SP, semana de 8 a 14 de nov. de 2026.")
+![Cartão “Preço de referência ANP” de um posto, com o valor por litro, a data da coleta e a semana da pesquisa.](/assets/app/stations-07-anp-reference-price-720w.webp "Passo 2: referência ANP de um posto, com coleta de 10 de nov. de 2026.")
+
+O passo a passo completo está no tutorial [Entender os preços de um posto](/como-usar/precos-do-posto/).
 
 ## Fontes
 

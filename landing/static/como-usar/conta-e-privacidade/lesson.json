@@ -3,85 +3,221 @@
   "slug": "conta-e-privacidade",
   "titlePtBr": "Sessão, privacidade e exclusão",
   "appVersion": "3.1.0-debug",
-  "appSourceSha": null,
+  "appSourceSha": "fd0a691283f6dc4c0970e39a4602bd8a8d248a36",
   "steps": [
     {
       "stepId": "tu13-s1",
-      "image": "/assets/app/profile-connected-720w.webp",
-      "imageSha256": "32ed5eb78df564d08d3409ff8493cb065a93bec3ef43e1a82973969d80b91eb8",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "Conta demo conectada; nenhuma ação destrutiva executada.",
-      "instructionPtBr": "No Perfil, confirme o estado Conectado da conta demo.",
-      "controlLabelPtBr": "Conectado",
-      "expectedPtBr": "Perfil indica conta gratuita ativa, sem expor chave.",
-      "recoveryPtBr": "Se mostrar visitante, entre com sua chave guardada.",
-      "altPtBr": "Perfil conectado com estado Conectado destacado.",
+      "image": "/assets/app/first-open-01-terms-gate-720w.webp",
+      "imageSha256": "ee078326d05f348b6341caad72cbecdd1f82456ae096e2037989e9d6c4fa5a20",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Primeira abertura: termos",
+      "prerequisite": "App recém-instalado.",
+      "instructionPtBr": "Na primeira abertura, a tela \"Antes de começar\" apresenta os Termos de Uso e a Política de Privacidade. Leia os documentos pelos links \"Ler os Termos de Uso\" e \"Ler a Política de Privacidade\".",
+      "controlLabelPtBr": "Antes de começar",
+      "expectedPtBr": "Os links abrem os documentos no navegador; a tela mostra a versão de cada um.",
+      "recoveryPtBr": "Sem navegador disponível, o app mostra o endereço para você acessar manualmente.",
+      "altPtBr": "Tela “Antes de começar” com o resumo dos termos, os links “Ler os Termos de Uso” e “Ler a Política de Privacidade” e a caixa de aceite ainda desmarcada.",
       "target": {
-        "x": 204,
-        "y": 396,
-        "width": 238,
-        "height": 72
+        "x": 60,
+        "y": 1052,
+        "width": 940,
+        "height": 268
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/terms/TermsAcceptanceCard.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/terms/TermsGate.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu13-s2",
+      "image": "/assets/app/first-open-02-accept-terms-720w.webp",
+      "imageSha256": "137846b5b0719f0672ff69fc8b03764630373051915bdc83de7846f7a8bd4c34",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Primeira abertura: aceite marcado",
+      "prerequisite": "Documentos lidos.",
+      "instructionPtBr": "Marque \"Li e aceito os Termos de Uso e declaro que li a Política de Privacidade.\" e toque em \"Aceitar e continuar\". O botão só funciona depois da marcação.",
+      "controlLabelPtBr": "Aceitar e continuar",
+      "expectedPtBr": "O app segue para as telas de boas-vindas. O aviso abaixo da caixa explica que este aceite não autoriza o uso opcional de fotos para treinamento.",
+      "recoveryPtBr": "\"Não aceito · sair do app\" fecha o aplicativo sem aceitar.",
+      "altPtBr": "Tela de termos com a caixa de aceite marcada, o botão “Aceitar e continuar” e o link “Não aceito · sair do app”.",
+      "target": {
+        "x": 32,
+        "y": 1490,
+        "width": 1014,
+        "height": 144
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/terms/TermsGate.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu13-s3",
+      "image": "/assets/app/account-01-guest-profile-720w.webp",
+      "imageSha256": "87a1d2308ea9daaf1e2d7b563e136ed17ed8bfb6147021669b8a6927262802e2",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Perfil em modo visitante",
+      "prerequisite": "App em uso sem conta.",
+      "instructionPtBr": "Consultar preços não exige conta. Na aba \"Perfil\", o \"Modo visitante\" oferece \"Entrar ou criar conta gratuita\" para quem quer avaliar, comentar e votar.",
+      "controlLabelPtBr": "Entrar ou criar conta gratuita",
+      "expectedPtBr": "O botão abre a tela \"Conta gratuita\".",
+      "recoveryPtBr": "Quem já tem conta usa \"Já tenho uma chave\" para entrar com a chave guardada.",
+      "altPtBr": "Aba “Perfil” em “Modo visitante” com o botão “Entrar ou criar conta gratuita”, as entradas “Central do motorista” e “Meus relatos privados” e a opção “Tema escuro” desativada.",
+      "target": {
+        "x": 74,
+        "y": 522,
+        "width": 930,
+        "height": 144
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumComponents.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/safety/BlockedUsersScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu13-s4",
+      "textOnly": true,
+      "state": "Criação de conta",
+      "prerequisite": "Tela \"Conta gratuita\" aberta.",
+      "instructionPtBr": "Digite um \"Nome de usuário\" (de 3 a 20 letras e números, começando com uma letra) e toque em \"Criar conta\". Não há e-mail nem senha.",
+      "controlLabelPtBr": "Criar conta",
+      "expectedPtBr": "O app avisa \"Sua conta está pronta\" e mostra a chave da conta. Guarde a chave: é ela que dá acesso à conta em outro aparelho.",
+      "recoveryPtBr": "Se o nome já estiver em uso, o app pede outro. A chave pode ser exportada depois pelo \"Perfil\".",
+      "textOnlyReasonPtBr": "As telas de conta são protegidas contra captura de tela, para que a chave da conta nunca apareça em imagens.",
+      "availability": "Disponível",
+      "claimClass": "text-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/auth/AuthScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/auth/AccountKeyCard.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu13-s5",
+      "image": "/assets/app/account-02-signed-in-profile-720w.webp",
+      "imageSha256": "9f3c4308be000f5330d0ad8e7d4ac4a79a050146b3ccccd608dc43684ee693aa",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Perfil com conta conectada",
+      "prerequisite": "Conta criada.",
+      "instructionPtBr": "Com a conta criada, a aba \"Perfil\" mostra \"Conectado\" e \"Conta gratuita ativa\".",
+      "controlLabelPtBr": "Conectado",
+      "expectedPtBr": "A conta libera a participação, como comentar no fórum e enviar preços. Recursos pagos nunca afetam ranking ou confiança.",
+      "recoveryPtBr": "A conta permanece no aparelho até você sair ou excluí-la.",
+      "altPtBr": "Aba “Perfil” com o cartão “Conectado” e o texto conta gratuita ativa; abaixo, as entradas “Plano e benefícios Premium”, “Central do motorista” e “Meus relatos privados”.",
+      "target": {
+        "x": 36,
+        "y": 258,
+        "width": 1008,
+        "height": 256
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumEntry.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu13-s6",
+      "image": "/assets/app/help-and-privacy-02-privacy-and-terms-720w.webp",
+      "imageSha256": "d150e4de7aef68e5bac22a0b3d7ca9261a055c29482e16916e678fb3aee54d8b",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Tela Privacidade",
+      "prerequisite": "Aba \"Perfil\" aberta.",
+      "instructionPtBr": "Em \"Perfil\", abra \"Privacidade\". A tela resume as regras, traz os links \"Ler a política de privacidade completa\" e \"Excluir conta e dados pelo site\" e mostra quando os termos foram aceitos neste aparelho.",
+      "controlLabelPtBr": "Privacidade",
+      "expectedPtBr": "O resumo afirma: \"GPS preciso não é publicado. Fotos são evidências temporárias de verificação.\"",
+      "recoveryPtBr": "Os mesmos documentos estão no site, em Privacidade e Termos.",
+      "altPtBr": "Tela “Privacidade” com o resumo “Privacidade e participação”, os links “Ler a política de privacidade completa” e “Excluir conta e dados pelo site” e a data de aceite dos termos neste aparelho.",
+      "target": {
+        "x": 36,
+        "y": 748,
+        "width": 1008,
+        "height": 328
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/privacy/PrivacyDocumentLinks.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/privacy/PrivacyScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu13-s7",
+      "textOnly": true,
+      "state": "Exclusão de conta",
+      "prerequisite": "Conta conectada e aparelho com internet.",
+      "instructionPtBr": "Para excluir a conta, abra \"Perfil\", toque em \"Gerenciar conta\" e depois em \"Excluir minha conta\". O app pede confirmação na pergunta \"Excluir conta?\"; toque em \"Sim, excluir\".",
+      "controlLabelPtBr": "Excluir minha conta",
+      "expectedPtBr": "O app explica antes de apagar: \"Isso remove sua conta e desconecta este aparelho. Preços que você informou seguem anônimos.\"",
+      "recoveryPtBr": "Sem conexão a exclusão não é concluída; tente de novo com internet. Fora do app, use a página Exclusão de conta e dados deste site.",
+      "textOnlyReasonPtBr": "As telas de conta são protegidas contra captura de tela, para que a chave da conta nunca apareça em imagens.",
+      "availability": "Disponível",
+      "claimClass": "text-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu13-s8",
+      "image": "/assets/app/account-03-after-account-deletion-720w.webp",
+      "imageSha256": "87a1d2308ea9daaf1e2d7b563e136ed17ed8bfb6147021669b8a6927262802e2",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Perfil depois da exclusão",
+      "prerequisite": "Conta excluída.",
+      "instructionPtBr": "Depois da exclusão, o app volta ao \"Modo visitante\".",
+      "controlLabelPtBr": "Modo visitante",
+      "expectedPtBr": "A consulta de preços continua funcionando sem conta.",
+      "recoveryPtBr": "Para participar de novo, crie outra conta gratuita.",
+      "altPtBr": "Aba “Perfil” de volta ao “Modo visitante” depois da exclusão da conta, com o botão “Entrar ou criar conta gratuita”.",
+      "target": {
+        "x": 36,
+        "y": 258,
+        "width": 1008,
+        "height": 446
       },
       "availability": "Disponível",
       "claimClass": "visible-state-only",
       "sourceFiles": [
         "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
-    },
-    {
-      "stepId": "tu13-s2",
-      "image": "/assets/app/profile-connected-720w.webp",
-      "imageSha256": "32ed5eb78df564d08d3409ff8493cb065a93bec3ef43e1a82973969d80b91eb8",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "Conta demo conectada; nenhuma ação destrutiva executada.",
-      "instructionPtBr": "Abra Gerenciar conta para login, provedores e exclusão.",
-      "controlLabelPtBr": "Gerenciar conta",
-      "expectedPtBr": "Abre a conta com chave mascarada e ações de cópia, saída e exclusão (telas protegidas contra captura).",
-      "recoveryPtBr": "Nunca mostre, copie ou compartilhe a chave real em capturas.",
-      "altPtBr": "Entrada Gerenciar conta destacada no perfil.",
-      "target": {
-        "x": 216,
-        "y": 1035,
-        "width": 360,
-        "height": 72
-      },
-      "availability": "Disponível",
-      "claimClass": "visible-state-only",
-      "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt"
-      ],
-      "capturedAt": "2026-10-11",
-      "privacyReviewed": true,
-      "demoOnly": true
-    },
-    {
-      "stepId": "tu13-s3",
-      "image": "/assets/app/profile-connected-720w.webp",
-      "imageSha256": "32ed5eb78df564d08d3409ff8493cb065a93bec3ef43e1a82973969d80b91eb8",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Result state",
-      "prerequisite": "Conta demo conectada; nenhuma ação destrutiva executada.",
-      "instructionPtBr": "Entenda intenção, recibo e conclusão antes de excluir.",
-      "controlLabelPtBr": "Excluir minha conta",
-      "expectedPtBr": "Exclusão remove a conta e desconecta o aparelho; fatos anonimizados permanecem.",
-      "recoveryPtBr": "Exclusão exige confirmação e rede; conta demo jamais excluída para captura.",
-      "altPtBr": "Resultado de sessão e exclusão explicados.",
-      "availability": "Disponível",
-      "claimClass": "visible-state-only",
-      "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt"
-      ],
-      "capturedAt": "2026-10-11",
-      "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
     }
   ]
 }

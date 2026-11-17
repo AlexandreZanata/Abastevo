@@ -3,61 +3,89 @@
   "slug": "ajuda-e-regras",
   "titlePtBr": "Ajuda e regras",
   "appVersion": "3.1.0-debug",
-  "appSourceSha": null,
+  "appSourceSha": "fd0a691283f6dc4c0970e39a4602bd8a8d248a36",
   "steps": [
     {
       "stepId": "tu30-s1",
-      "image": "/assets/app/help-rules-720w.webp",
-      "imageSha256": "fce78741f96764186f4efe3d9d0363c709b366b7c0e8f84c9ba71c28e4cc1fce",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "App aberto; leitura apenas.",
-      "instructionPtBr": "Abra Ajuda e leia como colaborar bem.",
-      "controlLabelPtBr": "Colabore bem",
-      "expectedPtBr": "Regras de foto segura e valores legíveis, sem invenção.",
-      "recoveryPtBr": "Dúvida de condição: escolha a exata antes de enviar.",
-      "altPtBr": "Seção Colabore bem destacada.",
+      "image": "/assets/app/first-open-05-community-rules-720w.webp",
+      "imageSha256": "91fadde14b3d2a3c7f9cc22567681b4dda865d9577de62aed3419935cb907157",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Boas-vindas: regras de contribuição",
+      "prerequisite": "Primeira abertura do app.",
+      "instructionPtBr": "Nas boas-vindas, a tela \"Colabore com honestidade\" resume as regras de contribuição.",
+      "controlLabelPtBr": "Colabore com honestidade",
+      "expectedPtBr": "O texto pede: fotografar painéis de preço só de locais públicos seguros, manter os valores legíveis, escolher a condição exata e nunca inventar preços ou pessoas.",
+      "recoveryPtBr": "\"Voltar\" retorna à tela anterior das boas-vindas.",
+      "altPtBr": "Tela de boas-vindas “Colabore com honestidade” com as regras de contribuição e os botões “Voltar” e “Avançar”.",
       "target": {
-        "x": 96,
-        "y": 396,
-        "width": 308,
-        "height": 72
+        "x": 50,
+        "y": 722,
+        "width": 980,
+        "height": 344
       },
       "availability": "Disponível",
       "claimClass": "visible-state-only",
       "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/ui/help/HelpScreen.kt"
+        "app/src/main/kotlin/com/anpfuel/app/ui/onboarding/OnboardingScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
       "demoOnly": false
     },
     {
       "stepId": "tu30-s2",
-      "image": "/assets/app/help-rules-720w.webp",
-      "imageSha256": "fce78741f96764186f4efe3d9d0363c709b366b7c0e8f84c9ba71c28e4cc1fce",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Result state",
-      "prerequisite": "App aberto; leitura apenas.",
-      "instructionPtBr": "Confira consenso, denúncia e privacidade.",
+      "image": "/assets/app/help-and-privacy-01-help-and-community-rules-720w.webp",
+      "imageSha256": "6d841156f3dd4ead86e9070d22b50642c6563698b31258eca9cdfcf7ff7aa31b",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Ajuda e regras da comunidade",
+      "prerequisite": "Aba \"Perfil\" aberta.",
+      "instructionPtBr": "Depois, as regras ficam em \"Perfil\", na entrada \"Ajuda e regras da comunidade\", em três cartões: \"Colabore bem\", \"Regras da comunidade\" e \"Denúncia e recurso\".",
       "controlLabelPtBr": "Regras da comunidade",
-      "expectedPtBr": "Consenso sem mistura com ANP, pagamento sem poder, 24h de foto.",
-      "recoveryPtBr": "Regras mudam por versão; confira a data do app.",
-      "altPtBr": "Regras da comunidade destacadas.",
+      "expectedPtBr": "O cartão \"Regras da comunidade\" afirma: \"Preços são validados por consenso; dados datados da ANP nunca se misturam com relatos ao vivo. Pagamento nunca compra confiança, ranking ou posição.\"",
+      "recoveryPtBr": "As regras completas estão nos Termos de uso e moderação deste site.",
+      "altPtBr": "Tela “Ajuda e regras da comunidade” com os cartões “Colabore bem”, “Regras da comunidade” e “Denúncia e recurso”.",
       "target": {
-        "x": 96,
-        "y": 780,
-        "width": 506,
-        "height": 72
+        "x": 36,
+        "y": 748,
+        "width": 1008,
+        "height": 460
       },
       "availability": "Disponível",
       "claimClass": "visible-state-only",
       "sourceFiles": [
         "app/src/main/kotlin/com/anpfuel/app/ui/help/HelpScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu30-s3",
+      "image": "/assets/app/help-and-privacy-01-help-and-community-rules-720w.webp",
+      "imageSha256": "6d841156f3dd4ead86e9070d22b50642c6563698b31258eca9cdfcf7ff7aa31b",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Cartão de denúncia e recurso",
+      "prerequisite": "Tela \"Ajuda e regras da comunidade\" aberta.",
+      "instructionPtBr": "O cartão \"Denúncia e recurso\" explica como pedir a revisão de um conteúdo.",
+      "controlLabelPtBr": "Denúncia e recurso",
+      "expectedPtBr": "Qualquer conta ativa pode denunciar abuso; denúncias nunca apagam conteúdo sozinhas e cada caso é revisado por moderadores.",
+      "recoveryPtBr": "Discorda de uma decisão? Uma nova denúncia com o novo motivo vira um novo caso revisado.",
+      "altPtBr": "Tela “Ajuda e regras da comunidade” com destaque para o cartão “Denúncia e recurso”, abaixo de “Colabore bem” e “Regras da comunidade”.",
+      "target": {
+        "x": 36,
+        "y": 1238,
+        "width": 1008,
+        "height": 442
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/help/HelpScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
       "demoOnly": false
     }

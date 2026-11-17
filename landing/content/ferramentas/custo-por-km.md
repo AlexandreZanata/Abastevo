@@ -5,7 +5,7 @@ description: Compare o custo de energia por quilômetro de um carro a gasolina, 
 summary: Custo de energia por quilômetro de um carro a combustão comparado a um elétrico.
 slug: custo-por-km
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /guias/como-calcular-consumo-medio/
   - /guias/gnv-compensa/
@@ -45,3 +45,15 @@ Os valores são ilustrativos, não refletem nenhuma tarifa ou preço específico
 - Bandeiras tarifárias e tarifas diferentes por horário, que mudam o valor do kWh ao longo do ano.
 
 Para entender por que o litro custa o que custa, leia [como é formado o preço da gasolina](/guias/como-e-formado-o-preco-da-gasolina/).
+
+## No aplicativo
+
+O aplicativo Android do abastevo, em desenvolvimento, traz dois números úteis para esta conta:
+
+1. Com um veículo cadastrado em "Veículos", o cartão "Custo para encher o tanque" da tela inicial mostra o preço de referência da semana aplicado ao seu tanque.
+2. Na ficha de um posto, "Rota e ir" mostra a distância do trajeto. Multiplique a distância pelo custo por quilômetro para estimar o gasto de um desvio.
+
+![Tela inicial em Sorriso, MT, com o cartão “Custo para encher o tanque” para um veículo com tanque de 50 L.](/assets/app/vehicles-05-tank-fill-cost-720w.webp "Passo 1: estimativa de exemplo para um tanque de 50 L, com a referência ANP de 8 a 14 de nov. de 2026.")
+![Mapa de Sorriso, MT, com a rota em azul até um posto, o resumo 8 min · 5,1 km e o botão “Iniciar navegação”.](/assets/app/map-05-route-preview-720w.webp "Passo 2: rota até o posto, com tempo e distância.")
+
+As capturas são de 17 de novembro de 2026. Veja os tutoriais [Veículos e estimativa do tanque](/como-usar/veiculos/) e [Encontrar e navegar até um posto](/como-usar/postos/).

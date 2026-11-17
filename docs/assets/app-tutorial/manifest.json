@@ -1,0 +1,2091 @@
+{
+  "schemaVersion": 1,
+  "capture": {
+    "appSourceCommit": "fd0a691283f6dc4c0970e39a4602bd8a8d248a36",
+    "appVersion": "3.1.0-debug (versionCode 4)",
+    "capturedOn": "2026-11-17",
+    "backend": "https://abastevo.com.br (staging deployment)",
+    "data": "ANP survey weeks 8–14 Nov 2026 (active), 1–7 Nov, 18–24 Oct and 4–10 Oct 2026; public ANP station records; no community prices existed for the captured cities",
+    "device": {
+      "avd": "abastevo-tutorial-api36",
+      "systemImage": "system-images;android-36;google_apis;x86_64",
+      "profile": "pixel_7",
+      "ramMb": 3072,
+      "hardwareKeyboard": true
+    },
+    "display": {
+      "wmSize": "1080x1920",
+      "density": 420,
+      "theme": "light"
+    },
+    "locale": {
+      "system": "pt-BR",
+      "app": "pt-BR",
+      "timezone": "America/Sao_Paulo"
+    },
+    "systemUi": "demo mode: clock 10:00, battery 100 %, Wi-Fi 4 bars, mobile and notifications hidden",
+    "network": "emulator Wi-Fi (AndroidWifi), mobile data off",
+    "input": "on-screen keyboard disabled while capturing; stylus handwriting off",
+    "syntheticLocation": {
+      "sao-paulo-sp": [
+        -23.5505,
+        -46.6333
+      ],
+      "sorriso-mt": [
+        -12.545,
+        -55.711
+      ]
+    },
+    "accounts": "guest unless context.account is signed-in; signed-in steps used a throwaway username-only account that was deleted through the app at the end",
+    "writes": "nothing was submitted to the community, forum or corrections (drafts only); local-only vehicle 'Meu carro' (50 L), one fuel-log entry and one favourite",
+    "format": "opaque RGB PNG, 1080x1920, optipng -o2 (lossless)"
+  },
+  "features": [
+    {
+      "id": "first-open",
+      "title": "First open: terms and welcome",
+      "summary": "Accept the Terms of Use and Privacy Policy, read the welcome pages and choose how to find the city.",
+      "landingTargets": [
+        "/como-usar/",
+        "/como-usar/conta-e-privacidade/",
+        "/termos/",
+        "/privacidade/"
+      ],
+      "steps": [
+        {
+          "file": "01-terms-gate.png",
+          "caption": "On first open the app shows the Terms of Use and Privacy Policy before anything else.",
+          "strings": [
+            "terms_gate_title",
+            "terms_gate_read_terms"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/terms/TermsAcceptanceCard.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/terms/TermsGate.kt"
+          ],
+          "context": {},
+          "sha256": "e573f8d44e9f26a0713000c7d222c9e6a2f1fc9bba74393bbcc9dc861367acc5"
+        },
+        {
+          "file": "02-accept-terms.png",
+          "caption": "Tick the acceptance box; \"Aceitar e continuar\" only works after a real tick.",
+          "strings": [
+            "terms_gate_accept",
+            "terms_gate_decline"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/terms/TermsGate.kt"
+          ],
+          "context": {},
+          "sha256": "d0a9057cbd270a113a416f36fa2a024f1548a6672058060a1830fe06b5045751"
+        },
+        {
+          "file": "03-welcome.png",
+          "caption": "Welcome page: the app shows the weekly ANP survey prices.",
+          "strings": [
+            "onboarding_body_anp_source"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/onboarding/OnboardingScreen.kt"
+          ],
+          "context": {},
+          "sha256": "53b6f2fe881df0437ed189b17d0ba9720b3bac93b58aeb9aa76cd4f3c40b9227"
+        },
+        {
+          "file": "04-works-offline.png",
+          "caption": "After the first sync the averages work without internet.",
+          "strings": [
+            "onboarding_title_offline"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/onboarding/OnboardingScreen.kt"
+          ],
+          "context": {},
+          "sha256": "2ca10e645c8b0c0f62eafbe91a6e74c89f38e6c69530c30e5161facbea5490d2"
+        },
+        {
+          "file": "05-community-rules.png",
+          "caption": "Contribution rules: photograph only public price boards and never invent prices.",
+          "strings": [
+            "onboarding_title_contribute"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/onboarding/OnboardingScreen.kt"
+          ],
+          "context": {},
+          "sha256": "6d42faa5ce08dda4d5f98ea8753aa77253a200766d9d2ce0ff7343e98814599f"
+        },
+        {
+          "file": "06-choose-survey-week.png",
+          "caption": "Choose which ANP survey week to download now, or skip and sync later.",
+          "strings": [
+            "onboarding_title_ready",
+            "onboarding_action_skip"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/onboarding/OnboardingScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerScreen.kt"
+          ],
+          "context": {},
+          "sha256": "0a05cacf3c2c005ae7826f63e3f99ad8b1cb33c9021480dd509e05d873d7fc46"
+        },
+        {
+          "file": "07-find-city.png",
+          "caption": "Find the city once with the device location, or choose it manually.",
+          "strings": [
+            "onboarding_location_prompt_title",
+            "onboarding_location_choose_manual"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/onboarding/LocationPromptStep.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/onboarding/OnboardingScreen.kt"
+          ],
+          "context": {},
+          "sha256": "fb3ad1e771adb0c99e1a745e96ce5217bb0a0da931cba33e80103e87f57e7ee8"
+        }
+      ]
+    },
+    {
+      "id": "choose-city",
+      "title": "Choose the city",
+      "summary": "Pick a state and a municipality; the choice drives prices, stations and the map.",
+      "landingTargets": [
+        "/como-usar/escolher-cidade/"
+      ],
+      "steps": [
+        {
+          "file": "01-state-list.png",
+          "caption": "The location picker lists the states; \"Usar localização atual\" detects the city instead.",
+          "strings": [
+            "location_picker_title",
+            "location_use_current",
+            "location_search_state_hint"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/location/LocationPickerScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "838f46fac0bd7d60aee02f63205e4662f2ddc4f793fc14a8742784c3d163669c"
+        },
+        {
+          "file": "02-search-state.png",
+          "caption": "Type part of the state name to filter the list.",
+          "strings": [
+            "location_search_state_hint"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/location/LocationPickerScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "a40cb3e1a6835e1f9040c91d074f743d982773d2e5bfe0b1e64ad9c2a48b46d7"
+        },
+        {
+          "file": "03-municipality-list.png",
+          "caption": "After choosing the state, the municipalities appear in alphabetical sections.",
+          "strings": [
+            "location_search_municipality_hint",
+            "location_municipality_label"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/location/LocationPickerScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapFiltersDialog.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "34700999246046a544b63c2f60db05fd79817c9558a0a37aadc4b13ace738a9e"
+        },
+        {
+          "file": "04-search-municipality.png",
+          "caption": "Search the municipality by name and tap it.",
+          "strings": [
+            "location_search_municipality_hint"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/location/LocationPickerScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapFiltersDialog.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "c385710c62cf8070f51e810f06f2ad5f4f9ed1de077ef835db63c787ae638328"
+        },
+        {
+          "file": "05-home-with-city.png",
+          "caption": "The home screen now shows the city and the active survey week at the top.",
+          "strings": [
+            "home_hero_title",
+            "home_hero_contribute"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/header/AbastevoHeader.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/SurveyWeekChip.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/SurveyWeekChip.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/header/AbastevoHeader.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeIntro.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "fe0efa173f12c6fff81655c00a0fe6771b1b56cb8e7f7fc1cd4c0482eb30e8fe"
+        }
+      ]
+    },
+    {
+      "id": "fuel-prices",
+      "title": "Fuel prices in the city",
+      "summary": "Read the ANP weekly average per fuel, sort the cards and switch to community prices.",
+      "landingTargets": [
+        "/como-usar/precos-anp/",
+        "/guias/"
+      ],
+      "steps": [
+        {
+          "file": "01-anp-average-cards.png",
+          "caption": "Each card shows the ANP weekly average for a fuel, the number of surveyed stations and the source badge.",
+          "strings": [
+            "home_reference_prices_title",
+            "a11y_source_badge_anp_dated",
+            "home_reference_period"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/FuelPriceCard.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/FuelPriceCard.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/SourceTimeBadge.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "4af9f2bcef3644979132777c5e72b94da16c5cc38dc6a6ca898ec26ed8e904c0"
+        },
+        {
+          "file": "02-more-fuels.png",
+          "caption": "Scroll for diesel S500/S10, GNV and GLP (13 kg).",
+          "strings": [],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/FuelPriceCard.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/FuelPriceCard.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "1bcd91f32e4b82817675747006f02a1106393f08afa02bc893f287e2b9bfb261"
+        },
+        {
+          "file": "03-home-shortcuts.png",
+          "caption": "Shortcuts at the end of the list open the map, location, history, stations, vehicles and settings.",
+          "strings": [
+            "home_open_map"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeDiscoveryCards.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeDiscoveryCards.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "946a4789b4cd7d5d2b4885204906a1488486018c810488215b155d2689d3c937"
+        },
+        {
+          "file": "04-sort-prices.png",
+          "caption": "\"Filtros\" lets you order prices by average, lowest or highest.",
+          "strings": [
+            "home_filter_title",
+            "home_filter_lowest",
+            "home_filter_highest"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomePriceSortOrder.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomePriceSortOrder.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "c122dc45206ab2912af28f4b4304567555b159411a2f4bb192127daa8c752ca5"
+        },
+        {
+          "file": "05-lowest-price.png",
+          "caption": "With \"Menor preço\" each card shows the lowest surveyed price for that fuel.",
+          "strings": [
+            "home_filter_lowest"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomePriceSortOrder.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomePriceSortOrder.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "16ce62f9dfff89bb098d1d7bd0026988a52e6c2cc544056a94fcedd0db46f273"
+        },
+        {
+          "file": "06-community-prices.png",
+          "caption": "The \"Comunidade\" toggle shows recent prices sent by drivers, kept apart from ANP data.",
+          "strings": [
+            "home_community_empty",
+            "community_action_contribute"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/community/CommunityPricePanel.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/MyContributionsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "ef73c3ff7adebef1b43ad7fc402df487c393c175b393e9a355a2c59a15828e9f"
+        }
+      ]
+    },
+    {
+      "id": "stations",
+      "title": "Stations, station page and route",
+      "summary": "List surveyed stations for a fuel, search by name, open the station page, check ANP and community prices and start a route.",
+      "landingTargets": [
+        "/como-usar/postos/",
+        "/como-usar/perfil-do-posto/",
+        "/como-usar/precos-do-posto/"
+      ],
+      "steps": [
+        {
+          "file": "01-stations-for-fuel.png",
+          "caption": "Tapping a fuel card opens the surveyed stations for that fuel, cheapest first.",
+          "strings": [
+            "stations_list_summary",
+            "stations_nearest_action",
+            "stations_search_placeholder"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsListSummary.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsListSummary.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "bbf01c50cc1371295fac5385f28164736a72372d7a4e29dd62ddda7837046adf"
+        },
+        {
+          "file": "02-station-cards.png",
+          "caption": "Each station card shows the price, the brand, the public ANP address and the collection date.",
+          "strings": [
+            "stations_brand_label",
+            "stations_collected_at_label"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/StationPriceRow.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/StationPriceRow.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationDetailSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationPageScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "f4ef8251e1cb890a839b73a6bdb2aa1b7b7def29b44926058fd9f8b935729aa0"
+        },
+        {
+          "file": "03-choose-fuel.png",
+          "caption": "Change the fuel from the selector at the top of the list.",
+          "strings": [
+            "map_filter_fuel",
+            "history_fuel_product_label"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/FuelProductSelector.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/FuelProductSelector.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapFiltersDialog.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "e7367745a8bfc334d03f306c3060db1050fd5edf28ef0a62cfb51d1397d58cb4"
+        },
+        {
+          "file": "04-search-by-name.png",
+          "caption": "Type part of a station name to filter the list.",
+          "strings": [
+            "stations_search_placeholder"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "9911a2025815610eb860369449529a543a64a5bcbe5c1244598d7987aadd98d4"
+        },
+        {
+          "file": "05-station-profile.png",
+          "caption": "The station page shows the name, brand, address and the main actions.",
+          "strings": [
+            "station_profile_title",
+            "map_route_go",
+            "nav_update_price",
+            "station_correction_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationArtworkHeader.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stationprofile/StationProfileScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/ServerStationDetailSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationArtworkHeader.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationCorrectionDialog.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationDetailSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationPageScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "8dfe716aa8494ed78419f5add22183c8fec95bea377aa9386d5e633466e763e5"
+        },
+        {
+          "file": "06-community-and-anp-prices.png",
+          "caption": "Choose a fuel chip; community prices (beta) and the ANP reference appear in separate cards.",
+          "strings": [
+            "community_section_title",
+            "community_confidence_note"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/community/CommunityPricePanel.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/community/CommunityPricePanel.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/ServerStationDetailSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationDetailSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationFeedbackSection.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationPageScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "773e9c416df336840b9a04c312c04c250ab98d487e898ca7dbc0c09ef5bb08ff"
+        },
+        {
+          "file": "07-anp-reference-price.png",
+          "caption": "The ANP reference price always shows the collection date and the survey week.",
+          "strings": [
+            "station_detail_anp_title",
+            "quality_entry"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationDetailSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationPageScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "c5c5d6e38bbdf29c90a252b0689def5e9cb46574ffe380499c34ccc88bd397bd"
+        },
+        {
+          "file": "08-fuel-quality.png",
+          "caption": "\"Consultar análises de qualidade\" lists ANP quality sampling for the station, with its limits.",
+          "strings": [
+            "quality_title",
+            "quality_reports_entry"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/quality/QualityScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/quality/QualityScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp"
+          },
+          "sha256": "e845e394b1ed32d61614910f7da331f7bbbd7311c9dcd29c33fe7de86731c2f9"
+        },
+        {
+          "file": "09-allow-location-for-route.png",
+          "caption": "\"Rota e ir\" asks for the device location the first time (Android system dialog).",
+          "strings": [
+            "map_route_go"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationPageScreen.kt"
+          ],
+          "context": {
+            "city": "sao-paulo-sp",
+            "system": true
+          },
+          "sha256": "cf75fa178523899a596345a58bcb68300163f23586a0035415f89c300942d8be"
+        },
+        {
+          "file": "10-driver-experience.png",
+          "caption": "Ratings and comments live in \"Experiência dos motoristas\"; this build shows the verification notice because station feedback is behind a feature flag.",
+          "strings": [
+            "station_page_experience_title",
+            "station_page_owner_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationExperienceSection.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationExperienceSection.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationPageScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "e54b8b381571134e762f4c8ab868cf80b980b9c1d8183e5ecf64fb8594428450"
+        },
+        {
+          "file": "11-suggest-correction.png",
+          "caption": "\"Sugerir correção\" sends a name, address or permanent-closure correction for review.",
+          "strings": [
+            "station_correction_review",
+            "suggest_submit"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationCorrectionDialog.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationCorrectionDialog.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/suggest/SuggestStationScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "6a7765a9106fd12f39324c9cc3bc664fd1f1c816e3e64ddd08afebe80c8647ac"
+        },
+        {
+          "file": "12-represent-your-station.png",
+          "caption": "\"Entender como funciona\" explains how a business can represent its station; it is not available in the beta.",
+          "strings": [
+            "station_page_guide_title"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationPageScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "e3c5fea8ab1500db4776225cb22fad1738a8ac6885cf90c698e781ac677d1fa4"
+        }
+      ]
+    },
+    {
+      "id": "map-offline",
+      "title": "Offline map download",
+      "summary": "Download the offline map of the region so the map and routes work without internet.",
+      "landingTargets": [
+        "/como-usar/offline-e-recuperacao/"
+      ],
+      "steps": [
+        {
+          "file": "01-download-suggestion.png",
+          "caption": "Opening the map of a city without a pack offers \"Baixar mapa de Mato Grosso\"; tap \"Baixar\".",
+          "strings": [
+            "map_region_suggestion",
+            "map_region_suggestion_no_size",
+            "map_region_suggestion_detail",
+            "map_region_not_now"
+          ],
+          "extraSources": [],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRegionSuggestionCard.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "b6fc9e58b999e41819bd89ffde5b83cf270fbb63cd741badd8a2d7f289acf65f"
+        },
+        {
+          "file": "02-download-progress.png",
+          "caption": "Downloads shows the total progress and each package (region, world base map, coastlines); Wi-Fi only by default.",
+          "strings": [
+            "map_downloads_subtitle",
+            "map_downloads_wifi_only",
+            "map_pkg_world"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapDownloadsScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapDownloadsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "425cde37586f0cde73eef0e47bb93f9266aaaee925a7b091de0d4800e8cfa5f5"
+        },
+        {
+          "file": "03-offline-pack-active.png",
+          "caption": "When it finishes, the region pack is listed as active.",
+          "strings": [
+            "map_check_update"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapDownloadsScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapDownloadsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "029bcbe9adc8cec0e124c189f05b408a899a2be05fa9a91fe30561d38d216487"
+        },
+        {
+          "file": "04-offline-map-ready.png",
+          "caption": "Back on the map, streets and stations render from the offline pack.",
+          "strings": [
+            "map_search_hint"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapControlsCard.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "2904c4a6719d00ca6a8026d4b24be2efef3719f9c5d506c48e9ac680fdf796e0"
+        }
+      ]
+    },
+    {
+      "id": "map",
+      "title": "Map, station sheet and navigation",
+      "summary": "Explore stations on the map, filter by source and service, open a station, save it and navigate with turn-by-turn guidance.",
+      "landingTargets": [
+        "/como-usar/postos/",
+        "/como-usar/offline-e-recuperacao/"
+      ],
+      "steps": [
+        {
+          "file": "01-stations-on-map.png",
+          "caption": "The map shows fuel stations (orange) and EV chargers (teal) of the chosen city.",
+          "strings": [
+            "map_search_hint"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomControls.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomControls.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapControlsCard.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "e7e494f63e8305319ee7adaa37543f1926fb537ec5d4edd6f10a38d14728e2ec"
+        },
+        {
+          "file": "02-map-filters.png",
+          "caption": "\"Filtros\" chooses the city, the price source (ANP or community), the service (fuel or charging) and the product.",
+          "strings": [
+            "map_filter_source",
+            "map_filter_fuel_product",
+            "charging_explore_connector_label",
+            "charging_community_connector"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapFiltersDialog.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/charging/ChargingCommunityScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/charging/ChargingExploreScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapControlsCard.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapFiltersDialog.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "22d2052dff075f3d426f3f62e04d270a060c1a7e245b46cdc6a7d665137b8f92"
+        },
+        {
+          "file": "03-station-sheet.png",
+          "caption": "Tap a station to see its price with source, survey week and collection date.",
+          "strings": [
+            "map_sheet_price_source",
+            "server_station_quality_anp_reported",
+            "map_location_anp_reported",
+            "map_sheet_profile",
+            "map_sheet_report"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/ServerStationDetailSheet.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "30f533aa39ebecc91c499cebcf7af7fd8515157cce0159bf3e2a5b161fb0b6a6"
+        },
+        {
+          "file": "04-save-favorite.png",
+          "caption": "\"Salvar nos favoritos\" keeps the station on this device.",
+          "strings": [
+            "map25_favorite_remove"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "3b711b17a2e36c6214af00c97a8fc877f65529a2a48755796cd14aa9b19de415"
+        },
+        {
+          "file": "05-route-preview.png",
+          "caption": "\"Rota e ir\" draws the route from the current position with time and distance.",
+          "strings": [
+            "map23_start",
+            "map_route_edit",
+            "map_route_steps"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRouteOverlay.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceControls.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRouteOverlay.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "9a9858d82a25eb9150b13bbe80f310b16477927587cbb0d28ec7f76aa725d968"
+        },
+        {
+          "file": "06-route-maneuvers.png",
+          "caption": "\"Manobras\" lists every turn before you leave.",
+          "strings": [
+            "map_route_steps"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRouteOverlay.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRouteOverlay.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "98ae7033cc7e09c8e16239aaf8aca82fe88e12eb134a527d87d1d3325c4b59ba"
+        },
+        {
+          "file": "07-turn-by-turn-navigation.png",
+          "caption": "\"Iniciar navegação\" starts offline turn-by-turn guidance with voice, zoom and recentre controls.",
+          "strings": [
+            "map23_stop"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceControls.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceControls.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRouteOverlay.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "583dc2326063fa6c751116250d145f2485dd411f1c9b108769587b5e26ec3b62"
+        },
+        {
+          "file": "08-ev-charger-sheet.png",
+          "caption": "EV chargers come from open sources; the sheet says ANP has no electricity tariffs.",
+          "strings": [
+            "map_sheet_anp_no_tariff",
+            "charging_open_sources"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/charging/ChargingExploreScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "02755c82d97896d5eb99a70f6cab94750344d6c2497030c29966da0065f92e0e"
+        }
+      ]
+    },
+    {
+      "id": "survey-weeks",
+      "title": "ANP survey weeks offline",
+      "summary": "Download earlier ANP survey weeks to read them offline and switch the active week.",
+      "landingTargets": [
+        "/como-usar/semanas-anp/"
+      ],
+      "steps": [
+        {
+          "file": "01-open-week-picker.png",
+          "caption": "Tap the week chip at the top to open \"Semana de pesquisa\".",
+          "strings": [
+            "profile_tool_week_picker_title",
+            "week_picker_title",
+            "week_picker_latest"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapControlsCard.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/onboarding/OnboardingScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "6b5580957a898d5c337f895a0310ddf81eddf7f9a4178207f15aa169c26a658c"
+        },
+        {
+          "file": "02-week-list.png",
+          "caption": "Each week shows when it was updated and whether it is downloaded; \"Baixar\" saves it offline.",
+          "strings": [
+            "week_picker_contents_title",
+            "week_picker_downloaded_tag"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "15cfefdc793be91a2c87fce0a638a9a2271335230384de965f36bf6d59615cbd"
+        },
+        {
+          "file": "03-downloading-week.png",
+          "caption": "The download imports the ANP data in place and can be cancelled.",
+          "strings": [
+            "week_picker_downloading_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "c1ae4c5b3186ef0859157f48855f5fc2a5e2e52a8f656ad1bcbb8c8da2d2bd41"
+        },
+        {
+          "file": "04-week-downloaded.png",
+          "caption": "Downloaded weeks are marked \"Baixada\".",
+          "strings": [
+            "week_picker_downloaded_tag"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "844862513715560f46f85ba1dff6f8ef8ba85735dcd0a4c833a1d5693cc0f84e"
+        },
+        {
+          "file": "05-older-week-active.png",
+          "caption": "Tapping a downloaded week makes it active: the chip and the ANP reference line change.",
+          "strings": [
+            "a11y_source_badge_anp_dated",
+            "home_reference_period"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/SurveyWeekChip.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/SourceTimeBadge.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/SurveyWeekChip.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "6f523cbb8214867bbd4c5f7a687e89deeecf61eafdb3645fe58660f334edc011"
+        }
+      ]
+    },
+    {
+      "id": "history",
+      "title": "Price history",
+      "summary": "Compare the ANP average of a fuel across the downloaded weeks.",
+      "landingTargets": [
+        "/como-usar/historico/"
+      ],
+      "steps": [
+        {
+          "file": "01-weekly-history.png",
+          "caption": "\"Histórico\" charts the city average for each downloaded week, newest first.",
+          "strings": [
+            "nav_history",
+            "history_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/PriceHistoryComponents.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/PriceHistoryComponents.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/placeholder/PlaceholderScreens.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "2dddc77f514ed10c7c94d6a43670d2aa3af3c49db01df83ed0db2d1a969a4178"
+        },
+        {
+          "file": "02-choose-fuel.png",
+          "caption": "Change the fuel from the selector.",
+          "strings": [
+            "map_filter_fuel",
+            "history_fuel_product_label"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/FuelProductSelector.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapBottomSheet.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapFiltersDialog.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/map/MapScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "54889ecfd5e5b624723ec8f3223bf30ff2722aede4ddd893727f26058f6e14f5"
+        },
+        {
+          "file": "03-diesel-s10-trend.png",
+          "caption": "Diesel S10 history for the same weeks.",
+          "strings": [],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/PriceHistoryComponents.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/PriceHistoryComponents.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/history/HistoryScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "eacee7781f574483194bd08c324e4940cec5191c8051a8ac6370b839fb8b6d73"
+        },
+        {
+          "file": "04-tap-a-week.png",
+          "caption": "Tap a bar to read that week's value.",
+          "strings": [],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/PriceHistoryComponents.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/PriceHistoryComponents.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "24bc0bda6d1be4a575178e1207b4a31d291167e9f2c90258cad41c0152ce45e3"
+        }
+      ]
+    },
+    {
+      "id": "vehicles",
+      "title": "Vehicles, tank-fill cost and fuel log",
+      "summary": "Register up to three vehicles, see the cost to fill the tank, turn on price-drop alerts and log fill-ups.",
+      "landingTargets": [
+        "/como-usar/veiculos/",
+        "/ferramentas/"
+      ],
+      "steps": [
+        {
+          "file": "01-no-vehicles.png",
+          "caption": "\"Veículos\" starts empty; the + button adds a vehicle.",
+          "strings": [
+            "vehicle_empty_message",
+            "vehicle_empty_hint"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "b97918a192d36180e0b9e4513e9e342e7360b3fac83c7f9ffcf607eb8362af0f"
+        },
+        {
+          "file": "02-name-and-tank.png",
+          "caption": "Give the vehicle a name, choose the propulsion and type the tank capacity in litres.",
+          "strings": [
+            "vehicle_name_hint",
+            "vehicle_propulsion_label",
+            "vehicle_tank_capacity_hint"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleForm.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleForm.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "9c2e7fa1465ec90e3d3995ab20425d60cdaea970c6545055aca112f194990f48"
+        },
+        {
+          "file": "03-fuel-and-price-alert.png",
+          "caption": "Choose the fuel and the price reference, and switch on \"Avisar quando o preço cair\" for a local price-drop alert.",
+          "strings": [
+            "vehicle_fuel_product_label",
+            "vehicle_price_source_label",
+            "vehicle_price_drop_alert_label"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleForm.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleForm.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "af99e2b0f430b4a3f83c7a2a55ff4c8ad639ba0a39839e1876e110705dc53b93"
+        },
+        {
+          "file": "04-vehicle-saved.png",
+          "caption": "The saved vehicle lists its fuel, tank size and price reference.",
+          "strings": [],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "f61a04895f86240514679390074517cdf8f69fbddd55e65883a0ab5ebac3b472"
+        },
+        {
+          "file": "05-tank-fill-cost.png",
+          "caption": "The home screen shows the cost to fill the tank at the cheapest surveyed station and a shortcut to go there.",
+          "strings": [
+            "home_tank_fill_cost_title",
+            "home_tank_fill_cost_go_to_station"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/TankFillCostCard.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/components/TankFillCostCard.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "af126fa0e13dc412e359ed7db228f9055ed8dffd168af24a25e74fed9d646a92"
+        },
+        {
+          "file": "06-fuel-log.png",
+          "caption": "\"Lançamentos\" keeps the vehicle's fill-ups and expenses on the device.",
+          "strings": [
+            "ledger_entry_add_refuel",
+            "ledger_entry_add_expense",
+            "monthly_estimated",
+            "ledger_entry_estimate_label"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/ledger/LedgerEntriesScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/ledger/LedgerEntriesScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/monthly/MonthlyIndicatorsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "713476efd77f2b724d69578bc35994e286c468cfaf155a7a2ad35f040fcdcdf6"
+        },
+        {
+          "file": "07-add-fill-up.png",
+          "caption": "Record litres, full or partial tank, total paid and odometer.",
+          "strings": [
+            "ledger_entry_add_title",
+            "ledger_entry_quantity",
+            "ledger_entry_odometer"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/ledger/LedgerEntriesScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/ledger/LedgerEntriesScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "6f6d7036f830e358fb25a9e40e8e1ffe7bf2f8cd516a7d10e8a857a69f291faf"
+        },
+        {
+          "file": "08-fuel-log-entry.png",
+          "caption": "The entry appears in the log, stored locally.",
+          "strings": [],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/ledger/LedgerEntriesScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/ledger/LedgerEntriesScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "acbcb5bdceada550e798c0c037e5b2eee62fef9f2b5afe5ca5676e60a849cb48"
+        }
+      ]
+    },
+    {
+      "id": "settings",
+      "title": "Settings",
+      "summary": "Sync, automatic downloads, language, search distance, data retention, storage and account links.",
+      "landingTargets": [
+        "/como-usar/configuracoes/"
+      ],
+      "steps": [
+        {
+          "file": "01-sync-and-preferences.png",
+          "caption": "Sync now, change the survey week and choose background sync and Wi-Fi-only rules.",
+          "strings": [
+            "onboarding_action_sync_now",
+            "settings_sync_wifi_only"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "36993ca11e6141c83da55a1fb133f0cc0cdea01ce18c289225d0c26b7af11f51"
+        },
+        {
+          "file": "02-language-and-search-distance.png",
+          "caption": "Pick the app language and the radius of \"Mais barato perto de mim\".",
+          "strings": [
+            "settings_language",
+            "settings_nearest_station_radius"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/settings/LanguageFlagGrid.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/settings/LanguageFlagGrid.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "052d257534d85938394d78e988d17437fc8f5bee082c2fd53394924992563e6a"
+        },
+        {
+          "file": "03-data-retention-and-city-directory.png",
+          "caption": "Choose how many weeks of station data to keep and whether to keep the city's public directory offline.",
+          "strings": [
+            "settings_retention_weeks",
+            "settings_public_catalog_section"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "6288741d034bfb034b203390655d9a95d81a3ec84fd5ce1418576f1be2834185"
+        },
+        {
+          "file": "04-storage-account-and-about.png",
+          "caption": "See storage use, clear caches, open account and privacy, share the app and the official ANP page.",
+          "strings": [
+            "settings_storage_usage",
+            "settings_share_app",
+            "settings_anp_attribution_link"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/settings/SettingsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "7a4118009cc46ab03cda7507a5ec81d2e9e73e9dc21dd328822a6733ec435655"
+        }
+      ]
+    },
+    {
+      "id": "profile-and-tools",
+      "title": "Profile and tools",
+      "summary": "The Profile tab groups account, tools, references, Premium status and project contributors.",
+      "landingTargets": [
+        "/como-usar/conta-e-privacidade/",
+        "/contribuidores/"
+      ],
+      "steps": [
+        {
+          "file": "01-tools-list.png",
+          "caption": "\"Ferramentas e referências\": games, company mode, vehicles, settings and contributions.",
+          "strings": [
+            "profile_expert_tools_section"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "8fa95d8fb5a8572c77e28bc2c42bf873597cc42482e51ad537915e4f749abdc0"
+        },
+        {
+          "file": "02-more-tools.png",
+          "caption": "More tools: ANP history, surveyed stations, survey week, help and privacy.",
+          "strings": [
+            "profile_tool_history_title",
+            "profile_tool_stations_title",
+            "profile_tool_help_title",
+            "help_screen_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/help/HelpScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "fca3ea0fb3261dc9008f57ce9cd061e5c08bb691132f6dbfd15ca2f133f1649e"
+        },
+        {
+          "file": "03-premium-status.png",
+          "caption": "Premium shows the plan status; paid purchase is disabled in this version and never affects trust.",
+          "strings": [
+            "premium_status_section_title",
+            "premium_restore"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumManagementScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumManagementScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "86cf7249592b95f2b9fc07abe05c8c8c57696d31fd5a32e520c5b7adbc237a9f"
+        },
+        {
+          "file": "04-project-contributors.png",
+          "caption": "\"Contribuidores do projeto\" lists approved contributor profiles.",
+          "strings": [
+            "contributors_empty_title",
+            "claim_entry_button"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/contributors/ContributorsScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/contributors/ContributorsScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "f8d41e9bb4bd439bc950924a34b5978fda6c447539d0426ddb0024f91911c20f"
+        }
+      ]
+    },
+    {
+      "id": "help-and-privacy",
+      "title": "Help, rules and privacy",
+      "summary": "Community rules, reporting and appeals, privacy summary and the terms accepted on this device.",
+      "landingTargets": [
+        "/como-usar/ajuda-e-regras/",
+        "/como-usar/conta-e-privacidade/",
+        "/privacidade/",
+        "/termos/"
+      ],
+      "steps": [
+        {
+          "file": "01-help-and-community-rules.png",
+          "caption": "\"Ajuda e regras da comunidade\": how to contribute well, community rules, reports and appeals.",
+          "strings": [
+            "help_contribute_title",
+            "help_rules_title",
+            "help_report_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/help/HelpScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/help/HelpScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "19b4b47e90b0525fb60713bdaafc5350f9e566af9cc62d730cbae8931792bc5b"
+        },
+        {
+          "file": "02-privacy-and-terms.png",
+          "caption": "\"Privacidade\": full policy, web account deletion and the terms version accepted on this device.",
+          "strings": [
+            "profile_privacy_section",
+            "privacy_external_deletion"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/privacy/PrivacyScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/privacy/PrivacyDocumentLinks.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/privacy/PrivacyScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "f8c65afa7a40763a51dce7a195d7e399cfcc3379924f9c0f3381e1939ff66bf5"
+        }
+      ]
+    },
+    {
+      "id": "account",
+      "title": "Free account: create and delete",
+      "summary": "Create a free account with only a username, see the signed-in profile and delete the account.",
+      "landingTargets": [
+        "/como-usar/conta-e-privacidade/",
+        "/excluir-conta/"
+      ],
+      "steps": [
+        {
+          "file": "01-guest-profile.png",
+          "caption": "As a guest, Profile offers \"Entrar ou criar conta gratuita\"; browsing never needs an account.",
+          "strings": [
+            "profile_guest_title",
+            "profile_action_sign_in"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumComponents.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/safety/BlockedUsersScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "f36693b5c0314adb4418cb127e4347e067064c1b94d01b09aae412c9b63857de"
+        },
+        {
+          "file": "02-signed-in-profile.png",
+          "caption": "After creating the account (username only, no email or password) Profile shows \"Conectado\".",
+          "strings": [
+            "profile_signed_in_title",
+            "premium_entry_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/premium/PremiumEntry.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "d5dae46a9659a1e1fc3a0634c5ef2c23345f20c272fd117195b1eda1cd206ebc"
+        },
+        {
+          "file": "03-after-account-deletion.png",
+          "caption": "After \"Gerenciar conta → Excluir minha conta → Sim, excluir\" the app returns to guest mode.",
+          "strings": [
+            "profile_guest_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "f36693b5c0314adb4418cb127e4347e067064c1b94d01b09aae412c9b63857de"
+        }
+      ]
+    },
+    {
+      "id": "driver-hub",
+      "title": "Driver hub",
+      "summary": "Quick fuel and charging expenses, shifts and earnings for app drivers.",
+      "landingTargets": [
+        "/como-usar/veiculos/"
+      ],
+      "steps": [
+        {
+          "file": "01-driver-hub.png",
+          "caption": "\"Central do motorista\" shows the vehicle in use, quick expense entries and work tracking (Premium gate shown).",
+          "strings": [
+            "driver_hub_title",
+            "driver_hub_quick_refuel",
+            "driver_hub_open_work"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/driver/DriverHubScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/driver/DriverHubScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/driver/work/DriverWorkScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "0594ce30b632797a996d6a40bd6bd1f385ec073361c717e712bcc738ac18a1b3"
+        },
+        {
+          "file": "02-shift-and-earnings.png",
+          "caption": "\"Turno e ganhos\": start a shift with the odometer and record the day's net earnings.",
+          "strings": [
+            "driver_hub_open_work"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/driver/work/DriverWorkScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/driver/DriverHubScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/driver/work/DriverWorkScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in",
+            "knownIssue": "Shift and earnings labels are hard-coded Portuguese in DriverWorkScreen.kt (not string resources)."
+          },
+          "sha256": "2f5b96c354d3bebbecd9604926168493a0c53b66477871bd5d90f053bb85ff8d"
+        }
+      ]
+    },
+    {
+      "id": "community",
+      "title": "Community tab",
+      "summary": "Entry point for contributing prices, the forum and the community price feed.",
+      "landingTargets": [
+        "/como-usar/comunidade/"
+      ],
+      "steps": [
+        {
+          "file": "01-community-tab.png",
+          "caption": "\"Comunidade\" opens the price contribution, the Abastevo forum and the community price feed.",
+          "strings": [
+            "forum_card_title",
+            "forum_screen_title",
+            "feed_prices_title",
+            "home_community_prices_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/home/HomeScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "15d4a4e24de6afbb5e5f905b5e9f8e2e42bae7005f6b1ee2ea4814b7344996c9"
+        },
+        {
+          "file": "02-community-prices-empty.png",
+          "caption": "The feed filters by order and fuel; with no recent community price it invites a contribution.",
+          "strings": [
+            "feed_empty_title",
+            "community_rules_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "6903743ad5b747be896c5c52d68ab234f89cb051c2200d0415b76dd2f6a6c0f8"
+        }
+      ]
+    },
+    {
+      "id": "forum",
+      "title": "Forum: read, comment, post and block",
+      "summary": "Read editorial posts, filter by category, react and comment, write a topic and manage blocked users.",
+      "landingTargets": [
+        "/como-usar/comunidade/",
+        "/como-usar/denunciar-abuso/"
+      ],
+      "steps": [
+        {
+          "file": "01-forum-feed.png",
+          "caption": "\"Fórum Abastevo\" lists posts with author, category and time; the pencil starts a new topic.",
+          "strings": [
+            "forum_card_title",
+            "forum_screen_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/community/CommunityScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "1bbb6aadb17ac1d37be718cd8caa6c4bf3c355d7c018b2740dc303c813150a11"
+        },
+        {
+          "file": "02-filter-by-category.png",
+          "caption": "Category tabs filter the feed (fuels, e-mobility, traffic law…).",
+          "strings": [],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "efd8cca817cc56c8a7c1109528ba14c527b10005866fe85e0b4bd33aeceb344f"
+        },
+        {
+          "file": "03-read-article.png",
+          "caption": "Open a post to read it in full.",
+          "strings": [
+            "forum_detail_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumDetailScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumDetailScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumTopicFormScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "fe39dc87f00ce8d71e6e82f5d8ee0ecc425d05222b16bc8b53d185d4e8d191b4"
+        },
+        {
+          "file": "04-reactions-and-comments.png",
+          "caption": "At the end: comment, like, dislike, share and the live comment list.",
+          "strings": [
+            "forum_comments_title",
+            "forum_live",
+            "forum_sort_relevant"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumDetailScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumThread.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumDetailScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumThread.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "ecb0ebc7de2d94eb08e751f3540d9cb53c2e74bcc294a4d8517b82692d35220b"
+        },
+        {
+          "file": "05-write-comment.png",
+          "caption": "Write a comment of up to 280 characters and tap \"Publicar\" (new comments go through moderation).",
+          "strings": [
+            "station_feedback_submit",
+            "forum_comment_publish"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumDetailScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumDetailScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationExperienceSection.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationFeedbackSection.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in",
+            "notSubmitted": true
+          },
+          "sha256": "42c121f9908e55c28478a11efb931524cbb496e3fc8c9ec525faece7a723215c"
+        },
+        {
+          "file": "06-new-topic-draft.png",
+          "caption": "\"Novo tópico\": title, category and content.",
+          "strings": [
+            "forum_new_topic",
+            "forum_topic_title_label",
+            "forum_topic_category_label",
+            "forum_topic_body_label"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumTopicFormScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumTopicFormScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in",
+            "notSubmitted": true,
+            "knownIssue": "Category chips show internal codes (FUELS, ELECTRIC, TRAFFIC_RULES) instead of translated labels."
+          },
+          "sha256": "5bb63d42805e2125da396d80007af0f3aa950a26249e9c430f8e2bdbdb42daf6"
+        },
+        {
+          "file": "07-new-topic-options.png",
+          "caption": "Optional state, IBGE municipality, fuel and public name, then \"Publicar tópico\".",
+          "strings": [
+            "forum_topic_publish",
+            "forum_topic_alias_label"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumTopicFormScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumTopicFormScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in",
+            "notSubmitted": true,
+            "knownIssue": "Fuel chips show internal codes (GASOLINE_REGULAR, GASOLINE_PREMIUM)."
+          },
+          "sha256": "8a07e4b8f21937a154aa6a91bb7d36f9f5870214d44158ba662fee4509ac66c0"
+        },
+        {
+          "file": "08-blocked-users.png",
+          "caption": "\"Gerenciar conta → Usuários bloqueados\" lists blocked people; they are not notified and can be unblocked any time.",
+          "strings": [
+            "blocked_users_title",
+            "blocked_users_empty_title"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/safety/BlockedUsersScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/safety/BlockedUsersScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "70d507d5ace3fa00f5d654cd8836128e2569df548b36c7b34a96aa949ab21255"
+        }
+      ]
+    },
+    {
+      "id": "contribute-price",
+      "title": "Contribute a price with a photo",
+      "summary": "Choose the station, photograph the price board, review the reading or type the price, and send it to the community queue.",
+      "landingTargets": [
+        "/como-usar/fotografar-preco/",
+        "/como-usar/minhas-contribuicoes/"
+      ],
+      "steps": [
+        {
+          "file": "01-choose-station.png",
+          "caption": "\"Colaborar com preço\" first asks which station the price belongs to.",
+          "strings": [
+            "capture_pick_station",
+            "capture_choose_city",
+            "suggest_display",
+            "capture_station_name"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationCorrectionDialog.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/suggest/SuggestStationScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "366d82909a1fd6bb1031d5621175b8a57e0234b481542d354ab239541313d13d"
+        },
+        {
+          "file": "02-search-station.png",
+          "caption": "Search the station by name.",
+          "strings": [
+            "suggest_display",
+            "capture_station_name"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/stations/StationCorrectionDialog.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/suggest/SuggestStationScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "44dff705d26b3ae05b79acccdb7a580b87b0009776cb9fdff438581eab9be76d"
+        },
+        {
+          "file": "03-station-selected.png",
+          "caption": "With the station selected, tap \"Fotografar preço\".",
+          "strings": [
+            "capture_change_station",
+            "capture_screen_title",
+            "capture_take_photo"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "ba7565da4106c85228191ca6673d63fb2eb9aa291f9f9b697d7df706cec7fba6"
+        },
+        {
+          "file": "04-allow-camera.png",
+          "caption": "Android asks for camera permission the first time.",
+          "strings": [],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CameraPermissionHandler.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CameraPermissionHandler.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in",
+            "system": true
+          },
+          "sha256": "dd1923d2618796f04a6d13f90c1ba2a238ff7db8a7c60c912306cd07b53529c7"
+        },
+        {
+          "file": "05-phone-camera.png",
+          "caption": "The phone camera opens; photograph only the price board. (Emulator test scene — not a price board.)",
+          "strings": [],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/capture/PrivateCaptureFiles.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/capture/PrivateCaptureFiles.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in",
+            "system": true,
+            "emulatorArtifact": true
+          },
+          "sha256": "e70a59eb539b0d7e0aeb659619c8228041e31de9c98bc243126736f1a24d203f"
+        },
+        {
+          "file": "06-photo-attached.png",
+          "caption": "The photo is attached; crop to the frame or read it again. With no readable board the app asks you to type the prices.",
+          "strings": [
+            "capture_crop",
+            "capture_reanalyze",
+            "capture_photo_attached"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in",
+            "emulatorArtifact": true
+          },
+          "sha256": "430bf6843d5031121c0d9f3a1fc32f27f6c2f7af9e7fadfec3007ab1c51f5139"
+        },
+        {
+          "file": "07-type-price-and-send.png",
+          "caption": "Add the fuel, type the price (R$ 6,25) and tap \"Enviar\"; blank fuels are not sent.",
+          "strings": [
+            "capture_add_fuel",
+            "capture_review_hint"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/capture/CaptureScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in",
+            "notSubmitted": true,
+            "knownIssue": "Send button reads \"Enviar 1 preços\" (plural not handled)."
+          },
+          "sha256": "a44b1b6105054a2a30eb71028b77e450225148799a3bb0c5bff3cbeea5f84054"
+        },
+        {
+          "file": "08-my-contributions.png",
+          "caption": "\"Minhas contribuições\" tracks sends, queue and cancellations on this device only.",
+          "strings": [
+            "profile_contributions_section",
+            "profile_tool_contributions_title",
+            "contributions_screen_subtitle"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/MyContributionsScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/MyContributionsScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/ui/profile/ProfileScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt",
+            "account": "signed-in"
+          },
+          "sha256": "7139e702ca09119066d109290a756677a46b546b743c5c42e68a4a6ec46cf249"
+        }
+      ]
+    },
+    {
+      "id": "games",
+      "title": "Offline games",
+      "summary": "Two offline mini-games with local records only.",
+      "landingTargets": [],
+      "steps": [
+        {
+          "file": "01-games-hub.png",
+          "caption": "\"Games\": play offline, even without an account; records stay on the device.",
+          "strings": [
+            "games_heading",
+            "games_no_rank"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/games/GamesScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/games/GamesScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "488f32b385f646f28f06ea6d195d5b73a097b136f92fa5801b5737f54ecce98a"
+        },
+        {
+          "file": "02-second-game.png",
+          "caption": "Fuel Run and accessibility options: mute, reduce motion, save battery.",
+          "strings": [
+            "games_settings",
+            "games_muted"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/games/GamesScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/games/GamesScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "624d4ed922b6200bc1ce4fc36492c91aecc06602469f864f28122385a0cba1f9"
+        },
+        {
+          "file": "03-how-to-play.png",
+          "caption": "Each game explains how to play before \"Começar\".",
+          "strings": [
+            "games_how_to",
+            "games_select_other"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/games/GamesScreen.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/games/GamesScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "c1904f253d33160eb4be7547d2133d8dff4cdb3df4a7feb4585631298aa8558e"
+        },
+        {
+          "file": "04-match-over.png",
+          "caption": "End of a match with the score and the local record.",
+          "strings": [
+            "games_finish"
+          ],
+          "extraSources": [
+            "app/src/main/kotlin/com/anpfuel/app/games/GamesScreen.kt",
+            "app/src/main/kotlin/com/anpfuel/app/games/ArcadeView.kt"
+          ],
+          "sources": [
+            "app/src/main/kotlin/com/anpfuel/app/games/ArcadeView.kt",
+            "app/src/main/kotlin/com/anpfuel/app/games/GamesScreen.kt"
+          ],
+          "context": {
+            "city": "sorriso-mt"
+          },
+          "sha256": "0a33a39c6b8cf16fe893ca910a5f0f8e4c5531ba4af602e75f50a871dcce89e3"
+        }
+      ]
+    }
+  ],
+  "textOnlySteps": [
+    {
+      "feature": "account",
+      "afterStep": "01-guest-profile.png",
+      "text": "Type a username (3–20 letters and numbers, starting with a letter) and tap \"Criar conta\". The account screens are protected with FLAG_SECURE so the account key never appears in screenshots.",
+      "sources": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/auth/AuthScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/auth/AccountKeyCard.kt"
+      ]
+    },
+    {
+      "feature": "account",
+      "afterStep": "02-signed-in-profile.png",
+      "text": "To delete: Profile → \"Gerenciar conta\" → \"Excluir minha conta\" → \"Sim, excluir\". This screen is FLAG_SECURE; the web path is /excluir-conta/.",
+      "sources": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/account/AccountScreen.kt"
+      ]
+    },
+    {
+      "feature": "forum",
+      "afterStep": "07-new-topic-options.png",
+      "text": "On a topic or comment written by someone else, the ⋮ menu offers \"Denunciar tópico\", \"Denunciar comentário\", \"Denunciar usuário\" and \"Bloquear usuário\". Staging had only official editorial posts, which do not show the menu, so these dialogs were not captured.",
+      "sources": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/forum/ForumDetailScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/safety/CommunitySafetyUi.kt"
+      ]
+    },
+    {
+      "feature": "profile-and-tools",
+      "afterStep": "04-project-contributors.png",
+      "text": "\"Modo empresa\", \"Entrar em uma empresa\" and \"Meus relatos privados\" are FLAG_SECURE screens and are not captured.",
+      "sources": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/enterprise/EnterpriseContextScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/enterprise/EnterpriseInvitationScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/quality/QualityReportsScreen.kt"
+      ]
+    }
+  ]
+}

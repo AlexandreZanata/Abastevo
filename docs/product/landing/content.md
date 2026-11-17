@@ -20,7 +20,11 @@ initial-transfer measurement and inspect layout/contrast after loading/fallback.
 The follow-up visual/tutorial request uses branch `landing`; see the
 bounded redesign plan.
 The home opening introduces the genuine app gallery and tutorial section.
-Only actual app captures may appear in mockups or step walkthroughs.
+Only actual app captures may appear in mockups or step walkthroughs. Tutorial
+captures come from [docs/assets/app-tutorial](../../assets/app-tutorial/README.md)
+and follow its [capture contract](../../assets/app-tutorial/CAPTURE_CONTRACT.md):
+derivatives keep the capture stem and quoted app labels match the current
+pt-BR strings, so a changed app screen points at the page or field to update.
 
 ## Page inventory
 
@@ -342,6 +346,77 @@ The "Explore o que dá para fazer" cards then moved into a black band directly
 under the hero, with larger art, one short line each and an arrow; on phones
 they scroll horizontally with snap points.
 
+
+## LH11 tutorial captures amendment — 2026-11-17
+
+Owner scope: replace the 1220 × 2712 gallery and tutorial captures with the
+17 Nov 2026 Android captures under the
+[capture contract](../../assets/app-tutorial/CAPTURE_CONTRACT.md), finish every
+published `/como-usar/` chapter, add in-app steps to every guide and
+calculator, and polish sections inside the LH08–LH10 style.
+
+- **Gallery.** `#aplicativo` shows six 9:16 captures in product order: ANP
+  weekly prices, community and ANP on a station page, route to a station,
+  tank-fill cost, survey weeks, forum. The section head is the title alone
+  (owner request, 2026-11-17) and never names an app version; source and
+  week stay visible in the captures, their captions and alt text, and the
+  capture date in the tutorials and guides. On phones it is one snapping row;
+  no script, autoplay or carousel control.
+- **Derivatives.** Only files listed in
+  `landing/static/assets/app/provenance.json` ship: WebP at 360, 720 and
+  1080 px from the 1080 × 1920 masters with the recorded parameters, named
+  `<feature>-<NN-slug>-<width>w.webp`. A 1080w file above the 120 KiB budget
+  is not shipped. A derivative no page uses is removed with its entry.
+  Captures marked `emulatorArtifact` or `knownIssue` in the manifest never
+  ship.
+- **Chapters.** A step quotes the exact pt-BR label and highlights the
+  control on the master pixels. A screen that cannot be shown (protected
+  against capture, emulator camera scene, known app defect) is a text-only
+  step (`textOnly` in `lesson.json`) that says why; nothing is mocked up. The
+  sixteen published chapters are `Disponível`; unpublished ones keep
+  `Em breve`/`Planejado` without a link. Chapter text never states a store
+  listing.
+- **Guides and calculators.** Every guide has "Como fazer no aplicativo"
+  (2–5 numbered steps, 2–4 captures, link to the chapter) and every calculator
+  "No aplicativo". Wording follows the claim classes above: development
+  status, dated ANP reference, community apart from ANP. Station ratings and
+  comments stay "em breve" while the app keeps them behind its feature flag.
+- **Home refinements (owner request, 2026-11-17).** The heads of "Preços por
+  estado", "Guias populares", "Ferramentas" and the gallery are the title
+  alone, with no intro line. A secondary action is an outline button (1 px
+  `--ink` border, no underline) beside the solid primary button. Guide and
+  calculator cards are white with a 1 px `--line` outline: title, summary and
+  an arrow at the foot, plus the category above the title where a list mixes
+  categories (home, "Leia também", a calculator's related guides). The two
+  feature art tiles are flat `--surface` with no gradient; from 80rem up they
+  keep the LH09 equal height with the copy column, and between 64rem and
+  80rem they stay square. The Android and "Código disponível" cards lead
+  with icon and title, then the description, then the actions, with no
+  divider; the prelaunch store notice is a plain white status row, never
+  styled as a button, and "Copiar link" is white with an ink outline.
+- **Tutorial pages (owner request, 2026-11-17).** On the hub, a published
+  chapter is a white outlined card and the whole card is its link (one link
+  per card, on the title); an unpublished chapter is a flat, quieter tile
+  with no link, as B-BR-LH10-02 requires. Each card shows the TU number, the
+  availability label, the title and the step summary. A chapter ends with two
+  equal previous/next buttons, each a direction label over the chapter title,
+  centred.
+- **Enlarged captures (owner request, 2026-11-17).** With JavaScript, a
+  click or Enter on any app capture (gallery, tutorial step, guide or
+  calculator strip) opens it larger in a native modal dialog over a blurred,
+  darkened page, with its alt text as caption. The close button, a click
+  outside the capture or Escape closes it and returns focus. Without
+  JavaScript the captures stay plain images; no dialog markup ships in HTML.
+- **Hero art (owner request, 2026-11-17).** The road, car, skyline and trees
+  scene of LH09 is replaced by one hand-authored SVG: the approved brand mark,
+  unchanged, on a dotted field with two route ribbons in the mark colours,
+  map pins and two abstract interface cards. It carries no text or numerals
+  and is decorative (`alt=""`), never price or coverage evidence. Master and
+  composing script: `docs/assets/landing/hero-mark-20261117/`.
+- **Polish.** Spacing, alignment, frames, hover/focus/pressed states and
+  responsive fixes only. Tokens, fonts, brand, URLs, titles and structured
+  data are unchanged; a chapter meta description changes only when the old
+  one described the retired captures.
 
 ## Legal pages shared UI — 2026-11-05
 

@@ -7,7 +7,7 @@ slug: gasolina-comum-ou-aditivada
 category: escolher-combustivel
 tags: [gasolina, gasolina-aditivada, octanagem, qualidade, manutencao]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /guias/combustivel-adulterado/
   - /ferramentas/etanol-ou-gasolina/
@@ -87,6 +87,19 @@ Se o seu carro é flex, antes de decidir entre comum e aditivada vale comparar a
 ## A qualidade também depende do posto
 
 Qualquer gasolina, comum ou aditivada, só entrega o que promete se estiver dentro da especificação. Se o carro começar a falhar, perder potência ou consumir mais logo depois de um abastecimento, veja o guia [combustível adulterado: como identificar e denunciar](/guias/combustivel-adulterado/).
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. Para comparar os dois tipos com a referência da mesma semana:
+
+1. Em "Preços na sua cidade", compare os cartões "Gasolina comum" e "Gasolina aditivada": cada um mostra a média semanal da ANP e quantos postos foram pesquisados.
+2. Toque em um dos cartões para abrir a tela "Postos" e, no seletor "Combustível", alterne entre os dois tipos para comparar posto a posto. "Gasolina premium" aparece como opção separada.
+3. Confira a data da coleta em cada cartão de posto antes de comparar.
+
+![Seção “Preços na sua cidade” em São Paulo, SP, com cartões de etanol, gasolina comum e gasolina aditivada, cada um com o selo ANP e o número de postos pesquisados.](/assets/app/fuel-prices-01-anp-average-cards-720w.webp "Passo 1: gasolina comum e aditivada na referência ANP de São Paulo, SP, semana de 8 a 14 de nov. de 2026.")
+![Lista “Combustível” sobre a tela “Postos”, com etanol marcado e as opções gasolina comum, gasolina aditivada, diesel, GNV, GLP e gasolina premium.](/assets/app/stations-03-choose-fuel-720w.webp "Passo 2: seletor “Combustível” na lista de postos.")
+
+O passo a passo completo está nos tutoriais [Consultar a tabela ANP](/como-usar/precos-anp/) e [Encontrar e navegar até um posto](/como-usar/postos/).
 
 ## Fontes
 

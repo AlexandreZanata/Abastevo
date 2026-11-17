@@ -122,6 +122,50 @@ test('images require alt text and a local /assets/ source', () => {
   assert.throws(() => render('texto ![alt](/assets/a.png) no meio'), /stand alone/);
 });
 
+const captureInfo = (src) => (src === '/assets/app/map-05-route-preview-720w.webp'
+  ? {
+    width: 360,
+    height: 640,
+    candidates: [
+      { src: '/assets/app/map-05-route-preview-360w.webp', width: 360 },
+      { src: '/assets/app/map-05-route-preview-720w.webp', width: 720 },
+    ],
+  }
+  : null);
+
+test('app captures get explicit dimensions and a srcset from the asset lookup', () => {
+  const { html } = renderMarkdown('![Rota até o posto "A & B"](/assets/app/map-05-route-preview-720w.webp "Passo 1: <rota>")', { imageInfo: captureInfo });
+  assert.equal(
+    html,
+    '<figure class="article-figure app-capture"><img src="/assets/app/map-05-route-preview-720w.webp" '
+      + 'srcset="/assets/app/map-05-route-preview-360w.webp 360w, /assets/app/map-05-route-preview-720w.webp 720w" '
+      + 'sizes="(min-width: 48rem) 192px, 208px" width="360" height="640" '
+      + 'alt="Rota até o posto &quot;A &amp; B&quot;" loading="lazy" decoding="async">'
+      + '<figcaption>Passo 1: &lt;rota&gt;</figcaption></figure>',
+  );
+  // Without a lookup, or for a capture the provenance does not list, the build fails.
+  assert.throws(() => render('![alt](/assets/app/map-05-route-preview-720w.webp)'), /asset provenance/);
+  assert.throws(() => renderMarkdown('![alt](/assets/app/unknown-720w.webp)', { imageInfo: captureInfo }), /asset provenance/);
+  assert.throws(() => renderMarkdown('![](/assets/app/map-05-route-preview-720w.webp)', { imageInfo: captureInfo }), /alternative text/);
+  // The lookup cannot smuggle markup or a remote candidate into the output.
+  const hostile = () => ({ width: 360, height: 640, candidates: [{ src: 'https://evil.example/x.webp', width: 360 }] });
+  assert.throws(() => renderMarkdown('![alt](/assets/app/x-720w.webp)', { imageInfo: hostile }), /local \/assets\//);
+  const badSize = () => ({ width: '360" onload="x', height: 640, candidates: [{ src: '/assets/app/x-360w.webp', width: 360 }] });
+  assert.throws(() => renderMarkdown('![alt](/assets/app/x-720w.webp)', { imageInfo: badSize }), /Invalid dimensions/);
+});
+
+test('image lines that follow each other become one named, focusable strip', () => {
+  const capture = '![Rota](/assets/app/map-05-route-preview-720w.webp "Passo 1")';
+  const { html } = renderMarkdown(`${capture}\n${capture}`, { imageInfo: captureInfo });
+  assert.match(html, /^<div class="article-figures" role="group" aria-label="Capturas de tela do aplicativo" tabindex="0"><figure class="article-figure app-capture">/);
+  assert.equal((html.match(/<figure /g) || []).length, 2);
+  assert.ok(html.endsWith('</figure></div>'));
+  // A blank line keeps figures separate, and mixed strips get the generic name.
+  assert.doesNotMatch(renderMarkdown(`${capture}\n\n${capture}`, { imageInfo: captureInfo }).html, /article-figures/);
+  assert.match(renderMarkdown(`${capture}\n![Bomba](/assets/art/pump.webp)`, { imageInfo: captureInfo }).html, /aria-label="Sequência de imagens"/);
+  assert.throws(() => renderMarkdown(`${capture}\n![](/assets/art/pump.webp)`, { imageInfo: captureInfo }), /alternative text/);
+});
+
 test('NUL characters are rejected and word counts ignore markup', () => {
   assert.throws(() => render('a\u0000b'), /NUL/);
   assert.equal(renderMarkdown('## Dois títulos\n\nTrês palavras aqui. R$ 5,00').words, 7);

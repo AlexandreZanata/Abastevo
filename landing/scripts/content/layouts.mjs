@@ -119,12 +119,18 @@ ${head}
 `;
 }
 
-function card(entry) {
-  return `<li><a class="topic-card" href="${esc(entry.route)}"><strong>${esc(entry.title)}</strong><span>${esc(entry.summary || entry.description || '')}</span></a></li>`;
+const CARD_ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>';
+
+function card(entry, kicker) {
+  const label = kicker ? `<span class="topic-kicker">${esc(kicker)}</span>` : '';
+  return `<li><a class="topic-card" href="${esc(entry.route)}">${label}<strong>${esc(entry.title)}</strong><span class="topic-summary">${esc(entry.summary || entry.description || '')}</span><span class="topic-arrow" aria-hidden="true">${CARD_ARROW}</span></a></li>`;
 }
 
-function cardList(entries) {
-  return `<ul class="topic-cards">\n        ${entries.map(card).join('\n        ')}\n      </ul>`;
+// With `site`, each guide card names its category above the title: use it
+// where the list mixes categories, not inside a category's own block.
+function cardList(entries, site) {
+  const kickerFor = (entry) => (site ? site.categories.find((category) => category.slug === entry.category)?.name : undefined);
+  return `<ul class="topic-cards">\n        ${entries.map((entry) => card(entry, kickerFor(entry))).join('\n        ')}\n      </ul>`;
 }
 
 function linkList(site, routes) {
@@ -207,7 +213,7 @@ ${guide.html}
         </section>
         <section class="article-section" aria-labelledby="leia-tambem">
           <h2 id="leia-tambem">Leia também</h2>
-          ${cardList(readAlso)}
+          ${cardList(readAlso, site)}
         </section>
       </article>`;
   return documentHtml({
@@ -453,7 +459,7 @@ ${tool.html}
         </section>
         <section class="article-section" aria-labelledby="guias-relacionados">
           <h2 id="guias-relacionados">Guias relacionados</h2>
-          ${cardList(relatedGuidesList.map((route) => site.registry.get(route)))}
+          ${cardList(relatedGuidesList.map((route) => site.registry.get(route)), site)}
           ${relatedOther.length > 0 ? linkList(site, relatedOther) : ''}
         </section>
       </article>`;
@@ -532,7 +538,6 @@ export function renderHomeStates() {
       <div class="shell">
         <div class="block-head">
           <h2 class="h2">Preços por estado</h2>
-          <p>Referência semanal da ANP por estado e cidade pesquisada, com a data da coleta. É amostra oficial da semana, não o preço do posto agora.</p>
         </div>
         <ul class="state-grid">
           ${items.join('\n          ')}
@@ -547,9 +552,8 @@ export function renderHomeGuides(site) {
       <div class="shell">
         <div class="block-head">
           <h2 class="h2">Guias populares</h2>
-          <p>Como o preço se forma, qual combustível compensa e o que fazer quando algo dá errado no posto, sempre com fonte oficial.</p>
         </div>
-        ${cardList(site.popularGuides)}
+        ${cardList(site.popularGuides, site)}
         <div class="lp-actions"><a class="text-link" href="/guias/">Ver todos os guias</a></div>
       </div>
     </section>`;
@@ -560,7 +564,6 @@ export function renderHomeTools(site) {
       <div class="shell">
         <div class="block-head">
           <h2 class="h2">Ferramentas</h2>
-          <p>Calculadoras gratuitas, sem cadastro, com a fórmula explicada em cada página.</p>
         </div>
         ${cardList(site.tools)}
         <div class="lp-actions"><a class="text-link" href="/ferramentas/">Ver todas as ferramentas</a></div>
