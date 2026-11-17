@@ -1,1849 +1,250 @@
-# Backend workspace
+# Backend
 
-Status: P01-T01…T12 foundations exist: API/worker/migrator roots, typed config,
-redacted telemetry, HTTP/health lifecycle, pgx pool, migration runner, sqlc,
-container definitions and base OpenAPI vectors. Business modules and
-production infrastructure remain ahead. See [current state](../docs/planning/PROGRESS.md)
-and [prior task evidence](../docs/planning/history/P01_FOUNDATION_EVIDENCE.md);
-this documentation revision does not rerun those suites or verify remote CI.
+Go modular monolith behind the Abastevo Android app, the static landing/portal,
+the admin panel (`admin-web/`) and the company web app (`business-web/`). It
+owns the public `/v1` API, background jobs, the schema and the operator CLI;
+not the Android code, the web builds or the Rust preparers
+(`tools/station-prep/`), which it only invokes as trusted binaries. Stack: Go
+`go1.27.4` (`go.mod` toolchain), net/http + chi, pgx, sqlc, slog, PostgreSQL 18
++ PostGIS 3.6, private S3-compatible storage.
 
-Tooling pins: Go toolchain `go1.27.4` (`go.mod`); `sqlc v1.31.1`
-(`sqlc vet && sqlc generate` from `backend/`; generated packages committed).
-`chi v5.3.2`, `pgx v5.11.0` (both MIT, permissive transitives only).
-`staticcheck v0.8.1` (MIT), `govulncheck v1.8.0`, `vacuum v0.30.6` (MIT).
-Static binaries must be built with Go ≥1.27 or typechecking fails; install
-with `GOTOOLCHAIN=go1.27.4 go install <tool>@<version>`. The pinned
-staticcheck predates the go1.27.2 export format, so the fast gate runs
-`staticcheck` itself under `GOTOOLCHAIN=go1.27.1` (see
-`scripts/check-backend-fast.sh`).
+## Layout
 
-## Verification entry points (P01-T13)
+| Path | Contents |
+|------|----------|
+| `cmd/api` | Public HTTP process (`/v1`, `/health/live`, `/health/ready`). Never runs DDL. |
+| `cmd/worker` | Background-job process over the PostgreSQL queue (dispatchers, schedules, source imports). |
+| `cmd/migrate` | One-shot migrator: applies the embedded chain with a lock/checksum ledger. |
+| `cmd/ops` | Restricted operator CLI (shipped as `/ops` in the api image); every command is audited. |
+| `cmd/station-*` | Offline official-data tools: `station-sync` (daily registry refresh), `station-load`, `station-prices`, `station-locate`, `station-review`, `station-discover`. |
+| `cmd/map*`, `cmd/portal*`, `cmd/charging-catalog` | Map overlay/distribution signing and verification, static portal generation/verification/promotion, EV catalog review. |
+| `internal/modules/<module>/` | One bounded context each: `domain/` (pure rules), `application/` (use cases and ports), `adapters/` (sqlc/pgx stores, `http/` handlers, jobs). |
+| `internal/platform/` | Shared infrastructure: `config`, `database`, `migrate`, `httpserver`/`httpapi`, `jobs`, `telemetry`, `health`, `apicontract` (OpenAPI and golden-vector tests), `runtimegrants`, and the enterprise plane (`orgapi`, `orgquota`, `orgtest`, `enterprisesuite`). |
+| `db/migrations/` | Embedded, append-only SQL chain plus `schema_min_supported` (release compatibility floor). |
+| `db/queries/<owner>/` | sqlc query files and the committed generated package for one owning module (`sqlc.yaml`). |
+| `db/seeds/` | Idempotent dev/staging data; never part of the migration chain. |
+| `db/templates/organization_private.sql` | Template for new private organization tables (forced RLS, root FKs, grants). |
+| `testdata/` | Load seed, e2e rehearsal and forum source fixtures (synthetic only). |
+| `tools/staging-*` | Narrow staging fixtures/repairs; never run against production. |
 
-Shared local/remote composition lives in `Makefile` and `scripts/`:
+Module groups (names under `internal/modules/`):
 
-```sh
-make quick-verify    # bounded gate: manifest + selection + fast checks + govulncheck
-make verify-release  # quick + full-matrix report (foundation subset, NOT CERTIFIED)
-make test-gate       # focused harness for selection/failure behavior
-```
+- Public and community: `directory` (canonical stations), `official` (ANP
+  revisions), `quality`, `charging`, `mapdata`, `mapdist`, `exploration`,
+  `community`, `trust`, `review`, `forum`, `feedback`, `moderation`, `safety`,
+  `metrics`, `alerts`.
+- Accounts and personal data: `identity` (proof-of-possession profile),
+  `account`, `contributor`, `evidence` (private photo uploads), `privacy`,
+  `cloudsync`, `driver`, `ledger`, `payments`, `subscription`, `entitlement`.
+- Operators: `admin`, `staff`.
+- Abastevo Empresas (private organizations): `organization`, `membership`,
+  `orgaccess`, `companysession`, `orgcapability`, `orgaudit`, `orgevent`,
+  `orgsync`, `orgtime`, `orgvalue`, `orgmedia`, `orgnotify`, `orgexport`,
+  `orgamend`, `fleet`, `fueling`, `expense`, `budget`, `trip`, `tracking`,
+  `maintenance`, `document`, `stationprofile`, `enterpriseexport`; `kernel` is
+  the shared value kernel.
 
-Manifest `scripts/check-manifest.txt` lists required quick packages and
-checks; missing packages or zero matched tests fail. Docs-only changes run
-docs checks plus contract reference integrity; code changes run the full
-quick set. Unclassified paths, missing tools and secrets in working tree or
-committed PR diff fail. `go test -run '^$'` is compile-only and never counts
-as behavioral evidence. Measured quick budget is 300s warm cache.
-
-Required CI is the always-on **Quick verification** job (`.github/workflows/quick.yml`):
-it runs `make quick-verify` on every PR including drafts plus main pushes, with
-no path filter, so docs-only changes still report a meaningful required result.
-`backend.yml` fast/integration and `ci.yml` test keep running path-triggered as
-non-required signal; their task-level and phase-exit evidence stays mandatory
-per [CI_PLAN](../docs/planning/CI_PLAN.md).
-
-Existing gates below remain binding until G01-FLOW T17 migrates CI/protection.
-
-Fast gate, no database (from the repository root):
-
-```sh
-bash scripts/check-backend-fast.sh   # gofmt, build, vet, unit tests,
-                                     # staticcheck, sqlc vet/diff, vacuum lint,
-                                     # tracked + changed-file secret scans
-cd backend && govulncheck ./...
-```
-
-Integration gate, real disposable PostGIS (from the repository root):
+## Run locally
 
 ```sh
-cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml --bin prepare_registry --bin prepare_quality --bin prepare_sanctions --bin prepare_fine_history --bin prepare_enforcement --target-dir /tmp/abastevo-integration-rust
-export ANPFUEL_TEST_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_registry
-chmod 755 /tmp/abastevo-integration-rust/debug/prepare_quality
-export ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality
-chmod 755 /tmp/abastevo-integration-rust/debug/prepare_sanctions
-export ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions
-chmod 755 /tmp/abastevo-integration-rust/debug/prepare_fine_history
-export ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_fine_history
-chmod 755 /tmp/abastevo-integration-rust/debug/prepare_enforcement
-export ANPFUEL_TEST_ENFORCEMENT_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_enforcement
-docker compose -f infra/compose.dev.yml up -d db
-(
-  cd backend
-  export ANPFUEL_DATABASE_URL=postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable
-  export ANPFUEL_TEST_DATABASE_URL="$ANPFUEL_DATABASE_URL"
-  go run ./cmd/migrate && go test -race -count=1 -tags=integration ./...
-)
+docker compose -f infra/compose.dev.yml up -d db   # PostGIS on 127.0.0.1:5434 (repo root)
+cd backend
+go run ./cmd/migrate
+go run ./cmd/api      # :8080; development defaults to the loopback compose DB
+go run ./cmd/worker
 ```
 
-Integration fails when PostGIS is unreachable; it never skips. CI
-(`.github/workflows/backend.yml`) runs both gates path-aware on backend,
-contract, infra and gate-script changes; the Android workflow keeps running
-`./gradlew test` on Android paths and skips pure docs/contract/backend edits.
-
-Continue with [P01-T13](../ROADMAP.md#p01-t13); read [architecture](../docs/backend/TARGET_ARCHITECTURE.md) and [test strategy](../docs/backend/TEST_STRATEGY.md) as the selected task requires. P02 starts after G01 and G01-FLOW; subsequent phases add owned business modules and explicit SQL incrementally.
-
-The Android source remains in its original root modules. Do not move it under a new mobile directory.
-
-## Complete local backend validation
-
-From the repository root, `bash scripts/tests/test-local-backend.sh` creates a
-unique disposable Compose project with tmpfs PostGIS and a private S3 emulator.
-It runs all unit/integration suites under the race detector, actual API + worker
-HTTP/media flows, static/vulnerability checks, infrastructure/deploy harnesses,
-encrypted backup, restored deletion-ledger replay, bounded load and DB outage.
-It clears inherited runtime DSN/storage settings and never selects the shared
-`infra/compose.dev.yml` database. Only its own project is removed on exit.
-Reports remain in a printed `/tmp` directory; set `ANPFUEL_LOCAL_REPORT_DIR` to
-choose a local output path. The container credentials are synthetic test values.
-These tmpfs services lose all data on removal; they are not production storage.
-
-The restore harness also needs the disposable `ANPFUEL_TEST_STORAGE_{ENDPOINT,
-BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}` settings supplied by this runner.
-It first proves that missing storage refuses an evidence-erasure acknowledgement,
-then replays the restored deletion ledger with the private S3 fixture configured.
-The enforcement integration cases require the trusted `prepare_enforcement` CLI,
-which the full runner builds and exports alongside the other native preparers.
-
-For an already running synthetic API on a local/private literal IP, run:
-
-```sh
-ANPFUEL_LOCAL_API_URL=http://172.19.2.11:18093 bash scripts/tests/test-local-edge.sh
-```
-
-This starts the pinned production Caddy image with an ephemeral internal CA,
-validates TLS 1.2/1.3, health and route isolation, and checks synthetic location/
-signature/cookie markers are absent from logs. It does not modify system trust
-or obtain public certificates. The test edge and its keys are removed on exit.
-Local test success is distinct from G09 certification and public deployment.
-
-### Signed app writes against a local API
-
-The debug app's local proof build (`-PmapApiLocalProof=true`, for example
-`./gradlew :app:assembleMapProbe -PmapApiLocalProof=true`, which installs as a
-separate `com.anpfuel.app.mapprobe` app) talks to `http://127.0.0.1:18080` through
-`adb reverse tcp:18080 tcp:18080` and signs `@authority` with that port. Only in
-development, `ANPFUEL_CANONICAL_HOST` therefore accepts a loopback `host:port`:
+`backend/.env.example` documents the local keys. For the Android map-probe
+build talking to a local API (`./gradlew :app:assembleMapProbe
+-PmapApiLocalProof=true`, `adb reverse tcp:18080 tcp:18080`), development
+alone accepts a loopback `host:port` canonical host:
 
 ```sh
 ANPFUEL_ENV=development ANPFUEL_HTTP_ADDR=127.0.0.1:18080 \
 ANPFUEL_CANONICAL_HOST=127.0.0.1:18080 ANPFUEL_FORUM_ENABLED=true go run ./cmd/api
 ```
 
-Staging and production keep refusing anything but a bare public hostname.
+Images: `docker build -f infra/docker/Dockerfile --target <api|worker|migrate|station-load> .`
+from the repository root (static binaries on distroless, user 65532; the worker
+image also carries the Rust preparers).
 
-### Community safety: report and block users (B-BR-SAFE-01…09)
+## Test
 
-`internal/modules/safety` owns `community_user_blocks` and
-`community_user_reports` (migration 000239) behind five signed routes under
-`/v1/community/` ([contract](../docs/product/COMMUNITY_SAFETY_CONTRACT.md)).
-Authors come from forum and feedback lookups wired in `cmd/api/safety.go`;
-account erasure runs `safety.EraseAccountBatch` after Forum. Unit tests need no
-database; the store suite needs disposable PostGIS:
+| Scope | Command |
+|-------|---------|
+| Unit | `cd backend && go test ./...` |
+| Fast gate, no DB | `bash scripts/check-backend-fast.sh` (gofmt, build, vet, unit, staticcheck, `sqlc vet`/`sqlc diff`, OpenAPI lint, secret scans) then `cd backend && govulncheck ./...` |
+| Change-aware gate | `make quick-verify` (the required `Quick verification` check) |
+| Contracts | `cd backend && go test -count=1 ./internal/platform/apicontract` |
+| Integration | see below; real PostGIS, race detector |
+| Full local matrix | `make test-local-backend` (`scripts/tests/test-local-backend.sh`) |
+| Local TLS edge | `ANPFUEL_LOCAL_API_URL=http://<loopback-or-private-ip>:<port> make test-local-edge` |
 
-```sh
-go test -race -count=1 ./internal/modules/safety/...
-go test -race -count=1 ./cmd/api/ -run 'Safety'
-ANPFUEL_TEST_DATABASE_URL=postgres://...disposable... \
-  go test -race -count=1 -tags=integration ./internal/modules/safety/... \
-  ./internal/modules/forum/... ./internal/modules/feedback/... ./internal/modules/moderation/...
-```
-
-### Private Empresas activation (EMP-PLAT-005)
-
-`ANPFUEL_ENTERPRISE_ENABLED` defaults to false. Future organization-route
-composition passes `Config.EnterpriseEnabled` into `orgapi.Gateway.Enabled`
-and `orgcapability.Service.Enabled`. Changing this startup flag requires the
-normal rollout; it does not enable an organization capability or grant a role.
-There are no enterprise business routes or concrete AUTH providers in this
-foundation checkpoint.
-
-Per-organization switches are registered by source and persisted under forced
-RLS. Missing rows deny new writes. An authorized operator changes one switch
-through the audited service with an operation ID and expected revision;
-disabled capabilities preserve authorized reads/exports and all stored data.
-See the [transaction and composition contract](../docs/enterprise/09-architecture.md#101-implemented-capability-foundation).
-Use an ordinary non-owner, non-BYPASSRLS runtime login; backup/restore retains
-the separately reviewed authority needed for forced-RLS tables.
-
-### Final PR202 review corrections (enterprise plane)
-
-Migrations 000179–000183 are additive corrections: team periods close only on
-access reductions, settings re-prove availability only for changed
-designations, the all-zero CNPJ is refused, accounts bind to memberships only
-while INVITED, and new role periods cannot start in the past or be already
-ended. Legal, structure and employee reads take shared account/root locks;
-writes and settings reads keep exclusive locks. `WithOrgTx` pins READ
-COMMITTED and `ValidateOrgTx` refuses other levels; account-module
-transactions rely on the server default, which must stay READ COMMITTED.
-Organization creation authenticates before body validation and passes an
-account-axis write admission.
-
-Before enabling `ANPFUEL_ENTERPRISE_ENABLED` for real accounts: ownership
-transfer or BR-ORG-028 closure must exist (the creator is otherwise the
-permanent sole OWNER and cannot delete the personal account), and the
-ordinary runtime role needs the full grant inventory, including SELECT on
-`org_settings_heads` for the role that deletes accounts. See the
-[review record](../docs/enterprise/evidence/f1-pr202-review.md#final-review-head-45230e28).
-
-### Runtime role and grant inventory (EMP-REL-002 activation)
-
-The ordinary runtime login of the composed API and worker is provisioned only
-by the generated, idempotent `infra/db/runtime-role.sql` (B-BR-EMP-556..558,
-EDR-363..366). `internal/platform/runtimegrants` derives it from the SQL of the
-`cmd/api` and `cmd/worker` production build closure and the migrated head
-(SECURITY INVOKER bodies, policies, defaults, checks, views) plus a reviewed
-exception list; per relation it grants only `SELECT`/`INSERT`/`UPDATE`/`DELETE`
-as needed, never `TRUNCATE`, DDL, ownership or SECURITY DEFINER access, and the
-meter projection rebuild stays operator-only. The per-task "grants" paragraphs
-above remain the history of each change; this script is the deployable
-inventory. Regenerate after any migration or SQL change and review the diff:
+Integration tests against a disposable PostGIS (from the repository root):
 
 ```sh
-ANPFUEL_RUNTIME_GRANTS_WRITE=1 ANPFUEL_TEST_DATABASE_URL=postgres://...disposable... \
-  go test -tags=integration -count=1 -run TestRuntimeScriptMatchesHead ./internal/platform/runtimegrants
+cargo +1.99.0 build --locked --manifest-path tools/station-prep/Cargo.toml \
+  --bin prepare_registry --bin prepare_quality --bin prepare_sanctions \
+  --bin prepare_fine_history --bin prepare_enforcement --target-dir /tmp/abastevo-rust
+R=/tmp/abastevo-rust/debug
+chmod 755 $R/prepare_registry $R/prepare_quality $R/prepare_sanctions $R/prepare_fine_history $R/prepare_enforcement
+export ANPFUEL_TEST_PREPARER_PATH=$R/prepare_registry
+export ANPFUEL_TEST_QUALITY_PREPARER_PATH=$R/prepare_quality
+export ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=$R/prepare_sanctions
+export ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=$R/prepare_fine_history
+export ANPFUEL_TEST_ENFORCEMENT_PREPARER_PATH=$R/prepare_enforcement
+docker compose -f infra/compose.dev.yml up -d db
+cd backend
+export ANPFUEL_TEST_DATABASE_URL='postgres://anpfuel:anpfuel@127.0.0.1:5434/anpfuel?sslmode=disable'
+ANPFUEL_DATABASE_URL="$ANPFUEL_TEST_DATABASE_URL" go run ./cmd/migrate
+go test -race -count=1 -tags=integration ./internal/modules/<module>/...   # or ./... (long)
 ```
 
-Without the variable the same test fails when the checked-in script is stale.
-Apply it as the migration owner with
-`psql -v ON_ERROR_STOP=1 -v runtime_role=abastevo_runtime -f infra/db/runtime-role.sql`;
-it refuses another schema version and never sets a password. Proofs:
-`./internal/platform/runtimegrants` (convergence and refusals) and
-`./cmd/api -run TestRuntimeRoleServesProductionProcessAndEnterprise` (the real
-API process and worker as the script role with the enterprise switch on).
-`ANPFUEL_TEST_RUNTIME_GRANTS=script` additionally runs the orgtest suites with
-their pools logged in as a script-provisioned role (test grants land on the
-unused fixture login) and the public process tests with the API and worker as
-that role; tests that revoke from or observe the fixture login are expected to
-fail in that mode (EDR-365). The VPS procedure and rollback are in the
-[activation runbook](../docs/operations/ENTERPRISE_ACTIVATION_RUNBOOK.md); with
-the switch on, `ANPFUEL_R2_ENDPOINT` must be HTTPS or absent.
-
-Operators turn an organization capability on or off only with
-`ops enterprise capability show|set` (B-BR-EMP-560..562, EDR-367/368), which
-composes the audited `orgcapability` service (operation ID, expected revision,
-replay, stale-revision conflict, one `capability.*` audit event with reason
-`operator.request` and the operator UUID as actor). It runs inside the `api`
-container (`kubectl exec … -c api -- /ops …`, the image ships `/ops`) with that
-container's runtime DSN and refuses a login the organization role guard
-refuses, so it never runs as the owner:
-
-```sh
-/ops enterprise capability show --org <uuid> --capability organizations --operator <uuid>
-/ops enterprise capability set --org <uuid> --capability organizations --enabled \
-  --operation-id <uuid> --expected-revision <n> --operator <uuid>
-```
-
-Its proof is `ANPFUEL_TEST_DATABASE_URL=… go test -tags=integration -run
-TestEnterpriseCapabilityCommandOnTheRuntimeRole ./cmd/ops` (script-provisioned
-role; the runtime inventory needs no change for it).
-
-### Organization write admission (EMP-PLAT-014)
-
-Every orgapi.Rule.Write route must provide Gateway.WriteAdmission with a
-matching source policy; registration fails without it. Compose orgquota.New
-with an ordinary non-owner/non-BYPASSRLS pool, the shared privacy key and
-reviewed Definition values. A class maps source permissions to explicit
-organization/account/device budgets and a recorded measured-limit rationale.
-Definitions/key are copied. No production class/default quota is selected
-while business routes/providers remain unmounted. Owning feature tasks must
-measure and record their limits before activation; synthetic test caps are
-not production configuration.
-
-After current membership/permission/capability and freshness succeed, the
-gateway calls admission before module work. orgquota consumes three existing
-identity Limiter.CheckTx counters in one WithOrgTx transaction, using the
-existing write operation and identity_rate_windows table. Common organization
-first, then account, then device gives one lock order. Quota denial or failed
-transaction rolls back all axes; an admitted request still consumes budget
-if later record rules fail. This is request admission, not billing/record
-quota or a replacement for business transactions. Cancellation after admission
-does not run module work or promise to refund an already committed admission.
-
-Subjects are HMAC-framed class/axis/org, adding account and verified device
-key as needed. All axes are organization-scoped. Android key rotation keeps
-organization/account usage; web has a stable account/web bucket because the
-cookie is not a physical-device proof. Cookie rotation cannot mint that
-bucket anew. No raw organization/account/device/IP or key is persisted or
-exposed. The existing limiter uses fixed windows; reads and pre-organization
-company sessions keep their existing policies. Windows use whole seconds,
-up to the existing 24-hour quota-window bound. The existing Cleanup API removes
-expired windows; its scheduling/cadence must be wired and verified before
-enterprise activation (no active cleanup caller was found in this source).
-
-Exhaustion yields private RATE_LIMITED/429 with positive ceil-second
-Retry-After covering every exhausted axis (the denied transaction still reads
-the remaining axes before it rolls back); outages/unsafe roles/missing policies yield unavailable, with
-no raw SQL/provider error. OpenAPI documents the optional retry header.
-Use SELECT/INSERT/UPDATE grants on identity_rate_windows. Replicas must use
-the same class policies, synchronized clocks and stable privacy key across
-live windows. Changing class/window/key requires reviewed rollout; do not
-silently reset active counters. This guard does not replace read-transfer
-concurrency limits or approve any feature activation.
-
-Run race/unit and real-PostGIS integration tests for orgquota/orgapi;
-see [architecture](../docs/enterprise/09-architecture.md#33-implemented-scoped-rate-admission)
-and [evidence](../docs/enterprise/evidence/f1-plat014-scoped-rate-admission.md).
-
-### Private organization telemetry (EMP-PLAT-013)
-
-The API composes orgapi.Observe on the existing httpserver.NewRouter and
-metrics.Registry. It adds no route, collector or listener. Scrape the
-existing private ANPFUEL_METRICS_ADDR listener; public /metrics stays absent.
-No enterprise capability is enabled by observability.
-
-org_requests_total and org_request_seconds_total carry only route, result
-and code. Route is the matched source template or unmatched. Result is
-success/refused/unavailable. Codes are OK, the existing allowlisted
-organization error codes, or REFUSED for an untyped client-error response.
-No request body is parsed for telemetry. The existing 512-series cap and
-metrics_dropped_total remain authoritative. Cumulative seconds support
-mean duration; this task adds no latency histogram or percentile claim.
-
-The transport encloses private handlers/recovery in a private logging context
-and replaces inbound request IDs with server correlation. Generic Info/Warn/
-Error calls in that context drop free messages/attributes and inherited
-client/job/bound-route fields, retaining only fixed event codes and server
-trace. Use the supplied request context. Transport-owned access records
-retain bounded method, source route, actual status and elapsed time. Never
-pass raw URLs to Logger.Request. Session/command/actor/principal/cursor/config
-DTOs redact default formatting and slog, including embedded session DTOs.
-Module-specific values must maintain the same convention.
-
-Install orgapi.Observe once inside the router's recovery boundary, as cmd/api
-does. Panic observations are recorded safely and repanicked for existing
-private recovery. Writer wrappers preserve initial status, implicit writes,
-flush and ResponseController unwrapping. Audit authorization/storage stays
-separate. See [architecture](../docs/enterprise/09-architecture.md#111-implemented-private-telemetry)
-and [evidence](../docs/enterprise/evidence/f1-plat013-private-telemetry.md).
-
-### Transactional organization events (EMP-PLAT-010)
-
-orgevent joins required follow-up to the existing organization audit runner
-and PostgreSQL job queue. Source modules register bounded event/target/consumer
-codes in an immutable catalog. After checking current write authority, call
-the default-off Service.Record with the original audit operation/target,
-positive record revision and required consumers. Every source write uses
-the supplied transaction; audit, immutable intent and consumer jobs commit
-together. Replay binds the original command digest and canonical fan-out.
-A work callback's registered orgapi code (CONFLICT, VALIDATION_FAILED,
-PERIOD_LOCKED, ...) is returned bare, without its wrapping text, after the
-rollback; any other error is an opaque outage. Producers map their module
-refusals, such as capability guards, to registered codes inside the work.
-
-Construct NewHandler with a database-only effect for every catalog consumer
-and register it under org-event in the existing jobs.Dispatcher. It verifies
-the stored intent, exact claimed row, token, worker, payload and live lease
-inside WithOrgTx. Effect and scoped append-only receipt commit together;
-queue acknowledgement stays with Dispatcher. Lost acknowledgement and
-concurrent redelivery cannot repeat the committed database effect.
-The five-claim budget also rejects expired-lease crash loops before another
-effect; normal failures retain the existing one-minute retry and dead replay
-requires an explicit reason. Keep external calls outside these transactions.
-
-Apply additive migration 000168 first. Use an ordinary non-owner/non-BYPASSRLS
-login with explicit queue DML and intent/receipt SELECT/INSERT grants.
-No concrete business producer, effect, API route, worker registration or live
-activation is supplied here; each owning module composes these ports.
-Operator UI/audit, external delivery and retention retain their own tasks.
-Do not delete receipts while their effects can be replayed.
-Run `go test -race -tags=integration ./internal/modules/orgevent/...`
-with an explicit disposable ANPFUEL_TEST_DATABASE_URL. See
-[architecture](../docs/enterprise/09-architecture.md#71-implemented-transactional-event-foundation)
-and [evidence](../docs/enterprise/evidence/f1-plat010-transactional-events.md).
-
-### Organization aggregate (EMP-ORG-001)
-
-organization/domain supplies the scoped immutable root and its lifecycle.
-NewPending needs an explicit kernel.OrgScope and starts at revision one.
-Snapshot requires that same scope. ConfigurePending and Transition check
-the expected revision and return a new value without mutating the original.
-Kind tags are descriptive only; no CNPJ/unit/member/permission is derived.
-The activation checklist reports bounded missing-item codes. Restore and
-closure require explicit confirmed conditions; CLOSED has no outgoing edge.
-
-Rehydrate takes trusted storage state, never client input. Conditions are
-facts resolved by the server, not permission booleans supplied by a client.
-Owning commands must verify current actors/freshness, allocate a fresh ID
-and prevent reusing any persisted ID, persist root/unit/owner atomically,
-apply CAS/audit and perform the lifecycle effects. This task adds none of
-those adapters, routes, jobs or actual closure. Zones use the operation-time
-profile in kernel.LoadTimeZone, so host-only and abbreviated names fail. The
-display name is bounded free text (120 code points, no control or
-bidirectional override characters). Formatting, slog and JSON, including
-nested values, print only redactions. No cross-client timezone
-certification is implied.
-
-```sh
-go test -race ./internal/modules/organization/domain -count=1
-```
-
-See [111 domain vectors](../contracts/testdata/enterprise/README.md#organization-lifecycle-v1)
-and [local acceptance](../docs/enterprise/evidence/f1-org001-organization-domain.md).
-
-### Organization persistence (EMP-ORG-002)
-
-`organization/application` declares scoped repository and explicit-Tx ports;
-`organization/adapters` stores canonical domain snapshots with sqlc/pgx.
-Migration 000169 adds permanent private roots, forced RLS and deferred root
-FKs for audit/capability/events. Existing private IDs retain identity-only
-anchors; missing metadata returns `ErrUninitialized` and cannot be adopted
-by normal create/save. There is no name lookup or global name uniqueness.
-
-Create requires pending setup/revision one; save uses CAS and exact replay.
-Explicit-Tx methods validate the installed scope and ordinary role for the
-owning audit/onboarding transaction. Root identity cannot be removed or
-reopened after closure. Storage maps fields explicitly, retaining domain
-redaction. No runtime providers/grants, onboarding route, owner/unit creation
-or activation is installed. ORG-003 also requires IDN-003 and AUTH-002.
-
-```sh
-go test -race ./internal/modules/organization/... ./internal/platform/database -count=1
-# Explicit disposable ANPFUEL_TEST_DATABASE_URL required:
-go test -race -tags=integration ./internal/modules/organization/... ./internal/modules/orgaudit/... ./internal/modules/orgcapability/... ./internal/modules/orgevent/... ./internal/platform/database ./internal/platform/migrate -count=1
-sqlc vet
-sqlc generate
-```
-
-[Local persistence and upgrade evidence](../docs/enterprise/evidence/f1-org002-organization-persistence.md).
-
-### Private identity domain (EMP-IDN-001)
-
-`membership/domain` separates employee identity/lifecycle from membership
-periods, existing personal/managed account references, credential source
-descriptors, optional driver-profile associations and private device
-enrolments. No platform-wide person record is introduced. Employee register
-fields remain IDN-002; licence content/eligibility remains IDN-014/F2.
-
-Values are scoped, immutable and revisioned. An employee exists without a
-login. Account binding leaves a period INVITED; activation requires an
-active matching employee, bound account and confirmed admission/roles.
-ENDED memberships and REVOKED enrolments cannot reopen; rehire retains the
-employee identity but requires a new period. Automatic employee-return
-reactivation cannot lift a managerial suspension. Managed references cannot
-cross organizations or mix with the existing-account access model.
-ValidateLiveMemberships refuses duplicate live employee/account links within
-a supplied scoped set; it cannot discover rows or replace database uniqueness.
-
-Credential descriptors carry no material or grant. Enrolment checks explicit
-server proof/count/limit facts (personal 1–5; managed 1); revocation preserves
-its class. The existing fingerprint parser is reused. All value/snapshot
-formatting, nested JSON and slog redact identifiers; storage must map fields
-explicitly. Rehydrate functions accept trusted storage, never client DTOs.
-
-Current AUTH/IDN providers, concurrent uniqueness, last-owner row locking,
-atomic effects, tokens, storage, routes and native device acceptance remain
-owning-task work. This package grants no authority and is not wired into
-API/worker production composition.
-
-```sh
-go test -race ./internal/modules/membership/domain ./internal/modules/identity/domain ./internal/modules/account/domain ./internal/modules/kernel ./internal/modules/organization/domain -count=1
-```
-
-See [29 lifecycle vectors](../contracts/testdata/enterprise/README.md#identity-lifecycle-v1)
-and [local acceptance](../docs/enterprise/evidence/f1-idn001-identity-domain.md).
-
-### Membership persistence and account deletion (EMP-IDN-003)
-
-`membership/application` declares ordinary scoped and explicit-Tx storage;
-`membership/adapters` maps fields with sqlc/pgx. Migration 000170 adds minimal
-employee identities and membership periods under forced RLS. Composite FKs,
-non-ENDED employee/account uniqueness, server period times, immutable IDs,
-terminal history and CAS/replay protect the boundary. Employee register
-attributes remain IDN-002; this migration invents no employee/account data.
-
-ActiveByAccount returns only an ACTIVE period for a live account without an
-account-deletion reservation; it never authorizes an action. AUTH-002 now supplies the SQL
-admission/reduction policy from actual role periods and continuous surviving
-owner coverage. No production runtime table grant or route is installed.
-Managed pending references remain descriptive, not account provisioning.
-
-The existing personal deletion/billing-exit flow checks this protection at
-the database boundary before provider cancellation and again at account
-status deletion. An owner-only, trigger-only inventory sees just that
-account's links across organizations. Mutations use normal per-org RLS;
-account references become independent period tombstones while employee,
-organization and original ended history remain. Invited periods can end
-without a role; protected live periods refuse with LAST_OWNER or unavailable
-policy. Personal-account domain remains standard-library-only; application/
-adapters translate bounded refusals. HTTP documents 409/503 without private IDs.
-
-Account locks precede organization locks; composers prelock relevant account
-UUIDs before root/employee writes, then root UUIDs. Billing-exit deletion
-reservations cannot be rewritten or removed while the account remains live.
-The AUTH-002 policy excludes reserved accounts from surviving owners.
-No external call occurs while those locks are held.
-
-```sh
-# ANPFUEL_TEST_DATABASE_URL must point only to disposable PostGIS:
-go test -race -tags=integration ./internal/modules/membership/... -count=1
-go test -race -tags=integration -p 1 ./internal/modules/membership/... ./internal/modules/organization/... ./internal/modules/orgaudit/... ./internal/modules/orgcapability/... ./internal/modules/orgevent/... ./internal/modules/account/adapters ./internal/modules/payments/adapters ./internal/platform/database ./internal/platform/migrate -count=1 -timeout=240s
-go test -race ./internal/modules/account/... ./internal/modules/payments/... ./internal/modules/membership/... ./internal/modules/kernel -count=1
-sqlc vet
-sqlc generate
-```
-
-[Local persistence, ordinary-owner upgrade and failure evidence](../docs/enterprise/evidence/f1-idn003-membership-persistence.md).
-
-### Fixed role and permission catalog (EMP-AUTH-001)
-
-`orgaccess/domain.SystemCatalog` exposes only immutable source descriptors
-from org-roles-v1/org-permissions-v1: 13 canonical roles and 84 exact keys.
-Rules retain originating role, assigned-scope/own-record coverage and all
-matrix restrictions. Live membership/assignment, organization/plan and record
-rules remain mandatory server conditions, including for OWNER. Station
-rules require live authority; fleet/station agreement sides stay separate.
-Representation aliases are metadata, not accepted organization role names.
-
-Lists/rules are copied and sorted. Unknown roles/keys, duplicates and invalid
-compiled source fail closed; there is no dynamic/custom registration. The
-23 keys without matrix rows stay registered but denied, including
-stock.reconcile (the literal two-segment compatibility key). Manage does not
-imply read and paid tiers imply no role. A new grant needs an explicit
-canonical matrix and catalog version change.
-
-The catalog itself contains no private data or current actor proof. AUTH-002
-supplies separate scoped assignment storage and membership/owner SQL policy;
-AUTH-003 implements the current request authority and bound HTTP entry below.
-
-```sh
-go test -race ./internal/modules/orgaccess/domain ./internal/modules/membership/domain ./internal/modules/staff/domain ./internal/modules/stationprofile/domain ./internal/modules/kernel -count=1
-```
-
-See [1,092 descriptor cells](../contracts/testdata/enterprise/README.md#authorization-catalog-v1)
-and [catalog acceptance](../docs/enterprise/evidence/f1-auth001-role-permission-catalog.md).
-
-### Cost-centre management (EMP-ORG-006)
-
-Apply additive migration `000175` before the new API/worker. The enterprise
-factory mounts seven private company-cookie POST operations under
-`/v1/orgs/{org_id}/cost-centres`: create/list, code/read and
-`{cost_centre_id}/read`, change, archive, restore. Current OWNER/ADMIN
-org.structure.manage, exact Origin/Host, CSRF and current membership apply.
-Writes require fresh proof, the organizations pilot flag and the existing
-org.structure synthetic budget. No grants, flag or production budget is seeded.
-
-Names are descriptive and can repeat. Codes are trimmed and compared
-case-insensitively within the organization, permanently reserved across
-current and archived centres. A code correction keeps every old code linked
-to the same stable ID; code/read resolves both old and current labels to
-current authorized metadata. Existing allocations/export snapshots are not
-remapped. An archived code never becomes available to another centre.
-
-The three new tables use forced RLS. The ordinary migration owner needs schema
-creation and REFERENCES on organizations/accounts/audit. Review runtime
-SELECT/INSERT/UPDATE on org_cost_centres and SELECT/INSERT on immutable
-org_cost_centre_codes/commands alongside existing proof/authority/audit/quota
-ports. Code reservations and their current owner have deferred composite FKs;
-centre, alias, audit and receipt commit together. Commit failures return no
-provisional result, with unavailable classification even for a deferred FK
-failure. Keep additive schema/history and disable admission on recovery;
-previous schema-version checks pass, with no destructive down migration.
-
-Cost-centre usage/admission uses the root-locking structure contract. Unknown
-FK consumers of either a centre or its reserved aliases block archive until
-their owning migration supplies actual scoped counts. Immutable aliases and
-command receipts are historical references. The disposable test consumer does
-not implement future budgeting/asset/employee/operation modules. See
-[local cost-centre evidence](../docs/enterprise/evidence/f1-org006-cost-centres.md).
-
-### Operating unit management (EMP-ORG-005)
-
-Apply additive migration `000174` before the new API/worker. The actual
-enterprise factory mounts six company-cookie POST operations under
-`/v1/orgs/{org_id}/units`: create/list and `{unit_id}/read`, change, archive,
-restore. Canonical OpenAPI specifies strict fields and required revisions.
-Current org.structure.manage (OWNER/ADMIN), normal Origin/Host/CSRF and
-membership checks apply. All mutations require fresh company proof,
-organizations pilot capability and the org.structure admission class, bounded
-by the existing identity v1 200/hour on each org/account/web-or-device axis.
-These are synthetic limits; measured production budgets and cleanup remain due.
-
-Unit names/codes are trimmed and unique among active units. Archived units
-retain identity and can be renamed before restoration. Time-zone defaults
-are captured from the current organization on the first command execution;
-later changes never rewrite reporting snapshots. New optional establishment
-links require a scoped declared company; retained existing links survive legal
-withdrawal. Default-off/source synthetic terms admission stays unchanged.
-
-The ordinary schema owner must own org_units and org_unit_guard() for the
-migration, with REFERENCES on organizations/accounts/establishments/audit.
-Review runtime SELECT/INSERT/UPDATE on units and SELECT/INSERT on the new
-forced-RLS immutable org_unit_commands, alongside existing authority/audit/
-quota ports. No production grants or flags are provisioned by this change.
-Keep schema/history and disable the entry on recovery; prior schema checks
-pass and old columns remain. No destructive down migration is supplied.
-
-Current usage is resolved by org_unit_current_usage inside the locked scoped
-transaction. Only actual immutable receipts are known historical consumers.
-An unknown FK blocks archive until its owning module installs its real scoped
-counts and root-serialized admission through org_unit_admit. The test-only
-consumer demonstrates the four categories and concurrency contract; it does
-not implement future fleet/budget/operation modules. LAST_UNIT and
-STRUCTURE_IN_USE return 409; use details expose category names and exact
-decimal-string counts without records. Unknown/malformed counts return 503.
-See [local unit evidence](../docs/enterprise/evidence/f1-org005-operating-units.md).
-
-### Private declared legal parties (EMP-ORG-004)
-
-Apply additive migration `000173` before the new API/worker. With the
-enterprise surface enabled, the actual enterprise factory mounts eight
-cookie-only POST operations under `/v1/orgs/{org_id}/legal-entities`:
-create/list, `{legal_entity_id}/read`, `identifier/read`, `withdraw`, and
-`establishments/create`, `list`, `{establishment_id}/change` beneath the
-parent. Use the canonical OpenAPI for exact paths and strict JSON schemas.
-The normal company-cookie Origin/Host/CSRF checks and current
-org.legal_entity.manage apply. Configuration writes and explicit identifier
-reads require fresh proof; writes also require the current organizations
-pilot flag and the separately bounded org.legal admission class.
-
-Only organizations initialized with the source synthetic terms fixture
-accept these operations. COMPANY validation reuses the numeric/alphanumeric
-CNPJ kernel and creates an explicit first establishment; NATURAL_PERSON
-requires the pinned verification/agreement purpose and valid CPF. Neither
-creates verification, representation, membership or station rights. Default
-views always mask CPF, including for managers. Explicit fresh identifier
-reads commit an access audit before releasing content. No raw identifier
-or name enters receipts, audit, logs or validation details.
-
-The three new tables use forced RLS. The deployment operator must review
-ordinary-role grants for SELECT/INSERT/UPDATE/DELETE on org_legal_entities
-and org_establishments and SELECT/INSERT on immutable org_legal_commands,
-in addition to the existing proof/authority/audit/quota ports. The schema
-owner also needs ownership of the existing audit/event tables for the
-bounded snake_case vocabulary constraints. No production grant, flag or
-legal approval is installed here. The synthetic org.legal budget inherits
-identity v1's 200/hour on each axis; measured live budgets and cleanup
-activation remain due.
-
-Withdrawal removes unreferenced content without verification history;
-actual immediate/deferred foreign keys instead retain a REVOKED record.
-Stable metadata-only receipts allow exact retry after removal, without
-restoring private content or reusing its identity. Keep the additive schema
-and history on recovery, disable the entry, and use the compatible previous
-image; no destructive down migration is supplied. Run the affected
-organization/auth/audit/event/company modules with `-race -tags=integration`
-and a disposable ANPFUEL_TEST_DATABASE_URL. See
-[local declaration evidence](../docs/enterprise/evidence/f1-org004-legal-declarations.md).
-
-### Scoped role-period persistence (EMP-AUTH-002)
-
-`orgaccess/application` and its sqlc/pgx adapter store fixed-role periods
-under migration 000171's forced RLS and composite membership/assigner FKs.
-Only ORG and SELF targets are supported; OWNER requires ORG and personal
-access. Station roles await STATION authority support. Candidates require
-a currently valid period, ACTIVE membership/employee and live account
-without an account-deletion reservation; they are not authorization.
-
-Creation compares exact intent at PostgreSQL microsecond precision; changed
-intent or overlapping membership/role/scope periods conflict. End is a
-terminal revision with server time, retaining original validity and history.
-Normal methods return zero results on transaction or deferred-commit failure;
-explicit-Tx methods leave final commit/rollback to the composing command.
-Prelock all affected accounts in UUID order before any roots/writes, then
-organization roots in UUID order, matching membership and erasure.
-
-Real assignment policy replaces the unavailable membership hook. Owner
-intervals must cover future time continuously, excluding deletion-reserved
-accounts; assignment changes and account/membership reductions share the
-root lock. Membership end also ends assignments atomically. Production
-ordinary logins need SELECT/INSERT/UPDATE on org_role_assignments and SELECT
-on the referenced membership/employee/account/billing tables; no grants are
-automatically applied to a production login. Ordinary migration ownership,
-forced RLS, previous compatibility and injected-failure recovery are tested.
-Actor authorization, fresh authentication, entitlement/audit and production
-composition remain owning-task work. Existing catalog grants are unchanged.
-
-```sh
-go test -race ./internal/modules/orgaccess/... -count=1
-# ANPFUEL_TEST_DATABASE_URL must select disposable PostGIS:
-go test -race -tags=integration ./internal/modules/orgaccess/... ./internal/modules/membership/... ./internal/modules/organization/... ./internal/modules/account/... ./internal/modules/payments/... -count=1
-go vet ./internal/modules/orgaccess/... ./internal/modules/membership/... ./internal/modules/organization/...
-sqlc vet
-sqlc generate
-```
-
-### Current request authorization (EMP-AUTH-003)
-
-Use orgaccess/adapters/http.Register with a source-owned application Policy,
-scoped resource resolver and mandatory capability/record gates. It binds the
-current authorization service to orgapi's strict normal proof entry; use
-AccountSessions.Validate/Confirm for Android and the existing company cookie
-Peek/Confirm pair for web. Fresh Android routes require explicit confirmation.
-Verified account, contributor and device-key attribution remains explicit.
-
-The one-statement LoadAuthority snapshot uses ordinary forced RLS and never
-caches roles or accepts a client-selected context as proof. Prepare validates
-current membership/org/role/resource scope; completion confirms proof/freshness,
-then capabilities/limits and record policy. A finished request or a second
-completion cannot reuse a decision. Handler commands still own fresh record
-validation, transaction/audit composition and use of the decision's scoped
-target. No production business route or runtime grant is installed here.
-
-```sh
-go test -race ./internal/modules/orgaccess/... ./internal/platform/orgapi ./internal/platform/apicontract
-# Explicit disposable PostGIS only:
-go test -race -tags=integration ./internal/platform/orgapi ./internal/modules/orgaccess/... ./internal/modules/membership/... ./internal/modules/companysession/... -count=1
-```
-
-See [current authority and real proof acceptance](../docs/enterprise/evidence/f1-auth003-current-authorization.md).
-
-EMP-AUTH-004's orgaccess/adapters.PilotEntitlements implements that capability
-gate using the same source catalog and orgcapability.Store.State. Pass the
-same default-off global activation as the gateway; never call the authorizing
-capability Service recursively. Current flag state cannot grant a role or
-widen SELF. Off/missing flags refuse new work, preserving authorized existing
-reads and explicit safety effects. Provider failure denies every effect.
-Business writes still require GuardWrite/Run in their existing transaction.
-See [pilot entitlement acceptance](../docs/enterprise/evidence/f1-auth004-pilot-entitlements.md).
-
-### Organization operation time (EMP-PLAT-015)
-
-orgtime/domain preserves declared occurred_at and trusted server received_at
-as UTC instants, with entry IANA zone and declared device offset. Capture
-uses the resolved unit zone, or organization zone when no unit exists, to
-snapshot reporting day/zone/source. Invalid supplied unit zones fail.
-Trip callers supply the start instant. Persist all snapshot fields together;
-do not recalculate historical days when organization/unit zones change.
-
-AuthorityAt returns received_at. Owning server flows must set it from their
-clock, resolve current authority and supply context zones from scoped data;
-parsing a client timestamp grants no authority. InPeriod is half-open.
-AssessClockSkew takes a separate sync sample pair, not an old occurred_at,
-and returns signed seconds/nonnegative nanos plus CLOCK_SKEW strictly above
-the organization limit (default 300 seconds). It changes no timestamp and
-can include transit delay; sync review/batch propagation remains OFFL scope.
-
-The shared parser rejects leap seconds, unknown -00:00, invalid/overflowing
-dates and more than nanosecond precision; it accepts numeric offsets up to
-±18:00. Entry offset metadata is integral seconds within ±18h, independent
-of zone rules. Standard IANA data is used with a Go bundled fallback through
-kernel.LoadTimeZone, shared with organizations. A zero server receipt fails.
-No route, migration, external dependency or live feature is added.
-
-```sh
-go test -race ./internal/modules/orgtime/domain -count=1
-```
-
-See the [99 shared Go/Kotlin vectors](../contracts/testdata/enterprise/README.md#operation-time-vectors-v1)
-and [local evidence](../docs/enterprise/evidence/f1-plat015-operation-time.md).
-Native device time-zone parity and composed consumer acceptance remain owed.
-
-### Exact organization values (EMP-PLAT-009)
-
-orgvalue/domain provides canonical integer parsing, paid-preserving
-reconciliation and largest-remainder allocation by explicit line order.
-It reuses financial-v1 bounds and L/M3 units; it introduces no schema,
-route, activation or dependency. Kotlin EnterpriseValues executes the same
-112 synthetic vectors in the existing domain module. Unknown is distinct
-from zero, source-price text is retained and the personal driver allocator
-keeps its own tie rule. Run the Go domain package with race and Kotlin
-EnterpriseValuesTest for parity; see the
-[shared oracle](../contracts/testdata/enterprise/README.md) and
-[evidence](../docs/enterprise/evidence/f1-plat009-exact-values.md).
-
-### Company account web sessions (EMP-PLAT-007)
-
-With `ANPFUEL_ENTERPRISE_ENABLED=true`, the API mounts three POSTs under
-`/v1/org-access/session/`: `login`, `read`, `logout`. The canonical origin is
-`https://` plus `ANPFUEL_CANONICAL_HOST`. No Caddy/panel activation is part of
-this task. Apply additive migration `000167` before the new API/worker.
-
-Login accepts only `{"family_id":"...","access_token":"..."}` with current
-account proof issued less than 15 minutes ago. It returns account metadata,
-a CSRF value and the separate `__Host-empresas-session` cookie. The cookie
-is host-only, Secure, HttpOnly, SameSite=Strict, Path=/; its plaintext never
-appears in JSON or storage. Read/logout accept `{}` and require that cookie,
-`X-CSRF`, and exactly the configured Origin and Host. Use JSON, no query
-parameters and no signed/bearer headers on this channel. Bodies are capped
-at 16 KiB. Responses, including failures, are no-store without ETags.
-
-Idle expiry is 30 minutes; absolute expiry is at most eight hours, bounded
-by the source family. Activity never refreshes the 15-minute authentication
-time. Re-login rotates the presented same-account cookie/CSRF atomically.
-Logout affects only the company cookie; account-wide revocation also
-invalidates company access. Admin credentials and network fencing remain
-independent. Sessions identify accounts, with organization permission owned
-by AUTH. Organization gateway composition must supply both `WebSession`
-and `WebSessionConfirm`; the latter checks declared freshness only after
-current scope/permission succeeds and then renews idle time.
-
-The existing privacy-retention worker purges company credentials in bounded
-batches while the surface is off as well. No migration or dependency is
-removed on rollback; the prior API remains schema-compatible. Test with
-`go test -race -tags=integration ./internal/modules/companysession/...` and
-an explicit disposable `ANPFUEL_TEST_DATABASE_URL`.
-[Architecture and evidence](../docs/enterprise/09-architecture.md#31-implemented-company-account-session).
-
-### Scoped offline operation intake (EMP-OFFL-002)
-
-The default-off enterprise composition includes signed `POST
-/v1/orgs/{org_id}/sync/operations`. The frozen wrapper carries the current
-family/access proof and complete immutable operations. Current personal proof,
-identity-v1 signature/nonce, exact configured origin, membership and enrollment
-are resolved independently. Every operation is fully parsed and bound before
-intake admission or prefix effects; cookies, bearer authorization and CSRF
-headers do not authorize this route. The response wraps canonical per-operation
-ACKs in `schema_version:1` and `acknowledgements` in request order.
-
-Each operation has its own ordinary scoped transaction. Immutable claims,
-final receipts and applied-effect proofs are separate; a dependency retry is
-not final and a held review is not an applied effect. Owning handlers establish
-actual current command/record/reference coverage before a claim, and confirm
-authority after waits/projection. Replay requires current protected read
-coverage and preserves original canonical ACK bytes. A final transport source
-check withholds the buffered private response on revocation; previously
-committed operations remain available for an authorized retry.
-
-No business handler, historical/grace producer or production transport budget
-is installed by this task. Source registrations require actual handlers,
-explicit `IntakePlans`, real `IntakeConsumers` and a reviewed `IntakeBudget`.
-`enterprisesuite.IntakeEvents` validates the actual callbacks with the existing
-event handler; install that same handler in the existing Dispatcher before
-activating the first real feature. No default probe, no-op consumer, permission
-or numeric production allowance is supplied. The logical review event persists
-as `offl.operation.review`, preserving the applied audit/outbox vocabulary.
-Offline delivery delay does not establish `CLOCK_SKEW`.
-
-Apply additive migration196 first. It creates no runtime login or grants and
-does not change the compatibility floor. Review SELECT/INSERT on the three
-`org_sync_*` ledgers and column-only UPDATE(operation_id) on claims for
-PostgreSQL row locking; append-only triggers still reject updates, deletes and
-truncation, including empty/no-op statements. Existing source/account/key/nonce,
-root/role/capability, audit/outbox and queue privileges remain required. No
-payload, token, family or signature is stored in the ledger. Company provenance
-survives personal unlink; no personal export access or arbitrary receipt TTL
-is introduced. Rollback disables intake and preserves receipts/queued work.
-
-Use an explicit disposable local `ANPFUEL_TEST_DATABASE_URL` for critical tests:
-
-```sh
-go test -race ./internal/modules/orgsync/... -count=1
-go test -race -tags=integration -timeout=10m ./internal/modules/orgsync/adapters ./internal/modules/organization/adapters -run 'Test(Intake|SyncIntake|OrganizationSync|SyncCurrentDevice|SyncAuthority)' -count=1
-go test -race -tags=integration ./internal/platform/orgquota -run Intake -count=1
-```
-
-The [task evidence](../docs/enterprise/evidence/f2-offl002-intake-ledger.md)
-distinguishes local synthetic acceptance, remaining feature integrations and
-operator/legal/release gates.
-
-### Current account company contexts (EMP-IDN-016)
-
-The same default-off company composition provides `POST
-/v1/org-access/contexts/list` and `/contexts/read`. Both require the dedicated
-company cookie, `X-CSRF`, exact configured Origin/Host and a current personal
-existing-account source family. No bearer/signed authority or client account
-selector is accepted. List scans at most100 own-account membership references
-in UUID order; continue on `next_after_org_id` even for an empty eligible page.
-Read requires the exact organization/membership period and rechecks current
-account, employee, membership, root, capability and assignments. Returned C1
-permissions/grant options describe controls only; commands recheck authority.
-Freshness expiry removes employee/invitation management options. Nothing is
-stored as cached authority or added to the public/community/personal plane.
-
-Apply additive migration195 before the API. Its SELECT-only membership policy
-is confined to the unselected, account-bound bootstrap; repositories clear that
-transaction-local context before installing a private organization scope. The
-migration owner must own `org_memberships`; it creates no runtime grants or
-source data. Runtime remains an ordinary login without ownership, role change,
-superuser or BYPASSRLS. Review existing table-specific source grants: SELECT
-on memberships/employee identities/role assignments/roots/account deletion
-reservations; SELECT and required row-lock UPDATE grants on accounts/source
-families/company sessions/roots/capabilities; and existing settings bootstrap
-function plus its heads/versions grants. API enablement, runtime credential
-provisioning and staging validation remain independent operator work.
-
-```sh
-go test -race ./internal/modules/orgaccess/domain -run TestContextHints -count=1
-go test -race -tags=integration ./internal/modules/organization/adapters -run '^TestAccountContext' -count=1
-go test ./internal/platform/apicontract -run TestAccountContext -count=1
-```
-
-These tests require an explicit disposable local `ANPFUEL_TEST_DATABASE_URL`.
-
-### Organization device enrolments (EMP-IDN-015)
-
-The default-off enterprise composition now has a distinct signed existing-account
-plane: `POST /v1/orgs/{org_id}/devices/enroll` and `/devices/check`. Both require
-the actual personal family/access proof and registered bound P256 signing key;
-only enrolment is a bootstrap exception to the current-enrolment check. It does
-not bypass current membership, employee, capability, proof or source locks.
-The existing identity-v1 signature clock envelope is preserved and expiry is
-rechecked against database time after waits. Client-selected proof flags, keys,
-account IDs, counts and limits are not authority.
-
-`ANPFUEL_ENTERPRISE_DEVICE_LIMIT` is server-owned deployment configuration,
-default3, range1–5. Slot counts and insertion serialize under the source root;
-an operator lowering the limit does not erase existing periods. Managed
-activation/recovery remains uninstalled behind GOV-013/IDN-006..008.
-
-Fresh cookie self list/revoke and fresh `idn.credential.manage` manager list/revoke
-operate under `/v1/orgs/{org_id}/memberships/{membership_id}/devices/`. Managers
-can reduce access while the organization is suspended/archived or its pilot flag
-is disabled. Responses contain scoped enrolment metadata, never personal session
-families, contributor/key inventory or other organizations. Last-sync remains
-null until a real sync producer exists.
-
-Append-only migration194 installs FORCE-RLS periods, immutable audited command
-receipts and membership-ending revocation. LOST_OR_COMPROMISED bars that key
-throughout this organization. ACCESS_ENDED remains terminal for the old period;
-an explicitly invited distinct ACTIVE membership can create a new enrolment for
-the still-valid personal key. Neither class grants normal access or an intake
-window. Personal families/keys/cloud devices and other organizations survive.
-Native erase/acceptance, future intake, production grants/providers and release
-certification remain separate gates; no immediate remote wipe is promised.
-
-Runtime needs the reviewed scoped device table/receipt and source row-lock/nonce
-privileges; migration194 creates no production grants. Its migration owner must
-own `org_memberships` to install the ending trigger. The ordinary disposable
-upgrade test proves missing grants fail rather than silently provisioning them.
-Run the real source/protocol/upgrade suite with an explicit disposable PostGIS:
-
-```sh
-go test -race -tags=integration -timeout=20m ./internal/modules/organization/adapters -run TestOrganizationDevice -count=1
-```
-
-[Device acceptance evidence](../docs/enterprise/evidence/f1-idn015-device-registry.md).
-
-### Private original transfers (EMP-PLAT-006)
-
-`orgmedia` supplies bounded organization storage and audited member-bound
-access ports. It adds no route, document migration or live intake. Its
-default-off service requires current AUTH/DOC authority, a synthetic
-declaration, a content inspector and the existing organization audit runner.
-Use the existing `jobs.NewUUIDv4` generator for access/request IDs.
-
-Original keys are derived under `org/<org_id>/doc/<document_id>/<sha256>`.
-Conditional PUT plus a bounded verified GET refuses overwrite or substitution.
-Only the synthetic JPEG inspector is supplied; it refuses trailing payloads and active content as unsafe (EMP-DOC-014). Other format inspectors stay unimplemented.
-Member-bound API access expires within five minutes, rechecks revocation and
-authority, and never returns a storage URL. A process runs at most four
-transfers, two per organization and one per member, refusing at once beyond
-that, and one full JPEG decode at a time. Access tokens are refused when
-issued in the verifier's future, so API replicas need synchronized clocks. Controllers use authenticated POST
-body tokens, the shared private error envelope and the supplied content writer.
-HTTP intake must set the request read deadline as the existing upload gateway
-does; a Go context alone cannot interrupt an arbitrary Reader.
-See the [storage contract](../docs/enterprise/09-architecture.md#91-private-document-storage-foundation).
-
-Integration tests require disposable `ANPFUEL_TEST_DATABASE_URL` and all
-`ANPFUEL_TEST_STORAGE_{ENDPOINT,BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}`
-values. Use `infra/compose.validation.yml` with a unique project and its
-`storage-init` fixture. The loopback S3 option is explicit; shared/provider
-and real-receipt activation retain their own gates.
-
-### Photo-intake safety budget (RVA07)
-
-`ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS` defaults to **0 (closed)**. The API
-requires an explicit measured budget in 1..100 pending photo sessions and
-private storage configuration. Keep the same budget across API replicas;
-the source ceiling is a conservative guard, never a supported-user or VPS
-capacity claim. A session can require both an original and a final copy.
-Qualify the current binary/provider/DB resource envelope and deadline margin
-before enabling intake in staging/production; record the measured lower
-budget in deployment evidence. Increasing the source ceiling requires renewed
-qualification. There is no production activation in this source checkpoint.
-
-Every-minute evidence cleanup records a singleton epoch-fenced observation.
-Startup, a running/failed/unknown pass, a successful observation older than
-three minutes, a copy at its 22h cleanup boundary, a full pending budget or
-a DB outage pauses new bytes. Missing configuration is not healthy by default.
-Fresh reservations serialize the global capacity check and insertion;
-confirmed byte replay emits no PUT. The existing worker process has four
-serial safety dispatchers alongside one general dispatcher, with no new service.
-The operational copy deadline stays first receipt +24h; cleanup starts at 22h.
-Provider/version/backup and autonomous elapsed-time proof remain required.
-
-## Bounded ANP location-candidate discovery
-
-See the [Sorriso reliability audit](../docs/backend/STATION_RELIABILITY_AUDIT_20261013.md).
-`go run ./cmd/station-discover --snapshot <immutable-edition> --uf MT --municipio SORRISO`
-uses `ANPFUEL_DATABASE_URL` and stages only official records/candidate points.
-It runs no migrations, canonical publication or location review. Exact snapshot
-replay reuses stored results; new source editions need new snapshot identities.
-Do not use a persistent database for integration tests.
-
-## Official price ranking (MEX-28/29)
-
-`GET /v1/prices/ranking` is the anonymous typed ANP weekly ranking. Required
-query parameters are `source=ANP_WEEKLY`, `survey_week_start`, `fuel`, `unit`,
-`geography` (`COUNTRY`/`STATE`/`MUNICIPALITY`), `metric`
-(`OBSERVATION_PRICE`/`AREA_MEAN`), `group_by` (`STATION`/`MUNICIPALITY`/`STATE`)
-and `sort` (`ASC`/`DESC`); optional `uf`, `ibge_code`, `condition=STANDARD`,
-`limit` (1..100, default20) and `cursor`. Only ANP weekly STANDARD observations
-are ranked; community prices and other conditions are refused, never
-substituted. Results bind the exact source revision, coverage and
-fuel/unit/geography/time, with exact rational means and max-min variation.
-`Sampled=true` and `national_completeness_claimed=false` are always explicit.
-
-ETag and cursors bind every filter, the policy and the source revision: a
-correction that switches the current revision invalidates both. The in-process
-cache is bounded (`ANPFUEL_PRICE_RANKING_CACHE_ENTRIES`, default128, `0`
-disables) and TTL-bound (`..._TTL_SECONDS`, default60); every request still
-resolves the current published revision, and an outage answers `503` no-store
-instead of a cached page. `ANPFUEL_PRICE_RANKING_ENABLED=false` disables the
-route. See [MEX-29](../docs/backend/evidence/mobile-expansion/MEX-29.md).
-
-## Fuel quality source reads (FQ-08/FQ-08H)
-
-The additive public quality API has a live bounded revision catalog:
-`GET /v1/quality/revisions?stream=pmqc-assay-v1&limit=20`, then
-`GET /v1/quality/revisions/{id}?stream=pmqc-assay-v1` for frozen provenance.
-Streams also include `enforcement-v1` and `sanction-v1`. Existing summary, assay,
-sample, action and sanction routes accept optional `revision_id`; omission reads
-current. Select the exact revision when continuing a historical record cursor.
-Superseded verified history is explicitly labeled; withdrawn/legacy revisions
-have unavailable facts and null denominators. Catalog metadata is live, so restart
-catalog traversal after imports to include newly inserted revisions.
-
-`ANPFUEL_QUALITY_READS_ENABLED=false` contains all official quality routes.
-
-Station-scoped sanction attribution is a separate, default-off contract:
-`ANPFUEL_QUALITY_COMPANY_READS_ENABLED=false` enables the optional `station_id`
-filter only on the sanction page/detail routes. It never enables source ingest
-or relaxes global reads, and it does not accept `station_id` on actions.
-Scoped responses are explicitly current-company-only
-(`association_scope=CURRENT_COMPANY_ONLY`,
-`historical_business_window_known=false`), expose no CNPJ or private proof, and
-never fall back to global rows when the scope is empty. Each scoped request
-revalidates the frozen source revision, the canonical station and fresh
-Directory identity evidence before answering `304`; `ETag`/cursor seal the
-revision, station, filters, limit and private scope fingerprint. Scoped
-responses use `Cache-Control: public, max-age=0, must-revalidate`; outages and
-the independent kill switch answer no-store errors. Unknown, duplicate or empty
-filters are refused. Keep the switch off until staging/operator acceptance; see
-[MEX-19](../docs/backend/evidence/mobile-expansion/MEX-19.md).
-
-Native quality worker imports have a separate default-off switch,
-`ANPFUEL_QUALITY_IMPORTS_ENABLED=false`. The general dispatcher always excludes
-`quality-import`, `quality-discovery`, `quality-revalidate`, `quality-recompute`,
-`quality-sanctions-import` and `quality-sanctions-discovery`; disabled source
-jobs retain zero claim attempts. Enablement adds fixed slots for the native
-import (trusted `/prepare_quality` executable shipped in the worker image and a
-separate PostgreSQL advisory-lock connection across fetch, preparation and
-publication, 210-second attempt, five-minute job lease), the bounded Directory
-revalidation sweep and bounded live discovery (verified official listing page,
-one archive inspection per run, durable cursor, created-only enqueue budget).
-Safety slots remain independent. Bounded daily schedules are separate explicit
-default-off switches (`ANPFUEL_QUALITY_DISCOVERY_ENABLED`,
-`ANPFUEL_QUALITY_REVALIDATION_ENABLED`); they only enqueue work and never
-activate unrelated ANP/registry imports. Keep everything disabled until
-deployment selection; see
-[FQ-05W5](../docs/backend/evidence/fuel-quality/FQ05W5_WORKER_COMPOSITION.md),
-[FQ-05W6](../docs/backend/evidence/fuel-quality/FQ05W6_DIRECTORY_REVALIDATION.md),
-[FQ-05W7](../docs/backend/evidence/fuel-quality/FQ05W7_LIVE_DISCOVERY.md) and
-[FQ-05W8](../docs/backend/evidence/fuel-quality/FQ05W8_IMAGE_SCHEDULING.md).
-Native fine jobs use trusted `/prepare_sanctions` for2025 and
-`/prepare_fine_history` for the six separately verified historical profiles, under
-one whole-attempt source lease and verified/minimized typed publication. Discovery
-inspects one of seven actual supported hrefs per persistent cursor step. Grouped
-2016–2019 remains one resource;2021 is verified CSV despite its .xlsx filename.
-Strict resource/profile admission precedes fetch, and raw private files are
-removed before publication. Both import activation and the independent
-`ANPFUEL_QUALITY_SANCTIONS_DISCOVERY_ENABLED=false` daily schedule stay off until
-runtime acceptance. The seven files reconcile35,911 source records into35,612
-accepted observations,293 CPF quarantines and six source metadata records; these
-counts do not establish national case coverage or station association.
-
-Fresh bounded Directory planning now records explicit current-company-only
-associations and guards real bindings in the publication transaction. Unknown/
-ambiguous/retired/foreign-branch company evidence remains unassociated; fine due
-dates never establish incident dates. This does not prove historical operation
-at a site. Public station filtering/live read fences and enforcement XLSX remain
-owed. See
-[FQ-07R5D](../docs/backend/evidence/fuel-quality/FQ07R5D_HISTORICAL_FINE_PUBLICATION.md),
-[FQ-07R5E](../docs/backend/evidence/fuel-quality/FQ07R5E_HISTORICAL_FINE_WORKER.md)
-and [FQ-07R6D](../docs/backend/evidence/fuel-quality/FQ07R6D_COMPANY_WORKER_COMPOSITION.md).
-Private signed document-free report commands/get/list remain separate; disabling
-`ANPFUEL_QUALITY_REPORTS_ENABLED` contains new/edit intake while preserving signed
-owner appeal, withdrawal and reads. Existing account write quota applies per account
-transactionally; acknowledged replay costs no second unit. No payment/GPS/document
-or business portal requirement is introduced. See [review](../docs/backend/evidence/fuel-quality/FQ11_DOCUMENT_FREE_REVIEW.md)
-and [historical validation](../docs/backend/evidence/fuel-quality/FQ08H_HISTORICAL_READS.md).
-
-Native SICOM fine observations have a separate source contract and typed publisher.
-The native CSV carries a GRM due day and month-only extraction precision: public
-sanction responses expose `as_of: null`, `as_of_precision: MONTH`,
-`extraction_month`, `due_on`, raw amount/payment text and minor units separately.
-`identity_kind: CONTENT_OBSERVATION` identifies a minimized-content digest, not a
-source-issued fine number. Exact-day legacy snapshots stay readable. Source age
-uses the existing180-day policy independently of local import publication time;
-a fresh import of old source data remains stale, including empty revisions.
-Company names/CPF are discarded; company identifiers stay out of public responses.
-See [native preparation](../docs/backend/evidence/fuel-quality/FQ07R1_OFFICIAL_FINE_PREPARER.md),
-[typed boundary](../docs/backend/evidence/fuel-quality/FQ07R2_VERIFIED_FINE_BRIDGE.md),
-[storage](../docs/backend/evidence/fuel-quality/FQ07R3A_NATIVE_FINE_STORAGE.md) and
-[atomic publication/read clocks](../docs/backend/evidence/fuel-quality/FQ07R3B_NATIVE_FINE_PUBLICATION.md).
-This source publication boundary is not yet a composed import/discovery handler;
-no full fine history, station association or runtime activation is certified.
-
-Critical quality persistence/read/job checks, from backend/ against disposable
-local PostGIS (never the staging database):
-
-```sh
-ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality ANPFUEL_TEST_SANCTIONS_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_sanctions ANPFUEL_TEST_FINE_HISTORY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_fine_history go test -race -tags=integration ./internal/modules/quality/... -count=1
-go test ./internal/platform/apicontract -count=1
-```
-
-Explicit `-count=1` is required after changing external OpenAPI/vector inputs;
-Go test cache does not track those files. Local source acceptance does not imply
-live native imports, score calibration, mobile/device or production acceptance.
-
-The quality prepared bridge additionally checks the real Rust CLI and atomic SQL
-publication; the integration workflow builds both source preparers from the same
-locked crate. Prepared input is integrity-checked before any read-only station
-resolution, and public sample keys include full source/sample/CNPJ/date/fuel scope.
-See [FQ-05C bridge evidence](../docs/backend/evidence/fuel-quality/FQ05C_PREPARED_BRIDGE.md).
-This checkpoint does not enable native discovery/import in the deployed worker.
-
-
-The native PMQC archive adapter (FQ-05W2) is file-backed and source-bound. It
-checks bounded ZIP metadata before allocating entries, preserves each monthly
-CSV as a separate edition, and runs only the configured trusted preparer in a
-private workspace. Unsupported source contracts fail before Directory resolution.
-Native worker composition/activation is still pending; this adapter alone does
-not import anything into a deployed database.
-
-For explicit offline source evidence, acquire the official archives separately
-into a private directory and run from backend/ (paths are local, never committed):
-
-```sh
-ANPFUEL_TEST_QUALITY_PREPARER_PATH=/tmp/abastevo-integration-rust/debug/prepare_quality \
-ANPFUEL_TEST_QUALITY_SEPTEMBER_ZIP=/private/pmqc_2026_09.zip \
-ANPFUEL_TEST_QUALITY_ANNUAL_ZIP=/private/pmqc_2025.zip \
-go test -count=1 -v -tags=integration,qualitysource ./internal/modules/quality/adapters/native -run TestOfficialArchivePreparationManual
-```
-
-The manual source test pins exact acquisition hashes, logs counts only and
-publishes nothing. January 2025 source clocks are preserved by [FQ-02C](../docs/backend/evidence/fuel-quality/FQ02C_SOURCE_CLOCKS.md), with zero date-format quarantine and unchanged September manifest. Native Directory/fetch/worker composition is still required before historical activation. See [FQ-05W2](../docs/backend/evidence/fuel-quality/FQ05W2_ARCHIVE_PROCESS.md).
-
-## Shutdown during staging rollouts
-
-`ANPFUEL_SHUTDOWN_DRAIN_DELAY` defaults to `10s` and accepts `0s` through
-`30s`. SIGTERM immediately makes `/health/ready` return 503/no-store while
-normal traffic and liveness remain available during that delay. The listener
-then drains active requests for `ANPFUEL_SHUTDOWN_TIMEOUT` (default `10s`).
-Keep **delay + timeout + 5s < terminationGracePeriodSeconds**. The staging
-manifest pins both values and 60s grace. Workers stop new claims, join all
-loops and finalize held leases using a separate bounded 5s fenced operation;
-expiry remains recovery when the database cannot acknowledge shutdown.
-
-
-### Private asset source and rollout grants (EMP-FLEET-002)
-
-Migration197 adds the private fleet foundation and extends existing unit-use
-queries to count actual current asset allocations while retaining employee/team
-counts. Existing unit-source database principals also require these narrow
-column grants when the tables are installed:
-
-```sql
-GRANT SELECT (org_id, id, state) ON org_assets TO runtime_role;
-GRANT SELECT (org_id, asset_id, unit_id, ended_at)
-  ON org_asset_unit_allocations TO runtime_role;
-```
-
-Use the independently provisioned ordinary runtime principal; retain forced
-RLS and NOSUPERUSER/NOBYPASSRLS/non-owner access. Coordinate these grants with
-migration rollout before serving the affected source. They are an explicit
-old-image compatibility prerequisite, not automatically verified live state.
-Fleet's own principal additionally needs its reviewed per-table command/read/
-audit privileges. The versioned SQL product projection is read-only at runtime.
-The test fixture applies only the installed source's required columns and keeps
-prior migration chains unchanged.
-
-Fleet routes reuse the existing enterprise flag, organizations capability and
-fresh current company proof. They do not activate real companies or provision
-production credentials/grants. The [current source evidence](../docs/enterprise/evidence/f2-fleet002-asset-persistence.md)
-records LOCAL_DONE / INTEGRATION_PENDING after actual migration198 powered
-activation is integrated and tested. An unavailable provider is never an empty/
-positive meter fact; full Meter history/review and release remain separate.
-
-
-### Immutable meter source and exact time (EMP-METER-002)
-
-Migration198 installs actual organization meters, initial segments and insert-only
-readings. Declared instants retain nine fractional digits as a microsecond floor
-plus a0..999 nanosecond remainder; receipt time remains the actual DB clock.
-Latest valid evidence is derived from observation/receipt/ID order. Meter source
-and maintained projection acceptance are separate.
-
-When198 is installed, existing asset-use/activation principals also need these
-narrow source columns before serving the previous image:
-
-```sql
-GRANT SELECT (org_id, id, asset_id, installed_at, installed_submicro, removed_at)
-  ON org_meters TO runtime_role;
-GRANT SELECT (org_id, meter_id) ON org_meter_readings TO runtime_role;
-```
-
-The actual meter principal additionally needs SELECT/INSERT on org_meters,
-org_meter_segments, org_meter_readings and org_meter_commands, plus UPDATE(id)
-on org_meters solely for row locking. Immutable triggers refuse product UPDATE,
-DELETE and TRUNCATE even if an overly broad grant is accidentally installed.
-Existing reviewed fleet/current-proof/audit/sync privileges remain necessary;
-these examples do not provision or certify a live login. Rehearse migration,
-grants and previous-image compatibility together using an ordinary non-owner
-NOSUPERUSER/NOBYPASSRLS principal; do not weaken forced RLS or applied migrations.
-
-The enabled synthetic runtime registers meter.reading.record with exact owned
-accepted/rejected atomic outcomes. It creates no placeholder async consumer.
-The explicit weighted transport allowance inherits identity v1 write200/hour on
-each organization/account/device axis. Production measurement/cleanup and actual
-Android producer/reference/assignment acceptance remain separate. Capability
-snapshot locking precedes the intake root without requiring enabled state for
-original receipt reads; new writes require the actual enabled capability and
-ACTIVE organization. Web installation retains real WEB_SESSION provenance,
-never a fabricated physical device. Real receipt/legal/release gates remain.
-See [current meter evidence](../docs/enterprise/evidence/f2-meter002-persistence-intake.md)
-for accepted source and still-open whole-task cases.
-
-The signed meter intake principal also needs `SELECT (org_id, employee_id,
-asset_id, valid_from, valid_to, end_cause) ON org_asset_assignments` and
-`SELECT (org_id, id, employee_id, started_at, ended_at) ON org_memberships` to
-resolve SELF (EMP-METER-002 closure, EDR-173). Nothing here provisions live
-grants.
-
-### Fueling intake (EMP-FUEL-002)
-
-Migration215 adds forced-RLS, insert-only `org_fuelings`, `org_fueling_warnings`
-and `org_fueling_review_entries`. The signed intake principal needs `SELECT,
-INSERT ON org_fuelings, org_fueling_warnings, org_fueling_review_entries` and
-`SELECT ON org_employee_identities, org_asset_tank_products,
-org_asset_unit_periods, org_asset_cost_centre_periods` besides its meter and
-sync grants; every principal that can reach the asset usage source (asset
-discard or kind change) needs `SELECT (org_id, asset_id) ON org_fuelings`. The
-migrator needs `REFERENCES` on organizations, org_sync_operations, org_assets,
-org_employee_identities, org_memberships, org_device_enrollments,
-org_fuel_products_v1, org_meter_readings, org_units and org_cost_centres and
-ownership of `org_asset_current_usage`, `org_unit_current_usage` and
-`org_cost_centre_current_usage`. The runtime registers `fueling.submit` beside
-`meter.reading.record` with `NO_ASYNC_FOLLOWUP` for ACCEPTED and REJECTED;
-changed-right and post-disposal fuelings store nothing and stay
-RETRY/UNAVAILABLE. Nothing here provisions live grants.
-
-### Meter reading validation (EMP-METER-003)
-
-Migration216 adds the forced-RLS, append-only `org_meter_reading_states`
-history (revision, state, canonical flags, `RETROACTIVE` note, cause,
-operation) and admits a `SUSPECT` classification for an accepted held
-reading. Every principal that records, applies or reads meter readings needs
-`SELECT, INSERT ON org_meter_reading_states` (the latest-valid read and the
-series check read it). The migrator needs `REFERENCES ON org_meter_readings,
-org_memberships` and ownership of `org_meter_observation_guard()`.
-`ANPFUEL_ENTERPRISE_METER_PLAUSIBILITY` (boolean, default `true`) is the
-rollback switch: `false` stores field readings `VALID` without flags or history,
-exactly as before the migration (EDR-185). Nothing here provisions live grants.
-
-### Meter reading decisions (EMP-METER-004)
-
-`POST …/fleet/assets/{asset_id}/meters/{meter_id}/readings/list` (history,
-`fleet.asset.read`), `…/readings/suspect/list` and
-`…/readings/{reading_id}/decide` (`meter.reading.correct`, fresh proof) reuse
-the meter principal and its `org_meter_reading_states` grants; no migration is
-added. The decision's approved-parent port additionally needs `SELECT
-(org_id, reading_id, review_state) ON org_fuelings`, and the reading-list
-export worker needs `SELECT (org_id, meter_id, reading_id, revision, state,
-recorded_at) ON org_meter_reading_states` to export the state as of its
-`as_of`. `meter.usage.recalculated` is published only when a composition
-supplies its consumers; production composes none (EDR-189). Nothing here
-provisions live grants.
-
-### Meter replacement, reset and rollover (EMP-METER-005)
-
-Migration251 closes a segment and removes a meter by one guarded `UPDATE` each.
-The meter principal additionally needs `UPDATE (removed_at, removed_submicro,
-removal_operation_id) ON org_meters` and `UPDATE (closed_at, closed_submicro,
-closing_kind, closing_value, closing_reading_id, closing_operation_id,
-closing_previous_reading_id, closing_implied_usage) ON org_meter_segments`;
-`POST …/meters/{meter_id}/change` and the `CONFIRM_ROLLOVER` decision run under
-`meter.reading.correct` with the existing meter grants. The migrator needs
-ownership of `org_meters`, `org_meter_segments`, `org_meter_reading_states`,
-`org_meter_flags_canonical(text[])` and `org_meter_reading_state_guard()`, and
-`REFERENCES ON org_audit_events, org_meter_readings`. Nothing here provisions
-live grants.
-
-### Meter current-value projection and usage port (EMP-METER-006)
-
-Migration252 adds the forced-RLS `org_meter_current_values`, written only by
-`SECURITY DEFINER` trigger functions owned by the migrator. The runtime role
-needs `SELECT ON org_meter_current_values` for `MeterStore.UsageBetween`; the
-operator role needs `EXECUTE ON FUNCTION org_meter_current_rebuild(uuid)` for
-`ops meter rebuild-projection --org <uuid>`. The migrator needs `SELECT,
-REFERENCES, TRIGGER ON org_meters, org_meter_segments, org_meter_readings`,
-`SELECT, TRIGGER ON org_meter_reading_states` and `SELECT, UPDATE ON
-organizations` (the rebuild locks the organization root). Existing meters have
-no projection until `ops meter rebuild-projection` runs for their organization
-(forced RLS lets no migration enumerate organizations); until then the usage
-port answers unavailable. Nothing here provisions live grants.
-
-### Asset lifecycle (EMP-FLEET-003)
-
-Migration201 adds nullable acquisition/disposal columns to `org_assets` and the
-forced-RLS, append-only `org_asset_lifecycle_events` history keyed by asset
-revision. The Fleet principal needs `SELECT, INSERT ON
-org_asset_lifecycle_events`; table-level `org_assets` grants already cover the
-new columns. Principals that insert meter readings or held readings with only
-column grants additionally need `SELECT (org_id, id, disposed_at,
-disposed_submicro) ON org_assets`. Lifecycle routes reuse the enterprise flag,
-the organizations capability and fresh company proof. The open-work port is
-answered by the explicit `NoOpenWork` adapter until trips and work orders
-exist. Nothing here provisions live grants.
-
-### Allocation history (EMP-FLEET-005)
-
-Migration206 installs the trusted `btree_gist` extension (PostgreSQL contrib,
-PostgreSQL License, shipped in the pinned `postgis/postgis:18-3.6` image; the
-migrator needs CREATE on the database, which the database owner has) and the
-forced-RLS `org_asset_unit_periods` and `org_asset_cost_centre_periods` tables,
-and moves every activated asset's initial unit into its first period. The Fleet
-principal needs `SELECT, INSERT ON org_asset_unit_periods,
-org_asset_cost_centre_periods` (activation opens the first unit period through a
-trigger). Unit-source principals additionally need `SELECT (org_id, asset_id,
-unit_id, valid_to) ON org_asset_unit_periods`; cost-centre-source principals
-need `SELECT (org_id, id, state) ON org_assets` and `SELECT (org_id, asset_id,
-cost_centre_id, valid_to) ON org_asset_cost_centre_periods`. A module calling
-the snapshot port needs `SELECT (org_id, id) ON org_assets` and `SELECT` on
-both period tables. No UPDATE grant is needed until the EMP-FLEET-008 transfer
-(`UPDATE (valid_to)`); DELETE/TRUNCATE are refused by triggers regardless.
-History routes reuse the enterprise flag, the organizations capability and
-current `fleet.asset.read`. Nothing here provisions live grants.
-
-### Structural role scopes (EMP-AUTH-006)
-
-Migration208 widens `org_role_assignments` to `UNIT`, `COST_CENTRE`, `TEAM` and
-`ASSET` scopes with generated same-organization foreign keys and an insert
-admission trigger, and lets the unit, cost-centre, team and asset usage sources
-recognise the new keys (assignments are not use). The migration owner needs
-ownership of `org_role_assignments` and of the four `*_current_usage` functions
-and `REFERENCES` on `org_units`, `org_cost_centres`, `org_teams` and
-`org_assets`. The role-management principal additionally needs `SELECT (org_id,
-id, state)` on those four tables for structural grants. The meter-review
-principal needs `SELECT (org_id, team_id, employee_id, started_at, ended_at) ON
-org_team_links`; the fleet principal reuses its FLEET-005 snapshot-port grants.
-Nothing here provisions live grants.
-
-### Driver assignments (EMP-FLEET-006)
-
-Migration210 adds the forced-RLS `org_asset_assignments` (PRIMARY periods never
-overlap: a `btree_gist` exclusion) and `org_asset_assignment_commands`, two
-`AFTER UPDATE OF state` consumers that end assignments when an employee record
-becomes `TERMINATED` or an asset `DISPOSED`, and recognises the new asset key in
-`org_asset_current_usage` (on top of the 208/209 bodies). The migration owner
-needs `TRIGGER` on `org_assets` and `org_employee_identities`, `REFERENCES` on
-`organizations`, `org_audit_events`, `org_assets` and `org_employee_identities`,
-and ownership of `org_asset_current_usage`. The Fleet principal needs `SELECT,
-INSERT, UPDATE ON org_asset_assignments`, `SELECT, INSERT ON
-org_asset_assignment_commands` and `SELECT (org_id, id, employee_id, started_at,
-ended_at) ON org_memberships` plus `SELECT (org_id, id, state, revision) ON
-org_employee_identities`. Every principal that terminates an employee record
-(offboarding, employee merge) or disposes an asset needs `SELECT (org_id,
-employee_id, asset_id, valid_from, valid_to), UPDATE (valid_to, end_cause,
-source_revision, end_operation_id, ended_by, end_reason) ON
-org_asset_assignments`. DELETE/TRUNCATE are refused by triggers regardless.
-Commands use fresh `fleet.asset.assign` (admission class `fleet.assignment`);
-reads use current `fleet.asset.read`, whose SELF grants now cover assigned
-assets. Nothing here provisions live grants.
-
-### Reservations, blocks and availability (EMP-FLEET-007)
-
-Migration217 adds forced-RLS `org_asset_reservations` (stored state moved only
-by the guarded fleet.md §6.4 rows; CONFIRMED windows never overlap: a
-`btree_gist` exclusion; a confirmation over a block is refused),
-`org_asset_blocks` (append-only; removal sets the end with a reason) and the
-receipts `org_asset_reservation_commands`, one `AFTER UPDATE OF state` consumer
-that cancels open reservations when an asset leaves service, and recognises the
-two new asset keys in `org_asset_current_usage` (on top of the 215 body). The
-migration owner needs `TRIGGER` on `org_assets`, `REFERENCES` on
-`organizations`, `org_audit_events`, `org_assets` and `org_employee_identities`,
-and ownership of `org_asset_current_usage`. The Fleet principal needs `SELECT,
-INSERT, UPDATE ON org_asset_reservations, org_asset_blocks`, `SELECT, INSERT ON
-org_asset_reservation_commands` and `SELECT, INSERT ON job_queue` (the
-per-reservation `org-asset-reservation-outcome` job is queued in the command
-transaction). Every principal that deactivates or disposes an asset needs
-`SELECT (org_id, asset_id, state, revision, starts_at, ends_at,
-no_show_tolerance), UPDATE (state, revision, end_cause, source_revision) ON
-org_asset_reservations`.
-The worker composes the outcome handler on the general dispatcher with the same
-Fleet grants; it settles `EXPIRED`/`NO_SHOW` once (compare-and-set), and every
-read derives the same outcome at its own instant when no job has run. Commands
-use fresh `fleet.reservation.manage` (org-permissions-v5, admission class
-`fleet.reservation`); reservation, block and availability reads use current
-`fleet.asset.read`. Trips and maintenance holds are answered "no source" and
-listed in `missing_sources`. Nothing here provisions live grants.
-
-### Late intake after revocation (EMP-OFFL-009)
-
-Migration 218 adds forced-RLS, append-only `org_sync_late_intakes`. The signed
-intake principal needs `SELECT, INSERT ON org_sync_late_intakes` and `SELECT ON
-org_settings_versions`; the migrator needs `REFERENCES` on org_sync_operations,
-org_sync_acknowledgements, org_memberships, org_device_enrollments and
-org_settings_versions, `TRIGGER` on org_sync_acknowledgements and ownership of
-`org_meter_held_source()`. Nothing here provisions live grants.
-
-### Organization-state intake (EMP-OFFL-012)
-
-Migration 219 adds forced-RLS, append-only `org_sync_state_intakes`. The signed
-intake principal needs `SELECT, INSERT ON org_sync_state_intakes` and `SELECT
-ON org_suspension_periods` (read before every owner); the migrator needs
-`REFERENCES` on org_sync_operations, org_sync_acknowledgements and
-org_capabilities and `TRIGGER` on org_sync_acknowledgements. Nothing here
-provisions live grants.
-
-### Implement attachments (EMP-FLEET-011)
-
-Migration222 adds forced-RLS `org_asset_implement_attachments` (an implement
-is attached to at most one powered asset at any instant: a `btree_gist`
-exclusion; kinds and states checked by the row guard) and the receipts
-`org_asset_attachment_commands`, and redefines `org_asset_current_usage` from
-the 217 body with the two attachment keys allow-listed and attachments counted
-as operations of both assets (their kinds are then fixed). The migration owner
-needs `REFERENCES` on `organizations`, `org_audit_events` and `org_assets`, and
-ownership of `org_asset_current_usage`. The Fleet principal needs `SELECT,
-INSERT, UPDATE ON org_asset_implement_attachments` and `SELECT, INSERT ON
-org_asset_attachment_commands`; every principal that discards an asset or
-changes its kind needs `SELECT (org_id, implement_id, powered_asset_id) ON
-org_asset_implement_attachments`. Attach and detach use fresh
-`fleet.asset.manage` on both assets (admission class `fleet.asset`); the list
-uses current `fleet.asset.read`. Nothing here provisions live grants.
-
-### Checklist templates (EMP-CHECK-001)
-
-Migration223 adds the new `maintenance` module's forced-RLS checklist template
-tables: the head `org_checklist_templates` (fixed context; state, current
-version and current policy revision move only through its row guard, revision
-+1 per command), and the insert-only `org_checklist_template_versions`,
-`org_checklist_template_items`, `org_checklist_template_targets` (composite
-same-organization keys to `org_asset_categories` and `org_assets`),
-`org_checklist_policy_revisions` and the receipts
-`org_checklist_template_commands`. A deferred completeness check closes each
-committed version and refuses a target already named by another ACTIVE template
-of the context; the asset target key joins `org_asset_current_usage` (on top of
-the 217 body). The migration owner needs `REFERENCES` on `organizations`,
-`org_audit_events`, `org_assets` and `org_asset_categories`, and ownership of
-`org_asset_current_usage`. The template principal needs `SELECT, INSERT, UPDATE
-ON org_checklist_templates` and `SELECT, INSERT ON
-org_checklist_template_commands, org_checklist_template_versions,
-org_checklist_template_items, org_checklist_template_targets,
-org_checklist_policy_revisions`, plus `SELECT` on `org_assets` and
-`org_asset_categories` (target checks and the applicable read). Template
-commands use fresh `check.template.manage` with ORG coverage
-(org-permissions-v5, admission class `check.template`); template reads use
-current `check.template.manage`; the applicable template of an asset uses
-current `fleet.asset.read` (structural and SELF grants). Nothing here
-provisions live grants.
-
-### Trip logbook events (EMP-TRIP-003)
-
-Migration225 adds forced-RLS, insert-only `org_trip_events` (accepted logbook
-facts: identity, trip, type, text, author, enrollment, declaration, receipt)
-and `org_trip_held_events` (events declared after a completed trip's finish,
-held `TRIP_ALREADY_CLOSED` with an OFFL-008 review item), and redefines
-`org_sync_review_source_valid` from the 220 body with a `trip.event.record`
-branch. Events key only the trip, operation, author records and enrollment,
-so no usage source changes. The migration owner needs `REFERENCES` on
-`org_trips`, `org_sync_operations`, `org_memberships`,
-`org_employee_identities`, `org_device_enrollments` and
-`org_sync_review_items`, and ownership of `org_sync_review_source_valid`. The
-signed intake principal needs `SELECT, INSERT ON org_trip_events,
-org_trip_held_events` (with its existing trip grants, including
-`UPDATE (state) ON org_trips` for the trip row lock). No read route is added.
-Nothing here provisions live grants.
-
-### Damage and incident reports (EMP-CHECK-003)
-
-Migration230 adds forced-RLS `org_incident_reports` (one immutable report of
-an asset, its allocation at the declared instant, the reporter's trip when
-named; only `state`, `revision` and `updated_at` change, one step at a time)
-and append-only `org_incident_report_transitions` (the handling history and
-command receipt), adds the typed `incident_report_id` reference and the
-`INCIDENT` kind to `org_document_links`, and redefines
-`org_asset_current_usage`, `org_unit_current_usage` and
-`org_cost_centre_current_usage` from their latest bodies with the report keys
-as associations. The migration owner needs `REFERENCES` on `organizations`,
-`org_sync_operations`, `org_assets`, `org_units`, `org_cost_centres`,
-`org_trips`, `org_memberships`, `org_employee_identities`,
-`org_device_enrollments` and `org_audit_events`, and ownership of
-`org_document_links` and of the three usage functions. The signed intake
-principal needs `SELECT, INSERT ON org_incident_reports` and `SELECT` on
-`org_trips`, `org_trip_finishes`, `org_asset_unit_periods`,
-`org_asset_cost_centre_periods` (with its existing trip grants, including
-`UPDATE (state) ON org_trips` for the trip row lock the report guard takes);
-the company principal needs `SELECT, INSERT ON
-org_incident_report_transitions`, `SELECT` and `UPDATE (state, revision,
-updated_at) ON org_incident_reports` (the step trigger and the row lock),
-`SELECT ON org_document_links, org_documents` for the attachment states and
-the existing document link grants for the `INCIDENT` resolver; the trip
-timeline reader needs `SELECT ON org_incident_reports`. Nothing here
-provisions live grants.
-
-### Reference feed (EMP-OFFL-006)
-
-Migration 224 adds forced-RLS `org_reference_feed_heads`/`org_reference_feed_entries`.
-The signed intake principal needs `SELECT, INSERT, UPDATE ON
-org_reference_feed_heads`, `SELECT, INSERT ON org_reference_feed_entries` and
-SELECT on the listed columns of org_assets, org_asset_assignments, org_meters,
-org_meter_segments and org_asset_tank_products; the migrator needs
-`REFERENCES ON org_memberships`. Nothing here provisions live grants.
-
-### Missions (EMP-TRIP-008)
-
-Migration227 adds forced-RLS `org_trip_missions` (head: unit, optional asset,
-title, window, state, revision, current assignee and answer; changed only by
-the guarded +1 update that matches the transition of its new revision),
-insert-only `org_trip_mission_transitions` (one per revision; a response is the
-exact signed `trip.mission.respond` of the current assignee and is published
-only with its ACCEPTED receipt) and insert-only receipts
-`org_trip_mission_commands`, and redefines `org_asset_current_usage` (223 body)
-and `org_unit_current_usage` (220 body) keeping every line and recognising the
-two mission keys as associations. The migration owner needs `REFERENCES` on
-`accounts`, `org_units`, `org_assets`, `org_employee_identities`,
-`org_memberships`, `org_sync_operations` and `org_device_enrollments`, and
-ownership of the two usage functions. The company principal needs `SELECT,
-INSERT, UPDATE ON org_trip_missions` and `SELECT, INSERT ON
-org_trip_mission_transitions, org_trip_mission_commands` (plus its existing
-unit, asset, membership, employee and FLEET-007 availability reads); the signed
-intake principal needs the same three. Commands use fresh `trip.mission.manage`
-(admission class `trip.mission`); reads current `trip.mission.manage`; the own
-list current `trip.trip.start`. Nothing here provisions live grants.
-
-### Planned missions (EMP-TRIP-009)
-
-Migration 231 adds forced-RLS, insert-only `org_trip_mission_plans` (one
-planning revision per `PLAN` transition: destination text or unit, reason,
-optional cost centre, load, planner and command), widens the mission
-transition and receipt kind/state checks by name, replaces
-`org_trip_mission_next`, `org_trip_mission_transition_source`,
-`org_trip_mission_guard` and `org_trip_mission_complete` keeping every 227 line
-plus the `PLAN` clauses, and redefines `org_unit_current_usage` and
-`org_cost_centre_current_usage` (both from the 230 bodies) keeping every line and
-recognising the two plan keys as associations. The migration owner needs ownership of
-`org_trip_mission_transitions`, `org_trip_mission_commands` and the six
-replaced functions, and `REFERENCES` on `accounts`, `org_units`,
-`org_cost_centres` and `org_memberships`. The company principal needs `SELECT,
-INSERT ON org_trip_mission_plans` and `SELECT ON org_cost_centres` (plus the
-EMP-TRIP-008 grants). `POST /v1/orgs/{org_id}/missions/{mission_id}/plan` uses
-fresh `trip.mission.manage` (admission class `trip.mission`). Nothing here
-provisions live grants.
-
-### Mission vehicle change (EMP-TRIP-013)
-
-Migration 232 adds forced-RLS, insert-only `org_trip_mission_vehicles` (one
-record per `VEHICLE` transition: previous and new vehicle, reason, planner and
-command; its guard re-proves the current vehicle, an `ACTIVE` non-implement
-new vehicle that runs no trip, and no trip of the assignee running on the
-previous vehicle), widens the mission transition and receipt kind/state
-checks by name, replaces `org_trip_mission_next` (231 body plus the `VEHICLE`
-row), `org_trip_mission_guard` and `org_trip_mission_complete` (231 bodies plus
-the `VEHICLE` clauses) and redefines `org_asset_current_usage` from the 230
-body keeping every line and recognising the two change keys as associations.
-The migration owner needs ownership of `org_trip_mission_transitions`,
-`org_trip_mission_commands` and the four replaced functions, and `REFERENCES`
-on `accounts`, `org_assets` and `org_memberships`. The company principal needs
-`SELECT, INSERT ON org_trip_mission_vehicles` and `SELECT ON org_trips` (plus
-the EMP-TRIP-008/009 grants and the FLEET-007 availability reads).
-`POST /v1/orgs/{org_id}/missions/{mission_id}/vehicle/change` uses fresh
-`trip.mission.manage` (admission class `trip.mission`). Nothing here
-provisions live grants.
-
-### Mission eligible assignees (EMP-TRIP-022)
-
-`POST /v1/orgs/{org_id}/missions/{mission_id}/assignees/list` lists, under
-current (not fresh) `trip.mission.manage` covering the mission, the employees
-the assignment command would accept now: ACTIVE, unmerged, with an ACTIVE
-account-linked membership whose current `trip.trip.start` covers the mission
-(the command's own `EligibleAssigneeTx`, evaluated per candidate in the read
-transaction between two authority checks). Items carry only `employee_id`,
-`display_name` and `registration_number`; the sealed cursor is bound to the
-mission and limit and advances by the last scanned employee, so a page may be
-empty while a cursor remains. No migration; the company principal needs
-`SELECT ON org_employee_profiles` (already held by the employee reads) besides
-the EMP-TRIP-008 grants. Nothing here provisions live grants.
-
-### Trip review, period lock and amendments (EMP-TRIP-004, EMP-TRIP-016, EMP-TRIP-015)
-
-Migration 226 adds forced-RLS, append-only `org_trip_review_entries`; 228
-replaces its guard so the database refuses an opening or decision in a locked
-month; 229 adds `org_trip_amendments` and `org_trip_held_submissions`.
-Production runtime grants (not provisioned here): `SELECT, INSERT ON
-org_trip_review_entries, org_trip_amendments, org_trip_held_submissions`;
-`SELECT ON org_trips, org_trip_finishes, org_team_links, org_memberships,
-org_employee_identities, org_audit_events, org_sync_operations,
-org_sync_acknowledgements, org_sync_effects, org_device_enrollments` for the
-guards and the trip structure source; `SELECT ON org_finance_periods,
-org_finance_period_transitions` (and the existing root row-lock privilege) for
-the period-gated decision; for an approved amendment's supersession `SELECT,
-INSERT ON org_meter_readings, org_meter_reading_states` and `SELECT ON
-org_meters, org_meter_segments, company_web_sessions`, and for the METER-004
-approved-parent check `SELECT ON org_trips, org_trip_finishes,
-org_trip_amendments, org_trip_review_entries`. The migrator needs `REFERENCES
-ON org_trips, org_memberships, org_employee_identities, org_meter_readings,
-org_sync_review_items` and ownership of the replaced functions and of
-`org_trip_review_entries`. Nothing here provisions live grants.
-
-### Trip pause, resume and cancellation (EMP-TRIP-011)
-
-Migration 233 admits `PAUSED` and `CANCELLED` in `org_trips.state`, rebuilds
-the one-active-asset index (same name) over `IN_PROGRESS` and `PAUSED`, adds
-forced-RLS, insert-only `org_trip_transitions` (one row per accepted
-`trip.pause`, `trip.resume` or `trip.cancel` at the trip's next revision; its
-insert moves the trip's state) and `org_trip_held_transitions`
-(`TRIP_ALREADY_CLOSED` / `STALE_REVISION` held commands with OFFL-008 review
-items), the functions `org_trip_revision` and `org_trip_lifecycle_next`, and
-redefines the 220 completion guard, finish source, finish apply, publication
-and held source, the 229 logbook and held-logbook sources and review-source
-hook and the 232 mission vehicle source, keeping every other line. The
-migration owner needs ownership of `org_trips` and of the nine replaced
-functions and `REFERENCES ON org_sync_operations, org_memberships,
-org_employee_identities, org_device_enrollments, org_sync_review_items`. The
-signed intake principal needs `SELECT, INSERT ON org_trip_transitions,
-org_trip_held_transitions` (with its existing trip grants, including `UPDATE
-(state) ON org_trips`); the FLEET-007 active-use reader needs `SELECT (org_id,
-trip_id, command, occurred_at, occurred_submicro) ON org_trip_transitions`.
-No route is added. Nothing here provisions live grants.
-
-### Trip conflict resolution (EMP-TRIP-007)
-
-Migration 237 adds no table: it widens the `org_sync_review_resolutions`
-outcome check and replaces the resolution source and publication guards, the
-observation guard, the effect source and the trip source and publication so a
-held trip fact is resolved once and an accepted held start becomes its trip.
-Production runtime grants for the company conflict routes (not provisioned
-here): `SELECT, INSERT ON org_sync_review_resolutions, org_sync_effects,
-org_trips, org_meter_readings`; `SELECT ON org_sync_review_items,
-org_trip_held_starts, org_trip_held_finishes, org_trip_held_events,
-org_trip_held_submissions, org_trip_finishes, org_team_links,
-org_asset_unit_periods, org_asset_cost_centre_periods, org_units, org_meters,
-org_meter_segments, org_device_enrollments, company_web_sessions,
-org_trip_transitions, org_trip_held_transitions` plus the
-EMP-TRIP-004 review grants, the OFFL-008 item row-lock privilege
-(`UPDATE(id) ON org_sync_review_items`) and the existing asset row-lock
-privilege. The migrator needs ownership of `org_sync_review_resolutions`
-and of the six replaced functions. `/v1/orgs/{org_id}/sync/reviews/trips/{list,
-{review_item_id}/read, {review_item_id}/resolve}` use `trip.trip.review`
-(fresh for the resolution). Nothing here provisions live grants.
-
-### Expense intake and fueling projection (EMP-EXP-002)
-
-Migration 244 adds forced-RLS, insert-only `org_expenses`. Every principal
-that inserts fuelings (the signed intake) needs `SELECT, INSERT ON
-org_expenses`: a fueling commits only with its one FUEL expense. The same
-principal records `expense.submit` with the meter/fueling sources it already
-has. The migrator needs `REFERENCES` on organizations, org_sync_operations,
-org_fuelings, org_assets, org_memberships, org_employee_identities,
-org_device_enrollments, org_units and org_cost_centres, `TRIGGER` on
-org_fuelings and ownership of `org_asset_current_usage`,
-`org_unit_current_usage` and `org_cost_centre_current_usage`. Fuelings
-accepted before 000244 receive their expense from the per-organization
-catch-up; nothing provisions live grants.
-
-### Trip driver handover (EMP-TRIP-012)
-
-Migration 243 adds forced-RLS, insert-only `org_trip_handovers` (one row per
-handover at the trip's next revision; it moves no trip column), the functions
-`org_trip_responsible` and `org_trip_responsible_member`, the handover source
-and its deferred publication guard (the `trip.trip.handed_over` audit event),
-and redefines, keeping every other line, the 233 transition, held-transition
-and finish sources, the 235 revision, logbook, held-logbook, review-entry and
-closure sources, the 236 held source and offboarding guard, the 229
-held-submission source and the 230 incident report source. Production grants
-(not provisioned here): the company runtime `SELECT, INSERT ON
-org_trip_handovers` with `SELECT ON org_asset_assignments` for the receiver's
-eligibility; every principal that reads a trip, its revision or its
-responsible member (the signed intake, the trip review, closure, conflict,
-incident, tracking and offboarding stores) `SELECT ON org_trip_handovers`. The
-migrator needs `REFERENCES ON org_trips, org_memberships,
-org_employee_identities, org_audit_events` and ownership of the twelve
-replaced functions. `/v1/orgs/{org_id}/trips/{trip_id}/handover` (fresh) and
-`/v1/orgs/{org_id}/trips/handovers/list` use `trip.trip.close_for_other`;
-`/v1/orgs/{org_id}/trips/mine/list` uses `trip.trip.start` on the requesting
-membership. Nothing here provisions live grants.
-
-### Checklist runs (EMP-CHECK-002)
-
-Migration 242 adds forced-RLS `org_checklist_runs`, `org_checklist_run_answers`
-and `org_checklist_run_releases`. Production runtime grants (not provisioned
-here): `SELECT, INSERT` on the three tables, `UPDATE(outcome, revision,
-updated_at)` on `org_checklist_runs`, and `SELECT` on the checklist template
-tables it reads.
-
-### Checklist run queue and the content hint (EMP-CHECK-004)
-
-`POST /v1/orgs/{org_id}/checklists/runs/list` pages every run of the
-organization under current (not fresh) `check.incident.manage` on the
-organization, exactly the incident queue's policy (an ORG grant; structural
-holders read runs through the run read of their assets). Items are the run
-read's projection; order: current outcome BLOCKING, then `review_required`,
-then the rest, newest declared completion first, then the run id; the sealed
-cursor carries that key and is bound to the route and limit. No migration and
-no grant beyond EMP-CHECK-002's. `contexts/read` now hints
-`doc.document.view_content` when an ORG assignment covers it (a read hint, not
-authority). Nothing here provisions live grants.
-
-### Tracking policy and processing (EMP-GPS-002 prerequisite, EMP-GPS-005)
-
-Migration 247 adds the receipt table `org_tracking_policy_commands`; the policy
-command writes insert-only `org_tracking_policies` rows (000240). Migration 246
-adds insert-only `org_tracking_summaries`, written by the `org-tracking-process`
-job on the general worker. Production grants for these tables, the 000240
-tracking tables and `org_sensitive_access_events` are not provisioned here.
-
-### Reservation-to-trip integration (EMP-TRIP-023)
-
-Migration 249 (000238 stays unused) adds forced-RLS, insert-only
-`org_trip_mission_links` (one per executing trip and per mission, bound to
-the trip's start operation, published only with the mission's `START`
-revision), the columns `mission_id`, `trip_id` and `fulfilled_at` of
-`org_asset_reservations`, the mission transition kinds `RESERVE`, `START`,
-`COMPLETE`, the source `TRIP` and `trip_id`, an `AFTER UPDATE OF state`
-trigger on `org_trips` completing a linked `IN_PROGRESS` mission, and
-redefines, keeping every earlier line, the 217 reservation guard, the 232
-mission table, head guard and publication, the 231 transition source and the
-243 held source (`ORPHAN_REFERENCE` for held starts). Production grants (not
-provisioned here): the signed intake (`trip.start`) `SELECT, INSERT ON
-org_trip_mission_links`, `SELECT, UPDATE ON org_trip_missions`, `SELECT,
-INSERT ON org_trip_mission_transitions` and `SELECT, UPDATE ON
-org_asset_reservations`; every principal that completes a trip (the finish
-intake and the supervisor closure store) `SELECT ON org_trip_mission_links`
-and, for a linked mission, the same mission grants; the company runtime of
-the mission commands `SELECT, INSERT, UPDATE ON org_asset_reservations`,
-`SELECT, INSERT ON org_asset_reservation_commands, job_queue`; the
-reservation outcome job the existing root lock on `organizations` (it now
-takes it first). The migrator needs `REFERENCES ON org_trips,
-org_trip_missions, org_sync_operations`, `TRIGGER ON org_trips`, ownership
-of `org_asset_reservations`, `org_trip_mission_transitions`,
-`org_trip_mission_commands` and of the six replaced functions.
-`/v1/orgs/{org_id}/missions/{mission_id}/reservations/request` (fresh) uses
-`trip.mission.manage`. Nothing here provisions live grants.
-
-### Checklist gate at trip start and finish (EMP-TRIP-019)
-
-Migration 255 (EMP-TRIP-010 moves to 256; 000250 stays unused) adds
-forced-RLS, insert-only `org_trip_checklist_links` (one departure link per
-trip from its start operation and one return link from its finish
-operation, one trip per run, re-proved against the stored trip and the run's
-history) and `org_trip_checklist_holds` (the gate reason beside a held
-start), with the functions `org_trip_checklist_validity` and
-`org_trip_checklist_blocking_at`; no existing function or row changes.
-`trip.start` may name one `checklist_run` (beside its mission) and
-`trip.finish` one; the acknowledgement keeps the closed held codes
-(`ASSET_UNAVAILABLE`, `ORPHAN_REFERENCE`). Production grants (not
-provisioned here): the signed intake (`trip.start`, `trip.finish`) `SELECT,
-INSERT ON org_trip_checklist_links, org_trip_checklist_holds` and `SELECT ON
-org_checklist_runs, org_checklist_run_releases, org_checklist_templates,
-org_checklist_template_versions, org_checklist_template_targets,
-org_checklist_policy_revisions, org_assets`. The migrator needs `REFERENCES
-ON org_trips, org_checklist_runs, org_sync_operations, org_trip_held_starts,
-org_sync_review_items`. No route is added. Nothing here provisions live
-grants.
-
-### Stops and legs: planned versus actual (EMP-TRIP-010)
-
-Migration 256 adds only forced-RLS, insert-only `org_trip_mission_plan_stops`
-(the ordered free-text planned stops of one planning revision, written by its
-own `PLAN` transaction after the head moves and before the receipt, published
-only with that receipt); no existing table, function, row or usage source
-changes. The observed stops and legs are derived at read time from the trip's
-accepted `STOP`, `ARRIVAL` and `DEPARTURE` events and are never stored.
-`POST /v1/orgs/{org_id}/trips/mine/{trip_id}/stops/read` uses
-`trip.trip.start` over the requesting membership (the EMP-TRIP-012 own-trips
-policy). Production grants (not provisioned here): the company runtime of the
-mission commands and reads `SELECT, INSERT ON org_trip_mission_plan_stops`;
-the own-trip read `SELECT ON org_trip_mission_plan_stops,
-org_trip_mission_plans, org_trip_missions, org_trip_mission_links,
-org_trip_events, org_trip_held_events, org_sync_review_items, org_trips,
-org_trip_finishes, org_trip_transitions, org_trip_handovers`. The migrator
-needs `REFERENCES ON org_trip_mission_plans`. Nothing here provisions live
-grants.
-
-### Finance periods (EMP-APPR-006)
-
-Migration203 adds the immutable `org_finance_period_transitions` history (also
-the command receipt) and the trigger-maintained head `org_finance_periods`, both
-with forced RLS. Rollout grants (no live provisioning): `GRANT SELECT, INSERT ON
-org_finance_period_transitions` and `GRANT SELECT, INSERT, UPDATE ON
-org_finance_periods` to the runtime role (head writes are admitted only through
-the transition trigger and its guards). Owning record commands that call the
-period gate need `SELECT` on both tables, `SELECT` on `org_units` and the
-existing root row-lock privilege on `organizations`.
-
-### Organization notification core (EMP-NOTIF-001)
-
-Migration204 installs forced-RLS notification requests, recipients, notices,
-delivery history, preferences, hourly budgets and member receipts. The runtime
-principal needs `GRANT SELECT, INSERT ON org_notification_recipients,
-org_notification_deliveries, org_notification_commands` and `GRANT SELECT,
-INSERT, UPDATE ON org_notification_requests, org_notification_notices,
-org_notification_preferences, org_notification_budgets` (UPDATE only for the
-single dispatch claim, read mark, revisioned preference, budget count and row
-locks; guards refuse every other change), plus the existing AUTH-003
-current-authority reads. No kind, producer or dispatch worker is enabled;
-producers compose `notif.dispatch` in the existing Dispatcher before activation.
-
-### Organization export jobs (EMP-RPT-001)
-
-Migration207 adds the forced-RLS `org_export_jobs` table. The API and worker
-runtime roles need `GRANT SELECT, INSERT, UPDATE ON org_export_jobs`, `GRANT
-SELECT, INSERT ON org_audit_events, org_sensitive_access_events` and `GRANT
-SELECT, INSERT, UPDATE ON job_queue`; the export insert guard reads
-`org_memberships`. The worker's requester re-check needs what the company
-pipeline already uses: `SELECT` plus the row-lock privilege for `FOR SHARE` on
-`accounts` and `organizations`, and `SELECT` on `org_memberships`,
-`org_role_assignments`, `org_onboarding_commands` and `payment_billing_exits`.
-The worker must connect with an ordinary NOSUPERUSER/NOBYPASSRLS login that owns
-no RLS table. Rows are never deleted; export objects live under
-`org/<org_id>/export/` in the existing private bucket and are deleted by the
-`org-export-cleanup` job.
-
-EMP-RPT-002 list readers (worker login only; column privileges, no work contact
-or capture locator): `GRANT SELECT(org_id,id,kind,category_id,name,fleet_number,
-plate,serial_number,usage_basis,state,revision,acquired_at,acquired_submicro,
-disposal_kind,disposed_at,disposed_submicro,disposal_reason) ON org_assets`,
-`GRANT SELECT(org_id,id,label) ON org_asset_categories`, `GRANT
-SELECT(org_id,asset_id,unit_id,valid_from,valid_to) ON org_asset_unit_periods`,
-`GRANT SELECT(org_id,asset_id,cost_centre_id,valid_from,valid_to) ON
-org_asset_cost_centre_periods`, `GRANT SELECT(org_id,id,asset_id,kind) ON
-org_meters`, `GRANT SELECT(org_id,id,meter_id,value,occurred_at,
-occurred_submicro,entry_zone,device_offset_seconds,received_at,origin,method,
-state,author_membership_id,capture_kind) ON org_meter_readings`, `GRANT
-SELECT(org_id,id,state,revision,merged_into) ON org_employee_identities`, `GRANT
-SELECT(org_id,employee_id,display_name,registration_number,job_title,
-home_unit_id,revision) ON org_employee_profiles`, `GRANT
-SELECT(org_id,employee_id,state) ON org_memberships` and `GRANT
-SELECT(org_id,display_name,time_zone) ON organizations` (the last two are
-already covered where the requester re-check holds table `SELECT`). The reading
-transaction is switched to read-only after the requester re-check.
-
-### Organization document links (EMP-DOC-003)
-
-Migration209 adds the forced-RLS, insert-only `org_document_links` table and
-lists its asset reference in `org_asset_current_usage` (on top of the 208
-body). The API runtime role needs `GRANT SELECT, INSERT ON org_document_links`,
-the existing document grants (`SELECT, INSERT, UPDATE ON org_documents` —
-UPDATE only for the `FOR UPDATE` row lock that serializes link writes — and
-`SELECT, INSERT ON org_audit_events`) and the target columns the owner
-resolvers read: `GRANT SELECT(org_id,id,state) ON org_assets`, `GRANT
-SELECT(org_id,id,author_membership_id) ON org_meter_readings`, `GRANT
-SELECT(org_id,reading_id,operation_id) ON org_meter_held_readings`, `GRANT
-SELECT(org_id,operation_id,membership_id) ON org_sync_operations` and `GRANT
-SELECT(org_id,id) ON org_employee_identities`. Links are never updated or
-deleted; only ASSET, EMPLOYEE and METER_READING targets are registered.
-
-The signed device attachment session (EMP-OFFL-005) reuses the DOC-002 and
-DOC-003 grants; no new grant.
-
-Migration 245 adds the `FUELING` link kind (`fueling_id`, composite foreign key to
-`org_fuelings`); the link principal needs `SELECT (org_id,id,author_membership_id)
-ON org_fuelings` and the migrator `REFERENCES ON org_fuelings` and ownership of
-`org_document_links`. Nothing here provisions live grants.
-
-### Document upload safety (EMP-DOC-014)
-
-Migration212 adds `org_documents.storage_reason` (closed reasons fixed by their
-transition), the 24-hour upload session window and the `org-document-safety`
-closure job of pending rows. The API runtime role needs `GRANT SELECT, INSERT ON
-job_queue` for declarations and received uploads, besides the document grants.
-The worker role needs `GRANT SELECT, INSERT, UPDATE ON job_queue`, `GRANT SELECT,
-UPDATE ON org_documents` (UPDATE also for the `FOR UPDATE` row lock) and `GRANT
-SELECT, INSERT ON org_audit_events`, connects as an ordinary
-NOSUPERUSER/NOBYPASSRLS login that owns no RLS table and uses the same private
-document bucket as the API. Neither `cmd/api` nor `cmd/worker` configures that
-bucket yet, so the job is not composed and queued jobs wait without charging
-attempts.
+- `ANPFUEL_TEST_DATABASE_URL` must be a disposable PostGIS reached through a
+  literal `127.0.0.1` DSN; many suites refuse any other host. Suites create and
+  drop their own databases and roles, so the login needs CREATEDB/CREATEROLE.
+  Never point it at staging or any persistent database.
+- Integration fails, never skips, when PostGIS, a preparer or storage is
+  missing. Real-storage suites (`orgmedia`, evidence) also need
+  `ANPFUEL_TEST_STORAGE_{ENDPOINT,BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}`;
+  `infra/compose.validation.yml` (unique project, `storage-init`) provides them.
+- The preparer binaries must not be group/world-writable (the trusted bridge
+  refuses them), hence the `chmod`.
+- CI (`.github/workflows/backend.yml`) splits integration into parallel legs:
+  `organization/adapters` in 4 shards, `platform/apicontract` in 2, everything
+  else in one. Reproduce a leg with
+  `python3 scripts/backend-integration-shard.py --package ./internal/modules/organization/adapters --shard 0 --shards 4`
+  or `--rest`. The matrix and `SHARDED` must agree
+  (`python3 scripts/tests/test-backend-integration-shard.py`).
+- Use `-count=1` after editing OpenAPI files or vectors: the Go test cache does
+  not track them. `go test -run '^$'` only compiles and is never test evidence.
+- `ANPFUEL_TEST_RUNTIME_GRANTS=script` reruns the orgtest suites and the API
+  process tests as a role provisioned by `infra/db/runtime-role.sql`.
+
+Tool pins (match CI): sqlc `v1.31.1`, staticcheck `v0.8.1` and govulncheck
+`v1.8.0` installed and run under `GOTOOLCHAIN=go1.27.1` (staticcheck cannot
+read newer export data yet), vacuum `v0.30.6`, Rust `1.99.0`. Format with the
+go.mod toolchain's gofmt, not an older system one:
+`"$(cd backend && go env GOROOT)/bin/gofmt" -l backend/ contracts/`
+(prefix `PATH` with that directory before `make quick-verify`).
+
+## Configuration
+
+Environment variables only (names below; values live in host secrets, never in
+Git). `internal/platform/config` validates everything at startup and refuses
+unsafe combinations; staging and production require an explicit DSN.
+
+- Core: `ANPFUEL_ENV` (`development` default, `staging`, `production`),
+  `ANPFUEL_LOG_LEVEL`, `ANPFUEL_HTTP_ADDR`, `ANPFUEL_DATABASE_URL`,
+  `ANPFUEL_MAX_BODY_BYTES`, `ANPFUEL_CURSOR_SECRET` (shared across replicas),
+  `ANPFUEL_CANONICAL_HOST`, `ANPFUEL_TRUSTED_PROXIES`,
+  `ANPFUEL_PUBLIC_WEB_ORIGINS`, `ANPFUEL_METRICS_ADDR` (loopback-only private
+  listener; empty disables), `ANPFUEL_MAIL_MODE`,
+  `ANPFUEL_GLOBAL_QUOTA_{CHALLENGE,REGISTER,WRITE}`.
+- Shutdown: `ANPFUEL_SHUTDOWN_DRAIN_DELAY` (default 10s, 0–30s: readiness turns
+  503 while traffic still flows) and `ANPFUEL_SHUTDOWN_TIMEOUT` (default 10s).
+  Keep delay + timeout + 5s below the pod's `terminationGracePeriodSeconds`.
+- Private storage: `ANPFUEL_R2_{ENDPOINT,BUCKET,REGION,ACCESS_KEY_ID,SECRET_ACCESS_KEY}`
+  (all or nothing; unset disables upload issuance; HTTPS when enterprise is on),
+  `ANPFUEL_DEV_STORAGE_SERVICE`, `ANPFUEL_DEV_PHOTO_PREVIEW_UNTIL`,
+  `ANPFUEL_EVIDENCE_MAX_PENDING_PHOTOS` (default 0 = intake closed; same value
+  on every replica), `ANPFUEL_TRAINING_TERMS_DIGEST`.
+- Admin API (`/v1/admin/*` mounts only with key hash and origin):
+  `ANPFUEL_ADMIN_KEY_SHA256`, `ANPFUEL_ADMIN_KEY_SHA256_NEXT` (rotation),
+  `ANPFUEL_ADMIN_ORIGIN`, `ANPFUEL_ADMIN_ALLOWED_CIDRS`.
+- Feature switches: `ANPFUEL_FORUM_ENABLED`, `ANPFUEL_DRIVER_ENABLED`,
+  `ANPFUEL_ANP_DISCOVERY_ENABLED`,
+  `ANPFUEL_PRICE_RANKING_{ENABLED,CACHE_ENTRIES,CACHE_TTL_SECONDS}`,
+  `ANPFUEL_CHARGING_{READS,IMPORTS}_ENABLED`,
+  `ANPFUEL_QUALITY_{READS,COMPANY_READS,REPORTS,IMPORTS,DISCOVERY,REVALIDATION,SANCTIONS_DISCOVERY,ENFORCEMENT_IMPORTS,ENFORCEMENT_DISCOVERY}_ENABLED`.
+  Source imports and schedules are independent and default off; a schedule
+  only enqueues work.
+- Enterprise: `ANPFUEL_ENTERPRISE_ENABLED` (default false),
+  `ANPFUEL_ENTERPRISE_DEVICE_LIMIT` (1–5, default 3),
+  `ANPFUEL_ENTERPRISE_METER_PLAUSIBILITY` (rollback switch),
+  `ANPFUEL_ENTERPRISE_EXPORT_{ENABLED,ROOT,WINDOW_WEEKS}`,
+  `ANPFUEL_ENTERPRISE_PORTAL_{ROOT,SITE_URL,LANDING_URL,SEARCH_JS,INDEXABLE,OFFICIAL_ONLY,REFRESH_ENABLED}`.
+- Payments: `ANPFUEL_PAYMENTS_{CATALOG_VERSION,RETURN_ORIGIN}`, `ANPFUEL_STRIPE_*`,
+  `ANPFUEL_ASAAS_*` (modes, keys, webhook secrets, per-method sale switches).
+- Maps and misc: `ANPFUEL_MAP_DIST_DIR`, `ANPFUEL_MAP_DIST_PUBLIC_KEYS`,
+  `ANPFUEL_GITHUB_REPO`, `ANPFUEL_GITHUB_TOKEN`; `ops` reads
+  `ANPFUEL_OPERATOR_ID`, `ANPFUEL_MONITORING_WEBHOOK`, `ANPFUEL_BACKUP_MANIFEST`.
+
+## Rules an agent must not break
+
+- `domain/` packages are pure: no I/O, SQL, HTTP or provider calls. Cross-module
+  access goes through explicit ports; no module imports another module's
+  `db/queries` package, and each `sqlc.yaml` stanza lists only its owner's
+  migrations.
+- SQL lives in `db/queries` and is parametrized through sqlc. After editing,
+  run `sqlc vet && sqlc generate` from `backend/` and commit the output; the
+  fast gate fails on drift. Never build SQL from strings (generated identifiers
+  must be quoted with `pgx.Identifier`).
+- Migrations are append-only: never edit, rename or delete an applied file; add
+  the next number. No destructive down migrations; rollback is a forward
+  redeploy and the previous image must keep working (expand, then contract).
+  Raising `schema_min_supported` is a contract change the deploy agent never
+  applies automatically.
+- After any migration or SQL change, regenerate and review the runtime grant
+  inventory: `ANPFUEL_RUNTIME_GRANTS_WRITE=1 go test -tags=integration -count=1
+  -run TestRuntimeScriptMatchesHead ./internal/platform/runtimegrants` (without
+  the variable the test fails on a stale `infra/db/runtime-role.sql`). Never
+  hand-edit that script or grant TRUNCATE, DDL, ownership or SECURITY DEFINER.
+- API and worker connect as an ordinary login (NOSUPERUSER, NOBYPASSRLS, owns
+  no table). Organization tables use forced RLS; never weaken it to make a
+  query work.
+- Public reads may be anonymous. Signed writes and private owner reads require
+  proof of possession bound to `ANPFUEL_CANONICAL_HOST`; proxy hosts are
+  untrusted. Staging/production canonical hosts are bare public hostnames.
+- Official sources (ANP, registry, quality, sanctions) and community data stay
+  distinct: official endpoints refuse community data, never substitute it.
+  Payment never affects trust or free participation.
+- The organization boundary applies only to Abastevo Empresas data. Its routes
+  mount only with `ANPFUEL_ENTERPRISE_ENABLED`; per-organization capabilities
+  default to deny and change only through `ops enterprise capability set`.
+  Every organization write route declares a `WriteAdmission` (registration
+  fails otherwise), re-checks current membership, permission and fresh proof,
+  and carries an operation ID plus expected revision; replays return the
+  original acknowledgement and receipts are never deleted.
+- Lock order: accounts in UUID order, then organization roots in UUID order.
+  `WithOrgTx` runs READ COMMITTED. No external call (storage, provider, HTTP)
+  inside a database transaction or while holding these locks.
+- Job handlers tolerate redelivery and concurrent workers: the effect commits
+  with its receipt in one transaction; the dispatcher owns acknowledgement.
+- Times are stored as UTC instants with server receipt time; reporting
+  day/zone snapshots are captured at write and never recomputed. Resolve zones
+  with `kernel.LoadTimeZone`.
+- Logs and errors carry no secrets, tokens, PII, precise contributor GPS or
+  raw provider/SQL errors. DTOs redact `fmt`/slog/JSON output; never pass raw
+  URLs to request logging. Fixtures are synthetic.
+- New endpoints go into `contracts/openapi/v1.yaml` with vectors before the
+  handler; a published contract is never reinterpreted.
+- New dependencies need a recorded need, license check and security review.
+
+## Operations
+
+- `ops` subcommands: `directory`, `quality`, `subscription`, `feedback`,
+  `moderation`, `privacy erase|replay`, `monitoring eval`, `evidence-url`,
+  `admin keygen` (offline; prints a key and its SHA-256 once),
+  `meter rebuild-projection --org <uuid>`, `enterprise capability show|set`.
+  Run `go run ./cmd/ops help` for flags; in staging run it inside the `api`
+  container (`/ops`) with that container's runtime DSN.
+- Offline station tools use `ANPFUEL_DATABASE_URL`, run no migrations and
+  replay an exact source snapshot idempotently.
+- Staging runs on VPS 72.60.147.2 at https://abastevo.com.br, in k3s namespace
+  `abastevo-temp`, deployed only by the signed pull agent
+  ([agent](../infra/deploy/agent/README.md)). Its database is not a test
+  database.
+
+## Further reading
+
+[Architecture](../docs/architecture/backend.md) ·
+[API](../docs/backend/api.md) ·
+[Domain model](../docs/backend/domain-model.md) ·
+[Data model](../docs/backend/data-model.md) ·
+[Testing](../docs/backend/testing.md) ·
+[Toolchain](../docs/backend/toolchain.md) ·
+[Operations](../docs/operations/) ·
+[Security and privacy](../docs/security/security-privacy.md) ·
+[Enterprise](../docs/enterprise/README.md) ·
+[Agent guide](../AGENTS.md)

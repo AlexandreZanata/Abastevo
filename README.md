@@ -1,209 +1,109 @@
-![ABASTEVO — blue and green logo with reference lettering](docs/assets/brand/abastevo-readme-banner-v2.svg)
+![Abastevo](docs/assets/brand/abastevo-readme-banner-v2.svg)
 
-# abastevo
+# Abastevo
 
-An open-source community for recent fuel prices at Brazilian stations. The commercial experience being planned helps people **find a price, contribute a photo and keep station information current together**. Community current-price projections lead the experience; ANP surveys are clearly dated reference data.
+Fuel prices for every Brazilian city, from the official ANP survey and from
+the driver community. Android app, public website at
+[abastevo.com.br](https://abastevo.com.br), offline maps and a forum.
 
-## Product direction
-
-- **Explore:** simple city/fuel discovery, recent supported station prices, price conditions and directions. Browsing does not require an account or GPS.
-- **Contribute:** capture a price photo, review suggested values and follow validation status. Private audit photos expire within 24 hours; a submission does not automatically become a trusted current price.
-- **Participate:** free accounts, station/fuel ratings, 280-character comments/replies and validity votes. Price confidence, personal stars and community agreement are separate signals.
-- **Keep useful tools:** offline reference, vehicles, calculations, ANP history and navigation remain available. Optional paid benefits never buy trust or restrict free social participation.
-
-## Current state and next phases
-
-Backend/local infrastructure and P12–P17 functional modules are integrated; P18 local validation was merged in [PR #67](https://github.com/AlexandreZanata/abastevo/pull/67). Full functional device acceptance and real-production certification remain incomplete. The redesigned commercial experience below is **PLANNED**, not shipped. [Current evidence](docs/planning/PROGRESS.md) separates implementation, integration and release readiness.
-
-**Android-first:** P19 identity/navigation → P20 community discovery → P21 photo contribution → P22 social/moderation → P23 community operations → P24 Android commercial acceptance. Only afterward: separate P09/G09 real-production certification, bounded P10-T09 public pilot and optional P11 paid benefits. [Complete commercial plan](docs/planning/COMMERCIAL_COMMUNITY_PLAN.md) and [experience specification](docs/product/COMMUNITY_EXPERIENCE.md).
-
-**iOS is archived and deferred until the maintainer explicitly requests resumption.** Shared Kotlin ports, native source and prepared icon assets are preserved; no iOS build/device acceptance is claimed. [Archived backlog](docs/planning/archive/IOS_DEFERRED.md), [platform decision](docs/adr/016-android-commercial-community-ios-deferred.md).
-
-Staging uses the existing signed pull deployment timer. The [zero-downtime
-source work](docs/planning/CD_ZERO_DOWNTIME_PLAN.md) adds drain, safety guards,
-independent storage and measurement tooling; the [live inventory](docs/backend/evidence/cd/ZD-00.md)
-still shows surge OFF. Topology activation, three measured rollouts and failure
-drills remain pending explicit approval; no zero-downtime acceptance is claimed.
-
-## Development and documentation
-
-- [Roadmap and bounded tasks](ROADMAP.md), [current progress](docs/planning/PROGRESS.md) and [documentation index](docs/README.md).
-- [Fast phase delivery](docs/planning/DELIVERY_WORKFLOW.md), [execution card](docs/planning/FAST_EXECUTION.md) and [CI cadence](docs/planning/CI_PLAN.md): targeted TDD/risk checks per task, one phase branch/PR, protected quick verification at integration and wiki from the merged snapshot.
-- [Backend architecture](docs/backend/TARGET_ARCHITECTURE.md), [backend setup/tests](backend/README.md), [API contracts](docs/backend/API_PLAN.md) and [infrastructure](docs/backend/INFRASTRUCTURE_PLAN.md).
-- [Product contract](docs/product/PRODUCT_CONTRACT.md), [feedback rules](docs/product/STATION_FUEL_FEEDBACK.md), [privacy/security](docs/security/SECURITY_PRIVACY.md) and [decisions](docs/planning/DECISIONS.md).
-- [Approved brand](docs/brand/IDENTITY.md), [native app icons](docs/brand/APP_ICONS.md) and [agent entry point](AGENTS.md).
-
-## Origin and license
-
-Based on [brazil-fuel-prices-app](https://github.com/AlexandreZanata/brazil-fuel-prices-app), commit `b8a52049e0294cd2d07612cedcc52b3017c5271e`. Existing modules, `com.anpfuel` and [original MIT notices](LICENSES/MIT-original.txt) remain preserved. Production photos, credentials, contributor precise location and personal data do not belong in Git or public activity.
-
-## Imported Android documentation
-
-The following original README describes the upstream Android application and its release links. Its “no backend” description applies to that imported release; target platform plans are above. Known stale details (FTS version and UC index) are documented in the audit, not silently treated as implementation truth.
-
----
-
-# ANP Fuel Prices
-
-[![CI](https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS/actions/workflows/ci.yml/badge.svg)](https://github.com/AlexandreZanata/TABELA-ANP-COMBUSTIVEIS/actions/workflows/ci.yml)
-[![License: Visible Attribution](https://img.shields.io/badge/License-Visible%20Attribution-blue.svg)](LICENSE)
-[![Release](https://img.shields.io/badge/release-v3.1.0-blue.svg)](https://github.com/AlexandreZanata/brazil-fuel-prices-app/releases/tag/v3.1.0)
-
-Open-source Android app to browse Brazilian ANP (National Petroleum Agency) weekly fuel price surveys — fully offline-capable, no backend required.
-
-**Source available and free to use**, including commercially, under the [Abastevo Visible Attribution License](LICENSE). Third-party interfaces must visibly credit **Abastevo** and **Alexandre Zanata (@AlexandreZanata)** with the original links; the original owner’s own distributions are exempt — see [docs/license.md](docs/license.md).
-
-## Download
-
-Install the signed release APK directly from GitHub — lightweight sideload, no Play Store required:
-
-- **[Download v3.1.0 APK](https://github.com/AlexandreZanata/brazil-fuel-prices-app/releases/download/v3.1.0/app-release.apk)**
-- **[GitHub Releases](https://github.com/AlexandreZanata/brazil-fuel-prices-app/releases)** — release notes and previous versions
-
-See [docs/releases/v3.1.0.md](docs/releases/v3.1.0.md) for the full v3.1.0 changelog.
+<p align="center">
+  <img src="docs/store/screenshots/raw/phone/02-home-prices-sao-paulo.png" width="190" alt="Weekly average prices by fuel in São Paulo">
+  <img src="docs/store/screenshots/raw/phone/04-stations-sao-paulo.png" width="190" alt="Stations sorted by price">
+  <img src="docs/store/screenshots/raw/phone/03-map-sao-paulo.png" width="190" alt="Map of stations">
+  <img src="docs/store/screenshots/raw/phone/10-tank-cost-sorriso.png" width="190" alt="Cost to fill the tank">
+</p>
+<p align="center">
+  <img src="docs/store/screenshots/raw/phone/05-community-sao-paulo.png" width="190" alt="Community price reports">
+  <img src="docs/store/screenshots/raw/phone/06-forum.png" width="190" alt="Abastevo forum">
+  <img src="docs/store/screenshots/raw/phone/09-history-sorriso.png" width="190" alt="Week-by-week price history">
+  <img src="docs/store/screenshots/raw/phone/08-offline-weeks.png" width="190" alt="Survey weeks saved for offline use">
+</p>
 
 ## Features
 
-- **Vehicle profiles & tank fill cost** — register up to 3 vehicles; Home shows estimated full-tank price (UC-010, UC-011)
-- **Optional device location** — one-shot GPS + Nominatim reverse geocode after onboarding (UC-012)
-- **Station navigation** — open Maps/Waze from station list (UC-013)
-- **Local price drop alerts** — on-device notifications after weekly sync (UC-014)
-- **Survey week picker** — choose latest or any historical ANP week (gov.br catalog parity)
-- **National city search** — ~5 570 IBGE municipalities with FTS ranking and typo tolerance
-- Automatic download of ANP price tables from [gov.br/anp](https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/levantamento-de-precos-de-combustiveis-ultimas-semanas-pesquisadas)
-- Browse average prices by fuel type, state, and city — **vector icon per fuel**
-- Optional per-station detail (CNPJ, address, brand, price)
-- Historical price trends (local storage)
-- Edge-to-edge UI with system bar safe areas
-- 100% on-device processing — no server
+- **Official prices:** weekly ANP averages per municipality for gasoline,
+  ethanol, diesel, CNG and LPG, always labelled with the survey week.
+- **Stations:** price, brand and address per station, cheapest first, with
+  route to the station.
+- **Map:** stations and EV charging points; regional maps can be downloaded
+  for offline use.
+- **Your vehicles:** cost to fill the tank for up to three vehicles, price-drop
+  notifications and week-by-week history.
+- **Offline:** survey weeks and maps stay on the device.
+- **Community:** share the price you saw at the pump (optional photo), rate
+  stations, comment, and read guides and discussions in the forum. Browsing
+  needs no account; participating needs only a username. Community data is
+  always shown apart from official data.
+- **Abastevo Empresas:** private fleet, fueling, expense and trip management
+  for companies (under construction).
 
-## Stack (definitive)
+Abastevo is independent and not affiliated with ANP or any government body.
 
-| Concern | Technology |
-|---------|------------|
-| Language | Kotlin 2.0+ |
-| UI | Jetpack Compose + Material Design 3 |
-| Architecture | Clean Architecture — `:domain` / `:application` / `:data` / `:app` |
-| Database | Room + SQLite + FTS5 |
-| Background sync | WorkManager + OkHttp + Jsoup |
-| XLSX parsing | Streaming XLSX parser (custom; Apache POI test-only) |
-| DI | Hilt |
-| i18n | Android string resources (`en` default, `pt-BR`) |
-| Tests | JUnit 5 + MockK + Turbine |
+## Architecture
 
-Full specification: **[docs/tech-stack.md](docs/tech-stack.md)** · ADR: **[docs/adr/001-kotlin-compose-stack.md](docs/adr/001-kotlin-compose-stack.md)**
-
-## Project structure
-
-```
-:app/               # Compose UI, ViewModels, theme, navigation
-:application/       # Use cases (UC-001…UC-015)
-:domain/            # Entities, Value Objects, rules, events, ports
-:data/              # Room, OkHttp, parser, WorkManager, repositories
-docs/               # Architecture, use cases, glossary
-data/samples/       # Reference ANP spreadsheets for parser tests
-.cursor/rules/      # Agent engineering contract
+```mermaid
+flowchart LR
+  ANP[Official sources<br/>ANP surveys, registry, quality] --> Prep[Rust preparers<br/>and Go jobs]
+  Prep --> DB[(PostgreSQL + PostGIS)]
+  App[Android app] -->|signed writes, public reads| API[Go API]
+  Admin[admin-web / business-web] --> API
+  API --> DB
+  API --> S3[(Private S3 media)]
+  DB --> Portal[Static portal generator]
+  Portal --> Web[abastevo.com.br<br/>landing + SEO portal]
 ```
 
-Package root: `com.anpfuel`
+- **Android** (`app`, `application`, `domain`, `data`, `maps/engine`): Kotlin,
+  Jetpack Compose, Room, Hilt, WorkManager, native CoMaps-derived map engine.
+- **Backend** (`backend`): Go modular monolith (chi, pgx, sqlc, slog) with
+  PostgreSQL/PostGIS, private S3 media and background jobs.
+- **Web** (`landing`, `admin-web`, `business-web`): TypeScript static builds.
+- **Infrastructure** (`infra`): k3s on a VPS behind Caddy and Cloudflare; a
+  deploy agent applies signed releases built from `main`.
 
-See **[docs/architecture.md](docs/architecture.md)** for package layout, data flow, and database schema.
+More in [docs/architecture/](docs/architecture/) and the agent guide in
+[AGENTS.md](AGENTS.md).
 
-## Sample data
+## Getting started
 
-Reference files for week **2026-06-07 → 2026-06-13** are in `data/samples/`:
+```bash
+./gradlew test                                  # Android unit tests
+./gradlew :app:assembleDebug                    # debug APK
+cd backend && go test ./...                     # backend unit tests
+bash scripts/check-backend-fast.sh              # backend fast gate (format, vet, staticcheck, sqlc)
+cd landing && npm ci && npm test && npm run build
+make quick-verify                               # the change-aware gate CI runs
+```
 
-| File | Size | Rows | Purpose |
-|------|------|------|---------|
-| `resumo_semanal_lpc_*.xlsx` | ~287 KB | ~3.9K (municipalities) | Averages by region/state/city |
-| `revendas_lpc_*.xlsx` | ~1.8 MB | ~19.7K | Per-station prices |
-
-See [docs/data-sources.md](docs/data-sources.md) for column schemas and download URL patterns.
+Backend integration tests need a disposable PostGIS; see
+[backend/README.md](backend/README.md). Local Android setup, signing and the
+map engine are covered in [docs/android/](docs/android/).
 
 ## Documentation
 
-| Document | Purpose |
-|----------|---------|
-| [docs/user-business-logic.md](docs/user-business-logic.md) | **Product contract** — user journeys, states, rules |
-| [docs/use-cases/](docs/use-cases/) | Detailed use cases (UC-001 … UC-015) |
-| [docs/glossary.md](docs/glossary.md) | Domain language + business rules (BR-001 … BR-027) |
-| [docs/attribution.md](docs/attribution.md) | Third-party assets (fuel icons) |
-| [CHANGELOG.md](CHANGELOG.md) | Release history |
-| [docs/architecture.md](docs/architecture.md) | Layers, packages, data flow, database |
-| [docs/tech-stack.md](docs/tech-stack.md) | **Definitive stack** — libraries and module deps |
-| [docs/adr/001-kotlin-compose-stack.md](docs/adr/001-kotlin-compose-stack.md) | Architecture decision record |
-| [docs/data-sources.md](docs/data-sources.md) | ANP file formats and URL patterns |
-| [docs/commit-conventions.md](docs/commit-conventions.md) | Git commit and PR standards |
-| [CONTRIBUTING.md](CONTRIBUTING.md) | How to contribute — TDD, layers, i18n, PRs |
-| [docs/license.md](docs/license.md) | Visible-attribution license and retained original/third-party notices |
-| [docs/play-store-listing.md](docs/play-store-listing.md) | Play Store listing draft (en + pt-BR) |
-| [docs/privacy-policy.md](docs/privacy-policy.md) | Privacy policy — no personal data collected |
-| [docs/local-build.md](docs/local-build.md) | **Local compile** — debug APK, install, prerequisites |
-| [docs/release-build.md](docs/release-build.md) | Signed release APK/AAB build instructions |
-| [docs/releases/v3.1.0.md](docs/releases/v3.1.0.md) | GitHub Release v3.1.0 draft notes |
-| [docs/releases/v3.0.0.md](docs/releases/v3.0.0.md) | GitHub Release v3.0.0 draft notes |
-| [docs/releases/v2.0.0.md](docs/releases/v2.0.0.md) | GitHub Release v2.0.0 draft notes |
-| [docs/releases/v1.0.0.md](docs/releases/v1.0.0.md) | GitHub Release v1.0.0 draft notes |
-| [ROADMAP.md](ROADMAP.md) | Current phased execution plan; replaces the legacy git-ignored local plan |
+- [docs/README.md](docs/README.md): documentation index.
+- [AGENTS.md](AGENTS.md): how to work in this repository (humans and agents).
+- [ROADMAP.md](ROADMAP.md): what is planned and not done yet.
+- [CONTRIBUTING.md](CONTRIBUTING.md): contribution workflow.
 
-## Development
+## Status
 
-Before implementing a feature:
+- The backend, website and portal run in staging at
+  [abastevo.com.br](https://abastevo.com.br), deployed automatically from `main`.
+- Signed Android builds are published as GitHub prereleases; the Google Play
+  submission is being prepared ([store readiness](docs/store/play-readiness.md)).
+- iOS is archived.
 
-1. Read the use case in `docs/use-cases/` (do not implement undocumented flows)
-2. Check business rules in `docs/glossary.md`
-3. Verify stack and layer placement in `docs/architecture.md`
-4. Write domain tests first (TDD, GIVEN/WHEN/THEN)
-5. Add i18n keys for all user-visible strings
-6. Follow [commit conventions](docs/commit-conventions.md) (English, Conventional Commits)
+## License and attribution
 
-See **[CONTRIBUTING.md](CONTRIBUTING.md)** for the full contributor guide.
+Material the owner can license is under the
+[Abastevo Visible Attribution License 1.0](LICENSE). Third-party use, including
+commercial use, must keep a readable credit visible during normal use:
+**Abastevo** with a link to this repository and **Alexandre Zanata
+(@AlexandreZanata)** with a link to the creator, plus LICENSE and the
+third-party notices. Original MIT notices are kept in [LICENSES/](LICENSES/);
+third-party components are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-### Quick start — compile locally
-
-```bash
-./gradlew validateRepoBaseline   # Gate 0.1 — repo + .cursor rules
-./gradlew test                     # unit tests (same as CI)
-./gradlew :app:assembleDebug       # debug APK
-./gradlew :app:installDebug        # install on device/emulator
-```
-
-Full details: **[docs/local-build.md](docs/local-build.md)**.
-
-## Releases
-
-**Latest:** [v3.1.0](https://github.com/AlexandreZanata/brazil-fuel-prices-app/releases/tag/v3.1.0) — [APK download](https://github.com/AlexandreZanata/brazil-fuel-prices-app/releases/download/v3.1.0/app-release.apk) · [release notes](docs/releases/v3.1.0.md). Previous: [v3.0.0](docs/releases/v3.0.0.md), [v2.0.0](docs/releases/v2.0.0.md), [v1.0.0](docs/releases/v1.0.0.md).
-
-Validate a release locally:
-
-```bash
-./gradlew validateReleaseBuild     # signed APK/AAB (v3.1.0)
-./gradlew validateReleaseTag       # version, license, disclaimers (Gate 15)
-./gradlew validateGate15Release    # tag, artifacts, release notes (Gate 15)
-./gradlew publishGithubRelease     # dry-run GitHub Release publish (R2.3)
-./gradlew test                     # full unit test suite (all modules)
-```
-
-See [CHANGELOG.md](CHANGELOG.md) for version history.
-
-## License
-
-This project uses the **[Abastevo Visible Attribution License 1.0](LICENSE)** for material the owner can license. Third-party use, including commercial use, is permitted subject to its visible project/creator credit and redistribution conditions. The original copyright holder’s own distributions are exempt from visible self-credit. [Original MIT and third-party notices](THIRD_PARTY_NOTICES.md) remain preserved.
-
-Full details, examples, and FAQ: **[docs/license.md](docs/license.md)**.
-
-## Data attribution
-
-Fuel price data is published by [ANP](https://www.gov.br/anp) under open government data policies.
-
-### Reusing Abastevo in another project
-
-If you use, modify, host or distribute covered Abastevo material as a third party,
-keep a readable credit visible during normal use (including map/navigation):
-**Abastevo**, with a labeled [original-project link](https://github.com/AlexandreZanata/Abastevo),
-and **Alexandre Zanata (@AlexandreZanata)**, with a labeled
-[creator link](https://github.com/AlexandreZanata). An optional About screen or
-first-launch message alone is insufficient. Keep LICENSE and third-party notices
-with your copies. The official app distributed by the original copyright holder
-does not need an author-credit strip. See the [implementation example and full
-compliance steps](docs/license.md#example-for-third-party-interfaces).
+Fuel price data is published by [ANP](https://www.gov.br/anp) as open
+government data. Abastevo started from
+[brazil-fuel-prices-app](https://github.com/AlexandreZanata/brazil-fuel-prices-app).

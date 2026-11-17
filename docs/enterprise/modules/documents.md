@@ -1,22 +1,18 @@
 # Private documents and receipts
 
-Status: **PLANNED / RECONSTRUCTED**, 2026-11-11.
-Recovered from the surviving enterprise requirements, shared rules and backlog.
-The accepted F0 decisions and existing release gates govern any implementation.
-
-EMP-PLAT-006 implements the [private storage/access foundation](../evidence/f1-plat006-private-document-storage.md).
+EMP-PLAT-006 implements the private storage/access foundation.
 EMP-DOC-002 persists the document container (`org_documents`, migration
 000205), the creator-bound upload session with its capability-bound ingress and
-the audited content routes ([evidence](../evidence/f3-doc002-document-persistence.md));
-EMP-DOC-014 adds the upload safety check: verified bytes are `RECEIVED`, only the check over the stored object makes them `STORED`, refused content is `QUARANTINED`/`FAILED` with a closed reason, and the `org-document-safety` job converges interrupted checks and closes sessions 24 hours after the declaration ([evidence](../evidence/f3-doc014-upload-safety.md)). EMP-OFFL-005 adds the signed device path `POST /v1/orgs/{org_id}/sync/attachments` (declaration, link and upload capability for the enrolled member's own document).
+the audited content routes (evidence);
+EMP-DOC-014 adds the upload safety check: verified bytes are `RECEIVED`, only the check over the stored object makes them `STORED`, refused content is `QUARANTINED`/`FAILED` with a closed reason, and the `org-document-safety` job converges interrupted checks and closes sessions 24 hours after the declaration (evidence). EMP-OFFL-005 adds the signed device path `POST /v1/orgs/{org_id}/sync/attachments` (declaration, link and upload capability for the enrolled member's own document).
 EMP-DOC-003 persists owned same-organization links (`org_document_links`,
 migration 000209) to assets, employees and stored or held meter readings
 through a closed registry of owner resolvers, with a link port for operation
 consumers and three company routes
-([evidence](../evidence/f3-doc003-document-links.md)); fueling, expense,
+(evidence); fueling, expense,
 work-order and trip links retain their owning tasks.
 EMP-DOC-006 adds pure structure checks for access keys, NFC-e QR codes and a
-bounded server-only XML envelope ([evidence](../evidence/f3-doc006-fiscal-structure.md));
+bounded server-only XML envelope (evidence);
 a STRUCTURE_OK result commands only the structure status and never fiscal
 consultation.
 The current synthetic inspector accepts JPEG; other format inspectors are
@@ -28,7 +24,7 @@ Attach verifiable private evidence to an organization's operational records. Fie
 
 ## 2. Scope
 
-C1 includes synthetic receipt capture, private storage, scoped links and a viewer. F3 adds structured fields, human conference, allocation and reconciliation. F6 enforces reviewed retention and holds. Real receipts require the [F0 legal decision](../evidence/f0-m0-decisions.md#private-receipts). Fiscal consultation and optional extraction keep separate approvals.
+C1 includes synthetic receipt capture, private storage, scoped links and a viewer. F3 adds structured fields, human conference, allocation and reconciliation. F6 enforces reviewed retention and holds. Real receipts require the F0 legal decision. Fiscal consultation and optional extraction keep separate approvals.
 
 ## 3. Entities and ownership
 
@@ -51,19 +47,19 @@ The organization owns each document, upload, original, extraction result, item a
 
 ## 6. States and transitions
 
-The six status sets are canonical in [the state catalog](../08-state-model.md). Intake moves storage from uploading to received, then stored only after checks, or quarantine/failure. Replacement retains the prior reference. Authorized human review changes conference state on a specified revision. Reconciliation follows committed allocations. A fiscal status requires an authorized consultation and its time. Cancellation inside the app does not certify a fiscal cancellation. Reversal preserves the original and decision history.
+The six status sets are canonical in [the state catalog](../state-model.md). Intake moves storage from uploading to received, then stored only after checks, or quarantine/failure. Replacement retains the prior reference. Authorized human review changes conference state on a specified revision. Reconciliation follows committed allocations. A fiscal status requires an authorized consultation and its time. Cancellation inside the app does not certify a fiscal cancellation. Reversal preserves the original and decision history.
 
 ## 7. Roles and permissions
 
-Use the [permission registry](../07-permissions.md). Metadata read and content read are distinct. Capture or association requires the owning record's permission and a scoped target. Review, allocation and retention changes require their named managing role and current scope. Support sees content only when an approved support session explicitly includes it.
+Use the [permission registry](../permissions.md). Metadata read and content read are distinct. Capture or association requires the owning record's permission and a scoped target. Review, allocation and retention changes require their named managing role and current scope. Support sees content only when an approved support session explicitly includes it.
 
 ## 8. Offline, concurrency, idempotency and corrections
 
-The [shared queue](../10-offline-sync.md) seals account, origin, organization and attachment identity. Accepted operations may retain pending bytes. Retries reuse the operation and declared file identity. Each allocation locks the source totals, and edits to reviewed facts use a new revision. Expiry checks deny reads while cleanup is unavailable.
+The [shared queue](../offline-sync.md) seals account, origin, organization and attachment identity. Accepted operations may retain pending bytes. Retries reuse the operation and declared file identity. Each allocation locks the source totals, and edits to reviewed facts use a new revision. Expiry checks deny reads while cleanup is unavailable.
 
 ## 9. Events, notifications and integrations
 
-Upload and safety workers consume scoped declarations. Completed storage and changed conference or allocation results notify owning consumers through the [existing job queue](../09-architecture.md). Audit events contain bounded references, never document content. Optional extraction and fiscal retrieval use separately reviewed ports.
+Upload and safety workers consume scoped declarations. Completed storage and changed conference or allocation results notify owning consumers through the [existing job queue](../architecture.md). Audit events contain bounded references, never document content. Optional extraction and fiscal retrieval use separately reviewed ports.
 
 ## 10. Data, formulas and examples
 
@@ -79,4 +75,4 @@ Use integer centavos and exact source quantities. For a document of 97 350 centa
 
 ## 12. Acceptance, dependencies, risks, phase and microtasks
 
-[EP09](../backlog/ep09-documents.md) owns the microtasks. Real PostGIS must prove scoped references, allocation races, atomic audit and replay. Isolated storage tests cover incomplete uploads, expiry and cleanup failures. C1 is synthetic. The [privacy schedule](../11-privacy-security.md) and [VAL-12](../15-validation.md) supply retention and allocation gates. Open risk remains the category-specific legal decision for real receipts.
+[EP09](../backlog/ep09-documents.md) owns the microtasks. Real PostGIS must prove scoped references, allocation races, atomic audit and replay. Isolated storage tests cover incomplete uploads, expiry and cleanup failures. C1 is synthetic. The [privacy schedule](../privacy-security.md) and [VAL-12](../testing.md) supply retention and allocation gates. Open risk remains the category-specific legal decision for real receipts.

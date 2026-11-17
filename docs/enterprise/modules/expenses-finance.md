@@ -1,9 +1,5 @@
 # Expenses, approvals, budgets and operational finance
 
-Status: **PLANNED / RECONSTRUCTED**, 2026-11-11.
-Recovered from the surviving enterprise requirements, shared rules and backlog.
-The accepted F0 decisions and existing release gates govern any implementation.
-
 ## 1. Purpose
 
 Give each economic cost one source, one review history and an exact company amount. Managers track obligations and settlement without recognizing the same expense again.
@@ -36,11 +32,11 @@ The organization owns expense, allocation, review case, approval step, payable, 
 
 ## 6. States and transitions
 
-Expenses use BR-REV states plus void, preserving revisions. Approval steps use pending, approved, returned, rejected or explicitly skipped under their policy. Payables are open, partially settled, settled or cancelled. The payable state is derived from the exact obligation and its settlement entries; only an explicit, reasoned cancellation of an open payable sets cancelled (B-BR-EMP-196). Advances retain their requested, approved, paid and accounted stages. Holds are active, consumed, released or expired. Periods are open, locked or reopened. In F3 a period is the organization-wide calendar month of reporting days; record commands read it through the period gate at receipt (B-BR-EMP-211..214). The [state catalog](../08-state-model.md) is canonical. Every transition checks actor, scope, current revision and required reason. A locked-period correction uses authorized reopening or an open-period adjustment.
+Expenses use BR-REV states plus void, preserving revisions. Approval steps use pending, approved, returned, rejected or explicitly skipped under their policy. Payables are open, partially settled, settled or cancelled. The payable state is derived from the exact obligation and its settlement entries; only an explicit, reasoned cancellation of an open payable sets cancelled (B-BR-EMP-196). Advances retain their requested, approved, paid and accounted stages. Holds are active, consumed, released or expired. Periods are open, locked or reopened. In F3 a period is the organization-wide calendar month of reporting days; record commands read it through the period gate at receipt (B-BR-EMP-211..214). The [state catalog](../state-model.md) is canonical. Every transition checks actor, scope, current revision and required reason. A locked-period correction uses authorized reopening or an open-period adjustment.
 
 ## 7. Roles and permissions
 
-Use the fixed [permission matrix](../07-permissions.md). Expense read, record, review, allocation, budget management and financial settlement are separate powers. Scope is resolved at the server. A finance role does not remove self-approval or fresh-auth requirements. Auditor read never implies writes or full export.
+Use the fixed [permission matrix](../permissions.md). Expense read, record, review, allocation, budget management and financial settlement are separate powers. Scope is resolved at the server. A finance role does not remove self-approval or fresh-auth requirements. Auditor read never implies writes or full export.
 
 ## 8. Offline, concurrency, idempotency and corrections
 
@@ -65,4 +61,4 @@ Money is integer centavos. A fueling costing 97 350 creates one expense of 97 35
 
 ## 12. Acceptance, dependencies, risks, phase and microtasks
 
-[EP10](../backlog/ep10-expenses-finance.md) owns tasks and dependencies. Immediate PostGIS, money and concurrency proofs include VAL-09, VAL-13, VAL-14, VAL-19 and VAL-25 in [the validation plan](../15-validation.md). No source consumer bypasses its approval, legal or activation gate. Detailed approval thresholds remain reviewed policy data.
+[EP10](../backlog/ep10-expenses-finance.md) owns tasks and dependencies. Immediate PostGIS, money and concurrency proofs include VAL-09, VAL-13, VAL-14, VAL-19 and VAL-25 in [the validation plan](../testing.md). No source consumer bypasses its approval, legal or activation gate. Detailed approval thresholds remain reviewed policy data.

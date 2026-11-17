@@ -11,7 +11,7 @@ import com.anpfuel.app.R
 
 /**
  * Landing display family (`--font-display`): titles, prices, buttons and labels.
- * Bundled OFL files; provenance in `docs/mobile/DESIGN_SYSTEM.md`.
+ * Bundled OFL files; provenance in `docs/android/design-system.md`.
  */
 val ManropeFontFamily = FontFamily(
     Font(R.font.manrope_medium, FontWeight.Medium),

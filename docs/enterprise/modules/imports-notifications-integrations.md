@@ -1,9 +1,5 @@
 # Imports, notifications and integrations
 
-Status: **PLANNED / RECONSTRUCTED**, 2026-11-11.
-Recovered from the surviving enterprise requirements, shared rules and backlog.
-The accepted F0 decisions and existing release gates govern any implementation.
-
 ## 1. Purpose
 
 Bring authorized organization data into existing workflows and deliver scoped outcomes without creating parallel business rules or mandatory external providers.
@@ -33,11 +29,11 @@ The organization owns import batch, mapped row, row outcome, notification prefer
 
 ## 6. States and transitions
 
-Import state follows uploaded, parsed, mapped, validated, confirmed, applying and applied or applied-with-errors. Failure and cancellation retain results. Reversal uses the owning correction path and never deletes approved history. Notifications are pending, delivered, failed or suppressed. Connections are configured, active, degraded or disabled. [The state catalog](../08-state-model.md) is canonical.
+Import state follows uploaded, parsed, mapped, validated, confirmed, applying and applied or applied-with-errors. Failure and cancellation retain results. Reversal uses the owning correction path and never deletes approved history. Notifications are pending, delivered, failed or suppressed. Connections are configured, active, degraded or disabled. [The state catalog](../state-model.md) is canonical.
 
 ## 7. Roles and permissions
 
-Use [import, notification and connection permissions](../07-permissions.md). Import confirmation needs the target workflow's create authority. Viewing a preview never grants the authority to apply it. Each report link rechecks the recipient's current resource permission. Platform support requires the approved scope.
+Use [import, notification and connection permissions](../permissions.md). Import confirmation needs the target workflow's create authority. Viewing a preview never grants the authority to apply it. Each report link rechecks the recipient's current resource permission. Platform support requires the approved scope.
 
 ## 8. Offline, concurrency, idempotency and corrections
 

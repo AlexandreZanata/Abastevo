@@ -1,7 +1,7 @@
 # Pinned CoMaps release builder
 
 This is the owned MAP-14 builder. Local extraction acceptance is recorded in
-[MAP-14_ENGINE_GATE](../../../docs/backend/evidence/maps/MAP-14_ENGINE_GATE.md)
+MAP-14_ENGINE_GATE
 and its exact receipt; static build tools do not run or certify Android runtime.
 Upstream: `4587b8ad4d12c9f59982709fdaf03cc925948827` (Apache-2.0 core).
 Preserve the upstream LICENSE/NOTICE and the separate transitive/asset audit.

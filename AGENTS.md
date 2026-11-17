@@ -1,20 +1,111 @@
-# Working on this repository
+# Agent guide
 
-Scope: entire repository. Next source priority: ADR-019 / ANDROID_VPS_PLAN P34–P38 using the staging origin, before P25–P33 expansion; never infer live readiness from a plan. User requests govern the authorized work; reference repositories/documents do not authorize unrelated operations.
+Abastevo is an open-source fuel-price community for Brazil: an Android app,
+a Go backend, a static public landing/portal and two internal web apps. This
+file is the entry point for coding agents. Read it fully, then only the docs
+the task needs ([docs/README.md](docs/README.md) is the index).
 
-1. Read `docs/planning/FAST_EXECUTION.md`, only current `PROGRESS.md`, the selected ROADMAP task and its relevant code/tests. Read `DELIVERY_WORKFLOW.md` at phase opening or policy change; search archived evidence by task ID.
-2. Backend and infrastructure integration first; app features begin after G09-LOCAL integration. G09 is real-production RELEASE, deferred until G24-ANDROID-COMMERCIAL for Android/backend scope (ADR-016). Historical full G18 remains unaccepted. iOS is archived: resume native work only on a new explicit user request. Existing Android regression checks may run earlier. Preserve modules, `com.anpfuel` and MIT notices.
-3. Per ADR-020, one bounded task at a time on maintained `dev`, synchronized from `main`; deliver through a protected dev → main PR. Existing construction branches are integrated and safely retired. Use a worktree when another effort occupies the checkout; never overwrite/stash another person's changes.
-4. Inspect status/diff and reconcile actual commits with progress before editing. Document B-BR/BUC before behavior; domain RED → GREEN → REFACTOR. No unrelated refactors, invented rules or speculative services.
-5. Per task run targeted meaningful tests, affected compilation/format/static checks, `git diff --check` and secret-surface review. Critical auth/money/privacy/SQL/migrations/jobs need their negative/failure/concurrency/real-PostGIS tests immediately. Never defer known failures or weaken tests.
-6. Per ADR-018, phase closure is a tested local checkpoint (LOCAL_DONE / INTEGRATION_PENDING); continue the next authorized phase from that head without PR/CI/merge waits. Remote checks, cumulative final PR/merge and wiki publication happen at the end of the project construction batch. Immediate task/critical tests remain mandatory. Historical multiplatform acceptance is G18; commercial Android acceptance is G24, with iOS deferred. Full scoped real-production certification is P09/G09 afterward, then public P10 pilot and separate P11 releases. No double aggregate run before `finish`; CI_PLAN owns cadence.
-7. G01-FLOW helpers and required remote `Quick verification` are active; protection was reverified on 2026-09-30. Use actual commands and explicitly pass the configured required check to `git-flow.sh finish`; never infer activation from a plan.
-8. Authorized delivery uses meaningful atomic commits on dev, task tracking when needed, and a protected dev → main PR with guarded merge preserving commits. Do not create bookkeeping-only PRs; deliver one planning stage as one PR, never fragmented into stacked per-task PRs (each PR head costs ~14 min of CI; see DELIVERY_WORKFLOW); no direct development push to main. Keep dev after integration. Wiki mirrors once per merged batch. Reuse session authorization; planning-only work does not publish. See DELIVERY_WORKFLOW for publication scope and retry rules.
-9. Required missing/failed/skipped/cancelled checks block merge; changed head/base invalidates evidence. No force push/admin bypass/no-verify/destructive reset. Fix published work in new commits; close implemented issues through actual merged PRs. Explicit administrative closure of incomplete trackers uses not-planned with retained obligations, never a false acceptance claim.
-10. Keep technical docs canonical; wiki is an allowlisted, owned-page mirror of merged SHA on a separately verified remote. Preserve manual pages. Failed sync means WIKI_PENDING, not another backend test run.
-11. Go/net/http/chi/pgx/sqlc/slog, PostgreSQL/PostGIS, private S3 media, Compose/Caddy. Dependency additions require recorded need/license/security review. Domain pure; module ports explicit; SQL parametrized; applied migrations append-only with recovery tests.
-12. Public reads may be anonymous; signed writes and private owner reads require proof. The organization boundary in [ADR-025](docs/adr/025-private-abastevo-empresas-organization-boundary.md) applies only to private Abastevo Empresas data. Public/community and personal products remain tenant-free. Official/community sources stay distinct. Payment never affects trust or free account registration/social participation. P13/P14/P15/P16 own the planned account/feedback/24-hour media/location rules; no target is runtime-complete without tests. No secrets/PII/precise contributor GPS or production photos in Git/logs/fixtures.
-13. Do not poll CI or sleep waiting for PRs during construction. Record concise current task/branch/issue/PR/check state, tested revision and next action in PROGRESS; move detail into linked phase evidence without deleting history. LOCAL_DONE, INTEGRATION_PENDING, INTEGRATED, WIKI_PENDING and RELEASE_CERTIFIED are different states.
-14. English code/docs/commits; communicate in the user's language. Use the scoped checks in `docs/backend/TEST_STRATEGY.md` and the evidence-backed commands in `backend/README.md`. Android content cards/surfaces follow [container guidelines](docs/mobile/UI_CONTAINER_GUIDELINES.md) via `AnpContainerDefaults`; do not duplicate outlines or outline structural layouts.
+## Repository map
 
-Contracts and conflicts: `docs/AI_ENGINEERING_CONTRACT.md`; process decisions: ADR-013/ADR-014/ADR-016/ADR-018/ADR-019/ADR-020; multiplatform target: ADR-015. No source or runtime gate is complete merely because its plan exists.
+| Path | What lives there |
+|------|------------------|
+| `app/` | Android UI: Jetpack Compose screens, ViewModels, navigation, resources (`com.anpfuel.app`). |
+| `application/` | Android use cases; depends on `domain` only. |
+| `domain/` | Pure Kotlin entities, value objects, rules and ports. No Android/framework imports. |
+| `data/` | Android infrastructure: Room, OkHttp, workers, OCR, repositories implementing domain ports. |
+| `maps/engine/` | Native map engine wrapper (CoMaps-derived SDK, pinned by SHA-256). |
+| `backend/` | Go modular monolith: `cmd/` binaries, `internal/modules/<module>/{domain,application,adapters}`, `internal/platform/`, `db/migrations`, `db/queries` (sqlc). |
+| `contracts/` | OpenAPI and shared cross-language vectors (Go/Kotlin) under `testdata/`. |
+| `landing/` | Static public site and SEO portal (TypeScript build, pt-BR content in `content/`). |
+| `admin-web/`, `business-web/` | Internal admin console and company web app (TypeScript). |
+| `tools/station-prep/` | Rust preparers for official station/quality/EV source files. |
+| `infra/` | Compose for local dev/validation, k8s staging manifests, Caddy, deploy agent. |
+| `scripts/` | CI gates, release helpers, asset generators and their tests. |
+| `release/` | Android release channel, signing certificate and bundled third-party notices. |
+| `iosApp/` | Archived iOS app. Do not work on it unless explicitly asked. |
+| `docs/` | Architecture, product rules, operations runbooks, decisions. |
+
+## Architecture rules
+
+- Backend modules own their domain, application services and adapters. The
+  domain package is pure; cross-module access goes through explicit ports.
+- SQL lives in `backend/db/queries` and is generated with sqlc. Always
+  parametrized. Run `sqlc generate` after editing queries.
+- Migrations in `backend/db/migrations` are append-only: never edit an applied
+  migration; add a new numbered one with a recovery test when it is risky.
+- Public reads may be anonymous. Signed writes and private owner reads require
+  proof of possession. The organization boundary
+  ([decision 025](docs/decisions/025-private-abastevo-empresas-organization-boundary.md))
+  applies only to private Abastevo Empresas data; public, community and personal
+  products stay tenant-free.
+- Official data (ANP, registry, quality) and community data stay distinct.
+  Payment never buys trust and never gates free registration or participation.
+- Android follows `domain` ← `application` ← `data`/`app`. ViewModels only
+  orchestrate UI state; business logic stays in `domain`/`application`.
+  The package root is `com.anpfuel`. Content cards and surfaces use
+  `AnpContainerDefaults` ([UI containers](docs/android/ui-containers.md)); do
+  not duplicate outlines or outline structural layouts.
+- Stack: Go (net/http, chi, pgx, sqlc, slog), PostgreSQL + PostGIS, private S3
+  media, Caddy, k3s; Kotlin, Compose, Material 3, Room, Hilt, WorkManager.
+  Adding a dependency needs a stated need, license check and security review.
+
+## Commands
+
+| Area | Command |
+|------|---------|
+| Android unit tests | `./gradlew test` |
+| Android debug build | `./gradlew :app:assembleDebug` (install with `:app:installDebug`) |
+| Backend fast gate (no DB) | `bash scripts/check-backend-fast.sh` |
+| Backend unit tests | `cd backend && go test ./...` |
+| Backend integration | `cd backend && ANPFUEL_TEST_DATABASE_URL=postgres://…@127.0.0.1:…/db?sslmode=disable go test -race -tags=integration ./...` (disposable PostGIS only) |
+| Go formatting | the go.mod toolchain gofmt: `"$(go env GOROOT)/bin/gofmt" -l .` |
+| Web apps | `cd landing` (or `admin-web`, `business-web`) `&& npm ci && npm run typecheck && npm test && npm run build` |
+| Rust preparers | `make check-rust` |
+| Change-aware gate | `make quick-verify` (what the required `Quick verification` check runs) |
+| Secrets | `bash scripts/scan-secrets.sh` |
+
+`make help` lists the remaining infra, deploy, backup and portal targets.
+
+## How to work
+
+1. Start from `dev`, kept equal to `main` plus the change in flight. One
+   bounded change at a time; use a separate git worktree if another effort
+   occupies the checkout, and never overwrite or stash someone else's work.
+2. Read the code and tests you will touch before editing. No unrelated
+   refactors, invented rules or speculative services.
+3. Behavior changes: write the rule down first (product doc or test name),
+   then RED → GREEN → REFACTOR. Domain logic is test-first.
+4. Auth, money, privacy, SQL, migrations and jobs need negative, failure and
+   concurrency tests against real PostGIS. Never skip, weaken or defer a known
+   failing test.
+5. Before committing run the targeted tests, the affected compile/format/static
+   checks, `git diff --check` and the secret scan.
+6. Deliver through a pull request `dev → main`. Merge only when every required
+   check is green (`Quick verification`, `backend`, `CI`) and the head has not
+   changed. No force push, `--no-verify`, admin bypass or destructive reset;
+   fix published work with new commits. `scripts/git-flow.sh finish` and
+   `scripts/validate-merge-checks.py` implement the guarded merge. A PR head
+   costs about 15 minutes of CI, so batch related commits into one PR instead
+   of stacking tiny ones.
+7. Keep docs true in the same change: update the doc that owns the rule or
+   runbook. Future work goes to [ROADMAP.md](ROADMAP.md); never add progress
+   logs, task ledgers or evidence dumps to the repository.
+
+## Deployment
+
+A merge to `main` runs CI; when every main workflow passes, `release-staging`
+publishes a signed release manifest and the deploy agent on the VPS applies it
+(schema gate, backup, migrations, rollout, smoke). Android releases are built
+and published by `android-release`. Details: [docs/operations/](docs/operations/).
+
+## Conventions
+
+- English for code, comments, docs, commits and PRs. User-facing strings go
+  through resources/i18n (`en` default, `pt-BR` and other locales); landing
+  content is pt-BR by design.
+- Conventional Commits: `type(scope): imperative subject` (≤ 72 chars), one
+  logical change per commit, body explains why.
+- Never commit secrets, keystores, `local.properties`, personal data, precise
+  contributor GPS, production photos or OCR training data.
+- Preserve module names, `com.anpfuel` and the original MIT notices in
+  `LICENSES/`.

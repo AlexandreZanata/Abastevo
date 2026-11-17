@@ -1,8 +1,6 @@
-# Anonymous proof-of-possession signature profile (frozen, P03-T01)
+# Anonymous proof-of-possession signature profile
 
-Status: frozen for implementation. Algorithm `ecdsa-p256-sha512`. Changes
-require a new profile version and fresh vectors; never accept both shapes
-during a migration without an explicit compatibility window.
+frozen for implementation. Algorithm `ecdsa-p256-sha512`. Changes require a new profile version and fresh vectors; never accept both shapes during a migration without an explicit compatibility window.
 
 ## Scope and non-goals
 

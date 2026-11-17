@@ -19,7 +19,7 @@ if (!sdkRoot.isDirectory) {
           1. -PcomapsSdkDir=/path/to/abastevo-map-engine/$pinnedCandidateRevision
           2. comaps.sdk.dir=/path/to/abastevo-map-engine/$pinnedCandidateRevision in local.properties
           3. COMAPS_SDK_DIR=/path/to/abastevo-map-engine/$pinnedCandidateRevision environment variable
-        See docs/backend/evidence/maps/MAP-14.md for candidate provenance and SHA-256 digests.
+        See docs/android/map-engine.md for candidate provenance and SHA-256 digests.
         """.trimIndent()
     )
 }
@@ -27,7 +27,7 @@ if (!sdkRoot.isDirectory) {
 fun verifyCandidateSha256(relativePath: String, expectedSha256: String) {
     val target = sdkRoot.resolve(relativePath)
     if (!target.isFile) {
-        error("CoMaps SDK candidate is incomplete: missing $relativePath under $comapsSdkDir (see docs/backend/evidence/maps/MAP-14.md)")
+        error("CoMaps SDK candidate is incomplete: missing $relativePath under $comapsSdkDir (see docs/android/map-engine.md)")
     }
     val digest = MessageDigest.getInstance("SHA-256")
     target.inputStream().use { input ->

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Phase 10.5 — builds and validates signed release APK + AAB.
+# Builds and validates the signed release APK + AAB (owner-signed Play upload).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

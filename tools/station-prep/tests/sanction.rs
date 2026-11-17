@@ -1,6 +1,6 @@
 //! FQ-07 acceptance for the extraction-time `sanction-v1` snapshot
 //! stream. Every expectation below mirrors a frozen decision in
-//! `docs/backend/evidence/fuel-quality/FQ07_SANCTION_SNAPSHOTS.md`: the
+//! `docs/backend/evidence/fuel-quality/FQ07_SANCTION_SNAPSHOTS.md` (git history): the
 //! sample fixture carries one proceeding across two annual snapshots, an
 //! exact repeat, amount and status correction pairs, a revoked status kept
 //! verbatim, a null amount with fallback period, a bad CNPJ and four

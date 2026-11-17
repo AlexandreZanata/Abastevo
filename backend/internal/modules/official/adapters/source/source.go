@@ -32,7 +32,7 @@ type Entry struct {
 	Ports      []int
 }
 
-// DefaultAllowlist mirrors docs/data-sources.md: the ANP price pages and
+// DefaultAllowlist mirrors docs/architecture/data-sources.md: the ANP price pages and
 // download patterns on www.gov.br. Nothing else is fetchable until an
 // explicit entry exists.
 func DefaultAllowlist() []Entry {

@@ -1,6 +1,6 @@
 //! RST-03 acceptance: determinism, deltas and replay over the RST-01
 //! fixtures. Every expectation mirrors the delta contract in
-//! `docs/planning/RUST_STATION_INGESTION_RST02.md` section 5.
+//! `docs/planning/RUST_STATION_INGESTION_RST02.md` (git history) section 5.
 
 use station_prep::{
     emit_run, parse_pmqc, parse_registry, replay_decision, write_outputs, AliasTable, EmitOptions,

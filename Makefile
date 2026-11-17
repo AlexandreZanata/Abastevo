@@ -1,10 +1,8 @@
-# P01-T13 verification entry points. Small compositions over existing gates;
-# YAML workflows call these targets instead of duplicating shell logic.
-# quick-verify is the bounded phase-integration gate (<5min warm budget,
-# measured). verify-release reports the foundation subset plus explicit
-# outstanding work and never certifies a release (P09 owns certification).
+# Developer and CI entry points. Workflows call these targets instead of
+# duplicating shell logic. quick-verify is the bounded change-aware gate run
+# by the required "Quick verification" check.
 
-.PHONY: quick-verify verify-release test-gate test-flow test-issues test-wiki check-mobile check-rust check-infra test-infra test-deploy test-deploy-agent test-backup test-restore test-load check-security test-security test-rehearse check-compat test-compat check-g09 test-g09 test-portal-release rehearse-portal check-portal-capacity portal-capacity check-preview-probe preview-portal check-publication-gate preflight-portal-publication smoke-portal-public help
+.PHONY: quick-verify test-gate test-flow check-mobile check-rust check-infra test-infra test-deploy test-deploy-agent test-backup test-restore test-load check-security test-security test-rehearse test-portal-release rehearse-portal check-portal-capacity portal-capacity check-preview-probe preview-portal check-publication-gate preflight-portal-publication smoke-portal-public help
 
 quick-verify:
 	bash scripts/quick-verify.sh
@@ -15,9 +13,6 @@ check-mobile:
 check-rust:
 	bash scripts/check-rust-fast.sh
 
-verify-release:
-	bash scripts/verify-release.sh
-
 test-gate:
 	bash scripts/tests/test-gate-selection.sh
 
@@ -27,12 +22,6 @@ test-flow:
 	bash scripts/tests/test-project-batch-flow.sh
 	python3 scripts/tests/test-ci-cadence.py
 	python3 scripts/tests/test-backend-integration-shard.py
-
-test-issues:
-	bash scripts/tests/test-issues.sh
-
-test-wiki:
-	bash scripts/tests/test-wiki.sh
 
 check-infra:
 	python3 infra/k8s/staging/test-manifests.py
@@ -101,52 +90,33 @@ preflight-portal-publication:
 smoke-portal-public:
 	bash infra/scripts/smoke_portal_public.sh --origin "$${PORTAL_PUBLIC_ORIGIN:?}" --expected-sha "$${PORTAL_EXPECTED_CONTENT_SHA256:?}" --mode "$${PORTAL_SMOKE_MODE:-full}" --topology "$${PORTAL_SMOKE_TOPOLOGY:?}" --out "$${PORTAL_SMOKE_OUT:-/tmp/portal-smoke.txt}"
 
-check-compat:
-	bash scripts/check-compat.sh
-
-test-compat:
-	bash scripts/tests/test-compat.sh
-
-check-g09:
-	bash scripts/check-g09.sh
-
-test-g09:
-	bash scripts/tests/test-g09.sh
-
 help:
 	@echo "Targets:"
 	@echo "  quick-verify    bounded task/integration checks (manifest + selection)"
 	@echo "  check-mobile    bounded KMP/iOS selection (static always, toolchain-gated full)"
 	@echo "  check-rust      bounded Rust station-prep selection (fmt, clippy, locked tests)"
-	@echo "  verify-release  quick + full-matrix report (foundation subset, NOT CERTIFIED)"
 	@echo "  test-gate       focused harness for gate selection/failure behavior"
-	@echo "  test-flow       synthetic git/fake-gh lifecycle for phase controller"
-	@echo "  test-issues     fake-API reconciliation for issues/milestones"
-	@echo "  test-wiki       fixture-repo exporter/publisher for wiki mirror"
-	@echo "  check-infra     staging/prod topology gate (P08-T01)"
+	@echo "  test-flow       synthetic git/fake-gh lifecycle for the merge guard"
+	@echo "  check-infra     staging/prod topology gate"
 	@echo "  test-infra      infra gate failure-behavior harness"
-	@echo "  test-deploy     deploy/rollback failure-behavior harness (P08-T02)"
-	@echo "  test-deploy-agent  signed staging planner failure-behavior harness (CD-02)"
-	@echo "  test-backup     backup pipeline harness, real disposable DB (P08-T03)"
-	@echo "  test-restore    isolated restore drill harness, real disposable DB (P08-T04)"
-	@echo "  test-load       bounded load smoke + fault suite, real disposable DB (P08-T07)"
-	@echo "  check-security  STRIDE/dependency release review gate (P08-T08)"
-	@echo "  test-security   security gate failure-behavior harness (P08-T08)"
-	@echo "  test-rehearse   local release rehearsal, real disposable DB (P09-T01)"
-	@echo "  test-portal-release  portal publisher/verifier tests (ESP-14)"
-	@echo "  rehearse-portal isolated static portal Caddy rehearsal (ESP-14)"
-	@echo "  check-portal-capacity  capacity harness self-tests (ESP-16)"
-	@echo "  portal-capacity      bounded portal load/browser campaign (ESP-16)"
-	@echo "  check-preview-probe  preview/accessibility probe self-test (ESP-17)"
-	@echo "  preview-portal       isolated HTTPS preview/a11y/backup rehearsal (ESP-17)"
-	@echo "  check-publication-gate  public preflight/smoke self-tests (ESP-18)"
-	@echo "  preflight-portal-publication  local public-scope candidate gate (ESP-18)"
-	@echo "  smoke-portal-public  read-only public release smoke (ESP-18)"
-	@echo "  check-compat    contract + frozen deltas + runbooks gate (P09-T02)"
-	@echo "  test-compat     compat gate failure-behavior harness (P09-T02)"
-	@echo "  check-g09       G09 readiness gate, refuses open blockers (P09-T03)"
-	@echo "  test-g09        G09 gate failure-behavior harness (P09-T03)"
-	@echo "  test-admin-staging  admin staging script guard harness, no network (A5a)"
+	@echo "  test-deploy     deploy/rollback failure-behavior harness"
+	@echo "  test-deploy-agent  signed staging planner failure-behavior harness"
+	@echo "  test-backup     backup pipeline harness, real disposable DB"
+	@echo "  test-restore    isolated restore drill harness, real disposable DB"
+	@echo "  test-load       bounded load smoke + fault suite, real disposable DB"
+	@echo "  check-security  STRIDE/dependency release review gate"
+	@echo "  test-security   security gate failure-behavior harness"
+	@echo "  test-rehearse   local release rehearsal, real disposable DB"
+	@echo "  test-portal-release  portal publisher/verifier tests"
+	@echo "  rehearse-portal isolated static portal Caddy rehearsal"
+	@echo "  check-portal-capacity  capacity harness self-tests"
+	@echo "  portal-capacity      bounded portal load/browser campaign"
+	@echo "  check-preview-probe  preview/accessibility probe self-test"
+	@echo "  preview-portal       isolated HTTPS preview/a11y/backup rehearsal"
+	@echo "  check-publication-gate  public preflight/smoke self-tests"
+	@echo "  preflight-portal-publication  local public-scope candidate gate"
+	@echo "  smoke-portal-public  read-only public release smoke"
+	@echo "  test-admin-staging  admin staging script guard harness, no network"
 
 .PHONY: test-local-backend test-local-edge
 test-local-backend:

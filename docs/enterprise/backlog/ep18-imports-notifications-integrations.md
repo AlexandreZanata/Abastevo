@@ -1,14 +1,12 @@
 # EP18 — Imports, notifications and integrations
 
-Status: **PLANNED**, 2026-11-10.
-
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
-were reconstructed from [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md).
+were reconstructed from traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md).
 
 Local F1 requires M0 closure and protected integration of the current
 ADR-019 construction batch. See the
-[sequencing decision](../evidence/f0-m0-decisions.md#roadmap-sequencing).
+sequencing decision.
 
 Organization import and notification paths remain scoped. External integrations require their own recorded approvals and preserve manual fallback.
 
@@ -17,7 +15,7 @@ Organization import and notification paths remain scoped. External integrations 
 - **Objective:** Preview and validate bounded organization imports before applying writes.
 - **Rules and use cases:** REQ-17.1, BR-TEN-001, BR-PRIV-020, BR-AUD-001
 - **Depends on:** EMP-PLAT-006, EMP-AUTH-003, EMP-PLAT-010
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: file admission, mapping, preview and row results · out: automatic writes or executable input
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -33,7 +31,7 @@ Organization import and notification paths remain scoped. External integrations 
 - **Objective:** Import employees through the existing scoped register rules.
 - **Rules and use cases:** REQ-17.1, BR-IDN-002, BR-IDN-006, BR-IDN-034
 - **Depends on:** EMP-IMPORT-001, EMP-IDN-002
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: mapped employee fields and duplicate warnings · out: automatic credentials or merging records
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -49,7 +47,7 @@ Organization import and notification paths remain scoped. External integrations 
 - **Objective:** Import scoped assets using existing asset identity and structure validation.
 - **Rules and use cases:** REQ-17.1, BR-TEN-005, BR-ORG-012
 - **Depends on:** EMP-IMPORT-001, EMP-FLEET-002
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: mapped assets and reference validation · out: moving personal vehicles or rewriting history
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -65,7 +63,7 @@ Organization import and notification paths remain scoped. External integrations 
 - **Objective:** Import historical fuelings and readings under normal scope and period rules.
 - **Rules and use cases:** REQ-17.1, BR-FUEL-022, BR-FUEL-024, BR-MONEY-004, BR-AMD-004
 - **Depends on:** EMP-IMPORT-001, EMP-FUEL-002, EMP-METER-002
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: source and historical time provenance · out: personal records and silent approval
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -81,7 +79,7 @@ Organization import and notification paths remain scoped. External integrations 
 - **Objective:** Provide scoped error reports and a safe correction or undo path.
 - **Rules and use cases:** REQ-17.1, BR-AUD-001, BR-AMD-001, BR-PRIV-008
 - **Depends on:** EMP-IMPORT-001
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: row error, replay and reviewed recovery · out: deleting approved history to undo a batch
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -97,7 +95,7 @@ Organization import and notification paths remain scoped. External integrations 
 - **Objective:** Expose mapping, preview and confirmation in the company panel.
 - **Rules and use cases:** REQ-17.1, BR-AUTH-012, BR-TRUTH-001, BR-PRIV-004
 - **Depends on:** EMP-IMPORT-001, EMP-IMPORT-005, EMP-PLAT-008
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: accessible scoped wizard and outcome summary · out: applying a preview without confirmation
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -108,33 +106,12 @@ Organization import and notification paths remain scoped. External integrations 
 - **Risks and assumptions:** The [integration design](../modules/imports-notifications-integrations.md) records the module boundary. Existing manual paths and separate provider, legal and activation approvals apply.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
-### EMP-NOTIF-001 — Notification core: inbox, preferences, de-duplication, limits and history
-- **Meta:** module NOTIF · phase F3 · cut - · priority P1 · type DB · size M · state LOCAL_DONE
-- **Objective:** Provide the scoped in-app notification inbox and retry-safe dispatch contract.
-- **Rules and use cases:** REQ-17.2, EDR-032, BR-PRIV-003, BR-PRIV-008, BR-AUTH-014
-- **Depends on:** EMP-PLAT-010, EMP-AUTH-003
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
-- **Scope:** in: per-member inbox, preferences, deduplication, bounds and delivery history · out: external provider activation or sharing private content
-- **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** One eligible event generates its allowed scoped notice once. A report job can notify its authorized recipient with a panel link under current permissions.
-- **Acceptance:** One eligible event generates its allowed scoped notice once. A report job can notify its authorized recipient with a panel link under current permissions.
-- **Negative cases:** Wrong recipient or organization, private attachment in the notice, ignored preference, repeated dispatch or expired authority.
-- **Validation:** V-API, V-SQL, V-JOB, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** The [integration design](../modules/imports-notifications-integrations.md) records the module boundary. Existing manual paths and separate provider, legal and activation approvals apply.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-EMP-NOTIF-001: LOCAL_DONE / INTEGRATION_PENDING (all task gates pass). Module
-`orgnotify` + migration 000204 + four SELF_NOTICE routes. Retained: production
-producers and `notif.dispatch` worker composition, inbox catalog permission,
-Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
-
 ### EMP-NOTIF-002 — Delivery channels: Android local and push, and e-mail, with retries
 - **Meta:** module NOTIF · phase F3 · cut - · priority P1 · type INT · size M · state TODO
 - **Objective:** Add only approved notification channels with scoped retry and fallback.
 - **Rules and use cases:** REQ-17.2, EDR-032, OQ-09, BR-PRIV-008
 - **Depends on:** EMP-NOTIF-001, EMP-PLAT-012
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: local notification and separately approved push or email · out: enabling unreviewed delivery
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -150,7 +127,7 @@ Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 - **Objective:** Manage scoped subscriptions to documented operational alerts.
 - **Rules and use cases:** REQ-17.2, BR-AUTH-001, BR-PRIV-003, BR-TRUTH-006
 - **Depends on:** EMP-NOTIF-001
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: authorized preference, rule scope and freshness · out: granting access through notification settings
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -166,7 +143,7 @@ Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 - **Objective:** Show scoped app and company-panel notification centres.
 - **Rules and use cases:** REQ-17.2, BR-AUTH-012, BR-AUTH-013, BR-PRIV-016
 - **Depends on:** EMP-NOTIF-001, EMP-PLAT-008, EMP-IDN-018
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: accessible notices, history and permission-aware deep links · out: cross-context notification views
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -182,7 +159,7 @@ Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 - **Objective:** Register scoped integration connections and bounded health state.
 - **Rules and use cases:** REQ-17.3, BR-PRIV-005, BR-PRIV-008, BR-AUD-001
 - **Depends on:** EMP-PLAT-002, EMP-AUTH-003
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: connection metadata, secret references and health visibility · out: live provider setup or exposing credentials
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -198,7 +175,7 @@ Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 - **Objective:** Define a reviewed telematics intake port with scoped ownership.
 - **Rules and use cases:** REQ-17.3, BR-PRIV-006, BR-PRIV-008, BR-TEN-007
 - **Depends on:** EMP-INTEG-001, EMP-GPS-004
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: vendor-neutral synthetic input and allowed provenance · out: unauthorized hardware collection or personal trips
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -214,7 +191,7 @@ Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 - **Objective:** Import approved fuel card statements for scoped reconciliation.
 - **Rules and use cases:** REQ-17.3, EDR-013, BR-MONEY-001, BR-TEN-005
 - **Depends on:** EMP-INTEG-001, EMP-FIN-005, EMP-IMPORT-001
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: exact statement input and existing cost linkage · out: initiating card transactions or creating duplicate costs
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -230,7 +207,7 @@ Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 - **Objective:** Retrieve fiscal evidence only through an approved organization-specific authority.
 - **Rules and use cases:** REQ-10.6, REQ-17.3, BR-TRUTH-002, BR-PRIV-004, OQ-04
 - **Depends on:** EMP-INTEG-001, EMP-GOV-011, EMP-DOC-006
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: reviewed certificate custody, scope and fiscal result · out: unrestricted lookups, unapproved real intake and provider activation
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -246,7 +223,7 @@ Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 - **Objective:** Offer server extraction only after explicit privacy and dependency review.
 - **Rules and use cases:** REQ-10.3, REQ-17.3, BR-TRUTH-002, BR-PRIV-005, BR-PRIV-008
 - **Depends on:** EMP-INTEG-001, EMP-DOC-009
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: approved extraction adapter and manual fallback · out: silent third-party transfer or document approval
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -262,7 +239,7 @@ Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 - **Objective:** Deliver approved scoped events through bounded outbound webhooks.
 - **Rules and use cases:** REQ-17.3, BR-PRIV-003, BR-PRIV-008, BR-AUD-001
 - **Depends on:** EMP-INTEG-001, EMP-PLAT-010
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: reviewed endpoint and allowlisted payload contract · out: sending private contents by default
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -278,7 +255,7 @@ Android signed inbox (NOTIF-004), external channels (NOTIF-002), retention.
 - **Objective:** Connect accounting consumers through approved export layouts.
 - **Rules and use cases:** REQ-11.5, REQ-17.3, BR-RPT-002, BR-RPT-008, EDR-013
 - **Depends on:** EMP-INTEG-001, EMP-FIN-006
-- **Read first:** [traceability](../17-traceability.md), [architecture](../09-architecture.md), [privacy](../11-privacy-security.md) and [offline sync](../10-offline-sync.md)
+- **Read first:** traceability, [architecture](../architecture.md), [privacy](../privacy-security.md) and [offline sync](../offline-sync.md)
 - **Scope:** in: versioned exact export adapter and manual fallback · out: unapproved provider execution or new cost recognition
 - **Areas:** existing: scoped storage, jobs, imports and private export conventions · proposed: dedicated organization capabilities and reviewed adapters
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.

@@ -3,7 +3,7 @@
 The premium gasoline icon was generated with the built-in image generation tool
 on 2026-10-09, using the existing additived-gasoline PNG as a style reference.
 This is original generic pump artwork, not a Petrobras/Podium logo. See the
-[premium category contract](../../mobile/premium-fuel-category.md).
+premium category contract.
 
 ## Repeatable workflow
 

@@ -1,7 +1,6 @@
 # LH09 — open-data scene
 
-Status: LOCAL_DONE / INTEGRATION_PENDING. Owner-supplied illustration for the
-home "Dados abertos, direto no navegador" section.
+Owner-supplied illustration for the home "Dados abertos, direto no navegador" section.
 
 ## Source
 

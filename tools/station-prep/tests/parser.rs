@@ -1,6 +1,6 @@
 //! RST-02 acceptance against the frozen RST-01 fixtures in
 //! `contracts/testdata/station-prep/`. Every expectation below mirrors a
-//! decision in `docs/planning/RUST_STATION_INGESTION_RST01.md`.
+//! decision in `docs/planning/RUST_STATION_INGESTION_RST01.md` (git history).
 
 use station_prep::{parse_pmqc, parse_registry, AliasTable, Limits, RunState};
 use std::path::PathBuf;

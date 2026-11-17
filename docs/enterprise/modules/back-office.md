@@ -1,9 +1,5 @@
 # Internal administration and scoped support
 
-Status: **PLANNED / RECONSTRUCTED**, 2026-11-11.
-Recovered from the surviving enterprise requirements, shared rules and backlog.
-The accepted F0 decisions and existing release gates govern any implementation.
-
 ## 1. Purpose
 
 Let authorized platform staff review narrow operational cases and support an organization with its approval, while keeping organization-private content protected.
@@ -37,7 +33,7 @@ Support transitions follow requested → approved → active → ended, with den
 
 ## 7. Roles and permissions
 
-Reuse [admin and staff roles](../../product/ADMIN_TIERS_CONTRACT.md) and keep company cookies separate. Reviewed station-review and support actions require specific endpoint checks. Document content and location need their explicit category and permission. A staff label or account tier does not grant membership or a general organization read.
+Reuse [admin and staff roles](../../product/admin-tiers.md) and keep company cookies separate. Reviewed station-review and support actions require specific endpoint checks. Document content and location need their explicit category and permission. A staff label or account tier does not grant membership or a general organization read.
 
 ## 8. Offline, concurrency, idempotency and corrections
 
@@ -49,7 +45,7 @@ The existing admin audit captures each accepted mutation. Review queues consume 
 
 ## 10. Data, formulas and examples
 
-The support journey in [JRN-13](../05-journeys.md) requests the import area for two hours. Approval permits the named import case only. Its documents and positions remain closed. Duration is explicit approved data, not a blanket maximum. The time source is the server.
+The support journey in [JRN-13](../journeys.md) requests the import area for two hours. Approval permits the named import case only. Its documents and positions remain closed. Duration is explicit approved data, not a blanket maximum. The time source is the server.
 
 ## 11. Screens
 

@@ -1,6 +1,6 @@
 //! FQ-02 acceptance for the lossless `pmqc-assay-v1` preparation
 //! stream. Every expectation below mirrors a frozen decision in
-//! `docs/backend/evidence/fuel-quality/FQ02_QUALITY_PREP.md`: the sample
+//! `docs/backend/evidence/fuel-quality/FQ02_QUALITY_PREP.md` (git history): the sample
 //! fixture carries repeated/distinct assays, quoted fields, decimal
 //! commas, comparators, free text, an odd unit kept verbatim, an
 //! unmapped fuel, an unknown conformity, a bad CNPJ and a missing assay

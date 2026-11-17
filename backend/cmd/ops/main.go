@@ -5,7 +5,7 @@
 // appends actor/reason/policy audit history, and raw business facts are
 // never edited. Operator identity arrives from the ANPFUEL_OPERATOR_ID
 // environment or an explicit --operator flag; anonymous invocations are
-// denied before any work. See docs/operator/access.md (access runbook).
+// denied before any work. See docs/operations/operator-access.md (access runbook).
 package main
 
 import (

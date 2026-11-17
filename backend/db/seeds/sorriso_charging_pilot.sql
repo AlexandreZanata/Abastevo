@@ -1,5 +1,5 @@
 -- Explicit reviewed Sorriso edition. Never run as part of migrations.
--- Source evidence: docs/backend/evidence/evc/SORRISO_CHARGING_PILOT.md.
+-- Source evidence: `docs/backend/evidence/evc/SORRISO_CHARGING_PILOT.md` (git history).
 BEGIN;
 SET LOCAL statement_timeout = '10s';
 

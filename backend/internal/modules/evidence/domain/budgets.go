@@ -6,7 +6,7 @@ import (
 )
 
 // Forward media budgets frozen by P15-T01 (B-BR-M01…M03) from
-// docs/security/LOCAL_MEDIA_LOCATION_POLICY.md. These bound the
+// docs/security/media-location-policy.md. These bound the
 // P15-T02…T05 native/backend pipelines; the deployed v1 evidence
 // protocol (AllowedMIME/MaxUploadBytes/SessionTTL above) stays
 // untouched until those slices pass their tests. Values change only

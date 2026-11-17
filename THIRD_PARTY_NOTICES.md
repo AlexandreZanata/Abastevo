@@ -10,18 +10,18 @@ sources, dependencies, fonts and other third-party material.
 - CoMaps native SDK core: [Apache-2.0 license](maps/engine/vendor/LICENSE) and
   [upstream copyright/notice](maps/engine/vendor/NOTICE). The exact admitted
   third-party inventory and full retained terms are indexed in
-  [the native engine notices](docs/backend/evidence/maps/map14-t07/THIRD_PARTY_NOTICES.md).
+  [the native engine notices](release/notices/comaps/THIRD_PARTY_NOTICES.md).
   Bundled MIT, BSD, Artistic, Zlib, Boost and other notices remain unchanged.
 - Fuel icons, legacy Material Design Icons and source data:
-  [third-party attribution](docs/attribution.md).
+  [third-party attribution](docs/assets/attribution.md).
 - OpenStreetMap map data and other geocoding/map providers retain their required
-  on-screen attribution and source terms; see [data sources](docs/data-sources.md).
+  on-screen attribution and source terms; see [data sources](docs/architecture/data-sources.md).
 - OpenCNPJ is a separate offline backend preparation tool, not part of the APK.
   Its selected MIT notice and pinned binary/source provenance are preserved by
   [the registry installation](infra/deploy/registry/README.md).
 - CameraX (`androidx.camera` 1.4.2) is Apache-2.0; its `camera-core` native
   image library bundles libyuv under BSD-3-Clause. Review:
-  [live board framing](docs/mobile/p37-ocr-live-framing.md).
+  [live board framing](docs/android/ocr-live-framing.md).
 - Kotlin, Android Jetpack, Room, OkHttp and other dependencies retain their own
   license files and notices. The Abastevo visible credit does not replace them.
 

@@ -3,10 +3,10 @@
 EMP-PLAT-011 supplies immutable creation scope and a separate synthetic Room
 foundation. EMP-PRIV-003 now completes signed custody, committed generations
 and durable maintenance. Its local/native acceptance passes:
-[completion record](../../../../../../../../docs/enterprise/evidence/f2-priv003-protection-completion.md).
+completion record.
 The application authority binds the actual signed client; persistence and
 protection share the accepted protectedStore singleton. The earlier
-[V1 evidence](../../../../../../../../docs/enterprise/evidence/f1-priv003-protected-device-store.md)
+V1 evidence
 is historical; its same-key rollback/lazy-maintenance limitations are the
 reason for this continuation.
 
@@ -168,7 +168,7 @@ The worker idles while signed out, drains at most ten acknowledged batches per
 partition per run, schedules a delayed continuation for a known due time and
 keeps system backoff for unknown failures; Retry-After is bounded at the 6-hour
 queue backoff cap (EDR-122).
-[Queue evidence](../../../../../../../../docs/enterprise/evidence/f2-offl003-protected-operation-queue.md)
+Queue evidence
 keeps host, native, normal product composition and integration states distinct.
 
 Host crypto/files/process tests and actual ordinary PostGIS/signed HTTP source

@@ -6,7 +6,7 @@ import (
 )
 
 func TestDefaultAllowlistMatchesDocumentedOrigins(t *testing.T) {
-	// Anchors from docs/data-sources.md: these exact documented patterns
+	// Anchors from docs/architecture/data-sources.md: these exact documented patterns
 	// must stay fetchable; anything else stays refused.
 	allow := DefaultAllowlist()
 	approved := []struct {

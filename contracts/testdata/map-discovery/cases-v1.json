@@ -4,7 +4,7 @@
   "status": "CONTRACT_ONLY_NOT_PUBLISHED",
   "provenance": {
     "task": "MAP-01",
-    "behavior_contract": "docs/product/MAP_DISCOVERY_CONTRACT.md",
+    "behavior_contract": "docs/product/map/discovery.md",
     "data": "synthetic; no production station, contributor, photo, GPS or provider record"
   },
   "cases": [

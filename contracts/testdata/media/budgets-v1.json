@@ -1,6 +1,6 @@
 {
   "format": "media-budgets-v1",
-  "provenance": "P15-T01 frozen forward contract from docs/security/LOCAL_MEDIA_LOCATION_POLICY.md B-BR-M01…M06; hypotheses measured in P15-T02…T05, never silently reinterpreted here",
+  "provenance": "P15-T01 frozen forward contract from docs/security/media-location-policy.md B-BR-M01…M06; hypotheses measured in P15-T02…T05, never silently reinterpreted here",
   "wire_format": "image/jpeg",
   "target_bytes": 153600,
   "cap_bytes": 262144,

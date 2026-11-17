@@ -1,6 +1,6 @@
 # LH06 — fleet action, standard margins and Android device
 
-Status: LOCAL_DONE / INTEGRATION_PENDING. Validation: PASS. Construction base `4e999aa`, isolated `codex/landing-hero-art`. Owner-authorized visual refinement only.
+Owner-authorized visual refinement only.
 
 ## Result and preservation
 

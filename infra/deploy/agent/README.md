@@ -1,454 +1,142 @@
-# Abastevo staging deploy agent (dry run and k8s apply)
+# Staging deploy agent
 
-Status (2026-11-03): the older signed pull agent is installed on staging,
-RBAC is active and its apply timer is enabled. Read-only [ZD-00](../../../docs/backend/evidence/cd/ZD-00.md)
-and [ZD-08](../../../docs/backend/evidence/cd/ZD-08.md) receipts show release
-`c19f0bde`, successful no-change polling and surge OFF. The ZD source below is
-LOCAL_DONE / INTEGRATION_PENDING; it has **not** been installed or activated.
-Storage separation, new probes/strategy, three measured rollouts and drills
-remain OWED. Production stays outside this work. `ABASTEVO_APPLY=0` plans;
-`ABASTEVO_APPLY=1` applies through the existing signed pull pipeline.
+Pull-based deployer for staging. A systemd timer on the staging host (VPS
+72.60.147.2, k3s namespace `abastevo-temp`, https://abastevo.com.br) runs it
+every two minutes; it is the only path by which a release reaches staging.
+It deploys only what `release-staging` signed after every `main` workflow
+passed. Production is out of scope.
 
-The agent runs from a systemd timer on the staging host. In dry-run mode each
-run:
+## What a run does
 
-1. fetches the signed `staging` OCI artifact from
-   `ghcr.io/<owner>/abastevo-release`;
-2. verifies the OCI manifest structure, the manifest layer digest and the
-   Sigstore keyless signature with the exact workflow identity and GitHub OIDC
-   issuer;
-3. validates the `abastevo-release-manifest-v1` schema;
-4. checks that the release commit is an ancestor of `main` through the public
-   GitHub API (anonymous, no token);
-5. compares the target with `/var/lib/abastevo-deploy/current.json`;
-6. writes a `abastevo-deploy-plan-v1` receipt with the proposed changes.
+Verification and plan (every mode):
 
-In apply mode it keeps that verification and plan, then executes the schema
-floor gate, verified backup, migration Job, one api/worker image rollout,
-rollout status, smoke, landing switch, post-switch smoke, `current.json` last and a deployment
-receipt. Any failure after the image update runs `rollout undo`; a switched
-landing is restored; earlier failures leave the deployment untouched and write
-a failure receipt. A dedicated `baseline` subcommand records the first real
-state without deploying; apply refuses to run until a baseline exists.
+1. Fetch the signed `abastevo-release:staging` OCI artifact (or `sha-<commit>`).
+2. Verify the manifest digest and the Sigstore keyless signature against the
+   exact `release-staging.yml@refs/heads/main` identity and GitHub OIDC issuer.
+3. Validate the `abastevo-release-manifest-v1` schema; check through the
+   anonymous GitHub compare API that the commit is reachable from `main` and
+   descends from the deployed commit.
+4. Compare with `current.json` and write a mode-600 plan receipt
+   (`abastevo-deploy-plan-v1`; `action` is `no-change` when nothing differs).
 
-The dry-run path never writes `current.json` and never calls `docker`,
-`kubectl`, `helm` or `systemctl`. Apply mode calls `kubectl` only through
-`runtime/k8s.sh`. The optional `schema_min_supported` field is validated when a
-manifest carries it; apply requires it. The signed OCI artifact also carries
-`landing-dist.tar.gz` as an `application/vnd.abastevo.landing.tar+gzip` layer
-whose SHA-256 is the `landing_sha256` in the signed manifest; apply extracts
-that layer and switches the relative `current` symlink.
+Apply (`ABASTEVO_APPLY=1`), in fixed order:
 
-## Prerequisites
+1. Schema floor gate: refuse without a baseline, when the running floor is
+   above the database, or when the target `schema_min_supported` is above the
+   current floor (a contract change is never automatic).
+2. Verified backup Job (`pg_dump -Fc`, `pg_restore --list`, SHA-256 re-checked
+   on the host; last 7 kept).
+3. Migration Job with the signed `migrate` image (`backoffLimit: 0`).
+4. One `kubectl set image` for the `api` and `worker` containers, then
+   `rollout status`.
+5. Smoke: `/health/ready`, `/`, `/consultar/`, one station read, the portal
+   manifest and one search shard.
+6. Extract the signed landing layer to `releases/<sha>` and switch the relative
+   `current` symlink atomically (last 5 kept); smoke again.
+7. Write `current.json` last, then a `abastevo-deploy-receipt-v1` receipt.
 
-The host must provide these pinned tools on `PATH` (installed outside the
-repository, never by a `curl | bash` step):
+Any failure after the image update runs `rollout undo` and restores the
+previous landing; earlier failures leave the cluster untouched. Failed applies
+write a failure receipt, and `current.json` changes only on success.
+Migrations are never rolled back; the additive window keeps the previous image
+valid.
 
-- `cosign` v3.1.x (tested with v3.1.4)
-- `oras` v1.3.x (tested with v1.3.4)
-- `curl`, `jq`, `sha256sum`, `mktemp`, `install`, `date`, `flock`
-- surge checks/status fixtures: Python 3 stdlib; optional failure hook: `timeout`, `stat`
-- apply mode: `kubectl` (or `ABASTEVO_KUBECTL`), `flock`, `tar`
+## Commands
 
-No GHCR credential is needed: the release packages are public. No GitHub token
-is needed: the reachability check uses the anonymous compare API. Do not put a
-token, SSH key or provider credential in the host config. `pg_dump`,
-`pg_restore` and the migration run inside Kubernetes Jobs; they are not host
-dependencies.
+```sh
+abastevo-deploy-agent                          # plan (and apply when ABASTEVO_APPLY=1)
+abastevo-deploy-agent plan --recheck <sha>     # retry a latched failed commit after fixing it
+abastevo-deploy-agent baseline --sha <sha> [--floor <NNNNNN>]   # record existing state once
+abastevo-deploy-agent release-hold             # clear an operator hold after restoring service
+bash /usr/local/lib/abastevo-deploy-agent/status.sh   # read-only status
+```
+
+- `baseline` reads the database maximum, the running images, `/health/ready`
+  and the landing digest, and writes `current.json` with `baseline: true`. The
+  floor comes from the release manifest or `--floor`, never from the database.
+- State files in `ABASTEVO_STATE_DIR`: `current.json`, `checked.json` (failed
+  commits are latched and skipped), `operator-hold.json` (written after an
+  incomplete rollback; all runs refuse until `release-hold`), `inflight.json`
+  (an interrupted candidate is converged before newer releases).
+- All commands share one non-blocking lock; a busy run prints `Deferred:` and
+  exits 0.
+- Pause and resume are explicit owner decisions:
+  `systemctl disable --now abastevo-deploy-agent.timer` /
+  `systemctl enable --now abastevo-deploy-agent.timer`. Disabling the timer does
+  not cancel a running apply.
 
 ## Host configuration
 
-The only host configuration is `/etc/abastevo-deploy/agent.env`, owned by root
-and readable only by root (`0600`). It is never committed. Required keys:
+Only `/etc/abastevo-deploy/agent.env` (root, mode 600, never committed) and the
+kubeconfig it names. Keys:
+
+- Required: `ABASTEVO_NAMESPACE`, `ABASTEVO_API_DEPLOYMENT`,
+  `ABASTEVO_WORKER_DEPLOYMENT` (may equal the API deployment),
+  `ABASTEVO_MIGRATE_JOB`, `ABASTEVO_LANDING_ROOT`, `ABASTEVO_BACKUP_DIR`,
+  `ABASTEVO_RECEIPT_DIR`.
+- Apply: `ABASTEVO_APPLY`, `ABASTEVO_SMOKE_BASE_URL`, `KUBECONFIG`.
+- Optional: `ABASTEVO_STATE_DIR`, `ABASTEVO_GITHUB_REPOSITORY`,
+  `ABASTEVO_GITHUB_API`, `ABASTEVO_WORKFLOW_PATH`,
+  `ABASTEVO_MANIFEST_REPOSITORY`, `ABASTEVO_MANIFEST_TAG`,
+  `ABASTEVO_API_CONTAINER`, `ABASTEVO_WORKER_CONTAINER`, `ABASTEVO_DB_SECRET`,
+  `ABASTEVO_DB_IMAGE`, `ABASTEVO_ROLLOUT_TIMEOUT`, `ABASTEVO_JOB_TIMEOUT`,
+  `ABASTEVO_SMOKE_TIMEOUT`, `ABASTEVO_BACKUP_KEEP`, `ABASTEVO_LANDING_KEEP`,
+  `ABASTEVO_ALLOW_SURGE`, `ABASTEVO_SURGE_RESOURCE_QUOTA`,
+  `ABASTEVO_SURGE_CPU_MILLI`, `ABASTEVO_KUBECTL`, `ABASTEVO_LIBDIR`,
+  `ABASTEVO_LOCK_FILE`, `ABASTEVO_FAILURE_HOOK`.
+
+Defaults are at the top of `abastevo-deploy-agent`. Surge is off by default;
+`ABASTEVO_ALLOW_SURGE=1` also requires independent storage and quota headroom
+for one extra pod and refuses rather than falling back. `ABASTEVO_FAILURE_HOOK`
+names a root/service-owned executable that receives only result, SHA and stage
+on stdin (10 s bound). No GHCR credential or GitHub token is used.
+
+Host tools: `cosign` v3.1.x, `oras` v1.3.x, `curl`, `jq`, `flock`, `tar`,
+`sha256sum`, Python 3, and `kubectl` for apply.
+
+## Install and RBAC
+
+Files: `abastevo-deploy-agent` → `/usr/local/bin/`; `apply.sh`, `baseline.sh`,
+`safety.sh`, `status.sh`, `surge-capacity.py` and `runtime/k8s.sh` →
+`/usr/local/lib/abastevo-deploy-agent/`; `systemd/*` → `/etc/systemd/system/`.
+The service runs as the `abastevo-deploy` system user with
+`ProtectSystem=strict`, `NoNewPrivileges=yes` and a 20-minute bound; a drop-in
+adds `ReadWritePaths=` for the landing and backup roots. Upgrade an active host
+by staging a complete versioned bundle and switching it under the service lock;
+never install partial libraries while a run can source them.
+
+`infra/k8s/staging/rbac/deploy-agent-rbac.yaml` grants the agent's
+ServiceAccount only: Deployments get/list/watch/patch, ReplicaSets read, Jobs
+create/get/list/watch/delete, Pods and pod logs read, ResourceQuotas read. No
+Secrets, ConfigMaps, Services, exec or cluster scope. Create the kubeconfig
+without printing the token:
 
 ```sh
-ABASTEVO_NAMESPACE=<k8s-namespace>
-ABASTEVO_API_DEPLOYMENT=<api-deployment>
-ABASTEVO_WORKER_DEPLOYMENT=<worker-deployment-or-same-as-api>
-ABASTEVO_MIGRATE_JOB=<migrate-job-prefix>
-ABASTEVO_LANDING_ROOT=<absolute-landing-release-root>
-ABASTEVO_BACKUP_DIR=<absolute-backup-root>
-ABASTEVO_RECEIPT_DIR=<absolute-writable-receipt-directory>
-```
-
-Optional keys (defaults shown):
-
-```sh
-ABASTEVO_STATE_DIR=/var/lib/abastevo-deploy
-ABASTEVO_GITHUB_REPOSITORY=AlexandreZanata/Abastevo
-ABASTEVO_GITHUB_API=https://api.github.com
-ABASTEVO_WORKFLOW_PATH=.github/workflows/release-staging.yml
-ABASTEVO_MANIFEST_REPOSITORY=ghcr.io/alexandrezanata/abastevo-release
-ABASTEVO_MANIFEST_TAG=staging
-ABASTEVO_API_CONTAINER=api
-ABASTEVO_WORKER_CONTAINER=worker
-ABASTEVO_SURGE_RESOURCE_QUOTA=abastevo-temp-quota
-ABASTEVO_ALLOW_SURGE=0
-ABASTEVO_SURGE_CPU_MILLI=2000
-ABASTEVO_ROLLOUT_TIMEOUT=300
-ABASTEVO_JOB_TIMEOUT=300
-ABASTEVO_DB_SECRET=abastevo-temp-secrets
-ABASTEVO_DB_IMAGE=postgis/postgis:18-3.6@sha256:60f6ad1d21ea86a67d47780b9a0d1e1d200500f62b19293fa834d0dea80b8677
-ABASTEVO_BACKUP_KEEP=7
-ABASTEVO_LANDING_KEEP=5
-ABASTEVO_SMOKE_TIMEOUT=10
-ABASTEVO_KUBECTL=kubectl
-ABASTEVO_LIBDIR=/usr/local/lib/abastevo-deploy-agent
-ABASTEVO_LOCK_FILE=/var/lib/abastevo-deploy/apply.lock
-```
-
-`ABASTEVO_WORKER_DEPLOYMENT` may equal `ABASTEVO_API_DEPLOYMENT`; apply then
-updates both containers in one rollout.
-
-Apply-only required keys:
-
-```sh
-ABASTEVO_APPLY=1
-ABASTEVO_SMOKE_BASE_URL=<staging-https-origin>
-KUBECONFIG=/etc/abastevo-deploy/kubeconfig
-```
-
-`ABASTEVO_RECEIPT_DIR` and `ABASTEVO_STATE_DIR` must be under a directory the
-service can write. The supplied unit uses `/var/lib/abastevo-deploy`; apply
-also needs write access to the landing and backup roots, supplied by a
-systemd drop-in (see Install).
-
-## Install
-
-The following bootstrap is for a **new** host only. Do not recreate the user,
-blank the environment or replace an existing unit/drop-in on the active host.
-For an upgrade, first approve the exact bundle and rollback, stage a complete
-versioned bundle, acquire the existing service lock and switch atomically;
-retain the prior bundle/environment/unit for rollback. Never install partial
-libraries while a timer run can source them. No command here grants live scope.
-
-```sh
-install -m 0755 infra/deploy/agent/abastevo-deploy-agent /usr/local/bin/abastevo-deploy-agent
-install -d -m 0755 /usr/local/lib/abastevo-deploy-agent/runtime
-install -m 0644 infra/deploy/agent/apply.sh /usr/local/lib/abastevo-deploy-agent/
-install -m 0644 infra/deploy/agent/baseline.sh /usr/local/lib/abastevo-deploy-agent/
-install -m 0644 infra/deploy/agent/safety.sh infra/deploy/agent/surge-capacity.py infra/deploy/agent/status.sh /usr/local/lib/abastevo-deploy-agent/
-install -m 0644 infra/deploy/agent/runtime/k8s.sh /usr/local/lib/abastevo-deploy-agent/runtime/
-install -m 0644 infra/deploy/agent/systemd/abastevo-deploy-agent.service /etc/systemd/system/
-install -m 0644 infra/deploy/agent/systemd/abastevo-deploy-agent.timer /etc/systemd/system/
-useradd --system --home /var/lib/abastevo-deploy --shell /usr/sbin/nologin abastevo-deploy
-install -d -m 0700 -o abastevo-deploy -g abastevo-deploy /var/lib/abastevo-deploy
-install -d -m 0700 /etc/abastevo-deploy
-install -m 0600 -o root -g root /dev/null /etc/abastevo-deploy/agent.env
-# Fill the required keys with the host editor; never commit or log the file.
-install -d -m 0755 /etc/systemd/system/abastevo-deploy-agent.service.d
-# Apply only: allow writes to the host landing and backup roots.
-cat > /etc/systemd/system/abastevo-deploy-agent.service.d/paths.conf <<'EOF'
-[Service]
-ReadWritePaths=<landing-root> <backup-root>
-EOF
-systemctl daemon-reload
-# Do not enable the timer until the reviewed staging acceptance completes.
-```
-
-Run one planning pass and inspect the journal and receipt:
-
-```sh
-systemctl start abastevo-deploy-agent.service
-journalctl -u abastevo-deploy-agent.service -n 50 --no-pager
-ls -l /var/lib/abastevo-deploy/receipts/
-```
-
-The reviewed timer runs every two minutes with up to 15s randomized delay and
-1s accuracy; its 20-minute service bound covers the backup/migration/rollout
-timeouts. These unit changes are not live yet. Every command takes the same
-internal `apply.lock`; a busy operation defers successfully. The service also
-uses its existing external `flock`. `ProtectSystem=strict`,
-`NoNewPrivileges=yes`, `PrivateTmp=yes` and a dedicated user limit the blast
-radius.
-
-## Baseline
-
-The first run against an existing staging host needs a reviewed baseline
-instead of a synthetic current state:
-
-```sh
-ABASTEVO_APPLY=0 ... abastevo-deploy-agent baseline --sha <40-hex-main-commit> [--floor <NNNNNN>]
-```
-
-The command fetches the signed `abastevo-release:sha-<sha>` artifact (not the
-moving `staging` tag), verifies the same keyless identity and that the commit
-is an ancestor of `main`, reads the real database maximum with a schema Job,
-reads the running `api` and `worker` images from the Deployment, verifies the
-running deployment's `/health/ready` endpoint (the running image's
-`migrate.Check` validates known migration checksums), and computes the current
-landing tree digest. It writes `current.json` mode 600
-with `baseline: true` and a `abastevo-deploy-baseline-v1` receipt, and performs
-no rollout, migration or landing switch.
-
-It refuses a non-ancestor SHA or a failing running schema-compatibility check.
-The baseline uses `ABASTEVO_SMOKE_BASE_URL` for that readiness call.
-`migrations_max` is the real database maximum. `schema_min_supported` is the
-floor of the release, never the database maximum (a database-derived floor
-would let contract changes up to that version pass as additive): it comes from
-the release manifest, or from `--floor` when the release predates the field;
-without either the baseline refuses, and a floor above the database refuses.
-`release_match` records whether the running `api`/`worker` images are that
-release's digests; `false` means the host runs hand-deployed images and the
-first apply rolls the release images out.
-
-## Apply mode (R3-R6)
-
-Apply is opt-in (`ABASTEVO_APPLY=1`) and runs only after the same signed
-manifest verification and plan. The order is fixed:
-
-1. **Schema floor gate** - require `current.json`; without it apply refuses
-   with `baseline required`. Read the current floor from that state, query the
-   database with a short Job, and refuse when the running floor is above the
-   database or the target floor is above the current floor. A higher target
-   floor is a contract change and is never automatic. The live
-   `abastevo.com/schema-version` annotation is informative only and is never a
-   gate; the executor writes `abastevo.com/schema-floor`.
-2. **Verified backup** - a Job runs `pg_dump -Fc`, `pg_restore --list` and
-   writes the SHA-256 next to the archive. The agent re-hashes the archive on
-   the host and keeps the last 7 `pre-*` pairs.
-3. **Migration Job** - the signed `migrate` digest, `backoffLimit: 0`,
-   `restartPolicy: Never`, `ttlSecondsAfterFinished: 86400`, DB secret via
-   `envFrom`. The agent waits for completion and records the applied versions.
-4. **Image rollout** - one `kubectl set image` updates the `api` and `worker`
-   containers of the shared Deployment, then patches both pull policies to
-   `IfNotPresent`; `kubectl rollout status --timeout` gates the result.
-5. **Smoke** - `/health/ready`, `/`, `/consultar/`, one station-list read and
-   the portal manifest plus one `dados/busca/` shard.
-6. **Landing** - extract the signed landing layer to `releases/<sha>`, switch a
-   relative `current` symlink atomically and keep the last 5 releases,
-   including the previous rollback target. No pod restart is needed.
-7. **State** - write `current.json` atomically last, then a
-   `abastevo-deploy-receipt-v1` receipt.
-
-Any failure after the image update runs `rollout undo` for the api and worker
-containers. If the landing was already switched, the previous symlink is
-restored. Failures before the image update write a failure receipt and leave
-the deployment untouched. Migrations are never rolled back automatically; the
-additive window keeps the previous image valid.
-
-Surge is opt-in. The R5 overlap proof passes (and was repeated for ZD-02).
-`ABASTEVO_ALLOW_SURGE=1` additionally requires independent storage, all four
-CPU/memory quota dimensions and `ABASTEVO_SURGE_CPU_MILLI` headroom; refusal
-retains the serving pod and never degrades an opted-in campaign to 0/1.
-With surge OFF the historical 0/1 strategy remains; it does not provide zero
-downtime. Default activation awaits three live ZD-06 reports and owner approval.
-
-## RBAC and kubeconfig (R8)
-
-`infra/k8s/staging/rbac/deploy-agent-rbac.yaml` defines the namespace-scoped
-ServiceAccount, Role and RoleBinding for `abastevo-temp`. It is review-only
-here; do not apply it until the executor is approved. The Role grants only:
-
-- Deployments: get/list/watch/patch (set image, rollout status, rollout undo)
-- ReplicaSets: get/list/watch (rollout status)
-- Jobs: create/get/list/watch/delete (backup and migration jobs)
-- Pods: get/list/watch and pods/log get (job observation)
-- ResourceQuotas: get/list (surge headroom)
-
-It grants no secrets, ConfigMaps, Services, pods/exec, other namespaces or
-cluster-scoped resources. The agent uses a kubeconfig outside the cluster; the
-ServiceAccount token is not mounted into workload pods.
-
-After the RBAC is applied, generate the kubeconfig without printing the token:
-
-```sh
-ABASTEVO_NAMESPACE=abastevo-temp \
-ABASTEVO_SERVICE_ACCOUNT=abastevo-deploy-agent \
+ABASTEVO_NAMESPACE=abastevo-temp ABASTEVO_SERVICE_ACCOUNT=abastevo-deploy-agent \
 ABASTEVO_KUBECONFIG_OUT=/etc/abastevo-deploy/kubeconfig \
 bash infra/deploy/agent/kubeconfig-from-serviceaccount.sh
 ```
 
-The helper reads the token from `kubectl create token` through stdin, writes the
-kubeconfig with mode 600 and never prints the token. The default token duration
-is 8760h; rotate it before expiry with the same command. Keep both files outside
-Git.
-
-## Plan receipt
-
-The agent writes `plan-<UTC timestamp>-<pid>.json` with mode `0600`:
-
-```json
-{
-  "schema": "abastevo-deploy-plan-v1",
-  "created_at": "2026-10-27T00:00:00Z",
-  "action": "plan-only",
-  "manifest": {
-    "reference": "ghcr.io/<owner>/abastevo-release:staging",
-    "oci_digest": "sha256:...",
-    "file_digest": "sha256:...",
-    "signature": "verified",
-    "certificate_identity": "https://github.com/<owner>/<repo>/.github/workflows/release-staging.yml@refs/heads/main",
-    "certificate_oidc_issuer": "https://token.actions.githubusercontent.com",
-    "sha_reachable_from_main": true
-  },
-  "current": null,
-  "target": {
-    "sha": "...",
-    "images": {"api": "...", "worker": "...", "migrate": "..."},
-    "landing_sha256": "...",
-    "migrations_max": "000132",
-    "schema_min_supported": "000132"
-  },
-  "changes": {
-    "release": true,
-    "api": true,
-    "worker": true,
-    "migrate": true,
-    "landing": true,
-    "migrations": true
-  },
-  "host": {
-    "namespace": "...",
-    "api_deployment": "...",
-    "worker_deployment": "...",
-    "migrate_job": "..."
-  }
-}
-```
-
-`action` is `no-change` when every flag is false. A malformed or unsigned
-manifest, a foreign certificate identity/issuer, a non-ancestor commit, a
-GitHub API error, a registry error or an invalid `current.json` all exit
-non-zero without writing a receipt.
-
-## Current state file (written by apply, read by dry run)
-
-`/var/lib/abastevo-deploy/current.json` must use
-`abastevo-deploy-current-v1`:
-
-```json
-{
-  "schema": "abastevo-deploy-current-v1",
-  "sha": "...",
-  "images": {"api": "...", "worker": "...", "migrate": "..."},
-  "landing_sha256": "...",
-  "migrations_max": "000132",
-  "schema_min_supported": "000132",
-  "applied_at": "..."
-}
-```
-
-The dry-run agent only reads this file. Absence means "no current release";
-apply refuses with `baseline required`. The `baseline` subcommand writes the
-first file with `baseline: true`; normal applies write it last and replace it
-atomically. `schema_min_supported` drives the expand/contract gate: a new
-release whose floor is above the previous release floor contains a contract
-change and must not be applied automatically while the previous image is still
-the rollback target.
-
 ## Tests
 
 ```sh
-bash infra/deploy/agent/tests/test-agent.sh
+make test-deploy-agent      # agent, status, surge capacity and rollout-probe harnesses
+cd backend && go test -tags=integration -count=1 ./cmd/worker -run TestOverlappingWorkersDoNotDuplicateEffects
 ```
 
 The harness stubs `oras`, `cosign`, `curl`, `kubectl`, `docker`, `helm` and
-`systemctl`, and proves: new-release planning, no-change planning, tampered and
-unsigned manifests, foreign identity, non-ancestor/diverged commits, API and
-registry failures, invalid schema, digest mismatch, missing signature layer,
-invalid current state, missing configuration and absence of deployment calls.
-Apply cases cover success with surge and no-headroom refusal, contract-floor
-refusal, apply without `current.json`, backup Job failure, backup checksum
-mismatch, migration failure, broken rollout undo, smoke failure with the
-previous landing kept, concurrent lock deferral, `current.json` unchanged on
-every failure, Job TTL/backoff, one shared set-image command, `schema-floor`
-annotation, backup retention 7 and landing retention 5. Baseline cases cover
-success, checksum drift and a SHA outside `main`. It makes no network request
-and writes only under a temporary directory. Current shell count: 229 passed, 0 failed; the target also runs status
-privacy, capacity and public-probe process tests. The required Quick gate
-invokes that complete target and the manifest structural/render tests.
+`systemctl`, makes no network request and writes only to a temporary
+directory. The Go test (disposable PostGIS) proves two overlapping workers
+never duplicate a job effect.
 
-The R5 overlap proof is a separate PostGIS integration test:
+## Rules
 
-```sh
-cd backend
-go test -tags=integration ./cmd/worker -run TestOverlappingWorkersDoNotDuplicateEffects -count=1
-```
+- The agent changes only images, the landing release and its own state.
+  Secrets, ConfigMaps, env and manifests are explicit operator changes
+  ([k8s/staging](../../k8s/staging/README.md)).
+- Never edit `current.json`, receipts or the journal by hand; never baseline or
+  recheck over an unfinished `inflight.json`.
+- Never put tokens, SSH keys or provider credentials in the host config.
 
-It runs two dispatcher loops with distinct worker IDs over one queue, asserts
-both workers consumed work, every job has exactly one effect and no job has
-`attempts > 1`.
-
-## Scope limits
-
-The installed older agent and timer were inspected, not changed. All ZD
-source is reviewable in this PR; it does not certify live storage separation,
-new readiness/strategy, zero downtime or drill acceptance. The owner must
-approve each live step with rollback. Two unattended distinct releases,
-broken-image/contract/landing drills, restored-data rehearsal, notification
-channel, image-GC verification, pause and three campaigns remain OWED. No
-ZD-05 nginx edit is justified yet. ZD-09 compatibility expansion has no opt-in.
-Production remains manual behind G09 and is out of scope.
-
-## ZD-01 safety and interrupted runs
-
-Install `safety.sh` beside `apply.sh` and `baseline.sh` when upgrading the
-agent. All commands serialize verification and state snapshots under the same
-nonblocking lock; a busy run prints `Deferred:` and exits 0. A signed candidate
-must be reachable from main **and** descend from the recorded deployed SHA;
-unavailable comparisons refuse before cluster actions and write a refusal.
-
-Failed candidates are latched in mode-600 `checked.json`. The same SHA is
-skipped on subsequent timer runs; a different SHA is eligible. After inspecting
-and correcting the failure, explicitly invoke `plan --recheck <full-sha>` with
-the usual private environment. Recheck preserves signature, main ancestry,
-deployment floor and schema checks.
-
-An incomplete rollback creates `operator-hold.json`; subsequent runs refuse.
-Inspect the failure receipt and restore service before `release-hold`; this
-command only releases the hold, leaving the rejected SHA latched. Never edit
-current or receipts by hand. `inflight.json` pins an interrupted candidate and
-its original rollback revision/landing; the next run re-verifies that immutable
-artifact and converges before considering later releases. Do not baseline or
-recheck over an unfinished journal. These are source guarantees; live ZD-07
-drills remain separately owed.
-
-## ZD-04 surge admission
-
-Also install `surge-capacity.py` beside the agent libraries. Opt-in surge now
-requires separate private storage and complete live CPU/memory requests and
-limits quota headroom for one extra pod; unsupported quantities fail closed.
-Insufficient headroom refuses before migration/images. A configured surge can
-never silently fall back to 0/1; later loss of the configured CPU threshold
-also refuses while retaining the serving replica. Quota changes are operator
-choices. Default `ABASTEVO_ALLOW_SURGE=0` remains until three approved measured
-ZD-06 campaigns pass; no source manifest is evidence of live activation.
-
-## ZD-08 status, notifications and pause
-
-Run `bash <installed-library>/status.sh` with the private agent environment
-provided to the process (never print/source-dump that environment into logs).
-It reports timer/service state, current release/time, latest receipt,
-checked/hold/inflight flags, namespace pod/active ReplicaSet health and quota.
-Raw kubectl stderr is suppressed to protect private cluster addresses; inspect
-private operator diagnostics if needed. Status has no write operation.
-
-`ABASTEVO_FAILURE_HOOK` optionally names an absolute executable owned by root
-or the service UID, without group/world write permission. It receives only
-schema/result/verified SHA/stage on stdin for failed applies, has a 10s bound,
-and cannot change the deployment result. It chooses the channel and reads its
-own local token; stdout/stderr are suppressed. Rejected candidates do not send
-repeat notifications. No hook/channel/token was installed or message sent.
-Registry/signature failures remain visible through service result/journal;
-channel coverage and its actual delivery must be reviewed during activation.
-
-Pause, only after the owner's specific yes:
-
-```sh
-systemctl disable --now abastevo-deploy-agent.timer
-systemctl show abastevo-deploy-agent.service --property=ActiveState,SubState,Result
-```
-
-Disabling the timer does not cancel an already-running apply. Inspect its
-receipt/hold before further operations. Resume is a separately approved
-`systemctl enable --now abastevo-deploy-agent.timer`. Do not edit current,
-receipts or a journal by hand. Keep landing's last five plus the original
-rollback target, backups seven and ReplicaSet history ten. Image GC thresholds
-need live verification; no shared k3s setting is changed here.
-
-Portal-refresh ownership is formally amended in the staging plan: the worker
-uses the existing deduplicated 15-minute schedule and a stable script path
-through landing `current`. No extra env rollout/queue write is performed by
-the deploy agent; verify the actual private path and one scheduled refresh
-when activating this source. Up to one schedule interval is allowed.
+See [operations runbooks](../../../docs/operations/) and
+[recovery](../../../docs/operations/recovery.md).

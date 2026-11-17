@@ -5,9 +5,9 @@ App Store release.
 
 | Path | Contents |
 |---|---|
-| [PLAY_STORE_READINESS.md](PLAY_STORE_READINESS.md) | Play requirements checklist with verdicts (valid / fixed / blocking / to confirm) and sources |
-| [APPLE_APP_STORE_ASSETS.md](APPLE_APP_STORE_ASSETS.md) | App Store Connect screenshot, preview and icon specs (iOS is archived) |
-| [../play-store-listing.md](../play-store-listing.md) | Listing text (pt-BR default, en-US), metadata, alt text, graphics map |
+| [PLAY_STORE_READINESS.md](play-readiness.md) | Play requirements checklist with verdicts (valid / fixed / blocking / to confirm) and sources |
+| APPLE_APP_STORE_ASSETS.md | App Store Connect screenshot, preview and icon specs (iOS is archived) |
+| [../play-store-listing.md](play-store-listing.md) | Listing text (pt-BR default, en-US), metadata, alt text, graphics map |
 | `screenshots/raw/` | Unedited emulator captures, opaque RGB PNG |
 | `cards/` | Card generator: `build_cards.py`, `cards.json` (captions/sources), `card.html`, `feature.html` |
 | `listing-assets/` | Upload-ready files: `icon-512.png`, `feature-graphic-1024x500.png`, `phone/`, `tablet-7in/`, `tablet-10in/` |

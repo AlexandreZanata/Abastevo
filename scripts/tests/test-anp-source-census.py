@@ -40,7 +40,7 @@ class CensusBoundaries(unittest.TestCase):
         self.assertNotIn('rows', result)  # Individual records never leave the oracle.
 
     def test_frozen_inventory_reconciles_full_resources_and_keeps_gaps(self):
-        inventory = json.loads((Path(__file__).parents[2]/'docs/backend/evidence/mobile-expansion/MEX-17-source-inventory.json').read_text())
+        inventory = json.loads((Path(__file__).parents[2]/'scripts/tests/testdata/anp-source-inventory.json').read_text())
         self.assertFalse(inventory['source_activation'])
         for item in inventory['covered']['sanctions']:
             c = item['counts']

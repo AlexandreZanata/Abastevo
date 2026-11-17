@@ -1,9 +1,5 @@
 # Internal fuel stock
 
-Status: **PLANNED / RECONSTRUCTED**, 2026-11-11.
-Recovered from the surviving enterprise requirements, shared rules and backlog.
-The accepted F0 decisions and existing release gates govern any implementation.
-
 ## 1. Purpose
 
 Track an organization's internal fuel inventory and attribute the recorded consumption cost to its assets without duplicating the purchase.
@@ -33,11 +29,11 @@ The organization owns internal tank, product stock, movement, measurement and re
 
 ## 6. States and transitions
 
-Movements are append-only facts with reviewed corrections. Reconciliation follows open, explained or adjusted under the [state catalog](../08-state-model.md). An explanation records evidence and makes no change. An adjustment is a separate authorized movement. Retry cannot reopen a terminal decision or dispense twice.
+Movements are append-only facts with reviewed corrections. Reconciliation follows open, explained or adjusted under the [state catalog](../state-model.md). An explanation records evidence and makes no change. An adjustment is a separate authorized movement. Retry cannot reopen a terminal decision or dispense twice.
 
 ## 7. Roles and permissions
 
-Use [stock permissions](../07-permissions.md), asset scope and current organization authority. Receiving, dispensing, adjusting and viewing are distinct powers. A driver cannot adjust stock by recording a fueling. Private evidence access is checked independently.
+Use [stock permissions](../permissions.md), asset scope and current organization authority. Receiving, dispensing, adjusting and viewing are distinct powers. A driver cannot adjust stock by recording a fueling. Private evidence access is checked independently.
 
 ## 8. Offline, concurrency, idempotency and corrections
 

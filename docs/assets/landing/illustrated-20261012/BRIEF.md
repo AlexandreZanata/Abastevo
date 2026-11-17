@@ -1,6 +1,6 @@
 # LH05 — full-viewport illustrated landing
 
-Status: LOCAL_DONE / INTEGRATION_PENDING. Branch `codex/landing-hero-art`; construction base `c126127`. Scope is the user-authorized landing presentation and reusable art only.
+Scope is the user-authorized landing presentation and reusable art only.
 
 ## Result
 

@@ -1,65 +1,27 @@
-# abastevo — Admin Web Panel
+# Admin web
 
-Static owner panel for the **abastevo** administrative API (Front B).
-
-## Stack
-
-- Plain static HTML5 + TypeScript **7.0.2** (`strict: true`), no framework,
-  no runtime dependency. Node built-in test runner only.
-- Visual standard identical to the landing: same CSS tokens, Manrope +
-  Source Sans 3 local fonts. `scripts/build.mjs` copies
-  `landing/static/assets/styles.css`, the hash-verified fonts, and the selected
-  landing brand and hero artwork into `dist/` at build time. The admin shell
-  opts into the landing's shared `landing-home` styles for its palette,
-  typography, header, footer and primary buttons. Admin-only layout and form
-  rules live in `static/assets/admin.css` and use existing tokens.
-- All data is rendered with `textContent`/`createElement`. The CSRF token
-  lives in a module variable only (never `localStorage`/`sessionStorage`).
-  Because a full page load would wipe it, both admin routes serve the same
-  shell and in-app transitions use `history.pushState` without reloading;
-  every full load starts at the login view. Every mutation sends
-  `X-Admin-CSRF` and `Idempotency-Key`. Any 401 on an authenticated call
-  returns to `/admin/login/`; a 401 from the login call itself (wrong key)
-  stays on the form and shows the invalid-key message.
-  The raw admin key is never displayed or logged; the login input is
-  `type=password`, `autocomplete=off`, cleared after submit.
-
-## Presentation contract
-
-The same visual system covers login, accounts (including grants and staff roles),
-contributors, station lookup, audit, and the standalone fallback. At narrow
-widths, navigation and forms reflow with labels, status messages and actions
-still readable. The current authenticated section is indicated visually and
-with `aria-current`.
-
-This presentation applies to BUC-ADM-01–05, 07, 10–12 and the existing
-station lookup. B-BR-ADM authentication and audit rules, same-origin session
-handling and existing mutation confirmations apply as before.
+Static owner/staff panel for the backend admin API (`/v1/admin/*`): login,
+accounts, grants and staff roles, contributors, station lookup, forum and
+audit. It is served at `/admin/` from the signed landing bundle and calls only
+same-origin relative `/v1/admin/...` paths. It is not the company app
+(`business-web/`).
 
 ## Layout
 
-```text
-admin-web/
-  static/
-    app/index.html          # Single shell served at every /admin/ route
-    404.html                # Plain noindex fallback
-    robots.txt              # Disallow everything (noindex defense in depth)
-    _headers                # Admin CSP, no-store HTML, immutable assets
-    assets/admin.css        # Admin-only rules (existing tokens only)
-  src/
-    api.ts                  # Admin API client (DOM-free, unit-tested)
-    validators.ts           # Form validation (DOM-free, unit-tested)
-    app.ts                  # Page wiring (DOM)
-  scripts/
-    build.mjs               # tsc + fingerprinting + asset copy
-    check.mjs               # dist integrity, headers, budgets
-  tests/                    # Node built-in test runner
-  dist/                     # Deployable artifact (gitignored)
-```
+| Path | Contents |
+|------|----------|
+| `src/api.ts` | Admin API client (DOM-free, unit-tested). |
+| `src/validators.ts` | Form validation (DOM-free, unit-tested). |
+| `src/app.ts` | Page wiring and rendering. |
+| `static/app/index.html` | Single shell served for every admin route. |
+| `static/assets/admin.css` | Admin-only rules using the landing tokens. |
+| `static/404.html`, `robots.txt`, `_headers` | Noindex fallback, disallow-all, CSP/cache rules. |
+| `scripts/build.mjs`, `scripts/check.mjs` | Build (tsc, fingerprinting, landing styles/fonts/brand copy) and dist verification. |
+| `tests/` | Node test runner suites. `dist/` is the gitignored output. |
 
 ## Commands
 
-```bash
+```sh
 npm ci
 npm run typecheck
 npm run build
@@ -67,10 +29,24 @@ npm run check
 npm test
 ```
 
-`dist/` is served from the API origin at `/admin/*` (Front B3) with the
-`/admin` prefix stripped before the file lookup (Caddy `handle_path`). Every
-page and stylesheet therefore references `/admin/assets/...` (including the
-font URLs re-rooted from the landing stylesheet) while the files live at
-`dist/assets/`; `build` and `check` fail on any reference outside `/admin/`.
-The panel calls relative `/v1/admin/...` paths with
-`credentials: 'same-origin'`.
+`make quick-verify` runs these when `admin-web/` changes; `release-staging`
+copies `dist/` into the landing bundle's `admin/` directory. The API mounts the
+admin routes only when `ANPFUEL_ADMIN_KEY_SHA256` and `ANPFUEL_ADMIN_ORIGIN`
+are set (optional network fence: `ANPFUEL_ADMIN_ALLOWED_CIDRS`); the raw key
+comes from `ops admin keygen` and never enters Git.
+
+## Rules
+
+- Plain TypeScript `7.0.2` (strict), no framework and no runtime dependency.
+- Every root-absolute reference starts with `/admin/`; build and check fail
+  otherwise.
+- Render data with `textContent`/`createElement` only.
+- The CSRF token lives in a module variable, never in web storage. In-app
+  navigation uses `history.pushState`; every full load starts at login. Any
+  401 on an authenticated call returns to `/admin/login/`.
+- Every mutation sends `X-Admin-CSRF` and an `Idempotency-Key`.
+- The admin key is never displayed, logged or stored; the input is a cleared
+  `type=password` field with autocomplete off.
+
+See [security and privacy](../docs/security/security-privacy.md) and the
+[operations runbooks](../docs/operations/).

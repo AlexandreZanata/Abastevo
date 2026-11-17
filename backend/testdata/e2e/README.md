@@ -14,4 +14,4 @@ Local disposable release rehearsal for the backend MVP (BUC-001…008).
 - No production data, keys, photos or PII. Stations use the `c000…`
   namespace and are scrubbed after the run. Loopback only.
 - Deployed staging (30-minute load, R2, TLS, provisioned host) is
-  explicitly out of scope here; see `docs/release-evidence/p09-t01-rehearsal.md`.
+  explicitly out of scope here.

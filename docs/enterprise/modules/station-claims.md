@@ -1,8 +1,8 @@
 # Station claims and representation
 
-Status: **PLANNED**, 2026-11-10. Module code `CLAIM`. Tasks: `EMP-CLAIM-001…013` in [backlog/ep14-station-claims](../backlog/ep14-station-claims.md).
+Module code `CLAIM`.
 
-Evidence. The representation design exists and is frozen: [STATION_PROFILE_REPRESENTATION](../../product/STATION_PROFILE_REPRESENTATION.md) (B-BR-P01–P16, BUC-P01–P10) and [STATION_PROFILE_CONTRACT_FREEZE](../../product/STATION_PROFILE_CONTRACT_FREEZE.md) (`DOCUMENTED`). Code exists in `backend/internal/modules/stationprofile/` with migrations `backend/db/migrations/000036_station_profiles.sql` to `000039_claim_decisions_grants.sql` (`PARTIAL`). The public read `GET /v1/stations/{station_id}/profile` is served (`IMPLEMENTED`). The claim, proof and management routes are registered behind `privateProfileUnavailable` in `backend/cmd/api/profile_containment.go`, which always answers 503 `profile.integration-pending` and has no flag; proof storage is not wired (`Bytes: nil` in `backend/cmd/api/main.go`). `ReviewClaim` in `backend/internal/modules/stationprofile/application/review.go` is called only by tests, and no query changes `representation_grants.status` after the insert, so suspension, revocation and expiry are `DOCUMENTED` only. A grant belongs to one account (unique index on `(account_id, station_id)` for active rows). The reviewer procedure is [profile-review](../../operator/profile-review.md) (`DOCUMENTED`); the staff role `station_reviewer` is listed in `contracts/admin/staff-roles-v2.json` and grants nothing yet (`PARTIAL`). The catalog has suggestion and correction intake (`backend/internal/modules/directory/adapters/intake/`, `backend/internal/modules/directory/adapters/correction/`, `IMPLEMENTED`) and no merge operation. Android claim screens exist in `app/src/main/kotlin/com/anpfuel/app/ui/stationprofile/` with no navigation to them (`PARTIAL`). Organization-held authority, station teams, contest cases, lifecycle jobs and review tooling are `PROPOSED`. Implementation is held by Stage D ([FUTURE_EVIDENCE_BUSINESS_PLAN](../../planning/FUTURE_EVIDENCE_BUSINESS_PLAN.md), CX-05).
+Evidence. The representation design exists and is frozen: [STATION_PROFILE_REPRESENTATION](../../product/stations/profile-representation.md) (B-BR-P01–P16, BUC-P01–P10) and [STATION_PROFILE_CONTRACT_FREEZE](../../product/stations/profile-contract.md) (`DOCUMENTED`). Code exists in `backend/internal/modules/stationprofile/` with migrations `backend/db/migrations/000036_station_profiles.sql` to `000039_claim_decisions_grants.sql` (`PARTIAL`). The public read `GET /v1/stations/{station_id}/profile` is served (`IMPLEMENTED`). The claim, proof and management routes are registered behind `privateProfileUnavailable` in `backend/cmd/api/profile_containment.go`, which always answers 503 `profile.integration-pending` and has no flag; proof storage is not wired (`Bytes: nil` in `backend/cmd/api/main.go`). `ReviewClaim` in `backend/internal/modules/stationprofile/application/review.go` is called only by tests, and no query changes `representation_grants.status` after the insert, so suspension, revocation and expiry are `DOCUMENTED` only. A grant belongs to one account (unique index on `(account_id, station_id)` for active rows). The reviewer procedure is [profile-review](../../operations/moderation-profiles.md) (`DOCUMENTED`); the staff role `station_reviewer` is listed in `contracts/admin/staff-roles-v2.json` and grants nothing yet (`PARTIAL`). The catalog has suggestion and correction intake (`backend/internal/modules/directory/adapters/intake/`, `backend/internal/modules/directory/adapters/correction/`, `IMPLEMENTED`) and no merge operation. Android claim screens exist in `app/src/main/kotlin/com/anpfuel/app/ui/stationprofile/` with no navigation to them (`PARTIAL`). Organization-held authority, station teams, contest cases, lifecycle jobs and review tooling are `PROPOSED`. Implementation is held by Stage D (FUTURE_EVIDENCE_BUSINESS_PLAN, CX-05).
 
 ## 1. Purpose
 
@@ -24,7 +24,7 @@ Users: organization owners and administrators (claim), station administrators (t
 | Station teams as role assignments with `STATION` scope (`STATION_ADMIN`, `STATION_MANAGER`, `STATION_ATTENDANT`, BR-AUTH-015) | Several representatives, managers and attendants limited to named stations | `administrator` and `manager` map to `STATION_ADMIN` and `STATION_MANAGER`; `STATION_ATTENDANT` is new. For organization holders a role assignment replaces the 7-day invitation, because the member already accepted the organization's invitation. |
 | Contest cases | Appeals, impersonation reports, competing claims and catalog events need a record and a decision | New entity with states `OPEN`, `UNDER_REVIEW`, `UPHELD`, `DISMISSED`. The frozen rule "an appeal opens a linked new claim" is kept: an upheld appeal opens that claim. |
 | Revocation, expiry and revalidation | Today nothing changes a grant's status | Commands and jobs for the frozen grant states; a validity period on every authority. |
-| Review tooling for platform staff | The review use case has no production caller ([01-diagnosis](../01-diagnosis.md) §3.6) | Queue and decision commands in the back office ([back-office](back-office.md)), on the admin suite of ADR-023 (CX-08, EDR-020). The `ops` CLI stays as the repair path. |
+| Review tooling for platform staff | The review use case has no production caller (01-diagnosis §3.6) | Queue and decision commands in the back office ([back-office](back-office.md)), on the admin suite of ADR-023 (CX-08, EDR-020). The `ops` CLI stays as the repair path. |
 | One live holder per station | Concurrent holders would make the badge and the team ambiguous | New invariant; the unique index changes from per account to per station. |
 | Organization claim limit and batches | A network has more than three stations | The frozen limit of 3 open claims per account stays for account holders; organizations get their own limit. |
 | Web portal as claim surface | Station staff work at a desk | In the browser, fresh authentication of the web session replaces the contributor-key proof required by the freeze for sensitive writes. |
@@ -55,7 +55,7 @@ Entities of this module:
 | Supporting fact | Platform, private | Source (ANP register, CNPJ registry), what was consulted, result, time consulted | Never sufficient alone; shows when it was consulted. |
 | Decision (existing `claim_decisions`, extended) | Platform | Reviewer, outcome, reason category and text, policy and proof versions, scopes | Append-only; a correction is a new decision. |
 | Station authority (existing grant, extended) | Granted by the platform to the holder | Holder kind and holder, station, operator revision, state, version, validity, granting decision | One `ACTIVE` or `SUSPENDED` authority per station. |
-| Station role assignment | Holder organization ([07-permissions](../07-permissions.md)) | Membership, station role, the authority as scope target, period | At least one `STATION_ADMIN` while the team is managed. |
+| Station role assignment | Holder organization ([07-permissions](../permissions.md)) | Membership, station role, the authority as scope target, period | At least one `STATION_ADMIN` while the team is managed. |
 | Contest case | Opened by a party or the system; decided by the platform | Kind, target (claim, decision or authority), opener, statement, state, outcome | One open case per (opener, target). Closed cases stay closed. |
 | Claim batch | Claimant organization | Claims that share powers evidence | Each claim is still decided alone. |
 
@@ -136,7 +136,7 @@ Public meaning, catalog and governance:
 
 **UC-CLAIM-03 — Answer an information request.** Actor: the requesting member, or another member with `claim.claim.submit`. Main flow: the claim shows what is missing and the deadline → the member uploads the item or writes the bounded answer → the claim returns to `CHECKING`, then `IN_REVIEW`. Alternatives: deadline passes → `EXPIRED`; the answer needs a new signature → a new declaration version is issued and earlier unused ones are invalidated. Result: the reviewer has what was asked.
 
-**UC-CLAIM-04 — Review and decide a claim.** Actor: platform reviewer (`station_reviewer`). Preconditions: claim `IN_REVIEW`; reviewer independent (BR-CLAIM-014). Main flow: open the claim → see station, operator revision, legal entity, relation, signature and authority outcomes, supporting facts with the time each was consulted → follow the checklist of [profile-review](../../operator/profile-review.md) → approve, deny with reason, or ask for information. Alternatives: operator revision changed during review → `CONFLICT`, the reviewer reloads; requesting membership ended → claim already `CANCELLED`; other open claims on the station → UC-CLAIM-05. Result: one decision; on approval one authority `ACTIVE` and the requester is `STATION_ADMIN`.
+**UC-CLAIM-04 — Review and decide a claim.** Actor: platform reviewer (`station_reviewer`). Preconditions: claim `IN_REVIEW`; reviewer independent (BR-CLAIM-014). Main flow: open the claim → see station, operator revision, legal entity, relation, signature and authority outcomes, supporting facts with the time each was consulted → follow the checklist of [profile-review](../../operations/moderation-profiles.md) → approve, deny with reason, or ask for information. Alternatives: operator revision changed during review → `CONFLICT`, the reviewer reloads; requesting membership ended → claim already `CANCELLED`; other open claims on the station → UC-CLAIM-05. Result: one decision; on approval one authority `ACTIVE` and the requester is `STATION_ADMIN`.
 
 **UC-CLAIM-05 — Decide concurrent claims.** Actor: platform reviewer. Main flow: the queue groups the open claims of one station → the reviewer compares each claimant's evidence against the current operator revision → one command records one outcome per claim. Alternatives: no claim is sufficient → all denied or asked for information; a live authority exists and a competing claim is sufficient → the reviewer opens or decides the contest case, revokes the old authority and grants the new one in one transaction (BR-CLAIM-025); two reviewers act at once → the second receives `CONFLICT`. Result: at most one holder.
 
@@ -160,7 +160,7 @@ Public meaning, catalog and governance:
 
 ## 6. States and transitions
 
-State names are the wire-frozen ones ([08-state-model](../08-state-model.md) §3). The stored wire values are the lowercase forms used today.
+State names are the wire-frozen ones ([08-state-model](../state-model.md) §3). The stored wire values are the lowercase forms used today.
 
 ### 6.1 Claim
 
@@ -224,7 +224,7 @@ stateDiagram-v2
 | `ACTIVE`, `SUSPENDED` | `EXPIRED` | Time | `valid_to` reached with no approved revalidation | Final; same effects as revoked | New claim |
 | `ACTIVE` | `ACTIVE` (new version) | Reviewer (revalidation) | BR-CLAIM-023 | `valid_to` extended; version incremented | — |
 
-"Not applicable" (BR-CLAIM-021) is a derived condition evaluated at each use, not a stored state. It corresponds to `INEFFECTIVE` for the station role assignments in [07-permissions](../07-permissions.md) §6.
+"Not applicable" (BR-CLAIM-021) is a derived condition evaluated at each use, not a stored state. It corresponds to `INEFFECTIVE` for the station role assignments in [07-permissions](../permissions.md) §6.
 
 ### 6.3 Contest case
 
@@ -266,7 +266,7 @@ stateDiagram-v2
 
 ## 7. Roles and permissions
 
-Organization side (keys from [07-permissions](../07-permissions.md) §7.2):
+Organization side (keys from [07-permissions](../permissions.md) §7.2):
 
 | Action | Key | Roles | Notes |
 |---|---|---|---|
@@ -283,7 +283,7 @@ Platform side: decisions need the staff role `station_reviewer` in the back offi
 
 ## 8. Offline, concurrency, idempotency and corrections
 
-- **Offline:** none. Claim, proof, team and review actions need the server ([10-offline-sync](../10-offline-sync.md) §10.3: station portal is online only). The public badge is readable from the cached public profile, and a cached badge never authorizes anything.
+- **Offline:** none. Claim, proof, team and review actions need the server ([10-offline-sync](../offline-sync.md) §10.3: station portal is online only). The public badge is readable from the cached public profile, and a cached badge never authorizes anything.
 - **Concurrency:** approval locks the station row and checks BR-CLAIM-009 inside the transaction; two approvals for one station end in one authority and one `CONFLICT`. A cancellation racing an approval: the first to commit wins and the other receives `CONFLICT`. Team changes act on a version of the station's assignment set.
 - **Idempotency:** every command carries an operation identifier; a repeat returns the first result; the same identifier with another payload returns `OPERATION_ID_REUSED`. Proof upload is idempotent on (declaration, SHA-256).
 - **Corrections:** decisions are append-only. A wrong decision is corrected by a new decision or a contest outcome that names the earlier one; the earlier record is never edited.
@@ -327,7 +327,7 @@ Risk raises the requirement, with the doubt recorded (BR-CLAIM-010): a live auth
 
 ### 10.3 The ANP register as supporting evidence
 
-Source: the ANP open-data page for "revendedores varejistas de combustíveis automotivos" (gov.br/anp), read 2026-11-10 ([18-references](../18-references.md) §4). ANP publishes a daily register of authorised fuel retailers with authorisation number, legal name, CNPJ, address and brand.
+Source: the ANP open-data page for "revendedores varejistas de combustíveis automotivos" (gov.br/anp), read 2026-11-10 (18-references §4). ANP publishes a daily register of authorised fuel retailers with authorisation number, legal name, CNPJ, address and brand.
 
 | It supports | It does not show |
 |---|---|
@@ -354,7 +354,7 @@ The reviewer records the result as "consulted on <date>" (BR-TRUTH-001). The onl
 
 Worked dates. An authority granted on 2026-11-10 for 12 months ends on 2027-11-10; reminders are due on 2027-09-11 (60 days), 2027-10-11 (30 days) and 2027-11-03 (7 days). An information request made on 2026-11-12 with 15 days ends on 2026-11-27. A claim denied on 2026-12-01 can be appealed until 2026-12-31.
 
-### 10.5 Retention (existing freeze; [11-privacy-security](../11-privacy-security.md) §10.1)
+### 10.5 Retention (existing freeze; [11-privacy-security](../privacy-security.md) §10.1)
 
 | Item | Period | Example |
 |---|---|---|
@@ -380,7 +380,7 @@ The periods are unchanged. For an organization holder the "owner" of the evidenc
 
 ### 10.7 Error codes added
 
-Shared codes are in [09-architecture](../09-architecture.md) §6. New: `LEGAL_ENTITY_NOT_VERIFIED`, `CLAIM_DUPLICATE_OPEN`, `CLAIM_LIMIT_REACHED`, `AUTHORITY_ALREADY_HELD`, `DECLARATION_EXPIRED`, `PROOF_REJECTED`, `PROOF_ATTEMPTS_EXHAUSTED`, `SELF_REVIEW`, `AUTHORITY_NOT_APPLICABLE`, `LAST_STATION_ADMIN`, `CONTEST_NOT_ADMISSIBLE`. While the containment stands every private route answers `UNAVAILABLE` (today's `profile.integration-pending`).
+Shared codes are in [09-architecture](../architecture.md) §6. New: `LEGAL_ENTITY_NOT_VERIFIED`, `CLAIM_DUPLICATE_OPEN`, `CLAIM_LIMIT_REACHED`, `AUTHORITY_ALREADY_HELD`, `DECLARATION_EXPIRED`, `PROOF_REJECTED`, `PROOF_ATTEMPTS_EXHAUSTED`, `SELF_REVIEW`, `AUTHORITY_NOT_APPLICABLE`, `LAST_STATION_ADMIN`, `CONTEST_NOT_ADMISSIBLE`. While the containment stands every private route answers `UNAVAILABLE` (today's `profile.integration-pending`).
 
 ## 11. Screens
 
@@ -415,7 +415,7 @@ Acceptance criteria:
 12. Evidence past its retention period is unreadable even with the purge job stopped, and a restore does not bring it back.
 13. The worked dates in §10.4 and §10.5 pass as written.
 
-Dependencies: EMP-GOV-015 (Stage D override); EMP-CLAIM-001 (decision); [organizations](organizations.md) legal-entity verification; [07-permissions](../07-permissions.md) station scope; [back-office](back-office.md) review queues; the directory suggestion and correction intake; the open verifier and registry items of the contract freeze; legal validation of retention (LV-12).
+Dependencies: EMP-GOV-015 (Stage D override); EMP-CLAIM-001 (decision); [organizations](organizations.md) legal-entity verification; [07-permissions](../permissions.md) station scope; [back-office](back-office.md) review queues; the directory suggestion and correction intake; the open verifier and registry items of the contract freeze; legal validation of retention (LV-12).
 
 Risks: review capacity is unproven (AS-11; the freeze keeps staffing evidence open), so F7 opens for named stations first; verifier and registry access are undecided, which keeps checks manual; impersonation attempts target the first claims on valuable stations (human decision, independence, contest path); networks with many branches press for shortcuts (per-station decisions stay mandatory); a catalog merge operation does not exist yet, so its reactions are built against a port and tested with simulated events.
 

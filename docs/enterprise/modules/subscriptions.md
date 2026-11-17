@@ -1,9 +1,5 @@
 # Organization subscriptions and product separation
 
-Status: **PLANNED / RECONSTRUCTED**, 2026-11-11.
-Recovered from the surviving enterprise requirements, shared rules and backlog.
-The accepted F0 decisions and existing release gates govern any implementation.
-
 ## 1. Purpose
 
 Evaluate reviewed organization plans and limits independently of individual accounts, membership and public participation.
@@ -33,7 +29,7 @@ The organization owns subscription, capability evaluation and usage records. The
 
 ## 6. States and transitions
 
-The catalog uses trialing, active, past due, suspended, cancelling and cancelled from [the state catalog](../08-state-model.md). Validity and grace depend on recorded policy rather than invented durations. The server persists event, source and transition history. Reactivation preserves prior periods. Provider events do not change station authority or public records.
+The catalog uses trialing, active, past due, suspended, cancelling and cancelled from [the state catalog](../state-model.md). Validity and grace depend on recorded policy rather than invented durations. The server persists event, source and transition history. Reactivation preserves prior periods. Provider events do not change station authority or public records.
 
 ## 7. Roles and permissions
 
@@ -49,7 +45,7 @@ Approved provider adapters feed the existing subscription and entitlement ports.
 
 ## 10. Data, formulas and examples
 
-Commercial numbers in [the product vision](../02-product-vision.md) remain hypotheses. Catalog and effective periods are data. Limits name measurable units and periods. Usage includes active assets or stations, admitted storage and API calls, with no invented production capacity. Money remains exact and source-bound.
+Commercial numbers in [the product vision](../product-vision.md) remain hypotheses. Catalog and effective periods are data. Limits name measurable units and periods. Usage includes active assets or stations, admitted storage and API calls, with no invented production capacity. Money remains exact and source-bound.
 
 ## 11. Screens
 

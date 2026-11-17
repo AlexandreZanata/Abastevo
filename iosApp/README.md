@@ -1,5 +1,7 @@
 # iosApp — thin iPhone host (P12-T04)
 
+> Archived: iOS is not maintained; do not work on this app unless the owner explicitly asks.
+
 Status: IMPLEMENTED, NOT VERIFIED. No Swift/Xcode toolchain exists on the
 Linux workstation, so nothing here has been compiled or run. The first real
 build/test happens on macOS with Xcode 26.4 (see the BLOCKED checklist
@@ -39,8 +41,7 @@ xcodebuild test -scheme AnpFuel \
 
 Expected: `AnpFuelCore` builds for `iosArm64`/`iosSimulatorArm64`, all
 XCTest suites pass, and the shell renders the cheapest tank fill
-(Cheap / 5499 / R$ 274,950 for 50 L). Record device/Xcode versions and the
-full log in `docs/mobile/p12-t05` acceptance; any failure stays open as a
+(Cheap / 5499 / R$ 274,950 for 50 L). Record device/Xcode versions; any failure stays open as a
 P12-T04 follow-up, never a silent skip.
 
 ## Porting notes (reviewed without a compiler — verify on Mac)

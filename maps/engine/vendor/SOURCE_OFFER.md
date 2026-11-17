@@ -33,7 +33,7 @@ The build/preparation commands, toolchain versions, admitted resource hashes,
 excluded fonts and independent-checkout comparison are retained in
 [the build recipe](../upstream/README.md),
 [resource admission](../upstream/resource-admission.json) and
-[MAP-14 acceptance](../../../docs/backend/evidence/maps/map14-final/acceptance.json).
+MAP-14 acceptance.
 Keep the precise upstream pin, submodule commits and patch when redistributing
 this input. No Code2000/KhmerOS font, CoMaps branding, credential, MWM map region
 or private community data is admitted by adding this build dependency.

@@ -99,7 +99,7 @@
    "text": "109,90"
   }
  ],
- "provenance": "backend/internal/modules/kernel/price.go and kernel_test.go at main 6f4f048; B-BR-002; docs/product/STATION_FUEL_FEEDBACK.md F03; P12-T02",
+ "provenance": "backend/internal/modules/kernel/price.go and kernel_test.go at main 6f4f048; B-BR-002; docs/product/stations/fuel-feedback.md F03; P12-T02",
  "tank_fill": [
   {
    "capacity_ml": 50000,
