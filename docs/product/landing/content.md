@@ -401,6 +401,12 @@ calculator, and polish sections inside the LH08–LH10 style.
   availability label, the title and the step summary. A chapter ends with two
   equal previous/next buttons, each a direction label over the chapter title,
   centred.
+- **Enlarged captures (owner request, 2026-11-17).** With JavaScript, a
+  click or Enter on any app capture (gallery, tutorial step, guide or
+  calculator strip) opens it larger in a native modal dialog over a blurred,
+  darkened page, with its alt text as caption. The close button, a click
+  outside the capture or Escape closes it and returns focus. Without
+  JavaScript the captures stay plain images; no dialog markup ships in HTML.
 - **Polish.** Spacing, alignment, frames, hover/focus/pressed states and
   responsive fixes only. Tokens, fonts, brand, URLs, titles and structured
   data are unchanged; a chapter meta description changes only when the old

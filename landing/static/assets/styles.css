@@ -1589,6 +1589,21 @@ a.store-pill {
 .landing-home .h2, :is(.learning-page, .legal-document) .legal-article :is(h1, h2) { text-wrap: balance; }
 .landing-home .feature-copy > p, :is(.learning-page, .legal-document) .legal-article > .article-lead { text-wrap: pretty; }
 
+/* Enlarged app capture: a native modal dialog over a blurred page (main.ts). */
+.capture-zoomable { cursor: zoom-in; }
+.capture-zoomable:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+html.capture-zoom-open { overflow: hidden; }
+.capture-zoom { position: fixed; inset: 0; width: 100%; max-width: none; height: 100%; max-height: none; margin: 0; padding: 4.5rem 1rem 1.5rem; border: 0; background: transparent; color: #ffffff; overflow: auto; }
+.capture-zoom[open] { display: grid; place-items: center; }
+.capture-zoom::backdrop { background: rgb(0 0 0 / 0.72); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.capture-zoom figure { display: grid; justify-items: center; align-content: center; gap: 1rem; width: 100%; min-height: 100%; margin: 0; }
+.capture-zoom img { display: block; width: auto; max-width: min(86vw, 26rem); height: auto; max-height: calc(100vh - 11rem); max-height: calc(100dvh - 11rem); border: 6px solid #111111; border-radius: 28px; background: #111111; box-shadow: 0 32px 64px -24px #000000; }
+.capture-zoom figcaption { max-width: 34rem; font-size: 0.9375rem; line-height: 1.5; text-align: center; color: #e0e0e0; }
+.capture-zoom-close { position: fixed; top: 1rem; right: 1rem; display: grid; place-items: center; width: 48px; height: 48px; padding: 0; border: 0; border-radius: 50%; background: #ffffff; color: #000000; font-family: var(--font-display); font-size: 1.75rem; line-height: 1; cursor: pointer; transition: background-color 160ms ease; }
+.capture-zoom-close:hover { background: #e2e2e2; }
+.capture-zoom-close:focus-visible { outline: 3px solid #ffffff; outline-offset: 3px; }
+@media print { .capture-zoom { display: none; } }
+
 /* Guide formula/source helpers (replace former inline styles blocked by CSP). */
 .formula-expression {
   margin-top: 0.5rem;
