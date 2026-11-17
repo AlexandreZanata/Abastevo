@@ -58,5 +58,20 @@
       "modification": "fill set to currentColor for context tinting; paths unmodified",
       "purpose": "Google Play buttons in header and hero"
     }
+  },
+  "browserTabIcons": {
+    "date": "2026-11-17",
+    "source": "docs/assets/brand/abastevo-logo.svg (paths unchanged)",
+    "favicon.svg": {
+      "use": "light scheme",
+      "change": "no background square; viewBox cropped to the mark with 3% margin so it renders larger",
+      "sha256": "6a8a4e4bb023502272d5676a26781b7aae101a45f777cb2f214308b3b487362a"
+    },
+    "favicon-dark.svg": {
+      "use": "dark scheme (link media)",
+      "change": "same geometry; blue mapped to white/very light grey and green to light grey; no background",
+      "sha256": "726d74d75d48a9c72b96f34264e8c95b0d162bea7be9dabed019cd067beaaeac"
+    },
+    "note": "favicon.ico, icon-192/512 and apple-touch-icon keep the white square for launchers that need an opaque icon."
   }
 }

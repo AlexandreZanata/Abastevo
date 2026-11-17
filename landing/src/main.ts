@@ -187,6 +187,145 @@ function setupCaptureZoom(): void {
   }
 }
 
+/**
+ * State picker of the hero search. The native <select> keeps the value and
+ * submits the form; its popup is replaced by a listbox in the site's style.
+ * Keyboard: arrows, Home/End, letters, Enter/Space to choose, Escape to close.
+ */
+function setupStatePicker(): void {
+  const select = document.querySelector<HTMLSelectElement>('.lp-search select[name="uf"]');
+  const field = select?.closest<HTMLElement>('.field');
+  if (!select || !field) return;
+
+  const options = Array.from(select.options);
+  const placeholder = options.find((option) => option.value === '')?.textContent ?? '';
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'uf-button';
+  button.setAttribute('aria-haspopup', 'listbox');
+  button.setAttribute('aria-expanded', 'false');
+  const label = document.createElement('span');
+  button.append(label);
+  const list = document.createElement('ul');
+  list.className = 'uf-list';
+  list.id = 'uf-lista';
+  list.tabIndex = -1;
+  list.hidden = true;
+  list.setAttribute('role', 'listbox');
+  list.setAttribute('aria-label', 'Estado');
+  button.setAttribute('aria-controls', list.id);
+
+  const items = options.filter((option) => option.value !== '').map((option, index) => {
+    const item = document.createElement('li');
+    item.className = 'uf-option';
+    item.id = `uf-opcao-${index}`;
+    item.dataset['uf'] = option.value;
+    item.setAttribute('role', 'option');
+    item.textContent = option.textContent;
+    list.append(item);
+    return item;
+  });
+  if (items.length === 0) return;
+
+  let active = 0;
+  let typed = '';
+  let typedAt = 0;
+  const sync = (): void => {
+    const current = select.selectedOptions[0];
+    const empty = !current || current.value === '';
+    label.textContent = empty ? placeholder : current.textContent;
+    button.toggleAttribute('data-empty', empty);
+    button.setAttribute('aria-label', empty ? 'Estado: escolha o estado' : `Estado: ${current.textContent}`);
+    for (const item of items) item.setAttribute('aria-selected', String(item.dataset['uf'] === select.value));
+  };
+  const setActive = (index: number): void => {
+    active = Math.max(0, Math.min(items.length - 1, index));
+    items.forEach((item, i) => item.toggleAttribute('data-active', i === active));
+    const item = items[active];
+    if (!item) return;
+    list.setAttribute('aria-activedescendant', item.id);
+    item.scrollIntoView({ block: 'nearest' });
+  };
+  const close = (refocus: boolean): void => {
+    if (list.hidden) return;
+    list.hidden = true;
+    button.setAttribute('aria-expanded', 'false');
+    if (refocus) button.focus();
+  };
+  const open = (): void => {
+    list.hidden = false;
+    button.setAttribute('aria-expanded', 'true');
+    const selected = items.findIndex((item) => item.dataset['uf'] === select.value);
+    list.focus();
+    setActive(selected === -1 ? 0 : selected);
+  };
+  const choose = (index: number): void => {
+    const item = items[index];
+    if (!item) return;
+    select.value = item.dataset['uf'] ?? '';
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+    sync();
+    close(true);
+  };
+
+  button.addEventListener('click', () => (list.hidden ? open() : close(true)));
+  button.addEventListener('keydown', (event) => {
+    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+      event.preventDefault();
+      open();
+    }
+  });
+  list.addEventListener('click', (event) => {
+    const item = (event.target as HTMLElement).closest<HTMLLIElement>('.uf-option');
+    if (item) choose(items.indexOf(item));
+  });
+  list.addEventListener('mousemove', (event) => {
+    const item = (event.target as HTMLElement).closest<HTMLLIElement>('.uf-option');
+    if (item && items.indexOf(item) !== active) setActive(items.indexOf(item));
+  });
+  list.addEventListener('keydown', (event) => {
+    const { key } = event;
+    if (key === 'ArrowDown') setActive(active + 1);
+    else if (key === 'ArrowUp') setActive(active - 1);
+    else if (key === 'Home') setActive(0);
+    else if (key === 'End') setActive(items.length - 1);
+    else if (key === 'Enter' || key === ' ') choose(active);
+    else if (key === 'Escape') close(true);
+    else if (key === 'Tab') { close(false); return; }
+    else if (key.length === 1 && !event.ctrlKey && !event.metaKey && !event.altKey) {
+      const now = Date.now();
+      typed = now - typedAt > 700 ? key : typed + key;
+      typedAt = now;
+      const plain = (text: string): string => text.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+      const match = items.findIndex((item) => plain(item.textContent ?? '').startsWith(plain(typed)));
+      if (match !== -1) setActive(match);
+    } else return;
+    event.preventDefault();
+  });
+  list.addEventListener('focusout', (event) => {
+    if (!field.contains(event.relatedTarget as Node | null)) close(false);
+  });
+  document.addEventListener('pointerdown', (event) => {
+    if (!field.contains(event.target as Node)) close(false);
+  });
+  // The hidden select cannot show the browser's "required" bubble, so an empty
+  // choice opens the list instead of failing silently.
+  select.required = false;
+  select.tabIndex = -1;
+  select.setAttribute('aria-hidden', 'true');
+  select.form?.addEventListener('submit', (event) => {
+    if (select.value === '') {
+      event.preventDefault();
+      open();
+    }
+  });
+  select.addEventListener('change', sync);
+
+  field.classList.add('uf-enhanced');
+  field.append(button, list);
+  sync();
+}
+
 function init(): void {
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
@@ -195,6 +334,7 @@ function init(): void {
       setupCopyHelper();
       setupBackToTop();
       setupCaptureZoom();
+      setupStatePicker();
     });
   } else {
     setupMobileNav();
@@ -202,6 +342,7 @@ function init(): void {
     setupCopyHelper();
     setupBackToTop();
     setupCaptureZoom();
+    setupStatePicker();
   }
 }
 
