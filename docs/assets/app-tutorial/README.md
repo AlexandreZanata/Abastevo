@@ -9,6 +9,7 @@ emulator for the public tutorials (`/como-usar/`, guides and tools pages on
 |---|---|
 | [`manifest.json`](manifest.json) | Machine-readable contract: capture conditions, every step with caption, the string resources and Compose sources that draw it, SHA-256 and landing pages |
 | [`CAPTURE_CONTRACT.md`](CAPTURE_CONTRACT.md) | The rules and the step-by-step procedure to recapture a screen when the app changes and to update the site page or field that shows it |
+| [`FABLE_LANDING_POLISH_PROMPT.md`](FABLE_LANDING_POLISH_PROMPT.md) | Self-contained prompt for the landing update that uses these captures |
 | `<feature>/NN-*.png` | Lossless captures, opaque RGB, 1080 × 1920 |
 
 ## Capture conditions (summary)
