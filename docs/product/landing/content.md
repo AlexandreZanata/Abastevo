@@ -413,6 +413,16 @@ calculator, and polish sections inside the LH08–LH10 style.
   map pins and two abstract interface cards. It carries no text or numerals
   and is decorative (`alt=""`), never price or coverage evidence. Master and
   composing script: `docs/assets/landing/hero-mark-20261117/`.
+- **Hero search and tab icon (owner request, 2026-11-17).** The two search
+  fields carry their icons in small white chips joined by a hairline. With
+  JavaScript the state field opens a listbox in the site style (UF badge and
+  name, keyboard and type-ahead support) instead of the native popup; the
+  native `select` still holds the value and is the whole control without
+  JavaScript. The browser tab icon is the bare brand mark, cropped to the
+  mark so it renders larger: coloured for the light scheme
+  (`favicon.svg`) and white/light grey for the dark scheme
+  (`favicon-dark.svg`), chosen with `media` on the icon links. The `.ico`
+  and PNG icons keep their white square for launchers.
 - **Polish.** Spacing, alignment, frames, hover/focus/pressed states and
   responsive fixes only. Tokens, fonts, brand, URLs, titles and structured
   data are unchanged; a chapter meta description changes only when the old
