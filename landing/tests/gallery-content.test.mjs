@@ -42,10 +42,9 @@ test('app gallery uses authentic captures with alt, dimensions and lazy loading'
       assert.ok(fs.existsSync(path.join(outDir, 'assets', 'app', file)), `missing emitted asset: ${file}`);
     }
     assert.doesNotMatch(gallery[0], /autoplay|carousel/);
-    // The section states the capture date instead of an app version.
+    // The section head is the title alone: no intro line and no app version.
     const section = indexHtml.match(/<section id="aplicativo"[\s\S]*?<\/section>/)[0];
-    assert.match(section, /feitas em 17 de novembro de 2026/);
-    assert.match(section, /referência ANP datada, nunca preço vivo na bomba/);
+    assert.match(section, /<div class="block-head">\s*<h2 class="h2">O aplicativo em telas reais<\/h2>\s*<\/div>/);
     assert.doesNotMatch(section, /3\.1\.0/);
   } finally {
     fs.rmSync(outDir, { recursive: true, force: true });

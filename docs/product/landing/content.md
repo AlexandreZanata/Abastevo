@@ -357,9 +357,11 @@ calculator, and polish sections inside the LH08–LH10 style.
 
 - **Gallery.** `#aplicativo` shows six 9:16 captures in product order: ANP
   weekly prices, community and ANP on a station page, route to a station,
-  tank-fill cost, survey weeks, forum. It states the capture date, never an
-  app version, and keeps the dated-ANP notice. On phones it is one snapping
-  row; no script, autoplay or carousel control.
+  tank-fill cost, survey weeks, forum. The section head is the title alone
+  (owner request, 2026-11-17) and never names an app version; source and
+  week stay visible in the captures, their captions and alt text, and the
+  capture date in the tutorials and guides. On phones it is one snapping row;
+  no script, autoplay or carousel control.
 - **Derivatives.** Only files listed in
   `landing/static/assets/app/provenance.json` ship: WebP at 360, 720 and
   1080 px from the 1080 × 1920 masters with the recorded parameters, named
@@ -379,6 +381,26 @@ calculator, and polish sections inside the LH08–LH10 style.
   "No aplicativo". Wording follows the claim classes above: development
   status, dated ANP reference, community apart from ANP. Station ratings and
   comments stay "em breve" while the app keeps them behind its feature flag.
+- **Home refinements (owner request, 2026-11-17).** The heads of "Preços por
+  estado", "Guias populares", "Ferramentas" and the gallery are the title
+  alone, with no intro line. A secondary action is an outline button (1 px
+  `--ink` border, no underline) beside the solid primary button. Guide and
+  calculator cards are white with a 1 px `--line` outline: title, summary and
+  an arrow at the foot, plus the category above the title where a list mixes
+  categories (home, "Leia também", a calculator's related guides). The two
+  feature art tiles are flat `--surface` with no gradient; from 80rem up they
+  keep the LH09 equal height with the copy column, and between 64rem and
+  80rem they stay square. The Android and "Código disponível" cards lead
+  with icon and title, then the description, then the actions, with no
+  divider; the prelaunch store notice is a plain white status row, never
+  styled as a button, and "Copiar link" is white with an ink outline.
+- **Tutorial pages (owner request, 2026-11-17).** On the hub, a published
+  chapter is a white outlined card and the whole card is its link (one link
+  per card, on the title); an unpublished chapter is a flat, quieter tile
+  with no link, as B-BR-LH10-02 requires. Each card shows the TU number, the
+  availability label, the title and the step summary. A chapter ends with two
+  equal previous/next buttons, each a direction label over the chapter title,
+  centred.
 - **Polish.** Spacing, alignment, frames, hover/focus/pressed states and
   responsive fixes only. Tokens, fonts, brand, URLs, titles and structured
   data are unchanged; a chapter meta description changes only when the old

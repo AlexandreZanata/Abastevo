@@ -62,6 +62,23 @@ test('tutorial hub covers all 30 chapters with journeys and no dead links', () =
       assert.ok(fs.existsSync(path.join(outDir, rel)), `dead chapter link ${link[0]}`);
     }
 
+    // 4b. A published chapter is one whole-card link; an unpublished one has no
+    // link and says why it is not there yet.
+    const cards = [...hubHtml.matchAll(/<li class="lesson-step chapter-card"( data-pending)?>([\s\S]*?)<\/li>/g)];
+    assert.equal(cards.length, 30, 'every chapter is a card');
+    for (const [, pending, body] of cards) {
+      const links = body.match(/<a /g) || [];
+      assert.match(body, /<span class="chapter-id">TU\d\d<\/span>/);
+      if (pending) {
+        assert.equal(links.length, 0, 'an unpublished chapter must not be a link');
+        assert.match(body, /<span class="lesson-availability">(Em breve|Planejado)<\/span>/);
+      } else {
+        assert.equal(links.length, 1, 'a published chapter has exactly one link');
+        assert.match(body, /<span class="lesson-availability">Disponível<\/span><\/p><h3><a href="\/como-usar\/[a-z-]+\/">/);
+      }
+    }
+    assert.equal(cards.filter(([, pending]) => !pending).length, 16);
+
     // 5. Availability vocabulary and destinations preserved.
     assert.match(hubHtml, /Em breve/);
     assert.match(hubHtml, /Planejado/);

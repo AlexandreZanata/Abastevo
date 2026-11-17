@@ -1149,10 +1149,11 @@ a.store-pill {
 /* Buttons and links */
 .landing-home .btn-dark { display: inline-flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 1.5rem; border: 0; border-radius: 10px; background: var(--btn); color: var(--on-btn); font-family: var(--display); font-size: 1rem; font-weight: 600; text-decoration: none; cursor: pointer; }
 .landing-home .btn-dark:hover { background: var(--btn-hover); }
-.landing-home .text-link { display: inline-flex; align-items: center; min-height: 44px; color: var(--ink); font-family: var(--display); font-size: 1rem; font-weight: 600; text-decoration: underline; text-decoration-color: var(--line); text-decoration-thickness: 2px; text-underline-offset: 6px; }
-.landing-home .text-link:hover { text-decoration-color: currentColor; }
+.landing-home .text-link { display: inline-flex; align-items: center; justify-content: center; gap: 0.5rem; min-height: 52px; padding: 0.75rem 1.5rem; border: 1px solid var(--ink); border-radius: 10px; background: transparent; color: var(--ink); font-family: var(--display); font-size: 1rem; font-weight: 600; line-height: 1.25; text-align: center; text-decoration: none; transition: background-color 160ms ease; }
+.landing-home a.text-link:hover { background: var(--surface); }
+.landing-home a.text-link:active { background: var(--surface-2); }
 .landing-home .i-arrow { display: block; width: 20px; height: 20px; }
-.landing-home .lp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.5rem; }
+.landing-home .lp-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; }
 
 /* Hero */
 .landing-home .hero { overflow: visible; padding-block: clamp(2.5rem, 7vw, 5.5rem); background: var(--page); }
@@ -1200,9 +1201,7 @@ a.store-pill {
 /* Blocks */
 .landing-home .block { padding-block: clamp(3.5rem, 8vw, 6rem); }
 .landing-home .h2 { font-family: var(--display); font-size: clamp(1.875rem, 1.3rem + 2.2vw, 2.75rem); font-weight: 800; line-height: 1.1; letter-spacing: -0.035em; color: inherit; }
-.landing-home .block-head { display: grid; gap: 1rem; margin-bottom: 2.5rem; }
-.landing-home .block-head p { max-width: 40rem; font-size: 1.125rem; color: var(--muted); }
-@media (min-width: 64rem) { .landing-home .block-head { grid-template-columns: 1fr 1fr; align-items: end; gap: 4rem; } }
+.landing-home .block-head { margin-bottom: 2rem; }
 
 /* Explore band: black strip right after the hero, large art, short copy.
    Cards scroll horizontally on phones and form a 4-column row on desktop. */
@@ -1227,20 +1226,24 @@ a.store-pill {
 /* Features: on desktop the copy column (title to buttons) and the art tile
    share one height; the art is positioned so the copy sets the row height. */
 .landing-home .feature { display: grid; gap: 2rem; }
-.landing-home .feature-media { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 24px; background: radial-gradient(circle at 60% 75%, #d5f2e3, transparent 65%), var(--surface); }
-.landing-home .feature-media img { width: 86%; height: 86%; object-fit: contain; }
-.landing-home .tone-amber { background: radial-gradient(circle at 55% 70%, #fdeec6, transparent 65%), var(--surface); }
+.landing-home .feature-media { position: relative; display: grid; place-items: center; aspect-ratio: 4 / 3; overflow: hidden; border-radius: 24px; background: var(--surface); }
+/* The scenes carry about 5% of transparent margin of their own, so the image
+   box fills the tile and the drawing still keeps clear of its edges. */
+.landing-home .feature-media img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+@media (min-width: 40rem) and (max-width: 63.999rem) { .landing-home .feature-media { aspect-ratio: 16 / 9; } }
 .landing-home .feature-copy .h2 { margin-bottom: 1rem; }
 .landing-home .feature-copy > p { max-width: 32rem; margin-bottom: 1.5rem; font-size: 1.125rem; color: var(--muted); }
 @media (min-width: 64rem) {
   .landing-home .feature { grid-template-columns: 1fr 1fr; gap: 5rem; align-items: stretch; }
   .landing-home .feature-reverse .feature-media { order: 2; }
   .landing-home .feature-media { aspect-ratio: auto; min-height: 26rem; }
-  .landing-home .feature-media img { position: absolute; inset: 7%; width: 86%; height: 86%; }
   .landing-home .feature-copy { display: flex; flex-direction: column; justify-content: space-between; }
   .landing-home .feature-copy .h2 { margin-top: -0.12em; }
   .landing-home .feature-copy .persona-list { margin-bottom: 1.75rem; }
 }
+/* Between 64rem and 80rem the copy column is much taller than it is wide, so
+   the art tile stays square and centred instead of stretching into a strip. */
+@media (min-width: 64rem) and (max-width: 79.999rem) { .landing-home .feature-media { align-self: center; aspect-ratio: 1 / 1; min-height: 0; } }
 .landing-home .persona-list { display: grid; margin-bottom: 2rem; list-style: none; border-top: 1px solid var(--line); }
 .landing-home .persona { display: grid; grid-template-columns: 56px 1fr; gap: 1rem; align-items: center; padding: 0.875rem 0; border-bottom: 1px solid var(--line); }
 .landing-home .persona .card-art, .landing-home .persona-icon { display: grid; place-items: center; width: 56px; height: 56px; margin: 0; padding: 0; border-radius: 14px; background: var(--surface); }
@@ -1256,33 +1259,49 @@ a.store-pill {
 .landing-home .app-gallery { display: grid; gap: 1rem; margin-bottom: 1rem; list-style: none; }
 @media (min-width: 48rem) { .landing-home .app-gallery { grid-template-columns: repeat(3, 1fr); } }
 .landing-home .app-shot { display: flex; flex-direction: column; overflow: hidden; padding: 0; border: 0; border-radius: 24px; background: var(--surface); }
-.landing-home .phone-frame { max-width: none; padding: 2rem 2rem 0; border: 0; border-radius: 0; background: transparent; line-height: 0; }
+/* No auto margins here: in the column flex card they would shrink the frame to
+   its content, which is 0 px wide until a lazy capture loads (layout shift). */
+.landing-home .phone-frame { max-width: none; margin: 0; padding: 2rem 2rem 0; border: 0; border-radius: 0; background: transparent; line-height: 0; }
 .landing-home .phone-frame img { width: 100%; max-width: 15rem; margin: 0 auto; border-radius: 20px 20px 0 0; box-shadow: 0 0 0 5px #111111, 0 24px 40px -24px #0008; }
 .landing-home .app-shot figcaption { padding: 1.5rem; border-top: 1px solid var(--line); font-size: 0.9375rem; color: var(--muted); }
 .landing-home .app-shot figcaption strong { display: block; margin-bottom: 0.25rem; font-family: var(--display); font-size: 1.0625rem; color: var(--ink); }
 
-/* Channels */
-.landing-home #aplicativo .grid-2 { display: grid; gap: 1rem; }
-@media (min-width: 48rem) { .landing-home #aplicativo .grid-2 { grid-template-columns: 1fr 1fr; } }
-.landing-home .channel-card { display: grid; grid-template-columns: 56px 1fr; align-items: center; gap: 1rem 1.25rem; padding: 1.5rem; border-radius: 16px; background: var(--surface); }
-.landing-home .channel-icon { display: grid; place-items: center; width: 56px; height: 56px; border-radius: 14px; background: var(--btn); color: var(--on-btn); }
-.landing-home .channel-icon svg { width: 26px; height: 26px; }
-.landing-home .channel-copy { display: flex; flex-direction: column; gap: 0.25rem; }
-.landing-home .channel-copy strong { font-family: var(--display); font-size: 1.25rem; font-weight: 700; letter-spacing: -0.02em; }
-.landing-home .channel-copy span { color: var(--muted); }
-.landing-home .channel-card > .store-btn, .landing-home .channel-actions { grid-column: 2; justify-self: start; }
-.landing-home .channel-card .store-pill { min-height: 44px; padding: 0.375rem 1rem; border: 0; border-radius: 999px; background: var(--page); color: var(--ink); }
-.landing-home .channel-card a.store-pill { background: var(--btn); color: var(--on-btn); }
-.landing-home .channel-card .store-btn-icon svg { width: 18px; height: 18px; }
-.landing-home .channel-card .store-btn-text { flex-direction: row; align-items: baseline; gap: 0.375rem; }
-.landing-home .channel-card .store-btn-text small { opacity: 1; color: var(--muted); }
-.landing-home .channel-card .store-btn-text small::before { content: "· "; }
-.landing-home .channel-actions { display: flex; align-items: center; gap: 0.75rem; }
-.landing-home .channel-card .btn-github { min-height: 44px; padding: 0.375rem 1rem; border-radius: 999px; background: var(--btn); color: var(--on-btn); }
-.landing-home .channel-card .btn-github:hover { background: var(--btn-hover); filter: none; }
-.landing-home .channel-card .btn-github .store-btn-text small { color: #d6d6d6; }
-.landing-home .btn-copy { min-height: 44px; padding: 0 1rem; border: 0; border-radius: 999px; background: var(--page); color: var(--ink); font-family: var(--display); font-size: 0.875rem; font-weight: 600; }
-.landing-home .btn-copy:hover { background: var(--surface-2); }
+/* Channels: two equal cards. Icon and title lead, the description follows and
+   the actions share one baseline at the bottom of both cards. A real link is
+   a solid button, the secondary action a white button with an ink outline
+   and the prelaunch store notice a plain white status row, not a button. */
+.landing-home #aplicativo .grid-2 { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1rem; }
+@media (min-width: 72rem) { .landing-home #aplicativo .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.landing-home .channel-card { display: flex; flex-direction: column; gap: 1rem; min-width: 0; padding: clamp(1.5rem, 3vw, 2rem); border-radius: 24px; background: var(--surface); }
+.landing-home .channel-head { display: flex; align-items: center; gap: 0.875rem; }
+.landing-home .channel-icon { display: grid; place-items: center; flex: none; width: 48px; height: 48px; border-radius: 14px; background: var(--btn); color: var(--on-btn); }
+.landing-home .channel-icon svg { width: 24px; height: 24px; }
+.landing-home .channel-title { font-size: clamp(1.375rem, 1.2rem + 0.7vw, 1.625rem); font-weight: 800; line-height: 1.15; letter-spacing: -0.03em; }
+.landing-home .channel-text { max-width: 34rem; font-size: 1.0625rem; line-height: 1.55; color: var(--muted); }
+.landing-home .channel-actions { display: flex; flex-wrap: wrap; align-items: stretch; gap: 0.75rem; margin-top: auto; padding-top: 0.5rem; }
+.landing-home .channel-actions :is(.store-btn, .btn-copy) { min-height: 60px; border: 0; border-radius: 16px; }
+.landing-home .channel-actions .store-btn { flex: 3 1 15rem; gap: 0.875rem; min-width: 0; padding: 0.625rem 1.125rem; filter: none; }
+.landing-home .channel-actions .store-btn-icon svg { width: 22px; height: 22px; }
+.landing-home .channel-actions .store-btn-text { gap: 0.125rem; min-width: 0; }
+.landing-home .channel-actions .store-btn-text strong { font-size: 1rem; line-height: 1.25; }
+.landing-home .channel-actions .store-btn-text small { font-size: 0.8125rem; line-height: 1.3; opacity: 1; }
+.landing-home .channel-actions a.store-btn { background: var(--btn); color: var(--on-btn); }
+.landing-home .channel-actions a.store-btn:hover { background: var(--btn-hover); }
+.landing-home .channel-actions a.store-btn small { color: #d6d6d6; }
+.landing-home .channel-actions a.store-btn::after { content: ""; flex: none; width: 20px; height: 20px; margin-left: auto; background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M7 17 17 7M9 7h8v8'/%3E%3C/svg%3E") center / contain no-repeat; }
+.landing-home .channel-actions span.store-pill { background: var(--page); color: var(--ink); }
+.landing-home .channel-actions span.store-pill .store-btn-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--surface); }
+.landing-home .channel-actions span.store-pill .store-btn-icon svg { width: 16px; height: 16px; }
+.landing-home .channel-actions span.store-pill small { color: var(--muted); }
+.landing-home .channel-actions .btn-copy { flex: 1 1 8rem; padding: 0 1.25rem; background: var(--page); color: var(--ink); box-shadow: inset 0 0 0 1px var(--ink); font-family: var(--display); font-size: 1rem; font-weight: 600; white-space: nowrap; transition: background-color 160ms ease; }
+.landing-home .channel-actions .btn-copy:hover { background: var(--surface-2); }
+/* Between 48rem and 72rem the cards stack and turn sideways: copy on the left,
+   actions in their own column on the right. */
+@media (min-width: 48rem) and (max-width: 71.999rem) {
+  .landing-home .channel-card { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 20rem); grid-template-rows: auto 1fr; gap: 0.75rem 2rem; align-items: start; }
+  .landing-home .channel-actions { grid-column: 2; grid-row: 1 / -1; align-self: center; margin: 0; padding: 0; }
+  .landing-home .channel-actions .store-btn { flex-basis: 100%; }
+}
 
 /* FAQ: sticky intro on the left, questions as rounded tiles on the right. */
 .landing-home .faq-split { display: grid; gap: 2rem; }
@@ -1319,9 +1338,7 @@ a.store-pill {
 .landing-home .back-to-top { right: 1rem; bottom: 1rem; border: 0; background: var(--btn); color: var(--on-btn); font-family: var(--display); box-shadow: 0 10px 24px -12px #0008; }
 
 @media (max-width: 39.999rem) {
-  .landing-home .lp-actions .btn-dark { width: 100%; }
-  .landing-home .channel-card { grid-template-columns: 48px 1fr; }
-  .landing-home .channel-icon { width: 48px; height: 48px; }
+  .landing-home .lp-actions :is(.btn-dark, .text-link) { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-home .explore-card, .landing-home .explore-card img, .landing-home .explore-arrow, .landing-home .faq-item, .landing-home .faq-summary::after { transition: none; }
@@ -1344,7 +1361,7 @@ a.store-pill {
 .legal-document .legal-article ul { max-width: 48rem; font-size: 1.125rem; line-height: 1.65; }
 .learning-page .grid-3 { display: grid; grid-template-columns: 1fr; gap: 1rem; }
 .learning-page .step-card { display: flex; flex-direction: column; align-items: flex-start; gap: 0.75rem; padding: 1.5rem; border: 0; border-radius: 16px; background: var(--surface); color: var(--ink); text-decoration: none; }
-.learning-page .step-card:hover { background: var(--surface-2); box-shadow: none; }
+.learning-page .step-card:hover { box-shadow: none; }
 .learning-page .step-title { margin: 0; font-size: 1.25rem; line-height: 1.3; letter-spacing: -0.02em; }
 .learning-page .step-desc { flex: 1; margin: 0; font-size: 1rem; color: var(--muted); }
 .learning-page .step-card .text-link { margin-top: auto; }
@@ -1412,12 +1429,20 @@ a.store-pill {
 .legal-article .link-list a { display: inline-block; padding-block: .25rem; }
 .legal-article .topic-cards, .home-topics .topic-cards { display: grid; gap: 1rem; margin: 1.25rem 0 1.5rem; padding: 0; list-style: none; }
 .topic-cards li { margin: 0; }
+/* Card grids are not prose lists: no list indent and no 48rem measure. */
+:is(.learning-page, .legal-document) .legal-article > .topic-cards { max-width: none; margin: 1.25rem 0 1.5rem; }
 @media (min-width: 48rem) { .legal-article .topic-cards, .home-topics .topic-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 @media (min-width: 64rem) { :is(.learning-hub .legal-article, .home-topics) .topic-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
-.topic-card { display: flex; flex-direction: column; gap: .5rem; height: 100%; padding: 1.25rem 1.5rem; border-radius: 16px; background: var(--surface); color: var(--ink); text-decoration: none; }
-.topic-card:hover { background: var(--surface-2); }
-.topic-card strong { font-family: var(--display); font-size: 1.125rem; line-height: 1.3; letter-spacing: -.015em; }
-.topic-card span { font-size: .9375rem; color: var(--muted); }
+.topic-card { display: flex; flex-direction: column; gap: .625rem; height: 100%; padding: 1.5rem; border: 1px solid var(--line); border-radius: 20px; background: var(--page); color: var(--ink); text-decoration: none; transition: border-color 160ms ease, background-color 160ms ease; }
+.topic-card:hover { border-color: var(--ink); }
+.topic-card:active { background: var(--surface); }
+.topic-kicker { display: inline-flex; align-items: center; gap: .5rem; margin-bottom: .25rem; font-family: var(--display); font-size: .8125rem; font-weight: 600; line-height: 1.3; color: var(--muted); }
+.topic-kicker::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.topic-card strong { font-family: var(--display); font-size: 1.1875rem; line-height: 1.25; letter-spacing: -.02em; }
+.topic-summary { font-size: .9375rem; line-height: 1.5; color: var(--muted); }
+.topic-arrow { display: grid; place-items: center; align-self: flex-end; width: 36px; height: 36px; margin-top: auto; border: 1px solid var(--ink); border-radius: 50%; color: var(--ink); transition: background-color 160ms ease, color 160ms ease, transform 160ms ease; }
+.topic-arrow svg { display: block; width: 18px; height: 18px; }
+.topic-card:hover .topic-arrow { background: var(--ink); color: var(--page); transform: translateX(3px); }
 .legal-article .chip-list { display: flex; flex-wrap: wrap; gap: .5rem; margin: 1rem 0 1.5rem; padding: 0; list-style: none; }
 .chip-list li { margin: 0; }
 .chip-list a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 1rem; border-radius: 999px; background: var(--surface); color: var(--ink); font-family: var(--display); font-weight: 600; text-decoration: none; }
@@ -1489,23 +1514,6 @@ a.store-pill {
   .landing-home .app-gallery:focus-visible { outline-offset: -3px; }
 }
 
-/* Channel cards: below 75rem the action labels stack in two lines instead of
-   wrapping word by word; on phones the actions take the full card width. */
-.landing-home .channel-card { grid-template-columns: 56px minmax(0, 1fr); }
-.landing-home .channel-card .store-btn-text strong, .landing-home .channel-card .btn-copy { white-space: nowrap; }
-@media (max-width: 74.999rem) {
-  .landing-home .channel-actions { flex-wrap: wrap; }
-  .landing-home .channel-card .store-btn { border-radius: 14px; padding-block: 0.5rem; }
-  .landing-home .channel-card .store-btn-text { flex-direction: column; align-items: flex-start; gap: 0; min-width: 0; }
-  .landing-home .channel-card .store-btn-text small::before { content: none; }
-  .landing-home .channel-card .btn-copy { flex: none; min-height: 48px; border-radius: 14px; }
-}
-@media (max-width: 39.999rem) {
-  .landing-home .channel-card { grid-template-columns: 48px minmax(0, 1fr); }
-  .landing-home .channel-card > .store-btn, .landing-home .channel-actions { grid-column: 1 / -1; justify-self: stretch; }
-  .landing-home .channel-actions .btn-github { flex: 1 1 12rem; }
-}
-
 /* Tutorial chapters: copy beside the capture on wide screens, stacked on phones. */
 .learning-page .lesson-article { max-width: 60rem; }
 .learning-page .legal-article > .lesson-steps { max-width: none; margin: 2rem 0 2.5rem; padding: 0; font-size: 1rem; color: var(--ink); }
@@ -1526,19 +1534,44 @@ a.store-pill {
   .learning-page .lesson-article .lesson-step:not([data-text-only]) > .tutorial-visual { grid-column: 2; grid-row: 1 / -1; margin-block: 0; }
 }
 .learning-page .lesson-nav { display: grid; gap: 0.75rem; margin-block: 0 3rem; }
-.learning-page .lesson-nav :is(.btn-primary, .btn-secondary) { min-height: 56px; padding: 0.875rem 1.25rem; border: 0; border-radius: 12px; font-family: var(--display); font-size: 1rem; font-weight: 600; line-height: 1.3; transition: background-color 160ms ease; }
-.learning-page .lesson-nav .btn-primary { justify-content: flex-end; background: var(--btn); color: var(--on-btn); text-align: right; }
+/* Previous/next: two equal buttons, each a small direction label over the
+   chapter title, both centred. */
+.learning-page .lesson-nav :is(.btn-primary, .btn-secondary) { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.125rem; min-height: 76px; padding: 0.875rem 1.25rem; border: 1px solid var(--ink); border-radius: 14px; font-family: var(--display); text-align: center; text-decoration: none; transition: background-color 160ms ease; }
+.learning-page .lesson-nav-label { font-size: 0.8125rem; font-weight: 600; line-height: 1.3; }
+.learning-page .lesson-nav-title { font-size: 1.0625rem; font-weight: 700; line-height: 1.3; letter-spacing: -0.015em; text-wrap: balance; }
+.learning-page .lesson-nav .btn-primary { background: var(--btn); color: var(--on-btn); }
+.learning-page .lesson-nav .btn-primary .lesson-nav-label { color: #d6d6d6; }
 .learning-page .lesson-nav .btn-primary:hover { background: var(--btn-hover); }
-.learning-page .lesson-nav .btn-secondary { justify-content: flex-start; background: var(--surface); color: var(--ink); }
-.learning-page .lesson-nav .btn-secondary:hover { background: var(--surface-2); }
+.learning-page .lesson-nav .btn-secondary { background: var(--page); color: var(--ink); }
+.learning-page .lesson-nav .btn-secondary .lesson-nav-label { color: var(--muted); }
+.learning-page .lesson-nav .btn-secondary:hover { background: var(--surface); }
 @media (min-width: 40rem) { .learning-page .lesson-nav { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 
-/* Tutorial hub: chapter cards share one rhythm; unpublished ones stay quiet. */
-.learning-hub .lesson-step { display: flex; flex-direction: column; align-items: flex-start; gap: 0.5rem; margin: 0; }
-.learning-hub .lesson-step h3 { margin: 0; }
-.learning-hub .lesson-step .lesson-meta { margin: 0; font-size: 0.9375rem; line-height: 1.5; }
-.learning-hub .lesson-step:has(a) { transition: background-color 160ms ease; }
-.learning-hub .lesson-step:has(a):hover { background: var(--surface-2); }
+/* Tutorial hub. A published chapter is a white outlined card and the whole
+   card is its link (the title link is stretched over it); a chapter that is
+   not published yet is a flat, quieter tile with no link. */
+.learning-page .step-card { border: 1px solid var(--line); border-radius: 20px; background: var(--page); transition: border-color 160ms ease, background-color 160ms ease; }
+.learning-page .step-card:hover { border-color: var(--ink); background: var(--page); }
+.learning-page .step-card:active { background: var(--surface); }
+.learning-page .step-card .step-title { margin: 0; }
+.learning-hub .chapter-card { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 0.5rem; margin: 0; padding: 1.5rem; border: 1px solid var(--line); border-radius: 20px; background: var(--page); transition: border-color 160ms ease; }
+.learning-hub .chapter-card > * { margin: 0; }
+.learning-hub .chapter-top { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 0.25rem; }
+.learning-hub .chapter-id { font-family: var(--display); font-size: 0.8125rem; font-weight: 700; letter-spacing: 0.04em; color: var(--muted); }
+.learning-hub .chapter-card .lesson-availability { display: inline-flex; align-items: center; gap: 0.5rem; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: var(--ink); font-size: 0.8125rem; font-weight: 600; }
+.learning-hub .chapter-card .lesson-availability::before { content: ""; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); }
+.learning-hub .chapter-card h3 { margin: 0; font-size: 1.1875rem; line-height: 1.25; letter-spacing: -0.02em; text-wrap: balance; }
+.learning-hub .chapter-card h3 a { display: inline; padding: 0; text-decoration: none; }
+.learning-hub .chapter-card h3 a::after { content: ""; position: absolute; inset: 0; border-radius: 20px; }
+.learning-hub .chapter-card h3 a:focus-visible { outline: none; }
+.learning-hub .chapter-card h3 a:focus-visible::after { outline: 3px solid var(--ink); outline-offset: 3px; }
+.learning-hub .chapter-card .lesson-meta { margin: 0; font-size: 0.9375rem; line-height: 1.5; color: var(--muted); }
+.learning-hub .chapter-card:not([data-pending]):hover { border-color: var(--ink); }
+.learning-hub .chapter-card:not([data-pending]):hover .topic-arrow { background: var(--ink); color: var(--page); transform: translateX(3px); }
+.learning-hub .chapter-card[data-pending] { border-color: transparent; background: var(--surface); }
+.learning-hub .chapter-card[data-pending] :is(h3, .lesson-availability) { color: var(--muted); }
+.learning-hub .chapter-card[data-pending] .lesson-availability::before { background: #8a8a8a; }
+@media (min-width: 64rem) { .learning-hub .lesson-steps { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
 
 /* Guide and calculator captures: one strip that snaps sideways on phones. */
 .article-figures { display: flex; gap: 1rem; max-width: 52rem; margin-block: 1.5rem; padding: 0.25rem 0.25rem 0.75rem; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: 0.25rem; }
@@ -1550,11 +1583,11 @@ a.store-pill {
 .article-figures:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
 
 /* Cards and chips: one quiet hover, focus and pressed treatment. */
-.topic-card, .state-grid a, .chip-list a, .learning-page .step-card, .landing-home .channel-card .store-btn, .landing-home .btn-dark, .landing-home .btn-copy, .landing-home .pill-light { transition: background-color 160ms ease; }
-.topic-card:active, .state-grid a:active, .chip-list a:active, .learning-page .step-card:active { background: var(--surface-2); }
+.state-grid a, .chip-list a, .landing-home .channel-card .store-btn, .landing-home .btn-dark, .landing-home .btn-copy, .landing-home .pill-light { transition: background-color 160ms ease; }
+.state-grid a:active, .chip-list a:active { background: var(--surface-2); }
 .topic-card strong { text-wrap: balance; }
 .landing-home .h2, :is(.learning-page, .legal-document) .legal-article :is(h1, h2) { text-wrap: balance; }
-.landing-home .block-head p, .landing-home .feature-copy > p, :is(.learning-page, .legal-document) .legal-article > .article-lead { text-wrap: pretty; }
+.landing-home .feature-copy > p, :is(.learning-page, .legal-document) .legal-article > .article-lead { text-wrap: pretty; }
 
 /* Guide formula/source helpers (replace former inline styles blocked by CSP). */
 .formula-expression {
