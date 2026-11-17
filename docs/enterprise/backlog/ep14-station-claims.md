@@ -1,14 +1,12 @@
 # EP14 — Station claims and representation
 
-Status: **PLANNED**, 2026-11-10.
-
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
-were reconstructed from [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md).
+were reconstructed from [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md).
 
 Local F1 requires M0 closure and protected integration of the current
 ADR-019 construction batch. See the
-[sequencing decision](../evidence/f0-m0-decisions.md#roadmap-sequencing).
+sequencing decision.
 
 The existing station claim specification and frozen representation contract remain the source for decisions.
 
@@ -17,7 +15,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Reconcile organization-held station authority with the frozen claim contract.
 - **Rules and use cases:** BR-CLAIM-001, BR-CLAIM-002, BR-CLAIM-037, EDR-021, CX-11
 - **Depends on:** EMP-GOV-015
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: explicit holder and scoped transition decision · out: lifting Stage D by implication
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -33,7 +31,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Create a claim through a currently authorized requesting member.
 - **Rules and use cases:** BR-CLAIM-003, BR-CLAIM-005, BR-CLAIM-006, BR-CLAIM-007
 - **Depends on:** EMP-CLAIM-001, EMP-ORG-011, EMP-AUTH-003
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: verified entity and existing canonical station · out: creating public station or generic owner privilege
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -49,7 +47,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Search the existing station and prevent duplicate open claim state.
 - **Rules and use cases:** BR-CLAIM-003, BR-CLAIM-007, BR-CLAIM-008, BR-CLAIM-016
 - **Depends on:** EMP-CLAIM-002
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: canonical lookup and scoped claim limits · out: leaking rivals' private evidence
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -65,7 +63,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Collect proportional private evidence and preserve information requests.
 - **Rules and use cases:** BR-CLAIM-010, BR-CLAIM-011, BR-CLAIM-012, BR-CLAIM-017, BR-CLAIM-036
 - **Depends on:** EMP-CLAIM-002
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: admitted evidence and bounded response loop · out: unreviewed document retention
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -81,7 +79,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Decide claims atomically with independent review and concurrent-holder safety.
 - **Rules and use cases:** BR-CLAIM-009, BR-CLAIM-013, BR-CLAIM-014, BR-CLAIM-015, BR-CLAIM-016, VAL-17
 - **Depends on:** EMP-CLAIM-004, EMP-BACK-002
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: audited evidence decision and authority issuance · out: automatic approval or two live holders
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -97,7 +95,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Record contest and appeal without transferring authority automatically.
 - **Rules and use cases:** BR-CLAIM-018, BR-CLAIM-019, BR-CLAIM-020
 - **Depends on:** EMP-CLAIM-005
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: scoped case, reason and reviewed outcome · out: authority inferred from filing a contest
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -113,7 +111,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Enforce live authority, expiry and reviewed revalidation at each use.
 - **Rules and use cases:** BR-CLAIM-020, BR-CLAIM-021, BR-CLAIM-022, BR-CLAIM-023, BR-CLAIM-024
 - **Depends on:** EMP-CLAIM-005
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: current authority lifecycle · out: reopening a revoked or expired grant
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -129,7 +127,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Grant station roles only inside an authorized organization and station authority.
 - **Rules and use cases:** BR-CLAIM-028, BR-CLAIM-029, BR-CLAIM-030, BR-AUTH-015
 - **Depends on:** EMP-CLAIM-007, EMP-AUTH-006
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: scoped teams and bounded delegation · out: organization-wide rights from one station
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -145,7 +143,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Manage a network as separate proven station authorities.
 - **Rules and use cases:** BR-CLAIM-003, BR-CLAIM-009, BR-CLAIM-033
 - **Depends on:** EMP-CLAIM-007
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: authorized per-station associations · out: authority from a common CNPJ root
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -161,7 +159,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Respond to operator, legal-entity and catalog changes through reviewed authority rules.
 - **Rules and use cases:** BR-CLAIM-025, BR-CLAIM-027, BR-CLAIM-035
 - **Depends on:** EMP-CLAIM-007
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: succession, closure and merge references · out: transferring authority by a click or rewriting the public catalog
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -177,7 +175,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Publish a narrow representation badge with honest validity.
 - **Rules and use cases:** BR-CLAIM-021, BR-CLAIM-022, BR-CLAIM-026, BR-CLAIM-034, BR-SRC-002
 - **Depends on:** EMP-CLAIM-007
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: approved public authority projection · out: quality, price or trust certification
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -193,7 +191,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** Present the gated station claim flow and progress in its portal.
 - **Rules and use cases:** BR-CLAIM-003, BR-CLAIM-012, BR-CLAIM-017, BR-CLAIM-037
 - **Depends on:** EMP-CLAIM-004, EMP-PLAT-008
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: authorized claim UI and private status · out: opening Postos from company-panel approval
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -209,7 +207,7 @@ The existing station claim specification and frozen representation contract rema
 - **Objective:** End representative access while preserving station authority and controlled recovery.
 - **Rules and use cases:** BR-CLAIM-031, BR-CLAIM-032, BR-IDN-027
 - **Depends on:** EMP-CLAIM-008
-- **Read first:** [station claims](../modules/station-claims.md), [decisions](../16-decisions.md) and [privacy](../11-privacy-security.md)
+- **Read first:** [station claims](../modules/station-claims.md), [decisions](../decisions.md) and [privacy](../privacy-security.md)
 - **Scope:** in: scoped exit and last-administrator recovery · out: losing history or implicit replacement authority
 - **Areas:** existing: stationprofile, organization scope and staff review · proposed: gated organization-held authority consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.

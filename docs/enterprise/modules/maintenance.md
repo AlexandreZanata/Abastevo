@@ -1,12 +1,12 @@
 # Maintenance, checklists and incidents
 
-Status: **PLANNED**, 2026-11-10. Module codes `CHECK` and `MAINT`. Tasks: `EMP-CHECK-001…004` and `EMP-MAINT-001…012` in [backlog/ep11-maintenance](../backlog/ep11-maintenance.md).
+Module codes `CHECK` and `MAINT`.
 
-Evidence. The repository has no organization checklist, incident, damage, maintenance plan, supplier or work-order code; everything specified here is `PROPOSED`. Two personal features touch the same subject and are not reused as storage, because both are keyed by one account and one personal vehicle: the individual driver suite stores a reminder schedule with the bases `ODOMETER`, `DATE` and `ODOMETER_OR_DATE` and no hour basis, work order or supplier (`backend/internal/modules/driver/domain/maintenance.go`, migration `backend/db/migrations/000135_driver_cost_maintenance.sql`; `PARTIAL`, the suite is disabled by flag and has no Android transport, [01-diagnosis](../01-diagnosis.md) §3.2), and the personal ledger has a `maintenance` expense category (`backend/internal/modules/ledger/domain/ledger.go`, `IMPLEMENTED`). The photo upload ingress and its verification job (`backend/internal/modules/evidence/`, `IMPLEMENTED`) are a pattern only: every copy is deleted within 24 hours, which does not fit checklist and incident photos. The job queue with schedules (`backend/internal/platform/jobs/`, `IMPLEMENTED`) is what the due computation runs on. New code lives in `backend/internal/modules/maintenance/` (proposed) and `com.anpfuel.*.enterprise.maintenance` (proposed), as listed in [09-architecture](../09-architecture.md) §2.
+Evidence. The repository has no organization checklist, incident, damage, maintenance plan, supplier or work-order code; everything specified here is `PROPOSED`. Two personal features touch the same subject and are not reused as storage, because both are keyed by one account and one personal vehicle: the individual driver suite stores a reminder schedule with the bases `ODOMETER`, `DATE` and `ODOMETER_OR_DATE` and no hour basis, work order or supplier (`backend/internal/modules/driver/domain/maintenance.go`, migration `backend/db/migrations/000135_driver_cost_maintenance.sql`; `PARTIAL`, the suite is disabled by flag and has no Android transport, 01-diagnosis §3.2), and the personal ledger has a `maintenance` expense category (`backend/internal/modules/ledger/domain/ledger.go`, `IMPLEMENTED`). The photo upload ingress and its verification job (`backend/internal/modules/evidence/`, `IMPLEMENTED`) are a pattern only: every copy is deleted within 24 hours, which does not fit checklist and incident photos. The job queue with schedules (`backend/internal/platform/jobs/`, `IMPLEMENTED`) is what the due computation runs on. New code lives in `backend/internal/modules/maintenance/` (proposed) and `com.anpfuel.*.enterprise.maintenance` (proposed), as listed in [09-architecture](../architecture.md) §2.
 
 ## 1. Purpose
 
-Before an asset is used, three questions need an answer: is it fit to go, is something already known to be wrong with it, and is a service or a document about to lapse. In the organizations this suite targets ([02-product-vision](../02-product-vision.md) §3) the answers are on paper, in chat messages or in someone's memory.
+Before an asset is used, three questions need an answer: is it fit to go, is something already known to be wrong with it, and is a service or a document about to lapse. In the organizations this suite targets ([02-product-vision](../product-vision.md) §3) the answers are on paper, in chat messages or in someone's memory.
 
 - **Drivers and field staff** get a short checklist at departure and at return, and a way to report a damage or an incident in seconds, without signal.
 - **Fleet managers and supervisors** get a queue of what was reported, preventive plans that become due by date, distance or hours, and work orders that go from request to quote, approval, execution and cost.
@@ -49,7 +49,7 @@ Checklists, damages and incidents (`CHECK`):
 - **BR-CHECK-003 — Three answers.** Each item is answered `OK`, `NOT_OK` or `NOT_APPLICABLE`; `NOT_APPLICABLE` is accepted only on items marked optional; a run completes only when every item has an answer.
 - **BR-CHECK-004 — The outcome is computed, not chosen.** A run is `COMPLETED_OK` when no answer is `NOT_OK`, `BLOCKING` when at least one critical item is `NOT_OK` and the policy is `BLOCK`, and `COMPLETED_WITH_ISSUES` otherwise.
 - **BR-CHECK-005 — Critical-item policy.** The organization sets `BLOCK` (default) or `WARN` per template. Under `BLOCK` a critical item answered `NOT_OK` prevents the trip start; under `WARN` the driver confirms having seen the issues and may start.
-- **BR-CHECK-006 — Decided on the device from the cached policy.** The app computes the outcome without a connection from the cached template version and policy revision, names both in the run and applies the block at once ([10-offline-sync](../10-offline-sync.md) §10.3).
+- **BR-CHECK-006 — Decided on the device from the cached policy.** The app computes the outcome without a connection from the cached template version and policy revision, names both in the run and applies the block at once ([10-offline-sync](../offline-sync.md) §10.3).
 - **BR-CHECK-007 — Rechecked on the server.** On receipt the server recomputes the outcome from the answers, the named template version and the policy in force at the declared completion time according to its own history; when the two differ, the server's outcome is stored and the author is told.
 - **BR-CHECK-008 — A disagreement discards nothing.** When the server's outcome is `BLOCKING` and a trip already started on that run, the run is accepted and the trip start is kept for review with `CHECKLIST_BLOCKING`; neither is refused (BR-OFFL-006).
 - **BR-CHECK-009 — Each issue is a damage.** Every `NOT_OK` answer of an accepted run creates one damage in `REPORTED` linked to the run and the item, unless the author marked it as an open damage already known for that asset, in which case it is linked to that damage.
@@ -84,7 +84,7 @@ Corrective maintenance and work orders:
 - **BR-MAINT-014 — Anyone who uses the asset can ask.** A member with `maint.request.create` creates a corrective work order in `REQUESTED`, offline, naming the asset and what is wrong.
 - **BR-MAINT-015 — Origins are linked, not copied.** A work order references what caused it (plan occurrence, damage, incident, checklist item or request); starting it moves the linked damages and incidents to `IN_TREATMENT`, and completing it proposes their resolution to the handler.
 - **BR-MAINT-016 — One work order per open defect.** A request about a damage that already has a work order outside a terminal state is attached to that work order instead of creating another.
-- **BR-MAINT-017 — The term is reserved.** "Work order" (ordem de serviço) names only a maintenance job on one asset; operational work is a mission ([03-glossary](../03-glossary.md) §4 and §6).
+- **BR-MAINT-017 — The term is reserved.** "Work order" (ordem de serviço) names only a maintenance job on one asset; operational work is a mission ([03-glossary](../glossary.md) §4 and §6).
 - **BR-MAINT-018 — Identity.** A work order has one asset, one kind (`PREVENTIVE` or `CORRECTIVE`) and a number that is sequential per organization and never reused.
 - **BR-MAINT-019 — Supplier or in-house.** An external work order names a supplier from the organization's registry ([fleet](fleet.md)); an in-house one names none; a workshop is never created in the public station catalog (BR-SRC-004).
 - **BR-MAINT-020 — Lines are parts and services with exact values.** Each line has a kind (`PART` or `SERVICE`), a quantity in milli-units of its unit (labour time in seconds), a unit price in milli-BRL and a line total in centavos; the line total as invoiced is authoritative and the arithmetic check of BR-MONEY-005 only warns.
@@ -102,11 +102,11 @@ Corrective maintenance and work orders:
 
 Unavailability and return to operation:
 
-- **BR-MAINT-032 — In maintenance means unavailable.** From the start of a maintenance hold until the return to operation the asset's availability is `IN_MAINTENANCE`; it cannot be reserved for that period or start a trip ([08-state-model](../08-state-model.md) §3, [fleet](fleet.md)).
+- **BR-MAINT-032 — In maintenance means unavailable.** From the start of a maintenance hold until the return to operation the asset's availability is `IN_MAINTENANCE`; it cannot be reserved for that period or start a trip ([08-state-model](../state-model.md) §3, [fleet](fleet.md)).
 - **BR-MAINT-033 — When a hold starts.** A hold starts when the work order enters `IN_EXECUTION`, or earlier when a manager hands the asset over; one work order may have several holds when the asset is released while a part is awaited.
 - **BR-MAINT-034 — Return to operation is explicit.** A hold ends only by the return command of a member with `maint.workorder.manage`, with the instant and, when the asset has a meter, a reading; completing the work order does not end the hold, and a work order with an open hold cannot be closed (`HOLD_OPEN`).
 - **BR-MAINT-035 — Unavailable time is measured.** Unavailability of an asset in a period is the sum of its hold durations in seconds inside the period; holds that overlap count once.
-- **BR-MAINT-036 — Field facts on a held asset are kept.** A trip or fueling recorded offline for an asset in a hold is accepted for review with `ASSET_UNAVAILABLE` and never dropped ([10-offline-sync](../10-offline-sync.md) §10.2).
+- **BR-MAINT-036 — Field facts on a held asset are kept.** A trip or fueling recorded offline for an asset in a hold is accepted for review with `ASSET_UNAVAILABLE` and never dropped ([10-offline-sync](../offline-sync.md) §10.2).
 - **BR-MAINT-037 — Scheduling shows commitments.** Scheduling a work order over a confirmed reservation or a planned trip of the asset shows the conflict and needs confirmation; nothing is cancelled automatically.
 
 Expiries, documents and insurance:
@@ -140,7 +140,7 @@ Modular evolution (lighter level):
 
 **UC-MAINT-01 — Create a preventive plan.** Actor: member with `maint.plan.manage`. Main flow: choose the asset → name and task list → set one or more triggers and their leads → state the last service (day and meter values) as the baseline → save → the first occurrence is computed. Alternatives: a trigger without its meter → `METER_REQUIRED`; no known last service → the baseline is today and the current readings, and the plan says so; copy a plan to other assets of the same category → one plan per asset, each with its own baseline. Result: an `ACTIVE` plan with one open occurrence.
 
-**UC-MAINT-02 — Evaluate what is due (system).** Actor: scheduled job and reading events. Main flow: once a day per time zone, and whenever a reading of the asset changes, recompute the open occurrences of the affected assets → store the new state and the reading revision used → emit an event on each state change → alerts go to members with `maint.plan.manage` in scope. Alternatives: the job did not run → the state is also computed when the occurrence is read ([08-state-model](../08-state-model.md) §4 rule 6); a usage trigger has no reading → `INSUFFICIENT_DATA` for that trigger. Result: lists and alerts match the readings valid now.
+**UC-MAINT-02 — Evaluate what is due (system).** Actor: scheduled job and reading events. Main flow: once a day per time zone, and whenever a reading of the asset changes, recompute the open occurrences of the affected assets → store the new state and the reading revision used → emit an event on each state change → alerts go to members with `maint.plan.manage` in scope. Alternatives: the job did not run → the state is also computed when the occurrence is read ([08-state-model](../state-model.md) §4 rule 6); a usage trigger has no reading → `INSUFFICIENT_DATA` for that trigger. Result: lists and alerts match the readings valid now.
 
 **UC-MAINT-03 — Ask for maintenance.** Actor: member with `maint.request.create`; or a handler from a report (UC-CHECK-04). Main flow: choose the asset → describe the problem or pick the damage or incident → save offline → the server creates a corrective work order in `REQUESTED` linked to its origin. Alternatives: an open work order already covers that damage → the request is attached to it (BR-MAINT-016); the asset is disposed → kept for review with `ASSET_UNAVAILABLE`. Result: the manager sees the request with its evidence.
 
@@ -160,7 +160,7 @@ Modular evolution (lighter level):
 
 ## 6. States and transitions
 
-State names are the ones in [08-state-model](../08-state-model.md) §3. Every transition is a command with an audit event (BR-AUD-001) and names the expected current state or revision; the loser of a race receives `CONFLICT`.
+State names are the ones in [08-state-model](../state-model.md) §3. Every transition is a command with an audit event (BR-AUD-001) and names the expected current state or revision; the loser of a race receives `CONFLICT`.
 
 **Checklist run** (operational). Interface: `IN_PROGRESS` "Em andamento", `COMPLETED_OK` "Concluído sem pendências", `COMPLETED_WITH_ISSUES` "Concluído com pendências", `BLOCKING` "Bloqueando o uso".
 
@@ -251,7 +251,7 @@ Work started and abandoned is completed with the lines actually executed, possib
 
 ## 7. Roles and permissions
 
-Keys are the ones in [07-permissions](../07-permissions.md) §7.2. Where §7.3 of that file has a row, it is the authority; where it has none, the roles below are this module's proposal for the row.
+Keys are the ones in [07-permissions](../permissions.md) §7.2. Where §7.3 of that file has a row, it is the authority; where it has none, the roles below are this module's proposal for the row.
 
 | Permission | Used for | Roles |
 |---|---|---|
@@ -269,7 +269,7 @@ Scope: every record carries the asset and the unit and cost centre the asset had
 
 ## 8. Offline, concurrency, idempotency and corrections
 
-- **Offline.** Checklist runs, damage and incident reports and maintenance requests are created, changed and completed offline ([10-offline-sync](../10-offline-sync.md) §10.3). The app keeps, in the reference snapshot, the template versions, the policy revision, the asset's open damages and its restrictions (hold, block, due and overdue items), each with the time it was confirmed (BR-OFFL-016). Quotes, approvals, scheduling, execution, closing, plans and expiries are panel actions and need the server (BR-OFFL-017).
+- **Offline.** Checklist runs, damage and incident reports and maintenance requests are created, changed and completed offline ([10-offline-sync](../offline-sync.md) §10.3). The app keeps, in the reference snapshot, the template versions, the policy revision, the asset's open damages and its restrictions (hold, block, due and overdue items), each with the time it was confirmed (BR-OFFL-016). Quotes, approvals, scheduling, execution, closing, plans and expiries are panel actions and need the server (BR-OFFL-017).
 - **Operations.** `check.run.complete` carries the answers, notes and attachment declarations of one run; `check.damage.report`, `check.incident.report` and `maint.request.create` carry one record each. A trip start names the run that gated it; a report made from a run depends on the run's operation (BR-OFFL-007). Photos follow BR-OFFL-015.
 - **Server recheck.** The intake recomputes the outcome (BR-CHECK-007). A trip start on an asset with a blocking run or report is accepted for review with `CHECKLIST_BLOCKING`; one without a required valid run with `CHECKLIST_REQUIRED`; one on an asset in a hold with `ASSET_UNAVAILABLE`. The gate itself is specified in [trips](trips.md); this module supplies the run, its outcome and the codes.
 - **Concurrency.** Work-order commands lock the work order and name its revision. Two members starting the same work order: the first succeeds, the second receives `CONFLICT`. Occurrence recomputation locks the plan; a recomputation and a completion racing end in the completion, because it reads the readings inside the same transaction. Closing takes the lock on the work order and creates the expense in the same transaction.
@@ -316,7 +316,7 @@ overrun_ceiling = approved_cents + floor(approved_cents × tolerance_percent / 1
 unavailable_s   = Σ duration of the asset's holds in the period, overlaps counted once
 ```
 
-Error codes added by this module (shared codes are in [09-architecture](../09-architecture.md) §6 and [10-offline-sync](../10-offline-sync.md) §10.2):
+Error codes added by this module (shared codes are in [09-architecture](../architecture.md) §6 and [10-offline-sync](../offline-sync.md) §10.2):
 
 | Code | Where | Meaning |
 |---|---|---|
@@ -402,7 +402,7 @@ Acceptance criteria:
 12. With licence expiry control off, no employee compliance item exists and the job reads no driver profile; turning it on creates items only from the expiry day and category.
 13. Every list, read and command of this module called with another organization's identifiers answers not-found with no data (BR-TEN-006).
 
-Dependencies: [fleet](fleet.md) (assets, meters and the usage query, suppliers, availability, asset documents); [trips](trips.md) (trip gate, logbook incident events); [documents](documents.md) (photos, quotes, invoices, allocation); [expenses-finance](expenses-finance.md) (review engine, approval policy, expense port, period lock); [identity](identity.md) (driver profile, only with the control on); [imports-notifications-integrations](imports-notifications-integrations.md) (alerts); [10-offline-sync](../10-offline-sync.md) (queue, intake, reference snapshot). Legal validation: LV-09 and LV-10 before any pilot with real data.
+Dependencies: [fleet](fleet.md) (assets, meters and the usage query, suppliers, availability, asset documents); [trips](trips.md) (trip gate, logbook incident events); [documents](documents.md) (photos, quotes, invoices, allocation); [expenses-finance](expenses-finance.md) (review engine, approval policy, expense port, period lock); [identity](identity.md) (driver profile, only with the control on); [imports-notifications-integrations](imports-notifications-integrations.md) (alerts); [10-offline-sync](../offline-sync.md) (queue, intake, reference snapshot). Legal validation: LV-09 and LV-10 before any pilot with real data.
 
 Risks: checklists answered mechanically (short templates, critical items few and explicit, photo required on a not-OK critical item); assets blocked by mistake far from a manager (release path with a named handler shown on the blocked screen, `WARN` available per template); missing readings making usage plans silent (BR-MAINT-009 alert and the date trigger as a second line); sensitive details typed into free text (hint, length limits, restricted photo access, LV-10); overrun tolerance used to split work (overruns are listed per supplier in the work-order view and need a named approver); stale reference data on the device (age shown, server recheck).
 

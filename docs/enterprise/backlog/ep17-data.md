@@ -1,14 +1,12 @@
 # EP17 — Abastevo Data
 
-Status: **PLANNED**, 2026-11-10.
-
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
-were reconstructed from [Data requirements](../17-traceability.md), [decisions](../16-decisions.md), [architecture](../09-architecture.md) and [privacy](../11-privacy-security.md).
+were reconstructed from Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md).
 
 Local F1 requires M0 closure and protected integration of the current
 ADR-019 construction batch. See the
-[sequencing decision](../evidence/f0-m0-decisions.md#roadmap-sequencing).
+sequencing decision.
 
 The [Data design](../modules/data.md) records the recovered dataset and key boundaries. Market products never ingest private organization data by default.
 
@@ -17,7 +15,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 - **Objective:** Define datasets with source rights, coverage and methodology.
 - **Rules and use cases:** EDR-025, BR-SRC-001, BR-SRC-005, BR-TRUTH-004, REQ-16.6
 - **Depends on:** EMP-GOV-016
-- **Read first:** [Data requirements](../17-traceability.md), [decisions](../16-decisions.md), [architecture](../09-architecture.md) and [privacy](../11-privacy-security.md)
+- **Read first:** Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md)
 - **Scope:** in: approved catalog and immutable method references · out: market activation before rights review
 - **Areas:** existing: enterpriseexport, scoped keys, jobs and private export ports · proposed: gated Data catalog and consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -33,7 +31,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 - **Objective:** Issue, rotate and revoke scoped organization API keys.
 - **Rules and use cases:** REQ-16.6, BR-TEN-003, BR-AUTH-010, BR-PRIV-008
 - **Depends on:** EMP-ORG-003, EMP-AUTH-003
-- **Read first:** [Data requirements](../17-traceability.md), [decisions](../16-decisions.md), [architecture](../09-architecture.md) and [privacy](../11-privacy-security.md)
+- **Read first:** Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md)
 - **Scope:** in: current authority, bounded overlap and secret protection · out: keys granting administrative roles
 - **Areas:** existing: enterpriseexport, scoped keys, jobs and private export ports · proposed: gated Data catalog and consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -49,7 +47,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 - **Objective:** Apply quotas and usage metering per authorized API scope.
 - **Rules and use cases:** REQ-16.6, BR-PRIV-008, BR-AUTH-009
 - **Depends on:** EMP-DATA-002, EMP-SUBS-009
-- **Read first:** [Data requirements](../17-traceability.md), [decisions](../16-decisions.md), [architecture](../09-architecture.md) and [privacy](../11-privacy-security.md)
+- **Read first:** Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md)
 - **Scope:** in: exact counters, period and rate controls · out: infinite admission or billing inferred from client data
 - **Areas:** existing: enterpriseexport, scoped keys, jobs and private export ports · proposed: gated Data catalog and consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -65,7 +63,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 - **Objective:** Serve admitted regional and historical data with explicit methodology.
 - **Rules and use cases:** REQ-16.6, BR-SRC-001, BR-TRUTH-003, BR-TRUTH-004
 - **Depends on:** EMP-DATA-001, EMP-DATA-002
-- **Read first:** [Data requirements](../17-traceability.md), [decisions](../16-decisions.md), [architecture](../09-architecture.md) and [privacy](../11-privacy-security.md)
+- **Read first:** Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md)
 - **Scope:** in: scoped pagination, coverage and source metadata · out: private-company rows
 - **Areas:** existing: enterpriseexport, scoped keys, jobs and private export ports · proposed: gated Data catalog and consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -81,7 +79,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 - **Objective:** Notify authorized watchlists of recorded station-data changes.
 - **Rules and use cases:** REQ-16.6, BR-SRC-005, BR-PRIV-003, BR-TRUTH-006
 - **Depends on:** EMP-DATA-004, EMP-NOTIF-001
-- **Read first:** [Data requirements](../17-traceability.md), [decisions](../16-decisions.md), [architecture](../09-architecture.md) and [privacy](../11-privacy-security.md)
+- **Read first:** Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md)
 - **Scope:** in: scoped watchlist and deduplicated admitted changes · out: private fleet monitoring
 - **Areas:** existing: enterpriseexport, scoped keys, jobs and private export ports · proposed: gated Data catalog and consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -97,7 +95,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 - **Objective:** Support reviewed market comparisons and custom report requests.
 - **Rules and use cases:** REQ-16.6, BR-SRC-005, BR-KPI-012, BR-TRUTH-004
 - **Depends on:** EMP-DATA-004, EMP-RPT-001
-- **Read first:** [Data requirements](../17-traceability.md), [decisions](../16-decisions.md), [architecture](../09-architecture.md) and [privacy](../11-privacy-security.md)
+- **Read first:** Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md)
 - **Scope:** in: explicit scope, method and admitted data · out: assumed savings or arbitrary private-data queries
 - **Areas:** existing: enterpriseexport, scoped keys, jobs and private export ports · proposed: gated Data catalog and consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -113,7 +111,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 - **Objective:** Prove datasets exclude private enterprise records and respect admitted aggregation.
 - **Rules and use cases:** BR-SRC-005, BR-TEN-010, REQ-16.7, VAL-36
 - **Depends on:** EMP-DATA-004
-- **Read first:** [Data requirements](../17-traceability.md), [decisions](../16-decisions.md), [architecture](../09-architecture.md) and [privacy](../11-privacy-security.md)
+- **Read first:** Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md)
 - **Scope:** in: source allowlist and synthetic leak probes · out: de-identification assumed sufficient without review
 - **Areas:** existing: enterpriseexport, scoped keys, jobs and private export ports · proposed: gated Data catalog and consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -129,7 +127,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 - **Objective:** Expose authorized API keys, usage and dataset documentation in the company panel.
 - **Rules and use cases:** REQ-16.6, BR-AUTH-010, BR-PRIV-008, BR-TRUTH-004
 - **Depends on:** EMP-DATA-002, EMP-DATA-003, EMP-PLAT-008
-- **Read first:** [Data requirements](../17-traceability.md), [decisions](../16-decisions.md), [architecture](../09-architecture.md) and [privacy](../11-privacy-security.md)
+- **Read first:** Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md)
 - **Scope:** in: scoped safe metadata and explicit method docs · out: redisplaying key secrets
 - **Areas:** existing: enterpriseexport, scoped keys, jobs and private export ports · proposed: gated Data catalog and consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.

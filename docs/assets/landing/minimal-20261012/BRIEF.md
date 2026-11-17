@@ -1,9 +1,5 @@
 # LH07 — minimal product-led opening
 
-Status: LOCAL_DONE
-Validation: PASS
-Integration: INTEGRATION_PENDING
-
 Construction base `e90edab`, isolated `codex/landing-hero-art`. Owner's latest request supersedes the illustrated-background presentation. B-BR/BUC authority is recorded in the LH07 amendment of the canonical landing content contract before implementation.
 
 ## Result

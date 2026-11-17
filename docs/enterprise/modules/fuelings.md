@@ -1,8 +1,8 @@
 # Fuelings and consumption
 
-Status: **PLANNED**, 2026-11-10. Module code(s) `FUEL`. Tasks: `EMP-FUEL-001…015` in [backlog/ep08-fuelings](../backlog/ep08-fuelings.md).
+Module code(s) `FUEL`.
 
-Evidence. The repository has a personal ledger (`backend/internal/modules/ledger/`, refuel, expense and charge records owned by one account, `IMPLEMENTED`, sale disabled) and a pure full-to-full consumption and purchase-cost engine (`backend/internal/modules/metrics/consumption.go` and `cost.go`, with Kotlin parity in `domain/src/main/kotlin/com/anpfuel/domain/premium/PremiumConsumption.kt`, `IMPLEMENTED`). The method is frozen in `docs/product/PREMIUM_FINANCIAL_METHOD.md` with shared vectors in `contracts/testdata/premium/financial-v1.json` and `financial-execution-v1.csv`. That engine computes distance intervals for one homogeneous liquid fuel and answers every other case with a named unknown reason; it has no hour-meter input. The wire product vocabulary (`backend/internal/modules/kernel/price.go`) has eight products and no additive. The station catalog (`backend/internal/modules/directory/`) is `IMPLEMENTED` and is only referenced here. Organization fuelings, hour-based intervals, trip allocation and the price reference snapshot are `PROPOSED`; no organization fueling table exists. Nothing was executed for this analysis, so behaviour statements about existing code are statements about source ([01-diagnosis](../01-diagnosis.md) §1).
+Evidence. The repository has a personal ledger (`backend/internal/modules/ledger/`, refuel, expense and charge records owned by one account, `IMPLEMENTED`, sale disabled) and a pure full-to-full consumption and purchase-cost engine (`backend/internal/modules/metrics/consumption.go` and `cost.go`, with Kotlin parity in `domain/src/main/kotlin/com/anpfuel/domain/premium/PremiumConsumption.kt`, `IMPLEMENTED`). The method is frozen in `docs/product/premium/financial-method.md` with shared vectors in `contracts/testdata/premium/financial-v1.json` and `financial-execution-v1.csv`. That engine computes distance intervals for one homogeneous liquid fuel and answers every other case with a named unknown reason; it has no hour-meter input. The wire product vocabulary (`backend/internal/modules/kernel/price.go`) has eight products and no additive. The station catalog (`backend/internal/modules/directory/`) is `IMPLEMENTED` and is only referenced here. Organization fuelings, hour-based intervals, trip allocation and the price reference snapshot are `PROPOSED`; no organization fueling table exists. Nothing was executed for this analysis, so behaviour statements about existing code are statements about source (01-diagnosis §1).
 
 ## 1. Purpose
 
@@ -125,7 +125,7 @@ Price reference:
 
 ## 5. Use cases
 
-**UC-FUEL-01 — Record a fueling offline.** Actor: member with `fuel.fueling.record`, in enterprise mode. Preconditions: device enrolled; the asset is in the cached list of assets the member may use. Main flow: choose the asset (the trip in progress is prefilled) → product, quantity, paid total, fill level, reading → optional unit price, discount, place and payment → photograph the receipt ([documents](documents.md)) → mark ready to send → the operation `fueling.submit` is written to the queue and shown as "Salvo no aparelho" → at the next connection the server accepts it, the record becomes `SUBMITTED` and the receipt bytes follow (BR-OFFL-015). Alternatives: reading unavailable → the member states why and the fueling is still accepted; arithmetic, capacity or product warning → shown, not blocking; trip refused or missing on the server → accepted for review with the trip link removed (`ORPHAN_REFERENCE`); asset no longer available to the member → accepted for review ([10-offline-sync](../10-offline-sync.md) §10.2). Result: one fueling, created once, awaiting review.
+**UC-FUEL-01 — Record a fueling offline.** Actor: member with `fuel.fueling.record`, in enterprise mode. Preconditions: device enrolled; the asset is in the cached list of assets the member may use. Main flow: choose the asset (the trip in progress is prefilled) → product, quantity, paid total, fill level, reading → optional unit price, discount, place and payment → photograph the receipt ([documents](documents.md)) → mark ready to send → the operation `fueling.submit` is written to the queue and shown as "Salvo no aparelho" → at the next connection the server accepts it, the record becomes `SUBMITTED` and the receipt bytes follow (BR-OFFL-015). Alternatives: reading unavailable → the member states why and the fueling is still accepted; arithmetic, capacity or product warning → shown, not blocking; trip refused or missing on the server → accepted for review with the trip link removed (`ORPHAN_REFERENCE`); asset no longer available to the member → accepted for review ([10-offline-sync](../offline-sync.md) §10.2). Result: one fueling, created once, awaiting review.
 
 **UC-FUEL-02 — Review a fueling.** Actor: member with `fuel.fueling.review` whose scope covers the record. Preconditions: fueling `SUBMITTED`; the reviewer is not its author, responsible employee or payer. Main flow: open the fueling (`IN_REVIEW`) → compare the fields with the receipt and the reading with its neighbours → read the warnings → approve, return with a reason, or reject with a reason. Alternatives: own record → `SELF_APPROVAL`; another reviewer decided first → `CONFLICT` and nothing changes; warning present → a note per warning is required to approve; undecided duplicate suspicion → decide it first (UC-FUEL-07); rejecting → the reviewer states whether fuel entered the tank. Result: `APPROVED`, `RETURNED` or `REJECTED`, audited, and the author sees it at the next sync.
 
@@ -149,7 +149,7 @@ Price reference:
 
 ## 6. States and transitions
 
-Fueling, review state (BR-REV states plus `VOIDED`; names from [08-state-model](../08-state-model.md) §3). Sync state is a separate field (BR-REV-001).
+Fueling, review state (BR-REV states plus `VOIDED`; names from [08-state-model](../state-model.md) §3). Sync state is a separate field (BR-REV-001).
 
 ```mermaid
 stateDiagram-v2
@@ -202,11 +202,11 @@ Consumption interval (derived):
 | Amend, void, declare a gap | `fuel.fueling.amend` | A record in a locked period also needs an authorized reopening (`fin.period.reopen`, [expenses-finance](expenses-finance.md)) |
 | Link a fueling to an organization supplier | `fuel.fueling.read` and `fleet.supplier.manage` | — |
 
-Which role holds each key is the matrix in [07-permissions](../07-permissions.md) §7.3. The capability of the organization's plan is checked on every write; a capability turned off keeps reads and exports ([09-architecture](../09-architecture.md) §10).
+Which role holds each key is the matrix in [07-permissions](../permissions.md) §7.3. The capability of the organization's plan is checked on every write; a capability turned off keeps reads and exports ([09-architecture](../architecture.md) §10).
 
 ## 8. Offline, concurrency, idempotency and corrections
 
-- **Offline.** Recording, correcting a returned fueling and cancelling work offline; review, amendment and void are online ([10-offline-sync](../10-offline-sync.md) §10.3). Capacity, duplicate and price reference checks run on the server at receipt; the device shows the arithmetic and capacity warnings it can compute from cached data.
+- **Offline.** Recording, correcting a returned fueling and cancelling work offline; review, amendment and void are online ([10-offline-sync](../offline-sync.md) §10.3). Capacity, duplicate and price reference checks run on the server at receipt; the device shows the arithmetic and capacity warnings it can compute from cached data.
 - **Operations.** `fueling.submit` carries the whole record and the reading; it lists the trip's start operation as a dependency only when the trip was created on the same device and not yet accepted. The trip reference is a soft reference (BR-OFFL-007). Receipt attachments are declared in the operation and their bytes follow. Schema 1 of `fueling.submit` (EDR-175) carries the exact 17-key payload of `EnterpriseFuelingSubmitPayload`; a reading is recorded with origin `FUELING` in the same transaction; trip, contracted supplier, place references other than a typed `NOT_FOUND` name and attachments stay unavailable until their owners exist.
 - **Idempotency.** One acknowledgement per operation identifier (BR-OFFL-004). The record identifier is the device UUID (BR-OFFL-001), so a resend after a lost answer can never create a second fueling.
 - **Concurrency.** A review decision and an amendment name the revision they act on; the loser of a race receives `CONFLICT`. The submit handler locks the asset's fueling sequence while it checks duplicates, so two similar fuelings arriving together are both stored and both flagged.
@@ -358,7 +358,7 @@ Usage `250 + 180 + 160 + 10 = 600` km. Quantity: `200 000 × 250 / 600 = 83 333.
 | Flex (ethanol and gasoline in one tank) | Quantity and paid total per product; ratios for intervals in which the opening anchor and every fueling are the same product | An interval that mixes products: `MIXED_PRODUCTS`. No "ethanol against gasoline" efficiency is inferred from mixed intervals |
 | Several tanks, one product | Ratios when the tank group is full at both anchors (F6) | `TANK_GROUP_NOT_ANCHORED` |
 | Bi-fuel, natural gas plus a liquid | Cubic metres and litres per product, never added; paid totals per product and in total | Distance per cubic metre: `CNG_METHOD_UNSUPPORTED`, because a "full" cylinder depends on pressure. Distance per litre: `SHARED_USAGE`. No cost per distance, because the window cannot be anchored for both sources |
-| Electric | Watt-hours and paid total per charge | Energy per distance: `METHOD_NOT_AVAILABLE` until F6 adopts the existing method in `docs/product/EV_FINANCIAL_METHOD.md` |
+| Electric | Watt-hours and paid total per charge | Energy per distance: `METHOD_NOT_AVAILABLE` until F6 adopts the existing method in `docs/product/ev/financial-method.md` |
 | Plug-in hybrid | Watt-hours and litres, never added; paid totals | Per-source ratios: `SHARED_USAGE` |
 | Diesel with ARLA 32 | Diesel figures as one liquid fuel; ARLA quantity and cost as separate lines | ARLA is in no fuel volume and no fuel ratio; an ARLA usage figure is not defined in version 1 |
 | Machine with an hour meter only | Volume per hour, fuel cost per hour | Any figure per distance |
@@ -378,7 +378,7 @@ A fueling with place kind `NOT_FOUND` or `INTERNAL_TANK` stores every source as 
 
 ### 10.8 Codes added by this module
 
-Errors (refuse the request): `PRODUCT_UNIT_MISMATCH` (422), `FUELING_NOT_CANCELLABLE` (409), `SUSPICION_UNDECIDED` (409), `WARNING_NOTE_REQUIRED` (422). Warnings (stored on the fueling, never refuse): `ARITHMETIC_MISMATCH`, `OVER_CAPACITY`, `PRODUCT_NOT_ACCEPTED`, `SUSPECTED_DUPLICATE`, `READING_ABSENT`, `LATE_ENTRY`. Shared codes are in [09-architecture](../09-architecture.md) §6 and [10-offline-sync](../10-offline-sync.md) §10.2.
+Errors (refuse the request): `PRODUCT_UNIT_MISMATCH` (422), `FUELING_NOT_CANCELLABLE` (409), `SUSPICION_UNDECIDED` (409), `WARNING_NOTE_REQUIRED` (422). Warnings (stored on the fueling, never refuse): `ARITHMETIC_MISMATCH`, `OVER_CAPACITY`, `PRODUCT_NOT_ACCEPTED`, `SUSPECTED_DUPLICATE`, `READING_ABSENT`, `LATE_ENTRY`. Shared codes are in [09-architecture](../architecture.md) §6 and [10-offline-sync](../offline-sync.md) §10.2.
 
 ## 11. Screens
 
@@ -393,7 +393,7 @@ Errors (refuse the request): `PRODUCT_UNIT_MISMATCH` (422), `FUELING_NOT_CANCELL
 | SCR-FUEL-07 | PANEL | Amend or void an approved fueling | `fuel.fueling.amend` | Approved revision, proposed changes, reason, intervals that will be recomputed, period state | Submit amendment, void, declare a gap | BR-FUEL-023, BR-AMD-002, BR-AMD-004 | `PERIOD_LOCKED` explains reopening or an adjustment in the open period. |
 | SCR-FUEL-08 | PANEL | Read the consumption of an asset | `fuel.fueling.read` | Intervals with anchors, usage, quantity, cost, figures, method version and revision; superseded revisions on demand; trip allocations | Open an interval's basis, open a fueling | BR-FUEL-031, BR-FUEL-034, BR-FUEL-037 | An interval in `INSUFFICIENT_DATA` shows its reason in plain language and no number. Empty: "São necessários dois abastecimentos de tanque cheio com leitura". |
 
-Shared loading, error, unavailable and forbidden states follow the defaults in [12-ux-app](../12-ux-app.md) §3 and [13-ux-web](../13-ux-web.md) §3.
+Shared loading, error, unavailable and forbidden states follow the defaults in [12-ux-app](../ux-app.md) §3 and [13-ux-web](../ux-web.md) §3.
 
 ## 12. Acceptance, dependencies, risks, phase and microtasks
 
@@ -414,7 +414,7 @@ Acceptance criteria:
 13. The price reference snapshot of an accepted fueling is identical after the sources change.
 14. Every read, list and job of this module passes the two-organization isolation test, and no personal ledger record is read or written by it.
 
-Dependencies: [fleet](fleet.md) (assets, tanks, meters, readings, suppliers); [trips](trips.md) (trip reference and trip readings); [documents](documents.md) (receipts); the review component and period lock in [expenses-finance](expenses-finance.md); [10-offline-sync](../10-offline-sync.md) (intake); [07-permissions](../07-permissions.md); the exact-value kernel (EMP-PLAT-009); the existing engine `backend/internal/modules/metrics`.
+Dependencies: [fleet](fleet.md) (assets, tanks, meters, readings, suppliers); [trips](trips.md) (trip reference and trip readings); [documents](documents.md) (receipts); the review component and period lock in [expenses-finance](expenses-finance.md); [10-offline-sync](../offline-sync.md) (intake); [07-permissions](../permissions.md); the exact-value kernel (EMP-PLAT-009); the existing engine `backend/internal/modules/metrics`.
 
 Risks: drivers marking "full" when the tank was not full (the figure shows its anchors, and outliers are a finding in [intelligence](intelligence.md)); many intervals in `INSUFFICIENT_DATA` at the start (the reason says what to record next); the stricter reading rule discards spans that a looser method would compute (accepted, to stay equal to the existing method); hour-based intervals are new and have no existing vectors (EMP-FUEL-007 adds them before any screen uses them); extending the engine must not change the frozen personal vectors.
 

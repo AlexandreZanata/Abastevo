@@ -1,6 +1,6 @@
 //! FQ-06 acceptance for the label-preserving `enforcement-v1`
 //! preparation stream. Every expectation below mirrors a frozen decision
-//! in `docs/backend/evidence/fuel-quality/FQ06_ENFORCEMENT_ADAPTER.md`:
+//! in `docs/backend/evidence/fuel-quality/FQ06_ENFORCEMENT_ADAPTER.md` (git history):
 //! the sample fixture carries distinct actions against one CNPJ, an exact
 //! repeat, a same-key status correction, verbatim mixed-case and accented
 //! labels, a period mismatch, a dateless row, a bad CNPJ and four

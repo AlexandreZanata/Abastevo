@@ -1,23 +1,21 @@
 # EP19 — Internal administration and support
 
-Status: **PLANNED**, 2026-11-10.
-
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
-were reconstructed from the [existing admin contract](../../product/ADMIN_TIERS_CONTRACT.md), [support journey](../05-journeys.md), [privacy and security](../11-privacy-security.md) and [decision register](../16-decisions.md).
+were reconstructed from the [existing admin contract](../../product/admin-tiers.md), [support journey](../journeys.md), [privacy and security](../privacy-security.md) and [decision register](../decisions.md).
 
 Local F1 requires M0 closure and protected integration of the current
 ADR-019 construction batch. See the
-[sequencing decision](../evidence/f0-m0-decisions.md#roadmap-sequencing).
+sequencing decision.
 
-The [back-office](../modules/back-office.md) and [web](../13-ux-web.md) designs now record their boundaries. The recovered tasks preserve the existing staff boundaries and approved support rules. New staff powers, station expansion and billing activation retain their separate gates.
+The [back-office](../modules/back-office.md) and [web](../ux-web.md) designs now record their boundaries. The recovered tasks preserve the existing staff boundaries and approved support rules. New staff powers, station expansion and billing activation retain their separate gates.
 
 ### EMP-BACK-001 — Platform operator model for enterprise: staff roles, admin sessions and audit reused from the admin suite
 - **Meta:** module BACK · phase F1 · cut - · priority P1 · type DOM · size M · state TODO
 - **Objective:** Define bounded platform staff authority for enterprise administration.
 - **Rules and use cases:** EDR-020, CX-08, BR-TEN-008, BR-AUD-003, BR-AUD-004, BR-PRIV-021, REQ-17.4
 - **Depends on:** EMP-GOV-004, EMP-PLAT-003
-- **Read first:** [existing admin contract](../../product/ADMIN_TIERS_CONTRACT.md) §§2 and 5, [decision register](../16-decisions.md), [privacy and security](../11-privacy-security.md) §4
+- **Read first:** [existing admin contract](../../product/admin-tiers.md) §§2 and 5, [decision register](../decisions.md), [privacy and security](../privacy-security.md) §4
 - **Scope:** in: fixed staff permissions, admin session boundary and audit · out: ordinary organization membership or implicit private-content access
 - **Areas:** existing: admin and staff modules and append-only audit · proposed: enterprise operator permission model
 - **Steps:** Apply the recorded GOV-004 decision when available. Pin allow and deny cases for staff actions and keep the company session boundary separate.
@@ -33,7 +31,7 @@ The [back-office](../modules/back-office.md) and [web](../13-ux-web.md) designs 
 - **Objective:** Provide authorized internal review queues for claims and legal-entity verification, with moderation handoff.
 - **Rules and use cases:** EDR-020, EDR-021, CX-05, BR-ORG-016, BR-ORG-018, BR-TEN-008, BR-AUD-001, BR-AUD-003, BR-PRIV-021, UC-ORG-05, VAL-17
 - **Depends on:** EMP-BACK-001
-- **Read first:** [organization verification](../modules/organizations.md), [station claims](../modules/station-claims.md), [existing admin contract](../../product/ADMIN_TIERS_CONTRACT.md) §5, [decision register](../16-decisions.md)
+- **Read first:** [organization verification](../modules/organizations.md), [station claims](../modules/station-claims.md), [existing admin contract](../../product/admin-tiers.md) §5, [decision register](../decisions.md)
 - **Scope:** in: scoped staff queues and existing decision ports for claims, entity verification and moderation referral · out: bypassing Stage D or unrestricted browsing
 - **Areas:** existing: admin/staff audit, organization verification design and station claim workflows · proposed: queue registration and typed handoff
 - **Steps:** Separate claim, verification and moderation decisions. Prove staff authority, applicable stage gate, review-state transitions, concurrency and bounded evidence handling.
@@ -49,7 +47,7 @@ The [back-office](../modules/back-office.md) and [web](../13-ux-web.md) designs 
 - **Objective:** Permit exceptional support access only within a time-boxed organization-approved session.
 - **Rules and use cases:** BR-TEN-008, BR-AUD-003, BR-AUD-004, BR-AUD-006, BR-PRIV-021, BR-AUTH-011, JRN-13
 - **Depends on:** EMP-BACK-001, EMP-AUTH-003
-- **Read first:** [support journey](../05-journeys.md), [privacy and security](../11-privacy-security.md) §4, [state model](../08-state-model.md), [existing admin contract](../../product/ADMIN_TIERS_CONTRACT.md) §2
+- **Read first:** [support journey](../journeys.md), [privacy and security](../privacy-security.md) §4, [state model](../state-model.md), [existing admin contract](../../product/admin-tiers.md) §2
 - **Scope:** in: support request, approval, scoped access, expiry and audit · out: default access or broad document/location rights
 - **Areas:** existing: separate staff session and organization authorization · proposed: support session lifecycle and per-access gate
 - **Steps:** Test approval and expiry with controlled time. Verify that each access checks the exact approved organization and category and records an audit entry.
@@ -65,7 +63,7 @@ The [back-office](../modules/back-office.md) and [web](../13-ux-web.md) designs 
 - **Objective:** Expose reviewed platform commands for organization state and authorized quality operations.
 - **Rules and use cases:** EDR-020, BR-ORG-029, BR-ORG-030, BR-ORG-032, BR-AUD-001, BR-AUD-004, UC-ORG-08
 - **Depends on:** EMP-BACK-001, EMP-ORG-009
-- **Read first:** [existing admin contract](../../product/ADMIN_TIERS_CONTRACT.md) §§2 and 5, [organization lifecycle](../modules/organizations.md), [permission matrix](../07-permissions.md) §4
+- **Read first:** [existing admin contract](../../product/admin-tiers.md) §§2 and 5, [organization lifecycle](../modules/organizations.md), [permission matrix](../permissions.md) §4
 - **Scope:** in: audited suspension, reactivation and narrowly scoped quality controls · out: new unreviewed operational powers
 - **Areas:** existing: admin sessions and organization lifecycle commands · proposed: authorized admin adapters
 - **Steps:** Reuse the owning lifecycle command. Cover required reasons, current scope, replay and an organization whose policy blocks the action.
@@ -81,7 +79,7 @@ The [back-office](../modules/back-office.md) and [web](../13-ux-web.md) designs 
 - **Objective:** Expose scoped enterprise review and support workflows in the existing admin web.
 - **Rules and use cases:** EDR-020, BR-TEN-008, BR-PRIV-021, BR-AUD-003, REQ-17.4, REQ-20.4
 - **Depends on:** EMP-BACK-002, EMP-BACK-003
-- **Read first:** [existing admin contract](../../product/ADMIN_TIERS_CONTRACT.md), [support journey](../05-journeys.md), [enterprise traceability](../17-traceability.md) §§17 and 20
+- **Read first:** [existing admin contract](../../product/admin-tiers.md), [support journey](../journeys.md), enterprise traceability §§17 and 20
 - **Scope:** in: admin queue views, reviewed actions and support session states · out: company panel or Postos session reuse
 - **Areas:** existing: admin-web and authorized admin endpoints · proposed: enterprise administration and support screens
 - **Steps:** Exercise review and support states through the admin session. Verify bounded output, denial and stale or expired actions with accessible controls.
@@ -89,7 +87,7 @@ The [back-office](../modules/back-office.md) and [web](../13-ux-web.md) designs 
 - **Acceptance:** Visible actions reflect current staff authority and support scope. The panel shows authoritative results without broad private data.
 - **Negative cases:** Company cookie accepted, unapproved evidence visible, expired support read continues or the UI claims success after denial.
 - **Validation:** V-WEB, V-AUTHZ, V-ISO, V-PRIV · migration: none · rollback: hide views and preserve staff decisions and audit
-- **Risks and assumptions:** The [web design](../13-ux-web.md) records the separate admin surface. Stage D gates continue to govern relevant actions.
+- **Risks and assumptions:** The [web design](../ux-web.md) records the separate admin surface. Stage D gates continue to govern relevant actions.
 - **Done when:** Allowed and denied views and accessible state transitions pass through the admin entry point.
 
 ### EMP-BACK-006 — Subscription administration: credits and manual adjustments
@@ -97,7 +95,7 @@ The [back-office](../modules/back-office.md) and [web](../13-ux-web.md) designs 
 - **Objective:** Record reviewed organization subscription credits and manual adjustments with audit.
 - **Rules and use cases:** EDR-024, CX-03, CX-12, BR-MONEY-001, BR-AUTH-009, BR-AUD-001, BR-AUD-004
 - **Depends on:** EMP-BACK-001, EMP-SUBS-002
-- **Read first:** [decision register](../16-decisions.md), [existing admin contract](../../product/ADMIN_TIERS_CONTRACT.md) §§2 and 5, [architecture](../09-architecture.md) §12
+- **Read first:** [decision register](../decisions.md), [existing admin contract](../../product/admin-tiers.md) §§2 and 5, [architecture](../architecture.md) §12
 - **Scope:** in: approved organization billing adjustments and traceable scope · out: payment activation, changing individual entitlements or granting roles
 - **Areas:** existing: admin mutation and organization subscription conventions · proposed: bounded adjustment commands
 - **Steps:** Pin exact amounts, allowed reasons, duplicate requests and role separation. Reconcile each accepted change with the owning subscription record.

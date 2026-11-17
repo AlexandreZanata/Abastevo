@@ -29,7 +29,7 @@ def b64(value):
 
 
 def proof_handler(inputs, public_key_output):
-    receipt_path = Path(__file__).resolve().parents[2] / "docs/backend/evidence/maps/map14-final/runtime-map-inputs.json"
+    receipt_path = Path(__file__).resolve().parents[2] / "scripts/maps/testdata/runtime-map-inputs.json"
     receipt = json.loads(receipt_path.read_text())
     pinned = {item["name"]: item for item in receipt["maps"]}
     manifest = json.loads((inputs / "manifest.json").read_text())

@@ -1,6 +1,6 @@
 # Abastevo illustrated assets — LH05
 
-Status: LOCAL_DONE / INTEGRATION_PENDING. Generated on 2026-10-12 with the built-in image generator, under the user's supplied visual references. These are artistic illustrations, not station coverage or live fuel-price data.
+These are artistic illustrations, not station coverage or live fuel-price data.
 
 ## Files and reuse
 

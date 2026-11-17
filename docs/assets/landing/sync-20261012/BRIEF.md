@@ -1,9 +1,5 @@
 # Landing synchronization — LH04
 
-Status: LOCAL_DONE
-Validation: PASS
-Integration: INTEGRATION_PENDING
-Base: codex/landing-hero-art 5360f8b, isolated from occupied primary dev.
 Scope: landing copy, branded actions and responsive header; local preview only.
 
 ## Authority and behavior

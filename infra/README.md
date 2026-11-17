@@ -1,207 +1,93 @@
-# Infrastructure workspace
+# Infrastructure
 
-Status: not provisioned. The [infrastructure plan](../docs/backend/INFRASTRUCTURE_PLAN.md) defines local, CI, staging and production, Compose/Caddy, backups, release/rollback, observability and load gates.
+Local services, container images, edge configuration, staging manifests and
+the operational scripts for the backend and the static web bundle. Nothing
+here holds secrets, provider credentials, database backups or evidence
+objects: real values live on the hosts, outside Git.
 
-P01 adds local services and image builds. P08 adds deployment/operations artifacts and verifies them in controlled environments. G09 requires real operational evidence before Android improvement begins. Do not store provider credentials, evidence objects or database backups here.
+Staging runs on VPS 72.60.147.2 at https://abastevo.com.br, in k3s namespace
+`abastevo-temp`, and is updated only by the signed pull agent in
+`deploy/agent/`. Production is not provisioned.
 
-## Local database (P01-T07)
+## Layout
 
-Disposable PostgreSQL 18 + PostGIS 3.6 for development and integration tests:
+| Path | Contents |
+|------|----------|
+| `compose.dev.yml` | Local PostGIS on `127.0.0.1:5434` (volume `anpfuel-pgdata-dev`, dev-only credentials). |
+| `compose.validation.yml` | Isolated tmpfs PostGIS + private S3 (`storage-init`) for `scripts/tests/test-local-backend.sh`; unique project, dynamic loopback ports, synthetic credentials. |
+| `compose.staging.yml`, `compose.prod.yml`, `env.*.example`, `caddy/Caddyfile` | Compose topology (db, one-shot migrate, api, worker, Caddy) gated by `make check-infra`. Examples carry `REPLACE_ME` placeholders only. |
+| `caddy/staging-web.Caddyfile` | Web edge for the signed landing bundle, portal, `/admin/` and `/empresas/`; mirrored byte-for-byte by `k8s/staging/web-caddy-configmap.yaml`. |
+| `caddy/portal-*.Caddyfile` | Loopback-only portal rehearsal and preview edges. |
+| `docker/Dockerfile` | Targets `api` (with `/ops`), `worker` (with Rust preparers), `migrate`, `station-load`; static binaries on distroless, user 65532. |
+| `db/runtime-role.sql` | Generated runtime-role grant inventory (see `backend/README.md`). |
+| `k8s/staging/` | Staging manifests, render and diff tooling ([README](k8s/staging/README.md)). |
+| `k8s/registry-sync-cronjob.yaml` | Registry-sync CronJob template (`__REVISION__` placeholder). |
+| `deploy/agent/` | Signed pull deploy agent and its systemd units ([README](deploy/agent/README.md)). |
+| `deploy/registry/` | Daily ANP / monthly OpenCNPJ refresh units ([README](deploy/registry/README.md)). |
+| `charging/` | EV catalog review timers ([README](charging/README.md)). |
+| `scripts/` | `deploy.sh`, `backup.sh`, `restore.sh`, `rehearse.sh`, `load/` (load, faults, portal capacity), portal rehearsal/preview/smoke, `rollout-probe.py`. |
 
-```sh
-docker compose -f infra/compose.dev.yml config   # validate; confirm 127.0.0.1 binding
-docker compose -f infra/compose.dev.yml up -d db # start
-docker exec anpfuel-dev-db-1 psql -U anpfuel -d anpfuel -c "SELECT PostGIS_version();"
-docker compose -f infra/compose.dev.yml ps      # health
-docker compose -f infra/compose.dev.yml stop db # stop (keeps volume)
-```
+## Commands
 
-- Image pinned by digest in `compose.dev.yml`; dev-only `anpfuel` credentials.
-- Loopback only: host `127.0.0.1:5434` → container `5432` (workstation 5432/5433
-  are taken by unrelated projects). Matches `backend/.env.example`.
-- Data lives in the named local volume `anpfuel-pgdata-dev`, never a
-  production volume. Explicit disposable-only reset:
-  `docker compose -f infra/compose.dev.yml down -v` — never run an equivalent
-  against persistent environments.
-
-## Process images (P01-T10)
-
-One pinned builder (`golang:1.27.4-bookworm` by digest) compiles the `api`,
-`worker` and `migrate` roles; each target ships only its static binary on a
-non-root distroless runtime with the same revision label (release provenance).
-Secrets travel at runtime env, never in layers. The repo-root `.dockerignore`
-keeps Android sources, docs and local env out of the build context.
-
-```sh
-docker build -f infra/docker/Dockerfile --target api \
-  --build-arg REVISION=$(git rev-parse --short HEAD) .
-docker run -d --name api -p 127.0.0.1:8080:8080 anpfuel-api:dev
-curl http://127.0.0.1:8080/health/live  # 200
-docker stop api && docker rm api        # clean terminate, exit 0
-docker run --rm --network host -e ANPFUEL_DATABASE_URL=... anpfuel-migrate:dev
-```
-
-Verified: api/worker/migrate boot and terminate (exit 0); image Env carries
-no secrets; `docker history` shows no credential layers; runtime user
-`65532:65532`. Rollback: discard unpromoted images, return to the previous
-digest; data and migrations are untouched by image changes.
-
-## Staging and production topologies (P08-T01)
-
-Review-only artifacts until provisioning is authorized: `compose.staging.yml`
-(project `anpfuel-staging`) and `compose.prod.yml` (`anpfuel-prod`), sharing
-`caddy/Caddyfile` plus per-environment templates (`env.staging.example`,
-`env.prod.example`). Staging and production differ by project/network/volume
-names, resource limits and credentials; the database image digest matches
-development, and all other images pin digests or immutable release tags
-(never `latest`).
-
-Rules enforced by `make check-infra` (and its `make test-infra` mutant
-harness): compose files parse; only Caddy publishes ports (80/443); no dev
-credentials, loopback dev URLs or dev volumes; Caddy runs `admin off` with
-TLS and `trusted_proxies private_ranges` only, and serves no metrics, admin
-or database route; examples carry `REPLACE_ME` placeholders, never secrets.
+From the repository root:
 
 ```sh
-cp infra/env.staging.example /srv/anpfuel/staging.env  # outside the repo
-$EDITOR /srv/anpfuel/staging.env                        # fill real values
-ANPFUEL_ENV_FILE=/srv/anpfuel/staging.env ANPFUEL_RELEASE=<tag> \
-  docker compose -f infra/compose.staging.yml config   # validate
-make check-infra                                        # topology gate
-make test-infra                                         # gate failure proof
-bash scripts/infra-smoke.sh                             # static smoke
-bash scripts/infra-smoke.sh --live <host>               # edge smoke at deploy
+docker compose -f infra/compose.dev.yml up -d db     # local PostGIS
+docker compose -f infra/compose.dev.yml stop db      # keeps the volume
+docker compose -f infra/compose.dev.yml down -v      # local reset only
+docker build -f infra/docker/Dockerfile --target api --build-arg REVISION=$(git rev-parse --short HEAD) .
 ```
 
-Boot order per environment: `db` → `run --rm migrate` (one-shot, `tools`
-profile, never via `up`) → `up -d api worker caddy`. Rollback returns to
-the previous `ANPFUEL_RELEASE`; never `docker compose down -v` against
-persistent volumes. `ANPFUEL_CANONICAL_HOST` must equal `CADDY_DOMAIN`
-(signatures cover the canonical authority; proxy hosts are untrusted).
+| Target | What it checks |
+|--------|----------------|
+| `make check-infra` / `make test-infra` | Staging manifest structure/render and Compose topology gate / its failure harness. |
+| `make test-deploy` | `infra/scripts/deploy.sh` failure paths with stubbed docker/curl. |
+| `make test-deploy-agent` | Deploy agent planner/apply/status harness (no network). |
+| `make test-backup` / `make test-restore` | Encrypted backup pipeline / isolated restore drill on a disposable DB. |
+| `make test-load` | Bounded load smoke plus DB/storage/disk fault suite on a disposable DB. |
+| `make check-security` / `make test-security` | Pins, non-root runtimes, private DB, edge rules, secret scans, govulncheck / refusal harness. |
+| `make test-rehearse` | Local release rehearsal on a disposable DB. |
+| `make rehearse-portal`, `make preview-portal`, `make portal-capacity` | Loopback-only portal promotion, HTTPS preview/accessibility and capacity drills. |
+| `make check-portal-capacity`, `make check-preview-probe`, `make check-publication-gate` | Self-tests of those harnesses. |
+| `make preflight-portal-publication`, `make smoke-portal-public` | Portal publication preflight and read-only public smoke (env-driven; see `make help`). |
 
-## Deploy and rollback (P08-T02)
+`bash scripts/infra-smoke.sh` is the static edge smoke (`--live <host>` at
+deploy time); `BASE_URL=... bash scripts/cache-regression.sh` checks edge cache
+behavior against a live origin.
 
-`infra/scripts/deploy.sh` orchestrates one versioned release with
-readiness/smoke gates and automatic return to the previous compatible
-release; `make test-deploy` proves every failure path with stubbed
-docker/curl. The full sequence, backup precheck, receipt keeping and
-the CI publish design live in [the deploy runbook](../docs/operator/deploy.md).
-No destructive down migration exists: rollback is a forward redeploy.
+## Configuration
 
-## Pull-based staging agent (CD-02/CD-03)
+- Compose: `ANPFUEL_ENV_FILE` (env file outside the repo), `ANPFUEL_RELEASE`
+  (immutable release tag), `CADDY_DOMAIN`; backend variables are listed in
+  `backend/README.md`.
+- Staging manifests: placeholders rendered from an operator-owned env file
+  (`STAGING_RENDER_ENV`); see `k8s/staging/README.md`.
+- Deploy agent: `/etc/abastevo-deploy/agent.env` (`ABASTEVO_*` keys).
 
-`infra/deploy/agent/abastevo-deploy-agent` fetches the signed `staging` release
-manifest, verifies the keyless workflow identity and that the commit is an
-ancestor of `main`, compares it with `/var/lib/abastevo-deploy/current.json`
-and writes a mode-600 plan receipt. The default is dry-run; the opt-in apply
-mode adds the schema floor gate, verified backup, migration Job, one shared
-api/worker rollout, smoke, landing symlink switch and `current.json` last,
-with `rollout undo` and failure receipts. The k8s adapter is isolated in
-`runtime/k8s.sh`; host configuration is limited to
-`/etc/abastevo-deploy/agent.env`, never committed. The systemd service/timer
-use `flock`, `ProtectSystem=strict` and `NoNewPrivileges=yes`. See
-[the agent README](deploy/agent/README.md) and the namespace-scoped
-[RBAC](k8s/staging/deploy-agent-rbac.yaml). RBAC, installation and live
-staging acceptance remain OWED.
+## Rules
 
-## Static portal rehearsal (ESP-14)
+- Never commit secrets, real env files, kubeconfigs, backups or receipts.
+- Pin every image by digest or immutable release tag, never `latest`.
+- Only the edge publishes ports. The database, metrics (`ANPFUEL_METRICS_ADDR`
+  stays loopback) and admin endpoints are never public.
+- `ANPFUEL_CANONICAL_HOST` equals the public edge host: request signatures
+  cover it and proxy hosts are untrusted.
+- Caddy trusts only private-range proxies, drops request/response headers from
+  access logs (signature headers, contributor IPs and nearby queries are
+  private) and strips `Cookie`/`Authorization` on shared-cacheable GETs. The
+  API marks writes, owner reads, nearby reads and errors `no-store`.
+- Migrate runs as a one-shot job before the rollout, never via `up`. There are
+  no down migrations: rollback is the previous release image, and
+  `down -v` is never run against a persistent volume.
+- Keep `caddy/staging-web.Caddyfile` and its ConfigMap identical
+  (`python3 business-web/tests/caddy.py` checks both, needs Docker).
+- On staging the agent changes only images and the landing release; Secret,
+  ConfigMap and env changes are explicit operator steps.
 
-The enterprise portal has a separate, isolated promotion/hosting rehearsal:
-`infra/scripts/rehearse-portal.sh` promotes verified candidates into a private
-release root and serves the atomic `current` symlink with the pinned Caddy image
-on loopback only. It is not wired into the staging/production edge and does not
-contact the API, database, DNS or CDN. See
-[static portal hosting](../docs/operator/portal-static-hosting.md) for the
-topology decision, release layout, headers, rollback/withdrawal and remaining
-production obligations. ESP-16 adds the local capacity/browser harness
-(`make check-portal-capacity`, `make portal-capacity`), including a
-concurrent switch/rollback drill; its measurements are loopback-only and do not
-stand in for CDN or VPS-direct campaigns. ESP-17 adds the isolated HTTPS
-preview/accessibility/backup rehearsal (`make check-preview-probe`,
-`make preview-portal`). ESP-18 adds the public publication gate and read-only
-smoke (`make check-publication-gate`); the portal is **not published** and
-requires an explicit named scope/approval. See
-[publication gate](../docs/operator/PORTAL_PUBLICATION.md).
+## Further reading
 
-## Encrypted off-host backups (P08-T03)
-
-`infra/scripts/backup.sh` writes daily encrypted dumps with a
-roles/extensions manifest (`run`), checksum-verifies them including
-the archive catalog (`verify`), prunes to 7 daily + 4 weekly copies
-and alarms on stale backups (`check-age`); `make test-backup` proves
-the pipeline against the disposable dev database. Schedules,
-credential scope, transport and recovery linkage live in
-[the backup runbook](../docs/operator/backup.md). The passphrase
-stays outside the VPS; manifests carry no secrets.
-
-## Isolated restore drill (P08-T04)
-`infra/scripts/restore.sh` restores one verified artifact into a fresh
-`anpfuel_drill_*` database, verifies the migration ledger, PostGIS,
-per-table counts and evidence join integrity, and reports pending
-ledger rows for `ops privacy replay` before traffic (see
-[the recovery runbook](../docs/operator/recovery.md)); `make
-test-restore` proves the full drill locally with the real ops binary.
-Local drill evidence lives in
-[docs/release-evidence/p08-t04-restore-drill.md](../docs/release-evidence/p08-t04-restore-drill.md);
-staging acceptance repeats it on provisioned infrastructure.
-
-## Bounded load and faults (P08-T07)
-
-`backend/testdata/load/seed.sql` seeds deterministic stations;
-`infra/scripts/load/run.sh` runs origin-read scenarios with p95/5xx
-budget gates and `faults.sh` proves outage/degraded behavior with
-recovery (database stop, storage outage, capped disk pressure);
-`make test-load` runs the bounded smoke profile. Local evidence in
-[docs/release-evidence/p08-t07-load.md](../docs/release-evidence/p08-t07-load.md)
-with explicit non-claims; the 30-minute acceptance matrix runs on
-staging (P09).
-
-## Security release review (P08-T08)
-
-`scripts/check-security.sh` runs the static review (dependency/image
-pins, non-root runtimes, private DB, edge rules, placeholder-only
-examples, secret scans) plus `govulncheck` and the focused
-replay/IDOR/SSRF/oversize/role/secret suites in their owning modules;
-`make test-security` proves one refusal per fault class plus the live
-scans. Local evidence in
-[docs/release-evidence/p08-t08-security.md](../docs/release-evidence/p08-t08-security.md)
-with inventory and explicit non-claims; staging acceptance stays in P09.
-
-## Metrics and alerts (P08-T05)
-
-The API exposes Prometheus text on a loopback-only listener
-(`ANPFUEL_METRICS_ADDR`, default `127.0.0.1:9090`, empty disables):
-bounded request counters by method/route-template/class, pool gauges,
-queue depth/dead-letter/oldest gauges and a dropped-series counter.
-Topologies publish no metrics port. `ops monitoring eval` runs the
-`db_down`/`jobs_dead`/`jobs_stuck`/`backup_stale` rules once for cron
-integration (exit 1 when anything fires). Catalog, PromQL starters,
-notification route and label policy live in
-[the monitoring runbook](../docs/operator/monitoring.md).
-
-## Edge cache (P08-T06)
-
-Public station/price reads cache at the edge with bounded TTLs and
-ETags; nearby, writes, owner reads and errors stay `no-store`, and
-identity headers never change public bodies (proven by the
-`*IgnoreIdentity` unit tests). Caddy strips `Cookie`/`Authorization`
-on the shared-cacheable GET set. CDN allowlist, key policy, purge
-procedure, signature-through-proxy notes and the live regression
-suite (`BASE_URL=... bash scripts/cache-regression.sh`) live in
-[the edge-cache runbook](../docs/operator/edge-cache.md).
-
-### Isolated validation topology
-
-`compose.validation.yml` is exclusively for `scripts/tests/test-local-backend.sh`:
-a unique Compose project, dynamic loopback ports, tmpfs data, fixed image digests
-and synthetic credentials. It does not share the development volume or any
-production configuration. The outage harness uses pause/unpause for this tmpfs
-fixture, preserving the cluster while exercising actual query timeouts; recovery
-must return HTTP success (`curl -f`), not just a successful TCP connection.
-
-The Caddy global `servers` directive uses `trusted_proxies static private_ranges`;
-the reverse-proxy directive uses `trusted_proxies private_ranges`. Its aggregate
-access logs remove the whole request and response-header fields because custom
-signature headers, contributor IPs and nearby query strings are private. See the
-[Caddy proxy options](https://caddyserver.com/docs/caddyfile/options#trusted-proxies)
-and [logging filter](https://caddyserver.com/docs/caddyfile/directives/log#filter).
+[Operations runbooks](../docs/operations/) · [Backup](../docs/operations/backup.md) ·
+[Recovery](../docs/operations/recovery.md) ·
+[Monitoring](../docs/operations/monitoring.md) ·
+[Registry daily sync](../docs/operations/registry-daily-sync.md) ·
+[Security and privacy](../docs/security/security-privacy.md)

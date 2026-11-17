@@ -2,8 +2,8 @@
 #
 # Status: DRAFT and unpublished. Future endpoints are added here before any
 # handler implements them; a published contract is never overwritten, only
-# superseded. Vocabulary follows docs/backend/DOMAIN_MODEL.md (B-BR-002,
-# FuelPrice/FuelProduct/PriceCondition) and docs/backend/API_PLAN.md wire
+# superseded. Vocabulary follows docs/backend/domain-model.md (B-BR-002,
+# FuelPrice/FuelProduct/PriceCondition) and docs/backend/api.md wire
 # syntax. No silent enum rename or unit/amount reinterpretation in v1.
 openapi: 3.1.0
 info:

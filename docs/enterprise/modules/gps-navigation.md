@@ -1,8 +1,8 @@
 # Tracking, routes and navigation
 
-Status: **PLANNED**, 2026-11-10. Module codes `GPS` and `ROUTE`. Tasks: `EMP-GPS-001…015` and `EMP-ROUTE-001…010` in [backlog/ep07-gps-navigation](../backlog/ep07-gps-navigation.md).
+Module codes `GPS` and `ROUTE`.
 
-Evidence. The Android app already has an offline map, search and car routing behind an Abastevo-owned port (`maps/engine/src/main/kotlin/com/anpfuel/maps/engine/MapEngine.kt`, `ComapsRoutePlanner.kt`; [ADR-022](../../adr/022-comaps-derived-native-map-engine.md)), `IMPLEMENTED`: a route accepts up to 100 intermediate points and four avoidances (`domain/src/main/kotlin/com/anpfuel/domain/routing/NativeRoute.kt`), and the planner selects the car router only — no truck profile was found. Turn-by-turn guidance runs in a location foreground service with one-second updates, offline voice and recalculation inside the native core (`app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt`, `LocalGuidanceVoice.kt`), `IMPLEMENTED`; it is not aware of an organization trip, so it is `PARTIAL` for this module. A personal track recorder exists (`app/src/main/kotlin/com/anpfuel/app/ui/map/TripRecordingService.kt`), `IMPLEMENTED`: it is local only and refuses to start while guidance is active, so guidance and recording are mutually exclusive today. The individual driver suite counts distance without storing coordinates (`app/src/main/kotlin/com/anpfuel/app/ui/driver/work/DriverGpsService.kt`), with lifecycle obligations still open ([DRV-21](../../product/DRV_21_GPS_LIFECYCLE_CONTRACT.md)), `PARTIAL`. The manifest declares fine and coarse location, `FOREGROUND_SERVICE_LOCATION` and `POST_NOTIFICATIONS`, no background location and no boot receiver (`app/src/main/AndroidManifest.xml`); a static guard forbids `ACCESS_BACKGROUND_LOCATION` and continuous location outside those three services ([scripts/check-mobile.sh](../../../scripts/check-mobile.sh), section 5), `IMPLEMENTED`. No hand-off to an external maps app exists in the map flow (`docs/product/MAP_21_23_CONTRACT.md`, B-BR-MAP23-04). Address lookup uses public Nominatim at one request per second (`data/src/main/kotlin/com/anpfuel/data/remote/NominatimClient.kt`), `IMPLEMENTED`. On the server there is no tracking table, routing, geofence or web map: `PROPOSED`. Whether two location foreground services can run together acceptably on target devices, and any battery figure, are `UNVERIFIED` until the spike EMP-GOV-006.
+Evidence. The Android app already has an offline map, search and car routing behind an Abastevo-owned port (`maps/engine/src/main/kotlin/com/anpfuel/maps/engine/MapEngine.kt`, `ComapsRoutePlanner.kt`; [ADR-022](../../decisions/022-comaps-derived-native-map-engine.md)), `IMPLEMENTED`: a route accepts up to 100 intermediate points and four avoidances (`domain/src/main/kotlin/com/anpfuel/domain/routing/NativeRoute.kt`), and the planner selects the car router only — no truck profile was found. Turn-by-turn guidance runs in a location foreground service with one-second updates, offline voice and recalculation inside the native core (`app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceService.kt`, `LocalGuidanceVoice.kt`), `IMPLEMENTED`; it is not aware of an organization trip, so it is `PARTIAL` for this module. A personal track recorder exists (`app/src/main/kotlin/com/anpfuel/app/ui/map/TripRecordingService.kt`), `IMPLEMENTED`: it is local only and refuses to start while guidance is active, so guidance and recording are mutually exclusive today. The individual driver suite counts distance without storing coordinates (`app/src/main/kotlin/com/anpfuel/app/ui/driver/work/DriverGpsService.kt`), with lifecycle obligations still open ([DRV-21](../../product/driver-suite/gps-lifecycle.md)), `PARTIAL`. The manifest declares fine and coarse location, `FOREGROUND_SERVICE_LOCATION` and `POST_NOTIFICATIONS`, no background location and no boot receiver (`app/src/main/AndroidManifest.xml`); a static guard forbids `ACCESS_BACKGROUND_LOCATION` and continuous location outside those three services ([scripts/check-mobile.sh](../../../scripts/check-mobile.sh), section 5), `IMPLEMENTED`. No hand-off to an external maps app exists in the map flow (`docs/product/map/reports-routing-guidance.md`, B-BR-MAP23-04). Address lookup uses public Nominatim at one request per second (`data/src/main/kotlin/com/anpfuel/data/remote/NominatimClient.kt`), `IMPLEMENTED`. On the server there is no tracking table, routing, geofence or web map: `PROPOSED`. Whether two location foreground services can run together acceptably on target devices, and any battery figure, are `UNVERIFIED` until the spike EMP-GOV-006.
 
 ## 1. Purpose
 
@@ -32,7 +32,7 @@ Users: drivers (are guided, are tracked only during their own trips, see what is
 
 ### 2.2 The navigation path and its dependencies
 
-The owner accepted that opening an external maps app could be an explicitly limited first phase, provided the planning did not stop there. In this repository that hand-off does not exist in the map flow, and an external app returns no trajectory, arrival or reroute to the caller (Google Maps and Waze deep-link documentation, read 2026-11-10, [18-references](../18-references.md) §2). The path is therefore entirely inside the app:
+The owner accepted that opening an external maps app could be an explicitly limited first phase, provided the planning did not stop there. In this repository that hand-off does not exist in the map flow, and an external app returns no trajectory, arrival or reroute to the caller (Google Maps and Waze deep-link documentation, read 2026-11-10, 18-references §2). The path is therefore entirely inside the app:
 
 | Step | Phase and task | What the driver gets | Depends on | Explicit limits |
 |---|---|---|---|---|
@@ -55,17 +55,17 @@ Tracking here uses the driver's phone during a trip the driver started. It says 
 | Constraint | Source | Consequence here |
 |---|---|---|
 | Continuous location only in three named services; no `ACCESS_BACKGROUND_LOCATION` | [scripts/check-mobile.sh](../../../scripts/check-mobile.sh) section 5 | The organization tracking service is a fourth consumer. The guard is updated deliberately in the same change that adds the service: the new file is allow-listed, its request line is pinned, its manifest entry must be non-exported with type `location`, and the background-location prohibition stays (BR-GPS-003) |
-| Voluntary location, explicit start and stop, no automatic start, shared ownership with navigation through leases | B-BR-DRV-09 and B-BR-DRV-10 (`docs/product/DRIVER_SUITE_CONTRACT.md`) | BR-GPS-002, BR-GPS-011, BR-GPS-013, BR-ROUTE-014 |
-| Lifecycle lessons: checkpoint before fixes, no restart after process death, owner never rebound, changes may arrive without a callback | [DRV-21](../../product/DRV_21_GPS_LIFECYCLE_CONTRACT.md) | BR-GPS-012, BR-GPS-014, BR-GPS-015 |
-| No location history; raw traces stay local | Conflict CX-06 in [16-decisions](../16-decisions.md) | Organization tracks are a new rule set with their own purpose, indicator, retention and access audit (EDR-015). No task here starts before EMP-GOV-005 and EMP-GOV-006; the public privacy page is updated before any pilot. Personal and community rules do not change |
-| Legal basis for employee location (LV-01), notice to employees (LV-03), location as evidence in labour disputes (LV-06) | [11-privacy-security](../11-privacy-security.md) §10.4 | Open legal points and a release condition. This module is an engineering proposal, not a statement of compliance |
+| Voluntary location, explicit start and stop, no automatic start, shared ownership with navigation through leases | B-BR-DRV-09 and B-BR-DRV-10 (`docs/product/driver-suite/README.md`) | BR-GPS-002, BR-GPS-011, BR-GPS-013, BR-ROUTE-014 |
+| Lifecycle lessons: checkpoint before fixes, no restart after process death, owner never rebound, changes may arrive without a callback | [DRV-21](../../product/driver-suite/gps-lifecycle.md) | BR-GPS-012, BR-GPS-014, BR-GPS-015 |
+| No location history; raw traces stay local | Conflict CX-06 in [16-decisions](../decisions.md) | Organization tracks are a new rule set with their own purpose, indicator, retention and access audit (EDR-015). No task here starts before EMP-GOV-005 and EMP-GOV-006; the public privacy page is updated before any pilot. Personal and community rules do not change |
+| Legal basis for employee location (LV-01), notice to employees (LV-03), location as evidence in labour disputes (LV-06) | [11-privacy-security](../privacy-security.md) §10.4 | Open legal points and a release condition. This module is an engineering proposal, not a statement of compliance |
 | Engine behind a narrow port; no upstream service as a production dependency | ADR-022 decisions 2 and 6 | BR-ROUTE-023, BR-ROUTE-024 |
 | The app targets API level 35; Play requires level 36 for new apps and updates since 31 August 2026; Android 17 adds a location button, a persistent location indicator and stricter background audio | developer.android.com/google/play/requirements/target-sdk and …/about/versions/17/behavior-changes-17, read 2026-11-10; open question OQ-16 | Tracking and guidance are built and tested at the target level in force when their tasks start; voice guidance from the service is re-tested when the target is raised |
 | Play asks for a declaration with a video for each foreground-service type; background location has a separate form | support.google.com/googleplay/android-developer/answer/13392821 and …/answer/9799150, read 2026-11-10 | The `location` declaration text is revised to cover employee trip tracking before any Play release; the background-location form is not needed |
 
 ## 3. Entities and ownership
 
-Every entity belongs to one organization (BR-TEN-001). Backend module `tracking` (proposed, [09-architecture](../09-architecture.md) §2).
+Every entity belongs to one organization (BR-TEN-001). Backend module `tracking` (proposed, [09-architecture](../architecture.md) §2).
 
 | Entity | Code | Content | Invariants |
 |---|---|---|---|
@@ -80,7 +80,7 @@ Every entity belongs to one organization (BR-TEN-001). Backend module `tracking`
 | Geofence | GPS | Name, unit (optional), circle (centre, radius) or polygon, rules (enter, exit, dwell), enabled flag, archive instant | Geometry valid; radius 50 to 50 000 m; polygon up to 100 vertices. No state machine |
 | Geofence event (derived) | GPS | Geofence, trip, kind, fix instant, detection instant | One per (geofence, trip, kind, fix instant) |
 | Location alert rule | GPS | Kind (stale tracker, long stop, geofence), thresholds, scope, recipients | Thresholds inside the allowed range |
-| Tracking settings | GPS | Policy (`OFF`, `OPTIONAL`, `EXPECTED`), freshness limits, divergence thresholds, long-stationary limit, raw-fix retention | Values inside the ranges of §10 and of [11-privacy-security](../11-privacy-security.md) §10.1 |
+| Tracking settings | GPS | Policy (`OFF`, `OPTIONAL`, `EXPECTED`), freshness limits, divergence thresholds, long-stationary limit, raw-fix retention | Values inside the ranges of §10 and of [11-privacy-security](../privacy-security.md) §10.1 |
 
 The four distances of a trip (planned, engine estimate, GPS, odometer) are four fields with four sources (§10.1). Odometer readings belong to [fleet](fleet.md); this module only reads them.
 
@@ -122,7 +122,7 @@ The four distances of a trip (planned, engine estimate, GPS, odometer) are four 
 - **BR-GPS-032 — An old position is never shown as current.** Every display of a position shows its collection time, the last communication, its accuracy and its freshness; `STALE` and `NO_SIGNAL` use a different marker and text, and no position is extrapolated or animated forward (BR-TRUTH-006).
 - **BR-GPS-033 — Location reads are permissioned and audited.** Live positions need `gps.location.read_live` and recorded tracks need `gps.track.read`; neither is implied by reading the trip (BR-AUTH-011); each access writes an audit event without coordinates (BR-AUD-003, BR-AUD-004); a driver reads only their own trips.
 - **BR-GPS-034 — Employee transparency.** In enterprise mode an employee can always see what tracking collects, whether it is active, and their own sessions with start, end, gaps and reasons (BR-PRIV-015); the notice is shown at first use and at each tracking start.
-- **BR-GPS-035 — Retention.** Raw fixes are deleted 90 days after the trip ends (organization range 30 to 365 days), the live position 24 hours after the trip ends, and the summary and simplified geometry follow the trip; an expired fix is unreadable even if the purge has not run ([11-privacy-security](../11-privacy-security.md) §10.1, BR-PRIV-009).
+- **BR-GPS-035 — Retention.** Raw fixes are deleted 90 days after the trip ends (organization range 30 to 365 days), the live position 24 hours after the trip ends, and the summary and simplified geometry follow the trip; an expired fix is unreadable even if the purge has not run ([11-privacy-security](../privacy-security.md) §10.1, BR-PRIV-009).
 - **BR-GPS-036 — Trimming.** When a trip's end is corrected to an earlier instant, fixes collected after the effective end are purged within 24 hours and the summary is recomputed as a new revision.
 - **BR-GPS-037 — Geofences are evaluated on the server.** Entry, exit and dwell are computed from received precise fixes; the platform geofencing interface is not used; an event carries the fix instant and the detection instant, and an event detected more than 30 minutes after its fix is recorded without raising a live alert.
 - **BR-GPS-038 — Alerts state facts.** A location alert says what was observed, where the rule applies and when; it never states misconduct, and its thresholds and recipients are configured by the organization.
@@ -235,7 +235,7 @@ Computed by the processing job at each summary revision; it is a result, not a c
 
 ### 6.3 Live position freshness
 
-Derived when read ([08-state-model](../08-state-model.md) §4 rule 5); never stored as truth.
+Derived when read ([08-state-model](../state-model.md) §4 rule 5); never stored as truth.
 
 | State | Condition (defaults) | Range | Display (pt-BR) |
 |---|---|---|---|
@@ -245,7 +245,7 @@ Derived when read ([08-state-model](../08-state-model.md) §4 rule 5); never sto
 
 ## 7. Roles and permissions
 
-Keys from [07-permissions](../07-permissions.md) §7.2; roles from its §7.3 where the matrix has the row.
+Keys from [07-permissions](../permissions.md) §7.2; roles from its §7.3 where the matrix has the row.
 
 | Permission | Allows here | Roles | Notes |
 |---|---|---|---|
@@ -266,7 +266,7 @@ Scopes follow BR-AUTH-004 and BR-AUTH-005: a supervisor of a unit sees positions
 ### 8.1 Rules
 
 - **Offline:** route computation, preview, guidance and recording work without a network when the map region is on the device; fixes stay in the protected local store (BR-PRIV-016) until acknowledged. One day of a vehicle is about 86 KB, so the buffer is never trimmed to save space.
-- **Order of delivery:** pending operations, then track batches, then attachments. Session transitions are ordinary operations of [10-offline-sync](../10-offline-sync.md) (`gps.session.start`, `suspend`, `resume`, `interrupt`, `end`) handled by this module; fixes travel in batches on their own endpoint with the same authentication, organization sealing and replay rule.
+- **Order of delivery:** pending operations, then track batches, then attachments. Session transitions are ordinary operations of [10-offline-sync](../offline-sync.md) (`gps.session.start`, `suspend`, `resume`, `interrupt`, `end`) handled by this module; fixes travel in batches on their own endpoint with the same authentication, organization sealing and replay rule.
 - **Held sessions:** when a session operation is accepted for review (for example after the membership ended, BR-OFFL-011), its batches are stored in the same held form and excluded from the live map, distance and replay until the review item is resolved; if it is refused, the fixes are purged within 24 hours.
 - **Concurrency:** batches may arrive out of order; segments are ordered by sequence and instant when processed. The live position is replaced under a row lock only by a later collection instant. Two reviewers recording an outcome for the same divergence act on the summary revision; the second receives `CONFLICT`.
 - **Handover and second device:** the session stays one; each segment names its device. A fix is stored only when its device held the session at the fix's instant according to accepted session operations.
@@ -275,7 +275,7 @@ Scopes follow BR-AUTH-004 and BR-AUTH-005: a supervisor of a unit sees positions
 
 ### 8.2 Interruption matrix
 
-Platform behaviour is quoted from [18-references](../18-references.md) §1; every source there was read on 2026-11-10. `UNVERIFIED` marks are kept from that file.
+Platform behaviour is quoted from 18-references §1; every source there was read on 2026-11-10. `UNVERIFIED` marks are kept from that file.
 
 | Situation | Platform fact and source (read 2026-11-10) | App behaviour | Session state and gap reason |
 |---|---|---|---|
@@ -331,10 +331,10 @@ Selection rule for a figure that needs travelled distance (BR-GPS-028): odometer
 | Stationary heartbeat | 120 s | 60 to 600 s | Shows that the device is alive; coarse mode records at this rate only |
 | Accuracy filter | Drop accuracy worse than 50 m (precise mode) | 25 to 100 m | Same limit as the existing guidance fix policy |
 | Economy interval | 30 s below 15 % battery, not charging | 15 to 60 s | BR-GPS-019 |
-| Upload interval | 60 s when online | 30 to 300 s | Raised to 120 s before the write rate becomes the constraint ([09-architecture](../09-architecture.md) §9) |
+| Upload interval | 60 s when online | 30 to 300 s | Raised to 120 s before the write rate becomes the constraint ([09-architecture](../architecture.md) §9) |
 | Batch limit | 360 fixes and 64 KiB | fixed | One hour of routine sampling per batch |
 
-The 10-second default follows common practice (Google's driver SDK reports every 10 seconds by default with a 5-second minimum; developers.google.com/maps/documentation/mobility/driver-sdk/on-demand/android/vehicle-ready, read 2026-11-10). Capacity cross-check with [09-architecture](../09-architecture.md) §9: 6 hours of movement × 360 routine fixes per hour = 2 160 fixes per vehicle per day; 2 160 × 40 bytes ≈ 86 KB of upload per day; 2 160 × 22 days = 47 520 fixes per month. Turn fixes add to that figure and slow traffic subtracts from it; the net is a hypothesis until measured in EMP-GOV-006 and EMP-REL-010. Storage follows EDR-018: one row per accepted batch, one live-position row per trip in progress, one simplified geometry (tolerance 20 m, at most 1 000 points) per finished trip.
+The 10-second default follows common practice (Google's driver SDK reports every 10 seconds by default with a 5-second minimum; developers.google.com/maps/documentation/mobility/driver-sdk/on-demand/android/vehicle-ready, read 2026-11-10). Capacity cross-check with [09-architecture](../architecture.md) §9: 6 hours of movement × 360 routine fixes per hour = 2 160 fixes per vehicle per day; 2 160 × 40 bytes ≈ 86 KB of upload per day; 2 160 × 22 days = 47 520 fixes per month. Turn fixes add to that figure and slow traffic subtracts from it; the net is a hypothesis until measured in EMP-GOV-006 and EMP-REL-010. Storage follows EDR-018: one row per accepted batch, one live-position row per trip in progress, one simplified geometry (tolerance 20 m, at most 1 000 points) per finished trip.
 
 ### 10.3 Batch envelope (documentation example, not a frozen contract)
 
@@ -354,7 +354,7 @@ The 10-second default follows common practice (Google's driver SDK reports every
 }
 ```
 
-A fix is `[offset_ms, Δlat_e7, Δlon_e7, accuracy_m, speed_cm_s, bearing_deg, flags]`, each delta relative to the previous fix. In the example the second fix is 10 s later and 12 670 × 10⁻⁷ degrees west at latitude 10° south: 0.001267° × 109 629 m per degree ≈ 138.9 m, which matches 13.89 m/s for 10 s. The path follows [09-architecture](../09-architecture.md) §4: `POST /v1/orgs/{org_id}/tracking/batches`. The answer per batch is `ACCEPTED`, `RETRY` or `REJECTED` with a code.
+A fix is `[offset_ms, Δlat_e7, Δlon_e7, accuracy_m, speed_cm_s, bearing_deg, flags]`, each delta relative to the previous fix. In the example the second fix is 10 s later and 12 670 × 10⁻⁷ degrees west at latitude 10° south: 0.001267° × 109 629 m per degree ≈ 138.9 m, which matches 13.89 m/s for 10 s. The path follows [09-architecture](../architecture.md) §4: `POST /v1/orgs/{org_id}/tracking/batches`. The answer per batch is `ACCEPTED`, `RETRY` or `REJECTED` with a code.
 
 ### 10.4 Coverage, quality and GPS distance
 
@@ -396,7 +396,7 @@ Text shown: "Posto B — preço da comunidade R$ 6,290 (há 9 h) · desvio 6,4 k
 
 ### 10.8 Map, routing and navigation options
 
-Facts and sources are those of [18-references](../18-references.md) §2, all read 2026-11-10; "not checked" means that file holds no fact for the cell. Nothing here assumes an unlimited public service or free offline navigation beyond the engine already in the app.
+Facts and sources are those of 18-references §2, all read 2026-11-10; "not checked" means that file holds no fact for the cell. Nothing here assumes an unlimited public service or free offline navigation beyond the engine already in the app.
 
 | Option | Fit with the stack | Licence | Attribution | Permitted caching | Availability | Privacy | Cost | Source (read 2026-11-10) |
 |---|---|---|---|---|---|---|---|---|
@@ -430,7 +430,7 @@ Recommendation, to be decided in EMP-GOV-007: keep the existing engine for in-ap
 
 ### 10.10 Codes
 
-Shared codes are in [09-architecture](../09-architecture.md) §6 and [10-offline-sync](../10-offline-sync.md) §10.2. New here:
+Shared codes are in [09-architecture](../architecture.md) §6 and [10-offline-sync](../offline-sync.md) §10.2. New here:
 
 | Code | Where | Meaning |
 |---|---|---|
@@ -484,7 +484,7 @@ Acceptance criteria:
 15. The detour example of §10.7 yields 1 742 centavos; with references of different source kinds no difference is shown.
 16. The replacement drill passes with a fake engine, a fake server routing adapter and the list view in place of the panel map.
 
-Dependencies: [trips](trips.md) (trip states, logbook, stops), [fleet](fleet.md) (odometer readings, asset kind), [10-offline-sync](../10-offline-sync.md) (operations, device queue, intake window), [07-permissions](../07-permissions.md), [11-privacy-security](../11-privacy-security.md) (notice, retention, access log), [fuelings](fuelings.md) (reference consumption and price reference for suggestions), [imports-notifications-integrations](imports-notifications-integrations.md) (notification core, telematics port). Decisions: EMP-GOV-005 (legal validation: LV-01, LV-03, LV-06), EMP-GOV-006 (spike), EMP-GOV-007 (panel map and server routing), conflict CX-06, EDR-015 to EDR-018, EDR-026.
+Dependencies: [trips](trips.md) (trip states, logbook, stops), [fleet](fleet.md) (odometer readings, asset kind), [10-offline-sync](../offline-sync.md) (operations, device queue, intake window), [07-permissions](../permissions.md), [11-privacy-security](../privacy-security.md) (notice, retention, access log), [fuelings](fuelings.md) (reference consumption and price reference for suggestions), [imports-notifications-integrations](imports-notifications-integrations.md) (notification core, telematics port). Decisions: EMP-GOV-005 (legal validation: LV-01, LV-03, LV-06), EMP-GOV-006 (spike), EMP-GOV-007 (panel map and server routing), conflict CX-06, EDR-015 to EDR-018, EDR-026.
 
 Risks: background behaviour differs by manufacturer (gaps are first-class data; odometer stays primary; device matrix owed); two location subscriptions in phase 1 drain the battery (measured in the spike; phase 2 removes the duplication); managers use location to watch people rather than operations (trip-bound collection, access log, employee transparency); a driver forgets to end a trip and personal travel is recorded (visible indicator, long stationary guard, trimming); the car profile routes a heavy vehicle through a restricted road (stated on screen; truck restrictions are a later evolution); the hand-written panel map integration grows (list fallback, port); legal positions change the retention or the notice (configuration, not code).
 

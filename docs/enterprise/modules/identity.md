@@ -1,6 +1,6 @@
 # Identity, employees and access
 
-Status: **EMP-IDN-001/002/003/004/005/009/010/011/012/013/015 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-13; remaining module features PLANNED. Module code `IDN`. Tasks: `EMP-IDN-001…019` in [backlog/ep03-identity-access](../backlog/ep03-identity-access.md).
+Module code `IDN`.
 
 EMP-IDN-015 adds actual existing-account signed key enrolment/current checks and
 fresh account-bound self/manager scoped list/revoke. Server-owned deployment
@@ -10,7 +10,7 @@ membership-ending ACCESS_ENDED causes. LOST keys stay barred in the organization
 a distinct freshly invited ACTIVE membership may create a new ACCESS_ENDED-key
 period without reopening the old one. No personal families, keys, cloud devices
 or other organizations are revoked or exposed. Last-sync remains null until
-its producer exists. [Device evidence](../evidence/f1-idn015-device-registry.md)
+its producer exists. Device evidence
 records real signed/cookie HTTP, contention, proof waits, fault/upgrade recovery
 and ordinary two-scope account erasure. Managed activation, native wipe and
 future intake-only handling retain their own implementation/approval gates.
@@ -22,7 +22,7 @@ revisions. Final fresh manager authority is rechecked after projection and
 receipt waits. Exact retries preserve original acknowledgements and later
 reissued invitations; equivalent contacts and unrelated metadata do not revoke
 admission. ACTIVE memberships, personal sessions and other organizations remain
-unchanged. [Contact evidence](../evidence/f1-idn013-contact-change.md) records
+unchanged. Contact evidence records
 real HTTP/PostGIS, contention, proof waits, atomic faults and source recovery.
 Managed activation producers remain gated by GOV-013/IDN-006..008 and must
 integrate the contact source before activation; no managed-code inventory or
@@ -34,7 +34,7 @@ holder; a live source fails without ending or rewriting access. Both identities
 and profiles remain, the source becomes TERMINATED with an immutable pointer,
 and actual team links transfer as new periods or deduplicate existing survivor
 links. Original private receipts and bounded chained lookups preserve history.
-[Merge evidence](../evidence/f1-idn012-employee-merge.md) records real PostGIS,
+Merge evidence records real PostGIS,
 HTTP, contention/fault checks and ordinary migration193 rollback/recovery.
 Duplicate warnings remain suggestions; personal accounts, membership/account
 bindings and other organizations are unchanged. No automatic merge occurs.
@@ -43,7 +43,7 @@ EMP-IDN-011 adds the fresh guarded employee rehire command, retaining the same
 identity/profile while leaving all ended access untouched. Only an unmerged
 TERMINATED employee with no live membership is eligible. Original private
 receipts remain immutable after later employee transitions; current manager
-authority and capability still apply to replay. [Rehire evidence](../evidence/f1-idn011-employee-rehire.md)
+authority and capability still apply to replay. Rehire evidence
 records real PostGIS/HTTP, migration192 recovery and a separate new invitation
 with a distinct access period. No account recovery, implicit role restoration
 or managed provisioning is supplied by rehire.
@@ -52,7 +52,7 @@ EMP-IDN-010 supplies current existing-account ORG_F1 manager offboarding and
 personal self-leave, including suspended/no-role members and authenticated
 ended retries. Reviewed actual settings/team flags remain available after source
 reductions. Employee retention/termination, actual role endings, last-owner
-protection and immutable audit/acknowledgements are atomic. [Offboarding evidence](../evidence/f1-idn010-offboarding.md)
+protection and immutable audit/acknowledgements are atomic. Offboarding evidence
 records source coverage and uninstalled managed/device/delegation/operational
 and late-intake producers; they must integrate before activation. Personal
 sessions and other organizations remain independent. Native/device revocation
@@ -61,7 +61,7 @@ and managed-account disabling are not certified by this checkpoint.
 EMP-IDN-009 supplies fresh manager read/suspend/reactivate routes with original
 role periods and suspension causes, immediate organization denial, actual
 last-owner protection, immutable CAS outcomes and pending source notices.
-[Membership access evidence](../evidence/f1-idn009-membership-access.md) records
+Membership access evidence records
 ordinary migration190 recovery, adversarial PostGIS/race and actual HTTP/router
 checks. Reactivation does not restore consumed invitations, teams, settings
 designations or ownership proposals. Personal sessions and other organizations
@@ -70,7 +70,7 @@ IDN-010 supplies current offboarding as described above. Managed006..008 still r
 
 EMP-IDN-001 confirms `membership/domain` as the private identity/lifecycle
 core, separate from existing contributor proof in `identity/domain`.
-[Local evidence](../evidence/f1-idn001-identity-domain.md) covers scoped
+Local evidence covers scoped
 employee and membership identities, existing-account references, optional
 driver association, credential descriptors and device enrolment/revocation.
 There is no platform-wide person record, employee register, licence data,
@@ -78,7 +78,7 @@ storage, session issuance or runtime authorization provider in IDN-001. IDN-003 
 The implementation inventory below describes existing runtime capabilities;
 the new unused pure core does not provision any of the proposed features.
 
-Evidence. Accounts and sessions exist: `backend/internal/modules/account/` issues opaque tokens sent as `family_id` + `access_token`, with a 900-second access token and a 30-day refresh ceiling (`backend/internal/modules/account/domain/policy.go`), a session revoke route and an account deletion route (`backend/internal/modules/account/adapters/http/http.go`): `IMPLEMENTED`. Login methods are `PARTIAL` ([01-diagnosis](../01-diagnosis.md) §3.1): username plus account key works (`backend/internal/modules/account/application/keyaccounts.go`); e-mail codes exist only with the in-memory mail adapter (`backend/internal/modules/account/adapters/mail/memory.go`), so no e-mail is delivered in production; Google and Apple can only be linked to an existing account (`backend/internal/modules/account/adapters/oidc/`). Device proof of possession exists for anonymous contributors (`backend/internal/modules/identity/adapters/auth/auth.go`), one account binds to a contributor key (`backend/db/migrations/000022_account_bindings.sql`), and the personal cloud registers at most three devices per account (`backend/internal/modules/cloudsync/adapters/device.go`): `IMPLEMENTED`, all keyed to a person, none to an organization. Existing private modules erase their rows when an account is deleted through a trigger on the account status (for example `backend/db/migrations/000143_staff_roles.sql`): `IMPLEMENTED`. The Android sign-in screens are in `app/src/main/kotlin/com/anpfuel/app/ui/auth/`: `IMPLEMENTED`. EMP-IDN-003 adds minimal employee identity and membership-period persistence in `backend/internal/modules/membership/`, plus the account-deletion/billing-exit database safeguard: `LOCAL_DONE / INTEGRATION_PENDING`; see [persistence evidence](../evidence/f1-idn003-membership-persistence.md). EMP-IDN-002 adds the scoped minimal employee register, independent profile revisions, explicit duplicate review and real home-unit usage/archival effects: `LOCAL_DONE / INTEGRATION_PENDING`; see [employee register evidence](../evidence/f1-idn002-employee-register.md). EMP-IDN-004 adds manager-mediated invitation issue/read/list/CAS resend/revoke with metadata-only retries, observed expiry and causal reductions: `LOCAL_DONE / INTEGRATION_PENDING`; see [invitation evidence](../evidence/f1-idn004-invitation-lifecycle.md). EMP-IDN-005 adds fresh personal-cookie preview/consent/accept/decline, privileged or optional-policy confirmation, immutable authenticated retries, wrong-secret/unknown-locator limits and observed seven-day admission expiry: `LOCAL_DONE / INTEGRATION_PENDING`; see [acceptance evidence](../evidence/f1-idn005-invitation-acceptance.md). Activation codes, managed account provisioning, native acceptance screens and organization device enrolment remain `PROPOSED`. AUTH-002/003 now supply tested local current role/owner policy; production grants/providers remain separate gates.
+Evidence. Accounts and sessions exist: `backend/internal/modules/account/` issues opaque tokens sent as `family_id` + `access_token`, with a 900-second access token and a 30-day refresh ceiling (`backend/internal/modules/account/domain/policy.go`), a session revoke route and an account deletion route (`backend/internal/modules/account/adapters/http/http.go`): `IMPLEMENTED`. Login methods are `PARTIAL` (01-diagnosis §3.1): username plus account key works (`backend/internal/modules/account/application/keyaccounts.go`); e-mail codes exist only with the in-memory mail adapter (`backend/internal/modules/account/adapters/mail/memory.go`), so no e-mail is delivered in production; Google and Apple can only be linked to an existing account (`backend/internal/modules/account/adapters/oidc/`). Device proof of possession exists for anonymous contributors (`backend/internal/modules/identity/adapters/auth/auth.go`), one account binds to a contributor key (`backend/db/migrations/000022_account_bindings.sql`), and the personal cloud registers at most three devices per account (`backend/internal/modules/cloudsync/adapters/device.go`): `IMPLEMENTED`, all keyed to a person, none to an organization. Existing private modules erase their rows when an account is deleted through a trigger on the account status (for example `backend/db/migrations/000143_staff_roles.sql`): `IMPLEMENTED`. The Android sign-in screens are in `app/src/main/kotlin/com/anpfuel/app/ui/auth/`: `IMPLEMENTED`. EMP-IDN-003 adds minimal employee identity and membership-period persistence in `backend/internal/modules/membership/`, plus the account-deletion/billing-exit database safeguard: `LOCAL_DONE / INTEGRATION_PENDING`; see persistence evidence. EMP-IDN-002 adds the scoped minimal employee register, independent profile revisions, explicit duplicate review and real home-unit usage/archival effects: `LOCAL_DONE / INTEGRATION_PENDING`; see employee register evidence. EMP-IDN-004 adds manager-mediated invitation issue/read/list/CAS resend/revoke with metadata-only retries, observed expiry and causal reductions: `LOCAL_DONE / INTEGRATION_PENDING`; see invitation evidence. EMP-IDN-005 adds fresh personal-cookie preview/consent/accept/decline, privileged or optional-policy confirmation, immutable authenticated retries, wrong-secret/unknown-locator limits and observed seven-day admission expiry: `LOCAL_DONE / INTEGRATION_PENDING`; see acceptance evidence. Activation codes, managed account provisioning, native acceptance screens and organization device enrolment remain `PROPOSED`. AUTH-002/003 now supply tested local current role/owner policy; production grants/providers remain separate gates.
 
 ## 1. Purpose
 
@@ -91,7 +91,7 @@ This module defines the people side of an organization: who exists in its regist
 - **Basic (F1; tasks marked C1 are in the first cut):** the identity domain; employee records that exist without a login; memberships and their states; invitations issued as a link or code shown to the manager; acceptance by an existing account; panel screens for employees and invitations; app screens for acceptance, the context switch and the enterprise home.
 - **Also F1, outside the cut:** managed corporate access (activation code, device key enrolment, local lock, recovery), suspension, offboarding, rehire, multiple memberships, duplicate detection and merge, contact change, device registry and revocation.
 - **Next (F2):** driver profile with licence category and expiry.
-- **Next (F6):** the complete treatment of personal account deletion (pre-deletion notice, last-owner block, tombstone, data-subject routing). Justification: it depends on the data-subject tooling of [11-privacy-security](../11-privacy-security.md), built in F6; the minimum safeguard, ending memberships when an account is deleted, ships with membership persistence in F1.
+- **Next (F6):** the complete treatment of personal account deletion (pre-deletion notice, last-owner block, tombstone, data-subject routing). Justification: it depends on the data-subject tooling of [11-privacy-security](../privacy-security.md), built in F6; the minimum safeguard, ending memberships when an account is deleted, ships with membership persistence in F1.
 - **Later, after a decision:** invitations delivered and bound by e-mail (EMP-GOV-014, OQ-09); a server-verified PIN for managed access (OQ-13); several employees sharing one phone.
 - **Out of scope:** single sign-on with a company's identity provider; payroll, working hours or any human-resources record; a platform-wide person record; passwords chosen or reset by a manager.
 
@@ -106,7 +106,7 @@ Nine concepts that are kept apart:
 | Employee | Organization | The organization's record of someone who works for it: the fields of the table below, state, merged-into pointer. | Exists with or without a membership. Registration number unique per organization when present. |
 | Driver profile | Organization (part of the employee) | Licence categories and expiry date. | Optional; absent for employees who do not drive. |
 | Membership | Organization | The link between one account and one employee record: state, start, end, end reason, account reference or tombstone. | At most one membership that is not `ENDED` per (organization, employee) and per (organization, account). |
-| Role and scope | Platform catalog; assignment owned by the organization | What a member may do and where ([07-permissions](../07-permissions.md)). | An `ACTIVE` membership has at least one role assignment. |
+| Role and scope | Platform catalog; assignment owned by the organization | What a member may do and where ([07-permissions](../permissions.md)). | An `ACTIVE` membership has at least one role assignment. |
 | Credential | The person | What proves control of an account: account key, e-mail code, linked provider, or an enrolled device key. | Never stored in clear; never known to a manager. |
 | Device enrolment | Organization | One installation allowed to work for one membership: device reference, key fingerprint, label, enrolled at, last sync, state, revocation class. | Separate from the personal cloud's device list and its ceiling. |
 | Invitation; activation code | Organization | A single-use, expiring secret with the roles it would grant: locator, keyed hash of the secret, expiry, failed attempts, issuer, state. | Only the hash is stored; the secret is shown once. |
@@ -124,7 +124,7 @@ Employee fields and their purposes (BR-PRIV-005):
 
 Not collected: CPF, birth date, home address, photograph, health information. Licence number and licence image are collected only when the organization enables the licence control (LV-09).
 
-Relations are drawn in [06-domain-model](../06-domain-model.md) §4.1.
+Relations are drawn in [06-domain-model](../domain-model.md) §4.1.
 
 ## 4. Business rules
 
@@ -167,7 +167,7 @@ Lifecycle:
 - **BR-IDN-026 — Suspension stops access at once.** A `SUSPENDED` membership is denied every organization action from the next request with `MEMBERSHIP_SUSPENDED`; its role assignments stay recorded and take effect again on reactivation (BR-AUTH-014).
 - **BR-IDN-027 — Offboarding ends permissions and nothing else.** Ending a membership ends its role assignments and delegations, revokes its device enrolments and outstanding tokens, and leaves untouched every record the organization owns and, for a personal account, the account itself with its sessions, credentials and personal data (BR-TEN-009).
 - **BR-IDN-028 — Offboarding hands work over.** Offboarding lists what the employee is still responsible for (assets assigned, trips in progress, records awaiting correction, reviews awaited from them, delegations, substitute designations); each item gets a successor or stays flagged for a manager. Offboarding never closes, cancels or deletes work by itself.
-- **BR-IDN-029 — Late records get a decision.** Operations recorded before the membership ended and delivered inside the intake window are kept for review, never accepted automatically and never discarded ([10-offline-sync](../10-offline-sync.md) BR-OFFL-011, BR-OFFL-012) (EMP-OFFL-009: B-BR-EMP-302..307).
+- **BR-IDN-029 — Late records get a decision.** Operations recorded before the membership ended and delivered inside the intake window are kept for review, never accepted automatically and never discarded ([10-offline-sync](../offline-sync.md) BR-OFFL-011, BR-OFFL-012) (EMP-OFFL-009: B-BR-EMP-302..307).
 - **BR-IDN-030 — The last owner is protected.** Suspension, offboarding, leaving, inactivation and account deletion are refused with `LAST_OWNER` when they would leave the organization without an active owner (BR-AUTH-006).
 - **BR-IDN-031 — Members can leave.** The holder of a personal account can end their own membership at any time, subject to BR-IDN-030; the effects are those of offboarding.
 - **BR-IDN-032 — Rehire is a new period on the same record.** Rehiring returns the same employee record to `ACTIVE` and, when access is given again, creates a new membership; earlier periods and their role assignments stay ended and nothing is granted again implicitly.
@@ -184,7 +184,7 @@ Devices:
 
 Driver profile:
 
-- **BR-IDN-040 — The driver profile is minimal and optional.** It holds licence categories and an expiry date. Licence number and image are stored only when the organization enables the licence control, and are deleted on the schedule of [11-privacy-security](../11-privacy-security.md) §10.1.
+- **BR-IDN-040 — The driver profile is minimal and optional.** It holds licence categories and an expiry date. Licence number and image are stored only when the organization enables the licence control, and are deleted on the schedule of [11-privacy-security](../privacy-security.md) §10.1.
 - **BR-IDN-041 — Eligibility is computed, not stored.** Whether a driver is eligible is derived when asked, from the expiry date and the local date of the unit; what an expired or missing licence does to a trip is decided in [trips](trips.md).
 
 Account deletion:
@@ -199,7 +199,7 @@ Account deletion:
 
 **UC-IDN-02 — Invite an existing Abastevo account.** Actor: member with `idn.invitation.manage`, fresh authentication. Preconditions: employee `ACTIVE` with no `ACTIVE` or `SUSPENDED` membership; organization `ACTIVE` or `PENDING_SETUP`. Main flow: choose the employee, roles and scopes → the server checks BR-AUTH-007 → invitation `PENDING`, membership `INVITED` → the panel shows the code, link and QR code once → the manager hands it over. Alternatives: employee already has access → `EMPLOYEE_HAS_ACCESS`; role not grantable → `FORBIDDEN`; inviting oneself → `FORBIDDEN`. Result: one usable invitation exists for that employee.
 
-**UC-IDN-03 — Accept or decline an invitation.** Actor: a person signed in with a personal account. Preconditions: the secret. Main flow: open "Entrar em uma empresa" in the app or the panel → type or scan the code → review the organization, roles and notice (BR-IDN-017) → accept → invitation `ACCEPTED`; membership `ACTIVE` with its role assignments, or still `INVITED` awaiting confirmation (BR-IDN-016); in the app the device is enrolled → first entry shows what the organization collects ([11-privacy-security](../11-privacy-security.md), BR-PRIV-015) and then the enterprise home. Alternatives: decline → `DECLINED`; invalid token of any kind → `TOKEN_INVALID`; account already a member of that organization → `ALREADY_MEMBER`, invitation unchanged; managed account → `MANAGED_ACCOUNT_RESTRICTED`; not signed in → sign in or create an account first, then return. Result: the person is a member, or nothing changed.
+**UC-IDN-03 — Accept or decline an invitation.** Actor: a person signed in with a personal account. Preconditions: the secret. Main flow: open "Entrar em uma empresa" in the app or the panel → type or scan the code → review the organization, roles and notice (BR-IDN-017) → accept → invitation `ACCEPTED`; membership `ACTIVE` with its role assignments, or still `INVITED` awaiting confirmation (BR-IDN-016); in the app the device is enrolled → first entry shows what the organization collects ([11-privacy-security](../privacy-security.md), BR-PRIV-015) and then the enterprise home. Alternatives: decline → `DECLINED`; invalid token of any kind → `TOKEN_INVALID`; account already a member of that organization → `ALREADY_MEMBER`, invitation unchanged; managed account → `MANAGED_ACCOUNT_RESTRICTED`; not signed in → sign in or create an account first, then return. Result: the person is a member, or nothing changed.
 
 **UC-IDN-04 — Resend or revoke an invitation.** Actor: member with `idn.invitation.manage`. Main flow: resend → a new invitation with a new secret; the old one becomes `SUPERSEDED`. Revoke → `REVOKED`; when no usable token remains, the `INVITED` membership ends. Confirm or reject an acceptance awaiting confirmation → membership `ACTIVE`, or `ENDED`. Alternatives: invitation already terminal → `CONFLICT`. Result: at most one usable token per employee (BR-IDN-013).
 
@@ -207,17 +207,17 @@ Account deletion:
 
 **UC-IDN-06 — Activate managed access on the device.** Actor: the employee, with the app installed and no account needed. Main flow: choose "Ativar acesso corporativo" → type or scan the code → the app generates a key pair in the device keystore and sends the code, the public key and a proof of possession → in one transaction the server marks the code `USED`, creates the managed account, enrols the device, makes the membership `ACTIVE` with its roles and opens a session → the app asks the employee to confirm the device unlock (BR-IDN-023) → collection notice → enterprise home. Alternatives: invalid code → `TOKEN_INVALID`; fifth failure → `LOCKED`; device without a secure lock screen → activation refused with instructions; connection lost after the server committed → the repeat with the same `operation_id` returns the same result. Result: an individual corporate access that nobody else knows how to reproduce.
 
-**UC-IDN-07 — Recover access.** Personal account: the person recovers the account by its own methods; the membership is unaffected. When the account is lost for good, a manager ends the membership (UC-IDN-09 without termination) and invites the new account to the same employee record. Managed account: a manager with `idn.credential.manage` issues a new activation code, stating whether the old device is lost → the employee activates on the new device → the new device is `ENROLLED`, the old one `REVOKED` with the stated class, the membership and its history continue. Alternatives: lost device → [11-privacy-security](../11-privacy-security.md) UC-PRIV-03, and the manager is told that unsent records on it are lost. Result: access restored without any secret being revealed.
+**UC-IDN-07 — Recover access.** Personal account: the person recovers the account by its own methods; the membership is unaffected. When the account is lost for good, a manager ends the membership (UC-IDN-09 without termination) and invites the new account to the same employee record. Managed account: a manager with `idn.credential.manage` issues a new activation code, stating whether the old device is lost → the employee activates on the new device → the new device is `ENROLLED`, the old one `REVOKED` with the stated class, the membership and its history continue. Alternatives: lost device → [11-privacy-security](../privacy-security.md) UC-PRIV-03, and the manager is told that unsent records on it are lost. Result: access restored without any secret being revealed.
 
 **UC-IDN-08 — Suspend and reactivate a membership.** Actor: member with `idn.membership.manage`, fresh authentication. Main flow: choose the member and a reason → membership `SUSPENDED` → next request denied; the app locks the organization's data on the device. Reactivate → `ACTIVE`; role assignments that did not expire meanwhile apply again. Alternatives: last owner → `LAST_OWNER`; suspending oneself → `FORBIDDEN`; records delivered while suspended → BR-IDN-029. Result: access paused, nothing lost.
 
-**UC-IDN-09 — Offboard an employee.** Actor: member with `idn.membership.manage`, fresh authentication. Main flow: open the offboarding screen → the server lists open responsibilities and the last sync of each device (BR-IDN-028) → the manager names successors or leaves items flagged, and chooses whether the employee record becomes `TERMINATED` or stays in the register → in one transaction: membership `ENDED`, role assignments and delegations ended, devices revoked with class "access ended", outstanding tokens revoked, managed account disabled → supervisors are notified of trips in progress. Alternatives: last owner → `LAST_OWNER`; successors missing for items that require one → `OPEN_RESPONSIBILITIES`; trips in progress are handled as specified in [trips](trips.md); records still on the phone → UC-OFFL-07 in [10-offline-sync](../10-offline-sync.md). Result: no permission remains; organization history and the personal account are intact.
+**UC-IDN-09 — Offboard an employee.** Actor: member with `idn.membership.manage`, fresh authentication. Main flow: open the offboarding screen → the server lists open responsibilities and the last sync of each device (BR-IDN-028) → the manager names successors or leaves items flagged, and chooses whether the employee record becomes `TERMINATED` or stays in the register → in one transaction: membership `ENDED`, role assignments and delegations ended, devices revoked with class "access ended", outstanding tokens revoked, managed account disabled → supervisors are notified of trips in progress. Alternatives: last owner → `LAST_OWNER`; successors missing for items that require one → `OPEN_RESPONSIBILITIES`; trips in progress are handled as specified in [trips](trips.md); records still on the phone → UC-OFFL-07 in [10-offline-sync](../offline-sync.md). Result: no permission remains; organization history and the personal account are intact.
 
-**UC-IDN-10 — Leave an organization.** Actor: member with a personal account. Main flow: open "Sair desta empresa" → the app shows pending records and what stays with the organization → confirm with fresh authentication → same effects as UC-IDN-09 with reason "left"; managers are notified. Alternatives: last owner → `LAST_OWNER` with a link to ownership transfer in [organizations](organizations.md); pending records → sent first or kept under [10-offline-sync](../10-offline-sync.md) SCR-OFFL-04. Result: the organization disappears from the person's context list.
+**UC-IDN-10 — Leave an organization.** Actor: member with a personal account. Main flow: open "Sair desta empresa" → the app shows pending records and what stays with the organization → confirm with fresh authentication → same effects as UC-IDN-09 with reason "left"; managers are notified. Alternatives: last owner → `LAST_OWNER` with a link to ownership transfer in [organizations](organizations.md); pending records → sent first or kept under [10-offline-sync](../offline-sync.md) SCR-OFFL-04. Result: the organization disappears from the person's context list.
 
 **UC-IDN-11 — Rehire.** Actor: member with `idn.membership.manage`. Preconditions: employee `TERMINATED` and not merged away. Main flow: reopen the record → employee `ACTIVE` → give access again through UC-IDN-02 or UC-IDN-05 → a new membership with new role assignments. Alternatives: the person now uses a different account → nothing special; the new membership simply links the new account. Result: one employee record with several membership periods (BR-IDN-032).
 
-**UC-IDN-12 — Work in several organizations.** Actor: a person with a personal account. Main flow: accept invitations from two organizations → two memberships, two employee records, one device enrolment per organization on the same phone → switch between them with UC-AUTH-04 in [07-permissions](../07-permissions.md). Alternatives: one organization suspends the membership → only that one is unavailable. Result: independent memberships (BR-IDN-033).
+**UC-IDN-12 — Work in several organizations.** Actor: a person with a personal account. Main flow: accept invitations from two organizations → two memberships, two employee records, one device enrolment per organization on the same phone → switch between them with UC-AUTH-04 in [07-permissions](../permissions.md). Alternatives: one organization suspends the membership → only that one is unavailable. Result: independent memberships (BR-IDN-033).
 
 **UC-IDN-13 — Resolve duplicate employees.** Actor: member with `idn.employee.manage`. Main flow: open the duplicates list or a warning → compare the two records → choose the survivor → confirm → the other record becomes `TERMINATED` with a pointer; team links move to the survivor. Alternatives: both have a live membership → `MERGE_CONFLICT`, end one first; records of different organizations → never offered. Result: one record going forward; history readable through the pointer (BR-IDN-035).
 
@@ -227,11 +227,11 @@ Account deletion:
 
 **UC-IDN-16 — List and revoke devices and sessions.** Actors: any member for their own devices; member with `idn.credential.manage` for devices enrolled in the organization. Main flow: open the list → choose a device → revoke as "lost or compromised" or as "no longer used" → the server refuses it from the next request → at next contact the app erases the organization's data on it. Alternatives: lost phone → UC-PRIV-03; revoking the only device of a managed account → the employee needs UC-IDN-07; a personal account's own session list and revocation use the existing account routes and are never shown to managers. Result: the device no longer works for the organization.
 
-**UC-IDN-17 — Delete a personal account that has memberships (F6).** Actor: the account holder. Main flow: request deletion → the app lists memberships, what each organization keeps and any last-owner block (BR-IDN-043) → after resolving blocks, confirm → the existing erasure runs for personal data; for organizations, memberships end and the account reference becomes a tombstone. Alternatives: last owner → blocked with `LAST_OWNER`; the person asks an organization about data it keeps → the organization answers through [11-privacy-security](../11-privacy-security.md) UC-PRIV-01. Result: the personal account is gone; organization records remain under their schedule.
+**UC-IDN-17 — Delete a personal account that has memberships (F6).** Actor: the account holder. Main flow: request deletion → the app lists memberships, what each organization keeps and any last-owner block (BR-IDN-043) → after resolving blocks, confirm → the existing erasure runs for personal data; for organizations, memberships end and the account reference becomes a tombstone. Alternatives: last owner → blocked with `LAST_OWNER`; the person asks an organization about data it keeps → the organization answers through [11-privacy-security](../privacy-security.md) UC-PRIV-01. Result: the personal account is gone; organization records remain under their schedule.
 
 ## 6. States and transitions
 
-State names are those of [08-state-model](../08-state-model.md) §3. Membership:
+State names are those of [08-state-model](../state-model.md) §3. Membership:
 
 ```mermaid
 stateDiagram-v2
@@ -294,7 +294,7 @@ Device:
 
 ## 7. Roles and permissions
 
-Keys are those of [07-permissions](../07-permissions.md) §7.2; roles follow its matrix §7.3.
+Keys are those of [07-permissions](../permissions.md) §7.2; roles follow its matrix §7.3.
 
 | Permission | Used for | Roles |
 |---|---|---|
@@ -308,8 +308,8 @@ Scope: `idn.employee.read` held in a `UNIT` or `TEAM` scope covers employees who
 
 ## 8. Offline, concurrency, idempotency and corrections
 
-- **Offline:** signing in, redeeming an invitation, activating managed access and every management command need the server ([10-offline-sync](../10-offline-sync.md) §10.3); offline they are disabled with the reason (BR-OFFL-017). After activation the app works offline as that file describes. The app caches the member's own employee data and the membership state with the time it was confirmed.
-- **Concurrency:** two redemptions of one token race on the token row; one succeeds, the other receives `TOKEN_INVALID`. Membership commands carry the membership revision; a stale one fails with `CONFLICT`. The last-owner check runs under the organization row lock shared with role management ([07-permissions](../07-permissions.md) §8). An operation received after a suspension or an end is judged by the server's history at receipt, not by arrival order (BR-TIME-003).
+- **Offline:** signing in, redeeming an invitation, activating managed access and every management command need the server ([10-offline-sync](../offline-sync.md) §10.3); offline they are disabled with the reason (BR-OFFL-017). After activation the app works offline as that file describes. The app caches the member's own employee data and the membership state with the time it was confirmed.
+- **Concurrency:** two redemptions of one token race on the token row; one succeeds, the other receives `TOKEN_INVALID`. Membership commands carry the membership revision; a stale one fails with `CONFLICT`. The last-owner check runs under the organization row lock shared with role management ([07-permissions](../permissions.md) §8). An operation received after a suspension or an end is judged by the server's history at receipt, not by arrival order (BR-TIME-003).
 - **Idempotency:** every command carries an `operation_id`. Redemption is idempotent for the same account or device and the same identifier, so a lost answer never burns a token without creating the membership.
 - **Corrections:** employee fields are edited with an audit event. The wrong person accepted an invitation → end that membership and invite again; records made meanwhile stay attributed to the membership that made them. Duplicates are merged (UC-IDN-13). A suspension or offboarding made by mistake is corrected by reactivation or by a new membership; assignments are granted again explicitly.
 
@@ -361,7 +361,7 @@ The earlier `LLLLLL-SSSS-SSSS` construction (6-symbol locator and 8-symbol secre
 | `MERGE_CONFLICT` | 409 | Both employee records have a live membership |
 | `DEVICE_LIMIT_REACHED` | 409 | The membership already has the maximum of enrolled devices |
 
-Shared codes (`LAST_OWNER`, `MEMBERSHIP_SUSPENDED`, `MEMBERSHIP_ENDED`, `FRESH_AUTH_REQUIRED`, `RATE_LIMITED`) are in [09-architecture](../09-architecture.md) §6; `DEVICE_REVOKED` is in [10-offline-sync](../10-offline-sync.md) §10.2.
+Shared codes (`LAST_OWNER`, `MEMBERSHIP_SUSPENDED`, `MEMBERSHIP_ENDED`, `FRESH_AUTH_REQUIRED`, `RATE_LIMITED`) are in [09-architecture](../architecture.md) §6; `DEVICE_REVOKED` is in [10-offline-sync](../offline-sync.md) §10.2.
 
 ### 10.4 Worked examples
 
@@ -373,7 +373,7 @@ Shared codes (`LAST_OWNER`, `MEMBERSHIP_SUSPENDED`, `MEMBERSHIP_ENDED`, `FRESH_A
 
 **Managed access and lockout.** A code is issued for Carla at `2026-11-10T14:00:00Z` and expires at `2026-11-12T14:00:00Z` (172 800 s later). Someone tries five wrong secrets with the right locator: the code is `LOCKED` and the manager is notified. Carla's correct code now answers `TOKEN_INVALID`; the manager issues a new one. Carla activates: managed account created, device `ENROLLED`, membership `ACTIVE`. The manager never saw or chose any password, and the code no longer works.
 
-**Offboarding with records still on the phone.** Carla is offboarded at `2026-11-10T18:00:00Z`. The intake window is 15 days = 1 296 000 s and closes at `2026-11-25T18:00:00Z`. Her phone, offline since noon, holds three fuelings declared at 13:42, 15:10 and 17:05 that day, and she starts a trip offline at `2026-11-11T08:00:00Z`. The phone reconnects at `2026-11-12T09:00:00Z`: the three fuelings are `ACCEPTED_FOR_REVIEW` with `ACCESS_ENDED_BEFORE_RECEIPT` and wait for a manager; the trip start is `REJECTED` with `MEMBERSHIP_ENDED`. Had the phone reconnected at `2026-11-26T00:00:00Z`, everything would be `REJECTED` with `INTAKE_WINDOW_CLOSED` ([10-offline-sync](../10-offline-sync.md) §10.2).
+**Offboarding with records still on the phone.** Carla is offboarded at `2026-11-10T18:00:00Z`. The intake window is 15 days = 1 296 000 s and closes at `2026-11-25T18:00:00Z`. Her phone, offline since noon, holds three fuelings declared at 13:42, 15:10 and 17:05 that day, and she starts a trip offline at `2026-11-11T08:00:00Z`. The phone reconnects at `2026-11-12T09:00:00Z`: the three fuelings are `ACCEPTED_FOR_REVIEW` with `ACCESS_ENDED_BEFORE_RECEIPT` and wait for a manager; the trip start is `REJECTED` with `MEMBERSHIP_ENDED`. Had the phone reconnected at `2026-11-26T00:00:00Z`, everything would be `REJECTED` with `INTAKE_WINDOW_CLOSED` ([10-offline-sync](../offline-sync.md) §10.2).
 
 **Leaving with a personal account.** Bruno leaves the company. His membership is `ENDED`; his trips and fuelings remain in the organization's records under his employee record. His personal account, personal vehicles, history and community identity are exactly as before, and "Modo empresa" no longer lists that organization.
 
@@ -401,7 +401,7 @@ Shared codes (`LAST_OWNER`, `MEMBERSHIP_SUSPENDED`, `MEMBERSHIP_ENDED`, `FRESH_A
 | SCR-IDN-14 | APP | Know that access was suspended or ended | Former or suspended member | State, date, pending records and what will happen to them | Send pending records, dismiss | BR-IDN-026, BR-IDN-029, BR-OFFL-013 | Never shows organization data behind the notice. Window closed: says to contact the company. |
 | SCR-IDN-15 | APP | Understand what deleting the account does to company records | Account holder | Organizations, what each keeps, last-owner blocks | Resolve block, continue to deletion | BR-IDN-042, BR-IDN-043 | Shown before the existing deletion confirmation. Block: link to ownership transfer. |
 
-The context switcher is SCR-AUTH-04 and "my access" is SCR-AUTH-05 in [07-permissions](../07-permissions.md); the first-entry notice is SCR-PRIV-01 and the app lock SCR-PRIV-05 in [11-privacy-security](../11-privacy-security.md).
+The context switcher is SCR-AUTH-04 and "my access" is SCR-AUTH-05 in [07-permissions](../permissions.md); the first-entry notice is SCR-PRIV-01 and the app lock SCR-PRIV-05 in [11-privacy-security](../privacy-security.md).
 
 ## 12. Acceptance, dependencies, risks, phase and microtasks
 
@@ -426,11 +426,11 @@ Acceptance criteria:
 17. Deleting a personal account ends its memberships, leaves employee records and operations intact and replaces the account reference with a tombstone.
 18. A device revoked as lost is refused entirely; a device revoked because access ended delivers earlier operations for review inside the window and nothing else.
 
-Dependencies: [organizations](organizations.md) (organization, units, teams); [07-permissions](../07-permissions.md) (roles, authorization pipeline, last-owner rule); [09-architecture](../09-architecture.md) (API conventions, audit, web session, Android foundation); [10-offline-sync](../10-offline-sync.md) (intake after access ends); [11-privacy-security](../11-privacy-security.md) (device protection, lost device, data-subject requests); EMP-GOV-013 (security review of managed credentials); EMP-GOV-014 (delivery channels); the existing `account` and `identity` modules.
+Dependencies: [organizations](organizations.md) (organization, units, teams); [07-permissions](../permissions.md) (roles, authorization pipeline, last-owner rule); [09-architecture](../architecture.md) (API conventions, audit, web session, Android foundation); [10-offline-sync](../offline-sync.md) (intake after access ends); [11-privacy-security](../privacy-security.md) (device protection, lost device, data-subject requests); EMP-GOV-013 (security review of managed credentials); EMP-GOV-014 (delivery channels); the existing `account` and `identity` modules.
 
 Risks: an invitation handed to the wrong person (confirmation for privileged roles, alias shown, single use, short validity); a manager and employee sharing a phone or a code (individual codes, device binding, audit of issuer); account-key loss by employees who use invitations (managed access offered as the alternative; recovery path stated in §10.1); device loss with unsent records (stated openly in the recovery and revocation screens); the device-key login for managed accounts being new attack surface (EMP-GOV-013 before EMP-IDN-006); over-collection of employee data by habit (closed field list, BR-IDN-006); confusion between the personal cloud device ceiling and organization enrolments (separate records, BR-IDN-037).
 
-Phase: F1 for everything except the driver profile (F2) and the complete account-deletion treatment (F6), both justified in §2. Managed access is F1 but outside cut C1, because the cut signs people in with existing accounts ([14-roadmap](../14-roadmap.md) §4). Microtasks: EMP-IDN-001 to EMP-IDN-019.
+Phase: F1 for everything except the driver profile (F2) and the complete account-deletion treatment (F6), both justified in §2. Managed access is F1 but outside cut C1, because the cut signs people in with existing accounts (14-roadmap §4). Microtasks: EMP-IDN-001 to EMP-IDN-019.
 
 EMP-IDN-004 source interpretation (EDR-049): F1 invitations contain1..10 fixed
 ORG/SELF role templates within actual current grant authority. They reserve an

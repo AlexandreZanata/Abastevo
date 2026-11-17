@@ -332,7 +332,7 @@ def self_test():
         "candidate_content_sha256": "sha256:" + "a" * 64,
         "rollback_content_sha256": "sha256:" + "b" * 64,
         "source_slices": ["official-sanctions"],
-        "source_admission_ref": "docs/product/ENTERPRISE_SOURCE_ADMISSION.md",
+        "source_admission_ref": "docs/enterprise/source-admission.md",
         "rights_evidence": ["CC BY metadata; event-level admitted"],
         "host_ownership_attestation": "ownership-record-001",
         "source_revision_id": "00000000-0000-4000-8000-0000000000f1",

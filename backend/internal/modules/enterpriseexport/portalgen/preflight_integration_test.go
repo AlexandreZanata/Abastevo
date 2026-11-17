@@ -50,7 +50,7 @@ func preflightScope(t *testing.T, manifest Manifest, origin string) map[string]a
 		"candidate_content_sha256":   manifest.ContentSHA256,
 		"rollback_content_sha256":    "sha256:" + strings.Repeat("0", 64),
 		"source_slices":              []string{"official-sanctions"},
-		"source_admission_ref":       "docs/product/ENTERPRISE_SOURCE_ADMISSION.md",
+		"source_admission_ref":       "docs/enterprise/source-admission.md",
 		"rights_evidence":            []string{"CC BY metadata; event-level admitted"},
 		"host_ownership_attestation": "ownership-record-001",
 		"source_revision_id":         pin.RevisionID, "source_lease_id": pin.LeaseID,

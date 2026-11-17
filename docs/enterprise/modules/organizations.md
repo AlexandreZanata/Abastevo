@@ -1,18 +1,18 @@
 # Organizations
 
-Status: **EMP-ORG-001–009 LOCAL_DONE / INTEGRATION_PENDING**, 2026-11-12; remaining module features PLANNED. Module code `ORG`. Tasks: `EMP-ORG-001…015` in [backlog/ep02-organizations](../backlog/ep02-organizations.md).
+Module code `ORG`.
 
-Evidence. EMP-ORG-001 implements the pure scoped aggregate and lifecycle under `backend/internal/modules/organization/domain/`; see [domain evidence](../evidence/f1-org001-organization-domain.md). EMP-ORG-002 adds the permanent forced-RLS root, scoped repository/CAS and additive populated-upgrade recovery; see [persistence evidence](../evidence/f1-org002-organization-persistence.md). Existing private IDs remain metadata-pending anchors without fabricated lifecycle, ownership or consent. EMP-ORG-003 supplies local atomic onboarding/activation ([evidence](../evidence/f1-org003-atomic-onboarding.md)); ORG-004 supplies declared legal parties ([evidence](../evidence/f1-org004-legal-declarations.md)); ORG-005/006 supply units and cost centres ([unit evidence](../evidence/f1-org005-operating-units.md), [cost-centre evidence](../evidence/f1-org006-cost-centres.md)). Full closure remains F8. The F0 [diagnosis](../01-diagnosis.md) is a historical pre-implementation snapshot. Three existing pieces are reused. The validated value type `kernel.CNPJ` in `backend/internal/modules/kernel/cnpj.go` already accepts the alphanumeric format and computes both check digits, and `backend/internal/modules/kernel/kernel_test.go` contains the official test value: `IMPLEMENTED`. The station catalog keeps one CNPJ per station (`backend/internal/modules/directory/`): `IMPLEMENTED`; this module only references it. The signed-declaration proof of the station profile (`backend/internal/modules/stationprofile/domain/proof.go`) is `PARTIAL` (intake disabled) and is the pattern proposed for verification evidence. Private declared CPF validation, masking and fresh audited reveal are locally implemented by ORG-004; no external registry verification or real-data legal approval is inferred. EMP-GOV-001 and [ADR-025](../../adr/025-private-abastevo-empresas-organization-boundary.md) resolve the historical CX-01 conflict for private Empresas data only.
+Evidence. EMP-ORG-001 implements the pure scoped aggregate and lifecycle under `backend/internal/modules/organization/domain/`; see domain evidence. EMP-ORG-002 adds the permanent forced-RLS root, scoped repository/CAS and additive populated-upgrade recovery; see persistence evidence. Existing private IDs remain metadata-pending anchors without fabricated lifecycle, ownership or consent. EMP-ORG-003 supplies local atomic onboarding/activation (evidence); ORG-004 supplies declared legal parties (evidence); ORG-005/006 supply units and cost centres (unit evidence, cost-centre evidence). Full closure remains F8. The F0 diagnosis is a historical pre-implementation snapshot. Three existing pieces are reused. The validated value type `kernel.CNPJ` in `backend/internal/modules/kernel/cnpj.go` already accepts the alphanumeric format and computes both check digits, and `backend/internal/modules/kernel/kernel_test.go` contains the official test value: `IMPLEMENTED`. The station catalog keeps one CNPJ per station (`backend/internal/modules/directory/`): `IMPLEMENTED`; this module only references it. The signed-declaration proof of the station profile (`backend/internal/modules/stationprofile/domain/proof.go`) is `PARTIAL` (intake disabled) and is the pattern proposed for verification evidence. Private declared CPF validation, masking and fresh audited reveal are locally implemented by ORG-004; no external registry verification or real-data legal approval is inferred. EMP-GOV-001 and [ADR-025](../../decisions/025-private-abastevo-empresas-organization-boundary.md) resolve the historical CX-01 conflict for private Empresas data only.
 
 EMP-ORG-007 adds scoped team lifecycle and retained employee-link periods,
 actual distinct home/team unit usage and atomic employee/access reductions:
-`LOCAL_DONE / INTEGRATION_PENDING`; see [team evidence](../evidence/f1-org007-teams.md).
+`LOCAL_DONE / INTEGRATION_PENDING`; see team evidence.
 Membership grants no authority; TEAM role scopes remain AUTH-005. Actual
 provider/grant/native and real-data gates remain separate from local evidence.
 
 EMP-ORG-008 adds immutable typed settings, effective server intake, scoped
 responsibility pairs and atomic reduction cleanup, with explicit permissions v3:
-`LOCAL_DONE / INTEGRATION_PENDING`; see [settings evidence](../evidence/f1-org008-versioned-settings.md).
+`LOCAL_DONE / INTEGRATION_PENDING`; see settings evidence.
 Source policy holders do not imply completed consuming workflows or legal
 retention approval; pending notice facts do not claim notification delivery.
 
@@ -20,7 +20,7 @@ EMP-ORG-009 (`LOCAL_DONE / INTEGRATION_PENDING`) adds operator-only
 suspension/reactivation, retained periods and
 server-received field-intake assessment. Company roles cannot suspend their own
 organization; the existing ADR-023 administrative credential plane is separate.
-[Local suspension evidence](../evidence/f1-org009-suspension.md) records the
+Local suspension evidence records the
 entry points and actual tests. Subscription automation, field-ingress persistence
 and owner-notice delivery remain their owning modules' workflows.
 
@@ -33,11 +33,11 @@ Users: the person who signs the company up, organization owners and administrato
 ## 2. Scope
 
 - **Basic (F1; tasks marked C1 are in the first cut):** create an organization with its first unit and its owner; activation checklist; operating units with time zones; settings and policy defaults; panel onboarding and settings screens. Also in F1, outside the cut: declared legal entities with CNPJ and CPF validation, cost centres, teams, suspension and reactivation semantics, ownership transfer.
-- **Next (F6):** organization groups through consolidation grants. Justification: consolidated reading needs the indicator read models of [intelligence](intelligence.md) and the fine scopes of [07-permissions](../07-permissions.md), which do not exist before F6.
+- **Next (F6):** organization groups through consolidation grants. Justification: consolidated reading needs the indicator read models of [intelligence](intelligence.md) and the fine scopes of [07-permissions](../permissions.md), which do not exist before F6.
 - **Next (F7):** verification of legal entities. Justification: only station claims and agreements need a verified legal entity, and the review queue it uses is built with the back office in F7 ([back-office](back-office.md)).
 - **Later (F8):** archive and closure with full export and retention. Justification: closure depends on the full organization export and on the retention job, which are F6 deliverables; until F8 an organization that wants to stop is suspended by a platform operator and keeps its data.
 - **Customer kinds supported from F1:** delivery companies, carriers, service providers, farms (including a rural producer who is a natural person identified by CPF), and operations with own, rented or third-party vehicles. The kind changes onboarding defaults only (§10.3); how a vehicle is held is recorded per asset in [fleet](fleet.md).
-- **Out of scope:** a public directory of organizations; any lookup of an organization by CNPJ, name or code; automatic creation of groups from registry data; corporate registry consultation (no source for partners or representatives was found, [18-references](../18-references.md) §4); hierarchical cost centres; tax or accounting configuration.
+- **Out of scope:** a public directory of organizations; any lookup of an organization by CNPJ, name or code; automatic creation of groups from registry data; corporate registry consultation (no source for partners or representatives was found, 18-references §4); hierarchical cost centres; tax or accounting configuration.
 
 ## 3. Entities and ownership
 
@@ -54,7 +54,7 @@ Users: the person who signs the company up, organization owners and administrato
 | Ownership transfer | Organization | From owner, to member, step-down choice, expiry, outcome | At most one open transfer per organization. |
 | Substitute designation | Organization (inside settings) | Responsibility, primary member, substitute member | Both are active members; carries no permission. |
 
-Relations: an organization declares zero or more legal entities; a legal entity has one or more establishments when it is a company; an organization has one or more units, and zero or more teams and cost centres; a unit points to at most one establishment. Employees, memberships and devices are owned by [identity](identity.md); role assignments by [07-permissions](../07-permissions.md). The diagram is in [06-domain-model](../06-domain-model.md) §4.1.
+Relations: an organization declares zero or more legal entities; a legal entity has one or more establishments when it is a company; an organization has one or more units, and zero or more teams and cost centres; a unit points to at most one establishment. Employees, memberships and devices are owned by [identity](identity.md); role assignments by [07-permissions](../permissions.md). The diagram is in [06-domain-model](../domain-model.md) §4.1.
 
 **Which entity is the boundary.** The organization, and only the organization, is the tenant (EDR-001). A CNPJ identifies a registered establishment. A unit is a place or division where work happens. A tenant is the set of records one customer owns. They coincide for a one-person company with one address and differ for almost everyone else: one organization may hold several CNPJs, one CNPJ root may appear in several organizations, and a unit may have no CNPJ at all (a yard, a farm outpost, a field crew).
 
@@ -79,7 +79,7 @@ Legal entities:
 
 - **BR-ORG-013 — Two kinds of legal entity.** A legal entity is a `COMPANY` identified by CNPJ or a `NATURAL_PERSON` identified by CPF; the natural-person kind exists for rural producers and is never required of anyone.
 - **BR-ORG-014 — A CNPJ is validated text.** A CNPJ is 14 characters: the first 12 are digits or uppercase letters, the last two are numeric check digits computed as in §10.1. It is parsed with the existing kernel type, stored as text, never coerced to a number, and letters are never converted to digits.
-- **BR-ORG-015 — "0001" proves nothing.** Whether an establishment is the head office (`matriz`) or a branch (`filial`) is an attribute the organization declares; it is never inferred from the order digits ([18-references](../18-references.md) §4).
+- **BR-ORG-015 — "0001" proves nothing.** Whether an establishment is the head office (`matriz`) or a branch (`filial`) is an attribute the organization declares; it is never inferred from the order digits (18-references §4).
 - **BR-ORG-016 — Declared is not verified.** A legal entity in `DECLARED` passed format validation only. The interface labels it "Declarado pela empresa", no screen, export or public surface presents it as verified, and no feature that needs verification accepts it (BR-TRUTH-001).
 - **BR-ORG-017 — Declaring is not exclusive and leaks nothing.** Several organizations may declare the same CNPJ or CPF. The answer to a declaration never reveals whether another organization declared or verified the same identifier.
 - **BR-ORG-018 — Verification says what was checked.** `VERIFIED` stores the evidence kind, the reviewer, the source consulted, the decision time and a validity end; it is shown as "Verificado em <date>: <what was checked>". It becomes `LAPSED` at the validity end and can be `REVOKED` with a reason.
@@ -100,13 +100,13 @@ Lifecycle:
 - **BR-ORG-027 — Activation checklist.** `PENDING_SETUP` becomes `ACTIVE` only with a name, a valid time zone, at least one `ACTIVE` unit, at least one active owner and the recorded acceptance of the data-processing terms (LV-02). Until then only configuration commands are accepted; operational commands answer `ORG_SETUP_INCOMPLETE`.
 - **BR-ORG-028 — Abandoned setups are closed.** An organization still in `PENDING_SETUP` after 90 days with no operational record is closed by the system, with a notice to its owners 14 days earlier; one account may hold at most 3 organizations in `PENDING_SETUP`.
 - **BR-ORG-029 — Suspension is a platform action with a reason.** Only a platform operator or a subscription state change suspends or reactivates an organization; each change records a reason category (`BILLING`, `TERMS`, `SECURITY`, `LEGAL`, `OWNER_REQUEST`), writes an audit event and notifies the owners. An organization does not suspend itself; it archives.
-- **BR-ORG-030 — Suspension blocks new work, not reading.** In `SUSPENDED`, commands that create or change organization records are refused with `ORG_SUSPENDED`; members keep reading within their permissions and members with `rpt.export.run` keep exporting. For this module "permissions denied while suspended" in [07-permissions](../07-permissions.md) §6 means write permissions.
-- **BR-ORG-031 — Suspension never strands field work.** Work opened before the suspension can be finished, and operations declared before it and received inside the grace period are kept for review; nothing recorded in the field is discarded because of the suspension ([10-offline-sync](../10-offline-sync.md) §10.2, BR-OFFL-006) (EMP-OFFL-012: B-BR-EMP-308..311).
-- **BR-ORG-032 — Access-reducing actions always work.** In `SUSPENDED` and `ARCHIVED` these stay available to the roles that hold them: suspending or ending memberships, revoking devices, invitations and activation codes, legal holds and data-subject requests ([11-privacy-security](../11-privacy-security.md)), and reading and regularising the plan.
+- **BR-ORG-030 — Suspension blocks new work, not reading.** In `SUSPENDED`, commands that create or change organization records are refused with `ORG_SUSPENDED`; members keep reading within their permissions and members with `rpt.export.run` keep exporting. For this module "permissions denied while suspended" in [07-permissions](../permissions.md) §6 means write permissions.
+- **BR-ORG-031 — Suspension never strands field work.** Work opened before the suspension can be finished, and operations declared before it and received inside the grace period are kept for review; nothing recorded in the field is discarded because of the suspension ([10-offline-sync](../offline-sync.md) §10.2, BR-OFFL-006) (EMP-OFFL-012: B-BR-EMP-308..311).
+- **BR-ORG-032 — Access-reducing actions always work.** In `SUSPENDED` and `ARCHIVED` these stay available to the roles that hold them: suspending or ending memberships, revoking devices, invitations and activation codes, legal holds and data-subject requests ([11-privacy-security](../privacy-security.md)), and reading and regularising the plan.
 - **BR-ORG-033 — Archiving is read-only by choice.** An owner archives the organization when nothing is in progress (§5, UC-ORG-11). In `ARCHIVED` no command that creates or changes records is accepted (`ORG_ARCHIVED`), reading and exporting continue, and an owner can restore it.
 - **BR-ORG-034 — Ownership transfer needs two people.** A transfer is started by an `OWNER` with fresh authentication, names an `ACTIVE` member with a personal account, expires in 7 days and takes effect only when that member accepts with fresh authentication. The organization has an owner at every instant (BR-AUTH-006).
 - **BR-ORG-035 — An ownerless organization is recovered by evidence, not by claim.** When the only owner cannot act, a new owner is assigned only through the audited back-office procedure in [back-office](back-office.md), on evidence that the requester acts for a verified legal entity of the organization. Knowing the CNPJ is not evidence.
-- **BR-ORG-036 — Closure is announced, exportable and final.** A closure request archives the organization and starts the closure period (default 30 days, range 7 to 90), during which owners can export and cancel. At its end the organization becomes `CLOSED`: every membership ends and all access stops. Deletion then follows BR-PRIV-012 and the schedule in [11-privacy-security](../11-privacy-security.md) §10.1; this module sets no retention period of its own.
+- **BR-ORG-036 — Closure is announced, exportable and final.** A closure request archives the organization and starts the closure period (default 30 days, range 7 to 90), during which owners can export and cancel. At its end the organization becomes `CLOSED`: every membership ends and all access stops. Deletion then follows BR-PRIV-012 and the schedule in [11-privacy-security](../privacy-security.md) §10.1; this module sets no retention period of its own.
 - **BR-ORG-037 — Closed is terminal.** A `CLOSED` organization is never reopened; coming back is a new organization with a new identifier and no inherited data.
 
 Settings:
@@ -130,7 +130,7 @@ Settings:
 
 **UC-ORG-06 — Change settings and policy defaults.** Actor: member with `org.settings.manage`. Main flow: open settings → change time zone, consumption display, review defaults or a key owned by another module, with a reason → new revision in force for operations received from then on. Alternatives: value outside its range → `VALIDATION_FAILED` showing the range; stale revision → `CONFLICT`. Result: new revision; previous one kept (BR-ORG-038).
 
-**UC-ORG-07 — Name substitute responsibles.** Actor: member with `org.settings.manage`. Main flow: for each responsibility (review fallback, platform notices, data-protection contact, billing contact) choose a primary and a substitute among active members → saved in settings. Alternatives: the chosen member's membership is later suspended or ended → the designation is cleared and administrators are notified; the substitute lacks the permission the work needs → the screen says so and offers a delegation ([07-permissions](../07-permissions.md), UC-AUTH-03). Result: notifications and queues reach the substitute when the primary is unavailable (BR-ORG-041).
+**UC-ORG-07 — Name substitute responsibles.** Actor: member with `org.settings.manage`. Main flow: for each responsibility (review fallback, platform notices, data-protection contact, billing contact) choose a primary and a substitute among active members → saved in settings. Alternatives: the chosen member's membership is later suspended or ended → the designation is cleared and administrators are notified; the substitute lacks the permission the work needs → the screen says so and offers a delegation ([07-permissions](../permissions.md), UC-AUTH-03). Result: notifications and queues reach the substitute when the primary is unavailable (BR-ORG-041).
 
 **UC-ORG-08 — Suspend and reactivate.** Actor: platform operator through the back office, or the subscription lifecycle ([subscriptions](subscriptions.md)). Main flow: choose the organization and a reason category → state `SUSPENDED` → owners notified; every member sees the suspension notice at the next request or sync. Reactivation: the cause is resolved → state `ACTIVE` → operations held during the suspension wait in the review queue for a decision. Alternatives: organization already archived → the suspension cause is recorded and applies if the organization is restored. Result: BR-ORG-030 to BR-ORG-032 apply while suspended.
 
@@ -140,11 +140,11 @@ Settings:
 
 **UC-ORG-11 — Archive and restore (F8).** Actor: an `OWNER` with `org.lifecycle.manage`. Preconditions: fresh authentication. Main flow: request archive → the server builds the open-items report (trips in progress or paused, records awaiting review, held operations, open payables, active agreements and station authorities, active grants) → trips in progress and active agreements block the archive; the other items are listed and stay as they are, frozen and exportable → the owner confirms → state `ARCHIVED`; pending invitations, activation codes and transfers are revoked. Restore: the owner asks to restore → state `ACTIVE`, or `SUSPENDED` when a suspension cause is still open. Alternatives: blocking items → `ORG_HAS_OPEN_OPERATIONS` with counts. Result: read-only organization (BR-ORG-033).
 
-**UC-ORG-12 — Close the organization (F8).** Actor: an `OWNER` with `org.lifecycle.manage`. Preconditions: fresh authentication; the owner types the organization name. Main flow: request closure → same checks as UC-ORG-11 → state `ARCHIVED` with a closure date → owners are reminded to export ([intelligence](intelligence.md)) → at the closure date the state becomes `CLOSED`, memberships end, devices are revoked and grants end → deletion follows BR-PRIV-012. Alternatives: cancel before the date → stays `ARCHIVED`; a legal hold exists → access still ends, and deletion of the held scope waits for the hold ([11-privacy-security](../11-privacy-security.md), UC-PRIV-04). Result: the organization no longer exists for any caller; every request answers `NOT_FOUND`.
+**UC-ORG-12 — Close the organization (F8).** Actor: an `OWNER` with `org.lifecycle.manage`. Preconditions: fresh authentication; the owner types the organization name. Main flow: request closure → same checks as UC-ORG-11 → state `ARCHIVED` with a closure date → owners are reminded to export ([intelligence](intelligence.md)) → at the closure date the state becomes `CLOSED`, memberships end, devices are revoked and grants end → deletion follows BR-PRIV-012. Alternatives: cancel before the date → stays `ARCHIVED`; a legal hold exists → access still ends, and deletion of the held scope waits for the hold ([11-privacy-security](../privacy-security.md), UC-PRIV-04). Result: the organization no longer exists for any caller; every request answers `NOT_FOUND`.
 
 ## 6. States and transitions
 
-State names are those of [08-state-model](../08-state-model.md) §3. Organization:
+State names are those of [08-state-model](../state-model.md) §3. Organization:
 
 ```mermaid
 stateDiagram-v2
@@ -196,7 +196,7 @@ Consolidation grant:
 
 ## 7. Roles and permissions
 
-Keys are those of [07-permissions](../07-permissions.md) §7.2. All `org.*` permissions take effect only in a role assignment with scope `ORG`.
+Keys are those of [07-permissions](../permissions.md) §7.2. All `org.*` permissions take effect only in a role assignment with scope `ORG`.
 
 | Permission | Used for | Roles |
 |---|---|---|
@@ -209,11 +209,11 @@ Keys are those of [07-permissions](../07-permissions.md) §7.2. All `org.*` perm
 | `org.lifecycle.manage` | UC-ORG-11, UC-ORG-12 | `OWNER` (proposed; no row in §7.3) |
 | `org.group.manage` | UC-ORG-10 | `OWNER` (proposed; no row in §7.3) |
 
-Members without `org.settings.read` (drivers, operations staff) receive the units, teams and cost centres inside their own scopes through the reference data of [10-offline-sync](../10-offline-sync.md) UC-OFFL-08, never the settings document. Creating an organization needs no permission, only a personal account. Suspension, reactivation, verification decisions and owner recovery are platform operator actions ([back-office](back-office.md)); no organization role performs them. Ownership transfer, archive, closure, verification requests and grant acceptance require fresh authentication (BR-AUTH-010).
+Members without `org.settings.read` (drivers, operations staff) receive the units, teams and cost centres inside their own scopes through the reference data of [10-offline-sync](../offline-sync.md) UC-OFFL-08, never the settings document. Creating an organization needs no permission, only a personal account. Suspension, reactivation, verification decisions and owner recovery are platform operator actions ([back-office](back-office.md)); no organization role performs them. Ownership transfer, archive, closure, verification requests and grant acceptance require fresh authentication (BR-AUTH-010).
 
 ## 8. Offline, concurrency, idempotency and corrections
 
-- **Offline:** every command of this module is online ([10-offline-sync](../10-offline-sync.md) §10.3, panel row). The app holds the organization name, state, units, teams and cost centres as reference data with its confirmation time (BR-OFFL-016). What happens to operations already in the field when the organization is suspended is decided by the intake table in [10-offline-sync](../10-offline-sync.md) §10.2 and illustrated in §10.5.
+- **Offline:** every command of this module is online ([10-offline-sync](../offline-sync.md) §10.3, panel row). The app holds the organization name, state, units, teams and cost centres as reference data with its confirmation time (BR-OFFL-016). What happens to operations already in the field when the organization is suspended is decided by the intake table in [10-offline-sync](../offline-sync.md) §10.2 and illustrated in §10.5.
 - **Concurrency:** the organization, its settings and each structural item carry a revision; a command on a stale revision fails with `CONFLICT` and changes nothing. Ownership transfer acceptance, removal of an owner and archive take a row lock on the organization, so two concurrent commands cannot leave it without an owner or half archived. Two creations of the same unit name race on the unique constraint; the loser receives `VALIDATION_FAILED` with `DUPLICATE`.
 - **Idempotency:** every command carries an `operation_id`; the same identifier and body returns the first result, a different body returns `OPERATION_ID_REUSED`. Creating an organization twice with the same identifier yields one organization.
 - **Corrections:** a CNPJ or CPF is immutable once declared. A declaration made by mistake is withdrawn: when it has no verification history and nothing references it, it is removed and only the audit event remains; otherwise it moves to `REVOKED` with origin "withdrawn by the organization", because the state catalog has no separate withdrawn state. A wrong time zone or setting is corrected by a new revision; records already received keep the values they were judged with, and any re-bucketing of reporting days is an explicit recalculation in the owning module (BR-AMD-005).
@@ -226,19 +226,19 @@ Consumed: `idn.membership.suspended` and `idn.membership.ended` (clear substitut
 
 Notifications, in-app first (EDR-032): owners and administrators on suspension, reactivation, verification decisions, lapse 30 days ahead, transfer requests and outcomes, closure reminders 14 and 3 days before the closure date; every member sees a banner while the organization is suspended or archived.
 
-Integrations: none. No registry is consulted automatically; the ANP register names no partners or representatives ([18-references](../18-references.md) §4), so verification rests on reviewed evidence.
+Integrations: none. No registry is consulted automatically; the ANP register names no partners or representatives (18-references §4), so verification rests on reviewed evidence.
 
 ## 10. Data, formulas and examples
 
 ### 10.1 Identifiers
 
-CNPJ ([18-references](../18-references.md) §4; implemented in `backend/internal/modules/kernel/cnpj.go`): 14 characters `RRRRRRRR OOOO DD` — root (8), order (4), check digits (2). Formatting characters (dot, slash, hyphen, space) are removed and letters uppercased on input. Each character is valued as its ASCII code minus 48 (`0`–`9` → 0–9, `A`–`Z` → 17–42). First digit: multiply the 12 base characters by the weights 5,4,3,2,9,8,7,6,5,4,3,2, sum, take the remainder modulo 11; the digit is 0 when the remainder is 0 or 1, otherwise 11 minus the remainder. Second digit: the same with the weights 6,5,4,3,2,9,8,7,6,5,4,3,2 over the 12 base characters followed by the first digit.
+CNPJ (18-references §4; implemented in `backend/internal/modules/kernel/cnpj.go`): 14 characters `RRRRRRRR OOOO DD` — root (8), order (4), check digits (2). Formatting characters (dot, slash, hyphen, space) are removed and letters uppercased on input. Each character is valued as its ASCII code minus 48 (`0`–`9` → 0–9, `A`–`Z` → 17–42). First digit: multiply the 12 base characters by the weights 5,4,3,2,9,8,7,6,5,4,3,2, sum, take the remainder modulo 11; the digit is 0 when the remainder is 0 or 1, otherwise 11 minus the remainder. Second digit: the same with the weights 6,5,4,3,2,9,8,7,6,5,4,3,2 over the 12 base characters followed by the first digit.
 
 Official test value `12.ABC.345/01DE-35`: values 1,2,17,18,19,3,4,5,0,1,20,21. First sum `5+8+51+36+171+24+28+30+0+4+60+42 = 459`; `459 mod 11 = 8`; digit `11 − 8 = 3`. Second sum `6+10+68+54+38+27+32+35+0+5+80+63+(3×2) = 424`; `424 mod 11 = 6`; digit `11 − 6 = 5`. Check digits `35`.
 
 Synthetic value used below, base `EXEMPL010001`: values 21,40,21,29,32,28,0,1,0,0,0,1. First sum `105+160+63+58+288+224+0+6+0+0+0+2 = 906`; `906 mod 11 = 4`; digit `7`. Second sum `126+200+84+87+64+252+0+7+0+0+0+3+(7×2) = 837`; `837 mod 11 = 1`; digit `0`. Result `EX.EMP.L01/0001-70`.
 
-CPF: 11 digits with two modulo-11 check digits. The algorithm is not among the facts recorded in [18-references](../18-references.md); EMP-ORG-004 records its source there before implementing it. No CPF value, real or synthetic, is written in this plan; test fixtures generate them.
+CPF: 11 digits with two modulo-11 check digits. The algorithm is not among the facts recorded in 18-references; EMP-ORG-004 records its source there before implementing it. No CPF value, real or synthetic, is written in this plan; test fixtures generate them.
 
 ### 10.2 Settings owned by this module
 
@@ -253,7 +253,7 @@ CPF: 11 digits with two modulo-11 check digits. The algorithm is not among the f
 | `ownership_transfer_validity` | 7 days | fixed | UC-ORG-09 |
 | `closure_period` | 30 days | 7 to 90 days | UC-ORG-12 |
 
-The settings document also holds keys specified elsewhere, which this module stores and versions but does not define: the intake window and clock-skew limit ([10-offline-sync](../10-offline-sync.md) BR-OFFL-011, BR-TIME-006), the delegation maximum (BR-AUTH-008), retention choices ([11-privacy-security](../11-privacy-security.md) §10.1) and invitation and activation validity ([identity](identity.md)).
+The settings document also holds keys specified elsewhere, which this module stores and versions but does not define: the intake window and clock-skew limit ([10-offline-sync](../offline-sync.md) BR-OFFL-011, BR-TIME-006), the delegation maximum (BR-AUTH-008), retention choices ([11-privacy-security](../privacy-security.md) §10.1) and invitation and activation validity ([identity](identity.md)).
 
 Display example for `consumption_display`. An interval of 412 000 m with 51 500 mL: `412.000 km ÷ 51.500 L = 8.0 km/L`; the same interval as `51.500 L ÷ 4.12 hundred km = 12.5 L/100 km`. Both are computed from the stored integers; nothing is stored in the display unit.
 
@@ -279,7 +279,7 @@ Display example for `consumption_display`. An interval of 412 000 m with 51 500 
 | `OWNER_REQUIRES_PERSONAL_ACCOUNT` | 409 | A managed account cannot create an organization or be its owner |
 | `TRANSFER_PENDING` | 409 | Another ownership transfer is open |
 
-Field codes inside `VALIDATION_FAILED`: `INVALID_CNPJ`, `INVALID_CPF`, `DUPLICATE`, `UNKNOWN_TIME_ZONE`, `OUT_OF_RANGE`. Shared codes are in [09-architecture](../09-architecture.md) §6.
+Field codes inside `VALIDATION_FAILED`: `INVALID_CNPJ`, `INVALID_CPF`, `DUPLICATE`, `UNKNOWN_TIME_ZONE`, `OUT_OF_RANGE`. Shared codes are in [09-architecture](../architecture.md) §6.
 
 ### 10.5 Worked examples
 
@@ -289,7 +289,7 @@ Field codes inside `VALIDATION_FAILED`: `INVALID_CNPJ`, `INVALID_CPF`, `DUPLICAT
 
 **Two unrelated franchises sharing a CNPJ root.** Organization "Franquia Sul" declares establishment `EX.EMP.L03/0004-01` (sums 924 and 846, remainders 0 and 10, digits 0 and 1) and organization "Franquia Norte" declares `EX.EMP.L03/0009-16` (sums 934 and 863, remainders 10 and 5, digits 1 and 6). Both share the root `EXEMPL03` and neither order is `0001`. Each declaration succeeds with the same answer; neither organization learns that the other exists (BR-ORG-017). A manager of "Franquia Sul" who sends a request with the identifier of "Franquia Norte" receives `NOT_FOUND` (BR-TEN-006). If the franchisor's own organization wants consolidated costs, it proposes a grant to each franchise and each one decides separately (UC-ORG-10); accepting it shares the listed totals only.
 
-**Suspension and work in the field.** The organization is suspended at `2026-11-10T12:00:00Z`. The grace period is 7 days = 604 800 s and ends at `2026-11-17T12:00:00Z`. Following [10-offline-sync](../10-offline-sync.md) §10.2: (1) a trip started at 09:10 that day is finished at 15:30 → `ACCEPTED_FOR_REVIEW` with `ORG_SUSPENDED_GRACE`, because the trip was opened before the suspension; (2) a fueling declared at `2026-11-10T11:40:00Z` reaches the server at `2026-11-13T09:00:00Z`, 248 400 s after the suspension and inside the grace period → `ACCEPTED_FOR_REVIEW` with `ORG_SUSPENDED_GRACE`; (3) a new trip declared at `2026-11-11T08:00:00Z` → `REJECTED` with `ORG_SUSPENDED`, and the driver's phone shows "Não aceito" with the reason. In the panel a manager who tries to register a vehicle receives `ORG_SUSPENDED`; the same manager still opens last month's fuelings and runs an export.
+**Suspension and work in the field.** The organization is suspended at `2026-11-10T12:00:00Z`. The grace period is 7 days = 604 800 s and ends at `2026-11-17T12:00:00Z`. Following [10-offline-sync](../offline-sync.md) §10.2: (1) a trip started at 09:10 that day is finished at 15:30 → `ACCEPTED_FOR_REVIEW` with `ORG_SUSPENDED_GRACE`, because the trip was opened before the suspension; (2) a fueling declared at `2026-11-10T11:40:00Z` reaches the server at `2026-11-13T09:00:00Z`, 248 400 s after the suspension and inside the grace period → `ACCEPTED_FOR_REVIEW` with `ORG_SUSPENDED_GRACE`; (3) a new trip declared at `2026-11-11T08:00:00Z` → `REJECTED` with `ORG_SUSPENDED`, and the driver's phone shows "Não aceito" with the reason. In the panel a manager who tries to register a vehicle receives `ORG_SUSPENDED`; the same manager still opens last month's fuelings and runs an export.
 
 **Unit time zone and reporting day.** A fueling occurs at `2026-11-11T03:30:00Z`. In a unit with zone `America/Sao_Paulo` (UTC−3) the local time is 00:30 on 11 November, so the reporting day is 2026-11-11. In a unit with zone `America/Cuiaba` (UTC−4) the local time is 23:30 on 10 November, so the reporting day is 2026-11-10 (BR-TIME-004).
 
@@ -330,7 +330,7 @@ Acceptance criteria:
 14. At the closure date every membership is `ENDED`, every later request for the organization answers `NOT_FOUND`, and cancelling one second before the date leaves the organization `ARCHIVED`.
 15. A settings change creates a new revision; an operation received before the change is judged with the earlier revision.
 
-Dependencies: EMP-GOV-001 (tenancy decision, CX-01); [09-architecture](../09-architecture.md) (tenancy kernel, API conventions, audit, time kernel); [identity](identity.md) (employee records and memberships created with the organization); [07-permissions](../07-permissions.md) (owner role, last-owner rule, scopes); [back-office](back-office.md) (suspension commands, review queue, owner recovery); [intelligence](intelligence.md) (full export before closure); [11-privacy-security](../11-privacy-security.md) (retention and legal hold); [subscriptions](subscriptions.md) (billing-driven suspension).
+Dependencies: EMP-GOV-001 (tenancy decision, CX-01); [09-architecture](../architecture.md) (tenancy kernel, API conventions, audit, time kernel); [identity](identity.md) (employee records and memberships created with the organization); [07-permissions](../permissions.md) (owner role, last-owner rule, scopes); [back-office](back-office.md) (suspension commands, review queue, owner recovery); [intelligence](intelligence.md) (full export before closure); [11-privacy-security](../privacy-security.md) (retention and legal hold); [subscriptions](subscriptions.md) (billing-driven suspension).
 
 Risks: treating a CNPJ as identity and leaking the existence of another organization (BR-ORG-017 and criterion 4); managers reading "declared" as "verified" (fixed wording, BR-ORG-016); an organization left without a reachable owner (BR-ORG-026, BR-ORG-035); suspension surprising drivers in the field (banner, grace period, review instead of discard); verification workload exceeding reviewer capacity (verification gates only F7 features; AS-11); closure deleting data a customer still needs (closure period, export reminders, cancellation, legal hold); consolidation used as a back door to another company's records (field list, read-only, two consents).
 

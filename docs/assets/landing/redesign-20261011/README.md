@@ -67,7 +67,7 @@ FLAG_SECURE — `screencap` returns black while the hierarchy renders — so no
 key content can leak through screenshots, and TU11/TU12 visual frames stay
 pending without invented pixels. The auth layout text itself ("Sem email ou
 senha", "Já tenho uma chave") corroborates the LR01 username/key freeze.
-See the [full catalog](../../../product/LANDING_MOBILE_TUTORIAL_CATALOG.md).
+See the full catalog.
 
 ## Safe capture environment (LR04) — 2026-10-11
 

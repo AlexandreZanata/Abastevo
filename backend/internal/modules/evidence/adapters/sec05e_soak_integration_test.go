@@ -18,7 +18,7 @@ import (
 
 // SEC05-E every-copy 24 h soak verification (AUD-06, B-BR-M01/M04).
 // Env-gated: runs only against the named soak services seeded under
-// docs/backend/evidence/community-safety/SEC05E_EVERY_COPY_SOAK.md
+// `docs/backend/evidence/community-safety/SEC05E_EVERY_COPY_SOAK.md` (git history)
 // (disposable MinIO + disposable PostGIS, seeded copies aging past
 // their 24 h deadline). Without ANPFUEL_EVIDENCE_SOAK_DSN it skips:
 // a fresh CI database holds no 24 h-old copies to observe.

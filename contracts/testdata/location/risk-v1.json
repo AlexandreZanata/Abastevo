@@ -1,6 +1,6 @@
 {
   "id": "location-risk-v1",
-  "provenance": "P16-T01 frozen location risk contract from docs/security/LOCAL_MEDIA_LOCATION_POLICY.md B-BR-L01…L04; replay vectors shared by Go/Kotlin/Swift, never silently reinterpreted",
+  "provenance": "P16-T01 frozen location risk contract from docs/security/media-location-policy.md B-BR-L01…L04; replay vectors shared by Go/Kotlin/Swift, never silently reinterpreted",
   "policy_version": "location-v1",
   "bounds": {
     "max_fix_age_seconds": 120,

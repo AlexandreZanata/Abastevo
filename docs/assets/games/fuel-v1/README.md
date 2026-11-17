@@ -1,11 +1,8 @@
 # Fuel game assets — V1
 
-Status: ASSET_DRAFT_LOCAL_DONE / INTEGRATION_PENDING, 2026-10-09.
-Scope: GME-00 in [the separate Games plan](../../../planning/GAMES_OFFLINE_PLAN.md).
-These are genuine static 3D meshes, not PNGs placed inside a GLB container.
-Game implementation, sprite atlases, animation and device acceptance are planned.
+Scope: GME-00 in the separate Games plan. These are genuine static 3D meshes, not PNGs placed inside a GLB container. Game implementation, sprite atlases, animation and device acceptance are planned.
 
-Open [preview.html](preview.html) in a WebGL browser to select, rotate, zoom and
+Open preview.html in a WebGL browser to select, rotate, zoom and
 download each embedded GLB. The file is self-contained and works offline without
 a CDN or web service. [Contact sheet](contact-sheet.png) is the static fallback.
 The preview uses simplified directional lighting; the GLBs carry PBR materials.
@@ -105,5 +102,5 @@ At the recorded dev baseline `4725ebcb65bc065f6c6db3c40929b38b7548880a`:
   Android/backend tests or release APK were run for this art/docs-only task.
 
 The exact manifest pins the delivered artifacts. Current execution state is in
-[PROGRESS](../../../planning/PROGRESS.md); local art completion does not certify
+PROGRESS; local art completion does not certify
 gameplay, fraud prevention, backend integration, national ranking or release.

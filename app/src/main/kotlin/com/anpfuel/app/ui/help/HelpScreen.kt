@@ -28,7 +28,7 @@ import com.anpfuel.app.ui.theme.AnpContainerDefaults
  *
  * Plain-language contributor guidance, safety/legibility/condition
  * rules, moderation/report/appeal route and privacy note, grounded
- * in docs/product/COMMUNITY_MODERATION.md. Static content: no
+ * in docs/product/community/moderation.md. Static content: no
  * ViewModel, no network, no account needed. Reached from the Perfil
  * expert-tools list; invite flows stay out (no measured need, no
  * fake members).

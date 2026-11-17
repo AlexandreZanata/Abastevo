@@ -1,9 +1,5 @@
 # Abastevo Data
 
-Status: **PLANNED / RECONSTRUCTED**, 2026-11-11.
-Recovered from the surviving enterprise requirements, shared rules and backlog.
-The accepted F0 decisions and existing release gates govern any implementation.
-
 ## 1. Purpose
 
 Serve reproducible admitted datasets, methodology and analysis to an organization through scoped product access while preserving public basic access and excluding private company records.
@@ -33,11 +29,11 @@ Dataset definition records source, coverage, method and version. The organizatio
 
 ## 6. States and transitions
 
-Keys follow active, rotating, revoked and expired states in [the state catalog](../08-state-model.md). Revocation applies to the next request. Report files use the existing export lifecycle and private expiry. Rights-pending admission remains a hold on the affected dataset regardless of subscription state.
+Keys follow active, rotating, revoked and expired states in [the state catalog](../state-model.md). Revocation applies to the next request. Report files use the existing export lifecycle and private expiry. Rights-pending admission remains a hold on the affected dataset regardless of subscription state.
 
 ## 7. Roles and permissions
 
-The [Data permissions](../07-permissions.md) separate key management, consumption and report requests. Key scope cannot widen the organization's admitted capability. Staff account status and personal Premium give no Data key-management rights. Full private organization exports follow the distinct reporting contract.
+The [Data permissions](../permissions.md) separate key management, consumption and report requests. Key scope cannot widen the organization's admitted capability. Staff account status and personal Premium give no Data key-management rights. Full private organization exports follow the distinct reporting contract.
 
 ## 8. Offline, concurrency, idempotency and corrections
 

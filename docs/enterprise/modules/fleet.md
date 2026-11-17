@@ -1,8 +1,8 @@
 # Fleet and meters
 
-Status: **PLANNED**, 2026-11-10. Module codes `FLEET` and `METER`. Tasks: `EMP-FLEET-001…013` and `EMP-METER-001…007` in [backlog/ep05-fleet-meters](../backlog/ep05-fleet-meters.md).
+Module codes `FLEET` and `METER`.
 
-Evidence updated2026-11-14. The accepted private Fleet/Meter pure Go and Kotlin domains, actual asset persistence/routes (migration197) and current meter persistence/intake construction (migration198) now exist. [F2 execution](../evidence/f2-execution.md), [asset acceptance](../evidence/f2-fleet002-asset-persistence.md) and [meter evidence](../evidence/f2-meter002-persistence-intake.md) distinguish tested source from unfinished whole-task/integration/runtime gates; none certifies live deployment. Actual assignments, reservations, suppliers, maintained meter projections and their dependent screens remain owning backlog tasks. Personal data is not reused as organization data. The Android table `vehicle` (`data/src/main/kotlin/com/anpfuel/data/local/entity/VehicleEntity.kt`) is device-global, has no owner column and is bounded at three vehicles by `docs/product/VEHICLE_REGISTRATION_POLICY.md`; the server keeps personal vehicles as the `vehicles` dataset of the cloud protocol (`backend/internal/modules/cloudsync/domain/datasets.go`) (`IMPLEMENTED`). The personal ledger stores odometer values in metres and opens an append-only segment when an odometer is reset or replaced (`backend/db/migrations/000086_ledger_odometer.sql`, `IMPLEMENTED`); this module adopts the same idea for organization meters and shares no table with it. The driver-suite contract separates odometer readings from GPS estimates (B-BR-DRV-08 in `docs/product/DRIVER_SUITE_CONTRACT.md`; the module `backend/internal/modules/driver/` is `PARTIAL`, disabled by flag). Exact integer metres are an existing convention with shared vectors in `contracts/testdata/premium/` (`IMPLEMENTED`); seconds for hour meters follow BR-MONEY-002 (`PROPOSED`). Private source now lives in `backend/internal/modules/fleet/` and `com.anpfuel.domain.enterprise.fleet`/`meter`; the fleet management panel remains its owning `business-web/` task.
+Evidence updated2026-11-14. The accepted private Fleet/Meter pure Go and Kotlin domains, actual asset persistence/routes (migration197) and current meter persistence/intake construction (migration198) now exist. F2 execution, asset acceptance and meter evidence distinguish tested source from unfinished whole-task/integration/runtime gates; none certifies live deployment. Actual assignments, reservations, suppliers, maintained meter projections and their dependent screens remain owning backlog tasks. Personal data is not reused as organization data. The Android table `vehicle` (`data/src/main/kotlin/com/anpfuel/data/local/entity/VehicleEntity.kt`) is device-global, has no owner column and is bounded at three vehicles by `docs/product/vehicle-registration.md`; the server keeps personal vehicles as the `vehicles` dataset of the cloud protocol (`backend/internal/modules/cloudsync/domain/datasets.go`) (`IMPLEMENTED`). The personal ledger stores odometer values in metres and opens an append-only segment when an odometer is reset or replaced (`backend/db/migrations/000086_ledger_odometer.sql`, `IMPLEMENTED`); this module adopts the same idea for organization meters and shares no table with it. The driver-suite contract separates odometer readings from GPS estimates (B-BR-DRV-08 in `docs/product/driver-suite/README.md`; the module `backend/internal/modules/driver/` is `PARTIAL`, disabled by flag). Exact integer metres are an existing convention with shared vectors in `contracts/testdata/premium/` (`IMPLEMENTED`); seconds for hour meters follow BR-MONEY-002 (`PROPOSED`). Private source now lives in `backend/internal/modules/fleet/` and `com.anpfuel.domain.enterprise.fleet`/`meter`; the fleet management panel remains its owning `business-web/` task.
 
 ## 1. Purpose
 
@@ -161,7 +161,7 @@ Meters and readings:
 
 **UC-FLEET-08 — Choose an asset in the app.** Actor: member with `fleet.asset.read` on own assignments. Preconditions: reference data cached. Main flow: open the picker → see assigned assets with availability and its confirmation time, tanks and last known reading → choose one. Alternatives: no assignment → empty state naming who can assign; cached list older than the freshness limit → marked "não confirmado" (BR-OFFL-016); asset shown as not available → may still be chosen offline with a warning, and the server decides (BR-FLEET-027). Result: the operation carries the asset chosen.
 
-**UC-FLEET-09 — Two starts on the same asset.** Actor: system at intake. Main flow: two trip starts for one asset arrive → the first received is accepted and holds the asset → the second is accepted for review with `ASSET_BUSY` and the two declared intervals are shown to the reviewer ([trips](trips.md), [10-offline-sync](../10-offline-sync.md) §8 and §10.2). Alternatives: the held trip's finish arrives and its declared interval does not overlap the other → the item is resolved in favour by the system with that evidence recorded. Result: no trip is lost and the asset never has two active trips.
+**UC-FLEET-09 — Two starts on the same asset.** Actor: system at intake. Main flow: two trip starts for one asset arrive → the first received is accepted and holds the asset → the second is accepted for review with `ASSET_BUSY` and the two declared intervals are shown to the reviewer ([trips](trips.md), [10-offline-sync](../offline-sync.md) §8 and §10.2). Alternatives: the held trip's finish arrives and its declared interval does not overlap the other → the item is resolved in favour by the system with that evidence recorded. Result: no trip is lost and the asset never has two active trips.
 
 **UC-FLEET-10 — Attach an implement.** Actor: member with `fleet.asset.manage`. Main flow: choose the implement and the powered asset → state the start → attachment recorded; detach states the end. Alternatives: implement already attached elsewhere in that period → `CONFLICT`; powered asset is itself an implement → `VALIDATION_FAILED`. Result: trips of the powered asset list the implement while attached.
 
@@ -185,7 +185,7 @@ Meters and readings:
 
 ## 6. States and transitions
 
-State names are those of [08-state-model](../08-state-model.md) §3.
+State names are those of [08-state-model](../state-model.md) §3.
 
 ### 6.1 Asset lifecycle
 
@@ -259,7 +259,7 @@ Defaults: early tolerance 30 minutes; no-show tolerance 60 minutes, configurable
 
 ## 7. Roles and permissions
 
-| Permission | Used for | Roles in [07-permissions](../07-permissions.md) §7.3 |
+| Permission | Used for | Roles in [07-permissions](../permissions.md) §7.3 |
 |---|---|---|
 | `fleet.asset.read` | Lists, detail, availability, meter history | `OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `FINANCE`, `APPROVER`, `AUDITOR` in scope; `DRIVER` and `OPERATIONS_STAFF` on assigned assets |
 | `fleet.asset.manage` | Register, edit, lifecycle, tenure, allocation, transfer, tanks, meters, implements, document links | `OWNER`, `ADMIN`, `FLEET_MANAGER` |
@@ -276,7 +276,7 @@ Scope: `UNIT` and `COST_CENTRE` scopes cover an asset through its current alloca
 
 - **Offline in the app.** The asset list, assignments, tanks, accepted products, meters and the last known `VALID` reading of each meter come from the reference feed and show when they were confirmed (BR-OFFL-016). A reading is created offline, with its own identifier, either alone (`meter.reading.record`) or inside the operation that carries it (trip start, trip end, fueling, checklist). The app compares the typed value with the last known one and warns; it never blocks, because the server may know readings from other devices.
 - **Online only.** Register, lifecycle, tenure, transfer, assignment, reservation, block, supplier, correction, void, replacement, reset and rollover commands run in the panel and need the server (BR-OFFL-017).
-- **Concurrency on the server.** Intake serialises per meter (row lock on the meter) and per asset (row lock on the asset) for lifecycle, assignment and reservation commands. Period invariants are exclusion constraints; the one-active-trip rule is a partial unique index whose violation becomes a review item ([09-architecture](../09-architecture.md) §5). Asset edits carry the expected revision. Assignment endings caused by an employee termination or an asset disposal happen in the transaction of that change (EDR-165); an assignment ended before its start keeps an empty period.
+- **Concurrency on the server.** Intake serialises per meter (row lock on the meter) and per asset (row lock on the asset) for lifecycle, assignment and reservation commands. Period invariants are exclusion constraints; the one-active-trip rule is a partial unique index whose violation becomes a review item ([09-architecture](../architecture.md) §5). Asset edits carry the expected revision. Assignment endings caused by an employee termination or an asset disposal happen in the transaction of that change (EDR-165); an assignment ended before its start keeps an empty period.
 - **Idempotency.** Every command carries an operation identifier; a repeat returns the first result (BR-OFFL-004). A reading embedded in a trip or fueling keeps its own identifier, so a resend never creates a second reading.
 - **Corrections.** Asset fields are edited with revision history; identifiers that change keep the previous values in history. Readings are corrected only by supersession or void (BR-METER-013, 014). A suspect reading never holds its parent operation (BR-METER-011); a standalone reading that is suspect is answered `ACCEPTED_FOR_REVIEW` with its flag as the code.
 
@@ -374,7 +374,7 @@ All data is synthetic. Asset "Caminhão 07", usage basis `DISTANCE`, odometer M1
 | `RETROACTIVE` | Reading note | Inserted before a later reading; not a reason for `SUSPECT` |
 | `NO_READING_BEFORE`, `METER_GAP` | Reason of `INSUFFICIENT_DATA` | Usage cannot be computed for the span |
 
-`ASSET_BUSY`, `ASSET_UNAVAILABLE`, `STALE_REVISION` and `PERIOD_LOCKED` are defined in [10-offline-sync](../10-offline-sync.md) §10.2; `CONFLICT`, `VALIDATION_FAILED` and `LIMIT_REACHED` in [09-architecture](../09-architecture.md) §6.
+`ASSET_BUSY`, `ASSET_UNAVAILABLE`, `STALE_REVISION` and `PERIOD_LOCKED` are defined in [10-offline-sync](../offline-sync.md) §10.2; `CONFLICT`, `VALIDATION_FAILED` and `LIMIT_REACHED` in [09-architecture](../architecture.md) §6.
 
 ## 11. Screens
 
@@ -415,13 +415,13 @@ Acceptance criteria:
 13. A supplier linked to a catalog station changes no row of the public catalog.
 14. `usage(t1, t2)` across a replacement with an unknown final value returns `INSUFFICIENT_DATA` with `METER_GAP`, never a number.
 
-Dependencies: [organizations](organizations.md) (units, cost centres, settings); [identity](identity.md) (employee records, driver profile); [07-permissions](../07-permissions.md) (keys and scopes); [10-offline-sync](../10-offline-sync.md) (intake, reference feed, review queue); [09-architecture](../09-architecture.md) (schema and API conventions); [trips](trips.md) (active-use information, through a port the trip module implements); [maintenance](maintenance.md) (holds, expiry tracking); [documents](documents.md) (photos and files); EMP-PLAT-001, EMP-PLAT-002, EMP-PLAT-009.
+Dependencies: [organizations](organizations.md) (units, cost centres, settings); [identity](identity.md) (employee records, driver profile); [07-permissions](../permissions.md) (keys and scopes); [10-offline-sync](../offline-sync.md) (intake, reference feed, review queue); [09-architecture](../architecture.md) (schema and API conventions); [trips](trips.md) (active-use information, through a port the trip module implements); [maintenance](maintenance.md) (holds, expiry tracking); [documents](documents.md) (photos and files); EMP-PLAT-001, EMP-PLAT-002, EMP-PLAT-009.
 
 Risks:
 
 - Typing errors are frequent and a queue of suspect readings can grow: precise flags, automatic re-evaluation after a correction and a digest keep it short (BR-METER-011, 012).
 - A wrong rollover or replacement record distorts every later figure: only `meter.reading.correct` holders record them, each shows the implied usage before saving, and all are audited.
-- Individual assignments are heavy for fleets where everybody uses every vehicle: the bulk command covers it now; a pool by team is a possible evolution and would need a new scope rule in [07-permissions](../07-permissions.md).
+- Individual assignments are heavy for fleets where everybody uses every vehicle: the bulk command covers it now; a pool by team is a possible evolution and would need a new scope rule in [07-permissions](../permissions.md).
 - The permission matrix has no row for `fleet.supplier.manage`; the roles assumed in §7 need confirmation before EMP-FLEET-009 (`fleet.reservation.manage` was confirmed by org-permissions-v5, EDR-190).
 - Availability depends on three other modules; until they exist their ports answer "no hold", and the screen must not suggest more certainty than the cut has.
 - Device clocks far from real time disorder a series ordered by `occurred_at`: `FUTURE_INSTANT`, the `CLOCK_SKEW` flag of BR-TIME-006 and review of the affected readings bound the damage.

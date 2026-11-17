@@ -4,7 +4,7 @@ import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 /**
  * ANP public endpoints (UC-001 discovery).
- * See `docs/data-sources.md`.
+ * See `docs/architecture/data-sources.md`.
  *
  * SEC06-A approved origins: only the gov.br ANP hierarchy may supply
  * listing/download bytes — HTTPS, exact host, path under the listing

@@ -3,7 +3,7 @@ package com.anpfuel.domain.premium
 /**
  * PRM09-T01 owner scope, opaque cursors, durable commands and conflicts.
  *
- * Transport mirrors `docs/backend/ANDROID_INTEGRATION_GUIDE.md`: POST JSON
+ * Transport mirrors `docs/android/premium-integration.md`: POST JSON
  * with `family_id` plus `access_token`; writes add the exact body signed by
  * the account key and the bound `device_id`. Cursors are opaque HMAC strings
  * returned verbatim until empty; all responses are `no-store` without ETags.

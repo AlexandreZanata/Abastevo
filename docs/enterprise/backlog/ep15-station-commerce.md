@@ -1,14 +1,12 @@
 # EP15 — Station commerce and agreements
 
-Status: **PLANNED**, 2026-11-10.
-
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
-were reconstructed from [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md).
+were reconstructed from commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md).
 
 Local F1 requires M0 closure and protected integration of the current
 ADR-019 construction batch. See the
-[sequencing decision](../evidence/f0-m0-decisions.md#roadmap-sequencing).
+sequencing decision.
 
 The [commerce design](../modules/station-commerce.md) records the recovered scope. Explicit source separation, neutrality and narrow contractual sharing remain binding.
 
@@ -17,7 +15,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Publish commercial profile fields through reviewed station revisions.
 - **Rules and use cases:** REQ-15.1, BR-CLAIM-021, BR-CLAIM-035, BR-AUD-001
 - **Depends on:** EMP-CLAIM-007
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: authorized business fields · out: regulatory record overwrite
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -33,7 +31,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Record announced prices as a separate attributed source.
 - **Rules and use cases:** REQ-15.2, EDR-022, BR-SRC-001, BR-SRC-002
 - **Depends on:** EMP-CLAIM-007, EMP-PLAT-009
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: product, unit, condition, author, validity and history · out: community consensus writes
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -49,7 +47,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Keep announced, official, community and negotiated prices distinguishable.
 - **Rules and use cases:** REQ-15.2, BR-SRC-001, BR-TRUTH-006, BR-KPI-012
 - **Depends on:** EMP-STN-002
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: source-specific display and comparability · out: averaging sources
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -65,7 +63,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Publish only authorized labelled promotions with explicit validity.
 - **Rules and use cases:** REQ-15.3, BR-SRC-002, BR-TRUTH-006
 - **Depends on:** EMP-STN-002
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: bounded promotion lifecycle · out: purchased trust or concealed offer conditions
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -81,7 +79,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Route official replies and moderation requests through existing feedback rules.
 - **Rules and use cases:** REQ-15.3, BR-SRC-002, BR-CLAIM-021
 - **Depends on:** EMP-CLAIM-008
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: attributed representative response and reviewed request · out: deleting legitimate criticism
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -97,7 +95,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Submit catalog corrections through Directory governance.
 - **Rules and use cases:** REQ-14.7, BR-CLAIM-035, BR-SRC-004
 - **Depends on:** EMP-CLAIM-007
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: attributed suggestion · out: writing official catalog directly
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -113,7 +111,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Count only admitted interactions with privacy-preserving aggregation.
 - **Rules and use cases:** REQ-15.4, BR-PRIV-005, BR-PRIV-008, BR-SRC-005
 - **Depends on:** EMP-STN-001
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: documented purpose, thresholds and real observed counts · out: invented conversion or customer location marketing
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -129,7 +127,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Present authorized station commercial actions in the gated portal.
 - **Rules and use cases:** REQ-15.1, REQ-15.3, BR-CLAIM-021, BR-AUTH-015
 - **Depends on:** EMP-STN-001, EMP-STN-002, EMP-STN-004, EMP-STN-005, EMP-PLAT-008
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: dashboard, profile, price and feedback controls · out: enabling Postos from a company session alone
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -145,7 +143,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Summarize a network using only the viewer's authorized station scopes.
 - **Rules and use cases:** REQ-15.1, BR-CLAIM-033, BR-AUTH-004
 - **Depends on:** EMP-STN-008, EMP-CLAIM-009
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: scoped station summary · out: common-root inferred access
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -161,7 +159,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Prove commercial status cannot change trust or organic ordering.
 - **Rules and use cases:** BR-SRC-002, EDR-022, VAL-33
 - **Depends on:** EMP-STN-002
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: source, trust and ranking invariance tests · out: weakening the public ranking contract
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -177,7 +175,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Define agreement parties, scope, terms and validity.
 - **Rules and use cases:** REQ-15.5, EDR-023, BR-TEN-005, BR-MONEY-001
 - **Depends on:** EMP-PLAT-009
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: pure agreement and allowed field boundary · out: organization-wide sharing
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -193,7 +191,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Record two-party agreement proposal and lifecycle.
 - **Rules and use cases:** REQ-15.5, EDR-023, BR-AUD-001
 - **Depends on:** EMP-AGREE-001, EMP-CLAIM-007, EMP-ORG-011
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: authorized accept, suspend and end · out: unilateral expansion of shared fields
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -209,7 +207,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Maintain private negotiated price tables for valid agreements.
 - **Rules and use cases:** REQ-15.5, BR-SRC-001, BR-TEN-005, BR-MONEY-001
 - **Depends on:** EMP-AGREE-002
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: exact product, unit and conditions · out: public publication or mixing sources
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -225,7 +223,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Issue bounded expiring fueling authorizations and vouchers.
 - **Rules and use cases:** REQ-15.5, BR-TEN-005, BR-MONEY-001, BR-AUD-001
 - **Depends on:** EMP-AGREE-002, EMP-BUDG-003
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: limit, single use and cancellation · out: bearer code becoming general organization access
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -241,7 +239,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Redeem the authorized transaction online once with bounded attempts.
 - **Rules and use cases:** REQ-15.5, BR-TEN-005, BR-OFFL-017
 - **Depends on:** EMP-AGREE-004
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: current authority, voucher validation and replay · out: offline double redemption
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -257,7 +255,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Project the contracted transaction into fleet fueling and station settlement with minimal sharing.
 - **Rules and use cases:** REQ-15.6, EDR-013, EDR-023, BR-TEN-005, VAL-34
 - **Depends on:** EMP-AGREE-005, EMP-FUEL-002
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: allowlisted transaction facts and once-only origins · out: full fleet, employee, document or track visibility
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -273,7 +271,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Reconcile contracted statements without generating duplicate economic costs.
 - **Rules and use cases:** REQ-15.5, EDR-013, BR-MONEY-001, BR-TRUTH-001
 - **Depends on:** EMP-AGREE-006, EMP-FIN-005
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: scoped transaction and invoice references · out: claiming provider settlement
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -289,7 +287,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Present agreement and redemption workflows separately to each authorized party.
 - **Rules and use cases:** REQ-15.5, REQ-15.6, BR-AUTH-012, BR-TEN-005
 - **Depends on:** EMP-AGREE-004, EMP-AGREE-005, EMP-PLAT-008
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: company and station scoped views · out: shared unrestricted workspace
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -305,7 +303,7 @@ The [commerce design](../modules/station-commerce.md) records the recovered scop
 - **Objective:** Prove each cross-organization surface obeys the transaction allowlist.
 - **Rules and use cases:** REQ-15.6, EDR-023, BR-TEN-005, BR-PRIV-002, VAL-34
 - **Depends on:** EMP-AGREE-006
-- **Read first:** [commerce requirements](../17-traceability.md), [decisions](../16-decisions.md), [domain model](../06-domain-model.md) and [privacy](../11-privacy-security.md)
+- **Read first:** commerce requirements, [decisions](../decisions.md), [domain model](../domain-model.md) and [privacy](../privacy-security.md)
 - **Scope:** in: API, job, file and UI denials · out: tolerating private field leakage
 - **Areas:** existing: scoped station authority, profile, public source and organization finance ports · proposed: gated commerce and agreement consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.

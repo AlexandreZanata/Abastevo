@@ -1,211 +1,21 @@
 # EP07 — Tracking, routes and navigation
 
-Status: **PLANNED**, 2026-11-10.
-
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
-were reconstructed from [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md).
+were reconstructed from [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md).
 
 Local F1 requires M0 closure and protected integration of the current
 ADR-019 construction batch. See the
-[sequencing decision](../evidence/f0-m0-decisions.md#roadmap-sequencing).
+sequencing decision.
 
 The existing tracking specification governs detailed defaults, quality and platform behavior.
-
-### EMP-GPS-001 — Tracking session domain: trip-bound lifecycle, permission and quality states
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type DOM · size M · state LOCAL_DONE
-- **Objective:** Define trip-bound tracking, permission and quality state.
-- **Rules and use cases:** BR-GPS-001, BR-GPS-005, BR-GPS-008, BR-GPS-009, BR-GPS-010
-- **Depends on:** EMP-TRIP-001, EMP-GOV-005, EMP-GOV-006
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: pure session lifecycle · out: collection or provider use
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** A session belongs to one trip and stopping or pausing follows explicit state. The trip works without GPS.
-- **Acceptance:** A session belongs to one trip and stopping or pausing follows explicit state. The trip works without GPS.
-- **Negative cases:** Personal trip collected, duplicate session or missing permission hidden.
-- **Validation:** V-DOM · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 tracking session domain](../evidence/f4-gps001-tracking-session-domain.md)
-is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. A session opens only for an
-`IN_PROGRESS` organization trip of its driver from the visible trip screen
-(personal, implicit, duplicate, foreign and policy-off openings refused);
-start and resume carry the device permission explicitly and record a denied
-permission or a blocked notification as a visible cause; pause suspends,
-interruptions and reduced precision are typed causes, end is terminal, the
-trip never depends on the session, and track quality has one classification;
-all 359 shared Go/Kotlin vectors pass with 100% Go statements. The Android
-service, intake, processing and real-device acceptance remain open (EDR-271).
-
-### EMP-GPS-002 — Organization trip tracking service: explicit start from the trip screen, visible notification, location-guard update
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size L · state LOCAL_DONE
-- **Objective:** Start Android collection only from the authorized visible trip flow.
-- **Rules and use cases:** BR-GPS-002, BR-GPS-003, BR-GPS-004, BR-GPS-013, BR-GPS-014
-- **Depends on:** EMP-GPS-001, EMP-TRIP-005
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: existing coordinated location service and guard update · out: background-location permission or real tracking before approval
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** Collection has one listener, persistent visible notification and correct owner binding.
-- **Acceptance:** Collection has one listener, persistent visible notification and correct owner binding.
-- **Negative cases:** Hidden start, duplicate listener, foreign owner or collection after stop.
-- **Validation:** V-APP, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 organization trip tracking service](../evidence/f4-gps002-tracking-service.md)
-is LOCAL_DONE / INTEGRATION_PENDING, 2026-11-16. The driver reads the policy
-in force (`tracking/policy/mine` under `trip.trip.start`); the open trip offers
-tracking only under `OPTIONAL`/`EXPECTED`, shows the notice at each start and
-records denied permission or blocked notifications as attempts; the
-non-exported, never-sticky `location` foreground service listens only after
-consuming the visible trip screen's one-time grant, holds one listener, shows
-an ongoing notification with a stop action and re-checks permission,
-precision, notification, owner and trip every 30 seconds; every transition is
-a signed `gps.session.*` operation in the protected queue with the sealed
-tracking book, replayed through the GPS-001 domain; the finish ends the
-session at its own instant and a process death is found at the next opening
-as `PROCESS_STOPPED`/`DEVICE_RESTARTED`. The mobile guard allows exactly this
-fourth subscription. Trip pause/cancel/handover feeds (EMP-TRIP-021) and
-real-device acceptance remain open (EDR-271).
-
-### EMP-GPS-003 — Adaptive sampling, local buffer and batch envelope
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
-- **Objective:** Buffer bounded quality-labelled fixes durably for batch transport.
-- **Rules and use cases:** BR-GPS-012, BR-GPS-017, BR-GPS-018, BR-GPS-019, BR-GPS-020
-- **Depends on:** EMP-GPS-002
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: approved sampling and local checkpoint · out: claiming continuous coverage through gaps
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** Restart preserves the authorized buffer and documented sampling choices.
-- **Acceptance:** Restart preserves the authorized buffer and documented sampling choices.
-- **Negative cases:** Raw coordinates in telemetry, uncontrolled growth, lost checkpoint or fabricated fixes.
-- **Validation:** V-APP, V-SYNC, V-IDEM, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 adaptive sampling, local buffer and batch envelope](../evidence/f4-gps003-sampling-buffer.md)
-is LOCAL_DONE / INTEGRATION_PENDING (emulator acceptance OWED), 2026-11-16.
-The service records fixes by the documented `sampling-v1` defaults after a
-device-side filter (mock, stale, accuracy, implied speed counted, never
-stored), writes each recorded fix to the sealed `tracking-buffer` record
-before it counts (it survives a process death and is the recovery
-checkpoint), opens fix-level gaps (`SIGNAL_LOST`, `PROVIDER_DISABLED`,
-`MOCK_LOCATION`) after 180 s without an accepted fix and never records or
-seals across them, and seals pending fixes into `gps.track.batch`
-operations of at most 200 fixes and 8 KiB, pinned with Go by
-`track-batch-v1.psv`, removed from the buffer in the same protected write. The
-emulator acceptance is owed (the emulator is locked behind a credential nobody
-may enter); real-device acceptance remains owed (EDR-271).
-
-### EMP-GPS-004 — Track intake: batch endpoint, de-duplication and segment storage
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type DB · size L · state LOCAL_DONE
-- **Objective:** Intake authorized track batches with scope and duplicate protection.
-- **Rules and use cases:** BR-GPS-021, BR-GPS-022, BR-GPS-023, BR-GPS-039
-- **Depends on:** EMP-GPS-001, EMP-OFFL-002
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: batch validation and segment storage · out: private reads through upload authority
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** One accepted batch has one effect inside its declared permitted session.
-- **Acceptance:** One accepted batch has one effect inside its declared permitted session.
-- **Negative cases:** Foreign trip, repeated batch, out-of-session fixes or private coordinates in errors.
-- **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 track intake](../evidence/f4-gps004-track-intake.md) is LOCAL_DONE /
-INTEGRATION_PENDING, 2026-11-15. The six `gps.session.*` operations and
-`gps.track.batch` travel through the signed OFFL-002 intake (EDR-277): the
-first start opens the trip's one session only under the organization's
-recorded policy with its notice in force, every transition is an insert-only
-row replayed through the EMP-GPS-001 domain, and each accepted batch stores
-one insert-only segment (integer arrays and a `MULTIPOINT` of SRID 4326) with
-only the fixes inside a recording period while the trip runs; the session
-follows the trip's pauses, cancellation and finish (EMP-TRIP-011);
-resends replay byte for byte, reused identifiers are refused, overlapping and
-concurrent batches store each instant once (both orders on real PostGIS), and
-foreign, personal, implicit, oversized and policy-off cases store nothing.
-Held and late tracking, the policy writer, processing and the Android
-producer remain open; real-device acceptance is owed (EDR-271).
-
-### EMP-GPS-005 — Track processing: filtering, gaps, GPS distance and simplified geometry
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type JOB · size M · state LOCAL_DONE
-- **Objective:** Derive quality, gaps and simplified tracks from retained raw evidence.
-- **Rules and use cases:** BR-GPS-017, BR-GPS-023, BR-GPS-024, BR-GPS-025, BR-GPS-026
-- **Depends on:** EMP-GPS-004
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: scoped processing and method basis · out: filling missing movement
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** Derived geometry and distance record their quality and method, and retry converges.
-- **Acceptance:** Derived geometry and distance record their quality and method, and retry converges.
-- **Negative cases:** Outlier accepted, gap bridged silently, stale job overwrites a result or foreign segment used.
-- **Validation:** V-SQL, V-JOB, V-IDEM, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 track processing](../evidence/f4-gps005-track-processing.md) is LOCAL_DONE /
-INTEGRATION_PENDING, 2026-11-15. Storing a session's end, or a segment of an
-ended session, queues one `org-tracking-process` job keyed by the stored input
-(EDR-298); the job holds its queue row under its lease and the trip row, and
-writes one insert-only summary revision (migration 000246): fixes filtered and
-counted by reason (outside, accuracy above 50 m, implied speed above 70 m/s;
-coarse fixes never measured), gaps with reason and detector (not-recording
-spans with the session cause, `SIGNAL_LOST` after 180 s without a fix),
-coverage and quality through the EMP-GPS-001 function, GPS distance on the
-6 371 008.8 m sphere inside runs only (10 m steps, floored, method recorded,
-absent when unmeasurable) and a Douglas–Peucker geometry at 20 m (at most
-1 000 vertices, tolerance recorded, a derived `MULTILINESTRING` of SRID 4326).
-The database re-proves the exact stored input, the session's own totals and a
-strictly newer input, so retries, a job run twice, concurrent runs (both
-orders on real PostGIS) and stale jobs converge on one revision per input and
-a late batch supersedes with a new revision. The distance sources and
-divergence (GPS-006), replay (GPS-009), retention (GPS-011), a trip-finish
-trigger without the device's end and real-device acceptance (EDR-271) remain
-open.
-
-### EMP-GPS-006 — Distance sources on a trip and the divergence signal
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type DOM · size S · state LOCAL_DONE
-- **Objective:** Keep GPS, meter, planned and provider distances independent.
-- **Rules and use cases:** BR-GPS-027, BR-GPS-028, BR-GPS-029, BR-TRUTH-003
-- **Depends on:** EMP-GPS-005, EMP-METER-006
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: declared distance basis and divergence evidence · out: replacing a meter with a GPS estimate
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** A result states its source and missing data rather than a default.
-- **Acceptance:** A result states its source and missing data rather than a default.
-- **Negative cases:** Mixed sources, absent basis as zero or divergence described as misconduct.
-- **Validation:** V-DOM, V-MONEY · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 distance sources](../evidence/f4-gps006-distance-sources.md) are LOCAL_DONE /
-INTEGRATION_PENDING, 2026-11-16. A pure tracking evaluation keeps the
-odometer, GPS, planned and estimated distances apart, takes the odometer as
-the basis, the GPS distance only on a `PRECISE` track ("por GPS"), and
-otherwise states `INSUFFICIENT_DATA` with the reason; the divergence signal
-compares integers against 2 000 m and 10 % and only describes the difference.
-A server port (no route, EDR-318) proves `gps.track.read` in its transaction
-through the EMP-GPS-012 authority (without it the GPS source is withheld),
-reads the latest EMP-GPS-005 summary, takes the odometer from the METER-006
-usage between the trip's start and finish only when both readings are at
-those instants (a finish without its reading is `NO_FINAL_READING`, never
-0 m, EDR-319) and records the `LOCATION_TRACK` access before answering; no
-migration. The `trip.trip.read` route (EMP-TRIP-006), organization thresholds,
-the divergence outcome (UC-GPS-08), the `gps.divergence.detected` event and
-the planned and estimated sources (route owner) remain open.
 
 ### EMP-GPS-007 — Live position projection with staleness rules
 - **Meta:** module GPS · phase F5 · cut - · priority P1 · type API · size M · state TODO
 - **Objective:** Project the newest permitted live fix with freshness at read time.
 - **Rules and use cases:** BR-GPS-030, BR-GPS-031, BR-GPS-032, BR-GPS-039
 - **Depends on:** EMP-GPS-004
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: scoped latest position and age · out: showing old data as current
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -221,7 +31,7 @@ the planned and estimated sources (route owner) remain open.
 - **Objective:** Show authorized operations on the approved panel map.
 - **Rules and use cases:** BR-GPS-031, BR-GPS-032, BR-GPS-033, BR-TRUTH-006
 - **Depends on:** EMP-GPS-007, EMP-ROUTE-001, EMP-GPS-012
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: live view with freshness and accuracy · out: unconditional location access
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -237,7 +47,7 @@ the planned and estimated sources (route owner) remain open.
 - **Objective:** Replay an authorized retained track alongside trip events.
 - **Rules and use cases:** BR-GPS-024, BR-GPS-026, BR-GPS-033, BR-GPS-035
 - **Depends on:** EMP-GPS-005, EMP-TRIP-006, EMP-ROUTE-001
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: scope, gaps and event alignment · out: reconstructing deleted points
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -248,48 +58,12 @@ the planned and estimated sources (route owner) remain open.
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
-### EMP-GPS-010 — Tracking interruptions: permission, approximate-only, reboot, process death
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size M · state LOCAL_DONE
-- **Objective:** Handle permission and process interruptions with truthful gaps.
-- **Rules and use cases:** BR-GPS-007, BR-GPS-011, BR-GPS-012, BR-GPS-015, BR-GPS-024
-- **Depends on:** EMP-GPS-002
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: approximate-only, restart and interruption evidence · out: automatic hidden resume
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** An interruption stays visible and resumption follows explicit user and authority checks.
-- **Acceptance:** An interruption stays visible and resumption follows explicit user and authority checks.
-- **Negative cases:** Unapproved restart, missing gap, precision overclaim or buffer loss.
-- **Validation:** V-APP, V-SYNC, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 tracking interruptions](../evidence/f4-gps010-tracking-interruptions.md)
-is LOCAL_DONE / INTEGRATION_PENDING (emulator acceptance OWED), 2026-11-16.
-A recording session that this phone does not collect for is interrupted with
-the cause the device observes (`DEVICE_RESTARTED`, `PERMISSION_REVOKED`,
-`NOTIFICATION_BLOCKED`, otherwise `PROCESS_STOPPED`) at its last proof of
-recording: at the next opening of the trip screen and also as soon as the
-service, after the visible grant, cannot listen or go to the foreground. The
-trip screen lists every interruption with its cause and bounds, the ongoing
-notification states location off, no signal or simulated locations, batches
-are sealed per recording run and an earlier run's gap ends with it. A fix
-never claims more precision than its period or the permission granted with
-it (the reduction is written first, at the report's instant, or before
-listening). Every start or resume tap re-checks the policy in force (read
-online first when connected; `OFF` or never read refuses), the member's own
-open trip and that no other session is collected on the phone; no recovery,
-intent, worker or boot path resumes collection; each recorded fix stays in
-its owner's buffer or one batch. No server change (every cause was already
-accepted). Native and real-device acceptance remain owed (EDR-271); the
-long-stationary guard (BR-GPS-016) stays open.
-
 ### EMP-GPS-011 — Track retention: raw-point purge and summary retention
 - **Meta:** module GPS · phase F5 · cut - · priority P1 · type JOB · size S · state TODO
 - **Objective:** Purge expired raw location and retain only approved summaries.
 - **Rules and use cases:** BR-GPS-035, BR-GPS-036, BR-PRIV-009, BR-PRIV-011
 - **Depends on:** EMP-GPS-005
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: reviewed expiry, read-time denial and restore replay · out: inventing a legal period
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -300,38 +74,12 @@ long-stationary guard (BR-GPS-016) stays open.
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
-### EMP-GPS-012 — Location access permission and access audit
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type API · size S · state LOCAL_DONE
-- **Objective:** Gate and audit live and historical location reads separately.
-- **Rules and use cases:** BR-GPS-033, BR-AUTH-011, BR-AUD-003, BR-PRIV-021
-- **Depends on:** EMP-GPS-004, EMP-PRIV-005
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: authorized location access and support scope · out: deriving permission from trip read
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** Every sensitive read is scoped, current and audited.
-- **Acceptance:** Every sensitive read is scoped, current and audited.
-- **Negative cases:** Missing permission, failed audit yet bytes served or staff status alone grants access.
-- **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 location access audit](../evidence/f4-gps012-location-access-audit.md) is
-LOCAL_DONE / INTEGRATION_PENDING, 2026-11-15. Recorded tracks are read through
-`POST /v1/orgs/{org_id}/trips/{trip_id}/track/read` only under
-`gps.track.read` (a driver its own trips, an auditor recorded tracks, structural
-grants through the trip's stored unit), never from `trip.trip.read`, a staff
-assignment or another organization; every page is recorded as
-`LOCATION_TRACK` issued and accessed before it is served, and a failed record
-serves nothing. Live positions stay with EMP-GPS-007/008; real-device
-acceptance is owed (EDR-271).
-
 ### EMP-GPS-013 — Geofences with server-side evaluation and alerts
 - **Meta:** module GPS · phase F5 · cut - · priority P2 · type JOB · size M · state TODO
 - **Objective:** Evaluate approved geofences server-side with quality evidence.
 - **Rules and use cases:** BR-GPS-037, BR-GPS-038, BR-GPS-039
 - **Depends on:** EMP-GPS-004, EMP-NOTIF-001
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: scoped boundary state and bounded alerts · out: claiming presence from insufficient samples
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -347,7 +95,7 @@ acceptance is owed (EDR-271).
 - **Objective:** Raise scoped stale-tracker and long-stop observations.
 - **Rules and use cases:** BR-GPS-015, BR-GPS-016, BR-GPS-031, BR-GPS-038
 - **Depends on:** EMP-GPS-007, EMP-NOTIF-001
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: documented freshness and event facts · out: inferring intent or unrestricted notifications
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -358,43 +106,12 @@ acceptance is owed (EDR-271).
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
-### EMP-GPS-015 — App: tracking transparency (indicator, what is collected, session history)
-- **Meta:** module GPS · phase F4 · cut - · priority P1 · type APP · size S · state LOCAL_DONE
-- **Objective:** Make tracking purpose, active collection and own sessions visible to the employee.
-- **Rules and use cases:** BR-GPS-004, BR-GPS-034, BR-GPS-040, BR-PRIV-015
-- **Depends on:** EMP-GPS-002
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: indicator, notice and own history · out: a silent or misleading collector
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** Users can see when and why phone tracking is active and understand gaps.
-- **Acceptance:** Users can see when and why phone tracking is active and understand gaps.
-- **Negative cases:** Hidden status, collection after stop, personal session displayed as corporate or false remote-wipe promise.
-- **Validation:** V-APP, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 tracking transparency](../evidence/f4-gps015-tracking-transparency.md) is
-LOCAL_DONE / INTEGRATION_PENDING (emulator acceptance OWED), 2026-11-16. While
-this phone's organization collector listens, the header that every
-enterprise screen shares shows one indicator (organization, since when,
-precise or approximate, this phone's position and not the vehicle's, an open
-location-off or no-signal gap) derived only from the running collector, never
-from a stored session or the personal recorder; a stored recording session
-that the phone does not collect says so on the trip card. "Meu rastreamento"
-(SCR-GPS-04) shows, offline from the partition's sealed records, what is and
-is not collected, who sees it, the default retention, what stays on the phone
-(erased at the next contact after a revocation, never remotely when
-offline), the policy and notice last read, and the member's own sessions on
-this phone with their interruptions, gaps and approximate parts. No server
-read, route or migration; real-device acceptance owed (EDR-271).
-
 ### EMP-ROUTE-001 — Map components: reuse the Android map engine port and add the panel web map
 - **Meta:** module ROUTE · phase F5 · cut - · priority P1 · type INT · size M · state TODO
 - **Objective:** Reuse native map ports and admit a reviewed web map boundary.
 - **Rules and use cases:** EDR-016, EDR-017, BR-ROUTE-023, BR-ROUTE-024
 - **Depends on:** EMP-GOV-007, EMP-PLAT-008, EMP-PLAT-011
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: attribution and replaceable map consumers · out: unreviewed upstream reliance
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -410,7 +127,7 @@ read, route or migration; real-device acceptance owed (EDR-271).
 - **Objective:** Compute routes through the existing on-device engine port.
 - **Rules and use cases:** BR-ROUTE-009, BR-ROUTE-010, BR-ROUTE-024
 - **Depends on:** EMP-GOV-007
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: bounded typed request and attributed result · out: an unapproved server provider
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -426,7 +143,7 @@ read, route or migration; real-device acceptance owed (EDR-271).
 - **Objective:** Store versioned ordered route plans on scoped trips or missions.
 - **Rules and use cases:** BR-ROUTE-001, BR-ROUTE-002, BR-ROUTE-003, BR-ROUTE-004, BR-ROUTE-006, BR-ROUTE-008
 - **Depends on:** EMP-ROUTE-002, EMP-TRIP-009, EMP-TRIP-010
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: allowed waypoints and source basis · out: overwriting actual movement
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -437,37 +154,12 @@ read, route or migration; real-device acceptance owed (EDR-271).
 - **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
-### EMP-ROUTE-004 — Navigation phase 1: open the existing in-app route and guidance for a trip destination
-- **Meta:** module ROUTE · phase F4 · cut - · priority P1 · type APP · size S · state LOCAL_DONE
-- **Objective:** Open existing in-app guidance for an authorized trip destination.
-- **Rules and use cases:** BR-ROUTE-011, BR-ROUTE-012, BR-ROUTE-015
-- **Depends on:** EMP-TRIP-005
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
-- **Scope:** in: initial in-app handoff with explicit context · out: uploading guidance-only location or external fallback
-- **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** The existing route engine receives the approved destination and its use does not imply tracking.
-- **Acceptance:** The existing route engine receives the approved destination and its use does not imply tracking.
-- **Negative cases:** Wrong trip, silent upload, unsupported destination or external handoff replacing the planned flow.
-- **Validation:** V-APP, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Tracking requires its legal, device and capability gates. Actual devices must prove lifecycle behavior before real collection.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-[F4 navigation hand-off](../evidence/f4-route004-navigation-handoff.md) is
-LOCAL_DONE / INTEGRATION_PENDING, 2026-11-16. "Navegar" on a mission of the
-EMP-TRIP-021 copy and on a trip whose start names that mission hands only the
-plan's free-text destination to the existing in-app route preview as its
-destination search (`MapRouteTarget.Address`, confirmed by the driver); a unit
-destination, a missing plan, a trip without mission and a mission no longer
-in the copy show why and open nothing; it records, queues and sends nothing
-and never opens another app. No server change, route or migration.
-
 ### EMP-ROUTE-005 — In-app route preview
 - **Meta:** module ROUTE · phase F5 · cut - · priority P1 · type APP · size M · state TODO
 - **Objective:** Preview a route with attributed estimates and revision.
 - **Rules and use cases:** BR-ROUTE-004, BR-ROUTE-005, BR-ROUTE-006, BR-ROUTE-008
 - **Depends on:** EMP-ROUTE-001, EMP-ROUTE-003
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: on-device preview and explicit selection · out: claiming actual distance or live traffic
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -483,7 +175,7 @@ and never opens another app. No server change, route or migration.
 - **Objective:** Coordinate trip guidance and authorized tracking as separate location consumers.
 - **Rules and use cases:** BR-ROUTE-013, BR-ROUTE-014, BR-ROUTE-015, BR-GPS-013
 - **Depends on:** EMP-ROUTE-005, EMP-GPS-002
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: trip-aware guidance and clean lifecycle · out: a duplicate listener or navigation granting collection authority
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -499,7 +191,7 @@ and never opens another app. No server change, route or migration.
 - **Objective:** Provide safe quick navigation actions and defer detailed entry to a stop.
 - **Rules and use cases:** BR-ROUTE-018, BR-ROUTE-019
 - **Depends on:** EMP-ROUTE-006
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: accessible driving view and queued stop-only actions · out: forced detailed data entry while driving
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -515,7 +207,7 @@ and never opens another app. No server change, route or migration.
 - **Objective:** Suggest route stations using comparable prices and stated detour basis.
 - **Rules and use cases:** BR-ROUTE-020, BR-ROUTE-021, BR-ROUTE-022, BR-SRC-001, BR-SRC-002
 - **Depends on:** EMP-ROUTE-002, EMP-FUEL-014
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: scoped route suggestions and source freshness · out: promised savings or paid ranking
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -531,7 +223,7 @@ and never opens another app. No server change, route or migration.
 - **Objective:** Preserve usable guidance when a route or network source is unavailable.
 - **Rules and use cases:** BR-ROUTE-017, BR-GPS-005, BR-TRUTH-003
 - **Depends on:** EMP-ROUTE-006
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: supported offline route state and explicit degradation · out: invented route certainty
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
@@ -547,7 +239,7 @@ and never opens another app. No server change, route or migration.
 - **Objective:** Rehearse map and routing adapter replacement through existing ports.
 - **Rules and use cases:** BR-ROUTE-023, BR-ROUTE-024, CX-10
 - **Depends on:** EMP-ROUTE-002, EMP-ROUTE-006
-- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../11-privacy-security.md) and [validation](../15-validation.md)
+- **Read first:** [tracking and routing specification](../modules/gps-navigation.md), [privacy](../privacy-security.md) and [validation](../testing.md)
 - **Scope:** in: approved fixture substitution and contract tests · out: new unreviewed dependencies
 - **Areas:** existing: native map and location ports, scoped storage and jobs · proposed: reviewed organization tracking and routing consumers
 - **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.

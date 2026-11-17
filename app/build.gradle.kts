@@ -51,7 +51,7 @@ val prepareLicenseAssets by tasks.registering(Sync::class) {
     from(rootProject.file("THIRD_PARTY_NOTICES.md"))
     from(rootProject.file("maps/engine/vendor/LICENSE")) { rename { "CoMaps-LICENSE.txt" } }
     from(rootProject.file("maps/engine/vendor/NOTICE")) { rename { "CoMaps-NOTICE.txt" } }
-    from(rootProject.file("docs/backend/evidence/maps/map14-t07/THIRD_PARTY_NOTICES.md")) { rename { "CoMaps-THIRD_PARTY_NOTICES.md" } }
+    from(rootProject.file("release/notices/comaps/THIRD_PARTY_NOTICES.md")) { rename { "CoMaps-THIRD_PARTY_NOTICES.md" } }
 }
 
 android {

@@ -1,14 +1,12 @@
 # EP13 — Intelligence, findings and reports
 
-Status: **PLANNED**, 2026-11-10.
-
 Task IDs, titles, phase, cut, type, effort, priority and dependencies
 follow the existing [generated index](INDEX.md). Task descriptions
-were reconstructed from the [intelligence, findings and reports](../modules/intelligence.md) specification, [validation scenarios](../15-validation.md) and [privacy and security](../11-privacy-security.md).
+were reconstructed from the [intelligence, findings and reports](../modules/intelligence.md) specification, [validation scenarios](../testing.md) and [privacy and security](../privacy-security.md).
 
 Local F1 requires M0 closure and protected integration of the current
 ADR-019 construction batch. See the
-[sequencing decision](../evidence/f0-m0-decisions.md#roadmap-sequencing).
+sequencing decision.
 
 Indicators and findings use scoped source records and their recorded methods. Organization exports retain their independent permissions, audit, expiry and real-data gates, including when requested for closure.
 
@@ -17,7 +15,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Keep indicator definitions and missing-data semantics in a single registry.
 - **Rules and use cases:** BR-KPI-001, BR-KPI-002, BR-KPI-003, BR-KPI-007, BR-KPI-015, BR-TRUTH-003
 - **Depends on:** EMP-PLAT-009
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4 and 10, [shared business rules](../04-business-rules.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4 and 10, [shared business rules](../business-rules.md) §4
 - **Scope:** in: identifiers, formula basis, inclusion, units, versions and insufficiency · out: persistence and screen calculations
 - **Areas:** existing: exact-value conventions and shared vectors · proposed: pure indicator registry
 - **Steps:** Pin formula and coverage metadata. Test missing inputs, zero denominators, version changes and exact values.
@@ -33,7 +31,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Build scoped spend and volume projections by documented dimension and period.
 - **Rules and use cases:** BR-KPI-002, BR-KPI-006, BR-KPI-007, BR-KPI-008, BR-KPI-009, BR-KPI-010, BR-KPI-011
 - **Depends on:** EMP-KPI-001, EMP-EXP-002, EMP-FUEL-002
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4 and 10.2–10.3, [shared business rules](../04-business-rules.md) §§4–5
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4 and 10.2–10.3, [shared business rules](../business-rules.md) §§4–5
 - **Scope:** in: spend and volume read models with reporting-day attribution · out: recognizing a new cost
 - **Areas:** existing: expense, fueling, organization and time inputs · proposed: scoped read projections
 - **Steps:** Pin inclusion, source revisions, scope and dimension grouping. Recompute affected periods from approved facts and label the pending part explicitly.
@@ -49,7 +47,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Compute consumption and operating ratios over matching observed inputs.
 - **Rules and use cases:** BR-KPI-003, BR-KPI-004, BR-KPI-005, BR-KPI-006, BR-KPI-009, BR-KPI-016, BR-MONEY-008
 - **Depends on:** EMP-KPI-001, EMP-FUEL-008, EMP-FUEL-010
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4 and 10.2–10.5, [validation scenarios](../15-validation.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4 and 10.2–10.5, [validation scenarios](../testing.md) §4
 - **Scope:** in: consumption and cost-per-distance or hour using compatible observed windows · out: estimating missing usage
 - **Areas:** existing: fueling intervals, meter readings and exact-value registry · proposed: scoped ratio projections
 - **Steps:** Compare ratios of sums across a mixed sample. Pin denominator, missing coverage, measurement gap and sample-size cases.
@@ -81,7 +79,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Compare a fueling against a matching reference and preserve the methodology.
 - **Rules and use cases:** BR-KPI-012, BR-KPI-013, BR-KPI-014, BR-KPI-015, BR-SRC-001, BR-TRUTH-005, UC-KPI-03, VAL-15
 - **Depends on:** EMP-KPI-001, EMP-FUEL-014
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5 and 10.6–10.7, [validation scenarios](../15-validation.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5 and 10.6–10.7, [validation scenarios](../testing.md) §4
 - **Scope:** in: reference comparability and exact difference · out: blending sources or claiming losses or savings
 - **Areas:** existing: source-specific reference snapshots and exact-value registry · proposed: pure comparison engine
 - **Steps:** Pin the comparable and incompatible examples. Preserve source, coverage, method parameters and revision in each result.
@@ -97,7 +95,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Present scoped indicator values and explain their source records in the company panel.
 - **Rules and use cases:** BR-KPI-003, BR-KPI-007, BR-KPI-008, BR-KPI-011, UC-KPI-01, UC-KPI-02
 - **Depends on:** EMP-KPI-002, EMP-KPI-003, EMP-PLAT-008
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§5 and 11, [permission matrix](../07-permissions.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§5 and 11, [permission matrix](../permissions.md) §4
 - **Scope:** in: approved dashboard, scope labels and drill-down · out: computing values in the client and revealing unpermitted records
 - **Areas:** existing: /empresas/ scaffold and indicator APIs · proposed: scoped overview and detail screens
 - **Steps:** Exercise approved versus pending values, insufficient data, superseded revisions and drill-down permission in the normal panel.
@@ -113,7 +111,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Represent reviewable findings with bounded evidence, severity and lifecycle.
 - **Rules and use cases:** BR-FIND-001, BR-FIND-002, BR-FIND-003, BR-FIND-004, BR-FIND-006, BR-FIND-008, BR-FIND-009
 - **Depends on:** EMP-PLAT-003, EMP-AUTH-003
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§3–4, 6 and 10.8, [permission matrix](../07-permissions.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§3–4, 6 and 10.8, [permission matrix](../permissions.md) §4
 - **Scope:** in: catalog, persistent evidence references and finding lifecycle · out: automatic record sanctions or detection jobs
 - **Areas:** existing: organization audit and authorization · proposed: scoped finding model and repository
 - **Steps:** Pin transitions, justification and same-subject races. Persist the evidence basis and verify at most one open finding per scoped subject and type.
@@ -129,7 +127,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Detect documented duplicate fueling, incoherent reading and tank-capacity signals.
 - **Rules and use cases:** BR-FIND-001, BR-FIND-002, BR-FIND-003, BR-FIND-004, BR-FIND-010, BR-FIND-012, FT-001, FT-002, FT-003, UC-FIND-01
 - **Depends on:** EMP-FIND-001, EMP-FUEL-006, EMP-METER-003, EMP-FUEL-005
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§5 and 10.8–10.9, [validation scenarios](../15-validation.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§5 and 10.8–10.9, [validation scenarios](../testing.md) §4
 - **Scope:** in: first catalog detector batch and deduplication · out: automatic void, denial or investigation claims
 - **Areas:** existing: accepted fueling and meter events · proposed: first scoped detector workers
 - **Steps:** Pin the catalog thresholds and required inputs. Test legitimate replay, missing input and repeated jobs.
@@ -145,7 +143,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Detect documented consumption, document and price differences using sufficient evidence.
 - **Rules and use cases:** BR-FIND-001, BR-FIND-002, BR-FIND-003, BR-FIND-004, BR-FIND-012, BR-KPI-012, BR-KPI-016, FT-004, FT-005, FT-006, UC-FIND-01
 - **Depends on:** EMP-FIND-001, EMP-FUEL-008, EMP-DOC-010, EMP-KPI-005
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§5 and 10.6–10.9, [validation scenarios](../15-validation.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§5 and 10.6–10.9, [validation scenarios](../testing.md) §4
 - **Scope:** in: second catalog detector batch and explainable evidence · out: claiming misconduct or analysing held work
 - **Areas:** existing: consumption intervals, reconciliation and stored price comparisons · proposed: additional scoped detector workers
 - **Steps:** Pin accepted samples, comparable reference conditions and divergence cases. Verify that insufficient evidence produces no finding.
@@ -161,7 +159,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Let authorized company reviewers take and decide a finding without editing its source record.
 - **Rules and use cases:** BR-FIND-005, BR-FIND-006, BR-FIND-007, BR-FIND-008, BR-FIND-009, BR-AUD-001, UC-FIND-02
 - **Depends on:** EMP-FIND-001, EMP-PLAT-008
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§5–6 and 11, [permission matrix](../07-permissions.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§5–6 and 11, [permission matrix](../permissions.md) §4
 - **Scope:** in: reviewer queue, assignment, decision and visible justification · out: automatically applying amendments or voids
 - **Areas:** existing: /empresas/ panel and finding repository · proposed: scoped review endpoints and views
 - **Steps:** Exercise assignment, denied self-review, required justification, simultaneous decisions and read permissions on linked evidence.
@@ -177,7 +175,7 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Objective:** Reprocess findings with identifiable run metadata while preserving decisions.
 - **Rules and use cases:** BR-FIND-002, BR-FIND-010, BR-FIND-011, BR-FIND-012, BR-TRUTH-004, UC-FIND-04
 - **Depends on:** EMP-FIND-002, EMP-FIND-003
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–6 and 10, [architecture](../09-architecture.md) §7
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–6 and 10, [architecture](../architecture.md) §7
 - **Scope:** in: versioned run, bounded range and supersession · out: rewriting decided findings
 - **Areas:** existing: detector workers and job deduplication · proposed: scoped reprocessing and run history
 - **Steps:** Test changed methods, removed input, overlapping runs and interrupted execution. Record the run that changed each result.
@@ -188,59 +186,12 @@ Indicators and findings use scoped source records and their recorded methods. Or
 - **Risks and assumptions:** Configuration changes apply as documented and do not silently rewrite evidence.
 - **Done when:** Failure, concurrent run and replay tests yield one consistent version history.
 
-### EMP-RPT-001 — Asynchronous export infrastructure: job, private file and expiring link
-- **Meta:** module RPT · phase F3 · cut - · priority P1 · type JOB · size M · state LOCAL_DONE
-- **Objective:** Provide scoped asynchronous exports with private expiring delivery.
-- **Rules and use cases:** BR-RPT-001, BR-RPT-002, BR-RPT-004, BR-RPT-005, BR-RPT-009, BR-PRIV-004, UC-RPT-01
-- **Depends on:** EMP-PLAT-006, EMP-PLAT-010, EMP-PRIV-005
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–6 and 10, [architecture](../09-architecture.md) §§7 and 9, [privacy and security](../11-privacy-security.md) §4
-- **Scope:** in: export job lifecycle, bounded work, private file and audited capability · out: defining every export format
-- **Areas:** existing: scoped jobs, private storage and access audit · proposed: export dispatcher and private delivery
-- **Steps:** Prove job and file state through permission loss, expiry, duplicate work and storage failure. Separate ready files from provisional output.
-- **Deliverable:** A scoped export infrastructure with expiry and audit.
-- **Acceptance:** The worker rechecks authority, publishes only complete private results and issues a short-lived requester-bound API capability.
-- **Negative cases:** Wrong requester, permission revoked before processing, incomplete file served, expired link works or unbounded work truncates the result.
-- **Validation:** V-API, V-SQL, V-JOB, V-AUTHZ, V-ISO, V-IDEM, V-PRIV · migration: additive export state · rollback: stop new jobs and keep existing data private
-- **Risks and assumptions:** Use the existing job and object store. Keep worker and download authority independently checked.
-- **Done when:** Normal request, processing, retry, expiry and audited download pass on isolated storage and database fixtures.
-
-[F3 export infrastructure](../evidence/f3-rpt001-export-infrastructure.md) is
-LOCAL_DONE / INTEGRATION_PENDING, 2026-11-14. Module `orgexport` with
-migration 000207: idempotent audited requests, a fenced worker that re-checks
-the requester and fails loudly at bounded ceilings, verified create-only
-private files, expiry with confirmed deletion and audited 5-minute
-requester-bound downloads, on real PostGIS and MinIO. Real formats (RPT-002),
-the export matrix (AUTH-011), notifications and F3 remain open.
-
-### EMP-RPT-002 — CSV and spreadsheet exports for operational lists
-- **Meta:** module RPT · phase F3 · cut - · priority P1 · type API · size M · state LOCAL_DONE
-- **Objective:** Export operational lists using scoped, exact and non-executable CSV or spreadsheet data.
-- **Rules and use cases:** BR-RPT-002, BR-RPT-003, BR-RPT-006, BR-RPT-007, BR-RPT-008, BR-RPT-010, BR-RPT-011, UC-RPT-01
-- **Depends on:** EMP-RPT-001, EMP-AUTH-011
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5 and 10.10, [permission matrix](../07-permissions.md) §4
-- **Scope:** in: list filters, approved tabular formats, manifest basis and exact values · out: arbitrary spreadsheets or widened access
-- **Areas:** existing: export jobs and standard CSV writer precedent · proposed: scoped list serializers
-- **Steps:** Pin deterministic row ordering, exact units, sensitive column omissions and inert text encoding. Review any spreadsheet dependency before offering the format.
-- **Deliverable:** Authorized operational list exports with reproducible fixtures.
-- **Acceptance:** Files include the documented basis. Text remains text and excluded columns are reported without exposing their values.
-- **Negative cases:** Formula interpretation, foreign rows, stale requester scope, format advertised before review or incomplete output returned as ready.
-- **Validation:** V-API, V-SQL, V-AUTHZ, V-ISO, V-MONEY, V-PRIV · migration: none beyond export infrastructure · rollback: disable new formats
-- **Risks and assumptions:** A format that has not been admitted stays unavailable. Prefer existing standard-library options. Each format implements `Format.ReadPermission()` with the list's read key (EMP-AUTH-011); sensitive columns keep their own per-column permission and omission note.
-- **Done when:** Exact, scoped and inert output passes round-trip fixtures.
-
-- 2026-11-14 LOCAL_DONE (Validation PASS, INTEGRATION_PENDING): admits
-  `fleet.asset_list.csv`, `fleet.meter_reading_list.csv` and `idn.employee_list.csv` as ZIP
-  packages (`<list>.csv` + `manifest.json`): exact integers, apostrophe-inert text, deterministic
-  order, omitted contact/capture columns reported with reasons, re-check and read-only read in one
-  scoped transaction. Retained: XLSX (CX-10 review), document list, row scoping for structural
-  grants, inline small CSV. [Evidence](../evidence/f3-rpt002-list-exports.md).
-
 ### EMP-RPT-003 — PDF reports: trip logbook, fueling statement and period summary
 - **Meta:** module RPT · phase F6 · cut - · priority P1 · type JOB · size M · state TODO
 - **Objective:** Render authorized human-readable trip and fueling reports from the same basis as the panel.
 - **Rules and use cases:** BR-RPT-002, BR-RPT-003, BR-RPT-007, BR-RPT-008, BR-RPT-011, BR-RPT-015, UC-RPT-02
 - **Depends on:** EMP-RPT-001, EMP-TRIP-004, EMP-FUEL-003
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5 and 10.10, [privacy and security](../11-privacy-security.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5 and 10.10, [privacy and security](../privacy-security.md) §4
 - **Scope:** in: trip logbook, fueling statement and period summary PDF where approved · out: payroll or working-hours claims
 - **Areas:** existing: export job pipeline and report input ports · proposed: reviewed PDF renderer
 - **Steps:** Verify dependency admission, basis fields, displayed rounding and operational wording on every logbook page. Exercise unavailable-format and failed-render cases.
@@ -256,7 +207,7 @@ the export matrix (AUTH-011), notifications and F3 remain open.
 - **Objective:** Run scheduled reports under each recipient's current permission and scope.
 - **Rules and use cases:** BR-RPT-002, BR-RPT-004, BR-RPT-014, BR-AUTH-014, UC-RPT-03
 - **Depends on:** EMP-RPT-002, EMP-NOTIF-001
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5 and 6, [architecture](../09-architecture.md) §7
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5 and 6, [architecture](../architecture.md) §7
 - **Scope:** in: approved schedule, per-recipient export and in-app link · out: sending report attachments or wider recipient data
 - **Areas:** existing: export dispatcher, organization notices and time conventions · proposed: scoped report schedule runner
 - **Steps:** Exercise owner and recipient permission loss, suspended organizations and retried triggers. Deduplicate each scheduled job.
@@ -272,7 +223,7 @@ the export matrix (AUTH-011), notifications and F3 remain open.
 - **Objective:** Produce a complete, verifiable export for an authorized organization and its closure workflow.
 - **Rules and use cases:** BR-RPT-002, BR-RPT-003, BR-RPT-004, BR-RPT-005, BR-RPT-009, BR-RPT-012, BR-AUTH-010, BR-PRIV-012, UC-RPT-04
 - **Depends on:** EMP-RPT-001
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5, 10.10 and 12, [organization lifecycle](../modules/organizations.md), [privacy and security](../11-privacy-security.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5, 10.10 and 12, [organization lifecycle](../modules/organizations.md), [privacy and security](../privacy-security.md) §4
 - **Scope:** in: category inventory, deterministic files and per-category manifest for scoped portability or closure · out: bypassing retention, permissions or existing erasure
 - **Areas:** existing: export jobs, organization data inventory and standard ZIP/CSV tooling · proposed: full organization export job and consumer contract
 - **Steps:** Require fresh organization-scope authority at request and current scope at execution and download. Verify category coverage, counts and hashes and notify all owners.
@@ -288,7 +239,7 @@ the export matrix (AUTH-011), notifications and F3 remain open.
 - **Objective:** Expose scoped append-only audit history to authorized company members.
 - **Rules and use cases:** BR-RPT-005, BR-RPT-013, BR-AUD-004, BR-AUD-006, UC-RPT-05
 - **Depends on:** EMP-PLAT-003, EMP-AUTH-011, EMP-PLAT-008
-- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5 and 11, [permission matrix](../07-permissions.md) §4
+- **Read first:** [intelligence, findings and reports](../modules/intelligence.md) §§4–5 and 11, [permission matrix](../permissions.md) §4
 - **Scope:** in: read-only audit list, filters and authorized target links · out: editing audit or surfacing sensitive content
 - **Areas:** existing: organization audit records, scoped exports and panel scaffold · proposed: audit viewer
 - **Steps:** Exercise actor, action, target and period filters. Verify a target link requires the underlying read permission and export writes its own audit.

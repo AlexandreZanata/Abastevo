@@ -1,25 +1,46 @@
-# Shared contract workspace
+# Contracts
 
-Status: base OpenAPI v1 (draft, unpublished) plus golden API vectors since
-P01-T11. [API_PLAN](../docs/backend/API_PLAN.md) defines behavior; domain
-endpoints land contract-first in later tasks. [ANP_INGESTION](../docs/backend/ANP_INGESTION.md) specifies shared golden fixtures for P02.
+Language-neutral contracts shared by the Go backend, the Kotlin app and the
+Rust preparers: the HTTP API schema, versioned policy/format files and golden
+vectors that every implementation must reproduce. No code lives here.
 
-Directories: `openapi/`, `testdata/anp/`, `testdata/api/`, `testdata/identity/`, `testdata/consensus/`, `testdata/map-discovery/`, `map/`, `testdata/map/`. Each fixture has format version, stable ID, source/provenance, expected values and explicit legacy Android differences. Use synthetic identities/images only. Backend consumes fixtures first; Kotlin harnesses begin after G09 in P10.
+## Layout
 
-`testdata/map-discovery/cases-v1.json` freezes MAP-01 source-mode, unknown-price,
-combined-site, missing-geometry, source-race and rights-blocked behavior. It is a
-contract fixture, not a published API schema.
+| Path | Contents |
+|------|----------|
+| `openapi/v1.yaml` | The `/v1` HTTP API (OpenAPI 3.1), linted with `openapi/vacuum-rules.yaml`. |
+| `openapi/*-planned.json` | Proposed APIs (`x-implementation-status: planned`), not live endpoints. |
+| `testdata/<area>/` | Versioned golden vectors (API, identity, ANP, quality, registry, map, enterprise, payments, …). |
+| `admin/`, `ev/`, `map/`, `premium/`, `station-prep/` | Versioned catalogs, profiles, JSON schemas and source-format specs. |
 
-`map/` and `testdata/map/` freeze MAP-03 assertion, native-manifest and prepared
-envelope formats with Rust/Go/Kotlin readers.
+Consumers: `backend/internal/platform/apicontract` and module tests (Go),
+`domain/` tests (Kotlin) and `tools/station-prep` (Rust).
 
-## Pinned checks (run from the repository root unless noted)
+## Checks
+
+From the repository root:
 
 ```sh
-go install github.com/daveshanley/vacuum@v0.30.6   # one-time; MIT
 vacuum lint -r contracts/openapi/vacuum-rules.yaml contracts/openapi/v1.yaml --no-update-check
-cd backend && go test ./internal/platform/apicontract/...  # golden vectors vs schemas
+(cd backend && go test -count=1 ./internal/platform/apicontract/...)
+./gradlew :domain:test          # Kotlin vector consumers
+make check-rust                 # Rust consumers
 ```
 
-Rules: unpublished draft only; never overwrite a published contract; new
-endpoints are added to `openapi/v1.yaml` with vectors before handlers exist.
+`vacuum` is pinned at `v0.30.6` (`go install github.com/daveshanley/vacuum@v0.30.6`).
+Keep `-count=1`: the Go test cache does not track these files. Both checks run
+in `scripts/check-backend-fast.sh` and `make quick-verify`.
+
+## Rules
+
+- Contract first: add or change the schema and its vectors before the handler.
+- A published contract is never overwritten, only superseded by a new version
+  (`-v1`, `-v2`, …). No silent enum rename or unit/amount reinterpretation.
+- Every fixture carries a format version, stable ID and provenance, and uses
+  synthetic identities, images and locations only.
+- `*-planned.json` files are proposals; live endpoints are specified in
+  `v1.yaml`.
+
+Behavior and vocabulary: [API](../docs/backend/api.md) ·
+[Domain model](../docs/backend/domain-model.md) ·
+[Testing](../docs/backend/testing.md).

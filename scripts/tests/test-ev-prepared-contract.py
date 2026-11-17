@@ -231,7 +231,7 @@ class PreparedContractTest(unittest.TestCase):
 
     def test_real_source_gates_and_profile_pins(self):
         registry = json.loads(v.REGISTRY.read_bytes())
-        evidence = json.loads((ROOT / 'docs/backend/evidence/ev-support/EE-01-samples.json').read_bytes())
+        evidence = json.loads((ROOT / 'scripts/tests/testdata/ev-prepared-samples.json').read_bytes())
         ocm, pbe, synthetic = registry['profiles']
         self.assertEqual(ocm['source_revision'], evidence['ocm_commit'])
         self.assertEqual(ocm['reference_sha256'], evidence['reference_sha256'])

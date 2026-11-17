@@ -1,130 +1,73 @@
-# Staging k3s source of truth (R2)
+# Staging k3s manifests
 
-These files are the captured live objects in namespace `abastevo-temp` as of
-2026-10-27. They are review artifacts and the baseline for the executor; they
-are not applied by this directory's tooling.
+Reviewed desired state of the staging namespace `abastevo-temp` on the k3s
+cluster of VPS 72.60.147.2 (https://abastevo.com.br). Nothing in this directory
+applies them: operators apply reviewed changes by hand, and the deploy agent
+only patches images and switches the landing release
+([agent](../../deploy/agent/README.md)).
 
-The reviewed executor RBAC lives in `rbac/deploy-agent-rbac.yaml`; it is not
-part of the captured-object diff and is not applied here.
+## Files
 
-Captured objects:
+| File | Object |
+|------|--------|
+| `api-deployment.yaml` | Deployment `abastevo-temp-api`: `api` and `worker` containers, rolled out together. |
+| `storage-deployment.yaml`, `storage-service.yaml`, `storage-configmap.yaml` | Singleton private S3 storage `abastevo-temp-storage` (`Recreate`, ClusterIP only, start script). |
+| `web-deployment.yaml`, `web-caddy-configmap.yaml` | Web Caddy serving the landing, portal, `/admin/` and `/empresas/`; the ConfigMap mirrors `infra/caddy/staging-web.Caddyfile`. |
+| `db-statefulset.yaml` | StatefulSet `abastevo-temp-db` on the pre-existing PVC `abastevo-temp-postgres-data` (not templated). |
+| `services.yaml`, `resourcequota.yaml` | Services and ResourceQuota `abastevo-temp-quota`. |
+| `registry-sync-cronjob.yaml` | CronJob `abastevo-registry-sync` (daily official registry refresh). |
+| `rbac/deploy-agent-rbac.yaml` | Namespace-scoped ServiceAccount/Role/RoleBinding of the deploy agent. |
+| `render.py`, `normalize-diff.py`, `test-manifests.py` | Placeholder renderer, semantic diff normalizer, structural tests. |
 
-- `api-deployment.yaml` — Deployment `abastevo-temp-api` (api, worker and
-  private-storage containers; one rollout updates api and worker together).
-- `web-deployment.yaml` — Deployment `abastevo-temp-web` (Caddy).
-- `services.yaml` — NodePort/ClusterIP Services for api, db and web.
-- `db-statefulset.yaml` — StatefulSet `abastevo-temp-db`.
-- `resourcequota.yaml` — ResourceQuota `abastevo-temp-quota`.
-- `registry-sync-cronjob.yaml` — CronJob `abastevo-registry-sync`.
-- `web-caddy-configmap.yaml` — ConfigMap `abastevo-temp-web-caddyfile`.
+## Render and compare
 
-The StatefulSet references the pre-existing PVC `abastevo-temp-postgres-data`.
-The PVC/PV are not templated here.
-
-Secrets are referenced only through `secretRef`/`configMapRef`. No secret
-value, host, IP, NodePort, image tag or operator path is committed.
-
-## Placeholders
-
-The render file is operator-owned, outside Git, and mode 600. Keys:
-
-```text
-API_IMAGE WORKER_IMAGE PRIVATE_STORAGE_IMAGE CADDY_IMAGE
-RST_COMPATIBLE_BINARIES_PATH PRIVATE_MEDIA_PATH ENTERPRISE_ROOT
-LANDING_ROOT PORTAL_MOUNT_PATH RST_TOOLS_MOUNT LANDING_MOUNT
-EXPORT_ROOT PORTAL_ROOT PORTAL_SEARCH_JS
-STAGING_SITE_URL STAGING_LANDING_URL WORKER_METRICS_ADDR
-API_CLUSTER_IP DB_CLUSTER_IP WEB_CLUSTER_IP
-API_NODE_PORT WEB_NODE_PORT
-API_DEPLOYMENT_REVISION WEB_DEPLOYMENT_REVISION
-API_POD_RESTARTED_AT WEB_POD_RESTARTED_AT
-REGISTRY_SYNC_RELEASES_PATH REGISTRY_SYNC_STATE_PATH REGISTRY_RFB_SOURCE_PATH
-MAP_DIST_ROOT
-```
-
-`render.py` replaces only these `${NAME}` placeholders; pod shell variables
-such as `$POSTGRES_USER` remain untouched.
-
-`REGISTRY_RFB_SOURCE_PATH` is the owned, verified offline OpenCNPJ source
-directory. Provision it before activating the registry CronJob; its `/rfb`
-mount is read-only. See [monthly source operations](../../deploy/registry/README.md).
-
-## Zero-diff proof
-
-Render locally:
+Host-specific values (images, host paths, cluster IPs, NodePorts, portal and
+landing roots, site URLs) are `${NAME}` placeholders filled from an
+operator-owned env file outside Git (mode 600); `render.py` replaces only
+those, leaving pod shell variables alone.
 
 ```sh
+make check-infra    # includes python3 infra/k8s/staging/test-manifests.py
 STAGING_RENDER_ENV=/path/outside/git/staging-render.env \
-  python3 infra/k8s/staging/render.py infra/k8s/staging/*.yaml \
-  > /tmp/staging-rendered.yaml
+  python3 infra/k8s/staging/render.py infra/k8s/staging/*.yaml > /tmp/staging-rendered.yaml
+# on the staging host, with normalize-diff.py copied to a temporary path:
+KUBECTL_EXTERNAL_DIFF=<tmp>/normalize-diff.py kubectl diff -n abastevo-temp -f - < staging-rendered.yaml
 ```
 
-Copy `normalize-diff.py` to the staging host's allowed temporary location and
-run the semantic diff. The normalizer removes only server-managed metadata and
-client-apply bookkeeping (creation timestamp, generation, resource version,
-UID, managed fields, status, last-applied annotation, deployment revision and
-manual restart timestamp); spec, labels, desired annotations, data and image
-pull policies are compared.
+The normalizer drops only server-managed metadata (timestamps, UIDs, resource
+versions, managed fields, status, revision and restart annotations). An empty
+diff means live state equals this directory; check it before assuming a
+manifest change is live.
 
-```sh
-ssh <staging-host> \
-  'KUBECTL_EXTERNAL_DIFF=<host-temp>/normalize-diff.py \
-   kubectl diff -n abastevo-temp -f -' \
-  < /tmp/staging-rendered.yaml
-```
+## Operator-managed settings
 
-The proof run exited 0 with empty output. Raw `kubectl diff` without the
-normalizer reports only those server-managed fields.
+- Secrets come only through `secretRef`/`configMapRef` of `abastevo-temp-secrets`;
+  no value is committed. `api-deployment.yaml` declares that API and worker
+  read `ANPFUEL_DATABASE_URL` from the secret key `ANPFUEL_RUNTIME_DATABASE_URL`
+  (the ordinary role provisioned by `infra/db/runtime-role.sql`) and set
+  `ANPFUEL_ENTERPRISE_ENABLED=true`; the secret's own `ANPFUEL_DATABASE_URL`
+  stays the owner DSN used by the agent's backup/migration Jobs and the
+  registry CronJob. Enterprise routes must never run on the owner DSN.
+- Admin API: patch `ANPFUEL_ADMIN_KEY_SHA256` and `ANPFUEL_ADMIN_ORIGIN` into the
+  Secret (key from `go run ./cmd/ops admin keygen`; rotate via
+  `ANPFUEL_ADMIN_KEY_SHA256_NEXT`) and restart the API. The panel is
+  `https://abastevo.com.br/admin/login/`.
+- Seeds (`backend/db/seeds/*.sql`) are idempotent dev/staging data, applied by
+  hand with `psql -v ON_ERROR_STOP=1` inside the db pod after the migrations
+  they depend on.
+- The registry CronJob needs the verified offline OpenCNPJ source directory
+  (`REGISTRY_RFB_SOURCE_PATH`, mounted read-only) before it is enabled; see
+  [registry refresh](../../deploy/registry/README.md).
+- Private storage is a single writer: stop the old writer before starting a
+  new one; never run two at once.
 
-No `kubectl apply` is run by this directory. The executor later patches images
-and source annotations; it does not change the namespace, quota, database,
-Services or CronJob.
+## Rules
 
-## Admin key and dev seeds (manual, not rendered)
+- No secret value, private host or operator path in these files.
+- Keep `terminationGracePeriodSeconds` above shutdown drain delay + timeout +
+  5 s (see `backend/README.md`).
+- Do not change the namespace, quota, database or Services as a side effect of
+  an image change.
 
-- Admin panel: `https://abastevo.com.br/admin/login/` (served from the
-  signed landing bundle). The API mounts `/v1/admin/*` only when
-  `ANPFUEL_ADMIN_KEY_SHA256` and `ANPFUEL_ADMIN_ORIGIN` are present in the
-  `abastevo-temp-secrets` Secret; they are patched there directly (the
-  deploy agent never rewrites the Secret). The raw key comes from
-  `go run ./cmd/ops admin keygen` and never enters Git; rotate by patching a
-  new hash (or `ANPFUEL_ADMIN_KEY_SHA256_NEXT` first) and restarting the API.
-  `ANPFUEL_ADMIN_ALLOWED_CIDRS` is unset on staging (no network fence).
-- Seeds: `backend/db/seeds/*.sql` are idempotent dev/staging data, never part
-  of the migration chain. Run after the migrations they depend on, e.g.
-  `kubectl -n abastevo-temp exec -i <db pod> -- psql -U "$DATABASE_USER"
-  -d "$DATABASE_NAME" -v ON_ERROR_STOP=1 < backend/db/seeds/project_creator.sql`
-  (needs migration 000145).
-
-## ZD-03 proposed storage topology (not yet applied)
-
-The ZD-00 live inventory is the current-state receipt. The ZD-03 files are
-reviewed desired changes: API/worker no longer mount private media; the new
-storage Deployment is a singleton with `Recreate`, its own hostPath and
-ClusterIP-only Service. The signed-public host/path/bucket do not change.
-`ANPFUEL_DEV_STORAGE_SERVICE=true` selects the fixed internal Service proxy
-only for development/owned staging. Worker S3 calls keep the existing signed
-public endpoint and traverse that proxy; no public storage listener is added.
-
-Apply only after the matching signed API image exists, during the individually
-approved migration window described in [ZD-03](../../../docs/backend/evidence/cd/ZD-03.md).
-Stop the original writer before starting singleton storage; rollback stops the
-singleton before restoring the original pod. No simultaneous writer is safe.
-The historical zero-diff above predates these changes; new live zero-diff and
-private-media smoke remain OWED. `make check-infra test-infra` includes stdlib
-structural/render checks for the affected JSON-as-YAML objects.
-
-## Enterprise activation (EMP-REL-002; desired state, applied by the coordinator)
-
-`api-deployment.yaml` now records the activation of Abastevo Empresas
-(EDR-272, EDR-366): the `api` and `worker` containers read
-`ANPFUEL_DATABASE_URL` from the secret key `ANPFUEL_RUNTIME_DATABASE_URL` (the
-ordinary role of `infra/db/runtime-role.sql`; a container `env` entry wins over
-`envFrom`) and set `ANPFUEL_ENTERPRISE_ENABLED=true`. The secret's
-`ANPFUEL_DATABASE_URL` stays the owner DSN that the deploy agent's schema,
-backup and migration Jobs and the registry CronJob read; `test-manifests.py`
-pins both. Nothing here applies it: the coordinator follows the
-[activation runbook](../../../docs/operations/ENTERPRISE_ACTIVATION_RUNBOOK.md)
-(verified backup, script, secret key, patch, smoke, rollback by deleting the
-two entries). Until it is applied, the live zero-diff for these two entries is
-expected to differ and remains OWED.
+See [operations runbooks](../../../docs/operations/) and
+[registry daily sync](../../../docs/operations/registry-daily-sync.md).

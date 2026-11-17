@@ -17,7 +17,7 @@ LICENSE_FILES = {
     'THIRD_PARTY_NOTICES.md': 'THIRD_PARTY_NOTICES.md',
     'CoMaps-LICENSE.txt': 'maps/engine/vendor/LICENSE',
     'CoMaps-NOTICE.txt': 'maps/engine/vendor/NOTICE',
-    'CoMaps-THIRD_PARTY_NOTICES.md': 'docs/backend/evidence/maps/map14-t07/THIRD_PARTY_NOTICES.md',
+    'CoMaps-THIRD_PARTY_NOTICES.md': 'release/notices/comaps/THIRD_PARTY_NOTICES.md',
 }
 
 

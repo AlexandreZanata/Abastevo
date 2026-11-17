@@ -1,9 +1,5 @@
 # Station commerce and fleet agreements
 
-Status: **PLANNED / RECONSTRUCTED**, 2026-11-11.
-Recovered from the surviving enterprise requirements, shared rules and backlog.
-The accepted F0 decisions and existing release gates govern any implementation.
-
 ## 1. Purpose
 
 Let a currently authorized station representative publish bounded commercial information and transact with a fleet under an explicit contract.
@@ -33,11 +29,11 @@ The organization owns profile revisions, announced price and promotion under one
 
 ## 6. States and transitions
 
-Announced prices are active, expired, withdrawn or superseded. Promotions have scheduled, active, ended or withdrawn state. Agreements are proposed, active, suspended, ended, declined or expired. Vouchers are issued, redeemed, expired, cancelled or locked. [The state catalog](../08-state-model.md) defines names. Each transition checks current station authority and party scope and retains audit history. Commercial expiry never rewrites representation history.
+Announced prices are active, expired, withdrawn or superseded. Promotions have scheduled, active, ended or withdrawn state. Agreements are proposed, active, suspended, ended, declined or expired. Vouchers are issued, redeemed, expired, cancelled or locked. [The state catalog](../state-model.md) defines names. Each transition checks current station authority and party scope and retains audit history. Commercial expiry never rewrites representation history.
 
 ## 7. Roles and permissions
 
-[Station-scoped permissions](../07-permissions.md) require live station authority. Fleet and station views use separate party scopes. General agreement visibility does not permit employee, track or original document reads. Catalog corrections use Directory governance. Official replies use existing feedback moderation rules.
+[Station-scoped permissions](../permissions.md) require live station authority. Fleet and station views use separate party scopes. General agreement visibility does not permit employee, track or original document reads. Catalog corrections use Directory governance. Official replies use existing feedback moderation rules.
 
 ## 8. Offline, concurrency, idempotency and corrections
 

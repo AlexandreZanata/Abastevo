@@ -1,9 +1,5 @@
 # Landing artwork and theme — LH01–LH03
 
-Status: LOCAL_DONE
-Validation: PASS
-Integration: INTEGRATION_PENDING
-Base: dev 9fa7ad1; isolated codex/landing-hero-art because security remediation occupies primary dev.
 Scope: landing presentation and asset build only; no backend/mobile runtime or deployment.
 
 ## Authority and behavior

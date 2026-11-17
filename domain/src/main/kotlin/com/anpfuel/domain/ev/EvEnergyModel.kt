@@ -28,7 +28,7 @@ data class ConsumptionInput(val consMilliWhPerKm: Long?, val marginPermille: Lon
 data class CalibrationSession(val energyWh: Long, val distanceMetres: Long)
 
 /**
- * Pure conservative energy model (docs/product/MAP_26_CONTRACT.md). Integer/rational arithmetic only:
+ * Pure conservative energy model (docs/product/ev/energy-model.md). Integer/rational arithmetic only:
  * usable energy, reach and arrival state of charge round down; consumed energy and calibrated
  * consumption round up. It estimates; it never guarantees a trip.
  */
