@@ -34,9 +34,19 @@ def release_or_none(tag):
     result = subprocess.run(['gh','api',f'repos/{REPOSITORY}/releases/tags/{tag}'],capture_output=True,text=True)
     if result.returncode == 0:
         return json.loads(result.stdout)
-    if 'HTTP 404' in result.stderr:
-        return None
-    raise ValueError('cannot inspect existing GitHub release')
+    if 'HTTP 404' not in result.stderr:
+        raise ValueError('cannot inspect existing GitHub release')
+    # The tag endpoint resolves published releases only. The draft this flow
+    # creates (or an interrupted run left) is found in the release list, so it
+    # is completed instead of failing or being duplicated.
+    listed = subprocess.run(['gh','api','--paginate',f'repos/{REPOSITORY}/releases?per_page=100','--jq','.[] | @json'],
+                            capture_output=True,text=True)
+    if listed.returncode:
+        raise ValueError('cannot list existing GitHub releases')
+    matches = [r for r in map(json.loads, listed.stdout.splitlines()) if r.get('tag_name') == tag]
+    if len(matches) > 1:
+        raise ValueError('several releases claim the release tag; refuse to choose')
+    return matches[0] if matches else None
 
 
 def verify_tag(tag, sha):

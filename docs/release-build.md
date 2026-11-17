@@ -19,7 +19,11 @@ retain 3.1.0-debug/code 4. Manual retries use **Actions → android-release → 
 workflow**, on main with its full current SHA; the same three gates still apply.
 Same-head retries download and reverify an existing complete publication instead
 of rebuilding/replacing assets. A conflicting tag or asset fails closed. Failed
-uploads remain draft; no clobber, force-tag or direct-main push is used.
+uploads remain draft; no clobber, force-tag or direct-main push is used. GitHub's
+tag lookup resolves published releases only, so publication also searches the
+release list: the draft it just created, or one an interrupted run left, is
+completed rather than duplicated, and more than one release claiming the tag
+fails closed.
 
 ## Signing identity
 
