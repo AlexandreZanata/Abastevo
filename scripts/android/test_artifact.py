@@ -86,11 +86,17 @@ class PublicationRecovery(unittest.TestCase):
    assets=[{'name':p.name,'size':p.stat().st_size,'digest':'sha256:'+artifact.digest(p)} for p in out.iterdir()]
    state={'release':None};calls=[]
    if mode in ['existing','partial','conflict']:
-    state['release']={'draft':mode!='existing','prerelease':True,'assets':copy.deepcopy(assets if mode=='existing' else assets[:1]),'html_url':'https://example.invalid/release'}
+    state['release']={'id':7,'tag_name':VERSION['tag'],'draft':mode!='existing','prerelease':True,'assets':copy.deepcopy(assets if mode=='existing' else assets[:1]),'html_url':'https://example.invalid/release'}
    if mode=='conflict':state['release']['assets'][0]['digest']='sha256:'+'0'*64
    def run(cmd,**kwargs):
+    import json
+    # Re-reading the release by id is not a mutation; only mutations are recorded.
+    if cmd[:2]==['gh','api'] and cmd[2].endswith('/releases/7'):return CompletedProcess(cmd,0,json.dumps(state['release']),'')
     calls.append(cmd)
-    if cmd[1:3]==['release','create']:state['release']={'draft':True,'prerelease':True,'assets':[],'html_url':'https://example.invalid/release'}
+    if cmd[:4]==['gh','api','--method','POST'] and cmd[4].endswith('/releases'):
+     body=json.loads(kwargs['input']);self.assertTrue(body['draft'] and body['prerelease'])
+     state['release']={'id':7,'tag_name':body['tag_name'],'draft':True,'prerelease':True,'assets':[],'html_url':'https://example.invalid/release'}
+     return CompletedProcess(cmd,0,json.dumps(state['release']),'')
     elif cmd[1:3]==['release','upload']:
      p=Path(cmd[4]);state['release']['assets'].append({'name':p.name,'size':p.stat().st_size,'digest':'sha256:'+artifact.digest(p)})
     elif cmd[1:3]==['release','edit']:

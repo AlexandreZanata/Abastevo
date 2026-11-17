@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 import re
 import subprocess
-import tempfile
 from release_flow import REPOSITORY, gh, assert_ready
 from artifact import digest
 
@@ -47,6 +46,34 @@ def release_or_none(tag):
     if len(matches) > 1:
         raise ValueError('several releases claim the release tag; refuse to choose')
     return matches[0] if matches else None
+
+
+def create_draft(tag, sha, title, notes):
+    """Create the draft prerelease and return it as GitHub answered.
+
+    The release list is eventually consistent: read right after creation it can
+    still omit the new draft, and the tag endpoint never resolves drafts. The
+    creation response is therefore the only reliable handle on it.
+    """
+    result = subprocess.run(['gh', 'api', '--method', 'POST', f'repos/{REPOSITORY}/releases', '--input', '-'],
+                            input=json.dumps({'tag_name': tag, 'target_commitish': sha, 'name': title, 'body': notes,
+                                              'draft': True, 'prerelease': True}), text=True, capture_output=True)
+    if result.returncode:
+        raise ValueError('cannot create the draft GitHub release')
+    release = json.loads(result.stdout)
+    if not isinstance(release.get('id'), int) or release.get('tag_name') != tag or not release.get('draft'):
+        raise ValueError('GitHub returned an unexpected release')
+    return release
+
+
+def release_by_id(release_id, tag):
+    result = subprocess.run(['gh', 'api', f'repos/{REPOSITORY}/releases/{release_id}'], capture_output=True, text=True)
+    if result.returncode:
+        raise ValueError('cannot re-read the GitHub release')
+    release = json.loads(result.stdout)
+    if release.get('id') != release_id or release.get('tag_name') != tag:
+        raise ValueError('GitHub returned a different release')
+    return release
 
 
 def verify_tag(tag, sha):
@@ -94,11 +121,7 @@ def main():
                  f"Version {manifest['version_name']} · code {manifest['version_code']}\n"
                  f"Source: {sha}\n\nAPK, checksums, public signing certificate and license notices are attached. "
                  "This prerelease does not certify production or iOS.\n")
-        with tempfile.TemporaryDirectory() as temp:
-            body=Path(temp)/'notes.txt';body.write_text(notes)
-            subprocess.run(['gh','release','create',tag,'--repo',REPOSITORY,'--target',sha,'--draft','--prerelease',
-                            '--title',f"Abastevo Android {manifest['version_name']} (staging)",'--notes-file',str(body)],check=True)
-        release = release_or_none(tag)
+        release = create_draft(tag, sha, f"Abastevo Android {manifest['version_name']} (staging)", notes)
     verify_tag(tag, sha)
     if not release['prerelease']:
         raise ValueError('existing tag is not an Android staging prerelease')
@@ -114,7 +137,7 @@ def main():
         raise ValueError('published release is incomplete; refuse mutation')
     for name in missing:
         subprocess.run(['gh','release','upload',tag,str(local[name]),'--repo',REPOSITORY],check=True)
-    current = release_or_none(tag)
+    current = release_by_id(release['id'], tag)
     assets = {a['name']:a for a in current['assets']}
     if set(assets) != set(local) or any(not same_asset(path,assets[name]) for name,path in local.items()):
         raise ValueError('GitHub asset verification failed')

@@ -22,8 +22,13 @@ class FakeGitHub:
     """The GitHub semantics this flow depends on: a draft release appears in
     the release list, but the tag endpoint resolves only published releases."""
 
-    def __init__(self, releases=()):
+    def __init__(self, releases=(), list_lags=False):
         self.releases = [json.loads(json.dumps(r)) for r in releases]
+        for number, release in enumerate(self.releases, start=1):
+            release.setdefault('id', number)
+        # GitHub's release list can omit a draft for a while after creation.
+        self.list_lags = list_lags
+        self.fresh = set()
         self.created = 0
         self.mutations = []
 
@@ -40,12 +45,20 @@ class FakeGitHub:
                 return ok(json.dumps(found[0]))
             return SimpleNamespace(returncode=1, stdout='', stderr='gh: Not Found (HTTP 404)')
         if args[:3] == ['gh', 'api', '--paginate'] and args[3].startswith(f'repos/{p.REPOSITORY}/releases?'):
-            return ok(''.join(json.dumps(r) + '\n' for r in self.releases))
-        if args[:3] == ['gh', 'release', 'create']:
+            visible = [r for r in self.releases if not (self.list_lags and r['id'] in self.fresh)]
+            return ok(''.join(json.dumps(r) + '\n' for r in visible))
+        if args[:4] == ['gh', 'api', '--method', 'POST'] and args[4] == f'repos/{p.REPOSITORY}/releases':
+            body = json.loads(input)
+            assert body['draft'] and body['prerelease'] and body['target_commitish'] == SHA, body
             self.created += 1
-            self.releases.append({'tag_name': args[3], 'draft': True, 'prerelease': True, 'assets': [],
-                                  'html_url': 'https://github.com/x/releases/tag/untagged-1'})
-            return ok()
+            release = {'id': 100 + self.created, 'tag_name': body['tag_name'], 'draft': True, 'prerelease': True,
+                       'assets': [], 'html_url': 'https://github.com/x/releases/tag/untagged-1'}
+            self.releases.append(release)
+            self.fresh.add(release['id'])
+            return ok(json.dumps(release))
+        if args[:2] == ['gh', 'api'] and args[2].startswith(f'repos/{p.REPOSITORY}/releases/') and args[2].rsplit('/', 1)[1].isdigit():
+            found = [r for r in self.releases if r['id'] == int(args[2].rsplit('/', 1)[1])]
+            return ok(json.dumps(found[0])) if found else SimpleNamespace(returncode=1, stdout='', stderr='gh: Not Found (HTTP 404)')
         if args[:3] == ['gh', 'release', 'upload']:
             path = Path(args[4])
             self.mutations.append(('upload', path.name))
@@ -95,6 +108,17 @@ class Publication(unittest.TestCase):
         self.assertEqual(github.created, 1)
         self.assertFalse(release['draft'])
         self.assertTrue(release['prerelease'])
+        self.assertEqual(sorted(a['name'] for a in release['assets']), names)
+        self.assertEqual(out.strip(), 'https://github.com/x/releases/tag/' + TAG)
+
+    def test_first_publication_survives_a_release_list_that_lags_behind(self):
+        # Regression: the list read right after creation omitted the new draft,
+        # so the flow crashed and left one orphan draft per delivery.
+        github = FakeGitHub(list_lags=True)
+        names, out = self.publish(github)
+        release = github.release(TAG)
+        self.assertEqual(github.created, 1)
+        self.assertFalse(release['draft'])
         self.assertEqual(sorted(a['name'] for a in release['assets']), names)
         self.assertEqual(out.strip(), 'https://github.com/x/releases/tag/' + TAG)
 
