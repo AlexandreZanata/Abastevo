@@ -36,8 +36,8 @@ test('essential content and links are present in static HTML without JS', () => 
     assert.match(heroSection, /name="uf"[\s\S]*name="q"/);
     assert.match(heroSection, /assets\/art\/car-640w\.[a-f0-9]{8}\.webp/);
     assert.doesNotMatch(heroSection, /Posto Exemplo|R\$ X,XX|comparison-container/);
-    assert.match(indexHtml, /assets\/app\/explore-dark-720w\.webp/);
-    assert.match(indexHtml, /semana de pesquisa 4 a 10 de outubro de 2026/);
+    assert.match(indexHtml, /assets\/app\/fuel-prices-01-anp-average-cards-720w\.webp/);
+    assert.match(indexHtml, /na semana de 8 a 14 de novembro de 2026/);
 
     // 5. Legal and help links reachable from footer
     assert.match(indexHtml, /href="\/privacidade\/"[^>]*>Privacidade<\/a>/);

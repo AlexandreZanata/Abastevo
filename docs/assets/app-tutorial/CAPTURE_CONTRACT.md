@@ -126,7 +126,10 @@ enforces it.
    ```
 
 8. **Update the site.** For every `landing image use` in the stale report,
-   regenerate the derivative from the new master (same stem, rule C3). For
+   regenerate the derivative from the new master (same stem, rule C3) with the
+   parameters recorded in `landing/static/assets/app/provenance.json`, and
+   update its entry and the `imageSha256` of the `lesson.json` steps that show
+   it. For
    every `landing text` line, replace the old label with the new pt-BR string.
    For steps with no current landing use, review the `landingTargets` pages.
    Then run the landing checks:

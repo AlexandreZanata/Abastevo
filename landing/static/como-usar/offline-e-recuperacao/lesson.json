@@ -3,55 +3,256 @@
   "slug": "offline-e-recuperacao",
   "titlePtBr": "Offline e recuperação",
   "appVersion": "3.1.0-debug",
-  "appSourceSha": null,
+  "appSourceSha": "fd0a691283f6dc4c0970e39a4602bd8a8d248a36",
   "steps": [
     {
       "stepId": "tu29-s1",
-      "image": "/assets/app/offline-cached-720w.webp",
-      "imageSha256": "8532a7a033f1ae0454f1d9bee7dde8818aa223dc788294b34aef786a9a68a764",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "Modo avião ligado para o teste e desligado logo depois.",
-      "instructionPtBr": "Com o modo avião ligado, abra a tabela: o cache local renderiza.",
-      "controlLabelPtBr": "Etanol, preço médio R$ 3,96",
-      "expectedPtBr": "Tabela em cache com médias da semana, sem rede.",
-      "recoveryPtBr": "Sem cache, a tela informa em vez de inventar.",
-      "altPtBr": "Tabela em cache com modo avião ativo.",
+      "image": "/assets/app/map-offline-01-download-suggestion-720w.webp",
+      "imageSha256": "cef0eee6eadcadfd875e3b14227077b9e70664f0804b6cb34e0fb770e54bdbca",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Sugestão de download do mapa",
+      "prerequisite": "Mapa aberto em uma cidade sem pacote offline; Wi-Fi ligado.",
+      "instructionPtBr": "Ao abrir o mapa de uma cidade sem mapa offline, o app oferece o download. No exemplo: \"Baixar mapa de Mato Grosso (116 MB)\". Toque em \"Baixar\".",
+      "controlLabelPtBr": "Baixar",
+      "expectedPtBr": "O app abre a tela \"Downloads\" e começa a baixar.",
+      "recoveryPtBr": "\"Agora não\" fecha a sugestão; o botão \"Baixar\" na parte de baixo do mapa abre os downloads depois.",
+      "altPtBr": "Mapa de Sorriso, MT, ainda sem ruas, com o cartão “Baixar mapa de Mato Grosso (116 MB)” e as ações “Agora não” e “Baixar”.",
       "target": {
-        "x": 48,
-        "y": 624,
-        "width": 1124,
-        "height": 420
+        "x": 752,
+        "y": 552,
+        "width": 262,
+        "height": 144
       },
       "availability": "Disponível",
-      "claimClass": "offline-cache",
+      "claimClass": "visible-state-only",
       "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/ui/prices/PricesScreen.kt"
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRegionSuggestionCard.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
       "demoOnly": false
     },
     {
       "stepId": "tu29-s2",
-      "image": "/assets/app/offline-cached-720w.webp",
-      "imageSha256": "8532a7a033f1ae0454f1d9bee7dde8818aa223dc788294b34aef786a9a68a764",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Result state",
-      "prerequisite": "Modo avião ligado para o teste e desligado logo depois.",
-      "instructionPtBr": "Na Comunidade, o vazio segue honesto sem rede.",
-      "controlLabelPtBr": "Ainda não há preços recentes",
-      "expectedPtBr": "Mesmo estado vazio do online; nada finge atualizar.",
-      "recoveryPtBr": "Desligue o modo avião para sincronizar.",
-      "altPtBr": "Vazio honesto mantido sem rede.",
+      "image": "/assets/app/map-offline-02-download-progress-720w.webp",
+      "imageSha256": "bf5d43e841b3a8a3a262e2289793ce321adcabd6eb37546a866d5463c2de8943",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Download do mapa em andamento",
+      "prerequisite": "Download iniciado.",
+      "instructionPtBr": "A tela \"Downloads\" mostra o progresso total e cada pacote, como \"Mapa da região\" e \"Mapa-base mundial\".",
+      "controlLabelPtBr": "Downloads",
+      "expectedPtBr": "A marca \"Somente Wi-Fi\" indica que o download não usa dados móveis.",
+      "recoveryPtBr": "Por padrão, o download só acontece no Wi-Fi.",
+      "altPtBr": "Tela “Downloads” com o pacote de Mato Grosso em 46 por cento, 54 MB de 116 MB, a marca “Somente Wi-Fi” e os pacotes “Mapa da região” e “Mapa-base mundial”.",
+      "target": {
+        "x": 34,
+        "y": 1042,
+        "width": 1012,
+        "height": 300
+      },
       "availability": "Disponível",
-      "claimClass": "offline-cache",
+      "claimClass": "visible-state-only",
       "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/ui/prices/PricesScreen.kt"
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/MapDownloadsScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu29-s3",
+      "image": "/assets/app/map-offline-03-offline-pack-active-720w.webp",
+      "imageSha256": "e5864398c069c027ed09af40a716070bba8c79158bd8360c96d61002cd4dee50",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Pacote offline ativo",
+      "prerequisite": "Download concluído.",
+      "instructionPtBr": "Quando termina, o pacote da região aparece como \"Ativo\". \"Verificar atualizações\" procura uma versão mais nova e \"OK\" volta ao mapa.",
+      "controlLabelPtBr": "Verificar atualizações",
+      "expectedPtBr": "O mapa da região passa a funcionar sem internet.",
+      "recoveryPtBr": "O pacote ocupa espaço no aparelho; confira o tamanho antes de baixar.",
+      "altPtBr": "Tela “Downloads” com o pacote de Mato Grosso marcado como ativo, a marca “Somente Wi-Fi” e os botões “Verificar atualizações” e “OK”.",
+      "target": {
+        "x": 32,
+        "y": 470,
+        "width": 1014,
+        "height": 328
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/MapDownloadsScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu29-s4",
+      "image": "/assets/app/map-offline-04-offline-map-ready-720w.webp",
+      "imageSha256": "d3e9adf23da920a5bbf949da80035240b5ce669de22cb00113228ba40bd205ce",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Mapa desenhado a partir do pacote offline",
+      "prerequisite": "Pacote da região ativo.",
+      "instructionPtBr": "De volta ao mapa, as ruas e os postos são desenhados a partir do pacote offline.",
+      "controlLabelPtBr": "Mapa offline",
+      "expectedPtBr": "Os ícones dos postos aparecem sobre as ruas da cidade.",
+      "recoveryPtBr": "Os preços vêm das semanas baixadas, não do mapa; baixe também a semana que quiser consultar.",
+      "altPtBr": "Mapa de Sorriso, MT, com ruas, bairros e ícones de postos desenhados a partir do mapa offline, e os botões “Filtros” e “Baixar”.",
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/MapControlsCard.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/MapScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu29-s5",
+      "image": "/assets/app/survey-weeks-02-week-list-720w.webp",
+      "imageSha256": "423ef15e106b7e807fc35370ad3b9756ba9d55d2d9cfaf673f894dc1bb641457",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Lista de semanas",
+      "prerequisite": "Painel \"Semana de pesquisa\" aberto.",
+      "instructionPtBr": "Os preços também funcionam offline. No painel \"Semana de pesquisa\", toque em \"Baixar\" nas semanas que quiser guardar.",
+      "controlLabelPtBr": "Baixar",
+      "expectedPtBr": "A semana baixada passa a mostrar a marca \"Baixada\".",
+      "recoveryPtBr": "Para baixar uma semana é preciso estar conectado.",
+      "altPtBr": "Painel “Semana de pesquisa” com a semana 8–14 nov. 2026 marcada como “Atual” e “Baixada” e o botão “Baixar” nas semanas 1–7 nov. 2026 e 18–24 out. 2026.",
+      "target": {
+        "x": 752,
+        "y": 1340,
+        "width": 252,
+        "height": 104
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu29-s6",
+      "image": "/assets/app/survey-weeks-04-week-downloaded-720w.webp",
+      "imageSha256": "1ca549a0c1d2546c4b645b0eb5418365d9ff3a3448f88fcf1719c3cad6c21ad0",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Semanas baixadas",
+      "prerequisite": "Download de uma semana concluído.",
+      "instructionPtBr": "Semanas com a marca \"Baixada\" podem ser consultadas sem internet: média da cidade, postos pesquisados e histórico.",
+      "controlLabelPtBr": "Baixada",
+      "expectedPtBr": "Sem conexão, o app continua mostrando as semanas guardadas, sempre com a data da pesquisa.",
+      "recoveryPtBr": "Semana sem a marca? Conecte-se e toque em \"Baixar\".",
+      "altPtBr": "Painel “Semana de pesquisa” com as semanas 8–14 nov. 2026 e 1–7 nov. 2026 marcadas como “Baixada”.",
+      "target": {
+        "x": 722,
+        "y": 1342,
+        "width": 286,
+        "height": 108
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerBottomSheet.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/weekpicker/WeekPickerScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu29-s7",
+      "image": "/assets/app/map-05-route-preview-720w.webp",
+      "imageSha256": "2df54ebd8fada9c514abe4fa44899e7f344a4c0282ae8c1e3bb13772070add07",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Prévia da rota",
+      "prerequisite": "Pacote offline ativo e localização permitida.",
+      "instructionPtBr": "Na ficha de um posto, \"Rota e ir\" traça o caminho a partir da posição atual e mostra o tempo e a distância.",
+      "controlLabelPtBr": "Iniciar navegação",
+      "expectedPtBr": "No exemplo: \"8 min · 5,1 km\". \"Editar rota\" ajusta o trajeto e \"Iniciar navegação\" começa a orientação.",
+      "recoveryPtBr": "Sem a permissão de localização não há ponto de partida; libere a localização nas configurações do Android.",
+      "altPtBr": "Mapa de Sorriso, MT, com a rota em azul da posição atual até um posto, o resumo 8 min · 5,1 km e os botões “Iniciar navegação”, “Editar rota” e “Manobras”.",
+      "target": {
+        "x": 64,
+        "y": 1326,
+        "width": 950,
+        "height": 144
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceControls.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRouteOverlay.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu29-s8",
+      "image": "/assets/app/map-06-route-maneuvers-720w.webp",
+      "imageSha256": "8b0b0d733a9e3a9502c5857e623fc4e1c6135ccc9b1d7a4246bbf6420d6a207c",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Lista de manobras da rota",
+      "prerequisite": "Prévia da rota aberta.",
+      "instructionPtBr": "Toque em \"Manobras\" para ler cada conversão antes de sair.",
+      "controlLabelPtBr": "Manobras",
+      "expectedPtBr": "A lista mostra as instruções na ordem do trajeto.",
+      "recoveryPtBr": "O X no topo fecha a prévia da rota.",
+      "altPtBr": "Prévia da rota com a lista “Manobras” aberta, mostrando as instruções de conversão do trajeto em Sorriso, MT.",
+      "target": {
+        "x": 420,
+        "y": 1104,
+        "width": 256,
+        "height": 112
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRouteOverlay.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu29-s9",
+      "image": "/assets/app/map-07-turn-by-turn-navigation-720w.webp",
+      "imageSha256": "2407da5bcf55a8b784a3687364d8e6f7f7fb0cde0a6d23d002d1267e2dd30c9c",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Navegação em andamento",
+      "prerequisite": "Botão \"Iniciar navegação\" tocado.",
+      "instructionPtBr": "\"Iniciar navegação\" começa a orientação curva a curva com o mapa offline. Há botões de zoom, de voz e para recentralizar o mapa.",
+      "controlLabelPtBr": "Parar navegação",
+      "expectedPtBr": "O topo mostra a próxima instrução e a distância até ela; a parte de baixo, o tempo e a distância restantes.",
+      "recoveryPtBr": "\"Parar navegação\" encerra a orientação a qualquer momento.",
+      "altPtBr": "Navegação em andamento em Sorriso, MT, com a próxima instrução a 100 m, os botões de zoom, voz e recentralizar, o resumo 8 min · 5,1 km e o botão “Parar navegação”.",
+      "target": {
+        "x": 54,
+        "y": 1680,
+        "width": 970,
+        "height": 144
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/GuidanceControls.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/map/MapRouteOverlay.kt"
+      ],
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
       "demoOnly": false
     }

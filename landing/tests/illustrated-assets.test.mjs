@@ -31,5 +31,5 @@ test('illustrated scenes ship responsive bounded derivatives with distinct categ
   assert.equal((html.match(/class="card-art card-art-/g) || []).length, 6);
   assert.doesNotMatch(html, /class="hero-stats"/); // Preserve the owner's OpenCode removal.
   assert.match(html, /Conheça o aplicativo/);
-  assert.match(html, /assets\/app\/explore-dark-720w\.webp/); // LH09: real captures live in the gallery.
+  assert.match(html, /assets\/app\/fuel-prices-01-anp-average-cards-720w\.webp/); // LH09: real captures live in the gallery.
 });

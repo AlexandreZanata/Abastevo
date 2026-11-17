@@ -39,56 +39,59 @@
           <li><span aria-current="page">Denunciar abuso</span></li>
         </ol>
       </nav>
-      <article class="legal-article">
+      <article class="legal-article lesson-article">
         <p><span class="lesson-availability">Disponível</span></p>
         <h1>Denunciar abuso</h1>
-        <p>Como denunciar abuso no abastevo: regras de verificação, denúncia sem auto-exclusão e recurso com novo motivo. Lição TU21 · 3 passos · somente leitura: nada denunciado, ninguém perturbado. O compositor de denúncia exige feed populado e segue pendente.</p>
+        <p class="article-lead">Como denunciar abuso no abastevo: regras de verificação, denúncia sem auto-exclusão e recurso com novo motivo.</p>
+        <p class="lesson-context">Lição TU21 · 4 passos (2 sem captura, descritos em texto). Capturas reais do aplicativo Android em desenvolvimento, feitas em 17 de novembro de 2026 em um emulador, com dados públicos da ANP.</p>
         <ol class="lesson-steps">
-          <li class="lesson-step" id="tu21-s1">
-            <h2>Passo 1: Regras de verificação comunitária</h2>
-            <p>Na Comunidade, abra as regras de verificação.</p>
-            <div class="tutorial-visual">
-              <div class="tutorial-frame">
-                <img src="/assets/app/community-feed-720w.webp" srcset="/assets/app/community-feed-360w.webp 360w, /assets/app/community-feed-720w.webp 720w, /assets/app/community-feed-1080w.webp 1080w" sizes="(max-width: 48rem) 80vw, 400px" width="360" height="800" loading="lazy" decoding="async" alt="Entrada das regras de verificação destacada.">
-                <svg class="tutorial-overlay" viewBox="0 0 1220 2712" role="img" aria-label="Destaque do controle Regras de verificação comunitária"><rect x="322" y="1968" width="655" height="60"></rect><circle cx="650" cy="1878" r="60"></circle><text x="650" y="1878" font-size="64">1</text></svg>
-              </div>
-              <p class="lesson-meta">Estado: Visible state · App 3.1.0-debug · captura 2026-10-11 · conta demo</p>
-            </div>
-            <p><strong>Resultado esperado:</strong> Abre o diálogo somente-leitura com consenso, denúncia e recurso.</p>
-            <p><strong>Se não funcionar:</strong> Feche e reabra se dispensar sem ler.</p>
+          <li class="lesson-step" id="tu21-s1" data-text-only>
+            <h2>Passo 1: Denunciar tópico</h2>
+            <p>Em um tópico ou comentário escrito por outra pessoa, abra o menu de três pontos ("Mais ações") e escolha "Denunciar tópico", "Denunciar comentário" ou "Denunciar usuário". Escolha o motivo e toque em "Enviar denúncia".</p>
+            <p class="lesson-note"><strong>Passo sem captura:</strong> O ambiente de testes tinha apenas publicações editoriais oficiais, que não mostram esse menu.</p>
+            <p><strong>Resultado esperado:</strong> A denúncia é privada e analisada pela moderação. O conteúdo continua visível até a análise: denúncias nunca apagam nada sozinhas.</p>
+            <p><strong>Se não funcionar:</strong> Não é possível denunciar o próprio conteúdo. Sem conexão, tente de novo quando estiver on-line.</p>
           </li>
-          <li class="lesson-step" id="tu21-s2">
-            <h2>Passo 2: Denúncias nunca apagam conteúdo sozinhas</h2>
-            <p>Leia: denúncia nunca apaga conteúdo sozinha.</p>
-            <div class="tutorial-visual">
-              <div class="tutorial-frame">
-                <img src="/assets/app/rules-dialog-720w.webp" srcset="/assets/app/rules-dialog-360w.webp 360w, /assets/app/rules-dialog-720w.webp 720w, /assets/app/rules-dialog-1080w.webp 1080w" sizes="(max-width: 48rem) 80vw, 400px" width="360" height="800" loading="lazy" decoding="async" alt="Parágrafo de denúncia e moderação destacado.">
-                <svg class="tutorial-overlay" viewBox="0 0 1220 2712" role="img" aria-label="Destaque do controle Denúncias nunca apagam conteúdo sozinhas"><rect x="202" y="1207" width="816" height="300"></rect><circle cx="610" cy="1117" r="60"></circle><text x="610" y="1117" font-size="64">2</text></svg>
-              </div>
-              <p class="lesson-meta">Estado: Visible state · App 3.1.0-debug · captura 2026-10-11 · conta demo</p>
-            </div>
-            <p><strong>Resultado esperado:</strong> Moderadores restritos revisam cada caso com motivos registrados.</p>
-            <p><strong>Se não funcionar:</strong> Recursos viram novo caso; histórico nunca editado.</p>
+          <li class="lesson-step" id="tu21-s2" data-text-only>
+            <h2>Passo 2: Bloquear usuário</h2>
+            <p>No mesmo menu, "Bloquear usuário" abre a pergunta "Bloquear este usuário?". Confirme em "Bloquear".</p>
+            <p class="lesson-note"><strong>Passo sem captura:</strong> O ambiente de testes tinha apenas publicações editoriais oficiais, que não mostram esse menu.</p>
+            <p><strong>Resultado esperado:</strong> O conteúdo daquela pessoa no fórum e nos comentários de postos fica oculto para você. Ela não é avisada, e as outras pessoas continuam vendo o conteúdo.</p>
+            <p><strong>Se não funcionar:</strong> Bloqueou por engano? Desfaça em "Usuários bloqueados".</p>
           </li>
           <li class="lesson-step" id="tu21-s3">
-            <h2>Passo 3: Discorda de uma decisão?</h2>
-            <p>Recorra com novo motivo em vez de repetir a denúncia.</p>
+            <h2>Passo 3: Usuários bloqueados</h2>
+            <p>Para rever os bloqueios, abra "Perfil", toque em "Gerenciar conta" e depois em "Usuários bloqueados".</p>
             <div class="tutorial-visual">
               <div class="tutorial-frame">
-                <img src="/assets/app/rules-dialog-720w.webp" srcset="/assets/app/rules-dialog-360w.webp 360w, /assets/app/rules-dialog-720w.webp 720w, /assets/app/rules-dialog-1080w.webp 1080w" sizes="(max-width: 48rem) 80vw, 400px" width="360" height="800" loading="lazy" decoding="async" alt="Recurso e honestidade explicados.">
-
+                <img src="/assets/app/forum-08-blocked-users-720w.webp" srcset="/assets/app/forum-08-blocked-users-360w.webp 360w, /assets/app/forum-08-blocked-users-720w.webp 720w, /assets/app/forum-08-blocked-users-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela “Usuários bloqueados” com a explicação de que o conteúdo bloqueado fica oculto e o aviso “Nenhum usuário bloqueado”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Usuários bloqueados"><rect x="36" y="470" width="1008" height="542" rx="24"></rect><circle cx="56" cy="470" r="48"></circle><text x="56" y="470" font-size="52">3</text></svg>
               </div>
-              <p class="lesson-meta">Estado: Result state · App 3.1.0-debug · captura 2026-10-11 · conta demo</p>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
             </div>
-            <p><strong>Resultado esperado:</strong> Novo motivo abre novo caso revisado.</p>
-            <p><strong>Se não funcionar:</strong> Nunca denuncie usuários reais para obter capturas.</p>
+            <p><strong>Resultado esperado:</strong> A tela explica: "O conteúdo de usuários bloqueados fica oculto para você no fórum e nas páginas de postos. Essas pessoas não são avisadas." Quem foi bloqueado pode ser desbloqueado a qualquer momento.</p>
+            <p><strong>Se não funcionar:</strong> A lista só aparece com uma conta conectada.</p>
+          </li>
+          <li class="lesson-step" id="tu21-s4">
+            <h2>Passo 4: Denúncia e recurso</h2>
+            <p>As regras ficam em "Perfil", na entrada "Ajuda e regras da comunidade". Leia o cartão "Denúncia e recurso".</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/help-and-privacy-01-help-and-community-rules-720w.webp" srcset="/assets/app/help-and-privacy-01-help-and-community-rules-360w.webp 360w, /assets/app/help-and-privacy-01-help-and-community-rules-720w.webp 720w, /assets/app/help-and-privacy-01-help-and-community-rules-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela “Ajuda e regras da comunidade” com os cartões “Colabore bem”, “Regras da comunidade” e “Denúncia e recurso”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Denúncia e recurso"><rect x="36" y="1238" width="1008" height="442" rx="24"></rect><circle cx="56" cy="1238" r="48"></circle><text x="56" y="1238" font-size="52">4</text></svg>
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> O cartão resume: qualquer conta ativa pode denunciar abuso, moderadores revisam cada caso e, se você discordar da decisão, uma nova denúncia com o novo motivo vira um novo caso revisado.</p>
+            <p><strong>Se não funcionar:</strong> Fora do app, as regras completas estão nos Termos de uso e moderação deste site.</p>
           </li>
         </ol>
         <nav class="lesson-nav" aria-label="Navegar entre capítulos">
-          <a href="/como-usar/" class="btn-secondary">← Anterior: Todos os tutoriais</a>
-          <a href="/como-usar/" class="btn-primary">Próximo: Todos os tutoriais →</a>
+          <a href="/como-usar/minhas-contribuicoes/" class="btn-secondary">← Anterior: Minhas contribuições</a>
+          <a href="/como-usar/perfil-do-posto/" class="btn-primary">Próximo: Consultar perfil do posto →</a>
         </nav>
-        <p><a href="/como-usar/">Todos os tutoriais</a> · <a href="/guias/">Guias educativos</a></p>
+        <h2 id="continue-explorando">Continue explorando</h2>
+        <ul class="link-list"><li><a href="/termos/">Termos de uso e moderação</a></li><li><a href="/como-usar/ajuda-e-regras/">Ajuda e regras da comunidade</a></li><li><a href="/como-usar/">Todos os tutoriais</a></li><li><a href="/guias/">Guias educativos</a></li></ul>
       </article>
     </div>
   </main>

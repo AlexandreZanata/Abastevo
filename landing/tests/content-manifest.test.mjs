@@ -127,7 +127,7 @@ test('loadSite rejects broken fixtures with a precise message', () => {
       /duplicate route \/privacidade\//,
     ],
     [
-      (dir) => editFile(path.join(dir, 'manifest.json'), '"lastmod": "2026-10-26" },\n    { "route": "/como-usar/escolher-cidade/"', '"lastmod": "ontem" },\n    { "route": "/como-usar/escolher-cidade/"'),
+      (dir) => editFile(path.join(dir, 'manifest.json'), '"lastmod": "2026-11-17" },\n    { "route": "/como-usar/escolher-cidade/"', '"lastmod": "ontem" },\n    { "route": "/como-usar/escolher-cidade/"'),
       /indexable pages need a fixed lastmod date/,
     ],
   ];

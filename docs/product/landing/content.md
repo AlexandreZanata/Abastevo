@@ -347,6 +347,33 @@ under the hero, with larger art, one short line each and an arrow; on phones
 they scroll horizontally with snap points.
 
 
+## LH11 tutorial captures amendment — 2026-11-17
+
+Owner scope: replace the 1220 × 2712 gallery and tutorial captures with the
+17 Nov 2026 Android captures under the
+[capture contract](../../assets/app-tutorial/CAPTURE_CONTRACT.md), finish every
+published `/como-usar/` chapter and keep the LH08–LH10 style.
+
+- **Gallery.** `#aplicativo` shows six 9:16 captures in product order: ANP
+  weekly prices, community and ANP on a station page, route to a station,
+  tank-fill cost, survey weeks, forum. It states the capture date, never an
+  app version, and keeps the dated-ANP notice. On phones it is one snapping
+  row; no script, autoplay or carousel control.
+- **Derivatives.** Only files listed in
+  `landing/static/assets/app/provenance.json` ship: WebP at 360, 720 and
+  1080 px from the 1080 × 1920 masters with the recorded parameters, named
+  `<feature>-<NN-slug>-<width>w.webp`. A 1080w file above the 120 KiB budget
+  is not shipped. A derivative no page uses is removed with its entry.
+  Captures marked `emulatorArtifact` or `knownIssue` in the manifest never
+  ship.
+- **Chapters.** A step quotes the exact pt-BR label and highlights the
+  control on the master pixels. A screen that cannot be shown (protected
+  against capture, emulator camera scene, known app defect) is a text-only
+  step (`textOnly` in `lesson.json`) that says why; nothing is mocked up. The
+  sixteen published chapters are `Disponível`; unpublished ones keep
+  `Em breve`/`Planejado` without a link. Chapter text never states a store
+  listing.
+
 ## Legal pages shared UI — 2026-11-05
 
 Scope: the user-requested presentation alignment of `/privacidade/`,

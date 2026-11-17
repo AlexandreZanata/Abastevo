@@ -4,20 +4,20 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Offline e recuperação | Como usar | abastevo</title>
-  <meta name="description" content="Como o aplicativo abastevo se comporta sem rede: tabela em cache local, vazio honesto mantido e recuperação ao reconectar.">
+  <meta name="description" content="Como usar o abastevo sem internet: baixar o mapa da região e semanas da ANP, traçar a rota até o posto e navegar com o mapa offline.">
   <link rel="canonical" href="{{CANONICAL_ORIGIN}}/como-usar/offline-e-recuperacao/">
   <meta property="og:type" content="article">
   <meta property="og:site_name" content="abastevo">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:url" content="{{CANONICAL_ORIGIN}}/como-usar/offline-e-recuperacao/">
   <meta property="og:title" content="Offline e recuperação | Como usar | abastevo">
-  <meta property="og:description" content="Como o aplicativo abastevo se comporta sem rede: tabela em cache local, vazio honesto mantido e recuperação ao reconectar.">
+  <meta property="og:description" content="Como usar o abastevo sem internet: baixar o mapa da região e semanas da ANP, traçar a rota até o posto e navegar com o mapa offline.">
   <meta property="og:image" content="{{CANONICAL_ORIGIN}}/assets/brand/og-image-v1.png">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <meta name="twitter:title" content="Offline e recuperação | Como usar | abastevo">
-  <meta name="twitter:description" content="Como o aplicativo abastevo se comporta sem rede: tabela em cache local, vazio honesto mantido e recuperação ao reconectar.">
+  <meta name="twitter:description" content="Como usar o abastevo sem internet: baixar o mapa da região e semanas da ANP, traçar a rota até o posto e navegar com o mapa offline.">
   <link rel="icon" type="image/svg+xml" href="/assets/brand/favicon.svg">
   <link rel="icon" type="image/png" sizes="192x192" href="/assets/brand/icon-192.png">
   <link rel="apple-touch-icon" sizes="180x180" href="/assets/brand/apple-touch-icon.png">
@@ -39,43 +39,135 @@
           <li><span aria-current="page">Offline e recuperação</span></li>
         </ol>
       </nav>
-      <article class="legal-article">
+      <article class="legal-article lesson-article">
         <p><span class="lesson-availability">Disponível</span></p>
         <h1>Offline e recuperação</h1>
-        <p>Como o aplicativo abastevo se comporta sem rede: tabela em cache local, vazio honesto mantido e recuperação ao reconectar. Lição TU29 · 2 passos · somente leitura; modo avião religado logo depois do teste.</p>
+        <p class="article-lead">Como usar o abastevo sem internet: baixar o mapa da região e semanas da ANP, traçar a rota até o posto e navegar com o mapa offline.</p>
+        <p class="lesson-context">Lição TU29 · 9 passos. Capturas reais do aplicativo Android em desenvolvimento, feitas em 17 de novembro de 2026 em um emulador, com dados públicos da ANP.</p>
         <ol class="lesson-steps">
           <li class="lesson-step" id="tu29-s1">
-            <h2>Passo 1: Etanol, preço médio R$ 3,96</h2>
-            <p>Com o modo avião ligado, abra a tabela: o cache local renderiza.</p>
+            <h2>Passo 1: Baixar</h2>
+            <p>Ao abrir o mapa de uma cidade sem mapa offline, o app oferece o download. No exemplo: "Baixar mapa de Mato Grosso (116 MB)". Toque em "Baixar".</p>
             <div class="tutorial-visual">
               <div class="tutorial-frame">
-                <img src="/assets/app/offline-cached-720w.webp" srcset="/assets/app/offline-cached-360w.webp 360w, /assets/app/offline-cached-720w.webp 720w, /assets/app/offline-cached-1080w.webp 1080w" sizes="(max-width: 48rem) 80vw, 400px" width="360" height="800" loading="lazy" decoding="async" alt="Tabela em cache com modo avião ativo.">
-                <svg class="tutorial-overlay" viewBox="0 0 1220 2712" role="img" aria-label="Destaque do controle Etanol, preço médio R$ 3,96"><rect x="48" y="624" width="1124" height="420"></rect><circle cx="610" cy="534" r="60"></circle><text x="610" y="534" font-size="64">1</text></svg>
+                <img src="/assets/app/map-offline-01-download-suggestion-720w.webp" srcset="/assets/app/map-offline-01-download-suggestion-360w.webp 360w, /assets/app/map-offline-01-download-suggestion-720w.webp 720w, /assets/app/map-offline-01-download-suggestion-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Mapa de Sorriso, MT, ainda sem ruas, com o cartão “Baixar mapa de Mato Grosso (116 MB)” e as ações “Agora não” e “Baixar”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Baixar"><rect x="752" y="552" width="262" height="144" rx="24"></rect><circle cx="752" cy="552" r="48"></circle><text x="752" y="552" font-size="52">1</text></svg>
               </div>
-              <p class="lesson-meta">Estado: Visible state · App 3.1.0-debug · captura 2026-10-11</p>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
             </div>
-            <p><strong>Resultado esperado:</strong> Tabela em cache com médias da semana, sem rede.</p>
-            <p><strong>Se não funcionar:</strong> Sem cache, a tela informa em vez de inventar.</p>
+            <p><strong>Resultado esperado:</strong> O app abre a tela "Downloads" e começa a baixar.</p>
+            <p><strong>Se não funcionar:</strong> "Agora não" fecha a sugestão; o botão "Baixar" na parte de baixo do mapa abre os downloads depois.</p>
           </li>
           <li class="lesson-step" id="tu29-s2">
-            <h2>Passo 2: Ainda não há preços recentes</h2>
-            <p>Na Comunidade, o vazio segue honesto sem rede.</p>
+            <h2>Passo 2: Downloads</h2>
+            <p>A tela "Downloads" mostra o progresso total e cada pacote, como "Mapa da região" e "Mapa-base mundial".</p>
             <div class="tutorial-visual">
               <div class="tutorial-frame">
-                <img src="/assets/app/offline-cached-720w.webp" srcset="/assets/app/offline-cached-360w.webp 360w, /assets/app/offline-cached-720w.webp 720w, /assets/app/offline-cached-1080w.webp 1080w" sizes="(max-width: 48rem) 80vw, 400px" width="360" height="800" loading="lazy" decoding="async" alt="Vazio honesto mantido sem rede.">
-
+                <img src="/assets/app/map-offline-02-download-progress-720w.webp" srcset="/assets/app/map-offline-02-download-progress-360w.webp 360w, /assets/app/map-offline-02-download-progress-720w.webp 720w, /assets/app/map-offline-02-download-progress-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela “Downloads” com o pacote de Mato Grosso em 46 por cento, 54 MB de 116 MB, a marca “Somente Wi-Fi” e os pacotes “Mapa da região” e “Mapa-base mundial”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Downloads"><rect x="34" y="1042" width="1012" height="300" rx="24"></rect><circle cx="56" cy="1042" r="48"></circle><text x="56" y="1042" font-size="52">2</text></svg>
               </div>
-              <p class="lesson-meta">Estado: Result state · App 3.1.0-debug · captura 2026-10-11</p>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
             </div>
-            <p><strong>Resultado esperado:</strong> Mesmo estado vazio do online; nada finge atualizar.</p>
-            <p><strong>Se não funcionar:</strong> Desligue o modo avião para sincronizar.</p>
+            <p><strong>Resultado esperado:</strong> A marca "Somente Wi-Fi" indica que o download não usa dados móveis.</p>
+            <p><strong>Se não funcionar:</strong> Por padrão, o download só acontece no Wi-Fi.</p>
+          </li>
+          <li class="lesson-step" id="tu29-s3">
+            <h2>Passo 3: Verificar atualizações</h2>
+            <p>Quando termina, o pacote da região aparece como "Ativo". "Verificar atualizações" procura uma versão mais nova e "OK" volta ao mapa.</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/map-offline-03-offline-pack-active-720w.webp" srcset="/assets/app/map-offline-03-offline-pack-active-360w.webp 360w, /assets/app/map-offline-03-offline-pack-active-720w.webp 720w, /assets/app/map-offline-03-offline-pack-active-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Tela “Downloads” com o pacote de Mato Grosso marcado como ativo, a marca “Somente Wi-Fi” e os botões “Verificar atualizações” e “OK”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Verificar atualizações"><rect x="32" y="470" width="1014" height="328" rx="24"></rect><circle cx="56" cy="470" r="48"></circle><text x="56" y="470" font-size="52">3</text></svg>
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> O mapa da região passa a funcionar sem internet.</p>
+            <p><strong>Se não funcionar:</strong> O pacote ocupa espaço no aparelho; confira o tamanho antes de baixar.</p>
+          </li>
+          <li class="lesson-step" id="tu29-s4">
+            <h2>Passo 4: Mapa offline</h2>
+            <p>De volta ao mapa, as ruas e os postos são desenhados a partir do pacote offline.</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/map-offline-04-offline-map-ready-720w.webp" srcset="/assets/app/map-offline-04-offline-map-ready-360w.webp 360w, /assets/app/map-offline-04-offline-map-ready-720w.webp 720w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Mapa de Sorriso, MT, com ruas, bairros e ícones de postos desenhados a partir do mapa offline, e os botões “Filtros” e “Baixar”.">
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> Os ícones dos postos aparecem sobre as ruas da cidade.</p>
+            <p><strong>Se não funcionar:</strong> Os preços vêm das semanas baixadas, não do mapa; baixe também a semana que quiser consultar.</p>
+          </li>
+          <li class="lesson-step" id="tu29-s5">
+            <h2>Passo 5: Baixar</h2>
+            <p>Os preços também funcionam offline. No painel "Semana de pesquisa", toque em "Baixar" nas semanas que quiser guardar.</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/survey-weeks-02-week-list-720w.webp" srcset="/assets/app/survey-weeks-02-week-list-360w.webp 360w, /assets/app/survey-weeks-02-week-list-720w.webp 720w, /assets/app/survey-weeks-02-week-list-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Painel “Semana de pesquisa” com a semana 8–14 nov. 2026 marcada como “Atual” e “Baixada” e o botão “Baixar” nas semanas 1–7 nov. 2026 e 18–24 out. 2026.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Baixar"><rect x="752" y="1340" width="252" height="104" rx="24"></rect><circle cx="752" cy="1340" r="48"></circle><text x="752" y="1340" font-size="52">5</text></svg>
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> A semana baixada passa a mostrar a marca "Baixada".</p>
+            <p><strong>Se não funcionar:</strong> Para baixar uma semana é preciso estar conectado.</p>
+          </li>
+          <li class="lesson-step" id="tu29-s6">
+            <h2>Passo 6: Baixada</h2>
+            <p>Semanas com a marca "Baixada" podem ser consultadas sem internet: média da cidade, postos pesquisados e histórico.</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/survey-weeks-04-week-downloaded-720w.webp" srcset="/assets/app/survey-weeks-04-week-downloaded-360w.webp 360w, /assets/app/survey-weeks-04-week-downloaded-720w.webp 720w, /assets/app/survey-weeks-04-week-downloaded-1080w.webp 1080w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Painel “Semana de pesquisa” com as semanas 8–14 nov. 2026 e 1–7 nov. 2026 marcadas como “Baixada”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Baixada"><rect x="722" y="1342" width="286" height="108" rx="24"></rect><circle cx="722" cy="1342" r="48"></circle><text x="722" y="1342" font-size="52">6</text></svg>
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> Sem conexão, o app continua mostrando as semanas guardadas, sempre com a data da pesquisa.</p>
+            <p><strong>Se não funcionar:</strong> Semana sem a marca? Conecte-se e toque em "Baixar".</p>
+          </li>
+          <li class="lesson-step" id="tu29-s7">
+            <h2>Passo 7: Iniciar navegação</h2>
+            <p>Na ficha de um posto, "Rota e ir" traça o caminho a partir da posição atual e mostra o tempo e a distância.</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/map-05-route-preview-720w.webp" srcset="/assets/app/map-05-route-preview-360w.webp 360w, /assets/app/map-05-route-preview-720w.webp 720w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Mapa de Sorriso, MT, com a rota em azul da posição atual até um posto, o resumo 8 min · 5,1 km e os botões “Iniciar navegação”, “Editar rota” e “Manobras”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Iniciar navegação"><rect x="64" y="1326" width="950" height="144" rx="24"></rect><circle cx="64" cy="1326" r="48"></circle><text x="64" y="1326" font-size="52">7</text></svg>
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> No exemplo: "8 min · 5,1 km". "Editar rota" ajusta o trajeto e "Iniciar navegação" começa a orientação.</p>
+            <p><strong>Se não funcionar:</strong> Sem a permissão de localização não há ponto de partida; libere a localização nas configurações do Android.</p>
+          </li>
+          <li class="lesson-step" id="tu29-s8">
+            <h2>Passo 8: Manobras</h2>
+            <p>Toque em "Manobras" para ler cada conversão antes de sair.</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/map-06-route-maneuvers-720w.webp" srcset="/assets/app/map-06-route-maneuvers-360w.webp 360w, /assets/app/map-06-route-maneuvers-720w.webp 720w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Prévia da rota com a lista “Manobras” aberta, mostrando as instruções de conversão do trajeto em Sorriso, MT.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Manobras"><rect x="420" y="1104" width="256" height="112" rx="24"></rect><circle cx="420" cy="1104" r="48"></circle><text x="420" y="1104" font-size="52">8</text></svg>
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> A lista mostra as instruções na ordem do trajeto.</p>
+            <p><strong>Se não funcionar:</strong> O X no topo fecha a prévia da rota.</p>
+          </li>
+          <li class="lesson-step" id="tu29-s9">
+            <h2>Passo 9: Parar navegação</h2>
+            <p>"Iniciar navegação" começa a orientação curva a curva com o mapa offline. Há botões de zoom, de voz e para recentralizar o mapa.</p>
+            <div class="tutorial-visual">
+              <div class="tutorial-frame">
+                <img src="/assets/app/map-07-turn-by-turn-navigation-720w.webp" srcset="/assets/app/map-07-turn-by-turn-navigation-360w.webp 360w, /assets/app/map-07-turn-by-turn-navigation-720w.webp 720w" sizes="(min-width: 24rem) 272px, 76vw" width="360" height="640" loading="lazy" decoding="async" alt="Navegação em andamento em Sorriso, MT, com a próxima instrução a 100 m, os botões de zoom, voz e recentralizar, o resumo 8 min · 5,1 km e o botão “Parar navegação”.">
+                <svg class="tutorial-overlay" viewBox="0 0 1080 1920" role="img" aria-label="Destaque: Parar navegação"><rect x="54" y="1680" width="970" height="144" rx="24"></rect><circle cx="56" cy="1680" r="48"></circle><text x="56" y="1680" font-size="52">9</text></svg>
+              </div>
+              <p class="lesson-meta">Captura de 17 de novembro de 2026 · Sorriso, MT</p>
+            </div>
+            <p><strong>Resultado esperado:</strong> O topo mostra a próxima instrução e a distância até ela; a parte de baixo, o tempo e a distância restantes.</p>
+            <p><strong>Se não funcionar:</strong> "Parar navegação" encerra a orientação a qualquer momento.</p>
           </li>
         </ol>
         <nav class="lesson-nav" aria-label="Navegar entre capítulos">
-          <a href="/como-usar/" class="btn-secondary">← Anterior: Todos os tutoriais</a>
-          <a href="/como-usar/" class="btn-primary">Próximo: Todos os tutoriais →</a>
+          <a href="/como-usar/configuracoes/" class="btn-secondary">← Anterior: Configurações</a>
+          <a href="/como-usar/ajuda-e-regras/" class="btn-primary">Próximo: Ajuda e regras →</a>
         </nav>
-        <p><a href="/como-usar/">Todos os tutoriais</a> · <a href="/guias/">Guias educativos</a></p>
+        <h2 id="continue-explorando">Continue explorando</h2>
+        <ul class="link-list"><li><a href="/como-usar/semanas-anp/">Trocar ou baixar uma semana</a></li><li><a href="/como-usar/postos/">Encontrar e navegar até um posto</a></li><li><a href="/como-usar/">Todos os tutoriais</a></li><li><a href="/guias/">Guias educativos</a></li></ul>
       </article>
     </div>
   </main>

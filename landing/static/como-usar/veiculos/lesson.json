@@ -3,91 +3,232 @@
   "slug": "veiculos",
   "titlePtBr": "Veículos e estimativa do tanque",
   "appVersion": "3.1.0-debug",
-  "appSourceSha": null,
+  "appSourceSha": "fd0a691283f6dc4c0970e39a4602bd8a8d248a36",
   "steps": [
     {
       "stepId": "tu26-s1",
-      "image": "/assets/app/vehicle-form-dark-720w.webp",
-      "imageSha256": "760fd4e05962009a73fbe0fd39fa18b21bfdb68b4da25e872cf8c94b58797072",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "Conta demo conectada; formulário em branco, nada salvo.",
-      "instructionPtBr": "Dê um nome ao veículo sem salvar ainda.",
-      "controlLabelPtBr": "Nome do veículo",
-      "expectedPtBr": "Campo de nome em branco, nada digitado.",
-      "recoveryPtBr": "Nome é obrigatório; vazio bloqueia o salvamento.",
-      "altPtBr": "Campo de nome do veículo destacado.",
+      "image": "/assets/app/vehicles-01-no-vehicles-720w.webp",
+      "imageSha256": "819e82f3a8b7f4652b0855fb375a4fe35ced17f2afc6004ee5f0c63034e84e34",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Lista de veículos vazia",
+      "prerequisite": "App aberto com cidade escolhida.",
+      "instructionPtBr": "Abra \"Veículos\" pelo atalho no fim da tela inicial ou em \"Perfil\", na entrada \"Meus veículos\". Toque no botão \"+\" para adicionar.",
+      "controlLabelPtBr": "Adicionar veículo",
+      "expectedPtBr": "A tela \"Adicionar veículo\" abre. É possível cadastrar até 3 veículos.",
+      "recoveryPtBr": "Os veículos ficam guardados só no aparelho; não é preciso ter conta.",
+      "altPtBr": "Tela “Veículos” vazia com o aviso “Nenhum veículo cadastrado”, a dica de adicionar até 3 veículos e o botão de adicionar no canto inferior.",
       "target": {
-        "x": 96,
-        "y": 432,
-        "width": 378,
-        "height": 72
+        "x": 880,
+        "y": 1472,
+        "width": 170,
+        "height": 170
       },
       "availability": "Disponível",
-      "claimClass": "unsaved-form",
+      "claimClass": "visible-state-only",
       "sourceFiles": [
         "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
     },
     {
       "stepId": "tu26-s2",
-      "image": "/assets/app/vehicle-form-dark-720w.webp",
-      "imageSha256": "760fd4e05962009a73fbe0fd39fa18b21bfdb68b4da25e872cf8c94b58797072",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Visible state",
-      "prerequisite": "Conta demo conectada; formulário em branco, nada salvo.",
-      "instructionPtBr": "Escolha combustível e referência de preço.",
-      "controlLabelPtBr": "Referência de preço",
-      "expectedPtBr": "Oito combustíveis e referência por posto mais barato ou específico.",
-      "recoveryPtBr": "Sem posto com preço, a estimativa fica indisponível.",
-      "altPtBr": "Combustível e referência destacados.",
+      "image": "/assets/app/vehicles-02-name-and-tank-720w.webp",
+      "imageSha256": "d19f33a0c6d06969b9b4b1888c4d1faf8bcfdf2eb7ab7a999b283e35bde8f568",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Formulário: nome, propulsão e tanque",
+      "prerequisite": "Tela \"Adicionar veículo\" aberta.",
+      "instructionPtBr": "Dê um nome em \"Nome do veículo\", escolha a \"Propulsão\" e digite a \"Capacidade do tanque (litros)\".",
+      "controlLabelPtBr": "Capacidade do tanque (litros)",
+      "expectedPtBr": "No exemplo: Meu carro, \"Combustão (ICE)\" e 50 litros.",
+      "recoveryPtBr": "A capacidade está no manual do veículo; use o valor em litros.",
+      "altPtBr": "Formulário “Adicionar veículo” com o nome Meu carro, a propulsão “Combustão (ICE)” escolhida e a capacidade do tanque de 50 litros.",
       "target": {
-        "x": 48,
-        "y": 1644,
-        "width": 385,
-        "height": 60
+        "x": 34,
+        "y": 1196,
+        "width": 1012,
+        "height": 178
       },
       "availability": "Disponível",
-      "claimClass": "unsaved-form",
+      "claimClass": "visible-state-only",
       "sourceFiles": [
-        "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
+        "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleForm.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
     },
     {
       "stepId": "tu26-s3",
-      "image": "/assets/app/vehicle-form-dark-720w.webp",
-      "imageSha256": "760fd4e05962009a73fbe0fd39fa18b21bfdb68b4da25e872cf8c94b58797072",
-      "nativeWidth": 1220,
-      "nativeHeight": 2712,
-      "state": "Result state",
-      "prerequisite": "Conta demo conectada; formulário em branco, nada salvo.",
-      "instructionPtBr": "O alerta de queda segue desligado; nada foi salvo.",
+      "image": "/assets/app/vehicles-03-fuel-and-price-alert-720w.webp",
+      "imageSha256": "1e1351dbe2753dce1d4dff8f6f698d9984552929cd0643e2dc67c928157f4227",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Formulário: combustível, referência e alerta",
+      "prerequisite": "Nome e tanque preenchidos.",
+      "instructionPtBr": "Escolha o \"Tipo de combustível\" e a \"Referência de preço\": \"Posto mais barato\" ou \"Posto específico\". Ative \"Avisar quando o preço cair\" se quiser um aviso.",
       "controlLabelPtBr": "Avisar quando o preço cair",
-      "expectedPtBr": "Alternância intacta e formulário não salvo.",
-      "recoveryPtBr": "Alerta avalia após importação real; permissão do SO segue pendente.",
-      "altPtBr": "Alerta de queda de preço destacado, desligado.",
+      "expectedPtBr": "O texto do alerta explica: \"Receba uma notificação local após cada importação semanal quando o preço acompanhado cair.\"",
+      "recoveryPtBr": "O alerta depende da importação semanal; sem sincronizar não há aviso.",
+      "altPtBr": "Formulário do veículo com “Tipo de combustível” em gasolina comum, “Referência de preço” em “Posto mais barato” e a opção “Avisar quando o preço cair” ativada.",
       "target": {
-        "x": 48,
-        "y": 1944,
-        "width": 512,
-        "height": 60
+        "x": 36,
+        "y": 1346,
+        "width": 1008,
+        "height": 242
       },
       "availability": "Disponível",
-      "claimClass": "unsaved-form",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleForm.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu26-s4",
+      "image": "/assets/app/vehicles-04-vehicle-saved-720w.webp",
+      "imageSha256": "e151a95d736f8127f7538728b9f57fcc576a23d179d300a587b1049b3b879e12",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Lista com um veículo",
+      "prerequisite": "Formulário salvo.",
+      "instructionPtBr": "Salve o formulário. O veículo aparece na lista com o combustível, o tamanho do tanque e a referência de preço.",
+      "controlLabelPtBr": "Veículo salvo",
+      "expectedPtBr": "No exemplo: Meu carro, \"Gasolina comum (50 L)\" e \"Posto mais barato\". O ícone de lista abre os \"Lançamentos\" do veículo.",
+      "recoveryPtBr": "O ícone de lixeira remove o veículo, depois de uma confirmação.",
+      "altPtBr": "Tela “Veículos” com o veículo Meu carro, gasolina comum, tanque de 50 L e referência “Posto mais barato”, com os ícones de lançamentos e de excluir.",
+      "target": {
+        "x": 36,
+        "y": 392,
+        "width": 1008,
+        "height": 350
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
       "sourceFiles": [
         "app/src/main/kotlin/com/anpfuel/app/ui/vehicle/VehicleScreen.kt"
       ],
-      "capturedAt": "2026-10-11",
+      "capturedAt": "2026-11-17",
       "privacyReviewed": true,
-      "demoOnly": true
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu26-s5",
+      "image": "/assets/app/vehicles-05-tank-fill-cost-720w.webp",
+      "imageSha256": "3f20f968ed170c2f61e744b98d1b00fef78dc1a6d80672f2d90504510e974471",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Tela inicial com o custo do tanque",
+      "prerequisite": "Um veículo cadastrado.",
+      "instructionPtBr": "Na tela inicial, o cartão \"Custo para encher o tanque\" multiplica a capacidade do tanque pelo preço de referência do posto da sua escolha.",
+      "controlLabelPtBr": "Custo para encher o tanque",
+      "expectedPtBr": "No exemplo: R$ 312,50 para 50 L, pelo preço de referência ANP da semana de 8 a 14 de nov. de 2026. \"Ir até o posto\" abre a rota.",
+      "recoveryPtBr": "É uma estimativa para o tanque inteiro; o valor real depende de quanto combustível falta e do preço na bomba.",
+      "altPtBr": "Tela inicial em Sorriso, MT, com o cartão “Custo para encher o tanque” mostrando R$ 312,50 para o veículo Meu carro (50 L), o posto de referência e o botão “Ir até o posto”.",
+      "target": {
+        "x": 34,
+        "y": 414,
+        "width": 1012,
+        "height": 628
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/components/TankFillCostCard.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu26-s6",
+      "image": "/assets/app/vehicles-06-fuel-log-720w.webp",
+      "imageSha256": "af9dee7192e6f3897a06965b792a08ffa4e3eac2552f9132e9ac053978461f66",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Lançamentos do veículo vazios",
+      "prerequisite": "Ícone de lista tocado no veículo.",
+      "instructionPtBr": "Na lista de veículos, toque no ícone de lista para abrir os registros do veículo. \"Abastecimento\" e \"Despesa\" criam um novo lançamento.",
+      "controlLabelPtBr": "Abastecimento",
+      "expectedPtBr": "A tela também traz o campo \"Eficiência estimada (km/L, opcional)\" e o atalho \"Mensal\".",
+      "recoveryPtBr": "Sem registros, a seção \"Lançamentos\" aparece vazia.",
+      "altPtBr": "Tela do veículo Meu carro com os botões “Abastecimento” e “Despesa”, o campo “Eficiência estimada (km/L, opcional)”, o atalho “Mensal” e a seção “Lançamentos” vazia.",
+      "target": {
+        "x": 32,
+        "y": 242,
+        "width": 500,
+        "height": 270
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/ledger/LedgerEntriesScreen.kt",
+        "app/src/main/kotlin/com/anpfuel/app/ui/monthly/MonthlyIndicatorsScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu26-s7",
+      "image": "/assets/app/vehicles-07-add-fill-up-720w.webp",
+      "imageSha256": "e1a6d5a93ad6b3e4371c17bb4758c9045640df2d8e3b538d11c058850a92067c",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Novo lançamento preenchido",
+      "prerequisite": "Botão \"Abastecimento\" tocado.",
+      "instructionPtBr": "Em \"Novo lançamento\", informe a \"Quantidade (L)\", marque se o tanque ficou \"Cheio\" ou \"Parcial\", digite o \"Total (R$)\" e o \"Odômetro (km)\". Toque em \"Salvar\".",
+      "controlLabelPtBr": "Salvar",
+      "expectedPtBr": "No exemplo: 40 L, tanque cheio, R$ 250,00 e 12.500 km, valores fictícios de demonstração.",
+      "recoveryPtBr": "\"Cancelar\" fecha sem guardar. O preço por litro é opcional.",
+      "altPtBr": "Formulário “Novo lançamento” de abastecimento com 40 L, tanque “Cheio”, total de R$ 250,00 e odômetro de 12500 km, e os botões “Cancelar” e “Salvar”.",
+      "target": {
+        "x": 660,
+        "y": 1788,
+        "width": 322,
+        "height": 128
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/ledger/LedgerEntriesScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
+    },
+    {
+      "stepId": "tu26-s8",
+      "image": "/assets/app/vehicles-08-fuel-log-entry-720w.webp",
+      "imageSha256": "81438c9be38e5dcdf3f95f67ef08c2721cbf60c6e2b1805725fb138973bf8259",
+      "nativeWidth": 1080,
+      "nativeHeight": 1920,
+      "state": "Lançamento registrado",
+      "prerequisite": "Lançamento salvo.",
+      "instructionPtBr": "O registro aparece em \"Lançamentos\" e fica guardado só no aparelho.",
+      "controlLabelPtBr": "Lançamentos",
+      "expectedPtBr": "No exemplo: \"R$ 250,00 • 40 L\", com a marca \"Local\".",
+      "recoveryPtBr": "Registre sempre o odômetro para poder calcular o consumo entre dois abastecimentos.",
+      "altPtBr": "Tela do veículo com a seção “Lançamentos” mostrando um abastecimento de R$ 250,00 e 40 L, com a marca “Local”.",
+      "target": {
+        "x": 32,
+        "y": 1372,
+        "width": 1014,
+        "height": 288
+      },
+      "availability": "Disponível",
+      "claimClass": "visible-state-only",
+      "sourceFiles": [
+        "app/src/main/kotlin/com/anpfuel/app/ui/ledger/LedgerEntriesScreen.kt"
+      ],
+      "capturedAt": "2026-11-17",
+      "privacyReviewed": true,
+      "demoOnly": false
     }
   ]
 }
