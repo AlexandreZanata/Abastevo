@@ -130,15 +130,15 @@ export function build(options = {}) {
       'brand/abastevo-logo.svg',
       'brand/abastevo-wordmark.svg',
       'brand/favicon.svg',
-      ...['skyline', 'trees', 'road', 'car'].map((layer) => {
-        const pattern = new RegExp(`^${layer}-640w\\.[a-f0-9]{8}\\.webp$`);
-        const matches = artFiles.filter((file) => pattern.test(file));
-        if (matches.length !== 1) throw new Error(`Expected one landing hero asset for ${layer}`);
-        return `art/${matches[0]}`;
-      }),
+      // The landing hero is one fingerprinted SVG; the admin sign-in reuses it.
+      ...(() => {
+        const matches = artFiles.filter((file) => /^hero-mark\.[a-f0-9]{8}\.svg$/.test(file));
+        if (matches.length !== 1) throw new Error('Expected one landing hero asset (hero-mark.<hash>.svg)');
+        return [`art/${matches[0]}`];
+      })(),
     ]) {
       const content = fs.readFileSync(path.join(landing, 'static', 'assets', rel));
-      const source = rel.replace(/\.[a-f0-9]{8}(?=\.webp$)/, '');
+      const source = rel.replace(/\.[a-f0-9]{8}(?=\.(?:webp|svg)$)/, '');
       const dest = source.replace(/\.(svg|webp)$/, `.${computeHash(content)}.$1`);
       const out = path.join(outDir, 'assets', dest);
       fs.mkdirSync(path.dirname(out), { recursive: true });

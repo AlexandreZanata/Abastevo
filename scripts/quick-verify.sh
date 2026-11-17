@@ -217,11 +217,14 @@ else
         npm --prefix landing test
     fi
     # Bounded admin web selection (ADR-023 B1): admin-web changes run its
-    # typecheck, build, dist check and tests, mirroring the landing.
+    # typecheck, build, dist check and tests, mirroring the landing. Its
+    # build copies the landing stylesheet, fonts, brand and hero art, so a
+    # landing change selects it too (a removed asset otherwise only fails
+    # in release-staging, after the merge).
     ADMIN_WEB_CHANGED=0
     while IFS= read -r f || [[ -n "$f" ]]; do
         case "$f" in
-            admin-web/*)
+            admin-web/*|landing/*)
                 ADMIN_WEB_CHANGED=1
                 break
                 ;;
