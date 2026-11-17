@@ -20,7 +20,11 @@ initial-transfer measurement and inspect layout/contrast after loading/fallback.
 The follow-up visual/tutorial request uses branch `landing`; see the
 bounded redesign plan.
 The home opening introduces the genuine app gallery and tutorial section.
-Only actual app captures may appear in mockups or step walkthroughs.
+Only actual app captures may appear in mockups or step walkthroughs. Tutorial
+captures come from [docs/assets/app-tutorial](../../assets/app-tutorial/README.md)
+and follow its [capture contract](../../assets/app-tutorial/CAPTURE_CONTRACT.md):
+derivatives keep the capture stem and quoted app labels match the current
+pt-BR strings, so a changed app screen points at the page or field to update.
 
 ## Page inventory
 

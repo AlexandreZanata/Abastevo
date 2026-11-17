@@ -22,4 +22,4 @@ the same change as the code.
 | [security/](security/) | [Security and privacy](security/security-privacy.md), [privacy policy pointer](security/privacy-policy.md), [identity profile](security/identity-profile.md), [media and location](security/media-location-policy.md), [retention](security/retention.md), [risks](security/risks.md). |
 | [decisions/](decisions/README.md) | Architecture decisions still in force. |
 | [store/](store/README.md) | Google Play [readiness](store/play-readiness.md), [listing copy](store/play-store-listing.md), screenshots and cards. |
-| [brand/](brand/) and [assets/](assets/) | [Brand identity](brand/identity.md), [app icons](brand/app-icons.md), design masters used by the asset scripts, [asset attribution](assets/attribution.md). |
+| [brand/](brand/) and [assets/](assets/) | [Brand identity](brand/identity.md), [app icons](brand/app-icons.md), design masters used by the asset scripts, [asset attribution](assets/attribution.md), [Android tutorial captures](assets/app-tutorial/README.md) and their [capture contract](assets/app-tutorial/CAPTURE_CONTRACT.md). |

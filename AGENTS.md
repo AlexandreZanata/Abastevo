@@ -90,6 +90,13 @@ the task needs ([docs/README.md](docs/README.md) is the index).
 7. Keep docs true in the same change: update the doc that owns the rule or
    runbook. Future work goes to [ROADMAP.md](ROADMAP.md); never add progress
    logs, task ledgers or evidence dumps to the repository.
+8. Android screens captured for the public tutorials are listed in
+   [docs/assets/app-tutorial/manifest.json](docs/assets/app-tutorial/manifest.json).
+   When you change one of their sources or strings, run
+   `python3 scripts/app_tutorial/tutorial_contract.py stale` and follow the
+   [capture contract](docs/assets/app-tutorial/CAPTURE_CONTRACT.md): recapture
+   on the emulator under the frozen conditions and update the site page or
+   label that shows it.
 
 ## Deployment
 
