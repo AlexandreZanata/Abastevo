@@ -5,7 +5,7 @@ description: Calcule o consumo médio do seu carro em km/l e em litros por 100 k
 summary: Quilômetros por litro, litros por 100 km e custo por quilômetro a partir de um tanque.
 slug: consumo-medio
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /guias/como-calcular-consumo-medio/
   - /guias/como-economizar-combustivel/
@@ -43,3 +43,17 @@ Os valores são ilustrativos.
 - O consumo informado no painel do carro é uma estimativa do computador de bordo e pode diferir da conta feita com os litros reais.
 
 Com o consumo em mãos, compare combustíveis na [calculadora etanol ou gasolina](/ferramentas/etanol-ou-gasolina/) ou planeje a próxima viagem.
+
+## No aplicativo
+
+O aplicativo Android do abastevo, em desenvolvimento, guarda os abastecimentos de cada veículo para você ter os números da conta à mão:
+
+1. Em "Veículos", toque no ícone de lista ao lado do veículo e escolha "Abastecimento".
+2. Em "Novo lançamento", informe a "Quantidade (L)", marque "Cheio" e anote o "Odômetro (km)".
+3. Toque em "Salvar". Com dois abastecimentos de tanque cheio em "Lançamentos", use os quilômetros rodados e os litros na calculadora desta página.
+
+![Tela do veículo Meu carro com os botões “Abastecimento” e “Despesa” e a seção “Lançamentos” vazia.](/assets/app/vehicles-06-fuel-log-720w.webp "Passo 1: registros do veículo.")
+![Formulário “Novo lançamento” de abastecimento com 40 L, tanque “Cheio”, total de R$ 250,00 e odômetro de 12500 km.](/assets/app/vehicles-07-add-fill-up-720w.webp "Passo 2: abastecimento de exemplo, com valores fictícios.")
+![Seção “Lançamentos” do veículo mostrando um abastecimento de R$ 250,00 e 40 L, com a marca “Local”.](/assets/app/vehicles-08-fuel-log-entry-720w.webp "Passo 3: o registro guardado em “Lançamentos”.")
+
+Os registros ficam só no aparelho. As capturas são de 17 de novembro de 2026. Veja o tutorial [Veículos e estimativa do tanque](/como-usar/veiculos/).

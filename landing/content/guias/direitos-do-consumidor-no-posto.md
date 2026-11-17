@@ -7,7 +7,7 @@ slug: direitos-do-consumidor-no-posto
 category: direitos-e-qualidade
 tags: [direitos-do-consumidor, preco-na-bomba, nota-fiscal, procon, fonte-e-data]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /guias/combustivel-adulterado/
   - /guias/como-ler-precos/
@@ -88,6 +88,21 @@ Ao reclamar, tenha em mãos a nota fiscal, fotos da bomba e da placa e um relato
 ## O que o abastevo pode e não pode mostrar
 
 Os [preços de referência por estado e cidade](/precos/) mostram a média da pesquisa semanal da ANP, com a data da coleta. Eles ajudam a perceber se um preço está muito fora do comum na sua região, mas não provam irregularidade: a pesquisa é uma amostra de uma semana específica, e cada posto define o próprio preço. Use a referência como ponto de partida e os seus direitos como garantia.
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. Registrar no aplicativo ajuda outros motoristas, mas não substitui a reclamação aos órgãos indicados neste guia:
+
+1. Viu um preço diferente do divulgado? Em "Comunidade", toque em "Colaborar com preço", escolha o posto e use "Fotografar preço" para registrar o painel de preços. Não fotografe pessoas nem placas de veículos.
+2. Nome ou endereço do posto está errado? No perfil do posto, "Sugerir correção" envia uma sugestão, que é analisada antes de alterar o mapa.
+3. Em "Perfil", a entrada "Ajuda e regras da comunidade" explica as regras de contribuição e de denúncia dentro do app.
+
+![Tela “Fotografar preço” com o título “Escolha o posto deste preço”, a cidade Sorriso, MT, e a lista de postos.](/assets/app/contribute-price-01-choose-station-720w.webp "Passo 1: escolha do posto em “Fotografar preço”.")
+![Tela “Fotografar preço” com o posto escolhido, a ação “Trocar posto” e o botão “Fotografar preço”.](/assets/app/contribute-price-03-station-selected-720w.webp "Passo 1: posto escolhido e o botão “Fotografar preço”.")
+![Formulário “Sugerir correção” em branco com as opções “Nome do posto”, “Logradouro e número” e “Informar fechamento definitivo”.](/assets/app/stations-11-suggest-correction-720w.webp "Passo 2: formulário “Sugerir correção” em branco.")
+![Tela “Ajuda e regras da comunidade” com os cartões “Colabore bem”, “Regras da comunidade” e “Denúncia e recurso”.](/assets/app/help-and-privacy-01-help-and-community-rules-720w.webp "Passo 3: “Ajuda e regras da comunidade”.")
+
+O passo a passo completo está nos tutoriais [Fotografar um preço](/como-usar/fotografar-preco/) e [Consultar perfil do posto](/como-usar/perfil-do-posto/).
 
 ## Fontes
 

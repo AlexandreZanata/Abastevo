@@ -20,10 +20,15 @@ const validGuide = () => ({
 });
 const ctx = { categories: new Set(['precos']), expectedSlug: 'guia-teste' };
 
-// Copies landing/content into a throwaway project root so a fixture can be broken.
+// Copies landing/content into a throwaway project root so a fixture can be
+// broken. The app-capture provenance comes along: Markdown that shows a capture
+// is resolved against it.
 function withContent(mutate) {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-content-'));
   fs.cpSync(path.join(root, 'content'), path.join(tmp, 'content'), { recursive: true });
+  const provenanceRel = path.join('static', 'assets', 'app', 'provenance.json');
+  fs.mkdirSync(path.dirname(path.join(tmp, provenanceRel)), { recursive: true });
+  fs.copyFileSync(path.join(root, provenanceRel), path.join(tmp, provenanceRel));
   try {
     mutate(path.join(tmp, 'content'));
     return () => loadSite(tmp);
@@ -105,6 +110,10 @@ test('loadSite rejects broken fixtures with a precise message', () => {
     [
       (dir) => editFile(path.join(dir, 'paginas', 'sobre.md'), 'slug: sobre', 'slug: quem-somos'),
       /must match file name/,
+    ],
+    [
+      (dir) => editFile(path.join(dir, 'ferramentas', 'consumo-medio.md'), '/assets/app/vehicles-06-fuel-log-720w.webp', '/assets/app/contribute-price-05-phone-camera-720w.webp'),
+      /App capture must be a 720w derivative listed in the asset provenance/,
     ],
     [
       (dir) => editFile(path.join(dir, 'paginas', 'sobre.md'), '## Independência', '# Independência'),

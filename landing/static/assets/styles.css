@@ -1464,6 +1464,15 @@ a.store-pill {
   .landing-home .footer-states { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
+/* Guide and calculator captures: one strip that snaps sideways on phones. */
+.article-figures { display: flex; gap: 1rem; max-width: 52rem; margin-block: 1.5rem; padding: 0.25rem 0.25rem 0.75rem; overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-inline: 0.25rem; }
+.article-figures .article-figure { flex: 0 0 min(62vw, 13rem); max-width: none; margin: 0; scroll-snap-align: start; }
+.article-figure.app-capture { max-width: 13rem; }
+@media (min-width: 48rem) { .article-figures .article-figure { flex-basis: 12rem; } }
+.app-capture img { width: 100%; border: 4px solid #111111; border-radius: 18px; background: #111111; }
+.app-capture figcaption { margin-top: 0.75rem; line-height: 1.45; }
+.article-figures:focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; }
+
 /* Guide formula/source helpers (replace former inline styles blocked by CSP). */
 .formula-expression {
   margin-top: 0.5rem;

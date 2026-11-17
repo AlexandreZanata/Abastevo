@@ -7,7 +7,7 @@ slug: icms-sobre-combustiveis
 category: precos
 tags: [icms, impostos, gasolina, diesel, confaz]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /guias/como-e-formado-o-preco-da-gasolina/
   - /guias/precos-diferentes-entre-cidades/
@@ -85,6 +85,19 @@ O valor do ICMS por litro muda por decisão dos estados, então não fixamos nú
 Mesmo com o ICMS igual no país inteiro para a gasolina e o diesel, o preço na bomba continua diferente entre estados, cidades e postos. Frete, concorrência, custos locais e estoque seguem pesando, como mostra o guia [por que cidades vizinhas têm preços diferentes](/guias/precos-diferentes-entre-cidades/).
 
 Para acompanhar o efeito dessas diferenças com dados oficiais, consulte os [preços de referência por estado](/precos/), sempre com a data da coleta, e entenda os limites dessa amostra na [metodologia dos dados](/metodologia/).
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. O aplicativo não separa o ICMS das outras parcelas, mas permite acompanhar o preço final semana a semana:
+
+1. Toque na semana ao lado do nome da cidade para abrir "Semana de pesquisa" e baixe semanas anteriores.
+2. Toque em uma semana baixada para torná-la ativa: a linha "Referência ANP" passa a mostrar aquele período.
+3. Abra "Histórico" para ver a média da cidade em cada semana baixada. O gráfico mostra o preço final ao consumidor, já com todas as parcelas.
+
+![Tela inicial em Sorriso, MT, com a semana 4–10 out. 2026 ativa e cartões de etanol, gasolina comum e gasolina aditivada.](/assets/app/survey-weeks-05-older-week-active-720w.webp "Passo 2: semana de 4 a 10 de out. de 2026 ativa em Sorriso, MT.")
+![Tela “Histórico” de gasolina comum em Sorriso, MT, com gráfico de barras de quatro semanas e a média de cada semana.](/assets/app/history-01-weekly-history-720w.webp "Passo 3: histórico da gasolina comum em Sorriso, MT.")
+
+O passo a passo completo está nos tutoriais [Trocar ou baixar uma semana](/como-usar/semanas-anp/) e [Ler o histórico](/como-usar/historico/).
 
 ## Fontes
 

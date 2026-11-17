@@ -105,6 +105,38 @@ export function validateFrontMatter(kind, data, where, ctx = {}) {
   return errors;
 }
 
+/**
+ * Lookup for app captures used in Markdown, built from the asset provenance
+ * (`static/assets/app/provenance.json`). Authors reference the 720w
+ * derivative; the lookup returns the 9:16 display box and every shipped width
+ * so the renderer can emit explicit dimensions and a srcset. Unknown sources
+ * return null and fail the build in the renderer.
+ */
+export function loadAppCaptures(root) {
+  const file = path.join(root, 'static', 'assets', 'app', 'provenance.json');
+  const byStem = new Map();
+  if (fs.existsSync(file)) {
+    for (const output of JSON.parse(fs.readFileSync(file, 'utf8')).outputs || []) {
+      const match = /^([a-z0-9-]+)-(\d+)w\.webp$/.exec(output.file);
+      if (!match || Number(match[2]) !== output.width) continue;
+      if (!byStem.has(match[1])) byStem.set(match[1], []);
+      byStem.get(match[1]).push(output);
+    }
+  }
+  return (src) => {
+    const match = /^\/assets\/app\/([a-z0-9-]+)-720w\.webp$/.exec(src);
+    const variants = match ? byStem.get(match[1]) : null;
+    if (!variants || !variants.some((v) => v.width === 720)) return null;
+    const sorted = [...variants].sort((a, b) => a.width - b.width);
+    const smallest = sorted[0];
+    return {
+      width: smallest.width,
+      height: smallest.height,
+      candidates: sorted.map((v) => ({ src: `/assets/app/${v.file}`, width: v.width })),
+    };
+  };
+}
+
 function readMarkdownDir(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
@@ -295,6 +327,7 @@ export function loadSite(root) {
   }
 
   // Render Markdown and check every internal link and related route.
+  const imageInfo = loadAppCaptures(root);
   const checkRoute = (where, route, what) => {
     const [pathname] = route.split(/[?#]/);
     if (resolveRouteLabel(registry, pathname) === null) {
@@ -304,7 +337,7 @@ export function loadSite(root) {
   for (const entry of registry.values()) {
     if (entry.body === undefined) continue;
     try {
-      const rendered = renderMarkdown(entry.body, { reservedIds: RESERVED_IDS });
+      const rendered = renderMarkdown(entry.body, { reservedIds: RESERVED_IDS, imageInfo });
       entry.html = rendered.html;
       entry.headings = rendered.headings;
       entry.links = rendered.links;

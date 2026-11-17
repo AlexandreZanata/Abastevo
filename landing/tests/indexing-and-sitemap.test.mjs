@@ -51,7 +51,7 @@ test('sitemap: valid XML, required indexable URLs present, no 404 and content-da
       assert.equal(lastmod, expected.get(loc), `${loc} lastmod must equal its manifest/front-matter date`);
     }
     assert.match(sitemapContent, /<loc>https:\/\/abastevo\.com\.br\/como-usar\/<\/loc>\s*<lastmod>2026-11-17<\/lastmod>/, 'static pages keep their fixed manifest date');
-    assert.match(sitemapContent, /<loc>https:\/\/abastevo\.com\.br\/ferramentas\/consumo-medio\/<\/loc>\s*<lastmod>2026-11-14<\/lastmod>/, 'Markdown pages use their front matter dateModified');
+    assert.match(sitemapContent, /<loc>https:\/\/abastevo\.com\.br\/ferramentas\/consumo-medio\/<\/loc>\s*<lastmod>2026-11-17<\/lastmod>/, 'Markdown pages use their front matter dateModified');
     assert.ok(!/<(priority|changefreq)>/.test(sitemapContent), 'Sitemap must not declare priority or changefreq');
     assert.ok(!sitemapContent.includes('localhost'), 'Sitemap must NOT contain localhost');
     assert.ok(!sitemapContent.includes('{{CANONICAL_ORIGIN}}'), 'Sitemap must NOT have unreplaced origin placeholders');

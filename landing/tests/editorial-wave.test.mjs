@@ -37,7 +37,7 @@ test('wave 1 ships ten guides in their planned categories', () => {
     assert.ok(guide, `${slug} exists`);
     assert.equal(guide.category, category, `${slug} category`);
     assert.equal(guide.datePublished, '2026-11-14');
-    assert.equal(guide.dateModified, '2026-11-14');
+    assert.equal(guide.dateModified, '2026-11-17'); // in-app steps added with the 17 Nov captures
   }
 });
 

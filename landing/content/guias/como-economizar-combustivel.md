@@ -7,7 +7,7 @@ slug: como-economizar-combustivel
 category: economia
 tags: [economia, consumo, manutencao, calibragem, direcao-eficiente]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /ferramentas/consumo-medio/
   - /ferramentas/etanol-ou-gasolina/
@@ -76,6 +76,22 @@ Juntar várias tarefas em uma única saída, evitar horários de trânsito pesad
 ## Compare o seu carro com a etiqueta oficial
 
 O Programa Brasileiro de Etiquetagem Veicular, do [Inmetro](https://www.gov.br/inmetro/), informa o consumo de cada modelo medido em condições padronizadas de laboratório, na cidade e na estrada. O consumo real costuma ser diferente, mas a etiqueta é útil para comparar modelos e para saber se o seu carro está muito fora do esperado.
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. Para aplicar as dicas de escolha de posto e de planejamento com dados datados:
+
+1. Na aba "Explorar", toque em "Filtros" e escolha "Menor preço": cada cartão passa a mostrar o menor valor pesquisado pela ANP para o combustível naquela semana.
+2. Toque no cartão do combustível para abrir a tela "Postos", que lista os postos pesquisados do menor preço para o maior, com bandeira, endereço público e data da coleta.
+3. Toque em um posto e use "Rota e ir" para ver o caminho, o tempo e a distância. Compare a diferença de preço com o combustível gasto no desvio.
+4. Cadastre o carro em "Veículos" para ver o "Custo para encher o tanque" na tela inicial.
+
+![Lista “Preços na sua cidade” em São Paulo, SP, com o filtro em “Menor preço” e cartões de etanol, gasolina comum e gasolina aditivada com o selo ANP.](/assets/app/fuel-prices-05-lowest-price-720w.webp "Passo 1: “Menor preço” em São Paulo, SP, na semana de 8 a 14 de nov. de 2026.")
+![Tela “Postos” de etanol em São Paulo, SP, com o resumo da lista em ordem de menor preço e o botão “Mais barato perto de mim”.](/assets/app/stations-01-stations-for-fuel-720w.webp "Passo 2: postos pesquisados para o etanol, do menor preço para o maior.")
+![Mapa de Sorriso, MT, com a rota em azul até um posto, o resumo 8 min · 5,1 km e o botão “Iniciar navegação”.](/assets/app/map-05-route-preview-720w.webp "Passo 3: rota até o posto em Sorriso, MT, com tempo e distância.")
+![Tela inicial em Sorriso, MT, com o cartão “Custo para encher o tanque” para um veículo com tanque de 50 L.](/assets/app/vehicles-05-tank-fill-cost-720w.webp "Passo 4: estimativa para encher um tanque de 50 L, em valores de exemplo.")
+
+O passo a passo completo está nos tutoriais [Consultar a tabela ANP](/como-usar/precos-anp/), [Encontrar e navegar até um posto](/como-usar/postos/) e [Veículos e estimativa do tanque](/como-usar/veiculos/).
 
 ## Fontes
 

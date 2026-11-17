@@ -7,7 +7,7 @@ slug: combustivel-adulterado
 category: direitos-e-qualidade
 tags: [qualidade, combustivel-adulterado, denuncia, anp, direitos-do-consumidor]
 datePublished: 2026-11-14
-dateModified: 2026-11-14
+dateModified: 2026-11-17
 related:
   - /guias/direitos-do-consumidor-no-posto/
   - /guias/gasolina-comum-ou-aditivada/
@@ -101,6 +101,19 @@ Outro problema comum é a quantidade, não a qualidade. Os postos devem ter uma 
 - Escolha o combustível indicado pelo fabricante; o guia [gasolina comum ou aditivada](/guias/gasolina-comum-ou-aditivada/) ajuda nessa decisão.
 
 Preço baixo, sozinho, não prova adulteração, assim como preço alto não garante qualidade. Para comparar com a referência oficial, consulte os [preços por estado e cidade](/precos/), sempre com a data da coleta.
+
+## Como fazer no aplicativo
+
+O aplicativo Android do abastevo está em desenvolvimento. As capturas abaixo são reais, feitas em 17 de novembro de 2026, e mostram a referência ANP da semana indicada, não o preço da bomba. O aplicativo mostra os resultados de coletas da ANP por posto. Eles ajudam a se informar, mas não substituem a denúncia aos órgãos oficiais descrita neste guia:
+
+1. Abra o perfil do posto e toque em "Consultar análises de qualidade".
+2. A tela "Qualidade do combustível" mostra os resultados por combustível, com o aviso "Resultados de coletas da ANP. Não são garantia da qualidade atual do posto." Quando não há dados, ela informa isso.
+3. Em "Perfil", a entrada "Ajuda e regras da comunidade" resume as regras de contribuição e de denúncia dentro do app.
+
+![Tela “Qualidade do combustível” com o aviso de que os resultados de coletas da ANP não são garantia da qualidade atual e a mensagem de que não há dados oficiais para esta revisão.](/assets/app/stations-08-fuel-quality-720w.webp "Passo 2: “Qualidade do combustível” de um posto sem dados oficiais na revisão.")
+![Tela “Ajuda e regras da comunidade” com os cartões “Colabore bem”, “Regras da comunidade” e “Denúncia e recurso”.](/assets/app/help-and-privacy-01-help-and-community-rules-720w.webp "Passo 3: “Ajuda e regras da comunidade”.")
+
+O passo a passo completo está no tutorial [Consultar perfil do posto](/como-usar/perfil-do-posto/).
 
 ## Fontes
 

@@ -352,7 +352,8 @@ they scroll horizontally with snap points.
 Owner scope: replace the 1220 × 2712 gallery and tutorial captures with the
 17 Nov 2026 Android captures under the
 [capture contract](../../assets/app-tutorial/CAPTURE_CONTRACT.md), finish every
-published `/como-usar/` chapter and keep the LH08–LH10 style.
+published `/como-usar/` chapter, add in-app steps to every guide and
+calculator, and keep the LH08–LH10 style.
 
 - **Gallery.** `#aplicativo` shows six 9:16 captures in product order: ANP
   weekly prices, community and ANP on a station page, route to a station,
@@ -373,6 +374,11 @@ published `/como-usar/` chapter and keep the LH08–LH10 style.
   sixteen published chapters are `Disponível`; unpublished ones keep
   `Em breve`/`Planejado` without a link. Chapter text never states a store
   listing.
+- **Guides and calculators.** Every guide has "Como fazer no aplicativo"
+  (2–5 numbered steps, 2–4 captures, link to the chapter) and every calculator
+  "No aplicativo". Wording follows the claim classes above: development
+  status, dated ANP reference, community apart from ANP. Station ratings and
+  comments stay "em breve" while the app keeps them behind its feature flag.
 
 ## Legal pages shared UI — 2026-11-05
 

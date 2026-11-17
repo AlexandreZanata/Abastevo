@@ -4,6 +4,9 @@
 // > blockquotes, ![alt](/assets/...) images, ``` fences, --- rules and
 // ::: resumo|nota|atencao callouts. Raw HTML is never passed through: every
 // character of text is escaped, and unsafe constructs fail the build.
+// App captures (/assets/app/...) take their dimensions and responsive
+// candidates from the asset provenance, and image lines that follow each
+// other without a blank line become one figure strip.
 
 export class MarkdownError extends Error {}
 
@@ -111,6 +114,43 @@ function checkImageSrc(raw) {
     throw new MarkdownError(`Image source must be a local /assets/ image: ${JSON.stringify(raw)}`);
   }
   return src;
+}
+
+const APP_CAPTURE_PREFIX = '/assets/app/';
+// Rendered width of a capture in an article (see .article-figures in
+// styles.css): 12rem per strip column on wide screens, 13rem on phones.
+const APP_CAPTURE_SIZES = '(min-width: 48rem) 192px, 208px';
+
+function isPositiveInt(value) {
+  return Number.isInteger(value) && value > 0;
+}
+
+// One standalone image line. Plain images keep the minimal figure; app
+// captures must be known to `ctx.imageInfo` (built from the asset provenance)
+// so every one ships explicit dimensions and a srcset.
+function renderFigure(line, ctx) {
+  const image = /^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)\s*$/.exec(line);
+  if (!image) throw new MarkdownError(`Malformed image: ${line}`);
+  const alt = image[1].trim();
+  if (alt === '') throw new MarkdownError(`Image needs alternative text: ${image[2]}`);
+  const src = checkImageSrc(image[2]);
+  const caption = image[3] ? `<figcaption>${escapeHtml(image[3])}</figcaption>` : '';
+  if (!src.startsWith(APP_CAPTURE_PREFIX)) {
+    return { capture: false, html: `<figure class="article-figure"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">${caption}</figure>` };
+  }
+  const info = typeof ctx.imageInfo === 'function' ? ctx.imageInfo(src) : null;
+  if (!info) throw new MarkdownError(`App capture must be a 720w derivative listed in the asset provenance: ${src}`);
+  if (!isPositiveInt(info.width) || !isPositiveInt(info.height) || !Array.isArray(info.candidates) || info.candidates.length === 0) {
+    throw new MarkdownError(`Invalid dimensions for app capture: ${src}`);
+  }
+  const srcset = info.candidates.map((candidate) => {
+    if (!isPositiveInt(candidate.width)) throw new MarkdownError(`Invalid srcset width for app capture: ${src}`);
+    return `${escapeHtml(checkImageSrc(candidate.src))} ${candidate.width}w`;
+  }).join(', ');
+  return {
+    capture: true,
+    html: `<figure class="article-figure app-capture"><img src="${escapeHtml(src)}" srcset="${srcset}" sizes="${APP_CAPTURE_SIZES}" width="${info.width}" height="${info.height}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">${caption}</figure>`,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -325,14 +365,19 @@ function renderBlocks(lines, ctx, nested) {
     }
 
     if (/^!\[/.test(line)) {
-      const image = /^!\[([^\]]*)\]\(([^)\s]+)(?:\s+"([^"]*)")?\)\s*$/.exec(line);
-      if (!image) throw new MarkdownError(`Malformed image: ${line}`);
-      const alt = image[1].trim();
-      if (alt === '') throw new MarkdownError(`Image needs alternative text: ${image[2]}`);
-      const src = checkImageSrc(image[2]);
-      const caption = image[3] ? `<figcaption>${escapeHtml(image[3])}</figcaption>` : '';
-      out.push(`<figure class="article-figure"><img src="${escapeHtml(src)}" alt="${escapeHtml(alt)}" loading="lazy" decoding="async">${caption}</figure>`);
-      i += 1;
+      const figures = [];
+      while (i < lines.length && /^!\[/.test(lines[i])) {
+        figures.push(renderFigure(lines[i], ctx));
+        i += 1;
+      }
+      if (figures.length === 1) {
+        out.push(figures[0].html);
+      } else {
+        // The strip scrolls sideways on narrow screens, so it is focusable
+        // and named for keyboard and screen-reader users.
+        const label = figures.every((figure) => figure.capture) ? 'Capturas de tela do aplicativo' : 'Sequência de imagens';
+        out.push(`<div class="article-figures" role="group" aria-label="${label}" tabindex="0">${figures.map((figure) => figure.html).join('')}</div>`);
+      }
       continue;
     }
 
@@ -355,7 +400,7 @@ function renderBlocks(lines, ctx, nested) {
 export function renderMarkdown(source, options = {}) {
   const text = String(source).replace(/\r\n?/g, '\n');
   if (/\u0000/.test(text)) throw new MarkdownError('NUL characters are not allowed');
-  const ctx = { links: [], headings: [], ids: new Set(options.reservedIds || []), lastLevel: 1 };
+  const ctx = { links: [], headings: [], ids: new Set(options.reservedIds || []), lastLevel: 1, imageInfo: options.imageInfo };
   const html = renderBlocks(text.split('\n'), ctx, false);
   const plain = html.replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/g, ' ');
   const words = plain.split(/\s+/).filter((word) => /[\p{L}\p{N}]/u.test(word)).length;
