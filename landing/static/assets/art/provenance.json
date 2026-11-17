@@ -1,7 +1,7 @@
 {
   "generator": "built-in image_gen",
   "generatedDate": "2026-10-12",
-  "role": "Six unique-color action/persona scenes and four reusable flat-style decorations; hero landscape archived and no longer emitted; owner-supplied open-data scene added 2026-10-26",
+  "role": "Six unique-color action/persona scenes and four reusable flat-style decorations; hero landscape archived and no longer emitted; owner-supplied open-data scene added 2026-10-26; road/car/skyline/trees derivatives retired from the home on 2026-11-17 (masters kept) and replaced by the hand-authored hero-mark SVG",
   "screen": "Unmodified authentic explore-light derivatives; app provenance retained",
   "optimization": "ImageMagick resize and WebP method 6 only; action scenes quality 82, hero/reusable assets quality 80; original alpha retained. 4K export is a Lanczos resize, not native generation.",
   "sources": [
@@ -90,6 +90,13 @@
         "car"
       ],
       "prompt": "Use case: illustration-story. Create a new wide 3:2 editorial illustration for the Abastevo landing page's 404 recovery tile. Reference image 1 (hero.png): match the crisp flat illustrated landscape, simplified Brazilian city skyline, greens, warm yellow sunlight and rounded shapes. Reference image 2 (car.png): match the compact teal hatchback and clean shaded vector-like finish. Scene: a teal hatchback at a gently curving road junction in a lush green landscape, with a small simple blank detour arrow sign pointing toward the route to a distant city. View from a slightly elevated three-quarter angle, with the car and junction both unmistakable at thumbnail size. Keep the composition airy, full bleed, with a pale blue sky, muted teal, mint and forest green vegetation, dark charcoal asphalt and a small yellow accent. Contemporary friendly flat 2D digital illustration with restrained shading, clean edges and no grain. Keep all important elements inside the central 80 percent so a mild landscape crop is safe. Decorative tile only: no UI, words, numerals, lettering, logos or watermark."
+    },
+    {
+      "name": "hero-mark",
+      "master": "docs/assets/landing/hero-mark-20261117/hero-mark.svg",
+      "sha256": "d4df28a9ab47958ae25434b26c57116e9d4e982fed18d7c79b74130a8529a9fa",
+      "authoredDate": "2026-11-17",
+      "method": "Hand-authored SVG composed by docs/assets/landing/hero-mark-20261117/compose.py: the approved brand mark (docs/assets/brand/abastevo-logo.svg, paths verbatim, ids prefixed) on a dotted field with two route ribbons in the mark colours, pins and two abstract interface cards. No text, numerals, raster or external reference."
     }
   ],
   "outputs": [
@@ -178,62 +185,6 @@
       "role": "fleet"
     },
     {
-      "file": "trees-320w.75aff4bf.webp",
-      "sha256": "75aff4bf87ccb70fecb8a80e6ce49ea21c7223954d2ee5249f7c42cd14e33fc3",
-      "bytes": 13404,
-      "width": 320,
-      "role": "trees"
-    },
-    {
-      "file": "trees-640w.b64ef065.webp",
-      "sha256": "b64ef065f84d7a82454012dded6e7ee1e4439e004fe0a909bcd7fa5a0d38d636",
-      "bytes": 32678,
-      "width": 640,
-      "role": "trees"
-    },
-    {
-      "file": "skyline-320w.ba6f7123.webp",
-      "sha256": "ba6f7123d8347d547ff0c34ca72274ee72290b67624a6a871fde515c93bfc64f",
-      "bytes": 8944,
-      "width": 320,
-      "role": "skyline"
-    },
-    {
-      "file": "skyline-640w.04de795c.webp",
-      "sha256": "04de795cccba50b9bf67a366f143bfdde3cb2da0882faec4eb2a3bd321bb3949",
-      "bytes": 23648,
-      "width": 640,
-      "role": "skyline"
-    },
-    {
-      "file": "road-320w.f47c2eef.webp",
-      "sha256": "f47c2eefe198187501613240a720c999c502bbeae366f806040c75f752dc254b",
-      "bytes": 8086,
-      "width": 320,
-      "role": "road"
-    },
-    {
-      "file": "road-640w.4e9989cc.webp",
-      "sha256": "4e9989cc40c4d0d0bb5cc1f3a09e0d05a87ceb0991fd850740d0d31707dcc6e9",
-      "bytes": 19842,
-      "width": 640,
-      "role": "road"
-    },
-    {
-      "file": "car-320w.e1ca00a4.webp",
-      "sha256": "e1ca00a458809ac910a08e47de5af3f0eb3bbbe27283835bfe9f6564e12ee392",
-      "bytes": 8582,
-      "width": 320,
-      "role": "car"
-    },
-    {
-      "file": "car-640w.97ea8555.webp",
-      "sha256": "97ea8555647cbbdf1b1cc44ba97cead391067690b8cdc65466dc878b5d889995",
-      "bytes": 20184,
-      "width": 640,
-      "role": "car"
-    },
-    {
       "file": "open-data-scene-320w.88ac7060.webp",
       "sha256": "88ac7060484fec832aaf3e14ea47fc7e2388ac8a8ef3e0e0e4f839683721906d",
       "bytes": 12556,
@@ -260,6 +211,12 @@
       "bytes": 48458,
       "width": 1120,
       "role": "not-found"
+    },
+    {
+      "file": "hero-mark.d4df28a9.svg",
+      "sha256": "d4df28a9ab47958ae25434b26c57116e9d4e982fed18d7c79b74130a8529a9fa",
+      "bytes": 25963,
+      "role": "hero-mark"
     }
   ],
   "export4k": {

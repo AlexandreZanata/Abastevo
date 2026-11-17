@@ -407,6 +407,12 @@ calculator, and polish sections inside the LH08–LH10 style.
   darkened page, with its alt text as caption. The close button, a click
   outside the capture or Escape closes it and returns focus. Without
   JavaScript the captures stay plain images; no dialog markup ships in HTML.
+- **Hero art (owner request, 2026-11-17).** The road, car, skyline and trees
+  scene of LH09 is replaced by one hand-authored SVG: the approved brand mark,
+  unchanged, on a dotted field with two route ribbons in the mark colours,
+  map pins and two abstract interface cards. It carries no text or numerals
+  and is decorative (`alt=""`), never price or coverage evidence. Master and
+  composing script: `docs/assets/landing/hero-mark-20261117/`.
 - **Polish.** Spacing, alignment, frames, hover/focus/pressed states and
   responsive fixes only. Tokens, fonts, brand, URLs, titles and structured
   data are unchanged; a chapter meta description changes only when the old

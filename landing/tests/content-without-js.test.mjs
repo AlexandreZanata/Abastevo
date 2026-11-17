@@ -34,7 +34,7 @@ test('essential content and links are present in static HTML without JS', () => 
     const heroSection = indexHtml.match(/<section class="hero">[\s\S]*?<\/section>/)[0];
     assert.match(heroSection, /<form class="lp-search" action="\/consultar\/" method="get"/);
     assert.match(heroSection, /name="uf"[\s\S]*name="q"/);
-    assert.match(heroSection, /assets\/art\/car-640w\.[a-f0-9]{8}\.webp/);
+    assert.match(heroSection, /assets\/art\/hero-mark\.[a-f0-9]{8}\.svg/);
     assert.doesNotMatch(heroSection, /Posto Exemplo|R\$ X,XX|comparison-container/);
     assert.match(indexHtml, /assets\/app\/fuel-prices-01-anp-average-cards-720w\.webp/);
     assert.match(indexHtml, /na semana de 8 a 14 de novembro de 2026/);

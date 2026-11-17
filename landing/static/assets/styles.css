@@ -1179,14 +1179,8 @@ a.store-pill {
 .landing-home .field input::placeholder { color: var(--muted); font-weight: 500; }
 .landing-home .field-rail { position: absolute; left: calc(1rem + 10px); top: 40px; height: calc(100% - 80px); width: 2px; background: var(--ink); }
 .landing-home .fine { max-width: 30rem; margin-top: 1.5rem; font-size: 0.875rem; color: var(--muted); }
-.landing-home .lp-hero-art { position: relative; aspect-ratio: 1 / 0.9; overflow: hidden; border-radius: 24px; background: linear-gradient(180deg, #dff1ff 0%, #eef8f1 62%, #e3f2e7 100%); }
-.landing-home .lp-hero-art { display: flex; align-items: flex-end; }
-.landing-home .art-stage { position: relative; flex: none; width: 100%; aspect-ratio: 1 / 0.9; }
-.landing-home .lp-hero-art img { position: absolute; height: auto; }
-.landing-home .art-skyline { left: 12%; top: 15%; width: 76%; }
-.landing-home .art-trees { right: -6%; top: 26%; width: 50%; }
-.landing-home .art-road { left: -4%; bottom: -2%; width: 108%; }
-.landing-home .art-car { left: 18%; bottom: 7%; width: 46%; filter: drop-shadow(0 18px 18px #0003); }
+.landing-home .lp-hero-art { position: relative; aspect-ratio: 1 / 0.9; overflow: hidden; border-radius: 24px; background: var(--surface); }
+.landing-home .lp-hero-art img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 @media (min-width: 64rem) {
   /* Same rhythm as the features: the art tile spans exactly from the kicker
      to the closing note, and the copy column sets the row height. */
