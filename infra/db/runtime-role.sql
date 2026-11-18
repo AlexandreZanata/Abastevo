@@ -10,7 +10,7 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000257. Relations: 357 granted, 2 without access.
+-- Schema version: 000258. Relations: 368 granted, 2 without access.
 -- Sequences: 5. Explicit functions: 0.
 
 BEGIN;
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000257' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000257 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000258' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000258 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -298,6 +298,9 @@ GRANT SELECT, INSERT ON TABLE public.org_reference_feed_entries TO :"runtime_rol
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_reference_feed_heads TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_role_assignments TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_role_commands TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_route_computations TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_route_plan_commands TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_route_plans TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_sensitive_access_events TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_settings_commands TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_settings_designations TO :"runtime_role";
@@ -316,10 +319,18 @@ GRANT SELECT, INSERT ON TABLE public.org_sync_state_intakes TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_team_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_team_links TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_teams TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_tracking_alerts TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_tracking_geofence_commands TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_tracking_geofence_events TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_tracking_geofence_states TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_tracking_geofences TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.org_tracking_live_positions TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_tracking_policies TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_tracking_policy_commands TO :"runtime_role";
-GRANT SELECT, INSERT ON TABLE public.org_tracking_segments TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_tracking_purge_receipts TO :"runtime_role";
+GRANT SELECT, INSERT, DELETE ON TABLE public.org_tracking_segments TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_tracking_sessions TO :"runtime_role";
+GRANT SELECT ON TABLE public.org_tracking_settings TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_tracking_summaries TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_tracking_transitions TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_trip_amendments TO :"runtime_role";

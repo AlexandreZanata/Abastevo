@@ -26,6 +26,19 @@ func trackReadGrants(t *testing.T, x trackingState) {
 	if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sensitive_access_events TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	var hasF5 bool
+	if err := x.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('org_tracking_live_positions') IS NOT NULL`).Scan(&hasF5); err != nil {
+		t.Fatal(err)
+	}
+	if hasF5 {
+		if _, err := x.f.Admin.Exec(t.Context(), `GRANT SELECT,INSERT ON org_tracking_purge_receipts,org_tracking_geofence_commands,org_tracking_geofence_events,org_tracking_alerts,org_route_plans,org_route_plan_commands,org_route_computations TO `+role+`;
+ GRANT SELECT ON org_trip_events,org_tracking_summaries,org_employee_profiles TO `+role+`;
+ GRANT SELECT,INSERT,UPDATE ON org_tracking_settings,org_tracking_live_positions,org_tracking_geofences,org_tracking_geofence_states TO `+role+`;
+ GRANT DELETE ON org_tracking_live_positions,org_tracking_segments TO `+role+`;
+ GRANT USAGE ON SEQUENCE org_tracking_live_revision_seq TO `+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 	tripReviewGrants(t, x.f)
 }
 

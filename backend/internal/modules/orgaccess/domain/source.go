@@ -249,8 +249,10 @@ check.checklist.execute S S S S - - S S -
 check.incident.report S S S S - - S S -
 check.template.manage O O O - - - - - -
 check.incident.manage O O O O - - - - -
+route.plan.manage O O O O - - - - -
 gps.location.read_live O O O O - - S2 - -
 gps.track.read O O O O - - S2 - O3
+gps.geofence.manage O O O - - - - - -
 fuel.fueling.record S S S S - - S S -
 fuel.fueling.read O O O O O O S S O
 fuel.fueling.review O O O - O O - - -

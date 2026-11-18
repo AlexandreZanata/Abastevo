@@ -24,7 +24,7 @@ func TestLegalManagementV2GrantsOnlyTheRecordedRoles(t *testing.T) {
 		}
 	}
 	_, version := d.SystemCatalog().Versions()
-	if version != "org-permissions-v5" {
+	if version != "org-permissions-v6" {
 		t.Fatal("matrix amendment did not change its version")
 	}
 }
@@ -57,6 +57,11 @@ func TestCatalogV3RetainsEveryOtherV1Cell(t *testing.T) {
 				expected = "O"
 				changes++
 			}
+			// org-permissions-v6 (F5 gps-navigation) grants geofence and route-plan rows.
+			if slices.Contains(v6Amendments[row[0]], name) {
+				expected = "O"
+				changes++
+			}
 
 			rule, err := d.SystemCatalog().Lookup(d.Role(name), d.Permission(row[0]))
 			if err != nil {
@@ -74,7 +79,7 @@ func TestCatalogV3RetainsEveryOtherV1Cell(t *testing.T) {
 			}
 		}
 	}
-	if changes != 20 {
-		t.Fatal("expected exactly twenty explicit amendments (v2, v3 and v5)")
+	if changes != 27 {
+		t.Fatal("expected exactly twenty-seven explicit amendments (v2, v3, v5 and v6)")
 	}
 }

@@ -22,7 +22,7 @@ var exportableReads = []permissions.Permission{
 // B-BR-EMP-248, EDR-167: the closed declaration rule over the whole catalog.
 func TestExportableReadAdmitsOnlyRegisteredDataReads(t *testing.T) {
 	catalog := permissions.SystemCatalog()
-	if _, version := catalog.Versions(); version != "org-permissions-v5" || len(catalog.Permissions()) != 85 {
+	if _, version := catalog.Versions(); version != "org-permissions-v6" || len(catalog.Permissions()) != 85 {
 		t.Fatal("catalog drift: revisit the exportable read literal", version)
 	}
 	admitted := 0

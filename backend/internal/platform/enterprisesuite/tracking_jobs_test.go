@@ -22,7 +22,8 @@ func TestTrackingHandlersComposition(t *testing.T) {
 	}
 	defer pool.Close()
 	handlers, err := TrackingHandlers(Options{Enabled: true, Pool: pool})
-	if err != nil || len(handlers) != 1 || handlers[0].Kind() != trackingapp.ProcessKind || handlers[0].Version() != 1 {
-		t.Fatal("tracking processing handler", err)
+	if err != nil || len(handlers) != 2 || handlers[0].Kind() != trackingapp.ProcessKind || handlers[0].Version() != 1 ||
+		handlers[1].Kind() != trackingapp.RetentionKind || handlers[1].Version() != 1 {
+		t.Fatal("tracking handlers", err)
 	}
 }

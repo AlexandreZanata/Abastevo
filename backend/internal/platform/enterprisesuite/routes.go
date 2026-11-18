@@ -166,6 +166,8 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, exportpg.AuditDefinitions()...)
 	definitions = append(definitions, trackingpg.AuditDefinitions()...)
 	definitions = append(definitions, trackingpg.PolicyAuditDefinitions()...)
+	definitions = append(definitions, trackingpg.GeofenceAuditDefinitions()...)
+	definitions = append(definitions, trackingpg.RoutePlanAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -206,6 +208,8 @@ func Register(router chi.Router, o Options) error {
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "doc.document", Permissions: []string{"doc.document.attach"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic document upload sessions inherit identity v1 write 200/hour on every axis; byte transfers keep the orgmedia slot limits and production measurement remains required."},
+		{Class: "gps.geofence", Permissions: []string{"gps.geofence.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic geofence management inherits identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
+		{Class: "route.plan", Permissions: []string{"route.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic route plan revisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
 	})
 	if err != nil {
 		return err
@@ -463,6 +467,31 @@ func Register(router chi.Router, o Options) error {
 	trackingPolicies := &trackingpg.PolicyStore{Pool: o.Pool, Authority: &orgpg.TrackingPolicyAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore}
 	policyAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.PolicyRecords{}, Now: time.Now}
 	if err := trackingweb.RegisterPolicy(router, trackingapp.PolicyService{Enabled: true, Repository: trackingPolicies}, cookies, gateway, policyAuthorization); err != nil {
+		return err
+	}
+	// EMP-GPS-007 / 009 / 013 / 014 / ROUTE-002..008 F5 live navigation & operations.
+	livePositions := &trackingpg.LiveStore{Pool: o.Pool, Authority: &orgpg.LiveAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure},
+		Access: auditpg.AccessLog{Runner: auditStore}, NewID: jobs.NewUUIDv4}
+	liveAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.LiveRecords{}, Structure: tripStructure, Now: time.Now}
+	if err := trackingweb.RegisterLive(router, trackingapp.LiveService{Enabled: true, Repository: livePositions}, cookies, gateway, liveAuthorization, tracks); err != nil {
+		return err
+	}
+	replays := &trackingpg.ReplayStore{Pool: o.Pool, Authority: &orgpg.TrackAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: tripStructure},
+		Access: auditpg.AccessLog{Runner: auditStore}, NewID: jobs.NewUUIDv4}
+	if err := trackingweb.RegisterReplay(router, trackingapp.ReplayService{Enabled: true, Repository: replays}, cookies, gateway, trackAuthorization, tracks); err != nil {
+		return err
+	}
+	geofenceStructure := &orgpg.ResourceStructure{Kind: orgpg.GeofenceStructure, Pool: o.Pool}
+	geofences := &trackingpg.GeofenceStore{Pool: o.Pool, Authority: &orgpg.GeofenceAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: geofenceStructure},
+		Audit: auditStore, NewID: jobs.NewUUIDv4}
+	geofenceAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.GeofenceRecords{}, Structure: geofenceStructure, Now: time.Now}
+	if err := trackingweb.RegisterGeofences(router, trackingapp.GeofenceService{Enabled: true, Repository: geofences}, cookies, gateway, geofenceAuthorization); err != nil {
+		return err
+	}
+	routePlans := &trackingpg.RoutePlanStore{Pool: o.Pool, Authority: &orgpg.RoutePlanAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags},
+		Audit: auditStore, NewID: jobs.NewUUIDv4}
+	routeAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: trackingweb.RoutePlanRecords{}, Now: time.Now}
+	if err := trackingweb.RegisterRoutes(router, trackingapp.RoutePlanService{Enabled: true, Repository: routePlans, Now: time.Now}, cookies, gateway, routeAuthorization); err != nil {
 		return err
 	}
 

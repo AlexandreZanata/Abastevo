@@ -50,6 +50,8 @@ const (
 	// EMP-TRIP-011 lifecycle command to the stored structure of the trip it
 	// names (as TripStructure).
 	HeldTripStructure
+	// GeofenceStructure: a geofence resolves to the optional unit it scopes (EMP-GPS-013).
+	GeofenceStructure
 )
 
 // ResourceStructure is the EMP-AUTH-006 structural scope lookup for one
@@ -109,6 +111,9 @@ FROM(SELECT h.asset_id,u.unit_id,CASE WHEN u.unit_id IS NULL THEN NULL ELSE c.co
 
 // missionStructure reads the mission's immutable unit and asset.
 const missionStructure = `SELECT unit_id::text,COALESCE(asset_id::text,'') FROM org_trip_missions WHERE org_id=$1 AND id=$2`
+
+// geofenceStructure reads the geofence's optional unit scope.
+const geofenceStructure = `SELECT COALESCE(unit_id::text,'') FROM org_tracking_geofences WHERE org_id=$1 AND id=$2`
 
 func (r *ResourceStructure) ResolveStructure(ctx context.Context, scope kernel.OrgScope, policy access.Policy, facts permissions.ResourceFacts, at time.Time) (permissions.ResourceFacts, error) {
 	if r == nil || r.Pool == nil {
@@ -210,7 +215,7 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 	// stored structure; EMP-GPS-012 (EDR-281): a recorded-track read uses the
 	// same snapshot; EMP-TRIP-012 (EDR-255): a handover covers the trip
 	// through it too.
-	case r.Kind == TripStructure && (policy.Permission == "trip.trip.review" || policy.Permission == "meter.reading.correct" || policy.Permission == "trip.trip.close_for_other" || policy.Permission == "gps.track.read"):
+	case r.Kind == TripStructure && (policy.Permission == "trip.trip.review" || policy.Permission == "meter.reading.correct" || policy.Permission == "trip.trip.close_for_other" || policy.Permission == "gps.track.read" || policy.Permission == "gps.location.read_live"):
 		var teams []string
 		if err := tx.QueryRow(ctx, tripStructure, scope.OrgID().String(), facts.ID).Scan(&out.AssetID, &out.UnitID, &out.CostCentreID, &teams); err != nil {
 			if errors.Is(err, pgx.ErrNoRows) {
@@ -220,6 +225,13 @@ func (r *ResourceStructure) resolveTx(ctx context.Context, tx pgx.Tx, scope kern
 		}
 		slices.Sort(teams)
 		out.Teams = teams
+	case r.Kind == GeofenceStructure && policy.Permission == "gps.geofence.manage":
+		if err := tx.QueryRow(ctx, geofenceStructure, scope.OrgID().String(), facts.ID).Scan(&out.UnitID); err != nil {
+			if errors.Is(err, pgx.ErrNoRows) {
+				return permissions.ResourceFacts{}, errStructureNotFound
+			}
+			return permissions.ResourceFacts{}, org.ErrUnavailable
+		}
 	}
 	if out.Validate(scope) != nil {
 		return permissions.ResourceFacts{}, org.ErrUnavailable

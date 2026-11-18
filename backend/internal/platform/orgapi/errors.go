@@ -58,6 +58,9 @@ const (
 	// Meter decision refusals (EMP-METER-004, fleet §10.5, EDR-187/189).
 	ReadingAlreadySuperseded Code = "READING_ALREADY_SUPERSEDED"
 	AmendmentRequired        Code = "AMENDMENT_REQUIRED"
+	// Route and geofence refusals (EMP-GPS-013, EMP-ROUTE-002).
+	RoutePointLimit         Code = "ROUTE_POINT_LIMIT"
+	GeofenceInvalidGeometry Code = "GEOFENCE_INVALID_GEOMETRY"
 )
 
 func (code Code) Error() string { return string(code) }
@@ -77,6 +80,7 @@ var statuses = map[Code]int{
 	TokenInvalid:          404, AlreadyMember: 409, ManagedAccountRestricted: 403,
 	ExportQueueFull: 429, ExportNotReady: 409, ExportExpired: 410, ExportFormatUnavailable: 422,
 	ReadingAlreadySuperseded: 409, AmendmentRequired: 409,
+	RoutePointLimit: 422, GeofenceInvalidGeometry: 422,
 }
 
 type permissionFailure struct{ key string }

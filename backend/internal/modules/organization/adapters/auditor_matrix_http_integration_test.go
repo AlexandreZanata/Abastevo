@@ -264,6 +264,7 @@ var auditorPositiveRoutes = []string{
 	"/v1/orgs/{org_id}/settings/revision/read",
 	"/v1/orgs/{org_id}/tracking/policy/read",
 	"/v1/orgs/{org_id}/trips/{trip_id}/track/read",
+	"/v1/orgs/{org_id}/trips/{trip_id}/track/replay",
 }
 
 // The only positive AUDITOR write routes: the export request (an audited
@@ -379,10 +380,14 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	tracked.recordedTrack(t)
 	trackReadGrants(t, tracked)
 	values["{trip_id}"] = tracked.trip
+	values["{geofence_id}"] = onboardingID(t)
 	if page := call("/v1/orgs/{org_id}/trips/{trip_id}/track/read", map[string]any{}, 200, "", ""); page["trip_id"] != tracked.trip || len(page["segments"].([]any)) != 2 {
 		t.Fatal("auditor recorded-track read", page["trip_id"])
 	}
-	if issued, served := tracked.trackAccesses(t, auditor.member, tracked.trip); issued != 1 || served != 1 {
+	if replay := call("/v1/orgs/{org_id}/trips/{trip_id}/track/replay", map[string]any{}, 200, "", ""); replay["trip_id"] != tracked.trip {
+		t.Fatal("auditor track replay", replay["trip_id"])
+	}
+	if issued, served := tracked.trackAccesses(t, auditor.member, tracked.trip); issued != 2 || served != 2 {
 		t.Fatal("auditor track read not recorded once per stage", issued, served)
 	}
 	if cell := oracle["gps.location.read_live"]["AUDITOR"]; cell != "-" {
@@ -491,7 +496,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 166 || positive != 33 || denied != 133 {
+	if len(routes) != 175 || positive != 34 || denied != 141 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 
