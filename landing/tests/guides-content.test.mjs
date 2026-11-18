@@ -122,6 +122,25 @@ test('guides schemas and discovery: JSON-LD graphs, sitemap and llms.txt', () =>
 
     const llms = fs.readFileSync(path.join(tmpOut, 'llms.txt'), 'utf8');
     assert.ok(llms.includes('/guias/'), 'llms.txt must reference guides hub');
+
+    // SEO-21: "Fontes" links become Article citation entries.
+    const articleNode = (rel) => {
+      const html = fs.readFileSync(path.join(tmpOut, rel), 'utf8');
+      for (const block of html.matchAll(/<script\s+type="application\/ld\+json">([\s\S]*?)<\/script>/g)) {
+        const parsed = JSON.parse(block[1].trim());
+        const nodes = parsed['@graph'] && Array.isArray(parsed['@graph']) ? parsed['@graph'] : [parsed];
+        const article = nodes.find((node) => node['@type'] === 'Article' || node['@type'] === 'TechArticle');
+        if (article) return article;
+      }
+      return null;
+    };
+    const icmsArticle = articleNode('guias/icms-sobre-combustiveis/index.html');
+    assert.ok(Array.isArray(icmsArticle?.citation), 'guide with Fontes must carry citation');
+    assert.ok(icmsArticle.citation.every((source) => source['@type'] === 'CreativeWork' && source.name && source.url.startsWith('https://')), 'citation entries must be named https CreativeWork');
+    assert.ok(icmsArticle.citation.some((source) => source.url.includes('planalto.gov.br')), 'ICMS citation must include Planalto');
+    const authoredArticle = articleNode('guias/etanol-ou-gasolina/index.html');
+    assert.ok(authoredArticle, 'authored guide must still emit Article');
+    assert.ok(!Object.hasOwn(authoredArticle, 'citation'), 'guide without a Fontes section must not carry citation');
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }

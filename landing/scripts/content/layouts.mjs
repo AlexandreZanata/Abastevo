@@ -193,6 +193,9 @@ export function renderGuide(site, guide, origin) {
         image: `${origin}/assets/brand/og-image-v1.png`,
         author: teamNode(origin),
         publisher: publisherNode(origin),
+        ...(guide.sources?.length > 0 ? {
+          citation: guide.sources.map((source) => ({ '@type': 'CreativeWork', name: source.name, url: source.url })),
+        } : {}),
         isPartOf: { '@id': `${origin}/#website` },
       },
       breadcrumbNode(crumbs, origin, url),

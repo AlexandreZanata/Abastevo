@@ -137,6 +137,26 @@ export function loadAppCaptures(root) {
   };
 }
 
+/**
+ * Links of a guide's "## Fontes" section, from the heading to the next level-2
+ * heading: `{ name, url }` for https URLs only, ready for JSON-LD citation.
+ */
+export function extractSources(body) {
+  const lines = String(body).replace(/\r\n?/g, '\n').split('\n');
+  const start = lines.findIndex((line) => /^##\s+Fontes\s*#*\s*$/.test(line));
+  if (start === -1) return [];
+  const section = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^##\s/.test(lines[i])) break;
+    section.push(lines[i]);
+  }
+  const sources = [];
+  for (const match of section.join('\n').matchAll(/\[([^\]]+)\]\((https:[^)\s]+)\)/g)) {
+    sources.push({ name: match[1].trim(), url: match[2] });
+  }
+  return sources;
+}
+
 function readMarkdownDir(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
@@ -260,6 +280,7 @@ export function loadSite(root) {
       dateModified: g.data.dateModified,
       lastmod: g.data.dateModified,
       body: g.body,
+      sources: extractSources(g.body),
       where: g.where,
     });
   }
