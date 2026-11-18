@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_mgmt_card_title">Einsatzverwaltung</string>
+    <string name="enterprise_mgmt_compliance_expired">%1$d abgelaufene(s) Dokument(e) oder Führerschein(e) erfordern Aufmerksamkeit.</string>
+    <string name="enterprise_mgmt_compliance_due_soon">%1$d Dokument(e) oder Führerschein(e) laufen bald ab (nächstes in %2$d Tagen).</string>
+    <string name="enterprise_mgmt_compliance_ok">Alle zugewiesenen Dokumente und Führerscheine sind gültig.</string>
+    <string name="enterprise_mgmt_maint_requests_open">%1$d offene Wartungsanfrage(n) für dieses Fahrzeug.</string>
+    <string name="enterprise_mgmt_internal_dispense_queued">%1$d interne Tankabgabe(n) offline in der Warteschlange.</string>
+    <string name="enterprise_mgmt_request_maintenance">Wartung anfordern</string>
+</resources>

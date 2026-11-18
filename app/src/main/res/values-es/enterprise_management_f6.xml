@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_mgmt_card_title">Gestión en campo</string>
+    <string name="enterprise_mgmt_compliance_expired">%1$d documento(s) o licencia(s) vencido(s) requieren atención.</string>
+    <string name="enterprise_mgmt_compliance_due_soon">%1$d documento(s) o licencia(s) vencen pronto (próximo en %2$d días).</string>
+    <string name="enterprise_mgmt_compliance_ok">Todos los documentos y licencias asignados están vigentes.</string>
+    <string name="enterprise_mgmt_maint_requests_open">%1$d solicitud(es) de mantenimiento abierta(s) para este vehículo.</string>
+    <string name="enterprise_mgmt_internal_dispense_queued">%1$d suministro(s) de tanque interno en cola sin conexión.</string>
+    <string name="enterprise_mgmt_request_maintenance">Solicitar mantenimiento</string>
+</resources>

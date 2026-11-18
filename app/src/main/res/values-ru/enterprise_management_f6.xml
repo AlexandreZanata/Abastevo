@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_mgmt_card_title">Полевое управление</string>
+    <string name="enterprise_mgmt_compliance_expired">Просроченные документы или права (%1$d) требуют внимания.</string>
+    <string name="enterprise_mgmt_compliance_due_soon">Скоро истекает срок документов или прав: %1$d (ближайший через %2$d дн.).</string>
+    <string name="enterprise_mgmt_compliance_ok">Все назначенные документы и права действительны.</string>
+    <string name="enterprise_mgmt_maint_requests_open">Открытых заявок на обслуживание для этого ТС: %1$d.</string>
+    <string name="enterprise_mgmt_internal_dispense_queued">Записей внутренней заправки в офлайн-очереди: %1$d.</string>
+    <string name="enterprise_mgmt_request_maintenance">Запросить обслуживание</string>
+</resources>
