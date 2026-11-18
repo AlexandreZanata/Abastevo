@@ -305,6 +305,34 @@ func stationGuides(fuels []string) []moduleLink {
 	return append(links, moduleLink{Label: "Calcule o custo por quilômetro rodado", Href: "/ferramentas/custo-por-km/"})
 }
 
+var landingGuideLabels = map[string]string{
+	"/guias/etanol-ou-gasolina/":                 "Guia completo: quando o etanol compensa mais que a gasolina",
+	"/guias/como-ler-precos/":                    "Guia completo: como ler os preços da pesquisa ANP",
+	"/guias/pesquisa-anp/":                       "Guia completo: como funciona a pesquisa semanal da ANP",
+	"/guias/combustivel-adulterado/":             "Guia completo: sinais e direitos no caso de combustível adulterado",
+	"/guias/como-calcular-consumo-medio/":        "Guia completo: como calcular o consumo médio do veículo",
+	"/guias/como-e-formado-o-preco-da-gasolina/": "Guia completo: como é formado o preço da gasolina",
+	"/guias/como-economizar-combustivel/":        "Guia completo: como economizar combustível no dia a dia",
+	"/guias/diesel-s10-ou-s500/":                 "Guia completo: diferença entre diesel S10 e S500",
+	"/guias/direitos-do-consumidor-no-posto/":    "Guia completo: direitos do consumidor no posto de combustível",
+	"/guias/gasolina-comum-ou-aditivada/":        "Guia completo: diferença entre gasolina comum e aditivada",
+	"/guias/gnv-compensa/":                       "Guia completo: quando o GNV compensa",
+	"/guias/icms-sobre-combustiveis/":            "Guia completo: como funciona o ICMS sobre combustíveis",
+	"/guias/precos-diferentes-entre-cidades/":    "Guia completo: por que os preços variam entre cidades",
+	"/ferramentas/etanol-ou-gasolina/":           "Calculadora: etanol ou gasolina",
+	"/ferramentas/custo-de-viagem/":              "Calculadora: custo de viagem",
+	"/ferramentas/consumo-medio/":                "Calculadora: consumo médio",
+	"/ferramentas/custo-por-km/":                 "Calculadora: custo por quilômetro rodado",
+	"/ferramentas/encher-o-tanque/":              "Calculadora: quanto custa encher o tanque",
+}
+
+func forumLandingLabel(route string) string {
+	if label, ok := landingGuideLabels[route]; ok {
+		return label
+	}
+	return "Leia o guia completo no abastevo"
+}
+
 // hubModule links the other portal hubs from a hub page body.
 func (g *generator) hubModule(self string) linkModule {
 	hubs := []moduleLink{

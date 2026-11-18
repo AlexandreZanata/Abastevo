@@ -35,6 +35,7 @@ type EditorialExportPost struct {
 	Region              *domain.Region
 	FuelProduct         *string
 	StationID           *string
+	LandingRoute        *string
 	SourceName          string
 }
 

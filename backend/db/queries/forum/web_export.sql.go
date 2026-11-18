@@ -18,7 +18,8 @@ SELECT count(*)::bigint AS posts,
         p.body_text || ':' || extract(epoch FROM p.first_published_at)::text || ':' ||
         extract(epoch FROM p.local_updated_at)::text || ':' ||
         COALESCE(p.region_uf, '') || ':' || COALESCE(p.region_municipality_ibge::text, '') || ':' ||
-        COALESCE(p.fuel_product, '') || ':' || COALESCE(p.station_id::text, '') || ':' || s.name
+        COALESCE(p.fuel_product, '') || ':' || COALESCE(p.station_id::text, '') || ':' ||
+        COALESCE(p.landing_route, '') || ':' || s.name
     ), ',' ORDER BY p.id::text)), '')::text AS posts_hash
 FROM forum_posts p
 JOIN forum_sources s ON s.id = p.source_id
@@ -51,7 +52,7 @@ SELECT
     p.id, p.category, p.title, p.excerpt, p.body_text,
     p.first_published_at, p.local_updated_at,
     p.region_uf, p.region_municipality_ibge,
-    p.fuel_product, p.station_id,
+    p.fuel_product, p.station_id, p.landing_route,
     s.name AS source_name
 FROM forum_posts p
 JOIN forum_sources s ON s.id = p.source_id
@@ -83,6 +84,7 @@ type ExportEditorialPostsRow struct {
 	RegionMunicipalityIbge pgtype.Int4        `json:"region_municipality_ibge"`
 	FuelProduct            pgtype.Text        `json:"fuel_product"`
 	StationID              pgtype.UUID        `json:"station_id"`
+	LandingRoute           pgtype.Text        `json:"landing_route"`
 	SourceName             string             `json:"source_name"`
 }
 
@@ -111,6 +113,7 @@ func (q *Queries) ExportEditorialPosts(ctx context.Context, arg ExportEditorialP
 			&i.RegionMunicipalityIbge,
 			&i.FuelProduct,
 			&i.StationID,
+			&i.LandingRoute,
 			&i.SourceName,
 		); err != nil {
 			return nil, err

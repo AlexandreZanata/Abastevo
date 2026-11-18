@@ -341,6 +341,138 @@ func TestAdminService_EditPost(t *testing.T) {
 	}
 }
 
+func TestAdminService_LandingRouteLifecycle(t *testing.T) {
+	store := newMockAdminStore()
+	runner := &mockRunner{}
+	fixedTime := time.Date(2026, 11, 18, 12, 0, 0, 0, time.UTC)
+
+	sourceID := "11111111-1111-4111-8111-111111111111"
+	store.sources[sourceID] = &domain.Source{
+		ID:           sourceID,
+		Code:         "abastevo-editorial",
+		Name:         "Redação Abastevo",
+		Kind:         domain.SourceKindAbastevo,
+		RightsStatus: domain.RightsApproved,
+	}
+
+	cfg := domain.DefaultConfig()
+	cfg.AdminEnabled = true
+
+	svc := &forumapp.AdminService{
+		Store:  store,
+		Runner: runner,
+		Config: cfg,
+		Clock:  func() time.Time { return fixedTime },
+		NewID: func() (string, error) {
+			return "22222222-2222-4222-8222-222222222229", nil
+		},
+	}
+
+	createMutation := adminapp.Mutation{
+		SessionID: "sess-1",
+		Action:    "admin.forum.post.create",
+		Reason:    "criando rascunho editorial com landing_route",
+		Key:       "44444444-4444-4444-8444-444444444441",
+	}
+
+	badRoute := "https://abastevo.com.br/guias/etanol-ou-gasolina/"
+	if _, err := svc.CreateDraft(context.Background(), createMutation, forumapp.CreateDraftInput{
+		Kind:         "EDITORIAL",
+		Category:     "FUELS",
+		Title:        "Rendimento do etanol no uso real",
+		Excerpt:      "Resumo de consumo.",
+		Body:         "Texto editorial de teste.",
+		SourceID:     sourceID,
+		LandingRoute: &badRoute,
+	}); !errors.Is(err, domain.ErrInvalidLandingRoute) {
+		t.Fatalf("CreateDraft(bad landing_route) err = %v, want ErrInvalidLandingRoute", err)
+	}
+
+	spacedRoute := "  /guias/etanol-ou-gasolina/  "
+	created, err := svc.CreateDraft(context.Background(), createMutation, forumapp.CreateDraftInput{
+		Kind:         "EDITORIAL",
+		Category:     "FUELS",
+		Title:        "Rendimento do etanol no uso real",
+		Excerpt:      "Resumo de consumo.",
+		Body:         "Texto editorial de teste.",
+		SourceID:     sourceID,
+		LandingRoute: &spacedRoute,
+	})
+	if err != nil {
+		t.Fatalf("CreateDraft(valid landing_route) unexpected err: %v", err)
+	}
+	if created.LandingRoute == nil || *created.LandingRoute != "/guias/etanol-ou-gasolina/" {
+		t.Fatalf("created.LandingRoute = %v, want /guias/etanol-ou-gasolina/", created.LandingRoute)
+	}
+
+	editMutation := adminapp.Mutation{
+		SessionID: "sess-1",
+		Action:    "admin.forum.post.edit",
+		Reason:    "atualizando e limpando landing_route no rascunho",
+		Key:       "44444444-4444-4444-8444-444444444442",
+	}
+
+	// Editing with a new valid route updates LandingRoute; blank or nil clears it (full-edit semantics).
+	updatedRoute := " /ferramentas/etanol-ou-gasolina/ "
+	updated, err := svc.EditPost(context.Background(), editMutation, forumapp.EditPostInput{
+		ID:               created.ID,
+		Title:            created.Title,
+		Excerpt:          created.Excerpt,
+		Body:             created.BodyText,
+		Category:         "FUELS",
+		LandingRoute:     &updatedRoute,
+		ExpectedRevision: 1,
+	})
+	if err != nil {
+		t.Fatalf("EditPost(updated landing_route) unexpected err: %v", err)
+	}
+	if updated.LandingRoute == nil || *updated.LandingRoute != "/ferramentas/etanol-ou-gasolina/" {
+		t.Fatalf("EditPost(updated) LandingRoute = %v, want /ferramentas/etanol-ou-gasolina/", updated.LandingRoute)
+	}
+
+	blank := "   "
+	cleared, err := svc.EditPost(context.Background(), editMutation, forumapp.EditPostInput{
+		ID:               created.ID,
+		Title:            created.Title,
+		Excerpt:          created.Excerpt,
+		Body:             created.BodyText,
+		Category:         "FUELS",
+		LandingRoute:     &blank,
+		ExpectedRevision: 2,
+	})
+	if err != nil {
+		t.Fatalf("EditPost(blank landing_route) unexpected err: %v", err)
+	}
+	if cleared.LandingRoute != nil {
+		t.Fatalf("EditPost(blank) did not clear LandingRoute: %v", *cleared.LandingRoute)
+	}
+
+	reassignedRoute := "/guias/pesquisa-anp/"
+	reassigned, err := svc.EditPost(context.Background(), editMutation, forumapp.EditPostInput{
+		ID:               created.ID,
+		Title:            created.Title,
+		Excerpt:          created.Excerpt,
+		Body:             created.BodyText,
+		Category:         "FUELS",
+		LandingRoute:     &reassignedRoute,
+		ExpectedRevision: 3,
+	})
+	if err != nil || reassigned.LandingRoute == nil || *reassigned.LandingRoute != "/guias/pesquisa-anp/" {
+		t.Fatalf("EditPost(reassigned) = %v, err=%v", reassigned, err)
+	}
+	clearedByNil, err := svc.EditPost(context.Background(), editMutation, forumapp.EditPostInput{
+		ID:               created.ID,
+		Title:            created.Title,
+		Excerpt:          created.Excerpt,
+		Body:             created.BodyText,
+		Category:         "FUELS",
+		ExpectedRevision: 4,
+	})
+	if err != nil || clearedByNil.LandingRoute != nil {
+		t.Fatalf("EditPost(nil) = %v, err=%v", clearedByNil, err)
+	}
+}
+
 func TestAdminService_PublishPost_RightsAndTransitions(t *testing.T) {
 	store := newMockAdminStore()
 	runner := &mockRunner{}

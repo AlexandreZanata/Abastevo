@@ -83,6 +83,11 @@ var LandingRoutes = map[string]bool{
 	"/": true, "/como-usar/": true, "/guias/": true, "/privacidade/": true,
 	"/excluir-conta/": true, "/termos/": true, "/sobre/": true, "/politica-editorial/": true,
 	"/guias/etanol-ou-gasolina/": true, "/guias/como-ler-precos/": true, "/guias/pesquisa-anp/": true,
+	"/guias/combustivel-adulterado/": true, "/guias/como-calcular-consumo-medio/": true,
+	"/guias/como-e-formado-o-preco-da-gasolina/": true, "/guias/como-economizar-combustivel/": true,
+	"/guias/diesel-s10-ou-s500/": true, "/guias/direitos-do-consumidor-no-posto/": true,
+	"/guias/gasolina-comum-ou-aditivada/": true, "/guias/gnv-compensa/": true,
+	"/guias/icms-sobre-combustiveis/": true, "/guias/precos-diferentes-entre-cidades/": true,
 	"/ferramentas/": true, "/ferramentas/etanol-ou-gasolina/": true, "/ferramentas/custo-de-viagem/": true,
 	"/ferramentas/consumo-medio/": true, "/ferramentas/custo-por-km/": true, "/ferramentas/encher-o-tanque/": true,
 }

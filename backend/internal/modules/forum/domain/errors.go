@@ -63,6 +63,7 @@ var (
 	ErrTopicKindSpoof           = errors.New("forum: invalid topic kind or external source on topic")
 	ErrInvalidFuelProduct       = errors.New("forum: invalid fuel product")
 	ErrInvalidStationID         = errors.New("forum: invalid station id")
+	ErrInvalidLandingRoute      = errors.New("forum: invalid landing guide or tool route")
 )
 
 const (
@@ -191,6 +192,8 @@ func VerdictCode(err error) string {
 		return "invalid-fuel-product"
 	case errors.Is(err, ErrInvalidStationID):
 		return "invalid-station-id"
+	case errors.Is(err, ErrInvalidLandingRoute):
+		return "invalid-landing-route"
 	default:
 		return "unknown-error"
 	}

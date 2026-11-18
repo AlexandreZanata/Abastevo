@@ -326,6 +326,11 @@ func (s *Store) insertEditorialPost(ctx context.Context, q *forumsql.Queries, p 
 		}
 	}
 
+	var landingRoute pgtype.Text
+	if p.LandingRoute != nil && *p.LandingRoute != "" {
+		landingRoute = pgtype.Text{String: *p.LandingRoute, Valid: true}
+	}
+
 	var rightsSnapshot pgtype.Text
 	if p.RightsSnapshot != nil {
 		rightsSnapshot = pgtype.Text{String: *p.RightsSnapshot, Valid: true}
@@ -397,6 +402,7 @@ func (s *Store) insertEditorialPost(ctx context.Context, q *forumsql.Queries, p 
 		RegionMunicipalityIbge: regionIBGE,
 		FuelProduct:            fuelProduct,
 		StationID:              stationUUID,
+		LandingRoute:           landingRoute,
 		AuthorOperationID:      pgtype.UUID{},
 		BodySha256:             "",
 		RightsSnapshot:         rightsSnapshot,
@@ -510,6 +516,7 @@ func (s *Store) UpdateEditorialPost(ctx context.Context, p *domain.Post, expecte
 		RegionUf:               regionUf,
 		RegionMunicipalityIbge: regionIBGE,
 		StationID:              stationUUID,
+		LandingRoute:           optionalText(p.LandingRoute),
 		CommentsEnabled:        p.CommentsEnabled,
 		Correction:             correction,
 		UpdatedAt:              pgtype.Timestamptz{Time: now, Valid: true},
@@ -694,6 +701,21 @@ func uuidString(id pgtype.UUID) string {
 		hexed[16:20] + "-" + hexed[20:32]
 }
 
+func optionalText(p *string) pgtype.Text {
+	if p == nil || *p == "" {
+		return pgtype.Text{}
+	}
+	return pgtype.Text{String: *p, Valid: true}
+}
+
+func optionalTextPtr(t pgtype.Text) *string {
+	if !t.Valid || t.String == "" {
+		return nil
+	}
+	cp := t.String
+	return &cp
+}
+
 func mapPostRowToDomain(r forumsql.GetPostByIDRow) (*domain.Post, error) {
 	var publicAlias *string
 	if r.PublicAlias.Valid {
@@ -718,6 +740,7 @@ func mapPostRowToDomain(r forumsql.GetPostByIDRow) (*domain.Post, error) {
 		cp := uuidString(r.StationID)
 		stationID = &cp
 	}
+	landingRoute := optionalTextPtr(r.LandingRoute)
 
 	var rightsSnapshot *string
 	if r.RightsSnapshot.Valid {
@@ -815,6 +838,7 @@ func mapPostRowToDomain(r forumsql.GetPostByIDRow) (*domain.Post, error) {
 		Region:              region,
 		FuelProduct:         fuelProduct,
 		StationID:           stationID,
+		LandingRoute:        landingRoute,
 		RightsSnapshot:      rightsSnapshot,
 		BulletinKey:         bulletinKey,
 		BulletinGroupKey:    bulletinGroupKey,
@@ -983,6 +1007,7 @@ func (s *Store) UpdateEditorialTx(ctx context.Context, tx pgx.Tx, p *domain.Post
 		RegionUf:               regionUf,
 		RegionMunicipalityIbge: regionIBGE,
 		StationID:              stationUUID,
+		LandingRoute:           optionalText(p.LandingRoute),
 		CommentsEnabled:        p.CommentsEnabled,
 		Correction:             correction,
 		UpdatedAt:              pgtype.Timestamptz{Time: now, Valid: true},
@@ -1380,6 +1405,7 @@ func mapAdminListRowToDomain(r forumsql.AdminListPostsRow) domain.Post {
 		cp := uuidString(r.StationID)
 		stationID = &cp
 	}
+	landingRoute := optionalTextPtr(r.LandingRoute)
 	var region *domain.Region
 	if r.RegionUf.Valid {
 		var ibge *int
@@ -1435,6 +1461,7 @@ func mapAdminListRowToDomain(r forumsql.AdminListPostsRow) domain.Post {
 		Region:              region,
 		FuelProduct:         fuelProduct,
 		StationID:           stationID,
+		LandingRoute:        landingRoute,
 	}
 }
 
@@ -1459,6 +1486,7 @@ func mapPostForUpdateRowToDomain(r forumsql.GetPostByIDForUpdateRow) (*domain.Po
 		cp := uuidString(r.StationID)
 		stationID = &cp
 	}
+	landingRoute := optionalTextPtr(r.LandingRoute)
 	var rightsSnapshot *string
 	if r.RightsSnapshot.Valid {
 		cp := r.RightsSnapshot.String
@@ -1540,6 +1568,7 @@ func mapPostForUpdateRowToDomain(r forumsql.GetPostByIDForUpdateRow) (*domain.Po
 		Region:              region,
 		FuelProduct:         fuelProduct,
 		StationID:           stationID,
+		LandingRoute:        landingRoute,
 		RightsSnapshot:      rightsSnapshot,
 		BulletinKey:         bulletinKey,
 		BulletinGroupKey:    bulletinGroupKey,
@@ -1755,6 +1784,7 @@ func (s *Store) InsertNewsCandidatePost(ctx context.Context, post *domain.Post) 
 		RegionMunicipalityIbge: pgtype.Int4{},
 		FuelProduct:            pgtype.Text{},
 		StationID:              pgtype.UUID{},
+		LandingRoute:           pgtype.Text{},
 		AuthorOperationID:      pgtype.UUID{},
 		BodySha256:             sha256Hex(post.BodyText),
 		RightsSnapshot:         pgtype.Text{},

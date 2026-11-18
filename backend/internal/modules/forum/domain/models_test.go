@@ -323,3 +323,74 @@ func TestPublicProjections(t *testing.T) {
 		}
 	})
 }
+
+func TestValidLandingRoute(t *testing.T) {
+	valid := []string{
+		"/guias/etanol-ou-gasolina/",
+		"/ferramentas/calculadora-etanol-gasolina/",
+		"/guias/a1-b2-c3/",
+	}
+	for _, route := range valid {
+		if !ValidLandingRoute(route) {
+			t.Errorf("ValidLandingRoute(%q) = false, want true", route)
+		}
+	}
+
+	tooLong := "/guias/" + strings.Repeat("a", 120) + "/"
+	invalid := []string{
+		"",
+		"/",
+		"guias/etanol-ou-gasolina/",
+		"/guias/etanol-ou-gasolina",
+		"https://abastevo.com.br/guias/etanol-ou-gasolina/",
+		"/en/guides/ethanol-vs-gasoline/",
+		"/guias/ETANOL/",
+		"/guias/etanol_ou_gasolina/",
+		"/guias/etanol--gasolina/",
+		"/guias//",
+		tooLong,
+	}
+	for _, route := range invalid {
+		if ValidLandingRoute(route) {
+			t.Errorf("ValidLandingRoute(%q) = true, want false", route)
+		}
+	}
+}
+
+func TestPostValidationLandingRoute(t *testing.T) {
+	now := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+	base := func(route *string) *Post {
+		return &Post{
+			ID:               "post-lr-1",
+			Kind:             KindEditorial,
+			Category:         CategoryFuels,
+			Title:            "Rendimento do etanol no uso real",
+			Excerpt:          "Resumo de campo",
+			BodyText:         "Texto completo.",
+			SourceID:         "src-1",
+			LocalCreatedAt:   now,
+			LocalUpdatedAt:   now,
+			PublicationState: StateDraft,
+			Visibility:       VisibilityVisible,
+			Revision:         1,
+			LandingRoute:     route,
+		}
+	}
+
+	if err := base(nil).Validate(); err != nil {
+		t.Fatalf("Validate() with nil LandingRoute = %v, want nil", err)
+	}
+	good := "/guias/etanol-ou-gasolina/"
+	if err := base(&good).Validate(); err != nil {
+		t.Fatalf("Validate() with valid LandingRoute = %v, want nil", err)
+	}
+	for _, bad := range []string{"", "   ", "/guias/etanol-ou-gasolina", "/en/guides/ethanol-vs-gasoline/"} {
+		b := bad
+		if err := base(&b).Validate(); err != ErrInvalidLandingRoute {
+			t.Fatalf("Validate() with bad LandingRoute %q = %v, want ErrInvalidLandingRoute", bad, err)
+		}
+	}
+	if code := VerdictCode(ErrInvalidLandingRoute); code != "invalid-landing-route" {
+		t.Fatalf("VerdictCode(ErrInvalidLandingRoute) = %q, want %q", code, "invalid-landing-route")
+	}
+}

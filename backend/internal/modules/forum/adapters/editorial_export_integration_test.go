@@ -5,13 +5,20 @@ package adapters
 import (
 	"context"
 	"errors"
+	"io/fs"
+	"net/url"
+	"strings"
 	"testing"
+	"testing/fstest"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 
+	dbmigrations "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/migrations"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 )
 
 // TestEditorialExportProjectsOnlyPublishedVisibleAbastevoEditorials proves
@@ -41,6 +48,7 @@ func TestEditorialExportProjectsOnlyPublishedVisibleAbastevoEditorials(t *testin
 
 	cuiaba := 5103403
 	gasoline := "GASOLINE_REGULAR"
+	regionalRoute := "/guias/pesquisa-anp/"
 	create := func(title, source string, state domain.PublicationState) *domain.Post {
 		t.Helper()
 		post := &domain.Post{
@@ -64,6 +72,7 @@ func TestEditorialExportProjectsOnlyPublishedVisibleAbastevoEditorials(t *testin
 		Title: "Gasolina em Cuiabá", Excerpt: "Resumo regional", BodyText: "Linha um\n\n- item",
 		SourceID: abastevoSource, PublicationState: domain.StateDraft, Visibility: domain.VisibilityVisible,
 		Region: &domain.Region{UF: "MT", MunicipalityIBGE: &cuiaba}, FuelProduct: &gasoline, StationID: &station,
+		LandingRoute: &regionalRoute,
 	}
 	if err := store.CreateEditorialPost(ctx, regional); err != nil {
 		t.Fatal(err)
@@ -146,10 +155,11 @@ func TestEditorialExportProjectsOnlyPublishedVisibleAbastevoEditorials(t *testin
 		got.SourceName != "Equipe Abastevo" || got.Region == nil || got.Region.UF != "MT" ||
 		got.Region.MunicipalityIBGE == nil || *got.Region.MunicipalityIBGE != cuiaba ||
 		got.FuelProduct == nil || *got.FuelProduct != gasoline || got.StationID == nil || *got.StationID != station ||
+		got.LandingRoute == nil || *got.LandingRoute != regionalRoute ||
 		!got.PublishedAt.Equal(time.Date(2026, 11, 9, 12, 0, 0, 0, time.UTC)) || got.UpdatedAt.IsZero() {
 		t.Fatalf("regional projection = %+v", got)
 	}
-	if plain := byID[published.ID]; plain.Region != nil || plain.FuelProduct != nil || plain.StationID != nil || plain.CategoryName != "Combustíveis" {
+	if plain := byID[published.ID]; plain.Region != nil || plain.FuelProduct != nil || plain.StationID != nil || plain.LandingRoute != nil || plain.CategoryName != "Combustíveis" {
 		t.Fatalf("plain projection = %+v", plain)
 	}
 	if _, _, err := inTx.ExportEditorialPage(ctx, "not-a-uuid", 10); !errors.Is(err, application.ErrInvalidEditorialExportPage) {
@@ -195,5 +205,140 @@ func TestEditorialExportProjectsOnlyPublishedVisibleAbastevoEditorials(t *testin
 	}
 	if disabled, err := reader.EditorialFingerprint(ctx); err != nil || disabled.Posts != 0 {
 		t.Fatalf("disabled source still exported: %+v, %v", disabled, err)
+	}
+}
+
+func TestForumPostLandingRouteMigrationAndConstraints(t *testing.T) {
+	adminDSN := testDSN(t)
+	ctx := context.Background()
+	admin, err := pgx.Connect(ctx, adminDSN)
+	if err != nil {
+		t.Fatalf("admin connect: %v", err)
+	}
+	defer admin.Close(ctx)
+
+	dbName := "forum_lr_" + strings.ReplaceAll(randomUUID(), "-", "")
+	if _, err := admin.Exec(ctx, "CREATE DATABASE "+pgx.Identifier{dbName}.Sanitize()); err != nil {
+		t.Fatalf("create database: %v", err)
+	}
+	t.Cleanup(func() {
+		cctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		c, err := pgx.Connect(cctx, adminDSN)
+		if err != nil {
+			t.Errorf("reconnect to drop %s: %v", dbName, err)
+			return
+		}
+		defer c.Close(cctx)
+		if _, err := c.Exec(cctx, "DROP DATABASE "+pgx.Identifier{dbName}.Sanitize()); err != nil {
+			t.Errorf("drop database %s: %v", dbName, err)
+		}
+	})
+
+	u, err := url.Parse(adminDSN)
+	if err != nil {
+		t.Fatalf("parse dsn: %v", err)
+	}
+	u.Path = "/" + dbName
+	dsn := u.String()
+
+	pre258 := fstest.MapFS{}
+	entries, err := fs.ReadDir(dbmigrations.Files, ".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, entry := range entries {
+		if entry.IsDir() || entry.Name() == "000258_forum_post_landing_route.sql" {
+			continue
+		}
+		raw, err := fs.ReadFile(dbmigrations.Files, entry.Name())
+		if err != nil {
+			t.Fatal(err)
+		}
+		pre258[entry.Name()] = &fstest.MapFile{Data: raw}
+	}
+	if _, err := migrate.Apply(ctx, dsn, pre258); err != nil {
+		t.Fatalf("pre-000258 migrate: %v", err)
+	}
+
+	pool, err := pgxpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+
+	const abastevoSource = "00000000-0000-0000-0000-000000000001"
+	legacyID := randomUUID()
+	if _, err := pool.Exec(ctx, `INSERT INTO forum_posts (
+		id, kind, category, title, excerpt, body_text, source_id,
+		publication_state, visibility, revision, comments_enabled, first_published_at, first_publication_seq
+	) VALUES ($1, 'EDITORIAL', 'FUELS', 'Post pré-migração', 'Resumo legado.', 'Corpo legado.', $2, 'PUBLISHED', 'VISIBLE', 1, true, now(), 500)`, legacyID, abastevoSource); err != nil {
+		t.Fatalf("insert pre-000258 row: %v", err)
+	}
+
+	// Upgrade 000257 -> 000258 preserves existing rows with NULL landing_route.
+	applied, err := migrate.Apply(ctx, dsn, dbmigrations.Files)
+	if err != nil {
+		t.Fatalf("upgrade 000258: %v", err)
+	}
+	if len(applied) != 1 || applied[0] != "000258" {
+		t.Fatalf("applied migrations = %v, want [000258]", applied)
+	}
+
+	store := NewStore(pool)
+	reader := NewEditorialExportReader(pool)
+
+	legacy, err := store.GetPostByID(ctx, legacyID)
+	if err != nil {
+		t.Fatalf("GetPostByID legacy: %v", err)
+	}
+	if legacy.LandingRoute != nil {
+		t.Fatalf("legacy.LandingRoute = %v, want nil", *legacy.LandingRoute)
+	}
+	fpBefore, err := reader.EditorialFingerprint(ctx)
+	if err != nil || fpBefore.Posts != 1 {
+		t.Fatalf("fingerprint before = %+v, %v", fpBefore, err)
+	}
+
+	// Update landing_route on published editorial and confirm fingerprint advances.
+	guideRoute := "/guias/etanol-ou-gasolina/"
+	legacy.LandingRoute = &guideRoute
+	legacy.Title = "Rendimento do etanol no uso real: quando a paridade foge dos 70%"
+	if err := store.UpdateEditorialPost(ctx, legacy, 1); err != nil {
+		t.Fatalf("UpdateEditorialPost with landing_route: %v", err)
+	}
+	fpWithRoute, err := reader.EditorialFingerprint(ctx)
+	if err != nil || fpWithRoute.Hash == fpBefore.Hash {
+		t.Fatalf("fingerprint did not change after setting landing_route: before=%+v after=%+v err=%v", fpBefore, fpWithRoute, err)
+	}
+
+	// Stale revision rejected with ErrRevisionMismatch.
+	if err := store.UpdateEditorialPost(ctx, legacy, 1); !errors.Is(err, domain.ErrRevisionMismatch) {
+		t.Fatalf("stale UpdateEditorialPost err = %v, want ErrRevisionMismatch", err)
+	}
+
+	// AdminListPosts and ExportEditorialPage reflect LandingRoute.
+	listed, _, err := store.AdminListPosts(ctx, application.AdminListFilter{Limit: 10})
+	if err != nil || len(listed) != 1 || listed[0].LandingRoute == nil || *listed[0].LandingRoute != guideRoute {
+		t.Fatalf("AdminListPosts = %+v, err=%v", listed, err)
+	}
+	exported, _, err := reader.ExportEditorialPage(ctx, "", 10)
+	if err != nil || len(exported) != 1 || exported[0].LandingRoute == nil || *exported[0].LandingRoute != guideRoute {
+		t.Fatalf("ExportEditorialPage = %+v, err=%v", exported, err)
+	}
+
+	// Clear landing_route -> DB NULL.
+	legacy.LandingRoute = nil
+	if err := store.UpdateEditorialPost(ctx, legacy, 2); err != nil {
+		t.Fatalf("UpdateEditorialPost clearing landing_route: %v", err)
+	}
+	cleared, err := store.GetPostByID(ctx, legacyID)
+	if err != nil || cleared.LandingRoute != nil {
+		t.Fatalf("cleared.LandingRoute = %v, err=%v", cleared.LandingRoute, err)
+	}
+
+	// DB CHECK constraint rejects malformed landing_route even on raw SQL.
+	if _, err := pool.Exec(ctx, `UPDATE forum_posts SET landing_route = '/en/guides/ethanol-vs-gasoline/' WHERE id = $1`, legacyID); err == nil {
+		t.Fatal("CHECK constraint forum_posts_landing_route_check allowed invalid landing_route")
 	}
 }
