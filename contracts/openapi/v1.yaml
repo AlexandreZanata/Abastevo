@@ -20790,6 +20790,14 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseGeofenceMutationRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000005103
+              name: Garagem Centro
+              kind: CIRCLE
+              center_lat_e7: -156014000
+              center_lon_e7: -560979000
+              radius_m: 150
       responses:
         '200':
           description: Created or replayed geofence.
@@ -20847,6 +20855,15 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseGeofenceMutationRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000005104
+              revision: 1
+              name: Garagem Centro
+              kind: CIRCLE
+              center_lat_e7: -156014000
+              center_lon_e7: -560979000
+              radius_m: 200
       responses:
         '200':
           description: Updated or replayed geofence.
@@ -20951,6 +20968,22 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/EnterpriseRoutePlanSaveRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000005101
+              owner_kind: MISSION
+              owner_id: 7b0e2a54-0000-4000-8000-000000005102
+              waypoints:
+                - sequence: 1
+                  label: Origem
+                  source: COORDINATES
+                  lat_e7: -156014000
+                  lon_e7: -560979000
+                - sequence: 2
+                  label: Destino
+                  source: COORDINATES
+                  lat_e7: -166869000
+                  lon_e7: -492648000
       responses:
         '200':
           description: Saved route plan revision and computation.
