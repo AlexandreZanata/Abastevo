@@ -224,6 +224,34 @@
             </fieldset></form>
           </section>
         </section>
+        <section id="ops-panel" class="mission-board" aria-labelledby="ops-title" hidden>
+          <div class="section-heading"><div><p class="eyebrow">OPERAÇÃO AO VIVO E ROTAS</p><h2 id="ops-title" tabindex="-1">Mapa operacional, trajetos e cercas</h2></div><div class="state-actions"><button id="ops-load" class="button-quiet" type="button">Atualizar mapa e alertas</button><button id="ops-toggle-view" class="button-quiet" type="button">Ver como lista</button></div></div>
+          <p class="field-help">Posições com classificação de atualização no servidor e modo lista acessível sem depender de mapas externos.</p>
+          <p id="ops-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <div id="ops-map-host"></div>
+          <section aria-labelledby="ops-alerts-title"><h3 id="ops-alerts-title">Alertas operacionais</h3><ul id="ops-alert-list" class="record-list" aria-labelledby="ops-alerts-title"></ul></section>
+          <section aria-labelledby="ops-geofences-title"><h3 id="ops-geofences-title">Cercas geográficas</h3><ul id="ops-geofence-list" class="record-list" aria-labelledby="ops-geofences-title"></ul>
+            <details><summary>Nova cerca circular</summary>
+              <form id="ops-geofence-form" autocomplete="off">
+                <div class="field-grid"><div><label for="ops-fence-name">Nome da cerca</label><input id="ops-fence-name" maxlength="160" required></div><div><label for="ops-fence-lat">Latitude (e7)</label><input id="ops-fence-lat" type="number" required></div><div><label for="ops-fence-lon">Longitude (e7)</label><input id="ops-fence-lon" type="number" required></div><div><label for="ops-fence-radius">Raio em metros (50 a 50000)</label><input id="ops-fence-radius" type="number" min="50" max="50000" value="300" required></div></div>
+                <button class="button-primary" type="submit">Criar cerca</button>
+              </form>
+            </details>
+          </section>
+          <section id="ops-replay-detail" class="employee-detail" aria-labelledby="ops-replay-title" hidden>
+            <h3 id="ops-replay-title">Replay da viagem</h3>
+            <p id="ops-replay-summary"></p>
+            <label for="ops-replay-cursor">Linha do tempo</label><input id="ops-replay-cursor" type="range" min="0" max="0" value="0">
+            <p id="ops-replay-cursor-readout" class="field-help"></p>
+            <ul id="ops-replay-logbook" class="record-list" aria-label="Diário da viagem"></ul>
+          </section>
+          <details><summary>Plano de rota</summary>
+            <form id="ops-route-form" autocomplete="off">
+              <div class="field-grid"><div><label for="ops-route-kind">Tipo de vínculo</label><select id="ops-route-kind"><option value="TRIP">Viagem</option><option value="MISSION">Missão</option></select></div><div><label for="ops-route-owner">ID da viagem ou missão</label><input id="ops-route-owner" required></div><div><label for="ops-route-origin">Origem</label><input id="ops-route-origin" required></div><div><label for="ops-route-olat">Latitude origem (e7)</label><input id="ops-route-olat" type="number" required></div><div><label for="ops-route-olon">Longitude origem (e7)</label><input id="ops-route-olon" type="number" required></div><div><label for="ops-route-dest">Destino</label><input id="ops-route-dest" required></div><div><label for="ops-route-dlat">Latitude destino (e7)</label><input id="ops-route-dlat" type="number" required></div><div><label for="ops-route-dlon">Longitude destino (e7)</label><input id="ops-route-dlon" type="number" required></div><div><label for="ops-route-distance">Distância planejada (m)</label><input id="ops-route-distance" type="number" min="1"></div><div><label for="ops-route-revision">Revisão atual (opcional)</label><input id="ops-route-revision" type="number" min="1"></div></div>
+              <button class="button-primary" type="submit">Salvar plano de rota</button>
+            </form>
+          </details>
+        </section>
       </section>
       <p id="live-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
       <noscript>Ative o JavaScript para entrar no painel com segurança.</noscript>

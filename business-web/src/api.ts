@@ -10,7 +10,7 @@ export class ApiError extends Error {
     this.fields = Object.freeze(fields.filter(safeField));
   }
 }
-const SAFE_CODES = new Set(['ORG_SETUP_INCOMPLETE','OWNER_REQUIRES_PERSONAL_ACCOUNT','OPERATION_ID_REUSED','CONFLICT','ENTITLEMENT_REQUIRED','ORG_SUSPENDED','ORG_ARCHIVED','VALIDATION_FAILED','FRESH_AUTH_REQUIRED','FORBIDDEN','NOT_FOUND','UNAUTHENTICATED','RATE_LIMITED','DUPLICATE_REVIEW_REQUIRED','SELF_APPROVAL']);
+const SAFE_CODES = new Set(['ORG_SETUP_INCOMPLETE','OWNER_REQUIRES_PERSONAL_ACCOUNT','OPERATION_ID_REUSED','CONFLICT','ENTITLEMENT_REQUIRED','ORG_SUSPENDED','ORG_ARCHIVED','VALIDATION_FAILED','FRESH_AUTH_REQUIRED','FORBIDDEN','NOT_FOUND','UNAUTHENTICATED','RATE_LIMITED','DUPLICATE_REVIEW_REQUIRED','SELF_APPROVAL','ROUTE_POINT_LIMIT','GEOFENCE_INVALID_GEOMETRY']);
 const safeField = (value: string): boolean => ['name','time_zone','active_unit','active_owner','terms','reason','consumption_display','approval_levels_default','closure_period_days','review_required.trips','review_required.fuelings','review_required.expenses','policies.intake_window_days','policies.clock_skew_limit_seconds','policies.delegation_maximum_days','policies.invitation_validity_days','policies.activation_validity_hours','policies.require_invitation_confirmation'].includes(value) || /^responsibilities\.(?:review_fallback|platform_notices|data_protection|billing)\.(?:primary|substitute)$/.test(value);
 export interface SessionView { accountId: string; authenticatedAt: string; expiresAt: string }
 export interface SessionPort {
@@ -188,7 +188,9 @@ export class CompanyApi implements SessionPort {
         // EMP-TRIP-022 board: mission reads/commands and the reads it composes.
         !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:missions\/(?:list|create|[0-9a-f-]{36}\/(?:read|plan|assign|cancel|vehicle\/change|assignees\/list))|fleet\/assets\/(?:list|[0-9a-f-]{36}\/(?:availability\/read|reservations\/list|blocks\/list))|cost-centres\/list)$/.test(path) &&
         // EMP-CHECK-004 panel: run queue, run read and release, incident queue, read and decide.
-        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:checklists\/(?:runs\/(?:list|[0-9a-f-]{36}\/release)|assets\/[0-9a-f-]{36}\/runs\/[0-9a-f-]{36}\/read)|incidents\/reports\/(?:list|[0-9a-f-]{36}\/(?:read|decide)))$/.test(path)) throw new ApiError('denied');
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:checklists\/(?:runs\/(?:list|[0-9a-f-]{36}\/release)|assets\/[0-9a-f-]{36}\/runs\/[0-9a-f-]{36}\/read)|incidents\/reports\/(?:list|[0-9a-f-]{36}\/(?:read|decide)))$/.test(path) &&
+        // F5 live navigation & operations panel.
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:tracking\/(?:live\/list|geofences\/(?:list|create|[0-9a-f-]{36}\/change))|trips\/[0-9a-f-]{36}\/(?:location\/live\/read|track\/replay)|routes\/(?:plans\/(?:read|save)|suggestions\/evaluate))$/.test(path)) throw new ApiError('denied');
     return this.#private(path, body, signal, JSON_LIMIT);
   }
   // EMP-CHECK-004 (EDR-329): only the audited document content path, with its
