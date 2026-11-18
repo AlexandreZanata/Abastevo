@@ -26,6 +26,11 @@ export function computeHash(content) {
   return crypto.createHash('sha256').update(content).digest('hex').slice(0, 8);
 }
 
+// SEO-21: every indexable page declares the rich preview directive; gated
+// pages keep their own noindex.
+export const ROBOTS_INDEXABLE = 'index,follow,max-image-preview:large,max-snippet:-1';
+const ROBOTS_META_RE = /<meta\s+name="robots"\s+content="[^"]*"\s*\/?>/;
+
 export function validateOrigin(origin) {
   if (!origin || typeof origin !== 'string') {
     throw new Error('Public origin is required and must be a string');
@@ -359,7 +364,7 @@ export function build(options = {}) {
         if (header) html = html.replace(header, sharedHeader);
         html = html.replace(footer, sharedFooter);
       }
-      pages.push({ srcRel: entry.source || entry.outputRel, destRel: entry.outputRel, html });
+      pages.push({ srcRel: entry.source || entry.outputRel, destRel: entry.outputRel, indexable: entry.indexable, html });
     }
 
     for (const page of pages) {
@@ -403,9 +408,20 @@ export function build(options = {}) {
         }
       }
 
-      // Preview mode indexing guard
-      if (isPreview && srcRel !== '404.html') {
-        if (!html.includes('robots')) {
+      // Indexable pages without their own robots meta (authored and generated)
+      // get the rich directive right after the viewport declaration.
+      if (page.indexable && !ROBOTS_META_RE.test(html)) {
+        const viewport = html.match(/<meta name="viewport"[^>]*>/);
+        if (!viewport) throw new Error(`${destRel}: missing viewport meta`);
+        html = html.replace(viewport[0], `${viewport[0]}\n  <meta name="robots" content="${ROBOTS_INDEXABLE}">`);
+      }
+
+      // Preview mode indexing guard: hide every page, including the ones that
+      // now carry the rich directive.
+      if (isPreview) {
+        if (ROBOTS_META_RE.test(html)) {
+          html = html.replace(new RegExp(ROBOTS_META_RE.source, 'g'), '<meta name="robots" content="noindex, nofollow">');
+        } else {
           html = html.replace('<head>', '<head>\n  <meta name="robots" content="noindex, nofollow">');
         }
       }
