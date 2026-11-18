@@ -81,8 +81,12 @@ func TestHeadContractOnEveryGeneratedPage(t *testing.T) {
 		!strings.Contains(head.Description, "pesquisa ANP de 11/10 a 17/10/2026") || !strings.Contains(head.Description, "Gasolina comum R$ 6,199") {
 		t.Errorf("station head = %+v", head)
 	}
-	if !strings.Contains(station, "<h1>Auto Posto Cuiabá Ltda</h1>") || !strings.Contains(station, "Nome no cadastro da ANP: AUTO POSTO CUIABÁ LTDA") {
-		t.Error("station H1 is not title case or the registry name is hidden")
+	if !strings.Contains(station, `<h1>Auto Posto Cuiabá Ltda<span class="h1-place">– Cuiabá (MT)</span></h1>`) || !strings.Contains(station, "Nome no cadastro da ANP: AUTO POSTO CUIABÁ LTDA") {
+		t.Error("station H1 is not title case, lacks its place label or hides the registry name")
+	}
+	cityPage := pages["precos/mt/cuiaba/index.html"]
+	if !strings.Contains(cityPage, "<h1>Preços de combustíveis em Cuiabá (MT)</h1>") {
+		t.Error("city H1 is not descriptive")
 	}
 	shellA := parseHead(pages["postos/"+seoID(2)+"/index.html"]).Title
 	shellB := parseHead(pages["postos/"+seoID(3)+"/index.html"]).Title
