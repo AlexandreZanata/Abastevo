@@ -1,0 +1,11 @@
+[
+  { "locale": "en", "kind": "guide", "slug": "ethanol-or-gasoline", "route": "/en/guides/ethanol-or-gasoline/" },
+  { "locale": "es", "kind": "guide", "slug": "etanol-o-gasolina", "route": "/es/guias/etanol-o-gasolina/" },
+  { "locale": "pt-BR", "kind": "guide", "slug": "gnv-compensa", "route": "/guias/gnv-compensa/" },
+  { "locale": "en", "kind": "tool", "slug": "ethanol-or-gasoline-calculator", "route": "/en/tools/ethanol-or-gasoline-calculator/" },
+  { "locale": "es", "kind": "tool", "slug": "etanol-o-gasolina", "route": "/es/herramientas/etanol-o-gasolina/" },
+  { "locale": "pt-BR", "kind": "tool", "slug": "custo-de-viagem", "route": "/ferramentas/custo-de-viagem/" },
+  { "locale": "en", "kind": "page", "slug": "about", "route": "/en/about/" },
+  { "locale": "es", "kind": "page", "slug": "sobre", "route": "/es/sobre/" },
+  { "locale": "pt-BR", "kind": "page", "slug": "sobre", "route": "/sobre/" }
+]
