@@ -64,7 +64,7 @@ es la paridad exacta de tu coche.
 ## El contexto brasileño
 
 Los precios son por litro en reales brasileños (BRL), y el precio del cartel ya
-incluye impuestos federales y estatales. La gasolina común no es gasolina
+incluye impuestos federales y estatales. La gasolina regular no es gasolina
 pura: lleva etanol anhidro, así que el etanol que compras en el surtidor no es
 el mismo producto que se mezcla con la gasolina. En la mayoría de las
 estaciones un empleado llena el tanque por ti; no accionas el surtidor. Es

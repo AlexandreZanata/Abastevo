@@ -170,7 +170,7 @@ export function loadAppCaptures(root) {
  */
 export function extractSources(body) {
   const lines = String(body).replace(/\r\n?/g, '\n').split('\n');
-  const start = lines.findIndex((line) => /^##\s+Fontes\s*#*\s*$/.test(line));
+  const start = lines.findIndex((line) => /^##\s+(?:Fontes|Sources|Fuentes)\s*#*\s*$/.test(line));
   if (start === -1) return [];
   const section = [];
   for (let i = start + 1; i < lines.length; i++) {
@@ -243,7 +243,7 @@ function validateManifest(manifest, errors) {
 
 function resolveRouteLabel(registry, route) {
   const entry = registry.get(route);
-  if (entry) return entry.indexable === false ? null : entry.title || entry.label || '';
+  if (entry) return entry.indexable === false && !entry.stale ? null : entry.title || entry.label || '';
   return portalRouteLabel(route);
 }
 
@@ -465,6 +465,8 @@ export function loadSite(root, options = {}) {
           headline: data.headline || data.title,
           description: data.description,
           summary: data.summary || data.description,
+          primaryQuery: data.primaryQuery,
+          schemaType: kind === 'page' ? data.schemaType || source.schemaType || 'WebPage' : undefined,
           category: data.category,
           tags: data.tags || [],
           related: data.related,
@@ -534,7 +536,7 @@ export function loadSite(root, options = {}) {
   }
   const hreflangMembers = (route) => {
     const entry = registry.get(route);
-    if (!entry) return [];
+    if (!entry || !entry.indexable || entry.stale) return [];
     const key = entry.locale ? entry.translationOf : route;
     const ptBR = registry.get(key);
     if (!ptBR || !ptBR.indexable) return [];
@@ -542,11 +544,12 @@ export function loadSite(root, options = {}) {
     return members.length >= 2 ? members : [];
   };
 
-  // SEO-20 keyword map: one URL per query, compared without case or accents.
+  // SEO-20 keyword map: one URL per query, compared without case or accents,
+  // scoped by locale so translations in different languages never collide.
   const queryOwners = new Map();
   for (const entry of registry.values()) {
     if (!entry.primaryQuery) continue;
-    const key = normalizeQuery(entry.primaryQuery);
+    const key = `${entry.locale || defaultLocale.code}|${normalizeQuery(entry.primaryQuery)}`;
     const owner = queryOwners.get(key);
     if (owner) errors.push(`primaryQuery "${entry.primaryQuery}" collides between ${owner} and ${entry.route}`);
     else queryOwners.set(key, entry.route);
@@ -647,7 +650,7 @@ function escapeXml(value) {
 export function renderGuidesFeed(site, origin) {
   const feedDate = (entry) => entry.dateModified || entry.lastmod;
   const guides = [...site.guides]
-    .filter((entry) => feedDate(entry))
+    .filter((entry) => entry.indexable !== false && feedDate(entry))
     .sort((a, b) => feedDate(b).localeCompare(feedDate(a)) || a.route.localeCompare(b.route))
     .slice(0, 20);
   if (guides.length === 0) throw new ContentError('guides feed needs at least one dated guide');

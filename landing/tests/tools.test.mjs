@@ -58,7 +58,7 @@ test('locale numbers: en dots and grouped commas; comma locales match pt-BR', ()
     ['1,234,567', 1234567], ['1,234.56', 1234.56], ['1,200.50', 1200.5], ['430', 430], ['-5', -5], ['R$ 6.29', 6.29],
   ];
   for (const [raw, expected] of enCases) assert.equal(tools.parseDecimal(raw, '.'), expected, raw);
-  for (const raw of ['6,29', '1.234,56', '1,23', '1,2000', '1.2.3', '1,23.4', '', 'abc', '.', ',']) {
+  for (const raw of ['6,29', '1.234,56', '1,23', '1,2000', '0,500', '0,500.25', '-0,500', '1.2.3', '1,23.4', '', 'abc', '.', ',']) {
     assert.equal(tools.parseDecimal(raw, '.'), null, `en rejects ${JSON.stringify(raw)}`);
   }
 
@@ -334,6 +334,14 @@ test('localized tool page: strings travel as JSON data and inputs never leave th
     assert.equal(data.fields.gasolina.example, '6.29');
     assert.match(data.messages.ethanolCheaper, /ethanol tends to cost less/);
     assert.match(data.validation.required, /required field/);
+    assert.equal(data.validation.review, 'Review the highlighted fields to calculate.');
+    assert.equal(data.validation.unknown, 'Unknown tool: {id}');
+    const dom = fakeDom('etanol-ou-gasolina');
+    dom.doc.getElementById = (id) => (id === 'tool-i18n' ? { textContent: block[1] } : null);
+    tools.setupTools(dom.doc, '');
+    dom.listeners.submit({ preventDefault() {} });
+    assert.equal(dom.result.children[0].textContent, 'Review the highlighted fields to calculate.');
+    assert.equal(tools.runTool('no-such-tool', {}, tools.readToolI18n(dom.doc)).errors._, 'Unknown tool: no-such-tool');
     assert.equal(tools.readToolI18n({ getElementById: (id) => (id === 'tool-i18n' ? { textContent: block[1] } : null) }).decimal, '.');
     assert.ok(html.includes('data-tool="etanol-ou-gasolina"'), 'form keeps the shared calculator id');
     assert.ok(!html.includes('action='), 'calculator form never posts');

@@ -26,10 +26,14 @@ export function loadLocales(landingRoot) {
   } catch (err) {
     throw new LocaleConfigError(`locales.json: cannot read ${file} (${err.message})`);
   }
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    throw new LocaleConfigError('locales.json must be a JSON object');
+  }
   const errors = [];
   if (!Object.hasOwn(data, 'version')) errors.push('missing field "version"');
   else if (data.version !== 1) errors.push(`unsupported version ${JSON.stringify(data.version)}`);
   if (!Object.hasOwn(data, 'default')) errors.push('missing field "default"');
+  else if (typeof data.default !== 'string' || data.default.trim() === '') errors.push('default must be a non-empty locale code');
   if (!Array.isArray(data.locales) || data.locales.length === 0) {
     errors.push('"locales" must be a non-empty array');
   }
@@ -45,7 +49,19 @@ export function loadLocales(landingRoot) {
     for (const field of LOCALE_FIELDS) {
       if (!Object.hasOwn(locale, field)) errors.push(`${where} is missing field "${field}"`);
     }
-    if (typeof locale.code === 'string') {
+    const label = typeof locale.code === 'string' && locale.code ? locale.code : '?';
+    for (const field of ['code', 'htmlLang', 'hreflang', 'ogLocale']) {
+      if (Object.hasOwn(locale, field) && (typeof locale[field] !== 'string' || locale[field].trim() === '')) {
+        errors.push(`${where} (${label}) ${field} must be a non-empty string`);
+      }
+    }
+    if (Object.hasOwn(locale, 'decimal') && locale.decimal !== ',' && locale.decimal !== '.') {
+      errors.push(`${where} (${label}) decimal must be "," or "."`);
+    }
+    if (Object.hasOwn(locale, 'enabled') && typeof locale.enabled !== 'boolean') {
+      errors.push(`${where} (${label}) enabled must be a boolean`);
+    }
+    if (typeof locale.code === 'string' && locale.code.trim() !== '') {
       if (codes.has(locale.code)) errors.push(`duplicate locale code "${locale.code}" (${codes.get(locale.code)} and index ${index})`);
       else codes.set(locale.code, `index ${index}`);
     }
@@ -66,6 +82,10 @@ export function loadLocales(landingRoot) {
         errors.push(`${where} (${locale.code || '?'}) segments.${key} ${JSON.stringify(locale.segments[key])} is not a slug`);
       }
     }
+  }
+
+  if (typeof data.default === 'string' && data.default.trim() !== '' && !codes.has(data.default)) {
+    errors.push(`default locale "${data.default}" is missing from locales`);
   }
 
   if (errors.length > 0) throw new LocaleConfigError(`locales.json is invalid:\n  - ${errors.join('\n  - ')}`);

@@ -119,6 +119,7 @@ function fillMessage(template: string | undefined, vars?: Record<string, string 
 // Parsing and formatting per locale.
 
 const THOUSANDS_DOT = /^\d{1,3}(\.\d{3})+$/;
+const THOUSANDS_COMMA = /^[1-9]\d{0,2}(,\d{3})+$/;
 
 function cleanNumber(raw: string): { text: string; sign: number } | null {
   let text = raw.trim().replace(/^R\$/i, '').replace(/[\s ]+/g, '');
@@ -177,10 +178,10 @@ export function parseDecimal(raw: string, decimal: string, dotIsDecimal = false)
     if (comma !== -1 && dot !== -1) {
       if (comma > dot) return null;
       const intPart = text.slice(0, dot);
-      if (!/^\d{1,3}(,\d{3})+$/.test(intPart) || !/^\d+$/.test(text.slice(dot + 1))) return null;
+      if (!THOUSANDS_COMMA.test(intPart) || !/^\d+$/.test(text.slice(dot + 1))) return null;
       normalized = `${intPart.replace(/,/g, '')}.${text.slice(dot + 1)}`;
     } else if (comma !== -1) {
-      if (!/^\d{1,3}(,\d{3})+$/.test(text)) return null;
+      if (!THOUSANDS_COMMA.test(text)) return null;
       normalized = text.replace(/,/g, '');
     } else if (dot !== -1) {
       if (!/^\d*\.\d+$/.test(text)) return null;

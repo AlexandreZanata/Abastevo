@@ -262,7 +262,7 @@
         },
         "tarifa_kwh": {
           "label": "Tarifa de energía (BRL/kWh)",
-          "hint": "Valor por kWh con impuestos, de la factura o del electrolinera, por ejemplo 0,95.",
+          "hint": "Valor por kWh con impuestos, de la factura o de la electrolinera, por ejemplo 0,95.",
           "unit": "reales por kWh",
           "example": "0,95"
         },

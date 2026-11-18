@@ -364,7 +364,19 @@ export function checkDist(options = {}) {
   for (const [route, links] of hreflangsByRoute) {
     const self = links.filter((link) => link.hreflang !== 'x-default' && link.href === `${origin}${route}`);
     if (self.length !== 1) errors.push(`${route} must list itself exactly once in hreflang`);
-    if (links.filter((link) => link.hreflang === 'x-default').length !== 1) errors.push(`${route} needs exactly one x-default hreflang`);
+    const xDefaults = links.filter((link) => link.hreflang === 'x-default');
+    if (xDefaults.length !== 1) {
+      errors.push(`${route} needs exactly one x-default hreflang`);
+    } else {
+      const xd = xDefaults[0].href;
+      if (!links.some((link) => link.hreflang !== 'x-default' && link.href === xd)) {
+        errors.push(`${route} hreflang x-default (${xd}) must match a group link`);
+      }
+      const xdRoute = xd.startsWith(`${origin}/`) ? xd.slice(origin.length) : xd;
+      if (/^\/[a-z]{2}(?:\/|$)/.test(xdRoute)) {
+        errors.push(`${route} hreflang x-default (${xd}) must point to the unprefixed default locale`);
+      }
+    }
     for (const link of links) {
       if (!link.href.startsWith(`${origin}/`)) {
         errors.push(`${route} hreflang ${link.hreflang} is not on the configured origin: ${link.href}`);

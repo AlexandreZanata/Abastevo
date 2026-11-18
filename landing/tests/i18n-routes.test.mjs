@@ -52,6 +52,10 @@ test('locale registry: invalid inputs fail with a clear message', () => {
     [(data) => { data.locales[1].prefix = ''; }, /duplicate prefix ""/],
     [(data) => { data.locales[1].prefix = '/english'; }, /prefix "\/english" is not "" or \/xx/],
     [(data) => { data.locales[1].segments.guias = 'Guides'; }, /segments\.guias .* is not a slug/],
+    [(data) => { data.default = 'fr'; }, /default locale "fr" is missing/],
+    [(data) => { data.locales[1].enabled = 'yes'; }, /enabled must be a boolean/],
+    [(data) => { data.locales[1].decimal = ';'; }, /decimal must be "," or "\."/],
+    [(data) => { data.locales[1].ogLocale = ''; }, /ogLocale must be a non-empty string/],
   ];
   for (const [mutate, pattern] of cases) {
     const fixture = withRegistry(mutate);

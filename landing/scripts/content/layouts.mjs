@@ -152,6 +152,12 @@ function datesLine(entry, locale, { published = true } = {}) {
   return `<p class="article-meta">${parts.join(' · ')}</p>`;
 }
 
+function staleBanner(entry, locale) {
+  return entry.stale
+    ? `<p class="article-stale" role="note">${esc(t(locale, 'chrome.staleNote', { date: formatDateLong(entry.sourceDate, locale) }))}</p>`
+    : '';
+}
+
 function itemListNode(entries, origin) {
   return {
     '@type': 'ItemList',
@@ -195,9 +201,7 @@ export function renderGuide(site, guide, origin, locale) {
   const readAlso = relatedGuides(site, guide, 3, pool);
   const team = esc(t(locale, 'chrome.team'));
   const policy = `<a href="/politica-editorial/">${esc(t(locale, 'chrome.policy'))}</a>`;
-  const staleNote = guide.stale
-    ? `<p class="article-stale" role="note">${esc(t(locale, 'chrome.staleNote', { date: formatDateLong(guide.sourceDate, locale) }))}</p>\n        `
-    : '';
+  const staleNote = staleBanner(guide, locale);
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -231,7 +235,7 @@ export function renderGuide(site, guide, origin, locale) {
         <h1>${esc(guide.headline)}</h1>
         <p class="article-lead">${esc(guide.description)}</p>
         ${datesLine(guide, locale)}
-        ${staleNote}<p class="article-editorial">${t(locale, 'chrome.editorial', { team, policy })}</p>
+        ${staleNote ? `${staleNote}\n        ` : ''}<p class="article-editorial">${t(locale, 'chrome.editorial', { team, policy })}</p>
         ${toc}
 ${guide.html}
         <section class="article-section" aria-labelledby="continue-explorando">
@@ -257,7 +261,7 @@ ${guide.html}
         `<meta property="article:section" content="${esc(categoryName)}">`,
       ],
       jsonLd,
-      feed: true,
+      feed: !isLocale,
       locale,
       robots: guide.stale ? 'noindex,follow' : undefined,
       canonical: !guide.stale,
@@ -325,7 +329,7 @@ export function renderGuidesHub(site, origin, locale) {
         <p>${t(locale, 'chrome.howGuidesBody', { team: teamLink, prices: pricesLink, policy: policyLink })}</p>
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: isLocale ? url.slice(origin.length) : '/guias/', title, description, imageAlt: title, jsonLd, feed: true, locale }),
+    head: headHtml({ origin, route: isLocale ? url.slice(origin.length) : '/guias/', title, description, imageAlt: title, jsonLd, feed: !isLocale, locale }),
     bodyClass: 'landing-home learning-page learning-hub',
     main,
     locale,
@@ -482,7 +486,11 @@ function toolI18nScript(locale, sourceSlug) {
     decimal: locale.decimal,
     fields,
     messages: toolMessages.messages,
-    validation: locale.messages.tools.common.validation,
+    validation: {
+      ...locale.messages.tools.common.validation,
+      review: locale.messages.tools.common.review,
+      unknown: locale.messages.tools.common.unknown,
+    },
   };
   const json = JSON.stringify(data)
     .replace(/</g, '\\u003c')
@@ -549,7 +557,7 @@ export function renderTool(site, tool, origin, locale) {
           <div class="tool-result" data-tool-result role="status" aria-live="polite"></div>
           <p class="tool-privacy">${esc(t(locale, 'chrome.toolPrivacy'))}</p>
         </div>
-        ${datesLine(tool, locale, { published: false })}
+        ${datesLine(tool, locale, { published: false })}${tool.stale ? `\n        ${staleBanner(tool, locale)}` : ''}
 ${tool.html}
         <section class="article-section" aria-labelledby="precos-de-referencia">
           <h2 id="precos-de-referencia">${esc(t(locale, 'chrome.toolPrices'))}</h2>
@@ -566,7 +574,19 @@ ${tool.html}
         </section>
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: tool.route, title: tool.title, description: tool.description, imageAlt: tool.headline, jsonLd, scripts: ['/assets/tools.js'], locale, dataScript: isLocale ? toolI18nScript(locale, sourceSlug) : undefined }),
+    head: headHtml({
+      origin,
+      route: tool.route,
+      title: tool.title,
+      description: tool.description,
+      imageAlt: tool.headline,
+      jsonLd,
+      scripts: ['/assets/tools.js'],
+      locale,
+      robots: tool.stale ? 'noindex,follow' : undefined,
+      canonical: !tool.stale,
+      dataScript: isLocale ? toolI18nScript(locale, sourceSlug) : undefined,
+    }),
     bodyClass: 'landing-home learning-page tool-page',
     main,
     locale,
@@ -613,11 +633,21 @@ export function renderPage(site, page, origin, locale) {
       <article class="legal-article">
         <h1>${esc(page.headline)}</h1>
         <p class="article-lead">${esc(page.description)}</p>
-        <p class="article-meta">${t(locale, 'chrome.pageUpdated', { date: updated, team: esc(t(locale, 'chrome.team')) })}</p>
+        <p class="article-meta">${t(locale, 'chrome.pageUpdated', { date: updated, team: esc(t(locale, 'chrome.team')) })}</p>${page.stale ? `\n        ${staleBanner(page, locale)}` : ''}
 ${page.html}
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: page.route, title: page.title, description: page.description, imageAlt: page.headline, jsonLd: { '@context': 'https://schema.org', '@graph': graph }, locale }),
+    head: headHtml({
+      origin,
+      route: page.route,
+      title: page.title,
+      description: page.description,
+      imageAlt: page.headline,
+      jsonLd: { '@context': 'https://schema.org', '@graph': graph },
+      locale,
+      robots: page.stale ? 'noindex,follow' : undefined,
+      canonical: !page.stale,
+    }),
     bodyClass: 'landing-home legal-document',
     main,
     locale,
@@ -738,5 +768,5 @@ export function renderLanguageSwitch(members, currentRoute, locale) {
   const others = members.filter((member) => member.route !== currentRoute);
   if (others.length === 0) return '';
   const links = others.map((member) => `<a href="${esc(member.route)}" lang="${esc(member.htmlLang)}" hreflang="${esc(member.hreflang)}">${esc(member.languageName)}</a>`);
-  return `<nav class="lang-switch" aria-label="${esc(t(locale, 'chrome.languages'))}">\n        ${links.join('\n        ')}\n      </nav>\n      `;
+  return `<nav class="lang-switch" aria-label="${esc(t(locale, 'chrome.languages'))}">\n        <div class="shell">\n          ${links.join('\n          ')}\n        </div>\n      </nav>\n      `;
 }

@@ -78,7 +78,8 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
       assert.ok(html.indexOf('hreflang="x-default"') < html.indexOf('</head>'), `${rel} hreflang sits before </head>`);
     }
     assert.ok(en.includes('<meta property="og:locale:alternate" content="pt_BR">') && en.includes('<meta property="og:locale:alternate" content="es_ES">'));
-    assert.ok(en.includes('<nav class="lang-switch" aria-label="Languages">'));
+    assert.ok(en.includes('<nav class="lang-switch" aria-label="Languages">\n        <div class="shell">'));
+    assert.ok(!en.includes('/guias/feed.xml'), 'translated guide does not advertise the Portuguese feed');
     assert.ok(en.includes('<a href="/guias/etanol-ou-gasolina/" lang="pt-BR" hreflang="pt-BR">Português</a>'));
     assert.ok(en.includes('<a href="/es/guias/etanol-o-gasolina/" lang="es" hreflang="es">Español</a>'));
     assert.ok(pt.includes('<a href="/en/guides/ethanol-or-gasoline/" lang="en" hreflang="en">English</a>'), 'pt-BR page links its translations');
@@ -113,6 +114,8 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
     const enGuidesHub = read(outDir, 'en/guides/index.html');
     assert.ok(enGuidesHub.includes('/en/guides/ethanol-or-gasoline/'));
     assert.ok(!enGuidesHub.includes('draft-guide'));
+    assert.ok(!enGuidesHub.includes('/guias/feed.xml'), 'translated guides hub omits the Portuguese feed');
+    assert.ok(pt.includes('/guias/feed.xml'), 'pt-BR guide keeps the Portuguese feed link');
     const esGuidesHub = read(outDir, 'es/guias/index.html');
     assert.ok(esGuidesHub.includes('/es/guias/etanol-o-gasolina/'));
     assert.ok(esGuidesHub.includes('/es/guias/stale-guide/'), 'stale translation is still emitted and listed');
@@ -173,6 +176,16 @@ test('multilingual check: broken hreflang and lang fail the dist check', () => {
       },
       /html lang pt-BR does not match \/en/,
     ],
+    [
+      (dir) => {
+        const file = path.join(dir, 'en/guides/ethanol-or-gasoline/index.html');
+        fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace(
+          /<link rel="alternate" hreflang="x-default" href="[^"]+">/,
+          '<link rel="alternate" hreflang="x-default" href="https://abastevo.com.br/en/guides/ethanol-or-gasoline/">',
+        ));
+      },
+      /x-default .* must point to the unprefixed default locale/,
+    ],
   ];
   try {
     buildFixture(outDir);
@@ -218,6 +231,115 @@ test('draft translations: validated in content/translations, never emitted', () 
     assert.equal((read(outDir, 'sitemap.xml').match(/<url>/g) || []).length, 49, 'sitemap keeps the pt-BR URL count');
     assert.ok(!read(outDir, 'sitemap.xml').includes('/en/') && !read(outDir, 'sitemap.xml').includes('/es/'));
   } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});
+
+test('multilingual build: stale tools, translated pages, Sources/Fuentes citations and per-locale primaryQuery', () => {
+  const tmpTrans = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-i18n-trans-'));
+  const outDir = path.join(os.tmpdir(), 'abastevo-i18n-out-');
+  try {
+    fs.cpSync(translationsDir, tmpTrans, { recursive: true });
+    fs.mkdirSync(path.join(tmpTrans, 'en', 'paginas'), { recursive: true });
+    fs.mkdirSync(path.join(tmpTrans, 'es', 'ferramentas'), { recursive: true });
+
+    // 1) Add ## Sources / ## Fuentes and share identical normalized primaryQuery across en & es.
+    const enGuidePath = path.join(tmpTrans, 'en', 'guias', 'ethanol-or-gasoline.md');
+    fs.writeFileSync(
+      enGuidePath,
+      `${fs.readFileSync(enGuidePath, 'utf8')}\n\n## Sources\n\n- [ANP — Agência Nacional do Petróleo](https://www.gov.br/anp/)\n`,
+    );
+    const esGuidePath = path.join(tmpTrans, 'es', 'guias', 'etanol-o-gasolina.md');
+    fs.writeFileSync(
+      esGuidePath,
+      `${fs.readFileSync(esGuidePath, 'utf8').replace(/^title: .*$/m, '$&\nprimaryQuery: ethanol or gasoline')}\n\n## Fuentes\n\n- [ANP — regulador brasileño](https://www.gov.br/anp/)\n`,
+    );
+
+    // 2) Reviewed translated About page (inherits AboutPage schemaType from /sobre/).
+    fs.writeFileSync(path.join(tmpTrans, 'en', 'paginas', 'about.md'), `---
+title: "About abastevo"
+headline: "About abastevo"
+description: "abastevo is an independent fuel price transparency project with public ANP sources, open source code and visible collection dates."
+slug: about
+datePublished: 2026-11-14
+dateModified: 2026-11-14
+translationOf: /sobre/
+sourceRevision: 2026-11-14
+translationStatus: reviewed
+reviewedBy: Test Reviewer
+reviewedAt: 2026-11-14
+---
+
+## What abastevo is
+
+An independent fuel price transparency project.
+`);
+
+    // 3) Stale translated calculator (sourceRevision older than /ferramentas/etanol-ou-gasolina/).
+    fs.writeFileSync(path.join(tmpTrans, 'es', 'ferramentas', 'calculadora-stale.md'), `---
+title: "Calculadora etanol o gasolina"
+description: "Compara el precio del etanol y de la gasolina en Brasil con la regla del 70% o con el consumo real de tu propio coche flex en cada parada."
+summary: "Compara el precio del etanol y la gasolina por km."
+slug: calculadora-stale
+datePublished: 2026-11-14
+dateModified: 2026-11-16
+translationOf: /ferramentas/etanol-ou-gasolina/
+sourceRevision: 2026-11-16
+translationStatus: reviewed
+reviewedBy: Test Reviewer
+reviewedAt: 2026-11-16
+related:
+  - /es/guias/etanol-o-gasolina/
+  - /precos/
+---
+
+## Cómo funciona la cuenta
+
+La cuenta divide el precio del etanol entre el precio de la gasolina.
+`);
+
+    buildSite({
+      projectRoot: root,
+      outDir,
+      canonicalOrigin: origin,
+      storeState: 'prelaunch',
+      enableLocales: ['en', 'es'],
+      translationsDir: tmpTrans,
+    });
+
+    const staleTool = read(outDir, 'es/herramientas/calculadora-stale/index.html');
+    assert.ok(staleTool.includes('<meta name="robots" content="noindex,follow">'), 'stale tool is noindex,follow');
+    assert.ok(!staleTool.includes('rel="canonical"'), 'stale tool omits canonical');
+    assert.ok(staleTool.includes('El original en portugués se actualizó el 17 de noviembre de 2026.'), 'stale tool renders staleNote');
+    assert.equal(hreflangs(staleTool).length, 0, 'stale tool omits hreflang');
+    assert.ok(!read(outDir, 'sitemap.xml').includes('/es/herramientas/calculadora-stale/'), 'stale tool stays out of sitemap');
+
+    const aboutPage = read(outDir, 'en/about/index.html');
+    assert.match(aboutPage, /"@type":\s*"AboutPage"/, 'translated /sobre/ preserves AboutPage schemaType');
+
+    const enGuide = read(outDir, 'en/guides/ethanol-or-gasoline/index.html');
+    const esGuide = read(outDir, 'es/guias/etanol-o-gasolina/index.html');
+    assert.match(enGuide, /"citation":\s*\[\s*\{\s*"@type":\s*"CreativeWork",\s*"name":\s*"ANP/, '## Sources populates JSON-LD citation');
+    assert.match(esGuide, /"citation":\s*\[\s*\{\s*"@type":\s*"CreativeWork",\s*"name":\s*"ANP/, '## Fuentes populates JSON-LD citation');
+
+    assert.doesNotThrow(() => checkDist({ projectRoot: root, distDir: outDir, origin }));
+
+    // Same-locale primaryQuery collision must still fail.
+    const enToolPath = path.join(tmpTrans, 'en', 'ferramentas', 'ethanol-or-gasoline-calculator.md');
+    fs.writeFileSync(
+      enToolPath,
+      fs.readFileSync(enToolPath, 'utf8').replace(/^title: .*$/m, '$&\nprimaryQuery: ethanol or gasoline'),
+    );
+    assert.throws(() => buildSite({
+      projectRoot: root,
+      outDir,
+      canonicalOrigin: origin,
+      storeState: 'prelaunch',
+      enableLocales: ['en', 'es'],
+      translationsDir: tmpTrans,
+    }), /primaryQuery "ethanol or gasoline" collides/);
+  } finally {
+    fs.rmSync(tmpTrans, { recursive: true, force: true });
     fs.rmSync(outDir, { recursive: true, force: true });
   }
 });
