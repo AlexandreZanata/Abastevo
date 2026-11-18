@@ -54,7 +54,7 @@ function breadcrumbNav(items) {
   return `<nav class="breadcrumb-nav" aria-label="Navegação estrutural">\n        <ol class="breadcrumb-list">\n          ${parts.join('\n          ')}\n        </ol>\n      </nav>`;
 }
 
-function headHtml({ origin, route, title, description, ogType = 'website', imageAlt, extraMeta = [], jsonLd, scripts = [] }) {
+function headHtml({ origin, route, title, description, ogType = 'website', imageAlt, extraMeta = [], jsonLd, scripts = [], feed = false }) {
   const url = `${origin}${route}`;
   const pageTitle = esc(htmlTitle(title));
   const desc = esc(description);
@@ -96,7 +96,7 @@ ${extraMeta.map((line) => `  ${line}\n`).join('')}
 
   <link rel="stylesheet" href="/assets/styles.css">
   <script type="module" src="/assets/main.js"></script>
-${scripts.map((src) => `  <script type="module" src="${src}"></script>\n`).join('')}</head>`;
+${scripts.map((src) => `  <script type="module" src="${src}"></script>\n`).join('')}${feed ? '  <link rel="alternate" type="application/atom+xml" title="Guias do abastevo" href="/guias/feed.xml">\n' : ''}</head>`;
 }
 
 function documentHtml({ head, bodyClass, main }) {
@@ -234,6 +234,7 @@ ${guide.html}
         `<meta property="article:section" content="${esc(category.name)}">`,
       ],
       jsonLd,
+      feed: true,
     }),
     bodyClass: 'landing-home learning-page article-page',
     main,
@@ -285,7 +286,7 @@ export function renderGuidesHub(site, origin) {
         <p>Os guias são escritos pela <a href="/sobre/">${EDITORIAL_TEAM}</a>, citam a fonte oficial de cada informação e mostram a data da última revisão. Preços citados são sempre exemplos; para valores reais, consulte os <a href="/precos/">preços de referência por estado</a> com a data da coleta. Regras completas na <a href="/politica-editorial/">política editorial</a>.</p>
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: '/guias/', title: hub.title, description: hub.description, imageAlt: hub.title, jsonLd }),
+    head: headHtml({ origin, route: '/guias/', title: hub.title, description: hub.description, imageAlt: hub.title, jsonLd, feed: true }),
     bodyClass: 'landing-home learning-page learning-hub',
     main,
   });

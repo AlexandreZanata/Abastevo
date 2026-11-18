@@ -82,6 +82,7 @@ export function checkDist(options = {}) {
     '404.html',
     'robots.txt',
     'sitemap.xml',
+    'guias/feed.xml',
     'site.webmanifest',
     '_headers',
     '_redirects',
@@ -288,6 +289,7 @@ export function checkDist(options = {}) {
   // 4. Sitemap and Robots validation
   const sitemapPath = path.join(distDir, 'sitemap.xml');
   let sitemapUrls = 0;
+  const listed = new Set();
   if (fs.existsSync(sitemapPath)) {
     const sitemapContent = fs.readFileSync(sitemapPath, 'utf8');
     if (!sitemapContent.startsWith('<?xml') || !sitemapContent.includes('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')) {
@@ -303,7 +305,6 @@ export function checkDist(options = {}) {
     const blocks = (sitemapContent.match(/<url>/g) || []).length;
     if (entries.length !== blocks) errors.push('sitemap.xml has malformed <url> entries');
     sitemapUrls = entries.length;
-    const listed = new Set();
     for (const [, loc, lastmod] of entries) {
       if (!loc.startsWith(`${origin}/`)) {
         errors.push(`sitemap.xml loc ${loc} is not on the configured origin ${origin}`);
@@ -319,6 +320,55 @@ export function checkDist(options = {}) {
     }
     for (const route of indexableRoutes) {
       if (!listed.has(route)) errors.push(`indexable page ${route} is missing from sitemap.xml`);
+    }
+  }
+
+  // SEO-22: Atom feed. A simple well-formedness check plus required Atom
+  // elements; every entry must be a sitemap URL so the feed cannot advertise
+  // a noindex or missing page.
+  const feedPath = path.join(distDir, 'guias', 'feed.xml');
+  if (!fs.existsSync(feedPath)) {
+    errors.push('guias/feed.xml is missing');
+  } else {
+    const feed = fs.readFileSync(feedPath, 'utf8');
+    if (!feed.startsWith('<?xml') || !feed.includes('<feed xmlns="http://www.w3.org/2005/Atom">') || !feed.trimEnd().endsWith('</feed>')) {
+      errors.push('guias/feed.xml is not a balanced Atom root');
+    }
+    if ((feed.match(/<entry>/g) || []).length !== (feed.match(/<\/entry>/g) || []).length) {
+      errors.push('guias/feed.xml has unbalanced <entry> elements');
+    }
+    if (!feed.includes('<title>Guias do abastevo</title>') || !feed.includes('<name>Equipe abastevo</name>') || !/<feed[\s\S]*<updated>\d{4}-\d{2}-\d{2}T00:00:00Z<\/updated>/.test(feed)) {
+      errors.push('guias/feed.xml is missing the title, author or feed updated date');
+    }
+    const feedEntries = [...feed.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map((match) => match[1]);
+    if (feedEntries.length === 0 || feedEntries.length > 20) {
+      errors.push(`guias/feed.xml must carry 1 to 20 entries (found ${feedEntries.length})`);
+    }
+    const field = (body, re) => body.match(re)?.[1];
+    let previousUpdated = null;
+    for (const body of feedEntries) {
+      const id = field(body, /<id>([^<]+)<\/id>/);
+      const link = field(body, /<link rel="alternate" type="text\/html" href="([^"]+)"\/>/);
+      const title = field(body, /<title>([^<]+)<\/title>/);
+      const summary = field(body, /<summary>([^<]*)<\/summary>/);
+      const updated = field(body, /<updated>([^<]+)<\/updated>/);
+      if (!id || !link || !title || summary === undefined || !updated) {
+        errors.push('guias/feed.xml has an entry missing id, link, title, summary or updated');
+        continue;
+      }
+      if (id !== link) errors.push(`guias/feed.xml entry ${id} must use the same URL as id and link`);
+      if (!/^\d{4}-\d{2}-\d{2}T00:00:00Z$/.test(updated)) errors.push(`guias/feed.xml entry ${id} has an invalid updated date`);
+      if (previousUpdated !== null && updated > previousUpdated) errors.push('guias/feed.xml entries are not newest first');
+      previousUpdated = updated;
+      if (!link.startsWith(`${origin}/`)) {
+        errors.push(`guias/feed.xml entry ${link} is not on the configured origin ${origin}`);
+      } else if (!listed.has(link.slice(origin.length))) {
+        errors.push(`guias/feed.xml entry ${link} is not a sitemap URL`);
+      }
+    }
+    const newest = feedEntries[0]?.match(/<updated>([^<]+)<\/updated>/)?.[1];
+    if (newest && !feed.split('<entry>')[0].includes(`<updated>${newest}</updated>`)) {
+      errors.push('guias/feed.xml feed updated is not the newest entry date');
     }
   }
 

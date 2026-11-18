@@ -432,6 +432,53 @@ export function relatedGuides(site, entry, limit = 3) {
     .map(({ g }) => g);
 }
 
+const FEED_AUTHOR = 'Equipe abastevo';
+
+function escapeXml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+/**
+ * SEO-22: Atom feed with the 20 most recently modified guides (Markdown and
+ * authored HTML). Entry and feed dates come from content, so builds stay
+ * reproducible; nothing here reads the clock.
+ */
+export function renderGuidesFeed(site, origin) {
+  const feedDate = (entry) => entry.dateModified || entry.lastmod;
+  const guides = [...site.guides]
+    .filter((entry) => feedDate(entry))
+    .sort((a, b) => feedDate(b).localeCompare(feedDate(a)) || a.route.localeCompare(b.route))
+    .slice(0, 20);
+  if (guides.length === 0) throw new ContentError('guides feed needs at least one dated guide');
+  const updated = `${feedDate(guides[0])}T00:00:00Z`;
+  const entries = guides.map((entry) => {
+    const url = `${origin}${entry.route}`;
+    return `  <entry>
+    <id>${escapeXml(url)}</id>
+    <link rel="alternate" type="text/html" href="${escapeXml(url)}"/>
+    <title>${escapeXml(entry.title)}</title>
+    <summary>${escapeXml(entry.description || entry.summary || '')}</summary>
+    <updated>${feedDate(entry)}T00:00:00Z</updated>
+  </entry>`;
+  }).join('\n');
+  return `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Guias do abastevo</title>
+  <id>${escapeXml(`${origin}/guias/feed.xml`)}</id>
+  <link rel="self" type="application/atom+xml" href="${escapeXml(`${origin}/guias/feed.xml`)}"/>
+  <link rel="alternate" type="text/html" href="${escapeXml(`${origin}/guias/`)}"/>
+  <updated>${updated}</updated>
+  <author><name>${FEED_AUTHOR}</name></author>
+${entries}
+</feed>
+`;
+}
+
 export function renderSitemap(site, origin) {
   const urls = [...site.registry.values()]
     .filter((e) => e.indexable)

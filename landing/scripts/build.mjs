@@ -4,7 +4,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { loadSite, renderSitemap, renderLlmsLinks } from './content/site.mjs';
+import { loadSite, renderSitemap, renderLlmsLinks, renderGuidesFeed } from './content/site.mjs';
 import {
   renderGuide,
   renderGuidesHub,
@@ -280,6 +280,9 @@ export function build(options = {}) {
     // The sitemap is generated from the content manifest: indexable pages only,
     // each with the date its content last changed (never the build time).
     fs.writeFileSync(path.join(outDir, 'sitemap.xml'), renderSitemap(site, origin), 'utf8');
+    // SEO-22: guide feed, dated from content so it is reproducible.
+    fs.mkdirSync(path.join(outDir, 'guias'), { recursive: true });
+    fs.writeFileSync(path.join(outDir, 'guias', 'feed.xml'), renderGuidesFeed(site, origin), 'utf8');
 
     // Copy root favicon.ico if present
     const rootFavicon = path.join(staticDir, 'favicon.ico');
