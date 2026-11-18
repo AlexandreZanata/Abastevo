@@ -24,5 +24,6 @@ supersedes it, never by editing history.
 | [022](022-comaps-derived-native-map-engine.md) | CoMaps-derived native map engine behind a narrow Android port |
 | [023](023-admin-suite-granted-tiers-contributors.md) | Administrative suite, granted tiers and project contributors |
 | [025](025-private-abastevo-empresas-organization-boundary.md) | Organization boundary for private Abastevo Empresas data |
+| [026](026-multilingual-public-site.md) | Multilingual public site, pt-BR first, reviewed `en`/`es` translations |
 
 Enterprise-suite decisions are recorded in [enterprise/decisions.md](../enterprise/decisions.md).

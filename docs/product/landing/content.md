@@ -39,7 +39,7 @@ pt-BR strings, so a changed app screen points at the page or field to update.
 | `/como-usar/<slug>/` | 30 chapters, one per TU01–TU30 slug frozen in the tutorial catalog | Yes / Yes | New in redesign (LR16–LR24); pending chapters show a factual note, never invented screens |
 | `/404.html` | Real 404 | No / No | Short message with links to home and repository |
 
-Not in scope: blog, city pages, translations, dashboards, forms, analytics, newsletter.
+This contract does not cover a blog, dashboards, forms, analytics or a newsletter. Guides, city pages and translations are owned by the [organic growth and multilingual contract](organic-growth-i18n-plan.md), per decision 026.
 
 ## Information architecture freeze (LR02) — 2026-10-11
 

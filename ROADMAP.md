@@ -69,12 +69,28 @@ Task specifications live in [docs/enterprise/backlog/](docs/enterprise/backlog/I
 
 ## Web/landing/SEO
 
+The organic growth and multilingual items follow
+[decision 026](docs/decisions/026-multilingual-public-site.md). Their specifications are in the
+[multilingual contract](docs/product/landing/organic-growth-i18n-plan.md), section 10.
+
+- **Translation owner inputs (owner).** Name the `en` and `es` reviewers before the first locale page ships, and optionally a named editor with a bio. Until then, authorship stays "Equipe abastevo". (SEO-18)
+- **Keyword map and cannibalization.** Add `primaryQuery` per landing page with a uniqueness check. Retarget the two editorial forum posts that duplicate `/guias/etanol-ou-gasolina/` and `/guias/pesquisa-anp/`. (SEO-20)
+- **Head and template polish.** Add `max-image-preview:large` and `max-snippet:-1` in both generators. Use descriptive home, city and station H1s. Emit Article `citation` from the "Fontes" links. (SEO-21)
+- **Feeds and IndexNow.** Atom feeds for guides and editorial posts. Submit changed URLs to IndexNow after each release smoke test, non-blocking. Bing, and ChatGPT search through Bing, otherwise wait for crawling. (SEO-22, SEO-23)
+- **Multilingual landing.** A locale registry and URL vectors in `contracts/i18n/`, shared by Node and Go. Locale-aware landing build with hreflang groups, switcher, per-locale sitemaps and the reviewed-only and stale gates. Localized calculators with locale-aware number parsing. (SEO-25–SEO-27)
+- **Multilingual portal.** A portalgen message catalog and `en`/`es` routes for price hubs, methodology, data and insights. Stations stay pt-BR. Per-locale indexation gates, sitemaps and link-graph checks. (SEO-28)
+- **Fuel × state pages.** `/precos/{fuel}/{uf}/`, indexable only when the state has that fuel in the current survey. Add BRL per gallon on `en` pages; a US$ value waits for an admitted exchange-rate source. (SEO-29, SEO-30)
+- **Editorial wave 2.** 24 pt-BR pieces at 2 per week, each with primary sources and ≥ 10 internal links to data pages and tools. (SEO-31)
+- **International content.** About 20 reviewed `en`/`es` pages each: visitor and border guides, localized pillars and calculators. The tutorials follow with captures taken in the same locale. (SEO-32, SEO-33)
+- **App share links and App Links.** A share action that produces canonical web URLs, `/.well-known/assetlinks.json` and verified intent filters, so shared links open the app. (SEO-34)
+- **Social images, press page, store locales.** Build-time OG images per hub and guide, `/imprensa/` with a monthly data release, and `es` and Wave B Play listings. (SEO-35–SEO-37)
+- **First-party aggregated stats.** Cookie-free daily counts from Caddy logs, with IP truncated and 30-day raw retention. Enabled only together with the privacy policy update. (SEO-38)
 - **Portal source rights.** Portal indexing is on in staging (worker env set by hand) while registry, prices, enforcement and PMQC remain rights-pending (only fines admitted): record the owner decision or obtain ANP clarification, and make `ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE` in `infra/k8s/staging/api-deployment.yaml` match the live value. (ESP-18, SEO-03/04)
-- **Search engine onboarding (owner).** Verify abastevo.com.br (www 301) in Google Search Console and Bing Webmaster, submit the sitemap index, inspect sample URLs per page family, optionally IndexNow. (SEO-16)
-- **SEO measurement loop.** Monthly review by URL family; tune the station indexing window and prune pages that stay unindexed. (SEO-17)
+- **Search engine onboarding (owner).** The Google verification TXT record is already on the apex. Still to do: confirm `sitemap.xml` and `sitemap-portal.xml` are submitted, import into Bing Webmaster, inspect sample URLs per page family, and export the first coverage and performance baseline. (SEO-16, SEO-19)
+- **SEO measurement loop.** Monthly review by URL family and locale. Tune the station indexing window, prune pages that stay unindexed, and open Wave B locales only by the contract's demand rule. (SEO-17)
 - **Weekly bulletin pages.** `/boletim/{date}/` from the accepted ANP survey, noindex until an editor adds a summary. (SEO-14)
 - **Forum UGC indexing gate (later).** Index only moderated threads above a threshold, user links `rel="ugc nofollow"`; needs a privacy review. (SEO-13)
-- **Navigation and content.** Home entry for `/forum/` and a states grid, shared footer hubs across landing and portal, further editorial waves. (SEO-11, SEO-15)
+- **Navigation hubs.** A home entry for `/forum/`, a states grid, and shared footer hubs across the landing and the portal. (SEO-11, SEO-15, SEO-24)
 - **Portal measurements.** Public capacity and browser campaign; live fine-link revalidation. (ESP-16, ESP-11)
 - **Search shard size (optional).** Bound the largest search shard (São Paulo 461 KB gzip) while `portalcheck` stays strict.
 - **Store-published switch.** When the Play listing goes live, change storeState/storeUrl, badge, MobileApplication JSON-LD, sameAs, sitemap and copy together, and recheck Play legal destinations. (D-L08)
