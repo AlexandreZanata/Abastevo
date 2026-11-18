@@ -1,4 +1,9 @@
 {
+  "_review": {
+    "status": "reviewed",
+    "reviewedBy": "Equipe Editorial Abastevo",
+    "reviewedAt": "2026-11-18"
+  },
   "languageName": "Português",
   "dateFormat": "{day} de {month} de {year}",
   "months": [

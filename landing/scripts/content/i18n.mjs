@@ -7,7 +7,7 @@ import path from 'node:path';
 
 const SLUG_RE = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PREFIX_RE = /^\/[a-z]{2}$/;
-const LOCALE_FIELDS = ['code', 'prefix', 'htmlLang', 'hreflang', 'ogLocale', 'decimal', 'enabled', 'segments'];
+const LOCALE_FIELDS = ['code', 'prefix', 'htmlLang', 'hreflang', 'ogLocale', 'decimal', 'enabled', 'reviewers', 'segments'];
 const SEGMENT_KEYS = ['guias', 'ferramentas'];
 const KINDS = ['guide', 'tool', 'page'];
 
@@ -60,6 +60,13 @@ export function loadLocales(landingRoot) {
     }
     if (Object.hasOwn(locale, 'enabled') && typeof locale.enabled !== 'boolean') {
       errors.push(`${where} (${label}) enabled must be a boolean`);
+    }
+    if (Object.hasOwn(locale, 'reviewers')) {
+      if (!Array.isArray(locale.reviewers) || locale.reviewers.some((r) => typeof r !== 'string' || r.trim() === '')) {
+        errors.push(`${where} (${label}) reviewers must be an array of non-empty strings`);
+      } else if (locale.enabled === true && locale.reviewers.length === 0) {
+        errors.push(`${where} (${label}) cannot be enabled without at least one named reviewer`);
+      }
     }
     if (typeof locale.code === 'string' && locale.code.trim() !== '') {
       if (codes.has(locale.code)) errors.push(`duplicate locale code "${locale.code}" (${codes.get(locale.code)} and index ${index})`);

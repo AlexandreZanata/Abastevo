@@ -64,6 +64,18 @@ export function loadMessages(root, code) {
     throw new ContentError(`i18n: cannot read ${file} (${err.message})`);
   }
   const errors = [];
+  if (!data._review || typeof data._review !== 'object' || Array.isArray(data._review)) {
+    errors.push('_review must be an object');
+  } else if (!['draft', 'reviewed'].includes(data._review.status)) {
+    errors.push('_review.status must be draft or reviewed');
+  } else if (data._review.status === 'reviewed') {
+    if (typeof data._review.reviewedBy !== 'string' || data._review.reviewedBy.trim() === '') {
+      errors.push('_review.reviewedBy must be a non-empty string when reviewed');
+    }
+    if (!isValidDate(data._review.reviewedAt)) {
+      errors.push('_review.reviewedAt must be a real YYYY-MM-DD date when reviewed');
+    }
+  }
   if (typeof data.languageName !== 'string' || data.languageName.trim() === '') errors.push('languageName must be a non-empty string');
   if (typeof data.dateFormat !== 'string' || !data.dateFormat.includes('{day}') || !data.dateFormat.includes('{month}') || !data.dateFormat.includes('{year}')) {
     errors.push('dateFormat must be a string with {day}, {month} and {year}');
@@ -261,6 +273,11 @@ export function loadSite(root, options = {}) {
   const localeByCode = new Map(locales.map((locale) => [locale.code, locale]));
   const defaultLocale = localeByCode.get(localeRegistry.default);
   if (!defaultLocale) throw new ContentError(`locales.json: default locale "${localeRegistry.default}" is not listed`);
+  for (const locale of locales) {
+    if (locale.enabled && (options.enforceReviewGates || !override) && locale.messages._review?.status !== 'reviewed') {
+      errors.push(`i18n ${locale.code}: enabled locale dictionary must have _review.status = "reviewed"`);
+    }
+  }
   let manifest;
   try {
     manifest = JSON.parse(fs.readFileSync(path.join(contentDir, 'manifest.json'), 'utf8'));

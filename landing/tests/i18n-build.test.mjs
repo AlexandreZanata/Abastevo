@@ -343,3 +343,19 @@ La cuenta divide el precio del etanol entre el precio de la gasolina.
     fs.rmSync(outDir, { recursive: true, force: true });
   }
 });
+
+test('i18n review gate: refuses enabling a locale whose dictionary is still a draft', () => {
+  const outDir = path.join(os.tmpdir(), 'abastevo-i18n-gate-' + Math.random().toString(36).slice(2, 8));
+  try {
+    assert.throws(() => buildSite({
+      projectRoot: root,
+      outDir,
+      canonicalOrigin: origin,
+      storeState: 'prelaunch',
+      enableLocales: ['en'],
+      enforceReviewGates: true,
+    }), /enabled locale dictionary must have _review\.status = "reviewed"/);
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});

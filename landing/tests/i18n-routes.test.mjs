@@ -27,8 +27,11 @@ test('locale registry: pt-BR is the default and en/es stay disabled', () => {
   assert.equal(registry.default, 'pt-BR');
   assert.deepEqual(registry.locales.map((locale) => locale.code), ['pt-BR', 'en', 'es']);
   assert.equal(registry.locales.find((locale) => locale.code === 'pt-BR').enabled, true);
+  assert.ok(registry.locales.find((locale) => locale.code === 'pt-BR').reviewers.length >= 1);
   for (const code of ['en', 'es']) {
-    assert.equal(registry.locales.find((locale) => locale.code === code).enabled, false, `${code} must start disabled`);
+    const entry = registry.locales.find((locale) => locale.code === code);
+    assert.equal(entry.enabled, false, `${code} must start disabled`);
+    assert.deepEqual(entry.reviewers, [], `${code} starts with no named reviewers`);
   }
 });
 
@@ -56,6 +59,8 @@ test('locale registry: invalid inputs fail with a clear message', () => {
     [(data) => { data.locales[1].enabled = 'yes'; }, /enabled must be a boolean/],
     [(data) => { data.locales[1].decimal = ';'; }, /decimal must be "," or "\."/],
     [(data) => { data.locales[1].ogLocale = ''; }, /ogLocale must be a non-empty string/],
+    [(data) => { data.locales[1].enabled = true; data.locales[1].reviewers = []; }, /cannot be enabled without at least one named reviewer/],
+    [(data) => { data.locales[1].reviewers = ['']; }, /reviewers must be an array of non-empty strings/],
   ];
   for (const [mutate, pattern] of cases) {
     const fixture = withRegistry(mutate);

@@ -135,6 +135,7 @@ export function build(options = {}) {
   const site = loadSite(root, {
     enableLocales: options.enableLocales,
     translationsDir: options.translationsDir,
+    enforceReviewGates: options.enforceReviewGates,
   });
   const defaultLocale = site.defaultLocale;
 

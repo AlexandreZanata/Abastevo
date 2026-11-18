@@ -1,4 +1,9 @@
 {
+  "_review": {
+    "status": "draft",
+    "reviewedBy": "",
+    "reviewedAt": ""
+  },
   "languageName": "English",
   "dateFormat": "{month} {day}, {year}",
   "months": [
