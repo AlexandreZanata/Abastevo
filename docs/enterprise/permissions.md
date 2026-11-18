@@ -469,4 +469,25 @@ across the four operational management roles (`OWNER`, `ADMIN`, `FLEET_MANAGER`,
 `DRIVER` = `S` on own trips, `AUDITOR` = denied). Every existing v5 cell stays
 unchanged and `AUDITOR` remains limited to recorded tracks (`gps.track.read`),
 never live positions (VAL-16, VAL-21).
+
+F6 Management and Intelligence amendment (`org-permissions-v7`, EDR-375,
+B-BR-EMP-571): `org-permissions-v7` preserves every `v6` cell and all 13 fixed
+roles (with `DATA_MANAGER`, `STATION_*` denied on ordinary company routes) and
+activates the 11 F6 routed permission keys: `stock.tank.manage` (`OWNER`,
+`ADMIN`, `FLEET_MANAGER` = `O`), `stock.movement.record` (`OWNER`, `ADMIN`,
+`FLEET_MANAGER`, `SUPERVISOR`, `OPERATIONS_STAFF` = `O`), `maint.plan.manage`
+(`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` = `O`),
+`maint.workorder.manage` (`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` = `O`),
+`maint.workorder.review` (`OWNER`, `ADMIN`, `FINANCE`, `APPROVER` = `O`),
+`maint.request.create` (`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR` = `O`;
+`DRIVER`, `OPERATIONS_STAFF` = `S` on own requests), `kpi.dashboard.read`
+(`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `FINANCE`, `APPROVER`,
+`AUDITOR` = `O`), `find.finding.read` (`OWNER`, `ADMIN`, `FLEET_MANAGER`,
+`SUPERVISOR`, `FINANCE`, `APPROVER`, `AUDITOR` = `O`), `find.finding.resolve`
+(`OWNER`, `ADMIN`, `FLEET_MANAGER`, `SUPERVISOR`, `FINANCE`, `APPROVER` = `O`;
+`AUDITOR` = denied), `audit.event.read` (`OWNER`, `ADMIN`, `AUDITOR` = `O`), and
+`org.group.manage` (`OWNER`, `ADMIN` = `O` under fresh auth). Total catalog
+coverage yields `44` routed permissions (`440` role cells: `174` allowed, `266`
+denied) across `195` routed endpoints (`37` `AUDITOR` positive, `158` denied
+`FORBIDDEN`).
 Evidence

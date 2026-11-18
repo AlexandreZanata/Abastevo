@@ -50,22 +50,6 @@ This epic delivers the organization's asset register (vehicles, machines, implem
 - **Risks and assumptions:** The permissions matrix has no row for `fleet.supplier.manage`; the roles assumed in the specification must be confirmed. A later merge of two catalog stations must not break the reference; it is stored as an identifier and resolved at read time.
 - **Done when:** The isolation suite passes and the catalog-untouched test passes.
 
-### EMP-FLEET-010 — Asset documents and expiry dates
-- **Meta:** module FLEET · phase F6 · cut - · priority P1 · type API · size S · state TODO
-- **Objective:** Let a manager attach an asset's documents and photos under a kind with a declared expiry date, so that expiry tracking has a source and the asset record never copies document content.
-- **Rules and use cases:** BR-FLEET-036, BR-FLEET-007, BR-PRIV-005, BR-AUTH-011
-- **Depends on:** EMP-FLEET-002, EMP-DOC-003
-- **Read first:** [modules/fleet](../modules/fleet.md) §3 and §4 (documents rule); [modules/documents](../modules/documents.md) for links; [modules/maintenance](../modules/maintenance.md) for expiry tracking.
-- **Scope:** in: asset document link with kind and declared expiry date, attach, replace, detach, list on the asset, one cover photo reference, a read port "documents of this asset with expiry" for the maintenance module · out: file storage and statuses (documents epic), expiry tracking, alerts and blocks (EMP-MAINT-007), driver documents (EMP-IDN-014).
-- **Areas:** existing: `backend/db/migrations/`, `contracts/openapi/v1.yaml` · new (proposed): `backend/internal/modules/fleet/application/`, `backend/db/queries/fleet/`
-- **Steps:** 1) Migration for the link table. 2) Commands that call the document-link use case of the document module through its port. 3) Read port for the maintenance module. 4) Contract and tests, including that opening content still needs its own permission.
-- **Deliverable:** Document links on the asset and a read port for expiry tracking.
-- **Acceptance:** AC1 the asset detail lists linked documents with kind and declared expiry and no document content; AC2 replacing a document keeps the previous link in history; AC3 opening the content requires `doc.document.view_content` and writes an access-log entry; AC4 the read port returns only the asking organization's links.
-- **Negative cases:** linking a document of another organization; a member with `fleet.asset.read` but without the content permission opening a file; an expiry date before the document date; detaching twice.
-- **Validation:** V-SQL, V-ISO, V-AUTHZ, V-API, V-PRIV · migration: additive table · rollback: capability flag off; links remain
-- **Risks and assumptions:** The compliance item that tracks an expiry is owned by the maintenance module; this task only supplies its input and must not grow a second tracker.
-- **Done when:** The maintenance module's port test reads an asset's expiry dates and the content-permission test passes.
-
 ### EMP-FLEET-012 — Panel: fleet list, detail and assignments
 - **Meta:** module FLEET · phase F2 · cut C1 · priority P0 · type WEB · size M · state TODO
 - **Objective:** Give managers the screens to register assets, see the fleet and assign drivers, so that the first cut can be set up without direct database work.

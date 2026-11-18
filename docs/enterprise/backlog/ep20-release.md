@@ -103,22 +103,6 @@ owner or pilot users), held fuelings for VAL-04/VAL-22 (EMP-FUEL-003), VAL-23
 cross-surface VAL-02 sweep, and the M3 gate (EMP-REL-004). Tracking collects
 from no real employee until the matrix passes (EDR-362).
 
-### EMP-REL-007 — M6 gate: intelligence, maintenance and stock acceptance
-- **Meta:** module REL · phase F6 · cut - · priority P1 · type TEST · size M · state TODO
-- **Objective:** Accept M6 indicator, maintenance, stock and retention behavior.
-- **Rules and use cases:** EDR-029, BR-PRIV-011, VAL-10, VAL-11, VAL-15, VAL-20, VAL-31, VAL-32, VAL-38
-- **Depends on:** EMP-KPI-006, EMP-FIND-004, EMP-MAINT-008, EMP-STOCK-005
-- **Read first:** [milestone validation](../testing.md), enterprise roadmap and F0 decisions
-- **Scope:** in: exact shared vectors and real failure/restore evidence · out: inferring capacity from a plan
-- **Areas:** existing: scenario fixtures and affected normal entry points · proposed: milestone evidence and acceptance commands
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** All milestone scenarios agree on amounts, source revisions and privacy outcomes.
-- **Acceptance:** All milestone scenarios agree on amounts, source revisions and privacy outcomes.
-- **Negative cases:** Wrong ratio, duplicate stock cost, expired data after restore or known failure deferred.
-- **Validation:** V-E2E, V-SQL, V-AUTHZ, V-ISO, V-MONEY, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Each gate retains immediate critical checks, current-head evidence and distinct local, integration and production states.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
 ### EMP-REL-008 — M7 gate: station representation and commerce acceptance
 - **Meta:** module REL · phase F7 · cut - · priority P1 · type TEST · size M · state TODO
 - **Objective:** Accept M7 only under recorded Stage D scope and review staffing.
@@ -148,21 +132,5 @@ from no real employee until the matrix passes (EDR-362).
 - **Acceptance:** Subscription effects and keys follow current authority and market datasets exclude private data.
 - **Negative cases:** Unverified provider event, role granted by payment, unlicensed source or hidden private row.
 - **Validation:** V-E2E, V-SQL, V-AUTHZ, V-ISO, V-IDEM, V-MONEY, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Each gate retains immediate critical checks, current-head evidence and distinct local, integration and production states.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
-### EMP-REL-010 — Capacity benchmark with a synthetic fleet fixture
-- **Meta:** module REL · phase F6 · cut - · priority P1 · type TEST · size M · state TODO
-- **Objective:** Measure declared synthetic capacity without claiming production readiness.
-- **Rules and use cases:** VAL-37, BR-PRIV-008, BR-TRUTH-004
-- **Depends on:** EMP-GPS-004, EMP-KPI-002
-- **Read first:** [milestone validation](../testing.md), enterprise roadmap and F0 decisions
-- **Scope:** in: named workload, environment, budgets and raw aggregate results · out: extrapolating unmeasured VPS capacity
-- **Areas:** existing: scenario fixtures and affected normal entry points · proposed: milestone evidence and acceptance commands
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** The report records revision, repeatable command and observed throughput/latency under the accepted budget.
-- **Acceptance:** The report records revision, repeatable command and observed throughput/latency under the accepted budget.
-- **Negative cases:** Private fixture, unexplained failure, omitted workload or measured result presented as production certification.
-- **Validation:** V-PERF, V-E2E, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
 - **Risks and assumptions:** Each gate retains immediate critical checks, current-head evidence and distinct local, integration and production states.
 - **Done when:** The stated result and denials pass the listed validation profiles.

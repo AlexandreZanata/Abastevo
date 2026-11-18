@@ -445,6 +445,8 @@ Every figure in [09-architecture](architecture.md) §9 is a hypothesis. Nothing 
 
 The 10 000-vehicle column of 09-architecture §9 is not benchmarked in this plan: at `10 000 / 60 = 167` batches per second it is beyond one host by hypothesis, and it is a sizing discussion, not a target. Storage cost figures are arithmetic on public prices and are rechecked against the provider chosen at the time (AS-05).
 
+EMP-REL-010 host baseline (schema `000259`, `13th Gen Intel(R) Core(TM) i7-13620H` linux/amd64, synthetic 1 000-vehicle fixture): `go test -bench=BenchmarkSyntheticFleet1000VehiclesKPIAndFindings -benchmem ./internal/modules/intelligence/domain/...` measured `85 776` iterations at `17 115 ns/op`, `1 393 B/op`, `81 allocs/op` for domain KPI/finding aggregation; VPS end-to-end intake and worker queue latency stay owed under `EMP-REL-002` and §7.
+
 ## 7. What cannot be validated locally
 
 These items stay owed after every local gate. A gate record lists them as owed; it never marks them as passed, and nothing is accepted because a plan describes it.
@@ -477,6 +479,6 @@ A milestone is reached when its gate task records every listed scenario as passe
 | M3 Every cost has a record, a document and a decision | EMP-REL-004 | VAL-08, VAL-09, VAL-10, VAL-11, VAL-12, VAL-13, VAL-14, VAL-19, VAL-20, VAL-25 | No double counting in the allocation and cost tests; consumption intervals recomputed after corrections |
 | M4 Operations are planned and followed | EMP-REL-005 | VAL-04, VAL-22 (part 2), VAL-23, VAL-26, VAL-27, VAL-28 | Tracking spike and legal validation done (EMP-GOV-005, EMP-GOV-006); the real-device interruption matrix recorded, or listed as owed and tracking not enabled for any organization |
 | M5 The company sees operations as they happen | EMP-REL-006 | VAL-16, VAL-29, VAL-30 | Map decision recorded (EMP-GOV-007); list views work without the map (local F5 gate recorded in EDR-374) |
-| M6 The company understands and controls its fleet | EMP-REL-007, with EMP-REL-010 | VAL-10, VAL-11, VAL-15, VAL-20, VAL-31, VAL-32, VAL-38; VAL-37 for capacity | Indicator vectors shared by Go and Kotlin; findings lifecycle; measured capacity recorded |
+| M6 The company understands and controls its fleet | EMP-REL-007, with EMP-REL-010 | VAL-10, VAL-11, VAL-15, VAL-20, VAL-31, VAL-32, VAL-37, VAL-38 | Indicator vectors shared by Go and Kotlin; findings lifecycle; synthetic capacity benchmark & local M6 gate recorded in EDR-384/385; M4 device matrix, VPS activation & G09 remain owed |
 | M7 Stations take part as businesses | EMP-REL-008 | VAL-17, VAL-33, VAL-34 | Stage D override recorded (EMP-GOV-015); staffing evidence recorded or the station front stays off |
 | M8 The suite is sold and connected | EMP-REL-009 | VAL-18, VAL-35, VAL-36 | Billing and rights decisions recorded (EMP-GOV-009, EMP-GOV-016); no Data sale for a source without recorded rights |

@@ -119,6 +119,24 @@ npm --prefix business-web run check && npm --prefix business-web test && python3
 bash scripts/check-mobile.sh --static-only
 ```
 
+## Enterprise M6 gate scenario union
+
+Local M6 (`EMP-REL-007`, `EMP-REL-010`, EDR-375..385) exercises `VAL-10`,
+`VAL-11`, `VAL-15`, `VAL-20`, `VAL-21` (`org-permissions-v7`), `VAL-31`,
+`VAL-32`, `VAL-37`, and `VAL-38` across backend PostGIS/MinIO, `business-web`,
+OpenAPI contract tests, and Android host suites (while physical M4 device matrix,
+VPS activation, and production `G09` remain explicitly owed):
+
+```sh
+# backend/: real PostGIS (ANPFUEL_TEST_DATABASE_URL) and disposable compose storage (S3)
+go test -tags=integration -count=1 -run '^(TestManagementF6EndToEndFlow|TestAuditorReadWriteMatrixActualCompanyHTTP|TestAuthorizationMatrixActualCompanyHTTP|TestExportsThroughActualCompanyHTTPAndWorker)$' ./internal/modules/organization/adapters/
+go test -tags=integration -count=1 ./internal/platform/runtimegrants/... ./internal/modules/orgexport/...
+go test -count=1 ./internal/platform/apicontract/... ./internal/platform/orgapi/... ./internal/modules/intelligence/... ./internal/modules/fuelstock/... ./internal/modules/maintenance/... ./internal/platform/enterprisesuite/...
+go test -bench=BenchmarkSyntheticFleet1000VehiclesKPIAndFindings -benchmem ./internal/modules/intelligence/domain/...
+npm --prefix business-web run check && npm --prefix business-web test
+bash scripts/check-mobile.sh --static-only
+```
+
 ## Fixture boundaries and anti-flakiness
 
 `contracts/testdata/`: ANP normalization, price/condition/unit/fuel compatibility, identity signed-byte vectors, invalid signatures/replay, API errors, enum forward compatibility and consensus examples. Each fixture has ID/version/provenance and intentional Android differences. Synthetic identities/images only; never export production photos, keys or contributor traces.

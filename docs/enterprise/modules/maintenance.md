@@ -416,4 +416,4 @@ Phase and justification:
 | Tyres and component history | F6 | P3 | The first organizations run 5 to 100 vehicles and seldom control tyres one by one (AS-01); the value appears for heavy vehicles, where tyres are a large cost. It needs work orders first and is a capability, off by default. |
 | Parts stock | F6 | P3 | Target organizations mostly use outside workshops, so parts arrive on the supplier's invoice. Own stock matters to farms and fleets with a workshop; it reuses the valuation model of [fuel-stock](fuel-stock.md) and is a capability, off by default. |
 
-Microtasks: EMP-CHECK-001 to EMP-CHECK-004 (F4) and EMP-MAINT-001 to EMP-MAINT-012 (F6) in [backlog/ep11-maintenance](../backlog/ep11-maintenance.md). Screens SCR-MAINT-08 and SCR-MAINT-09 belong to the evolution tasks EMP-MAINT-010 to EMP-MAINT-012.
+Microtasks: EMP-CHECK-001 to EMP-CHECK-004 (F4, implemented) and EMP-MAINT-001 to EMP-MAINT-012 (F6, local/integration implemented under [EDR-377](../decisions.md) and `VAL-31`) in [backlog/ep11-maintenance](../backlog/ep11-maintenance.md). Screens SCR-MAINT-08 and SCR-MAINT-09 belong to EMP-MAINT-010 to EMP-MAINT-012.
