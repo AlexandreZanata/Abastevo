@@ -20540,6 +20540,495 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/{trip_id}/location/live/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTripLiveRead
+      summary: Read one trip's live location projection
+      description: Reads the live position projection for one tracked trip under gps.location.read_live (EMP-GPS-007).
+        Freshness is derived at read time and access is audited via LOCATION_LIVE without recording coordinates.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: gps.location.read_live
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmptyRequest'
+            example: {}
+      responses:
+        '200':
+          description: Live location view for the trip.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/live/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTrackingLiveList
+      summary: List live trip positions and operational alerts
+      description: Lists non-expired live trip projections and active operational alerts under gps.location.read_live.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: gps.location.read_live
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseTrackingLiveListRequest'
+            example:
+              limit: 50
+      responses:
+        '200':
+          description: Live positions and alerts in scope.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/trips/{trip_id}/track/replay:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseTripTrackReplay
+      summary: Replay a trip track with gaps and logbook events
+      description: Returns trip track replay with gaps, logbook timeline and retention enforcement under gps.track.read (EMP-GPS-009, EMP-GPS-011).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: gps.track.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: trip_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmptyRequest'
+            example: {}
+      responses:
+        '200':
+          description: Replay view for the trip.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/geofences/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseGeofenceList
+      summary: List geofences, recent crossing events and operational alerts
+      description: Lists organization geofences, crossing events and non-suppressed alerts under gps.geofence.manage (EMP-GPS-013, EMP-GPS-014).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: gps.geofence.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseGeofenceListRequest'
+            example: {}
+      responses:
+        '200':
+          description: Geofences, events and alerts in scope.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/geofences/create:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseGeofenceCreate
+      summary: Create a geofence
+      description: Creates a circle or polygon geofence under fresh gps.geofence.manage (EMP-GPS-013).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: gps.geofence.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseGeofenceMutationRequest'
+      responses:
+        '200':
+          description: Created or replayed geofence.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/tracking/geofences/{geofence_id}/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseGeofenceChange
+      summary: Change or archive a geofence
+      description: Updates or archives a geofence with expected revision under fresh gps.geofence.manage (EMP-GPS-013).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: gps.geofence.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: geofence_id
+        in: path
+        required: true
+        schema:
+          $ref: '#/components/schemas/EnterpriseUUID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseGeofenceMutationRequest'
+      responses:
+        '200':
+          description: Updated or replayed geofence.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/routes/plans/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseRoutePlanRead
+      summary: Read route plans and computations for a mission or trip
+      description: Reads route plans, history and device route computations under route.plan.manage (EMP-ROUTE-002, EMP-ROUTE-003).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: route.plan.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseRoutePlanReadRequest'
+      responses:
+        '200':
+          description: Route plan history and computations.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/routes/plans/save:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseRoutePlanSave
+      summary: Save or revise a route plan for a mission or trip
+      description: Saves a new insert-only route plan revision and optional device computation under fresh route.plan.manage.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: route.plan.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseRoutePlanSaveRequest'
+      responses:
+        '200':
+          description: Saved route plan revision and computation.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/routes/suggestions/evaluate:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseRouteSuggestionsEvaluate
+      summary: Evaluate neutral fuel station suggestions along a route
+      description: Evaluates comparable net fuel savings and commercial-neutral station ordering under route.plan.manage (EMP-ROUTE-008).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: route.plan.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseRouteSuggestionsRequest'
+      responses:
+        '200':
+          description: Neutral station suggestions along the route.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/trips/{trip_id}/review/decide:
     post:
       tags:
@@ -27298,6 +27787,121 @@ components:
         data_mode: SYNTHETIC
       description: The newest stored tracking policy version and the policy in force now (B-BR-EMP-469). revision 0
         with OFF, null notice and null effective_at when nothing was recorded.
+    EnterpriseEmptyRequest:
+      type: object
+      additionalProperties: false
+    EnterpriseTrackingLiveListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        unit_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        since_revision:
+          type:
+          - integer
+          - 'null'
+          minimum: 0
+        limit:
+          type:
+          - integer
+          - 'null'
+          minimum: 1
+          maximum: 100
+    EnterpriseGeofenceListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        unit_id:
+          type:
+          - string
+          - 'null'
+          format: uuid
+        include_archived:
+          type:
+          - boolean
+          - 'null'
+    EnterpriseGeofenceMutationRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, name, kind]
+      properties:
+        schema_version: {type: integer, enum: [1]}
+        operation_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        revision: {type: ['integer', 'null'], minimum: 1}
+        archived: {type: boolean}
+        name: {type: string, minLength: 1, maxLength: 160}
+        unit_id: {type: ['string', 'null'], format: uuid}
+        kind: {type: string, enum: [CIRCLE, POLYGON]}
+        center_lat_e7: {type: ['integer', 'null']}
+        center_lon_e7: {type: ['integer', 'null']}
+        radius_m: {type: ['integer', 'null']}
+        vertices:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [lat_e7, lon_e7]
+            properties:
+              lat_e7: {type: integer}
+              lon_e7: {type: integer}
+        on_enter: {type: boolean}
+        on_exit: {type: boolean}
+        dwell_seconds: {type: integer, minimum: 0, maximum: 86400}
+        recipients:
+          type: array
+          items: {$ref: '#/components/schemas/EnterpriseUUID'}
+        enabled: {type: boolean}
+    EnterpriseRoutePlanReadRequest:
+      type: object
+      additionalProperties: false
+      required: [owner_kind, owner_id]
+      properties:
+        owner_kind: {type: string, enum: [MISSION, TRIP]}
+        owner_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+    EnterpriseRoutePlanSaveRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, owner_kind, owner_id, waypoints]
+      properties:
+        schema_version: {type: integer, enum: [1]}
+        operation_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        revision: {type: ['integer', 'null'], minimum: 0}
+        owner_kind: {type: string, enum: [MISSION, TRIP]}
+        owner_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        waypoints:
+          type: array
+          minItems: 2
+          maxItems: 102
+          items:
+            type: object
+        options:
+          type: object
+        planned_distance_m: {type: ['integer', 'null'], minimum: 1}
+        planned_distance_source: {type: ['string', 'null'], enum: [MANUAL, ENGINE]}
+        heavy_asset_notice: {type: boolean}
+        computation: {type: ['object', 'null']}
+    EnterpriseRouteSuggestionsRequest:
+      type: object
+      additionalProperties: false
+      required: [product, base_distance_m, planned_volume_ml, candidates]
+      properties:
+        owner_kind: {type: string}
+        owner_id: {type: string}
+        product: {type: string}
+        base_distance_m: {type: integer, minimum: 1}
+        base_duration_seconds: {type: integer, minimum: 0}
+        planned_volume_ml: {type: integer, minimum: 1}
+        consumption_m: {type: ['integer', 'null'], minimum: 1}
+        consumption_ml: {type: ['integer', 'null'], minimum: 1}
+        freshness_limit_seconds: {type: integer, minimum: 0}
+        reference: {type: ['object', 'null']}
+        candidates:
+          type: array
+          items:
+            type: object
     EnterpriseTrackingPolicyInForce:
       type: object
       additionalProperties: false
@@ -37667,7 +38271,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, RESERVATION_CONFLICT, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE, READING_ALREADY_SUPERSEDED, AMENDMENT_REQUIRED]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, RESERVATION_CONFLICT, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE, READING_ALREADY_SUPERSEDED, AMENDMENT_REQUIRED, ROUTE_POINT_LIMIT, GEOFENCE_INVALID_GEOMETRY]
     DriverCommandRequest:
       type: object
       additionalProperties: false

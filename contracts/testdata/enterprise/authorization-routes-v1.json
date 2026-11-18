@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "roles_version": "org-roles-v1",
-  "permissions_version": "org-permissions-v5",
+  "permissions_version": "org-permissions-v6",
   "permissions": [
     {
       "permission": "agree.agreement.manage",
@@ -374,24 +374,32 @@
     },
     {
       "permission": "gps.geofence.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Location, track and geofence routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/tracking/geofences/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/tracking/geofences/create",
+        "POST /v1/orgs/{org_id}/tracking/geofences/list",
+        "POST /v1/orgs/{org_id}/tracking/geofences/{geofence_id}/change"
+      ],
+      "reason": ""
     },
     {
       "permission": "gps.location.read_live",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "The live position projection belongs to EMP-GPS-007 (F5); no live location route has been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/trips/{trip_id}/location/live/read",
+      "routes": [
+        "POST /v1/orgs/{org_id}/tracking/live/list",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/location/live/read"
+      ],
+      "reason": ""
     },
     {
       "permission": "gps.track.read",
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/trips/{trip_id}/track/read",
       "routes": [
-        "POST /v1/orgs/{org_id}/trips/{trip_id}/track/read"
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/track/read",
+        "POST /v1/orgs/{org_id}/trips/{trip_id}/track/replay"
       ],
       "reason": ""
     },
@@ -648,10 +656,14 @@
     },
     {
       "permission": "route.plan.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Route-plan routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/routes/plans/read",
+      "routes": [
+        "POST /v1/orgs/{org_id}/routes/plans/read",
+        "POST /v1/orgs/{org_id}/routes/plans/save",
+        "POST /v1/orgs/{org_id}/routes/suggestions/evaluate"
+      ],
+      "reason": ""
     },
     {
       "permission": "rpt.export.run",
