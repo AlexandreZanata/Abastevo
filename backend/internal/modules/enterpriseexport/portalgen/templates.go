@@ -236,7 +236,7 @@ const templates = `
 
 {{define "station"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <h1>{{.Station.Name}}{{if .City}}<span class="h1-place">– {{.City}} ({{.UF}})</span>{{end}}</h1>
+  <h1>{{.Station.Name}}{{if and .City .UF}} <span class="h1-place">– {{.City}} ({{.UF}})</span>{{end}}</h1>
   {{if .Station.Registry}}<p class="station-legal-name muted">Nome no cadastro da ANP: {{.Station.Registry}}</p>{{end}}
   {{if .Station.LegalName}}<p class="station-legal-name muted">{{.Station.LegalName}}</p>{{end}}
   <p class="lead">{{.Station.Place}} · {{.Station.CNPJ}} · <span class="status">{{.Station.Status}}</span></p>
