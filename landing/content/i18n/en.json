@@ -4,6 +4,17 @@
     "reviewedBy": "",
     "reviewedAt": ""
   },
+  "home": {
+    "title": "Fuel prices in Brazil by state and city",
+    "description": "Check gasoline, ethanol and diesel prices in Brazil by state and city with visible source and collection date: weekly ANP survey and calculators.",
+    "hero": {
+      "kicker": "Open code · ANP data · Community",
+      "title": "Fuel prices in Brazil by state and city, with ANP data",
+      "slogan": "More information for life on the road.",
+      "lead": "Find fuel prices across Brazil, read weekly ANP reference data and use free calculators in your browser.",
+      "artLabel": "Illustration: the abastevo mark among routes, map markers and price cards"
+    }
+  },
   "languageName": "English",
   "dateFormat": "{month} {day}, {year}",
   "months": [

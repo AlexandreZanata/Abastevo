@@ -472,7 +472,7 @@ export function checkDist(options = {}) {
   const indexHtmlPath = path.join(distDir, 'index.html');
   if (fs.existsSync(indexHtmlPath)) {
     const indexContent = fs.readFileSync(indexHtmlPath, 'utf8');
-    if (!indexContent.includes('Mais informação<br>para quem vive<br><span>na estrada.</span>')) {
+    if (!indexContent.includes('<h1 class="lp-title">Preços de combustíveis por estado e cidade, com dados da ANP</h1>') || !indexContent.includes('<p class="lp-slogan">Mais informação para quem vive na estrada.</p>')) {
       errors.push('index.html is missing main H1 text');
     }
     if (!indexContent.includes('class="store-btn btn-github"') || !indexContent.includes('Código com atribuição visível')) {

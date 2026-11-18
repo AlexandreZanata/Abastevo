@@ -685,28 +685,107 @@ export function renderHomeStates(locale) {
     </section>`;
 }
 
+export function renderHomeHero(locale) {
+  return `<p class="kicker"><span class="dot" aria-hidden="true"></span>${esc(t(locale, 'home.hero.kicker'))}</p>
+          <h1 class="lp-title">${esc(t(locale, 'home.hero.title'))}</h1>
+          <p class="lp-slogan">${esc(t(locale, 'home.hero.slogan'))}</p>
+          <p class="lp-lead">${esc(t(locale, 'home.hero.lead'))}</p>`;
+}
+
 export function renderHomeGuides(site, locale) {
+  const isLocale = Boolean(locale.prefix);
+  const entries = isLocale
+    ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'guide')
+    : site.popularGuides;
+  if (isLocale && entries.length === 0) return '';
+  const allRoute = isLocale ? localeHubRoute(locale, 'guias') : '/guias/';
   return `<section id="guias-populares" class="block home-topics">
       <div class="shell">
         <div class="block-head">
           <h2 class="h2">${esc(t(locale, 'chrome.homeGuides'))}</h2>
         </div>
-        ${cardList(site.popularGuides, site, locale)}
-        <div class="lp-actions"><a class="text-link" href="/guias/">${esc(t(locale, 'chrome.homeAllGuides'))}</a></div>
+        ${cardList(entries, site, locale)}
+        <div class="lp-actions"><a class="text-link" href="${allRoute}">${esc(t(locale, 'chrome.homeAllGuides'))}</a></div>
       </div>
     </section>`;
 }
 
 export function renderHomeTools(site, locale) {
+  const isLocale = Boolean(locale.prefix);
+  const entries = isLocale
+    ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'tool')
+    : site.tools;
+  if (isLocale && entries.length === 0) return '';
+  const allRoute = isLocale ? localeHubRoute(locale, 'ferramentas') : '/ferramentas/';
   return `<section id="ferramentas" class="block home-topics">
       <div class="shell">
         <div class="block-head">
           <h2 class="h2">${esc(t(locale, 'chrome.homeTools'))}</h2>
         </div>
-        ${cardList(site.tools, site, locale)}
-        <div class="lp-actions"><a class="text-link" href="/ferramentas/">${esc(t(locale, 'chrome.homeAllTools'))}</a></div>
+        ${cardList(entries, site, locale)}
+        <div class="lp-actions"><a class="text-link" href="${allRoute}">${esc(t(locale, 'chrome.homeAllTools'))}</a></div>
       </div>
     </section>`;
+}
+
+export function renderLocaleHome(site, origin, locale) {
+  const route = `${locale.prefix}/`;
+  const url = `${origin}${route}`;
+  const title = t(locale, 'home.title');
+  const description = t(locale, 'home.description');
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'WebPage',
+        '@id': `${url}#webpage`,
+        url,
+        name: htmlTitle(title),
+        description,
+        inLanguage: locale.htmlLang,
+        isPartOf: { '@id': `${origin}/#website` },
+        about: { '@id': `${origin}/#organization` },
+        publisher: publisherNode(origin, locale),
+      },
+    ],
+  };
+  const head = headHtml({ origin, route, title, description, imageAlt: title, jsonLd, locale });
+  const sections = [
+    renderHomeStates(locale),
+    renderHomeGuides(site, locale),
+    renderHomeTools(site, locale),
+  ].filter(Boolean).join('\n\n    ');
+  return `<!DOCTYPE html>
+<html lang="${esc(locale.htmlLang)}">
+${head}
+<body class="landing-home">
+  <a href="#conteudo" class="skip-link">${esc(t(locale, 'chrome.skip'))}</a>
+
+  <!-- LEARNING_HEADER -->
+
+  <main id="conteudo">
+    <section class="hero">
+      <div class="shell lp-hero">
+        <div class="lp-hero-copy">
+          ${renderHomeHero(locale)}
+          <div class="lp-actions">
+            <a class="btn-dark" href="/precos/">${esc(t(locale, 'chrome.homeSeePrices'))}</a>
+            <a class="text-link" href="/consultar/">${esc(t(locale, 'chrome.footerConsult'))}</a>
+          </div>
+        </div>
+        <figure class="lp-hero-art" aria-label="${esc(t(locale, 'home.hero.artLabel'))}">
+          <img src="/assets/art/hero-mark.d4df28a9.svg" width="900" height="1000" alt="" fetchpriority="high">
+        </figure>
+      </div>
+    </section>
+
+    ${sections}
+  </main>
+
+  <!-- LEARNING_FOOTER -->
+</body>
+</html>
+`;
 }
 
 // ---------------------------------------------------------------------------
@@ -715,13 +794,14 @@ export function renderHomeTools(site, locale) {
 export function renderLocalizedHeader(site, locale) {
   const guides = localeHubRoute(locale, 'guias');
   const tools = localeHubRoute(locale, 'ferramentas');
+  const homeHref = site.registry.has(`${locale.prefix}/`) ? `${locale.prefix}/` : '/';
   const nav = [
     site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
     site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
   ].filter(Boolean).join('\n        ');
   return `<header class="topbar">
     <div class="shell topbar-inner">
-      <a href="/" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
+      <a href="${homeHref}" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
         <img src="/assets/brand/abastevo-logo.svg" alt="" width="28" height="28">
         <img src="/assets/brand/abastevo-wordmark.svg" alt="abastevo" class="brand-word" width="96" height="12">
       </a>
@@ -740,6 +820,7 @@ export function renderLocalizedHeader(site, locale) {
 export function renderLocalizedFooter(site, locale) {
   const guides = localeHubRoute(locale, 'guias');
   const tools = localeHubRoute(locale, 'ferramentas');
+  const homeHref = site.registry.has(`${locale.prefix}/`) ? `${locale.prefix}/` : '/';
   const nav = [
     site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
     site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
@@ -750,7 +831,7 @@ export function renderLocalizedFooter(site, locale) {
   return `<footer class="footer">
     <div class="shell">
       <div class="footer-top">
-        <a href="/" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
+        <a href="${homeHref}" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
           <img src="/assets/brand/abastevo-logo.svg" alt="" width="28" height="28">
           <img src="/assets/brand/abastevo-wordmark.svg" alt="abastevo" class="brand-word" width="96" height="12">
         </a>
@@ -763,9 +844,9 @@ export function renderLocalizedFooter(site, locale) {
   </footer>`;
 }
 
-/** Plain links to the other group members; the build inserts it before the footer. */
+/** Plain links to the other active locales (or exact translations when available); the build inserts it before the footer. */
 export function renderLanguageSwitch(members, currentRoute, locale) {
-  const others = members.filter((member) => member.route !== currentRoute);
+  const others = members.filter((member) => member.code !== locale.code && member.route !== currentRoute);
   if (others.length === 0) return '';
   const links = others.map((member) => `<a href="${esc(member.route)}" lang="${esc(member.htmlLang)}" hreflang="${esc(member.hreflang)}">${esc(member.languageName)}</a>`);
   return `<nav class="lang-switch" aria-label="${esc(t(locale, 'chrome.languages'))}">\n        <div class="shell">\n          ${links.join('\n          ')}\n        </div>\n      </nav>\n      `;

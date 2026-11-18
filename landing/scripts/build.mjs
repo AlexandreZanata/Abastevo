@@ -13,9 +13,11 @@ import {
   renderTool,
   renderPage,
   renderFooterColumns,
+  renderHomeHero,
   renderHomeStates,
   renderHomeGuides,
   renderHomeTools,
+  renderLocaleHome,
   renderLocalizedHeader,
   renderLocalizedFooter,
   renderLanguageSwitch,
@@ -324,6 +326,7 @@ export function build(options = {}) {
     // The home owns the navigation and footer for every landing page. Its
     // footer columns and hub sections are generated from the manifest.
     const homeMarkers = {
+      '<!-- HOME_HERO -->': renderHomeHero(defaultLocale),
       '<!-- FOOTER_COLUMNS -->': renderFooterColumns(site, defaultLocale),
       '<!-- HOME_STATES -->': renderHomeStates(defaultLocale),
       '<!-- HOME_GUIDES -->': renderHomeGuides(site, defaultLocale),
@@ -350,6 +353,8 @@ export function build(options = {}) {
       let html;
       if (entry.kind === 'static' || entry.kind === 'html-guide') {
         html = entry.chrome === 'home' ? homeHtml : readStatic(entry.source);
+      } else if (entry.kind === 'locale-home') {
+        html = renderLocaleHome(site, origin, locale);
       } else if (entry.kind === 'guide') {
         html = renderGuide(site, entry, origin, locale);
       } else if (entry.kind === 'category') {
@@ -370,7 +375,8 @@ export function build(options = {}) {
       // locale pages take the localized chrome.
       const chrome = entry.chrome || 'shared';
       const members = site.hreflangMembers(entry.route);
-      const languageSwitch = members.length >= 2 ? renderLanguageSwitch(members, entry.route, locale) : '';
+      const switchList = site.switcherMembers(entry.route);
+      const languageSwitch = switchList.length >= 2 ? renderLanguageSwitch(switchList, entry.route, locale) : '';
       if (chrome !== 'home') {
         const header = ['<!-- SITE_HEADER -->', '<!-- LEARNING_HEADER -->'].find((m) => html.includes(m));
         const footer = ['<!-- SITE_FOOTER -->', '<!-- LEARNING_FOOTER -->'].find((m) => html.includes(m));
@@ -378,6 +384,8 @@ export function build(options = {}) {
         if (!footer) throw new Error(`${entry.outputRel}: missing shared footer marker`);
         if (header) html = html.replace(header, chrome === 'locale' ? renderLocalizedHeader(site, locale) : sharedHeader);
         html = html.replace(footer, `${languageSwitch}${chrome === 'locale' ? renderLocalizedFooter(site, locale) : sharedFooter}`);
+      } else if (languageSwitch) {
+        html = html.replace('  <footer class="footer">', `  ${languageSwitch.trimEnd()}\n\n  <footer class="footer">`);
       }
       // SEO-26: reciprocal hreflang for indexable members of this group.
       if (members.length >= 2) {

@@ -4,6 +4,17 @@
     "reviewedBy": "Equipe Editorial Abastevo",
     "reviewedAt": "2026-11-18"
   },
+  "home": {
+    "title": "Preços de combustíveis por estado e cidade, com dados da ANP",
+    "description": "Consulte preços de combustíveis com fonte, data e condição à vista. ANP e comunidade em fontes separadas. Código com atribuição visível.",
+    "hero": {
+      "kicker": "Código disponível · Dados da ANP · Comunidade",
+      "title": "Preços de combustíveis por estado e cidade, com dados da ANP",
+      "slogan": "Mais informação para quem vive na estrada.",
+      "lead": "Encontre preços de combustíveis, veja dados da ANP e conte com a comunidade de motoristas.",
+      "artLabel": "Ilustração: o símbolo do abastevo entre rotas, marcadores de mapa e cartões de preço"
+    }
+  },
   "languageName": "Português",
   "dateFormat": "{day} de {month} de {year}",
   "months": [

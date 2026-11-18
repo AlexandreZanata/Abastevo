@@ -37,6 +37,8 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
     buildFixture(outDir);
 
     for (const rel of [
+      'en/index.html',
+      'es/index.html',
       'en/guides/ethanol-or-gasoline/index.html',
       'en/guides/index.html',
       'en/tools/ethanol-or-gasoline-calculator/index.html',
@@ -49,9 +51,26 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
     assert.ok(!fs.existsSync(path.join(outDir, 'en/guides/draft-guide/index.html')), 'draft is never emitted');
 
     const sitemap = read(outDir, 'sitemap.xml');
-    for (const route of ['/en/guides/ethanol-or-gasoline/', '/es/guias/etanol-o-gasolina/', '/en/tools/ethanol-or-gasoline-calculator/', '/en/guides/', '/es/guias/', '/en/tools/']) {
+    for (const route of ['/en/', '/es/', '/en/guides/ethanol-or-gasoline/', '/es/guias/etanol-o-gasolina/', '/en/tools/ethanol-or-gasoline-calculator/', '/en/guides/', '/es/guias/', '/en/tools/']) {
       assert.ok(sitemap.includes(`<loc>${origin}${route}</loc>`), `sitemap lists ${route}`);
     }
+    // Home hreflang group across /, /en/, /es/ and localized home copy.
+    const homePt = read(outDir, 'index.html');
+    const homeEn = read(outDir, 'en/index.html');
+    const homeEs = read(outDir, 'es/index.html');
+    for (const [label, html] of [['pt-BR /', homePt], ['en /en/', homeEn], ['es /es/', homeEs]]) {
+      assert.deepEqual(
+        hreflangs(html).filter((link) => link.hreflang !== 'x-default'),
+        [{ hreflang: 'pt-BR', route: '/' }, { hreflang: 'en', route: '/en/' }, { hreflang: 'es', route: '/es/' }],
+        `${label} home hreflang group`,
+      );
+      assert.deepEqual(hreflangs(html).filter((link) => link.hreflang === 'x-default'), [{ hreflang: 'x-default', route: '/' }], `${label} x-default`);
+      assert.ok(html.includes('class="lang-switch"'), `${label} has language switcher`);
+    }
+    assert.ok(homeEn.includes('<h1 class="lp-title">Fuel prices in Brazil by state and city, with ANP data</h1>'));
+    assert.ok(homeEn.includes('<p class="lp-slogan">More information for life on the road.</p>'));
+    assert.ok(!homeEn.includes('Pular para o conteúdo') && !homeEn.includes('Mais informação'));
+    assert.ok(!homeEs.includes('Preços de combustíveis por estado'), 'Spanish home renders Spanish H1');
     assert.ok(!sitemap.includes('/es/guias/stale-guide/'), 'stale page stays out of the sitemap');
     assert.ok(!sitemap.includes('/en/guides/draft-guide/'), 'draft stays out of the sitemap');
     assert.match(sitemap, /<loc>https:\/\/abastevo\.com\.br\/en\/guides\/ethanol-or-gasoline\/<\/loc>\s*<lastmod>2026-11-17<\/lastmod>/);
@@ -109,6 +128,7 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
     assert.ok(!tool.includes('Preço da gasolina'));
     assert.ok(tool.includes('data-tool="etanol-ou-gasolina"'), 'calculator keeps its pt-BR form id');
     assert.ok(tool.includes('class="lang-switch"'));
+    assert.ok(tool.includes('<a href="/es/" lang="es" hreflang="es">Español</a>'), 'untranslated locale in switcher falls back to that locale home');
 
     // Hubs list emitted entries only.
     const enGuidesHub = read(outDir, 'en/guides/index.html');

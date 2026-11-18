@@ -81,8 +81,11 @@ export function loadMessages(root, code) {
     errors.push('dateFormat must be a string with {day}, {month} and {year}');
   }
   if (!Array.isArray(data.months) || data.months.length !== 12 || data.months.some((month) => typeof month !== 'string')) errors.push('months must list 12 names');
-  for (const key of ['categories', 'chrome', 'tools']) {
+  for (const key of ['home', 'categories', 'chrome', 'tools']) {
     if (!data[key] || typeof data[key] !== 'object' || Array.isArray(data[key])) errors.push(`${key} must be an object`);
+  }
+  if (data.home && (!data.home.hero || typeof data.home.hero !== 'object' || Array.isArray(data.home.hero))) {
+    errors.push('home.hero must be an object');
   }
   if (errors.length > 0) throw new ContentError(`i18n ${code}: ${errors.join('; ')}`);
   return data;
@@ -521,6 +524,23 @@ export function loadSite(root, options = {}) {
         chrome: 'locale',
       });
     }
+    const localeEntries = [...registry.values()].filter((entry) => entry.locale === locale.code && !entry.hub);
+    if (localeEntries.length > 0) {
+      const home = locale.messages.home;
+      add({
+        route: `${locale.prefix}/`,
+        kind: 'locale-home',
+        locale: locale.code,
+        translationOf: '/',
+        hub: true,
+        title: home.title,
+        description: home.description,
+        summary: home.description,
+        lastmod: maxDate(localeEntries),
+        indexable: true,
+        chrome: 'locale',
+      });
+    }
   }
 
   // One translation per locale and source, so every hreflang group has at
@@ -559,6 +579,25 @@ export function loadSite(root, options = {}) {
     if (!ptBR || !ptBR.indexable) return [];
     const members = hreflangGroups.get(key) || [];
     return members.length >= 2 ? members : [];
+  };
+  const switcherMembers = (route) => {
+    const entry = registry.get(route);
+    if (!entry) return [];
+    const activeHomes = locales
+      .filter((loc) => loc.code === defaultLocale.code || registry.has(`${loc.prefix}/`))
+      .map((loc) => ({
+        code: loc.code,
+        route: loc.code === defaultLocale.code ? '/' : `${loc.prefix}/`,
+        htmlLang: loc.htmlLang,
+        hreflang: loc.hreflang,
+        languageName: loc.messages.languageName,
+      }));
+    if (activeHomes.length < 2) return [];
+    const exact = new Map(hreflangMembers(route).map((member) => [member.code, member]));
+    if (entry.locale && entry.stale && entry.translationOf && registry.get(entry.translationOf)?.indexable) {
+      exact.set(defaultLocale.code, { ...activeHomes[0], route: entry.translationOf });
+    }
+    return activeHomes.map((home) => exact.get(home.code) || home);
   };
 
   // SEO-20 keyword map: one URL per query, compared without case or accents,
@@ -630,6 +669,7 @@ export function loadSite(root, options = {}) {
     defaultLocale,
     translations: [...registry.values()].filter((entry) => entry.locale && !entry.hub),
     hreflangMembers,
+    switcherMembers,
   };
   return site;
 }
