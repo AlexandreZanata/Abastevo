@@ -192,7 +192,46 @@ unchanged.
 ### 7.1 Method
 
 - **Keyword sources (free, no tracker on the site).** Google Search Console queries, once data exists; Google Trends (BR, AR, US); Keyword Planner; autocomplete and "People also ask"; questions from the forum and the app. Volumes are recorded with their source and date, never estimated.
-- **Keyword map.** `landing/content/manifest.json` gains `primaryQuery` per guide, tool and hub. The build fails when two landing pages share a primary query. Forum editorial posts must link to the owning guide and target a different query, such as a discussion or update angle. This fixes the two current overlaps (SEO-20).
+- **Keyword map.** `landing/content/manifest.json` gains `primaryQuery` per guide, tool and hub. The build fails when two landing pages share a primary query. Forum editorial posts must link to the owning guide (`landing_route`) and target a different query, such as a discussion or update angle. This fixes the two current overlaps (SEO-20).
+
+#### Retargeting the two overlapping forum editorial posts (SEO-20 runbook)
+
+Migration `000258_forum_post_landing_route.sql` adds an optional nullable `landing_route` column to `forum_posts` (validated against `^/(guias|ferramentas)/[a-z0-9]+(-[a-z0-9]+)*/$`), exported via the `forum` snapshot section and rendered by `portalgen` as a top `"Guia completo"` / `"Calculadora"` link chip when the landing origin is enabled and the route belongs to the allowlist.
+
+To resolve the two cannibalizing pt-BR editorial posts already in the database via `admin-web` (`/admin/forum/`):
+
+1. Open `/admin/forum/` in `admin-web` with an authorized editorial admin session.
+2. Locate each overlapping post and note its current `revision` (sent as `expected_revision`).
+3. Update `category`, `title`, `excerpt`, `body_text`, and `landing_route` (field **"Guia ou ferramenta da landing (opcional)"**) using the non-cannibalizing payloads below, provide a justification (`reason`, 10–500 characters), and submit (`POST /v1/admin/forum/posts/{id}/edit`).
+4. Verify after the next portal export/build that both `/forum/...` pages render the `"Guia completo"` chip pointing to `/guias/etanol-ou-gasolina/` and `/guias/pesquisa-anp/`, respectively, without altering existing `/forum/` URLs (`post_id` stays stable).
+
+Ready-to-apply payloads (`POST /v1/admin/forum/posts/{id}/edit`, fill `expected_revision` with each post's current database revision):
+
+1. **Etanol vs. gasolina overlap -> retargeted to field-efficiency / parity edge cases**
+   ```json
+   {
+     "category": "FUELS",
+     "title": "Rendimento do etanol no uso real: quando a paridade foge dos 70%",
+     "excerpt": "Fatores práticos no uso diário — trânsito urbano versus rodovia, partida a frio e variação regional de margens — que deslocam o ponto de empate do etanol em relação à regra fixa dos 70%.",
+     "body_text": "A razão de 70% entre etanol hidratado e gasolina comum funciona como atalho inicial, mas o ponto real de equilíbrio varia conforme o carro e o trajeto.\n\nO que muda na prática:\n\n- Uso urbano vs. rodoviário: engarrafamentos, paradas frequentes e ar-condicionado alteram o consumo específico de cada combustível de forma diferente.\n- Calibração e geração do motor: motores flex modernos apresentam relações de consumo próprias no ciclo urbano e na estrada, informadas na ficha do veículo.\n- Dispersão de preços na cidade: diferenças de centavos entre bairros costumam pesar mais na bomba do que arredondamentos da regra geral.\n\nUse a relação calculada para o seu veículo como referência e consulte o guia metodológico completo quando quiser comparar a fórmula passo a passo.",
+     "landing_route": "/guias/etanol-ou-gasolina/",
+     "expected_revision": "<current_db_revision>",
+     "reason": "Reposicionar post editorial para ângulo de uso real e vincular ao guia /guias/etanol-ou-gasolina/ (SEO-20)"
+   }
+   ```
+
+2. **Pesquisa semanal ANP overlap -> retargeted to interpreting missing municipal averages**
+   ```json
+   {
+     "category": "ABASTEVO_DATA",
+     "title": "Leitura da amostra semanal da ANP: por que um município fica sem média",
+     "excerpt": "Entenda por que cidades podem ficar sem média publicada em determinadas semanas da pesquisa da ANP — rotação amostral, tamanho da coleta e calendário — e como ler as séries locais.",
+     "body_text": "Ao consultar o histórico de preços em cidades menores ou em feriados prolongados, é comum notar semanas sem média publicada para algum combustível.\n\nPrincipais motivos previstos na metodologia pública:\n\n- Cobertura amostral limitada: nem todos os municípios brasileiros integram o levantamento semanal contínuo, e cidades maiores recebem amostras proporcionais à frota.\n- Número mínimo de coletas: quando menos postos ativos são pesquisados na janela para determinado produto, a média municipal pode não aparecer naquele recorte.\n- Prazos de fechamento semanal: revisões de calendário e feriados nacionais podem ajustar o volume consolidado da semana.\n\nSempre observe o número de postos na amostra e a data da coleta exibidos na página da cidade antes de comparar semanas seguidas.",
+     "landing_route": "/guias/pesquisa-anp/",
+     "expected_revision": "<current_db_revision>",
+     "reason": "Reposicionar post editorial para leitura de lacunas amostrais e vincular ao guia /guias/pesquisa-anp/ (SEO-20)"
+   }
+   ```
 - **Article template.** Already partly in place. Each article has:
   - a "Resposta rápida" box;
   - a TOC;
@@ -291,7 +330,7 @@ and the backend testing guide.
 
 ### Phase 1: pt-BR quick wins
 
-- **SEO-20 Keyword map and cannibalization fix (S).** Add `primaryQuery` to the manifest with a uniqueness test. Rewrite or retarget the two duplicate forum editorial posts so they link to their guide.
+- **SEO-20 Keyword map and cannibalization fix (S).** Add `primaryQuery` to the manifest with a uniqueness test. Rewrite or retarget the two duplicate forum editorial posts so they link to their guide via `landing_route` (see the section 7.1 runbook).
 - **SEO-21 Head and template polish (M).**
   - `max-image-preview:large, max-snippet:-1` in both generators.
   - A descriptive home H1, keeping the slogan as a subtitle. The current slogan H1 is owner-reviewed copy in [content.md](content.md), so the owner approves the new text first.
