@@ -1,0 +1,9 @@
+id|operation|args|expected
+spec-10-receipt-and-pool|RECEIVE|pool_ml=100000;pool_cents=60000;rx_ml=50000;rx_cents=33000;product=DIESEL_S10;tank_product=DIESEL_S10|status=ACCEPTED;after_ml=150000;after_cents=93000;recognized_expense_cents=0
+spec-10-dispense-val32|DISPENSE|pool_ml=150000;pool_cents=93000;tx_ml=30000;product=DIESEL_S10;tank_product=DIESEL_S10|status=ACCEPTED;dispense_cents=18600;after_ml=120000;after_cents=74400;recognized_expense_cents=18600
+residual-half-up-conservation|DISPENSE|pool_ml=100000;pool_cents=10001;tx_ml=30000;product=DIESEL_S10;tank_product=DIESEL_S10|status=ACCEPTED;dispense_cents=3000;after_ml=70000;after_cents=7001;recognized_expense_cents=3000
+exhaust-full-pool|DISPENSE|pool_ml=70000;pool_cents=7001;tx_ml=70000;product=DIESEL_S10;tank_product=DIESEL_S10|status=ACCEPTED;dispense_cents=7001;after_ml=0;after_cents=0;recognized_expense_cents=7001
+insufficient-stock-denied|DISPENSE|pool_ml=20000;pool_cents=12000;tx_ml=25000;product=DIESEL_S10;tank_product=DIESEL_S10|status=REJECTED;error=STOCK_INSUFFICIENT;after_ml=20000;after_cents=12000
+mixed-product-denied|RECEIVE|pool_ml=100000;pool_cents=60000;rx_ml=10000;rx_cents=6000;product=GASOLINE_REGULAR;tank_product=DIESEL_S10|status=REJECTED;error=STOCK_PRODUCT_MISMATCH;after_ml=100000;after_cents=60000
+transfer-conserves-value|TRANSFER|src_ml=120000;src_cents=74400;dst_ml=10000;dst_cents=6200;tx_ml=40000;product=DIESEL_S10;src_product=DIESEL_S10;dst_product=DIESEL_S10|status=ACCEPTED;transfer_cents=24800;src_after_ml=80000;src_after_cents=49600;dst_after_ml=50000;dst_after_cents=31000;recognized_expense_cents=0
+adjustment-requires-reason|ADJUST|pool_ml=50000;pool_cents=31000;delta_ml=5000;reason=|status=REJECTED;error=VALIDATION_FAILED;after_ml=50000;after_cents=31000

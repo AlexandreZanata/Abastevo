@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "roles_version": "org-roles-v1",
-  "permissions_version": "org-permissions-v6",
+  "permissions_version": "org-permissions-v7",
   "permissions": [
     {
       "permission": "agree.agreement.manage",
@@ -33,10 +33,12 @@
     },
     {
       "permission": "audit.event.read",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Private audit-trail read routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/audit/events/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/audit/events/list"
+      ],
+      "reason": ""
     },
     {
       "permission": "auth.delegation.manage",
@@ -257,17 +259,22 @@
     },
     {
       "permission": "find.finding.read",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Finding read and resolution routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/intelligence/findings/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/intelligence/findings/list"
+      ],
+      "reason": ""
     },
     {
       "permission": "find.finding.resolve",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Finding read and resolution routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/intelligence/findings/review/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/intelligence/findings/decide",
+        "POST /v1/orgs/{org_id}/intelligence/findings/review/list"
+      ],
+      "reason": ""
     },
     {
       "permission": "fleet.asset.assign",
@@ -295,6 +302,7 @@
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/discard",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/disposal/revert",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/dispose",
+        "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/documents/save",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/install",
         "POST /v1/orgs/{org_id}/fleet/assets/{asset_id}/reactivate"
       ],
@@ -484,38 +492,51 @@
     },
     {
       "permission": "kpi.dashboard.read",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Organization indicator routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/intelligence/kpis/overview",
+      "routes": [
+        "POST /v1/orgs/{org_id}/intelligence/kpis/overview"
+      ],
+      "reason": ""
     },
     {
       "permission": "maint.plan.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Maintenance request, plan and work-order routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/maintenance/plans/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/maintenance/plans/list",
+        "POST /v1/orgs/{org_id}/maintenance/plans/save"
+      ],
+      "reason": ""
     },
     {
       "permission": "maint.request.create",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Maintenance request, plan and work-order routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/maintenance/requests/mine",
+      "routes": [
+        "POST /v1/orgs/{org_id}/maintenance/requests/mine"
+      ],
+      "reason": ""
     },
     {
       "permission": "maint.workorder.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Maintenance request, plan and work-order routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/maintenance/work-orders/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/maintenance/work-orders/list",
+        "POST /v1/orgs/{org_id}/maintenance/work-orders/save"
+      ],
+      "reason": ""
     },
     {
       "permission": "maint.workorder.review",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Maintenance request, plan and work-order routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/maintenance/work-orders/review/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/maintenance/work-orders/review/decide",
+        "POST /v1/orgs/{org_id}/maintenance/work-orders/review/list"
+      ],
+      "reason": ""
     },
     {
       "permission": "meter.reading.correct",
@@ -552,10 +573,13 @@
     },
     {
       "permission": "org.group.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "This organization group or archive/closure permission has no production member route; operator lifecycle routes use their separate boundary."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/consolidation/grants/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/consolidation/grants/list",
+        "POST /v1/orgs/{org_id}/consolidation/grants/save"
+      ],
+      "reason": ""
     },
     {
       "permission": "org.legal_entity.manage",
@@ -605,6 +629,7 @@
       "status": "ROUTED",
       "representative_route": "POST /v1/orgs/{org_id}/settings/change",
       "routes": [
+        "POST /v1/orgs/{org_id}/intelligence/settings/save",
         "POST /v1/orgs/{org_id}/organization/activate",
         "POST /v1/orgs/{org_id}/settings/change",
         "POST /v1/orgs/{org_id}/settings/responsibility-members/list",
@@ -715,10 +740,13 @@
     },
     {
       "permission": "stock.movement.record",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Internal tank, movement and reconciliation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/stock/movements/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/stock/movements/list",
+        "POST /v1/orgs/{org_id}/stock/movements/record"
+      ],
+      "reason": ""
     },
     {
       "permission": "stock.reconcile",
@@ -729,10 +757,13 @@
     },
     {
       "permission": "stock.tank.manage",
-      "status": "NOT_YET_ROUTED",
-      "representative_route": "",
-      "routes": [],
-      "reason": "Internal tank, movement and reconciliation routes have not been delivered."
+      "status": "ROUTED",
+      "representative_route": "POST /v1/orgs/{org_id}/stock/tanks/list",
+      "routes": [
+        "POST /v1/orgs/{org_id}/stock/tanks/list",
+        "POST /v1/orgs/{org_id}/stock/tanks/save"
+      ],
+      "reason": ""
     },
     {
       "permission": "subs.plan.manage",
