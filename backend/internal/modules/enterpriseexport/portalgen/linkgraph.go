@@ -114,7 +114,7 @@ func VerifyLinkGraph(dir string, opts LinkGraphOptions) (LinkGraphResult, error)
 	result := LinkGraphResult{Pages: len(pages), MinInbound: map[string]int{}}
 	indexable := map[string]bool{}
 	for route, page := range pages {
-		if page.robots != "index,follow" {
+		if page.robots != robotsIndexable {
 			continue
 		}
 		indexable[route] = true

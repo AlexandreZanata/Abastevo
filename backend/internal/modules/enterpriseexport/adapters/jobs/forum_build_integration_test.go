@@ -220,7 +220,7 @@ func TestRefreshPublishesAndWithdrawsEditorialPostPages(t *testing.T) {
 	if err != nil {
 		t.Fatalf("post page not released: %v", err)
 	}
-	for _, want := range []string{"<h1>Etanol na estrada</h1>", `"@type":"DiscussionForumPosting"`, "<h2>Subtítulo</h2>", "<li>item um</li>", `<meta name="robots" content="index,follow">`} {
+	for _, want := range []string{"<h1>Etanol na estrada</h1>", `"@type":"DiscussionForumPosting"`, "<h2>Subtítulo</h2>", "<li>item um</li>", `<meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1">`} {
 		if !strings.Contains(string(page), want) {
 			t.Errorf("released post page lacks %s", want)
 		}

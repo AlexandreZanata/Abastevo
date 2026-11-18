@@ -79,7 +79,7 @@ func TestLinkingModulesOnCityAndStationPages(t *testing.T) {
 		t.Errorf("no-data city page = %+v", head)
 	}
 	rondonStation := readPortal(t, out, "postos/"+seoID(12)+"/index.html")
-	if !strings.Contains(rondonStation, `<a href="/precos/mt/rondonopolis/">Rondonópolis</a>`) || parseHead(rondonStation).Robots != "index,follow" {
+	if !strings.Contains(rondonStation, `<a href="/precos/mt/rondonopolis/">Rondonópolis</a>`) || parseHead(rondonStation).Robots != robotsIndexable {
 		t.Error("recent station in a no-data city lost its breadcrumb or gate")
 	}
 	state := readPortal(t, out, "precos/mt/index.html")

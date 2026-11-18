@@ -65,6 +65,10 @@ func pageIndexable(facts indexFacts) bool {
 	}
 }
 
+// robotsIndexable is the directive of every indexable page: large article
+// images for Discover and no snippet truncation. Gated pages keep follow.
+const robotsIndexable = "index,follow,max-image-preview:large,max-snippet:-1"
+
 // robotsValue renders the robots meta: a build with the global switch off is
 // hidden everywhere; gated pages keep their links followable.
 func robotsValue(globalIndexable, pageIndexable bool) string {
@@ -72,7 +76,7 @@ func robotsValue(globalIndexable, pageIndexable bool) string {
 	case !globalIndexable:
 		return "noindex,nofollow"
 	case pageIndexable:
-		return "index,follow"
+		return robotsIndexable
 	default:
 		return "noindex,follow"
 	}

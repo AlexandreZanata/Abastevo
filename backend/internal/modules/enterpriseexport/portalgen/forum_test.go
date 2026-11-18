@@ -151,7 +151,7 @@ func TestForumPagesOnTheGeneratedPortal(t *testing.T) {
 		if !ok {
 			t.Fatalf("missing forum page %s", path)
 		}
-		if head := parseHead(body); head.Robots != "index,follow" {
+		if head := parseHead(body); head.Robots != robotsIndexable {
 			t.Errorf("%s robots = %q", path, head.Robots)
 		}
 	}

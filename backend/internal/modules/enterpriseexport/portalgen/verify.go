@@ -799,7 +799,7 @@ func checkBudgetsAndHTML(dir string, files map[string]FileDigest, manifest Manif
 				return VerifyResult{}, fmt.Errorf("portalcheck: page lacks robots meta")
 			}
 			switch string(robots[1]) {
-			case "index,follow":
+			case robotsIndexable:
 				indexable[path] = true
 			case "noindex,follow", "noindex,nofollow":
 			default:

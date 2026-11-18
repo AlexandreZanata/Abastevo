@@ -56,7 +56,7 @@ func TestGeneratedFuelHubs(t *testing.T) {
 			t.Errorf("gasolina hub missing %s", want)
 		}
 	}
-	if head := parseHead(gas); head.Title != "Preço da gasolina comum no Brasil por estado – ANP 17/10/2026" || head.Robots != "index,follow" {
+	if head := parseHead(gas); head.Title != "Preço da gasolina comum no Brasil por estado – ANP 17/10/2026" || head.Robots != robotsIndexable {
 		t.Errorf("gasolina hub head = %+v", head)
 	}
 	precos := readPortal(t, out, "precos/index.html")

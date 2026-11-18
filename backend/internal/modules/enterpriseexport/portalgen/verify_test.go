@@ -120,9 +120,9 @@ func TestVerifyNoindexArtifactAndSitemap(t *testing.T) {
 	if page := readPortal(t, indexable, "postos/"+stB+"/index.html"); !strings.Contains(page, `<meta name="robots" content="noindex,follow">`) {
 		t.Error("gated station is not noindex,follow")
 	}
-	if page := readPortal(t, indexable, "postos/"+stA+"/index.html"); !strings.Contains(page, `<meta name="robots" content="index,follow">`) ||
+	if page := readPortal(t, indexable, "postos/"+stA+"/index.html"); !strings.Contains(page, `<meta name="robots" content="`+robotsIndexable+`">`) ||
 		!strings.Contains(page, `<link rel="canonical" href="https://portal.example/postos/`+stA+`/">`) {
-		t.Error("indexable station lacks index,follow or its self canonical")
+		t.Error("indexable station lacks the indexable robots directive or its self canonical")
 	}
 	robots := readPortal(t, indexable, "robots.txt")
 	if !strings.Contains(robots, "Allow: /") || !strings.Contains(robots, "Sitemap: https://portal.example/sitemap.xml") {
