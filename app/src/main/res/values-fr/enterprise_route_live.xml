@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_route_card_title">Itinéraire du trajet</string>
+    <string name="enterprise_route_waypoints_summary">Étape %1$d sur %2$d</string>
+    <string name="enterprise_route_heavy_vehicle_warning">Calculé avec le profil voiture ; hauteur des ponts, poids, essieux et matières dangereuses ne sont pas vérifiés.</string>
+    <string name="enterprise_route_driving_locked">Véhicule en mouvement : modification détaillée suspendue jusqu’à l’arrêt.</string>
+    <string name="enterprise_route_arrival_prompt">Arrivée proche de %1$s détectée. Confirmez manuellement pour valider cette étape.</string>
+    <string name="enterprise_route_arrival_confirm">Je suis arrivé</string>
+    <string name="enterprise_route_pending_revision">Nouvelle révision %1$d du plan disponible ; appliquez à l’arrêt.</string>
+    <string name="enterprise_route_apply_revision">Appliquer la révision</string>
+    <string name="enterprise_route_recalculations">Itinéraire recalculé %1$d fois</string>
+    <string name="enterprise_route_text_stop_prompt">Une étape texte sans coordonnées demande confirmation : %1$s</string>
+    <string name="enterprise_route_degraded_map_missing">Région de carte hors ligne absente ; le trajet reste actif.</string>
+    <string name="enterprise_route_degraded_no_route">Impossible de calculer un itinéraire entre ces points ; le trajet reste actif.</string>
+    <string name="enterprise_route_degraded_no_fix">Aucune position exploitable pour le moment ; le trajet reste actif.</string>
+    <string name="enterprise_route_degraded_voice_unavailable">Guidage vocal indisponible ; les indications visuelles continuent.</string>
+    <string name="enterprise_route_attribution">© Contributeurs OpenStreetMap</string>
+</resources>

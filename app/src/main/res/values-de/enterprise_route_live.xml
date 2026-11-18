@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_route_card_title">Fahrtroute</string>
+    <string name="enterprise_route_waypoints_summary">Stopp %1$d von %2$d</string>
+    <string name="enterprise_route_heavy_vehicle_warning">Mit Pkw-Profil berechnet; Brückenhöhe, Gewicht, Achslast und Gefahrgutbeschränkungen werden nicht geprüft.</string>
+    <string name="enterprise_route_driving_locked">Fahrzeug in Bewegung: Detailbearbeitung bis zum Stillstand gesperrt.</string>
+    <string name="enterprise_route_arrival_prompt">Ankunft nahe %1$s erkannt. Bitte manuell bestätigen.</string>
+    <string name="enterprise_route_arrival_confirm">Angekommen</string>
+    <string name="enterprise_route_pending_revision">Neue Planrevision %1$d verfügbar; im Stillstand anwenden.</string>
+    <string name="enterprise_route_apply_revision">Revision anwenden</string>
+    <string name="enterprise_route_recalculations">Route %1$d-mal neu berechnet</string>
+    <string name="enterprise_route_text_stop_prompt">Textstopp ohne Koordinaten erfordert Bestätigung: %1$s</string>
+    <string name="enterprise_route_degraded_map_missing">Offline-Kartenregion fehlt für diese Route; die Fahrt bleibt aktiv.</string>
+    <string name="enterprise_route_degraded_no_route">Keine Route zwischen diesen Punkten berechenbar; die Fahrt bleibt aktiv.</string>
+    <string name="enterprise_route_degraded_no_fix">Noch kein verwertbares Standortsignal; die Fahrt bleibt aktiv.</string>
+    <string name="enterprise_route_degraded_voice_unavailable">Sprachführung nicht verfügbar; visuelle Hinweise bleiben aktiv.</string>
+    <string name="enterprise_route_attribution">© OpenStreetMap-Mitwirkende</string>
+</resources>

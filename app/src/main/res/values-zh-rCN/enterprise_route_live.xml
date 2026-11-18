@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_route_card_title">行程路线</string>
+    <string name="enterprise_route_waypoints_summary">第 %1$d / %2$d 站</string>
+    <string name="enterprise_route_heavy_vehicle_warning">路线按乘用车模式计算；未校验限高、限重、轴重或危化品限制。</string>
+    <string name="enterprise_route_driving_locked">车辆行驶中：详细编辑已锁定，请停车后操作。</string>
+    <string name="enterprise_route_arrival_prompt">检测到已到达 %1$s 附近，请手动确认此站点。</string>
+    <string name="enterprise_route_arrival_confirm">已到达</string>
+    <string name="enterprise_route_pending_revision">已有新版路线计划 %1$d；请停车后应用。</string>
+    <string name="enterprise_route_apply_revision">应用修订</string>
+    <string name="enterprise_route_recalculations">路线已重新计算 %1$d 次</string>
+    <string name="enterprise_route_text_stop_prompt">无坐标的文本站点需要确认：%1$s</string>
+    <string name="enterprise_route_degraded_map_missing">缺少该区域的离线地图，但行程仍保持有效。</string>
+    <string name="enterprise_route_degraded_no_route">无法计算各点之间的路线，但行程仍保持有效。</string>
+    <string name="enterprise_route_degraded_no_fix">暂无可用定位信号，但行程仍保持有效。</string>
+    <string name="enterprise_route_degraded_voice_unavailable">语音播报不可用，将继续显示屏幕指引。</string>
+    <string name="enterprise_route_attribution">© OpenStreetMap 贡献者</string>
+</resources>
