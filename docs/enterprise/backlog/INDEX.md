@@ -7,26 +7,26 @@ is in [ROADMAP.md](../../../ROADMAP.md).
 
 | Phase | Open tasks |
 |---|---|
-| F0 | 9 |
+| F0 | 8 |
 | F1 | 12 |
 | F2 | 15 |
 | F3 | 43 |
 | F4 | 1 |
-| F5 | 16 |
+| F5 | 0 |
 | F6 | 50 |
 | F7 | 36 |
 | F8 | 29 |
 
 | Epic | File | Open tasks |
 |---|---|---|
-| EP00 — Governance, decisions and discovery | [ep00-governance.md](ep00-governance.md) | 9 |
+| EP00 — Governance, decisions and discovery | [ep00-governance.md](ep00-governance.md) | 8 |
 | EP01 — Platform foundations and privacy | [ep01-platform.md](ep01-platform.md) | 4 |
 | EP02 — Organizations | [ep02-organizations.md](ep02-organizations.md) | 4 |
 | EP03 — Identity, employee accounts and authorization | [ep03-identity-access.md](ep03-identity-access.md) | 8 |
 | EP04 — Offline synchronization | [ep04-sync.md](ep04-sync.md) | 3 |
 | EP05 — Fleet, assets and meters | [ep05-fleet-meters.md](ep05-fleet-meters.md) | 6 |
 | EP06 — Operations, trips and logbook | [ep06-trips.md](ep06-trips.md) | 1 |
-| EP07 — Tracking, routes and navigation | [ep07-gps-navigation.md](ep07-gps-navigation.md) | 15 |
+| EP07 — Tracking, routes and navigation | [ep07-gps-navigation.md](ep07-gps-navigation.md) | 0 |
 | EP08 — Fuelings and consumption | [ep08-fuelings.md](ep08-fuelings.md) | 12 |
 | EP09 — Receipts, fiscal documents and attachments | [ep09-documents.md](ep09-documents.md) | 9 |
 | EP10 — Expenses, approvals, budgets and operational finance | [ep10-expenses-finance.md](ep10-expenses-finance.md) | 20 |
@@ -39,4 +39,4 @@ is in [ROADMAP.md](../../../ROADMAP.md).
 | EP17 — Abastevo Data | [ep17-data.md](ep17-data.md) | 8 |
 | EP18 — Imports, notifications and integrations | [ep18-imports-notifications-integrations.md](ep18-imports-notifications-integrations.md) | 16 |
 | EP19 — Internal administration and support | [ep19-back-office.md](ep19-back-office.md) | 6 |
-| EP20 — Release gates and validation | [ep20-release.md](ep20-release.md) | 10 |
+| EP20 — Release gates and validation | [ep20-release.md](ep20-release.md) | 9 |

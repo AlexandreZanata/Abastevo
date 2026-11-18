@@ -103,22 +103,6 @@ owner or pilot users), held fuelings for VAL-04/VAL-22 (EMP-FUEL-003), VAL-23
 cross-surface VAL-02 sweep, and the M3 gate (EMP-REL-004). Tracking collects
 from no real employee until the matrix passes (EDR-362).
 
-### EMP-REL-006 — M5 gate: navigation and live operations acceptance
-- **Meta:** module REL · phase F5 · cut - · priority P1 · type TEST · size M · state TODO
-- **Objective:** Accept M5 navigation and live operations against the approved map decision.
-- **Rules and use cases:** VAL-16, VAL-29, VAL-30, BR-GPS-032
-- **Depends on:** EMP-ROUTE-006, EMP-GPS-008, EMP-GPS-013
-- **Read first:** [milestone validation](../testing.md), enterprise roadmap and F0 decisions
-- **Scope:** in: integrated guidance, source/quality and freshness evidence · out: stale position shown current
-- **Areas:** existing: scenario fixtures and affected normal entry points · proposed: milestone evidence and acceptance commands
-- **Steps:** Pin the stated acceptance and denial cases before changing the owning entry point. Verify the affected consumers.
-- **Deliverable:** The tested revision passes trip-aware navigation and live-map privacy and freshness cases.
-- **Acceptance:** The tested revision passes trip-aware navigation and live-map privacy and freshness cases.
-- **Negative cases:** Unapproved adapter, missing interruption test, unsupported profile claim or unaudited location.
-- **Validation:** V-E2E, V-APP, V-WEB, V-AUTHZ, V-ISO, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Each gate retains immediate critical checks, current-head evidence and distinct local, integration and production states.
-- **Done when:** The stated result and denials pass the listed validation profiles.
-
 ### EMP-REL-007 — M6 gate: intelligence, maintenance and stock acceptance
 - **Meta:** module REL · phase F6 · cut - · priority P1 · type TEST · size M · state TODO
 - **Objective:** Accept M6 indicator, maintenance, stock and retention behavior.
