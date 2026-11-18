@@ -40,6 +40,12 @@ empty keeps the contributors list disabled). `check.mjs` accepts `--origin`
 and `--dist-dir`. `make quick-verify` runs all four npm steps when `landing/`
 changes.
 
+Test-only build options: `build({ enableLocales: ['en', 'es'],
+translationsDir })` overrides the `enabled` flags of
+`contracts/i18n/locales.json` and the translations directory (default
+`content/translations`). Production reads the registry flags, so `en` and `es`
+stay off until reviewed translations exist.
+
 ## Content pipeline
 
 - Every page is registered in `content/manifest.json`. Guides, category hubs,

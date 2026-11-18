@@ -3,6 +3,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { isPortalRoute } from './content/data.mjs';
+import { loadLocales } from './content/i18n.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,6 +50,10 @@ export function checkDist(options = {}) {
   const root = options.projectRoot || DEFAULT_ROOT;
   const distDir = options.distDir || path.join(root, 'dist');
   const origin = (options.origin || 'https://abastevo.com.br').replace(/\/$/, '');
+  const localeRegistry = loadLocales(root);
+  const localePrefixes = localeRegistry.locales
+    .filter((locale) => locale.prefix !== '')
+    .map((locale) => ({ prefix: locale.prefix, htmlLang: locale.htmlLang }));
   const errors = [];
 
   if (!fs.existsSync(distDir)) {
@@ -139,6 +144,8 @@ export function checkDist(options = {}) {
   const seenTitles = new Map();
   const seenDescriptions = new Map();
   const indexableRoutes = new Set();
+  const emittedRoutes = new Set();
+  const hreflangsByRoute = new Map();
   const homeHtml = fs.existsSync(path.join(distDir, 'index.html')) ? fs.readFileSync(path.join(distDir, 'index.html'), 'utf8') : '';
   let toolsFile = null;
 
@@ -148,6 +155,22 @@ export function checkDist(options = {}) {
     const route = routeForHtml(rel);
     const isIndexable = !/<meta\s+name="robots"\s+content="[^"]*noindex/i.test(content);
     if (isIndexable) indexableRoutes.add(route);
+    emittedRoutes.add(route);
+
+    // SEO-26: a locale page declares the language of its prefix.
+    for (const { prefix, htmlLang } of localePrefixes) {
+      if (route === `${prefix}/` || route.startsWith(`${prefix}/`)) {
+        const lang = content.match(/<html\s+lang="([^"]*)"/)?.[1];
+        if (lang !== htmlLang) errors.push(`${rel} html lang ${lang ?? '(missing)'} does not match ${prefix} (${htmlLang})`);
+      }
+    }
+
+    const hreflangs = [...content.matchAll(/<link\s+rel="alternate"\s+hreflang="([^"]+)"\s+href="([^"]+)">/g)]
+      .map((match) => ({ hreflang: match[1], href: match[2] }));
+    if (hreflangs.length > 0) {
+      if (!isIndexable) errors.push(`${rel} is noindex and must not declare hreflang`);
+      hreflangsByRoute.set(route, hreflangs);
+    }
 
     if (content.length > HTML_PAGE_BUDGET) {
       errors.push(`${rel} (${content.length} bytes) exceeds the ${HTML_PAGE_BUDGET}-byte HTML page budget`);
@@ -320,6 +343,33 @@ export function checkDist(options = {}) {
     }
     for (const route of indexableRoutes) {
       if (!listed.has(route)) errors.push(`indexable page ${route} is missing from sitemap.xml`);
+    }
+  }
+
+  // SEO-26: hreflang must be reciprocal, carry one x-default and point only to
+  // emitted, indexable pages in the same sitemap.
+  for (const [route, links] of hreflangsByRoute) {
+    const self = links.filter((link) => link.hreflang !== 'x-default' && link.href === `${origin}${route}`);
+    if (self.length !== 1) errors.push(`${route} must list itself exactly once in hreflang`);
+    if (links.filter((link) => link.hreflang === 'x-default').length !== 1) errors.push(`${route} needs exactly one x-default hreflang`);
+    for (const link of links) {
+      if (!link.href.startsWith(`${origin}/`)) {
+        errors.push(`${route} hreflang ${link.hreflang} is not on the configured origin: ${link.href}`);
+        continue;
+      }
+      const target = link.href.slice(origin.length);
+      if (!emittedRoutes.has(target)) {
+        errors.push(`${route} hreflang ${link.hreflang} points to missing page ${target}`);
+      } else if (!indexableRoutes.has(target)) {
+        errors.push(`${route} hreflang ${link.hreflang} points to noindex page ${target}`);
+      } else if (!listed.has(target)) {
+        errors.push(`${route} hreflang ${link.hreflang} points to ${target}, which is not in the sitemap`);
+      }
+      if (link.hreflang !== 'x-default' && self.length === 1) {
+        const back = (hreflangsByRoute.get(target) || [])
+          .some((other) => other.hreflang === self[0].hreflang && other.href === `${origin}${route}`);
+        if (!back) errors.push(`${route} hreflang ${link.hreflang} -> ${target} is not reciprocal`);
+      }
     }
   }
 

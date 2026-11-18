@@ -1,0 +1,292 @@
+{
+  "languageName": "Português",
+  "dateFormat": "{day} de {month} de {year}",
+  "months": [
+    "janeiro",
+    "fevereiro",
+    "março",
+    "abril",
+    "maio",
+    "junho",
+    "julho",
+    "agosto",
+    "setembro",
+    "outubro",
+    "novembro",
+    "dezembro"
+  ],
+  "categories": {
+    "precos": {
+      "name": "Preços e impostos"
+    },
+    "escolher-combustivel": {
+      "name": "Escolher o combustível"
+    },
+    "economia": {
+      "name": "Economia de combustível"
+    },
+    "direitos-e-qualidade": {
+      "name": "Direitos e qualidade"
+    },
+    "dados": {
+      "name": "Dados e transparência"
+    }
+  },
+  "chrome": {
+    "team": "Equipe abastevo",
+    "skip": "Pular para o conteúdo",
+    "breadcrumb": "Navegação estrutural",
+    "home": "Início",
+    "guides": "Guias",
+    "tools": "Ferramentas",
+    "prices": "Preços",
+    "project": "Projeto",
+    "privacy": "Privacidade",
+    "toc": "Neste guia",
+    "continue": "Continue explorando",
+    "readAlso": "Leia também",
+    "by": "Por",
+    "published": "Publicado em",
+    "updated": "Atualizado em",
+    "languages": "Idiomas",
+    "editorial": "Texto da {team}, revisado por pessoas com base nas fontes citadas. Veja a {policy} e como pedir uma correção.",
+    "policy": "política editorial",
+    "guidesTitle": "Guias Educativos abastevo",
+    "allGuidesOf": "Todos os guias de {category}",
+    "categoriesNav": "Categorias de guias",
+    "calculators": "Calculadoras para fazer a conta",
+    "guidesExplain": "Os guias explicam o raciocínio; as {tools} fazem a conta com os seus números, sem cadastro.",
+    "toolsLabel": "calculadoras de combustível",
+    "calculatorsShort": "calculadoras",
+    "howGuides": "Como os guias são feitos",
+    "howGuidesBody": "Os guias são escritos pela {team}, citam a fonte oficial de cada informação e mostram a data da última revisão. Preços citados são sempre exemplos; para valores reais, consulte os {prices} com a data da coleta. Regras completas na {policy}.",
+    "pricesLabel": "preços de referência por estado",
+    "articles": "Artigos",
+    "otherCategories": "Outras categorias",
+    "categoryFooter": "Veja todos os {guides}, use as {tools} ou consulte os {prices}.",
+    "guidesLabel": "guias sobre combustíveis",
+    "calculatorsTitle": "Calculadoras de combustível",
+    "chooseCalculator": "Escolha uma calculadora",
+    "howCalculators": "Como as calculadoras funcionam",
+    "howCalculatorsBody": "Cada página mostra a fórmula usada e um exemplo resolvido passo a passo, então dá para conferir a conta à mão, inclusive com o JavaScript desligado. A versão interativa calcula no seu navegador: os valores digitados não são enviados, salvos nem associados a você.",
+    "estimates": "Os resultados são estimativas. Consumo real muda com trânsito, carga, relevo, calibragem e jeito de dirigir, e o preço muda de posto para posto e de semana para semana.",
+    "wherePrices": "Onde conseguir preços para a conta",
+    "wherePricesBody": "Use o preço que você viu na bomba ou consulte os {prices}, sempre com a data da coleta. Entenda o que esses números significam na {methodology}.",
+    "pricesAnpLabel": "preços de referência da ANP por estado e cidade",
+    "methodology": "metodologia",
+    "relatedGuides": "Guias relacionados",
+    "toolFallback": "A calculadora interativa precisa de JavaScript. Sem ele, a conta continua simples: siga a fórmula e o exemplo resolvido logo abaixo.",
+    "calculate": "Calcular",
+    "toolPrivacy": "A conta é feita no seu navegador. Nada do que você digita é enviado ou salvo.",
+    "toolPrices": "Preços de referência para a conta",
+    "toolPricesBody": "Use o preço que você viu na bomba ou consulte os {prices}, com a data da coleta. Preço de referência é amostra da semana pesquisada, não garantia do valor no posto hoje.",
+    "otherTools": "Outras ferramentas",
+    "browserOs": "Qualquer navegador moderno",
+    "browserRequirements": "O cálculo interativo usa JavaScript; a fórmula e o exemplo funcionam sem ele.",
+    "pageUpdated": "Atualizado em {date} · {team}",
+    "footerPrices": "Preços por estado",
+    "footerConsult": "Consultar dados",
+    "footerEnforcement": "Fiscalização",
+    "footerMethodology": "Metodologia",
+    "footerAllGuides": "Todos os guias",
+    "footerHowTo": "Como usar o app",
+    "footerApp": "Aplicativo",
+    "footerAllTools": "Todas as ferramentas",
+    "footerAbout": "Sobre o abastevo",
+    "footerEditorial": "Política editorial",
+    "footerContributors": "Contribuidores",
+    "footerContact": "Contato",
+    "footerPrivacy": "Privacidade",
+    "footerDelete": "Excluir conta",
+    "footerTerms": "Termos",
+    "homeStatesTitle": "Preços por estado",
+    "homeSeePrices": "Ver preços por estado",
+    "homeHowCollected": "Como os preços são coletados",
+    "homeGuides": "Guias populares",
+    "homeAllGuides": "Ver todos os guias",
+    "homeTools": "Ferramentas",
+    "homeAllTools": "Ver todas as ferramentas",
+    "guidesHubTitle": "Guias Educativos abastevo",
+    "guidesHubIntro": "Textos curtos e verificáveis sobre como o preço se forma, como escolher o combustível, como gastar menos e o que fazer quando algo dá errado no posto.",
+    "toolsHubTitle": "Calculadoras de combustível",
+    "toolsHubIntro": "Cinco calculadoras simples, com a fórmula e um exemplo resolvido em cada página. A conta é feita no seu navegador: nada é enviado, salvo ou rastreado.",
+    "mainNav": "Navegação principal",
+    "brandHome": "abastevo - início",
+    "githubLabel": "Ver no GitHub — Código com atribuição visível",
+    "github": "GitHub",
+    "privacyPortuguese": "Política de privacidade (em português)",
+    "footerTagline": "Projeto aberto e independente, sem afiliação à ANP ou a qualquer governo. Preços da comunidade e a referência semanal da ANP andam separados, sempre com fonte e data.",
+    "staleNote": "O original em português foi atualizado em {date}."
+  },
+  "tools": {
+    "common": {
+      "review": "Revise os campos destacados para calcular.",
+      "unknown": "Ferramenta desconhecida: {id}",
+      "validation": {
+        "field": "{label}: {message}",
+        "required": "campo obrigatório.",
+        "choice": "escolha uma das opções.",
+        "number": "digite um número{example}.",
+        "example": ", por exemplo {example}",
+        "negative": "o valor não pode ser negativo.",
+        "zero": "o valor precisa ser maior que zero.",
+        "integer": "use um número inteiro.",
+        "max": "valor alto demais (máximo {max}{unit}). Confira a digitação.",
+        "unit": " {unit}"
+      }
+    },
+    "etanol-ou-gasolina": {
+      "fields": {
+        "gasolina": {
+          "label": "Preço da gasolina (R$/litro)",
+          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299."
+        },
+        "etanol": {
+          "label": "Preço do etanol (R$/litro)",
+          "hint": "Em reais por litro, por exemplo 4,19."
+        },
+        "consumo_gasolina": {
+          "label": "Consumo com gasolina (km/l, opcional)",
+          "hint": "Preencha os dois consumos para usar a relação do seu carro em vez dos 70%."
+        },
+        "consumo_etanol": {
+          "label": "Consumo com etanol (km/l, opcional)",
+          "hint": "Medido no seu carro, tanque a tanque."
+        }
+      },
+      "messages": {
+        "missingConsumption": "Para usar o consumo do seu carro, preencha os dois consumos (gasolina e etanol) ou deixe ambos em branco.",
+        "ethanolCheaper": "Resultado: o etanol tende a sair mais barato por quilômetro rodado.",
+        "gasolineCheaper": "Resultado: a gasolina tende a sair mais barata por quilômetro rodado.",
+        "tie": "Resultado: empate técnico; os dois custam praticamente o mesmo por quilômetro.",
+        "ratio": "O etanol custa {percent} do preço da gasolina.",
+        "thresholdOwn": "Referência usada: {percent}, calculada com o consumo informado do seu carro.",
+        "thresholdRule": "Referência usada: 70%, a regra geral para carros flex.",
+        "maxPrice": "Com a gasolina a {gasoline}, o etanol compensa até {ethanol} o litro.",
+        "costPerKm": "Custo por km: etanol {ethanol}, gasolina {gasoline}."
+      }
+    },
+    "custo-de-viagem": {
+      "fields": {
+        "distancia": {
+          "label": "Distância da viagem (km)",
+          "hint": "Somente ida. Marque \"ida e volta\" para dobrar."
+        },
+        "consumo": {
+          "label": "Consumo do veículo (km/l)",
+          "hint": "Quilômetros por litro, por exemplo 12,5. Veja como medir no guia de consumo médio."
+        },
+        "preco": {
+          "label": "Preço do combustível (R$/litro)",
+          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299."
+        },
+        "ida_e_volta": {
+          "label": "Ida e volta"
+        },
+        "pedagio": {
+          "label": "Total de pedágios (R$, opcional)",
+          "hint": "Some todos os pedágios do trajeto que você vai fazer."
+        },
+        "pessoas": {
+          "label": "Pessoas para dividir (opcional)",
+          "hint": "Número inteiro, por exemplo 2."
+        }
+      },
+      "messages": {
+        "total": "Custo total estimado: {total}.",
+        "distance": "Distância considerada: {distance} km{trip}.",
+        "roundTrip": " (ida e volta)",
+        "fuel": "Combustível necessário: {liters} litros, {cost}.",
+        "tolls": "Pedágios informados: {tolls}.",
+        "perPerson": "Dividido por {people} pessoas: {amount} cada."
+      }
+    },
+    "consumo-medio": {
+      "fields": {
+        "distancia": {
+          "label": "Distância percorrida (km)",
+          "hint": "Quilômetros rodados desde o último tanque cheio (hodômetro parcial)."
+        },
+        "litros": {
+          "label": "Litros abastecidos para completar (l)",
+          "hint": "Litros da bomba ao completar o tanque de novo, por exemplo 35,6."
+        },
+        "preco": {
+          "label": "Preço por litro (R$, opcional)",
+          "hint": "Para calcular também o custo por quilômetro."
+        }
+      },
+      "messages": {
+        "average": "Consumo médio: {value} km/l.",
+        "per100": "O mesmo consumo em litros: {value} litros a cada 100 km.",
+        "costPerKm": "Custo por km: {cost} (gasto no abastecimento: {spent})."
+      }
+    },
+    "custo-por-km": {
+      "fields": {
+        "preco_combustivel": {
+          "label": "Preço do combustível (R$/litro)",
+          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299."
+        },
+        "consumo": {
+          "label": "Consumo do carro a combustão (km/l)",
+          "hint": "Quilômetros por litro, por exemplo 12,5. Veja como medir no guia de consumo médio."
+        },
+        "tarifa_kwh": {
+          "label": "Tarifa de energia (R$/kWh)",
+          "hint": "Valor por kWh com impostos, da conta de luz ou do eletroposto, por exemplo 0,95."
+        },
+        "consumo_eletrico": {
+          "label": "Consumo do carro elétrico (km/kWh)",
+          "hint": "Quilômetros por kWh, por exemplo 6,5. Se tiver kWh/100 km, divida 100 por esse valor."
+        },
+        "km_mes": {
+          "label": "Quilômetros por mês (opcional)",
+          "hint": "Para estimar o gasto mensal com energia de cada carro."
+        }
+      },
+      "messages": {
+        "electricCheaper": "Resultado: o elétrico gasta {difference} a menos por km em energia.",
+        "combustionCheaper": "Resultado: o carro a combustão gasta {difference} a menos por km em energia.",
+        "tie": "Resultado: os dois gastam praticamente o mesmo por km em energia.",
+        "combustion": "Combustão: {cost} por km.",
+        "electric": "Elétrico: {cost} por km.",
+        "monthly": "Em {km} km por mês: combustão {combustion}, elétrico {electric}."
+      }
+    },
+    "encher-o-tanque": {
+      "fields": {
+        "capacidade": {
+          "label": "Capacidade do tanque (litros)",
+          "hint": "Está no manual do veículo, por exemplo 50."
+        },
+        "nivel": {
+          "label": "Nível atual do tanque",
+          "options": {
+            "0": "Vazio (na reserva)",
+            "12.5": "1/8",
+            "25": "1/4",
+            "37.5": "3/8",
+            "50": "1/2 (meio tanque)",
+            "62.5": "5/8",
+            "75": "3/4",
+            "87.5": "7/8"
+          }
+        },
+        "preco": {
+          "label": "Preço do combustível (R$/litro)",
+          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299."
+        },
+        "consumo": {
+          "label": "Consumo do veículo (km/l, opcional)",
+          "hint": "Para estimar a autonomia com o tanque cheio."
+        }
+      },
+      "messages": {
+        "fill": "Para completar: cerca de {liters} litros, {cost}.",
+        "full": "O tanque inteiro, vazio até cheio, custaria {cost}.",
+        "range": "Autonomia estimada com o tanque cheio: {range} km."
+      }
+    }
+  }
+}

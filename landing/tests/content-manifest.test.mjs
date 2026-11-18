@@ -24,8 +24,12 @@ const ctx = { categories: new Set(['precos']), expectedSlug: 'guia-teste' };
 // broken. The app-capture provenance comes along: Markdown that shows a capture
 // is resolved against it.
 function withContent(mutate) {
-  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-content-'));
+  const base = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-content-'));
+  const tmp = path.join(base, 'landing');
+  fs.mkdirSync(tmp);
   fs.cpSync(path.join(root, 'content'), path.join(tmp, 'content'), { recursive: true });
+  fs.mkdirSync(path.join(base, 'contracts'));
+  fs.cpSync(path.join(root, '..', 'contracts', 'i18n'), path.join(base, 'contracts', 'i18n'), { recursive: true });
   const provenanceRel = path.join('static', 'assets', 'app', 'provenance.json');
   fs.mkdirSync(path.dirname(path.join(tmp, provenanceRel)), { recursive: true });
   fs.copyFileSync(path.join(root, provenanceRel), path.join(tmp, provenanceRel));
@@ -33,7 +37,7 @@ function withContent(mutate) {
     mutate(path.join(tmp, 'content'));
     return () => loadSite(tmp);
   } finally {
-    setImmediate(() => fs.rmSync(tmp, { recursive: true, force: true }));
+    setImmediate(() => fs.rmSync(base, { recursive: true, force: true }));
   }
 }
 

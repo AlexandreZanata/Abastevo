@@ -7,12 +7,18 @@ import { escapeHtml as esc } from './markdown.mjs';
 import { htmlTitle, relatedGuides } from './site.mjs';
 import { STATES, GITHUB_URL, TOOL_FORMS, TOOL_NAV_LABELS } from './data.mjs';
 
-export const EDITORIAL_TEAM = 'Equipe abastevo';
-const MONTHS = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
+const NATIVE_NAMES = { 'pt-BR': 'Português', en: 'English', es: 'Español' };
 
-export function formatDateLong(iso) {
+/** Looks up a message string and replaces `{placeholders}`. */
+export function t(locale, key, vars = {}) {
+  const value = key.split('.').reduce((node, part) => (node == null ? undefined : node[part]), locale.messages);
+  if (typeof value !== 'string') throw new Error(`missing i18n string "${key}" for ${locale.code}`);
+  return value.replace(/\{(\w+)\}/g, (_, name) => (Object.hasOwn(vars, name) ? String(vars[name]) : `{${name}}`));
+}
+
+export function formatDateLong(iso, locale) {
   const [y, m, d] = iso.split('-').map(Number);
-  return `${d} de ${MONTHS[m - 1]} de ${y}`;
+  return t(locale, 'dateFormat', { day: d, month: locale.messages.months[m - 1], year: y });
 }
 
 export function jsonLdScript(data) {
@@ -23,13 +29,13 @@ export function jsonLdScript(data) {
   return `<script type="application/ld+json">\n${json}\n  </script>`;
 }
 
-function teamNode(origin) {
-  return { '@type': 'Organization', name: EDITORIAL_TEAM, url: `${origin}/sobre/` };
+function teamNode(origin, locale) {
+  return { '@type': 'Organization', name: t(locale, 'chrome.team'), url: `${origin}/sobre/` };
 }
 
-function publisherNode(origin) {
+function publisherNode(origin, locale) {
   return {
-    ...teamNode(origin),
+    ...teamNode(origin, locale),
     logo: { '@type': 'ImageObject', url: `${origin}/assets/brand/icon-512.png` },
   };
 }
@@ -47,29 +53,29 @@ function breadcrumbNode(items, origin, pageUrl) {
   };
 }
 
-function breadcrumbNav(items) {
+function breadcrumbNav(items, locale) {
   const parts = items.map((item, index) => (index === items.length - 1
     ? `<li><span aria-current="page">${esc(item.name)}</span></li>`
     : `<li><a href="${esc(item.route)}">${esc(item.name)}</a></li>`));
-  return `<nav class="breadcrumb-nav" aria-label="Navegação estrutural">\n        <ol class="breadcrumb-list">\n          ${parts.join('\n          ')}\n        </ol>\n      </nav>`;
+  return `<nav class="breadcrumb-nav" aria-label="${esc(t(locale, 'chrome.breadcrumb'))}">\n        <ol class="breadcrumb-list">\n          ${parts.join('\n          ')}\n        </ol>\n      </nav>`;
 }
 
-function headHtml({ origin, route, title, description, ogType = 'website', imageAlt, extraMeta = [], jsonLd, scripts = [], feed = false }) {
+function headHtml({ origin, route, title, description, ogType = 'website', imageAlt, extraMeta = [], jsonLd, scripts = [], feed = false, locale, robots, canonical = true }) {
   const url = `${origin}${route}`;
   const pageTitle = esc(htmlTitle(title));
   const desc = esc(description);
   const alt = esc(`abastevo — ${imageAlt || title}`);
   const image = `${origin}/assets/brand/og-image-v1.png`;
+  const robotsMeta = robots ? `\n  <meta name="robots" content="${robots}">` : '';
   return `<head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">${robotsMeta}
   <title>${pageTitle}</title>
   <meta name="description" content="${desc}">
-  <link rel="canonical" href="${esc(url)}">
-
+${canonical ? `  <link rel="canonical" href="${esc(url)}">\n` : ''}
   <meta property="og:type" content="${ogType}">
   <meta property="og:site_name" content="abastevo">
-  <meta property="og:locale" content="pt_BR">
+  <meta property="og:locale" content="${esc(locale.ogLocale)}">
   <meta property="og:url" content="${esc(url)}">
   <meta property="og:title" content="${pageTitle}">
   <meta property="og:description" content="${desc}">
@@ -99,12 +105,12 @@ ${extraMeta.map((line) => `  ${line}\n`).join('')}
 ${scripts.map((src) => `  <script type="module" src="${src}"></script>\n`).join('')}${feed ? '  <link rel="alternate" type="application/atom+xml" title="Guias do abastevo" href="/guias/feed.xml">\n' : ''}</head>`;
 }
 
-function documentHtml({ head, bodyClass, main }) {
+function documentHtml({ head, bodyClass, main, locale }) {
   return `<!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="${esc(locale.htmlLang)}">
 ${head}
 <body class="${bodyClass}">
-  <a href="#conteudo" class="skip-link">Pular para o conteúdo</a>
+  <a href="#conteudo" class="skip-link">${esc(t(locale, 'chrome.skip'))}</a>
 
   <!-- LEARNING_HEADER -->
 
@@ -129,8 +135,8 @@ function card(entry, kicker) {
 
 // With `site`, each guide card names its category above the title: use it
 // where the list mixes categories, not inside a category's own block.
-function cardList(entries, site) {
-  const kickerFor = (entry) => (site ? site.categories.find((category) => category.slug === entry.category)?.name : undefined);
+function cardList(entries, site, locale) {
+  const kickerFor = (entry) => (entry.category && locale ? t(locale, `categories.${entry.category}.name`) : undefined);
   return `<ul class="topic-cards">\n        ${entries.map((entry) => card(entry, kickerFor(entry))).join('\n        ')}\n      </ul>`;
 }
 
@@ -139,10 +145,10 @@ function linkList(site, routes) {
   return `<ul class="link-list">\n        ${items.join('\n        ')}\n      </ul>`;
 }
 
-function datesLine(entry, { published = true } = {}) {
-  const parts = [`Por <a href="/sobre/">${EDITORIAL_TEAM}</a>`];
-  if (published) parts.push(`Publicado em <time datetime="${entry.datePublished}">${formatDateLong(entry.datePublished)}</time>`);
-  parts.push(`Atualizado em <time datetime="${entry.dateModified}">${formatDateLong(entry.dateModified)}</time>`);
+function datesLine(entry, locale, { published = true } = {}) {
+  const parts = [`${t(locale, 'chrome.by')} <a href="/sobre/">${esc(t(locale, 'chrome.team'))}</a>`];
+  if (published) parts.push(`${t(locale, 'chrome.published')} <time datetime="${entry.datePublished}">${formatDateLong(entry.datePublished, locale)}</time>`);
+  parts.push(`${t(locale, 'chrome.updated')} <time datetime="${entry.dateModified}">${formatDateLong(entry.dateModified, locale)}</time>`);
   return `<p class="article-meta">${parts.join(' · ')}</p>`;
 }
 
@@ -161,20 +167,37 @@ function itemListNode(entries, origin) {
 // ---------------------------------------------------------------------------
 // Guide article.
 
-export function renderGuide(site, guide, origin) {
-  const category = site.categories.find((c) => c.slug === guide.category);
+function localeHubRoute(locale, kind) {
+  return `${locale.prefix}/${locale.segments[kind]}/`;
+}
+
+export function renderGuide(site, guide, origin, locale) {
+  const isLocale = Boolean(guide.locale);
+  const categoryName = t(locale, `categories.${guide.category}.name`);
+  const category = isLocale ? null : site.categories.find((c) => c.slug === guide.category);
   const url = `${origin}${guide.route}`;
-  const crumbs = [
-    { name: 'Início', route: '/' },
-    { name: 'Guias', route: '/guias/' },
-    { name: category.name, route: category.route },
-    { name: guide.title, route: guide.route },
-  ];
+  const crumbs = isLocale
+    ? [
+      { name: t(locale, 'chrome.guides'), route: localeHubRoute(locale, 'guias') },
+      { name: guide.title, route: guide.route },
+    ]
+    : [
+      { name: t(locale, 'chrome.home'), route: '/' },
+      { name: t(locale, 'chrome.guides'), route: '/guias/' },
+      { name: category.name, route: category.route },
+      { name: guide.title, route: guide.route },
+    ];
   const sections = guide.headings.filter((h) => h.level === 2);
   const toc = sections.length >= 3
-    ? `<nav class="article-toc" aria-label="Neste guia">\n        <p class="article-toc-title">Neste guia</p>\n        <ol>${sections.map((h) => `<li><a href="#${h.id}">${h.html}</a></li>`).join('')}</ol>\n      </nav>`
+    ? `<nav class="article-toc" aria-label="${esc(t(locale, 'chrome.toc'))}">\n        <p class="article-toc-title">${esc(t(locale, 'chrome.toc'))}</p>\n        <ol>${sections.map((h) => `<li><a href="#${h.id}">${h.html}</a></li>`).join('')}</ol>\n      </nav>`
     : '';
-  const readAlso = relatedGuides(site, guide);
+  const pool = isLocale ? site.translations.filter((entry) => entry.locale === guide.locale && entry.kind === 'guide') : site.guides;
+  const readAlso = relatedGuides(site, guide, 3, pool);
+  const team = esc(t(locale, 'chrome.team'));
+  const policy = `<a href="/politica-editorial/">${esc(t(locale, 'chrome.policy'))}</a>`;
+  const staleNote = guide.stale
+    ? `<p class="article-stale" role="note">${esc(t(locale, 'chrome.staleNote', { date: formatDateLong(guide.sourceDate, locale) }))}</p>\n        `
+    : '';
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -185,14 +208,14 @@ export function renderGuide(site, guide, origin) {
         description: guide.description,
         url,
         mainEntityOfPage: url,
-        inLanguage: 'pt-BR',
+        inLanguage: locale.htmlLang,
         datePublished: guide.datePublished,
         dateModified: guide.dateModified,
-        articleSection: category.name,
+        articleSection: categoryName,
         keywords: guide.tags.join(', '),
         image: `${origin}/assets/brand/og-image-v1.png`,
-        author: teamNode(origin),
-        publisher: publisherNode(origin),
+        author: teamNode(origin, locale),
+        publisher: publisherNode(origin, locale),
         ...(guide.sources?.length > 0 ? {
           citation: guide.sources.map((source) => ({ '@type': 'CreativeWork', name: source.name, url: source.url })),
         } : {}),
@@ -201,23 +224,23 @@ export function renderGuide(site, guide, origin) {
       breadcrumbNode(crumbs, origin, url),
     ],
   };
-  const main = `${breadcrumbNav(crumbs)}
+  const main = `${breadcrumbNav(crumbs, locale)}
 
       <article class="legal-article guide-article">
-        <p class="article-kicker"><a href="${category.route}">${esc(category.name)}</a></p>
+        <p class="article-kicker">${isLocale ? esc(categoryName) : `<a href="${category.route}">${esc(categoryName)}</a>`}</p>
         <h1>${esc(guide.headline)}</h1>
         <p class="article-lead">${esc(guide.description)}</p>
-        ${datesLine(guide)}
-        <p class="article-editorial">Texto da ${EDITORIAL_TEAM}, revisado por pessoas com base nas fontes citadas. Veja a <a href="/politica-editorial/">política editorial</a> e como pedir uma correção.</p>
+        ${datesLine(guide, locale)}
+        ${staleNote}<p class="article-editorial">${t(locale, 'chrome.editorial', { team, policy })}</p>
         ${toc}
 ${guide.html}
         <section class="article-section" aria-labelledby="continue-explorando">
-          <h2 id="continue-explorando">Continue explorando</h2>
+          <h2 id="continue-explorando">${esc(t(locale, 'chrome.continue'))}</h2>
           ${linkList(site, guide.related)}
         </section>
         <section class="article-section" aria-labelledby="leia-tambem">
-          <h2 id="leia-tambem">Leia também</h2>
-          ${cardList(readAlso, site)}
+          <h2 id="leia-tambem">${esc(t(locale, 'chrome.readAlso'))}</h2>
+          ${cardList(readAlso, site, locale)}
         </section>
       </article>`;
   return documentHtml({
@@ -231,30 +254,42 @@ ${guide.html}
       extraMeta: [
         `<meta property="article:published_time" content="${guide.datePublished}">`,
         `<meta property="article:modified_time" content="${guide.dateModified}">`,
-        `<meta property="article:section" content="${esc(category.name)}">`,
+        `<meta property="article:section" content="${esc(categoryName)}">`,
       ],
       jsonLd,
       feed: true,
+      locale,
+      robots: guide.stale ? 'noindex,follow' : undefined,
+      canonical: !guide.stale,
     }),
     bodyClass: 'landing-home learning-page article-page',
     main,
+    locale,
   });
 }
 
 // ---------------------------------------------------------------------------
 // Hubs.
 
-export function renderGuidesHub(site, origin) {
+export function renderGuidesHub(site, origin, locale) {
+  const isLocale = Boolean(locale.prefix);
   const hub = site.registry.get('/guias/');
-  const url = `${origin}/guias/`;
-  const crumbs = [{ name: 'Início', route: '/' }, { name: 'Guias', route: '/guias/' }];
-  const blocks = site.categories.map((category) => {
+  const url = `${origin}${isLocale ? localeHubRoute(locale, 'guias') : '/guias/'}`;
+  const title = isLocale ? t(locale, 'chrome.guidesHubTitle') : hub.title;
+  const description = isLocale ? t(locale, 'chrome.guidesHubIntro') : hub.description;
+  const entries = isLocale ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'guide') : site.guides;
+  const crumbs = isLocale
+    ? [{ name: t(locale, 'chrome.guides'), route: localeHubRoute(locale, 'guias') }]
+    : [{ name: t(locale, 'chrome.home'), route: '/' }, { name: t(locale, 'chrome.guides'), route: '/guias/' }];
+  const blocks = isLocale ? [] : site.categories.map((category) => {
     const members = site.guides.filter((g) => g.category === category.slug);
     return `<h2 id="${category.slug}">${esc(category.name)}</h2>
         <p>${esc(category.intro)}</p>
         ${cardList(members)}
-        <p><a class="text-link" href="${category.route}">Todos os guias de ${esc(category.name.toLowerCase())}</a></p>`;
+        <p><a class="text-link" href="${category.route}">${t(locale, 'chrome.allGuidesOf', { category: esc(category.name.toLowerCase()) })}</a></p>`;
   });
+  const toolsHub = localeHubRoute(locale, 'ferramentas');
+  const tools = isLocale ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'tool') : site.tools;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -262,43 +297,48 @@ export function renderGuidesHub(site, origin) {
         '@type': 'CollectionPage',
         '@id': `${url}#webpage`,
         url,
-        name: htmlTitle(hub.title),
-        description: hub.description,
-        inLanguage: 'pt-BR',
+        name: htmlTitle(title),
+        description,
+        inLanguage: locale.htmlLang,
         isPartOf: { '@id': `${origin}/#website` },
-        mainEntity: itemListNode(site.guides, origin),
+        mainEntity: itemListNode(entries, origin),
       },
       breadcrumbNode(crumbs, origin, url),
     ],
   };
-  const main = `${breadcrumbNav(crumbs)}
+  const toolLink = `<a href="${toolsHub}">${esc(t(locale, 'chrome.toolsLabel'))}</a>`;
+  const teamLink = `<a href="/sobre/">${esc(t(locale, 'chrome.team'))}</a>`;
+  const pricesLink = `<a href="/precos/">${esc(t(locale, 'chrome.pricesLabel'))}</a>`;
+  const policyLink = `<a href="/politica-editorial/">${esc(t(locale, 'chrome.policy'))}</a>`;
+  const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
-        <h1>Guias Educativos abastevo</h1>
-        <p class="article-lead">${esc(hub.intro)}</p>
-        <nav class="category-nav" aria-label="Categorias de guias">
-          <ul class="chip-list">${site.categories.map((c) => `<li><a href="${c.route}">${esc(c.name)}</a></li>`).join('')}</ul>
-        </nav>
-        ${blocks.join('\n        ')}
-        <h2 id="ferramentas">Calculadoras para fazer a conta</h2>
-        <p>Os guias explicam o raciocínio; as <a href="/ferramentas/">calculadoras de combustível</a> fazem a conta com os seus números, sem cadastro.</p>
-        ${linkList(site, site.tools.map((t) => t.route))}
-        <h2 id="sobre-os-guias">Como os guias são feitos</h2>
-        <p>Os guias são escritos pela <a href="/sobre/">${EDITORIAL_TEAM}</a>, citam a fonte oficial de cada informação e mostram a data da última revisão. Preços citados são sempre exemplos; para valores reais, consulte os <a href="/precos/">preços de referência por estado</a> com a data da coleta. Regras completas na <a href="/politica-editorial/">política editorial</a>.</p>
+        <h1>${esc(isLocale ? title : t(locale, 'chrome.guidesTitle'))}</h1>
+        <p class="article-lead">${esc(isLocale ? description : hub.intro)}</p>
+        ${isLocale ? '' : `<nav class="category-nav" aria-label="${esc(t(locale, 'chrome.categoriesNav'))}">
+          <ul class="chip-list">${site.categories.map((c) => `<li><a href="${c.route}">${esc(t(locale, `categories.${c.slug}.name`))}</a></li>`).join('')}</ul>
+        </nav>`}
+        ${isLocale ? cardList(entries, site, locale) : blocks.join('\n        ')}
+        ${tools.length > 0 ? `<h2 id="ferramentas">${esc(t(locale, 'chrome.calculators'))}</h2>
+        <p>${t(locale, 'chrome.guidesExplain', { tools: toolLink })}</p>
+        ${linkList(site, tools.map((entry) => entry.route))}` : ''}
+        <h2 id="sobre-os-guias">${esc(t(locale, 'chrome.howGuides'))}</h2>
+        <p>${t(locale, 'chrome.howGuidesBody', { team: teamLink, prices: pricesLink, policy: policyLink })}</p>
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: '/guias/', title: hub.title, description: hub.description, imageAlt: hub.title, jsonLd, feed: true }),
+    head: headHtml({ origin, route: isLocale ? url.slice(origin.length) : '/guias/', title, description, imageAlt: title, jsonLd, feed: true, locale }),
     bodyClass: 'landing-home learning-page learning-hub',
     main,
+    locale,
   });
 }
 
-export function renderCategory(site, category, origin) {
+export function renderCategory(site, category, origin, locale) {
   const entry = site.registry.get(category.route);
   const url = `${origin}${category.route}`;
   const members = site.guides.filter((g) => g.category === category.slug);
   const crumbs = [
-    { name: 'Início', route: '/' },
-    { name: 'Guias', route: '/guias/' },
+    { name: t(locale, 'chrome.home'), route: '/' },
+    { name: t(locale, 'chrome.guides'), route: '/guias/' },
     { name: category.name, route: category.route },
   ];
   const others = site.categories.filter((c) => c.slug !== category.slug);
@@ -311,34 +351,45 @@ export function renderCategory(site, category, origin) {
         url,
         name: htmlTitle(entry.title),
         description: entry.description,
-        inLanguage: 'pt-BR',
+        inLanguage: locale.htmlLang,
         isPartOf: { '@id': `${origin}/#website` },
         mainEntity: itemListNode(members, origin),
       },
       breadcrumbNode(crumbs, origin, url),
     ],
   };
-  const main = `${breadcrumbNav(crumbs)}
+  const guidesLink = `<a href="/guias/">${esc(t(locale, 'chrome.guidesLabel'))}</a>`;
+  const toolsLink = `<a href="/ferramentas/">${esc(t(locale, 'chrome.calculatorsShort'))}</a>`;
+  const pricesLink = `<a href="/precos/">${esc(t(locale, 'chrome.pricesLabel'))}</a>`;
+  const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
         <h1>${esc(entry.title)}</h1>
         <p class="article-lead">${esc(category.intro)}</p>
-        <h2 id="artigos">Artigos</h2>
+        <h2 id="artigos">${esc(t(locale, 'chrome.articles'))}</h2>
         ${cardList(members)}
-        <h2 id="outras-categorias">Outras categorias</h2>
-        <ul class="chip-list">${others.map((c) => `<li><a href="${c.route}">${esc(c.name)}</a></li>`).join('')}</ul>
-        <p>Veja todos os <a href="/guias/">guias sobre combustíveis</a>, use as <a href="/ferramentas/">calculadoras</a> ou consulte os <a href="/precos/">preços de referência por estado</a>.</p>
+        <h2 id="outras-categorias">${esc(t(locale, 'chrome.otherCategories'))}</h2>
+        <ul class="chip-list">${others.map((c) => `<li><a href="${c.route}">${esc(t(locale, `categories.${c.slug}.name`))}</a></li>`).join('')}</ul>
+        <p>${t(locale, 'chrome.categoryFooter', { guides: guidesLink, tools: toolsLink, prices: pricesLink })}</p>
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: category.route, title: entry.title, description: entry.description, imageAlt: entry.title, jsonLd }),
+    head: headHtml({ origin, route: category.route, title: entry.title, description: entry.description, imageAlt: entry.title, jsonLd, locale }),
     bodyClass: 'landing-home learning-page learning-hub',
     main,
+    locale,
   });
 }
 
-export function renderToolsHub(site, origin) {
+export function renderToolsHub(site, origin, locale) {
+  const isLocale = Boolean(locale.prefix);
   const hub = site.registry.get('/ferramentas/');
-  const url = `${origin}/ferramentas/`;
-  const crumbs = [{ name: 'Início', route: '/' }, { name: 'Ferramentas', route: '/ferramentas/' }];
+  const route = isLocale ? localeHubRoute(locale, 'ferramentas') : '/ferramentas/';
+  const url = `${origin}${route}`;
+  const title = isLocale ? t(locale, 'chrome.toolsHubTitle') : hub.title;
+  const description = isLocale ? t(locale, 'chrome.toolsHubIntro') : hub.description;
+  const entries = isLocale ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'tool') : site.tools;
+  const crumbs = isLocale
+    ? [{ name: t(locale, 'chrome.tools'), route }]
+    : [{ name: t(locale, 'chrome.home'), route: '/' }, { name: t(locale, 'chrome.tools'), route: '/ferramentas/' }];
   const jsonLd = {
     '@context': 'https://schema.org',
     '@graph': [
@@ -346,42 +397,56 @@ export function renderToolsHub(site, origin) {
         '@type': 'CollectionPage',
         '@id': `${url}#webpage`,
         url,
-        name: htmlTitle(hub.title),
-        description: hub.description,
-        inLanguage: 'pt-BR',
+        name: htmlTitle(title),
+        description,
+        inLanguage: locale.htmlLang,
         isPartOf: { '@id': `${origin}/#website` },
-        mainEntity: itemListNode(site.tools, origin),
+        mainEntity: itemListNode(entries, origin),
       },
       breadcrumbNode(crumbs, origin, url),
     ],
   };
-  const guideRoutes = ['/guias/etanol-ou-gasolina/', '/guias/como-calcular-consumo-medio/', '/guias/como-economizar-combustivel/']
-    .filter((route) => site.registry.has(route));
-  const main = `${breadcrumbNav(crumbs)}
+  const guideRoutes = isLocale
+    ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'guide').slice(0, 3).map((entry) => entry.route)
+    : ['/guias/etanol-ou-gasolina/', '/guias/como-calcular-consumo-medio/', '/guias/como-economizar-combustivel/']
+      .filter((entryRoute) => site.registry.has(entryRoute));
+  const pricesLink = `<a href="/precos/">${esc(t(locale, 'chrome.pricesAnpLabel'))}</a>`;
+  const methodologyLink = `<a href="/metodologia/">${esc(t(locale, 'chrome.methodology'))}</a>`;
+  const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
-        <h1>Calculadoras de combustível</h1>
-        <p class="article-lead">${esc(hub.intro)}</p>
-        <h2 id="calculadoras">Escolha uma calculadora</h2>
-        ${cardList(site.tools)}
-        <h2 id="como-funcionam">Como as calculadoras funcionam</h2>
-        <p>Cada página mostra a fórmula usada e um exemplo resolvido passo a passo, então dá para conferir a conta à mão, inclusive com o JavaScript desligado. A versão interativa calcula no seu navegador: os valores digitados não são enviados, salvos nem associados a você.</p>
-        <p>Os resultados são estimativas. Consumo real muda com trânsito, carga, relevo, calibragem e jeito de dirigir, e o preço muda de posto para posto e de semana para semana.</p>
-        <h2 id="precos-de-referencia">Onde conseguir preços para a conta</h2>
-        <p>Use o preço que você viu na bomba ou consulte os <a href="/precos/">preços de referência da ANP por estado e cidade</a>, sempre com a data da coleta. Entenda o que esses números significam na <a href="/metodologia/">metodologia</a>.</p>
-        <h2 id="guias-relacionados">Guias relacionados</h2>
-        ${linkList(site, guideRoutes)}
+        <h1>${esc(isLocale ? title : t(locale, 'chrome.calculatorsTitle'))}</h1>
+        <p class="article-lead">${esc(isLocale ? description : hub.intro)}</p>
+        <h2 id="calculadoras">${esc(t(locale, 'chrome.chooseCalculator'))}</h2>
+        ${cardList(entries, site, locale)}
+        <h2 id="como-funcionam">${esc(t(locale, 'chrome.howCalculators'))}</h2>
+        <p>${esc(t(locale, 'chrome.howCalculatorsBody'))}</p>
+        <p>${esc(t(locale, 'chrome.estimates'))}</p>
+        <h2 id="precos-de-referencia">${esc(t(locale, 'chrome.wherePrices'))}</h2>
+        <p>${t(locale, 'chrome.wherePricesBody', { prices: pricesLink, methodology: methodologyLink })}</p>
+        ${guideRoutes.length > 0 ? `<h2 id="guias-relacionados">${esc(t(locale, 'chrome.relatedGuides'))}</h2>
+        ${linkList(site, guideRoutes)}` : ''}
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: '/ferramentas/', title: hub.title, description: hub.description, imageAlt: hub.title, jsonLd }),
+    head: headHtml({ origin, route, title, description, imageAlt: title, jsonLd, locale }),
     bodyClass: 'landing-home learning-page learning-hub',
     main,
+    locale,
   });
 }
 
 // ---------------------------------------------------------------------------
 // Calculator page.
 
-function toolField(field) {
+function toolField(field, locale, sourceSlug) {
+  const localized = Boolean(locale.prefix) ? locale.messages.tools[sourceSlug]?.fields?.[field.name] : null;
+  if (localized) {
+    field = {
+      ...field,
+      label: localized.label ?? field.label,
+      hint: localized.hint ?? field.hint,
+      options: field.options ? field.options.map(([value, label]) => [value, localized.options?.[value] ?? label]) : undefined,
+    };
+  }
   const id = `campo-${field.name.replace(/_/g, '-')}`;
   const errorId = `${id}-erro`;
   const error = `<p class="tool-error" id="${errorId}" data-error-for="${field.name}" hidden></p>`;
@@ -405,15 +470,25 @@ function toolField(field) {
             </div>`;
 }
 
-export function renderTool(site, tool, origin) {
+export function renderTool(site, tool, origin, locale) {
+  const isLocale = Boolean(locale.prefix);
+  const sourceSlug = tool.formSlug || tool.slug;
+  const toolsHub = localeHubRoute(locale, 'ferramentas');
   const url = `${origin}${tool.route}`;
-  const crumbs = [
-    { name: 'Início', route: '/' },
-    { name: 'Ferramentas', route: '/ferramentas/' },
-    { name: tool.title, route: tool.route },
-  ];
-  const fields = TOOL_FORMS[tool.slug];
-  const others = site.tools.filter((t) => t.route !== tool.route);
+  const crumbs = isLocale
+    ? [
+      { name: t(locale, 'chrome.tools'), route: toolsHub },
+      { name: tool.title, route: tool.route },
+    ]
+    : [
+      { name: t(locale, 'chrome.home'), route: '/' },
+      { name: t(locale, 'chrome.tools'), route: '/ferramentas/' },
+      { name: tool.title, route: tool.route },
+    ];
+  const fields = TOOL_FORMS[sourceSlug];
+  const others = isLocale
+    ? site.translations.filter((entry) => entry.locale === locale.code && entry.kind === 'tool' && entry.route !== tool.route)
+    : site.tools.filter((entry) => entry.route !== tool.route);
   const relatedGuidesList = tool.related.filter((route) => site.registry.get(route)?.kind?.endsWith('guide'));
   const relatedOther = tool.related.filter((route) => !relatedGuidesList.includes(route));
   const jsonLd = {
@@ -426,61 +501,66 @@ export function renderTool(site, tool, origin) {
         url,
         description: tool.description,
         applicationCategory: 'UtilitiesApplication',
-        operatingSystem: 'Qualquer navegador moderno',
-        browserRequirements: 'O cálculo interativo usa JavaScript; a fórmula e o exemplo funcionam sem ele.',
-        inLanguage: 'pt-BR',
+        operatingSystem: t(locale, 'chrome.browserOs'),
+        browserRequirements: t(locale, 'chrome.browserRequirements'),
+        inLanguage: locale.htmlLang,
         isAccessibleForFree: true,
         offers: { '@type': 'Offer', price: '0', priceCurrency: 'BRL' },
         datePublished: tool.datePublished,
         dateModified: tool.dateModified,
-        publisher: publisherNode(origin),
+        publisher: publisherNode(origin, locale),
         isPartOf: { '@id': `${origin}/#website` },
       },
       breadcrumbNode(crumbs, origin, url),
     ],
   };
-  const main = `${breadcrumbNav(crumbs)}
+  const pricesLink = `<a href="/precos/">${esc(t(locale, 'chrome.pricesAnpLabel'))}</a>`;
+  const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article tool-article">
         <h1>${esc(tool.headline)}</h1>
         <p class="article-lead">${esc(tool.description)}</p>
         <div class="tool-panel" data-tool-panel>
-          <p class="tool-fallback" data-tool-fallback>A calculadora interativa precisa de JavaScript. Sem ele, a conta continua simples: siga a fórmula e o exemplo resolvido logo abaixo.</p>
-          <form class="tool-form" data-tool="${esc(tool.slug)}" novalidate hidden>
-            ${fields.map(toolField).join('\n            ')}
-            <div class="tool-actions"><button type="submit" class="btn-dark">Calcular</button></div>
+          <p class="tool-fallback" data-tool-fallback>${esc(t(locale, 'chrome.toolFallback'))}</p>
+          <form class="tool-form" data-tool="${esc(sourceSlug)}" novalidate hidden>
+            ${fields.map((field) => toolField(field, locale, sourceSlug)).join('\n            ')}
+            <div class="tool-actions"><button type="submit" class="btn-dark">${esc(t(locale, 'chrome.calculate'))}</button></div>
           </form>
           <div class="tool-result" data-tool-result role="status" aria-live="polite"></div>
-          <p class="tool-privacy">A conta é feita no seu navegador. Nada do que você digita é enviado ou salvo.</p>
+          <p class="tool-privacy">${esc(t(locale, 'chrome.toolPrivacy'))}</p>
         </div>
-        ${datesLine(tool, { published: false })}
+        ${datesLine(tool, locale, { published: false })}
 ${tool.html}
         <section class="article-section" aria-labelledby="precos-de-referencia">
-          <h2 id="precos-de-referencia">Preços de referência para a conta</h2>
-          <p>Use o preço que você viu na bomba ou consulte os <a href="/precos/">preços de referência da ANP por estado e cidade</a>, com a data da coleta. Preço de referência é amostra da semana pesquisada, não garantia do valor no posto hoje.</p>
+          <h2 id="precos-de-referencia">${esc(t(locale, 'chrome.toolPrices'))}</h2>
+          <p>${t(locale, 'chrome.toolPricesBody', { prices: pricesLink })}</p>
         </section>
         <section class="article-section" aria-labelledby="outras-ferramentas">
-          <h2 id="outras-ferramentas">Outras ferramentas</h2>
-          ${linkList(site, others.map((t) => t.route))}
+          <h2 id="outras-ferramentas">${esc(t(locale, 'chrome.otherTools'))}</h2>
+          ${linkList(site, others.map((entry) => entry.route))}
         </section>
         <section class="article-section" aria-labelledby="guias-relacionados">
-          <h2 id="guias-relacionados">Guias relacionados</h2>
-          ${cardList(relatedGuidesList.map((route) => site.registry.get(route)), site)}
+          <h2 id="guias-relacionados">${esc(t(locale, 'chrome.relatedGuides'))}</h2>
+          ${cardList(relatedGuidesList.map((route) => site.registry.get(route)), site, locale)}
           ${relatedOther.length > 0 ? linkList(site, relatedOther) : ''}
         </section>
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: tool.route, title: tool.title, description: tool.description, imageAlt: tool.headline, jsonLd, scripts: ['/assets/tools.js'] }),
+    head: headHtml({ origin, route: tool.route, title: tool.title, description: tool.description, imageAlt: tool.headline, jsonLd, scripts: ['/assets/tools.js'], locale }),
     bodyClass: 'landing-home learning-page tool-page',
     main,
+    locale,
   });
 }
 
 // ---------------------------------------------------------------------------
 // E-E-A-T pages (/sobre/, /politica-editorial/).
 
-export function renderPage(site, page, origin) {
+export function renderPage(site, page, origin, locale) {
   const url = `${origin}${page.route}`;
-  const crumbs = [{ name: 'Início', route: '/' }, { name: page.title, route: page.route }];
+  const isLocale = Boolean(locale.prefix);
+  const crumbs = isLocale
+    ? [{ name: page.title, route: page.route }]
+    : [{ name: t(locale, 'chrome.home'), route: '/' }, { name: page.title, route: page.route }];
   const graph = [
     {
       '@type': page.schemaType,
@@ -488,11 +568,11 @@ export function renderPage(site, page, origin) {
       url,
       name: htmlTitle(page.title),
       description: page.description,
-      inLanguage: 'pt-BR',
+      inLanguage: locale.htmlLang,
       dateModified: page.dateModified,
       isPartOf: { '@id': `${origin}/#website` },
       about: { '@id': `${origin}/#organization` },
-      publisher: publisherNode(origin),
+      publisher: publisherNode(origin, locale),
     },
     breadcrumbNode(crumbs, origin, url),
   ];
@@ -500,78 +580,142 @@ export function renderPage(site, page, origin) {
     graph.push({
       '@type': 'Organization',
       '@id': `${origin}/sobre/#equipe`,
-      name: EDITORIAL_TEAM,
+      name: t(locale, 'chrome.team'),
       url: `${origin}/sobre/`,
       parentOrganization: { '@id': `${origin}/#organization` },
       publishingPrinciples: `${origin}/politica-editorial/`,
       sameAs: [GITHUB_URL],
     });
   }
-  const main = `${breadcrumbNav(crumbs)}
+  const updated = `<time datetime="${page.dateModified}">${formatDateLong(page.dateModified, locale)}</time>`;
+  const main = `${breadcrumbNav(crumbs, locale)}
       <article class="legal-article">
         <h1>${esc(page.headline)}</h1>
         <p class="article-lead">${esc(page.description)}</p>
-        <p class="article-meta">Atualizado em <time datetime="${page.dateModified}">${formatDateLong(page.dateModified)}</time> · ${EDITORIAL_TEAM}</p>
+        <p class="article-meta">${t(locale, 'chrome.pageUpdated', { date: updated, team: esc(t(locale, 'chrome.team')) })}</p>
 ${page.html}
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: page.route, title: page.title, description: page.description, imageAlt: page.headline, jsonLd: { '@context': 'https://schema.org', '@graph': graph } }),
+    head: headHtml({ origin, route: page.route, title: page.title, description: page.description, imageAlt: page.headline, jsonLd: { '@context': 'https://schema.org', '@graph': graph }, locale }),
     bodyClass: 'landing-home legal-document',
     main,
+    locale,
   });
 }
 
 // ---------------------------------------------------------------------------
 // Shared footer columns and home sections.
 
-export function renderFooterColumns(site) {
+export function renderFooterColumns(site, locale) {
   const states = STATES.map((s) => `<li><a href="/precos/${s.uf}/">${esc(s.name)}</a></li>`).join('');
-  const categories = site.categories.map((c) => `<a href="${c.route}">${esc(c.name)}</a>`).join('');
-  const tools = site.tools.map((t) => `<a href="${t.route}">${esc(TOOL_NAV_LABELS[t.slug] || t.title)}</a>`).join('');
+  const categories = site.categories.map((c) => `<a href="${c.route}">${esc(t(locale, `categories.${c.slug}.name`))}</a>`).join('');
+  const tools = site.tools.map((tool) => `<a href="${tool.route}">${esc(TOOL_NAV_LABELS[tool.slug] || tool.title)}</a>`).join('');
   return `<div class="footer-cols footer-cols-hubs">
-        <nav aria-label="Preços" class="footer-col-precos"><h2>Preços</h2><a href="/precos/">Preços por estado</a><a href="/consultar/">Consultar dados</a><a href="/fiscalizacao/">Fiscalização</a><a href="/metodologia/">Metodologia</a><ul class="footer-states">${states}</ul></nav>
-        <nav aria-label="Guias"><h2>Guias</h2><a href="/guias/">Todos os guias</a>${categories}<a href="/como-usar/">Como usar o app</a><a href="#aplicativo">Aplicativo</a></nav>
-        <nav aria-label="Ferramentas"><h2>Ferramentas</h2><a href="/ferramentas/">Todas as ferramentas</a>${tools}</nav>
-        <nav aria-label="Projeto"><h2>Projeto</h2><a href="/sobre/">Sobre o abastevo</a><a href="/politica-editorial/">Política editorial</a><a href="/contribuidores/">Contribuidores</a><a href="${GITHUB_URL}">GitHub</a><a href="${GITHUB_URL}/issues">Contato</a><a href="${GITHUB_URL}/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
-        <nav aria-label="Privacidade"><h2>Privacidade</h2><a href="/privacidade/">Privacidade</a><a href="/excluir-conta/">Excluir conta</a><a href="/termos/">Termos</a></nav>
+        <nav aria-label="${esc(t(locale, 'chrome.prices'))}" class="footer-col-precos"><h2>${esc(t(locale, 'chrome.prices'))}</h2><a href="/precos/">${esc(t(locale, 'chrome.footerPrices'))}</a><a href="/consultar/">${esc(t(locale, 'chrome.footerConsult'))}</a><a href="/fiscalizacao/">${esc(t(locale, 'chrome.footerEnforcement'))}</a><a href="/metodologia/">${esc(t(locale, 'chrome.footerMethodology'))}</a><ul class="footer-states">${states}</ul></nav>
+        <nav aria-label="${esc(t(locale, 'chrome.guides'))}"><h2>${esc(t(locale, 'chrome.guides'))}</h2><a href="/guias/">${esc(t(locale, 'chrome.footerAllGuides'))}</a>${categories}<a href="/como-usar/">${esc(t(locale, 'chrome.footerHowTo'))}</a><a href="#aplicativo">${esc(t(locale, 'chrome.footerApp'))}</a></nav>
+        <nav aria-label="${esc(t(locale, 'chrome.tools'))}"><h2>${esc(t(locale, 'chrome.tools'))}</h2><a href="/ferramentas/">${esc(t(locale, 'chrome.footerAllTools'))}</a>${tools}</nav>
+        <nav aria-label="${esc(t(locale, 'chrome.project'))}"><h2>${esc(t(locale, 'chrome.project'))}</h2><a href="/sobre/">${esc(t(locale, 'chrome.footerAbout'))}</a><a href="/politica-editorial/">${esc(t(locale, 'chrome.footerEditorial'))}</a><a href="/contribuidores/">${esc(t(locale, 'chrome.footerContributors'))}</a><a href="${GITHUB_URL}">${esc(t(locale, 'chrome.github'))}</a><a href="${GITHUB_URL}/issues">${esc(t(locale, 'chrome.footerContact'))}</a><a href="${GITHUB_URL}/blob/main/TRADEMARKS.md">TRADEMARKS</a></nav>
+        <nav aria-label="${esc(t(locale, 'chrome.privacy'))}"><h2>${esc(t(locale, 'chrome.privacy'))}</h2><a href="/privacidade/">${esc(t(locale, 'chrome.footerPrivacy'))}</a><a href="/excluir-conta/">${esc(t(locale, 'chrome.footerDelete'))}</a><a href="/termos/">${esc(t(locale, 'chrome.footerTerms'))}</a></nav>
       </div>`;
 }
 
-export function renderHomeStates() {
+export function renderHomeStates(locale) {
   const items = STATES.map((s) => `<li><a href="/precos/${s.uf}/"><span class="state-uf" aria-hidden="true">${s.uf.toUpperCase()}</span><span class="state-name">${esc(s.name)}</span></a></li>`);
   return `<section id="precos-por-estado" class="block home-states">
       <div class="shell">
         <div class="block-head">
-          <h2 class="h2">Preços por estado</h2>
+          <h2 class="h2">${esc(t(locale, 'chrome.homeStatesTitle'))}</h2>
         </div>
         <ul class="state-grid">
           ${items.join('\n          ')}
         </ul>
-        <div class="lp-actions"><a class="btn-dark" href="/precos/">Ver preços por estado</a><a class="text-link" href="/metodologia/">Como os preços são coletados</a></div>
+        <div class="lp-actions"><a class="btn-dark" href="/precos/">${esc(t(locale, 'chrome.homeSeePrices'))}</a><a class="text-link" href="/metodologia/">${esc(t(locale, 'chrome.homeHowCollected'))}</a></div>
       </div>
     </section>`;
 }
 
-export function renderHomeGuides(site) {
+export function renderHomeGuides(site, locale) {
   return `<section id="guias-populares" class="block home-topics">
       <div class="shell">
         <div class="block-head">
-          <h2 class="h2">Guias populares</h2>
+          <h2 class="h2">${esc(t(locale, 'chrome.homeGuides'))}</h2>
         </div>
-        ${cardList(site.popularGuides, site)}
-        <div class="lp-actions"><a class="text-link" href="/guias/">Ver todos os guias</a></div>
+        ${cardList(site.popularGuides, site, locale)}
+        <div class="lp-actions"><a class="text-link" href="/guias/">${esc(t(locale, 'chrome.homeAllGuides'))}</a></div>
       </div>
     </section>`;
 }
 
-export function renderHomeTools(site) {
+export function renderHomeTools(site, locale) {
   return `<section id="ferramentas" class="block home-topics">
       <div class="shell">
         <div class="block-head">
-          <h2 class="h2">Ferramentas</h2>
+          <h2 class="h2">${esc(t(locale, 'chrome.homeTools'))}</h2>
         </div>
-        ${cardList(site.tools)}
-        <div class="lp-actions"><a class="text-link" href="/ferramentas/">Ver todas as ferramentas</a></div>
+        ${cardList(site.tools, site, locale)}
+        <div class="lp-actions"><a class="text-link" href="/ferramentas/">${esc(t(locale, 'chrome.homeAllTools'))}</a></div>
       </div>
     </section>`;
+}
+
+// ---------------------------------------------------------------------------
+// Localized chrome and the language switcher.
+
+export function renderLocalizedHeader(site, locale) {
+  const guides = localeHubRoute(locale, 'guias');
+  const tools = localeHubRoute(locale, 'ferramentas');
+  const nav = [
+    site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
+    site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
+  ].filter(Boolean).join('\n        ');
+  return `<header class="topbar">
+    <div class="shell topbar-inner">
+      <a href="/" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
+        <img src="/assets/brand/abastevo-logo.svg" alt="" width="28" height="28">
+        <img src="/assets/brand/abastevo-wordmark.svg" alt="abastevo" class="brand-word" width="96" height="12">
+      </a>
+      <nav class="topnav" aria-label="${esc(t(locale, 'chrome.mainNav'))}">
+        ${nav}
+      </nav>
+      <div class="topbar-actions">
+        <a class="topbar-link" href="${GITHUB_URL}" target="_blank" rel="noopener" aria-label="${esc(t(locale, 'chrome.githubLabel'))}">${esc(t(locale, 'chrome.github'))}</a>
+        <a class="topbar-link" href="/" lang="pt-BR" hreflang="pt-BR">${NATIVE_NAMES['pt-BR']}</a>
+        <a class="topbar-link" href="/privacidade/" lang="pt-BR" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>
+      </div>
+    </div>
+  </header>`;
+}
+
+export function renderLocalizedFooter(site, locale) {
+  const guides = localeHubRoute(locale, 'guias');
+  const tools = localeHubRoute(locale, 'ferramentas');
+  const nav = [
+    site.registry.has(guides) ? `<a href="${guides}">${esc(t(locale, 'chrome.guides'))}</a>` : '',
+    site.registry.has(tools) ? `<a href="${tools}">${esc(t(locale, 'chrome.tools'))}</a>` : '',
+    `<a href="/" lang="pt-BR" hreflang="pt-BR">${NATIVE_NAMES['pt-BR']}</a>`,
+    `<a href="/privacidade/" lang="pt-BR" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>`,
+    `<a href="${GITHUB_URL}">${esc(t(locale, 'chrome.github'))}</a>`,
+  ].filter(Boolean).join('\n        ');
+  return `<footer class="footer">
+    <div class="shell">
+      <div class="footer-top">
+        <a href="/" class="brand" aria-label="${esc(t(locale, 'chrome.brandHome'))}">
+          <img src="/assets/brand/abastevo-logo.svg" alt="" width="28" height="28">
+          <img src="/assets/brand/abastevo-wordmark.svg" alt="abastevo" class="brand-word" width="96" height="12">
+        </a>
+        <p class="footer-tagline">${esc(t(locale, 'chrome.footerTagline'))}</p>
+      </div>
+      <nav class="footer-nav" aria-label="${esc(t(locale, 'chrome.mainNav'))}">
+        ${nav}
+      </nav>
+    </div>
+  </footer>`;
+}
+
+/** Plain links to the other group members; the build inserts it before the footer. */
+export function renderLanguageSwitch(members, currentRoute, locale) {
+  const others = members.filter((member) => member.route !== currentRoute);
+  if (others.length === 0) return '';
+  const links = others.map((member) => `<a href="${esc(member.route)}" lang="${esc(member.htmlLang)}" hreflang="${esc(member.hreflang)}">${esc(member.languageName)}</a>`);
+  return `<nav class="lang-switch" aria-label="${esc(t(locale, 'chrome.languages'))}">\n        ${links.join('\n        ')}\n      </nav>\n      `;
 }

@@ -16,6 +16,9 @@ import {
   renderHomeStates,
   renderHomeGuides,
   renderHomeTools,
+  renderLocalizedHeader,
+  renderLocalizedFooter,
+  renderLanguageSwitch,
 } from './content/layouts.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -129,7 +132,11 @@ export function build(options = {}) {
   const staticDir = path.join(root, 'static');
 
   // Validate the content manifest and Markdown sources before touching outDir.
-  const site = loadSite(root);
+  const site = loadSite(root, {
+    enableLocales: options.enableLocales,
+    translationsDir: options.translationsDir,
+  });
+  const defaultLocale = site.defaultLocale;
 
   // 1. Compile TypeScript to temp directory
   const tmpDir = path.join(root, '.build-tmp-' + crypto.randomBytes(4).toString('hex'));
@@ -316,10 +323,10 @@ export function build(options = {}) {
     // The home owns the navigation and footer for every landing page. Its
     // footer columns and hub sections are generated from the manifest.
     const homeMarkers = {
-      '<!-- FOOTER_COLUMNS -->': renderFooterColumns(site),
-      '<!-- HOME_STATES -->': renderHomeStates(),
-      '<!-- HOME_GUIDES -->': renderHomeGuides(site),
-      '<!-- HOME_TOOLS -->': renderHomeTools(site),
+      '<!-- FOOTER_COLUMNS -->': renderFooterColumns(site, defaultLocale),
+      '<!-- HOME_STATES -->': renderHomeStates(defaultLocale),
+      '<!-- HOME_GUIDES -->': renderHomeGuides(site, defaultLocale),
+      '<!-- HOME_TOOLS -->': renderHomeTools(site, defaultLocale),
     };
     let homeHtml = readStatic('index.html');
     for (const [marker, markup] of Object.entries(homeMarkers)) {
@@ -338,34 +345,47 @@ export function build(options = {}) {
 
     const pages = [];
     for (const entry of site.registry.values()) {
+      const locale = entry.locale ? site.localeByCode.get(entry.locale) : defaultLocale;
       let html;
       if (entry.kind === 'static' || entry.kind === 'html-guide') {
         html = entry.chrome === 'home' ? homeHtml : readStatic(entry.source);
       } else if (entry.kind === 'guide') {
-        html = renderGuide(site, entry, origin);
+        html = renderGuide(site, entry, origin, locale);
       } else if (entry.kind === 'category') {
-        html = renderCategory(site, site.categories.find((c) => c.route === entry.route), origin);
+        html = renderCategory(site, site.categories.find((c) => c.route === entry.route), origin, locale);
       } else if (entry.kind === 'guides-hub') {
-        html = renderGuidesHub(site, origin);
+        html = renderGuidesHub(site, origin, locale);
       } else if (entry.kind === 'tools-hub') {
-        html = renderToolsHub(site, origin);
+        html = renderToolsHub(site, origin, locale);
       } else if (entry.kind === 'tool') {
-        html = renderTool(site, entry, origin);
+        html = renderTool(site, entry, origin, locale);
       } else if (entry.kind === 'page') {
-        html = renderPage(site, entry, origin);
+        html = renderPage(site, entry, origin, locale);
       } else {
         throw new Error(`Unknown page kind for ${entry.route}: ${entry.kind}`);
       }
       // Shared chrome markers: generated pages and "shared" pages take both,
-      // "footer" pages keep their own header and take the shared footer.
+      // "footer" pages keep their own header and take the shared footer, and
+      // locale pages take the localized chrome.
       const chrome = entry.chrome || 'shared';
+      const members = site.hreflangMembers(entry.route);
+      const languageSwitch = members.length >= 2 ? renderLanguageSwitch(members, entry.route, locale) : '';
       if (chrome !== 'home') {
         const header = ['<!-- SITE_HEADER -->', '<!-- LEARNING_HEADER -->'].find((m) => html.includes(m));
         const footer = ['<!-- SITE_FOOTER -->', '<!-- LEARNING_FOOTER -->'].find((m) => html.includes(m));
-        if (chrome === 'shared' && !header) throw new Error(`${entry.outputRel}: missing shared header marker`);
+        if ((chrome === 'shared' || chrome === 'locale') && !header) throw new Error(`${entry.outputRel}: missing shared header marker`);
         if (!footer) throw new Error(`${entry.outputRel}: missing shared footer marker`);
-        if (header) html = html.replace(header, sharedHeader);
-        html = html.replace(footer, sharedFooter);
+        if (header) html = html.replace(header, chrome === 'locale' ? renderLocalizedHeader(site, locale) : sharedHeader);
+        html = html.replace(footer, `${languageSwitch}${chrome === 'locale' ? renderLocalizedFooter(site, locale) : sharedFooter}`);
+      }
+      // SEO-26: reciprocal hreflang for indexable members of this group.
+      if (members.length >= 2) {
+        const lines = members.map((member) => `  <link rel="alternate" hreflang="${member.hreflang}" href="${origin}${member.route}">`);
+        lines.push(`  <link rel="alternate" hreflang="x-default" href="${origin}${members[0].route}">`);
+        for (const member of members) {
+          if (member.route !== entry.route) lines.push(`  <meta property="og:locale:alternate" content="${member.ogLocale}">`);
+        }
+        html = html.replace('</head>', `${lines.join('\n')}\n</head>`);
       }
       pages.push({ srcRel: entry.source || entry.outputRel, destRel: entry.outputRel, indexable: entry.indexable, html });
     }
