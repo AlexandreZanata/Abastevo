@@ -190,3 +190,34 @@ test('multilingual check: broken hreflang and lang fail the dist check', () => {
     fs.rmSync(outDir, { recursive: true, force: true });
   }
 });
+
+test('draft translations: validated in content/translations, never emitted', () => {
+  const outDir = path.join(os.tmpdir(), 'abastevo-i18n-drafts-' + Math.random().toString(36).slice(2, 8));
+  const drafts = [
+    'content/translations/en/guias/ethanol-or-gasoline.md',
+    'content/translations/en/ferramentas/ethanol-or-gasoline-calculator.md',
+    'content/translations/es/guias/etanol-o-gasolina.md',
+    'content/translations/es/ferramentas/calculadora-etanol-o-gasolina.md',
+  ];
+  try {
+    for (const rel of drafts) {
+      const raw = fs.readFileSync(path.join(root, rel), 'utf8');
+      assert.match(raw, /^translationStatus: draft$/m, `${rel} stays a draft`);
+      assert.match(raw, /^translationOf: \/(guias|ferramentas)\//m, `${rel} names its pt-BR source`);
+      assert.match(raw, /^sourceRevision: \d{4}-\d{2}-\d{2}$/m, `${rel} records its source revision`);
+    }
+    buildSite({
+      projectRoot: root,
+      outDir,
+      canonicalOrigin: origin,
+      storeState: 'prelaunch',
+      enableLocales: ['en', 'es'],
+    });
+    assert.ok(!fs.existsSync(path.join(outDir, 'en')), 'no English output from drafts');
+    assert.ok(!fs.existsSync(path.join(outDir, 'es')), 'no Spanish output from drafts');
+    assert.equal((read(outDir, 'sitemap.xml').match(/<url>/g) || []).length, 49, 'sitemap keeps the pt-BR URL count');
+    assert.ok(!read(outDir, 'sitemap.xml').includes('/en/') && !read(outDir, 'sitemap.xml').includes('/es/'));
+  } finally {
+    fs.rmSync(outDir, { recursive: true, force: true });
+  }
+});
