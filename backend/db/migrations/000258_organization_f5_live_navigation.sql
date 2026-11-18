@@ -92,17 +92,26 @@ END $$;
 CREATE TRIGGER org_tracking_live_position_guard BEFORE INSERT OR UPDATE ON org_tracking_live_positions FOR EACH ROW EXECUTE FUNCTION org_tracking_live_position_guard();
 
 -- Keep live position expiration aligned when trips finish or cancel.
-CREATE FUNCTION org_tracking_live_position_expire() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
+CREATE FUNCTION org_tracking_live_position_expire() RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path=pg_catalog AS $$
+DECLARE should_expire BOOLEAN=false;
 BEGIN
  IF TG_TABLE_NAME='org_trip_finishes' THEN
-  UPDATE public.org_tracking_live_positions SET expires_at=NEW.occurred_at+interval '24 hours'
-  WHERE org_id=NEW.org_id AND trip_id=NEW.trip_id;
- ELSIF TG_TABLE_NAME='org_trip_transitions' AND NEW.command='CANCEL' THEN
+  should_expire=true;
+ ELSIF TG_TABLE_NAME='org_trip_transitions' THEN
+  IF NEW.command='CANCEL' THEN
+   should_expire=true;
+  END IF;
+ END IF;
+ IF should_expire THEN
+  IF NEW.org_id IS DISTINCT FROM NULLIF(current_setting('anpfuel.org_id',true),'')::uuid THEN
+   RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='organization scope denied';
+  END IF;
   UPDATE public.org_tracking_live_positions SET expires_at=NEW.occurred_at+interval '24 hours'
   WHERE org_id=NEW.org_id AND trip_id=NEW.trip_id;
  END IF;
  RETURN NULL;
 END $$;
+REVOKE ALL ON FUNCTION org_tracking_live_position_expire() FROM PUBLIC;
 CREATE TRIGGER org_tracking_live_expire_on_finish AFTER INSERT ON org_trip_finishes FOR EACH ROW EXECUTE FUNCTION org_tracking_live_position_expire();
 CREATE TRIGGER org_tracking_live_expire_on_cancel AFTER INSERT ON org_trip_transitions FOR EACH ROW EXECUTE FUNCTION org_tracking_live_position_expire();
 
