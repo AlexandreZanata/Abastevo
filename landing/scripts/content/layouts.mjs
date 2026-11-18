@@ -60,7 +60,7 @@ function breadcrumbNav(items, locale) {
   return `<nav class="breadcrumb-nav" aria-label="${esc(t(locale, 'chrome.breadcrumb'))}">\n        <ol class="breadcrumb-list">\n          ${parts.join('\n          ')}\n        </ol>\n      </nav>`;
 }
 
-function headHtml({ origin, route, title, description, ogType = 'website', imageAlt, extraMeta = [], jsonLd, scripts = [], feed = false, locale, robots, canonical = true }) {
+function headHtml({ origin, route, title, description, ogType = 'website', imageAlt, extraMeta = [], jsonLd, scripts = [], feed = false, locale, robots, canonical = true, dataScript }) {
   const url = `${origin}${route}`;
   const pageTitle = esc(htmlTitle(title));
   const desc = esc(description);
@@ -99,7 +99,7 @@ ${extraMeta.map((line) => `  ${line}\n`).join('')}
   <meta name="theme-color" content="#ffffff">
 
   ${jsonLdScript(jsonLd)}
-
+${dataScript ? `\n  ${dataScript}\n` : ''}
   <link rel="stylesheet" href="/assets/styles.css">
   <script type="module" src="/assets/main.js"></script>
 ${scripts.map((src) => `  <script type="module" src="${src}"></script>\n`).join('')}${feed ? '  <link rel="alternate" type="application/atom+xml" title="Guias do abastevo" href="/guias/feed.xml">\n' : ''}</head>`;
@@ -470,6 +470,27 @@ function toolField(field, locale, sourceSlug) {
             </div>`;
 }
 
+function toolI18nScript(locale, sourceSlug) {
+  const toolMessages = locale.messages.tools[sourceSlug];
+  if (!toolMessages) throw new Error(`i18n ${locale.code}: no calculator strings for ${sourceSlug}`);
+  const fields = Object.fromEntries(Object.entries(toolMessages.fields).map(([name, field]) => [name, {
+    label: field.label,
+    ...(field.unit ? { unit: field.unit } : {}),
+    ...(field.example ? { example: field.example } : {}),
+  }]));
+  const data = {
+    decimal: locale.decimal,
+    fields,
+    messages: toolMessages.messages,
+    validation: locale.messages.tools.common.validation,
+  };
+  const json = JSON.stringify(data)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+  return `<script type="application/json" id="tool-i18n">${json}</script>`;
+}
+
 export function renderTool(site, tool, origin, locale) {
   const isLocale = Boolean(locale.prefix);
   const sourceSlug = tool.formSlug || tool.slug;
@@ -545,7 +566,7 @@ ${tool.html}
         </section>
       </article>`;
   return documentHtml({
-    head: headHtml({ origin, route: tool.route, title: tool.title, description: tool.description, imageAlt: tool.headline, jsonLd, scripts: ['/assets/tools.js'], locale }),
+    head: headHtml({ origin, route: tool.route, title: tool.title, description: tool.description, imageAlt: tool.headline, jsonLd, scripts: ['/assets/tools.js'], locale, dataScript: isLocale ? toolI18nScript(locale, sourceSlug) : undefined }),
     bodyClass: 'landing-home learning-page tool-page',
     main,
     locale,

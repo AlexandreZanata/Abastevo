@@ -139,19 +139,27 @@
       "fields": {
         "gasolina": {
           "label": "Preço da gasolina (R$/litro)",
-          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299."
+          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299.",
+          "unit": "reais por litro",
+          "example": "6,29"
         },
         "etanol": {
           "label": "Preço do etanol (R$/litro)",
-          "hint": "Em reais por litro, por exemplo 4,19."
+          "hint": "Em reais por litro, por exemplo 4,19.",
+          "unit": "reais por litro",
+          "example": "4,19"
         },
         "consumo_gasolina": {
           "label": "Consumo com gasolina (km/l, opcional)",
-          "hint": "Preencha os dois consumos para usar a relação do seu carro em vez dos 70%."
+          "hint": "Preencha os dois consumos para usar a relação do seu carro em vez dos 70%.",
+          "unit": "km/l",
+          "example": "12,5"
         },
         "consumo_etanol": {
           "label": "Consumo com etanol (km/l, opcional)",
-          "hint": "Medido no seu carro, tanque a tanque."
+          "hint": "Medido no seu carro, tanque a tanque.",
+          "unit": "km/l",
+          "example": "8,7"
         }
       },
       "messages": {
@@ -170,26 +178,36 @@
       "fields": {
         "distancia": {
           "label": "Distância da viagem (km)",
-          "hint": "Somente ida. Marque \"ida e volta\" para dobrar."
+          "hint": "Somente ida. Marque \"ida e volta\" para dobrar.",
+          "unit": "km",
+          "example": "430"
         },
         "consumo": {
           "label": "Consumo do veículo (km/l)",
-          "hint": "Quilômetros por litro, por exemplo 12,5. Veja como medir no guia de consumo médio."
+          "hint": "Quilômetros por litro, por exemplo 12,5. Veja como medir no guia de consumo médio.",
+          "unit": "km/l",
+          "example": "12"
         },
         "preco": {
           "label": "Preço do combustível (R$/litro)",
-          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299."
+          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299.",
+          "unit": "reais por litro",
+          "example": "6,29"
         },
         "ida_e_volta": {
           "label": "Ida e volta"
         },
         "pedagio": {
           "label": "Total de pedágios (R$, opcional)",
-          "hint": "Some todos os pedágios do trajeto que você vai fazer."
+          "hint": "Some todos os pedágios do trajeto que você vai fazer.",
+          "unit": "reais",
+          "example": "45,80"
         },
         "pessoas": {
           "label": "Pessoas para dividir (opcional)",
-          "hint": "Número inteiro, por exemplo 2."
+          "hint": "Número inteiro, por exemplo 2.",
+          "unit": "pessoas",
+          "example": "2"
         }
       },
       "messages": {
@@ -205,15 +223,21 @@
       "fields": {
         "distancia": {
           "label": "Distância percorrida (km)",
-          "hint": "Quilômetros rodados desde o último tanque cheio (hodômetro parcial)."
+          "hint": "Quilômetros rodados desde o último tanque cheio (hodômetro parcial).",
+          "unit": "km",
+          "example": "412"
         },
         "litros": {
           "label": "Litros abastecidos para completar (l)",
-          "hint": "Litros da bomba ao completar o tanque de novo, por exemplo 35,6."
+          "hint": "Litros da bomba ao completar o tanque de novo, por exemplo 35,6.",
+          "unit": "litros",
+          "example": "35,6"
         },
         "preco": {
           "label": "Preço por litro (R$, opcional)",
-          "hint": "Para calcular também o custo por quilômetro."
+          "hint": "Para calcular também o custo por quilômetro.",
+          "unit": "reais por litro",
+          "example": "6,29"
         }
       },
       "messages": {
@@ -226,23 +250,33 @@
       "fields": {
         "preco_combustivel": {
           "label": "Preço do combustível (R$/litro)",
-          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299."
+          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299.",
+          "unit": "reais por litro",
+          "example": "6,29"
         },
         "consumo": {
           "label": "Consumo do carro a combustão (km/l)",
-          "hint": "Quilômetros por litro, por exemplo 12,5. Veja como medir no guia de consumo médio."
+          "hint": "Quilômetros por litro, por exemplo 12,5. Veja como medir no guia de consumo médio.",
+          "unit": "km/l",
+          "example": "12"
         },
         "tarifa_kwh": {
           "label": "Tarifa de energia (R$/kWh)",
-          "hint": "Valor por kWh com impostos, da conta de luz ou do eletroposto, por exemplo 0,95."
+          "hint": "Valor por kWh com impostos, da conta de luz ou do eletroposto, por exemplo 0,95.",
+          "unit": "reais por kWh",
+          "example": "0,95"
         },
         "consumo_eletrico": {
           "label": "Consumo do carro elétrico (km/kWh)",
-          "hint": "Quilômetros por kWh, por exemplo 6,5. Se tiver kWh/100 km, divida 100 por esse valor."
+          "hint": "Quilômetros por kWh, por exemplo 6,5. Se tiver kWh/100 km, divida 100 por esse valor.",
+          "unit": "km/kWh",
+          "example": "6,5"
         },
         "km_mes": {
           "label": "Quilômetros por mês (opcional)",
-          "hint": "Para estimar o gasto mensal com energia de cada carro."
+          "hint": "Para estimar o gasto mensal com energia de cada carro.",
+          "unit": "km",
+          "example": "1.200"
         }
       },
       "messages": {
@@ -258,7 +292,9 @@
       "fields": {
         "capacidade": {
           "label": "Capacidade do tanque (litros)",
-          "hint": "Está no manual do veículo, por exemplo 50."
+          "hint": "Está no manual do veículo, por exemplo 50.",
+          "unit": "litros",
+          "example": "50"
         },
         "nivel": {
           "label": "Nível atual do tanque",
@@ -275,11 +311,15 @@
         },
         "preco": {
           "label": "Preço do combustível (R$/litro)",
-          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299."
+          "hint": "Em reais por litro, com vírgula, como na bomba: 6,29 ou 6,299.",
+          "unit": "reais por litro",
+          "example": "6,29"
         },
         "consumo": {
           "label": "Consumo do veículo (km/l, opcional)",
-          "hint": "Para estimar a autonomia com o tanque cheio."
+          "hint": "Para estimar a autonomia com o tanque cheio.",
+          "unit": "km/l",
+          "example": "12"
         }
       },
       "messages": {

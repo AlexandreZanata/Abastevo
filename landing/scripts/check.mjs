@@ -250,10 +250,23 @@ export function checkDist(options = {}) {
       }
     }
 
-    // No inline executable scripts (CSP script-src 'self'); JSON-LD is data.
+    // No inline executable scripts (CSP script-src 'self'); JSON-LD and the
+    // calculator data block are data, not code.
     for (const script of content.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
       const attrs = script[1];
       if (/type="application\/ld\+json"/.test(attrs)) continue;
+      if (/type="application\/json"/.test(attrs)) {
+        if (!/\bid="tool-i18n"/.test(attrs)) {
+          errors.push(`${rel} has an unexpected inline JSON block`);
+        } else {
+          try {
+            JSON.parse(script[2]);
+          } catch (err) {
+            errors.push(`${rel} has malformed tool-i18n JSON: ${err.message}`);
+          }
+        }
+        continue;
+      }
       if (!/\bsrc="\/assets\/[a-z-]+\.[a-f0-9]{8}\.js"/.test(attrs) || script[2].trim() !== '') {
         errors.push(`${rel} has an inline or non-fingerprinted script`);
       }

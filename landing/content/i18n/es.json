@@ -139,19 +139,27 @@
       "fields": {
         "gasolina": {
           "label": "Precio de la gasolina (BRL/litro)",
-          "hint": "En reales por litro, con coma, como en el surtidor: 6,29 o 6,299."
+          "hint": "En reales por litro, con coma, como en el surtidor: 6,29 o 6,299.",
+          "unit": "reales por litro",
+          "example": "6,29"
         },
         "etanol": {
           "label": "Precio del etanol (BRL/litro)",
-          "hint": "En reales por litro, por ejemplo 4,19."
+          "hint": "En reales por litro, por ejemplo 4,19.",
+          "unit": "reales por litro",
+          "example": "4,19"
         },
         "consumo_gasolina": {
           "label": "Consumo con gasolina (km/l, opcional)",
-          "hint": "Completa los dos consumos para usar la relación de tu coche en vez del 70 %."
+          "hint": "Completa los dos consumos para usar la relación de tu coche en vez del 70 %.",
+          "unit": "km/l",
+          "example": "12,5"
         },
         "consumo_etanol": {
           "label": "Consumo con etanol (km/l, opcional)",
-          "hint": "Medido en tu coche, de tanque a tanque."
+          "hint": "Medido en tu coche, de tanque a tanque.",
+          "unit": "km/l",
+          "example": "8,7"
         }
       },
       "messages": {
@@ -170,26 +178,36 @@
       "fields": {
         "distancia": {
           "label": "Distancia del viaje (km)",
-          "hint": "Solo ida. Marca \"ida y vuelta\" para duplicar."
+          "hint": "Solo ida. Marca \"ida y vuelta\" para duplicar.",
+          "unit": "km",
+          "example": "430"
         },
         "consumo": {
           "label": "Consumo del vehículo (km/l)",
-          "hint": "Kilómetros por litro, por ejemplo 12,5. Mira cómo medirlo en la guía de consumo medio."
+          "hint": "Kilómetros por litro, por ejemplo 12,5. Mira cómo medirlo en la guía de consumo medio.",
+          "unit": "km/l",
+          "example": "12"
         },
         "preco": {
           "label": "Precio del combustible (BRL/litro)",
-          "hint": "En reales por litro, con coma, como en el surtidor: 6,29 o 6,299."
+          "hint": "En reales por litro, con coma, como en el surtidor: 6,29 o 6,299.",
+          "unit": "reales por litro",
+          "example": "6,29"
         },
         "ida_e_volta": {
           "label": "Ida y vuelta"
         },
         "pedagio": {
           "label": "Total de peajes (BRL, opcional)",
-          "hint": "Suma todos los peajes del trayecto que vas a hacer."
+          "hint": "Suma todos los peajes del trayecto que vas a hacer.",
+          "unit": "reales",
+          "example": "45,80"
         },
         "pessoas": {
           "label": "Personas para dividir (opcional)",
-          "hint": "Número entero, por ejemplo 2."
+          "hint": "Número entero, por ejemplo 2.",
+          "unit": "personas",
+          "example": "2"
         }
       },
       "messages": {
@@ -205,15 +223,21 @@
       "fields": {
         "distancia": {
           "label": "Distancia recorrida (km)",
-          "hint": "Kilómetros recorridos desde el último tanque lleno (cuentakilómetros parcial)."
+          "hint": "Kilómetros recorridos desde el último tanque lleno (cuentakilómetros parcial).",
+          "unit": "km",
+          "example": "412"
         },
         "litros": {
           "label": "Litros repostados para completar (l)",
-          "hint": "Litros del surtidor al volver a llenar el tanque, por ejemplo 35,6."
+          "hint": "Litros del surtidor al volver a llenar el tanque, por ejemplo 35,6.",
+          "unit": "litros",
+          "example": "35,6"
         },
         "preco": {
           "label": "Precio por litro (BRL, opcional)",
-          "hint": "Para calcular también el costo por kilómetro."
+          "hint": "Para calcular también el costo por kilómetro.",
+          "unit": "reales por litro",
+          "example": "6,29"
         }
       },
       "messages": {
@@ -226,23 +250,33 @@
       "fields": {
         "preco_combustivel": {
           "label": "Precio del combustible (BRL/litro)",
-          "hint": "En reales por litro, con coma, como en el surtidor: 6,29 o 6,299."
+          "hint": "En reales por litro, con coma, como en el surtidor: 6,29 o 6,299.",
+          "unit": "reales por litro",
+          "example": "6,29"
         },
         "consumo": {
           "label": "Consumo del coche de combustión (km/l)",
-          "hint": "Kilómetros por litro, por ejemplo 12,5. Mira cómo medirlo en la guía de consumo medio."
+          "hint": "Kilómetros por litro, por ejemplo 12,5. Mira cómo medirlo en la guía de consumo medio.",
+          "unit": "km/l",
+          "example": "12"
         },
         "tarifa_kwh": {
           "label": "Tarifa de energía (BRL/kWh)",
-          "hint": "Valor por kWh con impuestos, de la factura o del electrolinera, por ejemplo 0,95."
+          "hint": "Valor por kWh con impuestos, de la factura o del electrolinera, por ejemplo 0,95.",
+          "unit": "reales por kWh",
+          "example": "0,95"
         },
         "consumo_eletrico": {
           "label": "Consumo del coche eléctrico (km/kWh)",
-          "hint": "Kilómetros por kWh, por ejemplo 6,5. Si tienes kWh/100 km, divide 100 por ese valor."
+          "hint": "Kilómetros por kWh, por ejemplo 6,5. Si tienes kWh/100 km, divide 100 por ese valor.",
+          "unit": "km/kWh",
+          "example": "6,5"
         },
         "km_mes": {
           "label": "Kilómetros por mes (opcional)",
-          "hint": "Para estimar el gasto mensual de energía de cada coche."
+          "hint": "Para estimar el gasto mensual de energía de cada coche.",
+          "unit": "km",
+          "example": "1.200"
         }
       },
       "messages": {
@@ -258,7 +292,9 @@
       "fields": {
         "capacidade": {
           "label": "Capacidad del tanque (litros)",
-          "hint": "Está en el manual del vehículo, por ejemplo 50."
+          "hint": "Está en el manual del vehículo, por ejemplo 50.",
+          "unit": "litros",
+          "example": "50"
         },
         "nivel": {
           "label": "Nivel actual del tanque",
@@ -275,11 +311,15 @@
         },
         "preco": {
           "label": "Precio del combustible (BRL/litro)",
-          "hint": "En reales por litro, con coma, como en el surtidor: 6,29 o 6,299."
+          "hint": "En reales por litro, con coma, como en el surtidor: 6,29 o 6,299.",
+          "unit": "reales por litro",
+          "example": "6,29"
         },
         "consumo": {
           "label": "Consumo del vehículo (km/l, opcional)",
-          "hint": "Para estimar la autonomía con el tanque lleno."
+          "hint": "Para estimar la autonomía con el tanque lleno.",
+          "unit": "km/l",
+          "example": "12"
         }
       },
       "messages": {

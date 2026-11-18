@@ -52,6 +52,52 @@ test('pt-BR formatting is deterministic', () => {
   assert.equal(tools.formatPercent(0.6661), '66,6%');
 });
 
+test('locale numbers: en dots and grouped commas; comma locales match pt-BR', () => {
+  const enCases = [
+    ['6.29', 6.29], ['6.299', 6.299], ['0.500', 0.5], ['1,200', 1200], ['12,500', 12500],
+    ['1,234,567', 1234567], ['1,234.56', 1234.56], ['1,200.50', 1200.5], ['430', 430], ['-5', -5], ['R$ 6.29', 6.29],
+  ];
+  for (const [raw, expected] of enCases) assert.equal(tools.parseDecimal(raw, '.'), expected, raw);
+  for (const raw of ['6,29', '1.234,56', '1,23', '1,2000', '1.2.3', '1,23.4', '', 'abc', '.', ',']) {
+    assert.equal(tools.parseDecimal(raw, '.'), null, `en rejects ${JSON.stringify(raw)}`);
+  }
+
+  const commaCases = ['6,29', '6,299', ' R$ 6,29 ', '1.234,56', '1.200', '12.500', '1.234.567', '6.29', '0.500', '1,234.56', '430', '-5', '+3'];
+  for (const raw of commaCases) assert.equal(tools.parseDecimal(raw, ','), tools.parseDecimalBR(raw), raw);
+  assert.equal(tools.parseDecimal('6.299', ','), 6299);
+  assert.equal(tools.parseDecimal('6.299', ',', true), 6.299);
+
+  assert.equal(tools.formatNumber(1234567.891, 2, '.'), '1,234,567.89');
+  assert.equal(tools.formatNumber(0.5, 0, '.'), '1');
+  assert.equal(tools.formatNumber(-0.0001, 2, '.'), '0.00');
+  assert.equal(tools.formatBRL(6.29, 2, '.'), 'R$ 6.29');
+  assert.equal(tools.formatBRL(4.403, 3, '.'), 'R$ 4.403');
+  assert.equal(tools.formatPercent(0.6661, '.'), '66.6%');
+  for (const value of [0, 6.29, 1234567.891, -4.403]) {
+    assert.equal(tools.formatNumber(value, 2, ','), tools.formatNumberBR(value, 2));
+  }
+});
+
+test('localized results: en messages and validation stay in English', () => {
+  const data = JSON.parse(fs.readFileSync(path.join(root, 'content', 'i18n', 'en.json'), 'utf8'));
+  const locale = {
+    decimal: '.',
+    fields: data.tools['etanol-ou-gasolina'].fields,
+    messages: data.tools['etanol-ou-gasolina'].messages,
+    validation: data.tools.common.validation,
+  };
+  const outcome = tools.runTool('etanol-ou-gasolina', { gasolina: '6.29', etanol: '4.19' }, locale);
+  assert.ok(outcome.ok);
+  const lines = outcome.lines.join(' ');
+  assert.match(lines, /ethanol tends to cost less per kilometer/);
+  assert.match(lines, /66\.6%/);
+  assert.doesNotMatch(lines, /etanol tende|Resultado: o etanol/);
+  const invalid = tools.runTool('etanol-ou-gasolina', { gasolina: '', etanol: '4.19' }, locale);
+  assert.equal(invalid.ok, false);
+  assert.equal(invalid.errors.gasolina, 'Gasoline price (BRL/liter): required field.');
+  assert.match(tools.runTool('etanol-ou-gasolina', { gasolina: '6,29', etanol: '4.19' }, locale).errors.gasolina, /enter a number/);
+});
+
 test('validation: required, zero, negative, absurd, integer, choice and flag', () => {
   const price = { name: 'p', label: 'Preço da gasolina', kind: 'price', required: true, max: 30, unit: 'reais por litro', example: '6,29' };
   assert.deepEqual(tools.validateField(price, '6,29'), { ok: true, value: 6.29 });
@@ -258,7 +304,7 @@ test('built tool pages: no-JS explanation, accessible form, JSON-LD, links and C
     const toolsScript = scripts.find((s) => s.startsWith('tools.'));
     assert.match(toolsScript, /^tools\.[a-f0-9]{8}\.js$/, 'fingerprinted calculators module');
     scriptNames.add(toolsScript);
-    assert.doesNotMatch(html, /<script(?![^>]*(?:type="application\/ld\+json"|src="))[^>]*>/, 'no inline executable script');
+    assert.doesNotMatch(html, /<script(?![^>]*(?:type="application\/ld\+json"|type="application\/json"|src="))[^>]*>/, 'no inline executable script');
     assert.doesNotMatch(html, /\sstyle="/, 'no inline styles (CSP style-src self)');
   }
   assert.equal(scriptNames.size, 1, 'one shared calculators module');
@@ -266,4 +312,39 @@ test('built tool pages: no-JS explanation, accessible form, JSON-LD, links and C
   const bytes = fs.readFileSync(path.join(outDir, 'assets', toolsFile));
   assert.ok(zlib.gzipSync(bytes).length <= 10 * 1024, 'calculators JS within 10 KiB gzip');
   assert.ok(!fs.readFileSync(path.join(outDir, 'index.html'), 'utf8').includes(toolsFile), 'home does not load the calculators');
+});
+
+test('localized tool page: strings travel as JSON data and inputs never leave the browser', () => {
+  const i18nOut = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-tools-i18n-'));
+  try {
+    build({
+      projectRoot: root,
+      outDir: i18nOut,
+      origin: ORIGIN,
+      enableLocales: ['en', 'es'],
+      translationsDir: path.join(root, 'tests', 'fixtures', 'i18n'),
+    });
+    const html = fs.readFileSync(path.join(i18nOut, 'en', 'tools', 'ethanol-or-gasoline-calculator', 'index.html'), 'utf8');
+    const block = html.match(/<script type="application\/json" id="tool-i18n">([\s\S]*?)<\/script>/);
+    assert.ok(block, 'locale tool page carries the tool-i18n JSON block');
+    const data = JSON.parse(block[1]);
+    assert.equal(data.decimal, '.');
+    assert.equal(data.fields.gasolina.label, 'Gasoline price (BRL/liter)');
+    assert.equal(data.fields.gasolina.unit, 'BRL per liter');
+    assert.equal(data.fields.gasolina.example, '6.29');
+    assert.match(data.messages.ethanolCheaper, /ethanol tends to cost less/);
+    assert.match(data.validation.required, /required field/);
+    assert.equal(tools.readToolI18n({ getElementById: (id) => (id === 'tool-i18n' ? { textContent: block[1] } : null) }).decimal, '.');
+    assert.ok(html.includes('data-tool="etanol-ou-gasolina"'), 'form keeps the shared calculator id');
+    assert.ok(!html.includes('action='), 'calculator form never posts');
+    assert.ok(!page('etanol-ou-gasolina').includes('id="tool-i18n"'), 'pt-BR pages keep using the built-in strings');
+
+    const src = html.match(/src="\/assets\/(tools\.[a-f0-9]{8}\.js)"/)[1];
+    const js = fs.readFileSync(path.join(i18nOut, 'assets', src), 'utf8');
+    for (const forbidden of ['fetch(', 'XMLHttpRequest', 'sendBeacon', 'navigator.sendBeacon']) {
+      assert.ok(!js.includes(forbidden), `compiled calculators never use ${forbidden}`);
+    }
+  } finally {
+    fs.rmSync(i18nOut, { recursive: true, force: true });
+  }
 });

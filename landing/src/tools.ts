@@ -22,7 +22,7 @@ export interface FieldRule {
 export interface ToolSpec {
   id: string;
   fields: readonly FieldRule[];
-  compute(values: Record<string, number | boolean | null>): ToolOutcome;
+  compute(values: Record<string, number | boolean | null>, ctx: ToolContext): ToolOutcome;
 }
 
 export type ToolOutcome =
@@ -33,20 +33,95 @@ export type FieldResult =
   | { ok: true; value: number | boolean | null }
   | { ok: false; error: string };
 
+// Localized calculator strings read from the page's tool-i18n JSON block.
+export interface ToolLocaleField {
+  label?: string;
+  unit?: string;
+  example?: string;
+}
+
+export interface ToolLocale {
+  decimal: '.' | ',';
+  fields?: Record<string, ToolLocaleField>;
+  messages?: Record<string, string>;
+  validation?: Record<string, string>;
+}
+
+export interface ToolContext {
+  decimal: string;
+  t(key: string, vars?: Record<string, string | number>): string;
+  brl(value: number, decimals?: number): string;
+  number(value: number, decimals: number): string;
+  percent(ratio: number): string;
+}
+
+const PT_BR_VALIDATION: Record<string, string> = {
+  field: '{label}: {message}',
+  required: 'campo obrigatório.',
+  choice: 'escolha uma das opções.',
+  number: 'digite um número{example}.',
+  example: ', por exemplo {example}',
+  negative: 'o valor não pode ser negativo.',
+  zero: 'o valor precisa ser maior que zero.',
+  integer: 'use um número inteiro.',
+  max: 'valor alto demais (máximo {max}{unit}). Confira a digitação.',
+  unit: ' {unit}',
+  review: 'Revise os campos destacados para calcular.',
+  unknown: 'Ferramenta desconhecida: {id}',
+};
+
+const PT_BR_MESSAGES: Record<string, Record<string, string>> = {
+  'etanol-ou-gasolina': {
+    missingConsumption: 'Para usar o consumo do seu carro, preencha os dois consumos (gasolina e etanol) ou deixe ambos em branco.',
+    ethanolCheaper: 'Resultado: o etanol tende a sair mais barato por quilômetro rodado.',
+    gasolineCheaper: 'Resultado: a gasolina tende a sair mais barata por quilômetro rodado.',
+    tie: 'Resultado: empate técnico; os dois custam praticamente o mesmo por quilômetro.',
+    ratio: 'O etanol custa {percent} do preço da gasolina.',
+    thresholdOwn: 'Referência usada: {percent}, calculada com o consumo informado do seu carro.',
+    thresholdRule: 'Referência usada: 70%, a regra geral para carros flex.',
+    maxPrice: 'Com a gasolina a {gasoline}, o etanol compensa até {ethanol} o litro.',
+    costPerKm: 'Custo por km: etanol {ethanol}, gasolina {gasoline}.',
+  },
+  'custo-de-viagem': {
+    total: 'Custo total estimado: {total}.',
+    distance: 'Distância considerada: {distance} km{trip}.',
+    roundTrip: ' (ida e volta)',
+    fuel: 'Combustível necessário: {liters} litros, {cost}.',
+    tolls: 'Pedágios informados: {tolls}.',
+    perPerson: 'Dividido por {people} pessoas: {amount} cada.',
+  },
+  'consumo-medio': {
+    average: 'Consumo médio: {value} km/l.',
+    per100: 'O mesmo consumo em litros: {value} litros a cada 100 km.',
+    costPerKm: 'Custo por km: {cost} (gasto no abastecimento: {spent}).',
+  },
+  'custo-por-km': {
+    electricCheaper: 'Resultado: o elétrico gasta {difference} a menos por km em energia.',
+    combustionCheaper: 'Resultado: o carro a combustão gasta {difference} a menos por km em energia.',
+    tie: 'Resultado: os dois gastam praticamente o mesmo por km em energia.',
+    combustion: 'Combustão: {cost} por km.',
+    electric: 'Elétrico: {cost} por km.',
+    monthly: 'Em {km} km por mês: combustão {combustion}, elétrico {electric}.',
+  },
+  'encher-o-tanque': {
+    fill: 'Para completar: cerca de {liters} litros, {cost}.',
+    full: 'O tanque inteiro, vazio até cheio, custaria {cost}.',
+    range: 'Autonomia estimada com o tanque cheio: {range} km.',
+  },
+};
+
+function fillMessage(template: string | undefined, vars?: Record<string, string | number>): string {
+  if (template === undefined) return '';
+  return template.replace(/\{(\w+)\}/g, (_, name) => (vars && Object.hasOwn(vars, name) ? String(vars[name]) : `{${name}}`));
+}
+
 // ---------------------------------------------------------------------------
-// Parsing and formatting (pt-BR).
+// Parsing and formatting per locale.
 
 const THOUSANDS_DOT = /^\d{1,3}(\.\d{3})+$/;
 
-/**
- * Parses a pt-BR number. A comma is the decimal separator ("6,29"); dots
- * before a comma group thousands ("1.234,56"). Without a comma, a dot followed
- * by exact groups of three digits is read as thousands ("1.200" = 1200) unless
- * `dotIsDecimal` is set, which price fields use so "6.299" stays R$ 6,299.
- * Returns null for anything that is not a plain number.
- */
-export function parseDecimalBR(raw: string, dotIsDecimal = false): number | null {
-  let text = raw.trim().replace(/^R\$/i, '').replace(/[\s ]+/g, '');
+function cleanNumber(raw: string): { text: string; sign: number } | null {
+  let text = raw.trim().replace(/^R\$/i, '').replace(/[\s ]+/g, '');
   if (text === '') return null;
   let sign = 1;
   if (text.startsWith('-') || text.startsWith('+')) {
@@ -54,52 +129,96 @@ export function parseDecimalBR(raw: string, dotIsDecimal = false): number | null
     text = text.slice(1);
   }
   if (!/^[\d.,]+$/.test(text) || !/\d/.test(text)) return null;
+  return { text, sign };
+}
+
+/**
+ * Parses a number with the locale's decimal separator. With `,` it matches
+ * parseDecimalBR exactly. With `.` a dot is always decimal ("6.299" = 6.299)
+ * and a lone comma is thousands only in exact groups of three ("1,200" = 1200);
+ * everything ambiguous returns null.
+ */
+export function parseDecimal(raw: string, decimal: string, dotIsDecimal = false): number | null {
+  if (decimal !== ',' && decimal !== '.') throw new Error(`Unsupported decimal separator: ${decimal}`);
+  const cleaned = cleanNumber(raw);
+  if (cleaned === null) return null;
+  const { text, sign } = cleaned;
   let normalized: string;
-  const comma = text.lastIndexOf(',');
-  const dot = text.lastIndexOf('.');
-  if (comma !== -1 && dot !== -1) {
-    if (comma > dot) {
-      const intPart = text.slice(0, comma);
-      if (!THOUSANDS_DOT.test(intPart) || !/^\d+$/.test(text.slice(comma + 1))) return null;
-      normalized = `${intPart.replace(/\./g, '')}.${text.slice(comma + 1)}`;
+  if (decimal === ',') {
+    const comma = text.lastIndexOf(',');
+    const dot = text.lastIndexOf('.');
+    if (comma !== -1 && dot !== -1) {
+      if (comma > dot) {
+        const intPart = text.slice(0, comma);
+        if (!THOUSANDS_DOT.test(intPart) || !/^\d+$/.test(text.slice(comma + 1))) return null;
+        normalized = `${intPart.replace(/\./g, '')}.${text.slice(comma + 1)}`;
+      } else {
+        const intPart = text.slice(0, dot);
+        if (!/^\d{1,3}(,\d{3})+$/.test(intPart) || !/^\d+$/.test(text.slice(dot + 1))) return null;
+        normalized = `${intPart.replace(/,/g, '')}.${text.slice(dot + 1)}`;
+      }
+    } else if (comma !== -1) {
+      if (!/^\d*,\d+$/.test(text)) return null;
+      normalized = text.replace(',', '.');
+    } else if (dot !== -1) {
+      if (!dotIsDecimal && THOUSANDS_DOT.test(text) && !text.startsWith('0')) {
+        normalized = text.replace(/\./g, '');
+      } else if (/^\d*\.\d+$/.test(text)) {
+        normalized = text;
+      } else {
+        return null;
+      }
     } else {
+      normalized = text;
+    }
+  } else {
+    const comma = text.lastIndexOf(',');
+    const dot = text.lastIndexOf('.');
+    if (comma !== -1 && dot !== -1) {
+      if (comma > dot) return null;
       const intPart = text.slice(0, dot);
       if (!/^\d{1,3}(,\d{3})+$/.test(intPart) || !/^\d+$/.test(text.slice(dot + 1))) return null;
       normalized = `${intPart.replace(/,/g, '')}.${text.slice(dot + 1)}`;
-    }
-  } else if (comma !== -1) {
-    if (!/^\d*,\d+$/.test(text)) return null;
-    normalized = text.replace(',', '.');
-  } else if (dot !== -1) {
-    if (!dotIsDecimal && THOUSANDS_DOT.test(text) && !text.startsWith('0')) {
-      normalized = text.replace(/\./g, '');
-    } else if (/^\d*\.\d+$/.test(text)) {
+    } else if (comma !== -1) {
+      if (!/^\d{1,3}(,\d{3})+$/.test(text)) return null;
+      normalized = text.replace(/,/g, '');
+    } else if (dot !== -1) {
+      if (!/^\d*\.\d+$/.test(text)) return null;
       normalized = text;
     } else {
-      return null;
+      normalized = text;
     }
-  } else {
-    normalized = text;
   }
   const value = sign * Number(normalized);
   return Number.isFinite(value) ? value : null;
 }
 
-/** Formats with a decimal comma and dot thousands, deterministic (no ICU). */
-export function formatNumberBR(value: number, decimals: number): string {
+/** Formats with the locale separator and grouping, deterministic (no ICU). */
+export function formatNumber(value: number, decimals: number, decimal: string): string {
+  if (decimal !== ',' && decimal !== '.') throw new Error(`Unsupported decimal separator: ${decimal}`);
   const fixed = Math.abs(value).toFixed(decimals);
   const [intPart, fraction] = fixed.split('.');
-  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  const group = decimal === ',' ? '.' : ',';
+  const grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, group);
   const sign = value < 0 && Number(fixed) !== 0 ? '-' : '';
-  return fraction === undefined ? `${sign}${grouped}` : `${sign}${grouped},${fraction}`;
+  const separator = fraction === undefined ? '' : decimal;
+  return fraction === undefined ? `${sign}${grouped}` : `${sign}${grouped}${separator}${fraction}`;
 }
 
-export function formatBRL(value: number, decimals = 2): string {
-  return `R$ ${formatNumberBR(value, decimals)}`;
+export function parseDecimalBR(raw: string, dotIsDecimal = false): number | null {
+  return parseDecimal(raw, ',', dotIsDecimal);
 }
 
-export function formatPercent(ratio: number): string {
-  return `${formatNumberBR(ratio * 100, 1)}%`;
+export function formatNumberBR(value: number, decimals: number): string {
+  return formatNumber(value, decimals, ',');
+}
+
+export function formatBRL(value: number, decimals = 2, decimal = ','): string {
+  return `R$ ${formatNumber(value, decimals, decimal)}`;
+}
+
+export function formatPercent(ratio: number, decimal = ','): string {
+  return `${formatNumber(ratio * 100, 1, decimal)}%`;
 }
 
 // ---------------------------------------------------------------------------
@@ -109,29 +228,33 @@ export function isTruthyFlag(raw: string): boolean {
   return ['on', '1', 'true', 'sim'].includes(raw.trim().toLowerCase());
 }
 
-export function validateField(rule: FieldRule, raw: string): FieldResult {
+export function validateField(rule: FieldRule, raw: string, locale: ToolLocale | null = null): FieldResult {
+  const decimal = locale?.decimal ?? ',';
+  const validate = (key: string, vars?: Record<string, string | number>): string => fillMessage(locale?.validation?.[key] ?? PT_BR_VALIDATION[key], vars);
+  const label = locale?.fields?.[rule.name]?.label ?? rule.label;
   const text = raw.trim();
   if (rule.kind === 'flag') {
     return { ok: true, value: isTruthyFlag(text) };
   }
   // Messages render right under their field, prefixed by the field name.
-  const fail = (message: string): FieldResult => ({ ok: false, error: `${rule.label}: ${message}` });
+  const fail = (message: string): FieldResult => ({ ok: false, error: validate('field', { label, message }) });
   if (text === '') {
-    return rule.required ? fail('campo obrigatório.') : { ok: true, value: null };
+    return rule.required ? fail(validate('required')) : { ok: true, value: null };
   }
   if (rule.kind === 'choice') {
-    if (!rule.choices?.includes(text)) return fail('escolha uma das opções.');
+    if (!rule.choices?.includes(text)) return fail(validate('choice'));
     return { ok: true, value: Number(text) };
   }
-  const value = parseDecimalBR(text, rule.kind === 'price');
-  const example = rule.example ? `, por exemplo ${rule.example}` : '';
-  if (value === null) return fail(`digite um número${example}.`);
-  if (value < 0) return fail('o valor não pode ser negativo.');
-  if (value === 0 && !rule.allowZero) return fail('o valor precisa ser maior que zero.');
-  if (rule.kind === 'integer' && !Number.isInteger(value)) return fail('use um número inteiro.');
+  const value = parseDecimal(text, decimal, rule.kind === 'price');
+  const exampleValue = locale?.fields?.[rule.name]?.example ?? rule.example;
+  const example = exampleValue ? validate('example', { example: exampleValue }) : '';
+  if (value === null) return fail(validate('number', { example }));
+  if (value < 0) return fail(validate('negative'));
+  if (value === 0 && !rule.allowZero) return fail(validate('zero'));
+  if (rule.kind === 'integer' && !Number.isInteger(value)) return fail(validate('integer'));
   if (rule.max !== undefined && value > rule.max) {
-    const unit = rule.unit ? ` ${rule.unit}` : '';
-    return fail(`valor alto demais (máximo ${formatNumberBR(rule.max, 0)}${unit}). Confira a digitação.`);
+    const unit = rule.unit ? validate('unit', { unit: locale?.fields?.[rule.name]?.unit ?? rule.unit }) : '';
+    return fail(validate('max', { max: formatNumber(rule.max, 0, decimal), unit }));
   }
   return { ok: true, value };
 }
@@ -259,6 +382,17 @@ const KML_MAX = 60;
 const num = (value: number | boolean | null): number => value as number;
 const opt = (value: number | boolean | null): number | null => (typeof value === 'number' ? value : null);
 
+function toolContext(id: string, locale: ToolLocale | null): ToolContext {
+  const decimal = locale?.decimal ?? ',';
+  return {
+    decimal,
+    t: (key, vars) => fillMessage(locale?.messages?.[key] ?? PT_BR_MESSAGES[id]?.[key], vars),
+    brl: (value, decimals = 2) => formatBRL(value, decimals, decimal),
+    number: (value, decimals) => formatNumber(value, decimals, decimal),
+    percent: (ratio) => `${formatNumber(ratio * 100, 1, decimal)}%`,
+  };
+}
+
 export const TOOL_SPECS: Record<string, ToolSpec> = {
   'etanol-ou-gasolina': {
     id: 'etanol-ou-gasolina',
@@ -268,29 +402,29 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
       { name: 'consumo_gasolina', label: 'Consumo com gasolina', kind: 'decimal', required: false, max: KML_MAX, unit: 'km/l', example: '12,5' },
       { name: 'consumo_etanol', label: 'Consumo com etanol', kind: 'decimal', required: false, max: KML_MAX, unit: 'km/l', example: '8,7' },
     ],
-    compute(v) {
+    compute(v, ctx) {
       const kmlG = opt(v.consumo_gasolina);
       const kmlE = opt(v.consumo_etanol);
       if ((kmlG === null) !== (kmlE === null)) {
         const missing = kmlG === null ? 'consumo_gasolina' : 'consumo_etanol';
-        return { ok: false, errors: { [missing]: 'Para usar o consumo do seu carro, preencha os dois consumos (gasolina e etanol) ou deixe ambos em branco.' } };
+        return { ok: false, errors: { [missing]: ctx.t('missingConsumption') } };
       }
       const r = compareEthanolGasoline({ gasoline: num(v.gasolina), ethanol: num(v.etanol), kmPerLiterGasoline: kmlG, kmPerLiterEthanol: kmlE });
       const verdict = r.choice === 'etanol'
-        ? 'Resultado: o etanol tende a sair mais barato por quilômetro rodado.'
+        ? ctx.t('ethanolCheaper')
         : r.choice === 'gasolina'
-          ? 'Resultado: a gasolina tende a sair mais barata por quilômetro rodado.'
-          : 'Resultado: empate técnico; os dois custam praticamente o mesmo por quilômetro.';
+          ? ctx.t('gasolineCheaper')
+          : ctx.t('tie');
       const lines = [
         verdict,
-        `O etanol custa ${formatPercent(r.ratio)} do preço da gasolina.`,
+        ctx.t('ratio', { percent: ctx.percent(r.ratio) }),
         r.thresholdSource === 'consumo'
-          ? `Referência usada: ${formatPercent(r.threshold)}, calculada com o consumo informado do seu carro.`
-          : 'Referência usada: 70%, a regra geral para carros flex.',
-        `Com a gasolina a ${formatBRL(num(v.gasolina), 3)}, o etanol compensa até ${formatBRL(r.maxEthanolPrice, 3)} o litro.`,
+          ? ctx.t('thresholdOwn', { percent: ctx.percent(r.threshold) })
+          : ctx.t('thresholdRule'),
+        ctx.t('maxPrice', { gasoline: ctx.brl(num(v.gasolina), 3), ethanol: ctx.brl(r.maxEthanolPrice, 3) }),
       ];
       if (r.costPerKmEthanol !== null && r.costPerKmGasoline !== null) {
-        lines.push(`Custo por km: etanol ${formatBRL(r.costPerKmEthanol, 3)}, gasolina ${formatBRL(r.costPerKmGasoline, 3)}.`);
+        lines.push(ctx.t('costPerKm', { ethanol: ctx.brl(r.costPerKmEthanol, 3), gasoline: ctx.brl(r.costPerKmGasoline, 3) }));
       }
       return { ok: true, lines };
     },
@@ -305,7 +439,7 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
       { name: 'pedagio', label: 'Total de pedágios', kind: 'price', required: false, max: 10000, allowZero: true, unit: 'reais', example: '45,80' },
       { name: 'pessoas', label: 'Pessoas para dividir', kind: 'integer', required: false, max: 50, unit: 'pessoas', example: '2' },
     ],
-    compute(v) {
+    compute(v, ctx) {
       const r = tripCost({
         distanceKm: num(v.distancia),
         kmPerLiter: num(v.consumo),
@@ -315,12 +449,12 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
         people: opt(v.pessoas),
       });
       const lines = [
-        `Custo total estimado: ${formatBRL(r.total)}.`,
-        `Distância considerada: ${formatNumberBR(r.totalKm, 0)} km${v.ida_e_volta === true ? ' (ida e volta)' : ''}.`,
-        `Combustível necessário: ${formatNumberBR(r.liters, 1)} litros, ${formatBRL(r.fuelCost)}.`,
+        ctx.t('total', { total: ctx.brl(r.total) }),
+        ctx.t('distance', { distance: ctx.number(r.totalKm, 0), trip: v.ida_e_volta === true ? ctx.t('roundTrip') : '' }),
+        ctx.t('fuel', { liters: ctx.number(r.liters, 1), cost: ctx.brl(r.fuelCost) }),
       ];
-      if (opt(v.pedagio) !== null) lines.push(`Pedágios informados: ${formatBRL(num(v.pedagio))}.`);
-      if (r.people > 1) lines.push(`Dividido por ${r.people} pessoas: ${formatBRL(r.perPerson)} cada.`);
+      if (opt(v.pedagio) !== null) lines.push(ctx.t('tolls', { tolls: ctx.brl(num(v.pedagio)) }));
+      if (r.people > 1) lines.push(ctx.t('perPerson', { people: r.people, amount: ctx.brl(r.perPerson) }));
       return { ok: true, lines };
     },
   },
@@ -331,14 +465,14 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
       { name: 'litros', label: 'Litros abastecidos', kind: 'decimal', required: true, max: 1000, unit: 'litros', example: '35,6' },
       { name: 'preco', label: 'Preço por litro', kind: 'price', required: false, max: PRICE_MAX, unit: 'reais por litro', example: '6,29' },
     ],
-    compute(v) {
+    compute(v, ctx) {
       const r = averageConsumption({ distanceKm: num(v.distancia), liters: num(v.litros), pricePerLiter: opt(v.preco) });
       const lines = [
-        `Consumo médio: ${formatNumberBR(r.kmPerLiter, 1)} km/l.`,
-        `O mesmo consumo em litros: ${formatNumberBR(r.litersPer100Km, 1)} litros a cada 100 km.`,
+        ctx.t('average', { value: ctx.number(r.kmPerLiter, 1) }),
+        ctx.t('per100', { value: ctx.number(r.litersPer100Km, 1) }),
       ];
       if (r.costPerKm !== null && r.spent !== null) {
-        lines.push(`Custo por km: ${formatBRL(r.costPerKm, 3)} (gasto no abastecimento: ${formatBRL(r.spent)}).`);
+        lines.push(ctx.t('costPerKm', { cost: ctx.brl(r.costPerKm, 3), spent: ctx.brl(r.spent) }));
       }
       return { ok: true, lines };
     },
@@ -352,7 +486,7 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
       { name: 'consumo_eletrico', label: 'Consumo do carro elétrico', kind: 'decimal', required: true, max: 20, unit: 'km/kWh', example: '6,5' },
       { name: 'km_mes', label: 'Quilômetros por mês', kind: 'decimal', required: false, max: 50000, unit: 'km', example: '1.200' },
     ],
-    compute(v) {
+    compute(v, ctx) {
       const r = costPerKm({
         fuelPrice: num(v.preco_combustivel),
         kmPerLiter: num(v.consumo),
@@ -361,17 +495,17 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
         monthlyKm: opt(v.km_mes),
       });
       const verdict = r.cheaper === 'eletrico'
-        ? `Resultado: o elétrico gasta ${formatBRL(r.difference, 3)} a menos por km em energia.`
+        ? ctx.t('electricCheaper', { difference: ctx.brl(r.difference, 3) })
         : r.cheaper === 'combustao'
-          ? `Resultado: o carro a combustão gasta ${formatBRL(r.difference, 3)} a menos por km em energia.`
-          : 'Resultado: os dois gastam praticamente o mesmo por km em energia.';
+          ? ctx.t('combustionCheaper', { difference: ctx.brl(r.difference, 3) })
+          : ctx.t('tie');
       const lines = [
         verdict,
-        `Combustão: ${formatBRL(r.combustion, 3)} por km.`,
-        `Elétrico: ${formatBRL(r.electric, 3)} por km.`,
+        ctx.t('combustion', { cost: ctx.brl(r.combustion, 3) }),
+        ctx.t('electric', { cost: ctx.brl(r.electric, 3) }),
       ];
       if (r.monthlyCombustion !== null && r.monthlyElectric !== null) {
-        lines.push(`Em ${formatNumberBR(num(v.km_mes), 0)} km por mês: combustão ${formatBRL(r.monthlyCombustion)}, elétrico ${formatBRL(r.monthlyElectric)}.`);
+        lines.push(ctx.t('monthly', { km: ctx.number(num(v.km_mes), 0), combustion: ctx.brl(r.monthlyCombustion), electric: ctx.brl(r.monthlyElectric) }));
       }
       return { ok: true, lines };
     },
@@ -384,31 +518,31 @@ export const TOOL_SPECS: Record<string, ToolSpec> = {
       { name: 'preco', label: 'Preço por litro', kind: 'price', required: true, max: PRICE_MAX, unit: 'reais por litro', example: '6,29' },
       { name: 'consumo', label: 'Consumo do veículo', kind: 'decimal', required: false, max: KML_MAX, unit: 'km/l', example: '12' },
     ],
-    compute(v) {
+    compute(v, ctx) {
       const r = fillTank({ capacityLiters: num(v.capacidade), currentPercent: num(v.nivel), pricePerLiter: num(v.preco), kmPerLiter: opt(v.consumo) });
       const lines = [
-        `Para completar: cerca de ${formatNumberBR(r.liters, 1)} litros, ${formatBRL(r.cost)}.`,
-        `O tanque inteiro, vazio até cheio, custaria ${formatBRL(r.fullTankCost)}.`,
+        ctx.t('fill', { liters: ctx.number(r.liters, 1), cost: ctx.brl(r.cost) }),
+        ctx.t('full', { cost: ctx.brl(r.fullTankCost) }),
       ];
-      if (r.rangeKm !== null) lines.push(`Autonomia estimada com o tanque cheio: ${formatNumberBR(r.rangeKm, 0)} km.`);
+      if (r.rangeKm !== null) lines.push(ctx.t('range', { range: ctx.number(r.rangeKm, 0) }));
       return { ok: true, lines };
     },
   },
 };
 
 /** Validates raw form strings and runs the tool. Pure and DOM-free. */
-export function runTool(id: string, raw: Record<string, string>): ToolOutcome {
+export function runTool(id: string, raw: Record<string, string>, locale: ToolLocale | null = null): ToolOutcome {
   const spec = TOOL_SPECS[id];
-  if (!spec) return { ok: false, errors: { _: `Ferramenta desconhecida: ${id}` } };
+  if (!spec) return { ok: false, errors: { _: fillMessage(locale?.validation?.unknown ?? PT_BR_VALIDATION.unknown, { id }) } };
   const values: Record<string, number | boolean | null> = {};
   const errors: Record<string, string> = {};
   for (const rule of spec.fields) {
-    const result = validateField(rule, raw[rule.name] ?? '');
+    const result = validateField(rule, raw[rule.name] ?? '', locale);
     if (result.ok) values[rule.name] = result.value;
     else errors[rule.name] = result.error;
   }
   if (Object.keys(errors).length > 0) return { ok: false, errors };
-  return spec.compute(values);
+  return spec.compute(values, toolContext(id, locale));
 }
 
 /** Reads optional `?campo=valor` prefill for known fields only. */
@@ -438,7 +572,7 @@ function fieldValue(el: FieldElement): string {
   return el.type === 'checkbox' ? (el.checked ? 'on' : '') : el.value;
 }
 
-export function renderOutcome(form: HTMLFormElement, result: HTMLElement, spec: ToolSpec, moveFocus: boolean): ToolOutcome {
+export function renderOutcome(form: HTMLFormElement, result: HTMLElement, spec: ToolSpec, moveFocus: boolean, locale: ToolLocale | null = null): ToolOutcome {
   const raw: Record<string, string> = {};
   const elements = new Map<string, FieldElement>();
   for (const rule of spec.fields) {
@@ -448,7 +582,7 @@ export function renderOutcome(form: HTMLFormElement, result: HTMLElement, spec: 
       raw[rule.name] = fieldValue(el);
     }
   }
-  const outcome = runTool(spec.id, raw);
+  const outcome = runTool(spec.id, raw, locale);
   const errors = outcome.ok ? {} : outcome.errors;
   let firstInvalid: FieldElement | null = null;
   for (const rule of spec.fields) {
@@ -480,7 +614,7 @@ export function renderOutcome(form: HTMLFormElement, result: HTMLElement, spec: 
     }
   } else {
     const p = doc.createElement('p');
-    p.textContent = 'Revise os campos destacados para calcular.';
+    p.textContent = fillMessage(locale?.validation?.review ?? PT_BR_VALIDATION.review);
     nodes.push(p);
   }
   result.replaceChildren(...nodes);
@@ -489,7 +623,22 @@ export function renderOutcome(form: HTMLFormElement, result: HTMLElement, spec: 
   return outcome;
 }
 
+/** Reads the page's tool-i18n JSON block, or null on pt-BR pages. */
+export function readToolI18n(doc: Document): ToolLocale | null {
+  if (!doc || typeof doc.getElementById !== 'function') return null;
+  const element = doc.getElementById('tool-i18n');
+  if (!element || !element.textContent) return null;
+  try {
+    const data = JSON.parse(element.textContent) as ToolLocale;
+    if (data.decimal !== ',' && data.decimal !== '.') return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
+
 export function setupTools(doc: Document, search: string): void {
+  const locale = readToolI18n(doc);
   for (const form of Array.from(doc.querySelectorAll<HTMLFormElement>('form[data-tool]'))) {
     const spec = TOOL_SPECS[form.dataset.tool ?? ''];
     const panel = form.closest<HTMLElement>('[data-tool-panel]');
@@ -506,9 +655,9 @@ export function setupTools(doc: Document, search: string): void {
     }
     form.addEventListener('submit', (event) => {
       event.preventDefault();
-      renderOutcome(form, result, spec, true);
+      renderOutcome(form, result, spec, true, locale);
     });
-    if (Object.keys(prefill).length > 0) renderOutcome(form, result, spec, false);
+    if (Object.keys(prefill).length > 0) renderOutcome(form, result, spec, false, locale);
   }
 }
 

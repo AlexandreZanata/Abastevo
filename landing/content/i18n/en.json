@@ -139,19 +139,27 @@
       "fields": {
         "gasolina": {
           "label": "Gasoline price (BRL/liter)",
-          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299."
+          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299.",
+          "unit": "BRL per liter",
+          "example": "6.29"
         },
         "etanol": {
           "label": "Ethanol price (BRL/liter)",
-          "hint": "In Brazilian reais per liter, for example 4.19."
+          "hint": "In Brazilian reais per liter, for example 4.19.",
+          "unit": "BRL per liter",
+          "example": "4.19"
         },
         "consumo_gasolina": {
           "label": "Consumption on gasoline (km/l, optional)",
-          "hint": "Fill in both consumption values to use your car's ratio instead of 70%."
+          "hint": "Fill in both consumption values to use your car's ratio instead of 70%.",
+          "unit": "km/l",
+          "example": "12.5"
         },
         "consumo_etanol": {
           "label": "Consumption on ethanol (km/l, optional)",
-          "hint": "Measured in your own car, tank to tank."
+          "hint": "Measured in your own car, tank to tank.",
+          "unit": "km/l",
+          "example": "8.7"
         }
       },
       "messages": {
@@ -170,26 +178,36 @@
       "fields": {
         "distancia": {
           "label": "Trip distance (km)",
-          "hint": "One way. Check \"round trip\" to double it."
+          "hint": "One way. Check \"round trip\" to double it.",
+          "unit": "km",
+          "example": "430"
         },
         "consumo": {
           "label": "Vehicle consumption (km/l)",
-          "hint": "Kilometers per liter, for example 12.5. See how to measure it in the average consumption guide."
+          "hint": "Kilometers per liter, for example 12.5. See how to measure it in the average consumption guide.",
+          "unit": "km/l",
+          "example": "12"
         },
         "preco": {
           "label": "Fuel price (BRL/liter)",
-          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299."
+          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299.",
+          "unit": "BRL per liter",
+          "example": "6.29"
         },
         "ida_e_volta": {
           "label": "Round trip"
         },
         "pedagio": {
           "label": "Total tolls (BRL, optional)",
-          "hint": "Add up every toll on the route you will drive."
+          "hint": "Add up every toll on the route you will drive.",
+          "unit": "BRL",
+          "example": "45.80"
         },
         "pessoas": {
           "label": "People to split with (optional)",
-          "hint": "Whole number, for example 2."
+          "hint": "Whole number, for example 2.",
+          "unit": "people",
+          "example": "2"
         }
       },
       "messages": {
@@ -205,15 +223,21 @@
       "fields": {
         "distancia": {
           "label": "Distance driven (km)",
-          "hint": "Kilometers driven since the last full tank (trip odometer)."
+          "hint": "Kilometers driven since the last full tank (trip odometer).",
+          "unit": "km",
+          "example": "412"
         },
         "litros": {
           "label": "Liters added to fill up (l)",
-          "hint": "Pump liters when you fill the tank again, for example 35.6."
+          "hint": "Pump liters when you fill the tank again, for example 35.6.",
+          "unit": "liters",
+          "example": "35.6"
         },
         "preco": {
           "label": "Price per liter (BRL, optional)",
-          "hint": "Also calculates the cost per kilometer."
+          "hint": "Also calculates the cost per kilometer.",
+          "unit": "BRL per liter",
+          "example": "6.29"
         }
       },
       "messages": {
@@ -226,23 +250,33 @@
       "fields": {
         "preco_combustivel": {
           "label": "Fuel price (BRL/liter)",
-          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299."
+          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299.",
+          "unit": "BRL per liter",
+          "example": "6.29"
         },
         "consumo": {
           "label": "Combustion car consumption (km/l)",
-          "hint": "Kilometers per liter, for example 12.5. See how to measure it in the average consumption guide."
+          "hint": "Kilometers per liter, for example 12.5. See how to measure it in the average consumption guide.",
+          "unit": "km/l",
+          "example": "12"
         },
         "tarifa_kwh": {
           "label": "Electricity rate (BRL/kWh)",
-          "hint": "Price per kWh with taxes, from your bill or the charging station, for example 0.95."
+          "hint": "Price per kWh with taxes, from your bill or the charging station, for example 0.95.",
+          "unit": "BRL per kWh",
+          "example": "0.95"
         },
         "consumo_eletrico": {
           "label": "Electric car consumption (km/kWh)",
-          "hint": "Kilometers per kWh, for example 6.5. With kWh/100 km, divide 100 by that value."
+          "hint": "Kilometers per kWh, for example 6.5. With kWh/100 km, divide 100 by that value.",
+          "unit": "km/kWh",
+          "example": "6.5"
         },
         "km_mes": {
           "label": "Kilometers per month (optional)",
-          "hint": "To estimate each car's monthly energy cost."
+          "hint": "To estimate each car's monthly energy cost.",
+          "unit": "km",
+          "example": "1,200"
         }
       },
       "messages": {
@@ -258,7 +292,9 @@
       "fields": {
         "capacidade": {
           "label": "Tank capacity (liters)",
-          "hint": "In the vehicle manual, for example 50."
+          "hint": "In the vehicle manual, for example 50.",
+          "unit": "liters",
+          "example": "50"
         },
         "nivel": {
           "label": "Current tank level",
@@ -275,11 +311,15 @@
         },
         "preco": {
           "label": "Fuel price (BRL/liter)",
-          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299."
+          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299.",
+          "unit": "BRL per liter",
+          "example": "6.29"
         },
         "consumo": {
           "label": "Vehicle consumption (km/l, optional)",
-          "hint": "To estimate the range with a full tank."
+          "hint": "To estimate the range with a full tank.",
+          "unit": "km/l",
+          "example": "12"
         }
       },
       "messages": {
