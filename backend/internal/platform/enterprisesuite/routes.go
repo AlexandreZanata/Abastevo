@@ -30,6 +30,9 @@ import (
 	identitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	proofauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
+	intelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/intelligence/adapters"
+	intelweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/intelligence/adapters/http"
+	intelapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/intelligence/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	maintpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters"
 	maintweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/maintenance/adapters/http"
@@ -168,6 +171,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, trackingpg.PolicyAuditDefinitions()...)
 	definitions = append(definitions, trackingpg.GeofenceAuditDefinitions()...)
 	definitions = append(definitions, trackingpg.RoutePlanAuditDefinitions()...)
+	definitions = append(definitions, intelpg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -210,6 +214,13 @@ func Register(router chi.Router, o Options) error {
 		{Class: "doc.document", Permissions: []string{"doc.document.attach"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic document upload sessions inherit identity v1 write 200/hour on every axis; byte transfers keep the orgmedia slot limits and production measurement remains required."},
 		{Class: "gps.geofence", Permissions: []string{"gps.geofence.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic geofence management inherits identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
 		{Class: "route.plan", Permissions: []string{"route.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic route plan revisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
+		{Class: "stock.tank", Permissions: []string{"stock.tank.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic fuel tank configuration inherits identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "stock.movement", Permissions: []string{"stock.movement.record"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic internal stock movements inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "maint.plan", Permissions: []string{"maint.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic preventive maintenance and compliance updates inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "maint.workorder", Permissions: []string{"maint.workorder.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic work order management inherits identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "maint.review", Permissions: []string{"maint.workorder.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic work order review decisions inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "find.finding", Permissions: []string{"find.finding.resolve"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic finding review decisions and detection runs inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "org.group", Permissions: []string{"org.group.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic multi-CNPJ consolidation grant management inherits identity v1 write 200/hour on every axis; production measurement remains required."},
 	})
 	if err != nil {
 		return err
@@ -234,10 +245,8 @@ func Register(router chi.Router, o Options) error {
 	}
 	fleetAuthority := &orgpg.FleetAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
 	// EMP-TRIP-002 (EDR-206): an IN_PROGRESS trip is BR-FLEET-010 open work;
-	// work orders join this source when the maintenance epic delivers them.
-	// Trips are the FLEET-007 active-use source (EDR-206); NoMaintenanceHolds
-	// stays the explicit "no source" answer until maintenance holds exist.
-	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: fleetpg.NoMaintenanceHolds{}, ChecklistBlocks: maintpg.ChecklistBlocks{}}
+	// work orders join this source in F6 via maintpg.MaintenanceHolds.
+	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: maintpg.MaintenanceHolds{}, ChecklistBlocks: maintpg.ChecklistBlocks{}}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}
@@ -527,6 +536,11 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	if err := registerDocuments(router, o, cookies, gateway, access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: documentweb.DocumentRecords{}, Now: time.Now}, roles, auditStore, deviceStore); err != nil {
+		return err
+	}
+	intelStore := &intelpg.Store{Pool: o.Pool, Authority: &orgpg.ManagementAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore, NewID: jobs.NewUUIDv4}
+	intelAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: intelweb.ManagementRecords{}, Now: time.Now}
+	if err := intelweb.RegisterManagement(router, intelapp.Service{Enabled: true, Repository: intelStore, Now: time.Now, NewID: jobs.NewUUIDv4}, cookies, gateway, intelAuthorization); err != nil {
 		return err
 	}
 

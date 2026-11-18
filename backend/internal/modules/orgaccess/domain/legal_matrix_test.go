@@ -24,7 +24,7 @@ func TestLegalManagementV2GrantsOnlyTheRecordedRoles(t *testing.T) {
 		}
 	}
 	_, version := d.SystemCatalog().Versions()
-	if version != "org-permissions-v6" {
+	if version != "org-permissions-v7" {
 		t.Fatal("matrix amendment did not change its version")
 	}
 }
@@ -62,6 +62,11 @@ func TestCatalogV3RetainsEveryOtherV1Cell(t *testing.T) {
 				expected = "O"
 				changes++
 			}
+			// org-permissions-v7 (F6 management and intelligence) grants maintenance, stock, findings and group rows.
+			if slices.Contains(v7Amendments[row[0]], name) {
+				expected = "O"
+				changes++
+			}
 
 			rule, err := d.SystemCatalog().Lookup(d.Role(name), d.Permission(row[0]))
 			if err != nil {
@@ -79,7 +84,7 @@ func TestCatalogV3RetainsEveryOtherV1Cell(t *testing.T) {
 			}
 		}
 	}
-	if changes != 27 {
-		t.Fatal("expected exactly twenty-seven explicit amendments (v2, v3, v5 and v6)")
+	if changes != 43 {
+		t.Fatal("expected exactly forty-three explicit amendments (v2, v3, v5, v6 and v7)")
 	}
 }

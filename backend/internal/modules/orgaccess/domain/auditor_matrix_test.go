@@ -10,10 +10,10 @@ import (
 // B-BR-EMP-247, EDR-166: AUDITOR holds exactly the documented 07-permissions
 // column and no write key. The literal is independent of the catalog source.
 func TestAuditorHoldsExactlyTheDocumentedReadOnlySet(t *testing.T) {
-	documented := []d.Permission{"audit.event.read", "doc.document.view_content", "exp.expense.read", "fleet.asset.read", "fuel.fueling.read", "gps.track.read", "idn.employee.read",
+	documented := []d.Permission{"audit.event.read", "doc.document.view_content", "exp.expense.read", "find.finding.read", "fleet.asset.read", "fuel.fueling.read", "gps.track.read", "idn.employee.read",
 		"kpi.dashboard.read", "org.ownership.respond", "org.settings.read", "rpt.export.run", "trip.trip.read"}
 	catalog := d.SystemCatalog()
-	if roles, permissions := catalog.Versions(); roles != "org-roles-v1" || permissions != "org-permissions-v6" {
+	if roles, permissions := catalog.Versions(); roles != "org-roles-v1" || permissions != "org-permissions-v7" {
 		t.Fatal("catalog version changed: revisit the auditor column", roles, permissions)
 	}
 	rules, err := catalog.Rules(d.Auditor)

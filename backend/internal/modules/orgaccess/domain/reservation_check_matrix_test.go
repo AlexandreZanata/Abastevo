@@ -23,6 +23,14 @@ var v6Amendments = map[string][]string{
 	"route.plan.manage":   {"OWNER", "ADMIN", "FLEET_MANAGER", "SUPERVISOR"},
 }
 
+var v7Amendments = map[string][]string{
+	"find.finding.read":      {"OWNER", "ADMIN", "FLEET_MANAGER", "FINANCE", "AUDITOR"},
+	"maint.plan.manage":      {"OWNER", "ADMIN", "FLEET_MANAGER"},
+	"maint.workorder.review": {"OWNER", "ADMIN", "FINANCE", "APPROVER"},
+	"org.group.manage":       {"OWNER"},
+	"stock.tank.manage":      {"OWNER", "ADMIN", "FLEET_MANAGER"},
+}
+
 func readCatalogVector(t *testing.T, version string) [][]string {
 	t.Helper()
 	file, err := os.Open("../../../../../contracts/testdata/enterprise/authorization-catalog-" + version + ".psv")
@@ -71,7 +79,7 @@ func TestCatalogV5RetainsEveryV4CellExceptTheRecordedGrants(t *testing.T) {
 
 func TestCatalogV5GrantsReservationAndCheckKeysOnlyToTheRecordedRoles(t *testing.T) {
 	catalog := d.SystemCatalog()
-	if _, version := catalog.Versions(); version != "org-permissions-v6" {
+	if _, version := catalog.Versions(); version != "org-permissions-v7" {
 		t.Fatal("matrix amendment did not change its version", version)
 	}
 	for key, granted := range v5Amendments {
@@ -157,6 +165,52 @@ func TestCatalogV6RetainsEveryV5CellExceptTheRecordedGrants(t *testing.T) {
 			b, _ := catalog.Lookup(role.Key, pair[1])
 			if a.Coverage() != b.Coverage() {
 				t.Fatal("v6 amended key does not follow its recorded column", pair, role.Key)
+			}
+		}
+	}
+}
+
+func TestCatalogV7RetainsEveryV6CellExceptTheRecordedGrants(t *testing.T) {
+	old, current := readCatalogVector(t, "v6"), readCatalogVector(t, "v7")
+	if len(old) != len(current) || len(current) != 86 || !slices.Equal(old[0], current[0]) {
+		t.Fatal("v7 must keep the v6 shape: no key is added or removed")
+	}
+	changed := 0
+	for i, row := range old {
+		if row[0] != current[i][0] || len(row) != len(current[i]) {
+			t.Fatal("v6 row order or width changed", i)
+		}
+		granted := v7Amendments[row[0]]
+		for column, role := range old[0][1:] {
+			want := row[column+1]
+			if slices.Contains(granted, role) {
+				if want != "-" {
+					t.Fatal("amended cell was not unassigned in v6", row[0], role)
+				}
+				want = "O"
+				changed++
+			}
+			if current[i][column+1] != want {
+				t.Fatal("v7 cell differs from v6 outside the recorded amendment", row[0], role, current[i][column+1])
+			}
+		}
+	}
+	if changed != 16 {
+		t.Fatal("expected exactly sixteen amended cells", changed)
+	}
+	catalog := d.SystemCatalog()
+	for key, granted := range v7Amendments {
+		for _, role := range catalog.Roles() {
+			rule, err := catalog.Lookup(role.Key, d.Permission(key))
+			if err != nil {
+				t.Fatal(err)
+			}
+			want := d.Denied
+			if slices.Contains(granted, string(role.Key)) {
+				want = d.AssignedScope
+			}
+			if rule.Coverage() != want {
+				t.Fatal("v7 amended key coverage", key, role.Key, rule.Coverage())
 			}
 		}
 	}

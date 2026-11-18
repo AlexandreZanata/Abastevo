@@ -61,6 +61,18 @@ const (
 	// Route and geofence refusals (EMP-GPS-013, EMP-ROUTE-002).
 	RoutePointLimit         Code = "ROUTE_POINT_LIMIT"
 	GeofenceInvalidGeometry Code = "GEOFENCE_INVALID_GEOMETRY"
+	// F6 management, stock, maintenance, finding, and report refusals.
+	MeterRequired        Code = "METER_REQUIRED"
+	QuoteRequired        Code = "QUOTE_REQUIRED"
+	QuoteExpired         Code = "QUOTE_EXPIRED"
+	OverrunNotApproved   Code = "OVERRUN_NOT_APPROVED"
+	HoldOpen             Code = "HOLD_OPEN"
+	InvoiceRequired      Code = "INVOICE_REQUIRED"
+	ControlDisabled      Code = "CONTROL_DISABLED"
+	FindingClosed        Code = "FINDING_CLOSED"
+	ExportTooLarge       Code = "EXPORT_TOO_LARGE"
+	StockInsufficient    Code = "STOCK_INSUFFICIENT"
+	StockProductMismatch Code = "STOCK_PRODUCT_MISMATCH"
 )
 
 func (code Code) Error() string { return string(code) }
@@ -78,9 +90,12 @@ var statuses = map[Code]int{
 	TransferPending:       409,
 	EmployeeHasAccess:     409,
 	TokenInvalid:          404, AlreadyMember: 409, ManagedAccountRestricted: 403,
-	ExportQueueFull: 429, ExportNotReady: 409, ExportExpired: 410, ExportFormatUnavailable: 422,
+	ExportQueueFull: 429, ExportNotReady: 409, ExportExpired: 410, ExportFormatUnavailable: 422, ExportTooLarge: 422,
 	ReadingAlreadySuperseded: 409, AmendmentRequired: 409,
 	RoutePointLimit: 422, GeofenceInvalidGeometry: 422,
+	MeterRequired: 422, QuoteRequired: 409, QuoteExpired: 409, OverrunNotApproved: 409,
+	HoldOpen: 409, InvoiceRequired: 409, ControlDisabled: 409, FindingClosed: 409,
+	StockInsufficient: 409, StockProductMismatch: 422,
 }
 
 type permissionFailure struct{ key string }

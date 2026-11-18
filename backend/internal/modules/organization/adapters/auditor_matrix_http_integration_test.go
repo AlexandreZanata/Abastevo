@@ -60,6 +60,7 @@ func auditorRouter(t *testing.T, fx deviceFixtureState) (chi.Router, *jobs.Dispa
 	periodGrant(t, fx.f)
 	exportGrant(t, fx)
 	documentGrants(t, fx)
+	grantF6Tables(t, fx.f)
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_settings_commands,org_role_commands TO "+role+"; GRANT SELECT,INSERT,UPDATE ON org_ownership_transfers,identity_rate_windows TO "+role+
 		"; GRANT SELECT,INSERT ON org_notification_recipients,org_notification_deliveries,org_notification_commands TO "+role+
@@ -231,6 +232,7 @@ var auditorTemplateParam = regexp.MustCompile(`\{[a-z_]+\}`)
 // auditorPositiveRoutes is the independent literal of the routes the
 // documented AUDITOR column grants at this head (B-BR-EMP-247).
 var auditorPositiveRoutes = []string{
+	"/v1/orgs/{org_id}/audit/events/list",
 	"/v1/orgs/{org_id}/checklists/assets/{asset_id}/applicable",
 	"/v1/orgs/{org_id}/checklists/assets/{asset_id}/runs/{run_id}/read",
 	"/v1/orgs/{org_id}/documents/{document_id}/content/access",
@@ -251,6 +253,8 @@ var auditorPositiveRoutes = []string{
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/reservations/list",
 	"/v1/orgs/{org_id}/fleet/assets/{asset_id}/unit-allocations/list",
 	"/v1/orgs/{org_id}/fleet/assignments/mine/list",
+	"/v1/orgs/{org_id}/intelligence/findings/list",
+	"/v1/orgs/{org_id}/intelligence/kpis/overview",
 	"/v1/orgs/{org_id}/ownership-transfer/accept",
 	"/v1/orgs/{org_id}/ownership-transfer/cancel",
 	"/v1/orgs/{org_id}/ownership-transfer/read",
@@ -369,6 +373,10 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if items, _ := call("/v1/orgs/{org_id}/fleet/assets/{asset_id}/meters/{meter_id}/readings/list", map[string]any{"limit": 20}, 200, "", "")["items"].([]any); len(items) != 1 || items[0].(map[string]any)["id"] != reading || items[0].(map[string]any)["state"] != "VALID" {
 		t.Fatal("auditor reading history", items)
 	}
+	// F6 AUDITOR read routes: audit viewer, KPI overview, findings list.
+	call("/v1/orgs/{org_id}/audit/events/list", map[string]any{}, 200, "", "")
+	call("/v1/orgs/{org_id}/intelligence/findings/list", map[string]any{}, 200, "", "")
+	call("/v1/orgs/{org_id}/intelligence/kpis/overview", map[string]any{}, 200, "", "")
 	if matrixPrivateState(t, fx) != before || auditorExtraState(t, fx) != beforeExtra {
 		t.Fatal("a documented auditor read changed private source state")
 	}
@@ -496,7 +504,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 175 || positive != 34 || denied != 141 {
+	if len(routes) != 195 || positive != 37 || denied != 158 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 
