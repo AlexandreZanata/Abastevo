@@ -78,7 +78,8 @@ func resilienceFixture(t *testing.T, documents *mediapg.StorageConfig) *resilien
 	runGrants(t, x.f)
 	role := pgx.Identifier{x.f.RuntimeRole}.Sanitize()
 	if _, err := x.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_trip_events,org_trip_held_events,org_document_links TO "+role+
-		";GRANT SELECT(org_id,employee_id,asset_id,valid_from,valid_to,end_cause) ON org_asset_assignments TO "+role+";GRANT INSERT ON org_meter_held_readings TO "+role); err != nil {
+		";GRANT SELECT(org_id,employee_id,asset_id,valid_from,valid_to,end_cause) ON org_asset_assignments TO "+role+";GRANT INSERT ON org_meter_held_readings TO "+role+
+		";GRANT SELECT ON org_work_orders TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	x.m = missionState{tripState: x.tripState, missions: missionStoreFor(t, x.legalFixtureState, x.tripState)}
