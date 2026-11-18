@@ -4,6 +4,7 @@ headline: Gasolina comum, aditivada ou premium: qual escolher
 description: Diferença entre gasolina comum, aditivada e premium: o que os aditivos detergentes fazem, o que a especificação da ANP garante e quando vale pagar a mais.
 summary: O que os aditivos fazem, o que muda na premium e quando vale pagar a diferença.
 slug: gasolina-comum-ou-aditivada
+primaryQuery: gasolina comum ou aditivada
 category: escolher-combustivel
 tags: [gasolina, gasolina-aditivada, octanagem, qualidade, manutencao]
 datePublished: 2026-11-14

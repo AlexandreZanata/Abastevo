@@ -4,7 +4,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadSite, validateFrontMatter, htmlTitle, isValidDate, relatedGuides, ContentError } from '../scripts/content/site.mjs';
+import { loadSite, validateFrontMatter, htmlTitle, isValidDate, normalizeQuery, relatedGuides, ContentError } from '../scripts/content/site.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -72,6 +72,8 @@ test('front matter validation rejects missing, unknown and malformed fields', ()
     [(g) => { g.dateModified = '2026-11-01'; }, /dateModified precedes datePublished/],
     [(g) => { g.related = []; }, /related must list at least one route/],
     [(g) => { g.related = ['https://example.com/']; }, /invalid related route/],
+    [(g) => { g.primaryQuery = ''; }, /primaryQuery must be a non-empty string/],
+    [(g) => { g.primaryQuery = 'x'.repeat(81); }, /primaryQuery length 81 outside \[3, 80\]/],
   ];
   for (const [mutate, pattern] of cases) {
     const guide = validGuide();
@@ -95,6 +97,16 @@ test('the shipped content manifest and Markdown sources validate', () => {
     if (entry.indexable) assert.ok(isValidDate(entry.lastmod), `${entry.route} has a fixed lastmod`);
   }
   assert.equal(site.registry.get('/404.html').indexable, false);
+
+  // SEO-20: every guide and tool answers one query, and no two share it.
+  const keywordPages = [...site.registry.values()].filter((entry) => entry.kind === 'guide' || entry.kind === 'html-guide' || entry.kind === 'tool');
+  assert.equal(keywordPages.length, 18, '13 guides and 5 tools carry the keyword map');
+  for (const entry of keywordPages) {
+    assert.equal(typeof entry.primaryQuery, 'string', `${entry.route} needs a primaryQuery`);
+  }
+  const normalized = keywordPages.map((entry) => normalizeQuery(entry.primaryQuery));
+  assert.equal(new Set(normalized).size, normalized.length, 'primary queries are unique');
+  assert.ok(normalized.every((query) => query === query.toLowerCase()), 'primary queries are lowercase');
 });
 
 test('loadSite rejects broken fixtures with a precise message', () => {
@@ -130,6 +142,10 @@ test('loadSite rejects broken fixtures with a precise message', () => {
     [
       (dir) => fs.copyFileSync(path.join(dir, 'ferramentas', 'consumo-medio.md'), path.join(dir, 'ferramentas', 'outra.md')),
       /slug "consumo-medio" must match file name "outra"/,
+    ],
+    [
+      (dir) => editFile(path.join(dir, 'ferramentas', 'consumo-medio.md'), 'primaryQuery: calculadora consumo médio', 'primaryQuery: calculadora custo de viagem'),
+      /primaryQuery "calculadora custo de viagem" collides between \/ferramentas\/consumo-medio\/ and \/ferramentas\/custo-de-viagem\//,
     ],
     [
       (dir) => editFile(path.join(dir, 'manifest.json'), '"route": "/termos/", ', '"route": "/privacidade/", '),

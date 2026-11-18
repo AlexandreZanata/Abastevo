@@ -4,6 +4,7 @@ headline: Calculadora de custo por km: combustão ou elétrico
 description: Compare o custo de energia por quilômetro de um carro a gasolina, etanol ou diesel com o de um carro elétrico, usando o preço do litro e a tarifa por kWh.
 summary: Custo de energia por quilômetro de um carro a combustão comparado a um elétrico.
 slug: custo-por-km
+primaryQuery: calculadora custo por km
 datePublished: 2026-11-14
 dateModified: 2026-11-17
 related:

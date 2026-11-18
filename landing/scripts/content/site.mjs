@@ -38,15 +38,15 @@ export function outputRelFor(route) {
 const SCHEMAS = {
   guide: {
     required: ['title', 'description', 'slug', 'category', 'tags', 'datePublished', 'dateModified', 'related'],
-    optional: ['headline', 'summary'],
+    optional: ['headline', 'summary', 'primaryQuery'],
   },
   tool: {
     required: ['title', 'description', 'slug', 'datePublished', 'dateModified', 'related'],
-    optional: ['headline', 'summary'],
+    optional: ['headline', 'summary', 'primaryQuery'],
   },
   page: {
     required: ['title', 'description', 'slug', 'datePublished', 'dateModified'],
-    optional: ['headline', 'summary', 'schemaType'],
+    optional: ['headline', 'summary', 'schemaType', 'primaryQuery'],
   },
 };
 
@@ -81,6 +81,7 @@ export function validateFrontMatter(kind, data, where, ctx = {}) {
   checkText(errors, where, 'description', data.description, DESCRIPTION_BOUNDS);
   if (data.headline !== undefined) checkText(errors, where, 'headline', data.headline, [10, 120]);
   if (data.summary !== undefined) checkText(errors, where, 'summary', data.summary, [20, 200]);
+  if (data.primaryQuery !== undefined) checkText(errors, where, 'primaryQuery', data.primaryQuery, [3, 80]);
   if (typeof data.slug !== 'string' || !SLUG_RE.test(data.slug)) errors.push(`${where}: invalid slug "${data.slug}"`);
   else if (ctx.expectedSlug && data.slug !== ctx.expectedSlug) errors.push(`${where}: slug "${data.slug}" must match file name "${ctx.expectedSlug}"`);
   for (const field of ['datePublished', 'dateModified']) {
@@ -157,6 +158,16 @@ export function extractSources(body) {
   return sources;
 }
 
+/** Keyword-map key: case, accent and repeated-space insensitive. */
+export function normalizeQuery(value) {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function readMarkdownDir(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
@@ -189,6 +200,7 @@ function validateManifest(manifest, errors) {
       const g = page.guide;
       checkText(errors, where, 'guide.title', g.title, [10, 90]);
       checkText(errors, where, 'guide.summary', g.summary, [20, 200]);
+      if (g.primaryQuery !== undefined) checkText(errors, where, 'guide.primaryQuery', g.primaryQuery, [3, 80]);
       if (!manifest.categories?.some((c) => c.slug === g.category)) errors.push(`${where}: unknown guide category "${g.category}"`);
       if (!Array.isArray(g.tags) || g.tags.length === 0 || g.tags.some((t) => !TAG_RE.test(t))) errors.push(`${where}: invalid guide tags`);
     }
@@ -243,6 +255,7 @@ export function loadSite(root) {
       summary: page.guide?.summary,
       category: page.guide?.category,
       tags: page.guide?.tags || [],
+      primaryQuery: page.guide?.primaryQuery,
     });
   }
 
@@ -275,6 +288,7 @@ export function loadSite(root) {
       summary: g.data.summary || g.data.description,
       category: g.data.category,
       tags: g.data.tags,
+      primaryQuery: g.data.primaryQuery,
       related: g.data.related,
       datePublished: g.data.datePublished,
       dateModified: g.data.dateModified,
@@ -293,6 +307,7 @@ export function loadSite(root) {
       headline: t.data.headline || t.data.title,
       description: t.data.description,
       summary: t.data.summary || t.data.description,
+      primaryQuery: t.data.primaryQuery,
       related: t.data.related,
       datePublished: t.data.datePublished,
       dateModified: t.data.dateModified,
@@ -309,6 +324,7 @@ export function loadSite(root) {
       headline: p.data.headline || p.data.title,
       description: p.data.description,
       summary: p.data.summary || p.data.description,
+      primaryQuery: p.data.primaryQuery,
       schemaType: p.data.schemaType || 'WebPage',
       datePublished: p.data.datePublished,
       dateModified: p.data.dateModified,
@@ -338,6 +354,16 @@ export function loadSite(root) {
   add({ route: '/guias/', kind: 'guides-hub', ...manifest.hubs.guias, summary: manifest.hubs.guias.intro, lastmod: maxDate(allGuides) });
   const toolEntries = [...registry.values()].filter((e) => e.kind === 'tool');
   add({ route: '/ferramentas/', kind: 'tools-hub', ...manifest.hubs.ferramentas, summary: manifest.hubs.ferramentas.intro, lastmod: maxDate(toolEntries) });
+
+  // SEO-20 keyword map: one URL per query, compared without case or accents.
+  const queryOwners = new Map();
+  for (const entry of registry.values()) {
+    if (!entry.primaryQuery) continue;
+    const key = normalizeQuery(entry.primaryQuery);
+    const owner = queryOwners.get(key);
+    if (owner) errors.push(`primaryQuery "${entry.primaryQuery}" collides between ${owner} and ${entry.route}`);
+    else queryOwners.set(key, entry.route);
+  }
 
   for (const route of manifest.popularGuides || []) {
     const entry = registry.get(route);

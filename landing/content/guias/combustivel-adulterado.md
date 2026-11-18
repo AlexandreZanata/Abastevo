@@ -4,6 +4,7 @@ headline: Combustível adulterado: sinais, testes no posto e como denunciar
 description: Sinais de combustível fora da especificação, testes que você pode pedir no posto, como guardar provas e como denunciar à ANP, ao Procon e ao consumidor.gov.br.
 summary: Sinais no carro, testes que você pode pedir, provas a guardar e onde denunciar.
 slug: combustivel-adulterado
+primaryQuery: combustível adulterado
 category: direitos-e-qualidade
 tags: [qualidade, combustivel-adulterado, denuncia, anp, direitos-do-consumidor]
 datePublished: 2026-11-14
