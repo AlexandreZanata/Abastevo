@@ -81,7 +81,8 @@ func (s *ReferenceStore) PullTripField(ctx context.Context, source app.Source, t
          FROM org_fuel_authorizations v JOIN org_station_agreements a ON a.org_id=v.org_id AND a.id=v.agreement_id
          WHERE v.org_id=$1 AND v.employee_id=$2 AND (v.asset_id=$3 OR v.asset_id IS NULL)
            AND a.state='ACTIVE' AND $4::timestamptz>=a.valid_from AND $4::timestamptz<a.valid_until
-         ORDER BY (v.state='ISSUED' AND v.valid_until>$4) DESC,v.valid_until DESC,v.id LIMIT 1`,
+         ORDER BY CASE WHEN v.state='ISSUED' AND v.valid_until>$4 THEN v.valid_until END ASC NULLS LAST,
+           v.valid_until DESC,v.id LIMIT 1`,
 			org, authority.EmployeeID, asset, now).Scan(&voucher.ID, &voucher.Product, &voucher.Unit,
 			&voucher.MaxQuantityMilli, &voucher.MaxCentavos, &voucher.ValidUntil, &voucher.State)
 		if err == nil {

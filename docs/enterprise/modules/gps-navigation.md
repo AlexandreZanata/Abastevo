@@ -499,7 +499,8 @@ assigned to this driver, is unavailable. A trip plan takes precedence over the
 plan of the mission linked by its accepted start. Both sources report their
 revision and waypoint order. The response exposes only document expiry counts,
 the driver's own open requests for this vehicle, and an applicable voucher
-summary with its limit and expiry. Voucher codes, hashes, terms and company
+summary with its limit and expiry. The first eligible voucher to expire has
+priority. Voucher codes, hashes, terms and company
 financial data stay outside the driver reference. The Android screen removes
 the reference when connectivity or the confirmed trip context is lost. Stops
 with coordinates open a transient native preview with the plan's avoidance

@@ -372,6 +372,53 @@ func TestTripFieldReferenceBindsDriverAndEnrollment(t *testing.T) {
 	}
 }
 
+func TestTripFieldReferenceSelectsSoonestUsableVoucher(t *testing.T) {
+	x := trackingFixture(t)
+	grantTripFieldFixture(t, x.f)
+	grantF7AgreementTables(t, x.f)
+	org, member := x.scope.OrgID().String(), x.source.MembershipID
+	station, agreement := onboardingID(t), onboardingID(t)
+	soon, later, expired, cancelled := onboardingID(t), onboardingID(t), onboardingID(t), onboardingID(t)
+	if _, err := x.f.Admin.Exec(t.Context(), "INSERT INTO directory_stations(id,display_name) VALUES($1,'Synthetic fuel station')", station); err != nil {
+		t.Fatal(err)
+	}
+	if err := unitSchemaExec(t, x.legalFixtureState, `
+INSERT INTO org_station_agreements(org_id,id,station_id,org_label,state,valid_from,valid_until,
+ proposed_by_membership_id,decided_by_account_id,decided_at)
+VALUES($1,$2,$3,'Synthetic fleet','ACTIVE',clock_timestamp()-interval '1 hour',
+ clock_timestamp()+interval '12 hours',$4,$5,clock_timestamp())`,
+		org, agreement, station, member, x.source.Actor.AccountID); err != nil {
+		t.Fatal(err)
+	}
+	if err := unitSchemaExec(t, x.legalFixtureState, `
+INSERT INTO org_fuel_authorizations(org_id,id,agreement_id,station_id,employee_id,asset_id,
+ fuel_product,unit,max_quantity_milli,max_centavos,valid_until,code_hash,state,issued_by_membership_id)
+SELECT t.org_id,v.id,$3,$4,t.driver_employee_id,t.asset_id,'DIESEL_S10','L',20000,12000,
+ clock_timestamp()+v.remaining,repeat(replace(v.id::text,'-',''),2),v.state,t.author_membership_id
+FROM org_trips t CROSS JOIN (VALUES
+ ($5::uuid,interval '2 hours','ISSUED'),($6::uuid,interval '4 hours','ISSUED'),
+ ($7::uuid,interval '-1 hour','ISSUED'),($8::uuid,interval '1 hour','CANCELLED')) v(id,remaining,state)
+WHERE t.org_id=$1 AND t.id=$2`, org, x.trip, agreement, station, soon, later, expired, cancelled); err != nil {
+		t.Fatal(err)
+	}
+
+	fields := referenceStore(x.selfIntakeState)
+	readVoucher := func(want string) {
+		t.Helper()
+		field, err := fields.PullTripField(t.Context(), x.source, x.trip)
+		if err != nil || field.Voucher == nil || field.Voucher.ID != want || field.Voucher.State != "ISSUED" {
+			t.Fatal("trip reference did not select the next usable voucher", err)
+		}
+	}
+	readVoucher(soon)
+	if err := unitSchemaExec(t, x.legalFixtureState, `
+UPDATE org_fuel_authorizations SET state='CANCELLED',cancelled_reason='Synthetic cancellation'
+WHERE org_id=$1 AND id=$2`, org, soon); err != nil {
+		t.Fatal(err)
+	}
+	readVoucher(later)
+}
+
 func grantTripFieldFixture(t *testing.T, f *orgtest.Fixture) {
 	t.Helper()
 	// In script-grants mode this fixture role stays unused. The runtime then uses the reviewed production SQL.
