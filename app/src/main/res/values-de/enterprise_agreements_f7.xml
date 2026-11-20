@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_agreement_card_title">Betankungsberechtigungen</string>
+    <string name="enterprise_agreement_voucher_limits">Bis zu %1$d Milli und %2$d Centavos.</string>
+    <string name="enterprise_agreement_voucher_valid_until">Gültig bis %1$s.</string>
+    <string name="enterprise_agreement_voucher_expired">Berechtigung abgelaufen.</string>
+    <string name="enterprise_agreement_voucher_locked">Berechtigung nach ungültigen Versuchen gesperrt.</string>
+    <string name="enterprise_agreement_announced_source">Von der Station angekündigte Preise sind eine separate kommerzielle Quelle.</string>
+    <string name="enterprise_agreement_promotions_active">%1$d aktive Aktion(en) bei Partnerstationen.</string>
+</resources>

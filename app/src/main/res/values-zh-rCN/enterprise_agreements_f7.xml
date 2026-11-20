@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_agreement_card_title">加油授权</string>
+    <string name="enterprise_agreement_voucher_limits">最多 %1$d milli 和 %2$d 分。</string>
+    <string name="enterprise_agreement_voucher_valid_until">有效期至 %1$s。</string>
+    <string name="enterprise_agreement_voucher_expired">授权已过期。</string>
+    <string name="enterprise_agreement_voucher_locked">多次无效尝试后授权已被锁定。</string>
+    <string name="enterprise_agreement_announced_source">站点公布的价格是独立的商业来源。</string>
+    <string name="enterprise_agreement_promotions_active">合作站点有 %1$d 个进行中的促销。</string>
+</resources>

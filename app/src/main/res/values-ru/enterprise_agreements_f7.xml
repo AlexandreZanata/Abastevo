@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_agreement_card_title">Разрешения на заправку</string>
+    <string name="enterprise_agreement_voucher_limits">До %1$d милли и %2$d сентаво.</string>
+    <string name="enterprise_agreement_voucher_valid_until">Действительно до %1$s.</string>
+    <string name="enterprise_agreement_voucher_expired">Срок действия разрешения истёк.</string>
+    <string name="enterprise_agreement_voucher_locked">Разрешение заблокировано после недействительных попыток.</string>
+    <string name="enterprise_agreement_announced_source">Объявленные станцией цены — отдельный коммерческий источник.</string>
+    <string name="enterprise_agreement_promotions_active">Активных акций на станциях-партнёрах: %1$d.</string>
+</resources>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="enterprise_agreement_card_title">Autorisations de ravitaillement</string>
+    <string name="enterprise_agreement_voucher_limits">Jusqu'à %1$d milli et %2$d centimes.</string>
+    <string name="enterprise_agreement_voucher_valid_until">Valable jusqu'au %1$s.</string>
+    <string name="enterprise_agreement_voucher_expired">Autorisation expirée.</string>
+    <string name="enterprise_agreement_voucher_locked">Autorisation verrouillée après tentatives invalides.</string>
+    <string name="enterprise_agreement_announced_source">Les prix annoncés par la station constituent une source commerciale distincte.</string>
+    <string name="enterprise_agreement_promotions_active">%1$d promotion(s) active(s) dans les stations partenaires.</string>
+</resources>
