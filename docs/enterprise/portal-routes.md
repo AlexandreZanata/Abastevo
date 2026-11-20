@@ -148,7 +148,9 @@ as follows; tests in `portalgen` prove each rule on fixtures.
     bulletins, user topics and comments never enter it (UGC waits for SEO-13).
     Public fields only: id, category (code, name, description), title,
     introduction, body, first publication and update instants, coarse region
-    (UF, IBGE), fuel, station id and the source display name. A post whose
+    (UF, IBGE), fuel, station id, optional `landing_route` (`/guias/{slug}/`
+    or `/ferramentas/{slug}/` pointing to the owning landing guide or
+    calculator, SEO-20) and the source display name. A post whose
     public text holds a CPF-shaped token stays out of the snapshot and is
     counted, because the portal privacy check would otherwise refuse the whole
     release. The posts are a snapshot file, so any published-post change also
@@ -166,7 +168,9 @@ as follows; tests in `portalgen` prove each rule on fixtures.
     always escaped: no HTML, Markdown or clickable links from the body.
   - *Post page.* H1 title, first publication and update dates (day in
     America/Sao_Paulo), “Equipe abastevo” attribution linking `/sobre/` when
-    the landing shares the build, links to the state and city price pages,
+    the landing shares the build, optional “Guia completo” link chip from
+    `landing_route` when allowlisted in `LandingRoutes` and the build shares
+    the landing origin, links to the state and city price pages,
     the fuel hub and the station page only when those pages exist in the same
     build, “Outras publicações” (same-category ring, same region, then a ring
     over all posts, so every post receives links from other posts) and the

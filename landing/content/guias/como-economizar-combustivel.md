@@ -4,6 +4,7 @@ headline: Como economizar combustível: hábitos que funcionam de verdade
 description: Hábitos comprovados para gastar menos combustível: calibragem, direção suave, velocidade, manutenção, peso, ar-condicionado e a escolha pelo custo por quilômetro.
 summary: Direção, calibragem, manutenção e escolha do combustível, sem mitos nem truques.
 slug: como-economizar-combustivel
+primaryQuery: como economizar combustível
 category: economia
 tags: [economia, consumo, manutencao, calibragem, direcao-eficiente]
 datePublished: 2026-11-14

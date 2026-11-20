@@ -4,6 +4,7 @@ headline: Como é formado o preço da gasolina: do produtor à bomba
 description: As parcelas do preço da gasolina: valor do produtor ou importador, tributos federais, ICMS por litro, etanol anidro da mistura e margens de distribuição e revenda.
 summary: As cinco parcelas que formam o preço do litro e onde conferir o peso de cada uma.
 slug: como-e-formado-o-preco-da-gasolina
+primaryQuery: como é formado o preço da gasolina
 category: precos
 tags: [gasolina, impostos, icms, composicao-de-precos, petrobras]
 datePublished: 2026-11-14

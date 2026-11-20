@@ -4,6 +4,7 @@ headline: Calculadora de consumo médio
 description: Calcule o consumo médio do seu carro em km/l e em litros por 100 km pelo método tanque a tanque, e veja também quanto custa cada quilômetro rodado.
 summary: Quilômetros por litro, litros por 100 km e custo por quilômetro a partir de um tanque.
 slug: consumo-medio
+primaryQuery: calculadora consumo médio
 datePublished: 2026-11-14
 dateModified: 2026-11-17
 related:

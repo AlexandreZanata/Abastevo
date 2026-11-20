@@ -1,0 +1,348 @@
+{
+  "_review": {
+    "status": "draft",
+    "reviewedBy": "",
+    "reviewedAt": ""
+  },
+  "home": {
+    "title": "Fuel prices in Brazil by state and city",
+    "description": "Check gasoline, ethanol and diesel prices in Brazil by state and city with visible source and collection date: weekly ANP survey and calculators.",
+    "hero": {
+      "kicker": "Open code · ANP data · Community",
+      "title": "Fuel prices in Brazil by state and city, with ANP data",
+      "slogan": "More information for life on the road.",
+      "lead": "Find fuel prices across Brazil, read weekly ANP reference data and use free calculators in your browser.",
+      "artLabel": "Illustration: the abastevo mark among routes, map markers and price cards"
+    }
+  },
+  "languageName": "English",
+  "dateFormat": "{month} {day}, {year}",
+  "months": [
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December"
+  ],
+  "categories": {
+    "precos": {
+      "name": "Prices and taxes"
+    },
+    "escolher-combustivel": {
+      "name": "Choosing fuel"
+    },
+    "economia": {
+      "name": "Fuel economy"
+    },
+    "direitos-e-qualidade": {
+      "name": "Rights and quality"
+    },
+    "dados": {
+      "name": "Data and transparency"
+    }
+  },
+  "chrome": {
+    "team": "abastevo Team",
+    "skip": "Skip to content",
+    "breadcrumb": "Breadcrumb",
+    "home": "Home",
+    "guides": "Guides",
+    "tools": "Tools",
+    "prices": "Prices",
+    "project": "Project",
+    "privacy": "Privacy",
+    "toc": "In this guide",
+    "continue": "Keep exploring",
+    "readAlso": "Read also",
+    "by": "By",
+    "published": "Published on",
+    "updated": "Updated on",
+    "languages": "Languages",
+    "editorial": "Text by the {team}, reviewed by people against the cited sources. See the {policy} and how to request a correction.",
+    "policy": "editorial policy",
+    "guidesTitle": "abastevo guides",
+    "allGuidesOf": "All guides in {category}",
+    "categoriesNav": "Guide categories",
+    "calculators": "Calculators for the math",
+    "guidesExplain": "The guides explain the reasoning; the {tools} do the math with your numbers, no sign-up.",
+    "toolsLabel": "fuel calculators",
+    "calculatorsShort": "calculators",
+    "howGuides": "How the guides are made",
+    "howGuidesBody": "The guides are written by the {team}, cite the official source of every fact and show the last review date. Quoted prices are always examples; for real values, check the {prices} with their collection date. Full rules in the {policy}.",
+    "pricesLabel": "reference prices by state",
+    "articles": "Articles",
+    "otherCategories": "Other categories",
+    "categoryFooter": "See all {guides}, use the {tools} or check the {prices}.",
+    "guidesLabel": "fuel guides",
+    "calculatorsTitle": "Fuel calculators",
+    "chooseCalculator": "Choose a calculator",
+    "howCalculators": "How the calculators work",
+    "howCalculatorsBody": "Every page shows the formula and a worked example step by step, so you can check the math by hand, even with JavaScript off. The interactive version calculates in your browser: the values you type are never sent, stored or linked to you.",
+    "estimates": "Results are estimates. Real consumption changes with traffic, load, terrain, tyre pressure and driving style, and the price changes from station to station and week to week.",
+    "wherePrices": "Where to get prices for the math",
+    "wherePricesBody": "Use the price you saw at the pump or check the {prices}, always with the collection date. Learn what those numbers mean in the {methodology}.",
+    "pricesAnpLabel": "ANP reference prices by state and city",
+    "methodology": "methodology",
+    "relatedGuides": "Related guides",
+    "toolFallback": "The interactive calculator needs JavaScript. Without it, the math is still simple: follow the formula and the worked example below.",
+    "calculate": "Calculate",
+    "toolPrivacy": "The math runs in your browser. Nothing you type is sent or stored.",
+    "toolPrices": "Reference prices for the math",
+    "toolPricesBody": "Use the price you saw at the pump or check the {prices}, with the collection date. A reference price is a sample from the surveyed week, not a guarantee of today's price at the station.",
+    "otherTools": "Other tools",
+    "browserOs": "Any modern browser",
+    "browserRequirements": "The interactive calculation uses JavaScript; the formula and the example work without it.",
+    "pageUpdated": "Updated on {date} · {team}",
+    "footerPrices": "Prices by state",
+    "footerConsult": "Browse data",
+    "footerEnforcement": "Enforcement",
+    "footerMethodology": "Methodology",
+    "footerAllGuides": "All guides",
+    "footerHowTo": "How to use the app",
+    "footerApp": "App",
+    "footerAllTools": "All tools",
+    "footerAbout": "About abastevo",
+    "footerEditorial": "Editorial policy",
+    "footerContributors": "Contributors",
+    "footerContact": "Contact",
+    "footerPrivacy": "Privacy",
+    "footerDelete": "Delete account",
+    "footerTerms": "Terms",
+    "homeStatesTitle": "Prices by state",
+    "homeSeePrices": "See prices by state",
+    "homeHowCollected": "How prices are collected",
+    "homeGuides": "Popular guides",
+    "homeAllGuides": "See all guides",
+    "homeTools": "Tools",
+    "homeAllTools": "See all tools",
+    "guidesHubTitle": "abastevo guides",
+    "guidesHubIntro": "Short, checkable texts on how prices are formed, how to choose fuel, how to spend less and what to do when something goes wrong at the station.",
+    "toolsHubTitle": "Fuel calculators",
+    "toolsHubIntro": "Five simple calculators, each with its formula and a worked example. The math runs in your browser: nothing is sent, stored or tracked.",
+    "mainNav": "Main navigation",
+    "brandHome": "abastevo - home",
+    "githubLabel": "View on GitHub — Code with visible attribution",
+    "github": "GitHub",
+    "privacyPortuguese": "Privacy policy (in Portuguese)",
+    "footerTagline": "An open, independent project, not affiliated with ANP or any government. Community prices and the weekly ANP reference stay separate, always with source and date.",
+    "staleNote": "The Portuguese original was updated on {date}."
+  },
+  "tools": {
+    "common": {
+      "review": "Review the highlighted fields to calculate.",
+      "unknown": "Unknown tool: {id}",
+      "validation": {
+        "field": "{label}: {message}",
+        "required": "required field.",
+        "choice": "choose one of the options.",
+        "number": "enter a number{example}.",
+        "example": ", for example {example}",
+        "negative": "the value cannot be negative.",
+        "zero": "the value must be greater than zero.",
+        "integer": "use a whole number.",
+        "max": "value too high (maximum {max}{unit}). Check what you typed.",
+        "unit": " {unit}"
+      }
+    },
+    "etanol-ou-gasolina": {
+      "fields": {
+        "gasolina": {
+          "label": "Gasoline price (BRL/liter)",
+          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299.",
+          "unit": "BRL per liter",
+          "example": "6.29"
+        },
+        "etanol": {
+          "label": "Ethanol price (BRL/liter)",
+          "hint": "In Brazilian reais per liter, for example 4.19.",
+          "unit": "BRL per liter",
+          "example": "4.19"
+        },
+        "consumo_gasolina": {
+          "label": "Consumption on gasoline (km/l, optional)",
+          "hint": "Fill in both consumption values to use your car's ratio instead of 70%.",
+          "unit": "km/l",
+          "example": "12.5"
+        },
+        "consumo_etanol": {
+          "label": "Consumption on ethanol (km/l, optional)",
+          "hint": "Measured in your own car, tank to tank.",
+          "unit": "km/l",
+          "example": "8.7"
+        }
+      },
+      "messages": {
+        "missingConsumption": "To use your car's consumption, fill in both values (gasoline and ethanol) or leave both blank.",
+        "ethanolCheaper": "Result: ethanol tends to cost less per kilometer driven.",
+        "gasolineCheaper": "Result: gasoline tends to cost less per kilometer driven.",
+        "tie": "Result: technical tie; both cost practically the same per kilometer.",
+        "ratio": "Ethanol costs {percent} of the gasoline price.",
+        "thresholdOwn": "Reference used: {percent}, calculated from your car's stated consumption.",
+        "thresholdRule": "Reference used: 70%, the general rule for flex-fuel cars.",
+        "maxPrice": "With gasoline at {gasoline}, ethanol pays off up to {ethanol} per liter.",
+        "costPerKm": "Cost per km: ethanol {ethanol}, gasoline {gasoline}."
+      }
+    },
+    "custo-de-viagem": {
+      "fields": {
+        "distancia": {
+          "label": "Trip distance (km)",
+          "hint": "One way. Check \"round trip\" to double it.",
+          "unit": "km",
+          "example": "430"
+        },
+        "consumo": {
+          "label": "Vehicle consumption (km/l)",
+          "hint": "Kilometers per liter, for example 12.5. See how to measure it in the average consumption guide.",
+          "unit": "km/l",
+          "example": "12"
+        },
+        "preco": {
+          "label": "Fuel price (BRL/liter)",
+          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299.",
+          "unit": "BRL per liter",
+          "example": "6.29"
+        },
+        "ida_e_volta": {
+          "label": "Round trip"
+        },
+        "pedagio": {
+          "label": "Total tolls (BRL, optional)",
+          "hint": "Add up every toll on the route you will drive.",
+          "unit": "BRL",
+          "example": "45.80"
+        },
+        "pessoas": {
+          "label": "People to split with (optional)",
+          "hint": "Whole number, for example 2.",
+          "unit": "people",
+          "example": "2"
+        }
+      },
+      "messages": {
+        "total": "Estimated total cost: {total}.",
+        "distance": "Distance considered: {distance} km{trip}.",
+        "roundTrip": " (round trip)",
+        "fuel": "Fuel needed: {liters} liters, {cost}.",
+        "tolls": "Tolls entered: {tolls}.",
+        "perPerson": "Split between {people} people: {amount} each."
+      }
+    },
+    "consumo-medio": {
+      "fields": {
+        "distancia": {
+          "label": "Distance driven (km)",
+          "hint": "Kilometers driven since the last full tank (trip odometer).",
+          "unit": "km",
+          "example": "412"
+        },
+        "litros": {
+          "label": "Liters added to fill up (l)",
+          "hint": "Pump liters when you fill the tank again, for example 35.6.",
+          "unit": "liters",
+          "example": "35.6"
+        },
+        "preco": {
+          "label": "Price per liter (BRL, optional)",
+          "hint": "Also calculates the cost per kilometer.",
+          "unit": "BRL per liter",
+          "example": "6.29"
+        }
+      },
+      "messages": {
+        "average": "Average consumption: {value} km/l.",
+        "per100": "The same consumption in liters: {value} liters per 100 km.",
+        "costPerKm": "Cost per km: {cost} (spent at the fill-up: {spent})."
+      }
+    },
+    "custo-por-km": {
+      "fields": {
+        "preco_combustivel": {
+          "label": "Fuel price (BRL/liter)",
+          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299.",
+          "unit": "BRL per liter",
+          "example": "6.29"
+        },
+        "consumo": {
+          "label": "Combustion car consumption (km/l)",
+          "hint": "Kilometers per liter, for example 12.5. See how to measure it in the average consumption guide.",
+          "unit": "km/l",
+          "example": "12"
+        },
+        "tarifa_kwh": {
+          "label": "Electricity rate (BRL/kWh)",
+          "hint": "Price per kWh with taxes, from your bill or the charging station, for example 0.95.",
+          "unit": "BRL per kWh",
+          "example": "0.95"
+        },
+        "consumo_eletrico": {
+          "label": "Electric car consumption (km/kWh)",
+          "hint": "Kilometers per kWh, for example 6.5. With kWh/100 km, divide 100 by that value.",
+          "unit": "km/kWh",
+          "example": "6.5"
+        },
+        "km_mes": {
+          "label": "Kilometers per month (optional)",
+          "hint": "To estimate each car's monthly energy cost.",
+          "unit": "km",
+          "example": "1,200"
+        }
+      },
+      "messages": {
+        "electricCheaper": "Result: the electric car spends {difference} less per km on energy.",
+        "combustionCheaper": "Result: the combustion car spends {difference} less per km on energy.",
+        "tie": "Result: both spend practically the same per km on energy.",
+        "combustion": "Combustion: {cost} per km.",
+        "electric": "Electric: {cost} per km.",
+        "monthly": "At {km} km per month: combustion {combustion}, electric {electric}."
+      }
+    },
+    "encher-o-tanque": {
+      "fields": {
+        "capacidade": {
+          "label": "Tank capacity (liters)",
+          "hint": "In the vehicle manual, for example 50.",
+          "unit": "liters",
+          "example": "50"
+        },
+        "nivel": {
+          "label": "Current tank level",
+          "options": {
+            "0": "Empty (on reserve)",
+            "12.5": "1/8",
+            "25": "1/4",
+            "37.5": "3/8",
+            "50": "1/2 (half tank)",
+            "62.5": "5/8",
+            "75": "3/4",
+            "87.5": "7/8"
+          }
+        },
+        "preco": {
+          "label": "Fuel price (BRL/liter)",
+          "hint": "In Brazilian reais per liter, with a dot, for example 6.29 or 6.299.",
+          "unit": "BRL per liter",
+          "example": "6.29"
+        },
+        "consumo": {
+          "label": "Vehicle consumption (km/l, optional)",
+          "hint": "To estimate the range with a full tank.",
+          "unit": "km/l",
+          "example": "12"
+        }
+      },
+      "messages": {
+        "fill": "To fill up: about {liters} liters, {cost}.",
+        "full": "The whole tank, empty to full, would cost {cost}.",
+        "range": "Estimated range with a full tank: {range} km."
+      }
+    }
+  }
+}

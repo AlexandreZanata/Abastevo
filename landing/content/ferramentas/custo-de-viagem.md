@@ -4,6 +4,7 @@ headline: Calculadora de custo de viagem
 description: Estime quanto vai gastar de combustível numa viagem de carro: distância, consumo, preço do litro, ida e volta, pedágios e divisão do custo entre as pessoas.
 summary: Quanto custa a viagem em combustível e pedágio, com divisão entre passageiros.
 slug: custo-de-viagem
+primaryQuery: calculadora custo de viagem
 datePublished: 2026-11-14
 dateModified: 2026-11-17
 related:

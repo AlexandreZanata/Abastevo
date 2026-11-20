@@ -214,7 +214,7 @@ const templates = `
 
 {{define "municipality"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <h1>{{if .NoData}}Postos de combustíveis em {{.Name}} ({{.UF}}){{else}}Preços em {{.Name}}{{end}}</h1>
+  <h1>{{if .NoData}}Postos de combustíveis em {{.Name}} ({{.UF}}){{else}}Preços de combustíveis em {{.Name}} ({{.UF}}){{end}}</h1>
   <p class="lead">{{.UF}} · IBGE {{.Code}} · {{.Population}} {{plural .Population "posto" "postos"}} na amostra</p>
   {{if .NoData}}
   <div class="notice"><strong>Sem preço na pesquisa ANP{{if .Period}} de {{.Period}}{{end}}.</strong><p>Nenhum posto desta cidade tem observação válida nesta pesquisa. A ausência não significa preço zero; veja as cidades próximas com preço ou o histórico de cada posto.</p></div>
@@ -236,7 +236,7 @@ const templates = `
 
 {{define "station"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
-  <h1>{{.Station.Name}}</h1>
+  <h1>{{.Station.Name}}{{if and .City .UF}} <span class="h1-place">– {{.City}} ({{.UF}})</span>{{end}}</h1>
   {{if .Station.Registry}}<p class="station-legal-name muted">Nome no cadastro da ANP: {{.Station.Registry}}</p>{{end}}
   {{if .Station.LegalName}}<p class="station-legal-name muted">{{.Station.LegalName}}</p>{{end}}
   <p class="lead">{{.Station.Place}} · {{.Station.CNPJ}} · <span class="status">{{.Station.Status}}</span></p>

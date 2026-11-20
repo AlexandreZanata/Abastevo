@@ -4,6 +4,7 @@ headline: Calculadora: etanol ou gasolina?
 description: Descubra se etanol ou gasolina compensa no seu carro flex: digite os preços, use a regra dos 70% ou o consumo real do carro e veja o preço-limite do etanol.
 summary: Compare os preços na bomba pela regra dos 70% ou pelo consumo real do seu carro flex.
 slug: etanol-ou-gasolina
+primaryQuery: calculadora etanol ou gasolina
 datePublished: 2026-11-14
 dateModified: 2026-11-17
 related:

@@ -581,7 +581,7 @@ func (g *generator) generateStations(snapshot enterpriseexport.Snapshot, station
 				Title: entry.name, HeadTitle: entry.headTitle, Description: entry.description,
 				Active: "consultar", Crumbs: crumbs, LastMod: lastMod,
 			}),
-			Station: view, Observations: obsView, Histories: historyViews, Source: source,
+			Station: view, City: entry.city, UF: station.State, Observations: obsView, Histories: historyViews, Source: source,
 			OfficialRecords: officialRecords, OfficialCount: officialCount, OfficialMore: officialCount > len(officialRecords),
 		}
 		data.Modules = modules

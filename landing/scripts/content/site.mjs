@@ -6,6 +6,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { parseFrontMatter, renderMarkdown } from './markdown.mjs';
 import { isPortalRoute, portalRouteLabel, TOOL_FORMS } from './data.mjs';
+import { loadLocales, localeRoute } from './i18n.mjs';
 
 export class ContentError extends Error {}
 
@@ -38,17 +39,57 @@ export function outputRelFor(route) {
 const SCHEMAS = {
   guide: {
     required: ['title', 'description', 'slug', 'category', 'tags', 'datePublished', 'dateModified', 'related'],
-    optional: ['headline', 'summary'],
+    optional: ['headline', 'summary', 'primaryQuery'],
   },
   tool: {
     required: ['title', 'description', 'slug', 'datePublished', 'dateModified', 'related'],
-    optional: ['headline', 'summary'],
+    optional: ['headline', 'summary', 'primaryQuery'],
   },
   page: {
     required: ['title', 'description', 'slug', 'datePublished', 'dateModified'],
-    optional: ['headline', 'summary', 'schemaType'],
+    optional: ['headline', 'summary', 'schemaType', 'primaryQuery'],
   },
 };
+
+/**
+ * Interface dictionary for one locale. Full key parity is asserted by the
+ * landing tests; the build only needs the files to exist and parse.
+ */
+export function loadMessages(root, code) {
+  const file = path.join(root, 'content', 'i18n', `${code}.json`);
+  let data;
+  try {
+    data = JSON.parse(fs.readFileSync(file, 'utf8'));
+  } catch (err) {
+    throw new ContentError(`i18n: cannot read ${file} (${err.message})`);
+  }
+  const errors = [];
+  if (!data._review || typeof data._review !== 'object' || Array.isArray(data._review)) {
+    errors.push('_review must be an object');
+  } else if (!['draft', 'reviewed'].includes(data._review.status)) {
+    errors.push('_review.status must be draft or reviewed');
+  } else if (data._review.status === 'reviewed') {
+    if (typeof data._review.reviewedBy !== 'string' || data._review.reviewedBy.trim() === '') {
+      errors.push('_review.reviewedBy must be a non-empty string when reviewed');
+    }
+    if (!isValidDate(data._review.reviewedAt)) {
+      errors.push('_review.reviewedAt must be a real YYYY-MM-DD date when reviewed');
+    }
+  }
+  if (typeof data.languageName !== 'string' || data.languageName.trim() === '') errors.push('languageName must be a non-empty string');
+  if (typeof data.dateFormat !== 'string' || !data.dateFormat.includes('{day}') || !data.dateFormat.includes('{month}') || !data.dateFormat.includes('{year}')) {
+    errors.push('dateFormat must be a string with {day}, {month} and {year}');
+  }
+  if (!Array.isArray(data.months) || data.months.length !== 12 || data.months.some((month) => typeof month !== 'string')) errors.push('months must list 12 names');
+  for (const key of ['home', 'categories', 'chrome', 'tools']) {
+    if (!data[key] || typeof data[key] !== 'object' || Array.isArray(data[key])) errors.push(`${key} must be an object`);
+  }
+  if (data.home && (!data.home.hero || typeof data.home.hero !== 'object' || Array.isArray(data.home.hero))) {
+    errors.push('home.hero must be an object');
+  }
+  if (errors.length > 0) throw new ContentError(`i18n ${code}: ${errors.join('; ')}`);
+  return data;
+}
 
 function checkText(errors, where, field, value, [min, max]) {
   if (typeof value !== 'string' || value.trim() === '') {
@@ -81,6 +122,7 @@ export function validateFrontMatter(kind, data, where, ctx = {}) {
   checkText(errors, where, 'description', data.description, DESCRIPTION_BOUNDS);
   if (data.headline !== undefined) checkText(errors, where, 'headline', data.headline, [10, 120]);
   if (data.summary !== undefined) checkText(errors, where, 'summary', data.summary, [20, 200]);
+  if (data.primaryQuery !== undefined) checkText(errors, where, 'primaryQuery', data.primaryQuery, [3, 80]);
   if (typeof data.slug !== 'string' || !SLUG_RE.test(data.slug)) errors.push(`${where}: invalid slug "${data.slug}"`);
   else if (ctx.expectedSlug && data.slug !== ctx.expectedSlug) errors.push(`${where}: slug "${data.slug}" must match file name "${ctx.expectedSlug}"`);
   for (const field of ['datePublished', 'dateModified']) {
@@ -94,7 +136,7 @@ export function validateFrontMatter(kind, data, where, ctx = {}) {
     if (!Array.isArray(data.tags) || data.tags.length < 1 || data.tags.length > 8) errors.push(`${where}: tags must list 1 to 8 entries`);
     else for (const tag of data.tags) if (!TAG_RE.test(tag)) errors.push(`${where}: invalid tag "${tag}"`);
   }
-  if (kind === 'tool' && !Object.hasOwn(TOOL_FORMS, data.slug)) errors.push(`${where}: no calculator form for "${data.slug}"`);
+  if (kind === 'tool' && !Object.hasOwn(TOOL_FORMS, ctx.toolSlug || data.slug)) errors.push(`${where}: no calculator form for "${data.slug}"`);
   if (kind === 'page' && data.schemaType !== undefined && !['AboutPage', 'WebPage'].includes(data.schemaType)) {
     errors.push(`${where}: schemaType must be AboutPage or WebPage`);
   }
@@ -137,6 +179,36 @@ export function loadAppCaptures(root) {
   };
 }
 
+/**
+ * Links of a guide's "## Fontes" section, from the heading to the next level-2
+ * heading: `{ name, url }` for https URLs only, ready for JSON-LD citation.
+ */
+export function extractSources(body) {
+  const lines = String(body).replace(/\r\n?/g, '\n').split('\n');
+  const start = lines.findIndex((line) => /^##\s+(?:Fontes|Sources|Fuentes)\s*#*\s*$/.test(line));
+  if (start === -1) return [];
+  const section = [];
+  for (let i = start + 1; i < lines.length; i++) {
+    if (/^##\s/.test(lines[i])) break;
+    section.push(lines[i]);
+  }
+  const sources = [];
+  for (const match of section.join('\n').matchAll(/\[([^\]]+)\]\((https:[^)\s]+)\)/g)) {
+    sources.push({ name: match[1].trim(), url: match[2] });
+  }
+  return sources;
+}
+
+/** Keyword-map key: case, accent and repeated-space insensitive. */
+export function normalizeQuery(value) {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
 function readMarkdownDir(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir)
@@ -169,6 +241,7 @@ function validateManifest(manifest, errors) {
       const g = page.guide;
       checkText(errors, where, 'guide.title', g.title, [10, 90]);
       checkText(errors, where, 'guide.summary', g.summary, [20, 200]);
+      if (g.primaryQuery !== undefined) checkText(errors, where, 'guide.primaryQuery', g.primaryQuery, [3, 80]);
       if (!manifest.categories?.some((c) => c.slug === g.category)) errors.push(`${where}: unknown guide category "${g.category}"`);
       if (!Array.isArray(g.tags) || g.tags.length === 0 || g.tags.some((t) => !TAG_RE.test(t))) errors.push(`${where}: invalid guide tags`);
     }
@@ -185,14 +258,29 @@ function validateManifest(manifest, errors) {
 
 function resolveRouteLabel(registry, route) {
   const entry = registry.get(route);
-  if (entry) return entry.indexable === false ? null : entry.title || entry.label || '';
+  if (entry) return entry.indexable === false && !entry.stale ? null : entry.title || entry.label || '';
   return portalRouteLabel(route);
 }
 
 /** Loads and validates every content source. Throws ContentError listing all problems. */
-export function loadSite(root) {
+export function loadSite(root, options = {}) {
   const contentDir = path.join(root, 'content');
   const errors = [];
+  const localeRegistry = loadLocales(root);
+  const override = Array.isArray(options.enableLocales) ? new Set(options.enableLocales) : null;
+  const locales = localeRegistry.locales.map((locale) => ({
+    ...locale,
+    enabled: locale.code === localeRegistry.default ? true : (override ? override.has(locale.code) : locale.enabled),
+    messages: loadMessages(root, locale.code),
+  }));
+  const localeByCode = new Map(locales.map((locale) => [locale.code, locale]));
+  const defaultLocale = localeByCode.get(localeRegistry.default);
+  if (!defaultLocale) throw new ContentError(`locales.json: default locale "${localeRegistry.default}" is not listed`);
+  for (const locale of locales) {
+    if (locale.enabled && (options.enforceReviewGates || !override) && locale.messages._review?.status !== 'reviewed') {
+      errors.push(`i18n ${locale.code}: enabled locale dictionary must have _review.status = "reviewed"`);
+    }
+  }
   let manifest;
   try {
     manifest = JSON.parse(fs.readFileSync(path.join(contentDir, 'manifest.json'), 'utf8'));
@@ -223,6 +311,7 @@ export function loadSite(root) {
       summary: page.guide?.summary,
       category: page.guide?.category,
       tags: page.guide?.tags || [],
+      primaryQuery: page.guide?.primaryQuery,
     });
   }
 
@@ -255,11 +344,13 @@ export function loadSite(root) {
       summary: g.data.summary || g.data.description,
       category: g.data.category,
       tags: g.data.tags,
+      primaryQuery: g.data.primaryQuery,
       related: g.data.related,
       datePublished: g.data.datePublished,
       dateModified: g.data.dateModified,
       lastmod: g.data.dateModified,
       body: g.body,
+      sources: extractSources(g.body),
       where: g.where,
     });
   }
@@ -272,6 +363,7 @@ export function loadSite(root) {
       headline: t.data.headline || t.data.title,
       description: t.data.description,
       summary: t.data.summary || t.data.description,
+      primaryQuery: t.data.primaryQuery,
       related: t.data.related,
       datePublished: t.data.datePublished,
       dateModified: t.data.dateModified,
@@ -288,6 +380,7 @@ export function loadSite(root) {
       headline: p.data.headline || p.data.title,
       description: p.data.description,
       summary: p.data.summary || p.data.description,
+      primaryQuery: p.data.primaryQuery,
       schemaType: p.data.schemaType || 'WebPage',
       datePublished: p.data.datePublished,
       dateModified: p.data.dateModified,
@@ -317,6 +410,206 @@ export function loadSite(root) {
   add({ route: '/guias/', kind: 'guides-hub', ...manifest.hubs.guias, summary: manifest.hubs.guias.intro, lastmod: maxDate(allGuides) });
   const toolEntries = [...registry.values()].filter((e) => e.kind === 'tool');
   add({ route: '/ferramentas/', kind: 'tools-hub', ...manifest.hubs.ferramentas, summary: manifest.hubs.ferramentas.intro, lastmod: maxDate(toolEntries) });
+
+  // SEO-26: reviewed translations. Drafts and disabled locales are validated
+  // but never added to the registry, so they cannot reach dist/.
+  const translationsDir = path.resolve(root, options.translationsDir || path.join('content', 'translations'));
+  const translationFields = ['translationOf', 'sourceRevision', 'translationStatus', 'reviewedBy', 'reviewedAt'];
+  const sourceKinds = { guide: ['guide', 'html-guide'], tool: ['tool'], page: ['page'] };
+  const pairs = new Set();
+  for (const locale of locales) {
+    for (const [dirName, kind] of [['guias', 'guide'], ['ferramentas', 'tool'], ['paginas', 'page']]) {
+      for (const { file, expectedSlug } of readMarkdownDir(path.join(translationsDir, locale.code, dirName))) {
+        const where = path.relative(root, file);
+        let parsed;
+        try {
+          parsed = parseFrontMatter(fs.readFileSync(file, 'utf8'), where);
+        } catch (err) {
+          errors.push(err.message);
+          continue;
+        }
+        const data = parsed.data;
+        const base = Object.fromEntries(Object.entries(data).filter(([key]) => !translationFields.includes(key)));
+        const source = typeof data.translationOf === 'string' ? registry.get(data.translationOf) : null;
+        const problems = validateFrontMatter(kind, base, where, {
+          categories: categorySlugs,
+          expectedSlug,
+          toolSlug: source?.slug,
+        });
+        for (const field of ['translationOf', 'sourceRevision', 'translationStatus']) {
+          if (!Object.hasOwn(data, field)) problems.push(`${where}: missing required field "${field}"`);
+        }
+        if (data.translationStatus !== undefined && !['draft', 'reviewed'].includes(data.translationStatus)) {
+          problems.push(`${where}: translationStatus must be draft or reviewed`);
+        }
+        if (data.sourceRevision !== undefined && !isValidDate(data.sourceRevision)) {
+          problems.push(`${where}: sourceRevision must be a real YYYY-MM-DD date`);
+        }
+        if (data.translationStatus === 'reviewed') {
+          if (typeof data.reviewedBy !== 'string' || data.reviewedBy.trim() === '') problems.push(`${where}: reviewed translations need reviewedBy`);
+          if (!isValidDate(data.reviewedAt)) problems.push(`${where}: reviewed translations need a real reviewedAt date`);
+        } else if (Object.hasOwn(data, 'reviewedAt') && !isValidDate(data.reviewedAt)) {
+          problems.push(`${where}: reviewedAt must be a real YYYY-MM-DD date`);
+        }
+        if (data.translationOf !== undefined) {
+          if (typeof data.translationOf !== 'string' || !ROUTE_RE.test(data.translationOf)) {
+            problems.push(`${where}: translationOf must be a pt-BR route`);
+          } else if (!source || source.locale) {
+            problems.push(`${where}: translationOf ${data.translationOf} is not an existing pt-BR page`);
+          } else if (!sourceKinds[kind].includes(source.kind)) {
+            problems.push(`${where}: translationOf ${data.translationOf} is not a ${kind === 'guide' ? 'guide' : kind}`);
+          }
+        }
+        if (problems.length > 0) {
+          errors.push(...problems);
+          continue;
+        }
+        if (!locale.enabled || data.translationStatus !== 'reviewed') continue;
+        const pair = `${locale.code}|${data.translationOf}`;
+        if (pairs.has(pair)) {
+          errors.push(`${where}: ${locale.code} already translates ${data.translationOf}`);
+          continue;
+        }
+        pairs.add(pair);
+        const route = localeRoute(locale, kind, data.slug);
+        const sourceDate = source.dateModified || source.lastmod;
+        add({
+          route,
+          kind,
+          locale: locale.code,
+          translationOf: data.translationOf,
+          sourceDate,
+          sourceRevision: data.sourceRevision,
+          stale: sourceDate > data.sourceRevision,
+          title: data.title,
+          headline: data.headline || data.title,
+          description: data.description,
+          summary: data.summary || data.description,
+          primaryQuery: data.primaryQuery,
+          schemaType: kind === 'page' ? data.schemaType || source.schemaType || 'WebPage' : undefined,
+          category: data.category,
+          tags: data.tags || [],
+          related: data.related,
+          datePublished: data.datePublished,
+          dateModified: data.dateModified,
+          lastmod: data.dateModified,
+          body: parsed.body,
+          sources: extractSources(parsed.body),
+          formSlug: kind === 'tool' ? source.slug : undefined,
+          where,
+          indexable: !(sourceDate > data.sourceRevision),
+          chrome: 'locale',
+        });
+      }
+    }
+  }
+
+  // Locale hubs exist only for enabled locales with an emitted entry.
+  for (const locale of locales.filter((entry) => entry.enabled && entry.code !== defaultLocale.code)) {
+    for (const [kind, dirName] of [['guide', 'guias'], ['tool', 'ferramentas']]) {
+      const entries = [...registry.values()].filter((entry) => entry.locale === locale.code && entry.kind === kind);
+      if (entries.length === 0) continue;
+      const chrome = locale.messages.chrome;
+      add({
+        route: `${locale.prefix}/${locale.segments[dirName]}/`,
+        kind: kind === 'guide' ? 'guides-hub' : 'tools-hub',
+        locale: locale.code,
+        translationOf: kind === 'guide' ? '/guias/' : '/ferramentas/',
+        hub: true,
+        title: kind === 'guide' ? chrome.guidesHubTitle : chrome.toolsHubTitle,
+        description: kind === 'guide' ? chrome.guidesHubIntro : chrome.toolsHubIntro,
+        summary: kind === 'guide' ? chrome.guidesHubIntro : chrome.toolsHubIntro,
+        lastmod: maxDate(entries),
+        indexable: true,
+        chrome: 'locale',
+      });
+    }
+    const localeEntries = [...registry.values()].filter((entry) => entry.locale === locale.code && !entry.hub);
+    if (localeEntries.length > 0) {
+      const home = locale.messages.home;
+      add({
+        route: `${locale.prefix}/`,
+        kind: 'locale-home',
+        locale: locale.code,
+        translationOf: '/',
+        hub: true,
+        title: home.title,
+        description: home.description,
+        summary: home.description,
+        lastmod: maxDate(localeEntries),
+        indexable: true,
+        chrome: 'locale',
+      });
+    }
+  }
+
+  // One translation per locale and source, so every hreflang group has at
+  // most one member per language.
+  const hreflangGroups = new Map();
+  for (const entry of registry.values()) {
+    if (entry.locale || !entry.indexable) continue;
+    hreflangGroups.set(entry.route, [{
+      code: defaultLocale.code,
+      route: entry.route,
+      htmlLang: defaultLocale.htmlLang,
+      hreflang: defaultLocale.hreflang,
+      ogLocale: defaultLocale.ogLocale,
+      languageName: defaultLocale.messages.languageName,
+    }]);
+  }
+  for (const entry of registry.values()) {
+    if (!entry.locale || !entry.indexable || entry.stale) continue;
+    const members = hreflangGroups.get(entry.translationOf);
+    if (!members) continue;
+    const locale = localeByCode.get(entry.locale);
+    members.push({
+      code: locale.code,
+      route: entry.route,
+      htmlLang: locale.htmlLang,
+      hreflang: locale.hreflang,
+      ogLocale: locale.ogLocale,
+      languageName: locale.messages.languageName,
+    });
+  }
+  const hreflangMembers = (route) => {
+    const entry = registry.get(route);
+    if (!entry || !entry.indexable || entry.stale) return [];
+    const key = entry.locale ? entry.translationOf : route;
+    const ptBR = registry.get(key);
+    if (!ptBR || !ptBR.indexable) return [];
+    const members = hreflangGroups.get(key) || [];
+    return members.length >= 2 ? members : [];
+  };
+  const switcherMembers = (route) => {
+    const entry = registry.get(route);
+    if (!entry) return [];
+    const activeHomes = locales
+      .filter((loc) => loc.code === defaultLocale.code || registry.has(`${loc.prefix}/`))
+      .map((loc) => ({
+        code: loc.code,
+        route: loc.code === defaultLocale.code ? '/' : `${loc.prefix}/`,
+        htmlLang: loc.htmlLang,
+        hreflang: loc.hreflang,
+        languageName: loc.messages.languageName,
+      }));
+    if (activeHomes.length < 2) return [];
+    const exact = new Map(hreflangMembers(route).map((member) => [member.code, member]));
+    if (entry.locale && entry.stale && entry.translationOf && registry.get(entry.translationOf)?.indexable) {
+      exact.set(defaultLocale.code, { ...activeHomes[0], route: entry.translationOf });
+    }
+    return activeHomes.map((home) => exact.get(home.code) || home);
+  };
+
+  // SEO-20 keyword map: one URL per query, compared without case or accents,
+  // scoped by locale so translations in different languages never collide.
+  const queryOwners = new Map();
+  for (const entry of registry.values()) {
+    if (!entry.primaryQuery) continue;
+    const key = `${entry.locale || defaultLocale.code}|${normalizeQuery(entry.primaryQuery)}`;
+    const owner = queryOwners.get(key);
+    if (owner) errors.push(`primaryQuery "${entry.primaryQuery}" collides between ${owner} and ${entry.route}`);
+    else queryOwners.set(key, entry.route);
+  }
 
   for (const route of manifest.popularGuides || []) {
     const entry = registry.get(route);
@@ -354,6 +647,10 @@ export function loadSite(root) {
       checkRoute(entry.where, route, 'related route');
       if (resolveRouteLabel(registry, route) === '') errors.push(`${entry.where}: related route ${route} has no label in the manifest`);
       if (route === entry.route) errors.push(`${entry.where}: related route points to itself`);
+      const target = registry.get(route.split(/[?#]/)[0]);
+      if (entry.locale && target?.locale && target.locale !== entry.locale) {
+        errors.push(`${entry.where}: related route ${route} belongs to another locale`);
+      }
     }
   }
 
@@ -367,14 +664,20 @@ export function loadSite(root) {
     guides: allGuides.sort((a, b) => a.route.localeCompare(b.route)),
     tools: toolEntries.sort((a, b) => Object.keys(TOOL_FORMS).indexOf(a.slug) - Object.keys(TOOL_FORMS).indexOf(b.slug)),
     popularGuides: (manifest.popularGuides || []).map((route) => registry.get(route)),
+    locales,
+    localeByCode,
+    defaultLocale,
+    translations: [...registry.values()].filter((entry) => entry.locale && !entry.hub),
+    hreflangMembers,
+    switcherMembers,
   };
   return site;
 }
 
 /** "Leia também": shared tags weigh most, then category, then recency. */
-export function relatedGuides(site, entry, limit = 3) {
+export function relatedGuides(site, entry, limit = 3, pool = site.guides) {
   const tags = new Set(entry.tags || []);
-  return site.guides
+  return pool
     .filter((g) => g.route !== entry.route)
     .map((g) => ({
       g,
@@ -383,6 +686,53 @@ export function relatedGuides(site, entry, limit = 3) {
     .sort((a, b) => b.score - a.score || (b.g.lastmod || '').localeCompare(a.g.lastmod || '') || a.g.route.localeCompare(b.g.route))
     .slice(0, limit)
     .map(({ g }) => g);
+}
+
+const FEED_AUTHOR = 'Equipe abastevo';
+
+function escapeXml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+/**
+ * SEO-22: Atom feed with the 20 most recently modified guides (Markdown and
+ * authored HTML). Entry and feed dates come from content, so builds stay
+ * reproducible; nothing here reads the clock.
+ */
+export function renderGuidesFeed(site, origin) {
+  const feedDate = (entry) => entry.dateModified || entry.lastmod;
+  const guides = [...site.guides]
+    .filter((entry) => entry.indexable !== false && feedDate(entry))
+    .sort((a, b) => feedDate(b).localeCompare(feedDate(a)) || a.route.localeCompare(b.route))
+    .slice(0, 20);
+  if (guides.length === 0) throw new ContentError('guides feed needs at least one dated guide');
+  const updated = `${feedDate(guides[0])}T00:00:00Z`;
+  const entries = guides.map((entry) => {
+    const url = `${origin}${entry.route}`;
+    return `  <entry>
+    <id>${escapeXml(url)}</id>
+    <link rel="alternate" type="text/html" href="${escapeXml(url)}"/>
+    <title>${escapeXml(entry.title)}</title>
+    <summary>${escapeXml(entry.description || entry.summary || '')}</summary>
+    <updated>${feedDate(entry)}T00:00:00Z</updated>
+  </entry>`;
+  }).join('\n');
+  return `<?xml version="1.0" encoding="utf-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Guias do abastevo</title>
+  <id>${escapeXml(`${origin}/guias/feed.xml`)}</id>
+  <link rel="self" type="application/atom+xml" href="${escapeXml(`${origin}/guias/feed.xml`)}"/>
+  <link rel="alternate" type="text/html" href="${escapeXml(`${origin}/guias/`)}"/>
+  <updated>${updated}</updated>
+  <author><name>${FEED_AUTHOR}</name></author>
+${entries}
+</feed>
+`;
 }
 
 export function renderSitemap(site, origin) {
@@ -403,6 +753,14 @@ export function renderLlmsLinks(site, origin) {
   for (const guide of site.guides) lines.push(`- Guia: ${guide.title}: ${origin}${guide.route}`);
   lines.push(`- Ferramentas (calculadoras): ${origin}/ferramentas/`);
   for (const tool of site.tools) lines.push(`- Ferramenta: ${tool.title}: ${origin}${tool.route}`);
+  for (const locale of site.locales.filter((entry) => entry.enabled && entry.code !== site.defaultLocale.code)) {
+    const entries = [...site.registry.values()]
+      .filter((entry) => entry.locale === locale.code)
+      .sort((a, b) => a.route.localeCompare(b.route));
+    if (entries.length === 0) continue;
+    lines.push('', `## ${locale.messages.languageName} (${locale.code})`);
+    for (const entry of entries) lines.push(`- ${entry.title}: ${origin}${entry.route}`);
+  }
   return lines.join('\n');
 }
 

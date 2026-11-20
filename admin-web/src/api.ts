@@ -366,6 +366,7 @@ export class AdminApi {
           excerpt: input.excerpt,
           body_text: input.bodyText,
           source_id: input.sourceId ?? '00000000-0000-0000-0000-000000000001',
+          ...(input.landingRoute !== undefined ? { landing_route: input.landingRoute.trim() || null } : {}),
           reason: input.reason,
         },
       },
@@ -383,6 +384,7 @@ export class AdminApi {
           excerpt: input.excerpt,
           body_text: input.bodyText,
           expected_revision: input.expectedRevision,
+          ...(input.landingRoute !== undefined ? { landing_route: input.landingRoute.trim() || null } : {}),
           reason: input.reason,
         },
       },
@@ -609,6 +611,8 @@ export interface ForumPostSummary {
   updated_at: string;
   published_at: string | null;
   source_id: string;
+  landing_route?: string | null;
+  LandingRoute?: string | null;
 }
 
 export interface ForumPostDetail extends ForumPostSummary {
@@ -670,6 +674,7 @@ export interface CreateForumPostInput {
   excerpt: string;
   bodyText: string;
   sourceId?: string;
+  landingRoute?: string;
   reason: string;
 }
 
@@ -678,6 +683,7 @@ export interface EditForumPostInput {
   title: string;
   excerpt: string;
   bodyText: string;
+  landingRoute?: string;
   expectedRevision: number;
   reason: string;
 }

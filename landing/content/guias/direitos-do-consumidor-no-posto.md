@@ -4,6 +4,7 @@ headline: Seus direitos no posto de combustível: preço, nota fiscal e onde rec
 description: O que a lei garante ao abastecer: preço visível e igual ao da bomba, diferença por forma de pagamento informada, nota fiscal com tributos e onde reclamar de abuso.
 summary: Preço visível, forma de pagamento, nota fiscal, quantidade, qualidade e onde reclamar.
 slug: direitos-do-consumidor-no-posto
+primaryQuery: direitos do consumidor no posto
 category: direitos-e-qualidade
 tags: [direitos-do-consumidor, preco-na-bomba, nota-fiscal, procon, fonte-e-data]
 datePublished: 2026-11-14

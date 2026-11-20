@@ -3,6 +3,7 @@ import path from 'node:path';
 import zlib from 'node:zlib';
 import { fileURLToPath } from 'node:url';
 import { isPortalRoute } from './content/data.mjs';
+import { loadLocales } from './content/i18n.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -49,6 +50,10 @@ export function checkDist(options = {}) {
   const root = options.projectRoot || DEFAULT_ROOT;
   const distDir = options.distDir || path.join(root, 'dist');
   const origin = (options.origin || 'https://abastevo.com.br').replace(/\/$/, '');
+  const localeRegistry = loadLocales(root);
+  const localePrefixes = localeRegistry.locales
+    .filter((locale) => locale.prefix !== '')
+    .map((locale) => ({ prefix: locale.prefix, htmlLang: locale.htmlLang }));
   const errors = [];
 
   if (!fs.existsSync(distDir)) {
@@ -82,6 +87,7 @@ export function checkDist(options = {}) {
     '404.html',
     'robots.txt',
     'sitemap.xml',
+    'guias/feed.xml',
     'site.webmanifest',
     '_headers',
     '_redirects',
@@ -138,6 +144,8 @@ export function checkDist(options = {}) {
   const seenTitles = new Map();
   const seenDescriptions = new Map();
   const indexableRoutes = new Set();
+  const emittedRoutes = new Set();
+  const hreflangsByRoute = new Map();
   const homeHtml = fs.existsSync(path.join(distDir, 'index.html')) ? fs.readFileSync(path.join(distDir, 'index.html'), 'utf8') : '';
   let toolsFile = null;
 
@@ -147,6 +155,22 @@ export function checkDist(options = {}) {
     const route = routeForHtml(rel);
     const isIndexable = !/<meta\s+name="robots"\s+content="[^"]*noindex/i.test(content);
     if (isIndexable) indexableRoutes.add(route);
+    emittedRoutes.add(route);
+
+    // SEO-26: a locale page declares the language of its prefix.
+    for (const { prefix, htmlLang } of localePrefixes) {
+      if (route === `${prefix}/` || route.startsWith(`${prefix}/`)) {
+        const lang = content.match(/<html\s+lang="([^"]*)"/)?.[1];
+        if (lang !== htmlLang) errors.push(`${rel} html lang ${lang ?? '(missing)'} does not match ${prefix} (${htmlLang})`);
+      }
+    }
+
+    const hreflangs = [...content.matchAll(/<link\s+rel="alternate"\s+hreflang="([^"]+)"\s+href="([^"]+)">/g)]
+      .map((match) => ({ hreflang: match[1], href: match[2] }));
+    if (hreflangs.length > 0) {
+      if (!isIndexable) errors.push(`${rel} is noindex and must not declare hreflang`);
+      hreflangsByRoute.set(route, hreflangs);
+    }
 
     if (content.length > HTML_PAGE_BUDGET) {
       errors.push(`${rel} (${content.length} bytes) exceeds the ${HTML_PAGE_BUDGET}-byte HTML page budget`);
@@ -226,10 +250,23 @@ export function checkDist(options = {}) {
       }
     }
 
-    // No inline executable scripts (CSP script-src 'self'); JSON-LD is data.
+    // No inline executable scripts (CSP script-src 'self'); JSON-LD and the
+    // calculator data block are data, not code.
     for (const script of content.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/g)) {
       const attrs = script[1];
       if (/type="application\/ld\+json"/.test(attrs)) continue;
+      if (/type="application\/json"/.test(attrs)) {
+        if (!/\bid="tool-i18n"/.test(attrs)) {
+          errors.push(`${rel} has an unexpected inline JSON block`);
+        } else {
+          try {
+            JSON.parse(script[2]);
+          } catch (err) {
+            errors.push(`${rel} has malformed tool-i18n JSON: ${err.message}`);
+          }
+        }
+        continue;
+      }
       if (!/\bsrc="\/assets\/[a-z-]+\.[a-f0-9]{8}\.js"/.test(attrs) || script[2].trim() !== '') {
         errors.push(`${rel} has an inline or non-fingerprinted script`);
       }
@@ -288,6 +325,7 @@ export function checkDist(options = {}) {
   // 4. Sitemap and Robots validation
   const sitemapPath = path.join(distDir, 'sitemap.xml');
   let sitemapUrls = 0;
+  const listed = new Set();
   if (fs.existsSync(sitemapPath)) {
     const sitemapContent = fs.readFileSync(sitemapPath, 'utf8');
     if (!sitemapContent.startsWith('<?xml') || !sitemapContent.includes('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">')) {
@@ -303,7 +341,6 @@ export function checkDist(options = {}) {
     const blocks = (sitemapContent.match(/<url>/g) || []).length;
     if (entries.length !== blocks) errors.push('sitemap.xml has malformed <url> entries');
     sitemapUrls = entries.length;
-    const listed = new Set();
     for (const [, loc, lastmod] of entries) {
       if (!loc.startsWith(`${origin}/`)) {
         errors.push(`sitemap.xml loc ${loc} is not on the configured origin ${origin}`);
@@ -319,6 +356,94 @@ export function checkDist(options = {}) {
     }
     for (const route of indexableRoutes) {
       if (!listed.has(route)) errors.push(`indexable page ${route} is missing from sitemap.xml`);
+    }
+  }
+
+  // SEO-26: hreflang must be reciprocal, carry one x-default and point only to
+  // emitted, indexable pages in the same sitemap.
+  for (const [route, links] of hreflangsByRoute) {
+    const self = links.filter((link) => link.hreflang !== 'x-default' && link.href === `${origin}${route}`);
+    if (self.length !== 1) errors.push(`${route} must list itself exactly once in hreflang`);
+    const xDefaults = links.filter((link) => link.hreflang === 'x-default');
+    if (xDefaults.length !== 1) {
+      errors.push(`${route} needs exactly one x-default hreflang`);
+    } else {
+      const xd = xDefaults[0].href;
+      if (!links.some((link) => link.hreflang !== 'x-default' && link.href === xd)) {
+        errors.push(`${route} hreflang x-default (${xd}) must match a group link`);
+      }
+      const xdRoute = xd.startsWith(`${origin}/`) ? xd.slice(origin.length) : xd;
+      if (/^\/[a-z]{2}(?:\/|$)/.test(xdRoute)) {
+        errors.push(`${route} hreflang x-default (${xd}) must point to the unprefixed default locale`);
+      }
+    }
+    for (const link of links) {
+      if (!link.href.startsWith(`${origin}/`)) {
+        errors.push(`${route} hreflang ${link.hreflang} is not on the configured origin: ${link.href}`);
+        continue;
+      }
+      const target = link.href.slice(origin.length);
+      if (!emittedRoutes.has(target)) {
+        errors.push(`${route} hreflang ${link.hreflang} points to missing page ${target}`);
+      } else if (!indexableRoutes.has(target)) {
+        errors.push(`${route} hreflang ${link.hreflang} points to noindex page ${target}`);
+      } else if (!listed.has(target)) {
+        errors.push(`${route} hreflang ${link.hreflang} points to ${target}, which is not in the sitemap`);
+      }
+      if (link.hreflang !== 'x-default' && self.length === 1) {
+        const back = (hreflangsByRoute.get(target) || [])
+          .some((other) => other.hreflang === self[0].hreflang && other.href === `${origin}${route}`);
+        if (!back) errors.push(`${route} hreflang ${link.hreflang} -> ${target} is not reciprocal`);
+      }
+    }
+  }
+
+  // SEO-22: Atom feed. A simple well-formedness check plus required Atom
+  // elements; every entry must be a sitemap URL so the feed cannot advertise
+  // a noindex or missing page.
+  const feedPath = path.join(distDir, 'guias', 'feed.xml');
+  if (!fs.existsSync(feedPath)) {
+    errors.push('guias/feed.xml is missing');
+  } else {
+    const feed = fs.readFileSync(feedPath, 'utf8');
+    if (!feed.startsWith('<?xml') || !feed.includes('<feed xmlns="http://www.w3.org/2005/Atom">') || !feed.trimEnd().endsWith('</feed>')) {
+      errors.push('guias/feed.xml is not a balanced Atom root');
+    }
+    if ((feed.match(/<entry>/g) || []).length !== (feed.match(/<\/entry>/g) || []).length) {
+      errors.push('guias/feed.xml has unbalanced <entry> elements');
+    }
+    if (!feed.includes('<title>Guias do abastevo</title>') || !feed.includes('<name>Equipe abastevo</name>') || !/<feed[\s\S]*<updated>\d{4}-\d{2}-\d{2}T00:00:00Z<\/updated>/.test(feed)) {
+      errors.push('guias/feed.xml is missing the title, author or feed updated date');
+    }
+    const feedEntries = [...feed.matchAll(/<entry>([\s\S]*?)<\/entry>/g)].map((match) => match[1]);
+    if (feedEntries.length === 0 || feedEntries.length > 20) {
+      errors.push(`guias/feed.xml must carry 1 to 20 entries (found ${feedEntries.length})`);
+    }
+    const field = (body, re) => body.match(re)?.[1];
+    let previousUpdated = null;
+    for (const body of feedEntries) {
+      const id = field(body, /<id>([^<]+)<\/id>/);
+      const link = field(body, /<link rel="alternate" type="text\/html" href="([^"]+)"\/>/);
+      const title = field(body, /<title>([^<]+)<\/title>/);
+      const summary = field(body, /<summary>([^<]*)<\/summary>/);
+      const updated = field(body, /<updated>([^<]+)<\/updated>/);
+      if (!id || !link || !title || summary === undefined || !updated) {
+        errors.push('guias/feed.xml has an entry missing id, link, title, summary or updated');
+        continue;
+      }
+      if (id !== link) errors.push(`guias/feed.xml entry ${id} must use the same URL as id and link`);
+      if (!/^\d{4}-\d{2}-\d{2}T00:00:00Z$/.test(updated)) errors.push(`guias/feed.xml entry ${id} has an invalid updated date`);
+      if (previousUpdated !== null && updated > previousUpdated) errors.push('guias/feed.xml entries are not newest first');
+      previousUpdated = updated;
+      if (!link.startsWith(`${origin}/`)) {
+        errors.push(`guias/feed.xml entry ${link} is not on the configured origin ${origin}`);
+      } else if (!listed.has(link.slice(origin.length))) {
+        errors.push(`guias/feed.xml entry ${link} is not a sitemap URL`);
+      }
+    }
+    const newest = feedEntries[0]?.match(/<updated>([^<]+)<\/updated>/)?.[1];
+    if (newest && !feed.split('<entry>')[0].includes(`<updated>${newest}</updated>`)) {
+      errors.push('guias/feed.xml feed updated is not the newest entry date');
     }
   }
 
@@ -347,7 +472,7 @@ export function checkDist(options = {}) {
   const indexHtmlPath = path.join(distDir, 'index.html');
   if (fs.existsSync(indexHtmlPath)) {
     const indexContent = fs.readFileSync(indexHtmlPath, 'utf8');
-    if (!indexContent.includes('Mais informação<br>para quem vive<br><span>na estrada.</span>')) {
+    if (!indexContent.includes('<h1 class="lp-title">Preços de combustíveis por estado e cidade, com dados da ANP</h1>') || !indexContent.includes('<p class="lp-slogan">Mais informação para quem vive na estrada.</p>')) {
       errors.push('index.html is missing main H1 text');
     }
     if (!indexContent.includes('class="store-btn btn-github"') || !indexContent.includes('Código com atribuição visível')) {

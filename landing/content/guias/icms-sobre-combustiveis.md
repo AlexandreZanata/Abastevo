@@ -4,6 +4,7 @@ headline: ICMS sobre combustíveis: o que mudou com o valor fixo por litro
 description: Entenda o ICMS dos combustíveis: cobrança única, valor fixo por litro igual em todo o país para gasolina, diesel e gás de cozinha, e onde conferir o valor vigente.
 summary: Cobrança única, valor fixo por litro e por que o etanol hidratado ficou de fora.
 slug: icms-sobre-combustiveis
+primaryQuery: icms combustível
 category: precos
 tags: [icms, impostos, gasolina, diesel, confaz]
 datePublished: 2026-11-14

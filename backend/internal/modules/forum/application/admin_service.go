@@ -194,6 +194,7 @@ type CreateDraftInput struct {
 	RegionUF               *string
 	RegionMunicipalityIBGE *int
 	StationID              *string
+	LandingRoute           *string
 }
 
 // EditPostInput contains fields for editing an existing publication.
@@ -210,6 +211,18 @@ type EditPostInput struct {
 	RegionUF               *string
 	RegionMunicipalityIBGE *int
 	StationID              *string
+	LandingRoute           *string
+}
+
+func normalizeLandingRoute(in *string) *string {
+	if in == nil {
+		return nil
+	}
+	trimmed := strings.TrimSpace(*in)
+	if trimmed == "" {
+		return nil
+	}
+	return &trimmed
 }
 
 // AdminListInput defines criteria for admin list queries.
@@ -273,6 +286,7 @@ func (s *AdminService) CreateDraft(ctx context.Context, m adminapp.Mutation, in 
 		Region:              region,
 		FuelProduct:         in.FuelProduct,
 		StationID:           in.StationID,
+		LandingRoute:        normalizeLandingRoute(in.LandingRoute),
 	}
 
 	// For editorial and news, check source existence
@@ -396,6 +410,7 @@ func (s *AdminService) EditPost(ctx context.Context, m adminapp.Mutation, in Edi
 		current.Correction = in.Correction
 		current.FuelProduct = in.FuelProduct
 		current.StationID = in.StationID
+		current.LandingRoute = normalizeLandingRoute(in.LandingRoute)
 		current.LocalUpdatedAt = now
 
 		if in.RegionUF != nil && *in.RegionUF != "" {

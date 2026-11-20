@@ -296,7 +296,11 @@ type sourceView struct {
 
 type stationPage struct {
 	pageBase
-	Station         stationView
+	Station stationView
+	// City and UF are the values stationTitle receives; the H1 place label
+	// mirrors them.
+	City            string
+	UF              string
 	Observations    []observationView
 	Histories       []historyView
 	Source          sourceView

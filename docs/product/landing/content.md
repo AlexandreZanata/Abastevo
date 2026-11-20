@@ -39,7 +39,7 @@ pt-BR strings, so a changed app screen points at the page or field to update.
 | `/como-usar/<slug>/` | 30 chapters, one per TU01–TU30 slug frozen in the tutorial catalog | Yes / Yes | New in redesign (LR16–LR24); pending chapters show a factual note, never invented screens |
 | `/404.html` | Real 404 | No / No | Short message with links to home and repository |
 
-Not in scope: blog, city pages, translations, dashboards, forms, analytics, newsletter.
+This contract does not cover a blog, dashboards, forms, analytics or a newsletter. Guides, city pages and translations are owned by the [organic growth and multilingual contract](organic-growth-i18n-plan.md), per decision 026.
 
 ## Information architecture freeze (LR02) — 2026-10-11
 
@@ -89,7 +89,7 @@ Frozen strings for the home page. Section order matches the [wireframes](#visual
 
 **Title** (50 characters): `abastevo | Preços de combustíveis com a comunidade`
 **Meta description** (146 characters): `Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.`
-**H1 (user review):** `Mais informação para quem vive na estrada.` (last line green)
+**H1 (owner-approved SEO-21):** `Preços de combustíveis por estado e cidade, com dados da ANP` with the slogan `Mais informação para quem vive na estrada.` retained below it as `<p class="lp-slogan">` (strings loaded per locale from `landing/content/i18n/{locale}.json` under `home.hero`).
 **Lead:** `Encontre preços de combustíveis, veja dados da ANP e conte com a comunidade de motoristas.`
 **Status line:** `Em desenvolvimento. O aplicativo para Android ainda não foi publicado.`
 **Hero buttons:** `Ver no GitHub` (open-source project, official CC0 GitHub mark, new tab) + `Em breve no Google Play` (honest non-link pill in prelaunch with official CC0 Play mark; verified store link only when published, new tab). No cheapest/savings/coverage/ranking promises anywhere: "melhor preço", "pagando menos", station counts, live maps and ratings are forbidden. Illustrated scenery and map lights are decorative, never station coordinates or coverage evidence.

@@ -21,6 +21,7 @@ import (
 
 	directoryapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/directory/application"
 	forumapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/application"
+	forumdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/forum/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
 )
@@ -196,6 +197,7 @@ type ForumPost struct {
 	RegionMunicipality  string `json:"region_municipality_ibge,omitempty"`
 	FuelProduct         string `json:"fuel_product,omitempty"`
 	StationID           string `json:"station_id,omitempty"`
+	LandingRoute        string `json:"landing_route,omitempty"`
 	SourceName          string `json:"source_name"`
 }
 
@@ -629,6 +631,12 @@ func forumRow(post forumapp.EditorialExportPost) (ForumPost, error) {
 			return ForumPost{}, fmt.Errorf("export: invalid forum post station")
 		}
 		row.StationID = *post.StationID
+	}
+	if post.LandingRoute != nil {
+		if !forumdomain.ValidLandingRoute(*post.LandingRoute) {
+			return ForumPost{}, fmt.Errorf("export: invalid forum post landing route")
+		}
+		row.LandingRoute = *post.LandingRoute
 	}
 	return row, nil
 }

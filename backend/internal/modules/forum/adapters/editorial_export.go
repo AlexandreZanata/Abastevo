@@ -78,6 +78,10 @@ func (r *EditorialExportReader) ExportEditorialPage(ctx context.Context, afterID
 			station := uuidString(row.StationID)
 			post.StationID = &station
 		}
+		if row.LandingRoute.Valid {
+			route := row.LandingRoute.String
+			post.LandingRoute = &route
+		}
 		out = append(out, post)
 	}
 	next := ""

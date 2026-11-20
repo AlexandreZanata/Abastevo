@@ -164,7 +164,7 @@ func TestVerifyRejectsSitemapIndexTampering(t *testing.T) {
 			rewrite(t, out, "metodologia/index.html", `<link rel="canonical" href="https://portal.example/metodologia/">`, `<link rel="canonical" href="https://portal.example/consultar/">`)
 		},
 		"indexable page outside the sitemap": func(t *testing.T, out string) {
-			rewrite(t, out, "postos/"+stB+"/index.html", "noindex,follow", "index,follow")
+			rewrite(t, out, "postos/"+stB+"/index.html", "noindex,follow", robotsIndexable)
 		},
 	}
 	for name, tamper := range cases {

@@ -167,6 +167,7 @@ type ForumPost struct {
 	BulletinProvenance     []byte             `json:"bulletin_provenance"`
 	LikeCount              int64              `json:"like_count"`
 	DislikeCount           int64              `json:"dislike_count"`
+	LandingRoute           pgtype.Text        `json:"landing_route"`
 }
 
 type ForumPostReaction struct {

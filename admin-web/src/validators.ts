@@ -150,6 +150,8 @@ export function githubLoginError(raw: string): string | null {
 export const FORUM_TITLE_MAX = 120;
 export const FORUM_EXCERPT_MAX = 400;
 export const FORUM_BODY_MAX = 4000;
+export const FORUM_LANDING_ROUTE_MAX = 120;
+const FORUM_LANDING_ROUTE_PATTERN = /^\/(guias|ferramentas)\/[a-z0-9]+(?:-[a-z0-9]+)*\/$/;
 
 export const FORUM_CATEGORIES = [
   'FUELS',
@@ -197,6 +199,17 @@ export function forumBodyError(raw: string): string | null {
   const count = Array.from(raw.trim()).length;
   if (count > FORUM_BODY_MAX) {
     return `Corpo do texto deve ter no máximo ${FORUM_BODY_MAX} caracteres.`;
+  }
+  return null;
+}
+
+export function forumLandingRouteError(raw: string): string | null {
+  const trimmed = raw.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  if (trimmed.length > FORUM_LANDING_ROUTE_MAX || !FORUM_LANDING_ROUTE_PATTERN.test(trimmed)) {
+    return 'Guia ou ferramenta da landing deve usar o formato /guias/<slug>/ ou /ferramentas/<slug>/.';
   }
   return null;
 }

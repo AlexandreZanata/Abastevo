@@ -44,7 +44,7 @@ func TestHeadContractOnEveryGeneratedPage(t *testing.T) {
 		if strings.Contains(strings.ToLower(head.Title+" "+head.Description), "hoje") {
 			t.Errorf("%s head says hoje", path)
 		}
-		if head.Robots != "index,follow" {
+		if head.Robots != robotsIndexable {
 			if head.Robots != "noindex,follow" {
 				t.Errorf("%s robots = %q", path, head.Robots)
 			}
@@ -77,12 +77,16 @@ func TestHeadContractOnEveryGeneratedPage(t *testing.T) {
 		t.Errorf("state title = %q", state.Title)
 	}
 	station := pages["postos/"+seoID(1)+"/index.html"]
-	if head := parseHead(station); head.Title != "Auto Posto Cuiabá Ltda – preços em Cuiabá (MT)" || head.Robots != "index,follow" ||
+	if head := parseHead(station); head.Title != "Auto Posto Cuiabá Ltda – preços em Cuiabá (MT)" || head.Robots != robotsIndexable ||
 		!strings.Contains(head.Description, "pesquisa ANP de 11/10 a 17/10/2026") || !strings.Contains(head.Description, "Gasolina comum R$ 6,199") {
 		t.Errorf("station head = %+v", head)
 	}
-	if !strings.Contains(station, "<h1>Auto Posto Cuiabá Ltda</h1>") || !strings.Contains(station, "Nome no cadastro da ANP: AUTO POSTO CUIABÁ LTDA") {
-		t.Error("station H1 is not title case or the registry name is hidden")
+	if !strings.Contains(station, `<h1>Auto Posto Cuiabá Ltda <span class="h1-place">– Cuiabá (MT)</span></h1>`) || !strings.Contains(station, "Nome no cadastro da ANP: AUTO POSTO CUIABÁ LTDA") {
+		t.Error("station H1 is not title case, lacks its place label or hides the registry name")
+	}
+	cityPage := pages["precos/mt/cuiaba/index.html"]
+	if !strings.Contains(cityPage, "<h1>Preços de combustíveis em Cuiabá (MT)</h1>") {
+		t.Error("city H1 is not descriptive")
 	}
 	shellA := parseHead(pages["postos/"+seoID(2)+"/index.html"]).Title
 	shellB := parseHead(pages["postos/"+seoID(3)+"/index.html"]).Title
@@ -94,10 +98,10 @@ func TestHeadContractOnEveryGeneratedPage(t *testing.T) {
 			t.Errorf("station with %s is %q", why, head.Robots)
 		}
 	}
-	if head := parseHead(pages["postos/"+seoID(12)+"/index.html"]); head.Robots != "index,follow" {
+	if head := parseHead(pages["postos/"+seoID(12)+"/index.html"]); head.Robots != robotsIndexable {
 		t.Errorf("station inside the 8-week window is %q", head.Robots)
 	}
-	if head := parseHead(pages["fiscalizacao/index.html"]); head.Robots != "index,follow" {
+	if head := parseHead(pages["fiscalizacao/index.html"]); head.Robots != robotsIndexable {
 		t.Errorf("fiscalização hub = %+v", head)
 	}
 }
