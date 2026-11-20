@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	trackingpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/adapters"
 	trackingapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/tracking/domain"
@@ -197,9 +199,15 @@ func TestF5ReplayRetentionTrimmingAndAlertsEMPGPS009011014(t *testing.T) {
 	owner := matrixNewPerson(t, fx, router)
 	matrixAssign(t, fx, owner, "OWNER", "ORG", "ACTIVE")
 
-	// Set org settings so retention is 30d and stale_tracker_seconds is 300s (using org RLS context).
-	if err := unitSchemaExec(t, fx.legalFixtureState, `INSERT INTO org_tracking_settings(org_id,raw_retention_days,stale_tracker_seconds,long_stop_seconds) VALUES($1,30,300,3600)
- ON CONFLICT(org_id) DO UPDATE SET raw_retention_days=30,stale_tracker_seconds=300,long_stop_seconds=3600`, org); err != nil {
+	// Seed settings as the database owner. The runtime role consumes them read-only.
+	if err := pgx.BeginFunc(t.Context(), x.f.Admin, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(t.Context(), `SELECT set_config('anpfuel.org_id',$1,true)`, org); err != nil {
+			return err
+		}
+		_, err := tx.Exec(t.Context(), `INSERT INTO org_tracking_settings(org_id,raw_retention_days,stale_tracker_seconds,long_stop_seconds)
+ VALUES($1,30,300,3600)`, org)
+		return err
+	}); err != nil {
 		t.Fatal(err)
 	}
 

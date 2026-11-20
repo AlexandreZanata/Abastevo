@@ -11,7 +11,7 @@
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
 -- Schema version: 000262. Relations: 402 granted, 3 without access.
--- Sequences: 6. Explicit functions: 0.
+-- Sequences: 7. Explicit functions: 0.
 
 BEGIN;
 SELECT pg_catalog.set_config('abastevo.runtime_role', :'runtime_role', true);
@@ -476,6 +476,7 @@ GRANT USAGE ON SEQUENCE public.admin_audit_events_id_seq TO :"runtime_role";
 GRANT USAGE ON SEQUENCE public.charging_catalog_activations_id_seq TO :"runtime_role";
 GRANT USAGE ON SEQUENCE public.charging_catalog_control_events_id_seq TO :"runtime_role";
 GRANT USAGE ON SEQUENCE public.org_notification_notices_position_seq TO :"runtime_role";
+GRANT USAGE ON SEQUENCE public.org_tracking_live_revision_seq TO :"runtime_role";
 GRANT USAGE ON SEQUENCE public.org_work_orders_number_seq TO :"runtime_role";
 -- Functions the runtime calls that PUBLIC cannot execute.
 -- none: every function the runtime calls is executable by PUBLIC.

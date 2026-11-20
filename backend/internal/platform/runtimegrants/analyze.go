@@ -45,7 +45,7 @@ const identifier = `(?:"?public"?\s*\.\s*)?"?([A-Za-z_][A-Za-z0-9_$]*)"?`
 var (
 	lineComment  = regexp.MustCompile(`--[^\n]*`)
 	blockComment = regexp.MustCompile(`(?s)/\*.*?\*/`)
-	sqlLike      = regexp.MustCompile(`(?i)\b(?:SELECT|INSERT|UPDATE|DELETE|FROM|JOIN|WITH|PERFORM|RETURNING)\b`)
+	sqlLike      = regexp.MustCompile(`(?i)\b(?:(?:SELECT|INSERT|UPDATE|DELETE|FROM|JOIN|WITH|PERFORM|RETURNING)\b|nextval\s*\()`)
 	word         = regexp.MustCompile(`[A-Za-z_][A-Za-z0-9_$]*`)
 	insertInto   = regexp.MustCompile(`(?i)\bINSERT\s+INTO\s+(?:ONLY\s+)?` + identifier)
 	updateWord   = regexp.MustCompile(`(?i)\bUPDATE\b`)

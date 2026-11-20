@@ -14,9 +14,9 @@ func syntheticCatalog() Catalog {
 			{"accounts", "r"}, {"org_audit_events", "r"}, {"org_units", "r"}, {"schema_migrations", "r"},
 			{"operator_notes", "r"}, {"admin_audit_events", "r"}, {"unit_view", "v"},
 		},
-		Sequences: []Sequence{{"admin_audit_events_id_seq", "admin_audit_events"}, {"unused_seq", "operator_notes"}},
+		Sequences: []Sequence{{"admin_audit_events_id_seq", "admin_audit_events"}, {"unused_seq", "operator_notes"}, {"tracking_revision_seq", ""}},
 		Functions: []Function{
-			{Signature: "org_unit_projection()", Name: "org_unit_projection", PublicExecute: true, Body: `BEGIN INSERT INTO org_audit_events(x) VALUES(1); RETURN NEW; END`},
+			{Signature: "org_unit_projection()", Name: "org_unit_projection", PublicExecute: true, Body: `BEGIN INSERT INTO org_audit_events(x) VALUES(1); NEW.revision=nextval('public.tracking_revision_seq'); RETURN NEW; END`},
 			{Signature: "org_meter_current_rebuild(uuid)", Name: "org_meter_current_rebuild", SecurityDef: true},
 			{Signature: "org_definer_count(uuid)", Name: "org_definer_count", SecurityDef: true},
 			{Signature: "org_closed_helper(uuid)", Name: "org_closed_helper"},
@@ -53,7 +53,7 @@ func TestBuildDerivesLeastPrivilegeWithReviewedExceptions(t *testing.T) {
 	if !reflect.DeepEqual(inv.Tables, want) {
 		t.Fatalf("tables\n got %v\nwant %v", inv.Tables, want)
 	}
-	if !reflect.DeepEqual(inv.Sequences, []string{"admin_audit_events_id_seq"}) {
+	if !reflect.DeepEqual(inv.Sequences, []string{"admin_audit_events_id_seq", "tracking_revision_seq"}) {
 		t.Fatal("sequences", inv.Sequences)
 	}
 	if !reflect.DeepEqual(inv.Functions, []string{"org_closed_helper(uuid)"}) || len(inv.OperatorOnly) != 1 || inv.OperatorOnly[0].Signature != "org_meter_current_rebuild(uuid)" {
