@@ -68,6 +68,31 @@ class MasterQuestionsTest {
     }
 
     @Test
+    fun `ambiguous diesel and metrics ask for bounded alternatives`() {
+        val diesel = MasterQuestions.interpret("menor preço observado do diesel em Mato Grosso", testNow)
+        assertEquals(InterpretationState.NEEDS_CHOICE, diesel.state)
+        val options = diesel.alternatives.filterIsInstance<PriceQuery>()
+        assertEquals(listOf("DIESEL_S10", "DIESEL_S500"), options.map { it.product.fuel })
+        assertTrue(options.all { it.geography.uf == "MT" && it.metric.sort == "ASC" })
+        val metric = MasterQuestions.interpret("preço de etanol", testNow)
+        assertEquals(InterpretationState.NEEDS_CHOICE, metric.state)
+        assertEquals(setOf("OBSERVATION_PRICE", "AREA_MEAN"), metric.alternatives.filterIsInstance<PriceQuery>().map { it.metric.kind }.toSet())
+    }
+
+    @Test
+    fun `official questions keep enforcement sanctions and quality distinct`() {
+        for (question in listOf("Fiscalizações no estado de Goiás", "Multas em Mato Grosso", "Análises de qualidade do combustível em SP")) {
+            val interpreted = MasterQuestions.interpret(question, testNow)
+            assertEquals(InterpretationState.RESOLVED, interpreted.state, question)
+            assertTrue(interpreted.query is OfficialQuery)
+        }
+        assertEquals(InterpretationState.UNSUPPORTED,
+            MasterQuestions.interpret("Fiscalizações e multas em Goiás", testNow).state)
+        assertEquals(InterpretationState.NEEDS_CHOICE,
+            MasterQuestions.interpret("Registros oficiais em Goiás", testNow).state)
+    }
+
+    @Test
     fun `adversarial input never executes`() {
         val got = MasterQuestions.interpret("'; DROP TABLE charging; --", testNow)
         assertEquals(InterpretationState.UNSUPPORTED, got.state)

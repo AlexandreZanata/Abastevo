@@ -61,6 +61,44 @@ class ChargingSnapshotTest {
     }
 
     @Test
+    fun `merged place keeps exact source attribution and refuses invented owners`() {
+        val osm = ChargingSourceAttribution("OSM", "node-1", "r1", null, "ODbL", "OpenStreetMap")
+        val ocm = ChargingSourceAttribution("OCM", "42", "r1", 1, "CC-BY", "Open Charge Map")
+        val owned = group().copy(sourceKey = osm.sourceKey, rawConnectorCode = "")
+        val merged = place().copy(sources = listOf(osm, ocm), groups = listOf(owned),
+            catalogConfidence = ChargingCatalogConfidence.TWO_SOURCE, linkedStationId = groupId,
+            operator = "Synthetic", addressLine = "Avenida Central")
+        assertEquals(true, merged.confirmedByTwoSources)
+        assertEquals("ocm:poi:42", ocm.sourceKey)
+        assertEquals("osm:node-1", merged.groups.single().sourceKey)
+        assertThrows(IllegalArgumentException::class.java) { osm.copy(source = "other") }
+        assertThrows(IllegalArgumentException::class.java) { osm.copy(providerId = 1) }
+        assertThrows(IllegalArgumentException::class.java) { ocm.copy(providerId = null) }
+        assertThrows(IllegalArgumentException::class.java) { ocm.copy(providerId = 0) }
+        assertThrows(IllegalArgumentException::class.java) { osm.copy(externalId = "bad\u0000") }
+        assertThrows(IllegalArgumentException::class.java) { osm.copy(revision = " ") }
+        assertThrows(IllegalArgumentException::class.java) { osm.copy(license = "") }
+        assertThrows(IllegalArgumentException::class.java) { osm.copy(attribution = " ") }
+        assertThrows(IllegalArgumentException::class.java) { owned.copy(rawConnectorCode = "x\n") }
+        assertThrows(IllegalArgumentException::class.java) { merged.copy(sources = listOf(osm, osm)) }
+        assertThrows(IllegalArgumentException::class.java) { merged.copy(sources = listOf(osm)) }
+        assertThrows(IllegalArgumentException::class.java) { merged.copy(groups = listOf(owned.copy(sourceKey = "osm:foreign"))) }
+        assertThrows(IllegalArgumentException::class.java) { merged.copy(addressLine = "1.23, 2.34") }
+        assertThrows(IllegalArgumentException::class.java) { merged.copy(operator = " ") }
+        assertThrows(IllegalArgumentException::class.java) { place().copy(linkedStationId = groupId) }
+        assertThrows(IllegalArgumentException::class.java) { place().copy(groups = listOf(owned)) }
+
+        val page = ChargingPlacePage(listOf(merged), "next", "2026-10-22T00:00:00Z")
+        assertEquals(merged, page.items.single())
+        assertThrows(IllegalArgumentException::class.java) { page.copy(items = listOf(merged, merged)) }
+        assertThrows(IllegalArgumentException::class.java) { page.copy(nextCursor = "") }
+        assertThrows(IllegalArgumentException::class.java) { page.copy(generatedAt = "tomorrow") }
+        val offer = ChargingCatalogOffer.forRevision(key)
+        assertEquals("/v1/charging/catalog/$key/offer/derived-database.ndjson", offer?.dataPath)
+        assertEquals(null, ChargingCatalogOffer.forRevision("../x"))
+    }
+
+    @Test
     fun `coverage keeps counts only and pack meta binds source`() {
         val coverage = ChargingCoverage(
             profile = "ocm-br-20261021-v1",
