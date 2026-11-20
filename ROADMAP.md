@@ -50,9 +50,10 @@ owner-signed AAB, the Console declarations and the CoMaps legal sign-off.
 ## Enterprise suite
 
 Task specifications live in [docs/enterprise/backlog/](docs/enterprise/backlog/INDEX.md)
-(144 open tasks). Summary:
+(134 indexed open tasks). Summary:
 
 - **M4 acceptance (BLOCKED).** Native runs on the locked emulator, real-device tracking interruption matrix on three or more manufacturers, held fuelings, VAL-23(f) clock skew, `trip.start` through the suspension check, VAL-02 sweep, VAL-27 trip review panel. Tracking stays off for real employees until it passes or the owner records the accepted risk. (EMP-REL-005, FUEL-003, TRIP-006, EDR-362)
+- **F5–F7 Android integration.** Connect the route, field-management and fueling-authorization cards to the trip screen with driver-scoped sources. Verify the shared guidance/tracking location lease through both services, along with organization switches, offline state, revocation and native navigation on the emulator. (EDR-373, EDR-383, EDR-391)
 - **Earlier gates never accepted.** C1 end-to-end scenario and pilot runbook/rollback, M1 access/isolation, M3 cost acceptance; each needs its gate run before a pilot with a real company. (REL-001–004)
 - **Enable enterprise on the VPS (owner).** Apply the runtime role and DSN, set `ANPFUEL_ENTERPRISE_ENABLED=true`, run the capability command and a synthetic smoke; regenerate `runtime-role.sql` on every migration change; wire grant convergence into the release pipeline; schedule `identity_rate_windows` cleanup. (EDR-272, EDR-364)
 - **Retained design obligations.** Per-operation authority denial must not become a whole-batch denial (L2), managed-account managers on acceptance (L5), DB defense for ACTIVE↔SUSPENDED (L6), per-reading time-zone scan (L10), synthetic intake budget measurement (L11), suspended/archived context notice (SCR-ORG-12), sign-in trigger for delivery.
