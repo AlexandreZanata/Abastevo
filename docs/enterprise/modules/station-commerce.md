@@ -27,7 +27,7 @@ The organization owns profile revisions, announced price and promotion under one
 
 **UC-AGREE-01 — Establish terms.** Eligible representatives propose and explicitly accept an agreement. Suspension or ending stops new eligible transactions under its recorded policy. Neither party expands the allowlist unilaterally.
 
-**UC-AGREE-02 — Redeem.** A permitted station actor submits the valid transaction and voucher. Current server checks and one transaction record the result. Identical retry returns the result. Competing use cannot consume it twice. Typed ports create only the permitted internal fueling and receivable effects.
+**UC-AGREE-02 — Redeem.** A permitted station actor submits the valid transaction and voucher. Current server checks and one transaction record the result. A confirmation for the same voucher, product, unit and quantity returns the recorded result. A change to any settlement field is a conflict. The station receipt contains the settlement, agreement, voucher and station identifiers, the product, unit, quantity, negotiated unit price, total and confirmation time. An operation identifier already used to redeem another voucher is also a conflict. Typed ports create only the permitted internal fueling and receivable effects.
 
 ## 6. States and transitions
 

@@ -588,7 +588,15 @@ func (h StationHandler) confirm(w http.ResponseWriter, r *http.Request) {
 		writeStationError(w, r, err)
 		return
 	}
-	writeNoStore(w, r, map[string]any{"redemption": view, "replayed": replayed})
+	writeNoStore(w, r, map[string]any{
+		"redemption": map[string]any{
+			"id": view.ID, "agreement_id": view.AgreementID, "authorization_id": view.AuthorizationID,
+			"station_id": view.StationID, "fuel_product": view.Product, "unit": view.Unit,
+			"quantity_milli": view.QuantityMilli, "price_milli_brl": view.PriceMilliBRL,
+			"total_centavos": view.TotalCentavos, "confirmed_at": view.ConfirmedAt,
+		},
+		"replayed": replayed,
+	})
 }
 
 // operationOf is removed: decisions replay through the state machine.
@@ -599,6 +607,8 @@ func writeStationError(w http.ResponseWriter, r *http.Request, err error) {
 		httpapi.WriteError(w, r, http.StatusUnauthorized, "agreement.session-invalid", "valid account session required", nil)
 	case errors.Is(err, app.ErrNotFound):
 		httpapi.WriteError(w, r, http.StatusNotFound, "agreement.not-found", "agreement not found", nil)
+	case errors.Is(err, app.ErrOperationReused):
+		httpapi.WriteError(w, r, http.StatusConflict, "agreement.operation-reused", "operation identifier already used", nil)
 	case errors.Is(err, app.ErrConflict):
 		httpapi.WriteError(w, r, http.StatusConflict, "agreement.conflict", "agreement state conflict", nil)
 	case errors.Is(err, app.ErrStationMismatch):

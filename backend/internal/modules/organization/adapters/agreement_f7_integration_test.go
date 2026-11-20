@@ -266,12 +266,29 @@ func TestAgreementF7EndToEndFlow(t *testing.T) {
 			"operation_id": operation, "code": voucherCode, "fuel_product": "DIESEL_S10", "unit": "L", "quantity_milli": 50000})
 		return f7Call{code: code, body: body}
 	}
-	first, second := confirm(onboardingID(t)), confirm(onboardingID(t))
+	firstOperation := onboardingID(t)
+	first, second := confirm(firstOperation), confirm(onboardingID(t))
 	if first.code != http.StatusOK || second.code != http.StatusOK {
 		t.Fatal("matching confirmations", first.code, second.code)
 	}
 	firstRedemption, _ := first.body["redemption"].(map[string]any)
 	secondRedemption, _ := second.body["redemption"].(map[string]any)
+
+	// BR-AGREE-001 / VAL-34: the station sees only settlement facts,
+	// both on the original response and on a matching retry.
+	stationFields := []string{"id", "agreement_id", "authorization_id", "station_id",
+		"fuel_product", "unit", "quantity_milli", "price_milli_brl", "total_centavos", "confirmed_at"}
+	for _, receipt := range []map[string]any{firstRedemption, secondRedemption} {
+		if len(receipt) != len(stationFields) {
+			t.Fatal("station settlement contains fields outside its allowlist")
+		}
+		for _, field := range stationFields {
+			if receipt[field] == nil {
+				t.Fatalf("station settlement is missing %s", field)
+			}
+		}
+	}
+
 	if firstRedemption["id"] != secondRedemption["id"] {
 		t.Fatal("competing use settled twice", firstRedemption["id"], secondRedemption["id"])
 	}
@@ -286,10 +303,35 @@ func TestAgreementF7EndToEndFlow(t *testing.T) {
 		t.Fatalf("redemption count: got %d (%v)", settled, err)
 	}
 
+	// A changed settlement must never receive an acknowledgement for the
+	// original amount, even if the caller keeps the original operation ID.
+	for _, mismatch := range []struct {
+		product, unit string
+		quantity      int
+	}{
+		{"DIESEL_S10", "L", 51000},
+		{"GASOLINE_REGULAR", "L", 50000},
+		{"DIESEL_S10", "M3", 50000},
+	} {
+		status, body := f7StationCall(t, router, stationSession, "/v1/stations/"+stationID+"/redemptions/confirm", map[string]any{
+			"operation_id": firstOperation, "code": voucherCode, "fuel_product": mismatch.product, "unit": mismatch.unit, "quantity_milli": mismatch.quantity,
+		})
+		if status != http.StatusConflict || body["redemption"] != nil {
+			t.Fatalf("changed settlement confirmed: %+v returned %d", mismatch, status)
+		}
+	}
+
 	// Competing use cannot consume a fresh voucher twice: two concurrent
 	// confirmations converge on the single stored receipt.
 	raceIssue := matrixCall(t, fx, router, owner, "/v1/orgs/"+org+"/fueling-authorizations/issue", issueBody(onboardingID(t)), 200, "", "", nil)
 	raceCode, _ := raceIssue["code"].(string)
+
+	if status, _ := f7StationCall(t, router, stationSession, "/v1/stations/"+stationID+"/redemptions/confirm", map[string]any{
+		"operation_id": firstOperation, "code": raceCode, "fuel_product": "DIESEL_S10", "unit": "L", "quantity_milli": 10000,
+	}); status != http.StatusConflict {
+		t.Fatalf("operation reuse for a different voucher returned %d", status)
+	}
+
 	raceOperations := []string{onboardingID(t), onboardingID(t)}
 	raceResults := make(chan f7Call, 2)
 	for _, operation := range raceOperations {
@@ -318,8 +360,14 @@ func TestAgreementF7EndToEndFlow(t *testing.T) {
 
 	// The organization reads both settlements under the agreement scope.
 	redemptions := matrixCall(t, fx, router, owner, "/v1/orgs/"+org+"/fueling-redemptions/list", map[string]any{}, 200, "", "", nil)
-	if rows, _ := redemptions["redemptions"].([]any); len(rows) != 2 {
+	fleetRows, _ := redemptions["redemptions"].([]any)
+	if len(fleetRows) != 2 {
 		t.Fatal("organization redemption list", redemptions)
+	}
+	for _, row := range fleetRows {
+		if row.(map[string]any)["employee_id"] != driverEmployee.employee {
+			t.Fatal("fleet-side settlement lost its employee reference")
+		}
 	}
 
 	// Negative cases: unknown code reveals nothing; wrong product and

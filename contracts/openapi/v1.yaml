@@ -26436,8 +26436,12 @@ paths:
         station scope): current scope, live account and operator rechecked
         server-side; the server derives the total from the agreement's
         negotiated term, enforces the voucher's validity and limits,
-        consumes it once and returns the stored receipt on matching retry
-        (BR-AGREE-002). Invalid attempts are bounded and lock the voucher.
+        consumes it once and returns the stored receipt for the same voucher,
+        product, unit and quantity (BR-AGREE-002). Changed settlement fields and
+        operation identifiers already used on another voucher return a conflict.
+        The station receipt contains only the settlement, agreement, voucher
+        and station IDs, product, unit, quantity, price, total and timestamp.
+        Invalid attempts are bounded and lock the voucher.
         The voucher code is never logged or echoed.
       parameters:
         - name: station_id

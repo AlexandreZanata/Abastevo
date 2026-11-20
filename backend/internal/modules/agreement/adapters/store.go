@@ -928,6 +928,17 @@ func (s *Store) StationConfirmRedemption(ctx context.Context, stationID string, 
 		if err := joinOrgScope(ctx, tx, org); err != nil {
 			return err
 		}
+		if voucherStation != stationID {
+			// A foreign voucher is a bounded invalid attempt, never data:
+			// the recorded attempt commits with the refusal.
+			if err := recordFailedAttempt(ctx, tx, org, authorizationID, actor, "wrong station"); err != nil {
+				return err
+			}
+			return committedRefusal{app.ErrStationMismatch}
+		}
+		if _, _, err := commandCheck(ctx, tx, org, "agree.station.redeem", in.OperationID, digestCode(in.OperationID+in.Code)); err != nil {
+			return err
+		}
 		// The once-only fact answers every matching retry identically
 		// (BR-AGREE-002), before any new command is considered.
 		if state == "REDEEMED" {
@@ -939,26 +950,15 @@ func (s *Store) StationConfirmRedemption(ctx context.Context, stationID string, 
 			if err != nil {
 				return app.ErrConflict
 			}
+			if out.Product != in.Product || out.Unit != in.Unit || out.QuantityMilli != in.QuantityMilli {
+				return app.ErrConflict
+			}
 			if storedAsset != nil {
 				out.AssetID = *storedAsset
 			}
 			out.ConfirmedAt = stamp(confirmedAt)
 			replayed = true
 			return nil
-		}
-		if voucherStation != stationID {
-			// A foreign voucher is a bounded invalid attempt, never data:
-			// the recorded attempt commits with the refusal.
-			if err := recordFailedAttempt(ctx, tx, org, authorizationID, actor, "wrong station"); err != nil {
-				return err
-			}
-			return committedRefusal{app.ErrStationMismatch}
-		}
-		if raw, hit, err := commandCheck(ctx, tx, org, "agree.station.redeem", in.OperationID, digestCode(in.OperationID+in.Code)); err != nil {
-			return err
-		} else if hit {
-			replayed = true
-			return json.Unmarshal(raw, &out)
 		}
 		var agreementState string
 		var revision int64
