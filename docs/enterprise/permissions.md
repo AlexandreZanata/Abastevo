@@ -472,6 +472,13 @@ never live positions (VAL-16, VAL-21).
 
 F6 Management and Intelligence amendment (`org-permissions-v7`, EDR-375,
 B-BR-EMP-571): `org-permissions-v7` preserves every `v6` cell and all 13 fixed
+The F7 fleet-side amendment (B-BR-EMP-597, EDR-389) routes `agree.agreement.manage`
+(six endpoints: proposal, read, list, suspend, end and the redemption settlement list) and
+`agree.authorization.issue` (four endpoints: issue, read, list, cancel) on the same catalog,
+yielding `46` routed permissions (`460` matrix cells: `182` allowed, `278` denied) and `205`
+routed endpoints. Station-scope keys (`agree.redemption.confirm`, `stn.*`) stay unrouted on the
+organization matrix with the recorded station-scope reason: the station party acts through its
+live station grant surface, never an organization session.
 roles (with `DATA_MANAGER`, `STATION_*` denied on ordinary company routes) and
 activates the 11 F6 routed permission keys: `stock.tank.manage` (`OWNER`,
 `ADMIN`, `FLEET_MANAGER` = `O`), `stock.movement.record` (`OWNER`, `ADMIN`,

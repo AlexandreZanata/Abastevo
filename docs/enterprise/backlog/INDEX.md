@@ -14,7 +14,7 @@ is in [ROADMAP.md](../../../ROADMAP.md).
 | F4 | 1 |
 | F5 | 0 |
 | F6 | 0 |
-| F7 | 36 |
+| F7 | 26 |
 | F8 | 29 |
 
 | Epic | File | Open tasks |
@@ -34,7 +34,7 @@ is in [ROADMAP.md](../../../ROADMAP.md).
 | EP12 — Internal fuel stock | [ep12-fuel-stock.md](ep12-fuel-stock.md) | 0 |
 | EP13 — Intelligence, findings and reports | [ep13-intelligence.md](ep13-intelligence.md) | 0 |
 | EP14 — Station claims and representation | [ep14-station-claims.md](ep14-station-claims.md) | 13 |
-| EP15 — Station commerce and agreements | [ep15-station-commerce.md](ep15-station-commerce.md) | 19 |
+| EP15 — Station commerce and agreements | [ep15-station-commerce.md](ep15-station-commerce.md) | 9 |
 | EP16 — Subscriptions, entitlements and public products | [ep16-subscriptions.md](ep16-subscriptions.md) | 13 |
 | EP17 — Abastevo Data | [ep17-data.md](ep17-data.md) | 8 |
 | EP18 — Imports, notifications and integrations | [ep18-imports-notifications-integrations.md](ep18-imports-notifications-integrations.md) | 16 |

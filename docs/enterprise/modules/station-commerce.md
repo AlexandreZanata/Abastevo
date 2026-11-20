@@ -6,7 +6,9 @@ Let a currently authorized station representative publish bounded commercial inf
 
 ## 2. Scope
 
-F7 follows the separate Stage D override, representation decision and staffing evidence. It adds commercial profile, announced prices, labelled promotions, replies and agreements. It cannot overwrite official records, moderate its own criticism or change trust.
+F7 follows the separate Stage D override, representation decision and staffing evidence; the maintainer recorded the commerce override for the delivered slice (EDR-386), while station claims, the station portal, replies, metrics and statement reconciliation stay gated. It adds commercial profile, announced prices, labelled promotions, replies and agreements. It cannot overwrite official records, moderate its own criticism or change trust.
+
+Delivery state (M7 local checkpoint, EDR-391): announced prices (`000260`), labelled promotions, bilateral agreements with private negotiated terms (`000261`), bounded single-use authorizations, the once-only station redemption and the cross-organization sharing guards are implemented and locally verified; the station-side surfaces stay behind the production composition boundary (`503`) until the recorded activation, exactly like the profile surface.
 
 ## 3. Entities and ownership
 
