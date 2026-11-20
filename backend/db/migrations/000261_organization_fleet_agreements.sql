@@ -184,13 +184,23 @@ BEGIN
  END IF;
  RETURN NEW;
 END $$;
+-- The audit trails, negotiated terms, redemption facts and command receipts
+-- are organization-only: station confirmations resolve the organization
+-- first and keep these rows inside their scope.
+CREATE FUNCTION org_f7_org_scope_guard() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
+BEGIN
+ IF NEW.org_id IS DISTINCT FROM NULLIF(current_setting('anpfuel.org_id',true),'')::uuid THEN
+  RAISE EXCEPTION USING ERRCODE='42501',MESSAGE='organization scope denied';
+ END IF;
+ RETURN NEW;
+END $$;
 CREATE TRIGGER org_station_agreements_scope BEFORE INSERT OR UPDATE ON org_station_agreements FOR EACH ROW EXECUTE FUNCTION org_f7_scope_guard();
-CREATE TRIGGER org_station_agreement_transitions_scope BEFORE INSERT ON org_station_agreement_transitions FOR EACH ROW EXECUTE FUNCTION org_f7_scope_guard();
-CREATE TRIGGER org_agreement_price_terms_scope BEFORE INSERT ON org_agreement_price_terms FOR EACH ROW EXECUTE FUNCTION org_f7_scope_guard();
+CREATE TRIGGER org_station_agreement_transitions_scope BEFORE INSERT ON org_station_agreement_transitions FOR EACH ROW EXECUTE FUNCTION org_f7_org_scope_guard();
+CREATE TRIGGER org_agreement_price_terms_scope BEFORE INSERT ON org_agreement_price_terms FOR EACH ROW EXECUTE FUNCTION org_f7_org_scope_guard();
 CREATE TRIGGER org_fuel_authorizations_scope BEFORE INSERT OR UPDATE ON org_fuel_authorizations FOR EACH ROW EXECUTE FUNCTION org_f7_scope_guard();
-CREATE TRIGGER org_fuel_authorization_events_scope BEFORE INSERT ON org_fuel_authorization_events FOR EACH ROW EXECUTE FUNCTION org_f7_scope_guard();
-CREATE TRIGGER org_fuel_redemptions_scope BEFORE INSERT ON org_fuel_redemptions FOR EACH ROW EXECUTE FUNCTION org_f7_scope_guard();
-CREATE TRIGGER org_f7_commands_scope_guard BEFORE INSERT ON org_f7_commands FOR EACH ROW EXECUTE FUNCTION org_f7_scope_guard();
+CREATE TRIGGER org_fuel_authorization_events_scope BEFORE INSERT ON org_fuel_authorization_events FOR EACH ROW EXECUTE FUNCTION org_f7_org_scope_guard();
+CREATE TRIGGER org_fuel_redemptions_scope BEFORE INSERT ON org_fuel_redemptions FOR EACH ROW EXECUTE FUNCTION org_f7_org_scope_guard();
+CREATE TRIGGER org_f7_commands_scope_guard BEFORE INSERT ON org_f7_commands FOR EACH ROW EXECUTE FUNCTION org_f7_org_scope_guard();
 
 -- Agreement state machine and revision discipline.
 CREATE FUNCTION org_station_agreements_guard() RETURNS trigger LANGUAGE plpgsql SET search_path=pg_catalog AS $$
@@ -254,7 +264,8 @@ BEGIN
    RAISE EXCEPTION USING ERRCODE='23514',MESSAGE='authorization issue fields are immutable';
   END IF;
   IF NOT (
-   (OLD.state='ISSUED' AND NEW.state IN('REDEEMED','CANCELLED','LOCKED') AND NEW.failed_attempts=OLD.failed_attempts)
+   (OLD.state='ISSUED' AND NEW.state IN('REDEEMED','CANCELLED') AND NEW.failed_attempts=OLD.failed_attempts)
+   OR (OLD.state='ISSUED' AND NEW.state='LOCKED' AND NEW.failed_attempts=OLD.failed_attempts+1)
    OR (OLD.state='ISSUED' AND NEW.state='ISSUED' AND NEW.failed_attempts=OLD.failed_attempts+1)) THEN
    RAISE EXCEPTION USING ERRCODE='P0001',MESSAGE='authorization transition refused';
   END IF;
@@ -293,5 +304,10 @@ END $$;
 -- with the organization scope). Station confirmations also set the
 -- organization scope once the target is resolved.
 CREATE POLICY org_station_agreements_station_side ON org_station_agreements
+ USING(station_id=NULLIF(current_setting('anpfuel.station_id',true),'')::uuid)
+ WITH CHECK(station_id=NULLIF(current_setting('anpfuel.station_id',true),'')::uuid);
+-- The once-only redemption resolves the voucher by its code digest under
+-- the station scope before the organization is known (EMP-AGREE-005).
+CREATE POLICY org_fuel_authorizations_station_side ON org_fuel_authorizations
  USING(station_id=NULLIF(current_setting('anpfuel.station_id',true),'')::uuid)
  WITH CHECK(station_id=NULLIF(current_setting('anpfuel.station_id',true),'')::uuid);

@@ -76,6 +76,8 @@ var matrixRepresentatives = []matrixRoute{
 	{"org.group.manage", "/consolidation/grants/list", true, false},
 	{"stock.movement.record", "/stock/movements/list", false, false},
 	{"stock.tank.manage", "/stock/tanks/list", false, false},
+	{"agree.agreement.manage", "/station-agreements/list", false, false},
+	{"agree.authorization.issue", "/fueling-authorizations/list", false, false},
 }
 
 func matrixOracle(t *testing.T) ([]string, map[string]map[string]string) {
@@ -377,6 +379,7 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 	tripReviewGrants(t, fx.f)
 	incidentGrants(t, fx.f)
 	grantF6Tables(t, fx.f)
+	grantF7AgreementTables(t, fx.f)
 	// EMP-GPS-012: one recorded track of a trip authored by another member of
 	// the organization's first unit, through the real signed intake.
 	tracked := trackingFixtureOn(t, tripFixtureOn(t, selfIntakeFixtureOn(t, syncFixtureOn(t, fx))))
@@ -679,10 +682,10 @@ func TestAuthorizationMatrixActualCompanyHTTP(t *testing.T) {
 			}
 		})
 	}
-	if exercised != 440 || allowed != 174 || denied != 266 {
+	if exercised != 460 || allowed != 182 || denied != 278 {
 		t.Fatal("runtime matrix coverage drift", exercised, allowed, denied)
 	}
-	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 40 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident and maintenance request S cells cover only the own list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
+	t.Logf("actual CompanyOnly HTTP: %d runtime cells (%d allowed/%d denied), 10 ordinary roles; 42 station cells unavailable; 38 permissions not yet routed; one actual signed Meter producer; Fleet S cells cover only assigned assets, never the organization list; document S cells cover only own documents; trip.trip.start S cells cover only the own mission list; incident and maintenance request S cells cover only the own list; a UNIT-scoped grant covers no organization-level representative nor another unit's asset", exercised, allowed, denied)
 }
 
 // matrixAssignableAsset creates, through the owner's actual requests, one

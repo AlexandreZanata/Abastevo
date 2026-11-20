@@ -14,6 +14,9 @@ import (
 
 	account "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
 	accountdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/domain"
+	agreepg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/adapters"
+	agreeweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/adapters/http"
+	agreeapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/agreement/application"
 	companypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters"
 	companyweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/application"
@@ -172,6 +175,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, trackingpg.GeofenceAuditDefinitions()...)
 	definitions = append(definitions, trackingpg.RoutePlanAuditDefinitions()...)
 	definitions = append(definitions, intelpg.AuditDefinitions()...)
+	definitions = append(definitions, agreepg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -221,6 +225,8 @@ func Register(router chi.Router, o Options) error {
 		{Class: "maint.review", Permissions: []string{"maint.workorder.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic work order review decisions inherit identity v1 write 200/hour on every axis; production measurement remains required."},
 		{Class: "find.finding", Permissions: []string{"find.finding.resolve"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic finding review decisions and detection runs inherit identity v1 write 200/hour on every axis; production measurement remains required."},
 		{Class: "org.group", Permissions: []string{"org.group.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic multi-CNPJ consolidation grant management inherits identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "agree.agreement", Permissions: []string{"agree.agreement.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic station agreement proposals and lifecycle commands inherit identity v1 write 200/hour on every axis; production measurement remains required."},
+		{Class: "agree.authorization", Permissions: []string{"agree.authorization.issue"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic bounded fueling authorization issuance and cancellation inherit identity v1 write 200/hour on every axis; production measurement remains required."},
 	})
 	if err != nil {
 		return err
@@ -541,6 +547,16 @@ func Register(router chi.Router, o Options) error {
 	intelStore := &intelpg.Store{Pool: o.Pool, Authority: &orgpg.ManagementAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore, NewID: jobs.NewUUIDv4}
 	intelAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: intelweb.ManagementRecords{}, Now: time.Now}
 	if err := intelweb.RegisterManagement(router, intelapp.Service{Enabled: true, Repository: intelStore, Now: time.Now, NewID: jobs.NewUUIDv4}, cookies, gateway, intelAuthorization); err != nil {
+		return err
+	}
+
+	// EMP-AGREE-001..006 (Phase F7): station agreements, negotiated price
+	// terms, bounded fueling authorizations and the station's once-only
+	// redemption settlement reads under agree.agreement.manage and
+	// agree.authorization.issue.
+	agreementStore := &agreepg.Store{Pool: o.Pool, Authority: &orgpg.AgreementAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore, NewID: jobs.NewUUIDv4}
+	agreementAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: agreeweb.AgreementRecords{}, Now: time.Now}
+	if err := agreeweb.RegisterCompany(router, agreeapp.Service{Enabled: true, Repository: agreementStore, Now: time.Now, NewID: jobs.NewUUIDv4, NewCode: jobs.NewVoucherCode}, cookies, gateway, agreementAuthorization); err != nil {
 		return err
 	}
 

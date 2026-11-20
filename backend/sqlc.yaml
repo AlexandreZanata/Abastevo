@@ -321,6 +321,7 @@ sql:
   - engine: postgresql
     queries: db/queries/stationprofile
     schema:
+      - db/migrations/000260_station_commerce.sql
       - db/migrations/000001_enable_postgis.sql
       - db/migrations/000002_directory.sql
       - db/migrations/000036_station_profiles.sql

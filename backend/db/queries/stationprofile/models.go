@@ -113,6 +113,20 @@ type RepresentationGrant struct {
 	ValidTo      pgtype.Timestamptz `json:"valid_to"`
 }
 
+type StationAnnouncedPrice struct {
+	ID              pgtype.UUID        `json:"id"`
+	StationID       pgtype.UUID        `json:"station_id"`
+	FuelProduct     string             `json:"fuel_product"`
+	Unit            string             `json:"unit"`
+	PriceMilliBrl   int64              `json:"price_milli_brl"`
+	Conditions      string             `json:"conditions"`
+	ValidFrom       pgtype.Timestamptz `json:"valid_from"`
+	ValidUntil      pgtype.Timestamptz `json:"valid_until"`
+	AuthorAccountID pgtype.UUID        `json:"author_account_id"`
+	State           string             `json:"state"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+}
+
 type StationOperatorRevision struct {
 	ID              pgtype.UUID        `json:"id"`
 	StationID       pgtype.UUID        `json:"station_id"`
@@ -129,4 +143,17 @@ type StationProfile struct {
 	Projection    []byte             `json:"projection"`
 	Revision      int32              `json:"revision"`
 	UpdatedAt     pgtype.Timestamptz `json:"updated_at"`
+}
+
+type StationPromotion struct {
+	ID              pgtype.UUID        `json:"id"`
+	StationID       pgtype.UUID        `json:"station_id"`
+	Label           string             `json:"label"`
+	Description     string             `json:"description"`
+	FuelProduct     pgtype.Text        `json:"fuel_product"`
+	ValidFrom       pgtype.Timestamptz `json:"valid_from"`
+	ValidUntil      pgtype.Timestamptz `json:"valid_until"`
+	AuthorAccountID pgtype.UUID        `json:"author_account_id"`
+	State           string             `json:"state"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
 }
