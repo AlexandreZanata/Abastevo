@@ -283,6 +283,34 @@
           </section>
           <section aria-labelledby="intel-audit-title"><h3 id="intel-audit-title">Trilha de auditoria</h3><ul id="intel-audit-list" class="record-list" aria-labelledby="intel-audit-title"></ul></section>
         </section>
+        <section id="agreements-panel" class="employee-card" aria-labelledby="agreements-title" hidden>
+          <div class="section-head">
+            <div><h2 id="agreements-title">Postos e acordos comerciais</h2><p class="section-copy">Convênios com postos, preços negociados, autorizações de abastecimento e resgates confirmados.</p></div>
+            <div class="action-row"><button id="agreements-refresh-button" class="button-secondary" type="button">Atualizar convênios</button></div>
+          </div>
+          <p id="agreements-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <section aria-labelledby="agreements-list-title"><h3 id="agreements-list-title">Convênios com postos</h3><ul id="agreements-list" class="record-list" aria-labelledby="agreements-list-title"></ul>
+            <details><summary>Propor novo convênio</summary>
+              <form id="agreement-propose-form" autocomplete="off">
+                <div class="field-grid"><div><label for="agreement-station-input">ID do posto</label><input id="agreement-station-input" required></div><div><label for="agreement-label-input">Nome da empresa no convênio</label><input id="agreement-label-input" maxlength="80" placeholder="Transportes Vale"></div><div><label for="agreement-from-input">Válido de</label><input id="agreement-from-input" type="datetime-local" required></div><div><label for="agreement-until-input">Válido até</label><input id="agreement-until-input" type="datetime-local" required></div><div><label for="agreement-product-input">Produto negociado</label><select id="agreement-product-input"><option value="DIESEL_S10">Diesel S10</option><option value="DIESEL_S500">Diesel S500</option><option value="GASOLINE_REGULAR">Gasolina comum</option><option value="ETHANOL">Etanol</option></select></div><div><label for="agreement-price-input">Preço negociado (milli-BRL por litro)</label><input id="agreement-price-input" type="number" min="1" max="1000000" value="5999" required></div></div>
+                <button id="agreement-propose-button" class="button-primary" type="button">Propor convênio</button>
+                <button id="agreement-suspend-button" class="button-secondary" type="button">Suspender convênio ativo</button>
+                <button id="agreement-end-button" class="button-secondary" type="button">Encerrar convênio</button>
+              </form>
+            </details>
+          </section>
+          <section aria-labelledby="authorizations-title"><h3 id="authorizations-title">Autorizações de abastecimento</h3><ul id="authorizations-list" class="record-list" aria-labelledby="authorizations-title"></ul>
+            <div id="authorization-code-note" aria-live="polite"></div>
+            <details><summary>Emitir autorização</summary>
+              <form id="authorization-issue-form" autocomplete="off">
+                <div class="field-grid"><div><label for="authorization-employee-input">ID do colaborador</label><input id="authorization-employee-input" required></div><div><label for="authorization-product-input">Produto autorizado</label><select id="authorization-product-input"><option value="DIESEL_S10">Diesel S10</option><option value="DIESEL_S500">Diesel S500</option><option value="GASOLINE_REGULAR">Gasolina comum</option><option value="ETHANOL">Etanol</option></select></div><div><label for="authorization-quantity-input">Limite de volume (milli)</label><input id="authorization-quantity-input" type="number" min="1" value="200000" required></div><div><label for="authorization-total-input">Limite de valor (centavos)</label><input id="authorization-total-input" type="number" min="1" value="300000" required></div><div><label for="authorization-until-input">Válido até</label><input id="authorization-until-input" type="datetime-local" required></div></div>
+                <button id="authorization-issue-button" class="button-primary" type="button">Emitir autorização</button>
+                <button id="authorization-cancel-button" class="button-secondary" type="button">Cancelar autorização emitida</button>
+              </form>
+            </details>
+          </section>
+          <section aria-labelledby="redemptions-title"><h3 id="redemptions-title">Resgates confirmados</h3><ul id="redemptions-list" class="record-list" aria-labelledby="redemptions-title"></ul></section>
+        </section>
       </section>
       <p id="live-status" class="sr-only" role="status" aria-live="polite" aria-atomic="true"></p>
       <noscript>Ative o JavaScript para entrar no painel com segurança.</noscript>
