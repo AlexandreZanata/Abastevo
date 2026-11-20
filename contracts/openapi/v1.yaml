@@ -25301,6 +25301,1208 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/station-agreements/propose:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseStationAgreementsPropose
+      summary: Propose a station agreement
+      description: Proposes a bilateral station agreement with its private negotiated price terms under fresh agree.agreement.manage authority (BR-AGREE-001).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.agreement.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseF7AgreementProposeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009101
+              station_id: d6c74c23-63db-4c24-a2e5-408cb23bad26
+              org_label: Transportes Vale
+              valid_from: '2026-12-01T00:00:00Z'
+              valid_until: '2026-12-31T23:59:59Z'
+              conditions: Faturamento mensal mediante nota fiscal
+              terms:
+              - {fuel_product: DIESEL_S10, unit: L, price_milli_brl: 5999}
+      responses:
+        '200':
+          description: Proposed agreement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/station-agreements/{agreement_id}/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseStationAgreementsRead
+      summary: Read one station agreement
+      description: Reads one agreement with its negotiated price terms under agree.agreement.manage.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.agreement.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: agreement_id
+        in: path
+        required: true
+        description: Agreement identifier.
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmptyRequest'
+            example: {}
+      responses:
+        '200':
+          description: Agreement with terms.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/station-agreements/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseStationAgreementsList
+      summary: List station agreements
+      description: Lists the organization's station agreements with derived usability under agree.agreement.manage.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.agreement.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmptyRequest'
+            example: {}
+      responses:
+        '200':
+          description: Agreements in scope.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/station-agreements/{agreement_id}/suspend:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseStationAgreementsSuspend
+      summary: Suspend a station agreement
+      description: Suspends an active agreement; new eligible transactions stop under its recorded policy (UC-AGREE-01).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.agreement.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: agreement_id
+        in: path
+        required: true
+        description: Agreement identifier.
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schema_version, operation_id, revision, reason]
+              properties:
+                schema_version: {type: integer, enum: [1]}
+                operation_id: {type: string, format: uuid}
+                revision: {type: integer, minimum: 1}
+                reason: {type: string, maxLength: 280}
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009102
+              revision: 2
+              reason: Revisão contratual em andamento
+      responses:
+        '200':
+          description: Suspended agreement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/station-agreements/{agreement_id}/end:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseStationAgreementsEnd
+      summary: End a station agreement
+      description: Ends a proposed, active or suspended agreement; the stored terms and history stay for reconciliation.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.agreement.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: agreement_id
+        in: path
+        required: true
+        description: Agreement identifier.
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schema_version, operation_id, revision, reason]
+              properties:
+                schema_version: {type: integer, enum: [1]}
+                operation_id: {type: string, format: uuid}
+                revision: {type: integer, minimum: 1}
+                reason: {type: string, maxLength: 280}
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009103
+              revision: 2
+              reason: Encerramento acordado entre as partes
+      responses:
+        '200':
+          description: Ended agreement.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fueling-authorizations/issue:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelingAuthorizationsIssue
+      summary: Issue a fueling authorization voucher
+      description: Issues a bounded, expiring, single-use fueling authorization under fresh agree.authorization.issue authority (EMP-AGREE-004). The voucher code is returned once; only its digest is stored.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.authorization.issue
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseF7AuthorizationIssueRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009104
+              agreement_id: 9a1f0c66-0000-4000-8000-000000009201
+              employee_id: 5c7d2f11-0000-4000-8000-000000009301
+              asset_id: 3e8b1a99-0000-4000-8000-000000009401
+              fuel_product: DIESEL_S10
+              unit: L
+              max_quantity_milli: 200000
+              max_centavos: 120000
+              valid_until: '2026-12-10T23:59:59Z'
+      responses:
+        '200':
+          description: Issued voucher with its one-time code.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fueling-authorizations/{authorization_id}/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelingAuthorizationsRead
+      summary: Read one fueling authorization
+      description: Reads one voucher with its derived state and remaining limits under agree.authorization.issue. The one-time code is never returned again.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.authorization.issue
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: authorization_id
+        in: path
+        required: true
+        description: Authorization identifier.
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmptyRequest'
+            example: {}
+      responses:
+        '200':
+          description: Authorization with derived state.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fueling-authorizations/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelingAuthorizationsList
+      summary: List fueling authorizations
+      description: Lists the organization's vouchers with derived states under agree.authorization.issue.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.authorization.issue
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmptyRequest'
+            example: {}
+      responses:
+        '200':
+          description: Authorizations in scope.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fueling-authorizations/{authorization_id}/cancel:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelingAuthorizationsCancel
+      summary: Cancel a fueling authorization
+      description: Cancels an issued voucher; a redeemed or locked voucher is refused.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.authorization.issue
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: authorization_id
+        in: path
+        required: true
+        description: Authorization identifier.
+        schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [schema_version, operation_id, reason]
+              properties:
+                schema_version: {type: integer, enum: [1]}
+                operation_id: {type: string, format: uuid}
+                reason: {type: string, maxLength: 280}
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000009105
+              reason: Motorista realocado para outra unidade
+      responses:
+        '200':
+          description: Cancelled authorization.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fueling-redemptions/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelingRedemptionsList
+      summary: List confirmed fueling redemptions
+      description: Lists the station-confirmed redemptions of the organization's agreements under agree.agreement.manage (EMP-AGREE-006, minimal sharing).
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: agree.agreement.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseEmptyRequest'
+            example: {}
+      responses:
+        '200':
+          description: Redemptions in scope.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/stations/{station_id}/announced-prices:
+    get:
+      summary: Read a station's announced prices (anonymous).
+      operationId: stationAnnouncedPrices
+      tags: [directory]
+      security: []
+      description: >
+        Public source-labelled read (EMP-STN-002/003, BR-STN-001, BR-SRC-001):
+        the station's own announced prices with product, unit, price,
+        conditions, author attribution window and derived display state.
+        Announced values are a separate commercial source: they never mix
+        into official or community consensus, ranking, moderation or trust
+        (VAL-33).
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier.
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Announced prices with source labels and display states.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=30, s-maxage=60'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/stations/{station_id}/promotions:
+    get:
+      summary: Read a station's labelled promotions (anonymous).
+      operationId: stationPromotions
+      tags: [directory]
+      security: []
+      description: >
+        Public read (EMP-STN-004, BR-SRC-002): labelled, time-bound
+        promotions with their validity window and derived SCHEDULED, ACTIVE,
+        ENDED or WITHDRAWN state. The stored window is authoritative and
+        expiry applies at read time.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier.
+          schema: {type: string, format: uuid}
+      responses:
+        '200':
+          description: Promotions with display states.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'public, max-age=30, s-maxage=60'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /v1/stations/{station_id}/announced-prices/save:
+    post:
+      summary: Announce a station price (signed, scoped).
+      operationId: stationAnnouncedPriceSave
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition: all requests
+        return 503/profile.integration-pending with no-store until the
+        recorded Stage-D override is activated. The following contract
+        describes the retained module behavior. Session-authenticated
+        scoped publication (EMP-STN-002, stn.price.publish): only the
+        current approved `price.publish` scope, live account and operator
+        rechecked server-side, explicit validity, closed product and unit
+        lists, and supersession of the stored announcement of the same
+        product and unit. Always `no-store`.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed station.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, fuel_product, unit, price_milli_brl, valid_from, valid_until]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+                fuel_product:
+                  type: string
+                  enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13]
+                unit:
+                  type: string
+                  enum: [L, M3, KG_13]
+                price_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+                conditions: {type: string, maxLength: 120}
+                valid_from: {type: string, format: date-time}
+                valid_until: {type: string, format: date-time}
+            example:
+              family_id: 0f0e8d54-0000-4000-8000-000000009501
+              access_token: synthetic-station-session
+              fuel_product: DIESEL_S10
+              unit: L
+              price_milli_brl: 5999
+              conditions: Pagamento mediante nota fiscal
+              valid_from: '2026-12-01T00:00:00Z'
+              valid_until: '2026-12-31T23:59:59Z'
+      responses:
+        '200':
+          description: Stored announcement with its revision.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          description: Station commerce integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /v1/stations/{station_id}/announced-prices/withdraw:
+    post:
+      summary: Withdraw an announced price (signed, scoped).
+      operationId: stationAnnouncedPriceWithdraw
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition (503 until the
+        recorded Stage-D override is activated). Session-authenticated
+        scoped withdrawal of one announcement; the stored history stays.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed station.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, price_id]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+                price_id: {type: string, format: uuid}
+            example:
+              family_id: 0f0e8d54-0000-4000-8000-000000009501
+              access_token: synthetic-station-session
+              price_id: 1a2b3c4d-0000-4000-8000-000000009601
+      responses:
+        '200':
+          description: Withdrawn announcement.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Station commerce integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /v1/stations/{station_id}/promotions/save:
+    post:
+      summary: Publish a labelled promotion (signed, scoped).
+      operationId: stationPromotionSave
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition (503 until the
+        recorded Stage-D override is activated). Session-authenticated
+        scoped publication (EMP-STN-004, stn.price.publish): labelled,
+        time-bound and attributed promotion; reusing a live label withdraws
+        the stored promotion first.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed station.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, label, description, valid_from, valid_until]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+                label: {type: string, minLength: 1, maxLength: 60}
+                description: {type: string, minLength: 1, maxLength: 280}
+                fuel_product:
+                  type: [string, 'null']
+                  enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13, null]
+                valid_from: {type: string, format: date-time}
+                valid_until: {type: string, format: date-time}
+            example:
+              family_id: 0f0e8d54-0000-4000-8000-000000009501
+              access_token: synthetic-station-session
+              label: Diesel parceria
+              description: Desconto para frotas conveniadas no mês
+              fuel_product: DIESEL_S10
+              valid_from: '2026-12-01T00:00:00Z'
+              valid_until: '2026-12-31T23:59:59Z'
+      responses:
+        '200':
+          description: Stored promotion.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          description: Station commerce integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /v1/stations/{station_id}/promotions/withdraw:
+    post:
+      summary: Withdraw a promotion (signed, scoped).
+      operationId: stationPromotionWithdraw
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition (503 until the
+        recorded Stage-D override is activated). Session-authenticated
+        scoped withdrawal; the stored history stays.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed station.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, promotion_id]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+                promotion_id: {type: string, format: uuid}
+            example:
+              family_id: 0f0e8d54-0000-4000-8000-000000009501
+              access_token: synthetic-station-session
+              promotion_id: 2b3c4d5e-0000-4000-8000-000000009701
+      responses:
+        '200':
+          description: Withdrawn promotion.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '503':
+          description: Station commerce integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /v1/stations/{station_id}/agreements/list:
+    post:
+      summary: List the station's fleet agreements (signed, scoped).
+      operationId: stationAgreementsList
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition (503 until the
+        recorded Stage-D override is activated). Session-authenticated
+        scoped read (station side of agree.agreement.manage): the
+        station's agreements across organizations, each with only the
+        allowlisted fields — organization label, state, validity and the
+        negotiated terms of its own agreement. No fleet, employee, document
+        or location browsing (BR-AGREE-001).
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed station.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+            example:
+              family_id: 0f0e8d54-0000-4000-8000-000000009501
+              access_token: synthetic-station-session
+      responses:
+        '200':
+          description: The station's agreements with allowlisted fields.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '503':
+          description: Station commerce integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /v1/stations/{station_id}/agreements/{agreement_id}/accept:
+    post:
+      summary: Accept a proposed agreement (signed, scoped).
+      operationId: stationAgreementAccept
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition (503 until the
+        recorded Stage-D override is activated). The station party's
+        explicit acceptance (UC-AGREE-01, station side of
+        agree.agreement.manage): current scope, live account and operator
+        rechecked server-side, only the eligible proposal of this station.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed station.
+          schema: {type: string, format: uuid}
+        - name: agreement_id
+          in: path
+          required: true
+          description: Agreement identifier.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+            example:
+              family_id: 0f0e8d54-0000-4000-8000-000000009501
+              access_token: synthetic-station-session
+      responses:
+        '200':
+          description: Accepted agreement.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          description: Station commerce integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /v1/stations/{station_id}/agreements/{agreement_id}/decline:
+    post:
+      summary: Decline a proposed agreement (signed, scoped).
+      operationId: stationAgreementDecline
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition (503 until the
+        recorded Stage-D override is activated). The station party's
+        explicit decline with a reason; the proposal stays auditable.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the managed station.
+          schema: {type: string, format: uuid}
+        - name: agreement_id
+          in: path
+          required: true
+          description: Agreement identifier.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, reason]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+                reason: {type: string, minLength: 1, maxLength: 280}
+            example:
+              family_id: 0f0e8d54-0000-4000-8000-000000009501
+              access_token: synthetic-station-session
+              reason: Condições comerciais incompatíveis
+      responses:
+        '200':
+          description: Declined agreement.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '503':
+          description: Station commerce integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
+  /v1/stations/{station_id}/redemptions/confirm:
+    post:
+      summary: Confirm a voucher redemption (signed, scoped).
+      operationId: stationRedemptionConfirm
+      tags: [directory]
+      security: []
+      description: >
+        Currently unavailable in the production composition (503 until the
+        recorded Stage-D override is activated). The station's once-only
+        online redemption (EMP-AGREE-005, agree.redemption.confirm
+        station scope): current scope, live account and operator rechecked
+        server-side; the server derives the total from the agreement's
+        negotiated term, enforces the voucher's validity and limits,
+        consumes it once and returns the stored receipt on matching retry
+        (BR-AGREE-002). Invalid attempts are bounded and lock the voucher.
+        The voucher code is never logged or echoed.
+      parameters:
+        - name: station_id
+          in: path
+          required: true
+          description: Canonical station identifier of the confirming station.
+          schema: {type: string, format: uuid}
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [family_id, access_token, operation_id, code, fuel_product, unit, quantity_milli]
+              properties:
+                family_id: {type: string, format: uuid}
+                access_token: {type: string}
+                operation_id: {type: string, format: uuid}
+                code: {type: string, minLength: 16, maxLength: 64}
+                fuel_product:
+                  type: string
+                  enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13]
+                unit:
+                  type: string
+                  enum: [L, M3, KG_13]
+                quantity_milli: {type: integer, minimum: 1, maximum: 1000000000}
+            example:
+              family_id: 0f0e8d54-0000-4000-8000-000000009501
+              access_token: synthetic-station-session
+              operation_id: 4d5e6f70-0000-4000-8000-000000009801
+              code: 9f8e7d6c5b4a39281706050403020100
+              fuel_product: DIESEL_S10
+              unit: L
+              quantity_milli: 50000
+      responses:
+        '200':
+          description: Confirmed redemption receipt (or the stored receipt of a matching retry).
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          description: Station commerce integration is pending; no data read or written.
+          headers:
+            Cache-Control:
+              schema: {type: string, example: 'no-store'}
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiError'
 x-abastevo-organization-api:
   version: 1
   namespaces: ['/v1/orgs/{org_id}/', /v1/org-access/]
@@ -48948,6 +50150,53 @@ components:
         capacity_milli: {type: integer, minimum: 1}
         allow_negative: {type: boolean}
         state: {type: string}
+    EnterpriseF7AgreementProposeRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, station_id, org_label, valid_from, valid_until, terms]
+      properties:
+        schema_version: {type: integer, enum: [1]}
+        operation_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        station_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        org_label: {type: string, minLength: 1, maxLength: 80}
+        valid_from: {type: string, format: date-time}
+        valid_until: {type: string, format: date-time}
+        conditions: {type: string, maxLength: 280}
+        terms:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            additionalProperties: false
+            required: [fuel_product, unit, price_milli_brl]
+            properties:
+              fuel_product:
+                type: string
+                enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13]
+              unit:
+                type: string
+                enum: [L, M3, KG_13]
+              price_milli_brl: {type: integer, minimum: 1, maximum: 1000000}
+              conditions: {type: string, maxLength: 120}
+    EnterpriseF7AuthorizationIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, agreement_id, employee_id, fuel_product, unit, max_quantity_milli, max_centavos, valid_until]
+      properties:
+        schema_version: {type: integer, enum: [1]}
+        operation_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        agreement_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        employee_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        asset_id: {type: string}
+        fuel_product:
+          type: string
+          enum: [ETHANOL, GASOLINE_REGULAR, GASOLINE_ADDITIVED, DIESEL_S500, DIESEL_S10, CNG, LPG_P13]
+        unit:
+          type: string
+          enum: [L, M3, KG_13]
+        max_quantity_milli: {type: integer, minimum: 1, maximum: 1000000000000}
+        max_centavos: {type: integer, minimum: 1, maximum: 1000000000000}
+        valid_until: {type: string, format: date-time}
     EnterpriseF6MovementListRequest:
       type: object
       additionalProperties: false

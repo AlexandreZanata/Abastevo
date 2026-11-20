@@ -10,7 +10,7 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000259. Relations: 393 granted, 3 without access.
+-- Schema version: 000261. Relations: 393 granted, 12 without access.
 -- Sequences: 6. Explicit functions: 0.
 
 BEGIN;
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000259' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000259 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000261' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000261 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -207,6 +207,7 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.official_import_runs TO :"runtime_r
 GRANT SELECT, INSERT, UPDATE ON TABLE public.official_revisions TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.official_station_prices TO :"runtime_role";
 -- no access: public.official_summary_prices
+-- no access: public.org_agreement_price_terms
 GRANT SELECT, INSERT ON TABLE public.org_asset_assignment_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_asset_assignments TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_asset_attachment_commands TO :"runtime_role";
@@ -259,13 +260,17 @@ GRANT SELECT, INSERT ON TABLE public.org_event_receipts TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_expenses TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_export_jobs TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_f6_commands TO :"runtime_role";
+-- no access: public.org_f7_commands
 GRANT SELECT, INSERT ON TABLE public.org_finance_period_transitions TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_finance_periods TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_finding_runs TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_finding_settings TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_findings TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_fleet_components TO :"runtime_role";
+-- no access: public.org_fuel_authorization_events
+-- no access: public.org_fuel_authorizations
 -- no access: public.org_fuel_products_v1
+-- no access: public.org_fuel_redemptions
 GRANT SELECT, INSERT ON TABLE public.org_fuel_tank_movements TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_fuel_tank_reconciliations TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_fuel_tanks TO :"runtime_role";
@@ -331,6 +336,8 @@ GRANT SELECT, INSERT ON TABLE public.org_settings_designations TO :"runtime_role
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_settings_heads TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_settings_notices TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_settings_versions TO :"runtime_role";
+-- no access: public.org_station_agreement_transitions
+-- no access: public.org_station_agreements
 GRANT SELECT, INSERT ON TABLE public.org_suspension_notices TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_suspension_periods TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_sync_acknowledgements TO :"runtime_role";
@@ -448,10 +455,12 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.registry_source_runs TO :"runtime_r
 GRANT SELECT, INSERT ON TABLE public.representation_grants TO :"runtime_role";
 GRANT SELECT ON TABLE public.schema_migrations TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.staff_assignments TO :"runtime_role";
+-- no access: public.station_announced_prices
 GRANT SELECT, INSERT ON TABLE public.station_correction_decisions TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.station_corrections TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.station_operator_revisions TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.station_profiles TO :"runtime_role";
+-- no access: public.station_promotions
 GRANT SELECT, INSERT, UPDATE ON TABLE public.station_suggestions TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.subscription_operations TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.subscription_provider_notifications TO :"runtime_role";
