@@ -27,6 +27,11 @@ func TestTripMissionVehicleChangeThroughComposedCompanyHTTP(t *testing.T) {
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT,UPDATE ON identity_rate_windows TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
 		t.Fatal(err)
 	}
+	// The composed FLEET-007 assessment of the vehicle change reads open
+	// work-order holds (EMP-MAINT-005), like the production runtime role.
+	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_work_orders TO "+pgx.Identifier{fx.f.RuntimeRole}.Sanitize()); err != nil {
+		t.Fatal(err)
+	}
 	router := chi.NewRouter()
 	runtimeAccounts := *fx.accounts
 	runtimeAccounts.Store = accountpg.NewPGStore(fx.f.Runtime)
