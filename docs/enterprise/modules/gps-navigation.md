@@ -489,3 +489,19 @@ Dependencies: [trips](trips.md) (trip states, logbook, stops), [fleet](fleet.md)
 Risks: background behaviour differs by manufacturer (gaps are first-class data; odometer stays primary; device matrix owed); two location subscriptions in phase 1 drain the battery (measured in the spike; phase 2 removes the duplication); managers use location to watch people rather than operations (trip-bound collection, access log, employee transparency); a driver forgets to end a trip and personal travel is recorded (visible indicator, long stationary guard, trimming); the car profile routes a heavy vehicle through a restricted road (stated on screen; truck restrictions are a later evolution); the hand-written panel map integration grows (list fallback, port); legal positions change the retention or the notice (configuration, not code).
 
 Phase: F4 for track recording and navigation phase 1; F5 (`EMP-GOV-007`, `EMP-GPS-006..014`, `EMP-ROUTE-001..010`, `EMP-REL-006`, recorded in EDR-369..374) for route plans, trip-aware navigation, the live view, geofences, alerts and suggestions. Justification for the later phases: tracking needs the complete trip lifecycle of F4 (pause, resume, supervisor closure), the legal validation and the spike before any code; the live view and trip-aware navigation need stored tracks, the panel map decision and the coordination of two location consumers, which is the riskiest Android change in the suite and is taken only after tracking alone is proven on devices. Microtasks: EMP-GPS-001 to EMP-GPS-015 and EMP-ROUTE-001 to EMP-ROUTE-010.
+
+### Driver trip reference (B-BR-EMP-568, B-BR-EMP-593, BUC-EMP-311)
+
+The trip screen can request a reference for its current trip through the signed
+reference transport. An exact enrollment and a current trip-read grant must
+cover the trip's author and driver. A trip in another scope, or one no longer
+assigned to this driver, is unavailable. A trip plan takes precedence over the
+plan of the mission linked by its accepted start. Both sources report their
+revision and waypoint order. The response exposes only document expiry counts,
+the driver's own open requests for this vehicle, and an applicable voucher
+summary with its limit and expiry. Voucher codes, hashes, terms and company
+financial data stay outside the driver reference. The Android screen removes
+the reference when connectivity or the confirmed trip context is lost. Stops
+with coordinates open a transient native preview with the plan's avoidance
+options; text-only stops remain instructions
+on the trip screen.

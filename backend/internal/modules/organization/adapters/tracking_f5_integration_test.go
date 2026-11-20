@@ -4,6 +4,8 @@ package adapters_test
 
 import (
 	"bytes"
+	"encoding/json"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
 	"strings"
 	"testing"
 	"time"
@@ -303,6 +305,21 @@ func TestF5RoutePlansComputationsAndNeutralSuggestions(t *testing.T) {
 		t.Fatal("unexpected route plan history", readBack)
 	}
 
+	grantTripFieldFixture(t, x.f)
+	field, err := referenceStore(x.selfIntakeState).PullTripField(t.Context(), x.source, x.trip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var driverPlan struct {
+		Revision  int64                  `json:"revision"`
+		OwnerID   string                 `json:"owner_id"`
+		Waypoints []domain.RouteWaypoint `json:"waypoints"`
+	}
+	if err := json.Unmarshal(field.Plan, &driverPlan); err != nil || driverPlan.Revision != 2 ||
+		driverPlan.OwnerID != x.trip || len(driverPlan.Waypoints) != 2 || driverPlan.Waypoints[1].Label != "Dest" {
+		t.Fatal("trip reference did not return the latest waypoints", err)
+	}
+
 	// Neutral suggestion evaluation (§10.7 1,742 centavos exact vector, paying station gets zero priority boost).
 	eval := matrixCall(t, fx, router, owner, "/v1/orgs/"+org+"/routes/suggestions/evaluate", map[string]any{
 		"product": "DIESEL_S10", "planned_volume_ml": 150000,
@@ -331,3 +348,35 @@ func TestF5RoutePlansComputationsAndNeutralSuggestions(t *testing.T) {
 }
 
 var _ = bytes.Compare
+
+func TestTripFieldReferenceBindsDriverAndEnrollment(t *testing.T) {
+	x := trackingFixture(t)
+	x.recordedTrack(t)
+	grantTripFieldFixture(t, x.f)
+	fields := referenceStore(x.selfIntakeState)
+	field, err := fields.PullTripField(t.Context(), x.source, x.trip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if field.TripID != x.trip || string(field.Plan) != "null" || field.Voucher != nil || field.OpenMaintenance != 0 {
+		t.Fatal("unexpected facts for an empty authorized trip")
+	}
+	other := x.driver(t)
+	if _, err := fields.PullTripField(t.Context(), other.source, x.trip); err == nil {
+		t.Fatal("another driver read the trip")
+	}
+	wrongEnrollment := x.source
+	wrongEnrollment.EnrollmentID = onboardingID(t)
+	if _, err := fields.PullTripField(t.Context(), wrongEnrollment, x.trip); err == nil {
+		t.Fatal("another enrollment read the trip")
+	}
+}
+
+func grantTripFieldFixture(t *testing.T, f *orgtest.Fixture) {
+	t.Helper()
+	// In script-grants mode this fixture role stays unused. The runtime then uses the reviewed production SQL.
+	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
+	if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT ON org_compliance_items,org_work_orders,org_station_agreements,org_fuel_authorizations,org_route_plans,org_trip_mission_links TO "+role+";GRANT SELECT ON org_trips TO "+role+";GRANT UPDATE(state) ON org_trips TO "+role); err != nil {
+		t.Fatal(err)
+	}
+}

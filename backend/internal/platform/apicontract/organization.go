@@ -144,14 +144,15 @@ func ValidateOrganizationRoutes(router chi.Routes, document *openapi3.T) error {
 				return e
 			}
 			body := operation.RequestBody.Value.Content.Get("application/json").Schema
-			if body.Ref != "#/components/schemas/EnterpriseReferenceFeedRequest" || !exactReviewObject(body.Value, "schema_version", "request_id", "family_id", "access_token", "membership_id", "enrollment_id", "cursor") {
+			if body == nil || body.Ref != "#/components/schemas/EnterpriseReferenceFeedRequest" ||
+				!exactTripReferenceRequest(body.Value) {
 				return fmt.Errorf("invalid whole reference feed body for %s", path)
 			}
 			if operation.Responses == nil || operation.Responses.Value("200") == nil || operation.Responses.Value("200").Value == nil {
 				return fmt.Errorf("missing reference feed response for %s", path)
 			}
 			media := operation.Responses.Value("200").Value.Content.Get("application/json")
-			if media == nil || media.Schema == nil || media.Schema.Ref != "#/components/schemas/EnterpriseReferenceFeedResponse" {
+			if media == nil || media.Schema == nil || !exactReferenceResponses(media.Schema.Value) {
 				return fmt.Errorf("invalid reference feed response for %s", path)
 			}
 			declared.Success = 200
@@ -509,6 +510,35 @@ var selfNoticePaths = map[string]string{
 	"read":               "/v1/orgs/{org_id}/memberships/{membership_id}/notifications/self/{notice_id}/read",
 	"preferences_read":   "/v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/read",
 	"preferences_update": "/v1/orgs/{org_id}/memberships/{membership_id}/notification-preferences/self/update",
+}
+
+func exactTripReferenceRequest(schema *openapi3.Schema) bool {
+	if schema == nil || len(schema.Properties) != 8 || schema.Properties["trip_id"] == nil ||
+		schema.Properties["trip_id"].Ref != "#/components/schemas/EnterpriseUUID" {
+		return false
+	}
+	assetSchema := *schema
+	assetSchema.Properties = make(openapi3.Schemas, len(schema.Properties)-1)
+	for key, value := range schema.Properties {
+		if key != "trip_id" {
+			assetSchema.Properties[key] = value
+		}
+	}
+	return exactReviewObject(&assetSchema, "schema_version", "request_id", "family_id", "access_token", "membership_id", "enrollment_id", "cursor")
+}
+
+func exactReferenceResponses(schema *openapi3.Schema) bool {
+	if schema == nil || len(schema.OneOf) != 2 {
+		return false
+	}
+	asset, field := schema.OneOf[0], schema.OneOf[1]
+	if asset == nil || asset.Ref != "#/components/schemas/EnterpriseReferenceFeedResponse" ||
+		field == nil || field.Ref != "#/components/schemas/EnterpriseTripFieldResponse" ||
+		!exactReviewObject(field.Value, "schema_version", "request_id", "membership_id", "enrollment_id", "field") {
+		return false
+	}
+	return exactReviewObject(field.Value.Properties["field"].Value,
+		"trip_id", "plan", "expired", "due_soon", "nearest_days", "open_maintenance", "voucher")
 }
 
 func exactReviewObject(schema *openapi3.Schema, names ...string) bool {

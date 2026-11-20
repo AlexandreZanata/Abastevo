@@ -22609,7 +22609,8 @@ paths:
         a DELETE tombstone reaches every older cursor. The opaque cursor is server-signed and bound to organization,
         membership, enrollment and feed epoch; one that does not verify for the requesting period is NOT_FOUND. No cursor,
         another epoch or a cursor ahead of the feed answers RESET; no covering grant answers RESET with reason FORBIDDEN
-        and no entities. confirmed_at is the server clock.
+        and no entities. confirmed_at is the server clock. With a trip_id and a null cursor the same proof instead
+        requests the field reference of the caller's own running or paused trip. Other trips are unavailable.
       security: []
       parameters:
       - $ref: '#/components/parameters/EnterpriseOrgID'
@@ -22697,7 +22698,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/EnterpriseReferenceFeedResponse'
+                oneOf:
+                - $ref: '#/components/schemas/EnterpriseReferenceFeedResponse'
+                - $ref: '#/components/schemas/EnterpriseTripFieldResponse'
               example:
                 schema_version: 1
                 request_id: 7b0e2a54-0000-4000-8000-000000008620
@@ -33182,6 +33185,9 @@ components:
           $ref: '#/components/schemas/EnterpriseUUID'
         enrollment_id:
           $ref: '#/components/schemas/EnterpriseUUID'
+        trip_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+          description: Exact trip of the enrolled driver. Requires a null cursor.
         cursor:
           anyOf:
           - type: string
@@ -33196,6 +33202,64 @@ components:
       - membership_id
       - enrollment_id
       - cursor
+    EnterpriseTripFieldResponse:
+      type: object
+      additionalProperties: false
+      required: [schema_version, request_id, membership_id, enrollment_id, field]
+      properties:
+        schema_version: {type: integer, const: 1}
+        request_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        membership_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        enrollment_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+        field:
+          type: object
+          additionalProperties: false
+          required: [trip_id, plan, expired, due_soon, nearest_days, open_maintenance, voucher]
+          properties:
+            trip_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+            plan:
+              anyOf:
+              - type: 'null'
+              - type: object
+                description: The current trip plan, or the plan of the mission linked to the accepted trip start.
+                additionalProperties: false
+                required: [id, revision, owner_kind, owner_id, waypoints, avoid_toll, avoid_motorway, avoid_ferry, avoid_unpaved, heavy_asset_notice, planned_distance_metres, planned_distance_source, updated_at]
+                properties:
+                  id: {$ref: '#/components/schemas/EnterpriseUUID'}
+                  revision: {type: integer, minimum: 1}
+                  owner_kind: {type: string, enum: [TRIP, MISSION]}
+                  owner_id: {$ref: '#/components/schemas/EnterpriseUUID'}
+                  waypoints:
+                    type: array
+                    minItems: 2
+                    maxItems: 102
+                    items: {type: object}
+                  avoid_toll: {type: boolean}
+                  avoid_motorway: {type: boolean}
+                  avoid_ferry: {type: boolean}
+                  avoid_unpaved: {type: boolean}
+                  heavy_asset_notice: {type: boolean}
+                  planned_distance_metres: {type: [integer, 'null'], minimum: 1}
+                  planned_distance_source: {type: [string, 'null'], enum: [MANUAL, ENGINE, null]}
+                  updated_at: {type: string, format: date-time}
+            expired: {type: integer, minimum: 0}
+            due_soon: {type: integer, minimum: 0}
+            nearest_days: {type: [integer, 'null'], minimum: 0}
+            open_maintenance: {type: integer, minimum: 0}
+            voucher:
+              anyOf:
+              - type: 'null'
+              - type: object
+                additionalProperties: false
+                required: [id, product, unit, max_quantity_milli, max_centavos, valid_until, state]
+                properties:
+                  id: {$ref: '#/components/schemas/EnterpriseUUID'}
+                  product: {type: string}
+                  unit: {type: string, enum: [L, M3, KG_13]}
+                  max_quantity_milli: {type: integer, minimum: 1}
+                  max_centavos: {type: integer, minimum: 1}
+                  valid_until: {type: integer, format: int64, description: Unix epoch seconds}
+                  state: {type: string, enum: [ISSUED, REDEEMED, CANCELLED, LOCKED]}
     EnterpriseReferenceAsset:
       type: object
       additionalProperties: false

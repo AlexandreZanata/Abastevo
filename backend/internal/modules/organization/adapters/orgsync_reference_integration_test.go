@@ -262,6 +262,7 @@ func TestReferenceFeedSchemaIsAppendOnlyAndMonotonic(t *testing.T) {
 func TestReferenceFeedSignedRouteRefusesForeignCursors(t *testing.T) {
 	fx := meterIntakeHTTP(t)
 	fx.f.GrantReferenceFeed(t)
+	grantTripFieldFixture(t, fx.f)
 	path := strings.Replace(syncweb.ReferencePath, "{org_id}", fx.scope.OrgID().String(), 1)
 	post := func(cursor any, extra map[string]any) (int, map[string]any) {
 		t.Helper()
@@ -321,6 +322,12 @@ func TestReferenceFeedSignedRouteRefusesForeignCursors(t *testing.T) {
 	}
 	if status, _ := post(nil, map[string]any{"since": 1}); status != 400 {
 		t.Fatal("an unknown request field was accepted", status)
+	}
+	if status, out := post(nil, map[string]any{"trip_id": onboardingID(t)}); status != 404 || out["field"] != nil {
+		t.Fatal("missing trip disclosed field data", status)
+	}
+	if status, _ := post(first["cursor"], map[string]any{"trip_id": onboardingID(t)}); status != 400 {
+		t.Fatal("trip request reused an asset cursor", status)
 	}
 }
 
