@@ -296,7 +296,7 @@ func (s *Store) ProposeAgreement(ctx context.Context, scope kernel.OrgScope, act
 func termViews(terms []app.TermInput) []app.TermView {
 	out := make([]app.TermView, 0, len(terms))
 	for _, term := range terms {
-		out = append(out, app.TermView{Product: term.Product, Unit: term.Unit, PriceMilliBRL: term.PriceMilliBRL, Conditions: term.Conditions})
+		out = append(out, app.TermView(term))
 	}
 	return out
 }
