@@ -27,6 +27,7 @@ data class NativeRouteUi(
     val findingOrigin: Boolean = false,
     val error: String? = null, val missingMaps: List<String> = emptyList(),
     val searching: Boolean = false, val results: List<MapSearchResult> = emptyList(),
+    val tripPreview: Boolean = false,
 )
 
 @HiltViewModel
@@ -56,10 +57,13 @@ class NativeRouteViewModel @Inject constructor(private val engine: MapEngine, pr
 
     fun guidanceManeuvers(language: String) = engine.guidanceManeuvers(language)
 
-    fun prepareDestination(destination: RoutePoint?) {
+    fun prepareDestination(destination: RoutePoint?, tripAvoid: Set<RoadAvoidance>? = null) {
         invalidate()
         stopSearch()
-        state.update { it.copy(origin = null, destination = destination, stops = emptyList()) }
+        state.update {
+            it.copy(origin = null, destination = destination, stops = emptyList(),
+                avoid = tripAvoid ?: if (it.tripPreview) emptySet() else it.avoid, tripPreview = tripAvoid != null)
+        }
         persist()
     }
 
@@ -158,7 +162,11 @@ class NativeRouteViewModel @Inject constructor(private val engine: MapEngine, pr
 
     fun fail(reason:String) { state.update { it.copy(error=reason) } }
     fun stopSearch() { ++searchGeneration;searchDeadline?.cancel();engine.cancelSearch();state.update { it.copy(searching=false,results=emptyList()) } }
-    fun cancel() { invalidate();stopSearch() }
+    fun cancel() {
+        invalidate()
+        stopSearch()
+        if (state.value.tripPreview) state.value = NativeRouteUi()
+    }
     private fun invalidate() {
         ++generation
         deadline?.cancel()
@@ -170,7 +178,9 @@ class NativeRouteViewModel @Inject constructor(private val engine: MapEngine, pr
         }
     }
     private fun persist() {
-        val s=state.value;val points=if(s.origin!=null && s.destination!=null) listOf(s.origin)+s.stops+s.destination else emptyList()
+        val s=state.value
+        if (s.tripPreview) return
+        val points=if(s.origin!=null && s.destination!=null) listOf(s.origin)+s.stops+s.destination else emptyList()
         saved["route-avoid"]=ArrayList(s.avoid.map { it.name })
         saved["route-coordinates"]=ArrayList(points.map { "${it.latitude},${it.longitude}" })
         saved["route-labels"]=ArrayList(points.map { it.label })

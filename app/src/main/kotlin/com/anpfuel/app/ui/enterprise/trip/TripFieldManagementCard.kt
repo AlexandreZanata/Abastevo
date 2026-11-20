@@ -25,7 +25,7 @@ import com.anpfuel.domain.enterprise.route.DrivingModePolicy
 internal fun TripFieldManagementCard(
     advisory: FieldManagementAdvisory,
     speedCmPerSecond: Int?,
-    onRequestMaintenance: () -> Unit,
+    onRequestMaintenance: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val isDriving = DrivingModePolicy.isDriving(speedCmPerSecond)
@@ -88,7 +88,7 @@ internal fun TripFieldManagementCard(
             )
         }
 
-        OutlinedButton(
+        if (onRequestMaintenance != null) OutlinedButton(
             onClick = onRequestMaintenance,
             enabled = !isDriving,
             modifier = Modifier

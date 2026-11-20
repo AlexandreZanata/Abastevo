@@ -241,6 +241,9 @@ object EnterpriseModule {
     @Singleton
     fun referenceTransport(client: EnterpriseReferenceHttpClient): EnterpriseReferenceTransport = client
 
+    @Provides
+    fun tripFieldReader(client: EnterpriseReferenceHttpClient): com.anpfuel.application.enterprise.trip.TripFieldReader = client
+
     /** The protected generation's sealed reference cache, never a plaintext table (EDR-224). */
     @Provides
     @Singleton

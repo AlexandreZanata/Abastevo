@@ -257,15 +257,17 @@ internal fun MapRouteOverlay(
                         }
                         if (route.missingMaps.isNotEmpty()) Text(route.missingMaps.joinToString("\n"))
                         if (preview?.warnings == true) Text(stringResource(R.string.map22_warnings))
-                        if (preview != null && !guidance.starting) {
+                        if (preview != null && !guidance.starting && !route.tripPreview) {
                             Button(onClick = onStart, modifier = Modifier.fillMaxWidth().testTag("guidance-start")) {
                                 Text(stringResource(R.string.map23_start))
                             }
                         }
                         if (!guidance.starting) {
                             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                OutlinedButton(onClick = onEdit, modifier = Modifier.testTag("map-route-edit")) {
-                                    Text(stringResource(R.string.map_route_edit))
+                                if (!route.tripPreview) {
+                                    OutlinedButton(onClick = onEdit, modifier = Modifier.testTag("map-route-edit")) {
+                                        Text(stringResource(R.string.map_route_edit))
+                                    }
                                 }
                                 if (preview == null && !waiting) {
                                     TextButton(onClick = onCurrentOrigin, modifier = Modifier.testTag("map-route-current")) {

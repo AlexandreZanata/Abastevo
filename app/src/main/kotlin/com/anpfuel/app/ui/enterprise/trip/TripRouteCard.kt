@@ -17,6 +17,7 @@ import com.anpfuel.app.R
 import com.anpfuel.application.enterprise.route.TripNavigationSessionState
 import com.anpfuel.domain.enterprise.route.DrivingModePolicy
 import com.anpfuel.domain.enterprise.route.GuidanceDegradedState
+import com.anpfuel.domain.enterprise.route.RouteWaypoint
 
 /**
  * EMP-ROUTE-006..009: trip-aware operational route card inside the open
@@ -27,9 +28,10 @@ import com.anpfuel.domain.enterprise.route.GuidanceDegradedState
 internal fun TripRouteCard(
     state: TripNavigationSessionState,
     speedCmPerSecond: Int?,
-    onConfirmArrival: () -> Unit,
-    onApplyPendingRevision: () -> Unit,
+    onConfirmArrival: (() -> Unit)? = null,
+    onApplyPendingRevision: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    onNavigateStop: ((RouteWaypoint) -> Unit)? = null,
 ) {
     val isDriving = DrivingModePolicy.isDriving(speedCmPerSecond)
     TripCard(modifier.testTag("enterprise-trip-route-card")) {
@@ -87,13 +89,13 @@ internal fun TripRouteCard(
             )
         }
 
-        state.arrivalProposal?.let { proposal ->
+        state.arrivalProposal?.takeIf { onConfirmArrival != null }?.let { proposal ->
             Notice(
                 message = stringResource(R.string.enterprise_route_arrival_prompt, proposal.waypointLabel),
                 modifier = Modifier.testTag("enterprise-trip-route-arrival-prompt"),
             )
             Button(
-                onClick = onConfirmArrival,
+                onClick = { onConfirmArrival?.invoke() },
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 56.dp)
@@ -108,7 +110,7 @@ internal fun TripRouteCard(
                 message = stringResource(R.string.enterprise_route_pending_revision, pending.revision),
                 modifier = Modifier.testTag("enterprise-trip-route-pending-revision"),
             )
-            if (!isDriving) {
+            if (!isDriving && onApplyPendingRevision != null) {
                 OutlinedButton(
                     onClick = onApplyPendingRevision,
                     modifier = Modifier
@@ -117,6 +119,22 @@ internal fun TripRouteCard(
                         .testTag("enterprise-trip-route-apply-revision"),
                 ) {
                     Text(stringResource(R.string.enterprise_route_apply_revision))
+                }
+            }
+        }
+
+        if (onNavigateStop != null && !isDriving) {
+            state.activePlan.waypoints.drop(1).forEach { waypoint ->
+                if (waypoint.resolvable) {
+                    OutlinedButton(
+                        onClick = { onNavigateStop(waypoint) },
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
+                            .testTag("enterprise-route-stop-${waypoint.sequence}"),
+                    ) {
+                        Text(waypoint.label)
+                    }
+                } else {
+                    Text(stringResource(R.string.enterprise_route_text_stop_prompt, waypoint.label))
                 }
             }
         }
