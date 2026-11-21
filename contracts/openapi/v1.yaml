@@ -13659,6 +13659,58 @@ paths:
                   ended_at: ''
                   end_reason: ''
                 next_cursor: ''
+  /v1/data/orgs/{org_id}/datasets/{dataset_key}/regional-series:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataRegionalSeries
+      summary: Read versioned regional fuel price series
+      description: A current regional.read Data bearer must belong to the selected company. The current plan
+        must admit every selected catalog revision. Source rights are checked on every page, and samples
+        smaller than the recorded threshold are suppressed. Matching request IDs consume one term call.
+      security:
+      - OrganizationDataBearer: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: dataset_key
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataSeriesRequest'
+      responses:
+        '200':
+          description: Official regional series and its source basis.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataSeriesPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/data/keys/list:
     post:
       tags:
@@ -26801,6 +26853,10 @@ x-abastevo-organization-api:
   status: company_sessions_synthetic_onboarding_legal_units_and_cost_centres_implemented
 components:
   securitySchemes:
+    OrganizationDataBearer:
+      type: http
+      scheme: bearer
+      description: Organization Data credential restricted to its declared market-data scope.
     AdminSessionCookie:
       type: apiKey
       in: cookie
@@ -48014,6 +48070,134 @@ components:
             substitute: ''
       description: 'Complete replacement: every field and nested slot is required, including explicit false, zero or
         empty values. Display preference does not rewrite normalized measures or historical records.'
+    EnterpriseDataSeriesRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, request_id, revisions]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        request_id:
+          type: string
+          format: uuid
+        revisions:
+          type: array
+          minItems: 1
+          maxItems: 32
+          uniqueItems: true
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+    EnterpriseDataSeriesPage:
+      type: object
+      additionalProperties: false
+      required: [dataset, region, method, condition, next_cursor, periods]
+      properties:
+        dataset:
+          type: string
+        region:
+          type: string
+        method:
+          type: string
+        condition:
+          type: string
+          enum: [STANDARD]
+        next_cursor:
+          type: string
+        periods:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseDataSeriesPeriod'
+    EnterpriseDataSeriesPeriod:
+      type: object
+      additionalProperties: false
+      required: [catalog_revision, official_revision, snapshot, readiness, minimum_stations, survey_start, survey_end, published_at, source_url, sources, samples]
+      properties:
+        catalog_revision:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        official_revision:
+          type: string
+          format: uuid
+        snapshot:
+          type: string
+        readiness:
+          type: string
+          enum: [AVAILABLE, INSUFFICIENT_DATA]
+        minimum_stations:
+          type: integer
+          minimum: 5
+        survey_start:
+          type: string
+          format: date
+        survey_end:
+          type: string
+          format: date
+        published_at:
+          type: string
+          format: date-time
+        source_url:
+          type: string
+          format: uri
+        sources:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/EnterpriseDataSeriesSource'
+        samples:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseDataSeriesSample'
+    EnterpriseDataSeriesSource:
+      type: object
+      additionalProperties: false
+      required: [code, digest, license, attribution]
+      properties:
+        code:
+          type: string
+          enum: [S-ESP-01, S-ESP-02]
+        digest:
+          type: string
+        license:
+          type: string
+        attribution:
+          type: string
+    EnterpriseDataSeriesSample:
+      type: object
+      additionalProperties: false
+      required: [fuel, unit, stations, observations, sum_milli_brl, min_milli_brl, max_milli_brl]
+      properties:
+        fuel:
+          $ref: '#/components/schemas/FuelProduct'
+        unit:
+          type: string
+          enum: [L, M3, KG_13]
+        stations:
+          type: integer
+          minimum: 5
+        observations:
+          type: integer
+          minimum: 5
+        sum_milli_brl:
+          type: integer
+          format: int64
+        min_milli_brl:
+          type: integer
+          format: int64
+        max_milli_brl:
+          type: integer
+          format: int64
     EnterpriseDataKeyListRequest:
       type: object
       additionalProperties: false

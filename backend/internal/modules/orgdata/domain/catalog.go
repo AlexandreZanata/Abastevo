@@ -64,7 +64,7 @@ type Definition struct {
 
 func (d Definition) Validate() error {
 	official, err := kernel.ParseOrgID(d.OfficialRevision)
-	if err != nil || official.String() != d.OfficialRevision || !validKey(d.Key) ||
+	if err != nil || official.String() != d.OfficialRevision || !ValidDatasetKey(d.Key) ||
 		!publicText(d.DisplayName, 120) || d.Revision < 1 || !marketState(d.MarketState) ||
 		d.MinimumStations < 5 || d.Method != analytics.MetricsVersion || !digestPattern.MatchString(d.Snapshot) ||
 		!d.Registry.matches(PublicRegistry) || !d.Prices.matches(OfficialPrices) {
@@ -146,7 +146,7 @@ func (pin SourcePin) matches(source Source) bool {
 	return pin.Source == source && pin.ReviewRevision > 0 && digestPattern.MatchString(pin.Digest)
 }
 
-func validKey(value string) bool {
+func ValidDatasetKey(value string) bool {
 	return len(value) <= 64 && keyPattern.MatchString(value)
 }
 

@@ -20,9 +20,22 @@ import (
 	data "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/domain"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-func TestDataUsageSharesTermAndRateAcrossRotationAndRetries(t *testing.T) {
+type dataUsageFixtureState struct {
+	fx       legalFixtureState
+	pool     *pgxpool.Pool
+	keys     datapg.KeyStore
+	meter    datapg.UsageMeter
+	original data.KeyResult
+	issue    data.Command
+	term     billing.TrialResult
+	now      time.Time
+}
+
+func dataUsageFixture(t *testing.T, calls int64) dataUsageFixtureState {
+	t.Helper()
 	fx, _, _ := lifecycleFixture(t)
 	ctx := t.Context()
 	pool := fx.f.RuntimePool(t, 5)
@@ -60,7 +73,7 @@ func TestDataUsageSharesTermAndRateAcrossRotationAndRetries(t *testing.T) {
 	now := lifecycleDBNow(t, fx)
 	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO enterprise_plan_catalog
 (product_code,plan_code,revision,display_name,capabilities,api_calls)
-VALUES('data','synthetic',1,'Synthetic Data',ARRAY['organizations','data'],2)`); err != nil {
+VALUES('data','synthetic',1,'Synthetic Data',ARRAY['organizations','data'],$1)`, calls); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO org_billing_trial_grants
@@ -80,11 +93,19 @@ VALUES($1,$2,'data','synthetic',1,$3,$4,86400,'synthetic-reviewed-eligibility')`
 	if err != nil {
 		t.Fatal(err)
 	}
+	return dataUsageFixtureState{fx: fx, pool: pool, keys: keys, meter: meter, original: original, issue: issue, term: term, now: now}
+}
+
+func TestDataUsageSharesTermAndRateAcrossRotationAndRetries(t *testing.T) {
+	env := dataUsageFixture(t, 2)
+	ctx, fx := t.Context(), env.fx
+	org := fx.scope.OrgID().String()
+	keys, meter, original, issue, term, now := env.keys, env.meter, env.original, env.issue, env.term, env.now
 	next := func() datapg.UsageCall {
 		return datapg.UsageCall{ID: onboardingID(t), Hash: sha256.Sum256([]byte("synthetic regional query"))}
 	}
-	render := func(context.Context, pgx.Tx) error { return nil }
-	read := func(key domain.Bearer, call datapg.UsageCall, reader func(context.Context, pgx.Tx) error) error {
+	render := func(context.Context, pgx.Tx, datapg.UsageAuthority) error { return nil }
+	read := func(key domain.Bearer, call datapg.UsageCall, reader func(context.Context, pgx.Tx, datapg.UsageAuthority) error) error {
 		return meter.Read(ctx, fx.scope, key, domain.ReadRegional, call, reader)
 	}
 	a := next()
@@ -100,7 +121,7 @@ VALUES($1,$2,'data','synthetic',1,$3,$4,86400,'synthetic-reviewed-eligibility')`
 VALUES('data','synthetic',1,$1,5,'synthetic-reviewed-rate')`, seconds); err != nil {
 		t.Fatal(err)
 	}
-	if err := read(original.Bearer, a, func(context.Context, pgx.Tx) error { return domain.ErrRightsPending }); !errors.Is(err, domain.ErrRightsPending) {
+	if err := read(original.Bearer, a, func(context.Context, pgx.Tx, datapg.UsageAuthority) error { return domain.ErrRightsPending }); !errors.Is(err, domain.ErrRightsPending) {
 		t.Fatalf("unavailable source unexpectedly admitted: %v", err)
 	}
 	if err := read(original.Bearer, a, render); err != nil {

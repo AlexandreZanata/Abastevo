@@ -64,3 +64,29 @@ A response states product and units, region, observation period, source coverage
 ## 12. Acceptance, dependencies, risks, phase and microtasks
 
 [EP17](../backlog/ep17-data.md) owns tasks and source gates. VAL-36 tests private-data exclusion across API, jobs and exports. Exercise revoked or foreign key, pagination scope, quota races, unavailable source and rights-pending dataset before activating any Data surface.
+
+### Preparing an approved regional revision
+
+Under the recorded redistribution approvals, register the exact catalog
+revision and the plan's dataset scope. The companion rate policy records the
+approved request window and maximum for the same plan revision. The plan
+catalog's API call limit applies to the current subscription term. No
+production policies, plan admissions or datasets ship with the migrations.
+
+Run `ops enterprise data prepare --dataset <key> --revision <n>
+--snapshot-dir <path>` with both enterprise and billing enabled. Use a
+dedicated ordinary database login with schema usage, SELECT on the source
+review and regional catalog tables, and SELECT/INSERT on
+`enterprise_regional_series` and `enterprise_regional_series_samples`.
+The API login only needs to read those projections. The preparer reads a
+pinned core enterprise export, verifies its manifest and file digests and
+publishes the aggregate in one transaction. A matching retry converges on its
+stored digest.
+
+Consumers send the scoped bearer in the Authorization header and the exact
+catalog revisions to the regional series API. Request IDs bind the selected
+page. Rate usage carries across key rotation. A repeated matching request
+does not add another subscription-term call. The response describes the
+official survey period, inputs, condition and sample coverage. Unavailable or
+withdrawn sources prevent the call from committing. An admitted period with no
+publishable fuel sample returns `INSUFFICIENT_DATA`.

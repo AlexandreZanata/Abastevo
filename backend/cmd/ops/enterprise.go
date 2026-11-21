@@ -189,6 +189,9 @@ func describeCapabilityError(err error) error {
 // runEnterprise opens the database named by this process's configuration
 // (the runtime DSN inside the api container) and prints one bounded line.
 func runEnterprise(args []string, getenv func(string) string, out io.Writer) error {
+	if len(args) > 0 && args[0] == "data" {
+		return runEnterpriseData(args[1:], out)
+	}
 	if len(args) > 0 && args[0] == "trial" {
 		return runEnterpriseTrial(args[1:], getenv, out)
 	}

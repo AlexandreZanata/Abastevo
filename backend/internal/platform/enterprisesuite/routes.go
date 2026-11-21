@@ -261,6 +261,11 @@ func Register(router chi.Router, o Options) error {
 	if err := dataweb.RegisterKeys(router, keyStore, cookies, gateway, authorization); err != nil {
 		return err
 	}
+	if o.BillingEnabled {
+		keyAccess := datapg.KeyAccess{Pool: o.Pool, Entitlements: flags, Verifier: keyVerifier}
+		meter := datapg.UsageMeter{Keys: keyAccess, Plans: plans}
+		dataweb.RegisterRegionalSeries(router, datapg.RegionalSeries{Meter: meter, CursorSecret: o.CursorSecret})
+	}
 	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots, creationAdmission(o)); err != nil {
 		return err
 	}

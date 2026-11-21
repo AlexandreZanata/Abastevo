@@ -38,6 +38,12 @@ type UsageCall struct {
 	Hash [32]byte
 }
 
+type UsageAuthority struct {
+	Plan     billing.PlanKey
+	FamilyID string
+	At       time.Time
+}
+
 type UsageMeter struct {
 	Keys  KeyAccess
 	Plans DataAllowanceSource
@@ -47,7 +53,7 @@ type UsageMeter struct {
 // data read. The reader must check current source admission in this transaction
 // and publish its result only after Read returns successfully.
 func (m UsageMeter) Read(ctx context.Context, scope kernel.OrgScope, bearer domain.Bearer, required domain.Scope, call UsageCall,
-	read func(context.Context, pgx.Tx) error,
+	read func(context.Context, pgx.Tx, UsageAuthority) error,
 ) error {
 	if m.Plans == nil || read == nil {
 		return app.ErrUnavailable
@@ -56,56 +62,60 @@ func (m UsageMeter) Read(ctx context.Context, scope kernel.OrgScope, bearer doma
 		return domain.ErrInvalidDataset
 	}
 	return m.Keys.WithAuthorizedKey(ctx, scope, bearer, required, func(ctx context.Context, tx pgx.Tx, key domain.Key) error {
-		if err := m.admit(ctx, tx, scope, key, required, call); err != nil {
+		authority, err := m.admit(ctx, tx, scope, key, required, call)
+		if err != nil {
 			return err
 		}
-		return read(ctx, tx)
+		return read(ctx, tx, authority)
 	})
 }
 
-func (m UsageMeter) admit(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, key domain.Key, required domain.Scope, call UsageCall) error {
+func (m UsageMeter) admit(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, key domain.Key, required domain.Scope, call UsageCall) (UsageAuthority, error) {
 	org := scope.OrgID().String()
 	q := db.New(tx)
 	if err := q.LockDataUsage(ctx, org); err != nil {
-		return err
+		return UsageAuthority{}, err
 	}
 	now, err := q.KeyClock(ctx)
 	if err != nil || !now.Valid || now.Time.Unix() < 0 {
-		return app.ErrUnavailable
+		return UsageAuthority{}, app.ErrUnavailable
 	}
 	if !key.LiveAt(now.Time, required) {
-		return domain.ErrKeyDenied
+		return UsageAuthority{}, domain.ErrKeyDenied
 	}
 	allowance, err := m.Plans.DataAllowanceAt(ctx, tx, scope, now.Time)
 	if errors.Is(err, billing.ErrLimitUndefined) || errors.Is(err, access.ErrEntitlementRequired) {
-		return ErrNoUsagePolicy
+		return UsageAuthority{}, ErrNoUsagePolicy
 	}
 	if err != nil {
-		return err
+		return UsageAuthority{}, err
 	}
 	policy, err := q.ReadRatePolicy(ctx, db.ReadRatePolicyParams{ProductCode: allowance.Plan.Product,
 		PlanCode: allowance.Plan.Plan, PlanRevision: allowance.Plan.Revision})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ErrNoUsagePolicy
+		return UsageAuthority{}, ErrNoUsagePolicy
 	}
 	if err != nil || policy.WindowSeconds <= 0 || allowance.Calls < 0 {
-		return app.ErrUnavailable
+		return UsageAuthority{}, app.ErrUnavailable
 	}
 	family, err := q.ResolveKeyFamily(ctx, db.ResolveKeyFamilyParams{OrgID: org, KeyID: key.ID})
 	if err != nil {
-		return app.ErrUnavailable
+		return UsageAuthority{}, app.ErrUnavailable
 	}
 	seconds := int64(policy.WindowSeconds)
 	start := time.Unix(now.Time.Unix()/seconds*seconds, 0).UTC()
 	used, err := q.AddDataCallToWindow(ctx, db.AddDataCallToWindowParams{OrgID: org, FamilyID: family, WindowStart: usageTimestamp(start),
 		WindowSeconds: policy.WindowSeconds, Ceiling: policy.WindowCalls})
 	if err != nil {
-		return err
+		return UsageAuthority{}, err
 	}
 	if used != 1 {
-		return RateExceeded{RetryAfter: start.Add(time.Duration(seconds) * time.Second).Sub(now.Time)}
+		return UsageAuthority{}, RateExceeded{RetryAfter: start.Add(time.Duration(seconds) * time.Second).Sub(now.Time)}
 	}
-	return countDataCall(ctx, q, org, family, key.ID, call, allowance, now)
+	if err := countDataCall(ctx, q, org, family, key.ID, call, allowance, now); err != nil {
+		return UsageAuthority{}, err
+	}
+	return UsageAuthority{Plan: allowance.Plan, FamilyID: family, At: now.Time}, nil
 }
 
 func countDataCall(ctx context.Context, q *db.Queries, org, family, key string, call UsageCall, allowance billing.DataAllowance, now pgtype.Timestamptz) error {
