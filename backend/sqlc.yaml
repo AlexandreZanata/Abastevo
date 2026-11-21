@@ -827,8 +827,10 @@ sql:
       - db/migrations/000196_organization_sync_intake.sql
       - db/migrations/000197_organization_assets.sql
       - db/migrations/000198_organization_meters.sql
+      - db/migrations/000199_organization_meter_reviews.sql
       - db/migrations/000201_organization_asset_lifecycle.sql
       - db/migrations/000215_organization_fuelings.sql
+      - db/migrations/000278_organization_held_fuelings.sql
     gen:
       go:
         package: fueling

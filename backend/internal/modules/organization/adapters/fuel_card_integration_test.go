@@ -20,12 +20,19 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 func TestFuelCardPreviewAndConfirmationPreserveOneCost(t *testing.T) {
 	x := fuelingFixture(t)
 	ctx := t.Context()
 	fx := x.deviceFixtureState
+	role := pgx.Identifier{x.f.RuntimeRole}.Sanitize()
+	if _, err := x.f.Admin.Exec(ctx, "GRANT SELECT ON org_connector_approvals TO "+role+
+		"; GRANT SELECT,INSERT,UPDATE ON org_connections,identity_rate_windows TO "+role+
+		"; GRANT SELECT,INSERT ON org_card_statement_lines TO "+role); err != nil {
+		t.Fatal(err)
+	}
 	declared := x.declaredNow(t)
 	fueling := x.op(t, x.syncFixtureState, declared, nil)
 	ack, err := x.process(t, x.syncFixtureState, fueling)

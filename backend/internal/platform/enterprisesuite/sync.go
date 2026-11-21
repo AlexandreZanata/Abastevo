@@ -91,7 +91,14 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	// the same transaction; the expense.submit owner records direct expenses
 	// with the same authority sources, asset locks and allocation port.
 	expenses := &expensepg.Store{Allocations: assets, NewID: jobs.NewUUIDv4}
-	fuelingHandler, err := fuelpg.NewIntakeHandler((*orgpg.FuelingAuthority)(meterAuthority), meters, &fuelpg.Store{Allocations: assets}, expenses)
+	fuelingAuthority := (*orgpg.FuelingAuthority)(meterAuthority)
+	fuelingStore := &fuelpg.Store{Allocations: assets}
+	var fuelingHandler app.Handler
+	if o.BillingEnabled {
+		fuelingHandler, err = fuelpg.NewPlanAwareIntakeHandler(fuelingAuthority, meters, fuelingStore, expenses, jobs.NewUUIDv4)
+	} else {
+		fuelingHandler, err = fuelpg.NewIntakeHandler(fuelingAuthority, meters, fuelingStore, expenses)
+	}
 	if err != nil {
 		return err
 	}
@@ -202,6 +209,9 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[fuelingKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	if o.BillingEnabled {
+		noAsync[fuelingKey][protocol.AcceptedForReview] = app.AtomicReview
+	}
 	// EMP-EXP-002 (EDR-289): a direct expense has no consumer and no held path.
 	expenseKey := app.OperationKey{Type: expenseapp.OperationType, Schema: 1}
 	if _, exists := noAsync[expenseKey]; exists {
