@@ -247,17 +247,22 @@ VALUES('data','synthetic',1,$1,1,'synthetic-scope'),('data','synthetic',1,$1,2,'
 	if foreign := send(org, other.Bearer, onboardingID(t), page.NextCursor, 1, 2); foreign.Code != 400 {
 		t.Fatalf("cursor leaked across credential families: %d", foreign.Code)
 	}
-	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO enterprise_data_source_reviews
-(source_code,source_digest,revision,status,decision_ref)
-VALUES('S-ESP-02',$1,2,'WITHDRAWN','synthetic-withdrawal')`, manifests[0].Sources.Official[0].SourceChecksum); err != nil {
-		t.Fatal(err)
+	withdrawn := manifests[0].Sources.Official[0].SourceChecksum
+	waitingRequest := onboardingID(t)
+	response := commitDataWithdrawalDuring(t, fx.f.Admin, withdrawn, func() *httptest.ResponseRecorder {
+		return send(org, key, waitingRequest, "", 1, 2)
+	})
+	if response.Code != http.StatusNotFound || bytes.Contains(response.Body.Bytes(), []byte("periods")) {
+		t.Fatalf("concurrent withdrawal did not prevent sample delivery: %d", response.Code)
 	}
 	if response := send(org, key, requestID, "", 1, 2); response.Code != 404 {
 		t.Fatalf("retry served a withdrawn source: %d", response.Code)
 	}
 	var used int
-	if err := fx.f.Admin.QueryRow(ctx, "SELECT calls FROM org_data_usage_terms WHERE org_id=$1", org).Scan(&used); err != nil || used != 2 {
-		t.Fatalf("refused Data requests moved usage: calls=%d err=%v", used, err)
+	var recorded bool
+	if err := fx.f.Admin.QueryRow(ctx, `SELECT calls,EXISTS (SELECT 1 FROM org_data_request_receipts WHERE org_id=$1 AND request_id=$2)
+ FROM org_data_usage_terms WHERE org_id=$1`, org, waitingRequest).Scan(&used, &recorded); err != nil || used != 2 || recorded {
+		t.Fatalf("refused Data requests moved usage: calls=%d recorded=%t err=%v", used, recorded, err)
 	}
 	usage := datapg.UsageStore{Pool: env.pool, Plans: env.meter.Plans, Flags: env.flags, Authority: env.auth, Enabled: true}
 	view, err := usage.ReadUsage(ctx, fx.scope, fx.actor, fx.member, data.DatasetAfter{}, 20)

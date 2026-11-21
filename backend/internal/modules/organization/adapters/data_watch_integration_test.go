@@ -20,7 +20,59 @@ import (
 	notice "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgnotify/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+func commitDataWithdrawalDuring[T any](t *testing.T, admin *pgxpool.Pool, priceDigest string, read func() T) T {
+	t.Helper()
+	ctx := t.Context()
+	withdrawal, err := admin.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer withdrawal.Rollback(ctx)
+	if _, err := withdrawal.Exec(ctx, `INSERT INTO enterprise_data_source_reviews
+(source_code,source_digest,revision,status,decision_ref)
+VALUES ('S-ESP-02',$1,2,'WITHDRAWN','synthetic-concurrent-withdrawal')`, priceDigest); err != nil {
+		t.Fatal(err)
+	}
+	result := make(chan T, 1)
+	go func() { result <- read() }()
+	pid := int(withdrawal.Conn().PgConn().PID())
+	ticker := time.NewTicker(5 * time.Millisecond)
+	defer ticker.Stop()
+	deadline := time.NewTimer(10 * time.Second)
+	defer deadline.Stop()
+	for {
+		var waiting bool
+		if err := admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM pg_stat_activity
+ WHERE datname=current_database() AND wait_event_type='Lock' AND $1=ANY(pg_blocking_pids(pid))
+ AND query LIKE '%name: LockDataSourceRights%')`, pid).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		select {
+		case <-result:
+			t.Fatal("Data operation finished while the withdrawal was uncommitted")
+		case <-deadline.C:
+			t.Fatal("Data operation did not reach the source rights lock")
+		case <-ticker.C:
+		}
+	}
+	if err := withdrawal.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case value := <-result:
+		return value
+	case <-deadline.C:
+		t.Fatal("Data operation did not settle after the withdrawal committed")
+		var zero T
+		return zero
+	}
+}
 
 func TestScopedDataWatchNotifiesOnceAndStopsAtWithdrawnSource(t *testing.T) {
 	env := dataUsageFixtureFor(t, 20, 7*24*time.Hour)
@@ -147,11 +199,8 @@ VALUES ('data','synthetic',1,$1,$2,'synthetic-watch-plan')`, dataset, revision);
 	}
 	count()
 	withdrawn := prepare("03", 7, 3)
-	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO enterprise_data_source_reviews(source_code,source_digest,revision,status,decision_ref)
-VALUES ('S-ESP-02',$1,2,'WITHDRAWN','synthetic-watch-withdrawal')`, withdrawn); err != nil {
-		t.Fatal(err)
-	}
-	if err := worker.Handle(ctx, nextJob()); err != nil {
+	job := nextJob()
+	if err := commitDataWithdrawalDuring(t, fx.f.Admin, withdrawn, func() error { return worker.Handle(ctx, job) }); err != nil {
 		t.Fatalf("withdrawn source did not settle without publication: %v", err)
 	}
 	count()

@@ -10,7 +10,7 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000290. Relations: 434 granted, 5 without access.
+-- Schema version: 000291. Relations: 434 granted, 5 without access.
 -- Sequences: 7. Explicit functions: 3.
 
 BEGIN;
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000290' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000290 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000291' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000291 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);

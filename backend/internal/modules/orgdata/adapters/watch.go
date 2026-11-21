@@ -161,7 +161,11 @@ func (s WatchStore) create(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope
 	if err != nil {
 		return err
 	}
-	if _, err := watchObservation(ctx, tx, plan, input.Dataset, input.Revision, input.Fuel); err != nil {
+	catalog, err := OpenCatalog(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if _, err := catalog.watchObservation(ctx, plan, input.Dataset, input.Revision, input.Fuel); err != nil {
 		return err
 	}
 	due := at.Add(watchCadence).Unix()
@@ -208,12 +212,12 @@ func (s WatchStore) ListWatches(ctx context.Context, scope kernel.OrgScope, acto
 	return page, nil
 }
 
-func watchObservation(ctx context.Context, tx pgx.Tx, plan billing.PlanKey, key string, revision int64, fuel kernel.Product) (domain.WatchObservation, error) {
-	dataset, err := readScopedDataset(ctx, tx, plan, key, revision)
+func (c Catalog) watchObservation(ctx context.Context, plan billing.PlanKey, key string, revision int64, fuel kernel.Product) (domain.WatchObservation, error) {
+	dataset, err := c.readScopedDataset(ctx, plan, key, revision)
 	if err != nil {
 		return domain.WatchObservation{}, err
 	}
-	period, err := readPeriod(ctx, tx, dataset)
+	period, err := c.readPeriod(ctx, dataset)
 	if err != nil {
 		return domain.WatchObservation{}, err
 	}

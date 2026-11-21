@@ -1,3 +1,6 @@
+-- name: LockDataSourceRights :exec
+SELECT pg_catalog.pg_advisory_xact_lock_shared(pg_catalog.hashtextextended('enterprise-data-source-rights', 0));
+
 -- name: ReadDatasetVersion :one
 SELECT d.dataset_key,d.revision,d.display_name,d.state_code,d.minimum_stations,d.method_version,d.snapshot_digest,
        d.official_revision::text AS official_revision,d.registry_digest,d.registry_review,d.price_digest,d.price_review,

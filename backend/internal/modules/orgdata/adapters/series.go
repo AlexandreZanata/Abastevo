@@ -11,7 +11,6 @@ import (
 
 	db "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgdata"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
-	billing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/jackc/pgx/v5"
@@ -103,9 +102,13 @@ func (s RegionalSeries) List(ctx context.Context, org kernel.OrgScope, key domai
 			}
 		}
 		stop := min(start+input.Limit, len(input.Revisions))
+		catalog, err := OpenCatalog(ctx, tx)
+		if err != nil {
+			return err
+		}
 		result = SeriesPage{Dataset: input.Dataset, Condition: "STANDARD", Periods: make([]SeriesPeriod, 0, stop-start)}
 		for i, revision := range input.Revisions {
-			admitted, err := readScopedDataset(ctx, tx, authority.Plan, input.Dataset, revision)
+			admitted, err := catalog.readScopedDataset(ctx, authority.Plan, input.Dataset, revision)
 			if err != nil {
 				return err
 			}
@@ -116,7 +119,7 @@ func (s RegionalSeries) List(ctx context.Context, org kernel.OrgScope, key domai
 				return domain.ErrInvalidDataset
 			}
 			if i >= start && i < stop {
-				period, err := readPeriod(ctx, tx, admitted)
+				period, err := catalog.readPeriod(ctx, admitted)
 				if err != nil {
 					return err
 				}
@@ -134,30 +137,16 @@ func (s RegionalSeries) List(ctx context.Context, org kernel.OrgScope, key domai
 	return result, nil
 }
 
-func readScopedDataset(ctx context.Context, tx pgx.Tx, plan billing.PlanKey, key string, revision int64) (AdmittedDataset, error) {
-	allowed, err := db.New(tx).CheckPlanDataset(ctx, db.CheckPlanDatasetParams{
-		ProductCode: plan.Product, PlanCode: plan.Plan, PlanRevision: plan.Revision, DatasetKey: key, DatasetRevision: revision,
-	})
-	if err != nil {
-		return AdmittedDataset{}, err
-	}
-	if !allowed {
-		return AdmittedDataset{}, ErrDatasetNotFound
-	}
-	return (Catalog{DB: tx}).ReadAdmitted(ctx, key, revision)
-}
-
-func readPeriod(ctx context.Context, tx pgx.Tx, admitted AdmittedDataset) (SeriesPeriod, error) {
+func (c Catalog) readPeriod(ctx context.Context, admitted AdmittedDataset) (SeriesPeriod, error) {
 	definition := admitted.Definition
-	q := db.New(tx)
-	row, err := q.ReadSeriesBasis(ctx, db.ReadSeriesBasisParams{DatasetKey: definition.Key, DatasetRevision: definition.Revision})
+	row, err := c.queries.ReadSeriesBasis(ctx, db.ReadSeriesBasisParams{DatasetKey: definition.Key, DatasetRevision: definition.Revision})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return SeriesPeriod{}, ErrSeriesUnavailable
 	}
 	if err != nil {
 		return SeriesPeriod{}, err
 	}
-	samples, err := q.ListSeriesSamples(ctx, db.ListSeriesSamplesParams{DatasetKey: definition.Key, DatasetRevision: definition.Revision})
+	samples, err := c.queries.ListSeriesSamples(ctx, db.ListSeriesSamplesParams{DatasetKey: definition.Key, DatasetRevision: definition.Revision})
 	if err != nil {
 		return SeriesPeriod{}, err
 	}

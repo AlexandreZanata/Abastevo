@@ -185,7 +185,11 @@ func (w WatchWorker) observe(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 	if err != nil {
 		return 0, err
 	}
-	before, after, err := compareWatchBasis(ctx, tx, plan, row, next)
+	catalog, err := OpenCatalog(ctx, tx)
+	if err != nil {
+		return 0, err
+	}
+	before, after, err := compareWatchBasis(ctx, catalog, plan, row, next)
 	if errors.Is(err, ErrDatasetNotFound) || errors.Is(err, domain.ErrRightsPending) || errors.Is(err, ErrSeriesUnavailable) {
 		return row.LastRevision, nil
 	}
@@ -204,13 +208,13 @@ func (w WatchWorker) observe(ctx context.Context, tx pgx.Tx, scope kernel.OrgSco
 	return next, nil
 }
 
-func compareWatchBasis(ctx context.Context, tx pgx.Tx, plan billing.PlanKey, row db.ReadWatchRow, next int64) (domain.WatchObservation, domain.WatchObservation, error) {
+func compareWatchBasis(ctx context.Context, catalog Catalog, plan billing.PlanKey, row db.ReadWatchRow, next int64) (domain.WatchObservation, domain.WatchObservation, error) {
 	fuel := kernel.Product(row.FuelProduct)
-	before, err := watchObservation(ctx, tx, plan, row.DatasetKey, row.LastRevision, fuel)
+	before, err := catalog.watchObservation(ctx, plan, row.DatasetKey, row.LastRevision, fuel)
 	if err != nil {
 		return domain.WatchObservation{}, domain.WatchObservation{}, err
 	}
-	after, err := watchObservation(ctx, tx, plan, row.DatasetKey, next, fuel)
+	after, err := catalog.watchObservation(ctx, plan, row.DatasetKey, next, fuel)
 	return before, after, err
 }
 

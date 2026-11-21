@@ -89,7 +89,11 @@ func (s UsageStore) fill(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, 
 	} else if !errors.Is(err, pgx.ErrNoRows) {
 		return err
 	}
-	rows, err := q.ListAdmittedPlanDatasets(ctx, db.ListAdmittedPlanDatasetsParams{
+	catalog, err := OpenCatalog(ctx, tx)
+	if err != nil {
+		return err
+	}
+	rows, err := catalog.queries.ListAdmittedPlanDatasets(ctx, db.ListAdmittedPlanDatasetsParams{
 		ProductCode: plan.Product, PlanCode: plan.Plan, PlanRevision: plan.Revision,
 		AfterKey: after.Key, AfterRevision: after.Revision, RowLimit: int32(limit + 1),
 	})
@@ -101,7 +105,7 @@ func (s UsageStore) fill(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, 
 		view.After = app.DatasetAfter{Key: rows[limit-1].DatasetKey, Revision: rows[limit-1].Revision}
 	}
 	for _, row := range rows {
-		if _, err := (Catalog{DB: tx}).ReadAdmitted(ctx, row.DatasetKey, row.Revision); err != nil {
+		if _, err := catalog.ReadAdmitted(ctx, row.DatasetKey, row.Revision); err != nil {
 			if errors.Is(err, domain.ErrRightsPending) {
 				continue
 			}

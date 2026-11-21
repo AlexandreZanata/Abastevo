@@ -5,13 +5,27 @@ import (
 	"errors"
 
 	db "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgdata"
+	billing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/domain"
 	"github.com/jackc/pgx/v5"
 )
 
 var ErrDatasetNotFound = errors.New("orgdata: dataset version not found")
 
-type Catalog struct{ DB db.DBTX }
+type Catalog struct{ queries *db.Queries }
+
+// OpenCatalog retains the source decision through a READ COMMITTED transaction.
+// Review writers take the exclusive side of the lock before inserting a decision.
+func OpenCatalog(ctx context.Context, tx pgx.Tx) (Catalog, error) {
+	if tx == nil {
+		return Catalog{}, domain.ErrInvalidDataset
+	}
+	q := db.New(tx)
+	if err := q.LockDataSourceRights(ctx); err != nil {
+		return Catalog{}, err
+	}
+	return Catalog{queries: q}, nil
+}
 
 type AdmittedDataset struct {
 	Definition domain.Definition
@@ -21,10 +35,10 @@ type AdmittedDataset struct {
 // ReadAdmitted checks both current source reviews in the same statement.
 // The serving path must repeat that check for each delivered result.
 func (c Catalog) ReadAdmitted(ctx context.Context, key string, revision int64) (AdmittedDataset, error) {
-	if c.DB == nil || key == "" || len(key) > 64 || revision < 1 {
+	if c.queries == nil || key == "" || len(key) > 64 || revision < 1 {
 		return AdmittedDataset{}, domain.ErrInvalidDataset
 	}
-	row, err := db.New(c.DB).ReadDatasetVersion(ctx, db.ReadDatasetVersionParams{DatasetKey: key, Revision: revision})
+	row, err := c.queries.ReadDatasetVersion(ctx, db.ReadDatasetVersionParams{DatasetKey: key, Revision: revision})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return AdmittedDataset{}, ErrDatasetNotFound
 	}
@@ -52,4 +66,17 @@ func (c Catalog) ReadAdmitted(ctx context.Context, key string, revision int64) (
 		return AdmittedDataset{}, err
 	}
 	return admitted, nil
+}
+
+func (c Catalog) readScopedDataset(ctx context.Context, plan billing.PlanKey, key string, revision int64) (AdmittedDataset, error) {
+	allowed, err := c.queries.CheckPlanDataset(ctx, db.CheckPlanDatasetParams{
+		ProductCode: plan.Product, PlanCode: plan.Plan, PlanRevision: plan.Revision, DatasetKey: key, DatasetRevision: revision,
+	})
+	if err != nil {
+		return AdmittedDataset{}, err
+	}
+	if !allowed {
+		return AdmittedDataset{}, ErrDatasetNotFound
+	}
+	return c.ReadAdmitted(ctx, key, revision)
 }

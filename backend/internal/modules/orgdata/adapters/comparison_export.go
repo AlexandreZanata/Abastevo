@@ -142,11 +142,15 @@ func (f MarketComparisonExport) read(ctx context.Context, tx pgx.Tx, scope kerne
 	if err != nil {
 		return marketReport{}, err
 	}
-	base, baseBasis, err := reportBasis(ctx, tx, plan, params.Baseline, params.Fuel)
+	catalog, err := OpenCatalog(ctx, tx)
 	if err != nil {
 		return marketReport{}, err
 	}
-	ref, referenceBasis, err := reportBasis(ctx, tx, plan, params.Reference, params.Fuel)
+	base, baseBasis, err := catalog.reportBasis(ctx, plan, params.Baseline, params.Fuel)
+	if err != nil {
+		return marketReport{}, err
+	}
+	ref, referenceBasis, err := catalog.reportBasis(ctx, plan, params.Reference, params.Fuel)
 	if err != nil {
 		return marketReport{}, err
 	}
@@ -182,15 +186,15 @@ func (f MarketComparisonExport) currentPlan(ctx context.Context, tx pgx.Tx, scop
 	return plan, err
 }
 
-func reportBasis(ctx context.Context, tx pgx.Tx, plan billing.PlanKey, selection marketSelection, fuel kernel.Product) (reportObservation, domain.MarketBasis, error) {
-	admitted, err := readScopedDataset(ctx, tx, plan, selection.Dataset, selection.Revision)
+func (c Catalog) reportBasis(ctx context.Context, plan billing.PlanKey, selection marketSelection, fuel kernel.Product) (reportObservation, domain.MarketBasis, error) {
+	admitted, err := c.readScopedDataset(ctx, plan, selection.Dataset, selection.Revision)
 	if errors.Is(err, ErrDatasetNotFound) || errors.Is(err, domain.ErrRightsPending) {
 		return reportObservation{}, domain.MarketBasis{}, export.ErrNotFound
 	}
 	if err != nil {
 		return reportObservation{}, domain.MarketBasis{}, err
 	}
-	period, err := readPeriod(ctx, tx, admitted)
+	period, err := c.readPeriod(ctx, admitted)
 	if err != nil {
 		return reportObservation{}, domain.MarketBasis{}, err
 	}

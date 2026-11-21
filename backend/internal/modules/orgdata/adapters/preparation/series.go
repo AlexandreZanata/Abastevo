@@ -21,8 +21,11 @@ func Prepare(ctx context.Context, pool *pgxpool.Pool, key string, revision int64
 	}
 	var admitted adapters.AdmittedDataset
 	if err := database.WithOrgBootstrapTx(ctx, pool, func(tx pgx.Tx) error {
-		var err error
-		admitted, err = (adapters.Catalog{DB: tx}).ReadAdmitted(ctx, key, revision)
+		catalog, err := adapters.OpenCatalog(ctx, tx)
+		if err != nil {
+			return err
+		}
+		admitted, err = catalog.ReadAdmitted(ctx, key, revision)
 		return err
 	}); err != nil {
 		return "", err
@@ -41,7 +44,11 @@ func Prepare(ctx context.Context, pool *pgxpool.Pool, key string, revision int64
 		return "", err
 	}
 	err = database.WithOrgBootstrapTx(ctx, pool, func(tx pgx.Tx) error {
-		current, err := (adapters.Catalog{DB: tx}).ReadAdmitted(ctx, key, revision)
+		catalog, err := adapters.OpenCatalog(ctx, tx)
+		if err != nil {
+			return err
+		}
+		current, err := catalog.ReadAdmitted(ctx, key, revision)
 		if err != nil {
 			return err
 		}

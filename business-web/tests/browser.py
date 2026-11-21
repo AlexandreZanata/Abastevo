@@ -811,6 +811,29 @@ def employee_checks(browser, origin, dsn):
                 (product_code,plan_code,plan_revision,window_seconds,window_calls,approval_ref)
             VALUES ('data','browser-data-plan',1,60,12,'synthetic-browser-rate')
         """)
+        connection.execute("""
+            INSERT INTO enterprise_data_source_reviews
+                (source_code,source_digest,revision,status,decision_ref,license_ref,attribution)
+            VALUES ('S-ESP-01','sha256:'||repeat('a',64),1,'APPROVED','synthetic-browser-review','Synthetic registry license','Synthetic registry'),
+                   ('S-ESP-02','sha256:'||repeat('b',64),1,'APPROVED','synthetic-browser-review','Synthetic survey license','Synthetic survey')
+        """)
+        connection.execute("""
+            INSERT INTO enterprise_regional_datasets
+                (dataset_key,revision,display_name,state_code,minimum_stations,method_version,snapshot_digest,official_revision,
+                 registry_digest,registry_review,price_digest,price_review)
+            VALUES ('browser-data-mt',1,'Série sintética de preços','MT',5,'abastevo-metrics-v1','sha256:'||repeat('c',64),%s,
+                    'sha256:'||repeat('a',64),1,'sha256:'||repeat('b',64),1)
+        """, (uuid.uuid4(),))
+        connection.execute("""
+            INSERT INTO enterprise_regional_series
+                (dataset_key,dataset_revision,survey_start,survey_end,published_at,source_url,result_sha256)
+            VALUES ('browser-data-mt',1,current_date-8,current_date-1,now(),'https://example.invalid/synthetic-survey',repeat('d',64))
+        """)
+        connection.execute("""
+            INSERT INTO enterprise_data_plan_datasets
+                (product_code,plan_code,plan_revision,dataset_key,dataset_revision,approval_ref)
+            VALUES ('data','browser-data-plan',1,'browser-data-mt',1,'synthetic-browser-scope')
+        """)
         offer_id, subscription_id = str(uuid.uuid4()), str(uuid.uuid4())
         connection.execute("""
             INSERT INTO enterprise_billing_offers
@@ -957,6 +980,20 @@ def employee_checks(browser, origin, dsn):
     replacement = page.locator("#data-keys > li").filter(has_text="Chave sintética substituta")
     replacement.get_by_role("button", name="Revogar").click()
     expect(replacement).to_contain_text("Revogada")
+    expect(page.locator("#data-datasets")).to_contain_text("Série sintética de preços")
+    with psycopg.connect(dsn) as connection:
+        connection.execute("""
+            INSERT INTO enterprise_data_source_reviews
+                (source_code,source_digest,revision,status,decision_ref)
+            VALUES ('S-ESP-02','sha256:'||repeat('b',64),2,'WITHDRAWN','synthetic-browser-withdrawal')
+        """)
+    expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
+    page.locator("#data-refresh").click()
+    expect(page.locator("#data-docs")).to_be_hidden()
+    expect(page.locator("#data-datasets")).to_be_empty()
+    expect(page.locator("#data-usage")).to_contain_text("0 de 5 chamadas")
+    expect(replacement).to_contain_text("Revogada")
+    print("PASS: committed Data rights withdrawal removes the dataset from the company panel and preserves quota and key state")
     created_employees = []
 
     def add_employee(suffix):
