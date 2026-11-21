@@ -7,7 +7,7 @@ is in [ROADMAP.md](../../../ROADMAP.md).
 
 | Phase | Open tasks |
 |---|---|
-| F0 | 8 |
+| F0 | 7 |
 | F1 | 12 |
 | F2 | 15 |
 | F3 | 43 |
@@ -19,7 +19,7 @@ is in [ROADMAP.md](../../../ROADMAP.md).
 
 | Epic | File | Open tasks |
 |---|---|---|
-| EP00 — Governance, decisions and discovery | [ep00-governance.md](ep00-governance.md) | 8 |
+| EP00 — Governance, decisions and discovery | [ep00-governance.md](ep00-governance.md) | 7 |
 | EP01 — Platform foundations and privacy | [ep01-platform.md](ep01-platform.md) | 1 |
 | EP02 — Organizations | [ep02-organizations.md](ep02-organizations.md) | 3 |
 | EP03 — Identity, employee accounts and authorization | [ep03-identity-access.md](ep03-identity-access.md) | 6 |

@@ -471,8 +471,8 @@ These items stay owed after every local gate. A gate record lists them as owed; 
 | Provider | Object storage behaviour of the real provider (the repository already holds that emulation is insufficient evidence for storage) | Local S3-compatible storage is an emulation | One staging run per storage change |
 | Provider | Billing events from a provider's test mode; e-mail and push delivery; tile hosting for the panel map | No provider is configured for the suite | EMP-GOV-009, EMP-GOV-014, EMP-GOV-007 decide; the adapter tasks then record a test-mode run |
 | Provider | Fiscal document consultation with a real certificate | Needs an organization's own certificate | EMP-GOV-011 decides; EMP-INTEG-004 records it |
-| Legal | Answers to LV-01 to LV-13, the retention schedule, the employee notice, the processing terms and the labour boundary | Engineering cannot declare compliance | A qualified reviewer chosen by the owner, through EMP-GOV-005 |
-| Legal | Redistribution rights for public sources | Depends on the source owners | EMP-GOV-016 |
+| Legal | Answers to LV-01 to LV-12, the retention schedule, the employee notice, the processing terms and the labour boundary | Engineering cannot declare compliance | A qualified reviewer chosen by the owner, through EMP-GOV-005 |
+| Owner | ANP service-reuse decision and risk acceptance (LV-13) | EDR-394, recorded 2026-11-21; non-ANP sources require their own decision | EMP-GOV-016 |
 | Owner | Acceptance of each decision in [16-decisions](decisions.md); sequencing against the existing roadmap | Only the owner decides | EMP-GOV-001 to EMP-GOV-016 |
 | Owner | Real-production certification (the project's G09), Play distribution status and target API level (OQ-16) | Production and store accounts are outside local validation | The project's existing gates |
 | Owner | Staffing evidence for station review and support (AS-11); named pilot organizations and their consent | People, not code | EMP-GOV-010, EMP-GOV-015 |
@@ -493,4 +493,4 @@ A milestone is reached when its gate task records every listed scenario as passe
 | M5 The company sees operations as they happen | EMP-REL-006 | VAL-16, VAL-29, VAL-30 | Map decision recorded (EMP-GOV-007); list views work without the map (local F5 gate recorded in EDR-374) |
 | M6 The company understands and controls its fleet | EMP-REL-007, with EMP-REL-010 | VAL-10, VAL-11, VAL-15, VAL-20, VAL-31, VAL-32, VAL-37, VAL-38 | Indicator vectors shared by Go and Kotlin; findings lifecycle; synthetic capacity benchmark & local M6 gate recorded in EDR-384/385; M4 device matrix, VPS activation & G09 remain owed |
 | M7 Stations take part as businesses | EMP-REL-008 | VAL-17, VAL-33, VAL-34 | Stage D override recorded (EMP-GOV-015); staffing evidence recorded or the station front stays off |
-| M8 The suite is sold and connected | EMP-REL-009 | VAL-18, VAL-35, VAL-36 | Billing and rights decisions recorded (EMP-GOV-009, EMP-GOV-016); no Data sale for a source without recorded rights |
+| M8 The suite is sold and connected | EMP-REL-009 | VAL-18, VAL-35, VAL-36 | Billing decision and provider acceptance (EMP-GOV-009); EDR-394 guardrails verified across surfaces and exact input digests approved before Data activation; keep sales disabled until M8 passes |

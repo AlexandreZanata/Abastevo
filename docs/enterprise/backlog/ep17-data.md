@@ -13,7 +13,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 ### EMP-DATA-001 — Dataset catalog and methodology records on top of the enterprise export module
 - **Meta:** module DATA · phase F8 · cut - · priority P1 · type DOM · size M · state TODO
 - **Objective:** Define datasets with source rights, coverage and methodology.
-- **Rules and use cases:** EDR-025, BR-SRC-001, BR-SRC-005, BR-TRUTH-004, REQ-16.6
+- **Rules and use cases:** EDR-394, BR-DATA-001, BR-DATA-005, BR-SRC-001, BR-SRC-005, BR-TRUTH-004, REQ-16.6
 - **Depends on:** EMP-GOV-016
 - **Read first:** Data requirements, [decisions](../decisions.md), [architecture](../architecture.md) and [privacy](../privacy-security.md)
 - **Scope:** in: approved catalog and immutable method references · out: market activation before rights review
@@ -23,7 +23,7 @@ The [Data design](../modules/data.md) records the recovered dataset and key boun
 - **Acceptance:** Every offered dataset has a recorded provenance and current admission decision.
 - **Negative cases:** Public availability treated as resale permission, source blending or private organization input.
 - **Validation:** V-DOM, V-API, V-PRIV · migration: rehearse additive upgrade and recovery if persistent state changes · rollback: close the new entry and preserve accepted evidence
-- **Risks and assumptions:** Source-rights approval and legal and activation gates precede any market sale or private-data collection.
+- **Risks and assumptions:** Exact input review, attribution and the M8 gate precede market activation. EDR-394 covers the applicable ANP open sources. Privacy exclusions also apply to enforcement and fines.
 - **Done when:** The stated result and denials pass the listed validation profiles.
 
 ### EMP-DATA-002 — Organization API keys: issue, rotate, revoke and scopes

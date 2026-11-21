@@ -6,7 +6,7 @@ Serve reproducible admitted datasets, methodology and analysis to an organizatio
 
 ## 2. Scope
 
-F8 includes catalog, regional series, watchlists, comparisons, reports, API keys and metering. Commercial redistribution requires recorded rights per source under GOV-016. Private receipt, employee, agreement and track data are excluded from market products.
+F8 includes catalog, regional series, watchlists, comparisons, reports, API keys and metering. The owner admits attributed ANP-derived services under EDR-394. Each deployed Data source digest still requires a recorded review. Private receipt, employee, agreement and track data are excluded from market products.
 
 ## 3. Entities and ownership
 
@@ -21,7 +21,8 @@ The organization owns its API keys, usage, watchlists and report requests. Key s
 
 ## 4. Business rules
 
-- **BR-DATA-001 — Recorded admission.** Availability on a public site is not recorded redistribution authority. Each dataset requires its source-specific rights decision.
+- **BR-DATA-001 — Recorded admission.** EDR-394 permits paid facilitation with attributed ANP open data. The current exact-digest review must admit each input. An objection triggers withdrawal and removal under the [source procedure](../source-admission.md#f8-commercial-rights-decision-emp-gov-016).
+- **BR-DATA-005 — Service value and attribution.** Charge for analysis, tools and access. No raw ANP files, bulk replicas, licensing of source data, exclusivity, ownership claims or ANP endorsement. Keep official and community data separate. Show `Fonte: ANP`, the source link and the survey dates or source edition in API metadata, reports and exports. Link the original data for free through ANP. Retain the source URL, collection time and SHA-256 per snapshot.
 - **BR-DATA-002 — Exclude private inputs.** Company, employee, document, agreement and location records never enter a market dataset by default (BR-SRC-005).
 - **BR-DATA-003 — Reproducible basis.** Series, comparisons and reports include origin, period, coverage and methodology revision (BR-TRUTH-004).
 - **BR-DATA-004 — Current key scope.** Issue, rotation, expiry, revocation and quotas preserve the organization boundary and server authorization.
@@ -109,7 +110,7 @@ linked receipt and an admitted recorded track are present for the second
 build. The test compares the manifest and all three core files byte for byte
 with the same build clock and unchanged public-source evidence. A separate API
 fixture covers a foreign key, below-threshold suppression and revoked rights.
-Neither fixture grants commercial redistribution in a deployed environment.
+Deployment requires the recorded exact-digest approvals and the M8 gate.
 
 ### Preparing an approved regional revision
 
