@@ -244,6 +244,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 			g.priceGuides(" em "+ufName(uf), codes),
 		}
 		data := statePage{pageBase: base, UF: uf, Name: ufName(uf), Summaries: stateSummaries, Rankings: views, Municipalities: links, NoDataCities: noData}
+		data.Comparison = g.comparison(summaries, analytics.LevelState, uf, "")
 		items := make([]listItem, 0, len(links))
 		for _, link := range links {
 			items = append(items, listItem{Name: "Preços em " + placeLabel(link.Name, uf), Href: link.Href})
@@ -330,6 +331,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 				data.Rows = observationRows(items, 0, false)
 			} else {
 				data.Rankings = observationRankings(items)
+				data.Comparison = g.comparison(summaries, analytics.LevelMunicipality, code, "")
 			}
 		}
 		listed := make([]listItem, 0, len(stationList))

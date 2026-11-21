@@ -28,6 +28,8 @@ type fuelGeoRow struct {
 	Max          int64
 	Spread       int64
 	Insufficient bool
+	Mean         int64
+	HasMean      bool
 }
 
 type fuelHubPage struct {
@@ -37,11 +39,12 @@ type fuelHubPage struct {
 	H1        string
 	UnitLabel string
 	// Synonym is the everyday name of the fuel, shown once in the lead.
-	Synonym  string
-	National []summaryRow
-	States   []fuelGeoRow
-	Cities   []fuelGeoRow
-	Others   []fuelHubLink
+	Synonym    string
+	National   []summaryRow
+	States     []fuelGeoRow
+	Cities     []fuelGeoRow
+	Others     []fuelHubLink
+	Comparison *comparisonView
 }
 
 // unitLabel names a canonical unit for "R$ por ..." captions.
@@ -119,6 +122,7 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 				continue
 			}
 			row := fuelGeoRow{Stations: summary.StationCount, Min: summary.MinMilliBRL, Max: summary.MaxMilliBRL, Spread: summary.SpreadMilliBRL}
+			row.Mean, row.HasMean = summaryMean(summary)
 			switch summary.Geography.Level {
 			case analytics.LevelState:
 				if !g.statePages[summary.Geography.Code] {
@@ -176,6 +180,7 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 			}),
 			Code: hub.Code, Label: hub.Label, H1: "Preço " + words.Article + " " + words.Name + " no Brasil",
 			UnitLabel: unitLabel(hub.Unit), Synonym: words.Synonym, National: national, States: states, Cities: cities, Others: others,
+			Comparison: g.comparison(summaries, analytics.LevelNational, "BR", hub.Code),
 		}
 		items := make([]listItem, 0, len(states)+len(cities))
 		for _, row := range states {

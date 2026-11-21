@@ -14,11 +14,13 @@ func summaryRows(summaries []analytics.Summary, level, code string, markInsuffic
 		if summary.Geography.Level != level || summary.Geography.Code != code {
 			continue
 		}
+		mean, hasMean := summaryMean(summary)
 		rows = append(rows, summaryRow{
 			Code: summary.Fuel, Fuel: fuelLabel(summary.Fuel), FuelName: fuelName(summary.Fuel), Unit: summary.Unit,
 			Stations: summary.StationCount, Observations: summary.SourceObservations,
 			Min: summary.MinMilliBRL, Max: summary.MaxMilliBRL, Spread: summary.SpreadMilliBRL,
 			Insufficient: markInsufficient && summary.StationCount < minMunicipality,
+			Mean:         mean, HasMean: hasMean,
 		})
 	}
 	sort.Slice(rows, func(i, j int) bool {

@@ -165,6 +165,10 @@ type summaryRow struct {
 	Max          int64
 	Spread       int64
 	Insufficient bool
+	// Mean is the sample mean (B-BR-SEO-10); HasMean is false below the
+	// minimum sample.
+	Mean    int64
+	HasMean bool
 }
 
 type rankingRow struct {
@@ -233,6 +237,7 @@ type statePage struct {
 	Summaries      []summaryRow
 	Rankings       []rankingView
 	Municipalities []municipalityLink
+	Comparison     *comparisonView
 }
 
 type municipalityPage struct {
@@ -248,6 +253,7 @@ type municipalityPage struct {
 	Rows          []rankingRow
 	Insufficient  bool
 	Population    int
+	Comparison    *comparisonView
 }
 
 type stationView struct {
@@ -342,6 +348,10 @@ type generator struct {
 	cityState  map[string]string
 	fuelHubs   map[string]fuelHubLink
 	latest     *enterpriseexport.Revision
+	// previous is the survey before the latest, with its summaries indexed
+	// for the comparison block; nil when the snapshot has one survey.
+	previous          *enterpriseexport.Revision
+	previousSummaries map[summaryKey]analytics.Summary
 	// forum is the planned web forum (B-BR-SEO-08); nil without posts.
 	forum *forumPlan
 	// stationIndex maps a station id to its entry, for forum post links.
@@ -555,6 +565,7 @@ func Generate(opts Options) (Result, error) {
 	latestRankings := rankingsFor(projection, latest)
 	previous := previousRevision(snapshot.Revisions, latest)
 	previousSummaries := summariesForRevision(projection, previous)
+	g.previous, g.previousSummaries = previous, indexSummaries(previousSummaries)
 	published := publicationLabel(manifest.BuiltAt)
 	period := ""
 	if latest != nil {

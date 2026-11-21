@@ -209,6 +209,17 @@ as follows; tests in `portalgen` prove each rule on fixtures.
     compares a fingerprint of the exported fields with the export state and
     enqueues a build; the build enqueues a portal refresh. Worst-case latency
     is about 6 h plus build and generation time.
+- **B-BR-SEO-10 Sample mean and comparison.** The mean of a summary is the sum
+  of the latest price of each station divided by the station count, in
+  milli-BRL, rounded half up (`(2 × sum + n) ÷ (2 × n)` in integers). It is
+  shown only for a sample of at least 5 stations, the same minimum as the
+  municipal ranking. Its label is “média da amostra”, and the page says it is
+  an Abastevo calculation, never an ANP statistic. Fuel hub, state and city
+  pages compare each fuel with the previous survey: a movement of the minimum,
+  maximum and mean appears only when `analytics.CompareSummaries` reports the
+  two station samples as the same; otherwise the row says the sample changed
+  and shows the previous figures without a variation. A fuel with no summary
+  in the previous survey has no row, and a page with no row has no block.
 
 ## Page fields (public allowlist)
 
