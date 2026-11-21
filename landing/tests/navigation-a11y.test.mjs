@@ -73,7 +73,7 @@ test('mobile hamburger menu is native disclosure on every page', () => {
     build({ projectRoot: root, outDir });
     for (const rel of emittedHtml(outDir)) {
       const html = fs.readFileSync(path.join(outDir, rel), 'utf8');
-      assert.match(html, /<details class="nav-toggle">/, `${rel} disclosure wrapper`);
+      assert.match(html, /<details class="nav-toggle"(?: name="landing-header")?>/, `${rel} disclosure wrapper`);
       assert.match(
         html,
         /<summary class="nav-button" aria-label="[^"]+">/,

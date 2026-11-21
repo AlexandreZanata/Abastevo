@@ -9,8 +9,7 @@
     "description": "Consulta precios de gasolina, etanol y diésel en Brasil por estado y ciudad con fuente y fecha visibles: encuesta semanal de la ANP y calculadoras.",
     "hero": {
       "kicker": "Código abierto · Datos de la ANP · Comunidad",
-      "title": "Precios de combustibles en Brasil por estado y ciudad, con datos de la ANP",
-      "slogan": "Más información para quien vive en la ruta.",
+      "title": "Más información para quien vive en la ruta.",
       "lead": "Encuentra precios de combustibles en Brasil, consulta la referencia semanal de la ANP y usa las calculadoras gratuitas.",
       "artLabel": "Ilustración: el símbolo de abastevo entre rutas, marcadores de mapa y tarjetas de precios"
     }
