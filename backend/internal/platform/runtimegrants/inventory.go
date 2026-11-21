@@ -60,6 +60,9 @@ func ReviewedExceptions() Exceptions {
 		}, {
 			Table:  "org_billing_charge_approvals",
 			Reason: "only the restricted billing operator reads independent charge approvals (EMP-SUBS-004)",
+		}, {
+			Table:  "org_document_fiscal_consultations",
+			Reason: "serving login cannot read or record external fiscal results (EMP-INTEG-004)",
 		}},
 		OperatorOnly: []OperatorOnly{{
 			Signature: "org_meter_current_rebuild(uuid)",

@@ -358,7 +358,7 @@ func TestDocumentUploadSessionAndAuditedContentOverTheCompanyAPI(t *testing.T) {
 	}
 	// An unavailable access log mints and serves nothing.
 	open := access(manager, d.org, id, 200, "", "")
-	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
+	role := pgx.Identifier{fx.f.Runtime.Config().ConnConfig.User}.Sanitize()
 	if _, err := fx.f.Admin.Exec(t.Context(), "REVOKE INSERT ON org_sensitive_access_events FROM "+role); err != nil {
 		t.Fatal(err)
 	}

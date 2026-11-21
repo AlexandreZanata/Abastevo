@@ -3876,6 +3876,9 @@ Evidence.
   Structure status states only what was checked; fiscal consultation remains
   with its authorized port (EMP-INTEG-004).
 
+- **B-BR-EMP-631 — A fiscal status requires a scoped source result (EMP-INTEG-004).** A consultation result records the exact scoped document, approved active connection, observation instant, bounded source status code and digest of the provider response. The approval names that document and its credential reference. The recorder retains the source result and updates the fiscal projection in one transaction. A status update alone cannot assert a consultation. Existing status history is retained across migration.
+- **BUC-EMP-342 — Apply one observed fiscal result to a stored original (EMP-INTEG-004).** The qualified connector records a source result against the expected fiscal revision. A result for another document, a disabled connection, a withdrawn review or a stale revision changes nothing. A matching replay must converge on the original evidence. The consultation instant orders observations. Storage, structure and human decisions have their own commands.
+
 ## Unit, cost-centre, team and asset scopes with resource scope resolution (2026-11-14)
 
 Evidence.

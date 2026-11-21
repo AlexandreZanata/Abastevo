@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -88,6 +87,38 @@ func TestDocumentGraphInDatabaseEqualsTheDomainGraph(t *testing.T) {
 		if err := f.db.Runtime.QueryRow(t.Context(), `SELECT org_document_transition_allowed($1,'UNALLOCATED','RECONCILED')`, derived).Scan(&got); err != nil || got {
 			t.Fatal("derived or non-canonical dimension commanded", derived)
 		}
+	}
+}
+
+func storedFiscalTestDocument(t *testing.T, f *docFixture) string {
+	t.Helper()
+	command := declare(t, syntheticJPEG(t))
+	if _, _, err := f.store.Create(t.Context(), f.scopeA, f.driver, command); err != nil {
+		t.Fatal(err)
+	}
+	org := f.scopeA.OrgID().String()
+	if err := database.WithOrgTx(t.Context(), f.db.Runtime, f.scopeA, func(tx pgx.Tx) error {
+		for idx, state := range []string{"RECEIVED", "STORED"} {
+			if _, err := tx.Exec(t.Context(), `UPDATE org_documents SET storage_state=$3,storage_revision=$4 WHERE org_id=$1 AND id=$2`,
+				org, command.DocumentID, state, idx+2); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return command.DocumentID
+}
+
+func TestDocumentFiscalStatusRequiresRecordedSourceEvidence(t *testing.T) {
+	f := newDocFixture(t)
+	id := storedFiscalTestDocument(t, f)
+	org := f.scopeA.OrgID().String()
+	if err := f.scoped(t, f.scopeA, `UPDATE org_documents
+ SET fiscal_state='AUTHORIZED_AS_OF',fiscal_revision=2,fiscal_consulted_at=clock_timestamp()
+ WHERE org_id=$1 AND id=$2`, org, id); sqlState(err) != "42501" {
+		t.Fatalf("serving login could claim fiscal authorization without a source result: %v", err)
 	}
 }
 
@@ -185,27 +216,19 @@ func TestDocumentSchemaGuardsScopeIdentityRevisionsAndRetention(t *testing.T) {
 			t.Fatal("retention trigger admitted removal", name, err)
 		}
 	}
-	// Valid independent steps change exactly one dimension and its revision.
-	at := time.Now().UTC().Truncate(time.Microsecond)
-	for _, step := range []struct {
-		query string
-		args  []any
-	}{
-		{`UPDATE org_documents SET storage_state='RECEIVED',storage_revision=2 WHERE org_id=$1 AND id=$2`, nil},
-		{`UPDATE org_documents SET storage_state='STORED',storage_revision=3 WHERE org_id=$1 AND id=$2`, nil},
-		{`UPDATE org_documents SET conference_state='CONFERRED_OK',conference_revision=2 WHERE org_id=$1 AND id=$2`, nil},
-		{`UPDATE org_documents SET fiscal_state='AUTHORIZED_AS_OF',fiscal_revision=2,fiscal_consulted_at=$3 WHERE org_id=$1 AND id=$2`, []any{at}},
-		{`UPDATE org_documents SET fiscal_revision=3,fiscal_consulted_at=$3 WHERE org_id=$1 AND id=$2`, []any{at.Add(time.Second)}},
+	// Storage and conference remain independent; consultation requires its
+	// own recorded result, exercised through the scoped recorder fixture.
+	for _, query := range []string{
+		`UPDATE org_documents SET storage_state='RECEIVED',storage_revision=2 WHERE org_id=$1 AND id=$2`,
+		`UPDATE org_documents SET storage_state='STORED',storage_revision=3 WHERE org_id=$1 AND id=$2`,
+		`UPDATE org_documents SET conference_state='CONFERRED_OK',conference_revision=2 WHERE org_id=$1 AND id=$2`,
 	} {
 		if err := database.WithOrgTx(t.Context(), f.db.Runtime, f.scopeA, func(tx pgx.Tx) error {
-			_, err := tx.Exec(t.Context(), step.query, append([]any{org, id}, step.args...)...)
+			_, err := tx.Exec(t.Context(), query, org, id)
 			return err
 		}); err != nil {
-			t.Fatal("valid independent transition refused", step.query, err)
+			t.Fatal("valid independent transition refused", query, err)
 		}
-	}
-	if err := f.scoped(t, f.scopeA, `UPDATE org_documents SET fiscal_revision=4,fiscal_consulted_at=$3 WHERE org_id=$1 AND id=$2`, org, id, at); sqlState(err) != "23514" {
-		t.Fatal("older fiscal consultation accepted", err)
 	}
 	var storage, conference, fiscal, extraction string
 	var revisions [5]int64
@@ -215,7 +238,7 @@ func TestDocumentSchemaGuardsScopeIdentityRevisionsAndRetention(t *testing.T) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	if storage != "STORED" || conference != "CONFERRED_OK" || fiscal != "AUTHORIZED_AS_OF" || extraction != "NONE" || revisions != [5]int64{3, 1, 1, 2, 3} {
+	if storage != "STORED" || conference != "CONFERRED_OK" || fiscal != "NOT_CONSULTED" || extraction != "NONE" || revisions != [5]int64{3, 1, 1, 2, 1} {
 		t.Fatal("independent dimensions or revisions drifted", storage, conference, fiscal, extraction, revisions)
 	}
 	var policies int

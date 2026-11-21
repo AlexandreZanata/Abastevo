@@ -166,3 +166,13 @@ server extraction. A registration can stay `CONFIGURED` in that period.
 Activation requires installed transport. Structural checks, personal OCR
 and manual entry retain their own status, with fiscal consultation shown
 as `NOT_CONSULTED` until an authorized source returns a result.
+
+The fiscal recorder retains the source status code and response digest, scoped
+to the stored document and the current reviewed connection. Its transaction
+records one result and advances the document's fiscal revision together. The
+serving API and worker cannot write consultation results with their ordinary
+database login. A qualified provider still needs its own permitted route,
+certificate custody and recorded authority before provisioning a recorder.
+The provider adapter must use the existing integration entitlement and
+connector authorization before accessing the source. The migration preserves
+historical observations in place and creates no receipts for them.
