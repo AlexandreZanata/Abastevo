@@ -104,6 +104,19 @@ class EnterpriseFuelingPresentationDeviceTest {
         compose.onAllNodesWithText("Arquivo guardado pela empresa", substring = true).assertCountEquals(0)
     }
 
+    @Test fun aPlanChangeReceiptKeepsTheFuelingAndShowsReview() {
+        val raw = """{"schema_version":1,"operation_id":"${operation.operationId}","payload_digest":"${operation.payloadDigest}","result":"ACCEPTED_FOR_REVIEW","code":"PLAN_CHANGED","entity_revision":null,"received_at":"2026-11-15T16:00:00Z","review_item_id":"${id(108)}","warnings":[]}"""
+        val receipt = OperationAcknowledgement.parse(raw.toByteArray(), operation)
+        val held = FuelingPresentation.view(EnterpriseQueueEntry(operation, acknowledgement = receipt))
+        render(state().copy(fuelings = listOf(held)))
+
+        compose.onNodeWithTag("enterprise-fueling-sync", useUnmergedTree = true).onChildren()
+            .assertAny(hasText("O plano da empresa mudou antes do recebimento", substring = true))
+        compose.onNodeWithTag("enterprise-fueling-review").assertTextEquals("Revisão: precisa de revisão")
+        compose.onNodeWithTag("enterprise-fueling-detail-paid").assertTextEquals("Total pago: R$ 970")
+        compose.onAllNodesWithText("Aceito pela empresa", substring = true).assertCountEquals(0)
+    }
+
     @Test fun theFormSavesExactEntriesWithItsWarningAndAFailedSaveSaysSo() {
         val (calls, update) = render(state(open = false))
         compose.onNodeWithTag("enterprise-fueling-new").performClick()
