@@ -16,9 +16,11 @@ const insertAnnouncedPrice = `-- name: InsertAnnouncedPrice :one
 WITH superseded AS (
   UPDATE station_announced_prices SET state = 'SUPERSEDED'
   WHERE station_id = $2 AND fuel_product = $3 AND unit = $4 AND state = 'ACTIVE'
+  RETURNING id
 )
 INSERT INTO station_announced_prices (id, station_id, fuel_product, unit, price_milli_brl, conditions, valid_from, valid_until, author_account_id, state)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'ACTIVE')
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, 'ACTIVE'
+FROM (SELECT count(*) FROM superseded) AS previous
 RETURNING id, station_id, fuel_product, unit, price_milli_brl, conditions, valid_from, valid_until, author_account_id, state, created_at
 `
 
@@ -39,6 +41,9 @@ type InsertAnnouncedPriceParams struct {
 // product and unit; supersession and withdrawal are recorded state
 // transitions; expiry applies at read time. No official or community
 // row is reachable from here.
+// The insert reads the supersession result, so the stored active row leaves
+// the one-active index before the new row enters it. An unreferenced
+// data-modifying CTE would run after the insert and collide with that index.
 func (q *Queries) InsertAnnouncedPrice(ctx context.Context, arg InsertAnnouncedPriceParams) (StationAnnouncedPrice, error) {
 	row := q.db.QueryRow(ctx, insertAnnouncedPrice,
 		arg.ID,
@@ -72,9 +77,11 @@ const insertPromotion = `-- name: InsertPromotion :one
 WITH withdrawn AS (
   UPDATE station_promotions SET state = 'WITHDRAWN'
   WHERE station_id = $2 AND label = $3 AND state = 'PUBLISHED'
+  RETURNING id
 )
 INSERT INTO station_promotions (id, station_id, label, description, fuel_product, valid_from, valid_until, author_account_id, state)
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'PUBLISHED')
+SELECT $1, $2, $3, $4, $5, $6, $7, $8, 'PUBLISHED'
+FROM (SELECT count(*) FROM withdrawn) AS previous
 RETURNING id, station_id, label, description, fuel_product, valid_from, valid_until, author_account_id, state, created_at
 `
 
