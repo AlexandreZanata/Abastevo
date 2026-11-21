@@ -21,6 +21,9 @@ func (ledger SubscriptionLedger) ApplyTx(ctx context.Context, tx pgx.Tx, key dom
 	if err := database.ValidateOrgTx(ctx, tx, event.Scope); err != nil {
 		return domain.Transition{}, err
 	}
+	if event.PlanChange != (domain.PlanKey{}) && event.PlanChange != key {
+		return domain.Transition{}, domain.ErrUnboundEvidence
+	}
 	sub, err := domain.NewSubscription(event.Scope, event.SubscriptionID, key)
 	if err != nil {
 		return domain.Transition{}, err
@@ -41,7 +44,12 @@ func (ledger SubscriptionLedger) ApplyTx(ctx context.Context, tx pgx.Tx, key dom
 	default:
 		durableKey := domain.PlanKey{Product: row.ProductCode, Plan: row.PlanCode, Revision: row.PlanRevision}
 		if durableKey != key {
-			return domain.Transition{}, domain.ErrUnboundEvidence
+			if event.PlanChange != key {
+				return domain.Transition{}, domain.ErrUnboundEvidence
+			}
+			if _, err := (CatalogStore{DB: tx, Capabilities: ledger.Capabilities}).GetPlan(ctx, key); err != nil {
+				return domain.Transition{}, err
+			}
 		}
 		sub, err = domain.RestoreSubscription(domain.SubscriptionSnapshot{
 			Scope: event.Scope, SubscriptionID: event.SubscriptionID, Plan: durableKey,

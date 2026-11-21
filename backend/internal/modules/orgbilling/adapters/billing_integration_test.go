@@ -15,19 +15,16 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func TestVerifiedCompanyBillingReceiptPreventsConcurrentDuplicateSettlement(t *testing.T) {
-	for _, settleFirst := range []bool{false, true} {
-		name := "simultaneous first deliveries"
-		if settleFirst {
-			name = "simultaneous replays"
-		}
-		t.Run(name, func(t *testing.T) { checkVerifiedCompanySettlement(t, settleFirst) })
-	}
+	t.Run("simultaneous first deliveries", func(t *testing.T) { checkVerifiedCompanySettlement(t, false, false) })
+	t.Run("simultaneous replays", func(t *testing.T) { checkVerifiedCompanySettlement(t, true, false) })
+	t.Run("next-term downgrade", func(t *testing.T) { checkVerifiedCompanySettlement(t, false, true) })
 }
 
-func checkVerifiedCompanySettlement(t *testing.T, settleFirst bool) {
+func checkVerifiedCompanySettlement(t *testing.T, settleFirst, downgrade bool) {
 	t.Helper()
 	f := orgtest.New(t)
 	ctx := t.Context()
@@ -65,6 +62,15 @@ VALUES($1,'stripe','test','synthetic-merchant','synthetic-invoice',$2,$3,'synthe
 
 	ledger := adapters.SubscriptionLedger{Capabilities: known}
 	key := d.PlanKey{Product: "fleet", Plan: "synthetic", Revision: 1}
+	priorPlan := key
+	if downgrade {
+		priorPlan.Plan = "synthetic-larger"
+		if _, err := f.Admin.Exec(ctx, `INSERT INTO enterprise_plan_catalog
+(product_code,plan_code,revision,display_name,capabilities,active_vehicles)
+VALUES('fleet',$1,1,'Synthetic larger company',ARRAY['organizations'],10)`, priorPlan.Plan); err != nil {
+			t.Fatal(err)
+		}
+	}
 	ready := d.LifecycleEvent{Scope: scopeA, SubscriptionID: a.RecordID, Kind: d.ConfirmSettlement, Source: d.VerifiedBilling,
 		At: prior.Start, Reference: "synthetic-prior-settlement", Period: prior}
 	pastDue := ready
@@ -72,10 +78,24 @@ VALUES($1,'stripe','test','synthetic-merchant','synthetic-invoice',$2,$3,'synthe
 	pastDue.Reference, pastDue.Period = "synthetic-overdue", d.Period{}
 	for _, event := range []d.LifecycleEvent{ready, pastDue} {
 		if err := database.WithOrgTx(ctx, f.Runtime, scopeA, func(tx pgx.Tx) error {
-			_, err := ledger.ApplyTx(ctx, tx, key, event)
+			_, err := ledger.ApplyTx(ctx, tx, priorPlan, event)
 			return err
 		}); err != nil {
 			t.Fatal(err)
+		}
+	}
+
+	if downgrade {
+		unreceipted := ready
+		unreceipted.ExpectedRevision, unreceipted.At, unreceipted.Period, unreceipted.PlanChange = 2, at, term, key
+		err := database.WithOrgTx(ctx, f.Runtime, scopeA, func(tx pgx.Tx) error {
+			_, err := ledger.ApplyTx(ctx, tx, key, unreceipted)
+			return err
+		})
+		var constraint *pgconn.PgError
+		if !errors.As(err, &constraint) || constraint.Code != "23514" ||
+			constraint.Message != "subscription plan change receipt unavailable" {
+			t.Fatalf("expected the plan-change receipt constraint to deny commit: %v", err)
 		}
 	}
 
@@ -162,6 +182,15 @@ WHERE from_state='PAST_DUE' AND state='ACTIVE' AND event_source='VERIFIED_BILLIN
 		}
 		if receipts != 1 || recoveries != 1 {
 			t.Fatalf("expected one audited settlement and one recovery, got %d receipts and %d recoveries", receipts, recoveries)
+		}
+		var originalPlan, currentPlan string
+		if err := tx.QueryRow(ctx, `SELECT
+ (SELECT plan_code FROM org_billing_subscription_events WHERE subscription_id=$1 AND revision=2),
+ (SELECT plan_code FROM org_billing_subscription_events WHERE subscription_id=$1 AND revision=3)`, a.RecordID).Scan(&originalPlan, &currentPlan); err != nil {
+			return err
+		}
+		if originalPlan != priorPlan.Plan || currentPlan != key.Plan {
+			t.Fatalf("recorded plan history changed: %s → %s", originalPlan, currentPlan)
 		}
 		return nil
 	}); err != nil {

@@ -126,3 +126,44 @@ func TestSubscriptionSuspensionRestoresRecordedStateAndCancellationIsTerminal(t 
 		t.Fatalf("verified late payment reopened terminal subscription: %v", err)
 	}
 }
+
+func TestVerifiedPlanChangeRequiresTheRecordedNextTerm(t *testing.T) {
+	org := scope(t, orgID)
+	old := d.PlanKey{Product: "fleet", Plan: "synthetic-large", Revision: 1}
+	target := d.PlanKey{Product: "fleet", Plan: "synthetic-small", Revision: 1}
+	at := time.Date(2026, 12, 1, 0, 0, 0, 0, time.UTC)
+	original, err := d.RestoreSubscription(d.SubscriptionSnapshot{
+		Scope: org, SubscriptionID: subsID, Plan: old, State: d.Active, Revision: 4,
+		LastEventAt: at.AddDate(0, -1, 0), Period: d.Period{Start: at.AddDate(0, -1, 0), End: at},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	settled := d.LifecycleEvent{
+		Scope: org, SubscriptionID: subsID, ExpectedRevision: 4, Reference: "reviewed-settlement",
+		Kind: d.ConfirmSettlement, Source: d.VerifiedBilling, PlanChange: target,
+		At: at, Period: d.Period{Start: at, End: at.AddDate(0, 1, 0)},
+	}
+	for _, change := range []func(*d.LifecycleEvent){
+		func(e *d.LifecycleEvent) { e.PlanChange.Product = "data" },
+		func(e *d.LifecycleEvent) { e.PlanChange = old },
+		func(e *d.LifecycleEvent) { e.Source = d.ReviewedOperator },
+		func(e *d.LifecycleEvent) { e.At = at.Add(-time.Hour); e.Period.Start = e.At },
+		func(e *d.LifecycleEvent) { e.At = at.Add(time.Hour); e.Period.Start = e.At },
+		func(e *d.LifecycleEvent) { e.Kind = d.ReportPastDue; e.Period = d.Period{} },
+	} {
+		rejected := settled
+		change(&rejected)
+		if _, _, err := original.Apply(rejected); err == nil {
+			t.Fatalf("invalid plan change applied: %+v", rejected)
+		}
+	}
+	next, transition, err := original.Apply(settled)
+	if err != nil || next.Snapshot().Plan != target || next.Snapshot().Revision != 5 ||
+		transition.From != d.Active || transition.To != d.Active || original.Snapshot().Plan != old {
+		t.Fatalf("verified next-term plan change did not preserve history: %+v %v", transition, err)
+	}
+	if _, _, err := next.Apply(settled); !errors.Is(err, d.ErrStaleSubscription) {
+		t.Fatalf("a replayed plan change applied again: %v", err)
+	}
+}

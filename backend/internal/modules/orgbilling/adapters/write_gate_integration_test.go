@@ -24,7 +24,8 @@ func TestSubscriptionWriteGateUsesCurrentStateWithoutPilotFlag(t *testing.T) {
 	scopeA, scopeB := a.Scope(t), b.Scope(t)
 	role := pgx.Identifier{f.RuntimeRole}.Sanitize()
 	if _, err := f.Admin.Exec(ctx, "GRANT SELECT ON enterprise_plan_catalog TO "+role+
-		"; GRANT SELECT, INSERT ON org_billing_subscription_events TO "+role); err != nil {
+		"; GRANT SELECT, INSERT ON org_billing_subscription_events TO "+role+
+		"; GRANT SELECT, UPDATE ON org_capabilities TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	known, err := capability.NewCatalog([]string{"organizations"})

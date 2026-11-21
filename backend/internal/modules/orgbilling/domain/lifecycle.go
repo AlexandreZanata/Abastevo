@@ -74,6 +74,7 @@ type LifecycleEvent struct {
 	At               time.Time
 	Reference        string
 	Period           Period
+	PlanChange       PlanKey
 }
 
 type SubscriptionSnapshot struct {
@@ -159,9 +160,18 @@ func (sub Subscription) Apply(event LifecycleEvent) (Subscription, Transition, e
 	} else if event.Period != (Period{}) {
 		return Subscription{}, Transition{}, ErrInvalidTransition
 	}
+	if plan := event.PlanChange; plan != (PlanKey{}) {
+		if event.Kind != ConfirmSettlement || current.Revision == 0 || plan.Validate() != nil ||
+			plan.Product != current.Plan.Product || plan == current.Plan || !event.Period.Start.Equal(current.Period.End) {
+			return Subscription{}, Transition{}, ErrInvalidTransition
+		}
+	}
 	next, err := current.next(event)
 	if err != nil {
 		return Subscription{}, Transition{}, err
+	}
+	if event.PlanChange != (PlanKey{}) {
+		next.Plan = event.PlanChange
 	}
 	next.Revision++
 	next.LastEventAt = event.At.UTC()

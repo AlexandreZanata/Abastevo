@@ -110,6 +110,12 @@ func (intake BillingIntake) recordTx(ctx context.Context, tx pgx.Tx, notice doma
 		return SettlementReceipt{}, err
 	}
 	event.ExpectedRevision = current.Revision
+	if current.Revision > 0 {
+		previousPlan := domain.PlanKey{Product: current.ProductCode, Plan: current.PlanCode, Revision: current.PlanRevision}
+		if previousPlan != binding.Offer.Plan {
+			event.PlanChange = binding.Offer.Plan
+		}
+	}
 	transition, err := intake.Ledger.ApplyTx(ctx, tx, binding.Offer.Plan, event)
 	if err != nil {
 		return SettlementReceipt{}, err
