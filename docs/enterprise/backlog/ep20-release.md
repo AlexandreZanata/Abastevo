@@ -121,8 +121,8 @@ from no real employee until the matrix passes (EDR-362).
 
 ### EMP-REL-009 — M8 gate: subscriptions, Data and integrations acceptance
 - **Meta:** module REL · phase F8 · cut - · priority P1 · type TEST · size M · state TODO
-- **Objective:** Accept M8 only with approved billing and redistribution rights.
-- **Rules and use cases:** VAL-18, VAL-35, VAL-36, EDR-024, EDR-025
+- **Objective:** Accept M8 only with approved billing and recorded source-digest approvals.
+- **Rules and use cases:** VAL-18, VAL-35, VAL-36, EDR-024, EDR-025, EDR-394
 - **Depends on:** EMP-SUBS-005, EMP-DATA-007, EMP-SUBS-004
 - **Read first:** [milestone validation](../testing.md), enterprise roadmap and F0 decisions
 - **Scope:** in: event replay, capability state and Data privacy scenarios · out: enabling sale from a test result alone

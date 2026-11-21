@@ -90,14 +90,17 @@ implementation. Public static files cannot protect a paid dataset.
 
 ## Rights and redistribution
 
-- The price and registry profiles are `RIGHTS_PENDING` in the
-  [source admission register](source-admission.md). A commercial
-  redistribution of their derived rows therefore has no recorded permission.
+- The owner admitted attributed reuse of the price and registry profiles in
+  paid analytical services on 2026-11-21
+  ([EDR-394](source-admission.md#f8-commercial-rights-decision-emp-gov-016)).
+  It is an accepted risk, not a dataset license. The brief carries derived
+  aggregates only: raw ANP files, bulk replicas, exclusivity and a license
+  over ANP data are never the product.
 - Enforcement and fine profiles have a declared CC BY path, but their runtime
   and safe station association remain gated; they are not part of this offer.
-- A commercial brief requires a recorded compatible license or written
-  permission, attribution to ANP, and clear separation between official facts
-  and Abastevo-derived calculations.
+- A commercial brief requires the recorded approval of each exact source
+  digest, `Fonte: ANP` with the source link and survey period, and clear
+  separation between official facts and Abastevo-derived calculations.
 - No ANP data may be sublicensed beyond the source terms. The free public
   portal remains free; the paid offer, if ever enabled, must not change public
   trust, ordering or access to official facts.

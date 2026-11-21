@@ -357,9 +357,11 @@ as follows; tests in `portalgen` prove each rule on fixtures.
 
 ## Source and publication gates
 
-- Prices/registry: rights `RIGHTS_PENDING` (ESP-01) and the real weekly edition
-  is `BLOCKED_OVER_PRECISION` (ESP-07). Real price pages cannot be published
-  until a recorded monetary-precision policy and rights decision exist.
+- Prices/registry: attributed reuse is admitted by the owner decision EDR-394
+  (ESP-01), with the ANP attribution, source link and survey period on every
+  page. The real weekly edition is `BLOCKED_OVER_PRECISION` (ESP-07). Real
+  price pages cannot be published until a recorded monetary-precision policy
+  exists.
 - `/fiscalizacao/` stays gated until FQ-06/07 live runtime, safe station links
   and the selected official-record acceptance exist.
 - PMQC/curiosidades/downloads are optional later slices (ESP-11/12).

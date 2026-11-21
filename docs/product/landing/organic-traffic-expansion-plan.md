@@ -92,7 +92,7 @@ In order of weight:
 3. **No page exists in another language.** The machinery is finished. It waits for named reviewers, reviewed dictionaries and content.
 4. **The domain is new and has no links.** It has served the site since 2026-11-14. Nothing announces new pages to search engines, and nothing brings links.
 5. **Editorial output is small.** 13 guides, and no publishing cadence yet.
-6. **Source rights are still open.** Prices and the station registry are `RIGHTS_PENDING` in [source admission](../../enterprise/source-admission.md), while the portal publishes them. The clarification request to ANP is drafted and not sent. Every new price family adds to that exposure.
+6. **Source rights rest on an owner decision, not on a license.** On 2026-11-21 the owner accepted the risk of attributed reuse of prices, the station registry, enforcement and fines ([source admission](../../enterprise/source-admission.md#f8-commercial-rights-decision-emp-gov-016), EDR-394). No dataset license or ANP statement exists and PMQC stays `RIGHTS_PENDING`. Every new price family must show the ANP attribution, source link and survey period, and is withdrawn if ANP objects.
 
 ## 3. Reference: sorrifit.com on 2026-11-21
 
