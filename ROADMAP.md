@@ -33,7 +33,7 @@ owner-signed AAB, the Console declarations and the CoMaps legal sign-off.
 
 ## Android app
 
-- **Device end-acceptance rerun.** Fix/triage the harness and HomeScreen failures; private OCR corpus on the device only (never Git); admitted regional map fixture; triage environment/Compose cases; owner decision on the 15 MB database budget; low-end ARM and signed-release rows; manual and novice/TalkBack journeys; live email/Google/Apple delivery and the 24-hour photo path on abastevo.com.br; P25–P33 rows. Then one complete matrix on a single revision. (P38-T02)
+- **Device end-acceptance rerun.** Fix/triage the harness and HomeScreen failures; private OCR corpus on the device only (never Git); admitted regional map fixture; triage environment/Compose cases; low-end ARM and signed-release rows; manual and novice/TalkBack journeys; live email/Google/Apple delivery and the 24-hour photo path on abastevo.com.br; P25–P33 rows. Then one complete matrix on a single revision. (P38-T02)
 - **Owed device evidence for shipped features** (run with the rerun): native map reopen, two-device sync/restore on the live origin, MEX-35 performance campaign, community-first rollout (PRM21-T02), home-feed reopen, forum device/TalkBack/IME (FOR-28); run or retire the fake-GPS phone matrix (SEC08-D, ADR-021 dropped mandatory GPS).
 - **Map performance and accessibility.** Performance gate (frame pacing, PostGIS load/EXPLAIN, API 26, ARMv7, physical battery, national capacity), live wire, two-device restore, TalkBack, live runbook acceptance. (MAP-29, MAP-31, MAP-32, MAP-20)
 - **Map markers with Abastevo icon art.** The pinned engine cannot draw custom native icon art yet. (MAP-18)

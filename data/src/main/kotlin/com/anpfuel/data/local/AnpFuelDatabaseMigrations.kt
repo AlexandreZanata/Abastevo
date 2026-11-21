@@ -4,6 +4,45 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 
 object AnpFuelDatabaseMigrations {
+    fun all(): Array<Migration> = arrayOf(
+        MIGRATION_1_2,
+        MIGRATION_2_3,
+        MIGRATION_3_4,
+        MIGRATION_4_5,
+        MIGRATION_5_6,
+        MIGRATION_6_7,
+        MIGRATION_7_8,
+        MIGRATION_8_9,
+        MIGRATION_9_10,
+        MIGRATION_10_11,
+        MIGRATION_11_12,
+        MIGRATION_12_13,
+        MIGRATION_13_14,
+        MIGRATION_14_15,
+        MIGRATION_15_16,
+        MIGRATION_16_17,
+        MIGRATION_17_18,
+        MIGRATION_18_19,
+        MIGRATION_19_20,
+        MIGRATION_20_21,
+        MIGRATION_21_22,
+        MIGRATION_22_23,
+        MIGRATION_23_24,
+        MIGRATION_24_25,
+        MIGRATION_25_26,
+        MIGRATION_26_27,
+        MIGRATION_27_28,
+        MIGRATION_28_29,
+        MIGRATION_29_30,
+        MIGRATION_30_31,
+        MIGRATION_31_32,
+        MIGRATION_32_33,
+        MIGRATION_33_34,
+        MIGRATION_34_35,
+        MIGRATION_35_36,
+        MIGRATION_36_37,
+        MIGRATION_37_38,
+    )
 
     val MIGRATION_1_2: Migration = object : Migration(1, 2) {
         override fun migrate(db: SupportSQLiteDatabase) {
@@ -897,6 +936,13 @@ object AnpFuelDatabaseMigrations {
                 )
                 """.trimIndent(),
             )
+        }
+    }
+
+    val MIGRATION_37_38: Migration = object : Migration(37, 38) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP INDEX IF EXISTS idx_station_survey_muni_product")
+            db.execSQL("DROP INDEX IF EXISTS idx_station_price_asc")
         }
     }
 }

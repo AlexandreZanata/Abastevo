@@ -81,7 +81,7 @@ class DatabasePocGateTest {
 
         val sizeBytes = databaseFileSizeBytes()
         assertTrue(
-            "Expected database under 15 MB but was ${sizeBytes / (1024 * 1024)} MB",
+            "Expected database under 15 MB but was $sizeBytes bytes",
             sizeBytes < 15L * 1024 * 1024,
         )
     }

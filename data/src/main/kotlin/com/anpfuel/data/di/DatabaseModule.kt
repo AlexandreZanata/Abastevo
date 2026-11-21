@@ -38,44 +38,7 @@ object DatabaseModule {
     ): AnpFuelDatabase =
         Room.databaseBuilder(context, AnpFuelDatabase::class.java, DATABASE_NAME)
             .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
-            .addMigrations(
-                AnpFuelDatabaseMigrations.MIGRATION_1_2,
-                AnpFuelDatabaseMigrations.MIGRATION_2_3,
-                AnpFuelDatabaseMigrations.MIGRATION_3_4,
-                AnpFuelDatabaseMigrations.MIGRATION_4_5,
-                AnpFuelDatabaseMigrations.MIGRATION_5_6,
-                AnpFuelDatabaseMigrations.MIGRATION_6_7,
-                AnpFuelDatabaseMigrations.MIGRATION_7_8,
-                AnpFuelDatabaseMigrations.MIGRATION_8_9,
-                AnpFuelDatabaseMigrations.MIGRATION_9_10,
-                AnpFuelDatabaseMigrations.MIGRATION_10_11,
-                AnpFuelDatabaseMigrations.MIGRATION_11_12,
-                AnpFuelDatabaseMigrations.MIGRATION_12_13,
-                AnpFuelDatabaseMigrations.MIGRATION_13_14,
-                AnpFuelDatabaseMigrations.MIGRATION_14_15,
-                AnpFuelDatabaseMigrations.MIGRATION_15_16,
-                AnpFuelDatabaseMigrations.MIGRATION_16_17,
-                AnpFuelDatabaseMigrations.MIGRATION_17_18,
-                AnpFuelDatabaseMigrations.MIGRATION_18_19,
-                AnpFuelDatabaseMigrations.MIGRATION_19_20,
-                AnpFuelDatabaseMigrations.MIGRATION_20_21,
-                AnpFuelDatabaseMigrations.MIGRATION_21_22,
-                AnpFuelDatabaseMigrations.MIGRATION_22_23,
-                AnpFuelDatabaseMigrations.MIGRATION_23_24,
-                AnpFuelDatabaseMigrations.MIGRATION_24_25,
-                AnpFuelDatabaseMigrations.MIGRATION_25_26,
-                AnpFuelDatabaseMigrations.MIGRATION_26_27,
-                AnpFuelDatabaseMigrations.MIGRATION_27_28,
-                AnpFuelDatabaseMigrations.MIGRATION_28_29,
-                AnpFuelDatabaseMigrations.MIGRATION_29_30,
-                AnpFuelDatabaseMigrations.MIGRATION_30_31,
-                AnpFuelDatabaseMigrations.MIGRATION_31_32,
-                AnpFuelDatabaseMigrations.MIGRATION_32_33,
-                AnpFuelDatabaseMigrations.MIGRATION_33_34,
-                AnpFuelDatabaseMigrations.MIGRATION_34_35,
-                AnpFuelDatabaseMigrations.MIGRATION_35_36,
-                AnpFuelDatabaseMigrations.MIGRATION_36_37,
-            )
+            .addMigrations(*AnpFuelDatabaseMigrations.all())
             .build()
 
     @Provides

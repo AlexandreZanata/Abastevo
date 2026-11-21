@@ -18,14 +18,6 @@ import androidx.room.PrimaryKey
     ],
     indices = [
         Index(name = "idx_station_discovery_price", value = ["survey_week_id", "state", "municipality", "fuel_product", "price", "id"]),
-        Index(
-            name = "idx_station_survey_muni_product",
-            value = ["survey_week_id", "municipality", "fuel_product"],
-        ),
-        Index(
-            name = "idx_station_price_asc",
-            value = ["survey_week_id", "municipality", "fuel_product", "price"],
-        ),
     ],
 )
 data class StationPriceEntity(
