@@ -60,3 +60,19 @@ Import values use explicit mapping, units and time zones. Unknown input remains 
 [EP18](../backlog/ep18-imports-notifications-integrations.md) owns the microtasks and phases. Immediate tests cover foreign rows, apply permission loss, malformed files, money/unit conversion, duplicate delivery, partial apply and provider outage. External legal, rights, email/push and fiscal decisions stay explicit prerequisites.
 
 The in-app notification core (EMP-NOTIF-001, module `orgnotify`, migration 000204) follows B-BR-EMP-215..218 and EDR-150/151: producer-keyed de-duplication, current authority at dispatch, per-kind preferences with mandatory kinds, hourly limits recorded as suppression, in-app channel only.
+
+### Company connection registry
+
+An integration approval binds a company, adapter, optional resource, payload
+budget, review and readiness instant. An opaque lookup reference grants
+no access by itself. Credential values live in the owning provider's
+protected provisioning path.
+
+The company commands configure, activate and disable a connection using
+current `integ.connection.manage` authority. Configuration and activation
+also require the current `integrations` capability. A connector operation
+checks current company state, the exact connection version and the newest
+approval under retained locks. A new approval revision can withdraw the
+previous connection's authority without erasing its metadata. Listing
+returns the provider, recorded state and whether its approval is still
+current. It omits the credential and review references.

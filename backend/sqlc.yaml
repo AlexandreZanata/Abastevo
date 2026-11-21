@@ -73,6 +73,18 @@ sql:
         emit_json_tags: true
         omit_unused_structs: true
   - engine: postgresql
+    queries: db/queries/orgconnector
+    schema:
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000275_organization_connections.sql
+    gen:
+      go:
+        package: orgconnector
+        out: db/queries/orgconnector
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/orgdata
     schema:
       - db/migrations/000169_organization_roots.sql

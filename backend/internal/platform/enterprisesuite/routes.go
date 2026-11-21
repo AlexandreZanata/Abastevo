@@ -55,6 +55,8 @@ import (
 	billweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters/http"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	connectorpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/adapters"
+	connectorweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/adapters/http"
 	datapg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters"
 	dataweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters/http"
 	datadomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/domain"
@@ -125,7 +127,7 @@ type Options struct {
 
 // CapabilityCodes are the organization capabilities this composition
 // registers; the operator tool validates against the same list (EDR-368).
-func CapabilityCodes() []string { return []string{"organizations", "data"} }
+func CapabilityCodes() []string { return []string{"organizations", "data", "integrations"} }
 
 // Register performs no I/O or provisioning. The default mounts no private
 // entry; enabled commands still require an ordinary role and current proof.
@@ -183,6 +185,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, intelpg.AuditDefinitions()...)
 	definitions = append(definitions, agreepg.AuditDefinitions()...)
 	definitions = append(definitions, datapg.KeyAuditDefinitions()...)
+	definitions = append(definitions, connectorpg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -202,6 +205,7 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{
+		{Class: "integ.connection", Permissions: []string{"integ.connection.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Company connector configuration inherits the identity v1 write allowance. Reviewed connector payload and execution budgets are independent."},
 		{Class: "data.key", Permissions: []string{"data.key.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Scoped key lifecycle inherits the identity v1 write allowance on each current organization/account/web axis; dataset request limits are independent."},
 		{Class: "org.setup", Permissions: []string{"org.settings.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic setup/settings only: share identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -269,6 +273,11 @@ func Register(router chi.Router, o Options) error {
 		keyAccess := datapg.KeyAccess{Pool: o.Pool, Entitlements: flags, Verifier: keyVerifier}
 		meter := datapg.UsageMeter{Keys: keyAccess, Plans: plans}
 		dataweb.RegisterRegionalSeries(router, datapg.RegionalSeries{Meter: meter, CursorSecret: o.CursorSecret})
+	}
+	connections := connectorpg.Store{Pool: o.Pool, Audit: auditStore,
+		Authority: orgpg.ConnectorAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}
+	if err := connectorweb.Register(router, connections, cookies, gateway, authorization); err != nil {
+		return err
 	}
 	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots, creationAdmission(o)); err != nil {
 		return err

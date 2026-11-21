@@ -13983,6 +13983,226 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EnterpriseDataKeyCommandResult'
+  /v1/orgs/{org_id}/integrations/connections/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseConnectionList
+      summary: List reviewed company connections
+      description: Lists current and retained organization connection metadata.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: integ.connection.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyListRequest'
+      responses:
+        '200':
+          description: Organization connection metadata.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseConnectorPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/configure:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseConnectionConfigure
+      summary: Configure a company connection
+      description: Binds an approved scope and returns CONFIGURED.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: integ.connection.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseConnectorConfigure'
+      responses:
+        '200':
+          description: Organization connection metadata.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseConnectorResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/{connection_id}/activate:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseConnectionActivate
+      summary: Activate a reviewed company connection
+      description: Requires the exact current approval and recorded readiness.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: integ.connection.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseConnectorStateChange'
+      responses:
+        '200':
+          description: Organization connection metadata.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseConnectorResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/{connection_id}/disable:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseConnectionDisable
+      summary: Disable a company connection
+      description: Stops new connector work and preserves the audited connection history.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: integ.connection.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseConnectorStateChange'
+      responses:
+        '200':
+          description: Organization connection metadata.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseConnectorResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/subscriptions/plan/read:
     post:
       tags:
@@ -48441,6 +48661,90 @@ components:
           type: string
           description: One-time bearer for the first successful issue or rotate response.
         replayed:
+          type: boolean
+    EnterpriseConnectorConfigure:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, approval_id, approval_revision, label]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        approval_id:
+          type: string
+          format: uuid
+        approval_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+    EnterpriseConnectorStateChange:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+    EnterpriseConnectorPage:
+      type: object
+      additionalProperties: false
+      required: [connections, next_cursor]
+      properties:
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseConnector'
+        next_cursor:
+          type: string
+    EnterpriseConnectorResult:
+      type: object
+      additionalProperties: false
+      required: [connection, replayed]
+      properties:
+        connection:
+          $ref: '#/components/schemas/EnterpriseConnector'
+        replayed:
+          type: boolean
+    EnterpriseConnector:
+      type: object
+      additionalProperties: false
+      required: [id, label, kind, provider, state, revision, changed_at, approval_current]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [TELEMATICS, FUEL_CARD_STATEMENT, FISCAL_LOOKUP, DOCUMENT_EXTRACTION, OUTBOUND_WEBHOOK, ACCOUNTING_EXPORT]
+        provider:
+          type: string
+        state:
+          type: string
+          enum: [CONFIGURED, ACTIVE, DEGRADED, DISABLED]
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        changed_at:
+          type: string
+          format: date-time
+        approval_current:
           type: boolean
     EnterprisePlanOverview:
       type: object

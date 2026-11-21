@@ -504,10 +504,15 @@
   },
   {
    "permission": "integ.connection.manage",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Organization integration-management routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/integrations/connections/list",
+   "routes": [
+    "POST /v1/orgs/{org_id}/integrations/connections/configure",
+    "POST /v1/orgs/{org_id}/integrations/connections/list",
+    "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/activate",
+    "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/disable"
+   ],
+   "reason": ""
   },
   {
    "permission": "kpi.dashboard.read",
