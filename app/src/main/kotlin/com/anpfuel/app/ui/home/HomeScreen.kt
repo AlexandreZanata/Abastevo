@@ -47,6 +47,7 @@ import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.anpfuel.app.ui.components.AnpSourceLink
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.designsystem.AbastevoSelectionDefaults
 import com.anpfuel.app.ui.designsystem.AssistChip
@@ -378,6 +379,9 @@ internal fun HomeContent(
                         fontWeight = FontWeight.Bold,
                     )
                     PriceMetadata(uiState = uiState)
+                    if (uiState.prices.isNotEmpty()) {
+                        AnpSourceLink()
+                    }
                     HomePriceFilterButton(
                         current = uiState.priceSort,
                         onOpenFilters = { filterOpen = true },

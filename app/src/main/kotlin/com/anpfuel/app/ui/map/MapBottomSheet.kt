@@ -46,6 +46,7 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.anpfuel.app.ui.components.AnpSourceLink
 import com.anpfuel.app.R
 import com.anpfuel.app.community.CommunityPriceDisplay
 import com.anpfuel.app.mapper.FuelProductI18n
@@ -366,6 +367,9 @@ private fun StationPriceDetails(price: SheetPrice) {
                 style = MaterialTheme.typography.bodySmall,
                 color = secondaryText,
             )
+        }
+        if (price.source == MapPriceSource.ANP) {
+            AnpSourceLink()
         }
         if (price.stale) {
             Text(stringResource(R.string.map_sheet_cached_price), style = MaterialTheme.typography.labelSmall, color = secondaryText)

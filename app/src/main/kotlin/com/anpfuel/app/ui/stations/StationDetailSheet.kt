@@ -24,6 +24,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.anpfuel.app.R
+import com.anpfuel.app.ui.components.AnpSourceLink
 import com.anpfuel.app.ui.components.FuelProductLabel
 import com.anpfuel.app.ui.components.PriceSourceKind
 import com.anpfuel.app.ui.components.SourceTimeBadge
@@ -158,6 +159,7 @@ internal fun StationDetailSheetContent(
                             )
                         }
                     }
+                    AnpSourceLink()
                     detail.surveyWeekLabel?.let { weekLabel ->
                         Text(
                             text = stringResource(R.string.station_detail_survey_week, weekLabel),
