@@ -33,12 +33,13 @@ type Overview struct {
 }
 
 type PlanSummary struct {
-	Catalog     domain.Plan
-	State       domain.SubscriptionState
-	Term        domain.Period
-	TermCurrent bool
-	Receipt     *TermReceipt
-	Pending     *PendingPlan
+	Catalog          domain.Plan
+	State            domain.SubscriptionState
+	Term             domain.Period
+	TermCurrent      bool
+	Receipt          *TermReceipt
+	Pending          *PendingPlan
+	StorageUsedBytes *int64
 }
 
 type PendingPlan struct {

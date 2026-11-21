@@ -49008,6 +49008,10 @@ components:
                   api_calls:
                     type: string
                     pattern: '^(0|[1-9][0-9]{0,18})$'
+              storage_used_bytes:
+                type: string
+                pattern: '^(0|[1-9][0-9]{0,18})$'
+                description: Scoped total of reserved and retained document original bytes at observation.
               pending:
                 type: object
                 additionalProperties: false

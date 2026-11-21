@@ -66,6 +66,13 @@ The read remains available when billing writes are disabled.
 
 Changes and purchases require the server. Existing field queues preserve creation context and current intake uses server history. Repeated provider events and manual adjustments are idempotent. Usage counters retain period and source and cannot be bypassed by merely rotating a credential.
 
+The storage meter counts reserved and retained original bytes from the
+company document registry. The plan panel displays that measured total
+alongside the reviewed byte ceiling. Upload declarations from the company
+panel and signed device share the same entitlement lock and audited
+reservation. Replays keep the original allocation. Failed or deleted
+documents release their logical allocation under the existing lifecycle.
+
 A reviewed trial grant records its organization, plan revision, acceptance
 window, duration and approval reference. The restricted operator path starts
 it with `ops enterprise trial start --org <uuid> --grant-id <uuid>

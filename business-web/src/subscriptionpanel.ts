@@ -52,7 +52,14 @@ export function mountPlanPanel(doc: Document, source: PlanSource, sessionLost: (
         const limits = doc.createElement('ul');
         for (const [meter, label] of Object.entries(METERS)) {
           const limit = plan.limits[meter as keyof typeof METERS];
-          if (limit !== undefined) text(limits, 'li', `${label}: ${number.format(BigInt(limit))}`);
+          if (limit === undefined) continue;
+          const maximum = number.format(BigInt(limit));
+          if (meter === 'storage_bytes' && plan.storageUsedBytes !== undefined) {
+            const used = number.format(BigInt(plan.storageUsedBytes));
+            text(limits, 'li', `${used} de ${maximum} bytes de armazenamento`);
+          } else {
+            text(limits, 'li', `${label}: ${maximum}`);
+          }
         }
         item.appendChild(limits);
       }

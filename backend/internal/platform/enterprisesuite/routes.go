@@ -598,7 +598,11 @@ func Register(router chi.Router, o Options) error {
 	if err := registerNotices(router, o, cookies, gateway, roles, allowance); err != nil {
 		return err
 	}
-	if err := registerDocuments(router, o, cookies, gateway, access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: documentweb.DocumentRecords{}, Now: time.Now}, roles, auditStore, deviceStore); err != nil {
+	var documentStorage documentpg.StorageReservations
+	if o.BillingEnabled {
+		documentStorage = billpg.DocumentQuota{Entitlements: plans, Flags: flags}
+	}
+	if err := registerDocuments(router, o, cookies, gateway, access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: documentweb.DocumentRecords{}, Now: time.Now}, roles, auditStore, deviceStore, documentStorage); err != nil {
 		return err
 	}
 	intelStore := &intelpg.Store{Pool: o.Pool, Authority: &orgpg.ManagementAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore, NewID: jobs.NewUUIDv4}
@@ -641,7 +645,9 @@ func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, g
 // registerDocuments composes EMP-DOC-002 over the EMP-PLAT-006 private
 // original service and the EMP-PRIV-005 access log. Without configured
 // storage, declarations work while bytes and content stay unavailable.
-func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authorization access.Authorization, roles *accesspg.Store, auditStore *auditpg.Store, devices *member.DeviceStore) error {
+func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authorization access.Authorization,
+	roles *accesspg.Store, auditStore *auditpg.Store, devices *member.DeviceStore, storage documentpg.StorageReservations,
+) error {
 	authority := documentpg.CurrentAuthority{Source: roles, Now: time.Now}
 	var objects documentObjects = documentpg.UnavailableObjects{}
 	if o.DocumentStorage != nil {
@@ -669,7 +675,7 @@ func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler,
 	targets := documentapp.Targets{documentdomain.Asset: fleetpg.DocumentTargets{}, documentdomain.MeterReading: fleetpg.DocumentTargets{},
 		documentdomain.Employee: member.EmployeeDocumentTargets{}, documentdomain.Incident: maintpg.IncidentDocumentTargets{},
 		documentdomain.Fueling: fuelpg.FuelingDocumentTargets{}, documentdomain.Expense: expensepg.ExpenseDocumentTargets{}}
-	store := &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore, Targets: targets}
+	store := &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore, Targets: targets, Storage: storage}
 	// EMP-DOC-014: the ingress runs the same safety check as the queued job,
 	// over the same bucket and inspector, so STORED never skips it.
 	checker := documentapp.Checker{Repository: store, Objects: objects, Inspector: mediapg.JPEGInspector{}, NewID: jobs.NewUUIDv4}

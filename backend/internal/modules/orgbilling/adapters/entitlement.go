@@ -55,6 +55,10 @@ func (store EntitlementStore) CheckVehicleActivation(ctx context.Context, tx pgx
 	if err != nil || !governed {
 		return err
 	}
+	return checkPlanIncrease(plans, domain.ActiveVehicles, active, 1)
+}
+
+func checkPlanIncrease(plans []entitledPlan, meter domain.Meter, used, addition int64) error {
 	if len(plans) == 0 {
 		return access.ErrEntitlementRequired
 	}
@@ -62,7 +66,7 @@ func (store EntitlementStore) CheckVehicleActivation(ctx context.Context, tx pgx
 	var ceiling int64
 	for _, entitled := range plans {
 		plan := entitled.catalog
-		candidate, err := plan.Limit(domain.ActiveVehicles)
+		candidate, err := plan.Limit(meter)
 		if errors.Is(err, domain.ErrLimitUndefined) {
 			continue
 		}
@@ -74,7 +78,7 @@ func (store EntitlementStore) CheckVehicleActivation(ctx context.Context, tx pgx
 		}
 		selected, ceiling = plan, candidate
 	}
-	err = selected.CheckIncrease(domain.ActiveVehicles, active, 1)
+	err := selected.CheckIncrease(meter, used, addition)
 	if errors.Is(err, domain.ErrLimitUndefined) || errors.Is(err, domain.ErrLimitReached) {
 		return access.ErrLimitReached
 	}

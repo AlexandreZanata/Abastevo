@@ -57,6 +57,7 @@ func (store OverviewStore) readTx(ctx context.Context, tx pgx.Tx, scope kernel.O
 		return app.Overview{}, err
 	}
 	overview := app.Overview{ObservedAt: instant.Time.UTC(), Plans: make([]app.PlanSummary, 0, len(subscriptions))}
+	var storageUsed *int64
 	for _, current := range subscriptions {
 		key := domain.PlanKey{Product: current.ProductCode, Plan: current.PlanCode, Revision: current.PlanRevision}
 		plan, err := catalog.GetPlan(ctx, key)
@@ -74,6 +75,16 @@ func (store OverviewStore) readTx(ctx context.Context, tx pgx.Tx, scope kernel.O
 		}
 		summary := app.PlanSummary{Catalog: plan, State: state, Term: term,
 			TermCurrent: !overview.ObservedAt.Before(term.Start) && overview.ObservedAt.Before(term.End)}
+		if _, err := plan.Limit(domain.StorageBytes); err == nil {
+			if storageUsed == nil {
+				used, err := queries.CountDocumentStorageBytes(ctx, org)
+				if err != nil {
+					return app.Overview{}, err
+				}
+				storageUsed = &used
+			}
+			summary.StorageUsedBytes = storageUsed
+		}
 		if len(receipts) > 1 {
 			return app.Overview{}, app.ErrUnavailable
 		}

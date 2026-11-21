@@ -75,7 +75,7 @@ def ordinary_runtime(dsn):
             "GRANT SELECT,INSERT,UPDATE ON accounts,account_session_families,identity_rate_windows,organizations,org_units,org_employee_identities,org_employee_profiles,org_memberships,org_role_assignments,org_capabilities,org_settings_heads,org_invitations,org_invitation_acceptances,org_data_api_keys TO {}",
             "GRANT SELECT,INSERT ON account_key_credentials,org_onboarding_commands,org_audit_events,org_employee_commands,org_settings_commands,org_settings_versions,org_settings_designations,org_settings_notices,org_invitation_commands,org_invitation_notices,org_invitation_locators,org_invitation_person_commands,org_invitation_acceptance_notices,org_role_commands TO {}",
             "GRANT SELECT,UPDATE ON org_teams,org_team_links,org_ownership_transfers,org_device_enrollments TO {}",
-            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,enterprise_plan_catalog,enterprise_billing_offers,org_billing_subscription_events,org_billing_charge_bindings,org_billing_settlement_receipts,enterprise_data_rate_policies,org_data_usage_terms,enterprise_data_plan_datasets,enterprise_regional_datasets,enterprise_regional_series,enterprise_data_source_reviews TO {}",
+            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,org_documents,enterprise_plan_catalog,enterprise_billing_offers,org_billing_subscription_events,org_billing_charge_bindings,org_billing_settlement_receipts,enterprise_data_rate_policies,org_data_usage_terms,enterprise_data_plan_datasets,enterprise_regional_datasets,enterprise_regional_series,enterprise_data_source_reviews TO {}",
             "GRANT SELECT,INSERT,UPDATE,DELETE ON account_key_admission_events,company_web_sessions TO {}",
             "GRANT USAGE ON SEQUENCE account_key_admission_events_id_seq TO {}",
         ]
@@ -775,8 +775,8 @@ def employee_checks(browser, origin, dsn):
         connection.execute("SELECT set_config('anpfuel.org_id',%s,true)", (org_id,))
         connection.execute("""
             INSERT INTO enterprise_plan_catalog
-                (product_code,plan_code,revision,display_name,capabilities,active_vehicles)
-            VALUES ('fleet','browser-plan',1,'Plano sintético do navegador',ARRAY['organizations'],0)
+                (product_code,plan_code,revision,display_name,capabilities,active_vehicles,storage_bytes)
+            VALUES ('fleet','browser-plan',1,'Plano sintético do navegador',ARRAY['organizations'],0,4096)
         """)
         connection.execute("""
             INSERT INTO org_billing_subscription_events
@@ -868,6 +868,7 @@ def employee_checks(browser, origin, dsn):
     expect(page.locator("#subscription-list")).to_contain_text("Veículos ativos: 0")
     trial_item = page.locator("#subscription-list > li").filter(has_text="Plano sintético do navegador")
     expect(trial_item).not_to_contain_text("Cobrança liquidada")
+    expect(trial_item).to_contain_text("0 de 4.096 bytes de armazenamento")
     paid_item = page.locator("#subscription-list > li").filter(has_text="Data sintético")
     expect(paid_item).to_contain_text("45,67")
     expect(paid_item).to_contain_text("Situação fiscal não consultada.")

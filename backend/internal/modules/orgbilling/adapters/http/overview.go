@@ -85,6 +85,7 @@ type planView struct {
 	Receipt       *termReceiptView         `json:"receipt,omitempty"`
 	Capabilities  []string                 `json:"capabilities"`
 	Limits        map[domain.Meter]string  `json:"limits"`
+	StorageUsed   string                   `json:"storage_used_bytes,omitempty"`
 	Pending       *pendingView             `json:"pending,omitempty"`
 }
 
@@ -98,6 +99,9 @@ func response(overview billing.Overview) overviewResponse {
 			if limit, err := row.Catalog.Limit(meter); err == nil {
 				p.Limits[meter] = strconv.FormatInt(limit, 10)
 			}
+		}
+		if row.StorageUsedBytes != nil {
+			p.StorageUsed = strconv.FormatInt(*row.StorageUsedBytes, 10)
 		}
 		if row.Receipt != nil {
 			p.Receipt = &termReceiptView{AmountCentavos: strconv.FormatInt(row.Receipt.Amount.Centavos, 10),

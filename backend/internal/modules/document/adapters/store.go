@@ -34,8 +34,14 @@ type Store struct {
 	Pool      *pgxpool.Pool
 	Authority app.Authority
 	Audit     auditing.TransactionRunner
+	Storage   StorageReservations
 	// Targets is the closed registry of linkable kinds (EMP-DOC-003).
 	Targets app.Targets
+}
+
+type StorageReservations interface {
+	LockStorageReservation(context.Context, pgx.Tx, kernel.OrgScope) error
+	CheckStorageReservation(context.Context, pgx.Tx, kernel.OrgScope, int64) error
 }
 
 var _ app.Repository = (*Store)(nil)
@@ -114,8 +120,18 @@ func (s *Store) Create(ctx context.Context, scope kernel.OrgScope, actor app.Act
 		if err := s.Authority.CheckDocumentTx(ctx, tx, scope, actor, app.AttachPolicy(), app.Facts{TargetID: org, AuthoredBy: actor.MembershipID}); err != nil {
 			return err
 		}
+		if s.Storage != nil {
+			if err := s.Storage.LockStorageReservation(ctx, tx, scope); err != nil {
+				return err
+			}
+		}
 		var err error
 		replayed, err = s.Audit.RecordChangeTx(ctx, tx, scope, event, func(ctx context.Context, tx pgx.Tx) error {
+			if s.Storage != nil {
+				if err := s.Storage.CheckStorageReservation(ctx, tx, scope, command.Original.Bytes); err != nil {
+					return err
+				}
+			}
 			if err := q.New(tx).InsertDocument(ctx, q.InsertDocumentParams{OrgID: org, ID: command.DocumentID, Kind: command.Original.Kind,
 				OperationID: command.OperationID, CreatedBy: actor.MembershipID, OriginalSha256: command.Original.SHA256,
 				OriginalBytes: command.Original.Bytes, OriginalType: command.Original.MediaType}); err != nil {

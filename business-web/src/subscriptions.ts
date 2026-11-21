@@ -26,6 +26,7 @@ export interface PlanSummary {
   receipt?: { amountCentavos: string; settledAt: string; fiscalStatus: 'NOT_CONSULTED'; paymentDate?: string };
   capabilities: string[];
   limits: Partial<Record<Meter, string>>;
+  storageUsedBytes?: string;
   pending?: { name: string; revision: string; effectiveAt: string };
 }
 
@@ -68,6 +69,10 @@ function plan(value: unknown): PlanSummary {
     state: raw.state as State, termStart, termEnd, termCurrent: raw.term_current,
     confirmedPaid: raw.confirmed_paid, capabilities: raw.capabilities.map(text), limits,
   };
+  if (raw.storage_used_bytes !== undefined) {
+    if (limits.storage_bytes === undefined) throw new ApiError('unavailable');
+    result.storageUsedBytes = integer(raw.storage_used_bytes);
+  }
   if (raw.receipt !== undefined) {
     const receipt = record(raw.receipt);
     if (!result.confirmedPaid || receipt.currency !== 'BRL' || receipt.fiscal_status !== 'NOT_CONSULTED') throw new ApiError('unavailable');

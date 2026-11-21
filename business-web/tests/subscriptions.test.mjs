@@ -12,6 +12,7 @@ const rawPlan = {
   product: 'fleet', name: 'Plano sintético', revision: '2', state: 'ACTIVE',
   term_start: observed, term_end: termEnd, term_current: true, confirmed_paid: false,
   capabilities: ['organizations'], limits: { active_vehicles: '0', storage_bytes: '9223372036854775807' },
+  storage_used_bytes: '1234',
   pending: { name: 'Próximo plano', revision: '3', effective_at: termEnd },
 };
 
@@ -29,6 +30,7 @@ test('plan overview keeps exact limits and uses only recorded payment proof', as
   const [plan] = await client.read(uuid(1), abort.signal);
   assert.equal(plan.limits.active_vehicles, '0');
   assert.equal(plan.limits.storage_bytes, '9223372036854775807');
+  assert.equal(plan.storageUsedBytes, '1234');
   assert.equal(plan.confirmedPaid, false);
   assert.equal(plan.pending.name, 'Próximo plano');
   assert.equal(planStateLabel(plan), 'Ativo');
