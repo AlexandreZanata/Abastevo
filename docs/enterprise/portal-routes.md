@@ -191,6 +191,12 @@ as follows; tests in `portalgen` prove each rule on fixtures.
     posts of its UF); `/precos/` lists the 3 latest posts and their
     categories; the portal hubs, header and footer link `/forum/`. Official-
     only builds have no forum.
+  - *Feed.* An indexable build with a forum writes `/forum/feed.xml`, an Atom
+    1.0 feed of the 20 newest posts: title, the page's meta description as
+    summary, publication and update instants, author and category. The feed
+    date is the newest entry's update instant, never the build time. Only the
+    forum hub, category and post pages advertise it in their head. A build
+    without a forum, or with the global switch off, has no feed.
   - *Withdrawal and latency.* A hidden, removed or rejected post, or one whose
     source loses rights, leaves the next export, so the next release has no
     page (404) and no sitemap entry. The export reconcile job (every 6 h)

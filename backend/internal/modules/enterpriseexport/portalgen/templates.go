@@ -9,7 +9,8 @@ const templates = `
   <meta name="robots" content="{{.Robots}}">
   <title>{{.HeadTitle}}</title>
   <meta name="description" content="{{.Description}}">
-  {{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">
+  {{if .FeedHref}}<link rel="alternate" type="application/atom+xml" title="Fórum abastevo" href="{{.FeedHref}}">
+  {{end}}{{if .Canonical}}<link rel="canonical" href="{{.Canonical}}">
   <meta property="og:type" content="{{if .OGType}}{{.OGType}}{{else}}website{{end}}">
   <meta property="og:site_name" content="abastevo">
   <meta property="og:locale" content="pt_BR">

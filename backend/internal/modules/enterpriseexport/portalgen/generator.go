@@ -133,6 +133,8 @@ type pageBase struct {
 	JSONLD template.JS
 	// HasForum adds the /forum/ navigation links (B-BR-SEO-08).
 	HasForum bool
+	// FeedHref is the Atom feed advertised in the head of the forum pages.
+	FeedHref string
 	// OGType is the og:type ("website" when empty); article pages also
 	// carry their published and modified instants.
 	OGType           string
