@@ -8,6 +8,10 @@ import { loadLocales } from './content/i18n.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
+// Portal data routes, feeds and sitemaps that llms.txt must name, one line each.
+export const LLMS_DATA_ROUTES = ['/precos/', '/consultar/', '/metodologia/', '/fiscalizacao/', '/dados/', '/curiosidades/',
+  '/forum/', '/portal-manifest.json', '/guias/feed.xml', '/forum/feed.xml', '/sitemap.xml', '/sitemap-portal.xml'];
 const DEFAULT_ROOT = path.resolve(__dirname, '..');
 const HTML_PAGE_BUDGET = 200 * 1024;
 // Bundles copied into dist by the release workflow after this check runs.
@@ -474,6 +478,12 @@ export function checkDist(options = {}) {
     const llms = fs.readFileSync(llmsPath, 'utf8');
     for (const route of ['/guias/', '/ferramentas/', '/sobre/', '/politica-editorial/']) {
       if (!llms.includes(`${origin}${route}`)) errors.push(`llms.txt does not list ${route}`);
+    }
+    // The data surface of the same-origin portal, the feeds and both sitemaps:
+    // one labelled line each, so a longer URL never stands in for a shorter one.
+    const llmsLines = llms.split('\n');
+    for (const route of LLMS_DATA_ROUTES) {
+      if (!llmsLines.some((line) => line.endsWith(`: ${origin}${route}`))) errors.push(`llms.txt does not list ${route}`);
     }
     if (llms.includes('{{')) errors.push('llms.txt has unresolved placeholders');
   }

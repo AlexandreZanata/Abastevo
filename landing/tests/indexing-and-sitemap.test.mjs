@@ -6,7 +6,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSite } from '../scripts/build.mjs';
 import { loadSite } from '../scripts/content/site.mjs';
-import { listHtmlPages } from '../scripts/check.mjs';
+import { listHtmlPages, LLMS_DATA_ROUTES } from '../scripts/check.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -207,6 +207,10 @@ test('discovery files: llms.txt and .well-known/security.txt exist and are popul
     assert.ok(llmsContent.includes('24 horas'), 'llms.txt must mention 24h photo retention');
     assert.ok(llmsContent.includes('https://abastevo.com.br/'), 'llms.txt must have resolved canonical origin');
     assert.ok(!llmsContent.includes('{{CANONICAL_ORIGIN}}'), 'llms.txt must not contain unresolved placeholders');
+    const llmsLines = llmsContent.split('\n');
+    for (const route of LLMS_DATA_ROUTES) {
+      assert.ok(llmsLines.some((line) => line.endsWith(': https://abastevo.com.br' + route)), 'llms.txt must list ' + route);
+    }
 
     // security.txt
     const secPath = path.join(tmpOut, '.well-known', 'security.txt');
