@@ -29,11 +29,16 @@ type specValidationKey struct {
 	digest [sha256.Size]byte
 }
 
-// The cache owns validation results only. Every caller receives its own parsed
-// and resolved document, including callers that deliberately mutate the spec.
+type specValidationResult struct {
+	documentJSON []byte
+	message      string
+}
+
+// Cache the validated document as immutable bytes. Every caller gets its own
+// parsed document and references, including tests that deliberately mutate it.
 type specValidationCache struct {
 	mu             sync.Mutex
-	results        map[specValidationKey]string
+	results        map[specValidationKey]specValidationResult
 	validationRuns int
 }
 
@@ -41,29 +46,39 @@ func (cache *specValidationCache) load(raw []byte, location *url.URL) (*openapi3
 	snapshot := bytes.Clone(raw)
 	source := *location
 	key := specValidationKey{source: source.String(), digest: sha256.Sum256(snapshot)}
+	cache.mu.Lock()
+	result, cached := cache.results[key]
+	if cached {
+		cache.mu.Unlock()
+		if result.message != "" {
+			return nil, fmt.Errorf("spec self-validation: %s", result.message)
+		}
+		document, err := openapi3.NewLoader().LoadFromDataWithPath(result.documentJSON, &source)
+		if err != nil {
+			return nil, fmt.Errorf("load cached spec: %w", err)
+		}
+		return document, nil
+	}
+	defer cache.mu.Unlock()
+
 	loader := openapi3.NewLoader()
 	document, err := loader.LoadFromDataWithPath(snapshot, &source)
 	if err != nil {
 		return nil, fmt.Errorf("load spec: %w", err)
 	}
-	cache.mu.Lock()
-	defer cache.mu.Unlock()
-	message, cached := cache.results[key]
-	if !cached {
-		cache.validationRuns++
-		if err := document.Validate(loader.Context); err != nil {
-			message = err.Error()
-		}
-		if cache.results == nil {
-			cache.results = make(map[specValidationKey]string)
-		}
-		// Retain immutable result text, never an error that could retain schema
-		// pointers from the caller's independently mutable document.
-		cache.results[key] = message
+	cache.validationRuns++
+	if cache.results == nil {
+		cache.results = make(map[specValidationKey]specValidationResult)
 	}
-	if message != "" {
-		return nil, fmt.Errorf("spec self-validation: %s", message)
+	if err := document.Validate(loader.Context); err != nil {
+		cache.results[key] = specValidationResult{message: err.Error()}
+		return nil, fmt.Errorf("spec self-validation: %s", err)
 	}
+	encoded, err := json.Marshal(document)
+	if err != nil {
+		return nil, fmt.Errorf("snapshot validated spec: %w", err)
+	}
+	cache.results[key] = specValidationResult{documentJSON: encoded}
 	return document, nil
 }
 

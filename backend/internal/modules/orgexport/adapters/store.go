@@ -137,7 +137,10 @@ func (s *Store) authorizeRequest(ctx context.Context, tx pgx.Tx, scope kernel.Or
 	if err := s.Authority.CheckExportTx(ctx, tx, scope, actor, member, app.ActionRequest); err != nil {
 		return err
 	}
-	return s.Authority.CheckDataTx(ctx, tx, scope, actor, member, c.ReadPermission())
+	if err := s.Authority.CheckDataTx(ctx, tx, scope, actor, member, c.ReadPermission()); err != nil {
+		return err
+	}
+	return c.CheckInputsTx(ctx, tx, scope)
 }
 
 func (s *Store) Request(ctx context.Context, scope kernel.OrgScope, actor app.Actor, member, exportID string, c app.Command) (app.View, bool, error) {
@@ -319,11 +322,11 @@ func (s *Store) Deliverable(ctx context.Context, scope kernel.OrgScope, actor ap
 		}
 		// The file carries the kind's data: its declared read permission is
 		// checked again now, before the state is disclosed (EMP-AUTH-011).
-		read, admitted := formats.ReadPermission(row.Kind)
+		format, admitted := formats.Lookup(row.Kind)
 		if !admitted {
 			return app.ErrFormatUnavailable
 		}
-		if err := s.Authority.CheckDataTx(ctx, tx, scope, actor, member, read); err != nil {
+		if err := s.Authority.CheckDataTx(ctx, tx, scope, actor, member, format.ReadPermission()); err != nil {
 			return err
 		}
 		switch domain.State(row.State) {
@@ -336,6 +339,11 @@ func (s *Store) Deliverable(ctx context.Context, scope kernel.OrgScope, actor ap
 			return app.ErrExpired
 		default:
 			return app.ErrNotReady
+		}
+		if admission, ok := format.(app.FormatAdmission); ok {
+			if err := admission.CheckInputsTx(ctx, tx, scope, []byte(row.Parameters)); err != nil {
+				return err
+			}
 		}
 		object = domain.Object{OrgID: scope.OrgID().String(), ExportID: row.ID, SHA256: row.ObjectSha256, MediaType: row.MediaType, Bytes: row.ObjectBytes, Rows: row.RowCount}
 		if object.Validate(scope) != nil {

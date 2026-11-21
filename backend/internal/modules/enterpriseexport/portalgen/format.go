@@ -85,6 +85,21 @@ func cnpjBR(value string) string {
 	return clean[0:2] + "." + clean[2:5] + "." + clean[5:8] + "/" + clean[8:12] + "-" + clean[12:14]
 }
 
+// unitShort names a canonical unit where a page shows it beside a fuel or in
+// a table cell; unknown units pass through unchanged.
+func unitShort(unit string) string {
+	switch unit {
+	case "L":
+		return "litro"
+	case "M3":
+		return "m³"
+	case "KG_13":
+		return "botijão de 13 kg"
+	default:
+		return unit
+	}
+}
+
 func fuelLabel(value string) string {
 	switch value {
 	case "GASOLINE_REGULAR":

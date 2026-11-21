@@ -100,7 +100,11 @@ GRANT USAGE ON SCHEMA public TO :"%[1]s";
 	if len(inv.Limits) > 0 {
 		b.WriteString("-- Reviewed limits (EDR-363):\n")
 		for _, l := range inv.Limits {
-			fmt.Fprintf(&b, "--   %s at most %s: %s.\n", l.Table, strings.Join(l.Allowed, ", "), l.Reason)
+			bound := "no access"
+			if len(l.Allowed) > 0 {
+				bound = "at most " + strings.Join(l.Allowed, ", ")
+			}
+			fmt.Fprintf(&b, "--   %s %s: %s.\n", l.Table, bound, l.Reason)
 		}
 	}
 	if len(inv.OperatorOnly) > 0 {

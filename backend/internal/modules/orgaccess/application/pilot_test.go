@@ -147,3 +147,69 @@ func TestPilotTypedNilProductionReaderFailsClosed(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+type planCapabilitySource func(context.Context, kernel.OrgScope, string) (bool, bool, error)
+
+func (f planCapabilitySource) PlanCapability(ctx context.Context, scope kernel.OrgScope, capability string) (bool, bool, error) {
+	return f(ctx, scope, capability)
+}
+
+func TestPlanCapabilitiesSupplementTheOrganizationRoleGate(t *testing.T) {
+	for _, tc := range []struct {
+		name              string
+		pilot             cap.State
+		governed, allowed bool
+		role              bool
+		effect            a.Effect
+		failure           error
+		want              error
+		wantCalls         int
+	}{
+		{name: "pilot stays authoritative without billing", pilot: cap.State{Enabled: true, Revision: 1},
+			role: true, effect: a.OperationalWrite, wantCalls: 1},
+		{name: "active plan permits covered write", governed: true, allowed: true,
+			role: true, effect: a.OperationalWrite, wantCalls: 1},
+		{name: "explicit operator denial still applies", pilot: cap.State{Revision: 2}, governed: true, allowed: true,
+			role: true, effect: a.OperationalWrite, want: a.ErrEntitlementRequired, wantCalls: 1},
+		{name: "ended subscription cannot fall back to pilot flag", pilot: cap.State{Enabled: true, Revision: 1}, governed: true,
+			role: true, effect: a.OperationalWrite, want: a.ErrEntitlementRequired, wantCalls: 1},
+		{name: "permitted reads do not depend on billing", governed: true, failure: errors.New("synthetic unavailable"),
+			role: true, effect: a.Read},
+		{name: "unavailable plan facts block a write", pilot: cap.State{Enabled: true, Revision: 1}, role: true,
+			failure: errors.New("synthetic unavailable"), effect: a.OperationalWrite, want: a.ErrUnavailable, wantCalls: 1},
+		{name: "payment never creates a role", governed: true, allowed: true, effect: a.OperationalWrite},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := setup(t)
+			f.policy.Effect = tc.effect
+			if !tc.role {
+				f.source.value.Assignments = nil
+			}
+			catalog, err := cap.NewCatalog([]string{"identity"})
+			if err != nil {
+				t.Fatal(err)
+			}
+			calls := 0
+			f.service.Capabilities = adapters.PilotEntitlements{Enabled: true, Catalog: catalog, States: &states{state: tc.pilot},
+				Plans: planCapabilitySource(func(_ context.Context, org kernel.OrgScope, code string) (bool, bool, error) {
+					calls++
+					if org != f.scope || code != f.policy.Capability {
+						t.Fatal("wrong scope for plan evaluation")
+					}
+					return tc.governed, tc.allowed, tc.failure
+				})}
+			ctx, finish := a.BeginRequest(t.Context())
+			defer finish()
+			pending, err := f.service.Prepare(ctx, f.scope, a.Actor{AccountID: account, Channel: "android", ContributorID: member, DeviceKeyID: employee}, f.policy, f.resource)
+			if tc.role && err == nil {
+				_, err = f.service.Complete(ctx, pending, f.proof)
+			}
+			if tc.role && !errors.Is(err, tc.want) || !tc.role && err == nil {
+				t.Fatalf("gate result=%v want=%v role=%t", err, tc.want, tc.role)
+			}
+			if calls != tc.wantCalls {
+				t.Fatalf("billing source calls=%d want=%d", calls, tc.wantCalls)
+			}
+		})
+	}
+}

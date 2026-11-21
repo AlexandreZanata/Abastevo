@@ -276,6 +276,18 @@ func (q *Queries) AssetUsage(ctx context.Context, arg AssetUsageParams) ([]byte,
 	return usage, err
 }
 
+const countActiveVehicles = `-- name: CountActiveVehicles :one
+SELECT count(*) FROM org_assets
+WHERE org_id=CAST($1::text AS UUID) AND kind='VEHICLE' AND state='ACTIVE'
+`
+
+func (q *Queries) CountActiveVehicles(ctx context.Context, orgID string) (int64, error) {
+	row := q.db.QueryRow(ctx, countActiveVehicles, orgID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const deleteAsset = `-- name: DeleteAsset :execrows
 DELETE FROM org_assets WHERE org_id= CAST($1::text AS UUID) AND id= CAST($2::text AS UUID) AND revision= $3::bigint
 `

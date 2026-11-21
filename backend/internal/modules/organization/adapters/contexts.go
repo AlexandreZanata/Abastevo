@@ -23,11 +23,16 @@ type contextCapability interface {
 	StateTx(context.Context, pgx.Tx, kernel.OrgScope, string) (capability.State, error)
 }
 
+type contextPlans interface {
+	PlanCapabilityDBTX(context.Context, database.OrgDBTX, kernel.OrgScope, string) (bool, bool, error)
+}
+
 type AccountContextStore struct {
 	Pool         *pgxpool.Pool
 	Memberships  members.TransactionRepository
 	Roles        access.TransactionRepository
 	Capabilities contextCapability
+	Plans        contextPlans
 	Settings     app.SettingsIntakeRepository
 }
 
@@ -147,8 +152,21 @@ func (s *AccountContextStore) current(ctx context.Context, tx pgx.Tx, actor app.
 	if e != nil {
 		return empty, e
 	}
-	if e := enabled.CheckWrite(); e != nil {
-		return empty, e
+	governed := false
+	if s.Plans != nil {
+		var allowed bool
+		governed, allowed, e = s.Plans.PlanCapabilityDBTX(ctx, tx, scope, "organizations")
+		if e != nil {
+			return empty, e
+		}
+		if governed {
+			writable = writable && allowed && (enabled.Revision == 0 || enabled.Enabled)
+		}
+	}
+	if !governed {
+		if e := enabled.CheckWrite(); e != nil {
+			return empty, e
+		}
 	}
 	meta, e := queries.GetRoot(ctx, scope.OrgID().String())
 	if e != nil {
@@ -191,6 +209,12 @@ func (s *AccountContextStore) current(ctx context.Context, tx pgx.Tx, actor app.
 	result.Permissions, result.InvitationGrants, e = permissions.ContextHints(scope, member, candidates, now.Time, fresh && writable)
 	if e != nil {
 		return empty, e
+	}
+	if fresh {
+		facts := permissions.ResourceFacts{OrgID: scope.OrgID(), ID: scope.OrgID().String()}
+		if _, err := permissions.CoveringRules(scope, member, candidates, "data.key.manage", facts, now.Time); err == nil {
+			result.Permissions = append(result.Permissions, "data.key.manage")
+		}
 	}
 	return result, nil
 }

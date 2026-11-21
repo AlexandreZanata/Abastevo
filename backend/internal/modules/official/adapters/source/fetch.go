@@ -13,6 +13,8 @@ import (
 	"net/netip"
 	"os"
 	"time"
+
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/netpolicy"
 )
 
 // Spec-scale defaults (ANP_INGESTION import stages 1-3).
@@ -32,51 +34,10 @@ var (
 	ErrRedirectTarget = errors.New("source: redirect target rejected")
 )
 
-// deniedPrefixes is explicit instead of netip.IsPrivate so behavior never
-// shifts silently under a toolchain upgrade.
-var deniedPrefixes = []netip.Prefix{
-	netip.MustParsePrefix("0.0.0.0/8"),
-	netip.MustParsePrefix("10.0.0.0/8"),
-	netip.MustParsePrefix("100.64.0.0/10"),
-	netip.MustParsePrefix("127.0.0.0/8"),
-	netip.MustParsePrefix("169.254.0.0/16"),
-	netip.MustParsePrefix("172.16.0.0/12"),
-	netip.MustParsePrefix("192.0.0.0/24"),
-	netip.MustParsePrefix("192.0.2.0/24"),
-	netip.MustParsePrefix("192.168.0.0/16"),
-	netip.MustParsePrefix("198.18.0.0/15"),
-	netip.MustParsePrefix("198.51.100.0/24"),
-	netip.MustParsePrefix("203.0.113.0/24"),
-	netip.MustParsePrefix("224.0.0.0/4"),
-	netip.MustParsePrefix("240.0.0.0/4"),
-	netip.MustParsePrefix("::/128"),
-	netip.MustParsePrefix("::1/128"),
-	netip.MustParsePrefix("::ffff:0:0/96"),
-	netip.MustParsePrefix("64:ff9b::/96"),
-	netip.MustParsePrefix("100::/64"),
-	netip.MustParsePrefix("2001::/23"),
-	netip.MustParsePrefix("2001:db8::/32"),
-	netip.MustParsePrefix("fc00::/7"),
-	netip.MustParsePrefix("fe80::/10"),
-	netip.MustParsePrefix("ff00::/8"),
-}
-
 // IPPolicy decides whether a resolved address may be dialed.
 type IPPolicy func(netip.Addr) bool
 
-// PublicUnicastOnly refuses everything that is not a routable public
-// unicast address.
-func PublicUnicastOnly(addr netip.Addr) bool {
-	if !addr.IsValid() {
-		return false
-	}
-	for _, p := range deniedPrefixes {
-		if p.Contains(addr) {
-			return false
-		}
-	}
-	return true
-}
+func PublicUnicastOnly(addr netip.Addr) bool { return netpolicy.PublicUnicastOnly(addr) }
 
 // Fetcher downloads allowlisted URLs with bounded resources. The zero value
 // is invalid; use NewFetcher. InsecureTLS disables certificate verification

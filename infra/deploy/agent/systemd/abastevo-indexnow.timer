@@ -1,0 +1,11 @@
+[Unit]
+Description=Check Abastevo sitemaps for IndexNow changes
+
+[Timer]
+OnBootSec=10min
+OnUnitActiveSec=30min
+RandomizedDelaySec=60s
+Unit=abastevo-indexnow.service
+
+[Install]
+WantedBy=timers.target

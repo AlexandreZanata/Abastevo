@@ -1,9 +1,15 @@
 User-agent: *
 Allow: /
+Disallow: /admin/
+Disallow: /empresas/
+Disallow: /dados/busca/
 
 # Search crawlers stay allowed (Google, Bing, OAI-SearchBot for ChatGPT answers).
 User-agent: OAI-SearchBot
 Allow: /
+Disallow: /admin/
+Disallow: /empresas/
+Disallow: /dados/busca/
 
 # Training crawlers are not granted: project policy permits indexing and
 # answer citations, not foundation-model training. Researched 2026-10-11
@@ -18,8 +24,15 @@ Disallow: /
 # may ignore robots.txt; listed for transparency, not control.
 User-agent: ChatGPT-User
 Allow: /
+Disallow: /admin/
+Disallow: /empresas/
+Disallow: /dados/busca/
 
 User-agent: Perplexity-User
 Allow: /
+Disallow: /admin/
+Disallow: /empresas/
+Disallow: /dados/busca/
 
 Sitemap: {{CANONICAL_ORIGIN}}/sitemap.xml
+Sitemap: {{CANONICAL_ORIGIN}}/sitemap-portal.xml

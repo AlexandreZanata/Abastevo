@@ -504,7 +504,7 @@ func TestAuditorReadWriteMatrixActualCompanyHTTP(t *testing.T) {
 	if !slices.Equal(oraclePositive, auditorPositiveRoutes) {
 		t.Fatal("independent PSV and literal auditor route sets disagree", oraclePositive)
 	}
-	if len(routes) != 205 || positive != 37 || denied != 168 {
+	if len(routes) != 225 || positive != 37 || denied != 188 {
 		t.Fatal("auditor route coverage drift", len(routes), positive, denied)
 	}
 

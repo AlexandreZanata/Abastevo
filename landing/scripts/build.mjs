@@ -4,6 +4,7 @@ import crypto from 'node:crypto';
 import zlib from 'node:zlib';
 import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { readIndexNowKey } from './indexnow.mjs';
 import { loadSite, renderSitemap, renderLlmsLinks, renderGuidesFeed } from './content/site.mjs';
 import {
   renderGuide,
@@ -132,6 +133,7 @@ export function build(options = {}) {
 
   const outDir = options.outDir || path.join(root, 'dist');
   const staticDir = path.join(root, 'static');
+  const indexNowKey = readIndexNowKey(staticDir);
 
   // Validate the content manifest and Markdown sources before touching outDir.
   const site = loadSite(root, {
@@ -287,6 +289,8 @@ export function build(options = {}) {
         fs.writeFileSync(path.join(outDir, file), text, 'utf8');
       }
     }
+    fs.writeFileSync(path.join(outDir, indexNowKey.name), indexNowKey.content);
+
     // The sitemap is generated from the content manifest: indexable pages only,
     // each with the date its content last changed (never the build time).
     fs.writeFileSync(path.join(outDir, 'sitemap.xml'), renderSitemap(site, origin), 'utf8');

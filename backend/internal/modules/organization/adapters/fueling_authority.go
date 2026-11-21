@@ -108,6 +108,20 @@ func (f *FuelingAuthority) CheckFuelingTx(ctx context.Context, db syncapp.DBTX, 
 // ClassifyFuelingTx decides a new fueling from retained role and assignment
 // history with the unchanged EDR-118 continuity (B-BR-EMP-266).
 func (f *FuelingAuthority) ClassifyFuelingTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, source syncapp.Source, asset string, selfResponsible bool, declared time.Time) (fuelapp.Disposition, error) {
+	return f.classifyFueling(ctx, db, scope, source, asset, selfResponsible, declared, true)
+}
+
+// ClassifyFuelingForPlanHoldTx checks the recorded source without requiring
+// today's operational capability. The state intake owns the prior-plan proof.
+func (f *FuelingAuthority) ClassifyFuelingForPlanHoldTx(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, source syncapp.Source, asset string,
+	selfResponsible bool, declared time.Time,
+) (fuelapp.Disposition, error) {
+	return f.classifyFueling(ctx, db, scope, source, asset, selfResponsible, declared, false)
+}
+
+func (f *FuelingAuthority) classifyFueling(ctx context.Context, db syncapp.DBTX, scope kernel.OrgScope, source syncapp.Source, asset string,
+	selfResponsible bool, declared time.Time, operational bool,
+) (fuelapp.Disposition, error) {
 	if !f.ready() || meterMissing(db) {
 		return "", fleet.ErrUnavailable
 	}
@@ -126,7 +140,7 @@ func (f *FuelingAuthority) ClassifyFuelingTx(ctx context.Context, db syncapp.DBT
 		return "", fleet.ErrUnavailable
 	}
 	g := (*MeterAuthority)(f)
-	if _, err := g.currentMeterDevice(ctx, db, scope, source, member, true); err != nil {
+	if _, err := g.currentMeterDevice(ctx, db, scope, source, member, operational); err != nil {
 		return "", err
 	}
 	if err := meterTarget(ctx, db, scope, asset); err != nil {
@@ -148,7 +162,7 @@ func (f *FuelingAuthority) ClassifyFuelingTx(ctx context.Context, db syncapp.DBT
 			assigned = append(assigned, meterAssignedPeriod{from: span.From, to: span.To, disposalEnded: span.DisposalEnded})
 		}
 	}
-	now, err := g.currentMeterDevice(ctx, db, scope, source, member, true)
+	now, err := g.currentMeterDevice(ctx, db, scope, source, member, operational)
 	if err != nil {
 		return "", err
 	}

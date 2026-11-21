@@ -2,6 +2,13 @@
 <!-- EMP-DOC-004 SCR-DOC-01; generated from one table by f4-logs/doc004-scripts/gen_receipt_strings.py -->
 <resources>
     <string name="enterprise_receipts_synthetic_notice">Fase de teste: use apenas imagens sintéticas, nunca um comprovante real.</string>
+    <string name="enterprise_receipts_read_money">Ler valores neste aparelho</string>
+    <string name="enterprise_receipts_reading_money">Lendo os valores do comprovante…</string>
+    <string name="enterprise_receipts_enter_money">Nenhum valor identificado. Preencha manualmente.</string>
+    <string name="enterprise_receipts_money_confidence">Confiança da leitura: %1$d%%</string>
+    <string name="enterprise_receipts_money_unscored">Confiança da leitura indisponível</string>
+    <string name="enterprise_receipts_use_paid">Usar R$ %1$s como valor pago</string>
+    <string name="enterprise_receipts_use_discount">Usar R$ %1$s como desconto</string>
     <string name="enterprise_receipts_camera">Fotografar</string>
     <string name="enterprise_receipts_import">Importar foto</string>
     <string name="enterprise_receipts_reading">Lendo a foto…</string>

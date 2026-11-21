@@ -126,7 +126,8 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 	}
 	head := "Preços de combustíveis no Brasil por estado e cidade | abastevo"
 	if g.surveyDate != "" {
-		head = "Preços de combustíveis no Brasil por estado e cidade – ANP " + g.surveyDate
+		head = fitTitle("Preços de combustíveis no Brasil por estado e cidade – ANP "+g.surveyDate,
+			"Preços de combustíveis no Brasil por estado – ANP "+g.surveyDate)
 	}
 	national := g.summaryRows(summaries, analytics.LevelNational, "BR", false)
 	parts := []string{"Preços de combustíveis na pesquisa ANP " + g.periodPhrase() + ": resumo nacional, por combustível, estado e cidade."}
@@ -141,6 +142,9 @@ func (g *generator) generatePrecos(summaries []analytics.Summary, rankings []ana
 		}),
 		National: national, Rankings: views, States: stateLinks(summaries, states), FuelHubs: g.orderedFuelHubs(),
 		SearchRelease: g.searchRelease, SearchFuels: g.searchFuels,
+	}
+	if g.hasParityPage() {
+		data.ParityHref = parityRoute
 	}
 	codes := make([]string, 0, len(national))
 	for _, row := range national {
@@ -185,6 +189,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 	}
 	for _, uf := range sortedKeys(all) {
 		stateSummaries := g.summaryRows(summaries, analytics.LevelState, uf, false)
+		linkFuelRows(stateSummaries, func(code string) string { return g.fuelStateHref(code, uf) })
 		views, err := rankingViews(rankings, analytics.LevelState, uf, stations, true)
 		if err != nil {
 			return err
@@ -218,7 +223,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 			}
 			description = composeDescription(parts...)
 		} else {
-			head = "Postos de combustíveis em " + ufName(uf) + " – sem pesquisa ANP recente | abastevo"
+			head = noDataTitle(ufName(uf))
 			description = composeDescription(ufName(uf)+" não tem preço na pesquisa ANP "+g.periodPhrase()+".", "Veja as cidades com postos cadastrados.")
 		}
 		base := g.newBase(pageSpec{
@@ -243,6 +248,8 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 			g.priceGuides(" em "+ufName(uf), codes),
 		}
 		data := statePage{pageBase: base, UF: uf, Name: ufName(uf), Summaries: stateSummaries, Rankings: views, Municipalities: links, NoDataCities: noData}
+		data.Comparison = g.comparison(summaries, analytics.LevelState, uf, "")
+		data.Parity = g.parityLine(analytics.LevelState, uf)
 		items := make([]listItem, 0, len(links))
 		for _, link := range links {
 			items = append(items, listItem{Name: "Preços em " + placeLabel(link.Name, uf), Href: link.Href})
@@ -274,16 +281,17 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 		rows := []summaryRow{}
 		if city.HasData {
 			rows = g.summaryRows(summaries, analytics.LevelMunicipality, code, true)
+			linkFuelRows(rows, func(fuel string) string { return g.fuelCityHref(fuel, code) })
 		}
 		fuels := make([]string, 0, len(rows))
 		for _, row := range rows {
 			fuels = append(fuels, row.Code)
 		}
-		head := cityTitle(name, uf, fuels, g.surveyDate)
+		head := cityTitle(name, uf, g.surveyDate)
 		parts := []string{"Pesquisa ANP " + g.periodPhrase() + " em " + placeLabel(name, uf) + "."}
 		switch {
 		case !city.HasData:
-			head = "Postos de combustíveis em " + placeLabel(name, uf) + " – sem pesquisa ANP recente | abastevo"
+			head = noDataTitle(placeLabel(name, uf))
 			parts = []string{placeLabel(name, uf) + " não tem preço na pesquisa ANP " + g.periodPhrase() + ".",
 				"Veja os postos cadastrados, cidades próximas com preço e outras cidades de " + ufName(uf) + "."}
 		case insufficient:
@@ -310,6 +318,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 		}
 		stationList, total := stationRows(city, g.observed, limit)
 		base.Modules = append(g.cityModules(city),
+			g.fuelStateModule(uf, fuels),
 			g.fuelModule("Preço por combustível no Brasil", fuels),
 			g.forumRegionModule(uf, code),
 			g.priceGuides(" em "+name, fuels))
@@ -329,6 +338,9 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 				data.Rows = observationRows(items, 0, false)
 			} else {
 				data.Rankings = observationRankings(items)
+				data.Comparison = g.comparison(summaries, analytics.LevelMunicipality, code, "")
+				data.FAQ = g.cityFAQ(placeLabel(name, uf), rows)
+				data.Parity = g.parityLine(analytics.LevelMunicipality, code)
 			}
 		}
 		listed := make([]listItem, 0, len(stationList))

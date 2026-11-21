@@ -40,7 +40,7 @@ func readSandboxConfig(getenv func(string) string) (sandboxStripeConfig, sandbox
 	// pattern stays split so the guard itself never carries a live-key
 	// literal the secret scanner could mistake for a credential.
 	for _, value := range []string{stripe.secret, stripe.price, stripe.merchant, stripe.portal, stripe.subscription, asaas.key, asaas.merchant} {
-		if strings.Contains(value, "_live_") {
+		if strings.Contains(value, "_live_") || strings.HasPrefix(value, "$aact_"+"prod_") {
 			return sandboxStripeConfig{}, sandboxAsaasConfig{}, errSandboxLiveRefused
 		}
 	}
@@ -57,6 +57,10 @@ func (c sandboxStripeConfig) testKey() bool {
 
 func (c sandboxAsaasConfig) journeysReady() bool {
 	return c.key != "" && c.merchant != ""
+}
+
+func (c sandboxAsaasConfig) testKey() bool {
+	return strings.HasPrefix(c.key, "$aact_"+"hmlg_")
 }
 
 // sandboxOperationKey binds one idempotency key to one logical operation:

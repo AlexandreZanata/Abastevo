@@ -147,6 +147,13 @@ Price reference:
 
 **UC-FUEL-11 — Store the price reference.** Actor: system, when a fueling is accepted. Main flow: for each price source read the reference for the product and place → store value and basis, or "unavailable" with the reason. Result: a fixed snapshot that [intelligence](intelligence.md) compares later.
 
+The company review endpoints use the stored fueling allocation and
+`fuel.fueling.review` for their target. A fresh reviewer opens the submitted
+record and uses its current review sequence to decide it. Approval retains
+one note per recorded warning and requires that duplicate suspicion be
+resolved. Rejection records whether fuel entered the tank. The immutable
+decision supplies the approved-match basis for a fuel card statement.
+
 ## 6. States and transitions
 
 Fueling, review state (BR-REV states plus `VOIDED`; names from [08-state-model](../state-model.md) §3). Sync state is a separate field (BR-REV-001).

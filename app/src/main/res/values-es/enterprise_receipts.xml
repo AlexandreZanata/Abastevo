@@ -50,4 +50,11 @@
     <string name="enterprise_receipts_title_reading">Foto de la lectura</string>
     <string name="enterprise_receipts_saved">Foto guardada en el dispositivo.</string>
     <string name="enterprise_receipts_unavailable">Ahora no se pueden leer las fotos de esta empresa. Las fotos guardadas se conservan.</string>
+    <string name="enterprise_receipts_read_money">Leer importes en este dispositivo</string>
+    <string name="enterprise_receipts_reading_money">Leyendo los importes del comprobante…</string>
+    <string name="enterprise_receipts_enter_money">No se identificó ningún importe. Introdúcelo manualmente.</string>
+    <string name="enterprise_receipts_money_confidence">Confianza del reconocimiento de texto: %1$d%%</string>
+    <string name="enterprise_receipts_money_unscored">Confianza del reconocimiento de texto no disponible</string>
+    <string name="enterprise_receipts_use_paid">Usar R$ %1$s como importe pagado</string>
+    <string name="enterprise_receipts_use_discount">Usar R$ %1$s como descuento</string>
 </resources>

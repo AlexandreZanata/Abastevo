@@ -100,18 +100,43 @@ func (s *AssetStore) TransitionAsset(ctx context.Context, scope kernel.OrgScope,
 	if err := validCall(scope, actor, member); err != nil {
 		return app.AssetResult{}, false, err
 	}
+	if _, err := command.Snapshot(); err != nil {
+		return app.AssetResult{}, false, err
+	}
+	if s == nil || s.Pool == nil || s.Authority == nil || s.Audit == nil {
+		return app.AssetResult{}, false, app.ErrUnavailable
+	}
+	var result app.AssetResult
+	var replayed bool
+	err := database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
+		var err error
+		result, replayed, err = s.TransitionAssetTx(ctx, tx, scope, actor, member, command)
+		return err
+	})
+	if err != nil {
+		return app.AssetResult{}, false, storeError(ctx, err)
+	}
+	return result, replayed, nil
+}
+
+// TransitionAssetTx applies the same lifecycle command within an existing scoped
+// transaction. It checks the fleet authority and retains the fleet root lock.
+func (s *AssetStore) TransitionAssetTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, actor app.FleetActor, member string, command app.AssetLifecycle) (app.AssetResult, bool, error) {
+	if err := validCall(scope, actor, member); err != nil {
+		return app.AssetResult{}, false, err
+	}
 	v, err := command.Snapshot()
 	if err != nil {
 		return app.AssetResult{}, false, err
 	}
-	if s == nil || s.Pool == nil || s.Authority == nil || s.Audit == nil {
+	if s == nil || s.Authority == nil || s.Audit == nil || database.ValidateOrgTx(ctx, tx, scope) != nil {
 		return app.AssetResult{}, false, app.ErrUnavailable
 	}
 	org := scope.OrgID().String()
 	digest := command.Digest(scope)
 	var result app.AssetResult
 	replayed := false
-	err = database.WithOrgTx(ctx, s.Pool, scope, func(tx pgx.Tx) error {
+	err = func() error {
 		if err := s.authorize(ctx, tx, scope, actor, member, v.AssetID, app.FleetManage); err != nil {
 			return err
 		}
@@ -173,6 +198,9 @@ func (s *AssetStore) TransitionAsset(ctx context.Context, scope kernel.OrgScope,
 				if err := checkActualActivation(ctx, tx, scope, current.Ref, current.Profile, current.UnitID); err != nil {
 					return err
 				}
+				if err := s.checkVehicleSlot(ctx, tx, scope, current, next); err != nil {
+					return err
+				}
 			}
 			if fleet.ChecksOpenWork(v.Command) {
 				if err := s.openWork(ctx, tx, scope, v.AssetID); err != nil {
@@ -213,6 +241,9 @@ func (s *AssetStore) TransitionAsset(ctx context.Context, scope kernel.OrgScope,
 				return err
 			}
 			result = app.AssetResult{AssetID: v.AssetID, State: to, Revision: next.Revision}
+			if s.LifecycleJobs != nil && (v.Command == fleet.Deactivate || v.Command == fleet.Reactivate) {
+				return s.LifecycleJobs.QueueFleetLifecycle(ctx, tx, scope, v.OperationID)
+			}
 			return nil
 		})
 		if err != nil {
@@ -222,7 +253,7 @@ func (s *AssetStore) TransitionAsset(ctx context.Context, scope kernel.OrgScope,
 			return app.ErrUnavailable
 		}
 		return s.authorize(ctx, tx, scope, actor, member, v.AssetID, app.FleetManage)
-	})
+	}()
 	if err != nil {
 		return app.AssetResult{}, false, storeError(ctx, err)
 	}

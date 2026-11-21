@@ -11,6 +11,49 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const accountingConnectorFile = `-- name: AccountingConnectorFile :one
+SELECT requester_account_id::text AS requester_account_id,requester_membership_id::text AS requester_membership_id,
+       kind,media_type,COALESCE(object_sha256,'')::text AS sha256,
+       COALESCE(object_bytes,0)::bigint AS bytes,COALESCE(row_count,0)::bigint AS rows
+FROM org_export_jobs
+WHERE org_id=$1::text::uuid AND id=$2::text::uuid
+  AND state='READY' AND expires_at>clock_timestamp() AND media_type='text/csv'
+  AND kind IN ('fin.accounting_competence.csv','fin.accounting_cash.csv')
+  AND parameters::jsonb->'layout_version'='1'::jsonb
+  AND jsonb_typeof(parameters::jsonb->'period_start')='string'
+  AND jsonb_typeof(parameters::jsonb->'period_end')='string'
+`
+
+type AccountingConnectorFileParams struct {
+	OrgID string `json:"org_id"`
+	ID    string `json:"id"`
+}
+
+type AccountingConnectorFileRow struct {
+	RequesterAccountID    string `json:"requester_account_id"`
+	RequesterMembershipID string `json:"requester_membership_id"`
+	Kind                  string `json:"kind"`
+	MediaType             string `json:"media_type"`
+	Sha256                string `json:"sha256"`
+	Bytes                 int64  `json:"bytes"`
+	Rows                  int64  `json:"rows"`
+}
+
+func (q *Queries) AccountingConnectorFile(ctx context.Context, arg AccountingConnectorFileParams) (AccountingConnectorFileRow, error) {
+	row := q.db.QueryRow(ctx, accountingConnectorFile, arg.OrgID, arg.ID)
+	var i AccountingConnectorFileRow
+	err := row.Scan(
+		&i.RequesterAccountID,
+		&i.RequesterMembershipID,
+		&i.Kind,
+		&i.MediaType,
+		&i.Sha256,
+		&i.Bytes,
+		&i.Rows,
+	)
+	return i, err
+}
+
 const claimExport = `-- name: ClaimExport :one
 UPDATE org_export_jobs SET state='RUNNING', attempts=attempts+1, lease_token= CAST($1::text AS UUID),
  lease_expires_at= clock_timestamp() + make_interval(secs => $2::int)

@@ -14,13 +14,17 @@ type CapabilityStates interface {
 	State(context.Context, kernel.OrgScope, string) (capability.State, error)
 }
 
-// PilotEntitlements consumes current operator-provisioned flags. It neither
-// provisions them nor reads account tiers, payments, client state or roles.
-// Composition supplies the same default-off activation as the private gateway.
+type SubscriptionCapabilities interface {
+	PlanCapability(context.Context, kernel.OrgScope, string) (governed, allowed bool, err error)
+}
+
+// PilotEntitlements consumes operator-provisioned flags and, when composed,
+// current plan capabilities. The organization gateway handles role authority.
 type PilotEntitlements struct {
 	Enabled bool
 	Catalog capability.Catalog
 	States  CapabilityStates
+	Plans   SubscriptionCapabilities
 }
 
 var _ app.CapabilityGate = PilotEntitlements{}
@@ -54,6 +58,21 @@ func (p PilotEntitlements) Check(ctx context.Context, scope kernel.OrgScope, sub
 		// Current proof/roles and record policy are still mandatory independent gates.
 		return nil
 	default:
+		if p.Plans != nil {
+			governed, allowed, err := p.Plans.PlanCapability(ctx, scope, policy.Capability)
+			if err != nil {
+				if ctx.Err() != nil {
+					return ctx.Err()
+				}
+				return app.ErrUnavailable
+			}
+			if governed {
+				if state.Revision > 0 && !state.Enabled || !allowed && policy.Effect != app.RetainedExport {
+					return app.ErrEntitlementRequired
+				}
+				return nil
+			}
+		}
 		if !state.Enabled {
 			return app.ErrEntitlementRequired
 		}

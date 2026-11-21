@@ -1,7 +1,7 @@
 {
  "schema_version": 1,
  "roles_version": "org-roles-v1",
- "permissions_version": "org-permissions-v7",
+ "permissions_version": "org-permissions-v8",
  "permissions": [
   {
    "permission": "agree.agreement.manage",
@@ -152,17 +152,27 @@
   },
   {
    "permission": "data.key.manage",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Organization Data API key and usage routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/data/keys/list",
+   "routes": [
+    "POST /v1/orgs/{org_id}/data/keys/issue",
+    "POST /v1/orgs/{org_id}/data/keys/list",
+    "POST /v1/orgs/{org_id}/data/keys/{key_id}/revoke",
+    "POST /v1/orgs/{org_id}/data/keys/{key_id}/rotate",
+    "POST /v1/orgs/{org_id}/data/watchlists/create",
+    "POST /v1/orgs/{org_id}/data/watchlists/list",
+    "POST /v1/orgs/{org_id}/data/watchlists/{watch_id}/disable"
+   ],
+   "reason": ""
   },
   {
    "permission": "data.usage.read",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Organization Data API key and usage routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/data/usage/read",
+   "routes": [
+    "POST /v1/orgs/{org_id}/data/usage/read"
+   ],
+   "reason": ""
   },
   {
    "permission": "doc.document.allocate",
@@ -387,10 +397,13 @@
   },
   {
    "permission": "fuel.fueling.review",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Fueling operation and review routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/fuelings/{fueling_id}/review/read",
+   "routes": [
+    "POST /v1/orgs/{org_id}/fuelings/{fueling_id}/review/decide",
+    "POST /v1/orgs/{org_id}/fuelings/{fueling_id}/review/read"
+   ],
+   "reason": ""
   },
   {
    "permission": "gps.geofence.manage",
@@ -490,17 +503,25 @@
   },
   {
    "permission": "import.batch.run",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Organization import-batch routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/preview",
+   "routes": [
+    "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/confirm",
+    "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/preview"
+   ],
+   "reason": ""
   },
   {
    "permission": "integ.connection.manage",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Organization integration-management routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/integrations/connections/list",
+   "routes": [
+    "POST /v1/orgs/{org_id}/integrations/connections/configure",
+    "POST /v1/orgs/{org_id}/integrations/connections/list",
+    "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/activate",
+    "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/disable"
+   ],
+   "reason": ""
   },
   {
    "permission": "kpi.dashboard.read",
@@ -611,10 +632,13 @@
   },
   {
    "permission": "org.lifecycle.manage",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "This organization group or archive/closure permission has no production member route; operator lifecycle routes use their separate boundary."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/lifecycle/open-items",
+   "routes": [
+    "POST /v1/orgs/{org_id}/lifecycle/change",
+    "POST /v1/orgs/{org_id}/lifecycle/open-items"
+   ],
+   "reason": ""
   },
   {
    "permission": "org.ownership.respond",
@@ -779,17 +803,21 @@
   },
   {
    "permission": "subs.plan.manage",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Subscription plan and billing routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/subscriptions/vehicles/select",
+   "routes": [
+    "POST /v1/orgs/{org_id}/subscriptions/vehicles/select"
+   ],
+   "reason": ""
   },
   {
    "permission": "subs.plan.read",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Subscription plan and billing routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/subscriptions/plan/read",
+   "routes": [
+    "POST /v1/orgs/{org_id}/subscriptions/plan/read"
+   ],
+   "reason": ""
   },
   {
    "permission": "trip.mission.manage",

@@ -77,3 +77,7 @@ SELECT org_unit_admit(CAST(sqlc.arg(org_id)::text AS UUID), CAST(sqlc.arg(unit_i
 
 -- name: AssetRootShare :one
 SELECT state FROM organizations WHERE org_id=CAST(sqlc.arg(org_id)::text AS uuid) AND has_snapshot FOR SHARE;
+
+-- name: CountActiveVehicles :one
+SELECT count(*) FROM org_assets
+WHERE org_id=CAST(sqlc.arg('org_id')::text AS UUID) AND kind='VEHICLE' AND state='ACTIVE';

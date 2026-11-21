@@ -89,7 +89,7 @@ const (
 func Policy(action Action) access.Policy {
 	switch action {
 	case ActionRequest:
-		return access.Policy{Permission: domain.Permission, Capability: "organizations", Effect: access.ConfigurationWrite, Fresh: true}
+		return access.Policy{Permission: domain.Permission, Capability: "organizations", Effect: access.RetainedExport, Fresh: true}
 	case ActionRead:
 		return access.Policy{Permission: domain.Permission, Capability: "organizations", Effect: access.Read, Fresh: true}
 	}
@@ -152,6 +152,13 @@ type Format interface {
 	Canonical([]byte) ([]byte, error)
 	// Produce writes only through the bounded sink and observes ctx.
 	Produce(context.Context, ProduceInput, *domain.Sink) error
+}
+
+// FormatAdmission protects formats whose inputs have additional current rights
+// beyond the export and read permissions. Those formats also recheck their
+// inputs inside Produce, in the transaction that reads the data.
+type FormatAdmission interface {
+	CheckInputsTx(context.Context, pgx.Tx, kernel.OrgScope, []byte) error
 }
 
 // Registry is the closed set of admitted formats.

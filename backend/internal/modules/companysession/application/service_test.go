@@ -28,14 +28,15 @@ func (s *store) Create(_ context.Context, row app.Row, _ app.Proof, _ string, _ 
 	s.row = row
 	return s.failure
 }
-func (s *store) Authenticate(ctx context.Context, lookup string, now time.Time, touch bool, verify func(app.Row) error) (app.Row, error) {
+func (s *store) Authenticate(ctx context.Context, lookup string, clock func() time.Time, touch bool, verify func(app.Row, time.Time) error) (app.Row, error) {
 	if s.failure != nil {
 		return app.Row{}, s.failure
 	}
 	if lookup != s.row.Lookup {
 		return app.Row{}, domain.ErrUnauthorized
 	}
-	if err := verify(s.row); err != nil {
+	now := clock()
+	if err := verify(s.row, now); err != nil {
 		return app.Row{}, err
 	}
 	if touch {

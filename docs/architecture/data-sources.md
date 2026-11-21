@@ -93,6 +93,11 @@ Rows 0–6 are metadata. **Row 7** is the column header. Data starts at row 8.
 - ~7,386 unique stations (CNPJ)
 - 7 product labels (slightly different naming vs summary file)
 
+### Android storage acceptance
+
+- Rule: a file-backed Room import of the full weekly summary and station samples must remain below 15 MiB after checkpoint and close. Existing imported rows must survive upgrades.
+- Use case: open a schema 37 database on the upgraded app, preserve its survey and price rows, and query stations by survey, state, municipality, and product with price ordering. The discovery index covers this lookup and its location prefix. It also supports cleanup by survey.
+
 ## Product name mapping
 
 Summary and station files use different labels. Normalize at import:

@@ -538,7 +538,7 @@ func (g *generator) generateForum() error {
 			return err
 		}
 	}
-	return nil
+	return g.writeForumFeed()
 }
 
 func (g *generator) generateForumHub() error {
@@ -561,6 +561,7 @@ func (g *generator) generateForumHub() error {
 		AppHref: g.forumLandingHref("/#aplicativo"),
 	}
 	data.Modules = []linkModule{g.hubModule("/forum/")}
+	data.FeedHref = g.forumFeedHref()
 	var err error
 	if data.pageBase, err = g.collectionBase(data.pageBase, forumCollection(data.Posts)); err != nil {
 		return err
@@ -586,6 +587,7 @@ func (g *generator) generateForumCategory(category *forumCategory) error {
 		Posts: forumListItems(category.Posts[:min(forumCategoryListCap, total)]), Truncated: total > forumCategoryListCap,
 	}
 	data.Modules = []linkModule{{Title: "Outras categorias do fórum", Links: g.forumCategoryLinks(category)}}
+	data.FeedHref = g.forumFeedHref()
 	var err error
 	if data.pageBase, err = g.collectionBase(data.pageBase, forumCollection(data.Posts)); err != nil {
 		return err
@@ -601,6 +603,7 @@ func (g *generator) generateForumPost(post *forumPost) error {
 		LastMod: post.LastMod,
 	})
 	base.OGType = "article"
+	base.FeedHref = g.forumFeedHref()
 	base.ArticlePublished = post.Published.Format(time.RFC3339)
 	base.ArticleModified = post.Updated.Format(time.RFC3339)
 	base.Modules = []linkModule{

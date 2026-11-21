@@ -27,10 +27,15 @@ func AuditDefinitions() []audit.Definition {
 	}
 }
 
+type subscriptionWrites interface {
+	PlanCapabilityDBTX(context.Context, database.OrgDBTX, kernel.OrgScope, string) (governed, allowed bool, err error)
+}
+
 type Store struct {
-	pool    *pgxpool.Pool
-	catalog domain.Catalog
-	audit   auditapp.Runner
+	PlanWrites subscriptionWrites
+	pool       *pgxpool.Pool
+	catalog    domain.Catalog
+	audit      auditapp.Runner
 }
 
 var _ application.Repository = (*Store)(nil)
@@ -78,6 +83,9 @@ func (store *Store) Set(ctx context.Context, scope kernel.OrgScope, actor domain
 	}
 	replay, err := store.audit.RecordChange(ctx, scope, event, func(ctx context.Context, tx pgx.Tx) error {
 		queries := qcap.New(tx)
+		if err := queries.LockEntitlementWrite(ctx, scope.OrgID().String()); err != nil {
+			return domain.ErrUnavailable
+		}
 		var rows int64
 		var err error
 		if change.ExpectedRevision == 0 {
@@ -157,18 +165,56 @@ func (store *Store) GuardWrite(ctx context.Context, tx pgx.Tx, scope kernel.OrgS
 }
 
 func (store *Store) GuardWriteDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, code string) error {
+	return store.guardWriteDBTX(ctx, tx, scope, code, false)
+}
+
+// GuardRetainedExport permits an authorized history export when the
+// organization is subscription-governed, even if its paid term has ended.
+func (store *Store) GuardRetainedExport(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, code string) error {
+	return store.guardWriteDBTX(ctx, tx, scope, code, true)
+}
+
+// LockEntitlementRead serializes a scoped read with subscription and switch
+// changes. The caller owns the transaction and takes this lock before the
+// organization root.
+func LockEntitlementRead(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope) error {
+	if err := qcap.New(tx).LockEntitlementRead(ctx, scope.OrgID().String()); err != nil {
+		return domain.ErrUnavailable
+	}
+	return nil
+}
+
+func (store *Store) guardWriteDBTX(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, code string, retainedExport bool) error {
 	if err := store.validate(scope, code); err != nil {
 		return err
 	}
 	if tx == nil {
 		return domain.ErrInvalid
 	}
-	row, err := qcap.New(tx).LockStateForWrite(ctx, qcap.LockStateForWriteParams{OrgID: scope.OrgID().String(), Capability: code})
-	if errors.Is(err, pgx.ErrNoRows) {
+	queries := qcap.New(tx)
+	if store.PlanWrites != nil {
+		if err := LockEntitlementRead(ctx, tx, scope); err != nil {
+			return err
+		}
+	}
+	row, err := queries.LockStateForWrite(ctx, qcap.LockStateForWriteParams{OrgID: scope.OrgID().String(), Capability: code})
+	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+		return domain.ErrUnavailable
+	}
+	if row.Revision > 0 && !row.Enabled {
 		return domain.ErrEntitlementRequired
 	}
-	if err != nil {
-		return domain.ErrUnavailable
+	if store.PlanWrites != nil {
+		governed, allowed, err := store.PlanWrites.PlanCapabilityDBTX(ctx, tx, scope, code)
+		if err != nil {
+			return domain.ErrUnavailable
+		}
+		if governed {
+			if !allowed && !retainedExport {
+				return domain.ErrEntitlementRequired
+			}
+			return nil
+		}
 	}
 	return (domain.State{Enabled: row.Enabled, Revision: row.Revision}).CheckWrite()
 }
@@ -182,7 +228,13 @@ func (store *Store) LockSnapshotDBTX(ctx context.Context, queries database.OrgDB
 	if err := database.ValidateOrgDBTX(ctx, queries, scope); err != nil {
 		return domain.State{}, domain.ErrUnavailable
 	}
-	row, err := qcap.New(queries).LockStateForWrite(ctx, qcap.LockStateForWriteParams{OrgID: scope.OrgID().String(), Capability: code})
+	locked := qcap.New(queries)
+	if store.PlanWrites != nil {
+		if err := LockEntitlementRead(ctx, queries, scope); err != nil {
+			return domain.State{}, err
+		}
+	}
+	row, err := locked.LockStateForWrite(ctx, qcap.LockStateForWriteParams{OrgID: scope.OrgID().String(), Capability: code})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return domain.State{}, nil
 	}

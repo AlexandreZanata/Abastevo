@@ -80,6 +80,9 @@ func (f f6ExportFormat) Canonical(raw []byte) ([]byte, error) {
 	if err := json.Unmarshal(canonical, &vals); err != nil {
 		return nil, domain.ErrInvalid
 	}
+	if basis := accountingBasis(f.spec.kind); basis != "" {
+		return canonicalAccounting(canonical, vals, basis)
+	}
 	for k, v := range vals {
 		switch k {
 		case "period_start", "period_end":
@@ -102,6 +105,50 @@ func (f f6ExportFormat) Canonical(raw []byte) ([]byte, error) {
 		default:
 			return nil, domain.ErrInvalid
 		}
+	}
+	return canonical, nil
+}
+
+func accountingBasis(kind string) string {
+	switch kind {
+	case AccountingCompetenceCSVKind:
+		return "COMPETENCE"
+	case AccountingCashCSVKind:
+		return "CASH"
+	default:
+		return ""
+	}
+}
+
+func canonicalAccounting(canonical []byte, vals map[string]any, basis string) ([]byte, error) {
+	for key, value := range vals {
+		switch key {
+		case "period_start", "period_end":
+			day, ok := value.(string)
+			parsed, err := time.Parse(time.DateOnly, day)
+			if !ok || err != nil || parsed.Year() < 1 || parsed.Format(time.DateOnly) != day {
+				return nil, domain.ErrInvalid
+			}
+		case "basis":
+			if value != basis {
+				return nil, domain.ErrInvalid
+			}
+		case "include_pending":
+			if value != false {
+				return nil, domain.ErrInvalid
+			}
+		case "layout_version":
+			if value != float64(1) {
+				return nil, domain.ErrInvalid
+			}
+		default:
+			return nil, domain.ErrInvalid
+		}
+	}
+	start, _ := vals["period_start"].(string)
+	end, _ := vals["period_end"].(string)
+	if start != "" && end != "" && start > end || vals["layout_version"] != nil && (start == "" || end == "") {
+		return nil, domain.ErrInvalid
 	}
 	return canonical, nil
 }
@@ -138,10 +185,8 @@ func (f f6ExportFormat) Produce(ctx context.Context, in exportapp.ProduceInput, 
 			return err
 		}
 		switch f.spec.kind {
-		case AccountingCompetenceCSVKind:
-			return produceAccountingCSV(ctx, tx, sink, org, "COMPETENCE", params)
-		case AccountingCashCSVKind:
-			return produceAccountingCSV(ctx, tx, sink, org, "CASH", params)
+		case AccountingCompetenceCSVKind, AccountingCashCSVKind:
+			return produceAccountingCSV(ctx, tx, sink, org, orgTZ, accountingBasis(f.spec.kind), in.AsOf, params)
 		case TripLogbookPDFKind:
 			return produceTripLogbookPDF(ctx, tx, sink, org, orgName, orgTZ, in.ExportID, in.AsOf)
 		case FuelingStatementPDFKind:
@@ -169,7 +214,7 @@ func csvLineBytes(cells []string) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func produceAccountingCSV(ctx context.Context, tx pgx.Tx, sink *domain.Sink, org, basis string, _ map[string]any) error {
+func produceAccountingCSV(ctx context.Context, tx pgx.Tx, sink *domain.Sink, org, zone, basis string, asOf time.Time, params map[string]any) error {
 	if _, err := sink.Write([]byte(domain.ByteOrderMark)); err != nil {
 		return err
 	}
@@ -180,31 +225,40 @@ func produceAccountingCSV(ctx context.Context, tx pgx.Tx, sink *domain.Sink, org
 	if _, err := sink.Write(hdr); err != nil {
 		return err
 	}
+	start, _ := params["period_start"].(string)
+	end, _ := params["period_end"].(string)
 	var query string
+	args := []any{org, start, end, asOf}
 	if basis == "COMPETENCE" {
 		query = `
 			SELECT id::text, origin_kind, category, COALESCE(asset_id::text,''), reporting_day::text, occurred_at, paid_centavos, company_centavos, review_state
 			FROM (
-			  SELECT id, origin_kind, category, asset_id, reporting_day, occurred_at, paid_centavos, company_centavos, review_state
-			  FROM org_expenses WHERE org_id=$1::uuid AND review_state='APPROVED'
+			  SELECT e.id, e.origin_kind, e.category, e.asset_id, e.reporting_day, e.occurred_at, e.paid_centavos, e.company_centavos, 'APPROVED' AS review_state
+			  FROM org_expenses e WHERE e.org_id=$1::uuid AND e.received_at<=$4
+			    AND COALESCE((SELECT r.state FROM org_fueling_review_entries r
+			                 WHERE (r.org_id,r.fueling_id,r.revision)=(e.org_id,e.fueling_id,e.source_revision) AND r.recorded_at<=$4
+			                 ORDER BY r.sequence DESC LIMIT 1),e.review_state)='APPROVED'
 			  UNION ALL
 			  SELECT id, origin_kind, category, asset_id, reporting_day, occurred_at, paid_centavos, company_centavos, review_state
-			  FROM org_operating_cost_entries WHERE org_id=$1::uuid AND operating_cost AND review_state='APPROVED'
+			  FROM org_operating_cost_entries WHERE org_id=$1::uuid AND operating_cost AND review_state='APPROVED' AND created_at<=$4
 			) u
+			WHERE occurred_at<=$4 AND (NULLIF($2,'')::date IS NULL OR reporting_day>=NULLIF($2,'')::date)
+			  AND (NULLIF($3,'')::date IS NULL OR reporting_day<=NULLIF($3,'')::date)
 			ORDER BY reporting_day ASC, occurred_at ASC, id ASC`
 	} else {
 		query = `
-			SELECT id::text, origin_kind, kind, ''::text, period_month||'-01', created_at, settled_centavos, settled_centavos, state
+			SELECT id::text, origin_kind, kind, ''::text, reporting_day::text, paid_at, settled_centavos, settled_centavos, state
 			FROM (
-			  SELECT id, 'PAYABLE_STATEMENT' AS origin_kind, kind, period_month, created_at, settled_centavos, state
-			  FROM org_payable_statements WHERE org_id=$1::uuid AND state='SETTLED'
-			  UNION ALL
-			  SELECT id, origin_kind, category AS kind, to_char(occurred_at AT TIME ZONE 'UTC','YYYY-MM') AS period_month, occurred_at AS created_at, paid_centavos AS settled_centavos, review_state AS state
-			  FROM org_expenses WHERE org_id=$1::uuid AND payer='COMPANY' AND review_state='APPROVED'
+			  SELECT id, 'PAYABLE_STATEMENT' AS origin_kind, kind, (created_at AT TIME ZONE $5::text)::date AS reporting_day,
+			         created_at AS paid_at, settled_centavos, state
+			  FROM org_payable_statements WHERE org_id=$1::uuid AND state='SETTLED' AND updated_at<=$4
 			) c
-			ORDER BY created_at ASC, id ASC`
+			WHERE paid_at<=$4 AND (NULLIF($2,'')::date IS NULL OR reporting_day>=NULLIF($2,'')::date)
+			  AND (NULLIF($3,'')::date IS NULL OR reporting_day<=NULLIF($3,'')::date)
+			ORDER BY paid_at ASC, id ASC`
+		args = append(args, zone)
 	}
-	rows, err := tx.Query(ctx, query, org)
+	rows, err := tx.Query(ctx, query, args...)
 	if err != nil {
 		return err
 	}

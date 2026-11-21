@@ -174,6 +174,7 @@ VALUES($1,$2,'RECEIPT','SYNTHETIC',$3,$4,repeat('ab',32),1024,'image/jpeg','UPLO
 	if _, err := migrate.Apply(t.Context(), f.AdminDSN, migrations.Files); err != nil {
 		t.Fatal("remaining embedded chain after the 230 rehearsal", err)
 	}
+	f.GrantFleetUsage(t)
 	// EMP-TRIP-011: the upgraded logbook and finish guards read the 000233
 	// lifecycle rows, granted once the chain reaches them.
 	tripGrants(t, x.legalFixtureState)

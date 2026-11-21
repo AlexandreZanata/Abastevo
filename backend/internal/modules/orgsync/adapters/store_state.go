@@ -146,7 +146,7 @@ func (s *Store) processState(ctx context.Context, tx pgx.Tx, source app.Source, 
 			return e
 		}
 		// The decision taken at the final receipt must not have changed.
-		again, e := s.config.AssessState(ctx, tx, source, descriptor, declared)
+		again, e := s.config.AssessState(ctx, tx, source, op, descriptor, declared)
 		if e != nil {
 			if errors.Is(e, app.ErrSourceDenied) {
 				return e
@@ -161,7 +161,8 @@ func (s *Store) processState(ctx context.Context, tx pgx.Tx, source app.Source, 
 			return app.ErrUnavailable
 		}
 		declaredAt, sub := lateInstant(declared)
-		params := q.InsertStateIntakeParams{OrgID: v.OrgID, OperationID: op.ID(), Condition: decision.Condition, Disposition: decision.Disposition, Capability: decision.Capability, CapabilityRevision: decision.CapabilityRevision, DeclaredAt: declaredAt, DeclaredSubmicro: sub, ReceivedAt: pgtype.Timestamptz{Time: at, Valid: true}, Result: outcome.Result, Code: outcome.Code}
+		params := q.InsertStateIntakeParams{OrgID: v.OrgID, OperationID: op.ID(), Condition: decision.Condition, Disposition: decision.Disposition, Capability: decision.Capability, CapabilityRevision: decision.CapabilityRevision, SubscriptionID: decision.SubscriptionID,
+			SubscriptionRevision: decision.SubscriptionRevision, VehiclePlanSelectionID: decision.VehiclePlanSelectionID, VehiclePlanAssetID: decision.VehiclePlanAssetID, DeclaredAt: declaredAt, DeclaredSubmicro: sub, ReceivedAt: pgtype.Timestamptz{Time: at, Valid: true}, Result: outcome.Result, Code: outcome.Code}
 		if !decision.Instant.IsZero() {
 			params.PlanChangedAt = pgtype.Timestamptz{Time: decision.Instant, Valid: true}
 		}

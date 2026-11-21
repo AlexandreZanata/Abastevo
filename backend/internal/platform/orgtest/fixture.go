@@ -155,6 +155,16 @@ func NewWithMigrations(t *testing.T, files fs.FS) *Fixture {
 		}
 	}
 
+	var closure bool
+	if err := f.Admin.QueryRow(ctx, `SELECT to_regclass('public.org_closure_requests') IS NOT NULL`).Scan(&closure); err != nil {
+		t.Fatal(err)
+	}
+	if closure {
+		if _, err := f.Admin.Exec(ctx, "GRANT SELECT ON org_closure_requests TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
 	f.GrantFleetUsage(t)
 	f.GrantMeterUsage(t)
 	f.GrantAssignmentReductions(t)
@@ -468,6 +478,14 @@ func (f *Fixture) GrantFleetUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	if err := f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_held_fuelings_asset_lookup') IS NOT NULL`).Scan(&installed); err != nil {
+		t.Fatal(err)
+	}
+	if installed {
+		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT(org_id,asset_id) ON org_held_fuelings TO "+pgx.Identifier{f.RuntimeRole}.Sanitize()); err != nil {
+			t.Fatal(err)
+		}
+	}
 }
 
 // GrantAssignmentReductions provisions only the columns the installed
@@ -600,6 +618,16 @@ func (f *Fixture) GrantStateIntake(t *testing.T) {
 		role := pgx.Identifier{f.RuntimeRole}.Sanitize()
 		if _, err := f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_sync_state_intakes TO "+role+";GRANT SELECT ON org_suspension_periods TO "+role); err != nil {
 			t.Fatal(err)
+		}
+		var vehicleProof bool
+		if err := f.Admin.QueryRow(t.Context(), `SELECT to_regprocedure('public.org_sync_vehicle_plan_archive_at(uuid,uuid,timestamptz,timestamptz)') IS NOT NULL`).Scan(&vehicleProof); err != nil {
+			t.Fatal(err)
+		}
+		if vehicleProof {
+			if _, err := f.Admin.Exec(t.Context(), "GRANT EXECUTE ON FUNCTION org_sync_vehicle_plan_archive_at(uuid,uuid,timestamptz,timestamptz) TO "+role+
+				"; GRANT SELECT ON org_billing_vehicle_plan_archives,org_billing_vehicle_plan_selections,org_asset_lifecycle_events TO "+role); err != nil {
+				t.Fatal(err)
+			}
 		}
 	}
 }

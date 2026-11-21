@@ -40,14 +40,22 @@ func absent(value any) bool {
 // NewIntakeHandler composes the fueling.submit owner from real ports only;
 // the expense projection is mandatory (EMP-EXP-002, EDR-287).
 func NewIntakeHandler(authority app.Authority, readings app.Readings, store app.Store, costs app.CostProjection) (syncapp.Handler, error) {
+	handler, err := newIntakeHandler(authority, readings, store, costs)
+	if err != nil {
+		return nil, err
+	}
+	return handler, nil
+}
+
+func newIntakeHandler(authority app.Authority, readings app.Readings, store app.Store, costs app.CostProjection) (*intakeHandler, error) {
 	if absent(authority) || absent(readings) || absent(store) || absent(costs) {
 		return nil, syncapp.ErrUnavailable
 	}
 	return &intakeHandler{authority: authority, readings: readings, store: store, costs: costs}, nil
 }
 
-// Descriptor declares no ACCEPTED_FOR_REVIEW: held fuelings stay retained
-// (EDR-175/177) and never produce a review receipt here.
+// Descriptor describes regular fueling admission. The plan-aware owner adds
+// the separate restricted intake and its atomic review proof.
 func (*intakeHandler) Descriptor() syncapp.Descriptor {
 	return syncapp.Descriptor{Type: app.OperationType, Schema: 1, WritePolicy: app.Policy(app.RecordAction), ReadPolicy: app.Policy(app.ReadAction), TerminalResults: []string{protocol.Accepted, protocol.Rejected}}
 }

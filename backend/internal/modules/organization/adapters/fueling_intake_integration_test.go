@@ -52,6 +52,15 @@ func fuelingGrants(t *testing.T, fx legalFixtureState) {
 	if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT,INSERT ON org_fuelings,org_fueling_warnings,org_fueling_review_entries TO "+role+";GRANT SELECT ON org_employee_identities,org_asset_unit_periods,org_asset_cost_centre_periods,org_asset_tank_products,org_meters,org_meter_readings TO "+role); err != nil {
 		t.Fatal(err)
 	}
+	var heldSchema bool
+	if err := fx.f.Admin.QueryRow(t.Context(), `SELECT to_regclass('public.org_held_fuelings') IS NOT NULL`).Scan(&heldSchema); err != nil {
+		t.Fatal(err)
+	}
+	if heldSchema {
+		if _, err := fx.f.Admin.Exec(t.Context(), "GRANT SELECT ON org_held_fuelings TO "+role); err != nil {
+			t.Fatal(err)
+		}
+	}
 	expenseGrants(t, fx)
 }
 
@@ -610,11 +619,18 @@ func TestFuelingSchemaIsForcedRLSAndInsertOnly(t *testing.T) {
 	}); err != nil || visible != 0 {
 		t.Fatal("fueling visible to another organization", visible, err)
 	}
-	role := pgx.Identifier{x.f.RuntimeRole}.Sanitize()
+	var runtimeRole string
+	if err := x.f.Runtime.QueryRow(t.Context(), "SELECT current_user").Scan(&runtimeRole); err != nil {
+		t.Fatal(err)
+	}
+	role := pgx.Identifier{runtimeRole}.Sanitize()
 	// EMP-EXP-002: TRUNCATE ... CASCADE also reaches org_expenses, which keeps
-	// its own insert-only guard, and since EMP-FUEL-011 (000245) org_document_links,
-	// which keeps its retained guard; grant them too so only the guards can refuse.
+	// its own insert-only guard. Document links and card reconciliation also
+	// keep separate guards on the cascade; grant TRUNCATE to reach those guards.
 	if _, err := x.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_fuelings,org_fueling_warnings,org_fueling_review_entries,org_expenses,org_document_links TO "+role); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := x.f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON org_card_statement_lines TO "+role); err != nil {
 		t.Fatal(err)
 	}
 	for _, statement := range []string{`UPDATE org_fuelings SET paid_centavos=97350`, `DELETE FROM org_fuelings`, `TRUNCATE org_fuelings CASCADE`, `UPDATE org_fueling_review_entries SET state='SUBMITTED'`, `DELETE FROM org_fueling_warnings`, `TRUNCATE org_fueling_review_entries`} {

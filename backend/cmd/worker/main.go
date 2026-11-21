@@ -55,6 +55,8 @@ import (
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/source"
 	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
+	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
+	connectorpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/adapters"
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
@@ -70,6 +72,7 @@ import (
 	trustdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
@@ -586,7 +589,7 @@ func run() error {
 	handlers := map[string]jobs.Handler{
 		"subscription-refresh":     subscriptionjobs.Handler{Name: "subscription-refresh", RunWithID: premiumService.Refresh},
 		"subscription-acknowledge": subscriptionjobs.Handler{Name: "subscription-acknowledge", Run: premiumService.Acknowledge},
-		"payment-inbox":            composePaymentInbox(cfg.Payments, raw, time.Now),
+		"payment-inbox":            composePaymentInbox(cfg, raw, time.Now),
 		"anp-discovery": officialjobs.Discovery{
 			Fetch:       &fetcher,
 			ListingBase: "https://www.gov.br/anp/pt-br/assuntos/precos-e-defesa-da-concorrencia/precos/arquivos-lpc/",
@@ -1019,7 +1022,9 @@ func run() error {
 			Store: driveradapters.NewReportStore(raw), Retention: 400 * 24 * time.Hour, Limit: 1000,
 		}
 	}
-	exportHandlers, err := exportWorkerHandlers(workerExportConfig{Enabled: cfg.EnterpriseEnabled, Pool: raw, Storage: exportStorage(cfg.R2)})
+	exportHandlers, err := exportWorkerHandlers(workerExportConfig{
+		Enabled: cfg.EnterpriseEnabled, BillingEnabled: cfg.EnterpriseBillingEnabled, Pool: raw, Storage: exportStorage(cfg.R2),
+	})
 	if err != nil {
 		return err
 	}
@@ -1034,6 +1039,37 @@ func run() error {
 	}
 	for _, handler := range fleetHandlers {
 		handlers[handler.Kind()] = handler
+	}
+	dataHandlers, err := enterprisesuite.DataHandlers(enterprisesuite.Options{
+		Enabled: cfg.EnterpriseEnabled, BillingEnabled: cfg.EnterpriseBillingEnabled, Pool: raw,
+	})
+	if err != nil {
+		return err
+	}
+	for _, handler := range dataHandlers {
+		handlers[handler.Kind()] = handler
+	}
+	var webhookSender connectorpg.WebhookSender
+	if cfg.EnterpriseEnabled && cfg.EnterpriseBillingEnabled && cfg.EnterpriseWebhookKeyRoot != "" {
+		keys, err := os.OpenRoot(cfg.EnterpriseWebhookKeyRoot)
+		if err != nil {
+			return errors.New("worker: enterprise webhook key directory unavailable")
+		}
+		defer keys.Close()
+		webhookSender = connectorpg.NewHTTPSWebhookSender(keys)
+	}
+	webhookHandler, err := enterprisesuite.FleetWebhookHandler(enterprisesuite.Options{
+		Enabled: cfg.EnterpriseEnabled, BillingEnabled: cfg.EnterpriseBillingEnabled, Pool: raw,
+	}, webhookSender)
+	if err != nil {
+		return err
+	}
+	if webhookHandler != nil {
+		handlers[webhookHandler.Kind()] = webhookHandler
+	}
+	if cfg.EnterpriseEnabled {
+		closure := orgpg.OrganizationClosureWorker{Pool: raw}
+		handlers[closure.Kind()] = closure
 	}
 	// EMP-GPS-005 (EDR-298): track processing runs on the general dispatcher.
 	trackingHandlers, err := trackingWorkerHandlers(cfg.EnterpriseEnabled, raw)

@@ -18,6 +18,7 @@ import (
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/domain"
 	orgtime "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgtime/domain"
+	"github.com/jackc/pgx/v5"
 )
 
 // CommandInput is the decoded request body.
@@ -37,6 +38,7 @@ type Command struct {
 	parameters                           []byte
 	limits                               domain.Limits
 	retention                            time.Duration
+	admission                            FormatAdmission
 }
 
 // NewCommand admits only a registered kind (else ErrFormatUnavailable) with
@@ -65,12 +67,20 @@ func NewCommand(scope kernel.OrgScope, registry Registry, in CommandInput) (Comm
 	if err != nil {
 		return Command{}, domain.ErrInvalid
 	}
-	return Command{operationID: in.OperationID, kind: in.Kind, digest: digest, mediaType: format.MediaType(), read: format.ReadPermission(), parameters: bytes.Clone(admitted),
+	admission, _ := format.(FormatAdmission)
+	return Command{admission: admission, operationID: in.OperationID, kind: in.Kind, digest: digest, mediaType: format.MediaType(), read: format.ReadPermission(), parameters: bytes.Clone(admitted),
 		limits: format.Limits(), retention: domain.DefaultRetention}, nil
 }
 
 // ReadPermission is the read permission the kind declares (EMP-AUTH-011).
 func (c Command) ReadPermission() permissions.Permission { return c.read }
+
+func (c Command) CheckInputsTx(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope) error {
+	if c.admission == nil {
+		return nil
+	}
+	return c.admission.CheckInputsTx(ctx, tx, scope, c.Parameters())
+}
 
 func (c Command) OperationID() string      { return c.operationID }
 func (c Command) Kind() string             { return c.kind }

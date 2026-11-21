@@ -50,4 +50,11 @@
     <string name="enterprise_receipts_title_reading">計器値の写真</string>
     <string name="enterprise_receipts_saved">写真を端末に保存しました。</string>
     <string name="enterprise_receipts_unavailable">現在この会社の写真を読み込めません。保存済みの写真は保持されます。</string>
+    <string name="enterprise_receipts_read_money">この端末で金額を読み取る</string>
+    <string name="enterprise_receipts_reading_money">領収書の金額を読み取っています…</string>
+    <string name="enterprise_receipts_enter_money">金額を読み取れませんでした。手動で入力してください。</string>
+    <string name="enterprise_receipts_money_confidence">文字認識の信頼度：%1$d%%</string>
+    <string name="enterprise_receipts_money_unscored">文字認識の信頼度は取得できません</string>
+    <string name="enterprise_receipts_use_paid">支払額に R$ %1$s を使用</string>
+    <string name="enterprise_receipts_use_discount">割引額に R$ %1$s を使用</string>
 </resources>

@@ -529,3 +529,58 @@ func TestCompanyGatewayRechecksPathScopeAndFreshnessWithoutIdleRenewal(t *testin
 		t.Fatal("foreign/fresh denial renewed idle")
 	}
 }
+
+func TestCompanyReadSamplesClockAfterConcurrentTouch(t *testing.T) {
+	f := setup(t)
+	cookie := f.login(t, "")
+	ctx, cancel := context.WithTimeout(t.Context(), 8*time.Second)
+	defer cancel()
+
+	updating, err := f.db.Admin.Begin(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer updating.Rollback(ctx)
+	next := f.clock.Time().Add(2 * time.Second)
+	if _, err := updating.Exec(ctx, "UPDATE company_web_sessions SET last_seen_at=$1 WHERE id=$2", next, cookie.Row.ID); err != nil {
+		t.Fatal(err)
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		_, err := f.service.Authenticate(ctx, cookie.Token, cookie.CSRF, false)
+		done <- err
+	}()
+	ticker := time.NewTicker(5 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		var waiting bool
+		if err := f.db.Admin.QueryRow(ctx, `SELECT EXISTS (
+SELECT FROM pg_stat_activity WHERE datname=current_database()
+AND wait_event_type='Lock' AND query LIKE '%company_web_sessions%'
+)`).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting {
+			break
+		}
+		select {
+		case err := <-done:
+			t.Fatalf("authenticated without waiting for the session row: %v", err)
+		case <-ctx.Done():
+			t.Fatal("company read never reached the session row lock")
+		case <-ticker.C:
+		}
+	}
+
+	f.clock.advance(2 * time.Second)
+	if err := updating.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if err := <-done; err != nil {
+		t.Fatalf("locked company request rejected an otherwise live session: %v", err)
+	}
+	if last := seen(t, f, cookie.Row.ID); !last.Equal(next) {
+		t.Fatalf("last activity moved to %v after concurrent update at %v", last, next)
+	}
+}

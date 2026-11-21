@@ -234,6 +234,7 @@ org.settings.manage O O - - - - - - -
 org.structure.manage O O - - - - - - -
 org.legal_entity.manage O O - - - - - - -
 org.ownership.transfer O - - - - - - - -
+org.lifecycle.manage O - - - - - - - -
 org.group.manage O - - - - - - - -
 fleet.asset.manage O O O - - - - - -
 fleet.asset.read O O O O O O S S O

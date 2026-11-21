@@ -28,6 +28,8 @@ type fuelGeoRow struct {
 	Max          int64
 	Spread       int64
 	Insufficient bool
+	Mean         int64
+	HasMean      bool
 }
 
 type fuelHubPage struct {
@@ -36,10 +38,16 @@ type fuelHubPage struct {
 	Label     string
 	H1        string
 	UnitLabel string
-	National  []summaryRow
-	States    []fuelGeoRow
-	Cities    []fuelGeoRow
-	Others    []fuelHubLink
+	// Synonym is the everyday name of the fuel, shown once in the lead.
+	Synonym    string
+	National   []summaryRow
+	States     []fuelGeoRow
+	Cities     []fuelGeoRow
+	Others     []fuelHubLink
+	Comparison *comparisonView
+	// WeekSummary and FAQ are the dated answers of B-BR-SEO-09.
+	WeekSummary string
+	FAQ         []faqItem
 }
 
 // unitLabel names a canonical unit for "R$ por ..." captions.
@@ -117,12 +125,16 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 				continue
 			}
 			row := fuelGeoRow{Stations: summary.StationCount, Min: summary.MinMilliBRL, Max: summary.MaxMilliBRL, Spread: summary.SpreadMilliBRL}
+			row.Mean, row.HasMean = summaryMean(summary)
 			switch summary.Geography.Level {
 			case analytics.LevelState:
 				if !g.statePages[summary.Geography.Code] {
 					continue
 				}
 				row.UF, row.Name, row.Href = summary.Geography.Code, ufName(summary.Geography.Code), stateRoute(summary.Geography.Code)
+				if href := g.fuelStateHref(hub.Code, row.UF); href != "" {
+					row.Href = href
+				}
 				states = append(states, row)
 			case analytics.LevelMunicipality:
 				code := summary.Geography.Code
@@ -130,6 +142,9 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 					continue
 				}
 				row.Name, row.UF, row.Href = municipalityName[code], g.cityState[code], g.cityRoutes[code]
+				if href := g.fuelCityHref(hub.Code, code); href != "" {
+					row.Href = href
+				}
 				if row.Name == "" {
 					row.Name = "Município " + code
 				}
@@ -154,7 +169,11 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 			}
 		}
 		words := fuelVocabulary[hub.Code]
-		parts := []string{capitalize(words.Name) + " na pesquisa ANP " + g.periodPhrase() + "."}
+		subject := capitalize(words.Name)
+		if words.Synonym != "" {
+			subject += " (" + words.Synonym + ")"
+		}
+		parts := []string{subject + " na pesquisa ANP " + g.periodPhrase() + "."}
 		if len(national) == 1 {
 			row := national[0]
 			parts = append(parts, fmt.Sprintf("No Brasil: %s a %s em %s postos de %d %s.", brl(row.Min), brl(row.Max),
@@ -169,16 +188,21 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 				Crumbs: []crumb{{Label: "Preços", Href: "/precos/"}, {Label: hub.Label, Current: true}}, LastMod: g.dataDate,
 			}),
 			Code: hub.Code, Label: hub.Label, H1: "Preço " + words.Article + " " + words.Name + " no Brasil",
-			UnitLabel: unitLabel(hub.Unit), National: national, States: states, Cities: cities, Others: others,
+			UnitLabel: unitLabel(hub.Unit), Synonym: words.Synonym, National: national, States: states, Cities: cities, Others: others,
+			Comparison: g.comparison(summaries, analytics.LevelNational, "BR", hub.Code),
+		}
+		if len(national) == 1 {
+			facts := fuelFacts{Code: hub.Code, States: len(states), Row: national[0], Comparison: data.Comparison}
+			data.WeekSummary, data.FAQ = g.weekSummary(facts), g.fuelFAQ(facts)
 		}
 		items := make([]listItem, 0, len(states)+len(cities))
 		for _, row := range states {
-			items = append(items, listItem{Name: "Preços em " + row.Name, Href: row.Href})
+			items = append(items, listItem{Name: "Preço " + fuelAreaPhrase(hub.Code) + " em " + row.Name, Href: row.Href})
 		}
 		for _, row := range cities {
-			items = append(items, listItem{Name: "Preços em " + placeLabel(row.Name, row.UF), Href: row.Href})
+			items = append(items, listItem{Name: "Preço " + fuelAreaPhrase(hub.Code) + " em " + placeLabel(row.Name, row.UF), Href: row.Href})
 		}
-		data.Modules = []linkModule{g.landingModule(
+		data.Modules = []linkModule{g.parityModule(hub.Code), g.landingModule(
 			moduleLink{Label: "Calcule o consumo médio do seu carro", Href: "/ferramentas/consumo-medio/"},
 			moduleLink{Label: "Calcule o custo por quilômetro rodado", Href: "/ferramentas/custo-por-km/"},
 			moduleLink{Label: "Como ler os preços da pesquisa ANP", Href: "/guias/como-ler-precos/"},

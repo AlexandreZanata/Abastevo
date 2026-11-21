@@ -70,6 +70,38 @@ func (q *Queries) ConsumePaymentSourceSwitch(ctx context.Context, id pgtype.UUID
 	return result.RowsAffected(), nil
 }
 
+const deferPaymentInbox = `-- name: DeferPaymentInbox :execrows
+UPDATE payment_inbox SET deferred_until=$1::timestamptz,last_error='organization-term-not-effective'
+WHERE provider=$2 AND environment=$3 AND merchant=$4
+  AND event_id=$5 AND payload_hash=$6 AND state='PENDING'
+  AND (deferred_until IS NULL OR deferred_until=$1::timestamptz)
+  AND $1::timestamptz>clock_timestamp()
+`
+
+type DeferPaymentInboxParams struct {
+	DeferredUntil pgtype.Timestamptz `json:"deferred_until"`
+	Provider      string             `json:"provider"`
+	Environment   string             `json:"environment"`
+	Merchant      string             `json:"merchant"`
+	EventID       string             `json:"event_id"`
+	PayloadHash   string             `json:"payload_hash"`
+}
+
+func (q *Queries) DeferPaymentInbox(ctx context.Context, arg DeferPaymentInboxParams) (int64, error) {
+	result, err := q.db.Exec(ctx, deferPaymentInbox,
+		arg.DeferredUntil,
+		arg.Provider,
+		arg.Environment,
+		arg.Merchant,
+		arg.EventID,
+		arg.PayloadHash,
+	)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getActivePaymentGrantEnd = `-- name: GetActivePaymentGrantEnd :one
 SELECT end_at
 FROM payment_grants
@@ -579,7 +611,7 @@ func (q *Queries) GetPaymentGrantForUpdate(ctx context.Context, id pgtype.UUID) 
 }
 
 const getPaymentInbox = `-- name: GetPaymentInbox :one
-SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error, resource_status FROM payment_inbox
+SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error, resource_status, deferred_until FROM payment_inbox
 WHERE provider=$1 AND environment=$2 AND merchant=$3 AND event_id=$4
 `
 
@@ -613,6 +645,7 @@ func (q *Queries) GetPaymentInbox(ctx context.Context, arg GetPaymentInboxParams
 		&i.ProcessedAt,
 		&i.LastError,
 		&i.ResourceStatus,
+		&i.DeferredUntil,
 	)
 	return i, err
 }
@@ -2656,9 +2689,10 @@ func (q *Queries) ListPaymentRefundsForSettlement(ctx context.Context, settlemen
 }
 
 const listPendingPaymentInbox = `-- name: ListPendingPaymentInbox :many
-SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error, resource_status FROM payment_inbox
+SELECT provider, environment, merchant, event_id, payload_hash, event_type, resource_type, resource_id, state, attempts, received_at, processed_at, last_error, resource_status, deferred_until FROM payment_inbox
 WHERE provider=$1 AND environment=$2
   AND merchant=$3 AND state='PENDING'
+  AND (deferred_until IS NULL OR deferred_until <= clock_timestamp())
 ORDER BY received_at,event_id
 LIMIT $4::int
 `
@@ -2699,6 +2733,7 @@ func (q *Queries) ListPendingPaymentInbox(ctx context.Context, arg ListPendingPa
 			&i.ProcessedAt,
 			&i.LastError,
 			&i.ResourceStatus,
+			&i.DeferredUntil,
 		); err != nil {
 			return nil, err
 		}
@@ -2745,9 +2780,10 @@ func (q *Queries) MarkPaymentAttemptDispatched(ctx context.Context, arg MarkPaym
 
 const markPaymentInbox = `-- name: MarkPaymentInbox :execrows
 UPDATE payment_inbox
-SET state=$1,attempts=attempts+1,processed_at=$2::timestamptz,last_error=$3
+SET state=$1,attempts=attempts+1,processed_at=$2::timestamptz,last_error=$3,deferred_until=NULL
 WHERE provider=$4 AND environment=$5 AND merchant=$6 AND event_id=$7
   AND state='PENDING'
+  AND (deferred_until IS NULL OR deferred_until <= clock_timestamp())
 `
 
 type MarkPaymentInboxParams struct {

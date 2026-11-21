@@ -320,8 +320,23 @@ func TestSelfNoticeRoutesOverRealCookiePlaneAndCurrentMembership(t *testing.T) {
 
 	// Preferences: every registered kind with defaults; mandatory kinds refuse muting.
 	listed := call(owner, prefs(a, 601)+"/read", map[string]any{}, 200, "EnterpriseNoticePreferences", nil)
-	if items := listed["preferences"].([]any); len(items) != 3 || items[0].(map[string]any)["kind"] != "test.access.changed" || items[0].(map[string]any)["mandatory"] != true {
+	expected := []struct {
+		kind      string
+		mandatory bool
+	}{
+		{"org.lifecycle.closure_requested", true},
+		{"test.access.changed", true},
+		{"test.budget.alert", false},
+		{"test.report.ready", false},
+	}
+	items := listed["preferences"].([]any)
+	if len(items) != len(expected) {
 		t.Fatal("preference listing", listed)
+	}
+	for i, want := range expected {
+		if item := items[i].(map[string]any); item["kind"] != want.kind || item["mandatory"] != want.mandatory || item["muted"] != false || item["revision"] != float64(0) {
+			t.Fatal("preference defaults", item)
+		}
 	}
 	update := map[string]any{"schema_version": 1, "operation_id": id(953), "kind": "test.budget.alert", "muted": true}
 	changed := call(owner, prefs(a, 601)+"/update", update, 200, "EnterpriseNoticePreferenceResult", nil)
@@ -335,6 +350,7 @@ func TestSelfNoticeRoutesOverRealCookiePlaneAndCurrentMembership(t *testing.T) {
 	call(owner, prefs(a, 601)+"/update", update, 409, "EnterpriseError", nil)
 	call(owner, prefs(a, 601)+"/update", map[string]any{"schema_version": 1, "operation_id": id(954), "kind": "test.budget.alert", "muted": false}, 409, "EnterpriseError", nil)
 	call(owner, prefs(a, 601)+"/update", map[string]any{"schema_version": 1, "operation_id": id(955), "kind": "test.access.changed", "muted": true}, 422, "EnterpriseError", nil)
+	call(owner, prefs(a, 601)+"/update", map[string]any{"schema_version": 1, "operation_id": id(959), "kind": "org.lifecycle.closure_requested", "muted": true}, 422, "EnterpriseError", nil)
 	call(owner, prefs(a, 601)+"/update", map[string]any{"schema_version": 1, "operation_id": id(956), "kind": "test.unknown.kind", "muted": true}, 422, "EnterpriseError", nil)
 	call(driver, prefs(a, 601)+"/update", map[string]any{"schema_version": 1, "operation_id": id(957), "kind": "test.budget.alert", "muted": true}, 404, "EnterpriseError", nil)
 	if done := call(owner, prefs(a, 601)+"/update", map[string]any{"schema_version": 1, "operation_id": id(958), "kind": "test.budget.alert", "muted": false, "revision": 1}, 200, "EnterpriseNoticePreferenceResult", nil); done["preference"].(map[string]any)["revision"] != float64(2) {

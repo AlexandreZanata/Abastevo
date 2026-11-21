@@ -13659,6 +13659,1161 @@ paths:
                   ended_at: ''
                   end_reason: ''
                 next_cursor: ''
+  /v1/data/orgs/{org_id}/datasets/{dataset_key}/regional-series:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataRegionalSeries
+      summary: Read versioned regional fuel price series
+      description: A current regional.read Data bearer must belong to the selected company. The current plan
+        must admit every selected catalog revision. Source rights are checked on every page, and samples
+        smaller than the recorded threshold are suppressed. Matching request IDs consume one term call.
+      security:
+      - OrganizationDataBearer: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: dataset_key
+        in: path
+        required: true
+        schema:
+          type: string
+          maxLength: 64
+          pattern: '^[a-z][a-z0-9]*(-[a-z0-9]+)*$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataSeriesRequest'
+      responses:
+        '200':
+          description: Official regional series and its source basis.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataSeriesPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/data/usage/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataUsage
+      summary: Read scoped Data usage and dataset documentation
+      description: The current company and data.usage.read grant govern subscription-term counts, rate and prepared dataset metadata.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.usage.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyListRequest'
+      responses:
+        '200':
+          description: Scoped Data usage view.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataUsage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/data/keys/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataKeyList
+      summary: List company Data keys
+      description: Lists metadata only. Cursors are bound to the current company, member and route.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyListRequest'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Scoped Data key result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataKeyPage'
+  /v1/orgs/{org_id}/data/keys/issue:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataKeyIssue
+      summary: Issue a company Data key
+      description: Requires the current Data capability. The bearer appears once on successful issuance. Preserve it in secure storage.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyIssueRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              label: Reviewed example reader
+              scopes: [regional.read]
+              expires_at: '2026-12-31T18:00:00Z'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Scoped Data key result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataKeyCommandResult'
+  /v1/orgs/{org_id}/data/keys/{key_id}/rotate:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataKeyRotate
+      summary: Rotate a company Data key
+      description: Requires the current Data capability and the key revision. A replacement cannot widen scope. Omitted overlap ends old key access immediately.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: key_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyRotateRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
+              label: Reviewed example reader
+              scopes: [regional.read]
+              expires_at: '2026-12-31T18:00:00Z'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Scoped Data key result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataKeyCommandResult'
+  /v1/orgs/{org_id}/data/keys/{key_id}/revoke:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataKeyRevoke
+      summary: Revoke a company Data key
+      description: Revocation requires the key revision and remains available after the Data capability ends.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: key_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyRevokeRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Scoped Data key result.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataKeyCommandResult'
+  /v1/orgs/{org_id}/integrations/connections/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseConnectionList
+      summary: List reviewed company connections
+      description: Lists current and retained organization connection metadata.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: integ.connection.manage
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataKeyListRequest'
+      responses:
+        '200':
+          description: Organization connection metadata.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseConnectorPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/configure:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseConnectionConfigure
+      summary: Configure a company connection
+      description: Binds an approved scope and returns CONFIGURED.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: integ.connection.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseConnectorConfigure'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              approval_id: 7b0e2a54-0000-4000-8000-000000000e01
+              approval_revision: 1
+              label: Reviewed example receiver
+      responses:
+        '200':
+          description: Organization connection metadata.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseConnectorResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/{connection_id}/activate:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseConnectionActivate
+      summary: Activate a reviewed company connection
+      description: Requires the exact current approval and recorded readiness.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: integ.connection.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseConnectorStateChange'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
+      responses:
+        '200':
+          description: Organization connection metadata.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseConnectorResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/{connection_id}/disable:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseConnectionDisable
+      summary: Disable a company connection
+      description: Stops new connector work and preserves the audited connection history.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: integ.connection.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseConnectorStateChange'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
+      responses:
+        '200':
+          description: Organization connection metadata.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseConnectorResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/integrations/orgs/{org_id}/connections/{connection_id}/accounting/{export_id}:
+    get:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseAccountingConnectorDownload
+      summary: Download one approved accounting export
+      description: The connector proof binds the company, connection and exact ready file. Current
+        approval, requester permissions, byte and row limits are required on every request.
+      security:
+      - OrganizationAccountingBearer: []
+      parameters:
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: export_id
+        in: path
+        required: true
+        schema: {type: string, format: uuid}
+      - name: If-None-Match
+        in: header
+        schema: {type: string}
+      responses:
+        '200':
+          description: Approved version 1 accounting CSV in exact integer centavos.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+            ETag:
+              schema: {type: string}
+          content:
+            text/csv:
+              schema: {type: string, format: binary}
+        '304':
+          description: Current authorized file matches the supplied validator.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+            ETag:
+              schema: {type: string}
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/preview:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelCardStatementPreview
+      summary: Preview a reviewed fuel card statement
+      description: Checks the approved connection and maps each row without posting an expense.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: import.batch.run
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFuelCardStatementPreview'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              source_account_id: 7b0e2a54-0000-4000-8000-000000000e01
+              csv: "transaction_id,fueling_id,occurred_at,currency,paid_centavos\n7b0e2a54-0000-4000-8000-000000000e01,,2026-11-20T10:00:00Z,BRL,97351\n"
+      responses:
+        '200':
+          description: Scoped row outcomes in input order.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFuelCardStatementResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/confirm:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelCardStatementConfirm
+      summary: Confirm a reviewed fuel card statement
+      description: Rechecks current authority and binds the exact mapping to the signed preview.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: import.batch.run
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFuelCardStatementConfirm'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              source_account_id: 7b0e2a54-0000-4000-8000-000000000e01
+              csv: "transaction_id,fueling_id,occurred_at,currency,paid_centavos\n7b0e2a54-0000-4000-8000-000000000e01,,2026-11-20T10:00:00Z,BRL,97351\n"
+              preview_token: synthetic-example-only
+      responses:
+        '200':
+          description: Scoped row outcomes in input order.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFuelCardStatementResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/data/watchlists/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataWatchList
+      summary: List your scoped Data watchlists
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataWatchPageRequest'
+      responses:
+        '200':
+          description: Watchlist state for the current company membership.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataWatchPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/data/watchlists/create:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataWatchCreate
+      summary: Follow an admitted Data survey series
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataWatchCreate'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              dataset: market-mt
+              fuel: GASOLINE_REGULAR
+              baseline_revision: '1'
+      responses:
+        '200':
+          description: Watchlist state for the current company membership.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataWatchResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/data/watchlists/{watch_id}/disable:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataWatchDisable
+      summary: Stop a scoped Data watch
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: watch_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataWatchDisable'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+      responses:
+        '200':
+          description: Watchlist state for the current company membership.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataWatchResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fuelings/{fueling_id}/review/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelingReviewRead
+      summary: Read the scoped fueling review state
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fuel.fueling.review
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: fueling_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: Server-recorded state and review sequence for the exact fueling.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFuelingReviewView'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/fuelings/{fueling_id}/review/decide:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelingReviewDecide
+      summary: Record an authorized fueling review decision
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: fuel.fueling.review
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: fueling_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFuelingReviewDecision'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
+              decision: OPEN
+      responses:
+        '200':
+          description: Server-recorded state and review sequence for the exact fueling.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFuelingReviewResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/subscriptions/plan/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterprisePlanOverview
+      summary: Read organization plans and confirmed terms
+      description: Dedicated company cookie, exact HTTPS Origin, CSRF and current organization-wide subs.plan.read.
+        Returns retained plan terms and reviewed next terms without provider references, payment credentials, or personal account tiers.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: subs.plan.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Read reviewed billing information for the selected company
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private scoped plan overview.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterprisePlanOverview'
+  /v1/orgs/{org_id}/subscriptions/vehicles/select:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseSelectActivePlanVehicles
+      summary: Choose the vehicles that stay active after a paid downgrade
+      description: Fresh dedicated company session and organization-wide subs.plan.manage. The exact active set is
+        protected by the current plan and fleet locks. Other active vehicles move to retained inactive history under the selected plan.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: subs.plan.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Exact vehicles to keep for the lower current subscription revision.
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseVehiclePlanSelectionRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              subscription_id: 7b0e2a54-0000-4000-8000-000000000e01
+              revision: 2
+              keep_active: [7b0e2a54-0000-4000-8000-000000000e02]
+      responses:
+        '200':
+          description: The retained active and archived vehicle identifiers for the committed selection.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseVehiclePlanSelectionResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/settings/read:
     post:
       tags:
@@ -14111,6 +15266,115 @@ paths:
                 effective_at: '2026-11-12T12:00:00Z'
                 data_mode: SYNTHETIC
                 replayed: false
+  /v1/orgs/{org_id}/lifecycle/open-items:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseOrganizationOpenItems
+      summary: Read the organization archive and closure report
+      description: Requires a current organization owner with fresh company proof. Pending closure leaves a retained export window.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.lifecycle.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseReadRequest'
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private organization lifecycle and open-items report.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOrganizationLifecycleStatus'
+  /v1/orgs/{org_id}/lifecycle/change:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseOrganizationLifecycleChange
+      summary: Archive, restore or schedule organization closure
+      description: Requires a current organization owner with fresh company proof. Pending closure leaves a retained export window.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: org.lifecycle.manage
+        write: true
+        fresh: true
+        require_revision: true
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseOrganizationLifecycleRequest'
+            example:
+              schema_version: 1
+              operation_id: 7b0e2a54-0000-4000-8000-000000002001
+              revision: 1
+              action: ARCHIVE
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private organization lifecycle and open-items report.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseOrganizationLifecycleResult'
   /v1/orgs/{org_id}/ownership-transfer/propose:
     post:
       tags:
@@ -26525,6 +27789,14 @@ x-abastevo-organization-api:
   status: company_sessions_synthetic_onboarding_legal_units_and_cost_centres_implemented
 components:
   securitySchemes:
+    OrganizationAccountingBearer:
+      type: http
+      scheme: bearer
+      description: Exact approved accounting file proof for a reviewed external consumer.
+    OrganizationDataBearer:
+      type: http
+      scheme: bearer
+      description: Organization Data credential restricted to its declared market-data scope.
     AdminSessionCookie:
       type: apiKey
       in: cookie
@@ -32776,7 +34048,8 @@ components:
       description: Kind of an admitted export format; a kind without an admitted format is EXPORT_FORMAT_UNAVAILABLE. Admitted
         kinds are fleet.asset_list.csv, fleet.meter_reading_list.csv and idn.employee_list.csv (EMP-RPT-002); spreadsheet kinds
         such as fleet.asset_list.xlsx are not admitted until a reviewed writer exists and answer EXPORT_FORMAT_UNAVAILABLE. No enum
-        is declared so that an unadmitted kind reaches that answer.
+        is declared so that an unadmitted kind reaches that answer. With organization billing enabled, data.market_comparison.json
+        requests an official regional comparison under the current Data plan, reviewed source rights and the separate Data read permission.
       type: string
       maxLength: 64
       pattern: '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$'
@@ -32797,7 +34070,9 @@ components:
           type: object
           description: Filters of the format, lower-snake keys, no null, at most 4096 canonical bytes. Each admitted list kind accepts
             only its closed filter object (EnterpriseAssetListExportParameters, EnterpriseMeterReadingListExportParameters,
-            EnterpriseEmployeeListExportParameters).
+            EnterpriseEmployeeListExportParameters). For data.market_comparison.json use baseline and reference objects
+            each with a dataset key and a positive integer revision, plus the fuel product code. Both input revisions must
+            be prepared and admitted. Source rights and Data entitlement are checked again when the report is built and delivered.
       required:
       - schema_version
       - operation_id
@@ -40610,16 +41885,20 @@ components:
         permissions:
           type: array
           uniqueItems: true
-          maxItems: 4
-          description: Current UI hints, never authority. doc.document.view_content is a read hint present when a
-            current ORG assignment covers it (EMP-CHECK-004, B-BR-EMP-507).
+          maxItems: 9
+          description: Current UI hints from the organization-wide assignment and session proof. Owning endpoints verify authority again.
           items:
             type: string
             enum:
             - idn.employee.read
             - idn.employee.manage
             - idn.invitation.manage
+            - subs.plan.manage
             - doc.document.view_content
+            - subs.plan.read
+            - data.usage.read
+            - fleet.asset.read
+            - data.key.manage
         invitation_grants:
           type: array
           uniqueItems: true
@@ -40646,6 +41925,50 @@ components:
       example: 7b0e2a54-0000-4000-8000-000000000001
       pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       not: {enum: ['00000000-0000-0000-0000-000000000000']}
+    EnterpriseOrganizationLifecycleRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision, action]
+      properties:
+        schema_version: {type: integer, enum: [1]}
+        operation_id: {type: string, format: uuid}
+        revision: {type: integer, minimum: 1}
+        action: {type: string, enum: [ARCHIVE, RESTORE, REQUEST_CLOSURE, CANCEL_CLOSURE]}
+        confirmation: {type: string, minLength: 1, maxLength: 120}
+        closure_days: {type: integer, minimum: 7, maximum: 90, default: 30}
+    EnterpriseOrganizationOpenItems:
+      type: object
+      additionalProperties: false
+      required: [trips, agreements, reviews, held_operations, open_payables, station_authorities, active_grants]
+      properties:
+        trips: {type: integer, minimum: 0}
+        agreements: {type: integer, minimum: 0}
+        reviews: {type: integer, minimum: 0}
+        held_operations: {type: integer, minimum: 0}
+        open_payables: {type: integer, minimum: 0}
+        station_authorities: {type: integer, minimum: 0}
+        active_grants: {type: integer, minimum: 0}
+    EnterpriseOrganizationLifecycleStatus:
+      type: object
+      additionalProperties: false
+      required: [state, revision, closes_at, open_items]
+      properties:
+        state: {type: string, enum: [PENDING_SETUP, ACTIVE, SUSPENDED, ARCHIVED]}
+        revision: {type: integer, minimum: 1}
+        closes_at: {type: [string, 'null'], format: date-time}
+        open_items:
+          $ref: '#/components/schemas/EnterpriseOrganizationOpenItems'
+    EnterpriseOrganizationLifecycleResult:
+      type: object
+      additionalProperties: false
+      required: [state, revision, closes_at, open_items, replayed]
+      properties:
+        state: {type: string, enum: [PENDING_SETUP, ACTIVE, SUSPENDED, ARCHIVED]}
+        revision: {type: integer, minimum: 1}
+        closes_at: {type: [string, 'null'], format: date-time}
+        open_items:
+          $ref: '#/components/schemas/EnterpriseOrganizationOpenItems'
+        replayed: {type: boolean}
     EnterpriseReadRequest:
       description: Common read fields. Module requests declare their full strict DTO with the same session and page fields. Omitted credentials select the dedicated company session channel.
       type: object
@@ -40694,7 +42017,7 @@ components:
               properties:
                 code:
                   type: string
-                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, RESERVATION_CONFLICT, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE, READING_ALREADY_SUPERSEDED, AMENDMENT_REQUIRED, ROUTE_POINT_LIMIT, GEOFENCE_INVALID_GEOMETRY]
+                  enum: [MALFORMED, UNAUTHENTICATED, NOT_FOUND, FORBIDDEN, MEMBERSHIP_SUSPENDED, MEMBERSHIP_ENDED, ORG_SUSPENDED, ORG_ARCHIVED, ORG_HAS_OPEN_OPERATIONS, ORG_SETUP_INCOMPLETE, FRESH_AUTH_REQUIRED, ENTITLEMENT_REQUIRED, LIMIT_REACHED, CONFLICT, OPERATION_ID_REUSED, VALIDATION_FAILED, SELF_APPROVAL, PERIOD_LOCKED, LAST_OWNER, MERGE_CONFLICT, DEVICE_REVOKED, OPEN_RESPONSIBILITIES, LAST_UNIT, STRUCTURE_IN_USE, ASSET_IDENTIFIER_TAKEN, ASSET_HAS_OPEN_OPERATIONS, ASSIGNMENT_OVERLAP, RESERVATION_CONFLICT, METER_ALREADY_IN_SERVICE, DUPLICATE_REVIEW_REQUIRED, OWNER_REQUIRES_PERSONAL_ACCOUNT, TRANSFER_PENDING, EMPLOYEE_HAS_ACCESS, TOKEN_INVALID, ALREADY_MEMBER, MANAGED_ACCOUNT_RESTRICTED, RATE_LIMITED, UNAVAILABLE, EXPORT_QUEUE_FULL, EXPORT_NOT_READY, EXPORT_EXPIRED, EXPORT_FORMAT_UNAVAILABLE, READING_ALREADY_SUPERSEDED, AMENDMENT_REQUIRED, ROUTE_POINT_LIMIT, GEOFENCE_INVALID_GEOMETRY]
     DriverCommandRequest:
       type: object
       additionalProperties: false
@@ -47738,6 +49061,790 @@ components:
             substitute: ''
       description: 'Complete replacement: every field and nested slot is required, including explicit false, zero or
         empty values. Display preference does not rewrite normalized measures or historical records.'
+    EnterpriseDataSeriesRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, request_id, revisions]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        request_id:
+          type: string
+          format: uuid
+        revisions:
+          type: array
+          minItems: 1
+          maxItems: 32
+          uniqueItems: true
+          items:
+            type: integer
+            format: int64
+            minimum: 1
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        cursor:
+          type: string
+          maxLength: 2048
+    EnterpriseDataSeriesPage:
+      type: object
+      additionalProperties: false
+      required: [dataset, region, method, condition, next_cursor, periods]
+      properties:
+        dataset:
+          type: string
+        region:
+          type: string
+        method:
+          type: string
+        condition:
+          type: string
+          enum: [STANDARD]
+        next_cursor:
+          type: string
+        periods:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseDataSeriesPeriod'
+    EnterpriseDataSeriesPeriod:
+      type: object
+      additionalProperties: false
+      required: [catalog_revision, official_revision, snapshot, readiness, minimum_stations, survey_start, survey_end, published_at, source_url, sources, samples]
+      properties:
+        catalog_revision:
+          type: string
+          pattern: '^[1-9][0-9]*$'
+        official_revision:
+          type: string
+          format: uuid
+        snapshot:
+          type: string
+        readiness:
+          type: string
+          enum: [AVAILABLE, INSUFFICIENT_DATA]
+        minimum_stations:
+          type: integer
+          minimum: 5
+        survey_start:
+          type: string
+          format: date
+        survey_end:
+          type: string
+          format: date
+        published_at:
+          type: string
+          format: date-time
+        source_url:
+          type: string
+          format: uri
+        sources:
+          type: array
+          minItems: 2
+          maxItems: 2
+          items:
+            $ref: '#/components/schemas/EnterpriseDataSeriesSource'
+        samples:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseDataSeriesSample'
+    EnterpriseDataSeriesSource:
+      type: object
+      additionalProperties: false
+      required: [code, digest, license, attribution]
+      properties:
+        code:
+          type: string
+          enum: [S-ESP-01, S-ESP-02]
+        digest:
+          type: string
+        license:
+          type: string
+        attribution:
+          type: string
+    EnterpriseDataSeriesSample:
+      type: object
+      additionalProperties: false
+      required: [fuel, unit, stations, observations, sum_milli_brl, min_milli_brl, max_milli_brl]
+      properties:
+        fuel:
+          $ref: '#/components/schemas/FuelProduct'
+        unit:
+          type: string
+          enum: [L, M3, KG_13]
+        stations:
+          type: integer
+          minimum: 5
+        observations:
+          type: integer
+          minimum: 5
+        sum_milli_brl:
+          type: integer
+          format: int64
+        min_milli_brl:
+          type: integer
+          format: int64
+        max_milli_brl:
+          type: integer
+          format: int64
+    EnterpriseDataUsage:
+      type: object
+      additionalProperties: false
+      required: [observed_at, enabled, datasets, next_cursor]
+      properties:
+        observed_at:
+          type: string
+          format: date-time
+        enabled:
+          type: boolean
+        term:
+          type: object
+          additionalProperties: false
+          required: [start, end, used, ceiling]
+          properties:
+            start:
+              type: string
+              format: date-time
+            end:
+              type: string
+              format: date-time
+            used:
+              type: string
+              pattern: '^(0|[1-9][0-9]*)$'
+            ceiling:
+              type: string
+              pattern: '^(0|[1-9][0-9]*)$'
+        rate:
+          type: object
+          additionalProperties: false
+          required: [calls, window_seconds]
+          properties:
+            calls:
+              type: string
+              pattern: '^(0|[1-9][0-9]*)$'
+            window_seconds:
+              type: integer
+              minimum: 1
+        datasets:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [key, revision, name, region, method, minimum_stations]
+            properties:
+              key:
+                type: string
+              revision:
+                type: string
+                pattern: '^[1-9][0-9]*$'
+              name:
+                type: string
+              region:
+                type: string
+              method:
+                type: string
+              minimum_stations:
+                type: integer
+                minimum: 5
+        next_cursor:
+          type: string
+    EnterpriseDataKeyListRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          maxLength: 2048
+    EnterpriseDataKeyIssueRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, label, scopes, expires_at]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        scopes:
+          $ref: '#/components/schemas/EnterpriseDataKeyScopes'
+        expires_at:
+          type: string
+          format: date-time
+    EnterpriseDataKeyRotateRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision, label, scopes, expires_at]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+        scopes:
+          $ref: '#/components/schemas/EnterpriseDataKeyScopes'
+        expires_at:
+          type: string
+          format: date-time
+        overlap_until:
+          type: string
+          format: date-time
+    EnterpriseDataKeyRevokeRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+    EnterpriseDataKeyScopes:
+      type: array
+      minItems: 1
+      maxItems: 1
+      items:
+        type: string
+        enum: [regional.read]
+    EnterpriseDataKeyMetadata:
+      type: object
+      additionalProperties: false
+      required: [id, label, scopes, state, revision, issued_at, expires_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        scopes:
+          $ref: '#/components/schemas/EnterpriseDataKeyScopes'
+        state:
+          type: string
+          enum: [ACTIVE, ROTATING, REVOKED, EXPIRED]
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        issued_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+        overlap_until:
+          type: string
+          format: date-time
+    EnterpriseDataKeyPage:
+      type: object
+      additionalProperties: false
+      required: [keys, next_cursor]
+      properties:
+        keys:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseDataKeyMetadata'
+        next_cursor:
+          type: string
+    EnterpriseDataKeyCommandResult:
+      type: object
+      additionalProperties: false
+      required: [key, replayed]
+      properties:
+        key:
+          $ref: '#/components/schemas/EnterpriseDataKeyMetadata'
+        bearer:
+          type: string
+          description: One-time bearer for the first successful issue or rotate response.
+        replayed:
+          type: boolean
+    EnterpriseDataWatchPageRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          maxLength: 2048
+    EnterpriseDataWatchCreate:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, dataset, fuel, baseline_revision]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        dataset:
+          type: string
+        fuel:
+          type: string
+        baseline_revision:
+          type: string
+          pattern: '^[1-9][0-9]{0,18}$'
+    EnterpriseDataWatchDisable:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+    EnterpriseDataWatch:
+      type: object
+      additionalProperties: false
+      required: [id, dataset, fuel, baseline_revision, last_observed_revision, active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dataset:
+          type: string
+        fuel:
+          type: string
+        baseline_revision:
+          type: string
+          pattern: '^[1-9][0-9]{0,18}$'
+        last_observed_revision:
+          type: string
+          pattern: '^[1-9][0-9]{0,18}$'
+        active:
+          type: boolean
+    EnterpriseDataWatchPage:
+      type: object
+      additionalProperties: false
+      required: [watchlists, next_cursor]
+      properties:
+        watchlists:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseDataWatch'
+        next_cursor:
+          type: string
+    EnterpriseDataWatchResult:
+      type: object
+      additionalProperties: false
+      required: [watchlist, replayed]
+      properties:
+        watchlist:
+          $ref: '#/components/schemas/EnterpriseDataWatch'
+        replayed:
+          type: boolean
+    EnterpriseFuelingReviewDecision:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision, decision]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+          description: Expected sequence of the current review record.
+        decision:
+          type: string
+          enum: [OPEN, APPROVE, RETURN, REJECT]
+        reason:
+          type: string
+          maxLength: 280
+        warning_notes:
+          type: object
+          additionalProperties: false
+          properties:
+            ARITHMETIC_MISMATCH:
+              type: string
+              minLength: 1
+              maxLength: 280
+            PRODUCT_NOT_ACCEPTED:
+              type: string
+              minLength: 1
+              maxLength: 280
+        fuel_entered_tank:
+          type: boolean
+          description: Required when rejecting the fueling.
+    EnterpriseFuelingReviewView:
+      type: object
+      additionalProperties: false
+      required: [sequence, state, warnings, suspected_duplicate]
+      properties:
+        sequence:
+          type: integer
+          format: int64
+          minimum: 1
+        state:
+          type: string
+          enum: [SUBMITTED, IN_REVIEW, APPROVED, RETURNED, REJECTED]
+        warnings:
+          type: array
+          items:
+            type: string
+            enum: [ARITHMETIC_MISMATCH, PRODUCT_NOT_ACCEPTED]
+        suspected_duplicate:
+          type: boolean
+    EnterpriseFuelingReviewResult:
+      type: object
+      additionalProperties: false
+      required: [sequence, state, replayed]
+      properties:
+        sequence:
+          type: integer
+          format: int64
+          minimum: 1
+        state:
+          type: string
+          enum: [SUBMITTED, IN_REVIEW, APPROVED, RETURNED, REJECTED]
+        replayed:
+          type: boolean
+    EnterpriseFuelCardStatementPreview:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, source_account_id, csv]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        source_account_id:
+          type: string
+          format: uuid
+        csv:
+          type: string
+          minLength: 1
+          maxLength: 65536
+          description: Mapped CSV with the transaction_id, fueling_id, occurred_at, currency and paid_centavos columns.
+    EnterpriseFuelCardStatementConfirm:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, source_account_id, csv, preview_token]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        source_account_id:
+          type: string
+          format: uuid
+        csv:
+          type: string
+          minLength: 1
+          maxLength: 65536
+          description: Mapped CSV with the transaction_id, fueling_id, occurred_at, currency and paid_centavos columns.
+        preview_token:
+          type: string
+          minLength: 1
+          maxLength: 2048
+    EnterpriseFuelCardStatementResult:
+      type: object
+      additionalProperties: false
+      required: [rows, replayed]
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [row, paid_centavos, status]
+            properties:
+              row:
+                type: integer
+                minimum: 1
+              paid_centavos:
+                type: integer
+                format: int64
+                minimum: 1
+                maximum: 1000000000000
+              status:
+                type: string
+                enum: [LINKED, REVIEW_REQUIRED]
+        replayed:
+          type: boolean
+        preview_token:
+          type: string
+          description: Short-lived proof present only on a successful preview.
+    EnterpriseConnectorConfigure:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, approval_id, approval_revision, label]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        approval_id:
+          type: string
+          format: uuid
+        approval_revision:
+          type: integer
+          format: int64
+          minimum: 1
+        label:
+          type: string
+          minLength: 1
+          maxLength: 100
+    EnterpriseConnectorStateChange:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, revision]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+    EnterpriseConnectorPage:
+      type: object
+      additionalProperties: false
+      required: [connections, next_cursor]
+      properties:
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseConnector'
+        next_cursor:
+          type: string
+    EnterpriseConnectorResult:
+      type: object
+      additionalProperties: false
+      required: [connection, replayed]
+      properties:
+        connection:
+          $ref: '#/components/schemas/EnterpriseConnector'
+        replayed:
+          type: boolean
+    EnterpriseConnector:
+      type: object
+      additionalProperties: false
+      required: [id, label, kind, provider, state, revision, changed_at, approval_current]
+      properties:
+        id:
+          type: string
+          format: uuid
+        label:
+          type: string
+        kind:
+          type: string
+          enum: [TELEMATICS, FUEL_CARD_STATEMENT, FISCAL_LOOKUP, DOCUMENT_EXTRACTION, OUTBOUND_WEBHOOK, ACCOUNTING_EXPORT]
+        provider:
+          type: string
+        state:
+          type: string
+          enum: [CONFIGURED, ACTIVE, DEGRADED, DISABLED]
+        revision:
+          type: integer
+          format: int64
+          minimum: 1
+        changed_at:
+          type: string
+          format: date-time
+        approval_current:
+          type: boolean
+    EnterprisePlanOverview:
+      type: object
+      additionalProperties: false
+      required: [observed_at, plans]
+      properties:
+        observed_at:
+          type: string
+          format: date-time
+        plans:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [product, name, revision, state, term_start, term_end, term_current, confirmed_paid, capabilities, limits]
+            properties:
+              product:
+                type: string
+              name:
+                type: string
+              revision:
+                type: string
+                pattern: '^[1-9][0-9]{0,18}$'
+              state:
+                type: string
+                enum: [TRIALING, ACTIVE, PAST_DUE, SUSPENDED, CANCELLING, CANCELLED]
+              term_start:
+                type: string
+                format: date-time
+              term_end:
+                type: string
+                format: date-time
+              term_current:
+                type: boolean
+              confirmed_paid:
+                type: boolean
+              receipt:
+                type: object
+                additionalProperties: false
+                required: [amount_centavos, currency, settled_at, fiscal_status]
+                properties:
+                  amount_centavos:
+                    type: string
+                    pattern: '^[1-9][0-9]{0,18}$'
+                  currency:
+                    type: string
+                    enum: [BRL]
+                  settled_at:
+                    type: string
+                    format: date-time
+                  payment_date:
+                    type: string
+                    format: date
+                    description: Date supplied by the provider when available at date precision.
+                  fiscal_status:
+                    type: string
+                    enum: [NOT_CONSULTED]
+              capabilities:
+                type: array
+                items:
+                  type: string
+              limits:
+                type: object
+                additionalProperties: false
+                properties:
+                  active_vehicles:
+                    type: string
+                    pattern: '^(0|[1-9][0-9]{0,18})$'
+                  active_stations:
+                    type: string
+                    pattern: '^(0|[1-9][0-9]{0,18})$'
+                  storage_bytes:
+                    type: string
+                    pattern: '^(0|[1-9][0-9]{0,18})$'
+                  api_calls:
+                    type: string
+                    pattern: '^(0|[1-9][0-9]{0,18})$'
+              storage_used_bytes:
+                type: string
+                pattern: '^(0|[1-9][0-9]{0,18})$'
+                description: Scoped total of reserved and retained document original bytes at observation.
+              active_vehicles_used:
+                type: string
+                pattern: '^(0|[1-9][0-9]{0,18})$'
+                description: Active vehicle records in the organization at observation.
+              active_stations_used:
+                type: string
+                pattern: '^(0|[1-9][0-9]{0,18})$'
+                description: Admitted stations with a current reviewed representation at observation.
+              vehicle_selection:
+                type: object
+                description: Lower current vehicle limit that requires an explicit keep-active selection.
+                additionalProperties: false
+                required: [subscription_id, revision, active, ceiling]
+                properties:
+                  subscription_id:
+                    $ref: '#/components/schemas/EnterpriseUUID'
+                  revision:
+                    type: integer
+                    format: int64
+                    minimum: 2
+                  active:
+                    type: integer
+                    format: int64
+                    minimum: 1
+                  ceiling:
+                    type: integer
+                    format: int64
+                    minimum: 0
+              pending:
+                type: object
+                additionalProperties: false
+                required: [name, revision, effective_at]
+                properties:
+                  name:
+                    type: string
+                  revision:
+                    type: string
+                    pattern: '^[1-9][0-9]{0,18}$'
+                  effective_at:
+                    type: string
+                    format: date-time
+    EnterpriseVehiclePlanSelectionRequest:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, subscription_id, revision, keep_active]
+      properties:
+        schema_version:
+          type: integer
+          const: 1
+        operation_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        subscription_id:
+          $ref: '#/components/schemas/EnterpriseUUID'
+        revision:
+          type: integer
+          format: int64
+          minimum: 2
+        keep_active:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+    EnterpriseVehiclePlanSelectionResult:
+      type: object
+      additionalProperties: false
+      required: [kept, archived, replayed]
+      properties:
+        kept:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+        archived:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/EnterpriseUUID'
+        replayed:
+          type: boolean
     EnterpriseSettingsReadRequest:
       type: object
       additionalProperties: false

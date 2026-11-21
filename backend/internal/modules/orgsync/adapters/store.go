@@ -49,7 +49,7 @@ type Config struct {
 	// AssessState decides organization state and plan before the owner for a
 	// new operation from its declared instant (EMP-OFFL-012). The zero
 	// decision lets the owner decide. Nil keeps the previous behaviour.
-	AssessState  func(context.Context, pgx.Tx, app.Source, app.Descriptor, time.Time) (app.StateDecision, error)
+	AssessState  func(context.Context, pgx.Tx, app.Source, protocol.Operation, app.Descriptor, time.Time) (app.StateDecision, error)
 	Audit        auditing.TransactionRunner
 	AuditCatalog audit.Catalog
 	EventCatalog event.Catalog
@@ -351,7 +351,7 @@ func (s *Store) Process(ctx context.Context, source app.Source, op protocol.Oper
 			if e != nil {
 				return app.ErrUnavailable
 			}
-			decision, e := s.config.AssessState(ctx, tx, source, descriptor, declared)
+			decision, e := s.config.AssessState(ctx, tx, source, op, descriptor, declared)
 			if e != nil {
 				return proofError(e)
 			}

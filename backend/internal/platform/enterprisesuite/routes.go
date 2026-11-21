@@ -10,6 +10,8 @@ import (
 	"errors"
 	"net"
 	"net/url"
+	"os"
+	"slices"
 	"time"
 
 	account "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
@@ -30,6 +32,7 @@ import (
 	fleetapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/application"
 	meterdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fleet/domain/meter"
 	fuelpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters"
+	fuelweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/fueling/adapters/http"
 	identitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters"
 	proofauth "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/adapters/auth"
 	identity "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/identity/domain"
@@ -51,8 +54,15 @@ import (
 	org "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
+	billpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
+	billweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters/http"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	connectorpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/adapters"
+	connectorweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/adapters/http"
+	datapg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters"
+	dataweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters/http"
+	datadomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/domain"
 	eventpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/adapters"
 	exportpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
 	exportapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/application"
@@ -83,12 +93,13 @@ import (
 )
 
 type Options struct {
-	Enabled      bool
-	Origin       string
-	CursorSecret []byte
-	Pool         *pgxpool.Pool
-	Accounts     *account.Service
-	DeviceLimit  int64
+	Enabled        bool
+	BillingEnabled bool
+	Origin         string
+	CursorSecret   []byte
+	Pool           *pgxpool.Pool
+	Accounts       *account.Service
+	DeviceLimit    int64
 	// The synthetic runtime owns the immutable meter producer and its explicit
 	// transport allowance. Additional owners supply their actual follow-up plans;
 	// production measurement and Android producer activation remain separate.
@@ -107,7 +118,8 @@ type Options struct {
 	DocumentStorage *mediapg.StorageConfig
 	// ExportStorage is the private bucket for export files; nil keeps every
 	// export transfer unavailable (EMP-RPT-001).
-	ExportStorage *exportpg.StorageConfig
+	ExportStorage  *exportpg.StorageConfig
+	AccountingKeys *os.Root
 	// ExportFormats are additional admitted export formats. The suite always
 	// composes the operational list kinds of EMP-RPT-002; tests may add
 	// synthetic kinds.
@@ -119,7 +131,7 @@ type Options struct {
 
 // CapabilityCodes are the organization capabilities this composition
 // registers; the operator tool validates against the same list (EDR-368).
-func CapabilityCodes() []string { return []string{"organizations"} }
+func CapabilityCodes() []string { return []string{"organizations", "data", "integrations"} }
 
 // Register performs no I/O or provisioning. The default mounts no private
 // entry; enabled commands still require an ordinary role and current proof.
@@ -164,6 +176,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, maintpg.IncidentAuditDefinitions()...)
 	definitions = append(definitions, maintpg.RunAuditDefinitions()...)
 	definitions = append(definitions, trippg.ReviewAuditDefinitions()...)
+	definitions = append(definitions, fuelpg.ReviewAuditDefinitions()...)
 	definitions = append(definitions, trippg.ClosureAuditDefinitions()...)
 	definitions = append(definitions, trippg.HandoverAuditDefinitions()...)
 	definitions = append(definitions, trippg.MissionAuditDefinitions()...)
@@ -176,6 +189,13 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, trackingpg.RoutePlanAuditDefinitions()...)
 	definitions = append(definitions, intelpg.AuditDefinitions()...)
 	definitions = append(definitions, agreepg.AuditDefinitions()...)
+	definitions = append(definitions, datapg.KeyAuditDefinitions()...)
+	definitions = append(definitions, datapg.WatchAuditDefinitions()...)
+	definitions = append(definitions, billpg.VehicleSelectionAuditDefinitions()...)
+	definitions = append(definitions, billpg.AdjustmentAuditDefinitions()...)
+	definitions = append(definitions, billpg.StationPlanAuditDefinitions()...)
+	definitions = append(definitions, connectorpg.AuditDefinitions()...)
+	definitions = append(definitions, orgpg.OrganizationLifecycleAuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
 		return err
@@ -195,6 +215,9 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{
+		{Class: "integ.connection", Permissions: []string{"integ.connection.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Company connector configuration inherits the identity v1 write allowance. Reviewed connector payload and execution budgets are independent."},
+		{Class: "import.batch", Permissions: []string{"import.batch.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Fuel card preview and confirmation inherit the identity v1 write allowance. Each connection has a separate approved statement size."},
+		{Class: "data.key", Permissions: []string{"data.key.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Scoped key lifecycle inherits the identity v1 write allowance on each current organization/account/web axis; dataset request limits are independent."},
 		{Class: "org.setup", Permissions: []string{"org.settings.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic setup/settings only: share identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.structure", Permissions: []string{"org.structure.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic structure only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -212,9 +235,12 @@ func Register(router chi.Router, o Options) error {
 		{Class: "trip.mission", Permissions: []string{"trip.mission.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic mission create, assign and cancel commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "trip.close", Permissions: []string{"trip.trip.close_for_other"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic supervisor trip closures and handovers (EMP-TRIP-012) inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "trip.review", Permissions: []string{"trip.trip.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic trip review decisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
+		{Class: "fueling.review", Permissions: []string{"fuel.fueling.review"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Fueling review decisions inherit the existing synthetic identity v1 write allowance."},
 		{Class: "fin.period", Permissions: []string{"fin.period.close", "fin.period.reopen"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic period lock, reopen and re-lock commands inherit identity v1 write 200/hour on every organization/account/web axis; production measurement and cleanup remain required."},
 		{Class: "rpt.export", Permissions: []string{"rpt.export.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic export requests inherit identity v1 write 200/hour on every organization/account/web axis besides the three-open-job limit; production measurement and cleanup remain required."},
+		{Class: "org.lifecycle", Permissions: []string{"org.lifecycle.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Reviewed owner-only lifecycle commands use the existing synthetic identity write allowance."},
 		{Class: "org.ownership_transfer", Permissions: []string{"org.ownership.transfer", "org.ownership.respond"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic ownership transfer only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
+		{Class: "subs.plan", Permissions: []string{"subs.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic plan vehicle selection inherits the reviewed identity write ceiling on each axis."},
 		{Class: "doc.document", Permissions: []string{"doc.document.attach"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic document upload sessions inherit identity v1 write 200/hour on every axis; byte transfers keep the orgmedia slot limits and production measurement remains required."},
 		{Class: "gps.geofence", Permissions: []string{"gps.geofence.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic geofence management inherits identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
 		{Class: "route.plan", Permissions: []string{"route.plan.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic route plan revisions inherit identity v1 write 200/hour on every organization/account/web axis; production measurement remains required."},
@@ -232,7 +258,49 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 	gateway := orgapi.Gateway{Enabled: true, Origin: o.Origin, CursorSecret: o.CursorSecret, Now: time.Now, WriteAdmission: admission}
-	authorization := access.Authorization{Source: roles, Capabilities: accesspg.PilotEntitlements{Enabled: true, Catalog: capabilities, States: flags}, Records: orgweb.SetupRecords{}, Now: time.Now}
+	entitlements := accesspg.PilotEntitlements{Enabled: true, Catalog: capabilities, States: flags}
+	plans := billpg.EntitlementStore{Pool: o.Pool, Capabilities: capabilities, Now: time.Now}
+	if o.BillingEnabled {
+		entitlements.Plans = plans
+		flags.PlanWrites = plans
+	}
+	authorization := access.Authorization{Source: roles, Capabilities: entitlements, Records: orgweb.SetupRecords{}, Now: time.Now}
+	billingOverview := billpg.OverviewStore{Pool: o.Pool, Capabilities: capabilities, BillingEnabled: o.BillingEnabled,
+		Authority: orgpg.SubscriptionAuthority{Memberships: memberStore, Roles: roles}}
+	if err := billweb.RegisterPlanOverview(router, billingOverview, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	keyVerifier, err := datadomain.NewKeyVerifier(o.CursorSecret)
+	if err != nil {
+		return err
+	}
+	dataAuthority := orgpg.DataKeyAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}
+	keyStore := datapg.KeyStore{Pool: o.Pool, Audit: auditStore, Verifier: keyVerifier, Authority: dataAuthority}
+	if err := dataweb.RegisterKeys(router, keyStore, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	usage := datapg.UsageStore{Pool: o.Pool, Plans: plans, Flags: flags, Authority: dataAuthority, Enabled: o.BillingEnabled}
+	if err := dataweb.RegisterUsage(router, usage, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	watches := datapg.WatchStore{Pool: o.Pool, Plans: plans, Authority: dataAuthority, Audit: auditStore, Now: time.Now, Enabled: o.BillingEnabled}
+	if err := dataweb.RegisterWatches(router, watches, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	if o.BillingEnabled {
+		keyAccess := datapg.KeyAccess{Pool: o.Pool, Entitlements: flags, Verifier: keyVerifier}
+		meter := datapg.UsageMeter{Keys: keyAccess, Plans: plans}
+		dataweb.RegisterRegionalSeries(router, datapg.RegionalSeries{Meter: meter, CursorSecret: o.CursorSecret})
+	}
+	connections := connectorpg.Store{Pool: o.Pool, Audit: auditStore,
+		Access:    connectorpg.Access{Pool: o.Pool, Flags: flags},
+		Authority: orgpg.ConnectorAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}
+	if err := connectorweb.Register(router, connections, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	if err := connectorweb.RegisterStatements(router, connections, cookies, gateway, authorization); err != nil {
+		return err
+	}
 	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots, creationAdmission(o)); err != nil {
 		return err
 	}
@@ -253,6 +321,10 @@ func Register(router chi.Router, o Options) error {
 	// EMP-TRIP-002 (EDR-206): an IN_PROGRESS trip is BR-FLEET-010 open work;
 	// work orders join this source in F6 via maintpg.MaintenanceHolds.
 	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: maintpg.MaintenanceHolds{}, ChecklistBlocks: maintpg.ChecklistBlocks{}}
+	if o.BillingEnabled {
+		assets.VehicleSlots = plans
+		assets.LifecycleJobs = connectorpg.FleetWebhooks{}
+	}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.
 	assetStructure := &orgpg.ResourceStructure{Kind: orgpg.AssetStructure, Pool: o.Pool, Allocations: assets}
@@ -261,6 +333,12 @@ func Register(router chi.Router, o Options) error {
 	// through the same Fleet port in Prepare and in the transaction.
 	assetAssignee := &orgpg.ResourceAssignee{Pool: o.Pool, Assignments: assets}
 	fleetAuthority.Assignee = assetAssignee
+	selections := billpg.VehicleSelectionStore{Enabled: o.BillingEnabled, Pool: o.Pool, Fleet: assets, Audit: auditStore, NewID: jobs.NewUUIDv4,
+		Authority: orgpg.SubscriptionAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}
+	if err := billweb.RegisterVehicleSelection(router, selections, cookies, gateway, authorization); err != nil {
+		return err
+	}
+
 	assetAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: fleetweb.FleetRecords{}, Structure: assetStructure, Assignee: assetAssignee, Now: time.Now}
 	if err := fleetweb.RegisterAssets(router, fleetapp.AssetService{Enabled: true, Repository: assets, NewID: jobs.NewUUIDv4}, cookies, gateway, assetAuthorization); err != nil {
 		return err
@@ -325,6 +403,9 @@ func Register(router chi.Router, o Options) error {
 
 	settings := &orgpg.SettingsStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
 	contexts := &orgpg.AccountContextStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Capabilities: flags, Settings: settings}
+	if o.BillingEnabled {
+		contexts.Plans = plans
+	}
 	if err := orgweb.RegisterAccountContexts(router, true, contexts, cookies); err != nil {
 		return err
 	}
@@ -468,6 +549,13 @@ func Register(router chi.Router, o Options) error {
 	if err := tripweb.RegisterConflicts(router, tripapp.ConflictService{Enabled: true, Repository: conflicts}, cookies, gateway, conflictAuthorization); err != nil {
 		return err
 	}
+	fuelingStructure := &orgpg.ResourceStructure{Kind: orgpg.FuelingReviewStructure, Pool: o.Pool}
+	fuelingReviews := fuelpg.ReviewStore{Pool: o.Pool, Audit: auditStore,
+		Authority: orgpg.FuelingReviewAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags, Structure: fuelingStructure}}
+	fuelingAuthorization := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Structure: fuelingStructure, Now: time.Now}
+	if err := fuelweb.RegisterReview(router, fuelingReviews, cookies, gateway, fuelingAuthorization); err != nil {
+		return err
+	}
 	// EMP-GPS-012 (EDR-281/282): recorded tracks only under gps.track.read
 	// through the trip's stored structure; every page is recorded in the
 	// PRIV-005 access log before it is served.
@@ -521,7 +609,7 @@ func Register(router chi.Router, o Options) error {
 	}
 
 	exportAuthority := &orgpg.ExportAuthority{Memberships: store.Memberships, Roles: roles, Capabilities: flags}
-	if err := registerExports(router, o, cookies, gateway, exportAuthority, authorization.Capabilities, roles, auditStore); err != nil {
+	if err := registerExports(router, o, cookies, gateway, exportAuthority, authorization.Capabilities, roles, auditStore, connections.Access); err != nil {
 		return err
 	}
 
@@ -538,10 +626,21 @@ func Register(router chi.Router, o Options) error {
 		return err
 	}
 
-	if err := registerNotices(router, o, cookies, gateway, roles, allowance); err != nil {
+	noticeStore, err := registerNotices(router, o, cookies, gateway, roles, allowance)
+	if err != nil {
 		return err
 	}
-	if err := registerDocuments(router, o, cookies, gateway, access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: documentweb.DocumentRecords{}, Now: time.Now}, roles, auditStore, deviceStore); err != nil {
+	lifecycle := orgpg.LifecycleStore{Pool: o.Pool, Roots: roots, Memberships: memberStore, Roles: roles, Capabilities: flags, Audit: auditStore, Notices: noticeStore}
+	lifecycleAuth := access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: orgweb.LifecycleRecords{}, Now: time.Now}
+	if err := orgweb.RegisterLifecycle(router, lifecycle, cookies, gateway, lifecycleAuth, roots); err != nil {
+		return err
+	}
+
+	var documentStorage documentpg.StorageReservations
+	if o.BillingEnabled {
+		documentStorage = billpg.DocumentQuota{Entitlements: plans, Flags: flags}
+	}
+	if err := registerDocuments(router, o, cookies, gateway, access.Authorization{Source: roles, Capabilities: authorization.Capabilities, Records: documentweb.DocumentRecords{}, Now: time.Now}, roles, auditStore, deviceStore, documentStorage); err != nil {
 		return err
 	}
 	intelStore := &intelpg.Store{Pool: o.Pool, Authority: &orgpg.ManagementAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}, Audit: auditStore, NewID: jobs.NewUUIDv4}
@@ -566,25 +665,31 @@ func Register(router chi.Router, o Options) error {
 
 // registerNotices mounts the four own-inbox routes (EMP-NOTIF-001). Their
 // writes use a dedicated route-class admission, not a catalog permission.
-func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, roles *accesspg.Store, allowance identity.OperationQuota) error {
-	kinds, err := notify.NewCatalog(o.NoticeKinds)
+func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, roles *accesspg.Store, allowance identity.OperationQuota) (*notifypg.Store, error) {
+	definitions := append(slices.Clone(o.NoticeKinds), orgpg.ClosureNoticeKind())
+	if o.BillingEnabled {
+		definitions = append(definitions, datapg.WatchNoticeKind())
+	}
+	kinds, err := notify.NewCatalog(definitions)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{
 		{Class: "notif.self", Permissions: []string{notifyweb.WriteClass}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic own read marks and notice preferences inherit identity v1 write200/hour on every axis after current own-membership proof; production measurement remains required."},
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
 	store := &notifypg.Store{Pool: o.Pool, Catalog: kinds, Authority: roles, NewID: jobs.NewUUIDv4}
-	return notifyweb.Register(router, notifyweb.Options{Enabled: true, Service: notifyapp.Service{Enabled: true, Catalog: kinds, Repository: store}, Cookies: cookies, Gateway: gateway, Admission: admission})
+	return store, notifyweb.Register(router, notifyweb.Options{Enabled: true, Service: notifyapp.Service{Enabled: true, Catalog: kinds, Repository: store}, Cookies: cookies, Gateway: gateway, Admission: admission})
 }
 
 // registerDocuments composes EMP-DOC-002 over the EMP-PLAT-006 private
 // original service and the EMP-PRIV-005 access log. Without configured
 // storage, declarations work while bytes and content stay unavailable.
-func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authorization access.Authorization, roles *accesspg.Store, auditStore *auditpg.Store, devices *member.DeviceStore) error {
+func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, authorization access.Authorization,
+	roles *accesspg.Store, auditStore *auditpg.Store, devices *member.DeviceStore, storage documentpg.StorageReservations,
+) error {
 	authority := documentpg.CurrentAuthority{Source: roles, Now: time.Now}
 	var objects documentObjects = documentpg.UnavailableObjects{}
 	if o.DocumentStorage != nil {
@@ -612,7 +717,7 @@ func registerDocuments(router chi.Router, o Options, cookies companyweb.Handler,
 	targets := documentapp.Targets{documentdomain.Asset: fleetpg.DocumentTargets{}, documentdomain.MeterReading: fleetpg.DocumentTargets{},
 		documentdomain.Employee: member.EmployeeDocumentTargets{}, documentdomain.Incident: maintpg.IncidentDocumentTargets{},
 		documentdomain.Fueling: fuelpg.FuelingDocumentTargets{}, documentdomain.Expense: expensepg.ExpenseDocumentTargets{}}
-	store := &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore, Targets: targets}
+	store := &documentpg.Store{Pool: o.Pool, Authority: authority, Audit: auditStore, Targets: targets, Storage: storage}
 	// EMP-DOC-014: the ingress runs the same safety check as the queued job,
 	// over the same bucket and inspector, so STORED never skips it.
 	checker := documentapp.Checker{Repository: store, Objects: objects, Inspector: mediapg.JPEGInspector{}, NewID: jobs.NewUUIDv4}

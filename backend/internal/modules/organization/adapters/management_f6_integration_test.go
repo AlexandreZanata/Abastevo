@@ -39,7 +39,7 @@ func grantF6Tables(t *testing.T, f *orgtest.Fixture) {
 		org_report_schedules, org_recurring_and_fine_costs, org_payable_statements,
 		org_retention_and_holds, org_consolidation_grants, org_custom_roles, org_voluntary_price_publications
 	TO ` + role + `; GRANT USAGE ON SEQUENCE org_work_orders_number_seq TO ` + role + `;
-	GRANT SELECT ON org_expenses, org_fuelings, org_trips, org_documents, org_sync_review_items, org_sync_review_resolutions, org_meters, org_meter_readings, org_finance_periods, org_asset_unit_periods, org_asset_cost_centre_periods, org_assets, org_units, org_cost_centres TO ` + role
+	GRANT SELECT ON org_expenses, org_fueling_review_entries, org_fuelings, org_trips, org_documents, org_sync_review_items, org_sync_review_resolutions, org_meters, org_meter_readings, org_finance_periods, org_asset_unit_periods, org_asset_cost_centre_periods, org_assets, org_units, org_cost_centres TO ` + role
 	if _, err := f.Admin.Exec(t.Context(), stmt); err != nil {
 		t.Fatal("grant f6 tables:", err)
 	}

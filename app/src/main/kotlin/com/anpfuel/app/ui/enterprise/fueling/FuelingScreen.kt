@@ -402,7 +402,8 @@ private fun FuelingFormCard(target: FuelingTarget, busy: Boolean, capture: Recei
         if (flags?.arithmeticMismatch == true) Notice(stringResource(R.string.enterprise_fuelings_warning_arithmetic), Modifier.testTag("enterprise-fueling-warning-arithmetic"))
         if (flags != null && ReadingFlag.READING_BELOW_PREVIOUS in flags.reading) Notice(stringResource(R.string.enterprise_fuelings_warning_below), Modifier.testTag("enterprise-fueling-warning-reading"))
         else if (flags != null && ReadingFlag.IMPLAUSIBLE_RATE in flags.reading) Notice(stringResource(R.string.enterprise_fuelings_warning_rate), Modifier.testTag("enterprise-fueling-warning-reading"))
-        if (capture != null) ReceiptCaptureCard(stringResource(R.string.enterprise_fuelings_receipt_optional), capture, busy, onSave = null, onCancel = null)
+        if (capture != null) ReceiptCaptureCard(stringResource(R.string.enterprise_fuelings_receipt_optional), capture, busy,
+            onSave = null, onCancel = null, onUsePaid = { paid = it }, onUseDiscount = { discount = it })
         Button(onClick = { form?.let { onSave(it, capture?.state?.draft) } }, enabled = !busy && form != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("enterprise-fueling-save")) { Text(stringResource(R.string.enterprise_fuelings_save)) }
         TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("enterprise-fueling-cancel")) {

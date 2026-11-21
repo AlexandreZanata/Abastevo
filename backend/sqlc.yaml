@@ -10,6 +10,7 @@ sql:
   - engine: postgresql
     queries: db/queries/orgaccess
     schema:
+      - db/migrations/000007_jobs.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000128_payment_billing_exits.sql
       - db/migrations/000169_organization_roots.sql
@@ -17,6 +18,7 @@ sql:
       - db/migrations/000171_role_assignments.sql
       - db/migrations/000165_org_audit_events.sql
       - db/migrations/000186_role_command_receipts.sql
+      - db/migrations/000286_organization_closure.sql
     gen:
       go:
         package: orgaccess
@@ -56,8 +58,89 @@ sql:
         emit_json_tags: true
         omit_unused_structs: true
   - engine: postgresql
+    queries: db/queries/orgbilling
+    schema:
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000197_organization_assets.sql
+      - db/migrations/000201_organization_asset_lifecycle.sql
+      - db/migrations/000205_org_documents.sql
+      - db/migrations/000263_organization_plan_catalog.sql
+      - db/migrations/000264_organization_subscription_history.sql
+      - db/migrations/000265_organization_billing_intake.sql
+      - db/migrations/000267_organization_subscription_plan_changes.sql
+      - db/migrations/000268_organization_trial_grants.sql
+      - db/migrations/000274_organization_asaas_billing.sql
+      - db/migrations/000281_organization_vehicle_plan_selection.sql
+      - db/migrations/000283_organization_billing_adjustments.sql
+      - db/migrations/000284_organization_station_plan_meter.sql
+    gen:
+      go:
+        package: orgbilling
+        out: db/queries/orgbilling
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
+    queries: db/queries/orgbillingops
+    schema:
+      - db/migrations/000165_org_audit_events.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000263_organization_plan_catalog.sql
+      - db/migrations/000264_organization_subscription_history.sql
+      - db/migrations/000265_organization_billing_intake.sql
+      - db/migrations/000274_organization_asaas_billing.sql
+      - db/migrations/000289_organization_billing_charge_approvals.sql
+    gen:
+      go:
+        package: orgbillingops
+        out: db/queries/orgbillingops
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
+    queries: db/queries/orgconnector
+    schema:
+      - db/migrations/000007_jobs.sql
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000197_organization_assets.sql
+      - db/migrations/000201_organization_asset_lifecycle.sql
+      - db/migrations/000215_organization_fuelings.sql
+      - db/migrations/000220_organization_trips.sql
+      - db/migrations/000240_organization_tracking_intake.sql
+      - db/migrations/000275_organization_connections.sql
+      - db/migrations/000276_organization_telematics_evidence.sql
+      - db/migrations/000277_organization_fuel_card_statements.sql
+      - db/migrations/000285_organization_fleet_webhooks.sql
+    gen:
+      go:
+        package: orgconnector
+        out: db/queries/orgconnector
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
+    queries: db/queries/orgdata
+    schema:
+      - db/migrations/000169_organization_roots.sql
+      - db/migrations/000170_membership_periods.sql
+      - db/migrations/000263_organization_plan_catalog.sql
+      - db/migrations/000269_enterprise_data_catalog.sql
+      - db/migrations/000270_organization_data_keys.sql
+      - db/migrations/000271_organization_data_usage.sql
+      - db/migrations/000272_enterprise_regional_series.sql
+      - db/migrations/000280_organization_data_watchlists.sql
+    gen:
+      go:
+        package: orgdata
+        out: db/queries/orgdata
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/organization
     schema:
+      - db/migrations/000007_jobs.sql
       - db/migrations/000020_accounts.sql
       - db/migrations/000128_payment_billing_exits.sql
       - db/migrations/000165_org_audit_events.sql
@@ -76,6 +159,7 @@ sql:
       - "db/migrations/000185_ownership_transfers.sql"
       - db/migrations/000187_ownership_transfer_hardening.sql
       - db/migrations/000188_employee_invitations.sql
+      - db/migrations/000286_organization_closure.sql
     gen:
       go:
         package: organization
@@ -456,6 +540,7 @@ sql:
       - db/migrations/000128_payment_billing_exits.sql
       - db/migrations/000129_payment_refunds_disputes.sql
       - db/migrations/000130_payment_enterprise_capabilities.sql
+      - db/migrations/000273_organization_settlement_deferral.sql
     gen:
       go:
         package: payments
@@ -649,6 +734,10 @@ sql:
       - db/migrations/000218_organization_late_intake.sql
       - db/migrations/000166_org_capabilities.sql
       - db/migrations/000219_organization_state_intake.sql
+      - db/migrations/000263_organization_plan_catalog.sql
+      - db/migrations/000264_organization_subscription_history.sql
+      - db/migrations/000266_organization_subscription_sync_intakes.sql
+      - db/migrations/000282_organization_vehicle_plan_offline.sql
     gen:
       go:
         package: orgsync
@@ -773,8 +862,11 @@ sql:
       - db/migrations/000196_organization_sync_intake.sql
       - db/migrations/000197_organization_assets.sql
       - db/migrations/000198_organization_meters.sql
+      - db/migrations/000199_organization_meter_reviews.sql
       - db/migrations/000201_organization_asset_lifecycle.sql
       - db/migrations/000215_organization_fuelings.sql
+      - db/migrations/000278_organization_held_fuelings.sql
+      - db/migrations/000279_organization_fueling_review_decisions.sql
     gen:
       go:
         package: fueling

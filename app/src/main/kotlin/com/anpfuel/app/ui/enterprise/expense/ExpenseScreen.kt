@@ -308,7 +308,8 @@ private fun ExpenseFormCard(target: ExpenseTarget, busy: Boolean, capture: Recei
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), singleLine = true, modifier = Modifier.fillMaxWidth().testTag("enterprise-expense-company"))
         Text(stringResource(R.string.enterprise_expenses_payer), style = MaterialTheme.typography.titleSmall)
         ExpensePayer.entries.forEach { p -> Choice(stringResource(payerText(p.name)), payer == p, "enterprise-expense-payer-${p.name}") { payer = p } }
-        if (capture != null) ReceiptCaptureCard(stringResource(R.string.enterprise_expenses_receipt_optional), capture, busy, onSave = null, onCancel = null)
+        if (capture != null) ReceiptCaptureCard(stringResource(R.string.enterprise_expenses_receipt_optional), capture, busy,
+            onSave = null, onCancel = null, onUsePaid = { paid = it })
         Button(onClick = { form?.let { onSave(it, capture?.state?.draft) } }, enabled = !busy && form != null,
             modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("enterprise-expense-save")) { Text(stringResource(R.string.enterprise_expenses_save)) }
         TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("enterprise-expense-cancel")) {

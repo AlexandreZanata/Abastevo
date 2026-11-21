@@ -14,7 +14,7 @@ func TestUnwiredCompanyPersistenceAndAccountProofFailClosed(t *testing.T) {
 	if err := store.Create(t.Context(), app.Row{}, app.Proof{}, "", time.Now()); !errors.Is(err, domain.ErrUnavailable) {
 		t.Fatal(err)
 	}
-	if _, err := store.Authenticate(t.Context(), "", time.Now(), true, nil); !errors.Is(err, domain.ErrUnavailable) {
+	if _, err := store.Authenticate(t.Context(), "", time.Now, true, nil); !errors.Is(err, domain.ErrUnavailable) {
 		t.Fatal(err)
 	}
 	if err := store.Revoke(t.Context(), "", "", time.Now()); !errors.Is(err, domain.ErrUnavailable) {

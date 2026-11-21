@@ -10,8 +10,8 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000262. Relations: 402 granted, 3 without access.
--- Sequences: 7. Explicit functions: 0.
+-- Schema version: 000292. Relations: 434 granted, 5 without access.
+-- Sequences: 7. Explicit functions: 3.
 
 BEGIN;
 SELECT pg_catalog.set_config('abastevo.runtime_role', :'runtime_role', true);
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000262' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000262 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000292' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000292 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -61,6 +61,8 @@ $runtime_role$;
 GRANT USAGE ON SCHEMA public TO :"runtime_role";
 
 -- Reviewed limits (EDR-363):
+--   org_billing_charge_approvals no access: only the restricted billing operator reads independent charge approvals (EMP-SUBS-004).
+--   org_document_fiscal_consultations no access: serving login cannot read or record external fiscal results (EMP-INTEG-004).
 --   schema_migrations at most SELECT: the readiness probe reads the ledger (migrate.Check); only the migration owner writes it.
 -- Operator-only functions referenced by the binaries, never granted here:
 --   org_meter_current_rebuild(uuid): operator projection rebuild (EMP-METER-006, EDR-317); never reachable from a route or job.
@@ -161,6 +163,14 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.driver_report_snapshots TO 
 GRANT SELECT, INSERT, DELETE ON TABLE public.driver_shift_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.driver_shift_gaps TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.driver_shifts TO :"runtime_role";
+GRANT SELECT ON TABLE public.enterprise_billing_offers TO :"runtime_role";
+GRANT SELECT ON TABLE public.enterprise_data_plan_datasets TO :"runtime_role";
+GRANT SELECT ON TABLE public.enterprise_data_rate_policies TO :"runtime_role";
+GRANT SELECT ON TABLE public.enterprise_data_source_reviews TO :"runtime_role";
+GRANT SELECT ON TABLE public.enterprise_plan_catalog TO :"runtime_role";
+GRANT SELECT ON TABLE public.enterprise_regional_datasets TO :"runtime_role";
+GRANT SELECT ON TABLE public.enterprise_regional_series TO :"runtime_role";
+GRANT SELECT ON TABLE public.enterprise_regional_series_samples TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.entitlement_grants TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.evidence_final_outputs TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.evidence_objects TO :"runtime_role";
@@ -228,7 +238,19 @@ GRANT SELECT, INSERT ON TABLE public.org_asset_unit_allocations TO :"runtime_rol
 GRANT SELECT, INSERT ON TABLE public.org_asset_unit_periods TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.org_assets TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_audit_events TO :"runtime_role";
+GRANT SELECT ON TABLE public.org_billing_adjustment_approvals TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_billing_adjustment_postings TO :"runtime_role";
+-- no access: public.org_billing_charge_approvals
+GRANT SELECT ON TABLE public.org_billing_charge_bindings TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_billing_settlement_receipts TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_billing_station_plan_admissions TO :"runtime_role";
+GRANT SELECT ON TABLE public.org_billing_station_plan_reviews TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_billing_subscription_events TO :"runtime_role";
+GRANT SELECT ON TABLE public.org_billing_trial_grants TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_billing_vehicle_plan_archives TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_billing_vehicle_plan_selections TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_capabilities TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_card_statement_lines TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_checklist_policy_revisions TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_checklist_run_answers TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_checklist_run_releases TO :"runtime_role";
@@ -238,14 +260,23 @@ GRANT SELECT, INSERT ON TABLE public.org_checklist_template_items TO :"runtime_r
 GRANT SELECT, INSERT ON TABLE public.org_checklist_template_targets TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_checklist_template_versions TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_checklist_templates TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_closure_requests TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_compliance_items TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_connections TO :"runtime_role";
+GRANT SELECT, UPDATE ON TABLE public.org_connector_approvals TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_consolidation_grants TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_cost_centre_codes TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_cost_centre_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_cost_centres TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_custom_roles TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_data_api_keys TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_data_rate_windows TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_data_request_receipts TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_data_usage_terms TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_data_watchlists TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_device_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_device_enrollments TO :"runtime_role";
+-- no access: public.org_document_fiscal_consultations
 GRANT SELECT, INSERT ON TABLE public.org_document_links TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_documents TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_employee_commands TO :"runtime_role";
@@ -277,6 +308,7 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.org_fuel_tanks TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_fueling_review_entries TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_fueling_warnings TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_fuelings TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_held_fuelings TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_incident_report_transitions TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_incident_reports TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_insurance_policies TO :"runtime_role";
@@ -291,6 +323,7 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.org_invitations TO :"runtime_role";
 -- no access: public.org_kpi_snapshots
 GRANT SELECT, INSERT ON TABLE public.org_legal_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.org_legal_entities TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_lifecycle_receipts TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_maintenance_occurrences TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_maintenance_plans TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_membership_access_commands TO :"runtime_role";
@@ -350,6 +383,7 @@ GRANT SELECT, INSERT ON TABLE public.org_sync_state_intakes TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_team_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_team_links TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_teams TO :"runtime_role";
+GRANT SELECT, INSERT ON TABLE public.org_telematics_evidence TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_tracking_alerts TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_tracking_geofence_commands TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_tracking_geofence_events TO :"runtime_role";
@@ -389,6 +423,8 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.org_trips TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_unit_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_units TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_voluntary_price_publications TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_webhook_deliveries TO :"runtime_role";
+GRANT SELECT ON TABLE public.org_webhook_endpoints TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_work_orders TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.organizations TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.payment_attempts TO :"runtime_role";
@@ -479,7 +515,9 @@ GRANT USAGE ON SEQUENCE public.org_notification_notices_position_seq TO :"runtim
 GRANT USAGE ON SEQUENCE public.org_tracking_live_revision_seq TO :"runtime_role";
 GRANT USAGE ON SEQUENCE public.org_work_orders_number_seq TO :"runtime_role";
 -- Functions the runtime calls that PUBLIC cannot execute.
--- none: every function the runtime calls is executable by PUBLIC.
+GRANT EXECUTE ON FUNCTION public.org_billing_station_plan_reviews_at(uuid,timestamp with time zone) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.org_billing_vehicle_downgrade(uuid,uuid,bigint,timestamp with time zone) TO :"runtime_role";
+GRANT EXECUTE ON FUNCTION public.org_sync_vehicle_plan_archive_at(uuid,uuid,timestamp with time zone,timestamp with time zone) TO :"runtime_role";
 -- Safety net until this script is re-run after a migration: objects the
 -- owner creates later get ordinary DML (never TRUNCATE, REFERENCES, TRIGGER
 -- or MAINTAIN); re-running converges them to the derived inventory (EDR-364).
@@ -519,7 +557,7 @@ BEGIN
     FROM pg_catalog.pg_proc p JOIN pg_catalog.pg_namespace n ON n.oid = p.pronamespace
    WHERE n.nspname = 'public' AND p.prosecdef
      AND pg_catalog.has_function_privilege(role_name, p.oid, 'EXECUTE')
-     AND p.oid::regprocedure::text <> ALL (ARRAY[]::text[]);
+     AND p.oid::regprocedure::text <> ALL (ARRAY['org_billing_station_plan_reviews_at(uuid,timestamp with time zone)', 'org_billing_vehicle_downgrade(uuid,uuid,bigint,timestamp with time zone)', 'org_sync_vehicle_plan_archive_at(uuid,uuid,timestamp with time zone,timestamp with time zone)']::text[]);
   IF bad IS NOT NULL THEN
     RAISE EXCEPTION 'runtime role can execute SECURITY DEFINER functions: %', bad;
   END IF;

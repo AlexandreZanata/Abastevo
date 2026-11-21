@@ -10,6 +10,9 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import com.anpfuel.application.port.ImagePriceOcr
 import com.anpfuel.data.local.media.BoundedPhotoBitmap
+import com.anpfuel.domain.enterprise.attachment.ReceiptMoneyReading
+import com.anpfuel.domain.enterprise.attachment.ReceiptOriginal
+import com.anpfuel.domain.enterprise.attachment.ReceiptTextLine
 import com.anpfuel.domain.portable.FuelBoardFraming
 import com.anpfuel.domain.portable.FuelBoardOcr
 import com.google.android.gms.common.moduleinstall.InstallStatusListener
@@ -253,6 +256,20 @@ class MlKitImagePriceOcr @Inject constructor(@ApplicationContext private val con
         try { readOwned(recognizer, BoundedPhotoBitmap.decode(bytes)) } finally { recognizer.close() }
     }
 
+    /** Read one synthetic receipt using the bounded decoder and local Latin recognizer. */
+    suspend fun recognizeReceipt(original: ReceiptOriginal): ReceiptMoneyReading = withContext(Dispatchers.Default) {
+        val recognizer = openRecognizer()
+        try {
+            val bytes = original.bytes()
+            val bitmap = try { BoundedPhotoBitmap.decode(bytes) } finally { bytes.fill(0) }
+            try {
+                val text = readText(recognizer, bitmap)
+                ReceiptMoneyReading.read(text.textBlocks.asSequence().flatMap { it.lines.asSequence() }
+                    .map { ReceiptTextLine(it.text, it.confidence) })
+            } finally { bitmap.recycle() }
+        } finally { recognizer.close() }
+    }
+
     /** One recognizer per photo; the model check never sends image bytes. */
     private suspend fun openRecognizer(): TextRecognizer {
         val recognizer = TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
@@ -278,15 +295,18 @@ class MlKitImagePriceOcr @Inject constructor(@ApplicationContext private val con
      * cancellation waits for that one reading (a fraction of a second) and is
      * honoured right after; the caller can then recycle the bitmap safely.
      */
-    private suspend fun read(recognizer: TextRecognizer, bitmap: Bitmap): List<FuelBoardOcr.Token> {
-        val tokens = withContext(NonCancellable) {
+    private suspend fun read(recognizer: TextRecognizer, bitmap: Bitmap): List<FuelBoardOcr.Token> =
+        boardTokens(readText(recognizer, bitmap))
+
+    private suspend fun readText(recognizer: TextRecognizer, bitmap: Bitmap): Text {
+        val text = withContext(NonCancellable) {
             suspendCancellableCoroutine { continuation ->
                 try {
                     recognizer.process(InputImage.fromBitmap(bitmap, 0)).addOnCompleteListener { task ->
                         if (!task.isSuccessful) {
                             continuation.resumeWithException(IllegalStateException("ocr.unavailable"))
                         } else {
-                            continuation.resume(boardTokens(task.result))
+                            continuation.resume(task.result)
                         }
                     }
                 } catch (_: Exception) {
@@ -295,7 +315,7 @@ class MlKitImagePriceOcr @Inject constructor(@ApplicationContext private val con
             }
         }
         kotlin.coroutines.coroutineContext.ensureActive()
-        return tokens
+        return text
     }
 
     /** Device harness readiness: production capture offers retry/manual while the model downloads. */

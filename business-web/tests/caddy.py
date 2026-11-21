@@ -118,6 +118,9 @@ def run():
             assert headers.get("X-Robots-Tag") == "noindex, nofollow", "Admin panel lost noindex"
             code, _, raw = request("/robots.txt")
             robots = raw.decode()
+            robots_source = (ROOT / "landing/static/robots.txt").read_bytes()
+            expected_robots = robots_source.replace(b"{{CANONICAL_ORIGIN}}", b"https://abastevo.com.br")
+            assert raw == expected_robots, "Served robots does not match the rendered landing source"
             assert code == 200 and "User-agent: *\nAllow: /\n" in robots, "Robots does not allow the public site"
             for rule in ["Disallow: /admin/", "Disallow: /empresas/", "Disallow: /dados/busca/",
                          "User-agent: GPTBot\nDisallow: /\n", "User-agent: ClaudeBot\nDisallow: /\n",

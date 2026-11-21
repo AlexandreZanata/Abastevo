@@ -175,6 +175,7 @@ WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merc
 SELECT * FROM payment_inbox
 WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment)
   AND merchant=sqlc.arg(merchant) AND state='PENDING'
+  AND (deferred_until IS NULL OR deferred_until <= clock_timestamp())
 ORDER BY received_at,event_id
 LIMIT sqlc.arg(limit_count)::int;
 
@@ -185,9 +186,17 @@ WHERE order_id=sqlc.arg(order_id)::uuid AND state='ACTIVE';
 
 -- name: MarkPaymentInbox :execrows
 UPDATE payment_inbox
-SET state=sqlc.arg(state),attempts=attempts+1,processed_at=sqlc.arg(processed_at)::timestamptz,last_error=sqlc.arg(last_error)
+SET state=sqlc.arg(state),attempts=attempts+1,processed_at=sqlc.arg(processed_at)::timestamptz,last_error=sqlc.arg(last_error),deferred_until=NULL
 WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant) AND event_id=sqlc.arg(event_id)
-  AND state='PENDING';
+  AND state='PENDING'
+  AND (deferred_until IS NULL OR deferred_until <= clock_timestamp());
+
+-- name: DeferPaymentInbox :execrows
+UPDATE payment_inbox SET deferred_until=sqlc.arg(deferred_until)::timestamptz,last_error='organization-term-not-effective'
+WHERE provider=sqlc.arg(provider) AND environment=sqlc.arg(environment) AND merchant=sqlc.arg(merchant)
+  AND event_id=sqlc.arg(event_id) AND payload_hash=sqlc.arg(payload_hash) AND state='PENDING'
+  AND (deferred_until IS NULL OR deferred_until=sqlc.arg(deferred_until)::timestamptz)
+  AND sqlc.arg(deferred_until)::timestamptz>clock_timestamp();
 
 -- name: UpsertPaymentContract :one
 INSERT INTO payment_contracts(

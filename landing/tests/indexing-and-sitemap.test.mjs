@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildSite } from '../scripts/build.mjs';
 import { loadSite } from '../scripts/content/site.mjs';
-import { listHtmlPages } from '../scripts/check.mjs';
+import { listHtmlPages, LLMS_DATA_ROUTES } from '../scripts/check.mjs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -120,6 +121,22 @@ test('robots: allows crawling and references canonical sitemap', () => {
     );
     assert.ok(!robotsContent.includes('{{CANONICAL_ORIGIN}}'), 'Robots must not contain unreplaced placeholders');
 
+    assert.doesNotMatch(robotsContent, /["\\{}]/, 'Rendered robots must be safe in a Caddy quoted string');
+    const caddy = fs.readFileSync(path.join(root, '../infra/caddy/staging-web.Caddyfile'), 'utf8');
+    const caddyRobots = caddy.match(/handle \/robots\.txt \{\s*respond "([^"]*)" 200/);
+    assert.ok(caddyRobots, 'Caddyfile must serve a robots response');
+    assert.equal(caddyRobots[1], robotsContent, 'Caddy response must match the built robots file');
+
+    const groups = [...robotsContent.matchAll(/^User-agent: (.+)\n((?:(?:Allow|Disallow): .+\n)+)/gm)];
+    assert.deepEqual(groups.map(([, agent]) => agent),
+      ['*', 'OAI-SearchBot', 'GPTBot', 'ClaudeBot', 'ChatGPT-User', 'Perplexity-User']);
+    for (const [, agent, rules] of groups) {
+      const trainingCrawler = agent === 'GPTBot' || agent === 'ClaudeBot';
+      const expected = trainingCrawler ? 'Disallow: /\n'
+        : 'Allow: /\nDisallow: /admin/\nDisallow: /empresas/\nDisallow: /dados/busca/\n';
+      assert.equal(rules, expected, agent + ' must follow the crawler policy');
+    }
+
     // Crawler separation (LR28): search allowed, training not granted, fetchers transparent.
     for (const token of ['OAI-SearchBot', 'ChatGPT-User', 'Perplexity-User']) {
       assert.ok(robotsContent.includes(`User-agent: ${token}`), `Robots must name ${token}`);
@@ -131,6 +148,44 @@ test('robots: allows crawling and references canonical sitemap', () => {
   } finally {
     fs.rmSync(tmpOut, { recursive: true, force: true });
   }
+});
+
+test('IndexNow public key is copied verbatim and excluded from the sitemap', t => {
+  const outDir = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-indexnow-dist-'));
+  t.after(() => fs.rmSync(outDir, { recursive: true, force: true }));
+  buildSite({ projectRoot: root, outDir });
+
+  const files = fs.readdirSync(outDir).filter(name => /^[a-f0-9]{32}\.txt$/.test(name));
+  assert.equal(files.length, 1);
+  assert.equal(fs.readFileSync(path.join(outDir, files[0]), 'utf8'), files[0].slice(0, -4));
+  assert.ok(!fs.readFileSync(path.join(outDir, 'sitemap.xml'), 'utf8').includes(files[0]));
+});
+
+test('IndexNow build rejects zero keys, multiple keys and content drift', t => {
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'abastevo-indexnow-source-'));
+  t.after(() => fs.rmSync(temp, { recursive: true, force: true }));
+  const projectRoot = path.join(temp, 'landing');
+  const staticDir = path.join(projectRoot, 'static');
+  const sourceStatic = path.join(root, 'static');
+  fs.cpSync(sourceStatic, staticDir, {
+    recursive: true,
+    filter: source => !/^[a-f0-9]{32}\.txt$/.test(path.basename(source)),
+  });
+  fs.symlinkSync(path.join(root, '../contracts'), path.join(temp, 'contracts'), 'dir');
+  for (const name of ['content', 'src', 'node_modules']) {
+    fs.symlinkSync(path.join(root, name), path.join(projectRoot, name), 'dir');
+  }
+  fs.copyFileSync(path.join(root, 'tsconfig.json'), path.join(projectRoot, 'tsconfig.json'));
+  const first = 'a'.repeat(32);
+  const second = 'b'.repeat(32);
+  assert.throws(() => buildSite({ projectRoot }), /IndexNow.*exactly one/i);
+
+  fs.writeFileSync(path.join(staticDir, first + '.txt'), first + '\n');
+  assert.throws(() => buildSite({ projectRoot }), /IndexNow.*content/i);
+
+  fs.writeFileSync(path.join(staticDir, first + '.txt'), first);
+  fs.writeFileSync(path.join(staticDir, second + '.txt'), second);
+  assert.throws(() => buildSite({ projectRoot }), /IndexNow.*exactly one/i);
 });
 
 test('discovery files: llms.txt and .well-known/security.txt exist and are populated', () => {
@@ -152,6 +207,10 @@ test('discovery files: llms.txt and .well-known/security.txt exist and are popul
     assert.ok(llmsContent.includes('24 horas'), 'llms.txt must mention 24h photo retention');
     assert.ok(llmsContent.includes('https://abastevo.com.br/'), 'llms.txt must have resolved canonical origin');
     assert.ok(!llmsContent.includes('{{CANONICAL_ORIGIN}}'), 'llms.txt must not contain unresolved placeholders');
+    const llmsLines = llmsContent.split('\n');
+    for (const route of LLMS_DATA_ROUTES) {
+      assert.ok(llmsLines.some((line) => line.endsWith(': https://abastevo.com.br' + route)), 'llms.txt must list ' + route);
+    }
 
     // security.txt
     const secPath = path.join(tmpOut, '.well-known', 'security.txt');

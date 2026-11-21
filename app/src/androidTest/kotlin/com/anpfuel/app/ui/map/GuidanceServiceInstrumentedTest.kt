@@ -1,17 +1,22 @@
 package com.anpfuel.app.ui.map
 
-import android.content.Context
-import androidx.compose.ui.test.junit4.createComposeRule
-import androidx.test.core.app.ApplicationProvider
+import android.Manifest
+import android.os.Build
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.rule.GrantPermissionRule
+import com.anpfuel.app.AcceptedTermsRule
+import com.anpfuel.app.MainActivity
+import com.anpfuel.app.R
 import com.anpfuel.domain.routing.NativeRouteRequest
 import com.anpfuel.domain.routing.NativeRouteResult
 import com.anpfuel.domain.routing.RoutePoint
 import com.anpfuel.maps.engine.MapCamera
-import com.anpfuel.maps.engine.MapCameraStore
 import com.anpfuel.maps.engine.MapEngineHolder
-import com.anpfuel.maps.engine.MapHost
+import com.anpfuel.maps.engine.SharedPreferencesMapCameraStore
 import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
@@ -22,31 +27,29 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 
-/** MAP-23 foreground service on the owned phone: FGS, notification stop, recovery. */
+/** MAP-23 foreground guidance from the application's map tab on an owned device. */
 @RunWith(AndroidJUnit4::class)
 class GuidanceServiceInstrumentedTest {
-    @get:Rule val compose = createComposeRule()
-
-    private class FakeStore : MapCameraStore {
-        override fun load(): MapCamera? = MapCamera(-25.4295, -49.2719, 15)
-        override fun save(camera: MapCamera) = Unit
-    }
+    @get:Rule(order = 0) val permissions = GrantPermissionRule.grant(*buildList {
+        add(Manifest.permission.ACCESS_COARSE_LOCATION)
+        add(Manifest.permission.ACCESS_FINE_LOCATION)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            add(Manifest.permission.POST_NOTIFICATIONS)
+        }
+    }.toTypedArray())
+    @get:Rule(order = 1) val acceptedTerms = AcceptedTermsRule()
+    @get:Rule(order = 2) val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun foregroundServiceStartsStopsAndRecoversExplicitly() {
-        val appContext = ApplicationProvider.getApplicationContext<Context>()
+        val activity = compose.activity
+        val appContext = activity.applicationContext
         assertTrue("admitted regional fixture is required", File(appContext.filesDir, "261004/Brazil_Parana_East.mwm").isFile)
         val engine = MapEngineHolder.engine
-        compose.setContent { MapHost(engine, cameraStore = FakeStore()) }
-        compose.waitForIdle()
-        var ready = false
-        for (attempt in 1..90) {
-            InstrumentationRegistry.getInstrumentation().runOnMainSync {
-                ready = engine.isInitialized() && engine.isRenderingReady()
-            }
-            if (ready) break
-            Thread.sleep(1000)
+        SharedPreferencesMapCameraStore(activity).save(MapCamera(-25.4295, -49.2719, 15))
+        compose.onNodeWithContentDescription(activity.getString(R.string.nav_map), useUnmergedTree = true).performClick()
+        compose.waitUntil(45_000) {
+            engine.isInitialized() && engine.isRenderingReady()
         }
-        assertTrue("map surface ready", ready)
         val request = NativeRouteRequest(
             listOf(
                 RoutePoint(-25.4295, -49.2719, "Synthetic origin"),

@@ -244,6 +244,18 @@ Every scenario is written as Given, When, Then. Amounts are integer centavos, qu
 - **Then** the subscription moves to `ACTIVE` once; the state history has one transition and the audit trail one event; the second and third deliveries return the stored result; no capability, limit or period is applied twice; no role assignment changes.
 - **Proves** BR-AUTH-009, EDR-024, the billing-event constraint of [06-domain-model](domain-model.md) §5 · **Profiles** `V-IDEM`, `V-JOB`, `V-SQL` · **Run by** EMP-REL-009.
 
+#### Company provider sandbox evidence
+
+Rehearse each reviewed channel separately with disposable local PostGIS and
+an existing synthetic paid charge from the approved Stripe or Asaas sandbox.
+Under B-BR-EMP-604 and BUC-EMP-315, the expected organization, subscription,
+resource, customer, contract, offer, amount and term come from the independent
+fixture review. The validation reads provider evidence through the same
+settlement processor as the worker and verifies one settlement, one active
+term and one inbox job under duplicate delivery. It does not exercise remote
+webhook delivery or create provider resources. The reproducible command and
+private fixture format are recorded in the [subscription module](modules/subscriptions.md).
+
 ### VAL-19 — Amendment of an approved fueling in a locked period
 
 - **Given** the approved fueling of FR-001 (unit `Sul`, `America/Sao_Paulo`) with `occurred_at = 2026-11-01T02:30:00Z`, 150 000 mL and 97 350 centavos. Its local time is 2026-10-31 23:30, so its reporting day is 2026-10-31 and it belongs to October 2026, which is `LOCKED`.

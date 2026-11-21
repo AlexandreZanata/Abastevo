@@ -72,10 +72,10 @@ def ordinary_runtime(dsn):
         connection.execute(sql.SQL("CREATE ROLE {} LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT PASSWORD {}").format(sql.Identifier(role), sql.Literal(password)))
         grants = [
             "GRANT USAGE ON SCHEMA public TO {}",
-            "GRANT SELECT,INSERT,UPDATE ON accounts,account_session_families,identity_rate_windows,organizations,org_units,org_employee_identities,org_employee_profiles,org_memberships,org_role_assignments,org_capabilities,org_settings_heads,org_invitations,org_invitation_acceptances TO {}",
+            "GRANT SELECT,INSERT,UPDATE ON accounts,account_session_families,identity_rate_windows,organizations,org_units,org_employee_identities,org_employee_profiles,org_memberships,org_role_assignments,org_capabilities,org_settings_heads,org_invitations,org_invitation_acceptances,org_data_api_keys TO {}",
             "GRANT SELECT,INSERT ON account_key_credentials,org_onboarding_commands,org_audit_events,org_employee_commands,org_settings_commands,org_settings_versions,org_settings_designations,org_settings_notices,org_invitation_commands,org_invitation_notices,org_invitation_locators,org_invitation_person_commands,org_invitation_acceptance_notices,org_role_commands TO {}",
             "GRANT SELECT,UPDATE ON org_teams,org_team_links,org_ownership_transfers,org_device_enrollments TO {}",
-            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities TO {}",
+            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,org_documents,org_assets,enterprise_plan_catalog,enterprise_billing_offers,org_billing_subscription_events,org_billing_charge_bindings,org_billing_settlement_receipts,enterprise_data_rate_policies,org_data_usage_terms,enterprise_data_plan_datasets,enterprise_regional_datasets,enterprise_regional_series,enterprise_data_source_reviews TO {}",
             "GRANT SELECT,INSERT,UPDATE,DELETE ON account_key_admission_events,company_web_sessions TO {}",
             "GRANT USAGE ON SEQUENCE account_key_admission_events_id_seq TO {}",
         ]
@@ -165,6 +165,7 @@ def run(dsn):
         env = {k: v for k, v in os.environ.items() if not k.startswith("ANPFUEL_")}
         env.update(ANPFUEL_ENV="development", ANPFUEL_DATABASE_URL=dsn,
                    ANPFUEL_ANP_DISCOVERY_ENABLED="false", ANPFUEL_ENTERPRISE_ENABLED="true",
+                   ANPFUEL_ENTERPRISE_BILLING_ENABLED="true",
                    ANPFUEL_HTTP_ADDR="127.0.0.1:" + str(api_port),
                    ANPFUEL_CANONICAL_HOST="localhost:" + str(web.server_port))
         subprocess.run(["go", "run", "./cmd/migrate"], cwd=ROOT / "backend", env=env,
@@ -197,6 +198,31 @@ def run(dsn):
                 web.server_close()
 
 
+def capture_panel_response(page, suffix, trigger, expected=200):
+    """Read the real TLS response before browser navigation can discard its body."""
+    url = "**" + suffix
+    result = {}
+
+    def capture(route):
+        response = route.fetch(max_redirects=0)
+        if response.status == expected:
+            result["body"] = response.json()
+        route.fulfill(response=response)
+
+    page.route(url, capture)
+    try:
+        with page.expect_response(lambda response: response.url.endswith(suffix)) as observed:
+            trigger()
+        assert observed.value.status == expected and "body" in result, "Actual panel request failed: " + suffix
+        return result["body"]
+    finally:
+        page.unroute(url, capture)
+
+
+def capture_panel_login(page, trigger):
+    return capture_panel_response(page, "/v1/org-access/session/login", trigger)["csrf_token"]
+
+
 def browser_checks(origin, dsn):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -225,13 +251,10 @@ def browser_checks(origin, dsn):
         assert page.evaluate("document.activeElement.id") == "account-key", "Refused sign-in lost focus"
         assert page.locator("#live-status").inner_text() == "", "Refusal announced twice"
         page.locator("#account-key").fill(account_key)
-        with page.expect_response(lambda r: r.url.endswith("/org-access/session/login")) as issued:
-            page.locator("#account-key").press("Enter")
-        assert issued.value.status == 200, "Actual company issuance failed"
-        csrf = issued.value.json()["csrf_token"]
+        csrf = capture_panel_login(page, lambda: page.locator("#account-key").press("Enter"))
+        expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
         directory = context.request.post(origin + "/v1/org-access/contexts/list", data={"limit": 100}, headers={"Origin": origin, "X-CSRF": csrf})
         assert directory.status == 200, "Current context discovery failed: " + str(directory.status) + " " + str(directory.json().get("error", {}).get("code", "unknown"))
-        expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
         expect(page.locator("#account-key")).to_have_value("")
         cookies = context.cookies()
         company = next(c for c in cookies if c["name"] == "__Host-empresas-session")
@@ -373,10 +396,7 @@ def setup_checks(browser, origin, dsn):
             page.locator("#account-key").fill(key)
         except PlaywrightError:
             raise AssertionError("Synthetic setup sign-in field unavailable") from None
-        with page.expect_response(lambda response: response.url.endswith("/org-access/session/login")) as logged_in:
-            page.locator("#login-button").click()
-        assert logged_in.value.status == 200, "Actual setup company login failed"
-        csrf = logged_in.value.json()["csrf_token"]
+        csrf = capture_panel_login(page, lambda: page.locator("#login-button").click())
 
     def post(path, body=None, status=200):
         response = context.request.post(origin + path, data=body or {}, headers={"Origin": origin, "X-CSRF": csrf})
@@ -621,9 +641,8 @@ def setup_checks(browser, origin, dsn):
     # refusal must clear every private draft instead of leaving a reusable form.
     change_fixture("UPDATE company_web_sessions SET authenticated_at=authenticated_at-interval '20 minutes',created_at=created_at-interval '20 minutes',expires_at=expires_at-interval '20 minutes' WHERE account_id=%s AND revoked_at IS NULL", (read(org_a)["context"]["account_id"],))
     page.locator("#setup-reason").fill("Tentativa sintética com confirmação vencida")
-    with page.expect_response(lambda response: response.url.endswith("/settings/change")) as stale:
-        page.locator("#setup-save").click()
-    assert stale.value.status == 401 and stale.value.json()["error"]["code"] == "FRESH_AUTH_REQUIRED"
+    stale = capture_panel_response(page, "/settings/change", lambda: page.locator("#setup-save").click(), 401)
+    assert stale["error"]["code"] == "FRESH_AUTH_REQUIRED"
     expect(page.locator("#login-view")).to_be_visible()
     expect(page.locator("#setup-detail")).to_be_hidden()
     assert name_a not in page.locator("body").text_content()
@@ -726,9 +745,8 @@ def employee_checks(browser, origin, dsn):
     page.clock.install()
     page.goto(origin + "/empresas/")
     page.locator("#account-key").fill(owner.json()["account_key"])
-    with page.expect_response(lambda response: response.url.endswith("/org-access/session/login")) as logged_in:
-        page.locator("#login-button").click()
-    csrf = logged_in.value.json()["csrf_token"]
+    csrf = capture_panel_login(page, lambda: page.locator("#login-button").click())
+    expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
     headers = {"Origin": origin, "X-CSRF": csrf}
     terms_source = (ROOT / "backend/internal/modules/organization/domain/onboarding.go").read_text()
     terms_version = re.search(r'SyntheticTermsVersion = "([^"]+)"', terms_source)[1]
@@ -753,12 +771,229 @@ def employee_checks(browser, origin, dsn):
     other_active = context.request.post(origin + "/v1/orgs/" + other_org + "/organization/activate", headers=headers,
         data={"schema_version": 1, "operation_id": str(uuid.uuid4()), "revision": other.json()["revision"]})
     assert other_active.status == 200, "Second synthetic organization activation failed"
+    with psycopg.connect(dsn) as connection:
+        connection.execute("SELECT set_config('anpfuel.org_id',%s,true)", (org_id,))
+        connection.execute("""
+            INSERT INTO enterprise_plan_catalog
+                (product_code,plan_code,revision,display_name,capabilities,active_vehicles,storage_bytes)
+            VALUES ('fleet','browser-plan',1,'Plano sintético do navegador',ARRAY['organizations'],0,4096)
+        """)
+        connection.execute("""
+            INSERT INTO org_billing_subscription_events
+                (org_id,subscription_id,revision,product_code,plan_code,plan_revision,from_state,state,prior_state,
+                 event_kind,event_source,evidence_reference,occurred_at,term_start,term_end)
+            VALUES (%s,%s,1,'fleet','browser-plan',1,'','TRIALING','','START_TRIAL','TRIAL_POLICY',
+                    'synthetic-browser-policy',now(),now(),now()+interval '1 day')
+        """, (org_id, str(uuid.uuid4())))
+    private_plan = context.request.post(origin + "/v1/orgs/" + org_id + "/subscriptions/plan/read", headers=headers, data={})
+    assert private_plan.status == 200 and private_plan.headers["cache-control"] == "no-store", private_plan.status
+    fleet_plan = private_plan.json()["plans"][0]
+    assert fleet_plan["confirmed_paid"] is False and fleet_plan["active_vehicles_used"] == "0"
+    assert "synthetic-browser-policy" not in private_plan.text(), "Approval evidence escaped through the plan view"
+    assert context.request.post(origin + "/v1/orgs/" + org_id + "/subscriptions/plan/read",
+                                headers=headers, data={"organization_id": other_org}).status == 400
+    data_path = origin + "/v1/orgs/" + org_id + "/data/keys/"
+    foreign_path = origin + "/v1/orgs/" + other_org + "/data/keys/"
+    expires = private_plan.json()["plans"][0]["term_end"]
+    issue = {"schema_version": 1, "operation_id": str(uuid.uuid4()),
+             "label": "Synthetic browser key", "scopes": ["regional.read"], "expires_at": expires}
+    denied = context.request.post(data_path + "issue", headers=headers, data=issue)
+    assert denied.status == 403 and "ENTITLEMENT_REQUIRED" in denied.text(), "A company without Data access could issue a key"
+    with psycopg.connect(dsn) as connection:
+        connection.execute("SELECT set_config('anpfuel.org_id',%s,true)", (org_id,))
+        connection.execute("""
+            INSERT INTO enterprise_plan_catalog
+                (product_code,plan_code,revision,display_name,capabilities,api_calls)
+            VALUES ('data','browser-data-plan',1,'Data sintético',ARRAY['data'],5)
+        """)
+        connection.execute("""
+            INSERT INTO enterprise_data_rate_policies
+                (product_code,plan_code,plan_revision,window_seconds,window_calls,approval_ref)
+            VALUES ('data','browser-data-plan',1,60,12,'synthetic-browser-rate')
+        """)
+        connection.execute("""
+            INSERT INTO enterprise_data_source_reviews
+                (source_code,source_digest,revision,status,decision_ref,license_ref,attribution)
+            VALUES ('S-ESP-01','sha256:'||repeat('a',64),1,'APPROVED','synthetic-browser-review','Synthetic registry license','Synthetic registry'),
+                   ('S-ESP-02','sha256:'||repeat('b',64),1,'APPROVED','synthetic-browser-review','Synthetic survey license','Synthetic survey')
+        """)
+        connection.execute("""
+            INSERT INTO enterprise_regional_datasets
+                (dataset_key,revision,display_name,state_code,minimum_stations,method_version,snapshot_digest,official_revision,
+                 registry_digest,registry_review,price_digest,price_review)
+            VALUES ('browser-data-mt',1,'Série sintética de preços','MT',5,'abastevo-metrics-v1','sha256:'||repeat('c',64),%s,
+                    'sha256:'||repeat('a',64),1,'sha256:'||repeat('b',64),1)
+        """, (uuid.uuid4(),))
+        connection.execute("""
+            INSERT INTO enterprise_regional_series
+                (dataset_key,dataset_revision,survey_start,survey_end,published_at,source_url,result_sha256)
+            VALUES ('browser-data-mt',1,current_date-8,current_date-1,now(),'https://example.invalid/synthetic-survey',repeat('d',64))
+        """)
+        connection.execute("""
+            INSERT INTO enterprise_data_plan_datasets
+                (product_code,plan_code,plan_revision,dataset_key,dataset_revision,approval_ref)
+            VALUES ('data','browser-data-plan',1,'browser-data-mt',1,'synthetic-browser-scope')
+        """)
+        offer_id, subscription_id = str(uuid.uuid4()), str(uuid.uuid4())
+        connection.execute("""
+            INSERT INTO enterprise_billing_offers
+                (id,product_code,plan_code,plan_revision,channel,environment,merchant,provider_offer_ref,amount_centavos,term,approval_ref)
+            VALUES (%s,'data','browser-data-plan',1,'stripe_card','test','synthetic-provider-merchant',
+                    'synthetic-provider-offer',4567,'P1M','synthetic-provider-approval')
+        """, (offer_id,))
+        connection.execute("""
+            INSERT INTO org_billing_charge_bindings
+                (org_id,provider,environment,merchant,resource_ref,subscription_id,offer_id,customer_ref,contract_ref,term_start,term_end)
+            VALUES (%s,'stripe','test','synthetic-provider-merchant','synthetic-provider-invoice',%s,%s,
+                    'synthetic-provider-customer','synthetic-provider-contract',now(),now()+interval '1 month')
+        """, (org_id, subscription_id, offer_id))
+        connection.execute("""
+            INSERT INTO org_billing_subscription_events
+                (org_id,subscription_id,revision,product_code,plan_code,plan_revision,from_state,state,prior_state,
+                 event_kind,event_source,evidence_reference,occurred_at,term_start,term_end)
+            VALUES (%s,%s,1,'data','browser-data-plan',1,'','ACTIVE','','CONFIRM_SETTLEMENT','VERIFIED_BILLING',
+                    'synthetic-browser-data-settlement',now(),now(),now()+interval '1 month')
+        """, (org_id, subscription_id))
+        connection.execute("""
+            INSERT INTO org_billing_settlement_receipts
+                (org_id,provider,environment,merchant,event_id,payload_hash,resource_ref,charge_ref,subscription_id,applied_revision,settled_at)
+            VALUES (%s,'stripe','test','synthetic-provider-merchant','synthetic-provider-event',repeat('a',64),
+                    'synthetic-provider-invoice','synthetic-provider-charge',%s,1,now())
+        """, (org_id, subscription_id))
+    receipt_view = context.request.post(origin + "/v1/orgs/" + org_id + "/subscriptions/plan/read", headers=headers, data={})
+    assert receipt_view.status == 200 and "synthetic-provider-" not in receipt_view.text()
+    receipt = next(plan["receipt"] for plan in receipt_view.json()["plans"] if plan["product"] == "data")
+    assert receipt["amount_centavos"] == "4567" and receipt["fiscal_status"] == "NOT_CONSULTED"
+    issued = context.request.post(data_path + "issue", headers=headers, data=issue)
+    assert issued.status == 200 and issued.headers["cache-control"] == "no-store", f"Scoped Data key issuance failed: HTTP {issued.status}"
+    issued_json = issued.json()
+    assert issued_json["key"]["id"] == issue["operation_id"] and issued_json["bearer"].startswith("abv_data_")
+    reissued = context.request.post(data_path + "issue", headers=headers, data=issue)
+    assert reissued.status == 200 and reissued.json()["replayed"] and "bearer" not in reissued.json()
+    rotation = dict(issue, operation_id=str(uuid.uuid4()), revision=1)
+    rotated = context.request.post(data_path + issue["operation_id"] + "/rotate", headers=headers, data=rotation)
+    assert rotated.status == 200 and rotated.json()["key"]["id"] == rotation["operation_id"], "Scoped Data key rotation failed"
+    listing = context.request.post(data_path + "list", headers=headers, data={"limit": 1})
+    assert listing.status == 200 and listing.json()["next_cursor"] and "bearer" not in listing.text()
+    assert context.request.post(foreign_path + "list", headers=headers,
+                                data={"cursor": listing.json()["next_cursor"]}).status == 400
+    assert context.request.post(foreign_path + "list", headers=headers, data={}).json()["keys"] == []
+    revoke = {"schema_version": 1, "operation_id": str(uuid.uuid4()), "revision": 2}
+    revoked = context.request.post(data_path + issue["operation_id"] + "/revoke", headers=headers, data=revoke)
+    assert revoked.status == 200 and revoked.json()["key"]["state"] == "REVOKED" and "bearer" not in revoked.json()
     page.locator("#retry-button").click()
     expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
     page.locator("#organization-select").select_option(org_id)
     page.locator("#organization-open").click()
     expect(page.locator("#employee-access")).to_be_visible()
     expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+    expect(page.locator("#subscription-title")).to_have_text("Plano e cobrança")
+    expect(page.locator("#subscription-list")).to_contain_text("Plano sintético do navegador")
+    expect(page.locator("#subscription-list")).to_contain_text("Veículos ativos: 0")
+    trial_item = page.locator("#subscription-list > li").filter(has_text="Plano sintético do navegador")
+    expect(trial_item).not_to_contain_text("Cobrança liquidada")
+    expect(trial_item).to_contain_text("0 de 4.096 bytes de armazenamento")
+    paid_item = page.locator("#subscription-list > li").filter(has_text="Data sintético")
+    expect(paid_item).to_contain_text("45,67")
+    expect(paid_item).to_contain_text("Situação fiscal não consultada.")
+
+    # Keep the real company cookie and test the explicit selection UI against
+    # a synthetic downgrade. The PostGIS integration tests exercise the same
+    # request and both database transactions through the real API and device.
+    plan_url = "**/v1/orgs/" + org_id + "/subscriptions/plan/read"
+    fleet_url = "**/v1/orgs/" + org_id + "/fleet/assets/list"
+    choice_url = "**/v1/orgs/" + org_id + "/subscriptions/vehicles/select"
+    selection_subscription = str(uuid.uuid4())
+    candidates = [str(uuid.uuid4()) for _ in range(3)]
+    browser_choice = []
+
+    def comparison_plan(route):
+        stamp = "2026-11-21T18:30:00Z"
+        choice = {"subscription_id": selection_subscription, "revision": 2, "active": 3, "ceiling": 2}
+        plan = {"product": "fleet", "name": "Plano de seleção sintético", "revision": "2", "state": "ACTIVE",
+                "term_start": stamp, "term_end": "2026-12-21T18:30:00Z", "term_current": True,
+                "confirmed_paid": True, "capabilities": ["organizations"], "limits": {"active_vehicles": "2"}}
+        if not browser_choice:
+            plan["vehicle_selection"] = choice
+        route.fulfill(json={"observed_at": stamp, "plans": [plan]}, headers={"Cache-Control": "no-store"})
+
+    def selection_roster(route):
+        if route.request.post_data_json.get("kind") != "VEHICLE":
+            route.fallback()
+            return
+        route.fulfill(json={"items": [{"id": item, "kind": "VEHICLE", "state": "ACTIVE",
+            "name": "Veículo sintético " + str(index + 1)} for index, item in enumerate(candidates)], "next_cursor": ""},
+            headers={"Cache-Control": "no-store"})
+
+    def commit_selection(route):
+        request = route.request.post_data_json
+        assert request["schema_version"] == 1 and uuid.UUID(request["operation_id"])
+        assert request["revision"] == 2 and request["subscription_id"] == selection_subscription
+        assert request["keep_active"] == sorted([candidates[0], candidates[2]])
+        assert route.request.headers.get("x-csrf"), "Company CSRF proof absent on the selection"
+        browser_choice.append(request["operation_id"])
+        route.fulfill(json={"kept": request["keep_active"], "archived": [candidates[1]], "replayed": False},
+            headers={"Cache-Control": "no-store"})
+
+    page.route(plan_url, comparison_plan)
+    page.route(fleet_url, selection_roster)
+    page.route(choice_url, commit_selection)
+    page.locator("#subscription-refresh").click()
+    page.get_by_role("button", name="Escolher veículos ativos").click()
+    confirm_selection = page.get_by_role("button", name="Confirmar veículos ativos")
+    expect(confirm_selection).to_be_disabled()
+    page.get_by_role("checkbox", name="Veículo sintético 1").check()
+    expect(confirm_selection).to_be_disabled()
+    page.get_by_role("checkbox", name="Veículo sintético 3").check()
+    expect(confirm_selection).to_be_enabled()
+    confirm_selection.click()
+    expect(page.locator("#subscription-status")).to_contain_text("Seleção confirmada")
+    expect(page.get_by_role("button", name="Escolher veículos ativos")).to_have_count(0)
+    assert len(browser_choice) == 1
+    page.unroute(plan_url, comparison_plan)
+    page.unroute(fleet_url, selection_roster)
+    page.unroute(choice_url, commit_selection)
+    page.locator("#subscription-refresh").click()
+    expect(page.locator("#subscription-list")).to_contain_text("Plano sintético do navegador")
+    expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
+    expect(page.locator("#data-usage")).to_contain_text("0 de 5 chamadas")
+    expect(page.locator("#data-usage")).to_contain_text("12 chamadas a cada 60 s")
+    expect(page.locator("#data-key-section")).to_be_visible()
+    expect(page.locator("#data-keys")).to_contain_text("Synthetic browser key")
+    expiry = page.evaluate("new Date(Date.now() + 3600000 - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16)")
+    page.locator("#data-key-label").fill("Chave sintética do painel")
+    page.locator("#data-key-expiry").fill(expiry)
+    page.locator("#data-key-save").click()
+    expect(page.locator("#data-secret-box")).to_be_visible()
+    expect(page.locator("#data-secret")).to_have_value(re.compile(r"^abv_data_[0-9a-f-]{36}\.[0-9a-f]{64}$"))
+    page.locator("#data-hide-secret").click()
+    expect(page.locator("#data-secret")).to_have_value("")
+    expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
+    item = page.locator("#data-keys > li").filter(has_text="Chave sintética do painel")
+    item.get_by_role("button", name="Rotacionar").click()
+    page.locator("#data-key-label").fill("Chave sintética substituta")
+    page.locator("#data-key-expiry").fill(expiry)
+    page.locator("#data-key-save").click()
+    expect(page.locator("#data-secret-box")).to_be_visible()
+    page.locator("#data-hide-secret").click()
+    expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
+    replacement = page.locator("#data-keys > li").filter(has_text="Chave sintética substituta")
+    replacement.get_by_role("button", name="Revogar").click()
+    expect(replacement).to_contain_text("Revogada")
+    expect(page.locator("#data-datasets")).to_contain_text("Série sintética de preços")
+    with psycopg.connect(dsn) as connection:
+        connection.execute("""
+            INSERT INTO enterprise_data_source_reviews
+                (source_code,source_digest,revision,status,decision_ref)
+            VALUES ('S-ESP-02','sha256:'||repeat('b',64),2,'WITHDRAWN','synthetic-browser-withdrawal')
+        """)
+    expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
+    page.locator("#data-refresh").click()
+    expect(page.locator("#data-docs")).to_be_hidden()
+    expect(page.locator("#data-datasets")).to_be_empty()
+    expect(page.locator("#data-usage")).to_contain_text("0 de 5 chamadas")
+    expect(replacement).to_contain_text("Revogada")
+    print("PASS: committed Data rights withdrawal removes the dataset from the company panel and preserves quota and key state")
     created_employees = []
 
     def add_employee(suffix):
@@ -771,20 +1006,15 @@ def employee_checks(browser, origin, dsn):
         page.locator("#employee-job").fill("Motorista sintético")
         page.locator("#employee-review").click()
         expect(page.locator("#employee-status")).to_have_text("Nenhum possível duplicado encontrado. Confirme para salvar.")
-        with page.expect_response(lambda response: response.url.endswith("/employees/create")) as saved:
-            page.locator("#employee-save").click()
-        assert saved.value.status == 201, "Panel employee creation failed"
-        created_employees.append(saved.value.json()["employee_id"])
+        saved = capture_panel_response(page, "/employees/create", lambda: page.locator("#employee-save").click(), 201)
+        created_employees.append(saved["employee_id"])
         expect(page.locator("#employee-detail-name")).to_have_text(name)
         expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
         return name
 
     def issue(role):
         page.locator("#invitation-role").select_option(role)
-        with page.expect_response(lambda response: response.url.endswith("/invitations/issue")) as issued:
-            page.locator("#invitation-issue").click()
-        assert issued.value.status == 200, "Panel invitation issue failed"
-        value = issued.value.json()
+        value = capture_panel_response(page, "/invitations/issue", lambda: page.locator("#invitation-issue").click())
         expect(page.locator("#invitation-delivery")).to_be_visible()
         expect(page.locator("#delivery-code")).to_have_value(value["delivery"]["code"])
         assert value["delivery"]["code"] not in page.url, "Invitation code reached navigation"
@@ -802,10 +1032,8 @@ def employee_checks(browser, origin, dsn):
     first = issue("DRIVER:SELF")
     first_code = first["delivery"]["code"]
     close_delivery()
-    with page.expect_response(lambda response: response.url.endswith("/resend")) as resent:
-        page.get_by_role("button", name="Reemitir convite", exact=True).click()
-    assert resent.value.status == 200, "Panel invitation resend failed"
-    second_code = resent.value.json()["delivery"]["code"]
+    resent = capture_panel_response(page, "/resend", lambda: page.get_by_role("button", name="Reemitir convite", exact=True).click())
+    second_code = resent["delivery"]["code"]
     assert second_code != first_code, "Resend reused the old secret"
     expect(page.locator("#delivery-code")).to_have_value(second_code)
     page.locator("#organization-select").select_option(other_org)
@@ -814,6 +1042,11 @@ def employee_checks(browser, origin, dsn):
     expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
     expect(page.locator("#delivery-code")).to_have_value("")
     assert first_name not in page.locator("#workspace").inner_text(), "Prior organization employee survived the switch"
+    expect(page.locator("#subscription-status")).to_have_text("Nenhum plano empresarial registrado.")
+    expect(page.locator("#subscription-list")).not_to_contain_text("Plano sintético do navegador")
+    expect(page.locator("#data-usage")).to_contain_text("Nenhuma franquia de API vigente.")
+    expect(page.locator("#data-keys")).not_to_contain_text("Chave sintética")
+    expect(page.locator("#data-secret")).to_have_value("")
     page.locator("#organization-select").select_option(org_id)
     page.locator("#organization-open").click()
     expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")

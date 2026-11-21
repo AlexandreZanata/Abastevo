@@ -130,15 +130,39 @@ func (p *StripeProvider) CancelRenewal(ctx context.Context, subscriptionID, idem
 	return nil
 }
 
-func (p *StripeProvider) VerifySettlement(ctx context.Context, event app.InboxRecord) (app.SettlementCandidate, error) {
+// RetrieveSettlementInvoice reads the canonical resource named by a verified
+// invoice-paid notice. Callers still validate the invoice for their offer.
+func (p *StripeProvider) RetrieveSettlementInvoice(ctx context.Context, event app.InboxRecord) (*stripe.Invoice, error) {
 	if event.EventType != "invoice.paid" || event.ResourceType != "invoice" {
-		return app.SettlementCandidate{}, app.ErrIgnored
+		return nil, app.ErrIgnored
+	}
+	if p == nil || p.Client == nil {
+		return nil, domain.ErrUnavailable
 	}
 	invoice, err := p.Client.V1Invoices.Retrieve(ctx, event.ResourceID, &stripe.InvoiceRetrieveParams{
 		Expand: []*string{stripe.String("payments")},
 	})
+	return invoice, stripeError(err)
+}
+
+// RetrieveSettlementIntent retrieves charge details independently of a notice.
+func (p *StripeProvider) RetrieveSettlementIntent(ctx context.Context, id string) (*stripe.PaymentIntent, error) {
+	if p == nil || p.Client == nil {
+		return nil, domain.ErrUnavailable
+	}
+	intent, err := p.Client.V1PaymentIntents.Retrieve(ctx, id, &stripe.PaymentIntentRetrieveParams{
+		Expand: []*string{stripe.String("latest_charge")},
+	})
+	return intent, stripeError(err)
+}
+
+func (p *StripeProvider) VerifySettlement(ctx context.Context, event app.InboxRecord) (app.SettlementCandidate, error) {
+	invoice, err := p.RetrieveSettlementInvoice(ctx, event)
 	if err != nil {
-		return app.SettlementCandidate{}, stripeError(err)
+		return app.SettlementCandidate{}, err
+	}
+	if invoice == nil {
+		return app.SettlementCandidate{}, domain.ErrBinding
 	}
 	if invoice.Status != stripe.InvoiceStatusPaid {
 		return app.SettlementCandidate{}, app.ErrNotSettled

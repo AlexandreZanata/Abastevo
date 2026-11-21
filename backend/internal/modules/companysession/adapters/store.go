@@ -73,11 +73,11 @@ func (s *Store) Create(ctx context.Context, row app.Row, proof app.Proof, oldLoo
 	}
 	return nil
 }
-func (s *Store) Authenticate(ctx context.Context, lookup string, now time.Time, touch bool, verify func(app.Row) error) (app.Row, error) {
+func (s *Store) Authenticate(ctx context.Context, lookup string, clock func() time.Time, touch bool, verify func(app.Row, time.Time) error) (app.Row, error) {
 	if s == nil || s.Pool == nil {
 		return app.Row{}, domain.ErrUnavailable
 	}
-	if !domain.ValidHash(lookup) || verify == nil {
+	if !domain.ValidHash(lookup) || clock == nil || verify == nil {
 		return app.Row{}, domain.ErrInvalid
 	}
 	tx, err := s.Pool.Begin(ctx)
@@ -86,7 +86,16 @@ func (s *Store) Authenticate(ctx context.Context, lookup string, now time.Time, 
 	}
 	defer rollback(ctx, tx)
 	queries := q.New(tx)
-	row, err := queries.LockSession(ctx, q.LockSessionParams{TokenLookup: lookup, Now: stamp(now), IdleCutoff: stamp(now.Add(-domain.IdleTimeout))})
+	if _, err := queries.LockSessionToken(ctx, lookup); err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return app.Row{}, domain.ErrUnauthorized
+		}
+		return app.Row{}, domain.ErrUnavailable
+	}
+	// A confirmation preceding this request in the lock order may have
+	// advanced last activity after this request entered the store.
+	now := clock()
+	row, err := queries.ReadLockedSession(ctx, q.ReadLockedSessionParams{TokenLookup: lookup, Now: stamp(now), IdleCutoff: stamp(now.Add(-domain.IdleTimeout))})
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			return app.Row{}, domain.ErrUnauthorized
@@ -96,7 +105,7 @@ func (s *Store) Authenticate(ctx context.Context, lookup string, now time.Time, 
 	result := app.Row{ID: row.SID, AccountID: row.SAccountID, FamilyID: row.SFamilyID, Lookup: row.TokenLookup, TokenSalt: row.TokenSalt,
 		TokenHash: row.TokenHash, CSRFSalt: row.CsrfSalt, CSRFHash: row.CsrfHash, AuthenticatedAt: row.AuthenticatedAt.Time,
 		CreatedAt: row.CreatedAt.Time, LastSeenAt: row.LastSeenAt.Time, ExpiresAt: row.ExpiresAt.Time}
-	if err := verify(result); err != nil {
+	if err := verify(result, now); err != nil {
 		return app.Row{}, err
 	}
 	if touch {

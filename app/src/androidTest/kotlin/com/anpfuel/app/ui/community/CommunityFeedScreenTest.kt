@@ -1,15 +1,18 @@
 package com.anpfuel.app.ui.community
 
+import androidx.activity.compose.setContent
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.asAndroidBitmap
 import android.graphics.Bitmap
 import java.io.File
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.unit.Density
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.anpfuel.app.MainActivity
 import com.anpfuel.app.R
 import com.anpfuel.app.community.CommunityHelpfulnessPanel
 import com.anpfuel.app.community.CommunityHelpfulnessUiState
@@ -28,14 +31,15 @@ import org.junit.runner.RunWith
 
 @RunWith(AndroidJUnit4::class)
 class CommunityFeedScreenTest {
-    @get:Rule val compose = createComposeRule()
+    @get:Rule val compose = createAndroidComposeRule<MainActivity>()
     private val context = InstrumentationRegistry.getInstrumentation().targetContext
     private val city = FeedCity("5107925", BrazilianState.MATO_GROSSO, "Sorriso")
     private val item = CommunityFeedItem("00000000-0000-0000-0000-000000000001", "Synthetic station", FuelProduct.ETHANOL, 3981,
         Instant.parse("2026-10-06T12:00:00Z"), Instant.parse("2026-10-07T12:00:00Z"), 1, 0, "LOW", 1)
     private fun render(state: CommunityFeedUiState, dark: Boolean = false, font: Float = 1f,
         navigate: (String) -> Unit = {}, sort: (FeedSort) -> Unit = {}, fuel: (FuelProduct) -> Unit = {}) {
-        compose.setContent {
+        // The shared survey-week header resolves its ViewModel from the Hilt activity.
+        setActivityContent {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, font)) {
                 AnpFuelTheme(darkTheme = dark) {
@@ -56,9 +60,9 @@ class CommunityFeedScreenTest {
     }
     @Test fun darkFeedRetainsCardsDuringNetworkFailure() {
         render(CommunityFeedUiState(city = city, fuel = FuelProduct.ETHANOL, loading = false, failed = true, items = listOf(item)), dark = true)
-        compose.onNodeWithText(context.getString(R.string.feed_unavailable)).performScrollTo().assertIsDisplayed()
+        scrollFeedTo(hasText(context.getString(R.string.feed_unavailable))).assertIsDisplayed()
         capture("community-feed-dark.png")
-        compose.onNodeWithText("Synthetic station").performScrollTo().assertIsDisplayed()
+        scrollFeedTo(hasText("Synthetic station")).assertIsDisplayed()
     }
     @Test fun staleSnapshotShowsAgeHintAndStandardPriceLabel() {
         render(CommunityFeedUiState(city = city, fuel = FuelProduct.ETHANOL, loading = false, stale = true, items = listOf(item)))
@@ -71,8 +75,11 @@ class CommunityFeedScreenTest {
     @Test fun noCoverageNeverInventsPricesAndOpensCaptureForContribution() {
         var route: String? = null
         render(CommunityFeedUiState(city = city, loading = false), navigate = { route = it })
-        compose.onNodeWithText(context.getString(R.string.feed_empty_title)).performScrollTo().assertIsDisplayed()
-        compose.onNodeWithText(context.getString(R.string.community_action_contribute)).performScrollTo().performClick()
+        val emptyTitle = hasText(context.getString(R.string.feed_empty_title))
+        scrollFeedTo(emptyTitle).assertIsDisplayed()
+        compose.onNodeWithText("R$", substring = true).assertDoesNotExist()
+        val emptyAction = hasText(context.getString(R.string.community_action_contribute)) and hasAnySibling(emptyTitle)
+        scrollFeedTo(emptyAction).assertIsDisplayed().performClick()
         assertEquals(Routes.CAPTURE, route)
     }
     @Test fun filtersAndCitySelectorRemainAccessibleAtLargeFont() {
@@ -80,10 +87,11 @@ class CommunityFeedScreenTest {
         var fuel: FuelProduct? = null
         var route: String? = null
         render(CommunityFeedUiState(city = city, loading = false), font = 2f, sort = { selected = it }, fuel = { fuel = it }, navigate = { route = it })
-        compose.onNodeWithText(context.getString(R.string.feed_recent)).performScrollTo().performClick()
+        scrollFeedTo(hasText(context.getString(R.string.feed_recent))).assertIsDisplayed().performClick()
         compose.onNodeWithText(context.getString(R.string.feed_cheapest)).performScrollTo().performClick()
         assertEquals(FeedSort.CHEAPEST, selected)
-        compose.onNodeWithText(context.getString(FuelProductI18n.toStringRes(FuelProduct.GASOLINE_REGULAR))).performScrollTo().performClick()
+        val gasoline = context.getString(FuelProductI18n.toStringRes(FuelProduct.GASOLINE_REGULAR))
+        scrollFeedTo(hasText(gasoline)).assertIsDisplayed().performClick()
         compose.onNodeWithText(context.getString(FuelProductI18n.toStringRes(FuelProduct.ETHANOL))).performScrollTo().performClick()
         assertEquals(FuelProduct.ETHANOL, fuel)
         compose.onNodeWithText("Sorriso, MT").performClick()
@@ -125,11 +133,20 @@ class CommunityFeedScreenTest {
     }
 
     private fun renderHelpfulness(state: CommunityHelpfulnessUiState, onReport: () -> Unit = {}) {
-        compose.setContent {
+        setActivityContent {
             AnpFuelTheme(darkTheme = true) {
                 CommunityHelpfulnessPanel(state, {}, {}, {}, onReport, {})
             }
         }
+    }
+
+    private fun scrollFeedTo(matcher: SemanticsMatcher): SemanticsNodeInteraction {
+        compose.onNode(hasScrollToIndexAction()).performScrollToNode(matcher)
+        return compose.onNode(matcher)
+    }
+
+    private fun setActivityContent(content: @Composable () -> Unit) {
+        compose.runOnUiThread { compose.activity.setContent(content = content) }
     }
 
     private fun capture(name: String) {

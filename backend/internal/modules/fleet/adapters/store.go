@@ -21,11 +21,22 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type vehicleSlotPlan interface {
+	CheckVehicleActivation(context.Context, pgx.Tx, kernel.OrgScope, int64) error
+}
+
+type fleetLifecycleJobs interface {
+	QueueFleetLifecycle(context.Context, pgx.Tx, kernel.OrgScope, string) error
+}
+
 type AssetStore struct {
 	Pool      *pgxpool.Pool
 	Authority app.FleetAuthority
 	Audit     auditing.TransactionRunner
 	NewID     func() (string, error)
+	// VehicleSlots evaluates the active vehicle count under the retained root lock.
+	VehicleSlots  vehicleSlotPlan
+	LifecycleJobs fleetLifecycleJobs
 	// OpenWork answers BR-FLEET-010 inside lifecycle commands. Runtime wires
 	// NoOpenWork explicitly; a nil port fails every removal from service.
 	OpenWork app.AssetOpenWork
@@ -73,7 +84,7 @@ func storeError(ctx context.Context, err error) error {
 	if ctx.Err() != nil {
 		return ctx.Err()
 	}
-	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrFreshAuthRequired, access.ErrEntitlementRequired, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrConflict, app.ErrOperationReused, app.ErrIdentifierTaken, app.ErrNotFound, app.ErrOpenOperations, app.ErrUnallocated, app.ErrAssignmentOverlap, app.ErrUnavailable, app.ErrUnauthenticated, fleet.ErrInvalid, fleet.ErrScope, fleet.ErrKindLocked, fleet.ErrIncomplete, fleet.ErrAssignmentEnded} {
+	for _, known := range []error{access.ErrNoMembership, access.ErrMembershipSuspended, access.ErrOrgSuspended, access.ErrOrgArchived, access.ErrFreshAuthRequired, access.ErrEntitlementRequired, access.ErrLimitReached, access.ErrUnauthenticated, permission.ErrPermissionDenied, permission.ErrResourceNotFound, app.ErrConflict, app.ErrOperationReused, app.ErrIdentifierTaken, app.ErrNotFound, app.ErrOpenOperations, app.ErrUnallocated, app.ErrAssignmentOverlap, app.ErrUnavailable, app.ErrUnauthenticated, fleet.ErrInvalid, fleet.ErrScope, fleet.ErrKindLocked, fleet.ErrIncomplete, fleet.ErrAssignmentEnded} {
 		if errors.Is(err, known) {
 			return err
 		}
@@ -256,6 +267,9 @@ func (s *AssetStore) WriteAsset(ctx context.Context, scope kernel.OrgScope, acto
 						}
 					}
 				}
+				if err := s.checkVehicleSlot(ctx, tx, scope, current, view); err != nil {
+					return err
+				}
 				if v.Kind == app.CreateAsset {
 					if err := queries.InsertAsset(ctx, q.InsertAssetParams{OrgID: org, ID: id, Kind: string(view.Profile.Kind), CategoryID: view.Profile.Category, Name: view.Profile.Name, FleetNumber: view.Profile.FleetNumber, Plate: view.Profile.Plate, SerialNumber: view.Profile.SerialNumber, FleetKey: checked.FleetKey, PlateKey: checked.PlateKey, UsageBasis: string(view.Profile.UsageBasis), UnitID: view.UnitID}); err != nil {
 						return err
@@ -306,6 +320,18 @@ func (s *AssetStore) WriteAsset(ctx context.Context, scope kernel.OrgScope, acto
 	}
 	return result, replayed, nil
 }
+func (s *AssetStore) checkVehicleSlot(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, current, next app.AssetView) error {
+	if s.VehicleSlots == nil || next.State != fleet.Active || next.Profile.Kind != fleet.Vehicle ||
+		(current.State == fleet.Active && current.Profile.Kind == fleet.Vehicle) {
+		return nil
+	}
+	active, err := q.New(tx).CountActiveVehicles(ctx, scope.OrgID().String())
+	if err != nil {
+		return err
+	}
+	return s.VehicleSlots.CheckVehicleActivation(ctx, tx, scope, active)
+}
+
 func (s *AssetStore) FindAsset(ctx context.Context, scope kernel.OrgScope, id string) (app.AssetView, error) {
 	if scope.Validate() != nil {
 		return app.AssetView{}, fleet.ErrScope

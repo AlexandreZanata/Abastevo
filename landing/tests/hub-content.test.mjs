@@ -48,6 +48,11 @@ test('tutorial hub covers all 30 chapters with journeys and no dead links', () =
           assert.ok(portalRouteLabel(href), `unknown portal state route ${href}`);
           continue;
         }
+        // The editorial forum is a portal hub with no page in the prototype.
+        if (href === '/forum/') {
+          assert.equal(portalRouteLabel(href), 'Fórum abastevo');
+          continue;
+        }
         const [pathname, anchor] = href.split('#');
         const rel = pathname === '/' ? 'index.html' : pathname.slice(1) + (pathname.endsWith('/') ? 'index.html' : '');
         assert.ok(fs.existsSync(path.join(outDir, rel)), `dead internal link ${href}`);

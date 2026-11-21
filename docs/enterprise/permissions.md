@@ -498,3 +498,7 @@ coverage yields `44` routed permissions (`440` role cells: `174` allowed, `266`
 denied) across `195` routed endpoints (`37` `AUDITOR` positive, `158` denied
 `FORBIDDEN`).
 Evidence
+
+The F8 lifecycle amendment (`org-permissions-v8`) adds organization-wide
+`org.lifecycle.manage` for `OWNER` with fresh company authentication. The
+other permissions and the 13 fixed roles retain the v7 definitions.

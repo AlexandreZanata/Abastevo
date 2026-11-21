@@ -9,6 +9,8 @@ import com.anpfuel.domain.enterprise.document.DocumentTargetKind
 import com.anpfuel.domain.enterprise.sync.*
 import com.anpfuel.domain.enterprise.trip.*
 import java.time.Instant
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.Test
@@ -27,6 +29,7 @@ private class FakeOriginals : ReceiptOriginals {
     val reads = mutableListOf<String>()
     var sample: LumaSample? = LumaSample(3, 3, 960, 1280, byteArrayOf(30, (230).toByte(), 30, (230).toByte(), 30, (230).toByte(), 30, (230).toByte(), 30))
     var failRead = false
+    var inspectSample: suspend () -> Unit = {}
     private var serial = 0
     override suspend fun cameraTarget(): String = "content://synthetic/camera-${serial++}".also { files[it] = ByteArray(0) }
     override suspend fun read(reference: String): ByteArray? {
@@ -35,7 +38,10 @@ private class FakeOriginals : ReceiptOriginals {
         return files[reference]?.copyOf()?.takeIf { it.isNotEmpty() }
     }
     override suspend fun discard(reference: String) { discarded += reference; files.remove(reference) }
-    override suspend fun sample(bytes: ByteArray): LumaSample? = sample
+    override suspend fun sample(bytes: ByteArray): LumaSample? {
+        inspectSample()
+        return sample
+    }
 }
 
 /** EMP-DOC-004 capture sheet state (B-BR-EMP-450..453): nothing is saved here, refusals never become a draft. */
@@ -44,13 +50,13 @@ class EnterpriseReceiptCaptureControllerTest {
     fun aDeniedCameraSavesNothingAndKeepsImportAvailable() = runTest {
         val originals = FakeOriginals()
         val controller = ReceiptCaptureController(originals)
-        controller.cameraDenied()
+        controller.cameraDenied(controller.beginSelection())
         assertTrue(controller.state.value.cameraDenied)
         assertNull(controller.state.value.draft)
         assertTrue(originals.reads.isEmpty())
         // Import stays available after a denial and clears the denial message.
         originals.files["content://picker/1"] = receiptJpeg()
-        controller.imported("content://picker/1")
+        controller.imported(controller.beginSelection(), "content://picker/1")
         assertFalse(controller.state.value.cameraDenied)
         assertEquals(ReceiptSource.IMPORT, controller.state.value.draft?.original?.source)
     }
@@ -59,9 +65,10 @@ class EnterpriseReceiptCaptureControllerTest {
     fun aCameraPhotoIsReadOnceItsPrivateFileDeletedAndTheHintAttached() = runTest {
         val originals = FakeOriginals()
         val controller = ReceiptCaptureController(originals)
-        val target = controller.cameraTarget()
+        val request = controller.beginSelection()
+        val target = requireNotNull(controller.cameraTarget(request))
         originals.files[target] = receiptJpeg()
-        controller.cameraResult(target, taken = true)
+        controller.cameraResult(request, target, taken = true)
         val draft = requireNotNull(controller.state.value.draft)
         assertEquals(ReceiptSource.CAMERA, draft.original.source)
         assertArrayEquals(receiptJpeg(), draft.original.bytes())
@@ -74,8 +81,9 @@ class EnterpriseReceiptCaptureControllerTest {
     fun aCancelledCameraDeletesItsFileAndSavesNothing() = runTest {
         val originals = FakeOriginals()
         val controller = ReceiptCaptureController(originals)
-        val target = controller.cameraTarget()
-        controller.cameraResult(target, taken = false)
+        val request = controller.beginSelection()
+        val target = requireNotNull(controller.cameraTarget(request))
+        controller.cameraResult(request, target, taken = false)
         assertTrue(controller.state.value.cancelled)
         assertNull(controller.state.value.draft)
         assertEquals(listOf(target), originals.discarded)
@@ -86,20 +94,21 @@ class EnterpriseReceiptCaptureControllerTest {
     fun missingUnreadableAndUnsupportedFilesNeverBecomeADraft() = runTest {
         val originals = FakeOriginals()
         val controller = ReceiptCaptureController(originals)
-        val target = controller.cameraTarget()
-        controller.cameraResult(target, taken = true)
+        val request = controller.beginSelection()
+        val target = requireNotNull(controller.cameraTarget(request))
+        controller.cameraResult(request, target, taken = true)
         assertEquals(ReceiptRefusal.MISSING, controller.state.value.refusal)
         assertNull(controller.state.value.draft)
         assertEquals(listOf(target), originals.discarded)
-        controller.imported("content://picker/gone")
+        controller.imported(controller.beginSelection(), "content://picker/gone")
         assertEquals(ReceiptRefusal.MISSING, controller.state.value.refusal)
         originals.files["content://picker/png"] = PNG
-        controller.imported("content://picker/png")
+        controller.imported(controller.beginSelection(), "content://picker/png")
         assertEquals(ReceiptRefusal.UNSUPPORTED, controller.state.value.refusal)
         assertNull(controller.state.value.draft)
         originals.failRead = true
         originals.files["content://picker/denied"] = receiptJpeg()
-        controller.imported("content://picker/denied")
+        controller.imported(controller.beginSelection(), "content://picker/denied")
         assertEquals(ReceiptRefusal.MISSING, controller.state.value.refusal)
         // The picker's references are never deleted by the app.
         assertEquals(listOf(target), originals.discarded)
@@ -110,13 +119,13 @@ class EnterpriseReceiptCaptureControllerTest {
         val originals = FakeOriginals()
         val controller = ReceiptCaptureController(originals)
         originals.files["content://picker/a"] = receiptJpeg(fill = 3)
-        controller.imported("content://picker/a")
+        controller.imported(controller.beginSelection(), "content://picker/a")
         val first = requireNotNull(controller.state.value.draft)
         originals.files["content://picker/png"] = PNG
-        controller.imported("content://picker/png")
+        controller.imported(controller.beginSelection(), "content://picker/png")
         assertSame(first, controller.state.value.draft)
         assertEquals(ReceiptRefusal.UNSUPPORTED, controller.state.value.refusal)
-        controller.imported(null)
+        controller.imported(controller.beginSelection(), null)
         assertTrue(controller.state.value.cancelled)
         assertSame(first, controller.state.value.draft)
         controller.reset()
@@ -128,8 +137,68 @@ class EnterpriseReceiptCaptureControllerTest {
         val originals = FakeOriginals().apply { sample = null }
         val controller = ReceiptCaptureController(originals)
         originals.files["content://picker/raw"] = receiptJpeg()
-        controller.imported("content://picker/raw")
+        controller.imported(controller.beginSelection(), "content://picker/raw")
         assertEquals(LegibilityHint.NOT_CHECKED, controller.state.value.draft?.hint)
+    }
+
+    @Test
+    fun aLateCameraResultFromAnAbandonedCaptureOnlyDeletesItsTemporaryFile() = runTest {
+        val originals = FakeOriginals()
+        val controller = ReceiptCaptureController(originals)
+        val request = controller.beginSelection()
+        val target = requireNotNull(controller.cameraTarget(request))
+        originals.files[target] = receiptJpeg()
+        controller.reset()
+
+        controller.cameraResult(request, target, taken = true)
+
+        assertEquals(ReceiptCaptureState(), controller.state.value)
+        assertEquals(listOf(target), originals.discarded)
+        assertTrue(originals.reads.isEmpty())
+    }
+
+    @Test
+    fun anOldPickerCallbackCannotReadItsFileAfterAContextChange() = runTest {
+        val originals = FakeOriginals()
+        val controller = ReceiptCaptureController(originals)
+        val old = controller.beginSelection()
+        originals.files["content://picker/late"] = receiptJpeg()
+        controller.reset()
+        val current = controller.beginSelection()
+
+        controller.cameraDenied(old)
+        controller.imported(old, "content://picker/late")
+        controller.imported(current, null)
+
+        assertTrue(controller.state.value.cancelled)
+        assertFalse(controller.state.value.cameraDenied)
+        assertNull(controller.state.value.draft)
+        assertTrue(originals.reads.isEmpty())
+        assertTrue(originals.discarded.isEmpty())
+    }
+
+    @Test
+    fun aLegibilityCheckFinishingAfterResetCannotReplaceTheNewSessionsPhoto() = runTest {
+        val originals = FakeOriginals()
+        val controller = ReceiptCaptureController(originals)
+        val firstStarted = CompletableDeferred<Unit>()
+        val releaseFirst = CompletableDeferred<Unit>()
+        originals.inspectSample = {
+            firstStarted.complete(Unit)
+            releaseFirst.await()
+        }
+        originals.files["content://picker/old"] = receiptJpeg(fill = 1)
+        originals.files["content://picker/new"] = receiptJpeg(fill = 2)
+        val first = launch { controller.imported(controller.beginSelection(), "content://picker/old") }
+        firstStarted.await()
+        controller.reset()
+        originals.inspectSample = {}
+        controller.imported(controller.beginSelection(), "content://picker/new")
+        releaseFirst.complete(Unit)
+        first.join()
+
+        assertArrayEquals(receiptJpeg(fill = 2), controller.state.value.draft?.original?.bytes())
+        assertTrue(originals.discarded.isEmpty())
     }
 }
 

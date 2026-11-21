@@ -11,6 +11,18 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const archivedOrganizationClosureElapsed = `-- name: ArchivedOrganizationClosureElapsed :one
+SELECT EXISTS (SELECT 1 FROM org_closure_requests WHERE org_id=$1::text::uuid
+               AND state='PENDING' AND closes_at<=statement_timestamp())::boolean AS elapsed
+`
+
+func (q *Queries) ArchivedOrganizationClosureElapsed(ctx context.Context, orgID string) (bool, error) {
+	row := q.db.QueryRow(ctx, archivedOrganizationClosureElapsed, orgID)
+	var elapsed bool
+	err := row.Scan(&elapsed)
+	return elapsed, err
+}
+
 const currentAuthority = `-- name: CurrentAuthority :many
 SELECT m.account_id::text AS account_id,m.id::text AS membership_id,m.employee_id::text AS employee_id,
  m.state AS membership_state,m.access_model,e.state AS employee_state,o.state AS organization_state,

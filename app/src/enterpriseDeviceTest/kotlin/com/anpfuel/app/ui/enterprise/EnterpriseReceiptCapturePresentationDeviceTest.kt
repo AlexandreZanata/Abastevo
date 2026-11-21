@@ -1,8 +1,14 @@
 package com.anpfuel.app.ui.enterprise
 
+import android.app.Activity
+import android.content.Intent
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.net.Uri
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
@@ -14,10 +20,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.core.content.FileProvider
+import androidx.core.app.ActivityOptionsCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureUi
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureCard
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureViewModel
 import com.anpfuel.app.ui.enterprise.attachment.ReceiptPickers
+import com.anpfuel.app.ui.enterprise.attachment.rememberSystemReceiptPickers
 import com.anpfuel.app.ui.enterprise.trip.TripPanel
 import com.anpfuel.application.enterprise.EnterpriseContextSummary
 import com.anpfuel.application.enterprise.attachment.ReceiptCaptureController
@@ -118,15 +128,16 @@ class EnterpriseReceiptCapturePresentationDeviceTest {
         val localized = app.createConfigurationContext(configuration)
         val pickers = object : ReceiptPickers {
             override fun camera() {
-                if (deniedCamera) { controller.cameraDenied(); return }
+                val request = controller.beginSelection()
+                if (deniedCamera) { controller.cameraDenied(request); return }
                 runBlocking {
-                    val reference = controller.cameraTarget()
+                    val reference = requireNotNull(controller.cameraTarget(request))
                     val bytes = camera()
                     if (bytes != null) app.contentResolver.openOutputStream(Uri.parse(reference))!!.use { it.write(bytes) }
-                    controller.cameraResult(reference, bytes != null)
+                    controller.cameraResult(request, reference, bytes != null)
                 }
             }
-            override fun library() { runBlocking { controller.imported(library()) } }
+            override fun library() { runBlocking { controller.imported(controller.beginSelection(), library()) } }
         }
         compose.setContent {
             val receipt by controller.state.collectAsState()
@@ -142,6 +153,49 @@ class EnterpriseReceiptCapturePresentationDeviceTest {
         return calls to { next -> current = next }
     }
     private fun scrollTo(tag: String) = compose.onNodeWithTag("enterprise-trip-panel").performScrollToNode(hasTestTag(tag))
+
+    @Test fun aLateAndroidPickerResultCannotReopenAClosedCapture() {
+        val model = ReceiptCaptureViewModel(originals, queueEnabled = true)
+        var launched: Int? = null
+        val registry = object : ActivityResultRegistry() {
+            override fun <I, O> onLaunch(
+                requestCode: Int,
+                contract: ActivityResultContract<I, O>,
+                input: I,
+                options: ActivityOptionsCompat?,
+            ) { launched = requestCode }
+        }
+        val owner = object : ActivityResultRegistryOwner {
+            override val activityResultRegistry: ActivityResultRegistry = registry
+        }
+        compose.setContent {
+            val capture by model.state.collectAsState()
+            CompositionLocalProvider(LocalActivityResultRegistryOwner provides owner) {
+                MaterialTheme {
+                    ReceiptCaptureCard("Synthetic receipt", ReceiptCaptureUi(capture, rememberSystemReceiptPickers(model), model::reset),
+                        busy = false, onSave = {}, onCancel = model::reset)
+                }
+            }
+        }
+        val oldReference = imported("price_doc004_old.jpg", jpeg())
+        val newPhoto = jpeg(dark = true)
+        val newReference = imported("price_doc004_new.jpg", newPhoto)
+        compose.onNodeWithTag("enterprise-receipt-import").performClick()
+        compose.runOnIdle {
+            model.reset()
+            registry.dispatchResult(requireNotNull(launched), Activity.RESULT_OK, Intent().setData(Uri.parse(oldReference)))
+        }
+        compose.onNodeWithTag("enterprise-receipt-save").assertIsNotEnabled()
+        compose.onAllNodesWithTag("enterprise-receipt-preview").assertCountEquals(0)
+        compose.onNodeWithTag("enterprise-receipt-import").performClick()
+        compose.runOnIdle {
+            registry.dispatchResult(requireNotNull(launched), Activity.RESULT_OK, Intent().setData(Uri.parse(newReference)))
+        }
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("enterprise-receipt-preview").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("enterprise-receipt-save").assertIsEnabled()
+        assertArrayEquals(newPhoto, model.state.value.draft?.original?.bytes())
+        compose.runOnIdle { model.reset() }
+    }
 
     @Test fun aCameraPhotoShowsItsHintAndIsSavedOnlyAfterTheFlowSaysSo() {
         val photo = jpeg()
@@ -159,8 +213,8 @@ class EnterpriseReceiptCapturePresentationDeviceTest {
         assertTrue(cameraFolder.listFiles().orEmpty().isEmpty())
         // Nothing is announced as saved before the record's flow reports the protected write.
         compose.onAllNodesWithText("Foto salva no aparelho.").assertCountEquals(0)
-        compose.onNodeWithTag("enterprise-receipt-save").assertIsEnabled().performClick()
-        val (owner, chosen, draft) = calls.attached.single()
+        compose.onNodeWithTag("enterprise-receipt-save").performScrollTo().assertIsDisplayed().assertIsEnabled().performClick()
+        val (owner, chosen, draft) = compose.runOnIdle { calls.attached.single() }
         assertEquals(start.operationId, owner)
         assertEquals(target, chosen)
         assertArrayEquals("The original must be saved unmodified", photo, draft.original.bytes())
@@ -207,10 +261,13 @@ class EnterpriseReceiptCapturePresentationDeviceTest {
         compose.waitUntil(10_000) { compose.onAllNodesWithTag("enterprise-receipt-preview").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithTag("enterprise-receipt-hint", useUnmergedTree = true).onChildren().assertAny(hasText("A imagem pode estar escura."))
         // The hint never blocks: the person may keep the photo.
-        compose.onNodeWithTag("enterprise-receipt-save").assertIsEnabled().performClick()
-        assertArrayEquals(photo, calls.attached.single().third.original.bytes())
-        update(state(saveFailed = true))
+        compose.onNodeWithTag("enterprise-receipt-save").performScrollTo().assertIsDisplayed().assertIsEnabled().performClick()
+        val draft = compose.runOnIdle { calls.attached.single().third }
+        assertArrayEquals(photo, draft.original.bytes())
+        compose.runOnIdle { update(state(saveFailed = true)) }
+        scrollTo("enterprise-trip-feedback")
         compose.onNodeWithTag("enterprise-trip-feedback").assertTextEquals("Nada foi salvo. Tente de novo.")
+        scrollTo("enterprise-receipt-preview")
         compose.onNodeWithTag("enterprise-receipt-preview").assertExists()
         compose.onNodeWithTag("enterprise-receipt-save").assertIsEnabled()
     }

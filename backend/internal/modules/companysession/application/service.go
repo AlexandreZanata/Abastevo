@@ -38,7 +38,7 @@ func (Result) LogValue() slog.Value { return slog.StringValue("companysession: c
 
 type Store interface {
 	Create(context.Context, Row, Proof, string, time.Time) error
-	Authenticate(context.Context, string, time.Time, bool, func(Row) error) (Row, error)
+	Authenticate(context.Context, string, func() time.Time, bool, func(Row, time.Time) error) (Row, error)
 	Revoke(context.Context, string, string, time.Time) error
 }
 type Service struct {
@@ -168,8 +168,7 @@ func (s *Service) authenticate(ctx context.Context, token, csrf string, fresh, t
 	}
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	now := s.now()
-	row, err := s.Store.Authenticate(ctx, s.lookup(token), now, touch, func(row Row) error {
+	row, err := s.Store.Authenticate(ctx, s.lookup(token), s.now, touch, func(row Row, now time.Time) error {
 		if !domain.Live(row.CreatedAt, row.LastSeenAt, row.ExpiresAt, now) {
 			return domain.ErrUnauthorized
 		}

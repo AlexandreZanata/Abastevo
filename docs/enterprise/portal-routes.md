@@ -15,6 +15,9 @@ labelled synthetic data and is not part of the landing build or `dist/`.
 | `/postos/{uuid}/` | Canonical station detail and dated history | indexable only with an official ANP price in the 8 most recent survey weeks and a complete address (D-SEO-02); otherwise `noindex,follow` | Directory + Official |
 | `/precos/` | National overview and links to fuel, state and municipality summaries | indexable | Official current revisions |
 | `/precos/{fuel-slug}/` | Fuel hub: national summary, table by state, cities with that fuel (SEO-07) | indexable when the current survey has the fuel | Official current revisions |
+| `/precos/etanol-ou-gasolina/` | Ratio between the sample means of hydrous ethanol and regular gasoline for Brazil, each state and each city, beside the general 70% reference (B-BR-SEO-12) | indexable; the page exists only when the national ratio exists | Official current revisions |
+| `/precos/{fuel-slug}/{uf}/` | One fuel in one state: summary, comparison with the previous survey, history by survey week, cities and the state ranking for that fuel (B-BR-SEO-11) | indexable; the page exists only when the state has that fuel in the current survey | Official revisions in the export window |
+| `/precos/{fuel-slug}/{uf}/{cidade-slug}/` | One fuel in one city: summary, comparison, every station with that fuel in the current survey (with its bairro and collection date), history by survey week, and the same fuel in the state and in Brazil (B-BR-SEO-11) | indexable; the page exists only when the city has at least 5 stations with that fuel in the current survey | Official revisions in the export window |
 | `/precos/{uf}/` | State summary and municipalities (lowercase UF, D-SEO-01) | indexable when the state has observations in the current survey; otherwise honest no-data page `noindex,follow` | Official current revisions + Directory geography |
 | `/precos/{uf}/{cidade-slug}/` | Municipality summary and cheapest-in-sample list (D-SEO-01) | indexable when the municipality has observations in the current survey (small samples keep the no-ranking state); otherwise honest no-data page `noindex,follow` | Official current revisions + Directory geography |
 | `/fiscalizacao/` | Source-reported official events, event-level | first page indexable when the official slice is present; pagination self-canonical `noindex,follow`; record pages always `noindex,follow` (D-SEO-03) | FQ-07/FQ-08 frozen export; FQ-06 still gated |
@@ -114,6 +117,10 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   pages and hubs derived from it, the latest valid observation date for a
   station, the official edition publication for `/fiscalizacao/`, and the build
   date only for pages without a data date. No `priority` or `changefreq`.
+  The same-origin web tier serves both the landing and portal sitemap URLs in
+  its robots response, which mirrors the rendered landing robots file. Every
+  crawler group that allows crawling also disallows the admin, company, and
+  search shard paths.
 - **B-BR-SEO-05 Head contract.** Every page with a configured site URL carries
   an absolute self `<link rel="canonical">` (trailing slash), Open Graph and
   Twitter tags (`og:site_name` `abastevo`, `og:locale` `pt_BR`, landing image
@@ -121,7 +128,13 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   (`dd/mm/aaaa`), never “hoje”; descriptions are 120–160 characters, carry only
   figures shown on the page and are unique per indexable page. ALL-CAPS
   registry names are shown in Portuguese title case in the title/H1 while the
-  registry and legal names stay visible.
+  registry and legal names stay visible. A price or station page title has at
+  most 65 characters: each page lists candidates from the most to the least
+  specific and uses the first that fits, so a long place name drops the survey
+  date before it drops the place. Pages show units in words (`litro`, `m³`,
+  `botijão de 13 kg`), never the unit code; downloads and search shards keep
+  the codes. A fuel hub names the fuel's everyday synonym once, in its
+  description and lead (`álcool`, `gás de cozinha`, `gás natural veicular`).
 - **B-BR-SEO-06 Structured data.** Inline JSON-LD describes only visible facts:
   `BreadcrumbList` mirroring the visible breadcrumb (Início › Preços › UF ›
   Cidade › Posto), `CollectionPage` + `ItemList` on hubs, fuel, state and city
@@ -187,12 +200,77 @@ as follows; tests in `portalgen` prove each rule on fixtures.
     posts of its UF); `/precos/` lists the 3 latest posts and their
     categories; the portal hubs, header and footer link `/forum/`. Official-
     only builds have no forum.
+  - *Feed.* An indexable build with a forum writes `/forum/feed.xml`, an Atom
+    1.0 feed of the 20 newest posts: title, the page's meta description as
+    summary, publication and update instants, author and category. The feed
+    date is the newest entry's update instant, never the build time. Only the
+    forum hub, category and post pages advertise it in their head. A build
+    without a forum, or with the global switch off, has no feed.
   - *Withdrawal and latency.* A hidden, removed or rejected post, or one whose
     source loses rights, leaves the next export, so the next release has no
     page (404) and no sitemap entry. The export reconcile job (every 6 h)
     compares a fingerprint of the exported fields with the export state and
     enqueues a build; the build enqueues a portal refresh. Worst-case latency
     is about 6 h plus build and generation time.
+- **B-BR-SEO-09 Dated answers.** A title or meta description of a price page
+  never contains the word “hoje”. The fuel hub, the fuel by area pages and the
+  city page carry a visible “Perguntas frequentes” block, and the first three
+  also carry a one-paragraph reading of the survey. Every sentence is a fixed
+  template over figures the page already shows, built without a language
+  model, and a sentence whose condition fails is left out. A “today” question
+  is answered only with the survey period, the statement that the site has no
+  live price, and the warning that the price may differ today. No page names a
+  cheapest station or uses “mais barato”, “preço atual” or “tempo real”: the
+  lowest-price question speaks of the lowest price found in a dated sample.
+  The block is visible content only; no `FAQPage` or `HowTo` markup is
+  emitted.
+- **B-BR-SEO-10 Sample mean and comparison.** The mean of a summary is the sum
+  of the latest price of each station divided by the station count, in
+  milli-BRL, rounded half up (`(2 × sum + n) ÷ (2 × n)` in integers). It is
+  shown only for a sample of at least 5 stations, the same minimum as the
+  municipal ranking. Its label is “média da amostra”, and the page says it is
+  an Abastevo calculation, never an ANP statistic. Fuel hub, state and city
+  pages compare each fuel with the previous survey: a movement of the minimum,
+  maximum and mean appears only when `analytics.CompareSummaries` reports the
+  two station samples as the same; otherwise the row says the sample changed
+  and shows the previous figures without a variation. A fuel with no summary
+  in the previous survey has no row, and a page with no row has no block.
+- **B-BR-SEO-11 Fuel by area pages.** `/precos/{fuel}/{uf}/` exists when the
+  state has a summary for that fuel, in the fuel's canonical unit, in the
+  current survey. `/precos/{fuel}/{uf}/{cidade}/` exists when the municipality
+  summary for that fuel has at least 5 stations, the municipal minimum below
+  which the portal shows no ranking and no mean; its city slug is the one of
+  the city page. A page that fails its rule is not emitted, and an emitted
+  page is indexable under the global switch. Fuel slugs have at least three
+  characters and state codes have two, so the first segment under `/precos/`
+  tells the two families apart. The page shows one fuel only: its summary row
+  and mean (B-BR-SEO-10), the comparison block, one history row per survey
+  week of the snapshot (newest first, from the first observation; a week
+  without an observation is a gap, never a zero), the cities of the state
+  with that fuel and the state ranking. The fuel hub's state table, the state
+  page's summary and each city page link it, so every page has at least the
+  three inbound links B-BR-SEO-07 asks for. The city variant lists every
+  station of the sample by price, then name, with its bairro and collection
+  date, cut at 200 rows plus ties at the cutoff, and places the city next to
+  its state and Brazil. The fuel hub's city table, the fuel by state page and
+  the city page's summary link it. One query has one page: the fuel by city
+  page owns “preço {do combustível} em {cidade}”, so the city page's title
+  names all fuels and the stations (“Preços dos combustíveis e postos em
+  {Cidade} ({UF})”) and never one fuel.
+- **B-BR-SEO-12 Ethanol to gasoline ratio.** The ratio is the sample mean of
+  hydrous ethanol divided by the sample mean of regular gasoline, both per
+  litre, for the same area and survey. It exists only when each fuel has at
+  least 5 stations in that area. It is computed as one exact fraction,
+  `(sumE × nG) ÷ (sumG × nE)`, and shown as a percentage with one decimal,
+  rounded half up, beside the general 70% reference (“abaixo de 70%”, “em
+  70%” or “acima de 70%”). `/precos/etanol-ou-gasolina/` lists Brazil, the
+  states and the cities that have a ratio, and exists only when the national
+  ratio does; the slug is reserved and is neither a fuel slug nor a state
+  code. State and city pages with a ratio show it in one line that links the
+  page, and `/precos/` and the two fuel hubs link it. The page states a
+  relation between two means: it says the general rule and that each car's
+  break-even differs, links the calculator and the guide of the landing, and
+  never says “compensa”, “hoje” or “esta semana”.
 
 ## Page fields (public allowlist)
 

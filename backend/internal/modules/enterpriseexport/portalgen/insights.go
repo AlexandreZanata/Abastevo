@@ -166,7 +166,7 @@ func buildInsights(latest, previous *enterpriseexport.Revision, latestSummaries,
 	if len(coverage.FuelUnits) > 0 {
 		parts := make([]string, 0, len(coverage.FuelUnits))
 		for _, fuel := range coverage.FuelUnits {
-			parts = append(parts, fmt.Sprintf("%s (%s): %d %s", fuelLabel(fuel.Fuel), fuel.Unit, fuel.Stations, plural(fuel.Stations, "posto", "postos")))
+			parts = append(parts, fmt.Sprintf("%s (%s): %d %s", fuelLabel(fuel.Fuel), unitShort(fuel.Unit), fuel.Stations, plural(fuel.Stations, "posto", "postos")))
 		}
 		fuelAnswer = strings.Join(parts, "; ") + "."
 	}

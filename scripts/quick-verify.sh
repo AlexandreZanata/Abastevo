@@ -85,6 +85,11 @@ echo "== staging deploy agent =="
 make -C "$ROOT" test-deploy-agent
 python3 "$ROOT/infra/k8s/staging/test-manifests.py"
 
+# The report script copies the portal's fuel slugs and reads the locale
+# registry; its tests take under a second and fail when either drifts.
+echo "== search report script =="
+make -C "$ROOT" test-seo
+
 # Collect changed files from working tree (tracked + untracked) and, when
 # available, the committed PR diff against origin/main. CI checkouts are clean,
 # so working-tree status alone would scan nothing; the PR diff covers that case.

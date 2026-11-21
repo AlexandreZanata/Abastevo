@@ -283,6 +283,50 @@
           </section>
           <section aria-labelledby="intel-audit-title"><h3 id="intel-audit-title">Trilha de auditoria</h3><ul id="intel-audit-list" class="record-list" aria-labelledby="intel-audit-title"></ul></section>
         </section>
+        <section id="subscription-panel" class="employee-card" aria-labelledby="subscription-title" hidden>
+          <div class="section-head">
+            <h2 id="subscription-title">Plano e cobrança</h2>
+            <button id="subscription-refresh" class="button-secondary" type="button">Atualizar plano</button>
+          </div>
+          <p id="subscription-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <ul id="subscription-list" class="record-list" aria-labelledby="subscription-title"></ul>
+        </section>
+        <section id="data-panel" class="employee-card" aria-labelledby="data-title" hidden>
+          <div class="section-head">
+            <h2 id="data-title">Abastevo Data</h2>
+            <button id="data-refresh" class="button-secondary" type="button">Atualizar dados da API</button>
+          </div>
+          <p id="data-status" role="status" aria-live="polite" aria-atomic="true"></p>
+          <div id="data-usage"></div>
+          <section id="data-docs" aria-labelledby="data-datasets-title" hidden>
+            <h3 id="data-datasets-title">Séries regionais autorizadas</h3>
+            <p>As séries usam a última observação oficial por posto no período. Cada resposta informa a fonte, a unidade e a cobertura da amostra.</p>
+            <p>Use o escopo <code>regional.read</code> e informe as revisões no endpoint <code>/v1/data/orgs/{org_id}/datasets/{dataset_key}/regional-series</code>.</p>
+            <ul id="data-datasets" class="record-list"></ul>
+            <button id="data-more-datasets" type="button" class="button-secondary" hidden>Mais séries</button>
+          </section>
+          <section id="data-key-section" aria-labelledby="data-keys-title" hidden>
+            <h3 id="data-keys-title">Chaves da API</h3>
+            <ul id="data-keys" class="record-list"></ul>
+            <button id="data-more-keys" type="button" class="button-secondary" hidden>Mais chaves</button>
+            <form id="data-key-form" autocomplete="off" hidden>
+              <div class="field-grid">
+                <div><label for="data-key-label">Nome da chave</label><input id="data-key-label" maxlength="100" required></div>
+                <div><label for="data-key-expiry">Vencimento</label><input id="data-key-expiry" type="datetime-local" required></div>
+                <div id="data-key-overlap-field" hidden><label for="data-key-overlap">Chave anterior válida até (opcional)</label><input id="data-key-overlap" type="datetime-local"></div>
+              </div>
+              <div class="action-row">
+                <button id="data-key-save" class="button-primary" type="submit">Emitir chave</button>
+                <button id="data-key-cancel" class="button-secondary" type="button" hidden>Cancelar rotação</button>
+              </div>
+            </form>
+            <div id="data-secret-box" hidden>
+              <label for="data-secret">Código da chave (mostrado uma vez)</label>
+              <input id="data-secret" readonly autocomplete="off" spellcheck="false">
+              <button id="data-hide-secret" class="button-secondary" type="button">Ocultar código</button>
+            </div>
+          </section>
+        </section>
         <section id="agreements-panel" class="employee-card" aria-labelledby="agreements-title" hidden>
           <div class="section-head">
             <div><h2 id="agreements-title">Postos e acordos comerciais</h2><p class="section-copy">Convênios com postos, preços negociados, autorizações de abastecimento e resgates confirmados.</p></div>

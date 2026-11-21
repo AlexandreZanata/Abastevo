@@ -50,4 +50,11 @@
     <string name="enterprise_receipts_title_reading">读数照片</string>
     <string name="enterprise_receipts_saved">照片已保存在设备上。</string>
     <string name="enterprise_receipts_unavailable">现在无法读取该公司的照片。已保存的照片会保留。</string>
+    <string name="enterprise_receipts_read_money">在此设备上识别金额</string>
+    <string name="enterprise_receipts_reading_money">正在识别凭证上的金额…</string>
+    <string name="enterprise_receipts_enter_money">未识别出金额，请手动填写。</string>
+    <string name="enterprise_receipts_money_confidence">文字识别置信度：%1$d%%</string>
+    <string name="enterprise_receipts_money_unscored">文字识别置信度不可用</string>
+    <string name="enterprise_receipts_use_paid">将 R$ %1$s 用作实付金额</string>
+    <string name="enterprise_receipts_use_discount">将 R$ %1$s 用作折扣金额</string>
 </resources>

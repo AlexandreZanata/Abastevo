@@ -87,9 +87,10 @@ const (
 	ReduceAccess
 	RegularizePlan
 	RestoreOrganization
+	RetainedExport
 )
 
-func (e Effect) Write() bool { return e != Read && e >= OperationalWrite && e <= RestoreOrganization }
+func (e Effect) Write() bool { return e >= OperationalWrite && e <= RetainedExport }
 
 // Policy is source-owned route metadata. It is not decoded from a request.
 type Policy struct {
@@ -105,7 +106,10 @@ func (p Policy) Validate() error {
 	if _, err := d.SystemCatalog().Lookup(d.Owner, p.Permission); err != nil {
 		return ErrUnavailable
 	}
-	if p.Effect < Read || p.Effect > RestoreOrganization || len(p.Capability) > 64 || !capabilityPattern.MatchString(p.Capability) {
+	if p.Effect < Read || p.Effect > RetainedExport || len(p.Capability) > 64 || !capabilityPattern.MatchString(p.Capability) {
+		return ErrUnavailable
+	}
+	if p.Effect == RetainedExport && p.Permission != "rpt.export.run" {
 		return ErrUnavailable
 	}
 	// BR-AUTH-010 and organizations.md: role/ownership/credential/key changes,
@@ -261,7 +265,7 @@ func organizationAllows(state o.State, effect Effect) error {
 		}
 		return ErrOrgSuspended
 	case o.Archived:
-		if effect == Read || effect == ReduceAccess || effect == RegularizePlan || effect == RestoreOrganization {
+		if effect == Read || effect == ReduceAccess || effect == RegularizePlan || effect == RestoreOrganization || effect == RetainedExport {
 			return nil
 		}
 		return ErrOrgArchived

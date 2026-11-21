@@ -91,7 +91,14 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	// the same transaction; the expense.submit owner records direct expenses
 	// with the same authority sources, asset locks and allocation port.
 	expenses := &expensepg.Store{Allocations: assets, NewID: jobs.NewUUIDv4}
-	fuelingHandler, err := fuelpg.NewIntakeHandler((*orgpg.FuelingAuthority)(meterAuthority), meters, &fuelpg.Store{Allocations: assets}, expenses)
+	fuelingAuthority := (*orgpg.FuelingAuthority)(meterAuthority)
+	fuelingStore := &fuelpg.Store{Allocations: assets}
+	var fuelingHandler app.Handler
+	if o.BillingEnabled {
+		fuelingHandler, err = fuelpg.NewPlanAwareIntakeHandler(fuelingAuthority, meters, fuelingStore, expenses, jobs.NewUUIDv4)
+	} else {
+		fuelingHandler, err = fuelpg.NewIntakeHandler(fuelingAuthority, meters, fuelingStore, expenses)
+	}
 	if err != nil {
 		return err
 	}
@@ -202,6 +209,9 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 		return app.ErrUnavailable
 	}
 	noAsync[fuelingKey] = map[string]app.FollowupMode{protocol.Accepted: app.NoAsyncFollowup, protocol.Rejected: app.NoAsyncFollowup}
+	if o.BillingEnabled {
+		noAsync[fuelingKey][protocol.AcceptedForReview] = app.AtomicReview
+	}
 	// EMP-EXP-002 (EDR-289): a direct expense has no consumer and no held path.
 	expenseKey := app.OperationKey{Type: expenseapp.OperationType, Schema: 1}
 	if _, exists := noAsync[expenseKey]; exists {
@@ -254,13 +264,13 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	// EMP-OFFL-012: ORG-009's suspension assessment and the capability row
-	// decide organization state before every owner.
+	// The suspension assessment and source-specific plan history decide
+	// whether the existing owner should apply an operation or hold it.
 	plans, ok := devices.Capabilities.(orgpg.IntakePlanStates)
 	if !ok || plans == nil {
 		return app.ErrUnavailable
 	}
-	assessor := orgpg.IntakeStateAssessor{Suspensions: &orgpg.SuspensionStore{Roots: orgpg.NewStore(o.Pool)}, Plans: plans}
+	assessor := orgpg.IntakeStateAssessor{Suspensions: &orgpg.SuspensionStore{Roots: orgpg.NewStore(o.Pool)}, Plans: plans, SubscriptionPlans: o.BillingEnabled}
 	store := syncpg.NewStore(syncpg.Config{Pool: o.Pool, Audit: auditor, AuditCatalog: auditCatalog, EventCatalog: catalog, EventWriter: eventpg.NewStore(o.Pool), Plans: o.IntakePlans, NoAsyncPlans: noAsync,
 		ConfirmSource: func(ctx context.Context, tx pgx.Tx, s app.Source) (time.Time, error) {
 			_, now, err := devices.CheckCurrentIntakeDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)

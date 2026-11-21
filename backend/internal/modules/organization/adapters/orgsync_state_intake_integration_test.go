@@ -14,6 +14,8 @@ import (
 	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	orgd "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
+	billpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
+	billing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	syncpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/adapters"
 	syncapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/application"
@@ -248,6 +250,79 @@ func TestStateIntakePlanDowngradeHoldsEarlierWorkOnly(t *testing.T) {
 	}
 }
 
+func TestStateIntakeSubscriptionLossKeepsOnlyPreviouslyEntitledWork(t *testing.T) {
+	x := stateIntakeFixture(t)
+	ctx := t.Context()
+	role := pgx.Identifier{x.f.RuntimeRole}.Sanitize()
+	if _, err := x.f.Admin.Exec(ctx, "GRANT SELECT ON enterprise_plan_catalog TO "+role+
+		"; GRANT SELECT, INSERT ON org_billing_subscription_events TO "+role); err != nil {
+		t.Fatal(err)
+	}
+	known, err := capability.NewCatalog([]string{"organizations"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := x.f.Admin.Exec(ctx, `INSERT INTO enterprise_plan_catalog
+(product_code,plan_code,revision,display_name,capabilities)
+VALUES('fleet','synthetic',1,'Synthetic plan',ARRAY['organizations'])`); err != nil {
+		t.Fatal(err)
+	}
+	x.flags.PlanWrites = billpg.EntitlementStore{Pool: x.f.Runtime, Capabilities: known, Now: time.Now}
+	config := stateIntakeConfig(x.syncFixtureState)
+	assessor := orgpg.IntakeStateAssessor{
+		Suspensions: &orgpg.SuspensionStore{Roots: orgpg.NewStore(x.f.Runtime)}, Plans: x.flags, SubscriptionPlans: true,
+	}
+	config.AssessState = assessor.AssessStateTx
+	x.state = syncpg.NewStore(config)
+
+	ledger := billpg.SubscriptionLedger{Capabilities: known}
+	key := billing.PlanKey{Product: "fleet", Plan: "synthetic", Revision: 1}
+	subscription := onboardingID(t)
+	at := lifecycleDBNow(t, x.legalFixtureState)
+	startTrial := billing.LifecycleEvent{
+		Scope: x.scope, SubscriptionID: subscription, Kind: billing.StartTrial, Source: billing.TrialPolicy,
+		Reference: "synthetic-trial-rule", At: at, Period: billing.Period{Start: at, End: at.Add(time.Hour)},
+	}
+	beforeActivation := x.op(t, at.Add(-time.Minute))
+	apply := func(event billing.LifecycleEvent) {
+		t.Helper()
+		if err := database.WithOrgTx(ctx, x.f.Runtime, x.scope, func(tx pgx.Tx) error {
+			_, err := ledger.ApplyTx(ctx, tx, key, event)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	apply(startTrial)
+	earlier := x.op(t, lifecycleDBNow(t, x.legalFixtureState))
+	before := x.authority(t)
+	suspend := billing.LifecycleEvent{
+		Scope: x.scope, SubscriptionID: subscription, Kind: billing.SuspendAccess, Source: billing.ReviewedOperator,
+		ExpectedRevision: 1, Reference: "synthetic-reviewed-suspension", At: lifecycleDBNow(t, x.legalFixtureState),
+	}
+	apply(suspend)
+	held, err := x.process(t, earlier)
+	x.heldState(t, earlier, held, err, syncapp.StatePlan, syncapp.StatePlanCode)
+	x.replaysState(t, earlier, held)
+	var recordedSubscription string
+	var recordedRevision int64
+	if err := x.f.Admin.QueryRow(ctx, `SELECT subscription_id::text,subscription_revision FROM org_sync_state_intakes
+WHERE org_id=$1 AND operation_id=$2`, x.scope.OrgID().String(), earlier.ID()).Scan(&recordedSubscription, &recordedRevision); err != nil ||
+		recordedSubscription != subscription || recordedRevision != 1 {
+		t.Fatalf("earlier work has no historical plan witness: %s revision %d: %v", recordedSubscription, recordedRevision, err)
+	}
+	for _, denied := range []protocol.Operation{beforeActivation, x.op(t, lifecycleDBNow(t, x.legalFixtureState))} {
+		ack, err := x.process(t, denied)
+		if code, _ := orgapi.Registered(err); !errors.Is(err, syncapp.ErrSourceDenied) || code != orgapi.EntitlementRequired || len(ack.CanonicalBytes()) != 0 {
+			t.Fatalf("work outside the effective subscription was not refused: %v", err)
+		}
+		x.untouched(t, denied)
+	}
+	if x.authority(t) != before {
+		t.Fatal("subscription loss or operation intake changed organization authority")
+	}
+}
+
 func stateCapabilityRevision(t *testing.T, x stateFixture) int64 {
 	t.Helper()
 	var revision int64
@@ -414,7 +489,14 @@ func TestStateIntakeSchemaGuardsAndForeignHistory(t *testing.T) {
 	if _, err := x.f.Admin.Exec(t.Context(), "GRANT UPDATE,DELETE,TRUNCATE ON org_sync_state_intakes TO "+role); err != nil {
 		t.Fatal(err)
 	}
-	for _, verb := range []string{`UPDATE org_sync_state_intakes SET code='ORG_SUSPENDED'`, `DELETE FROM org_sync_state_intakes`, `TRUNCATE org_sync_state_intakes`} {
+	if _, err := x.f.Admin.Exec(t.Context(), "GRANT TRUNCATE ON org_held_fuelings TO "+role); err != nil {
+		t.Fatal(err)
+	}
+	for _, verb := range []string{
+		`UPDATE org_sync_state_intakes SET code='ORG_SUSPENDED'`,
+		`DELETE FROM org_sync_state_intakes`,
+		`TRUNCATE org_sync_state_intakes,org_held_fuelings`,
+	} {
 		lateSQLCode(t, unitSchemaExec(t, x.legalFixtureState, verb), "55000")
 	}
 	insert := func(op protocol.Operation, condition, disposition, result, code string, declared time.Time) error {

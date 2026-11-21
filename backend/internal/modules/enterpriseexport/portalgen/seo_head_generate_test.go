@@ -67,7 +67,7 @@ func TestHeadContractOnEveryGeneratedPage(t *testing.T) {
 		t.Fatalf("only %d indexable pages in the SEO fixture", indexable)
 	}
 	city := parseHead(pages["precos/mt/cuiaba/index.html"])
-	if city.Title != "Preço da gasolina, etanol e diesel em Cuiabá (MT) – pesquisa ANP 17/10/2026" {
+	if city.Title != "Preços dos combustíveis e postos em Cuiabá (MT) – ANP 17/10/2026" {
 		t.Errorf("city title = %q", city.Title)
 	}
 	if !strings.Contains(city.Description, "R$ 6,099 a R$ 6,399") || !strings.Contains(city.Description, "11/10 a 17/10/2026") {
