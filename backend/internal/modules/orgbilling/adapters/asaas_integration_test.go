@@ -75,8 +75,10 @@ VALUES($1,'asaas','test',$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
 	}
 	probe := &settlementProbe{}
 	store := paypg.NewStore(f.Runtime)
+	receivedAt := observed
+	checkedAt := observed.Add(time.Hour)
 	intake := billing.BillingIntake{Pool: f.Runtime, Ledger: billing.SubscriptionLedger{Capabilities: known},
-		Now: func() time.Time { return observed.Add(time.Hour) }}
+		Now: func() time.Time { return checkedAt }}
 	client := &http.Client{Transport: stripeRoundTrip(func(request *http.Request) (*http.Response, error) {
 		if request.Method != http.MethodGet || request.URL.Path != "/v3/payments/"+resource {
 			t.Fatalf("unexpected provider request: %s %s", request.Method, request.URL.Path)
@@ -98,7 +100,7 @@ VALUES($1,'asaas','test',$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
 		if _, err := store.RecordInbox(ctx, event); err != nil {
 			t.Fatal(err)
 		}
-		if err := processor.Process(ctx, payments.InboxRecord{InboxEvent: event, ReceivedAt: observed, State: "PENDING"}); err != nil {
+		if err := processor.Process(ctx, payments.InboxRecord{InboxEvent: event, ReceivedAt: receivedAt, State: "PENDING"}); err != nil {
 			t.Fatal(err)
 		}
 		var state string
@@ -134,8 +136,19 @@ VALUES($1,'asaas','test',$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
 		inserted != 0 || probe.personal != 1 {
 		t.Fatalf("refused or personal payment activated a company term: receipts=%d personal=%d err=%v", inserted, probe.personal, err)
 	}
+	lateAt := termEnd.Add(time.Hour)
+	receivedAt, checkedAt = lateAt, lateAt.Add(time.Minute)
+	apply("synthetic-first-observation-after-term", "PAYMENT_RECEIVED", "CONFLICT")
+	receivedAt, checkedAt = observed, observed.Add(time.Hour)
 	apply("synthetic-settled", "PAYMENT_RECEIVED", "PROCESSED")
 	apply("synthetic-redelivery-with-new-id", "PAYMENT_RECEIVED", "PROCESSED")
+	receivedAt, checkedAt = lateAt, lateAt.Add(time.Minute)
+	apply("synthetic-redelivery-after-term", "PAYMENT_RECEIVED", "PROCESSED")
+	proof["paymentDate"] = observed.AddDate(0, 0, 1).Format(time.DateOnly)
+	apply("synthetic-redelivery-changed-day", "PAYMENT_RECEIVED", "CONFLICT")
+	proof["paymentDate"] = observed.Format(time.DateOnly)
+	proof["value"] = json.Number("45.66")
+	apply("synthetic-redelivery-changed-amount", "PAYMENT_RECEIVED", "CONFLICT")
 	var receipts, events int
 	var paidOn string
 	var recorded time.Time

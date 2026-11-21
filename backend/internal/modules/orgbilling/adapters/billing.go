@@ -88,9 +88,11 @@ func (intake BillingIntake) recordTx(ctx context.Context, tx pgx.Tx, notice doma
 	if err != nil {
 		return SettlementReceipt{}, err
 	}
-	event, err := binding.SettlementEvent(notice, fact, 0, intake.Now())
-	if err != nil {
-		return SettlementReceipt{}, err
+	event, eventErr := binding.SettlementEvent(notice, fact, 0, intake.Now())
+	// Asaas provides the paid day, while the inbox supplies the observation
+	// instant. A delayed notification can still identify an existing receipt.
+	if eventErr != nil && !(notice.Provider == payment.ProviderAsaas && errors.Is(eventErr, domain.ErrSettlementAfterTerm)) {
+		return SettlementReceipt{}, eventErr
 	}
 	// Serialize different notifications for the same canonical charge across
 	// organizations, before checking the durable receipt.
@@ -114,6 +116,9 @@ func (intake BillingIntake) recordTx(ctx context.Context, tx pgx.Tx, notice doma
 	}
 	if !errors.Is(err, pgx.ErrNoRows) {
 		return SettlementReceipt{}, err
+	}
+	if eventErr != nil {
+		return SettlementReceipt{}, eventErr
 	}
 
 	// Keep the term-wide receipt check and lifecycle revision under the

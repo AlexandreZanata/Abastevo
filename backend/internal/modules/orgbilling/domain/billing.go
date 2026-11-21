@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -13,10 +14,11 @@ import (
 )
 
 var (
-	ErrOfferUnapproved   = errors.New("orgbilling: organization offer is not approved")
-	ErrBillingBinding    = errors.New("orgbilling: provider binding mismatch")
-	ErrBillingUnsettled  = errors.New("orgbilling: payment is not settled")
-	ErrBillingFutureTerm = errors.New("orgbilling: paid term is not yet effective")
+	ErrOfferUnapproved     = errors.New("orgbilling: organization offer is not approved")
+	ErrBillingBinding      = errors.New("orgbilling: provider binding mismatch")
+	ErrBillingUnsettled    = errors.New("orgbilling: payment is not settled")
+	ErrBillingFutureTerm   = errors.New("orgbilling: paid term is not yet effective")
+	ErrSettlementAfterTerm = fmt.Errorf("%w: settlement observation after the approved term", ErrBillingBinding)
 )
 
 type FutureTermError struct{ EffectiveAt time.Time }
@@ -164,8 +166,8 @@ func (binding BillingBinding) SettlementEvent(notice BillingNotice, fact Canonic
 		}
 		effectiveAt = fact.PaidTerm.Start
 	}
-	if !fact.PaidTerm.contains(effectiveAt) {
-		return LifecycleEvent{}, ErrBillingBinding
+	if !effectiveAt.Before(fact.PaidTerm.End) {
+		return LifecycleEvent{}, ErrSettlementAfterTerm
 	}
 	return LifecycleEvent{
 		Scope: binding.Scope, SubscriptionID: binding.SubscriptionID, ExpectedRevision: revision,

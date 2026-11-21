@@ -137,7 +137,11 @@ requires the linked authorization. Received, unadjusted charges must match
 the exact approved BRL amount. The receipt preserves the provider's payment
 day separately from the inbox observation instant. Advance payments on
 either provider wait in the inbox until the approved term begins. A separate
-charge for an already settled term enters reconciliation.
+charge for an already settled term enters reconciliation. A later notification
+for the same verified Asaas charge reads its original receipt after the term
+ends. The provider payment day, exact amount and reviewed binding must still
+match. The later receipt of the notification does not change the original
+observation instant or grant another term.
 
 Manual pilot capability activation remains independent from selling plans.
 Notifications carry safe links. The plan panel reads the receipt for its
