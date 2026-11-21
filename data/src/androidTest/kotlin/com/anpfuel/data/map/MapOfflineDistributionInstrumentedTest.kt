@@ -96,7 +96,7 @@ class MapOfflineDistributionInstrumentedTest {
      */
     private fun proofRequestCount(): Int {
         val requests = JSONObject(fetchBytes("/proof/requests").decodeToString()).getJSONArray("requests")
-        return (0 until requests.length()).count { requests.getString(it).startsWith("/v1/") }
+        return (0 until requests.length()).count { requests.getString(it).startsWith("/dados/mapa-dist/") }
     }
 
     private fun generationOf(envelopeJson: String): String {
