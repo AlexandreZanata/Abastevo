@@ -206,6 +206,7 @@ func Register(router chi.Router, o Options) error {
 	}
 	admission, err := orgquota.New(o.Pool, o.CursorSecret, []orgquota.Definition{
 		{Class: "integ.connection", Permissions: []string{"integ.connection.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Company connector configuration inherits the identity v1 write allowance. Reviewed connector payload and execution budgets are independent."},
+		{Class: "import.batch", Permissions: []string{"import.batch.run"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Fuel card preview and confirmation inherit the identity v1 write allowance. Each connection has a separate approved statement size."},
 		{Class: "data.key", Permissions: []string{"data.key.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Scoped key lifecycle inherits the identity v1 write allowance on each current organization/account/web axis; dataset request limits are independent."},
 		{Class: "org.setup", Permissions: []string{"org.settings.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic setup/settings only: share identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
 		{Class: "org.legal", Permissions: []string{"org.legal_entity.manage"}, Organization: allowance, Account: allowance, Device: allowance, Rationale: "Synthetic declarations only: inherit identity v1 write 200/hour on every axis; production measurement and cleanup activation remain mandatory."},
@@ -275,8 +276,12 @@ func Register(router chi.Router, o Options) error {
 		dataweb.RegisterRegionalSeries(router, datapg.RegionalSeries{Meter: meter, CursorSecret: o.CursorSecret})
 	}
 	connections := connectorpg.Store{Pool: o.Pool, Audit: auditStore,
+		Access:    connectorpg.Access{Pool: o.Pool, Flags: flags},
 		Authority: orgpg.ConnectorAuthority{Memberships: memberStore, Roles: roles, Capabilities: flags}}
 	if err := connectorweb.Register(router, connections, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	if err := connectorweb.RegisterStatements(router, connections, cookies, gateway, authorization); err != nil {
 		return err
 	}
 	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots, creationAdmission(o)); err != nil {

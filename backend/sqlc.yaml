@@ -76,10 +76,12 @@ sql:
     queries: db/queries/orgconnector
     schema:
       - db/migrations/000169_organization_roots.sql
+      - db/migrations/000215_organization_fuelings.sql
       - db/migrations/000220_organization_trips.sql
       - db/migrations/000240_organization_tracking_intake.sql
       - db/migrations/000275_organization_connections.sql
       - db/migrations/000276_organization_telematics_evidence.sql
+      - db/migrations/000277_organization_fuel_card_statements.sql
     gen:
       go:
         package: orgconnector

@@ -30,6 +30,7 @@ func AuditDefinitions() []audit.Definition {
 		{Action: actions[app.Configure], TargetType: connectionTarget},
 		{Action: actions[app.Activate], TargetType: connectionTarget},
 		{Action: actions[app.Disable], TargetType: connectionTarget},
+		{Action: confirmStatementAuditAction, TargetType: statementAuditTarget},
 	}
 }
 
@@ -37,6 +38,7 @@ type Store struct {
 	Pool      *pgxpool.Pool
 	Authority app.Authority
 	Audit     auditing.TransactionRunner
+	Access    Access
 }
 
 func (s Store) Change(ctx context.Context, scope kernel.OrgScope, actor organization.CompanyActor, member string, change app.Change) (app.Result, error) {

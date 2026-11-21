@@ -14203,6 +14203,122 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/preview:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelCardStatementPreview
+      summary: Preview a reviewed fuel card statement
+      description: Checks the approved connection and maps each row without posting an expense.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: import.batch.run
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFuelCardStatementPreview'
+      responses:
+        '200':
+          description: Scoped row outcomes in input order.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFuelCardStatementResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/confirm:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseFuelCardStatementConfirm
+      summary: Confirm a reviewed fuel card statement
+      description: Rechecks current authority and binds the exact mapping to the signed preview.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: import.batch.run
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: connection_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseFuelCardStatementConfirm'
+      responses:
+        '200':
+          description: Scoped row outcomes in input order.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseFuelCardStatementResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/subscriptions/plan/read:
     post:
       tags:
@@ -48662,6 +48778,76 @@ components:
           description: One-time bearer for the first successful issue or rotate response.
         replayed:
           type: boolean
+    EnterpriseFuelCardStatementPreview:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, source_account_id, csv]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        source_account_id:
+          type: string
+          format: uuid
+        csv:
+          type: string
+          minLength: 1
+          maxLength: 65536
+          description: Mapped CSV with the transaction_id, fueling_id, occurred_at, currency and paid_centavos columns.
+    EnterpriseFuelCardStatementConfirm:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, source_account_id, csv, preview_token]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        source_account_id:
+          type: string
+          format: uuid
+        csv:
+          type: string
+          minLength: 1
+          maxLength: 65536
+          description: Mapped CSV with the transaction_id, fueling_id, occurred_at, currency and paid_centavos columns.
+        preview_token:
+          type: string
+          minLength: 1
+          maxLength: 2048
+    EnterpriseFuelCardStatementResult:
+      type: object
+      additionalProperties: false
+      required: [rows, replayed]
+      properties:
+        rows:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [row, paid_centavos, status]
+            properties:
+              row:
+                type: integer
+                minimum: 1
+              paid_centavos:
+                type: integer
+                format: int64
+                minimum: 1
+                maximum: 1000000000000
+              status:
+                type: string
+                enum: [LINKED, REVIEW_REQUIRED]
+        replayed:
+          type: boolean
+        preview_token:
+          type: string
+          description: Short-lived proof present only on a successful preview.
     EnterpriseConnectorConfigure:
       type: object
       additionalProperties: false

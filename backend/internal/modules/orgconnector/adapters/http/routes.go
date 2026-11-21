@@ -167,10 +167,14 @@ func write(ctx context.Context, service app.Commands, p orgapi.Principal, actor 
 	return changeResponse{Connection: view(out.Connection), Replayed: out.Replayed}, nil
 }
 
-func connectorError(err error) error {
+func connectorError(err error) error { return connectorPolicyError(err, "integ.connection.manage") }
+
+func connectorPolicyError(err error, permission string) error {
 	switch {
 	case errors.Is(err, permissions.ErrPermissionDenied):
-		return orgapi.MissingPermission("integ.connection.manage")
+		return orgapi.MissingPermission(permission)
+	case errors.Is(err, app.ErrStatementReviewDenied):
+		return orgapi.MissingPermission("fuel.fueling.review")
 	case errors.Is(err, domain.ErrDenied), errors.Is(err, access.ErrNoMembership), errors.Is(err, orgapp.ErrNotFound):
 		return orgapi.NotFound
 	case errors.Is(err, access.ErrUnauthenticated), errors.Is(err, orgapp.ErrUnauthenticated):

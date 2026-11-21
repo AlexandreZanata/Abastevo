@@ -2,8 +2,6 @@ package application
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 
@@ -24,6 +22,8 @@ const (
 	Configure
 	Activate
 	Disable
+	PreviewStatement
+	ConfirmStatement
 )
 
 func Policy(action Action) access.Policy {
@@ -35,10 +35,21 @@ func Policy(action Action) access.Policy {
 		policy.Effect = access.ConfigurationWrite
 	case Disable:
 		policy.Effect = access.ReduceAccess
+	case PreviewStatement, ConfirmStatement:
+		policy.Permission, policy.Effect = "import.batch.run", access.OperationalWrite
 	default:
 		return access.Policy{}
 	}
 	return policy
+}
+
+func StatementReviewPolicy() access.Policy {
+	return access.Policy{Permission: "fuel.fueling.review", Capability: "integrations", Fresh: true, Effect: access.OperationalWrite}
+}
+
+func CompanyPolicy(policy access.Policy) bool {
+	return policy == Policy(List) || policy == Policy(Configure) || policy == Policy(Activate) ||
+		policy == Policy(Disable) || policy == Policy(PreviewStatement) || policy == StatementReviewPolicy()
 }
 
 type Authority interface {
@@ -79,8 +90,7 @@ func (c Change) Digest(scope kernel.OrgScope) string {
 		Organization string
 		Command      Change
 	}{scope.OrgID().String(), c})
-	digest := sha256.Sum256(input)
-	return hex.EncodeToString(digest[:])
+	return Digest(input)
 }
 
 type Result struct {

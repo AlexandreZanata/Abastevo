@@ -84,3 +84,21 @@ uses the existing company trip lock. The adapter accepts quality categories
 and observation times. Phone fixes and live positions continue through the
 existing device intake. Vendor transport and credential provisioning need
 their recorded external approvals.
+
+### Fuel card statement reconciliation
+
+The company routes accept the reviewed `fuel-card-csv-v1` mapping for an
+active connection bound to one opaque fuel card account. The mapped
+columns are `transaction_id,fueling_id,occurred_at,currency,paid_centavos`.
+Amounts are positive integer BRL centavos and times use canonical UTC
+instants. An optional fueling candidate links only when its current
+review is approved and its company payer, card method, instant and amount
+match exactly. Other rows retain a review outcome without a foreign or
+unverified fueling reference.
+
+The preview returns row numbers, amounts, outcomes and a short-lived
+proof. Confirmation resends the same mapped file and requires current
+`import.batch.run` and `fuel.fueling.review` authority. A matching retry or
+overlapping file never creates a second reconciliation row. Raw statement
+files and card numbers are outside the stored record. A review item or
+link from the statement has no independent expense effect.

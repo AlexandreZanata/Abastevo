@@ -497,10 +497,13 @@
   },
   {
    "permission": "import.batch.run",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Organization import-batch routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/preview",
+   "routes": [
+    "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/confirm",
+    "POST /v1/orgs/{org_id}/integrations/connections/{connection_id}/fuel-card/preview"
+   ],
+   "reason": ""
   },
   {
    "permission": "integ.connection.manage",
