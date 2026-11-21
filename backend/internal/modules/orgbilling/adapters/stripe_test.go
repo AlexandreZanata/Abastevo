@@ -79,6 +79,7 @@ func TestCompanyStripeSettlementUsesCanonicalInvoice(t *testing.T) {
 	  "latest_charge": {"id": "ch_company", "livemode": false, "paid": true, "captured": true,
 	    "amount_captured": 1723, "currency": "brl", "payment_method_details": {"type": "card"}}
 	}`
+	now := time.Unix(1795255200, 0).UTC()
 	event := payment.InboxRecord{InboxEvent: payment.InboxEvent{
 		Provider: paydomain.ProviderStripe, Environment: paydomain.EnvironmentTest, Merchant: "acct_synthetic",
 		EventID: "evt_synthetic", PayloadHash: strings.Repeat("a", 64), ResourceID: "in_synthetic",
@@ -104,6 +105,7 @@ func TestCompanyStripeSettlementUsesCanonicalInvoice(t *testing.T) {
 		{name: "partially refunded", intentOverride: strings.Replace(canonicalIntent, `"paid": true`, `"paid": true, "amount_refunded": 1`, 1), marked: "CONFLICT"},
 		{name: "advance renewal", recordErr: orgbilling.FutureTermError{EffectiveAt: time.Unix(1795255200, 0).UTC()},
 			recorded: 1, scheduled: time.Unix(1795255200, 0).UTC()},
+		{name: "paid renewal before binding", recordErr: orgbilling.ErrChargeBindingMissing, recorded: 1, scheduled: now.Add(2 * time.Minute)},
 		{name: "foreign price", recordErr: orgbilling.ErrBillingBinding, marked: "CONFLICT", recorded: 1},
 		{name: "consumed provider identity", recordErr: paydomain.ErrConflict, marked: "CONFLICT", recorded: 1},
 		{name: "temporary dependency failure", recordErr: paydomain.ErrUnavailable, recorded: 1},
@@ -136,6 +138,7 @@ func TestCompanyStripeSettlementUsesCanonicalInvoice(t *testing.T) {
 			s := adapters.StripeSettlement{
 				Resources: payadapters.NewStripeProvider("synthetic", paydomain.EnvironmentTest, client),
 				Record:    probe, Personal: probe, Inbox: probe, Merchant: "acct_synthetic", Environment: paydomain.EnvironmentTest,
+				Now: func() time.Time { return now },
 			}
 			err := s.Process(t.Context(), event)
 			if tc.recordErr == paydomain.ErrUnavailable {

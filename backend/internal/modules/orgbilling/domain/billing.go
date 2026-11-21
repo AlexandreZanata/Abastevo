@@ -14,11 +14,12 @@ import (
 )
 
 var (
-	ErrOfferUnapproved     = errors.New("orgbilling: organization offer is not approved")
-	ErrBillingBinding      = errors.New("orgbilling: provider binding mismatch")
-	ErrBillingUnsettled    = errors.New("orgbilling: payment is not settled")
-	ErrBillingFutureTerm   = errors.New("orgbilling: paid term is not yet effective")
-	ErrSettlementAfterTerm = fmt.Errorf("%w: settlement observation after the approved term", ErrBillingBinding)
+	ErrOfferUnapproved      = errors.New("orgbilling: organization offer is not approved")
+	ErrBillingBinding       = errors.New("orgbilling: provider binding mismatch")
+	ErrChargeBindingMissing = fmt.Errorf("%w: no scoped charge binding yet", ErrBillingBinding)
+	ErrBillingUnsettled     = errors.New("orgbilling: payment is not settled")
+	ErrBillingFutureTerm    = errors.New("orgbilling: paid term is not yet effective")
+	ErrSettlementAfterTerm  = fmt.Errorf("%w: settlement observation after the approved term", ErrBillingBinding)
 )
 
 type FutureTermError struct{ EffectiveAt time.Time }

@@ -99,6 +99,11 @@ protected by organization scope. No grant, price or duration is seeded.
 
 ## 9. Events, notifications and integrations
 
+A canonical paid Stripe renewal which arrives before its scoped charge binding
+remains pending. Its bounded retry delay allows other inbox work to proceed.
+The retry fetches the canonical invoice again and can settle only after the
+exact reviewed charge binding exists. An inconsistent binding is a conflict.
+
 A commercial review can authorize binding an existing Stripe invoice or Asaas
 charge to the exact reviewed company offer. The approval fixes the company,
 operator, subscription, customer, contract, resource and term. Asaas reviews

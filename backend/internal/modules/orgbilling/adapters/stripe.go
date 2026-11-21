@@ -40,6 +40,7 @@ type StripeSettlement struct {
 	Inbox       settlementInbox
 	Merchant    string
 	Environment paydomain.Environment
+	Now         func() time.Time
 }
 
 func (s StripeSettlement) Process(ctx context.Context, event payment.InboxRecord) error {
@@ -70,6 +71,14 @@ func (s StripeSettlement) Process(ctx context.Context, event payment.InboxRecord
 	fact, err := s.billingFact(ctx, event, invoice)
 	if err == nil {
 		_, err = s.Record.RecordSettlement(ctx, fact.Notice, fact)
+		if errors.Is(err, domain.ErrChargeBindingMissing) && invoice.BillingReason == stripe.InvoiceBillingReasonSubscriptionCycle {
+			now := time.Now
+			if s.Now != nil {
+				now = s.Now
+			}
+			// Coalesce simultaneous workers onto the same retry wake-up.
+			return s.Inbox.DeferInbox(ctx, event.InboxEvent, now().UTC().Truncate(time.Minute).Add(2*time.Minute))
+		}
 	}
 	return finishOrganizationSettlement(ctx, s.Inbox, event, err)
 }

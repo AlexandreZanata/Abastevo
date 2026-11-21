@@ -53,12 +53,6 @@ VALUES($1,'fleet','synthetic',1,'stripe_card','test','synthetic-merchant','synth
 	at := time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
 	prior := d.Period{Start: at.AddDate(0, -1, 0), End: at}
 	term := d.Period{Start: at, End: at.AddDate(0, 1, 0)}
-	if _, err := f.Admin.Exec(ctx, `INSERT INTO org_billing_charge_bindings
-(org_id,provider,environment,merchant,resource_ref,subscription_id,offer_id,customer_ref,contract_ref,term_start,term_end)
-VALUES($1,'stripe','test','synthetic-merchant','synthetic-invoice',$2,$3,'synthetic-customer',
- 'synthetic-contract',$4,$5)`, a.ID, a.RecordID, a.ParentID, term.Start, term.End); err != nil {
-		t.Fatal(err)
-	}
 
 	ledger := adapters.SubscriptionLedger{Capabilities: known}
 	key := d.PlanKey{Product: "fleet", Plan: "synthetic", Revision: 1}
@@ -107,6 +101,15 @@ VALUES('fleet',$1,1,'Synthetic larger company',ARRAY['organizations'],10)`, prio
 		Channel: payment.ChannelCard, ResourceRef: notice.ResourceRef, ChargeRef: "synthetic-payment",
 		Outcome: d.BillingSettled, At: at, Gross: payment.BRL(1723), PaidTerm: term}
 
+	if _, err := intake.RecordSettlement(ctx, notice, fact); !errors.Is(err, d.ErrChargeBindingMissing) {
+		t.Fatalf("renewal without a binding did not return a retryable missing binding: %v", err)
+	}
+	if _, err := f.Admin.Exec(ctx, `INSERT INTO org_billing_charge_bindings
+(org_id,provider,environment,merchant,resource_ref,subscription_id,offer_id,customer_ref,contract_ref,term_start,term_end)
+VALUES($1,'stripe','test','synthetic-merchant','synthetic-invoice',$2,$3,'synthetic-customer',
+ 'synthetic-contract',$4,$5)`, a.ID, a.RecordID, a.ParentID, term.Start, term.End); err != nil {
+		t.Fatal(err)
+	}
 	foreign := fact
 	foreign.Scope = scopeB
 	if _, err := intake.RecordSettlement(ctx, notice, foreign); !errors.Is(err, d.ErrBillingBinding) {
