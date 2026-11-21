@@ -144,6 +144,31 @@ VALUES($1,$2,'Synthetic state observations','MT',5,'abastevo-metrics-v1',$3,$4,$
 			t.Fatalf("matching preparation was not idempotent: %v", err)
 		}
 	}
+	// A pending commercial admission stays held even when a reviewed plan
+	// includes the exact catalog revision and its public artifact is intact.
+	pendingPath, pending := buildRegionalExport(t, "03", 5)
+	registry, price := pending.Files[0].SHA256, pending.Sources.Official[0].SourceChecksum
+	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO enterprise_data_source_reviews
+(source_code,source_digest,revision,status,decision_ref,license_ref,attribution)
+VALUES ('S-ESP-01',$1,1,'APPROVED','synthetic-review','Synthetic registry license','Synthetic registry'),
+       ('S-ESP-02',$2,1,'RIGHTS_PENDING','synthetic-awaiting-redistribution','','')`, registry, price); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO enterprise_regional_datasets
+(dataset_key,revision,display_name,state_code,minimum_stations,method_version,snapshot_digest,official_revision,
+ registry_digest,registry_review,price_digest,price_review)
+VALUES($1,3,'Synthetic pending state observations','MT',5,'abastevo-metrics-v1',$2,$3,$4,1,$5,1)`,
+		dataset, pending.ContentSHA256, pending.Sources.Official[0].RevisionID, registry, price); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := preparation.Prepare(ctx, env.pool, dataset, 3, pendingPath); !errors.Is(err, domain.ErrRightsPending) {
+		t.Fatalf("valid public artifact bypassed pending redistribution rights: %v", err)
+	}
+	var materialized bool
+	if err := fx.f.Admin.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM enterprise_regional_series WHERE dataset_key=$1 AND dataset_revision=3)`,
+		dataset).Scan(&materialized); err != nil || materialized {
+		t.Fatalf("pending source left a materialized result: %v", err)
+	}
 	if _, err := fx.f.Admin.Exec(ctx, "REVOKE INSERT ON enterprise_regional_series,enterprise_regional_series_samples FROM "+role); err != nil {
 		t.Fatal(err)
 	}
@@ -181,8 +206,12 @@ VALUES($1,$2,'Synthetic state observations','MT',5,'abastevo-metrics-v1',$3,$4,$
 	}
 	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO enterprise_data_plan_datasets
 (product_code,plan_code,plan_revision,dataset_key,dataset_revision,approval_ref)
-VALUES('data','synthetic',1,$1,1,'synthetic-scope'),('data','synthetic',1,$1,2,'synthetic-scope')`, dataset); err != nil {
+VALUES('data','synthetic',1,$1,1,'synthetic-scope'),('data','synthetic',1,$1,2,'synthetic-scope'),
+      ('data','synthetic',1,$1,3,'synthetic-scope')`, dataset); err != nil {
 		t.Fatal(err)
+	}
+	if response := send(org, key, onboardingID(t), "", 3); response.Code != http.StatusNotFound {
+		t.Fatalf("scoped API treated pending redistribution rights as available: %d", response.Code)
 	}
 	requestID := onboardingID(t)
 	first := send(org, key, requestID, "", 1, 2)

@@ -73,6 +73,15 @@ A response states product and units, region, observation period, source coverage
 
 [EP17](../backlog/ep17-data.md) owns tasks and source gates. VAL-36 tests private-data exclusion across API, jobs and exports. Exercise revoked or foreign key, pagination scope, quota races, unavailable source and rights-pending dataset before activating any Data surface.
 
+The PostGIS privacy fixture uses the runtime grants and the production registry
+and official price readers. It builds the core artifact before and after
+submitting and independently approving 500 synthetic private fuelings. A
+linked receipt and an admitted recorded track are present for the second
+build. The test compares the manifest and all three core files byte for byte
+with the same build clock and unchanged public-source evidence. A separate API
+fixture covers a foreign key, below-threshold suppression and revoked rights.
+Neither fixture grants commercial redistribution in a deployed environment.
+
 ### Preparing an approved regional revision
 
 Under the recorded redistribution approvals, register the exact catalog
