@@ -132,6 +132,7 @@ func TestStripeWebhookSignatureAndBodyRefusals(t *testing.T) {
 		"forged":    {body, signed(body, otherSecret, now), http.StatusBadRequest},
 		"mutated":   {append(append([]byte(nil), body...), '\n'), signed(body, webhookSecret, now), http.StatusBadRequest},
 		"stale":     {body, signed(body, webhookSecret, now.Add(-301*time.Second)), http.StatusBadRequest},
+		"future":    {body, signed(body, webhookSecret, now.Add(301*time.Second)), http.StatusBadRequest},
 		"missing":   {body, "", http.StatusBadRequest},
 		"oversized": {body, strings.Repeat("v1=", 1400), http.StatusBadRequest},
 	}

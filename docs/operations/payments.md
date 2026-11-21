@@ -60,7 +60,9 @@ writes and creates no provider resources. Release criteria:
 
 - Stripe webhook secret: rotate in the Dashboard, run both secrets
   through the overlap window (the verifier accepts old+new signatures),
-  then retire the old one. Old-only signatures are refused.
+  then retire the old one. Old-only signatures are refused. Intake requires one
+  Stripe signature header and one authenticated timestamp within the
+  configured tolerance in either direction (five minutes by default).
 - Asaas webhook token: set the new token while keeping the previous one
   configured; the handler accepts either during overlap, then clear the
   previous value. The API key is never accepted as the webhook token.
