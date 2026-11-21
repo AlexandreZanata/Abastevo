@@ -241,6 +241,9 @@ func (s *AssetStore) TransitionAssetTx(ctx context.Context, tx pgx.Tx, scope ker
 				return err
 			}
 			result = app.AssetResult{AssetID: v.AssetID, State: to, Revision: next.Revision}
+			if s.LifecycleJobs != nil && (v.Command == fleet.Deactivate || v.Command == fleet.Reactivate) {
+				return s.LifecycleJobs.QueueFleetLifecycle(ctx, tx, scope, v.OperationID)
+			}
 			return nil
 		})
 		if err != nil {

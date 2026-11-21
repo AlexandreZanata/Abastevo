@@ -82,13 +82,17 @@ sql:
   - engine: postgresql
     queries: db/queries/orgconnector
     schema:
+      - db/migrations/000007_jobs.sql
       - db/migrations/000169_organization_roots.sql
+      - db/migrations/000197_organization_assets.sql
+      - db/migrations/000201_organization_asset_lifecycle.sql
       - db/migrations/000215_organization_fuelings.sql
       - db/migrations/000220_organization_trips.sql
       - db/migrations/000240_organization_tracking_intake.sql
       - db/migrations/000275_organization_connections.sql
       - db/migrations/000276_organization_telematics_evidence.sql
       - db/migrations/000277_organization_fuel_card_statements.sql
+      - db/migrations/000285_organization_fleet_webhooks.sql
     gen:
       go:
         package: orgconnector

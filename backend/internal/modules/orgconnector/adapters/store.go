@@ -117,6 +117,14 @@ func apply(ctx context.Context, q *db.Queries, org, id string, change app.Change
 		if err := a.Check(domain.Kind(row.Kind), a.Resource, now.Time, true); err != nil {
 			return err
 		}
+		if a.Kind == domain.OutboundWebhook {
+			if a.Resource == "" {
+				return domain.ErrDenied
+			}
+			if _, err := readWebhookEndpoint(ctx, q, org, a); err != nil {
+				return err
+			}
+		}
 	}
 	if row.Revision != change.ExpectedRevision || !domain.State(row.State).Allows(next) {
 		return domain.ErrConflict

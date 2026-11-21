@@ -10,7 +10,7 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000284. Relations: 430 granted, 3 without access.
+-- Schema version: 000285. Relations: 432 granted, 3 without access.
 -- Sequences: 7. Explicit functions: 3.
 
 BEGIN;
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000284' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000284 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000285' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000285 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -417,6 +417,8 @@ GRANT SELECT, INSERT, UPDATE ON TABLE public.org_trips TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_unit_commands TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_units TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_voluntary_price_publications TO :"runtime_role";
+GRANT SELECT, INSERT, UPDATE ON TABLE public.org_webhook_deliveries TO :"runtime_role";
+GRANT SELECT ON TABLE public.org_webhook_endpoints TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.org_work_orders TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.organizations TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.payment_attempts TO :"runtime_role";

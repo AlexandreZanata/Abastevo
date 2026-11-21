@@ -319,6 +319,7 @@ func Register(router chi.Router, o Options) error {
 	assets := &fleetpg.AssetStore{Pool: o.Pool, Authority: fleetAuthority, Audit: auditStore, NewID: jobs.NewUUIDv4, OpenWork: trippg.OpenWork{}, ActiveUse: trippg.ActiveUse{}, MaintenanceHolds: maintpg.MaintenanceHolds{}, ChecklistBlocks: maintpg.ChecklistBlocks{}}
 	if o.BillingEnabled {
 		assets.VehicleSlots = plans
+		assets.LifecycleJobs = connectorpg.FleetWebhooks{}
 	}
 	// EMP-AUTH-006: structural grants on an asset resolve its current
 	// allocation through the FLEET-005 port, in Prepare and in the transaction.

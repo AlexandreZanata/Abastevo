@@ -55,6 +55,7 @@ import (
 	officialread "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/read"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/adapters/source"
 	officialapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/official/application"
+	connectorpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/adapters"
 	privacyadapters "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters"
 	privacyjobs "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/adapters/jobs"
 	privacyapp "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/privacy/application"
@@ -1046,6 +1047,24 @@ func run() error {
 	}
 	for _, handler := range dataHandlers {
 		handlers[handler.Kind()] = handler
+	}
+	var webhookSender connectorpg.WebhookSender
+	if cfg.EnterpriseEnabled && cfg.EnterpriseBillingEnabled && cfg.EnterpriseWebhookKeyRoot != "" {
+		keys, err := os.OpenRoot(cfg.EnterpriseWebhookKeyRoot)
+		if err != nil {
+			return errors.New("worker: enterprise webhook key directory unavailable")
+		}
+		defer keys.Close()
+		webhookSender = connectorpg.NewHTTPSWebhookSender(keys)
+	}
+	webhookHandler, err := enterprisesuite.FleetWebhookHandler(enterprisesuite.Options{
+		Enabled: cfg.EnterpriseEnabled, BillingEnabled: cfg.EnterpriseBillingEnabled, Pool: raw,
+	}, webhookSender)
+	if err != nil {
+		return err
+	}
+	if webhookHandler != nil {
+		handlers[webhookHandler.Kind()] = webhookHandler
 	}
 	// EMP-GPS-005 (EDR-298): track processing runs on the general dispatcher.
 	trackingHandlers, err := trackingWorkerHandlers(cfg.EnterpriseEnabled, raw)

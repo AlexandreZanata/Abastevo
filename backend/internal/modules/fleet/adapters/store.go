@@ -25,13 +25,18 @@ type vehicleSlotPlan interface {
 	CheckVehicleActivation(context.Context, pgx.Tx, kernel.OrgScope, int64) error
 }
 
+type fleetLifecycleJobs interface {
+	QueueFleetLifecycle(context.Context, pgx.Tx, kernel.OrgScope, string) error
+}
+
 type AssetStore struct {
 	Pool      *pgxpool.Pool
 	Authority app.FleetAuthority
 	Audit     auditing.TransactionRunner
 	NewID     func() (string, error)
 	// VehicleSlots evaluates the active vehicle count under the retained root lock.
-	VehicleSlots vehicleSlotPlan
+	VehicleSlots  vehicleSlotPlan
+	LifecycleJobs fleetLifecycleJobs
 	// OpenWork answers BR-FLEET-010 inside lifecycle commands. Runtime wires
 	// NoOpenWork explicitly; a nil port fails every removal from service.
 	OpenWork app.AssetOpenWork

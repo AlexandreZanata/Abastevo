@@ -102,3 +102,26 @@ proof. Confirmation resends the same mapped file and requires current
 overlapping file never creates a second reconciliation row. Raw statement
 files and card numbers are outside the stored record. A review item or
 link from the statement has no independent expense effect.
+
+### Outbound fleet webhooks
+
+EMP-INTEG-006 applies REQ-17.3, BR-PRIV-003, BR-PRIV-008 and
+BR-AUD-001 to vehicle deactivation and reactivation. A reviewed destination
+pins the exact connector approval revision and vehicle. An organization
+manager activates the connection with `integ.connection.manage`. Each
+committed transition of the approved vehicle schedules one independent
+delivery per authorized endpoint. A rejected or replayed command schedules
+no new delivery. The version 1 JSON contains only the delivery ID, event
+code, vehicle ID and UTC event time. The receiver uses the delivery ID for
+idempotency. Account identities, reasons, credentials and other private
+records are outside the contract.
+
+The worker proves current organization, capability, connection and endpoint
+authority at the durable claim. It signs the stable body with HMAC-SHA256
+using the reviewed credential reference. HTTPS is restricted to the exact
+reviewed destination and public addresses. The worker refuses redirects and
+records only bounded outcomes. Delivery can be attempted three times. An
+interrupted send may have reached the receiver before the outcome was
+recorded, so receivers must deduplicate the delivery ID. The default worker
+configuration has no key directory. Recorded provider approval and key
+provisioning precede activation.

@@ -119,6 +119,7 @@ const (
 	keyEnterpriseBillingEnabled = "ANPFUEL_ENTERPRISE_BILLING_ENABLED"
 	keyEnterpriseEnabled        = "ANPFUEL_ENTERPRISE_ENABLED"
 	keyEnterpriseDeviceLimit    = "ANPFUEL_ENTERPRISE_DEVICE_LIMIT"
+	keyEnterpriseWebhookKeyRoot = "ANPFUEL_ENTERPRISE_WEBHOOK_KEY_ROOT"
 	// EMP-METER-003 rollback switch (EDR-185); default on.
 	keyEnterpriseMeterPlausibility = "ANPFUEL_ENTERPRISE_METER_PLAUSIBILITY"
 )
@@ -178,6 +179,7 @@ type Config struct {
 	EnterpriseEnabled bool
 	// EnterpriseBillingEnabled adds the organization's plan capability provider.
 	EnterpriseBillingEnabled bool
+	EnterpriseWebhookKeyRoot string
 	// EnterpriseDeviceLimit is the server-owned existing-account enrollment
 	// ceiling per membership; clients never supply a limit. Default3, range1..5.
 	EnterpriseDeviceLimit int64
@@ -452,6 +454,10 @@ func load(getenv func(string) (string, bool)) (Config, error) {
 			return Config{}, fmt.Errorf("%s must be boolean", keyEnterpriseBillingEnabled)
 		}
 		cfg.EnterpriseBillingEnabled = enabled
+	}
+	cfg.EnterpriseWebhookKeyRoot, _ = getenv(keyEnterpriseWebhookKeyRoot)
+	if cfg.EnterpriseWebhookKeyRoot != "" && !filepath.IsAbs(cfg.EnterpriseWebhookKeyRoot) {
+		return Config{}, fmt.Errorf("%s must be an absolute path", keyEnterpriseWebhookKeyRoot)
 	}
 	cfg.EnterpriseDeviceLimit = 3
 	if raw, present := getenv(keyEnterpriseDeviceLimit); present {
