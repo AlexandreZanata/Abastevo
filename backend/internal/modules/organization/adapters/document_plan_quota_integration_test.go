@@ -44,9 +44,12 @@ VALUES('fleet','synthetic',1,'Synthetic original storage',ARRAY['organizations']
 		Scope: fx.scope, SubscriptionID: onboardingID(t), Kind: billing.ConfirmSettlement, Source: billing.VerifiedBilling,
 		At: at, Reference: "synthetic-paid-storage", Period: billing.Period{Start: at, End: at.Add(time.Hour)},
 	}
+	proof := fx.f.PrepareSubscriptionOpening(t, key, active)
 	if err := database.WithOrgTx(ctx, fx.f.Runtime, fx.scope, func(tx pgx.Tx) error {
-		_, err := ledger.ApplyTx(ctx, tx, key, active)
-		return err
+		if _, err := ledger.ApplyTx(ctx, tx, key, active); err != nil {
+			return err
+		}
+		return proof(tx)
 	}); err != nil {
 		t.Fatal(err)
 	}

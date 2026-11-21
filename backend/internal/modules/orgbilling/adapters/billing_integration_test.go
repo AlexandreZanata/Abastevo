@@ -73,9 +73,13 @@ VALUES('fleet',$1,1,'Synthetic larger company',ARRAY['organizations'],10)`, prio
 	pastDue := ready
 	pastDue.Kind, pastDue.ExpectedRevision, pastDue.At = d.ReportPastDue, 1, at
 	pastDue.Reference, pastDue.Period = "synthetic-overdue", d.Period{}
+	proof := f.PrepareSubscriptionOpening(t, priorPlan, ready)
 	for _, event := range []d.LifecycleEvent{ready, pastDue} {
 		if err := database.WithOrgTx(ctx, f.Runtime, scopeA, func(tx pgx.Tx) error {
 			_, err := ledger.ApplyTx(ctx, tx, priorPlan, event)
+			if err == nil && event.Kind == d.ConfirmSettlement {
+				return proof(tx)
+			}
 			return err
 		}); err != nil {
 			t.Fatal(err)
@@ -232,7 +236,7 @@ VALUES($1,'stripe','test','synthetic-merchant','second-company-invoice',$2,$3,'s
 
 	if err := database.WithOrgTx(ctx, f.Runtime, scopeA, func(tx pgx.Tx) error {
 		var receipts, recoveries int
-		if err := tx.QueryRow(ctx, `SELECT count(*) FROM org_billing_settlement_receipts`).Scan(&receipts); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM org_billing_settlement_receipts WHERE applied_revision=3`).Scan(&receipts); err != nil {
 			return err
 		}
 		if err := tx.QueryRow(ctx, `SELECT count(*) FROM org_billing_subscription_events

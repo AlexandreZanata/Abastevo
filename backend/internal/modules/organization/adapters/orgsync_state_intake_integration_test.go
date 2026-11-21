@@ -283,11 +283,15 @@ VALUES('fleet','synthetic',1,'Synthetic plan',ARRAY['organizations'])`); err != 
 		Scope: x.scope, SubscriptionID: subscription, Kind: billing.StartTrial, Source: billing.TrialPolicy,
 		Reference: "synthetic-trial-rule", At: at, Period: billing.Period{Start: at, End: at.Add(time.Hour)},
 	}
+	proof := x.f.PrepareSubscriptionOpening(t, key, startTrial)
 	beforeActivation := x.op(t, at.Add(-time.Minute))
 	apply := func(event billing.LifecycleEvent) {
 		t.Helper()
 		if err := database.WithOrgTx(ctx, x.f.Runtime, x.scope, func(tx pgx.Tx) error {
 			_, err := ledger.ApplyTx(ctx, tx, key, event)
+			if err == nil && event.Kind == billing.StartTrial {
+				return proof(tx)
+			}
 			return err
 		}); err != nil {
 			t.Fatal(err)

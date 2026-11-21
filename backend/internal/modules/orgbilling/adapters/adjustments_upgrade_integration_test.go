@@ -15,7 +15,24 @@ import (
 )
 
 func TestAdjustmentMigrationRecoversWithExistingSubscription(t *testing.T) {
-	const filename = "000283_organization_billing_adjustments.sql"
+	checkBillingUpgradePreservesHistory(t, "000283_organization_billing_adjustments.sql",
+		`to_regclass('public.org_billing_adjustment_postings') IS NULL
+ AND to_regclass('public.org_billing_adjustment_approvals') IS NULL`)
+}
+
+func TestOpeningProofMigrationRecoversWithExistingSubscription(t *testing.T) {
+	checkBillingUpgradePreservesHistory(t, "000296_organization_subscription_opening_proof.sql",
+		`to_regprocedure('public.org_billing_require_opening_proof()') IS NULL`)
+}
+
+func TestReversalLocatorMigrationRecoversWithExistingSubscription(t *testing.T) {
+	checkBillingUpgradePreservesHistory(t, "000295_organization_billing_reversal_lookup.sql",
+		`NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='org_billing_receipt_by_canonical_charge')`)
+}
+
+func checkBillingUpgradePreservesHistory(t *testing.T, filename, missingObject string) {
+	t.Helper()
+	version, _, _ := strings.Cut(filename, "_")
 	files := fstest.MapFS{}
 	for _, pattern := range []string{"*.sql", "schema_min_supported"} {
 		names, err := fs.Glob(migrations.Files, pattern)
@@ -66,12 +83,11 @@ VALUES($1,$2,1,'fleet','upgrade-fixture',1,'','ACTIVE','','CONFIRM_SETTLEMENT','
 		t.Fatalf("injected migration failure did not occur: %v", err)
 	}
 	var absent bool
-	if err := f.Admin.QueryRow(ctx, `SELECT to_regclass('public.org_billing_adjustment_postings') IS NULL
- AND to_regclass('public.org_billing_adjustment_approvals') IS NULL`).Scan(&absent); err != nil || !absent || read() != prior {
+	if err := f.Admin.QueryRow(ctx, "SELECT "+missingObject).Scan(&absent); err != nil || !absent || read() != prior {
 		t.Fatalf("failed migration changed the prior image: %v", err)
 	}
 	files[filename] = &fstest.MapFile{Data: raw}
-	if installed, err := migrate.Apply(ctx, f.AdminDSN, files); err != nil || !slices.Equal(installed, []string{"000283"}) || read() != prior {
-		t.Fatalf("adjustment migration recovery changed prior billing state: %v / %v", installed, err)
+	if installed, err := migrate.Apply(ctx, f.AdminDSN, files); err != nil || !slices.Equal(installed, []string{version}) || read() != prior {
+		t.Fatalf("migration recovery changed prior billing state: %v / %v", installed, err)
 	}
 }

@@ -41,12 +41,16 @@ VALUES('fleet','synthetic',1,'Synthetic company',ARRAY['organizations'],$1)`, ce
 		t.Fatal(err)
 	}
 	at := lifecycleDBNow(t, fx)
+	opening := billing.LifecycleEvent{
+		Scope: fx.scope, SubscriptionID: onboardingID(t), Kind: billing.StartTrial, Source: billing.TrialPolicy,
+		At: at, Period: billing.Period{Start: at, End: at.Add(time.Hour)}, Reference: "synthetic-trial-policy",
+	}
+	proof := fx.f.PrepareSubscriptionOpening(t, key, opening)
 	if err := database.WithOrgTx(ctx, assets.Pool, fx.scope, func(tx pgx.Tx) error {
-		_, err := (billpg.SubscriptionLedger{Capabilities: known}).ApplyTx(ctx, tx, key, billing.LifecycleEvent{
-			Scope: fx.scope, SubscriptionID: onboardingID(t), Kind: billing.StartTrial, Source: billing.TrialPolicy,
-			At: at, Period: billing.Period{Start: at, End: at.Add(time.Hour)}, Reference: "synthetic-trial-policy",
-		})
-		return err
+		if _, err := (billpg.SubscriptionLedger{Capabilities: known}).ApplyTx(ctx, tx, key, opening); err != nil {
+			return err
+		}
+		return proof(tx)
 	}); err != nil {
 		t.Fatal(err)
 	}

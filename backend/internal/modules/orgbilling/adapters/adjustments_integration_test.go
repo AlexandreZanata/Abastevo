@@ -47,10 +47,14 @@ VALUES('fleet','reviewed-test',1,'Synthetic adjustment plan',ARRAY['organization
 	}
 	at := time.Now().UTC().Truncate(time.Microsecond)
 	ledger := adapters.SubscriptionLedger{Capabilities: cat}
+	opening := billing.LifecycleEvent{Scope: scope, SubscriptionID: a.RecordID, Kind: billing.ConfirmSettlement,
+		Source: billing.VerifiedBilling, At: at, Reference: "synthetic-prior-confirmed-term", Period: billing.Period{Start: at, End: at.Add(24 * time.Hour)}}
+	proof := f.PrepareSubscriptionOpening(t, key, opening)
 	if err := database.WithOrgTx(ctx, pool, scope, func(tx pgx.Tx) error {
-		_, err := ledger.ApplyTx(ctx, tx, key, billing.LifecycleEvent{Scope: scope, SubscriptionID: a.RecordID, Kind: billing.ConfirmSettlement,
-			Source: billing.VerifiedBilling, At: at, Reference: "synthetic-prior-confirmed-term", Period: billing.Period{Start: at, End: at.Add(24 * time.Hour)}})
-		return err
+		if _, err := ledger.ApplyTx(ctx, tx, key, opening); err != nil {
+			return err
+		}
+		return proof(tx)
 	}); err != nil {
 		t.Fatal(err)
 	}

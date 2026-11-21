@@ -47,10 +47,17 @@ VALUES('fleet','synthetic',1,'Synthetic fleet',ARRAY['organizations'],10)`); err
 	apply := func(event billing.LifecycleEvent, want billing.SubscriptionState) {
 		t.Helper()
 		event.Scope, event.SubscriptionID = x.scope, subscription
+		var openingProof func(pgx.Tx) error
+		if event.ExpectedRevision == 0 {
+			openingProof = x.f.PrepareSubscriptionOpening(t, plan, event)
+		}
 		err := database.WithOrgTx(ctx, x.f.Runtime, x.scope, func(tx pgx.Tx) error {
 			result, err := ledger.ApplyTx(ctx, tx, plan, event)
 			if err == nil && result.To != want {
 				t.Fatalf("synthetic plan transitioned to %s, want %s", result.To, want)
+			}
+			if err == nil && openingProof != nil {
+				return openingProof(tx)
 			}
 			return err
 		})

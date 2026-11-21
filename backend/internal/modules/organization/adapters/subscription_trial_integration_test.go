@@ -16,6 +16,7 @@ import (
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 func TestReviewedCompanyTrialIsScopedAuditedAndConsumedOnce(t *testing.T) {
@@ -68,6 +69,20 @@ VALUES($1,$2,'fleet','synthetic',1,$3,$4,86400,'synthetic-reviewed-eligibility')
 	disallowed.Pool = fx.f.Admin
 	if _, err := disallowed.Start(ctx, fx.scope, a, operator, operation); !errors.Is(err, database.ErrUnsafeOrgRole) {
 		t.Fatalf("database owner activated a trial through the runtime entry point: %v", err)
+	}
+
+	err = database.WithOrgTx(ctx, pool, fx.scope, func(tx pgx.Tx) error {
+		_, err := tx.Exec(ctx, `INSERT INTO org_billing_subscription_events
+(org_id,subscription_id,revision,product_code,plan_code,plan_revision,from_state,state,prior_state,event_kind,event_source,
+ evidence_reference,occurred_at,term_start,term_end)
+VALUES($1,$2,1,'fleet','synthetic',1,'','TRIALING','','START_TRIAL','TRIAL_POLICY',
+ 'synthetic-reviewed-eligibility',$3,$3,$3::timestamptz + interval '24 hours')`, org, a, at)
+		return err
+	})
+	var openingError *pgconn.PgError
+	if !errors.As(err, &openingError) || openingError.Code != "23514" ||
+		openingError.Message != "subscription opening proof unavailable" {
+		t.Fatalf("direct trial without its operator audit committed: %v", err)
 	}
 
 	type outcome struct {

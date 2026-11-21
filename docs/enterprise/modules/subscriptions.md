@@ -45,7 +45,9 @@ block the whole selection. Reactivation checks the current fleet limit.
 The catalog uses trialing, active, past due, suspended, cancelling and cancelled from [the state catalog](../state-model.md). Validity and grace depend on recorded policy rather than invented durations. The server persists event, source and transition history. The scoped
 `org_billing_subscription_events` ledger keeps the exact plan revision, state
 before and after, term, event time and redacted evidence reference. Each new
-revision must follow the immediately preceding state. Verified settlement can
+revision must follow the immediately preceding state. An opening paid term
+must commit with its exact settlement receipt and binding. An opening trial
+must commit with a matching reviewed grant and its operator audit event. Verified settlement can
 recover a past-due term. Operator restoration returns to the state held before
 suspension. Pending cancellation preserves its prior state until verified
 cancellation or the recorded term boundary. Reactivation preserves prior periods. Provider events do not change station authority or public records.
