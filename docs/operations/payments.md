@@ -7,6 +7,8 @@ eligibility, notifications, fiscal boundaries, preflight, rotation,
 channel-disable, queue recovery, backup/restore and bounded tests.
 Production prices, live modes and any real charge stay separately gated
 (PAY-21 commercial acceptance); inserting secrets never activates them.
+The [provider setup guide](payment-providers-guide.md) walks through the
+Stripe and Asaas screens, test cards, company charges and sandbox replay.
 
 ## Setup beyond API keys
 
