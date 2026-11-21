@@ -78,6 +78,12 @@ func TestDataRightsRecorderBindsTheSnapshotAndAuditsExactConcurrentReplay(t *tes
 		t.Fatalf("skipped a review revision: %v", err)
 	}
 
+	premature := preparation.RightsDecision{OperationID: onboardingID(t), Source: review.Source, Digest: review.Digest,
+		Revision: 1, State: domain.Withdrawn, DecisionRef: "synthetic-premature-withdrawal"}
+	if _, err := preparation.RecordRights(ctx, pool, premature); !errors.Is(err, domain.ErrRightsPending) {
+		t.Fatalf("withdrew a digest that was never approved: %v", err)
+	}
+
 	type result struct {
 		replayed bool
 		err      error
