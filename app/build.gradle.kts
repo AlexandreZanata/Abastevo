@@ -80,6 +80,8 @@ android {
         // EMP-DOC-004 rollback switch (EDR-293): hides receipt capture; saved photos keep their delivery.
         buildConfigField("boolean", "ENTERPRISE_RECEIPT_CAPTURE_UI_ENABLED",
             providers.gradleProperty("enterpriseReceiptCaptureUiEnabled").orElse("true").get().toBooleanStrict().toString())
+        buildConfigField("boolean", "ENTERPRISE_RECEIPT_EXTRACTION_UI_ENABLED",
+            providers.gradleProperty("enterpriseReceiptExtractionUiEnabled").orElse("false").get().toBooleanStrict().toString())
         // EMP-FUEL-011 rollback switch (EDR-295): hides the fueling entry; queued fuelings and receipts keep their delivery.
         buildConfigField("boolean", "ENTERPRISE_FUELING_UI_ENABLED",
             providers.gradleProperty("enterpriseFuelingUiEnabled").orElse("true").get().toBooleanStrict().toString())

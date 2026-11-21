@@ -1,6 +1,10 @@
 package com.anpfuel.app.ui.enterprise
 
 import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -12,13 +16,17 @@ import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptCaptureUi
+import com.anpfuel.app.ui.enterprise.attachment.ReceiptPickers
 import com.anpfuel.app.ui.enterprise.fueling.FuelingPanel
 import com.anpfuel.application.enterprise.EnterpriseContextSummary
+import com.anpfuel.application.enterprise.attachment.ReceiptCaptureState
 import com.anpfuel.application.enterprise.attachment.ReceiptDraft
 import com.anpfuel.application.enterprise.fleet.MyAssetsViewState
 import com.anpfuel.application.enterprise.fueling.FuelingForm
 import com.anpfuel.application.enterprise.fueling.FuelingViewState
 import com.anpfuel.application.enterprise.fueling.FuelingWarnings
+import com.anpfuel.data.local.ocr.MlKitImagePriceOcr
 import com.anpfuel.domain.enterprise.EnterpriseDeviceClock
 import com.anpfuel.domain.enterprise.EnterprisePartition
 import com.anpfuel.domain.enterprise.EnterpriseTime
@@ -31,9 +39,12 @@ import com.anpfuel.domain.enterprise.sync.EnterpriseOperation
 import com.anpfuel.domain.enterprise.sync.EnterpriseQueueEntry
 import com.anpfuel.domain.enterprise.sync.OperationAcknowledgement
 import com.anpfuel.domain.enterprise.sync.SyncBinding
+import java.io.ByteArrayOutputStream
 import java.time.Instant
 import java.util.Locale
+import kotlinx.coroutines.runBlocking
 import org.junit.Assert.*
+import org.junit.Assume.assumeTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -67,9 +78,23 @@ class EnterpriseFuelingPresentationDeviceTest {
     }
     private class Calls { val saved = mutableListOf<Pair<FuelingForm, ReceiptDraft?>>(); var sends = 0 }
 
-    private fun render(initial: FuelingViewState, connected: Boolean = true): Pair<Calls, (FuelingViewState) -> Unit> {
+    private fun render(initial: FuelingViewState, connected: Boolean = true,
+        readMoney: (suspend (ReceiptDraft) -> ReceiptMoneyReading?)? = null): Pair<Calls, (FuelingViewState) -> Unit> {
         val calls = Calls()
         var current by mutableStateOf(initial)
+        var draft by mutableStateOf<ReceiptDraft?>(null)
+        val pickers = object : ReceiptPickers {
+            override fun camera() = library()
+            override fun library() {
+                val bitmap = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888)
+                val bytes = ByteArrayOutputStream().use { output ->
+                    try { check(bitmap.compress(Bitmap.CompressFormat.JPEG, 90, output)); output.toByteArray() }
+                    finally { bitmap.recycle() }
+                }
+                val original = (ReceiptIntake.inspect(bytes, ReceiptSource.IMPORT) as ReceiptInspection.Accepted).original
+                draft = ReceiptDraft(original, LegibilityHint.NOT_CHECKED)
+            }
+        }
         val app = InstrumentationRegistry.getInstrumentation().targetContext
         val configuration = Configuration(app.resources.configuration).apply { setLocale(Locale.forLanguageTag("pt-BR")) }
         val localized = app.createConfigurationContext(configuration)
@@ -78,7 +103,8 @@ class EnterpriseFuelingPresentationDeviceTest {
                 MaterialTheme {
                     FuelingPanel(current, connected, assets, {}, {}, {}, {}, { id, warning -> MyAssets.choose(partition.organizationId, assets.snapshot!!, id, warning) },
                         { _, form, draft -> calls.saved += form to draft },
-                        { form -> FuelingWarnings(form.paidTotal == "970,00", emptyList()) }, { calls.sends++ })
+                        { form -> FuelingWarnings(form.paidTotal == "970,00", emptyList()) }, { calls.sends++ },
+                        capture = if (readMoney == null) null else ReceiptCaptureUi(ReceiptCaptureState(draft), pickers, { draft = null }, readMoney))
                 }
             }
         }
@@ -135,5 +161,61 @@ class EnterpriseFuelingPresentationDeviceTest {
         assertNull(draft)
         update(state(open = false, saveFailed = true))
         compose.onNodeWithTag("enterprise-fueling-feedback").assertTextEquals("Nada foi salvo. Tente de novo.")
+    }
+
+    @Test fun unreadableReceiptKeepsManualValuesAndSuggestionsNeedSeparateConfirmation() {
+        var reads = 0
+        val (calls, _) = render(state(open = false), readMoney = {
+            reads += 1
+            if (reads == 1) ReceiptMoneyReading.read(sequenceOf(ReceiptTextLine("unreadable", 0.15f)))
+            else ReceiptMoneyReading.read(sequenceOf(ReceiptTextLine("Total a pagar: R$ 97,00", 0.60f), ReceiptTextLine("Desconto: 5,00", null)))
+        })
+        compose.onNodeWithTag("enterprise-fueling-new").performClick()
+        compose.onNodeWithTag("enterprise-asset-picker-row-${id(20)}").performClick()
+        compose.onNodeWithTag("enterprise-fueling-quantity").performScrollTo().performTextInput("15")
+        compose.onNodeWithTag("enterprise-fueling-paid").performScrollTo().performTextInput("90,00")
+        compose.onNodeWithTag("enterprise-fueling-discount").performScrollTo().performTextInput("1,00")
+        compose.onNodeWithTag("enterprise-fueling-reading-value").performScrollTo().performTextInput("184600")
+        compose.onNodeWithTag("enterprise-receipt-import").performScrollTo().performClick()
+        compose.runOnIdle { assertEquals(0, reads) }
+        val scan = compose.onNodeWithTag("enterprise-receipt-read-money")
+        scan.performScrollTo().performClick()
+        compose.onNodeWithTag("enterprise-receipt-money-manual").assertExists()
+        compose.onNodeWithTag("enterprise-fueling-paid").performScrollTo().assertTextContains("90,00")
+
+        scan.performScrollTo().performClick()
+        compose.onNodeWithText("Confiança da leitura: 60%").assertExists()
+        compose.onNodeWithText("Confiança da leitura indisponível").assertExists()
+        compose.onNodeWithTag("enterprise-fueling-paid").performScrollTo().assertTextContains("90,00")
+        compose.onNodeWithTag("enterprise-receipt-use-paid").performScrollTo().performClick()
+        compose.onNodeWithTag("enterprise-fueling-paid").performScrollTo().assertTextContains("97,00")
+        compose.onNodeWithTag("enterprise-fueling-discount").performScrollTo().assertTextContains("1,00")
+        compose.onNodeWithTag("enterprise-receipt-use-discount").performScrollTo().performClick()
+        compose.onNodeWithTag("enterprise-fueling-save").performScrollTo().performClick()
+        val (form, draft) = compose.runOnIdle { calls.saved.single() }
+        assertEquals("97,00", form.paidTotal)
+        assertEquals("5,00", form.discount)
+        assertNotNull(draft)
+    }
+
+    @Test fun theLocalModelReadsMoneyFromSyntheticPixels(): Unit = runBlocking {
+        assumeTrue(InstrumentationRegistry.getArguments().getString("enterpriseLocalReceiptModel") == "true")
+        val app = InstrumentationRegistry.getInstrumentation().targetContext
+        val recognizer = MlKitImagePriceOcr(app)
+        assertTrue("The Android device must have the local Latin model for this check", recognizer.prepareModel())
+        val bitmap = Bitmap.createBitmap(1200, 400, Bitmap.Config.ARGB_8888)
+        val canvas = Canvas(bitmap)
+        val ink = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.BLACK; textSize = 64f }
+        canvas.drawColor(Color.WHITE)
+        canvas.drawText("TOTAL A PAGAR: R$ 97,00", 45f, 150f, ink)
+        canvas.drawText("DESCONTO: R$ 5,00", 45f, 260f, ink)
+        val bytes = ByteArrayOutputStream().use { output ->
+            try { check(bitmap.compress(Bitmap.CompressFormat.JPEG, 95, output)); output.toByteArray() }
+            finally { bitmap.recycle() }
+        }
+        val original = (ReceiptIntake.inspect(bytes, ReceiptSource.IMPORT) as ReceiptInspection.Accepted).original
+        val result = recognizer.recognizeReceipt(original)
+        assertEquals("97,00", result.paid?.decimal)
+        assertEquals("5,00", result.discount?.decimal)
     }
 }

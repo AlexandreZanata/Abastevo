@@ -2,6 +2,13 @@
 <!-- EMP-DOC-004 SCR-DOC-01; generated from one table by f4-logs/doc004-scripts/gen_receipt_strings.py -->
 <resources>
     <string name="enterprise_receipts_synthetic_notice">Test phase: use synthetic images only, never a real receipt.</string>
+    <string name="enterprise_receipts_read_money">Read amounts on this device</string>
+    <string name="enterprise_receipts_reading_money">Reading receipt amounts…</string>
+    <string name="enterprise_receipts_enter_money">No amount was identified. Enter it manually.</string>
+    <string name="enterprise_receipts_money_confidence">Text recognition confidence: %1$d%%</string>
+    <string name="enterprise_receipts_money_unscored">Text recognition confidence unavailable</string>
+    <string name="enterprise_receipts_use_paid">Use R$ %1$s as the amount paid</string>
+    <string name="enterprise_receipts_use_discount">Use R$ %1$s as the discount</string>
     <string name="enterprise_receipts_camera">Take photo</string>
     <string name="enterprise_receipts_import">Import photo</string>
     <string name="enterprise_receipts_reading">Reading the photo…</string>

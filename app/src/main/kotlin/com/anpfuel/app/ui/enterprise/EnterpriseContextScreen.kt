@@ -116,6 +116,9 @@ fun EnterpriseContextScreen(
     // EMP-DOC-004: one capture sheet owner; its unsaved photo stays in memory only (B-BR-EMP-453).
     val receiptState by receiptViewModel.state.collectAsState()
     val receiptPickers = rememberSystemReceiptPickers(receiptViewModel)
+    val receiptCapture = if (receiptViewModel.enabled) {
+        ReceiptCaptureUi(receiptState, receiptPickers, receiptViewModel::reset, receiptViewModel.readMoney)
+    } else null
     var showTrips by remember { mutableStateOf(false) }
     var tripsFor by remember { mutableStateOf<EnterpriseContextSummary?>(null) }
     val fuelingState by fuelingViewModel.state.collectAsState()
@@ -385,7 +388,7 @@ fun EnterpriseContextScreen(
             onSave = { choice, form, draft -> if (expensesMatch) expenseViewModel.record(choice, form, draft, renderedEpoch, expenseState.generation) },
             onSend = { if (expensesMatch) expenseViewModel.sendNow(renderedEpoch, expenseState.generation) },
             modifier = Modifier.fillMaxSize().padding(padding),
-            capture = if (receiptViewModel.enabled) ReceiptCaptureUi(receiptState, receiptPickers, receiptViewModel::reset) else null,
+            capture = receiptCapture,
             onAttach = { expense, draft -> if (expensesMatch) expenseViewModel.attach(expense, draft, renderedEpoch, expenseState.generation) },
         ) else if (showFuelings && resumed && renderedSelected != null && !choosing &&
             fuelingsFor?.partition == renderedSelected.partition && fuelingsFor?.membershipId == renderedSelected.membershipId) FuelingPanel(
@@ -403,7 +406,7 @@ fun EnterpriseContextScreen(
             warnings = { form -> fuelingViewModel.warnings(form) },
             onSend = { if (fuelingsMatch) fuelingViewModel.sendNow(renderedEpoch, fuelingState.generation) },
             modifier = Modifier.fillMaxSize().padding(padding),
-            capture = if (receiptViewModel.enabled) ReceiptCaptureUi(receiptState, receiptPickers, receiptViewModel::reset) else null,
+            capture = receiptCapture,
             onAttach = { fueling, draft -> if (fuelingsMatch) fuelingViewModel.attach(fueling, draft, renderedEpoch, fuelingState.generation) },
         ) else if (showTrips && resumed && renderedSelected != null && !choosing &&
             tripsFor?.partition == renderedSelected.partition && tripsFor?.membershipId == renderedSelected.membershipId) TripPanel(
@@ -427,7 +430,7 @@ fun EnterpriseContextScreen(
             finishWarnings = { trip, final -> if (tripsMatch) tripViewModel.finishWarnings(trip, final) else emptyList() },
             onReady = { trip -> if (tripsMatch) tripViewModel.markReady(trip, renderedEpoch, tripState.generation) },
             onSend = { if (tripsMatch) tripViewModel.sendNow(renderedEpoch, tripState.generation) },
-            capture = if (receiptViewModel.enabled) ReceiptCaptureUi(receiptState, receiptPickers, receiptViewModel::reset) else null,
+            capture = receiptCapture,
             onAttach = { owner, target, draft -> if (tripsMatch) tripViewModel.attach(owner, target, draft, renderedEpoch, tripState.generation) },
             modifier = Modifier.fillMaxSize().padding(padding),
             checklist = if (BuildConfig.ENTERPRISE_CHECKLIST_UI_ENABLED) renderedChecklist else null,

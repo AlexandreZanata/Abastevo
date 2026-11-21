@@ -50,4 +50,11 @@
     <string name="enterprise_receipts_title_reading">Foto des Zählerstands</string>
     <string name="enterprise_receipts_saved">Foto auf dem Gerät gespeichert.</string>
     <string name="enterprise_receipts_unavailable">Die Fotos dieses Unternehmens können gerade nicht gelesen werden. Gespeicherte Fotos bleiben erhalten.</string>
+    <string name="enterprise_receipts_read_money">Beträge auf diesem Gerät lesen</string>
+    <string name="enterprise_receipts_reading_money">Belegbeträge werden gelesen…</string>
+    <string name="enterprise_receipts_enter_money">Kein Betrag erkannt. Bitte manuell eingeben.</string>
+    <string name="enterprise_receipts_money_confidence">Konfidenz der Texterkennung: %1$d%%</string>
+    <string name="enterprise_receipts_money_unscored">Konfidenz der Texterkennung nicht verfügbar</string>
+    <string name="enterprise_receipts_use_paid">R$ %1$s als gezahlten Betrag übernehmen</string>
+    <string name="enterprise_receipts_use_discount">R$ %1$s als Rabatt übernehmen</string>
 </resources>

@@ -50,4 +50,11 @@
     <string name="enterprise_receipts_title_reading">Photo du relevé</string>
     <string name="enterprise_receipts_saved">Photo enregistrée sur l’appareil.</string>
     <string name="enterprise_receipts_unavailable">Les photos de cette entreprise ne peuvent pas être lues pour le moment. Les photos enregistrées sont conservées.</string>
+    <string name="enterprise_receipts_read_money">Lire les montants sur cet appareil</string>
+    <string name="enterprise_receipts_reading_money">Lecture des montants du justificatif…</string>
+    <string name="enterprise_receipts_enter_money">Aucun montant identifié. Saisissez-le manuellement.</string>
+    <string name="enterprise_receipts_money_confidence">Confiance de la reconnaissance du texte : %1$d%%</string>
+    <string name="enterprise_receipts_money_unscored">Confiance de la reconnaissance du texte indisponible</string>
+    <string name="enterprise_receipts_use_paid">Utiliser R$ %1$s comme montant payé</string>
+    <string name="enterprise_receipts_use_discount">Utiliser R$ %1$s comme remise</string>
 </resources>

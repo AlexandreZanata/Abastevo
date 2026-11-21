@@ -45,6 +45,23 @@ The organization owns each document, upload, original, extraction result, item a
 
 **UC-DOC-03 — Allocate and reconcile.** An authorized reviewer selects same-organization financial targets and exact amounts. The server locks the source, checks remaining capacity, commits allocations and records the resulting reconciliation basis. A competing over-allocation fails with no partial writes.
 
+**UC-DOC-04 — Read a synthetic receipt on the device.** The member can opt in
+to reading an attached image while composing a fueling or expense. The device
+offers a single, explicitly labeled paid total and, for fueling, an explicitly
+labeled discount. Conflicting values are left for manual entry. Each suggestion
+shows its text-recognition confidence when available. The member applies each
+field separately and still submits through the existing form. The original
+image, receipt storage, review and fiscal status have independent lifecycles.
+
+The `enterpriseReceiptExtractionUiEnabled` build option defaults off. Internal
+validation uses synthetic images and the existing Play-services Latin model.
+The model processes image bytes and text on the device and may send SDK metrics
+to Google. The app holds the suggestions only in the open form and sends only
+the submitted form values in the fueling or expense payload. The original
+follows the private receipt storage workflow. External processing and
+real-receipt use need their recorded privacy and dependency review.
+[ML Kit terms and privacy](https://developers.google.com/ml-kit/terms)
+
 ## 6. States and transitions
 
 The six status sets are canonical in [the state catalog](../state-model.md). Intake moves storage from uploading to received, then stored only after checks, or quarantine/failure. Replacement retains the prior reference. Authorized human review changes conference state on a specified revision. Reconciliation follows committed allocations. A fiscal status requires an authorized consultation and its time. Cancellation inside the app does not certify a fiscal cancellation. Reversal preserves the original and decision history.

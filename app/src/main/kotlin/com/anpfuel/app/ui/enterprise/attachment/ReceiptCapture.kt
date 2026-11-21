@@ -24,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -49,6 +50,7 @@ import androidx.lifecycle.viewModelScope
 import com.anpfuel.app.BuildConfig
 import com.anpfuel.app.R
 import com.anpfuel.app.ui.theme.AnpContainerDefaults
+import com.anpfuel.data.local.ocr.MlKitImagePriceOcr
 import com.anpfuel.application.enterprise.attachment.EnterpriseReceipts
 import com.anpfuel.application.enterprise.attachment.ReceiptCaptureController
 import com.anpfuel.application.enterprise.attachment.ReceiptCaptureState
@@ -59,6 +61,9 @@ import com.anpfuel.domain.enterprise.attachment.AttachmentLocalFailure
 import com.anpfuel.domain.enterprise.attachment.AttachmentRefusal
 import com.anpfuel.domain.enterprise.attachment.AttachmentView
 import com.anpfuel.domain.enterprise.attachment.LegibilityIssue
+import com.anpfuel.domain.enterprise.attachment.ReceiptMoneyReading
+import com.anpfuel.domain.enterprise.attachment.ReceiptMoneySuggestion
+import com.anpfuel.domain.enterprise.attachment.ReceiptOriginal
 import com.anpfuel.domain.enterprise.attachment.ReceiptRefusal
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
@@ -75,10 +80,19 @@ import kotlinx.coroutines.withContext
 
 /** The capture sheet's owner; the unsaved photo lives here, in memory only (B-BR-EMP-453). */
 @HiltViewModel
-class ReceiptCaptureViewModel(originals: ReceiptOriginals, queueEnabled: Boolean) : ViewModel() {
-    @Inject constructor(originals: ReceiptOriginals, receipts: EnterpriseReceipts) : this(originals, receipts.enabled)
+class ReceiptCaptureViewModel(
+    originals: ReceiptOriginals,
+    queueEnabled: Boolean,
+    recognizer: (suspend (ReceiptOriginal) -> ReceiptMoneyReading)? = null,
+) : ViewModel() {
+    @Inject constructor(originals: ReceiptOriginals, receipts: EnterpriseReceipts, ocr: MlKitImagePriceOcr) : this(
+        originals, receipts.enabled, if (BuildConfig.ENTERPRISE_RECEIPT_EXTRACTION_UI_ENABLED) ocr::recognizeReceipt else null,
+    )
     private val controller = ReceiptCaptureController(originals)
     val state = controller.state
+    val readMoney: (suspend (ReceiptDraft) -> ReceiptMoneyReading?)? = recognizer?.let { recognize ->
+        { draft -> if (state.value.draft !== draft) null else recognize(draft.original).takeIf { state.value.draft === draft } }
+    }
     /** Shown only with the attachment queue on and the rollback switch on (B-BR-EMP-450). */
     val enabled: Boolean = BuildConfig.ENTERPRISE_RECEIPT_CAPTURE_UI_ENABLED && queueEnabled
     fun beginSelection(): String = controller.beginSelection()
@@ -101,7 +115,12 @@ interface ReceiptPickers {
 }
 
 /** What a record screen needs to offer capture; null when capture is switched off. */
-class ReceiptCaptureUi(val state: ReceiptCaptureState, val pickers: ReceiptPickers, val reset: () -> Unit)
+class ReceiptCaptureUi(
+    val state: ReceiptCaptureState,
+    val pickers: ReceiptPickers,
+    val reset: () -> Unit,
+    val readMoney: (suspend (ReceiptDraft) -> ReceiptMoneyReading?)? = null,
+)
 
 /** The system camera (after the CAMERA permission) and the photo picker (no storage permission), EDR-291. */
 @Composable
@@ -217,7 +236,7 @@ private fun attachmentRefusalText(refusal: AttachmentRefusal): Int = when (refus
 /** SCR-DOC-01: the original, its hint, keep or retake, and "Salvar no aparelho" only for an accepted original. */
 @Composable
 fun ReceiptCaptureCard(title: String, capture: ReceiptCaptureUi, busy: Boolean, onSave: ((ReceiptDraft) -> Unit)?, onCancel: (() -> Unit)?,
-    modifier: Modifier = Modifier) {
+    modifier: Modifier = Modifier, onUsePaid: ((String) -> Unit)? = null, onUseDiscount: ((String) -> Unit)? = null) {
     val state = capture.state
     ReceiptContainer(modifier.testTag("enterprise-receipt-capture")) {
         Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
@@ -254,6 +273,9 @@ fun ReceiptCaptureCard(title: String, capture: ReceiptCaptureUi, busy: Boolean, 
                 hints.forEach { Text(it) }
                 Text(disclaimer, style = MaterialTheme.typography.bodySmall)
             }
+            if (!state.reading && capture.readMoney != null && (onUsePaid != null || onUseDiscount != null)) {
+                ReceiptMoneyReview(draft, busy, capture.readMoney, onUsePaid, onUseDiscount)
+            }
             Text(stringResource(R.string.enterprise_receipts_keep_or_retake), style = MaterialTheme.typography.bodySmall)
         }
         // Embedded in a record's form (EMP-FUEL-011) the record's own save seals the photo after it.
@@ -264,6 +286,56 @@ fun ReceiptCaptureCard(title: String, capture: ReceiptCaptureUi, busy: Boolean, 
         if (onCancel != null) TextButton(onClick = onCancel, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("enterprise-receipt-cancel")) {
             Text(stringResource(R.string.enterprise_receipts_cancel))
         }
+    }
+}
+
+@Composable
+private fun ReceiptMoneyReview(
+    draft: ReceiptDraft,
+    busy: Boolean,
+    read: suspend (ReceiptDraft) -> ReceiptMoneyReading?,
+    onUsePaid: ((String) -> Unit)?,
+    onUseDiscount: ((String) -> Unit)?,
+) {
+    var attempt by remember(draft) { mutableIntStateOf(0) }
+    var pending by remember(draft) { mutableStateOf(false) }
+    var reading by remember(draft) { mutableStateOf<ReceiptMoneyReading?>(null) }
+    LaunchedEffect(draft, attempt) {
+        if (attempt > 0) {
+            try { reading = read(draft) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { reading = null }
+            finally { pending = false }
+        }
+    }
+    OutlinedButton(onClick = { pending = true; attempt += 1 }, enabled = !busy && !pending,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("enterprise-receipt-read-money")) {
+        Text(stringResource(R.string.enterprise_receipts_read_money))
+    }
+    if (pending) {
+        Notice(stringResource(R.string.enterprise_receipts_reading_money))
+    } else if (attempt > 0) {
+        val paid = reading?.paid?.takeIf { onUsePaid != null }
+        val discount = reading?.discount?.takeIf { onUseDiscount != null }
+        if (paid == null && discount == null) {
+            Notice(stringResource(R.string.enterprise_receipts_enter_money), Modifier.testTag("enterprise-receipt-money-manual"))
+        }
+        if (paid != null && onUsePaid != null) {
+            ReceiptMoneyChoice(paid, R.string.enterprise_receipts_use_paid, "enterprise-receipt-use-paid", busy, onUsePaid)
+        }
+        if (discount != null && onUseDiscount != null) {
+            ReceiptMoneyChoice(discount, R.string.enterprise_receipts_use_discount, "enterprise-receipt-use-discount", busy, onUseDiscount)
+        }
+    }
+}
+
+@Composable
+private fun ReceiptMoneyChoice(suggestion: ReceiptMoneySuggestion, action: Int, tag: String, busy: Boolean, onUse: (String) -> Unit) {
+    Text(suggestion.confidencePercent?.let { stringResource(R.string.enterprise_receipts_money_confidence, it) }
+        ?: stringResource(R.string.enterprise_receipts_money_unscored), style = MaterialTheme.typography.bodySmall)
+    OutlinedButton(onClick = { onUse(suggestion.decimal) }, enabled = !busy,
+        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag(tag)) {
+        Text(stringResource(action, suggestion.decimal))
     }
 }
 

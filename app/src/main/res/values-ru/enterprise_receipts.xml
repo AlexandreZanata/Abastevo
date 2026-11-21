@@ -50,4 +50,11 @@
     <string name="enterprise_receipts_title_reading">Фото показания</string>
     <string name="enterprise_receipts_saved">Фото сохранено на устройстве.</string>
     <string name="enterprise_receipts_unavailable">Сейчас не удаётся прочитать фото этой компании. Сохранённые фото не теряются.</string>
+    <string name="enterprise_receipts_read_money">Распознать суммы на этом устройстве</string>
+    <string name="enterprise_receipts_reading_money">Распознаём суммы в чеке…</string>
+    <string name="enterprise_receipts_enter_money">Суммы не распознаны. Введите их вручную.</string>
+    <string name="enterprise_receipts_money_confidence">Уверенность распознавания текста: %1$d%%</string>
+    <string name="enterprise_receipts_money_unscored">Уверенность распознавания текста недоступна</string>
+    <string name="enterprise_receipts_use_paid">Использовать R$ %1$s как сумму оплаты</string>
+    <string name="enterprise_receipts_use_discount">Использовать R$ %1$s как скидку</string>
 </resources>
