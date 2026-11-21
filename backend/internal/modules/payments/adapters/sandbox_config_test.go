@@ -8,7 +8,7 @@ import (
 func TestSandboxConfigGating(t *testing.T) {
 	env := map[string]string{}
 	stripe, asaas, err := readSandboxConfig(func(key string) string { return env[key] })
-	if err != nil || stripe.journeysReady() || asaas.journeysReady() {
+	if err != nil || stripe.journeysReady() || asaas.journeysReady() || asaas.testKey() {
 		t.Fatalf("empty config ready: %+v %+v err=%v", stripe, asaas, err)
 	}
 	// Live-looking values are assembled at runtime so the versioned
@@ -42,8 +42,12 @@ func TestSandboxConfigGating(t *testing.T) {
 		t.Fatalf("partial asaas ready: %+v err=%v", asaas, err)
 	}
 	env["ANPFUEL_SANDBOX_ASAAS_MERCHANT"] = "11111111-1111-4111-8111-111111111111"
-	if _, asaas, err := readSandboxConfig(func(key string) string { return env[key] }); err != nil || !asaas.journeysReady() {
-		t.Fatalf("asaas not ready: %+v err=%v", asaas, err)
+	if _, asaas, err := readSandboxConfig(func(key string) string { return env[key] }); err != nil || !asaas.journeysReady() || asaas.testKey() {
+		t.Fatalf("Asaas presence and sandbox prefix checks diverged: %v", err)
+	}
+	env["ANPFUEL_SANDBOX_ASAAS_KEY"] = "$aact_" + "hmlg_synthetic"
+	if _, asaas, err := readSandboxConfig(func(key string) string { return env[key] }); err != nil || !asaas.journeysReady() || !asaas.testKey() {
+		t.Fatalf("synthetic Asaas sandbox credential was not recognized: %v", err)
 	}
 }
 
