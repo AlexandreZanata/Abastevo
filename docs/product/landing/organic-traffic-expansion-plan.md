@@ -10,7 +10,7 @@ contract still owns the hreflang, translation and editorial rules. This file
 owns three things:
 - the measured state on 2026-11-21;
 - a new order for the contract tasks that are still open;
-- the new tasks SEO-39 to SEO-66. SEO-40 is done and no longer listed.
+- the new tasks SEO-39 to SEO-66. A task that is done is listed in section 2.1 and no longer in section 6.
 
 When the owner accepts it, move each accepted rule change into the contract,
 record the ADR-026 amendments as a new decision, and list the tasks in
@@ -47,13 +47,24 @@ from the live site on 2026-11-21.
 | SEO-27 localized calculators | Done. | `parseDecimal` in `landing/src/tools.ts`. |
 | SEO-40 one robots.txt source | Built, not served yet. `landing/static/robots.txt` is the source and the web-tier block repeats it byte for byte. | `landing/tests/indexing-and-sitemap.test.mjs`, `business-web/tests/caddy.py`. |
 | SEO-23 IndexNow | Built, switched off. The key file ships at the landing root; the submitter has its own timer. | `infra/deploy/agent/indexnow.py`, `tests/test-indexnow.py`. |
+| SEO-39 Search Console report | Built. The owner runs it with a token; its tests run in the quick gate. | `scripts/seo/search_report.py`, `scripts/seo/README.md`. |
+| SEO-24 forum link | The landing footer links `/forum/`. A card in the home "Explore" grid is not built: it needs approved art. | `renderFooterColumns` in `layouts.mjs`. |
+| SEO-22 forum feed | Built: `/forum/feed.xml`, advertised on the forum pages. | `portalgen/forum_feed.go`. |
+| SEO-66 llms.txt | Built: the data surface, both feeds and both sitemaps are listed. | `landing/static/llms.txt`, `check.mjs`. |
+| SEO-41 labels and titles | Built: units in words, titles of at most 65 characters, fuel synonyms. | `portalgen/seo_head.go`, `titles_units_test.go`. |
+| SEO-43 mean and comparison | Built: the sample mean from 5 stations, and a comparison block that shows a movement only for the same station sample. | `portalgen/price_stats.go`. |
+| SEO-29 and SEO-42 fuel by area | Built: `/precos/{fuel}/{uf}/` and `/precos/{fuel}/{uf}/{cidade}/`. | `portalgen/fuel_area.go`. |
+| SEO-44 dated answers | Built: a reading of the survey and a question block. The lowest-price question never names a cheapest station. | `portalgen/price_answers.go`. |
+| SEO-45 ethanol to gasoline ratio | Built: `/precos/etanol-ou-gasolina/` and a ratio line on state and city pages. | `portalgen/parity.go`. |
 
 Translated content today: four drafts (the ethanol-or-gasoline guide and
 calculator, in `en` and `es`). The `en.json` and `es.json` dictionaries (231
 strings each) have `_review.status: "draft"`, and the build refuses to enable a
 locale whose dictionary is a draft.
 
-Not started: SEO-13, SEO-14, SEO-28 to SEO-38. SEO-18 and SEO-19 are
+Everything in the table from SEO-40 down is built on the wave 1 branch and reaches production only with its release. The rules are B-BR-SEO-09 to B-BR-SEO-12 in [portal routes](../../enterprise/portal-routes.md).
+
+Not started: SEO-13, SEO-14, SEO-28, SEO-30 to SEO-38. SEO-18 and SEO-19 are
 owner inputs that are still open.
 
 ### 2.2 Live numbers
@@ -143,8 +154,8 @@ The ranking is a judgment from the facts above, not a forecast.
 
 | # | Lever | Why it ranks here | Tasks |
 |---|-------|-------------------|-------|
-| 1 | pt-BR price pages that match real queries | Brazil is where the demand is, and the data is already in the snapshot. | SEO-29, SEO-41 to SEO-46 |
-| 2 | Measurement and fast discovery | Without Search Console data every later decision is a guess. IndexNow costs little. | SEO-19, SEO-23, SEO-39 |
+| 1 | pt-BR price pages that match real queries | Brazil is where the demand is, and the data is already in the snapshot. | Built in wave 1; SEO-46 and SEO-47 remain |
+| 2 | Measurement and fast discovery | Without Search Console data every later decision is a guess. IndexNow costs little. | SEO-19, SEO-23 (both owner) |
 | 3 | English and Spanish | The build is done. The Argentine summer trips (December to February) are the nearest foreign demand. | SEO-18, SEO-56 to SEO-58, SEO-28, SEO-32 |
 | 4 | Editorial cadence | Two pieces a week build topical authority and give the data pages incoming links. | SEO-54, SEO-55, SEO-31, SEO-35 |
 | 5 | An install path and share loops | They turn traffic into users, and users into links and return visits. | D-L08, SEO-64, SEO-34, SEO-62, SEO-65 |
@@ -165,24 +176,14 @@ specification in the contract's section 10; only the changes are written here.
 
 - **SEO-19 Search engine baseline (S, owner, contract).** Open the Search Console domain property. Submit `sitemap.xml` and `sitemap-portal.xml`. Import the property into Bing Webmaster Tools. This is the first task: nothing else can be judged without it.
 - **ESP-18 Source rights (owner).** Send the drafted clarification request to ANP and record the answer or the owner's decision (G-D05). The price families below can be built in the meantime; they inherit the `ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE` switch.
-- **SEO-39 Search data report (M).**
-  - A script, `scripts/seo/search_report.py`, using only the Python standard library.
-  - It reads the Search Console Search Analytics and URL Inspection APIs and the Bing Webmaster API. The owner supplies an access token and a key through environment variables. Nothing is stored in Git.
-  - It groups pages by URL family and locale: indexed against submitted for a sample per family, impressions, clicks, CTR and position, and top queries per page.
-  - Output goes to a git-ignored directory.
-  - Tests: the route-to-family classifier, against the vectors in `contracts/testdata/i18n/routes.json` and one fixture per portal family.
-- **SEO-23 IndexNow and robots activation (S, owner).** Both are built and neither is live. On the VPS:
+- **SEO-23 Wave 1 activation (S, owner).** Wave 1 is built and none of it is live. After its release, on the VPS:
   - apply the web-tier ConfigMap, so the new `robots.txt` is served;
+  - raise `ANPFUEL_ENTERPRISE_EXPORT_WINDOW_WEEKS` from 5 to 12 in the worker environment, so the history tables of the fuel by area pages show 12 survey weeks;
   - after the release that ships the key file, install `indexnow.py` and the two `abastevo-indexnow` units, set `ABASTEVO_INDEXNOW_KEY` and `ABASTEVO_INDEXNOW_ENABLED=1`, and enable the timer;
-  - read the first run with `journalctl -u abastevo-indexnow.service`. The steps are in the [deploy agent runbook](../../operations/deploy-agent.md#indexnow-submitter).
-- **SEO-24 Navigation hubs, remainder (S, contract).** A `/forum/` entry on the home and in the landing footer, and the shared footer hubs.
-- **SEO-22 Feeds, remainder (S, contract).** An Atom feed for forum editorial posts in portalgen, linked from `/forum/`.
+  - read the first run with `journalctl -u abastevo-indexnow.service`. The steps are in the [deploy agent runbook](../../operations/deploy-agent.md#indexnow-submitter);
+  - once Search Console has data, run the [search report](../../../scripts/seo/README.md) for the first baseline.
+- **SEO-24 Forum card on the home (S, owner design).** The footer links the forum. A card in the home "Explore" grid needs art in the approved style.
 - **SEO-20 Forum retarget (S, owner, contract).** Apply the two payloads in the contract's section 7.1 through the admin console.
-- **SEO-41 Portal label and title pass (M).**
-  - Replace raw units in headings and tables with the labels of the existing `unitLabel`: `KG_13` becomes "botijão de 13 kg", `M3` becomes "m³", `L` becomes "litro".
-  - Titles of at most 65 characters, with a fallback pattern for long city names that drops the date suffix first.
-  - Each fuel hub names its common synonym once in the description and the first paragraph: "álcool" for ethanol, "gás de cozinha" for GLP.
-  - Tests in `seo_head_test.go`, plus a length check over the scale fixture.
 
 ### 6.2 pt-BR data pages
 
@@ -190,22 +191,6 @@ Every family here goes through the single indexation function in
 `portalgen/seo_policy.go` (B-BR-SEO-01) and gets its own sitemap file, scale
 test and link-graph check.
 
-- **SEO-29 Fuel × state (M, contract).** `/precos/{fuel}/{uf}/`.
-- **SEO-42 Fuel × city (L).**
-  - Route: `/precos/{fuel}/{uf}/{cidade}/`, under the fuel × state page.
-  - Content: sample size, minimum, maximum and spread; the stations in the sample, ordered by price, each with its collection date; the same fuel in the state and in Brazil; the survey weeks in the export window as a table and an inline SVG line; nearby cities for the same fuel; the matching guide and calculator.
-  - Gate: emitted and indexable only when the city has at least 5 priced stations for that fuel in the current survey. This is the existing municipal minimum (`minMunicipality`), below which the portal already shows no ranking and no mean. Below the gate no page is emitted, and the city page remains the answer. On the survey of 2026-11-08 to 2026-11-14 the gate yields 1,574 pages in 378 cities.
-  - Keyword map: fuel × city owns "preço da {combustível} em {cidade}". The city page is retitled to own "preços dos combustíveis e postos em {cidade}".
-  - The history table shows every survey week in the snapshot. The owner raises `ANPFUEL_ENTERPRISE_EXPORT_WINDOW_WEEKS` from 5 to 12 in the hand-managed worker environment.
-- **SEO-43 Sample mean and weekly change (M).**
-  - Render the mean from the existing sum and station count, labelled "média da amostra (cálculo abastevo)" with the station count beside it, only for samples of 5 stations or more. It is never presented as an ANP statistic ([portal routes](../../enterprise/portal-routes.md)).
-  - Render the change in minimum, maximum and mean against the previous survey only when the existing `CompareSummaries` reports the two samples as comparable, which means the same stations. Otherwise the page says that the sample changed and shows both weeks side by side, as `/curiosidades/` does today.
-  - Applies to national, fuel, state, city and both fuel × area families.
-- **SEO-44 Week summary and honest "hoje" answers (M).**
-  - A short paragraph per page built from fixed sentence templates over computed facts. Each sentence has a data condition and is omitted when the condition fails. No language model runs in the build.
-  - A visible question block that answers the search phrasing ("Qual o preço da gasolina hoje em {cidade}?") with the newest survey period and where same-day community prices can be seen.
-  - Proposed rule B-BR-SEO-09: while the portal shows only weekly data, no title or description says "hoje", and a page answers a "today" question only by stating the period of its newest observation. The rule is revisited when same-day community prices reach the web (SEO-53).
-- **SEO-45 Ethanol or gasoline this week (M, after SEO-43).** `/precos/etanol-ou-gasolina/`, with a section on state and city pages. It shows the ethanol-to-gasoline ratio per state and per city, from the same sample means, next to the 70% reference. An area appears only when both fuels pass the sample rule. It links the guide and the calculator. The guide keeps the query "etanol ou gasolina"; this page owns "onde o etanol compensa esta semana".
 - **SEO-46 Price series and history (L, three steps).**
   1. Export a compact weekly series per area and fuel (count, minimum, maximum, sum) for every week in the database. Render 52 weeks on the fuel × area pages.
   2. Add an importer for the ANP semester historical files, with the same append-only rules as the weekly ingestion.
@@ -315,13 +300,9 @@ Three tiers. Each locale opens only with a reviewed dictionary (ADR-026).
 - **SEO-37 Store listing localization (S, contract; widened).** Listings in all 8 app locales, written from the reviewed dictionaries, with a keyword pass on the title and short description.
 - **SEO-65 Install attribution (S).** Store links carry Play referrer parameters that name the page family. The Play Console then reports installs by source, with no tracker on the site.
 
-### 6.7 Answer engines
+### 6.7 Measurement
 
-- **SEO-66 Answer-engine readiness (S).** `llms.txt` lists the data hubs, the methodology, the public manifest (`/portal-manifest.json`) and each enabled locale. The week summary of SEO-44 doubles as the citable statement: a figure, its date and its source in one sentence. `FAQPage` and `HowTo` markup stay off, as the contract decided.
-
-### 6.8 Measurement
-
-- **SEO-17 Measurement loop (contract).** Run it monthly with the SEO-39 report.
+- **SEO-17 Measurement loop (contract).** Run it monthly with the search report (`scripts/seo/search_report.py`).
 - **SEO-38 First-party aggregated stats (M, contract).** Unchanged.
 
 ## 7. Order and batches
@@ -331,9 +312,7 @@ different directories and can run in separate worktrees.
 
 | Wave | Batch | Tasks | Main paths |
 |------|-------|-------|-----------|
-| 0 | Owner | SEO-19, ESP-18, SEO-18, SEO-20, SEO-23, decisions in section 8, Play publication | none |
-| 1 | A: discovery | SEO-39, SEO-24, SEO-22, SEO-66 | `scripts/seo/`, `landing/`, portalgen |
-| 1 | B: pt-BR price depth | SEO-41, SEO-29, SEO-42, SEO-43, SEO-44, SEO-45 | `backend/…/portalgen/`, `enterpriseexport/analytics/` |
+| 0 | Owner | SEO-19, ESP-18, SEO-18, SEO-20, SEO-23, SEO-24, decisions in section 8, Play publication | none |
 | 1 | C: editorial engine | SEO-54, SEO-55, SEO-35, first pieces of SEO-31 | `landing/scripts/`, `landing/content/guias/` |
 | 2 | D: en and es landing | SEO-57, SEO-56, SEO-64, the Spanish half of SEO-32 | `landing/content/translations/`, `contracts/i18n/` |
 | 2 | E: series | SEO-46, SEO-47, SEO-14, SEO-61 | `backend/…/official/`, `enterpriseexport/`, portalgen |
@@ -343,9 +322,10 @@ different directories and can run in separate worktrees.
 | 4 | I: later | SEO-59, SEO-33, SEO-53, SEO-63, SEO-13, SEO-38 | several |
 
 Dependencies:
+- Batches A (discovery) and B (pt-BR price depth) of wave 1 are built.
 - Batch D starts after batch C merges, because both edit the landing layouts.
-- Batch F starts after batch B merges, so the locale layer covers the new families once.
-- SEO-45 needs SEO-43. SEO-61 needs SEO-46 step 1. SEO-58 needs G-D04. SEO-49 needs G-D07. SEO-53 needs G-D08.
+- Batch F starts after the wave 1 release, so the locale layer covers the new families once.
+- SEO-61 needs SEO-46 step 1. SEO-58 needs G-D04. SEO-49 needs G-D07. SEO-53 needs G-D08.
 - SEO-31 runs every week from wave 1 onward.
 
 ## 8. Owner decisions
@@ -366,9 +346,9 @@ contract's I18N-D02, I18N-D04 and I18N-D05.
 | G-D09 | Install path before Play | Publish `/app/` now with the honest state. Offer the signed prerelease APK there as a test build, with its checksum, until the Play listing is live. |
 | G-D10 | Fuel × city threshold | 5 priced stations for the fuel in the current survey: the municipal minimum the portal already applies. No new threshold. |
 
-On 2026-11-21 the owner asked for wave 1 (batches A and B) to be built. Those
-batches apply the recommended answers to G-D05, G-D06 and G-D10. The other
-decisions are still open.
+On 2026-11-21 the owner asked for wave 1 (batches A and B) to be built, and it
+is built. It applies the recommended answers to G-D05, G-D06 and G-D10. The
+other decisions are still open.
 
 Open from the contract: the named editor and bio (I18N-D07).
 
