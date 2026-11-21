@@ -22,6 +22,10 @@ concurrency:
 
 jobs:
   gate:
+    # A later push to main cancels the runs of the commit it replaces, and a
+    # cancelled run still fires workflow_run. That commit has nothing to
+    # release and did not fail; skipping this job skips the release job too.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:

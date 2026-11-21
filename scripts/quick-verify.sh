@@ -65,6 +65,7 @@ done < "$MANIFEST"
 
 echo "== release workflow guard =="
 bash "$ROOT/scripts/check-release-workflow.sh"
+python3 "$ROOT/scripts/tests/test-release-gate.py"
 
 echo "== Android release guards =="
 python3 -m unittest discover -s "$ROOT/scripts/android" -p 'test_*.py'

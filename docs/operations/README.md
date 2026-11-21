@@ -12,7 +12,10 @@
   storage deployment, both inside the namespace.
 - **Releases:** merge to `main` → CI → `release-staging` publishes a signed
   manifest `ghcr.io/alexandrezanata/abastevo-release:staging` (image digests,
-  landing bundle, schema range) only when every main workflow passed. The
+  landing bundle, schema range) only when every main workflow passed. A
+  merge that lands while the previous commit is still in CI cancels that
+  commit's runs: the release gate stays closed for it without failing, and
+  the newer commit carries its changes. The
   `abastevo-deploy-agent` timer on the VPS (every 2 minutes) verifies the
   signature, checks the schema gate, takes a verified backup, runs the migrate
   Job, rolls out images, switches the landing and smoke-tests, writing a receipt.
