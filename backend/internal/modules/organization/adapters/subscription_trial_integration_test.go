@@ -87,6 +87,14 @@ VALUES($1,$2,'fleet','synthetic',1,$3,$4,86400,'synthetic-reviewed-eligibility')
 		first.value.Period != second.value.Period || first.value.Period.End.Sub(first.value.Period.Start) != 24*time.Hour {
 		t.Fatalf("matching trial commands did not converge on one reviewed period: %+v %+v", first, second)
 	}
+	// A paid term for another plan must begin exactly at the trial end, and
+	// provider billing periods are whole seconds.
+	var fractional bool
+	if err := fx.f.Admin.QueryRow(ctx, `SELECT bool_or(term_start<>date_trunc('second',term_start) OR term_end<>date_trunc('second',term_end))
+FROM org_billing_subscription_events WHERE org_id=$1 AND event_kind='START_TRIAL'`, org).Scan(&fractional); err != nil || fractional ||
+		!first.value.Period.Start.Equal(first.value.Period.Start.Truncate(time.Second)) {
+		t.Fatalf("trial term is not a whole-second provider boundary: %+v %v", first.value.Period, err)
+	}
 	if _, err := store.Start(ctx, fx.scope, a, operator, onboardingID(t)); !errors.Is(err, billing.ErrTrialConflict) {
 		t.Fatalf("consumed grant started a second term: %v", err)
 	}

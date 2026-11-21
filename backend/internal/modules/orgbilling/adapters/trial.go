@@ -126,10 +126,13 @@ func (store TrialStore) startTx(ctx context.Context, tx pgx.Tx, scope kernel.Org
 		return ErrTrialIneligible
 	}
 
+	// Provider billing periods are whole seconds; a paid plan change must start
+	// exactly at the trial end, so the trial term uses the same precision.
+	start := now.Truncate(time.Second)
 	_, err = store.Ledger.ApplyTx(ctx, tx, domain.PlanKey{Product: offer.ProductCode, Plan: offer.PlanCode, Revision: offer.PlanRevision},
 		domain.LifecycleEvent{Scope: scope, SubscriptionID: grant.GrantID, Kind: domain.StartTrial,
 			Source: domain.TrialPolicy, Reference: offer.ApprovalRef, At: now,
-			Period: domain.Period{Start: now, End: now.Add(time.Duration(offer.DurationSeconds) * time.Second)},
+			Period: domain.Period{Start: start, End: start.Add(time.Duration(offer.DurationSeconds) * time.Second)},
 		})
 	return err
 }
