@@ -10,7 +10,16 @@ F8 includes catalog, regional series, watchlists, comparisons, reports, API keys
 
 ## 3. Entities and ownership
 
-Dataset definition records source, coverage, method and version. The organization owns its API keys, usage, watchlists and report requests. Key secrets are protected and only safe metadata is redisplayed. A dataset is not the organization's private operational database.
+A regional dataset version pins the enterprise export snapshot, official
+survey revision and method version. The catalog checks the latest recorded
+commercial review for the exact registry and price digests. A later review
+can hold a previously approved dataset. Each catalog revision retains the
+state and minimum sample size.
+```text
+Registry pin: S-ESP-01
+Price pin: S-ESP-02
+```
+The organization owns its API keys, usage, watchlists and report requests. Key secrets are protected and only safe metadata is redisplayed. A dataset is not the organization's private operational database.
 
 ## 4. Business rules
 

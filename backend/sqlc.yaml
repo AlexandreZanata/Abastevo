@@ -72,6 +72,17 @@ sql:
         emit_json_tags: true
         omit_unused_structs: true
   - engine: postgresql
+    queries: db/queries/orgdata
+    schema:
+      - db/migrations/000269_enterprise_data_catalog.sql
+    gen:
+      go:
+        package: orgdata
+        out: db/queries/orgdata
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/organization
     schema:
       - db/migrations/000020_accounts.sql

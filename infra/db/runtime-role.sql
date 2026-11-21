@@ -10,7 +10,7 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000268. Relations: 408 granted, 3 without access.
+-- Schema version: 000269. Relations: 408 granted, 5 without access.
 -- Sequences: 7. Explicit functions: 0.
 
 BEGIN;
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000268' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000268 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000269' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000269 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -162,7 +162,9 @@ GRANT SELECT, INSERT, DELETE ON TABLE public.driver_shift_commands TO :"runtime_
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.driver_shift_gaps TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.driver_shifts TO :"runtime_role";
 GRANT SELECT ON TABLE public.enterprise_billing_offers TO :"runtime_role";
+-- no access: public.enterprise_data_source_reviews
 GRANT SELECT ON TABLE public.enterprise_plan_catalog TO :"runtime_role";
+-- no access: public.enterprise_regional_datasets
 GRANT SELECT, INSERT, UPDATE ON TABLE public.entitlement_grants TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE ON TABLE public.evidence_final_outputs TO :"runtime_role";
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE public.evidence_objects TO :"runtime_role";
