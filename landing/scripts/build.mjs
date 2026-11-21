@@ -21,6 +21,7 @@ import {
   renderLocaleHome,
   renderLocalizedHeader,
   renderLocalizedFooter,
+  renderHeaderLanguagePicker,
   renderLanguageSwitch,
 } from './content/layouts.mjs';
 
@@ -347,6 +348,8 @@ export function build(options = {}) {
       if (!block) throw new Error(`Canonical home ${tag} missing`);
       return block.replaceAll('href="#', 'href="/#');
     };
+    const languagePickerSlot = '<!-- HOME_LANGUAGE_PICKER -->';
+    if (!homeHtml.includes(languagePickerSlot)) throw new Error(`index.html: missing ${languagePickerSlot}`);
     const sharedHeader = sharedChrome('header');
     const sharedFooter = sharedChrome('footer');
     const isPreview = process.env.PREVIEW === '1';
@@ -380,16 +383,21 @@ export function build(options = {}) {
       const chrome = entry.chrome || 'shared';
       const members = site.hreflangMembers(entry.route);
       const switchList = site.switcherMembers(entry.route);
-      const languageSwitch = switchList.length >= 2 ? renderLanguageSwitch(switchList, entry.route, locale) : '';
-      if (chrome !== 'home') {
+      if (chrome === 'home') {
+        html = html.replace(languagePickerSlot, renderHeaderLanguagePicker(switchList, locale));
+      } else {
         const header = ['<!-- SITE_HEADER -->', '<!-- LEARNING_HEADER -->'].find((m) => html.includes(m));
         const footer = ['<!-- SITE_FOOTER -->', '<!-- LEARNING_FOOTER -->'].find((m) => html.includes(m));
         if ((chrome === 'shared' || chrome === 'locale') && !header) throw new Error(`${entry.outputRel}: missing shared header marker`);
         if (!footer) throw new Error(`${entry.outputRel}: missing shared footer marker`);
-        if (header) html = html.replace(header, chrome === 'locale' ? renderLocalizedHeader(site, locale) : sharedHeader);
+        if (header) {
+          const picker = renderHeaderLanguagePicker(switchList, locale);
+          html = html.replace(header, chrome === 'locale'
+            ? renderLocalizedHeader(site, locale, picker)
+            : sharedHeader.replace(languagePickerSlot, picker));
+        }
+        const languageSwitch = !header && switchList.length >= 2 ? renderLanguageSwitch(switchList, entry.route, locale) : '';
         html = html.replace(footer, `${languageSwitch}${chrome === 'locale' ? renderLocalizedFooter(site, locale) : sharedFooter}`);
-      } else if (languageSwitch) {
-        html = html.replace('  <footer class="footer">', `  ${languageSwitch.trimEnd()}\n\n  <footer class="footer">`);
       }
       // SEO-26: reciprocal hreflang for indexable members of this group.
       if (members.length >= 2) {

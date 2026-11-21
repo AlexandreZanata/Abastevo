@@ -688,7 +688,6 @@ export function renderHomeStates(locale) {
 export function renderHomeHero(locale) {
   return `<p class="kicker"><span class="dot" aria-hidden="true"></span>${esc(t(locale, 'home.hero.kicker'))}</p>
           <h1 class="lp-title">${esc(t(locale, 'home.hero.title'))}</h1>
-          <p class="lp-slogan">${esc(t(locale, 'home.hero.slogan'))}</p>
           <p class="lp-lead">${esc(t(locale, 'home.hero.lead'))}</p>`;
 }
 
@@ -791,7 +790,7 @@ ${head}
 // ---------------------------------------------------------------------------
 // Localized chrome and the language switcher.
 
-export function renderLocalizedHeader(site, locale) {
+export function renderLocalizedHeader(site, locale, languagePicker) {
   const guides = localeHubRoute(locale, 'guias');
   const tools = localeHubRoute(locale, 'ferramentas');
   const homeHref = site.registry.has(`${locale.prefix}/`) ? `${locale.prefix}/` : '/';
@@ -809,9 +808,9 @@ export function renderLocalizedHeader(site, locale) {
         ${nav}
       </nav>
       <div class="topbar-actions">
-        <a class="topbar-link" href="${GITHUB_URL}" target="_blank" rel="noopener" aria-label="${esc(t(locale, 'chrome.githubLabel'))}">${esc(t(locale, 'chrome.github'))}</a>
-        <a class="topbar-link" href="/" lang="pt-BR" hreflang="pt-BR">${NATIVE_NAMES['pt-BR']}</a>
-        <a class="topbar-link" href="/privacidade/" lang="pt-BR" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>
+        <a class="topbar-link hide-sm" href="${GITHUB_URL}" target="_blank" rel="noopener" aria-label="${esc(t(locale, 'chrome.githubLabel'))}">${esc(t(locale, 'chrome.github'))}</a>
+        <a class="topbar-link topbar-privacy" href="/privacidade/" lang="pt-BR" hreflang="pt-BR">${esc(t(locale, 'chrome.privacyPortuguese'))}</a>
+        ${languagePicker}
       </div>
     </div>
   </header>`;
@@ -844,10 +843,30 @@ export function renderLocalizedFooter(site, locale) {
   </footer>`;
 }
 
+function renderLanguageLink(member) {
+  return `<a href="${esc(member.route)}" lang="${esc(member.htmlLang)}" hreflang="${esc(member.hreflang)}">${esc(member.languageName)}</a>`;
+}
+
+export function renderHeaderLanguagePicker(members, locale) {
+  const label = t(locale, 'chrome.languages');
+  const options = members.map((member) => member.code === locale.code
+    ? `<li><span lang="${esc(member.htmlLang)}" aria-current="true">${esc(member.languageName)}</span></li>`
+    : `<li>${renderLanguageLink(member)}</li>`);
+  return `<details class="language-picker" name="landing-header">
+          <summary aria-label="${esc(label)} · ${esc(locale.messages.languageName)}">
+            <span class="language-picker-globe" aria-hidden="true"></span>
+            <span class="language-picker-code" aria-hidden="true">${esc(locale.code)}</span>
+          </summary>
+          <ul class="language-picker-options">
+            ${options.join('\n            ')}
+          </ul>
+        </details>`;
+}
+
 /** Plain links to the other active locales (or exact translations when available); the build inserts it before the footer. */
 export function renderLanguageSwitch(members, currentRoute, locale) {
   const others = members.filter((member) => member.code !== locale.code && member.route !== currentRoute);
   if (others.length === 0) return '';
-  const links = others.map((member) => `<a href="${esc(member.route)}" lang="${esc(member.htmlLang)}" hreflang="${esc(member.hreflang)}">${esc(member.languageName)}</a>`);
+  const links = others.map(renderLanguageLink);
   return `<nav class="lang-switch" aria-label="${esc(t(locale, 'chrome.languages'))}">\n        <div class="shell">\n          ${links.join('\n          ')}\n        </div>\n      </nav>\n      `;
 }

@@ -89,7 +89,8 @@ Frozen strings for the home page. Section order matches the [wireframes](#visual
 
 **Title** (50 characters): `abastevo | Preços de combustíveis com a comunidade`
 **Meta description** (146 characters): `Projeto de código aberto para consultar preços de combustíveis com fonte e data visíveis, separando observações da comunidade e referências da ANP.`
-**H1 (owner-approved SEO-21):** `Preços de combustíveis por estado e cidade, com dados da ANP` with the slogan `Mais informação para quem vive na estrada.` retained below it as `<p class="lp-slogan">` (strings loaded per locale from `landing/content/i18n/{locale}.json` under `home.hero`).
+**H1 (owner-approved):** `Mais informação para quem vive na estrada.` The visible heading comes from `home.hero.title` in each locale dictionary. The page title metadata retains the descriptive fuel-price wording.
+**Language picker:** The shared header marks the current language and offers plain links to published translations, falling back to the corresponding locale home. Draft languages are omitted.
 **Lead:** `Encontre preços de combustíveis, veja dados da ANP e conte com a comunidade de motoristas.`
 **Status line:** `Em desenvolvimento. O aplicativo para Android ainda não foi publicado.`
 **Hero buttons:** `Ver no GitHub` (open-source project, official CC0 GitHub mark, new tab) + `Em breve no Google Play` (honest non-link pill in prelaunch with official CC0 Play mark; verified store link only when published, new tab). No cheapest/savings/coverage/ranking promises anywhere: "melhor preço", "pagando menos", station counts, live maps and ratings are forbidden. Illustrated scenery and map lights are decorative, never station coordinates or coverage evidence.

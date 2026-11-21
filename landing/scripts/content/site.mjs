@@ -592,7 +592,6 @@ export function loadSite(root, options = {}) {
         hreflang: loc.hreflang,
         languageName: loc.messages.languageName,
       }));
-    if (activeHomes.length < 2) return [];
     const exact = new Map(hreflangMembers(route).map((member) => [member.code, member]));
     if (entry.locale && entry.stale && entry.translationOf && registry.get(entry.translationOf)?.indexable) {
       exact.set(defaultLocale.code, { ...activeHomes[0], route: entry.translationOf });

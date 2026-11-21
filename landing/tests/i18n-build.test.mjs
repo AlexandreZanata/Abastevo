@@ -31,6 +31,11 @@ function hreflangs(html) {
     .map((match) => ({ hreflang: match[1], route: match[2].slice(origin.length) }));
 }
 
+function headerLanguagePicker(html) {
+  const header = html.match(/<header\b[\s\S]*?<\/header>/)?.[0];
+  return header?.match(/<details class="language-picker"[^>]*>[\s\S]*?<\/details>/)?.[0] || '';
+}
+
 test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () => {
   const outDir = path.join(os.tmpdir(), 'abastevo-i18n-build-' + Math.random().toString(36).slice(2, 8));
   try {
@@ -58,19 +63,27 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
     const homePt = read(outDir, 'index.html');
     const homeEn = read(outDir, 'en/index.html');
     const homeEs = read(outDir, 'es/index.html');
-    for (const [label, html] of [['pt-BR /', homePt], ['en /en/', homeEn], ['es /es/', homeEs]]) {
+    const homes = [
+      { code: 'pt-BR', route: '/', name: 'Português', html: homePt, title: 'Mais informação para quem vive na estrada.' },
+      { code: 'en', route: '/en/', name: 'English', html: homeEn, title: 'More information for life on the road.' },
+      { code: 'es', route: '/es/', name: 'Español', html: homeEs, title: 'Más información para quien vive en la ruta.' },
+    ];
+    for (const { code, route, name, html, title } of homes) {
       assert.deepEqual(
         hreflangs(html).filter((link) => link.hreflang !== 'x-default'),
         [{ hreflang: 'pt-BR', route: '/' }, { hreflang: 'en', route: '/en/' }, { hreflang: 'es', route: '/es/' }],
-        `${label} home hreflang group`,
+        `${route} home hreflang group`,
       );
-      assert.deepEqual(hreflangs(html).filter((link) => link.hreflang === 'x-default'), [{ hreflang: 'x-default', route: '/' }], `${label} x-default`);
-      assert.ok(html.includes('class="lang-switch"'), `${label} has language switcher`);
+      assert.deepEqual(hreflangs(html).filter((link) => link.hreflang === 'x-default'), [{ hreflang: 'x-default', route: '/' }], `${route} x-default`);
+      assert.ok(html.includes(`<h1 class="lp-title">${title}</h1>`), `${route} uses its localized heading`);
+      const picker = headerLanguagePicker(html);
+      assert.ok(picker.includes(`lang="${code}" aria-current="true">${name}</span>`), `${route} marks its current language`);
+      for (const other of homes.filter((home) => home.code !== code)) {
+        assert.ok(picker.includes(`href="${other.route}" lang="${other.code}" hreflang="${other.code}">${other.name}</a>`), `${route} can switch to ${other.route}`);
+      }
+      assert.doesNotMatch(html, /class="lang-switch"/, `${route} has one language picker in its header`);
     }
-    assert.ok(homeEn.includes('<h1 class="lp-title">Fuel prices in Brazil by state and city, with ANP data</h1>'));
-    assert.ok(homeEn.includes('<p class="lp-slogan">More information for life on the road.</p>'));
     assert.ok(!homeEn.includes('Pular para o conteúdo') && !homeEn.includes('Mais informação'));
-    assert.ok(!homeEs.includes('Preços de combustíveis por estado'), 'Spanish home renders Spanish H1');
     assert.ok(!sitemap.includes('/es/guias/stale-guide/'), 'stale page stays out of the sitemap');
     assert.ok(!sitemap.includes('/en/guides/draft-guide/'), 'draft stays out of the sitemap');
     assert.match(sitemap, /<loc>https:\/\/abastevo\.com\.br\/en\/guides\/ethanol-or-gasoline\/<\/loc>\s*<lastmod>2026-11-17<\/lastmod>/);
@@ -97,11 +110,11 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
       assert.ok(html.indexOf('hreflang="x-default"') < html.indexOf('</head>'), `${rel} hreflang sits before </head>`);
     }
     assert.ok(en.includes('<meta property="og:locale:alternate" content="pt_BR">') && en.includes('<meta property="og:locale:alternate" content="es_ES">'));
-    assert.ok(en.includes('<nav class="lang-switch" aria-label="Languages">\n        <div class="shell">'));
+    assert.match(headerLanguagePicker(en), /<summary aria-label="Languages · English">/);
     assert.ok(!en.includes('/guias/feed.xml'), 'translated guide does not advertise the Portuguese feed');
-    assert.ok(en.includes('<a href="/guias/etanol-ou-gasolina/" lang="pt-BR" hreflang="pt-BR">Português</a>'));
-    assert.ok(en.includes('<a href="/es/guias/etanol-o-gasolina/" lang="es" hreflang="es">Español</a>'));
-    assert.ok(pt.includes('<a href="/en/guides/ethanol-or-gasoline/" lang="en" hreflang="en">English</a>'), 'pt-BR page links its translations');
+    assert.ok(headerLanguagePicker(en).includes('<a href="/guias/etanol-ou-gasolina/" lang="pt-BR" hreflang="pt-BR">Português</a>'));
+    assert.ok(headerLanguagePicker(en).includes('<a href="/es/guias/etanol-o-gasolina/" lang="es" hreflang="es">Español</a>'));
+    assert.ok(headerLanguagePicker(pt).includes('<a href="/en/guides/ethanol-or-gasoline/" lang="en" hreflang="en">English</a>'), 'pt-BR page links its translations');
 
     // Locale head and dates.
     assert.ok(en.includes('<html lang="en">'));
@@ -127,8 +140,7 @@ test('multilingual build: reviewed pages, hubs, sitemap, head and switcher', () 
     assert.ok(tool.includes('The math runs in your browser.'));
     assert.ok(!tool.includes('Preço da gasolina'));
     assert.ok(tool.includes('data-tool="etanol-ou-gasolina"'), 'calculator keeps its pt-BR form id');
-    assert.ok(tool.includes('class="lang-switch"'));
-    assert.ok(tool.includes('<a href="/es/" lang="es" hreflang="es">Español</a>'), 'untranslated locale in switcher falls back to that locale home');
+    assert.ok(headerLanguagePicker(tool).includes('<a href="/es/" lang="es" hreflang="es">Español</a>'), 'untranslated locale in switcher falls back to that locale home');
 
     // Hubs list emitted entries only.
     const enGuidesHub = read(outDir, 'en/guides/index.html');
@@ -165,6 +177,9 @@ test('multilingual build: locales disabled leave the pt-BR output unchanged', ()
       assert.equal(read(second, rel), read(first, rel), `${rel} is byte-identical with locales disabled`);
     }
     assert.ok(!fs.existsSync(path.join(second, 'en')) && !fs.existsSync(path.join(second, 'es')), 'no locale directories');
+    const picker = headerLanguagePicker(read(second, 'index.html'));
+    assert.match(picker, /lang="pt-BR" aria-current="true">Português<\/span>/);
+    assert.doesNotMatch(picker, /href=/, 'the header does not link to unreleased languages');
     assert.ok(!read(second, 'guias/index.html').includes('hreflang'), 'pt-BR hub declares no hreflang when locales are off');
   } finally {
     fs.rmSync(first, { recursive: true, force: true });
