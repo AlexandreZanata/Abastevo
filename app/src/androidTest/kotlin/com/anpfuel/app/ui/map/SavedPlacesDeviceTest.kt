@@ -142,6 +142,9 @@ class SavedPlacesDeviceTest {
             store.savePlace(SavedOwner("acct-a", origin), SavedPlace("00000000-0000-4000-8000-000000000002", SavedPlaceKind.PLACE, "Da conta A", GeoPoint(2, 2), null, SavedSourceKind.MANUAL, null, null, 0))
         }
         compose.setContent { SavedScreen(onBack = {}, viewModel = vm) }
+        compose.waitUntil(5_000) {
+            compose.onAllNodesWithTag("saved-place-00000000-0000-4000-8000-000000000001").fetchSemanticsNodes().isNotEmpty()
+        }
         compose.onNodeWithText("Do visitante").assertIsDisplayed()
         assertEquals(0, compose.onAllNodesWithTag("saved-place-00000000-0000-4000-8000-000000000002").fetchSemanticsNodes().size)
         signedIn = "acct-a"
