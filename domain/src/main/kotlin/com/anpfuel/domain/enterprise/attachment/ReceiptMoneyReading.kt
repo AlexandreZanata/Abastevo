@@ -19,13 +19,30 @@ class ReceiptMoneyReading private constructor(val paid: ReceiptMoneySuggestion?,
 
     companion object {
         private const val AMOUNT = "([0-9]{1,11}|[0-9]{1,3}(?:\\.[0-9]{3}){1,3}),([0-9]{2})"
-        private val total = Regex("(?:valor\\s+total|total(?:\\s+(?:a\\s+pagar|pago))?)\\s*:?\\s*(?:R\\$\\s*)?$AMOUNT", RegexOption.IGNORE_CASE)
-        private val discount = Regex("desconto(?:\\s+total)?\\s*:?\\s*(?:R\\$\\s*)?$AMOUNT", RegexOption.IGNORE_CASE)
+        private const val TAIL = "\\s*:?\\s*(?:R\\$\\s*)?$AMOUNT"
+
+        // An NFC-e prints the item total before discount as "Valor total" and the
+        // net amount as "Valor a pagar"; only the net amount is what was paid.
+        private val payable = Regex("(?:(?:valor|total)\\s+a\\s+pagar|(?:valor|total)\\s+pago)$TAIL", RegexOption.IGNORE_CASE)
+        private val gross = Regex("(?:valor\\s+)?total$TAIL", RegexOption.IGNORE_CASE)
+        private val discount = Regex("descontos?(?:\\s+total)?$TAIL", RegexOption.IGNORE_CASE)
 
         fun read(lines: Sequence<ReceiptTextLine>): ReceiptMoneyReading {
             val bounded = lines.take(256).filter { it.text.length <= 128 }.toList()
-            return ReceiptMoneyReading(readField(bounded, total), readField(bounded, discount))
+            val payableField = readField(bounded, payable)
+            val grossField = readField(bounded, gross)
+            val discountField = readField(bounded, discount)
+            if (payableField == null) {
+                // A gross total is the paid amount only when nothing was discounted.
+                return ReceiptMoneyReading(grossField.takeIf { discountField == null }, discountField)
+            }
+            val reconciles = grossField == null || discountField == null ||
+                centavos(grossField) - centavos(discountField) == centavos(payableField)
+            return if (reconciles) ReceiptMoneyReading(payableField, discountField) else ReceiptMoneyReading(null, null)
         }
+
+        private fun centavos(suggestion: ReceiptMoneySuggestion): Long =
+            EnterpriseValues.parseCentavos(suggestion.decimal.replace(",", "").trimStart('0').ifEmpty { "0" })
 
         private fun readField(lines: List<ReceiptTextLine>, field: Regex): ReceiptMoneySuggestion? {
             val candidates = lines.mapNotNull { line ->

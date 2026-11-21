@@ -173,8 +173,9 @@ additional env rollout is granted to the agent by this amendment.
 
 The IndexNow timer reads the public landing and portal sitemaps every 30
 minutes, which covers releases and portal refreshes. It submits new URLs, URLs
-with a changed lastmod and URLs removed from the sitemaps. A failed fetch or
-refused batch leaves the last accepted state in place for the next run. The
+with a changed lastmod and URLs removed from the sitemaps. A failed fetch keeps
+the last accepted state. The state records each accepted batch, so a refused
+later batch is retried on the next run without resending the earlier ones. The
 deploy workflow does not call the submitter. Submission is off by default.
 
 Every request carries the user agent `abastevo-indexnow/1`. The public edge

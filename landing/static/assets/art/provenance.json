@@ -97,6 +97,13 @@
       "sha256": "d4df28a9ab47958ae25434b26c57116e9d4e982fed18d7c79b74130a8529a9fa",
       "authoredDate": "2026-11-17",
       "method": "Hand-authored SVG composed by docs/assets/landing/hero-mark-20261117/compose.py: the approved brand mark (docs/assets/brand/abastevo-logo.svg, paths verbatim, ids prefixed) on a dotted field with two route ribbons in the mark colours, pins and two abstract interface cards. No text, numerals, raster or external reference."
+    },
+    {
+      "name": "open-data-thumbnails",
+      "generator": "built-in image_gen",
+      "generatedDate": "2026-11-21",
+      "references": ["driver", "ride-driver", "fleet", "open-data"],
+      "method": "Three transparent 3D illustrations for station search, enforcement records and methodology. Each 1254x1254 PNG was trimmed, resized and centered on a 320x240 transparent canvas with ImageMagick, then exported as WebP at quality 87 and method 6."
     }
   ],
   "outputs": [
@@ -217,6 +224,27 @@
       "sha256": "d4df28a9ab47958ae25434b26c57116e9d4e982fed18d7c79b74130a8529a9fa",
       "bytes": 25963,
       "role": "hero-mark"
+    },
+    {
+      "file": "station-search-thumbnail.8868c3d5.webp",
+      "sha256": "8868c3d5c1f6d53aab028d0bbdd653699268b1a7ed0d8d74a5f525aaa02ddf7f",
+      "bytes": 7088,
+      "width": 320,
+      "role": "open-data-thumbnails"
+    },
+    {
+      "file": "official-inspection-thumbnail.b80e5323.webp",
+      "sha256": "b80e5323d0cf624febf2945839512429f06e3fac59a72ba520f1a05a4f98ddf9",
+      "bytes": 5934,
+      "width": 320,
+      "role": "open-data-thumbnails"
+    },
+    {
+      "file": "methodology-thumbnail.9441c6a9.webp",
+      "sha256": "9441c6a9f9a98e626e3d652090d6ab8ceb436bfc1d20befb518758a236b2b801",
+      "bytes": 9984,
+      "width": 320,
+      "role": "open-data-thumbnails"
     }
   ],
   "export4k": {

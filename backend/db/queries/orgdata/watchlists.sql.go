@@ -99,7 +99,7 @@ FROM enterprise_data_plan_datasets p
 JOIN enterprise_regional_series s ON (s.dataset_key,s.dataset_revision)=(p.dataset_key,p.dataset_revision)
 WHERE (p.product_code,p.plan_code,p.plan_revision)=($1::text,$2::text,$3::bigint)
   AND p.dataset_key=$4::text AND p.dataset_revision>$5::bigint
-ORDER BY p.dataset_revision DESC LIMIT 1
+ORDER BY s.survey_end DESC,p.dataset_revision DESC LIMIT 1
 `
 
 type LatestWatchRevisionParams struct {
@@ -110,6 +110,7 @@ type LatestWatchRevisionParams struct {
 	LastRevision int64  `json:"last_revision"`
 }
 
+// A correction of an earlier week may carry a higher revision; compare the latest survey.
 func (q *Queries) LatestWatchRevision(ctx context.Context, arg LatestWatchRevisionParams) (int64, error) {
 	row := q.db.QueryRow(ctx, latestWatchRevision,
 		arg.ProductCode,

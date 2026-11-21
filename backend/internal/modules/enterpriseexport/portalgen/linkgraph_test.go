@@ -36,6 +36,22 @@ func TestLinkGraphOfTheGeneratedPortal(t *testing.T) {
 	}
 }
 
+func TestConsultationHeaderIncludesToolsOnDesktopAndMobile(t *testing.T) {
+	out := generateSEOPortal(t, true)
+	page := readPortal(t, out, "consultar/index.html")
+	header, _, _ := strings.Cut(page, "</header>")
+	for _, class := range []string{"topnav", "site-nav"} {
+		_, markup, found := strings.Cut(header, `<nav class="`+class+`"`)
+		if !found {
+			t.Fatalf("consultation header is missing %s", class)
+		}
+		nav, _, _ := strings.Cut(markup, "</nav>")
+		if !strings.Contains(nav, `<a href="/ferramentas/">Ferramentas</a>`) {
+			t.Errorf("consultation header %s is missing the tools link", class)
+		}
+	}
+}
+
 func TestLinkingModulesOnCityAndStationPages(t *testing.T) {
 	out := generateSEOPortal(t, true)
 	city := readPortal(t, out, "precos/mt/cuiaba/index.html")

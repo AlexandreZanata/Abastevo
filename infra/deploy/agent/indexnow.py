@@ -172,9 +172,17 @@ def submit(env):
         return "no change"
 
     identity = {"host": host, "key": key, "keyLocation": f"{origin}/{key}.txt"}
+    # Record each accepted batch so a later refusal does not resend it forever.
+    accepted = dict(previous)
     for offset in range(0, len(urls), BATCH_SIZE):
-        request(opener, endpoint, timeout, {**identity, "urlList": urls[offset:offset + BATCH_SIZE]})
-    save_state(state, current)
+        batch = urls[offset:offset + BATCH_SIZE]
+        request(opener, endpoint, timeout, {**identity, "urlList": batch})
+        for url in batch:
+            if url in current:
+                accepted[url] = current[url]
+            else:
+                accepted.pop(url, None)
+        save_state(state, accepted)
     return (f"submitted={len(urls)} new={len(new)} changed={len(changed)} "
             f"removed={len(removed)} ignored={ignored}")
 

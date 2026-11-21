@@ -168,13 +168,21 @@ class IndexNow(unittest.TestCase):
         self.assertEqual(self.requests, ["/sitemap.xml", "/sitemap-portal.xml", "/nested.xml", "/submit"])
         self.assertEqual(self.posted_urls(), [self.origin + "/first/", self.origin + "/second/"])
 
-    def test_refused_second_batch_preserves_accepted_state(self):
-        saved = self.accepted_state()
+    def test_refused_second_batch_keeps_only_the_accepted_batch(self):
+        saved = json.loads(self.accepted_state())
         self.set_urls("/sitemap.xml", [(f"/page/{index:05}/", "") for index in range(10001)])
         self.statuses = [202, 403]
         self.assertIn("HTTP 403", self.run_submitter(1))
         self.assertEqual(len(self.posts), 2)
-        self.assertEqual(self.state.read_bytes(), saved)
+        first = self.posts[0][1]["urlList"]
+        expected = dict(saved)
+        for url in first:
+            expected.pop(url, None) if url == self.origin + "/first/" else expected.update({url: ""})
+        self.assertEqual(json.loads(self.state.read_bytes()), expected)
+        self.posts.clear()
+        # The batch that carried the removal and 9,999 new pages is not resent.
+        self.assertEqual(self.run_submitter(), "indexnow: submitted=2 new=2 changed=0 removed=0 ignored=0")
+        self.assertEqual(self.posted_urls(), [self.origin + "/page/09999/", self.origin + "/page/10000/"])
 
     def test_unexpected_success_code_does_not_save_state(self):
         self.statuses = [204]

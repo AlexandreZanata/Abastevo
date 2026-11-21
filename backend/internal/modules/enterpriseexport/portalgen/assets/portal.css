@@ -90,6 +90,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 .topbar-link svg { display: block; width: 18px; height: 18px; }
 .topbar-actions { display: flex; align-items: center; gap: 0.5rem; margin-left: auto; }
 .pill-light { display: inline-flex; align-items: center; justify-content: center; min-height: 40px; padding: 0 1rem; border-radius: 999px; background: #ffffff; color: #000000; font-family: var(--font-display); font-size: 0.9375rem; font-weight: 700; text-decoration: none; }
+.topnav a, .topbar-link, .pill-light { white-space: nowrap; }
 .pill-light:hover { background: #e2e2e2; }
 .topbar :focus-visible, .footer :focus-visible { outline-color: #ffffff; }
 .nav-toggle { position: static; }
@@ -108,6 +109,10 @@ a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible
 @media (min-width: 64rem) {
   .topnav { display: flex; }
   .nav-toggle { display: none; }
+}
+@media (min-width: 64rem) and (max-width: 71.999rem) {
+  .topbar-inner { gap: 1rem; }
+  .topnav a { padding-inline: 0.5rem; }
 }
 @media (max-width: 39.999rem) { .hide-sm { display: none !important; } }
 

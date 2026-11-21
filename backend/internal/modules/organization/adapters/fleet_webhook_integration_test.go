@@ -196,6 +196,12 @@ VALUES($1,$2,1,'OUTBOUND_WEBHOOK','synthetic-webhook',$3,$4,1024,1,'APPROVED','s
 		run()
 	}
 	check(next, "FAILED", 3)
+	// A job attempt that fails before its claim spends no delivery attempt.
+	var jobBudget int
+	if err := fx.f.Admin.QueryRow(ctx, `SELECT j.max_attempts FROM job_queue j JOIN org_webhook_deliveries d ON d.job_id=j.id
+WHERE d.org_id=$1 AND d.operation_id=$2`, org, next).Scan(&jobBudget); err != nil || jobBudget <= 3 {
+		t.Fatalf("job budget cannot outlive the delivery attempts: %d %v", jobBudget, err)
+	}
 	vehicle, pending := transition(fleet.Deactivate, vehicle)
 	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO org_connector_approvals
 (org_id,id,revision,kind,provider_code,resource_id,credential_ref,maximum_bytes,maximum_items,decision,decision_ref)

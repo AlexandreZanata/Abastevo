@@ -108,7 +108,7 @@ func organizationOpenItems(ctx context.Context, tx pgx.Tx, org string) (app.Open
 	var items app.OpenOrganizationItems
 	err := tx.QueryRow(ctx, `SELECT
  (SELECT count(*) FROM org_trips WHERE org_id=$1 AND state IN ('IN_PROGRESS','PAUSED')),
- (SELECT count(*) FROM org_station_agreements WHERE org_id=$1 AND state='ACTIVE' AND valid_until>statement_timestamp()),
+ (SELECT count(*) FROM org_station_agreements WHERE org_id=$1 AND state IN ('PROPOSED','ACTIVE') AND valid_until>statement_timestamp()),
  (SELECT count(*) FROM org_fuelings f WHERE f.org_id=$1 AND
      (SELECT r.state FROM org_fueling_review_entries r WHERE (r.org_id,r.fueling_id)=(f.org_id,f.id) ORDER BY r.sequence DESC LIMIT 1) IN ('SUBMITTED','IN_REVIEW'))
  + (SELECT count(*) FROM org_trips t WHERE t.org_id=$1 AND t.state='COMPLETED' AND
