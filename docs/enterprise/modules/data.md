@@ -48,7 +48,15 @@ API requests, key changes and report generation require server confirmation. Sta
 
 ## 9. Events, notifications and integrations
 
-Reuse enterpriseexport source preparation and typed admitted read ports. Usage and report jobs use the existing queue. External source updates never rewrite a stored method snapshot. Watchlist notices contain public-source metadata and safe scoped links.
+Reuse enterpriseexport source preparation and typed admitted read ports. Usage and report jobs use the existing queue. External source updates never rewrite a stored method snapshot. A member with current Data scope and the organization-wide key management
+permission can watch a fuel in an admitted regional dataset. Creation pins
+an exact prepared revision with a publishable sample. The queued worker
+checks every 24 hours and compares the station means of newer comparable
+revisions. It checks current plan and source admission before publishing.
+A changed mean produces one in-app notice for the current permitted member,
+with the public source, survey end date and direction. Historical survey dates
+remain visible, and rights withdrawal, unavailable samples, lost access and
+retries do not produce duplicate or inferred changes.
 
 ## 10. Data, formulas and examples
 

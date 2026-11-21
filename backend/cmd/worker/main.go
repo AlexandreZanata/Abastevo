@@ -70,6 +70,7 @@ import (
 	trustdomain "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/trust/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/config"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/migrate"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/telemetry"
@@ -1033,6 +1034,15 @@ func run() error {
 		return err
 	}
 	for _, handler := range fleetHandlers {
+		handlers[handler.Kind()] = handler
+	}
+	dataHandlers, err := enterprisesuite.DataHandlers(enterprisesuite.Options{
+		Enabled: cfg.EnterpriseEnabled, BillingEnabled: cfg.EnterpriseBillingEnabled, Pool: raw,
+	})
+	if err != nil {
+		return err
+	}
+	for _, handler := range dataHandlers {
 		handlers[handler.Kind()] = handler
 	}
 	// EMP-GPS-005 (EDR-298): track processing runs on the general dispatcher.

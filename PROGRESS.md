@@ -7,4 +7,5 @@
 - Document storage passed simultaneous upload admission and exact plan-panel usage on PostGIS, plus the Chromium company flow. The fleet test admits ten vehicles, refuses the eleventh without mutating existing vehicles, and rechecks the same ceiling on reactivation.
 - The fueling reviewer and card connector passed approvals, self/stale/warning refusals, retention, and exact matching against alternating submitted and approved inputs on ordinary-role PostGIS. Migration 000279 passed a populated failure-and-recovery rehearsal.
 - Android API 36 passed the 14 targeted enterprise scenarios when the cold-process context test retained its intended preparation between processes. The separate general app run reported 39 failures and nine skips among 172 tests, including missing map fixtures and UI regressions. Broader device acceptance remains pending.
-- Next task: EMP-DATA-005 scoped watchlists. The remaining F8 tasks and gates follow the [backlog](docs/enterprise/backlog/INDEX.md).
+- EMP-DATA-005 added region-and-fuel watches over admitted official surveys. PostGIS exercised comparable changes, one notification on retries, member and organization scope, rights withdrawal and disablement.
+- Next task: EMP-DATA-007, validate market export privacy with the VAL-36 volume fixture. The remaining F8 tasks and gates follow the [backlog](docs/enterprise/backlog/INDEX.md).

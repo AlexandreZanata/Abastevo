@@ -11,6 +11,7 @@ import (
 
 	db "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgdata"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	billing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/httpapi"
 	"github.com/jackc/pgx/v5"
@@ -104,7 +105,7 @@ func (s RegionalSeries) List(ctx context.Context, org kernel.OrgScope, key domai
 		stop := min(start+input.Limit, len(input.Revisions))
 		result = SeriesPage{Dataset: input.Dataset, Condition: "STANDARD", Periods: make([]SeriesPeriod, 0, stop-start)}
 		for i, revision := range input.Revisions {
-			admitted, err := readScopedDataset(ctx, tx, authority, input.Dataset, revision)
+			admitted, err := readScopedDataset(ctx, tx, authority.Plan, input.Dataset, revision)
 			if err != nil {
 				return err
 			}
@@ -133,8 +134,7 @@ func (s RegionalSeries) List(ctx context.Context, org kernel.OrgScope, key domai
 	return result, nil
 }
 
-func readScopedDataset(ctx context.Context, tx pgx.Tx, authority UsageAuthority, key string, revision int64) (AdmittedDataset, error) {
-	plan := authority.Plan
+func readScopedDataset(ctx context.Context, tx pgx.Tx, plan billing.PlanKey, key string, revision int64) (AdmittedDataset, error) {
 	allowed, err := db.New(tx).CheckPlanDataset(ctx, db.CheckPlanDatasetParams{
 		ProductCode: plan.Product, PlanCode: plan.Plan, PlanRevision: plan.Revision, DatasetKey: key, DatasetRevision: revision,
 	})

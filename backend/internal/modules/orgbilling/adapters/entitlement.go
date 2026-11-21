@@ -93,25 +93,40 @@ type entitledPlan struct {
 // DataAllowanceAt reads the exact source term and API ceiling under the
 // caller's retained organization entitlement lock. Pilot flags are not quotas.
 func (store EntitlementStore) DataAllowanceAt(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, at time.Time) (domain.DataAllowance, error) {
+	plan, err := store.dataPlanAt(ctx, tx, scope, at)
+	if err != nil {
+		return domain.DataAllowance{}, err
+	}
+	calls, err := plan.catalog.Limit(domain.APICalls)
+	if err != nil {
+		return domain.DataAllowance{}, err
+	}
+	return domain.DataAllowance{Plan: plan.catalog.Key(), Term: plan.term, Calls: calls}, nil
+}
+
+func (store EntitlementStore) DataPlanAt(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, at time.Time) (domain.PlanKey, error) {
+	plan, err := store.dataPlanAt(ctx, tx, scope, at)
+	if err != nil {
+		return domain.PlanKey{}, err
+	}
+	return plan.catalog.Key(), nil
+}
+
+func (store EntitlementStore) dataPlanAt(ctx context.Context, tx pgx.Tx, scope kernel.OrgScope, at time.Time) (entitledPlan, error) {
 	if at.IsZero() {
-		return domain.DataAllowance{}, capability.ErrUnavailable
+		return entitledPlan{}, capability.ErrUnavailable
 	}
 	_, plans, err := store.entitledPlans(ctx, tx, scope, "data", at)
 	if err != nil {
-		return domain.DataAllowance{}, err
+		return entitledPlan{}, err
 	}
 	if len(plans) == 0 {
-		return domain.DataAllowance{}, access.ErrEntitlementRequired
+		return entitledPlan{}, access.ErrEntitlementRequired
 	}
 	if len(plans) != 1 {
-		return domain.DataAllowance{}, capability.ErrUnavailable
+		return entitledPlan{}, capability.ErrUnavailable
 	}
-	plan := plans[0]
-	limit, err := plan.catalog.Limit(domain.APICalls)
-	if err != nil {
-		return domain.DataAllowance{}, err
-	}
-	return domain.DataAllowance{Plan: plan.catalog.Key(), Term: plan.term, Calls: limit}, nil
+	return plans[0], nil
 }
 
 func (store EntitlementStore) entitledPlans(ctx context.Context, tx database.OrgDBTX, scope kernel.OrgScope, code string, now time.Time) (bool, []entitledPlan, error) {

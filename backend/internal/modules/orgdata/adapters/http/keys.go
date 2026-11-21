@@ -139,7 +139,7 @@ func RegisterKeys(router chi.Router, service app.KeyCommands, cookies company.Ha
 	if err != nil {
 		return err
 	}
-	if err := register(owned, ListKeysPath, gateway, authorization, app.ListKeys, func(ctx context.Context, p orgapi.Principal, actor orgapp.CompanyActor, in listRequest) (any, error) {
+	if err := register(owned, ListKeysPath, gateway, authorization, app.ListKeys, false, func(ctx context.Context, p orgapi.Principal, actor orgapp.CompanyActor, in listRequest) (any, error) {
 		input, err := in.Page.Normalize()
 		if err != nil {
 			return nil, err
@@ -163,7 +163,7 @@ func RegisterKeys(router chi.Router, service app.KeyCommands, cookies company.Ha
 	}); err != nil {
 		return err
 	}
-	if err := register(owned, IssueKeyPath, gateway, authorization, app.IssueKey, func(ctx context.Context, p orgapi.Principal, actor orgapp.CompanyActor, in issueRequest) (any, error) {
+	if err := register(owned, IssueKeyPath, gateway, authorization, app.IssueKey, false, func(ctx context.Context, p orgapi.Principal, actor orgapp.CompanyActor, in issueRequest) (any, error) {
 		if in.Revision != nil {
 			return nil, orgapi.Malformed
 		}
@@ -172,7 +172,7 @@ func RegisterKeys(router chi.Router, service app.KeyCommands, cookies company.Ha
 	}); err != nil {
 		return err
 	}
-	if err := register(owned, RotateKeyPath, gateway, authorization, app.RotateKey, func(ctx context.Context, p orgapi.Principal, actor orgapp.CompanyActor, in rotateRequest) (any, error) {
+	if err := register(owned, RotateKeyPath, gateway, authorization, app.RotateKey, true, func(ctx context.Context, p orgapi.Principal, actor orgapp.CompanyActor, in rotateRequest) (any, error) {
 		input := app.Command{Action: app.RotateKey, OperationID: in.OperationID, ExpectedRevision: *in.Revision,
 			Label: in.Label, Scopes: in.Scopes, ExpiresAt: in.ExpiresAt}
 		if in.OverlapUntil != nil {
@@ -182,19 +182,19 @@ func RegisterKeys(router chi.Router, service app.KeyCommands, cookies company.Ha
 	}); err != nil {
 		return err
 	}
-	return register(owned, RevokeKeyPath, gateway, authorization, app.RevokeKey, func(ctx context.Context, p orgapi.Principal, actor orgapp.CompanyActor, in revokeRequest) (any, error) {
+	return register(owned, RevokeKeyPath, gateway, authorization, app.RevokeKey, true, func(ctx context.Context, p orgapi.Principal, actor orgapp.CompanyActor, in revokeRequest) (any, error) {
 		return write(ctx, service, p, actor, app.Command{Action: app.RevokeKey, OperationID: in.OperationID, ExpectedRevision: *in.Revision})
 	})
 }
 
 func register[T orgapi.Request](router chi.Router, path string, gateway orgapi.Gateway, authorization access.Authorization,
-	action app.Action, serve func(context.Context, orgapi.Principal, orgapp.CompanyActor, T) (any, error),
+	action app.Action, requireRevision bool, serve func(context.Context, orgapi.Principal, orgapp.CompanyActor, T) (any, error),
 ) error {
 	policy := app.KeyPolicy(action)
 	records := keyRecords{policy: policy}
 	authorization.Records = records
 	rule := orgapi.Rule{Permission: string(policy.Permission), Fresh: policy.Fresh, CompanyOnly: true, Write: policy.Effect.Write(),
-		RequireRevision: action == app.RotateKey || action == app.RevokeKey, Success: 200}
+		RequireRevision: requireRevision, Success: 200}
 	return guarded.Register(router, path, gateway, rule, authorization, policy, records, func(ctx context.Context, p orgapi.Principal, _ access.Decision, in T) (any, error) {
 		actor, err := organization.CurrentCompanyActor(ctx)
 		if err != nil {

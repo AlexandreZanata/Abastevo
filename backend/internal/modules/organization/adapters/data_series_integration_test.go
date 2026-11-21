@@ -81,7 +81,11 @@ func TestRegionalDataAPIRechecksRightsAndKeepsOnlyAdmittedAggregates(t *testing.
 	env := dataUsageFixture(t, 20)
 	fx, ctx := env.fx, t.Context()
 	org := fx.scope.OrgID().String()
-	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()
+	var runtimeRole string
+	if err := env.pool.QueryRow(ctx, "SELECT current_user").Scan(&runtimeRole); err != nil {
+		t.Fatal(err)
+	}
+	role := pgx.Identifier{runtimeRole}.Sanitize()
 	for _, grant := range []string{
 		"GRANT SELECT ON enterprise_data_source_reviews,enterprise_regional_datasets,enterprise_data_plan_datasets TO ",
 		"GRANT SELECT,INSERT ON enterprise_regional_series,enterprise_regional_series_samples TO ",

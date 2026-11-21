@@ -14319,6 +14319,165 @@ paths:
           $ref: '#/components/responses/EnterprisePrivateError'
         '503':
           $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/data/watchlists/list:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataWatchList
+      summary: List your scoped Data watchlists
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: false
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataWatchPageRequest'
+      responses:
+        '200':
+          description: Watchlist state for the current company membership.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataWatchPage'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/data/watchlists/create:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataWatchCreate
+      summary: Follow an admitted Data survey series
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataWatchCreate'
+      responses:
+        '200':
+          description: Watchlist state for the current company membership.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataWatchResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+  /v1/orgs/{org_id}/data/watchlists/{watch_id}/disable:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterpriseDataWatchDisable
+      summary: Stop a scoped Data watch
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: data.key.manage
+        write: true
+        fresh: true
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      - name: watch_id
+        in: path
+        required: true
+        schema:
+          type: string
+          format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EnterpriseDataWatchDisable'
+      responses:
+        '200':
+          description: Watchlist state for the current company membership.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterpriseDataWatchResult'
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
   /v1/orgs/{org_id}/fuelings/{fueling_id}/review/read:
     post:
       tags:
@@ -48891,6 +49050,86 @@ components:
         bearer:
           type: string
           description: One-time bearer for the first successful issue or rotate response.
+        replayed:
+          type: boolean
+    EnterpriseDataWatchPageRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+        cursor:
+          type: string
+          maxLength: 2048
+    EnterpriseDataWatchCreate:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id, dataset, fuel, baseline_revision]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+        dataset:
+          type: string
+        fuel:
+          type: string
+        baseline_revision:
+          type: string
+          pattern: '^[1-9][0-9]{0,18}$'
+    EnterpriseDataWatchDisable:
+      type: object
+      additionalProperties: false
+      required: [schema_version, operation_id]
+      properties:
+        schema_version:
+          type: integer
+          enum: [1]
+        operation_id:
+          type: string
+          format: uuid
+    EnterpriseDataWatch:
+      type: object
+      additionalProperties: false
+      required: [id, dataset, fuel, baseline_revision, last_observed_revision, active]
+      properties:
+        id:
+          type: string
+          format: uuid
+        dataset:
+          type: string
+        fuel:
+          type: string
+        baseline_revision:
+          type: string
+          pattern: '^[1-9][0-9]{0,18}$'
+        last_observed_revision:
+          type: string
+          pattern: '^[1-9][0-9]{0,18}$'
+        active:
+          type: boolean
+    EnterpriseDataWatchPage:
+      type: object
+      additionalProperties: false
+      required: [watchlists, next_cursor]
+      properties:
+        watchlists:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnterpriseDataWatch'
+        next_cursor:
+          type: string
+    EnterpriseDataWatchResult:
+      type: object
+      additionalProperties: false
+      required: [watchlist, replayed]
+      properties:
+        watchlist:
+          $ref: '#/components/schemas/EnterpriseDataWatch'
         replayed:
           type: boolean
     EnterpriseFuelingReviewDecision:

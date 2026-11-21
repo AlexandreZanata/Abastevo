@@ -37,6 +37,10 @@ type dataUsageFixtureState struct {
 }
 
 func dataUsageFixture(t *testing.T, calls int64) dataUsageFixtureState {
+	return dataUsageFixtureFor(t, calls, 24*time.Hour)
+}
+
+func dataUsageFixtureFor(t *testing.T, calls int64, duration time.Duration) dataUsageFixtureState {
 	t.Helper()
 	fx, _, _ := lifecycleFixture(t)
 	ctx := t.Context()
@@ -80,8 +84,8 @@ VALUES('data','synthetic',1,'Synthetic Data',ARRAY['organizations','data'],$1)`,
 	}
 	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO org_billing_trial_grants
 (org_id,id,product_code,plan_code,plan_revision,eligible_from,eligible_until,duration_seconds,approval_ref)
-VALUES($1,$2,'data','synthetic',1,$3,$4,86400,'synthetic-reviewed-eligibility')`,
-		org, grantID, now.Add(-time.Hour), now.Add(time.Hour)); err != nil {
+VALUES($1,$2,'data','synthetic',1,$3,$4,$5,'synthetic-reviewed-eligibility')`,
+		org, grantID, now.Add(-time.Hour), now.Add(time.Hour), int64(duration/time.Second)); err != nil {
 		t.Fatal(err)
 	}
 	trial := billing.TrialStore{Pool: pool, Ledger: billing.SubscriptionLedger{Capabilities: known}, Audit: audits}

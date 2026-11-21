@@ -158,7 +158,10 @@
     "POST /v1/orgs/{org_id}/data/keys/issue",
     "POST /v1/orgs/{org_id}/data/keys/list",
     "POST /v1/orgs/{org_id}/data/keys/{key_id}/revoke",
-    "POST /v1/orgs/{org_id}/data/keys/{key_id}/rotate"
+    "POST /v1/orgs/{org_id}/data/keys/{key_id}/rotate",
+    "POST /v1/orgs/{org_id}/data/watchlists/create",
+    "POST /v1/orgs/{org_id}/data/watchlists/list",
+    "POST /v1/orgs/{org_id}/data/watchlists/{watch_id}/disable"
    ],
    "reason": ""
   },

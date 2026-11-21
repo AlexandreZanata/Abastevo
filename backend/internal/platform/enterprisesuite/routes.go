@@ -10,6 +10,7 @@ import (
 	"errors"
 	"net"
 	"net/url"
+	"slices"
 	"time"
 
 	account "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/account/application"
@@ -187,6 +188,7 @@ func Register(router chi.Router, o Options) error {
 	definitions = append(definitions, intelpg.AuditDefinitions()...)
 	definitions = append(definitions, agreepg.AuditDefinitions()...)
 	definitions = append(definitions, datapg.KeyAuditDefinitions()...)
+	definitions = append(definitions, datapg.WatchAuditDefinitions()...)
 	definitions = append(definitions, connectorpg.AuditDefinitions()...)
 	auditCatalog, err := audit.NewCatalog(definitions)
 	if err != nil {
@@ -271,6 +273,10 @@ func Register(router chi.Router, o Options) error {
 	}
 	usage := datapg.UsageStore{Pool: o.Pool, Plans: plans, Flags: flags, Authority: dataAuthority, Enabled: o.BillingEnabled}
 	if err := dataweb.RegisterUsage(router, usage, cookies, gateway, authorization); err != nil {
+		return err
+	}
+	watches := datapg.WatchStore{Pool: o.Pool, Plans: plans, Authority: dataAuthority, Audit: auditStore, Now: time.Now, Enabled: o.BillingEnabled}
+	if err := dataweb.RegisterWatches(router, watches, cookies, gateway, authorization); err != nil {
 		return err
 	}
 	if o.BillingEnabled {
@@ -638,7 +644,11 @@ func Register(router chi.Router, o Options) error {
 // registerNotices mounts the four own-inbox routes (EMP-NOTIF-001). Their
 // writes use a dedicated route-class admission, not a catalog permission.
 func registerNotices(router chi.Router, o Options, cookies companyweb.Handler, gateway orgapi.Gateway, roles *accesspg.Store, allowance identity.OperationQuota) error {
-	kinds, err := notify.NewCatalog(o.NoticeKinds)
+	definitions := o.NoticeKinds
+	if o.BillingEnabled {
+		definitions = append(slices.Clone(definitions), datapg.WatchNoticeKind())
+	}
+	kinds, err := notify.NewCatalog(definitions)
 	if err != nil {
 		return err
 	}
