@@ -63,6 +63,7 @@ func composePaymentInbox(cfg config.Config, pool *pgxpool.Pool, clock func() tim
 	router.Settlement = settlement
 
 	var companyBilling *orgbilling.BillingIntake
+	var companyRefund orgbilling.CompanyRefund
 	if cfg.EnterpriseEnabled && cfg.EnterpriseBillingEnabled {
 		capabilities, err := orgcapability.NewCatalog(enterprisesuite.CapabilityCodes())
 		if err == nil {
@@ -72,6 +73,11 @@ func composePaymentInbox(cfg config.Config, pool *pgxpool.Pool, clock func() tim
 		}
 	}
 
+	if companyBilling != nil {
+		dispute.Company = companyBilling
+		companyRefund.Intake, companyRefund.Inbox = *companyBilling, store
+		router.Refund = &companyRefund
+	}
 	if preflight.Stripe.MaintenanceReady {
 		env := payWorkerStripeEnv(payments.Stripe.Mode)
 		stripe := payadapters.NewStripeProvider(payments.Stripe.SecretKey, env, nil)
@@ -79,6 +85,7 @@ func composePaymentInbox(cfg config.Config, pool *pgxpool.Pool, clock func() tim
 		mux.Stripe = stripe
 		dispute.Stripe = stripe
 		if companyBilling != nil {
+			companyRefund.Stripe = stripe
 			router.Settlement = orgbilling.StripeSettlement{
 				Resources: stripe, Personal: settlement, Inbox: store, Merchant: stripe.Merchant, Environment: env,
 				Record: companyBilling,
@@ -96,6 +103,7 @@ func composePaymentInbox(cfg config.Config, pool *pgxpool.Pool, clock func() tim
 		mux.Asaas = asaas
 		dispute.Asaas = asaas
 		if companyBilling != nil {
+			companyRefund.Asaas = asaas
 			router.Settlement = orgbilling.AsaasSettlement{
 				Resources: asaas, Bindings: companyBilling, Record: companyBilling, Personal: router.Settlement, Inbox: store,
 				Merchant: payments.Asaas.MerchantID, Environment: env, AutomaticAllowed: preflight.PixAutomatic.MaintenanceReady,

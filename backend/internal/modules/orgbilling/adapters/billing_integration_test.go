@@ -3,14 +3,17 @@
 package adapters_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
 	payment "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
@@ -53,12 +56,6 @@ VALUES($1,'fleet','synthetic',1,'stripe_card','test','synthetic-merchant','synth
 	at := time.Date(2026, 11, 21, 10, 0, 0, 0, time.UTC)
 	prior := d.Period{Start: at.AddDate(0, -1, 0), End: at}
 	term := d.Period{Start: at, End: at.AddDate(0, 1, 0)}
-	if _, err := f.Admin.Exec(ctx, `INSERT INTO org_billing_charge_bindings
-(org_id,provider,environment,merchant,resource_ref,subscription_id,offer_id,customer_ref,contract_ref,term_start,term_end)
-VALUES($1,'stripe','test','synthetic-merchant','synthetic-invoice',$2,$3,'synthetic-customer',
- 'synthetic-contract',$4,$5)`, a.ID, a.RecordID, a.ParentID, term.Start, term.End); err != nil {
-		t.Fatal(err)
-	}
 
 	ledger := adapters.SubscriptionLedger{Capabilities: known}
 	key := d.PlanKey{Product: "fleet", Plan: "synthetic", Revision: 1}
@@ -76,9 +73,13 @@ VALUES('fleet',$1,1,'Synthetic larger company',ARRAY['organizations'],10)`, prio
 	pastDue := ready
 	pastDue.Kind, pastDue.ExpectedRevision, pastDue.At = d.ReportPastDue, 1, at
 	pastDue.Reference, pastDue.Period = "synthetic-overdue", d.Period{}
+	proof := f.PrepareSubscriptionOpening(t, priorPlan, ready)
 	for _, event := range []d.LifecycleEvent{ready, pastDue} {
 		if err := database.WithOrgTx(ctx, f.Runtime, scopeA, func(tx pgx.Tx) error {
 			_, err := ledger.ApplyTx(ctx, tx, priorPlan, event)
+			if err == nil && event.Kind == d.ConfirmSettlement {
+				return proof(tx)
+			}
 			return err
 		}); err != nil {
 			t.Fatal(err)
@@ -107,6 +108,15 @@ VALUES('fleet',$1,1,'Synthetic larger company',ARRAY['organizations'],10)`, prio
 		Channel: payment.ChannelCard, ResourceRef: notice.ResourceRef, ChargeRef: "synthetic-payment",
 		Outcome: d.BillingSettled, At: at, Gross: payment.BRL(1723), PaidTerm: term}
 
+	if _, err := intake.RecordSettlement(ctx, notice, fact); !errors.Is(err, d.ErrChargeBindingMissing) {
+		t.Fatalf("renewal without a binding did not return a retryable missing binding: %v", err)
+	}
+	if _, err := f.Admin.Exec(ctx, `INSERT INTO org_billing_charge_bindings
+(org_id,provider,environment,merchant,resource_ref,subscription_id,offer_id,customer_ref,contract_ref,term_start,term_end)
+VALUES($1,'stripe','test','synthetic-merchant','synthetic-invoice',$2,$3,'synthetic-customer',
+ 'synthetic-contract',$4,$5)`, a.ID, a.RecordID, a.ParentID, term.Start, term.End); err != nil {
+		t.Fatal(err)
+	}
 	foreign := fact
 	foreign.Scope = scopeB
 	if _, err := intake.RecordSettlement(ctx, notice, foreign); !errors.Is(err, d.ErrBillingBinding) {
@@ -226,7 +236,7 @@ VALUES($1,'stripe','test','synthetic-merchant','second-company-invoice',$2,$3,'s
 
 	if err := database.WithOrgTx(ctx, f.Runtime, scopeA, func(tx pgx.Tx) error {
 		var receipts, recoveries int
-		if err := tx.QueryRow(ctx, `SELECT count(*) FROM org_billing_settlement_receipts`).Scan(&receipts); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT count(*) FROM org_billing_settlement_receipts WHERE applied_revision=3`).Scan(&receipts); err != nil {
 			return err
 		}
 		if err := tx.QueryRow(ctx, `SELECT count(*) FROM org_billing_subscription_events
@@ -249,4 +259,144 @@ WHERE from_state='PAST_DUE' AND state='ACTIVE' AND event_source='VERIFIED_BILLIN
 	}); err != nil {
 		t.Fatal(err)
 	}
+
+	// A provider read proves the exact reversal. Open, won, mismatched
+	// merchant and historical reversals cannot change the active term.
+	event := app.InboxEvent{Provider: notice.Provider, Environment: notice.Environment, Merchant: notice.Merchant,
+		EventID: "synthetic-reversal", PayloadHash: strings.Repeat("d", 64), ResourceID: "synthetic-dispute"}
+	dispute := app.DisputeFact{Provider: event.Provider, Environment: event.Environment, Merchant: event.Merchant,
+		OriginalChargeID: fact.ChargeRef, Amount: payment.BRL(1723), State: payment.DisputePending}
+	for _, state := range []payment.DisputeState{payment.DisputePending, payment.DisputeWon} {
+		dispute.State = state
+		if handled, err := intake.ObserveCompanyDispute(ctx, event, dispute); !handled || err != nil {
+			t.Fatalf("nonfinal company dispute was misrouted: %t %v", handled, err)
+		}
+	}
+	assertState := func(scope kernel.OrgScope, want string, revision int64) {
+		t.Helper()
+		if err := database.WithOrgTx(ctx, f.Runtime, scope, func(tx pgx.Tx) error {
+			var state string
+			var got int64
+			if err := tx.QueryRow(ctx, "SELECT state,revision FROM org_billing_subscription_events ORDER BY revision DESC LIMIT 1").Scan(&state, &got); err != nil {
+				return err
+			}
+			if state != want || got != revision {
+				t.Fatalf("company state/revision = %s/%d, want %s/%d", state, got, want, revision)
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertState(scopeA, "ACTIVE", 3)
+	dispute.State, dispute.Amount = payment.DisputeLost, payment.BRL(1724)
+	if handled, err := intake.ObserveCompanyDispute(ctx, event, dispute); !handled || !errors.Is(err, payment.ErrBinding) {
+		t.Fatalf("chargeback above the reviewed charge was admitted: %t %v", handled, err)
+	}
+	dispute.Amount = payment.BRL(1723)
+	dispute.Merchant = "foreign-merchant"
+	foreignEvent := event
+	foreignEvent.Merchant = dispute.Merchant
+	if handled, err := intake.ObserveCompanyDispute(ctx, foreignEvent, dispute); handled || err != nil {
+		t.Fatalf("foreign merchant resolved the company charge: %t %v", handled, err)
+	}
+	dispute.Merchant = event.Merchant
+	assertState(scopeA, "ACTIVE", 3)
+	assertState(scopeB, "ACTIVE", 1)
+
+	for range 2 {
+		go func() {
+			handled, err := intake.ObserveCompanyDispute(ctx, event, dispute)
+			if !handled && err == nil {
+				err = errors.New("company dispute escaped into personal processing")
+			}
+			replies <- result{err: err}
+		}()
+	}
+	for range 2 {
+		if outcome := <-replies; outcome.err != nil {
+			t.Fatal(outcome.err)
+		}
+	}
+	assertState(scopeA, "PAST_DUE", 4)
+	assertState(scopeB, "ACTIVE", 1)
+
+	refundEvent := app.InboxRecord{InboxEvent: event}
+	refundEvent.EventID, refundEvent.ResourceID, refundEvent.EventType = "synthetic-refund-event", secondCompany.ChargeRef, "charge.refunded"
+	refundProbe := &settlementProbe{}
+	refund := adapters.CompanyRefund{Intake: intake, Inbox: refundProbe}
+	refund.Stripe = verifiedCompanyRefund{ChargeID: secondCompany.ChargeRef, Amount: payment.BRL(1723)}
+	if err := refund.Process(ctx, refundEvent); err != nil || refundProbe.marked != "PROCESSED" {
+		t.Fatalf("partial refund was not acknowledged: %v", err)
+	}
+	assertState(scopeB, "ACTIVE", 1)
+	refund.Stripe = verifiedCompanyRefund{ChargeID: secondCompany.ChargeRef, Amount: payment.BRL(1723), Full: true}
+	if err := refund.Process(ctx, refundEvent); err != nil || refundProbe.marked != "PROCESSED" {
+		t.Fatalf("full refund was not acknowledged: %v", err)
+	}
+	assertState(scopeB, "PAST_DUE", 2)
+
+	// A refund names its charge. One that never settled a company term keeps
+	// the outcome it had before company billing existed: acknowledged, with
+	// no provider read and no organization conflict.
+	for _, foreign := range []string{"synthetic-personal-charge", ""} {
+		outside := refundEvent
+		outside.EventID, outside.ResourceID = "synthetic-personal-refund", foreign
+		probe := &settlementProbe{}
+		personal := adapters.CompanyRefund{Intake: intake, Inbox: probe, Stripe: unreadCompanyRefund{t}}
+		if err := personal.Process(ctx, outside); err != nil || probe.marked != "PROCESSED" {
+			t.Fatalf("refund outside company billing was not acknowledged: %v / %q", err, probe.marked)
+		}
+	}
+	otherMerchant := refundEvent
+	otherMerchant.Merchant = "foreign-merchant"
+	probe := &settlementProbe{}
+	if err := (adapters.CompanyRefund{Intake: intake, Inbox: probe, Stripe: unreadCompanyRefund{t}}).Process(ctx, otherMerchant); err != nil || probe.marked != "PROCESSED" {
+		t.Fatalf("another merchant resolved the company charge: %v / %q", err, probe.marked)
+	}
+
+	// A deterministic provider answer about a company charge ends in the
+	// inbox. A returned error would hold every later event of the channel.
+	for _, answer := range []error{payment.ErrNotFound, payment.ErrInvalid, payment.ErrConflict, payment.ErrBinding} {
+		probe := &settlementProbe{}
+		failing := adapters.CompanyRefund{Intake: intake, Inbox: probe, Stripe: failedCompanyRefund{answer}}
+		if err := failing.Process(ctx, refundEvent); err != nil || probe.marked != "CONFLICT" || probe.reason != "organization-refund-binding" {
+			t.Fatalf("%v held the inbox or was acknowledged: %v / %q", answer, err, probe.marked)
+		}
+	}
+	for _, outage := range []error{payment.ErrUnavailable, app.ErrAmbiguous, app.ErrProviderUnauthorized} {
+		probe := &settlementProbe{}
+		failing := adapters.CompanyRefund{Intake: intake, Inbox: probe, Stripe: failedCompanyRefund{outage}}
+		if err := failing.Process(ctx, refundEvent); !errors.Is(err, outage) || probe.marked != "" {
+			t.Fatalf("%v did not stay pending for a retry: %v / %q", outage, err, probe.marked)
+		}
+	}
+	assertState(scopeB, "PAST_DUE", 2)
+
+	// The dispute service records a conflict only for the payment binding
+	// error, so a refused company observation must carry it.
+	unpriced := dispute
+	unpriced.Amount = payment.Money{Currency: "BRL"}
+	if _, err := intake.ObserveCompanyDispute(ctx, event, unpriced); !errors.Is(err, payment.ErrBinding) {
+		t.Fatalf("refused dispute observation would hold the inbox: %v", err)
+	}
+}
+
+type verifiedCompanyRefund app.ChargeRefundFact
+
+func (v verifiedCompanyRefund) VerifyCompanyRefund(_ context.Context, _ app.InboxRecord) (app.ChargeRefundFact, error) {
+	return app.ChargeRefundFact(v), nil
+}
+
+type failedCompanyRefund struct{ err error }
+
+func (f failedCompanyRefund) VerifyCompanyRefund(context.Context, app.InboxRecord) (app.ChargeRefundFact, error) {
+	return app.ChargeRefundFact{}, f.err
+}
+
+type unreadCompanyRefund struct{ t *testing.T }
+
+func (u unreadCompanyRefund) VerifyCompanyRefund(context.Context, app.InboxRecord) (app.ChargeRefundFact, error) {
+	u.t.Error("read the provider for a charge outside company billing")
+	return app.ChargeRefundFact{}, payment.ErrNotFound
 }

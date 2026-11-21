@@ -15,7 +15,8 @@ import (
 )
 
 // DeferInbox keeps one still-pending verified event and its next wake-up in
-// the same transaction. The owner supplies the already bound term boundary.
+// the same transaction. An elapsed deferral can be advanced without replacing
+// a concurrent, still-pending schedule.
 func (s *Store) DeferInbox(ctx context.Context, event InboxInput, until time.Time) error {
 	if s == nil || s.Pool == nil {
 		return domain.ErrUnavailable

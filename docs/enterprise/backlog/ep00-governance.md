@@ -117,18 +117,5 @@ gate and any real-data or implementation gate require separate verification.
 - **Risks and assumptions:** Stage D remains gated while the required decision and evidence are absent.
 - **Done when:** The exact override and readiness are recorded, or F7 remains held.
 
-### EMP-GOV-016 — Establish redistribution rights for public source data in commercial Data products
-- **Meta:** module GOV · phase F0 · cut - · priority P2 · type DISC · size M · state TODO
-- **Objective:** Establish the provenance and redistribution rights needed for Data products.
-- **Rules and use cases:** EDR-025, CX-04, OQ-08, LV-13, BR-SRC-005
-- **Depends on:** EMP-GOV-001
-- **Read first:** [decision register](../decisions.md), [privacy and security](../privacy-security.md)
-- **Scope:** in: per-source license and redistribution review; out: enabling sales or exporting private organization data
-- **Areas:** existing: public source admission and Enterprise Data Offering; proposed: rights evidence
-- **Steps:** Inventory the source and license for each dataset. Record permitted transformations and redistribution or the unresolved rights.
-- **Deliverable:** A source rights register with citations and blockers.
-- **Acceptance:** Every sale-eligible dataset has documented redistribution rights and provenance.
-- **Negative cases:** Public availability is treated as resale permission or a private organization record enters a market dataset.
-- **Validation:** V-DOC · migration: none · rollback: revert the planning record and preserve the decision history.
-- **Risks and assumptions:** Unclear rights keep the affected datasets in the rights-pending state.
-- **Done when:** Rights are recorded per source and unapproved sale paths remain gated.
+EMP-GOV-016 closed by the owner decision on 2026-11-21 (EDR-394).
+Source guardrails and exact runtime admission remain requirements of EMP-DATA-001 and M8.

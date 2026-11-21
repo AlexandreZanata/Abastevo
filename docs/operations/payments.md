@@ -7,6 +7,8 @@ eligibility, notifications, fiscal boundaries, preflight, rotation,
 channel-disable, queue recovery, backup/restore and bounded tests.
 Production prices, live modes and any real charge stay separately gated
 (PAY-21 commercial acceptance); inserting secrets never activates them.
+The [provider setup guide](payment-providers-guide.md) walks through the
+Stripe and Asaas screens, test cards, company charges and sandbox replay.
 
 ## Setup beyond API keys
 
@@ -60,7 +62,9 @@ writes and creates no provider resources. Release criteria:
 
 - Stripe webhook secret: rotate in the Dashboard, run both secrets
   through the overlap window (the verifier accepts old+new signatures),
-  then retire the old one. Old-only signatures are refused.
+  then retire the old one. Old-only signatures are refused. Intake requires one
+  Stripe signature header and one authenticated timestamp within the
+  configured tolerance in either direction (five minutes by default).
 - Asaas webhook token: set the new token while keeping the previous one
   configured; the handler accepts either during overlap, then clear the
   previous value. The API key is never accepted as the webhook token.
@@ -86,7 +90,8 @@ existing subscriptions.
   converge through the same drain — never per-read provider polling.
 - Unknown authenticated events are retained minimally with no effect;
   conflicting deliveries are marked `CONFLICT`, never reprocessed.
-- Stuck `PENDING` rows: inspect `payment_inbox` (`state`, `attempts`,
+- Temporary provider failures defer the affected verified event and allow
+  other inbox rows to drain. Stuck `PENDING` rows: inspect `payment_inbox` (`state`, `attempts`,
   `last_error`, `received_at`); fix the blocking cause (credentials,
   mode, provider outage), then wait for the next tick. Never mark rows
   processed by hand and never delete them: deletion destroys the

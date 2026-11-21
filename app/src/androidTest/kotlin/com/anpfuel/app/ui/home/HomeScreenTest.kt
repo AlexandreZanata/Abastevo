@@ -3,6 +3,7 @@ package com.anpfuel.app.ui.home
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -238,8 +239,11 @@ class HomeScreenTest {
     fun darkThemeKeepsAnpSourceAndFuelNavigationExplicit() {
         var route: String? = null
         showCommercialHome(darkTheme = true, onNavigate = { route = it })
-        composeTestRule.onNodeWithText("ANP").performScrollTo().assertIsDisplayed()
         val context = InstrumentationRegistry.getInstrumentation().targetContext
+        composeTestRule.onNodeWithText(context.getString(R.string.prices_anp_attribution))
+            .performScrollTo()
+            .assertIsDisplayed()
+            .assertHasClickAction()
         val fuelLabel = context.getString(FuelProductI18n.toStringRes(FuelProduct.ETHANOL))
         val description = context.getString(R.string.a11y_fuel_price_card, fuelLabel, "R$ 3,42")
         composeTestRule.onNodeWithContentDescription(description).performScrollTo().performClick()

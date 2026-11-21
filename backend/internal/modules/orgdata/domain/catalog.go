@@ -21,6 +21,8 @@ var (
 	digestPattern     = regexp.MustCompile(`^sha256:[a-f0-9]{64}$`)
 )
 
+const ANPAttribution = "Fonte: ANP"
+
 type Source string
 
 const (

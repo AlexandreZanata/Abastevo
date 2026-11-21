@@ -161,10 +161,14 @@ func checkCompanySandboxReplay(t *testing.T, fixture companySandboxCase, merchan
 	prior := billing.Period{Start: term.Start.AddDate(0, -1, 0), End: term.Start}
 	active := billing.LifecycleEvent{Scope: org.Scope(t), SubscriptionID: org.RecordID, Kind: billing.ConfirmSettlement,
 		Source: billing.VerifiedBilling, At: prior.Start, Period: prior, Reference: "synthetic-prior-term"}
+	proof := f.PrepareSubscriptionOpening(t, plan, active)
 	late := billing.LifecycleEvent{Scope: active.Scope, SubscriptionID: org.RecordID, Kind: billing.ReportPastDue,
 		Source: billing.VerifiedBilling, ExpectedRevision: 1, At: term.Start, Reference: "synthetic-past-due"}
 	if err := database.WithOrgTx(ctx, p, active.Scope, func(tx pgx.Tx) error {
 		if _, err := ledger.ApplyTx(ctx, tx, plan, active); err != nil {
+			return err
+		}
+		if err := proof(tx); err != nil {
 			return err
 		}
 		_, err := ledger.ApplyTx(ctx, tx, plan, late)

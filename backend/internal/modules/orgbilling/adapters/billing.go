@@ -62,7 +62,7 @@ func readChargeBinding(ctx context.Context, queries *db.Queries, scope kernel.Or
 		OrgID: org, Provider: provider, Environment: environment, Merchant: notice.Merchant, ResourceRef: notice.ResourceRef,
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return domain.BillingBinding{}, domain.ErrBillingBinding
+		return domain.BillingBinding{}, domain.ErrChargeBindingMissing
 	}
 	if err != nil {
 		return domain.BillingBinding{}, err

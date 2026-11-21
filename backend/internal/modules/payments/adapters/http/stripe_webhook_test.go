@@ -132,14 +132,45 @@ func TestStripeWebhookSignatureAndBodyRefusals(t *testing.T) {
 		"forged":    {body, signed(body, otherSecret, now), http.StatusBadRequest},
 		"mutated":   {append(append([]byte(nil), body...), '\n'), signed(body, webhookSecret, now), http.StatusBadRequest},
 		"stale":     {body, signed(body, webhookSecret, now.Add(-301*time.Second)), http.StatusBadRequest},
+		"future":    {body, signed(body, webhookSecret, now.Add(301*time.Second)), http.StatusBadRequest},
 		"missing":   {body, "", http.StatusBadRequest},
 		"oversized": {body, strings.Repeat("v1=", 1400), http.StatusBadRequest},
+		// The SDK keeps the last timestamp. A header that also names a stale one is ambiguous.
+		"repeated-timestamp":  {body, fmt.Sprintf("t=%d,", now.Add(-time.Hour).Unix()) + signed(body, webhookSecret, now), http.StatusBadRequest},
+		"no-timestamp":        {body, strings.TrimPrefix(signed(body, webhookSecret, now), fmt.Sprintf("t=%d,", now.Unix())), http.StatusBadRequest},
+		"malformed-timestamp": {body, strings.Replace(signed(body, webhookSecret, now), fmt.Sprintf("t=%d", now.Unix()), "t=soon", 1), http.StatusBadRequest},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
 			inbox := &fakeInbox{result: app.InboxResult{Created: true}}
 			response := serve(t, validHandler(inbox), tc.body, tc.signature, "application/json")
 			if response.Code != tc.status || inbox.calls != 0 {
+				t.Fatalf("status=%d calls=%d", response.Code, inbox.calls)
+			}
+		})
+	}
+}
+
+func TestStripeWebhookRepeatedSignatureHeaderRefused(t *testing.T) {
+	body := eventBody("evt_two_headers", "invoice.paid", "2026-09-30.endive", false, "", "invoice", "in_1")
+	valid := signed(body, webhookSecret, time.Now())
+	for name, headers := range map[string][]string{
+		"valid-twice":        {valid, valid},
+		"valid-then-forged":  {valid, signed(body, otherSecret, time.Now())},
+		"forged-then-valid":  {signed(body, otherSecret, time.Now()), valid},
+		"valid-then-empty":   {valid, ""},
+		"valid-then-garbage": {valid, "t=1,v1=00"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			request := httptest.NewRequest(http.MethodPost, "/v1/payments/stripe/webhook", bytes.NewReader(body))
+			request.Header.Set("Content-Type", "application/json")
+			for _, header := range headers {
+				request.Header.Add("Stripe-Signature", header)
+			}
+			inbox := &fakeInbox{result: app.InboxResult{Created: true}}
+			response := httptest.NewRecorder()
+			validHandler(inbox).handle(response, request)
+			if response.Code != http.StatusBadRequest || inbox.calls != 0 {
 				t.Fatalf("status=%d calls=%d", response.Code, inbox.calls)
 			}
 		})

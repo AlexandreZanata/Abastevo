@@ -151,8 +151,11 @@ texts/images. Personal data stays excluded (B-BR-MAP-17).
 Takedown/confirmation: if ANP objects, the affected fields are withdrawn
 from public outputs in the next release. An optional Fala.BR confirmation can
 be sent by the maintainer (text below); it does not block construction or
-staging. The ESP enterprise register keeps its own `RIGHTS_PENDING` states for
-bulk enterprise downloads, which this decision does not cover.
+staging. On 2026-11-21 the owner extended attributed use to paid analytics and
+facilitation for S-ESP-01 through S-ESP-04 under [EDR-394](../../enterprise/source-admission.md#f8-commercial-rights-decision-emp-gov-016).
+Bulk replication, exclusivity and implied endorsement remain prohibited.
+Withdraw affected Data digests and stop affected publication if ANP objects.
+Record the URL, collection time and SHA-256 of each source snapshot.
 
 Optional Fala.BR text (maintainer sends; agents never contact third parties):
 

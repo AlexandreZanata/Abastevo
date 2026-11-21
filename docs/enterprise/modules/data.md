@@ -6,7 +6,7 @@ Serve reproducible admitted datasets, methodology and analysis to an organizatio
 
 ## 2. Scope
 
-F8 includes catalog, regional series, watchlists, comparisons, reports, API keys and metering. Commercial redistribution requires recorded rights per source under GOV-016. Private receipt, employee, agreement and track data are excluded from market products.
+F8 includes catalog, regional series, watchlists, comparisons, reports, API keys and metering. The owner admits attributed ANP-derived services under EDR-394. Each deployed Data source digest still requires a recorded review. Private receipt, employee, agreement and track data are excluded from market products.
 
 ## 3. Entities and ownership
 
@@ -21,7 +21,8 @@ The organization owns its API keys, usage, watchlists and report requests. Key s
 
 ## 4. Business rules
 
-- **BR-DATA-001 — Recorded admission.** Availability on a public site is not recorded redistribution authority. Each dataset requires its source-specific rights decision.
+- **BR-DATA-001 — Recorded admission.** EDR-394 permits paid facilitation with attributed ANP open data. The current exact-digest review must admit each input. An objection triggers withdrawal and removal under the [source procedure](../source-admission.md#f8-commercial-rights-decision-emp-gov-016).
+- **BR-DATA-005 — Service value and attribution.** Charge for analysis, tools and access. No raw ANP files, bulk replicas, licensing of source data, exclusivity, ownership claims or ANP endorsement. Keep official and community data separate. Show `Fonte: ANP`, the source link and the survey dates or source edition in API metadata, reports and exports. Link the original data for free through ANP. Retain the source URL, collection time and SHA-256 per snapshot.
 - **BR-DATA-002 — Exclude private inputs.** Company, employee, document, agreement and location records never enter a market dataset by default (BR-SRC-005).
 - **BR-DATA-003 — Reproducible basis.** Series, comparisons and reports include origin, period, coverage and methodology revision (BR-TRUTH-004).
 - **BR-DATA-004 — Current key scope.** Issue, rotation, expiry, revocation and quotas preserve the organization boundary and server authorization.
@@ -109,9 +110,45 @@ linked receipt and an admitted recorded track are present for the second
 build. The test compares the manifest and all three core files byte for byte
 with the same build clock and unchanged public-source evidence. A separate API
 fixture covers a foreign key, below-threshold suppression and revoked rights.
-Neither fixture grants commercial redistribution in a deployed environment.
+Deployment requires the recorded exact-digest approvals and the M8 gate.
 
 ### Preparing an approved regional revision
+
+After migration 000294, the migration owner applies
+`infra/db/data-rights-role.sql` with `-v data_rights_role=<dedicated-login>`.
+Use that login's DSN from protected operator configuration for rights recording.
+The approval is tied to the verified core export and the exact official
+survey revision. For S-ESP-01, the catalog pins the verified
+`stations.jsonl` projection digest. For S-ESP-02, it pins the ANP artifact
+checksum of the selected official revision.
+
+Set `SNAPSHOT_DIR` and `OFFICIAL_REVISION` to the reviewed values. Choose
+stable per-intent UUIDs `REGISTRY_OPERATION` and `PRICE_OPERATION`, and
+set `REGISTRY_REVIEW` and `PRICE_REVIEW` to the next review revision for
+each digest. A digest with no prior decision starts at 1.
+
+```sh
+manifest="$SNAPSHOT_DIR/manifest.json"
+snapshot_sha256=$(jq -er '.content_sha256' "$manifest")
+registry_digest=$(jq -er '.files[] | select(.name == "stations.jsonl") | .sha256' "$manifest")
+price_digest=$(jq -er --arg revision "$OFFICIAL_REVISION" \
+  '.sources.official[] | select(.revision_id == $revision) | .source_checksum' "$manifest")
+
+ops enterprise data rights record --source S-ESP-01 --digest "$registry_digest" \
+  --revision "$REGISTRY_REVIEW" --status APPROVED --decision-ref EDR-394 \
+  --operation-id "$REGISTRY_OPERATION" --license-ref Decreto-8777-2016 \
+  --snapshot-dir "$SNAPSHOT_DIR" --snapshot-sha256 "$snapshot_sha256"
+ops enterprise data rights record --source S-ESP-02 --digest "$price_digest" \
+  --revision "$PRICE_REVIEW" --status APPROVED --decision-ref EDR-394 \
+  --operation-id "$PRICE_OPERATION" --license-ref Decreto-8777-2016 \
+  --snapshot-dir "$SNAPSHOT_DIR" --snapshot-sha256 "$snapshot_sha256" \
+  --official-revision "$OFFICIAL_REVISION"
+```
+
+Keep the operation IDs for retries. PostgreSQL records the login, decision,
+digest and time in the immutable review. A withdrawal uses a fresh operation
+ID, the exact currently approved digest, its next revision and a withdrawal
+decision reference, with `--status WITHDRAWN` and no approval-only flags.
 
 Under the recorded redistribution approvals, register the exact catalog
 revision and the plan's dataset scope. The companion rate policy records the

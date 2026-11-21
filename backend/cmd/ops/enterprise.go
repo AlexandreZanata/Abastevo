@@ -195,6 +195,9 @@ func runEnterprise(args []string, getenv func(string) string, out io.Writer) err
 		return runEnterpriseTrial(args[1:], getenv, out)
 	}
 	if len(args) > 0 && args[0] == "billing" {
+		if len(args) > 1 && args[1] == "suspend" {
+			return runEnterpriseBillingSuspension(args[1:], getenv, out)
+		}
 		return runEnterpriseBillingBind(args[1:], getenv, out)
 	}
 	if len(args) > 0 && args[0] == "adjustment" {

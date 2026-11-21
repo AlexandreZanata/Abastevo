@@ -61,8 +61,9 @@ for a versioned regional fuel-price brief derived from admitted public data.
 | Production amount | **UNRESOLVED** |
 | Sale | **DISABLED** |
 
-The candidate remains blocked by: deliverable not implemented, source
-rights/redistribution pending, demand unvalidated, price/term unresolved and
+The candidate remains blocked by: deliverable not implemented, source-digest
+approvals not recorded (the owner admitted attributed ANP reuse in EDR-394),
+demand unvalidated, price/term unresolved and
 fiscal workflow unresolved. Enterprise payment must never create organization
 membership, team access, station representation/management, a private portal or
 cross-account capability. Premium and Enterprise remain independent.

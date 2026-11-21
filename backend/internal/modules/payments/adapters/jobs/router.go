@@ -11,6 +11,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
@@ -45,6 +46,7 @@ type EventProcessor interface {
 type InboxStore interface {
 	PendingInbox(context.Context, domain.Provider, domain.Environment, string, int) ([]app.InboxRecord, error)
 	MarkInbox(context.Context, app.InboxEvent, string, string) error
+	DeferInbox(context.Context, app.InboxEvent, time.Time) error
 }
 
 // Router drains pending payment inbox rows to exactly one service each.
@@ -53,6 +55,7 @@ type Router struct {
 	Settlement EventProcessor
 	Lifecycle  EventProcessor
 	Dispute    EventProcessor
+	Refund     EventProcessor
 	Cycles     EventProcessor
 	Channels   []Channel
 	Limit      int
@@ -66,14 +69,15 @@ func (r Router) limit() int {
 }
 
 // Drain processes bounded pending inbox rows per configured channel and
-// reports how many reached a terminal owner. Unavailable or ambiguous
-// dependencies abort with the count so far and the events stay pending;
-// conflicts are already marked by their service before the error returns.
+// reports how many reached their owner without an error. A failed provider
+// read leaves its receipt pending and schedules another wake-up. A service's
+// terminal conflict and a deferred receipt do not block other events.
 func (r Router) Drain(ctx context.Context) (int, error) {
 	if r.Store == nil {
 		return 0, domain.ErrUnavailable
 	}
 	processed := 0
+	var firstFailure error
 	for _, channel := range r.Channels {
 		events, err := r.Store.PendingInbox(ctx, channel.Provider, channel.Environment, channel.Merchant, r.limit())
 		if err != nil {
@@ -84,12 +88,27 @@ func (r Router) Drain(ctx context.Context) (int, error) {
 				continue
 			}
 			if err := r.route(ctx, event); err != nil {
-				return processed, err
+				switch {
+				case errors.Is(err, domain.ErrConflict), errors.Is(err, domain.ErrStale):
+					// The owning service marked the conflict, or another drain moved the row.
+				case errors.Is(err, domain.ErrUnavailable), errors.Is(err, app.ErrAmbiguous),
+					errors.Is(err, app.ErrProviderUnauthorized):
+					until := time.Now().UTC().Truncate(time.Minute).Add(2 * time.Minute)
+					if deferErr := r.Store.DeferInbox(ctx, event.InboxEvent, until); deferErr != nil && !errors.Is(deferErr, domain.ErrStale) {
+						return processed, deferErr
+					}
+				default:
+					return processed, err
+				}
+				if firstFailure == nil {
+					firstFailure = err
+				}
+				continue
 			}
 			processed++
 		}
 	}
-	return processed, nil
+	return processed, firstFailure
 }
 
 func (r Router) route(ctx context.Context, event app.InboxRecord) error {
@@ -126,6 +145,8 @@ func (r Router) owner(event app.InboxRecord) (EventProcessor, bool) {
 			"invoice.payment_failed", "invoice.payment_action_required",
 			"checkout.session.completed":
 			return r.Lifecycle, true
+		case "charge.refunded":
+			return r.Refund, r.Refund != nil
 		case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed":
 			return r.Dispute, true
 		default:
@@ -133,6 +154,8 @@ func (r Router) owner(event app.InboxRecord) (EventProcessor, bool) {
 		}
 	case domain.ProviderAsaas:
 		switch {
+		case r.Refund != nil && (event.EventType == "PAYMENT_REFUNDED" || event.EventType == "PAYMENT_PARTIALLY_REFUNDED"):
+			return r.Refund, true
 		case event.EventType == "PAYMENT_CHARGEBACK_REQUESTED" ||
 			event.EventType == "PAYMENT_CHARGEBACK_DISPUTE" ||
 			event.EventType == "PAYMENT_AWAITING_CHARGEBACK_REVERSAL":

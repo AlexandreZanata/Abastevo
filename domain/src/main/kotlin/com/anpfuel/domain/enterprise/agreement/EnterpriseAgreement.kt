@@ -18,11 +18,14 @@ object AgreementRules {
     fun validProduct(product: String, unit: String): Boolean =
         product in PRODUCTS && unit in UNITS
 
-    /** Settlement total in centavos: milli-units times milli-BRL, HALF_UP. */
+    /**
+     * Settlement total in centavos (BR-MONEY-005): milli-units times milli-BRL
+     * per unit divided by 10 000, HALF_UP.
+     */
     fun totalCentavos(quantityMilli: Long, priceMilliBrl: Long): Long {
         if (quantityMilli < 0L || priceMilliBrl < 0L) return 0L
-        val num = quantityMilli * priceMilliBrl + 500L
-        return num / 1000L
+        val num = quantityMilli * priceMilliBrl + 5000L
+        return num / 10000L
     }
 }
 

@@ -41,12 +41,17 @@ VALUES('fleet','larger',1,'Synthetic larger fleet',ARRAY['organizations'],$1),
 	offer, sub, org := onboardingID(t), onboardingID(t), fx.scope.OrgID().String()
 	prior, term := billing.Period{Start: at.AddDate(0, -1, 0), End: at}, billing.Period{Start: at, End: at.AddDate(0, 1, 0)}
 	ledger := billpg.SubscriptionLedger{Capabilities: known}
+	priorPlan := billing.PlanKey{Product: "fleet", Plan: "larger", Revision: 1}
+	opening := billing.LifecycleEvent{
+		Scope: fx.scope, SubscriptionID: sub, Kind: billing.ConfirmSettlement, Source: billing.VerifiedBilling,
+		At: prior.Start, Reference: "synthetic-prior-paid-term", Period: prior,
+	}
+	proof := fx.f.PrepareSubscriptionOpening(t, priorPlan, opening)
 	if err := database.WithOrgTx(ctx, fx.f.Runtime, fx.scope, func(tx pgx.Tx) error {
-		_, err := ledger.ApplyTx(ctx, tx, billing.PlanKey{Product: "fleet", Plan: "larger", Revision: 1}, billing.LifecycleEvent{
-			Scope: fx.scope, SubscriptionID: sub, Kind: billing.ConfirmSettlement, Source: billing.VerifiedBilling,
-			At: prior.Start, Reference: "synthetic-prior-paid-term", Period: prior,
-		})
-		return err
+		if _, err := ledger.ApplyTx(ctx, tx, priorPlan, opening); err != nil {
+			return err
+		}
+		return proof(tx)
 	}); err != nil {
 		t.Fatal(err)
 	}

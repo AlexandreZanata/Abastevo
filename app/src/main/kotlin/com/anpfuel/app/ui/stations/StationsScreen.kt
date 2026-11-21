@@ -24,6 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.anpfuel.app.ui.components.AnpSourceLink
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
@@ -389,6 +390,9 @@ internal fun StationsContent(
                         StationsNavigateHintBanner(
                             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
                         )
+                    }
+                    if (anpStations.isNotEmpty()) {
+                        item(key = "anp-source") { AnpSourceLink() }
                     }
                     items(anpStations, key = { StationsListKeys.anpRow(it.cnpjDigits) }) { station ->
                         StationPriceRow(

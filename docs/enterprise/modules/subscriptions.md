@@ -45,7 +45,9 @@ block the whole selection. Reactivation checks the current fleet limit.
 The catalog uses trialing, active, past due, suspended, cancelling and cancelled from [the state catalog](../state-model.md). Validity and grace depend on recorded policy rather than invented durations. The server persists event, source and transition history. The scoped
 `org_billing_subscription_events` ledger keeps the exact plan revision, state
 before and after, term, event time and redacted evidence reference. Each new
-revision must follow the immediately preceding state. Verified settlement can
+revision must follow the immediately preceding state. An opening paid term
+must commit with its exact settlement receipt and binding. An opening trial
+must commit with a matching reviewed grant and its operator audit event. Verified settlement can
 recover a past-due term. Operator restoration returns to the state held before
 suspension. Pending cancellation preserves its prior state until verified
 cancellation or the recorded term boundary. Reactivation preserves prior periods. Provider events do not change station authority or public records.
@@ -98,6 +100,27 @@ Retry with the same operation ID to read the original result. Trial grants are
 protected by organization scope. No grant, price or duration is seeded.
 
 ## 9. Events, notifications and integrations
+
+The owner rule recorded on 2026-11-21 marks the current paid company term
+`PAST_DUE` after a canonical full refund or lost chargeback against its
+exact settlement. A partial refund, open or won dispute, or reversal
+of an earlier term leaves current access unchanged. The provider never
+suspends the organization. Suspension requires a separately reviewed
+operator decision. Record that approval for the current past-due revision
+and accountable operator in `org_billing_suspension_approvals`. Provision
+the dedicated login with `infra/db/billing-suspension-role.sql`, then use
+`ops enterprise billing suspend --org <uuid> --approval-id <uuid>
+--operation-id <uuid> --operator <uuid>`. Concurrent changes invalidate
+a stale review. An exact retry returns the same audited revision.
+
+A canonical paid Stripe renewal which arrives before its scoped charge binding
+remains pending. Its bounded retry delay allows other inbox work to proceed.
+The retry fetches the canonical invoice again and can settle only after the
+exact reviewed charge binding exists. An inconsistent binding is a conflict.
+A first Stripe invoice and any Asaas charge, including each Pix Automático
+cycle, do not wait: a settlement notice that arrives before the binding is
+recorded as a terminal conflict. Bind the reviewed resource before collecting
+its payment.
 
 A commercial review can authorize binding an existing Stripe invoice or Asaas
 charge to the exact reviewed company offer. The approval fixes the company,

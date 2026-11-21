@@ -105,16 +105,18 @@ type RefundReservation struct {
 }
 
 type DisputeFact struct {
-	Provider        domain.Provider
-	Environment     domain.Environment
-	Merchant        string
-	RemoteDisputeID string
-	RemotePaymentID string
-	RemoteChargeID  string
-	Amount          domain.Money
-	State           domain.DisputeState
-	OpenedAt        time.Time
-	LastEventAt     time.Time
+	Provider          domain.Provider
+	Environment       domain.Environment
+	Merchant          string
+	RemoteDisputeID   string
+	RemotePaymentID   string
+	RemoteChargeID    string
+	Amount            domain.Money
+	State             domain.DisputeState
+	OpenedAt          time.Time
+	LastEventAt       time.Time
+	OriginalChargeID  string
+	ExternalReference string
 }
 
 type DisputeRecord struct {
@@ -209,4 +211,12 @@ type RefundEventFact struct {
 	Merchant        string
 	RemotePaymentID string
 	RemoteChargeID  string
+}
+
+// ChargeRefundFact is a read-only canonical observation of the original charge.
+type ChargeRefundFact struct {
+	ChargeID          string
+	ExternalReference string
+	Amount            domain.Money
+	Full              bool
 }

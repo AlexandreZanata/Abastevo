@@ -117,8 +117,12 @@ idempotency. Account identities, reasons, credentials and other private
 records are outside the contract.
 
 The worker proves current organization, capability, connection and endpoint
-authority at the durable claim. It signs the stable body with HMAC-SHA256
-using the reviewed credential reference. HTTPS is restricted to the exact
+authority at the durable claim. Each delivery attempt sends UTC Unix seconds
+in `Abastevo-Timestamp` and sets `Abastevo-Signature` to `v2=` followed by the
+hex HMAC-SHA256 of `timestamp + "." + raw_body` using the reviewed credential.
+Consumers compare tags in constant time, reject timestamps more than five
+minutes from their clock and deduplicate the authenticated delivery ID.
+They must require v2 before admitting a destination. HTTPS is restricted to the exact
 reviewed destination and public addresses. The worker refuses redirects and
 records only bounded outcomes. Delivery can be attempted three times. An
 interrupted send may have reached the receiver before the outcome was

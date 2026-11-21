@@ -31,7 +31,7 @@ test('F7 AgreementsController loads permitted sections and keeps the one-time co
     },
     async cancelAuthorization(_org, id, payload) { calls.push(['cancel', id, payload.reason]); },
     async listRedemptions() {
-      return { redemptions: [{ id: 'r1', agreementId: 'a1', authorizationId: 'v1', stationId: 's1', employeeId: 'e1', product: 'DIESEL_S10', unit: 'L', quantityMilli: 50000, priceMilliBrl: 5999, totalCentavos: 299950, confirmedAt: '2026-12-02T10:00:00Z' }] };
+      return { redemptions: [{ id: 'r1', agreementId: 'a1', authorizationId: 'v1', stationId: 's1', employeeId: 'e1', product: 'DIESEL_S10', unit: 'L', quantityMilli: 50000, priceMilliBrl: 5999, totalCentavos: 29995, confirmedAt: '2026-12-02T10:00:00Z' }] };
     },
   };
 
@@ -42,7 +42,7 @@ test('F7 AgreementsController loads permitted sections and keeps the one-time co
   assert.equal(ctrl.state.agreements[0].orgLabel, 'Transportes Vale');
   assert.equal(ctrl.state.agreements[0].terms[0].priceMilliBrl, 5999);
   assert.equal(ctrl.state.authorizations[0].maxCentavos, 300000);
-  assert.equal(ctrl.state.redemptions[0].totalCentavos, 299950);
+  assert.equal(ctrl.state.redemptions[0].totalCentavos, 29995);
 
   await ctrl.propose('00000000-0000-4000-8000-000000000001', 's1', 'Transportes Vale', '2026-12-01T00:00:00Z', '2026-12-31T23:59:59Z', [{ product: 'DIESEL_S10', unit: 'L', priceMilliBrl: 5999 }]);
   await ctrl.apply('00000000-0000-4000-8000-000000000001', 'a1', 'SUSPEND', 2, 'Revisão contratual');

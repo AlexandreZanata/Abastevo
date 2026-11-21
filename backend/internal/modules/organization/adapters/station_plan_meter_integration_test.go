@@ -85,11 +85,15 @@ VALUES('station','reviewed-test',1,'Synthetic company station plan',ARRAY['organ
 		t.Fatal(err)
 	}
 	now := lifecycleDBNow(t, fx.legalFixtureState)
+	plan := billing.PlanKey{Product: "station", Plan: "reviewed-test", Revision: 1}
+	opening := billing.LifecycleEvent{Scope: fx.scope, SubscriptionID: onboardingID(t), Kind: billing.ConfirmSettlement, Source: billing.VerifiedBilling,
+		At: now, Reference: "synthetic-station-plan", Period: billing.Period{Start: now, End: now.Add(time.Hour)}}
+	proof := fx.f.PrepareSubscriptionOpening(t, plan, opening)
 	if err := database.WithOrgTx(ctx, pool, fx.scope, func(tx pgx.Tx) error {
-		_, err := (billpg.SubscriptionLedger{Capabilities: known}).ApplyTx(ctx, tx, billing.PlanKey{Product: "station", Plan: "reviewed-test", Revision: 1},
-			billing.LifecycleEvent{Scope: fx.scope, SubscriptionID: onboardingID(t), Kind: billing.ConfirmSettlement, Source: billing.VerifiedBilling,
-				At: now, Reference: "synthetic-station-plan", Period: billing.Period{Start: now, End: now.Add(time.Hour)}})
-		return err
+		if _, err := (billpg.SubscriptionLedger{Capabilities: known}).ApplyTx(ctx, tx, plan, opening); err != nil {
+			return err
+		}
+		return proof(tx)
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -71,10 +71,10 @@ func (q *Queries) ConsumePaymentSourceSwitch(ctx context.Context, id pgtype.UUID
 }
 
 const deferPaymentInbox = `-- name: DeferPaymentInbox :execrows
-UPDATE payment_inbox SET deferred_until=$1::timestamptz,last_error='organization-term-not-effective'
+UPDATE payment_inbox SET deferred_until=$1::timestamptz,last_error='payment-retry-deferred'
 WHERE provider=$2 AND environment=$3 AND merchant=$4
   AND event_id=$5 AND payload_hash=$6 AND state='PENDING'
-  AND (deferred_until IS NULL OR deferred_until=$1::timestamptz)
+  AND (deferred_until IS NULL OR deferred_until <= clock_timestamp() OR deferred_until=$1::timestamptz)
   AND $1::timestamptz>clock_timestamp()
 `
 

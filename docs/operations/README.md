@@ -36,7 +36,7 @@
 | Daily station registry sync | [registry-daily-sync.md](registry-daily-sync.md), [registry-runs.md](registry-runs.md), [dou-editions.md](dou-editions.md) |
 | Moderation | [moderation-feedback.md](moderation-feedback.md), [moderation-profiles.md](moderation-profiles.md) |
 | Static map overlay | [map-static-overlay.md](map-static-overlay.md) |
-| Payments (sales off) | [payments.md](payments.md), [premium-billing.md](premium-billing.md) |
+| Payments (sales off) | [payments.md](payments.md), [payment-providers-guide.md](payment-providers-guide.md), [premium-billing.md](premium-billing.md) |
 | Abastevo Empresas activation | [enterprise-activation.md](enterprise-activation.md) |
 
 ## Rules

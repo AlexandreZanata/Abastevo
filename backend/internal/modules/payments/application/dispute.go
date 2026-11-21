@@ -12,7 +12,12 @@ import (
 // verified original payments. A pending dispute never revokes access; only a
 // confirmed loss on a matched unexpired grant revokes. Unmatched money becomes
 // an explicit provider hold for operator review, never access.
+type CompanyDisputeObserver interface {
+	ObserveCompanyDispute(context.Context, InboxEvent, DisputeFact) (bool, error)
+}
+
 type DisputeService struct {
+	Company CompanyDisputeObserver
 	Store   DisputeStore
 	Stripe  DisputeVerifier
 	Asaas   DisputeVerifier
@@ -76,6 +81,18 @@ func (s *DisputeService) Process(ctx context.Context, event InboxRecord) error {
 	}
 	if fact.Provider != event.Provider || fact.Environment != event.Environment || fact.Merchant != event.Merchant {
 		return s.conflict(ctx, event, domain.ErrBinding)
+	}
+	if s.Company != nil {
+		handled, err := s.Company.ObserveCompanyDispute(ctx, event.InboxEvent, fact)
+		if errors.Is(err, domain.ErrBinding) {
+			return s.conflict(ctx, event, err)
+		}
+		if err != nil {
+			return err
+		}
+		if handled {
+			return s.markProcessed(ctx, event)
+		}
 	}
 	record, created, err := s.Store.RecordDispute(ctx, DisputeRecord{
 		Provider: fact.Provider, Environment: fact.Environment, Merchant: fact.Merchant,

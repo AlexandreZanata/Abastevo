@@ -14,6 +14,7 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 	"time"
 
@@ -70,10 +71,11 @@ func dialWebhook(ctx context.Context, network, address string) (net.Conn, error)
 type HTTPSWebhookSender struct {
 	keys   *os.Root
 	client *http.Client
+	now    func() time.Time
 }
 
 func NewHTTPSWebhookSender(keys *os.Root) HTTPSWebhookSender {
-	return HTTPSWebhookSender{keys: keys, client: &http.Client{
+	return HTTPSWebhookSender{keys: keys, now: time.Now, client: &http.Client{
 		Transport: &http.Transport{DialContext: dialWebhook, DisableKeepAlives: true, MaxResponseHeaderBytes: 16 << 10,
 			DisableCompression: true},
 		CheckRedirect: func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse },
@@ -90,7 +92,9 @@ func (s HTTPSWebhookSender) SendWebhook(ctx context.Context, endpoint string, re
 		return WebhookRetry
 	}
 	defer clear(key[:])
+	timestamp := strconv.FormatInt(s.now().Unix(), 10)
 	mac := hmac.New(sha256.New, key[:])
+	_, _ = mac.Write([]byte(timestamp + "."))
 	_, _ = mac.Write(body)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
 	if err != nil {
@@ -98,7 +102,8 @@ func (s HTTPSWebhookSender) SendWebhook(ctx context.Context, endpoint string, re
 	}
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Idempotency-Key", id)
-	req.Header.Set("Abastevo-Signature", "v1="+hex.EncodeToString(mac.Sum(nil)))
+	req.Header.Set("Abastevo-Timestamp", timestamp)
+	req.Header.Set("Abastevo-Signature", "v2="+hex.EncodeToString(mac.Sum(nil)))
 	response, err := s.client.Do(req)
 	if err != nil {
 		return WebhookRetry

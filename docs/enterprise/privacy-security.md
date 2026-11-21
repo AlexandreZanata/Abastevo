@@ -194,7 +194,7 @@ Any use of organization data for a platform purpose (for example market statisti
 | LV-10 | Sensitive data inside incident descriptions and photos | Health data may appear after an accident | Guidance text; no dedicated health fields; restricted access |
 | LV-11 | Receipt retention versus the existing 24-hour photo rule | Existing rule covers "all app-owned photos and scanned images" | Private C1 receipts are approved for synthetic validation. Real-receipt intake requires a reviewed category-specific retention policy. See EMP-GOV-002. |
 | LV-12 | Station representative evidence when the claimant is an organization | Existing retention is account-based | Keep existing periods; map the holder to the organization |
-| LV-13 | Commercial reuse of public ANP data in Data products | Source licence terms | Blocked until rights are recorded (EMP-GOV-016) |
+| LV-13 | Attributed commercial reuse of public ANP data in Data services | Decree 8.777/2016 and source guardrails | Owner accepted risk on 2026-11-21 (EDR-394, EMP-GOV-016); exact runtime admission, LGPD and private-data exclusions apply |
 
 ## 11. Screens
 

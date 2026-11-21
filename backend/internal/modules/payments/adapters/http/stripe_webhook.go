@@ -7,6 +7,7 @@ import (
 	"errors"
 	"mime"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
@@ -59,13 +60,19 @@ func (h StripeWebhookHandler) handle(w http.ResponseWriter, r *http.Request) {
 		webhookError(w, r, http.StatusBadRequest, "payments.stripe-body")
 		return
 	}
-	signature := strings.TrimSpace(r.Header.Get("Stripe-Signature"))
-	if signature == "" || len(signature) > maxStripeSignatureHeader {
+	signatures := r.Header.Values("Stripe-Signature")
+	if len(signatures) != 1 || len(signatures[0]) > maxStripeSignatureHeader {
+		webhookError(w, r, http.StatusBadRequest, "payments.stripe-signature")
+		return
+	}
+	signature := strings.TrimSpace(signatures[0])
+	tolerance := h.tolerance()
+	if !stripeTimestampInWindow(signature, time.Now(), tolerance) {
 		webhookError(w, r, http.StatusBadRequest, "payments.stripe-signature")
 		return
 	}
 	event, err := webhook.ConstructEventWithOptions(body, signature, h.Secret, webhook.ConstructEventOptions{
-		Tolerance: h.tolerance(),
+		Tolerance: tolerance,
 	})
 	if err != nil {
 		webhookError(w, r, http.StatusBadRequest, "payments.stripe-signature")
@@ -110,6 +117,25 @@ func (h StripeWebhookHandler) tolerance() time.Duration {
 		return h.Tolerance
 	}
 	return defaultStripeTolerance
+}
+
+// The SDK bounds the age of a signature but accepts future timestamps.
+func stripeTimestampInWindow(signature string, now time.Time, tolerance time.Duration) bool {
+	var timestamp time.Time
+	found := false
+	for entry := range strings.SplitSeq(signature, ",") {
+		name, value, present := strings.Cut(entry, "=")
+		if name != "t" {
+			continue
+		}
+		seconds, err := strconv.ParseInt(value, 10, 64)
+		if !present || err != nil || found {
+			return false
+		}
+		timestamp = time.Unix(seconds, 0)
+		found = true
+	}
+	return found && !timestamp.Before(now.Add(-tolerance)) && !timestamp.After(now.Add(tolerance))
 }
 
 func eventResource(event stripe.Event) (string, string) {

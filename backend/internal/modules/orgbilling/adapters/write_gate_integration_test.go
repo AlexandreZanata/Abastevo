@@ -44,9 +44,12 @@ VALUES('fleet','synthetic',1,'Synthetic company',ARRAY['organizations'])`); err 
 		Scope: scopeA, SubscriptionID: a.RecordID, Kind: d.ConfirmSettlement, Source: d.VerifiedBilling,
 		At: at, Reference: "synthetic-settlement", Period: d.Period{Start: at, End: at.Add(time.Hour)},
 	}
+	proof := f.PrepareSubscriptionOpening(t, key, active)
 	if err := database.WithOrgTx(ctx, pool, scopeA, func(tx pgx.Tx) error {
-		_, err := ledger.ApplyTx(ctx, tx, key, active)
-		return err
+		if _, err := ledger.ApplyTx(ctx, tx, key, active); err != nil {
+			return err
+		}
+		return proof(tx)
 	}); err != nil {
 		t.Fatal(err)
 	}

@@ -433,7 +433,8 @@ func (p *AsaasProvider) VerifyDispute(ctx context.Context, event app.InboxRecord
 	return app.DisputeFact{
 		Provider: domain.ProviderAsaas, Environment: p.Environment, Merchant: event.Merchant,
 		RemoteDisputeID: "chargeback:" + payment.ID, RemotePaymentID: payment.ID,
-		Amount: domain.BRL(amount), State: state,
+		ExternalReference: payment.ExternalReference,
+		Amount:            domain.BRL(amount), State: state,
 		OpenedAt: opened, LastEventAt: opened,
 	}, nil
 }

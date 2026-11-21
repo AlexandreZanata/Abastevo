@@ -44,11 +44,26 @@ VALUES('fleet','synthetic',1,'Synthetic plan',ARRAY['organizations'],3)`); err !
 		Scope: scopeA, SubscriptionID: a.RecordID, Kind: d.ConfirmSettlement, Source: d.VerifiedBilling,
 		At: at, Reference: "synthetic-first-settlement", Period: period,
 	}
+	// The reviewed offer and binding exist and the serving role can read the
+	// proof tables, so only the missing settlement receipt refuses the opening.
+	proof := f.PrepareSubscriptionOpening(t, key, seed)
+	err = database.WithOrgTx(ctx, f.Runtime, scopeA, func(tx pgx.Tx) error {
+		_, err := ledger.ApplyTx(ctx, tx, key, seed)
+		return err
+	})
+	var openingError *pgconn.PgError
+	if !errors.As(err, &openingError) || openingError.Code != "23514" ||
+		openingError.Message != "subscription opening proof unavailable" {
+		t.Fatalf("first paid term committed without settlement proof: %v", err)
+	}
 	apply := func(scope kernel.OrgScope, event d.LifecycleEvent) (d.Transition, error) {
 		var transition d.Transition
 		err := database.WithOrgTx(ctx, f.Runtime, scope, func(tx pgx.Tx) error {
 			var err error
 			transition, err = ledger.ApplyTx(ctx, tx, key, event)
+			if err == nil && event.ExpectedRevision == 0 {
+				return proof(tx)
+			}
 			return err
 		})
 		return transition, err

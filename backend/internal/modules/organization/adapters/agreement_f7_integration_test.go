@@ -309,7 +309,8 @@ func TestAgreementF7EndToEndFlow(t *testing.T) {
 	if firstRedemption["id"] != secondRedemption["id"] {
 		t.Fatal("competing use settled twice", firstRedemption["id"], secondRedemption["id"])
 	}
-	if firstRedemption["total_centavos"] != float64(299950) || firstRedemption["price_milli_brl"] != float64(5999) {
+	// BR-MONEY-005: 50 000 mL at 5 999 milli-BRL per litre is R$ 299.95.
+	if firstRedemption["total_centavos"] != float64(29995) || firstRedemption["price_milli_brl"] != float64(5999) {
 		t.Fatal("server-derived settlement", firstRedemption)
 	}
 	if first.body["replayed"] == second.body["replayed"] {

@@ -10,7 +10,7 @@
 -- from a secret afterwards. It is idempotent and converges the role to this
 -- inventory; it refuses another schema version, an owner or privileged role
 -- and any TRUNCATE, DDL or SECURITY DEFINER access.
--- Schema version: 000293. Relations: 434 granted, 5 without access.
+-- Schema version: 000299. Relations: 434 granted, 6 without access.
 -- Sequences: 7. Explicit functions: 3.
 
 BEGIN;
@@ -29,8 +29,8 @@ BEGIN
     RAISE EXCEPTION 'the runtime role cannot be the migration owner';
   END IF;
   SELECT max(version) INTO head FROM public.schema_migrations;
-  IF head IS DISTINCT FROM '000293' THEN
-    RAISE EXCEPTION 'runtime grant inventory is for schema 000293 but the database is at %: apply the script of the deployed release', head;
+  IF head IS DISTINCT FROM '000299' THEN
+    RAISE EXCEPTION 'runtime grant inventory is for schema 000299 but the database is at %: apply the script of the deployed release', head;
   END IF;
   IF NOT EXISTS (SELECT 1 FROM pg_catalog.pg_roles WHERE rolname = role_name) THEN
     EXECUTE pg_catalog.format('CREATE ROLE %I', role_name);
@@ -246,6 +246,7 @@ GRANT SELECT, INSERT ON TABLE public.org_billing_settlement_receipts TO :"runtim
 GRANT SELECT, INSERT ON TABLE public.org_billing_station_plan_admissions TO :"runtime_role";
 GRANT SELECT ON TABLE public.org_billing_station_plan_reviews TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_billing_subscription_events TO :"runtime_role";
+-- no access: public.org_billing_suspension_approvals
 GRANT SELECT ON TABLE public.org_billing_trial_grants TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_billing_vehicle_plan_archives TO :"runtime_role";
 GRANT SELECT, INSERT ON TABLE public.org_billing_vehicle_plan_selections TO :"runtime_role";

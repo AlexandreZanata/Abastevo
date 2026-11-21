@@ -13,6 +13,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/domain"
 )
@@ -38,7 +39,7 @@ func TestWebhookEndpointRequiresCanonicalPublicHTTPSAuthority(t *testing.T) {
 	}
 }
 
-func TestWebhookHTTPSUsesStableSignatureAndRefusesRedirect(t *testing.T) {
+func TestWebhookHTTPSSignsFreshTimestampAndRefusesRedirect(t *testing.T) {
 	const id = "00000000-0000-4000-8000-000000000001"
 	const refID = "00000000-0000-4000-8000-000000000002"
 	ref, err := domain.NewCredentialRef(refID)
@@ -56,13 +57,22 @@ func TestWebhookHTTPSUsesStableSignatureAndRefusesRedirect(t *testing.T) {
 	}
 	defer keys.Close()
 	body := []byte(`{"version":1,"delivery_id":"00000000-0000-4000-8000-000000000001"}`)
-	mac := hmac.New(sha256.New, key)
-	_, _ = mac.Write(body)
-	wantSignature := "v1=" + hex.EncodeToString(mac.Sum(nil))
+	signature := func(timestamp string) string {
+		mac := hmac.New(sha256.New, key)
+		_, _ = mac.Write([]byte(timestamp + "."))
+		_, _ = mac.Write(body)
+		return "v2=" + hex.EncodeToString(mac.Sum(nil))
+	}
+
 	fixture := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		posted, err := io.ReadAll(r.Body)
+		timestamp := "1795255200"
+		if r.URL.Path == "/retry" {
+			timestamp = "1795255201"
+		}
 		if err != nil || !bytes.Equal(posted, body) || r.Header.Get("Idempotency-Key") != id ||
-			r.Header.Get("Abastevo-Signature") != wantSignature || r.Header.Get("Authorization") != "" {
+			r.Header.Get("Abastevo-Timestamp") != timestamp ||
+			r.Header.Get("Abastevo-Signature") != signature(timestamp) || r.Header.Get("Authorization") != "" {
 			t.Error("endpoint did not receive the exact signed request")
 		}
 		switch r.URL.Path {
@@ -79,6 +89,8 @@ func TestWebhookHTTPSUsesStableSignatureAndRefusesRedirect(t *testing.T) {
 	}))
 	defer fixture.Close()
 	sender := NewHTTPSWebhookSender(keys)
+	now := time.Unix(1795255200, 0).UTC()
+	sender.now = func() time.Time { return now }
 	transport := sender.client.Transport.(*http.Transport)
 	// Pin the synthetic reviewed hostname to the local TLS fixture in test only.
 	transport.DialContext = (&net.Dialer{}).DialContext
@@ -89,6 +101,11 @@ func TestWebhookHTTPSUsesStableSignatureAndRefusesRedirect(t *testing.T) {
 	// The fixture certificate covers example.com.
 	sender.client.Transport = injected
 	for path, want := range map[string]WebhookResult{"/accept": WebhookDelivered, "/retry": WebhookRetry, "/redirect": WebhookFailed} {
+		if path == "/retry" {
+			now = time.Unix(1795255201, 0).UTC()
+		} else {
+			now = time.Unix(1795255200, 0).UTC()
+		}
 		if actual := sender.SendWebhook(t.Context(), "https://example.com"+path, ref, id, body); actual != want {
 			t.Errorf("%s outcome=%s want=%s", path, actual, want)
 		}

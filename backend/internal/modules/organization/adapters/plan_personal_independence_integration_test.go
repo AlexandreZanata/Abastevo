@@ -108,10 +108,17 @@ VALUES('fleet','acceptance',1,'Synthetic fleet acceptance',ARRAY['organizations'
 	change := func(event billing.LifecycleEvent, expected billing.SubscriptionState) {
 		t.Helper()
 		event.Scope, event.SubscriptionID = x.scope, orgSubscription
+		var openingProof func(pgx.Tx) error
+		if event.ExpectedRevision == 0 {
+			openingProof = x.f.PrepareSubscriptionOpening(t, key, event)
+		}
 		if err := database.WithOrgTx(ctx, x.f.Runtime, x.scope, func(tx pgx.Tx) error {
 			applied, err := ledger.ApplyTx(ctx, tx, key, event)
 			if err == nil && applied.To != expected {
 				t.Fatalf("organization transition went to %s, expected %s", applied.To, expected)
+			}
+			if err == nil && openingProof != nil {
+				return openingProof(tx)
 			}
 			return err
 		}); err != nil {

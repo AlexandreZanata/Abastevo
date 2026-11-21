@@ -9,25 +9,21 @@ are recorded as unknown, never inferred from a page label or an existing parser.
 
 ## Rights policy
 
-The ANP site footer declares `CC BY-ND 3.0` for **site content**. That footer is
-not a dataset license and does not authorize derived public data products. Dataset
-rights come only from the dataset metadata or an explicit ANP statement:
+The owner approved the use of the four ANP open datasets below for attributed
+public and commercial services on 2026-11-21 (EDR-394). Each deployed paid
+regional input still needs a recorded approval for its exact artifact digest.
 
-| Source | Declared dataset license | Public derived release |
+| Source | Metadata observation | Owner decision and release conditions |
 | --- | --- | --- |
-| S-ESP-01 registry | none found; metadata PDF has no text layer | `RIGHTS_PENDING` |
-| S-ESP-02 prices | none found in the historical/series metadata | `RIGHTS_PENDING` |
-| S-ESP-03 enforcement | CC BY, CC0, ODbL or PDDL (metadata menu, no selection) | `RIGHTS_PENDING` (applicable license indeterminate; see re-examination) |
-| S-ESP-04 fines | CC BY (metadata) | event-level `ADMITTED` under CC BY attribution; station links only when `linked` |
-| S-ESP-05 PMQC | none found in the October 2026 metadata | `RIGHTS_PENDING` |
-| S-ESP-06 registry API | not inspected/admitted | `NOT_ADMITTED` |
+| S-ESP-01 registry | No dataset-specific license found | Attributed factual use; exact reviewed input required for paid regional Data |
+| S-ESP-02 prices | No dataset-specific license found | Attributed official prices and derived analytics; exact reviewed input required for paid regional Data |
+| S-ESP-03 enforcement | CC BY, CC0, ODbL or PDDL listed with no marked selection | Attributed derived use admitted by the owner; live contract, coverage, privacy and safe station association remain open |
+| S-ESP-04 fines | CC BY (metadata) | Attributed event-level use; station links only when `linked`; retain CPF quarantine and source-status limits |
+| S-ESP-05 PMQC | No dataset license found in the October 2026 metadata | `RIGHTS_PENDING` |
+| S-ESP-06 registry API | Separate scope in the source register | No new admission under EDR-394 |
 
-`RIGHTS_PENDING` means the profiles may feed local implementation and internal
-analysis, but the public static release must not publish their rows, station
-pages, rankings or downloads until the maintainer records a compatible license
-or written permission. This blocks the price/registry/PMQC slices of ESP-18, not
-the unrelated official-record slices whose declared license and runtime gates
-pass. No profile is enabled by this register.
+Runtime activation still requires the applicable profile and publication checks.
+`RIGHTS_PENDING` permits local implementation and internal analysis only.
 
 ## Three representations
 
@@ -72,7 +68,8 @@ nearby station's value.
   retained. Source refusal/partial snapshot preserves the last accepted state.
 - **Correction window:** each daily snapshot reconciles the current registry;
   corrections use Directory supersession and never rewrite history.
-- **Status:** `ingest=EXISTING`, `public_release=RIGHTS_PENDING`.
+- **Status:** `ingest=EXISTING`; reuse admitted by EDR-394, subject to profile
+  publication checks and exact digest review for paid regional Data.
 
 ## S-ESP-02 — ANP weekly prices and historical series (reuse Official)
 
@@ -121,7 +118,8 @@ nearby station's value.
 - **Coverage:** station-level survey subset, not every station or every day.
   Rankings mean "prices found in the identified survey period", with counts,
   ties and exclusions.
-- **Status:** `ingest=EXISTING`, `public_release=RIGHTS_PENDING`.
+- **Status:** `ingest=EXISTING`; reuse admitted by EDR-394, subject to profile
+  publication checks and exact digest review for paid regional Data.
 
 ## S-ESP-03 — ANP enforcement actions (reuse FQ-06)
 
@@ -129,7 +127,7 @@ nearby station's value.
   2026-10-20 12:43; monthly with about two months between action month and
   publication. Resources: `dados-fisc-1998-2018.xlsx` and
   `dados-fisc-a-partir-2019.xlsx`. Metadata DOCX 17,715 bytes SHA-256
-  `04917ce1…c5066cf` declares CC BY/CC0/ODbL/PDDL.
+  `04917ce1…c5066cf` lists CC BY/CC0/ODbL/PDDL without a marked selection.
 - **Ingestion:** FQ-06 Rust adapter and FQ-04b event ledger. The raw ANP XLSX
   columns are not yet bound to the adapter; the synthetic `enforcement-v1`
   contract is not evidence of the live file. No live Go stream exists.
@@ -147,14 +145,9 @@ nearby station's value.
   private raw cleanup; supersession retains corrections. Default-off.
 - **Correction window:** current published edition plus the two preceding
   monthly editions, then controlled backfill. No page label creates a period.
-- **Status:** `ingest=ADAPTER_LOCAL`, `runtime=OWED`,
-  `public_release=RIGHTS_PENDING`. The license cell holds four alternatives
-  joined by "ou" with no selection control; absence of a checkbox alone does
-  not decide between alternative licensing and an unfilled form, so no
-  specific admission is sustained. The slice stays blocked until the live
-  stream, coverage, safe station association AND a determined license are
-  accepted. This doubt changes nothing for the independent fines slice
-  S-ESP-04.
+- **Status:** `ingest=ADAPTER_LOCAL`, `runtime=OWED`. The owner admitted
+  attributed reuse under EDR-394. The live stream, coverage, privacy
+  projection and safe station association still require validation.
 
 ## S-ESP-04 — ANP fines (reuse FQ-07)
 
@@ -250,11 +243,8 @@ A source whose rights or live contract is unknown stays `RIGHTS_PENDING` or
 
 ## Re-examination 2026-10-25 (no status change)
 
-Primary sources were re-fetched and re-inspected before any publication
-decision. No compatible new license was found, so every status above
-stands. Code license, site footer, download availability and derived
-redistribution rights were kept distinct; the deploy authorization is not
-a third-party license.
+Historical metadata observations and statuses below describe the 2026-10-25
+review. EDR-394 records the later owner decision for S-ESP-01 through S-ESP-04.
 
 | Source | Document fetched 2026-10-25 | Bytes / SHA-256 | License finding |
 | --- | --- | --- | --- |
@@ -268,7 +258,7 @@ a third-party license.
 Raw documents stay outside Git under private `/tmp`; only bytes, hashes
 and license-relevant extracts are recorded here.
 
-## F8 commercial rights review (EMP-GOV-016)
+## F8 commercial rights decision (EMP-GOV-016)
 
 On 2026-11-21, the [ANP station-price series](https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/serie-historica-de-precos-de-combustiveis)
 again linked [its dataset metadata](https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/shpc/metadados-serie-historica-precos-combustiveis-1.pdf).
@@ -278,36 +268,28 @@ and the responsible ANP unit. Its text contains no dataset license or
 redistribution terms. The [registry metadata](https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/arquivos/arquivos-dados-cadastrais-dos-revendedores-varejistas-de-combustiveis-automotivos/metadados-revendedores-varejistas-combustiveis-automoveis.pdf)
 matches the S-ESP-01 PDF already checked by OCR (`774259f8…ef8c98`).
 
-Articles 2–4 of [Decree 8.777/2016](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/decreto/d8777.htm)
-provide the federal open-data reuse framework, including attribution and
-disclosure of applicable third-party terms. For the F8 commercial rights
-decision, the maintainer still needs a record tying the applicable rights to
-the exact price and registry sources and the proposed derived reports and API
-delivery. Those sources remain `RIGHTS_PENDING`.
+The owner accepts the risk of attributed reuse in Abastevo's paid services
+under articles 2–4 of [Decree 8.777/2016](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2016/decreto/d8777.htm).
+This records the owner's decision, not a legal opinion. The owner treats the
+CC BY-ND 3.0 footer as a notice for gov.br editorial material (texts, site
+pages and PDFs). Abastevo excludes that material from republication.
 
-## Clarification request draft (NOT sent — for the maintainer to forward)
-
-> Subject: Licença de uso para redistribuição derivada — dados abertos ANP
->
-> Para publicações com atribuição à ANP, solicitamos confirmação escrita
-> da licença aplicável a cada conjunto e se ela permite distribuir dados
-> derivados em páginas públicas e em relatórios agregados ou APIs comerciais.
-> 1. Série histórica / levantamento semanal de preços de combustíveis
->    (revendas LPC): existe licença de uso do conjunto que autorize
->    esses usos? O PDF atualmente vinculado pela ANP descreve a série
->    e suas fontes, mas não indica licença ou termos de redistribuição.
-> 2. Dados cadastrais dos revendedores varejistas: existe licença de uso
->    do conjunto que autorize esses usos? O PDF de metadados não
->    declara licença (verificado inclusive por OCR).
-> 3. PMQC (monitoramento da qualidade): existe licença de uso do conjunto?
->    O DOCX de metadados não declara licença.
-> 4. Ações de fiscalização: qual das quatro opções do campo "licença de
->    uso" do DOCX de metadados (CC BY, CC0, ODbL ou PDDL) vale para o
->    conjunto? O campo é um menu sem seleção marcada.
->
-> Sem resposta, os slices correspondentes permanecem `RIGHTS_PENDING` e
-> nenhum conteúdo deles será publicado. Nada aqui autoriza contato com
-> terceiros pelo agente.
+- Charge for lookup, consolidation, historical analysis, comparisons, regional
+  aggregates, alerts, watches, reports, integration and API access. Prohibit
+  resale and licensing of ANP files, bulk replicas, exclusivity, ownership
+  claims and implied endorsement. Keep raw files freely accessible through the
+  [ANP open data catalog](https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos).
+- Show `Fonte: ANP`, the ANP source link and the underlying reference date,
+  edition or survey week in API metadata, reports, exports, the portal and
+  the app. Label Abastevo's analysis and distinguish official and community data.
+- Retain the exact artifact URL, collection time and SHA-256 for each snapshot.
+  Apply the existing LGPD, privacy and private organization exclusions.
+- If ANP objects, suspend affected Data access with a `WITHDRAWN` review for
+  each affected digest, stop affected publication and refresh public outputs
+  in the next release under the [source register](../architecture/sources/register.md).
+  Keep historical provenance and audit records.
+- An optional Fala.BR request for clarification may be submitted by the owner.
+  It does not delay the decision, and never substitutes for runtime checks.
 
 ## Alignment 2026-10-25 — S-ESP-03 license indeterminacy
 
@@ -316,8 +298,9 @@ menu (CC BY / CC0 / ODbL / PDDL) with zero checkbox or selection controls
 in the document XML. That byte-level fact cannot decide between
 "alternative licensing" and "unfilled form". Per the rule that no specific
 admission stands without foundation, the table and the S-ESP-03 section
-above now record `RIGHTS_PENDING` for public derived release instead of
-the earlier CC BY reading; runtime was and stays blocked. Historical
+then recorded `RIGHTS_PENDING` for public derived release instead of
+the earlier CC BY reading. EDR-394 later resolved the owner's reuse decision.
+Runtime still requires the profile checks. Historical
 records that quoted the earlier reading are preserved as history, not
 rewritten. The S-ESP-04 fines slice is independent and unchanged. Gates
 need no change: neither `portalcheck` nor the publication preflight ever

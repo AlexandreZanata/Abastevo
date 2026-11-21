@@ -14,6 +14,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import com.anpfuel.app.ui.components.AnpSourceLink
 import com.anpfuel.app.ui.components.AnpScaffold
 import com.anpfuel.app.ui.components.AnpTopAppBar
 import androidx.compose.runtime.Composable
@@ -179,6 +180,7 @@ private fun HistoryContent(
                                 modifier = Modifier.padding(top = 4.dp),
                             )
 
+                            AnpSourceLink()
                             PriceHistoryTrendChart(entries = uiState.entries)
                         }
                     }
