@@ -106,6 +106,9 @@ func TestCompanyStripeSettlementUsesCanonicalInvoice(t *testing.T) {
 		{name: "advance renewal", recordErr: orgbilling.FutureTermError{EffectiveAt: time.Unix(1795255200, 0).UTC()},
 			recorded: 1, scheduled: time.Unix(1795255200, 0).UTC()},
 		{name: "paid renewal before binding", recordErr: orgbilling.ErrChargeBindingMissing, recorded: 1, scheduled: now.Add(2 * time.Minute)},
+		// Only a provider-generated renewal waits. A first invoice is reviewed and bound before it is paid.
+		{name: "first invoice before binding", old: `"billing_reason": "subscription_cycle"`, replacement: `"billing_reason": "subscription_create"`,
+			recordErr: orgbilling.ErrChargeBindingMissing, marked: "CONFLICT", recorded: 1},
 		{name: "foreign price", recordErr: orgbilling.ErrBillingBinding, marked: "CONFLICT", recorded: 1},
 		{name: "consumed provider identity", recordErr: paydomain.ErrConflict, marked: "CONFLICT", recorded: 1},
 		{name: "temporary dependency failure", recordErr: paydomain.ErrUnavailable, recorded: 1},

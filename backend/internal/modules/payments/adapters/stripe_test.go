@@ -210,6 +210,10 @@ func TestStripeErrorMapping(t *testing.T) {
 		"invalid":     {400, `{"error":{"type":"invalid_request_error","message":"bad"}}`, domain.ErrInvalid},
 		"server":      {500, `{"error":{"type":"api_error","message":"down"}}`, app.ErrAmbiguous},
 		"idempotency": {409, `{"error":{"type":"idempotency_error","message":"changed"}}`, domain.ErrConflict},
+		// A deterministic status decides even when the body carries no known type,
+		// so a missing or conflicting resource never becomes a retryable outage.
+		"missing":  {404, `{"error":{"message":"No such resource"}}`, domain.ErrInvalid},
+		"conflict": {409, `{"error":{"message":"conflict"}}`, domain.ErrConflict},
 	} {
 		t.Run(name, func(t *testing.T) {
 			order := testOrder(t)
@@ -542,7 +546,7 @@ func TestStripeRefundCreateFindAndDispute(t *testing.T) {
 					"metadata":       map[string]string{"refund_id": "refund_local_1"},
 				}},
 			})
-		case r.Method == http.MethodGet && r.URL.Path == "/v1/disputes/dp_test_1":
+		case r.Method == http.MethodGet && (r.URL.Path == "/v1/disputes/dp_test_1" || r.URL.Path == "/v1/disputes/dp_requested"):
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"id": "dp_test_1", "object": "dispute", "amount": 1234, "currency": "brl",
 				"livemode": false, "status": "lost", "created": 1700000000,
@@ -574,8 +578,15 @@ func TestStripeRefundCreateFindAndDispute(t *testing.T) {
 	}, State: "PENDING", ReceivedAt: time.Now().UTC()}
 	fact, err := provider.VerifyDispute(context.Background(), event)
 	if err != nil || fact.RemoteDisputeID != "dp_test_1" || fact.RemoteChargeID != "pi_test_1" ||
+		fact.OriginalChargeID != "ch_test_1" ||
 		fact.State != domain.DisputeLost || !fact.Amount.Equal(domain.BRL(1234)) {
 		t.Fatalf("fact=%+v err=%v", fact, err)
+	}
+	// The provider answered with another dispute than the one the event names.
+	substituted := event
+	substituted.ResourceID = "dp_requested"
+	if _, err := provider.VerifyDispute(context.Background(), substituted); !errors.Is(err, domain.ErrBinding) {
+		t.Fatalf("substituted dispute err=%v", err)
 	}
 	ignored := event
 	ignored.EventType = "charge.succeeded"
