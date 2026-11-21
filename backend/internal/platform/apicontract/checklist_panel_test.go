@@ -7,8 +7,8 @@ import (
 )
 
 // EMP-CHECK-004 (B-BR-EMP-506/507, EDR-328/329): the run queue page carries
-// exactly the run read's item and a closed request; the context hints admit
-// the document-content read hint and nothing broader.
+// exactly the run read's item and a closed request. The organization context
+// keeps a closed hint vocabulary covering the checklist and F8 panels.
 func TestChecklistRunQueueAndContentHintContractsAreExact(t *testing.T) {
 	doc := loadSpec(t)
 	path := doc.Paths.Value("/v1/orgs/{org_id}/checklists/runs/list")
@@ -65,7 +65,18 @@ func TestChecklistRunQueueAndContentHintContractsAreExact(t *testing.T) {
 		enum = append(enum, v.(string))
 	}
 	slices.Sort(enum)
-	if !slices.Equal(enum, []string{"doc.document.view_content", "idn.employee.manage", "idn.employee.read", "idn.invitation.manage"}) || hints.MaxItems == nil || *hints.MaxItems != 4 {
+	want := []string{
+		"data.key.manage",
+		"data.usage.read",
+		"doc.document.view_content",
+		"fleet.asset.read",
+		"idn.employee.manage",
+		"idn.employee.read",
+		"idn.invitation.manage",
+		"subs.plan.manage",
+		"subs.plan.read",
+	}
+	if !slices.Equal(enum, want) || hints.MaxItems == nil || *hints.MaxItems != uint64(len(want)) || !hints.UniqueItems {
 		t.Fatal("context hint vocabulary", enum)
 	}
 }

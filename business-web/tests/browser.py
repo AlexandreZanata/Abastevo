@@ -75,7 +75,7 @@ def ordinary_runtime(dsn):
             "GRANT SELECT,INSERT,UPDATE ON accounts,account_session_families,identity_rate_windows,organizations,org_units,org_employee_identities,org_employee_profiles,org_memberships,org_role_assignments,org_capabilities,org_settings_heads,org_invitations,org_invitation_acceptances,org_data_api_keys TO {}",
             "GRANT SELECT,INSERT ON account_key_credentials,org_onboarding_commands,org_audit_events,org_employee_commands,org_settings_commands,org_settings_versions,org_settings_designations,org_settings_notices,org_invitation_commands,org_invitation_notices,org_invitation_locators,org_invitation_person_commands,org_invitation_acceptance_notices,org_role_commands TO {}",
             "GRANT SELECT,UPDATE ON org_teams,org_team_links,org_ownership_transfers,org_device_enrollments TO {}",
-            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,org_documents,enterprise_plan_catalog,enterprise_billing_offers,org_billing_subscription_events,org_billing_charge_bindings,org_billing_settlement_receipts,enterprise_data_rate_policies,org_data_usage_terms,enterprise_data_plan_datasets,enterprise_regional_datasets,enterprise_regional_series,enterprise_data_source_reviews TO {}",
+            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,org_documents,org_assets,enterprise_plan_catalog,enterprise_billing_offers,org_billing_subscription_events,org_billing_charge_bindings,org_billing_settlement_receipts,enterprise_data_rate_policies,org_data_usage_terms,enterprise_data_plan_datasets,enterprise_regional_datasets,enterprise_regional_series,enterprise_data_source_reviews TO {}",
             "GRANT SELECT,INSERT,UPDATE,DELETE ON account_key_admission_events,company_web_sessions TO {}",
             "GRANT USAGE ON SEQUENCE account_key_admission_events_id_seq TO {}",
         ]
@@ -786,8 +786,9 @@ def employee_checks(browser, origin, dsn):
                     'synthetic-browser-policy',now(),now(),now()+interval '1 day')
         """, (org_id, str(uuid.uuid4())))
     private_plan = context.request.post(origin + "/v1/orgs/" + org_id + "/subscriptions/plan/read", headers=headers, data={})
-    assert private_plan.status == 200 and private_plan.headers["cache-control"] == "no-store"
-    assert private_plan.json()["plans"][0]["confirmed_paid"] is False
+    assert private_plan.status == 200 and private_plan.headers["cache-control"] == "no-store", private_plan.status
+    fleet_plan = private_plan.json()["plans"][0]
+    assert fleet_plan["confirmed_paid"] is False and fleet_plan["active_vehicles_used"] == "0"
     assert "synthetic-browser-policy" not in private_plan.text(), "Approval evidence escaped through the plan view"
     assert context.request.post(origin + "/v1/orgs/" + org_id + "/subscriptions/plan/read",
                                 headers=headers, data={"organization_id": other_org}).status == 400

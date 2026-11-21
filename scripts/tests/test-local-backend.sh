@@ -55,8 +55,9 @@ export ANPFUEL_TEST_DRILL_DSN_PREFIX="postgres://anpfuel:anpfuel@$DB_ADDR"
 (
     cd backend
     go run ./cmd/migrate >"$REPORT/migrations.log" 2>&1
-    go test -json -race -count=1 ./... >"$REPORT/unit.json" 2>"$REPORT/unit.stderr"
-    go test -json -race -count=1 -p 2 -timeout 10m -tags=integration ./... >"$REPORT/integration.json" 2>"$REPORT/integration.stderr"
+    # Keep the same package deadline as CI for contract and organization suites.
+    go test -json -race -count=1 -timeout 45m ./... >"$REPORT/unit.json" 2>"$REPORT/unit.stderr"
+    go test -json -race -count=1 -p 2 -timeout 45m -tags=integration ./... >"$REPORT/integration.json" 2>"$REPORT/integration.stderr"
     # Exercise the deliberately unavailable storage path too.
     ANPFUEL_TEST_STORAGE_ENDPOINT='' go test -race -tags=integration -run '^TestPublicProcessIdentityAndSignedWrites$' -count=1 ./cmd/api >"$REPORT/no-storage.log" 2>&1
     go vet ./... >"$REPORT/vet.log" 2>&1
