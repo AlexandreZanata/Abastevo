@@ -34,7 +34,13 @@ Verified billing event identity and reconciliation preserve provenance. Personal
 
 ## 6. States and transitions
 
-The catalog uses trialing, active, past due, suspended, cancelling and cancelled from [the state catalog](../state-model.md). Validity and grace depend on recorded policy rather than invented durations. The server persists event, source and transition history. Reactivation preserves prior periods. Provider events do not change station authority or public records.
+The catalog uses trialing, active, past due, suspended, cancelling and cancelled from [the state catalog](../state-model.md). Validity and grace depend on recorded policy rather than invented durations. The server persists event, source and transition history. The scoped
+`org_billing_subscription_events` ledger keeps the exact plan revision, state
+before and after, term, event time and redacted evidence reference. Each new
+revision must follow the immediately preceding state. Verified settlement can
+recover a past-due term. Operator restoration returns to the state held before
+suspension. Pending cancellation preserves its prior state until verified
+cancellation or the recorded term boundary. Reactivation preserves prior periods. Provider events do not change station authority or public records.
 
 ## 7. Roles and permissions
 

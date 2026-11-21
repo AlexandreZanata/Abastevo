@@ -115,7 +115,7 @@ VALUES ('fleet','synthetic',1,'Synthetic I',ARRAY['fleet'],2,0),
 	for _, query := range []string{
 		"UPDATE enterprise_plan_catalog SET display_name='changed'",
 		"DELETE FROM enterprise_plan_catalog",
-		"TRUNCATE enterprise_plan_catalog",
+		"TRUNCATE enterprise_plan_catalog CASCADE",
 	} {
 		_, err := fixture.Admin.Exec(ctx, query)
 		var refusal *pgconn.PgError
