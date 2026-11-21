@@ -89,6 +89,10 @@ VALUES ('previous-regional',1,'Previous synthetic catalog','MT',5,'abastevo-metr
 	if applied, err := migrate.Apply(ctx, f.AdminDSN, current); err != nil || len(applied) != 0 || snapshot() != before {
 		t.Fatalf("retry changed preexisting source decisions or catalog entries: %v / %v", applied, err)
 	}
+	// The release's runtime grant inventory requires the current embedded schema.
+	if _, err := migrate.Apply(ctx, f.AdminDSN, dbmigrations.Files); err != nil {
+		t.Fatalf("apply remaining migrations before provisioning runtime grants: %v", err)
+	}
 	role, secret := f.ProvisionScriptRole(t)
 	runtime := f.ScriptRuntimePool(t, role, secret, 1)
 	if err := database.WithOrgBootstrapTx(ctx, runtime, func(tx pgx.Tx) error {
