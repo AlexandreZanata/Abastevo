@@ -220,7 +220,12 @@ VALUES('data','synthetic',1,$1,1,'synthetic-scope'),('data','synthetic',1,$1,2,'
 		len(page.Periods) != 1 || page.NextCursor == "" || len(page.Periods[0].Samples) != 1 {
 		t.Fatalf("regional aggregates did not resolve correctly: status=%d body=%s error=%v", first.Code, first.Body, err)
 	}
-	sample := page.Periods[0].Samples[0]
+	period := page.Periods[0]
+	if period.Sources[0].Attribution != "Fonte: ANP" || period.Sources[1].Attribution != "Fonte: ANP" ||
+		period.SourceURL != "https://source.example.invalid/prices" || period.SurveyStart != "2026-01-01" || period.SurveyEnd != "2026-01-01" {
+		t.Fatal("regional API omitted the source attribution, source link or reference period")
+	}
+	sample := period.Samples[0]
 	if sample.Fuel != "GASOLINE_REGULAR" || sample.Stations != 5 || sample.SumMilliBRL != 30000 ||
 		bytes.Contains(first.Body.Bytes(), []byte(marketProbe)) || bytes.Contains(first.Body.Bytes(), []byte("station_sample_sha256")) ||
 		bytes.Contains(first.Body.Bytes(), []byte("ETHANOL")) {

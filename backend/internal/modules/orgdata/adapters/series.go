@@ -175,7 +175,7 @@ func (c Catalog) readPeriod(ctx context.Context, admitted AdmittedDataset) (Seri
 		period.Readiness = "INSUFFICIENT_DATA"
 	}
 	for i, review := range admitted.Reviews {
-		period.Sources[i] = SeriesSource{Code: review.Pin.Source, Digest: review.Pin.Digest, License: review.LicenseRef, Attribution: review.Attribution}
+		period.Sources[i] = SeriesSource{Code: review.Pin.Source, Digest: review.Pin.Digest, License: review.LicenseRef, Attribution: domain.ANPAttribution}
 	}
 	return period, nil
 }

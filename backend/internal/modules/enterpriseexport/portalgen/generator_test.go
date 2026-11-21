@@ -312,7 +312,7 @@ func TestGenerateFixturePages(t *testing.T) {
 		"Posto Alfa", "04.218.406/0001-04", "Ativo (informado pela fonte)",
 		"R$ 6,199", "R$ 5,899", "04/10/2026 a 10/10/2026",
 		"11/10/2026 a 17/10/2026", "Sem observação nesta pesquisa",
-		"Identificador canônico: " + stA, "Fonte:</strong> ANP", "checksum: sha256:r2",
+		"Identificador canônico: " + stA, `Fonte:</strong> <a href="https://www.gov.br/anp/`, "checksum: sha256:r2",
 	} {
 		if !strings.Contains(station, want) {
 			t.Errorf("station missing %q", want)

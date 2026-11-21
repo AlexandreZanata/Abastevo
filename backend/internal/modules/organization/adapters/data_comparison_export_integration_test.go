@@ -159,6 +159,13 @@ func TestMarketComparisonThroughPrivateExportAndRevokedRights(t *testing.T) {
 		len(right["sources"].([]any)) != 2 || right["minimum_stations"] != float64(5) {
 		t.Fatal("comparison lost its exact source basis, threshold, period or difference")
 	}
+	for _, side := range []string{"baseline", "reference"} {
+		observation := available[side].(map[string]any)
+		source := observation["sources"].([]any)[1].(map[string]any)
+		if source["attribution"] != "Fonte: ANP" || observation["source_url"] != "https://source.example.invalid/prices" {
+			t.Fatalf("%s observation omitted its source attribution", side)
+		}
+	}
 	sparse := queue(command(3))
 	insufficient := content(sparse, build(sparse))
 	if insufficient["readiness"] != "INSUFFICIENT_COVERAGE" || insufficient["difference_milli_brl_per_unit"] != nil ||

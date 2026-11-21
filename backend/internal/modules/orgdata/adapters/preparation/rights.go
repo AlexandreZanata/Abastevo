@@ -109,7 +109,7 @@ func RecordRights(ctx context.Context, pool *pgxpool.Pool, d RightsDecision) (bo
 		if _, _, err := enterpriseexport.ReadVerifiedCore(ctx, d.SnapshotDir, d.SnapshotDigest, d.matchSnapshot); err != nil {
 			return false, err
 		}
-		attribution = "Fonte: ANP"
+		attribution = domain.ANPAttribution
 	}
 	var replayed bool
 	err := database.WithOrgBootstrapTx(ctx, pool, func(tx pgx.Tx) error {

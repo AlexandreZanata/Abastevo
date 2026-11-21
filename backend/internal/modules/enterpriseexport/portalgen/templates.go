@@ -91,11 +91,11 @@ const templates = `
       </div>
       <div class="footer-legal">
         {{if .OfficialOnly}}
-        <p><strong>Fonte:</strong> ANP — multas aplicadas. Cálculo e exibição: Abastevo.</p>
+        <p>{{template "anpFinesSource"}}. Cálculo e exibição: Abastevo.</p>
         <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Recorte oficial de fiscalização, event-level.</p>
         <p>Não afiliado à ANP. Código sob licença de atribuição visível Abastevo. Dados datados; multa não prova adulteração, culpa ou definitividade.</p>
         {{else}}
-        <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo.</p>
+        <p>{{template "anpPriceSource"}}. Cálculo e exibição: Abastevo.</p>
         <p>Publicação Abastevo: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}} · Pesquisa: {{if .Period}}{{.Period}}{{else}}sem pesquisa publicada{{end}}</p>
         <p>Não afiliado à ANP. Código sob licença de atribuição visível Abastevo. Dados datados; não é preço ao vivo.</p>
         {{end}}
@@ -138,6 +138,9 @@ const templates = `
     <tbody>{{range .}}<tr><td><a href="{{.Href}}">{{.Name}}</a></td><td class="num">{{brl .EthanolMean}}</td><td class="num">{{brl .GasolineMean}}</td><td class="num">{{.Ratio}}</td><td class="num">{{.EthanolStations}} / {{.GasolineStations}}</td><td>{{.Position}}</td></tr>{{end}}</tbody>
   </table></div>{{end}}
 
+{{define "anpPriceSource"}}<strong>Fonte:</strong> <a href="https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos/serie-historica-de-precos-de-combustiveis">ANP</a> — Levantamento de Preços de Combustíveis{{end}}
+{{define "anpFinesSource"}}<strong>Fonte:</strong> <a href="https://www.gov.br/anp/pt-br/centrais-de-conteudo/dados-abertos">ANP</a> — multas aplicadas{{end}}
+
 {{define "parity"}}{{template "head" .}}{{template "crumbs" .}}
 <main id="conteudo" class="wrap">
   <h1>Etanol ou gasolina: relação de preços por estado e cidade</h1>
@@ -151,7 +154,7 @@ const templates = `
   {{template "parityTable" .Cities}}{{end}}
   <p class="muted">Só há relação quando o etanol e a gasolina comum têm pelo menos 5 postos cada na amostra da área.</p>
   {{template "modules" .}}
-  <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para as médias da amostra e para a relação.</p></div>
+  <div class="source"><p>{{template "anpPriceSource"}}{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para as médias da amostra e para a relação.</p></div>
   <div class="links"><a href="/precos/">Preços no Brasil</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -212,6 +215,7 @@ const templates = `
   <h2>Resumo nacional</h2>
   {{template "summary" .National}}
   {{template "modules" .}}
+  <div class="source"><p>{{template "anpPriceSource"}}{{if .Period}}, pesquisa de {{.Period}}{{end}}.</p></div>
 </main>
 {{template "foot" .}}{{end}}
 
@@ -240,6 +244,7 @@ const templates = `
   <h2>Estados</h2>
   {{if .States}}<div class="grid cards">{{range .States}}<article class="card"><h3><a href="{{.Href}}">{{.Name}} ({{.Code}})</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra · {{.Fuels}} combustíveis/unidades</p></article>{{end}}</div>{{else}}<div class="notice"><strong>Sem resumo estadual.</strong></div>{{end}}
   {{template "modules" .}}
+  <div class="source"><p>{{template "anpPriceSource"}}{{if .Period}}, pesquisa de {{.Period}}{{end}}.</p></div>
 </main>
 {{template "foot" .}}{{end}}
 
@@ -256,6 +261,7 @@ const templates = `
   {{if .Municipalities}}<div class="grid cards">{{range .Municipalities}}<article class="card"><h3><a href="{{.Href}}">{{.Name}}</a></h3><p>{{.Stations}} {{plural .Stations "posto" "postos"}} na amostra</p>{{if .Insufficient}}<p><span class="tag tag-warn">Amostra insuficiente (mínimo 5)</span></p>{{end}}</article>{{end}}</div>{{else}}<div class="notice"><strong>Sem municípios com resumo.</strong></div>{{end}}
   {{if .NoDataCities}}<section class="link-module"><h2>Cidades sem preço na pesquisa ANP mais recente</h2><p class="muted">Postos cadastrados na ANP, sem observação nesta pesquisa; a ausência não significa preço zero.</p><ul class="link-list">{{range .NoDataCities}}<li><a href="{{.Href}}">Postos em {{.Name}}</a> <span class="muted">{{.Stations}} {{plural .Stations "posto" "postos"}}</span></li>{{end}}</ul></section>{{end}}
   {{template "modules" .}}
+  <div class="source"><p>{{template "anpPriceSource"}}{{if .Period}}, pesquisa de {{.Period}}{{end}}.</p></div>
 </main>
 {{template "foot" .}}{{end}}
 
@@ -280,7 +286,7 @@ const templates = `
   {{end}}
   {{if .Stations}}<section class="link-module"><h2>Postos em {{.Name}}</h2>{{if gt .StationsTotal (len .Stations)}}<p class="muted">Exibindo {{len .Stations}} de {{.StationsTotal}} postos.</p>{{end}}<ul class="link-list">{{range .Stations}}<li><a href="{{.Href}}">{{.Label}}</a>{{if .Note}} <span class="muted">{{.Note}}</span>{{end}}</li>{{end}}</ul></section>{{end}}
   {{template "modules" .}}
-  <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para resumos e rankings.</p></div>
+  <div class="source"><p>{{template "anpPriceSource"}}{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para resumos e rankings.</p></div>
 </main>
 {{template "foot" .}}{{end}}
 
@@ -321,7 +327,7 @@ const templates = `
   </table></div>{{end}}{{else}}<div class="notice"><strong>Sem histórico publicado.</strong><p>Não há observações anteriores para este posto.</p></div>{{end}}
   {{if .OfficialRecords}}<h2>Registros oficiais vinculados</h2><p class="muted">Vínculo de empresa atual na data da decisão; não é histórico de propriedade. Multa não prova adulteração, culpa ou definitividade.</p><ul class="station-list">{{range .OfficialRecords}}<li><a href="/fiscalizacao/registro/{{.RecordID}}/">{{.Status}}</a>{{if .Proceeding}} — {{.Proceeding}}{{end}}{{if .Amount}} · {{.Amount}}{{end}}{{if .DueOn}} · vencimento {{.DueOn}}{{else if .DecidedOn}} · decisão {{.DecidedOn}}{{end}} · {{.AssociationLabel}}</li>{{end}}</ul>{{if .OfficialMore}}<p class="muted">Há {{.OfficialCount}} registros; exibindo os {{len .OfficialRecords}} mais recentes.</p>{{end}}{{end}}
   <div class="source">
-    <p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. {{if .Source.URL}}<a href="{{.Source.URL}}">Página oficial da pesquisa</a>.{{end}}</p>
+    <p>{{template "anpPriceSource"}}. {{if .Source.URL}}<a href="{{.Source.URL}}">Página oficial da pesquisa</a>.{{end}}</p>
     <p class="muted source-url">Revisão: {{if .Source.Period}}{{.Source.Period}}{{else}}não informada{{end}} · checksum: {{if .Source.Checksum}}{{.Source.Checksum}}{{else}}não informado{{end}} · parser: {{if .Source.ParserVersion}}{{.Source.ParserVersion}}{{else}}não informado{{end}} · publicação na fonte: {{if .Source.PublishedAt}}{{.Source.PublishedAt}}{{else}}não informada{{end}}</p>
   </div>
   {{template "modules" .}}
@@ -353,7 +359,7 @@ const templates = `
   {{template "faq" .FAQ}}
   {{if .Others}}<h2>Outros combustíveis</h2><ul class="station-list">{{range .Others}}<li><a href="{{.Href}}">Preço {{if eq .Code "GASOLINE_REGULAR" "GASOLINE_ADDITIVED" "GASOLINE_PREMIUM_GRADE"}}da{{else}}do{{end}} {{.Label}} por estado</a></li>{{end}}</ul>{{end}}
   {{template "modules" .}}
-  <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis. Cálculo Abastevo para mínimo, máximo, média da amostra e dispersão.</p></div>
+  <div class="source"><p>{{template "anpPriceSource"}}{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para mínimo, máximo, média da amostra e dispersão.</p></div>
   <div class="links"><a href="/precos/">Preços no Brasil</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -390,7 +396,7 @@ const templates = `
   <ul class="station-list">{{range .Context}}<li><a href="{{.Href}}">{{.Label}}</a> — {{brl .Min}} a {{brl .Max}} em {{.Stations}} {{plural .Stations "posto" "postos"}}{{if .HasMean}}, média da amostra {{brl .Mean}}{{end}}</li>{{end}}</ul>{{end}}
   {{template "faq" .FAQ}}
   {{template "modules" .}}
-  <div class="source"><p><strong>Fonte:</strong> ANP — Levantamento de Preços de Combustíveis{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para mínimo, máximo, média da amostra e dispersão.</p></div>
+  <div class="source"><p>{{template "anpPriceSource"}}{{if .Period}}, pesquisa de {{.Period}}{{end}}. Cálculo Abastevo para mínimo, máximo, média da amostra e dispersão.</p></div>
   <div class="links"><a href="/precos/">Preços no Brasil</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
 {{template "foot" .}}{{end}}
@@ -421,7 +427,7 @@ const templates = `
   </ul>
   <h2 id="notas">Notas</h2>
   <ul>{{range .Notes}}<li>{{.}}</li>{{end}}</ul>
-  <div class="source"><p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p></div>
+  <div class="source"><p>{{template "anpPriceSource"}}. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p></div>
   {{template "modules" .}}
   <div class="links"><a href="/curiosidades/">Perguntas aprovadas</a><a href="/consultar/">Consultar postos</a><a href="/metodologia/">Metodologia e fontes</a></div>
 </main>
@@ -500,7 +506,7 @@ const templates = `
   </section>
   </div>
   <div class="source">
-    <p><strong>Atribuição:</strong> Fonte ANP — Levantamento de Preços de Combustíveis. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p>
+    <p>{{template "anpPriceSource"}}. Cálculo e exibição: Abastevo. Não afiliado à ANP. Código sob licença de atribuição visível Abastevo.</p>
     <p class="muted source-url">Snapshot: {{.InputHash}} · versão dos cálculos: abastevo-metrics-v1 · publicação: {{if .PublishedAt}}{{.PublishedAt}}{{else}}não publicada{{end}}</p>
   </div>
   {{template "modules" .}}
@@ -519,7 +525,7 @@ const templates = `
     <section class="card"><h2>Ambíguos</h2><p class="price">{{.Ambiguous}}</p><p class="muted">mais de um posto possível; nenhum posto exibido</p></section>
   </div>
   <div class="notice"><strong>Como ler um registro oficial</strong><p>O status é o texto da fonte. Uma multa ou ação não prova adulteração, interdição atual ou culpa definitiva. Ausência de registro não é certidão negativa. A data de vencimento não é a data da ocorrência nem prova de propriedade. O vínculo é a decisão de empresa atual na data indicada, não um histórico de propriedade.</p></div>
-  {{if eq .Page 1}}<div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. Edição {{.Manifest.Edition}} · período {{.Manifest.SourcePeriod}} · clock {{.Manifest.SourceClockValue}} ({{.Manifest.SourceClockPrecision}}).</p><details><summary>Detalhes da publicação</summary><p class="muted source-url">Revisão {{.Manifest.RevisionID}} · lease {{.Manifest.LeaseID}} · checksum {{.Manifest.SourceChecksum}} · política {{.Manifest.AssociationPolicy}}/{{.Manifest.AssociationScope}} · decisão {{.Manifest.AssociationDecisionDay}}.</p></details></div>{{end}}
+  <div class="source"><p>{{template "anpFinesSource"}}. Edição {{.Manifest.Edition}} · período {{.Manifest.SourcePeriod}} · clock {{.Manifest.SourceClockValue}} ({{.Manifest.SourceClockPrecision}}).</p><details><summary>Detalhes da publicação</summary><p class="muted source-url">Revisão {{.Manifest.RevisionID}} · lease {{.Manifest.LeaseID}} · checksum {{.Manifest.SourceChecksum}} · política {{.Manifest.AssociationPolicy}}/{{.Manifest.AssociationScope}} · decisão {{.Manifest.AssociationDecisionDay}}.</p></details></div>
   {{if and .SearchRelease (eq .Page 1)}}<section class="explorer" data-portal-fiscal data-shard-base="/dados/busca/" data-release="{{.SearchRelease}}" aria-labelledby="buscar-registros">
     <h2 id="buscar-registros">Multas na sua cidade</h2>
     <p class="muted">Selecione seu estado e sua cidade para consultar os registros desta edição. Você também pode buscar pelo nome fantasia, razão social ou CNPJ.</p>
@@ -589,7 +595,7 @@ const templates = `
     <p><strong>Referência de evidência:</strong> {{.Record.Evidence}}</p>
   </div>
   <div class="notice"><strong>Limites do registro</strong><p>Uma multa ou ação não prova adulteração, interdição atual ou culpa definitiva. O vencimento não é a data da ocorrência nem prova de propriedade. Ausência de registro não é certidão negativa. O vínculo é a decisão de empresa atual na data indicada, não um histórico de propriedade.</p></div>
-  <div class="source"><p><strong>Fonte:</strong> ANP — multas aplicadas. {{if .Record.SourceURL}}<a href="{{.Record.SourceURL}}">Página oficial da fonte</a>.{{end}}</p><p class="muted source-url">Revisão {{.Record.RevisionID}} · lease {{.Record.LeaseID}} · checksum {{.Record.SourceChecksum}} · publicação {{.Manifest.PublishedAt}}.</p></div>
+  <div class="source"><p>{{template "anpFinesSource"}}. {{if .Record.SourceURL}}<a href="{{.Record.SourceURL}}">Página oficial da fonte</a>.{{end}}</p><p class="muted source-url">Revisão {{.Record.RevisionID}} · lease {{.Record.LeaseID}} · checksum {{.Record.SourceChecksum}} · publicação {{.Manifest.PublishedAt}}.</p></div>
   <div class="links"><a href="/fiscalizacao/">Voltar à fiscalização</a><a href="/metodologia/">Metodologia e fontes</a>{{if .OfficialOnly}}{{else}}<a href="/consultar/">Consultar preços</a>{{end}}</div>
 </main>
 {{template "foot" .}}{{end}}

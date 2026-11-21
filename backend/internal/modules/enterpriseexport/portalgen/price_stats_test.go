@@ -147,3 +147,14 @@ func TestMethodologyExplainsTheMeanAndThePortalStaysValid(t *testing.T) {
 		t.Fatalf("link graph: %v", err)
 	}
 }
+
+func TestDerivedPricePagesLinkTheOfficialANPSource(t *testing.T) {
+	out := generatePricePortal(t, nil)
+	for _, route := range []string{"precos/index.html", "precos/mt/index.html", "precos/mt/cuiaba/index.html", "precos/etanol-ou-gasolina/index.html"} {
+		page := readPortal(t, out, route)
+		if !strings.Contains(page, `>Fonte:</strong> <a href="https://www.gov.br/anp/`) ||
+			!strings.Contains(page, `pesquisa de `) {
+			t.Errorf("%s omitted the ANP source link or period", route)
+		}
+	}
+}
