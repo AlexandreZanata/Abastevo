@@ -254,13 +254,13 @@ func registerIntake(router chi.Router, o Options, devices *member.DeviceStore, m
 	if err != nil {
 		return err
 	}
-	// EMP-OFFL-012: ORG-009's suspension assessment and the capability row
-	// decide organization state before every owner.
+	// The suspension assessment and source-specific plan history decide
+	// whether the existing owner should apply an operation or hold it.
 	plans, ok := devices.Capabilities.(orgpg.IntakePlanStates)
 	if !ok || plans == nil {
 		return app.ErrUnavailable
 	}
-	assessor := orgpg.IntakeStateAssessor{Suspensions: &orgpg.SuspensionStore{Roots: orgpg.NewStore(o.Pool)}, Plans: plans}
+	assessor := orgpg.IntakeStateAssessor{Suspensions: &orgpg.SuspensionStore{Roots: orgpg.NewStore(o.Pool)}, Plans: plans, SubscriptionPlans: o.BillingEnabled}
 	store := syncpg.NewStore(syncpg.Config{Pool: o.Pool, Audit: auditor, AuditCatalog: auditCatalog, EventCatalog: catalog, EventWriter: eventpg.NewStore(o.Pool), Plans: o.IntakePlans, NoAsyncPlans: noAsync,
 		ConfirmSource: func(ctx context.Context, tx pgx.Tx, s app.Source) (time.Time, error) {
 			_, now, err := devices.CheckCurrentIntakeDeviceTx(ctx, tx, s.Scope, s.Actor, s.MembershipID, s.EnrollmentID)

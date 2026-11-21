@@ -663,6 +663,9 @@ sql:
       - db/migrations/000218_organization_late_intake.sql
       - db/migrations/000166_org_capabilities.sql
       - db/migrations/000219_organization_state_intake.sql
+      - db/migrations/000263_organization_plan_catalog.sql
+      - db/migrations/000264_organization_subscription_history.sql
+      - db/migrations/000266_organization_subscription_sync_intakes.sql
     gen:
       go:
         package: orgsync

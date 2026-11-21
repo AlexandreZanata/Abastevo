@@ -3,7 +3,10 @@ package adapters
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
+
+	qsync "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgsync"
 
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
@@ -12,6 +15,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgapi"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 // IntakePlanStates reads the operation's write capability row (EDR-201).
@@ -23,8 +27,9 @@ type IntakePlanStates interface {
 // rule before the owning handler (EMP-OFFL-012, EDR-200/201). It reads only
 // server history and the database clock; the declared instant is evidence.
 type IntakeStateAssessor struct {
-	Suspensions *SuspensionStore
-	Plans       IntakePlanStates
+	Suspensions       *SuspensionStore
+	Plans             IntakePlanStates
+	SubscriptionPlans bool
 }
 
 func (a IntakeStateAssessor) AssessStateTx(ctx context.Context, tx pgx.Tx, source syncapp.Source, descriptor syncapp.Descriptor, declared time.Time) (syncapp.StateDecision, error) {
@@ -68,11 +73,30 @@ func (a IntakeStateAssessor) AssessStateTx(ctx context.Context, tx pgx.Tx, sourc
 	if err != nil {
 		return syncapp.StateDecision{}, syncapp.SourceDenied(syncapp.ErrUnavailable)
 	}
-	if disposition != syncapp.StateHold {
-		// APPLY and DENY leave the owner to decide (DENY: ENTITLEMENT_REQUIRED).
+	decision := syncapp.StateDecision{
+		Condition: syncapp.StatePlan, Disposition: syncapp.StateHold, Result: protocol.AcceptedForReview,
+		Code: syncapp.StatePlanCode, Capability: capability,
+	}
+	switch {
+	case disposition == syncapp.StateHold:
+		decision.Instant, decision.CapabilityRevision = changed, revision
+	case a.SubscriptionPlans && (!present || enabled) && slices.Contains(descriptor.Results(), protocol.AcceptedForReview):
+		proof, err := qsync.New(tx).InactiveSubscriptionIntakeProof(ctx, qsync.InactiveSubscriptionIntakeProofParams{
+			OrgID: source.Scope.OrgID().String(), Capability: capability,
+			DeclaredAt: pgtype.Timestamptz{Time: declared.UTC().Truncate(time.Microsecond), Valid: true},
+			ReceivedAt: pgtype.Timestamptz{Time: intake.ReceivedAt, Valid: true},
+		})
+		if errors.Is(err, pgx.ErrNoRows) {
+			return syncapp.StateDecision{}, nil
+		}
+		if err != nil {
+			return syncapp.StateDecision{}, syncapp.SourceDenied(syncapp.ErrUnavailable)
+		}
+		decision.SubscriptionID, decision.SubscriptionRevision = proof.SubscriptionID, proof.SubscriptionRevision
+	default:
+		// The owning handler evaluates current write authority.
 		return syncapp.StateDecision{}, nil
 	}
-	decision := syncapp.StateDecision{Condition: syncapp.StatePlan, Disposition: syncapp.StateHold, Result: protocol.AcceptedForReview, Code: syncapp.StatePlanCode, Instant: changed, Capability: capability, CapabilityRevision: revision}
 	if decision.Validate() != nil {
 		return syncapp.StateDecision{}, syncapp.SourceDenied(errors.New("orgsync: invalid plan decision"))
 	}

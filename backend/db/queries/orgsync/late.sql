@@ -13,6 +13,17 @@ SELECT condition,disposition,COALESCE(capability,'')::text AS capability,COALESC
  declared_at,declared_submicro,received_at,result,code,policy
 FROM org_sync_state_intakes WHERE org_id=CAST(@org_id::text AS uuid) AND operation_id=CAST(@operation_id::text AS uuid);
 -- name: InsertStateIntake :exec
-INSERT INTO org_sync_state_intakes(org_id,operation_id,condition,disposition,capability,capability_revision,plan_changed_at,declared_at,declared_submicro,received_at,result,code)
+INSERT INTO org_sync_state_intakes(org_id,operation_id,condition,disposition,capability,capability_revision,plan_changed_at,declared_at,declared_submicro,received_at,result,code,subscription_id,subscription_revision)
 VALUES(CAST(@org_id::text AS uuid),CAST(@operation_id::text AS uuid),@condition::text,@disposition::text,NULLIF(@capability::text,''),NULLIF(@capability_revision::bigint,0),
- sqlc.narg('plan_changed_at')::timestamptz,@declared_at::timestamptz,@declared_submicro::smallint,@received_at::timestamptz,@result::text,@code::text);
+ sqlc.narg('plan_changed_at')::timestamptz,@declared_at::timestamptz,@declared_submicro::smallint,@received_at::timestamptz,@result::text,@code::text,
+ CAST(NULLIF(@subscription_id::text,'') AS uuid),NULLIF(@subscription_revision::bigint,0));
+
+-- name: InactiveSubscriptionIntakeProof :one
+SELECT prior.subscription_id::text AS subscription_id, prior.subscription_revision::bigint AS subscription_revision
+FROM org_sync_subscription_entitled_at(
+  CAST(sqlc.arg('org_id')::text AS uuid), sqlc.arg('capability')::text, sqlc.arg('declared_at')::timestamptz
+) AS prior(subscription_id, subscription_revision)
+WHERE sqlc.arg('declared_at')::timestamptz < sqlc.arg('received_at')::timestamptz
+  AND NOT EXISTS (SELECT 1 FROM org_sync_subscription_entitled_at(
+    CAST(sqlc.arg('org_id')::text AS uuid), sqlc.arg('capability')::text, sqlc.arg('received_at')::timestamptz
+  ));

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgsync/protocol"
 )
 
@@ -31,9 +32,11 @@ type StateDecision struct {
 	Condition, Disposition, Result, Code string
 	// Instant is the plan's downgrade instant; suspension history is
 	// re-derived by the database from its recorded periods.
-	Instant            time.Time
-	Capability         string
-	CapabilityRevision int64
+	Instant              time.Time
+	Capability           string
+	CapabilityRevision   int64
+	SubscriptionID       string
+	SubscriptionRevision int64
 }
 
 func (decision StateDecision) Restricts() bool { return decision.Condition != "" }
@@ -42,10 +45,12 @@ func (decision StateDecision) Holds() bool     { return decision.Disposition == 
 // Same compares two decisions taken in one transaction.
 func (decision StateDecision) Same(other StateDecision) bool {
 	return decision.Condition == other.Condition && decision.Disposition == other.Disposition && decision.Result == other.Result && decision.Code == other.Code &&
-		decision.Instant.Equal(other.Instant) && decision.Capability == other.Capability && decision.CapabilityRevision == other.CapabilityRevision
+		decision.Instant.Equal(other.Instant) && decision.Capability == other.Capability && decision.CapabilityRevision == other.CapabilityRevision &&
+		decision.SubscriptionID == other.SubscriptionID && decision.SubscriptionRevision == other.SubscriptionRevision
 }
 
 func (decision StateDecision) Validate() error {
+	hasSubscriptionProof := decision.SubscriptionID != "" || decision.SubscriptionRevision != 0
 	switch {
 	case !decision.Restricts():
 		if decision != (StateDecision{}) {
@@ -53,11 +58,19 @@ func (decision StateDecision) Validate() error {
 		}
 	case decision.Condition == StateSuspension && decision.Disposition == StateHold && decision.Result == protocol.AcceptedForReview && decision.Code == StateGraceCode,
 		decision.Condition == StateSuspension && decision.Disposition == StateRefuse && decision.Result == protocol.Rejected && decision.Code == StateSuspendedCode:
-		if !decision.Instant.IsZero() || decision.Capability != "" || decision.CapabilityRevision != 0 {
+		if !decision.Instant.IsZero() || decision.Capability != "" || decision.CapabilityRevision != 0 || hasSubscriptionProof {
 			return ErrUnavailable
 		}
 	case decision.Condition == StatePlan && decision.Disposition == StateHold && decision.Result == protocol.AcceptedForReview && decision.Code == StatePlanCode:
-		if decision.Instant.IsZero() || decision.Capability == "" || decision.CapabilityRevision < 2 {
+		if decision.Capability == "" {
+			return ErrUnavailable
+		}
+		if hasSubscriptionProof {
+			id, err := kernel.ParseOrgID(decision.SubscriptionID)
+			if err != nil || id.String() != decision.SubscriptionID || decision.SubscriptionRevision < 1 || !decision.Instant.IsZero() || decision.CapabilityRevision != 0 {
+				return ErrUnavailable
+			}
+		} else if decision.Instant.IsZero() || decision.CapabilityRevision < 2 {
 			return ErrUnavailable
 		}
 	default:

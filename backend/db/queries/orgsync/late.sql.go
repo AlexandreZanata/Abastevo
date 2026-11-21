@@ -11,6 +11,41 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const inactiveSubscriptionIntakeProof = `-- name: InactiveSubscriptionIntakeProof :one
+SELECT prior.subscription_id::text AS subscription_id, prior.subscription_revision::bigint AS subscription_revision
+FROM org_sync_subscription_entitled_at(
+  CAST($1::text AS uuid), $2::text, $3::timestamptz
+) AS prior(subscription_id, subscription_revision)
+WHERE $3::timestamptz < $4::timestamptz
+  AND NOT EXISTS (SELECT 1 FROM org_sync_subscription_entitled_at(
+    CAST($1::text AS uuid), $2::text, $4::timestamptz
+  ))
+`
+
+type InactiveSubscriptionIntakeProofParams struct {
+	OrgID      string             `json:"org_id"`
+	Capability string             `json:"capability"`
+	DeclaredAt pgtype.Timestamptz `json:"declared_at"`
+	ReceivedAt pgtype.Timestamptz `json:"received_at"`
+}
+
+type InactiveSubscriptionIntakeProofRow struct {
+	SubscriptionID       string `json:"subscription_id"`
+	SubscriptionRevision int64  `json:"subscription_revision"`
+}
+
+func (q *Queries) InactiveSubscriptionIntakeProof(ctx context.Context, arg InactiveSubscriptionIntakeProofParams) (InactiveSubscriptionIntakeProofRow, error) {
+	row := q.db.QueryRow(ctx, inactiveSubscriptionIntakeProof,
+		arg.OrgID,
+		arg.Capability,
+		arg.DeclaredAt,
+		arg.ReceivedAt,
+	)
+	var i InactiveSubscriptionIntakeProofRow
+	err := row.Scan(&i.SubscriptionID, &i.SubscriptionRevision)
+	return i, err
+}
+
 const insertLateIntake = `-- name: InsertLateIntake :exec
 INSERT INTO org_sync_late_intakes(org_id,operation_id,membership_id,enrollment_id,end_source,ended_at,window_days,settings_revision,declared_at,declared_submicro,received_at,disposition,result,code)
 VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),CAST($3::text AS uuid),CAST($4::text AS uuid),$5::text,$6::timestamptz,$7::smallint,
@@ -55,24 +90,27 @@ func (q *Queries) InsertLateIntake(ctx context.Context, arg InsertLateIntakePara
 }
 
 const insertStateIntake = `-- name: InsertStateIntake :exec
-INSERT INTO org_sync_state_intakes(org_id,operation_id,condition,disposition,capability,capability_revision,plan_changed_at,declared_at,declared_submicro,received_at,result,code)
+INSERT INTO org_sync_state_intakes(org_id,operation_id,condition,disposition,capability,capability_revision,plan_changed_at,declared_at,declared_submicro,received_at,result,code,subscription_id,subscription_revision)
 VALUES(CAST($1::text AS uuid),CAST($2::text AS uuid),$3::text,$4::text,NULLIF($5::text,''),NULLIF($6::bigint,0),
- $7::timestamptz,$8::timestamptz,$9::smallint,$10::timestamptz,$11::text,$12::text)
+ $7::timestamptz,$8::timestamptz,$9::smallint,$10::timestamptz,$11::text,$12::text,
+ CAST(NULLIF($13::text,'') AS uuid),NULLIF($14::bigint,0))
 `
 
 type InsertStateIntakeParams struct {
-	OrgID              string             `json:"org_id"`
-	OperationID        string             `json:"operation_id"`
-	Condition          string             `json:"condition"`
-	Disposition        string             `json:"disposition"`
-	Capability         string             `json:"capability"`
-	CapabilityRevision int64              `json:"capability_revision"`
-	PlanChangedAt      pgtype.Timestamptz `json:"plan_changed_at"`
-	DeclaredAt         pgtype.Timestamptz `json:"declared_at"`
-	DeclaredSubmicro   int16              `json:"declared_submicro"`
-	ReceivedAt         pgtype.Timestamptz `json:"received_at"`
-	Result             string             `json:"result"`
-	Code               string             `json:"code"`
+	OrgID                string             `json:"org_id"`
+	OperationID          string             `json:"operation_id"`
+	Condition            string             `json:"condition"`
+	Disposition          string             `json:"disposition"`
+	Capability           string             `json:"capability"`
+	CapabilityRevision   int64              `json:"capability_revision"`
+	PlanChangedAt        pgtype.Timestamptz `json:"plan_changed_at"`
+	DeclaredAt           pgtype.Timestamptz `json:"declared_at"`
+	DeclaredSubmicro     int16              `json:"declared_submicro"`
+	ReceivedAt           pgtype.Timestamptz `json:"received_at"`
+	Result               string             `json:"result"`
+	Code                 string             `json:"code"`
+	SubscriptionID       string             `json:"subscription_id"`
+	SubscriptionRevision int64              `json:"subscription_revision"`
 }
 
 func (q *Queries) InsertStateIntake(ctx context.Context, arg InsertStateIntakeParams) error {
@@ -89,6 +127,8 @@ func (q *Queries) InsertStateIntake(ctx context.Context, arg InsertStateIntakePa
 		arg.ReceivedAt,
 		arg.Result,
 		arg.Code,
+		arg.SubscriptionID,
+		arg.SubscriptionRevision,
 	)
 	return err
 }
