@@ -155,3 +155,14 @@ for the approved credential UUID contains exactly 32 raw random bytes.
 Withhold the key directory until the recipient and data contract have
 recorded approval. The connector uses a different credential directory
 from outbound vehicle webhooks.
+
+### Fiscal lookup and server extraction readiness
+
+EMP-INTEG-004 and EMP-INTEG-005 can retain a scoped provider registration
+while the reviewed adapter is pending. Required evidence includes the
+organization's authorized fiscal route and certificate custody for fiscal
+consultation, and the processor, retention and dependency review for
+server extraction. A registration can stay `CONFIGURED` in that period.
+Activation requires installed transport. Structural checks, personal OCR
+and manual entry retain their own status, with fiscal consultation shown
+as `NOT_CONSULTED` until an authorized source returns a result.

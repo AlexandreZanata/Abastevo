@@ -146,6 +146,25 @@ VALUES($1,$2,2,'TELEMATICS','synthetic-telematics',$3,$4,4096,3,'WITHDRAWN','syn
 			t.Fatal("withdrawn registration was presented as currently approved")
 		}
 	}
+	for _, kind := range []domain.Kind{domain.FiscalLookup, domain.DocumentExtraction} {
+		approvalID, documentID, id := onboardingID(t), onboardingID(t), onboardingID(t)
+		if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO org_connector_approvals
+(org_id,id,revision,kind,provider_code,resource_id,credential_ref,maximum_bytes,maximum_items,decision,decision_ref,ready_at)
+VALUES($1,$2,1,$3,'synthetic-document-connector',$4,$5,4096,1,'APPROVED','synthetic-configuration-candidate',$6)`,
+			org, approvalID, kind, documentID, credential, at); err != nil {
+			t.Fatal(err)
+		}
+		configured, err := write(app.Change{Action: app.Configure, OperationID: id, ApprovalID: approvalID, ApprovalRevision: 1, Label: "Synthetic document candidate"})
+		if err != nil || configured.Connection.State != domain.Configured {
+			t.Fatalf("the reviewed candidate could not be retained: %v", err)
+		}
+		if _, err := write(app.Change{Action: app.Activate, OperationID: onboardingID(t), TargetID: id, ExpectedRevision: 1}); !errors.Is(err, domain.ErrNotReady) {
+			t.Fatalf("a connector without installed transport became active: %s / %v", kind, err)
+		}
+		if err := access.WithActive(ctx, fx.scope, kind, id, documentID, stub); !errors.Is(err, domain.ErrDenied) {
+			t.Fatalf("an inactive document connector could run: %s / %v", kind, err)
+		}
+	}
 	if _, err := flags.Set(ctx, fx.scope, capability.Actor{AccountID: fx.actor.AccountID}, capability.Change{
 		OperationID: onboardingID(t), Capability: "integrations", ExpectedRevision: 1, Enabled: false,
 	}); err != nil {
@@ -159,7 +178,7 @@ VALUES($1,$2,2,'TELEMATICS','synthetic-telematics',$3,$4,4096,3,'WITHDRAWN','syn
 		t.Fatal("disabled connector was admitted", err)
 	}
 	var changes int
-	if err := fx.f.Admin.QueryRow(ctx, "SELECT count(*) FROM org_audit_events WHERE org_id=$1 AND action LIKE 'integ.connection.%'", org).Scan(&changes); err != nil || changes != 4 {
+	if err := fx.f.Admin.QueryRow(ctx, "SELECT count(*) FROM org_audit_events WHERE org_id=$1 AND action LIKE 'integ.connection.%'", org).Scan(&changes); err != nil || changes != 6 {
 		t.Fatalf("connector changes were not audited once: changes=%d err=%v", changes, err)
 	}
 }

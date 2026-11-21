@@ -117,10 +117,14 @@ func apply(ctx context.Context, q *db.Queries, org, id string, change app.Change
 		if err := a.Check(domain.Kind(row.Kind), a.Resource, now.Time, true); err != nil {
 			return err
 		}
-		if a.Kind == domain.AccountingExport && (a.Resource == "" || a.Provider != accountingConnector) {
-			return domain.ErrDenied
-		}
-		if a.Kind == domain.OutboundWebhook {
+		switch a.Kind {
+		case domain.FiscalLookup, domain.DocumentExtraction:
+			return domain.ErrNotReady
+		case domain.AccountingExport:
+			if a.Resource == "" || a.Provider != accountingConnector {
+				return domain.ErrDenied
+			}
+		case domain.OutboundWebhook:
 			if a.Resource == "" {
 				return domain.ErrDenied
 			}
