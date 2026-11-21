@@ -28,7 +28,9 @@ ROADMAP.
 
 **What changed.** The earlier SEO plan decided "pt-BR only; no hreflang until a
 real non-Portuguese audience exists" (D-SEO-07). ADR-026 supersedes that rule.
-Until the locale tasks ship, the site is still pt-BR only.
+The landing ships `en` and `es` under
+[ADR-027](../../decisions/027-ai-reviewed-landing-translations.md). The portal
+is still pt-BR only.
 
 ## 2. Baseline (measured 2026-11-18, read-only)
 
@@ -94,15 +96,16 @@ Grow along three paths, in this order:
 Principles:
 - Every indexable page answers a real query with unique substance. Everything else is `noindex,follow` and stays out of the sitemaps.
 - Each search query has one URL. A keyword map in the content registry is enforced by the build.
-- A translation is a reviewed localization, never raw machine output. An unreviewed locale page is not emitted.
+- A translation is a reviewed localization, never raw machine output. An unreviewed locale page is not emitted. On the `en` and `es` landing the review is an AI review, disclosed to readers (ADR-027).
 - Static first: extend the two existing generators, with no CMS, framework or new runtime dependency. `golang.org/x/text` is already in `backend/go.mod`; anything else needs the need/license/security review.
 - No traffic, ranking or date promises. Decisions follow Search Console data (D-SEO-08).
 
 ## 5. Owner decisions (accepted 2026-11-18)
 
-The owner accepted every recommended answer. Two inputs are still open:
-- the named en and es reviewers (I18N-D05), needed before the first locale page ships;
-- the editor's name and bio (I18N-D07), with "Equipe abastevo" as the fallback until then.
+The owner accepted every recommended answer. On 2026-11-21 the owner changed
+I18N-D05 for the `en` and `es` landing: the review is made by AI and recorded
+as such (ADR-027). One input is still open: the editor's name and bio
+(I18N-D07), with "Equipe abastevo" as the fallback until then.
 
 | ID | Decision | Accepted answer |
 |----|----------|-----------------|
@@ -110,7 +113,7 @@ The owner accepted every recommended answer. Two inputs are still open:
 | I18N-D02 | Wave A locales | `en` and `es`. The Wave B candidates are the app's other locales (`fr`, `de`, then `ja`, `ru`, `zh-CN`), each opened only by the rule in section 9. |
 | I18N-D03 | URL scheme | pt-BR at the root, unchanged. `/en/…` and `/es/…` with translated section names and slugs. City and station names are never translated. |
 | I18N-D04 | Which families are translated | Home, `/sobre/`, `/politica-editorial/`, tools, the international guide set, `/precos/` hubs (national, fuel, state, city), `/metodologia/`, `/dados/` and `/curiosidades/`. **Not translated:** stations, `/fiscalizacao/`, the forum and legal pages. Legal pages get an informative noindex translation, and Portuguese prevails. |
-| I18N-D05 | Translation workflow | An AI draft, then a fluent human review against the glossary, recorded in front matter. The build refuses to emit an unreviewed page. Name the reviewer for en and es. |
+| I18N-D05 | Translation workflow | An AI draft, then a review against the glossary, recorded in front matter. The build refuses to emit an unreviewed page. For the `en` and `es` landing the review is a second AI pass, recorded as `AI review (Claude)` (ADR-027). A human review replaces it when a reviewer exists. Other locales and the portal still need a fluent human reviewer. |
 | I18N-D06 | Currency and units on en/es pages | Show BRL per litre always. Showing an approximate US$/gallon value needs a BCB PTAX exchange-rate source admitted under the source register. Recommended: defer, and add only per-gallon in BRL. |
 | I18N-D07 | Author attribution (revisits D-SEO-09) | A named human editor with a bio page, which is stronger E-E-A-T. The fallback is the current "Equipe abastevo" with the editorial policy. |
 | I18N-D08 | Editorial capacity | Owner plus AI-assisted drafting with human fact-check: 2 pt-BR articles a week, the weekly bulletin summary, and 2 translated or international pages a week. |
@@ -169,7 +172,10 @@ unchanged.
   - gasolina comum → "regular gasoline (ethanol blend)"
   - posto bandeira branca → "unbranded station"
   - ANP → "ANP, Brazil's oil and fuels regulator"
+- **Spanish vocabulary.** One `es` version, in neutral Latin American Spanish: "auto", "cargar combustible", "estación de servicio", "surtidor". The first mention on a page puts the regional word beside the neutral one: "gasolina (nafta)", "diésel (gasoil)", "GNV (GNC)".
 - **Localized copy.** Copy is localized, not translated word for word. Pages explain Brazilian context foreigners lack: attendant service, ethanol in gasoline, payment by Pix or card, and price differences by payment method.
+- **App captures.** A translated page embeds no Portuguese screenshot. It describes the steps with the app's own labels in that language and says the captures are on the Portuguese page.
+- **Links between locales.** The byline, the editorial line, the guides hub and the footer link the same-locale about and editorial policy pages when they exist; otherwise they link the Portuguese page with `hreflang="pt-BR"`. Links inside a translated text are written by hand: the same-locale route when a translation exists, otherwise the Portuguese route followed by "(in Portuguese)" or "(en portugués)".
 - **Language switcher.** Plain `<a hreflang lang>` links to the same page in each enabled locale. When a page has no translation, the link goes to that locale's home. There is no automatic redirect and no cookie. An optional dismissible JavaScript banner can suggest the visitor's language, and it stores nothing.
 - **Search.** `/consultar/` stays pt-BR in Wave A. Localized pages link to it with a note.
 - **Rendering.** Untrusted data is still rendered with `textContent` and escaping. Translated Markdown goes through the same in-house renderer.
@@ -184,6 +190,7 @@ unchanged.
   - `translationStatus`: `draft` or `reviewed`;
   - `reviewedBy`;
   - `reviewedAt`.
+- **Disclosure.** A translated guide states in its editorial line how it was translated and reviewed, and that the Portuguese original prevails. The editorial policy states the rule in every language.
 - **Build gates.** The build emits only `reviewed` pages of enabled locales. A pt-BR `dateModified` newer than `sourceRevision` marks the translation stale. A stale page still builds, with a visible "updated in Portuguese on …" note, but it is `noindex,follow` and leaves hreflang and the sitemap until it is reviewed again. The check compares dates only, so builds stay reproducible.
 - **Interface strings.** Strings for the layout and the calculators live in `landing/content/i18n/{locale}.json`. Portal template strings live in a Go message catalog using `golang.org/x/text`. A parity test asserts the same keys and placeholders in every locale, the same check the app uses for its 8 locales.
 
@@ -325,7 +332,7 @@ and the backend testing guide.
 
 ### Phase 0: baseline and owner inputs
 
-- **SEO-18 Owner inputs (S, owner).** Name the en and es reviewers, and optionally the editor with a bio, per I18N-D05 and I18N-D07.
+- **SEO-18 Owner inputs (S, owner).** Optionally name the editor with a bio, per I18N-D07. The `en` and `es` reviewer question was answered by ADR-027.
 - **SEO-19 Search engine baseline (S, owner).** Confirm both sitemaps are submitted in Search Console and imported into Bing. Export the first coverage and performance numbers per family. This closes the operational part of SEO-16.
 
 ### Phase 1: pt-BR quick wins
@@ -370,7 +377,7 @@ and the backend testing guide.
 
 - **SEO-31 Editorial wave 2 (L, ongoing).** The 24 pt-BR pieces in section 7.2, 2 a week, each with sources, links and a keyword map entry.
 - **SEO-14 Weekly bulletin (M, existing).** Section 7.3.
-- **SEO-32 International set en/es (L).** Section 7.4: about 20 reviewed pages per locale, plus the portal catalog review.
+- **SEO-32 International set en/es (L).** Section 7.4: about 20 reviewed pages per locale, plus the portal catalog review. Shipped per locale: the home, about, editorial policy, the 5 calculators and 6 localized guides (ethanol or gasoline, gasoline price formation, ICMS, diesel S10 or S500, reading prices, the ANP survey). Still to write: the visitor, border, ethanol-blend, payment and open-data pieces. The build accepts a locale page only as the translation of a pt-BR page, so each new piece needs a pt-BR original first or a build change.
 - **SEO-33 Tutorials en/es (L, Wave A2).** Locale captures under the capture contract, plus translated chapters.
 
 ### Phase 5: growth loops
@@ -394,8 +401,7 @@ and the backend testing guide.
   - Tests: the aggregation drops the IP and query strings, and retention deletes old raw files.
 
 **Order.** SEO-19 and SEO-20–24 (in parallel) → SEO-25 → SEO-26 and SEO-27 →
-SEO-28 → SEO-29 and SEO-30. SEO-18 (reviewers) must be done before the first
-locale page ships in SEO-32. SEO-31 and SEO-14 start right after
+SEO-28 → SEO-29 and SEO-30. SEO-31 and SEO-14 start right after
 SEO-20 and keep running. SEO-32 needs SEO-26 (and SEO-28 for portal pages).
 SEO-34–37 can run any time after SEO-21. SEO-38 is independent.
 

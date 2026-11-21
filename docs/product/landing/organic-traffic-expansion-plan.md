@@ -42,8 +42,10 @@ from the live site on 2026-11-21.
 | SEO-21 head and H1 polish | Done and live. | Live pages carry `index,follow,max-image-preview:large,max-snippet:-1` and the descriptive home, city and station H1s. Article `citation` is in `layouts.mjs`. |
 | SEO-22 feeds | Guides feed done and live (`/guias/feed.xml`). No feed for forum editorial posts. | `landing/scripts/build.mjs`, `tests/guides-feed.test.mjs`. |
 | SEO-24 navigation hubs | The home states grid is live. No landing page links to `/forum/`. | `renderHomeStates` in `layouts.mjs`. |
-| SEO-25 locale registry | Done. `en` and `es` have `enabled: false` and no reviewers. | `contracts/i18n/locales.json`. |
-| SEO-26 multilingual landing build | Done: hreflang groups, switcher, draft and stale gates, locale homes and hubs. Nothing is emitted in production. | `site.mjs`, `tests/i18n-build.test.mjs`. |
+| SEO-25 locale registry | Done. `en` and `es` are enabled; the recorded reviewer is the AI review of [ADR-027](../../decisions/027-ai-reviewed-landing-translations.md). | `contracts/i18n/locales.json`. |
+| SEO-26 multilingual landing build | Done: hreflang groups, switcher, draft and stale gates, locale homes and hubs. Production emits 16 pages per locale. | `site.mjs`, `tests/i18n-build.test.mjs`. |
+| SEO-56 `en` and `es` on the landing | Shipped: the home, about, editorial policy, 5 calculators and 6 guides per locale. | `landing/content/translations/`. |
+| SEO-57 Spanish regional vocabulary | Done: neutral Latin American wording, with the regional word beside it on first mention. | `contracts/i18n/glossary/es.json`, the contract's section 6.4. |
 | SEO-27 localized calculators | Done. | `parseDecimal` in `landing/src/tools.ts`. |
 | SEO-40 one robots.txt source | Built, not served yet. `landing/static/robots.txt` is the source and the web-tier block repeats it byte for byte. | `landing/tests/indexing-and-sitemap.test.mjs`, `business-web/tests/caddy.py`. |
 | SEO-23 IndexNow | Built, switched off. The key file ships at the landing root; the submitter has its own timer. | `infra/deploy/agent/indexnow.py`, `tests/test-indexnow.py`. |
@@ -57,10 +59,10 @@ from the live site on 2026-11-21.
 | SEO-44 dated answers | Built: a reading of the survey and a question block. The lowest-price question never names a cheapest station. | `portalgen/price_answers.go`. |
 | SEO-45 ethanol to gasoline ratio | Built: `/precos/etanol-ou-gasolina/` and a ratio line on state and city pages. | `portalgen/parity.go`. |
 
-Translated content today: four drafts (the ethanol-or-gasoline guide and
-calculator, in `en` and `es`). The `en.json` and `es.json` dictionaries (231
-strings each) have `_review.status: "draft"`, and the build refuses to enable a
-locale whose dictionary is a draft.
+Translated content: per locale, the home, the about page, the editorial
+policy, the 5 calculators and 6 guides. Both dictionaries and every page are
+`reviewed`, by the AI review that ADR-027 allows. The build still refuses to
+enable a locale whose dictionary is a draft.
 
 Everything in the table from SEO-40 down is built on the wave 1 branch and reaches production only with its release. The rules are B-BR-SEO-09 to B-BR-SEO-12 in [portal routes](../../enterprise/portal-routes.md).
 
@@ -72,7 +74,7 @@ owner inputs that are still open.
 | Area | Fact |
 |------|------|
 | Indexable URLs | 6,471. Landing sitemap: 49. Portal: 6 hubs, 432 price pages (27 states, 7 fuel hubs, 398 cities), 5,979 stations, 5 forum URLs. |
-| Languages | pt-BR only. `/en/` and `/es/` return 404. |
+| Languages | pt-BR only on that date: `/en/` and `/es/` returned 404. The landing ships both locales with the release of ADR-027. |
 | Content | 13 guides of about 1,000 to 1,400 words, 5 calculators, 16 app tutorials, 2 forum editorial posts. None of the 24 wave 2 pieces is written. |
 | Price pages | Latest survey only: stations, observations, minimum, maximum and spread per fuel. No mean, no change from the previous week and no history on national, state or city pages. Station pages show up to 5 weeks. |
 | Discovery | No IndexNow. Whether the sitemaps are submitted in Search Console and Bing is still unconfirmed (SEO-19). |
@@ -89,7 +91,7 @@ In order of weight:
 
 1. **Visitors cannot install the app.** Until the Play listing is live, search traffic can only use the web pages. Publishing the app belongs to the store track (D-L08), not to this plan, but every acquisition number depends on it.
 2. **Too few pages match what people search in Portuguese.** A city has one page for all fuels. People search one fuel at a time ("preço da gasolina em Cuiabá"), ask for the average ("preço médio"), and ask what changed this week. A competitor that ranked for a probe query on 2026-11-21 (numerando.com.br) has one page per fuel and city, with history and a weekly summary.
-3. **No page exists in another language.** The machinery is finished. It waits for named reviewers, reviewed dictionaries and content.
+3. **Only the landing has pages in another language.** `en` and `es` have 16 landing pages each. Every price page of the portal is pt-BR only (SEO-28).
 4. **The domain is new and has no links.** It has served the site since 2026-11-14. Nothing announces new pages to search engines, and nothing brings links.
 5. **Editorial output is small.** 13 guides, and no publishing cadence yet.
 6. **Source rights rest on an owner decision, not on a license.** On 2026-11-21 the owner accepted the risk of attributed reuse of prices, the station registry, enforcement and fines ([source admission](../../enterprise/source-admission.md#f8-commercial-rights-decision-emp-gov-016), EDR-394). No dataset license or ANP statement exists and PMQC stays `RIGHTS_PENDING`. Every new price family must show the ANP attribution, source link and survey period, and is withdrawn if ANP objects.
@@ -117,7 +119,7 @@ Their index coverage could not be checked from outside either.
 What this adds to the contract's conclusions:
 
 1. **Their reach comes from one dataset rendered through one template into every locale.** Our equivalent is a dictionary-driven data page: review the strings once, and every state, fuel and city page in that locale is covered. That is how we get locale breadth without thousands of long translations (SEO-28, SEO-59).
-2. **They now translate every article into every locale within days.** At that speed the translations are probably machine output (an inference, not a verified fact). We keep human review, and make it cheap instead of removing it (G-D01).
+2. **They now translate every article into every locale within days.** At that speed the translations are probably machine output (an inference, not a verified fact). Ours go through a second, reviewing AI pass and say so to the reader (ADR-027); a human review replaces it when a reviewer exists.
 3. **Articles and entities link both ways.** Our guides link to data pages and the portal links back to guides. Wave 2 keeps the minimum of 10 contextual links.
 4. **Every page ends with the app call to action.** Ours can only do that honestly once there is an install path (SEO-64).
 
@@ -140,7 +142,7 @@ for "nafta"), visitors, and people who compare fuel prices between countries.
 | EV charging catalog | 1,298 Brazilian places from Open Charge Map (CC BY 4.0 and CC0). Served by the API, not by the portal. | EV charging pages with clean rights (SEO-48). |
 | Inmetro PBE table reader | `tools/station-prep/src/ev_pbe.rs` reads the 2026 PDF. Combustion rows are quarantined. | Vehicle consumption pages (SEO-49). |
 | Community prices | In the app and the API only. | Same-day prices on the web: the one thing ANP-only sites cannot copy (SEO-53). |
-| Multilingual build | Finished, switched off. | SEO-56, SEO-28, SEO-59. |
+| Multilingual build | On for the `en` and `es` landing. | SEO-56, SEO-28, SEO-59. |
 | App in 8 locales | `en`, `pt-BR`, `es`, `de`, `fr`, `ja`, `ru`, `zh-CN`. | The store listing and the light locale set (SEO-37, SEO-59). |
 | Capture and card tooling | `docs/store/cards/build_cards.py` (headless Chrome and Pillow), tutorial captures. | Social images and short videos (SEO-35, SEO-63). |
 | Open CSV downloads | `/dados/` with Dataset JSON-LD. | Press and research links (SEO-36, SEO-61). |
@@ -176,7 +178,7 @@ specification in the contract's section 10; only the changes are written here.
 
 - **SEO-19 Search engine baseline (S, owner, contract).** Open the Search Console domain property. Submit `sitemap.xml` and `sitemap-portal.xml`. Import the property into Bing Webmaster Tools. This is the first task: nothing else can be judged without it.
 - **ESP-18 Source rights (owner).** Send the drafted clarification request to ANP and record the answer or the owner's decision (G-D05). The price families below can be built in the meantime; they inherit the `ANPFUEL_ENTERPRISE_PORTAL_INDEXABLE` switch.
-- **SEO-23 Wave 1 activation (S, owner).** Wave 1 is built and none of it is live. After its release, on the VPS:
+- **SEO-23 Wave 1 activation (S, owner).** Wave 1 pages are live. Its VPS steps are not applied yet:
   - apply the web-tier ConfigMap, so the new `robots.txt` is served;
   - raise `ANPFUEL_ENTERPRISE_EXPORT_WINDOW_WEEKS` from 5 to 12 in the worker environment, so the history tables of the fuel by area pages show 12 survey weeks;
   - after the release that ships the key file, install `indexnow.py` and the two `abastevo-indexnow` units, set `ABASTEVO_INDEXNOW_KEY` and `ABASTEVO_INDEXNOW_ENABLED=1`, and enable the timer;
@@ -249,6 +251,7 @@ Not built now, with the reason:
 ### 6.4 Multilingual rollout
 
 Three tiers. Each locale opens only with a reviewed dictionary (ADR-026).
+ADR-027 allows an AI review for the `en` and `es` landing only.
 
 | Tier | Locales | What ships |
 |------|---------|-----------|
@@ -256,14 +259,10 @@ Three tiers. Each locale opens only with a reviewed dictionary (ADR-026).
 | 1 | `en`, `es` | The home, about, editorial policy, 5 calculators, glossary, the international guide set, and portal pages: national, fuel, state, fuel × state, methodology, data, insights, and the cities on an allowlist (G-D03). |
 | 2 | `fr`, `de`, `ja`, `ru`, `zh-CN` (the app's other locales) | A light set of about 50 pages: the home, the app page, 5 calculators, the national price page, 7 fuel hubs, 27 state hubs, and 3 pillar guides. No city pages. |
 
-- **SEO-18 Reviewers (owner, contract; see G-D01).** Name who signs `en` and `es`.
-- **SEO-56 Launch en and es on the landing (L).**
-  - Review both dictionaries and the four drafts.
-  - Translate the other 4 calculators, `/sobre/`, the editorial policy and the app page (SEO-64).
-  - Give the reviewer a packet per page: source and translation side by side, glossary terms marked, and every number checked to be identical to the source.
-  - Set `enabled: true` per locale only after its dictionary is `reviewed`.
-  - After launch, add one Search Console URL-prefix property per locale folder, so each locale has its own report.
-- **SEO-57 Spanish regional vocabulary (S).** Extend `contracts/i18n/glossary/es.json` with regional terms. Titles and first mentions use the neutral word with the regional one beside it: "gasolina (nafta)", "diésel (gasoil)", "GNV (GNC)". One `es` version; no country variants.
+- **SEO-56 Grow en and es on the landing (M).**
+  - Translate the other 7 guides, and the app page when it exists (SEO-64).
+  - Add one Search Console URL-prefix property per locale folder, so each locale has its own report.
+  - Replace the AI review of a page with a human review when a fluent reviewer exists.
 - **SEO-28 Portal locale layer (L, contract; scope changed by G-D03).** Add the fuel × state family. Localized city pages only for the allowlist. Fuel × city pages and stations stay pt-BR.
 - **SEO-30 Units (S, contract)** and **SEO-58 Currency context (M, needs G-D04).** Admit the Banco Central PTAX rates as an official source. On `en` and `es` pages, show an approximate value in the visitor's likely currency beside the BRL price, with the rate date. Prices in pt-BR pages are unchanged.
 - **SEO-32 International set (L, contract; order changed).** Spanish first, because of the summer trips:
@@ -335,7 +334,7 @@ contract's I18N-D02, I18N-D04 and I18N-D05.
 
 | ID | Decision | Recommended answer |
 |----|----------|--------------------|
-| G-D01 | Who reviews translations | Keep human review for everything published. Make it small: data pages render from one dictionary per locale, and each page comes with a review packet. The owner signs `en` and `es` if fluent enough to verify meaning; otherwise one paid native review per locale. Volunteer reviewers from the open-source community are credited on `/contribuidores/`. |
+| G-D01 | Who reviews translations | **Decided on 2026-11-21 (ADR-027), against the recommendation:** an AI review, recorded as such and disclosed to readers, signs the `en` and `es` landing. The recommendation was human review for everything published. It still applies to the portal and to every other locale. |
 | G-D02 | Locale tiers | Accept the three tiers of section 6.4. Tier 2 opens one locale at a time, after Tier 1 is live, without waiting for proof of demand, and is pruned by the contract's 90-day rule. |
 | G-D03 | Localized city pages | An allowlist: the 27 capitals and the border and tourist cities that have survey data. Extend it from Search Console impressions. |
 | G-D04 | Currency on en and es pages | Admit Banco Central PTAX as a source and show approximate, dated values in USD and EUR, and in ARS, UYU and PYG if the Banco Central publishes those rates. |
@@ -348,7 +347,8 @@ contract's I18N-D02, I18N-D04 and I18N-D05.
 
 On 2026-11-21 the owner asked for wave 1 (batches A and B) to be built, and it
 is built. It applies the recommended answers to G-D05, G-D06 and G-D10. The
-other decisions are still open.
+owner also decided G-D01 (ADR-027) and asked for `en` and `es` only for now,
+which leaves the tiers of G-D02 open. The other decisions are still open.
 
 Open from the contract: the named editor and bio (I18N-D07).
 
