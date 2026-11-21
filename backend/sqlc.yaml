@@ -56,6 +56,17 @@ sql:
         emit_json_tags: true
         omit_unused_structs: true
   - engine: postgresql
+    queries: db/queries/orgbilling
+    schema:
+      - db/migrations/000263_organization_plan_catalog.sql
+    gen:
+      go:
+        package: orgbilling
+        out: db/queries/orgbilling
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/organization
     schema:
       - db/migrations/000020_accounts.sql

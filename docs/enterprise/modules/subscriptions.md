@@ -10,7 +10,12 @@ F1 uses administratively controlled organization capabilities behind default-off
 
 ## 3. Entities and ownership
 
-The organization owns subscription, capability evaluation and usage records. The catalog versions plan definitions and limits. Verified billing event identity and reconciliation preserve provenance. Personal Premium and the existing account ENTERPRISE tier remain separate sources with their current rights.
+The organization owns subscription, capability evaluation and usage records. The catalog versions plan definitions and limits. The platform catalog stores immutable snapshots in
+`enterprise_plan_catalog`, keyed by product, plan and revision. Its meter
+ceilings are nullable integers for active vehicles, active stations, storage
+bytes and API calls. A zero is an explicit ceiling. An absent ceiling or an
+unregistered capability cannot grant access. The migration includes no plans.
+Verified billing event identity and reconciliation preserve provenance. Personal Premium and the existing account ENTERPRISE tier remain separate sources with their current rights.
 
 ## 4. Business rules
 
