@@ -38,6 +38,8 @@ func TestSuspensionReviewMigrationRecoversWithExistingSubscription(t *testing.T)
 func checkBillingUpgradePreservesHistory(t *testing.T, filename, missingObject string) {
 	t.Helper()
 	version, _, _ := strings.Cut(filename, "_")
+	const opening = "000296_organization_subscription_opening_proof.sql"
+	fixtureHead := min(filename, opening)
 	files := fstest.MapFS{}
 	for _, pattern := range []string{"*.sql", "schema_min_supported"} {
 		names, err := fs.Glob(migrations.Files, pattern)
@@ -45,7 +47,7 @@ func checkBillingUpgradePreservesHistory(t *testing.T, filename, missingObject s
 			t.Fatal(err)
 		}
 		for _, name := range names {
-			if name != "schema_min_supported" && name >= filename {
+			if name != "schema_min_supported" && name >= fixtureHead {
 				continue
 			}
 			raw, err := fs.ReadFile(migrations.Files, name)
@@ -79,6 +81,16 @@ VALUES($1,$2,1,'fleet','upgrade-fixture',1,'','ACTIVE','','CONFIRM_SETTLEMENT','
 		return previous
 	}
 	prior := read()
+	if filename > opening {
+		source, err := fs.ReadFile(migrations.Files, opening)
+		if err != nil {
+			t.Fatal(err)
+		}
+		files[opening] = &fstest.MapFile{Data: source}
+		if _, err := migrate.Apply(ctx, f.AdminDSN, files); err != nil || read() != prior {
+			t.Fatalf("installation of opening proof changed legacy history: %v", err)
+		}
+	}
 	raw, err := fs.ReadFile(migrations.Files, filename)
 	if err != nil {
 		t.Fatal(err)
