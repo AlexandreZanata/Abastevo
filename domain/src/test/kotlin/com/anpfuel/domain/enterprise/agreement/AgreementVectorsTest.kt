@@ -166,7 +166,7 @@ class AgreementVectorsTest {
     @Test
     fun `matches canonical redemption idempotency golden vectors`() {
         val rows = loadVectors("redemption-idempotency-v1.psv")
-        assertEquals(13, rows.size)
+        assertEquals(16, rows.size)
         for (line in rows) {
             val parts = line.split('|')
             val id = parts[0]

@@ -104,11 +104,12 @@ func (v Voucher) Attempt() (Voucher, error) {
 	return Voucher{state: Issued, product: v.product, unit: v.unit, maxQuantityMilli: v.maxQuantityMilli, maxCentavos: v.maxCentavos, validUntil: v.validUntil, failedAttempts: next}, nil
 }
 
-// TotalCentavos derives the settlement total from the negotiated price:
-// quantity in milli-units times price in milli-BRL rounded half-up to
-// centavos (BR-MONEY).
+// TotalCentavos derives the settlement total from the negotiated price
+// (BR-MONEY-005): quantity in milli-units times price in milli-BRL per unit
+// is a millionth of a real, so the product divides by 10 000 to centavos,
+// rounded half-up.
 func TotalCentavos(quantityMilli, priceMilliBRL int64) int64 {
-	return (quantityMilli*priceMilliBRL + 500) / 1000
+	return (quantityMilli*priceMilliBRL + 5000) / 10000
 }
 
 // VoucherOption rebuilds one stored voucher head (the adapters' read and
