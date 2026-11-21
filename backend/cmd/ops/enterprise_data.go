@@ -43,7 +43,7 @@ func runEnterpriseData(args []string, out io.Writer) error {
 	result, err := preparation.Prepare(ctx, pool.Underlying(), *dataset, *revision, *directory)
 	switch {
 	case errors.Is(err, database.ErrUnsafeOrgRole):
-		return errors.New("Data preparation requires an ordinary data-preparation database login")
+		return errors.New("data preparation requires an ordinary data-preparation database login")
 	case errors.Is(err, adapters.ErrDatasetNotFound), errors.Is(err, domain.ErrRightsPending),
 		errors.Is(err, domain.ErrSourceBinding), errors.Is(err, enterpriseexport.ErrUnverifiedSnapshot):
 		return err
