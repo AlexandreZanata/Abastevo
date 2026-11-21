@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """Exercise the submitter with fixture sitemaps and a loopback endpoint."""
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+import io
 import json
 import os
 from pathlib import Path
+import runpy
 import stat
 import subprocess
 import sys
@@ -15,12 +17,14 @@ import xml.etree.ElementTree as XML
 
 SCRIPT = Path(__file__).resolve().parents[1] / "indexnow.py"
 KEY = "a" * 32
+USER_AGENT = "abastevo-indexnow/1 (+https://abastevo.com.br/)"
 NAMESPACE = "http://www.sitemaps.org/schemas/sitemap/0.9"
 
 
 class IndexNow(unittest.TestCase):
     def setUp(self):
         self.requests = []
+        self.agents = []
         self.posts = []
         self.statuses = []
         self.sitemaps = {}
@@ -30,8 +34,20 @@ class IndexNow(unittest.TestCase):
             def log_message(self, *_args):
                 pass
 
+            def refused(self):
+                # The public edge answers 403 to the default urllib signature.
+                agent = self.headers.get("User-Agent", "")
+                fixture.agents.append(agent)
+                if not agent.startswith("Python-urllib"):
+                    return False
+                self.send_response(403)
+                self.end_headers()
+                return True
+
             def do_GET(self):
                 fixture.requests.append(self.path)
+                if self.refused():
+                    return
                 body = fixture.sitemaps.get(self.path)
                 self.send_response(404 if body is None else 200)
                 self.end_headers()
@@ -41,6 +57,8 @@ class IndexNow(unittest.TestCase):
             def do_POST(self):
                 fixture.requests.append(self.path)
                 body = self.rfile.read(int(self.headers["Content-Length"]))
+                if self.refused():
+                    return
                 fixture.posts.append((self.headers["Content-Type"], json.loads(body)))
                 self.send_response(fixture.statuses.pop(0) if fixture.statuses else 202)
                 self.end_headers()
@@ -105,6 +123,11 @@ class IndexNow(unittest.TestCase):
             self.origin + "/first/": "2026-11-19", self.origin + "/second/": "",
         })
         self.assertEqual(stat.S_IMODE(self.state.stat().st_mode), 0o600)
+
+    def test_every_request_names_the_client(self):
+        self.run_submitter()
+        self.assertEqual(self.requests, ["/sitemap.xml", "/sitemap-portal.xml", "/submit"])
+        self.assertEqual(self.agents, [USER_AGENT] * 3)
 
     def test_no_change_makes_no_post(self):
         saved = self.accepted_state()
@@ -196,6 +219,19 @@ class IndexNow(unittest.TestCase):
             with self.subTest(origin=origin):
                 self.assertIn("ABASTEVO_INDEXNOW_ORIGIN", self.run_submitter(1, ABASTEVO_INDEXNOW_ORIGIN=origin))
         self.assertEqual(self.requests, [])
+
+    def test_invalid_endpoint_makes_no_request(self):
+        for endpoint in ("file:///etc/hostname", "http://example.invalid/indexnow", self.origin + "/submit?x=1"):
+            with self.subTest(endpoint=endpoint):
+                self.assertIn("ABASTEVO_INDEXNOW_ENDPOINT",
+                              self.run_submitter(1, ABASTEVO_INDEXNOW_ENDPOINT=endpoint))
+        self.assertEqual(self.requests, [])
+
+    def test_oversized_sitemap_is_refused(self):
+        read_limited = runpy.run_path(str(SCRIPT))["read_limited"]
+        self.assertEqual(read_limited(io.BytesIO(b"x" * 10), 10), b"x" * 10)
+        with self.assertRaisesRegex(ValueError, "exceeded 10 bytes"):
+            read_limited(io.BytesIO(b"x" * 11), 10)
 
 
 if __name__ == "__main__":

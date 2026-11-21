@@ -171,11 +171,16 @@ additional env rollout is granted to the agent by this amendment.
 
 ## IndexNow submitter
 
-The IndexNow timer reads the public landing and portal sitemaps after releases
-and portal refreshes. It submits new URLs, URLs with a changed lastmod and URLs
-removed from the sitemaps. A failed fetch or refused batch leaves the last
-accepted state in place for the next run. The deploy workflow does not call the
-submitter. Submission is off by default.
+The IndexNow timer reads the public landing and portal sitemaps every 30
+minutes, which covers releases and portal refreshes. It submits new URLs, URLs
+with a changed lastmod and URLs removed from the sitemaps. A failed fetch or
+refused batch leaves the last accepted state in place for the next run. The
+deploy workflow does not call the submitter. Submission is off by default.
+
+Every request carries the user agent `abastevo-indexnow/1`. The public edge
+answers 403 to the default Python signature, so a 403 on a sitemap fetch after
+an edge rule change means that this agent must be allowed again. Read the last
+run with `journalctl -u abastevo-indexnow.service -n 20`.
 
 | Environment variable | Default | Purpose |
 | --- | --- | --- |

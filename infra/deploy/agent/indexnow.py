@@ -19,6 +19,11 @@ DEFAULT_ENDPOINT = "https://api.indexnow.org/indexnow"
 DEFAULT_SITEMAPS = "/sitemap.xml /sitemap-portal.xml"
 DEFAULT_STATE_DIR = "/var/lib/abastevo-deploy"
 BATCH_SIZE = 10_000
+# The public edge answers 403 to the default Python-urllib signature, so every
+# request names this client instead.
+USER_AGENT = "abastevo-indexnow/1 (+https://abastevo.com.br/)"
+# The sitemap protocol allows 50 MB per file; anything larger is not ours.
+MAX_SITEMAP_BYTES = 52 * 1024 * 1024
 
 
 class NoRedirect(HTTPRedirectHandler):
@@ -26,12 +31,12 @@ class NoRedirect(HTTPRedirectHandler):
         return None
 
 
-def origin_host(origin):
-    message = "ABASTEVO_INDEXNOW_ORIGIN must be an HTTPS origin without a path"
-    if not re.fullmatch(r"https?://[^/?#@\s]+", origin):
+def checked_url(value, name, shape, pattern):
+    message = f"{name} must be an HTTPS {shape}"
+    if not re.fullmatch(pattern, value):
         raise ValueError(message)
     try:
-        parts = urlsplit(origin)
+        parts = urlsplit(value)
         port = parts.port
     except ValueError:
         raise ValueError(message) from None
@@ -44,18 +49,28 @@ def origin_host(origin):
     return parts.hostname
 
 
+def origin_host(origin):
+    return checked_url(origin, "ABASTEVO_INDEXNOW_ORIGIN", "origin without a path",
+                       r"https?://[^/?#@\s]+")
+
+
+def read_limited(response, limit=MAX_SITEMAP_BYTES):
+    body = response.read(limit + 1)
+    if len(body) > limit:
+        raise ValueError(f"sitemap fetch exceeded {limit} bytes")
+    return body
+
+
 def request(opener, url, timeout, payload=None):
     method = "sitemap fetch" if payload is None else "submission"
-    options = {}
+    options = {"headers": {"User-Agent": USER_AGENT}}
     if payload is not None:
-        options = {
-            "data": json.dumps(payload).encode("utf-8"),
-            "headers": {"Content-Type": "application/json; charset=utf-8"},
-        }
+        options["data"] = json.dumps(payload).encode("utf-8")
+        options["headers"]["Content-Type"] = "application/json; charset=utf-8"
     try:
         with opener.open(Request(url, **options), timeout=timeout) as response:
             if payload is None:
-                return response.read()
+                return read_limited(response)
             if response.status not in (200, 202):
                 raise ValueError(f"{method} returned HTTP {response.status}")
     except HTTPError as error:
@@ -139,6 +154,9 @@ def submit(env):
         raise ValueError("ABASTEVO_INDEXNOW_TIMEOUT must be a positive number of seconds")
     state_dir = Path(env.get("ABASTEVO_STATE_DIR") or DEFAULT_STATE_DIR)
     state = Path(env.get("ABASTEVO_INDEXNOW_STATE", state_dir / "indexnow-state.json"))
+    endpoint = env.get("ABASTEVO_INDEXNOW_ENDPOINT", DEFAULT_ENDPOINT)
+    checked_url(endpoint, "ABASTEVO_INDEXNOW_ENDPOINT", "URL without a query",
+                r"https?://[^/?#@\s]+(/[^?#\s]*)?")
 
     opener = build_opener(NoRedirect)
     current, ignored = read_sitemaps(opener, origin, paths, timeout)
@@ -153,7 +171,6 @@ def submit(env):
     if not urls:
         return "no change"
 
-    endpoint = env.get("ABASTEVO_INDEXNOW_ENDPOINT", DEFAULT_ENDPOINT)
     identity = {"host": host, "key": key, "keyLocation": f"{origin}/{key}.txt"}
     for offset in range(0, len(urls), BATCH_SIZE):
         request(opener, endpoint, timeout, {**identity, "urlList": urls[offset:offset + BATCH_SIZE]})
