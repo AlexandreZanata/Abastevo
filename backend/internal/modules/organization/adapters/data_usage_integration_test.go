@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"errors"
+	"fmt"
 	"strings"
 	"testing"
 	"time"
@@ -14,6 +15,7 @@ import (
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	billing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
+	plans "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	datapg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters"
@@ -190,5 +192,119 @@ VALUES('data','synthetic',1,$1,5,'synthetic-reviewed-rate')`, seconds); err != n
 		org, term.Period.Start, original.Key.ID).Scan(&calls, &receipts, &familyCalls)
 	if err != nil || calls != 2 || receipts != 2 || familyCalls != 5 {
 		t.Fatalf("usage ledger drifted: term=%d receipts=%d rate=%d error=%v", calls, receipts, familyCalls, err)
+	}
+}
+
+func TestCompanyPlanAndDataReadsFollowCommittedSuspension(t *testing.T) {
+	env := dataUsageFixture(t, 2)
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	defer cancel()
+	fx := env.fx
+	role, password := fx.f.ProvisionScriptRole(t)
+	pool := fx.f.ScriptRuntimePool(t, role, password, 4)
+	usage := datapg.UsageStore{Pool: pool, Authority: env.auth, Flags: env.flags, Plans: env.meter.Plans, Enabled: true}
+	planReader := adapters.SubscriptionAuthority{Memberships: fx.store.Memberships, Roles: fx.store.Roles}
+	known, err := capability.NewCatalog([]string{"organizations", "data"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	overview := billing.OverviewStore{Pool: pool, Authority: planReader, Capabilities: known, BillingEnabled: true}
+	meter := env.meter
+	meter.Keys.Pool = pool
+	if current, err := usage.ReadUsage(ctx, fx.scope, fx.actor, fx.member, data.DatasetAfter{}, 20); err != nil ||
+		!current.Enabled || current.Term == nil || current.Term.Ceiling != 2 {
+		t.Fatalf("active fixture Data allowance unavailable: %+v / %v", current, err)
+	}
+
+	holder, err := pool.BeginTx(ctx, pgx.TxOptions{IsoLevel: pgx.ReadCommitted})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer holder.Rollback(context.Background())
+	if _, err := holder.Exec(ctx, `SELECT pg_catalog.set_config('anpfuel.org_id',$1,true)`, fx.scope.OrgID().String()); err != nil {
+		t.Fatal(err)
+	}
+	ledger := billing.SubscriptionLedger{Capabilities: known}
+	event := plans.LifecycleEvent{Scope: fx.scope, SubscriptionID: env.term.SubscriptionID, ExpectedRevision: 1,
+		Kind: plans.SuspendAccess, Source: plans.ReviewedOperator, At: lifecycleDBNow(t, fx), Reference: "synthetic-reviewed-suspension"}
+	if _, err := ledger.ApplyTx(ctx, holder, plans.PlanKey{Product: "data", Plan: "synthetic", Revision: 1}, event); err != nil {
+		t.Fatal(err)
+	}
+	checks := map[string]func() (time.Time, error){
+		"usage panel": func() (time.Time, error) {
+			view, err := usage.ReadUsage(ctx, fx.scope, fx.actor, fx.member, data.DatasetAfter{}, 20)
+			if err != nil || view.Enabled || view.Term != nil || view.Rate != nil || len(view.Datasets) != 0 {
+				return time.Time{}, fmt.Errorf("suspended plan exposed current Data allowance: %+v / %v", view, err)
+			}
+			return view.ObservedAt, nil
+		},
+		"billing panel": func() (time.Time, error) {
+			view, err := overview.Read(ctx, fx.scope, fx.actor, fx.member)
+			if err != nil || len(view.Plans) != 1 || view.Plans[0].State != plans.Suspended {
+				return time.Time{}, fmt.Errorf("billing panel did not observe committed suspension: %+v / %v", view, err)
+			}
+			return view.ObservedAt, nil
+		},
+		"regional API": func() (time.Time, error) {
+			call := datapg.UsageCall{ID: env.issue.OperationID, Hash: sha256.Sum256([]byte("synthetic request after suspension"))}
+			err := meter.Read(ctx, fx.scope, env.original.Bearer, domain.ReadRegional, call,
+				func(context.Context, pgx.Tx, datapg.UsageAuthority) error { return errors.New("unexpected admission") })
+			if !errors.Is(err, domain.ErrKeyDenied) {
+				return time.Time{}, fmt.Errorf("regional API failed to refuse the suspension: %v", err)
+			}
+			return time.Time{}, nil
+		},
+	}
+	type result struct {
+		name       string
+		observedAt time.Time
+		err        error
+	}
+	results := make(chan result, len(checks))
+	for name, check := range checks {
+		go func() {
+			at, err := check()
+			results <- result{name: name, observedAt: at, err: err}
+		}()
+	}
+	pid := int(holder.Conn().PgConn().PID())
+	ticker := time.NewTicker(5 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		var waiting int
+		if err := fx.f.Admin.QueryRow(ctx, `SELECT count(*) FROM pg_stat_activity
+ WHERE datname=current_database() AND usename=$1 AND wait_event_type='Lock'
+   AND $2=ANY(pg_blocking_pids(pid)) AND query LIKE '%name: LockEntitlementRead%'`, role, pid).Scan(&waiting); err != nil {
+			t.Fatal(err)
+		}
+		if waiting == len(checks) {
+			break
+		}
+		select {
+		case early := <-results:
+			t.Fatalf("%s completed before the in-flight suspension committed: %v", early.name, early.err)
+		case <-ctx.Done():
+			t.Fatal("reads never reached the shared entitlement lock")
+		case <-ticker.C:
+		}
+	}
+	var beforeCommit time.Time
+	if err := holder.QueryRow(ctx, `SELECT clock_timestamp()`).Scan(&beforeCommit); err != nil {
+		t.Fatal(err)
+	}
+	if err := holder.Commit(ctx); err != nil {
+		t.Fatal(err)
+	}
+	for range checks {
+		read := <-results
+		if read.err != nil {
+			t.Errorf("%s: %v", read.name, read.err)
+		} else if read.name != "regional API" && read.observedAt.Before(beforeCommit) {
+			t.Errorf("%s used the clock from before its entitlement lock wait", read.name)
+		}
+	}
+	var used int
+	if err := fx.f.Admin.QueryRow(ctx, `SELECT count(*) FROM org_data_request_receipts WHERE org_id=$1`, fx.scope.OrgID().String()).Scan(&used); err != nil || used != 0 {
+		t.Fatalf("refused Data call changed its subscription usage: %d / %v", used, err)
 	}
 }

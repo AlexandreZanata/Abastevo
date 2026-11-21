@@ -16,6 +16,7 @@ import (
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/domain"
 	billing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/application"
+	capabilitypg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	connector "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgconnector/application"
 	data "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/application"
@@ -98,6 +99,12 @@ func (guard companyAuthority) check(ctx context.Context, tx pgx.Tx, scope kernel
 			}
 		}
 		if err := checkCapability(ctx, tx, scope, policy.Capability); err != nil {
+			return err
+		}
+	} else if policy == billing.ReadPlanPolicy() || policy == data.UsagePolicy() {
+		// These panels project current subscription facts. Retain the same
+		// shared entitlement lock as Data admission, before taking the root.
+		if err := capabilitypg.LockEntitlementRead(ctx, tx, scope); err != nil {
 			return err
 		}
 	}

@@ -47,6 +47,8 @@ type UsageView struct {
 	After      DatasetAfter
 }
 
+// UsageViewAuthority holds the organization entitlement lock before the root
+// through the usage projection, including the current operator switch.
 type UsageViewAuthority interface {
 	CheckUsageReadTx(context.Context, pgx.Tx, kernel.OrgScope, organization.CompanyActor, string) error
 }

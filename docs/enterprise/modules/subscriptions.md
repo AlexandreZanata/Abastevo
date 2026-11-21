@@ -68,7 +68,9 @@ Plan read and management require the current organization's named permissions. F
 The company plan and billing panel uses `subs.plan.read` to show exact
 catalog revisions, current term dates and scoped confirmed settlements. It
 keeps the previous company's results out of the screen after a scope change.
-The read remains available when billing writes are disabled.
+It reads the plan under the same shared entitlement lock as the Data panel,
+with the server clock sampled after the lock wait. The read remains available
+when billing writes are disabled.
 
 ## 8. Offline, concurrency, idempotency and corrections
 

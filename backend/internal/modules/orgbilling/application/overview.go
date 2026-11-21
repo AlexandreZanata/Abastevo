@@ -19,6 +19,8 @@ func ReadPlanPolicy() access.Policy {
 	return access.Policy{Permission: "subs.plan.read", Capability: "organizations", Effect: access.Read}
 }
 
+// ReadAuthority holds the organization entitlement and root read locks through
+// the billing projection so the observed clock and subscription agree.
 type ReadAuthority interface {
 	CheckPlanReadTx(context.Context, pgx.Tx, kernel.OrgScope, organization.CompanyActor, string) error
 }

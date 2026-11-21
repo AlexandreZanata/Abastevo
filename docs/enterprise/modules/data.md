@@ -54,6 +54,10 @@ The [Data permissions](../permissions.md) separate key management, consumption a
 
 API requests, key changes and report generation require server confirmation. Stable query basis and cursors prevent page mixing. Usage and retry identity are explicit. Notification subscriptions and report links recheck current recipient scope.
 
+The company usage view keeps a shared entitlement lock through the selected
+plan's allowance, usage and switch reads. A view that waits for a subscription
+change uses the committed plan and the server instant after the wait.
+
 ## 9. Events, notifications and integrations
 
 Reuse enterpriseexport source preparation and typed admitted read ports. Usage and report jobs use the existing queue. External source updates never rewrite a stored method snapshot. A member with current Data scope and the organization-wide key management
