@@ -10,7 +10,7 @@ contract still owns the hreflang, translation and editorial rules. This file
 owns three things:
 - the measured state on 2026-11-21;
 - a new order for the contract tasks that are still open;
-- the new tasks SEO-39 to SEO-66.
+- the new tasks SEO-39 to SEO-66. SEO-40 is done and no longer listed.
 
 When the owner accepts it, move each accepted rule change into the contract,
 record the ADR-026 amendments as a new decision, and list the tasks in
@@ -45,13 +45,15 @@ from the live site on 2026-11-21.
 | SEO-25 locale registry | Done. `en` and `es` have `enabled: false` and no reviewers. | `contracts/i18n/locales.json`. |
 | SEO-26 multilingual landing build | Done: hreflang groups, switcher, draft and stale gates, locale homes and hubs. Nothing is emitted in production. | `site.mjs`, `tests/i18n-build.test.mjs`. |
 | SEO-27 localized calculators | Done. | `parseDecimal` in `landing/src/tools.ts`. |
+| SEO-40 one robots.txt source | Built, not served yet. `landing/static/robots.txt` is the source and the web-tier block repeats it byte for byte. | `landing/tests/indexing-and-sitemap.test.mjs`, `business-web/tests/caddy.py`. |
+| SEO-23 IndexNow | Built, switched off. The key file ships at the landing root; the submitter has its own timer. | `infra/deploy/agent/indexnow.py`, `tests/test-indexnow.py`. |
 
 Translated content today: four drafts (the ethanol-or-gasoline guide and
 calculator, in `en` and `es`). The `en.json` and `es.json` dictionaries (231
 strings each) have `_review.status: "draft"`, and the build refuses to enable a
 locale whose dictionary is a draft.
 
-Not started: SEO-13, SEO-14, SEO-23, SEO-28 to SEO-38. SEO-18 and SEO-19 are
+Not started: SEO-13, SEO-14, SEO-28 to SEO-38. SEO-18 and SEO-19 are
 owner inputs that are still open.
 
 ### 2.2 Live numbers
@@ -142,7 +144,7 @@ The ranking is a judgment from the facts above, not a forecast.
 | # | Lever | Why it ranks here | Tasks |
 |---|-------|-------------------|-------|
 | 1 | pt-BR price pages that match real queries | Brazil is where the demand is, and the data is already in the snapshot. | SEO-29, SEO-41 to SEO-46 |
-| 2 | Measurement and fast discovery | Without Search Console data every later decision is a guess. IndexNow costs little. | SEO-19, SEO-23, SEO-39, SEO-40 |
+| 2 | Measurement and fast discovery | Without Search Console data every later decision is a guess. IndexNow costs little. | SEO-19, SEO-23, SEO-39 |
 | 3 | English and Spanish | The build is done. The Argentine summer trips (December to February) are the nearest foreign demand. | SEO-18, SEO-56 to SEO-58, SEO-28, SEO-32 |
 | 4 | Editorial cadence | Two pieces a week build topical authority and give the data pages incoming links. | SEO-54, SEO-55, SEO-31, SEO-35 |
 | 5 | An install path and share loops | They turn traffic into users, and users into links and return visits. | D-L08, SEO-64, SEO-34, SEO-62, SEO-65 |
@@ -169,13 +171,10 @@ specification in the contract's section 10; only the changes are written here.
   - It groups pages by URL family and locale: indexed against submitted for a sample per family, impressions, clicks, CTR and position, and top queries per page.
   - Output goes to a git-ignored directory.
   - Tests: the route-to-family classifier, against the vectors in `contracts/testdata/i18n/routes.json` and one fixture per portal family.
-- **SEO-23 IndexNow (M, contract, specified further).**
-  - The key file ships in `landing/static/`. An IndexNow key is public by design.
-  - One submitter script in `infra/deploy/agent/`. It reads the live sitemaps, compares each `loc` and `lastmod` with the state saved by the last successful run, and posts new, changed and removed URLs in batches of at most 10,000.
-  - One trigger: its own systemd timer, every 30 minutes. That covers both deploys and the weekly portal refresh. `apply.sh` and the worker do not change, so a failure can never touch a deploy.
-  - State is saved only after an accepted response. The unit ships disabled; the owner installs and enables it on the VPS.
-  - Tests: fixture sitemaps and a stub endpoint cover the first run, no change, a partial change and a refused response.
-- **SEO-40 One robots.txt source (S).** `landing/static/robots.txt` becomes the source of the rules, including the three `Disallow` lines and the portal sitemap line. The inline block in the web-tier Caddyfile repeats it byte for byte, and a test fails when they differ. A crawler obeys only its most specific group, so every named group repeats the `Disallow` lines. The policy does not change: search and answer agents allowed, training crawlers refused.
+- **SEO-23 IndexNow and robots activation (S, owner).** Both are built and neither is live. On the VPS:
+  - apply the web-tier ConfigMap, so the new `robots.txt` is served;
+  - after the release that ships the key file, install `indexnow.py` and the two `abastevo-indexnow` units, set `ABASTEVO_INDEXNOW_KEY` and `ABASTEVO_INDEXNOW_ENABLED=1`, and enable the timer;
+  - read the first run with `journalctl -u abastevo-indexnow.service`. The steps are in the [deploy agent runbook](../../operations/deploy-agent.md#indexnow-submitter).
 - **SEO-24 Navigation hubs, remainder (S, contract).** A `/forum/` entry on the home and in the landing footer, and the shared footer hubs.
 - **SEO-22 Feeds, remainder (S, contract).** An Atom feed for forum editorial posts in portalgen, linked from `/forum/`.
 - **SEO-20 Forum retarget (S, owner, contract).** Apply the two payloads in the contract's section 7.1 through the admin console.
@@ -332,8 +331,8 @@ different directories and can run in separate worktrees.
 
 | Wave | Batch | Tasks | Main paths |
 |------|-------|-------|-----------|
-| 0 | Owner | SEO-19, ESP-18, SEO-18, SEO-20, decisions in section 8, Play publication | none |
-| 1 | A: discovery | SEO-23, SEO-40, SEO-39, SEO-24, SEO-22, SEO-66 | `infra/`, `scripts/seo/`, `landing/static/` |
+| 0 | Owner | SEO-19, ESP-18, SEO-18, SEO-20, SEO-23, decisions in section 8, Play publication | none |
+| 1 | A: discovery | SEO-39, SEO-24, SEO-22, SEO-66 | `scripts/seo/`, `landing/`, portalgen |
 | 1 | B: pt-BR price depth | SEO-41, SEO-29, SEO-42, SEO-43, SEO-44, SEO-45 | `backend/…/portalgen/`, `enterpriseexport/analytics/` |
 | 1 | C: editorial engine | SEO-54, SEO-55, SEO-35, first pieces of SEO-31 | `landing/scripts/`, `landing/content/guias/` |
 | 2 | D: en and es landing | SEO-57, SEO-56, SEO-64, the Spanish half of SEO-32 | `landing/content/translations/`, `contracts/i18n/` |
