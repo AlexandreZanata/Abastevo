@@ -12,9 +12,9 @@ import (
 // workerExportConfig carries the enterprise switch, the ordinary runtime
 // pool and the private bucket of the organization export worker.
 type workerExportConfig struct {
-	Enabled bool
-	Pool    *pgxpool.Pool
-	Storage *orgexport.StorageConfig
+	Enabled, BillingEnabled bool
+	Pool                    *pgxpool.Pool
+	Storage                 *orgexport.StorageConfig
 }
 
 // exportStorage maps the existing private bucket configuration.
@@ -29,10 +29,10 @@ func exportStorage(r2 *config.R2Config) *orgexport.StorageConfig {
 // exportWorkerHandlers composes the organization export handlers only when
 // the enterprise switch is on and private storage is configured; otherwise
 // queued export jobs wait, excluded from the general dispatcher, without
-// charging attempts (BR-RPT-009, EDR-156). Production admits no format yet.
+// charging attempts (BR-RPT-009, EDR-156).
 func exportWorkerHandlers(c workerExportConfig) ([]jobs.Handler, error) {
 	if !c.Enabled || c.Storage == nil {
 		return nil, nil
 	}
-	return enterprisesuite.ExportHandlers(enterprisesuite.Options{Enabled: true, Pool: c.Pool, ExportStorage: c.Storage})
+	return enterprisesuite.ExportHandlers(enterprisesuite.Options{Enabled: true, BillingEnabled: c.BillingEnabled, Pool: c.Pool, ExportStorage: c.Storage})
 }

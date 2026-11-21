@@ -32,7 +32,15 @@ The organization owns its API keys, usage, watchlists and report requests. Key s
 
 **UC-DATA-02 — Rotate a key.** A fresh permitted organization actor issues an approved replacement. The recorded overlap ends at its stated time and the old key is refused afterwards. Audit contains no secret.
 
-**UC-DATA-03 — Request a comparison.** A member selects an admitted report and permitted scope. Comparable sources produce a method-labelled result. Otherwise the result explains insufficient or unsupported data rather than guessing.
+**UC-DATA-03 — Request a comparison.** Through the company reports API, a
+member holding `rpt.export.run` and `data.usage.read` requests
+`data.market_comparison.json`. The parameters name one fuel and two exact
+prepared inputs. Each input is an object with `dataset` and `revision` under
+`baseline` or `reference`. The normal private export queue delivers a JSON
+file with the source attribution, method, survey period and station coverage.
+The service checks current plan and source rights at request, generation and
+on both download steps. Delivery also requires the original requester’s
+current company proof.
 
 ## 6. States and transitions
 
@@ -60,7 +68,14 @@ retries do not produce duplicate or inferred changes.
 
 ## 10. Data, formulas and examples
 
-A response states product and units, region, observation period, source coverage, method version and missing-data reasons. No unsupported aggregation fills gaps or mixes price conditions. An aggregation threshold needs a recorded review before use. No private row becomes market-safe merely by removing its name.
+A response states product and units, region, observation period, source coverage, method version and missing-data reasons.
+A market comparison returns the exact rational difference of the admitted
+station means in milli-BRL per unit. For example, a difference of one-sixth
+is encoded as `"1/6"`. Geographic comparisons use the same period, and
+temporal comparisons use a later non-overlapping period in the same
+region. The format returns `INSUFFICIENT_COVERAGE` for a suppressed cohort or
+`INCOMPARABLE_BASIS` when the two supported observations use different
+measurement bases. No unsupported aggregation fills gaps or mixes price conditions. An aggregation threshold needs a recorded review before use. No private row becomes market-safe merely by removing its name.
 
 ## 11. Screens
 

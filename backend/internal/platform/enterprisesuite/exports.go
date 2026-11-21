@@ -15,6 +15,10 @@ import (
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	orgpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/adapters"
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
+	billpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
+	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
+	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	datapg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgdata/adapters"
 	exportpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters"
 	exportweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters/http"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgexport/adapters/lists"
@@ -25,12 +29,20 @@ import (
 
 var errExportComposition = errors.New("enterprisesuite: incomplete export composition")
 
-// exportParts composes the admitted formats — the operational lists of
-// EMP-RPT-002 plus any test-only kinds — and the private object store. The
-// list readers re-check requesters through the given export authority.
-// Without configured storage every transfer is unavailable.
+// exportParts composes the installed formats and private object storage.
+// Format readers recheck the requesting membership through the export authority.
 func exportParts(o Options, requesters lists.Requesters) (exportapp.Registry, exportapp.Objects, error) {
 	all := append(lists.New(o.Pool, requesters), intelpg.ExportFormats(o.Pool, requesters)...)
+	if o.BillingEnabled {
+		codes, err := capability.NewCatalog(CapabilityCodes())
+		if err != nil {
+			return exportapp.Registry{}, nil, err
+		}
+		all = append(all, datapg.MarketComparisonExport{Pool: o.Pool, Requesters: requesters,
+			Plans: billpg.EntitlementStore{Pool: o.Pool, Capabilities: codes, Now: time.Now},
+			Flags: cappg.NewStore(o.Pool, codes, nil)})
+	}
+
 	formats, err := exportapp.NewRegistry(append(all, o.ExportFormats...)...)
 	if err != nil {
 		return exportapp.Registry{}, nil, err

@@ -89,7 +89,7 @@ VALUES ('data','synthetic',1,$1,$2,'synthetic-watch-plan')`, dataset, revision);
 		t.Fatal(err)
 	}
 	now := time.Now().UTC()
-	store := datapg.WatchStore{Pool: env.pool, Authority: env.auth, Plans: env.flags.PlanWrites.(datapg.WatchPlans),
+	store := datapg.WatchStore{Pool: env.pool, Authority: env.auth, Plans: env.flags.PlanWrites.(datapg.DataPlanSource),
 		Audit: auditpg.NewStore(env.pool, catalog), Now: func() time.Time { return now }, Enabled: true}
 	worker := datapg.WatchWorker{Store: store, Flags: env.flags, NewID: jobs.NewUUIDv4,
 		Notices: &notifypg.Store{Pool: env.pool, Authority: accesspg.NewStore(env.pool), Catalog: notices, NewID: jobs.NewUUIDv4}}

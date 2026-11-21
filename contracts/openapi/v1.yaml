@@ -33770,7 +33770,8 @@ components:
       description: Kind of an admitted export format; a kind without an admitted format is EXPORT_FORMAT_UNAVAILABLE. Admitted
         kinds are fleet.asset_list.csv, fleet.meter_reading_list.csv and idn.employee_list.csv (EMP-RPT-002); spreadsheet kinds
         such as fleet.asset_list.xlsx are not admitted until a reviewed writer exists and answer EXPORT_FORMAT_UNAVAILABLE. No enum
-        is declared so that an unadmitted kind reaches that answer.
+        is declared so that an unadmitted kind reaches that answer. With organization billing enabled, data.market_comparison.json
+        requests an official regional comparison under the current Data plan, reviewed source rights and the separate Data read permission.
       type: string
       maxLength: 64
       pattern: '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$'
@@ -33791,7 +33792,9 @@ components:
           type: object
           description: Filters of the format, lower-snake keys, no null, at most 4096 canonical bytes. Each admitted list kind accepts
             only its closed filter object (EnterpriseAssetListExportParameters, EnterpriseMeterReadingListExportParameters,
-            EnterpriseEmployeeListExportParameters).
+            EnterpriseEmployeeListExportParameters). For data.market_comparison.json use baseline and reference objects
+            each with a dataset key and a positive integer revision, plus the fuel product code. Both input revisions must
+            be prepared and admitted. Source rights and Data entitlement are checked again when the report is built and delivered.
       required:
       - schema_version
       - operation_id

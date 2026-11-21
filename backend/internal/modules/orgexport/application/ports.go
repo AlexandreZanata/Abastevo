@@ -154,6 +154,13 @@ type Format interface {
 	Produce(context.Context, ProduceInput, *domain.Sink) error
 }
 
+// FormatAdmission protects formats whose inputs have additional current rights
+// beyond the export and read permissions. Those formats also recheck their
+// inputs inside Produce, in the transaction that reads the data.
+type FormatAdmission interface {
+	CheckInputsTx(context.Context, pgx.Tx, kernel.OrgScope, []byte) error
+}
+
 // Registry is the closed set of admitted formats.
 type Registry struct{ formats map[string]Format }
 

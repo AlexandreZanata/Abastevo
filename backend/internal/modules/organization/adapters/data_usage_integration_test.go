@@ -43,6 +43,11 @@ func dataUsageFixture(t *testing.T, calls int64) dataUsageFixtureState {
 func dataUsageFixtureFor(t *testing.T, calls int64, duration time.Duration) dataUsageFixtureState {
 	t.Helper()
 	fx, _, _ := lifecycleFixture(t)
+	return dataUsageFixtureOn(t, fx, calls, duration)
+}
+
+func dataUsageFixtureOn(t *testing.T, fx legalFixtureState, calls int64, duration time.Duration) dataUsageFixtureState {
+	t.Helper()
 	ctx := t.Context()
 	pool := fx.f.RuntimePool(t, 5)
 	role := pgx.Identifier{fx.f.RuntimeRole}.Sanitize()

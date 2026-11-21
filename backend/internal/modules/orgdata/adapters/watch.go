@@ -40,14 +40,14 @@ func WatchAuditDefinitions() []audit.Definition {
 	}
 }
 
-type WatchPlans interface {
+type DataPlanSource interface {
 	DataPlanAt(context.Context, pgx.Tx, kernel.OrgScope, time.Time) (billing.PlanKey, error)
 }
 
 type WatchStore struct {
 	Pool      *pgxpool.Pool
 	Authority app.KeyAuthority
-	Plans     WatchPlans
+	Plans     DataPlanSource
 	Audit     auditing.TransactionRunner
 	Now       func() time.Time
 	Enabled   bool

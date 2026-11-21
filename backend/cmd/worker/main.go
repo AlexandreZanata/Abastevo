@@ -1020,7 +1020,9 @@ func run() error {
 			Store: driveradapters.NewReportStore(raw), Retention: 400 * 24 * time.Hour, Limit: 1000,
 		}
 	}
-	exportHandlers, err := exportWorkerHandlers(workerExportConfig{Enabled: cfg.EnterpriseEnabled, Pool: raw, Storage: exportStorage(cfg.R2)})
+	exportHandlers, err := exportWorkerHandlers(workerExportConfig{
+		Enabled: cfg.EnterpriseEnabled, BillingEnabled: cfg.EnterpriseBillingEnabled, Pool: raw, Storage: exportStorage(cfg.R2),
+	})
 	if err != nil {
 		return err
 	}
