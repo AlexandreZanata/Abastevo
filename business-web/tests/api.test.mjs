@@ -78,6 +78,13 @@ test('business requests require a live memory-only company session, strict paths
  await f.api.privatePost('/v1/org-access/contexts/list',{});const call=f.calls.at(-1);assert.equal(call.init.headers['X-CSRF'],csrf);assert.equal(call.init.cache,'no-store');
  const late=deferred();const g=fixture(path=>path.endsWith('/keys/login')?json(proof):path.includes('/session/')?json({...view(),csrf_token:csrf}):late.promise);await g.api.signIn('key');const pending=g.api.privatePost('/v1/org-access/contexts/list',{});g.api.forget();late.resolve(json({items:[]}));await assert.rejects(pending,e=>e.kind==='cancelled');
 });
+test('the company transport admits only the scoped plan overview from billing', async () => {
+ const f=fixture(path=>path.endsWith('/keys/login')?json(proof):path.includes('/session/')?json({...view(),csrf_token:csrf}):json({plans:[]}));
+ await f.api.signIn('key');
+ const base=`/v1/orgs/${uuid(2)}/subscriptions/plan/`;
+ assert.deepEqual(await f.api.privatePost(base+'read',{}),{plans:[]});
+ for(const suffix of ['change','read?organization_id=foreign']) await assert.rejects(f.api.privatePost(base+suffix,{}),error=>error.kind==='denied');
+});
 test('concealed missing membership on a private company request is a definitive denial',async()=>{
  const f=fixture(path=>path.endsWith('/keys/login')?json(proof):path.includes('/session/')?json({...view(),csrf_token:csrf}):json({error:{code:'NOT_FOUND'}},404));await f.api.signIn('key');await assert.rejects(f.api.privatePost(`/v1/orgs/${uuid(2)}/employees/list`,{}),e=>e.kind==='denied');
 });

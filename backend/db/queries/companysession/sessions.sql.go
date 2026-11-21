@@ -104,57 +104,17 @@ func (q *Queries) LockProof(ctx context.Context, arg LockProofParams) (string, e
 	return f_id, err
 }
 
-const lockSession = `-- name: LockSession :one
-SELECT s.id::text,s.account_id::text,s.family_id::text,s.token_lookup,s.token_salt,s.token_hash,s.csrf_salt,s.csrf_hash,
- s.authenticated_at,s.created_at,s.last_seen_at,s.expires_at
-FROM company_web_sessions s JOIN accounts a ON a.id=s.account_id
-JOIN account_session_families f ON f.id=s.family_id AND f.account_id=s.account_id
-WHERE s.token_lookup= $1 AND s.revoked_at IS NULL AND a.status='active' AND f.revoked_at IS NULL
- AND f.issued_at<= $2::timestamptz AND f.issued_at+interval '30 days'> $2::timestamptz
- AND s.created_at<= $2::timestamptz AND s.last_seen_at<= $2::timestamptz AND s.last_seen_at> $3::timestamptz
- AND s.expires_at> $2::timestamptz
-FOR UPDATE OF s
+const lockSessionToken = `-- name: LockSessionToken :one
+SELECT id::text FROM company_web_sessions
+WHERE token_lookup = $1::text AND revoked_at IS NULL
+FOR UPDATE
 `
 
-type LockSessionParams struct {
-	TokenLookup string             `json:"token_lookup"`
-	Now         pgtype.Timestamptz `json:"now"`
-	IdleCutoff  pgtype.Timestamptz `json:"idle_cutoff"`
-}
-
-type LockSessionRow struct {
-	SID             string             `json:"s_id"`
-	SAccountID      string             `json:"s_account_id"`
-	SFamilyID       string             `json:"s_family_id"`
-	TokenLookup     string             `json:"token_lookup"`
-	TokenSalt       string             `json:"token_salt"`
-	TokenHash       string             `json:"token_hash"`
-	CsrfSalt        string             `json:"csrf_salt"`
-	CsrfHash        string             `json:"csrf_hash"`
-	AuthenticatedAt pgtype.Timestamptz `json:"authenticated_at"`
-	CreatedAt       pgtype.Timestamptz `json:"created_at"`
-	LastSeenAt      pgtype.Timestamptz `json:"last_seen_at"`
-	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
-}
-
-func (q *Queries) LockSession(ctx context.Context, arg LockSessionParams) (LockSessionRow, error) {
-	row := q.db.QueryRow(ctx, lockSession, arg.TokenLookup, arg.Now, arg.IdleCutoff)
-	var i LockSessionRow
-	err := row.Scan(
-		&i.SID,
-		&i.SAccountID,
-		&i.SFamilyID,
-		&i.TokenLookup,
-		&i.TokenSalt,
-		&i.TokenHash,
-		&i.CsrfSalt,
-		&i.CsrfHash,
-		&i.AuthenticatedAt,
-		&i.CreatedAt,
-		&i.LastSeenAt,
-		&i.ExpiresAt,
-	)
-	return i, err
+func (q *Queries) LockSessionToken(ctx context.Context, tokenLookup string) (string, error) {
+	row := q.db.QueryRow(ctx, lockSessionToken, tokenLookup)
+	var id string
+	err := row.Scan(&id)
+	return id, err
 }
 
 const oldestExpired = `-- name: OldestExpired :one
@@ -218,6 +178,58 @@ func (q *Queries) PurgeExpired(ctx context.Context, arg PurgeExpiredParams) (int
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const readLockedSession = `-- name: ReadLockedSession :one
+SELECT s.id::text,s.account_id::text,s.family_id::text,s.token_lookup,s.token_salt,s.token_hash,s.csrf_salt,s.csrf_hash,
+ s.authenticated_at,s.created_at,s.last_seen_at,s.expires_at
+FROM company_web_sessions s JOIN accounts a ON a.id=s.account_id
+JOIN account_session_families f ON f.id=s.family_id AND f.account_id=s.account_id
+WHERE s.token_lookup= $1 AND s.revoked_at IS NULL AND a.status='active' AND f.revoked_at IS NULL
+ AND f.issued_at<= $2::timestamptz AND f.issued_at+interval '30 days'> $2::timestamptz
+ AND s.created_at<= $2::timestamptz AND s.last_seen_at<= $2::timestamptz AND s.last_seen_at> $3::timestamptz
+ AND s.expires_at> $2::timestamptz
+`
+
+type ReadLockedSessionParams struct {
+	TokenLookup string             `json:"token_lookup"`
+	Now         pgtype.Timestamptz `json:"now"`
+	IdleCutoff  pgtype.Timestamptz `json:"idle_cutoff"`
+}
+
+type ReadLockedSessionRow struct {
+	SID             string             `json:"s_id"`
+	SAccountID      string             `json:"s_account_id"`
+	SFamilyID       string             `json:"s_family_id"`
+	TokenLookup     string             `json:"token_lookup"`
+	TokenSalt       string             `json:"token_salt"`
+	TokenHash       string             `json:"token_hash"`
+	CsrfSalt        string             `json:"csrf_salt"`
+	CsrfHash        string             `json:"csrf_hash"`
+	AuthenticatedAt pgtype.Timestamptz `json:"authenticated_at"`
+	CreatedAt       pgtype.Timestamptz `json:"created_at"`
+	LastSeenAt      pgtype.Timestamptz `json:"last_seen_at"`
+	ExpiresAt       pgtype.Timestamptz `json:"expires_at"`
+}
+
+func (q *Queries) ReadLockedSession(ctx context.Context, arg ReadLockedSessionParams) (ReadLockedSessionRow, error) {
+	row := q.db.QueryRow(ctx, readLockedSession, arg.TokenLookup, arg.Now, arg.IdleCutoff)
+	var i ReadLockedSessionRow
+	err := row.Scan(
+		&i.SID,
+		&i.SAccountID,
+		&i.SFamilyID,
+		&i.TokenLookup,
+		&i.TokenSalt,
+		&i.TokenHash,
+		&i.CsrfSalt,
+		&i.CsrfHash,
+		&i.AuthenticatedAt,
+		&i.CreatedAt,
+		&i.LastSeenAt,
+		&i.ExpiresAt,
+	)
+	return i, err
 }
 
 const revokeLookup = `-- name: RevokeLookup :exec

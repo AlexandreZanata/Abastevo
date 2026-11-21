@@ -25,7 +25,12 @@ INSERT INTO company_web_sessions(id,account_id,family_id,token_lookup,token_salt
 VALUES(CAST(@id::text AS uuid),CAST(@account_id::text AS uuid),CAST(@family_id::text AS uuid),@token_lookup,@token_salt,@token_hash,@csrf_salt,@csrf_hash,
  @authenticated_at,@created_at,@last_seen_at,@expires_at);
 
--- name: LockSession :one
+-- name: LockSessionToken :one
+SELECT id::text FROM company_web_sessions
+WHERE token_lookup = sqlc.arg('token_lookup')::text AND revoked_at IS NULL
+FOR UPDATE;
+
+-- name: ReadLockedSession :one
 SELECT s.id::text,s.account_id::text,s.family_id::text,s.token_lookup,s.token_salt,s.token_hash,s.csrf_salt,s.csrf_hash,
  s.authenticated_at,s.created_at,s.last_seen_at,s.expires_at
 FROM company_web_sessions s JOIN accounts a ON a.id=s.account_id
@@ -33,8 +38,7 @@ JOIN account_session_families f ON f.id=s.family_id AND f.account_id=s.account_i
 WHERE s.token_lookup= @token_lookup AND s.revoked_at IS NULL AND a.status='active' AND f.revoked_at IS NULL
  AND f.issued_at<= @now::timestamptz AND f.issued_at+interval '30 days'> @now::timestamptz
  AND s.created_at<= @now::timestamptz AND s.last_seen_at<= @now::timestamptz AND s.last_seen_at> @idle_cutoff::timestamptz
- AND s.expires_at> @now::timestamptz
-FOR UPDATE OF s;
+ AND s.expires_at> @now::timestamptz;
 
 -- name: TouchSession :execrows
 UPDATE company_web_sessions s SET last_seen_at= @now::timestamptz

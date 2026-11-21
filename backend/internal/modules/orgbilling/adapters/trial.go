@@ -117,7 +117,7 @@ func (store TrialStore) startTx(ctx context.Context, tx pgx.Tx, scope kernel.Org
 	if alreadyStarted {
 		return ErrTrialConflict
 	}
-	instant, err := queries.TrialClock(ctx)
+	instant, err := queries.OrganizationBillingClock(ctx)
 	if err != nil {
 		return err
 	}

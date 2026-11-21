@@ -4,6 +4,7 @@ package domain
 import (
 	"errors"
 	"regexp"
+	"sort"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -90,6 +91,15 @@ func NewPlan(key PlanKey, name string, capabilities []string, limits map[Meter]i
 
 func (plan Plan) Key() PlanKey { return plan.key }
 func (plan Plan) Name() string { return plan.name }
+
+func (plan Plan) Capabilities() []string {
+	codes := make([]string, 0, len(plan.capabilities))
+	for code := range plan.capabilities {
+		codes = append(codes, code)
+	}
+	sort.Strings(codes)
+	return codes
+}
 
 func (plan Plan) Includes(code string) bool {
 	_, exists := plan.capabilities[code]

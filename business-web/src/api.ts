@@ -190,7 +190,9 @@ export class CompanyApi implements SessionPort {
         // EMP-CHECK-004 panel: run queue, run read and release, incident queue, read and decide.
         !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:checklists\/(?:runs\/(?:list|[0-9a-f-]{36}\/release)|assets\/[0-9a-f-]{36}\/runs\/[0-9a-f-]{36}\/read)|incidents\/reports\/(?:list|[0-9a-f-]{36}\/(?:read|decide)))$/.test(path) &&
         // F5 live navigation & operations panel.
-        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:tracking\/(?:live\/list|geofences\/(?:list|create|[0-9a-f-]{36}\/change))|trips\/[0-9a-f-]{36}\/(?:location\/live\/read|track\/replay)|routes\/(?:plans\/(?:read|save)|suggestions\/evaluate))$/.test(path)) throw new ApiError('denied');
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/(?:tracking\/(?:live\/list|geofences\/(?:list|create|[0-9a-f-]{36}\/change))|trips\/[0-9a-f-]{36}\/(?:location\/live\/read|track\/replay)|routes\/(?:plans\/(?:read|save)|suggestions\/evaluate))$/.test(path) &&
+        // EMP-SUBS-008 read-only company billing overview.
+        !/^\/v1\/orgs\/[0-9a-f-]{36}\/subscriptions\/plan\/read$/.test(path)) throw new ApiError('denied');
     return this.#private(path, body, signal, JSON_LIMIT);
   }
   // EMP-CHECK-004 (EDR-329): only the audited document content path, with its

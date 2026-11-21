@@ -13659,6 +13659,62 @@ paths:
                   ended_at: ''
                   end_reason: ''
                 next_cursor: ''
+  /v1/orgs/{org_id}/subscriptions/plan/read:
+    post:
+      tags:
+      - enterprise-organizations
+      operationId: enterprisePlanOverview
+      summary: Read organization plans and confirmed terms
+      description: Dedicated company cookie, exact HTTPS Origin, CSRF and current organization-wide subs.plan.read.
+        Returns retained plan terms and reviewed next terms without provider references, payment credentials, or personal account tiers.
+      security:
+      - CompanySessionCookie: []
+      x-abastevo-organization:
+        permission: subs.plan.read
+        write: false
+        fresh: false
+        require_revision: false
+        company_only: true
+        success: 200
+      parameters:
+      - $ref: '#/components/parameters/CompanySessionOrigin'
+      - $ref: '#/components/parameters/CompanySessionCSRF'
+      - $ref: '#/components/parameters/EnterpriseOrgID'
+      requestBody:
+        description: Read reviewed billing information for the selected company
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+            example: {}
+      responses:
+        '400':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '401':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '403':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '404':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '409':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '422':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '429':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '503':
+          $ref: '#/components/responses/EnterprisePrivateError'
+        '200':
+          description: Private scoped plan overview.
+          headers:
+            Cache-Control:
+              $ref: '#/components/headers/EnterpriseNoStore'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnterprisePlanOverview'
   /v1/orgs/{org_id}/settings/read:
     post:
       tags:
@@ -47738,6 +47794,74 @@ components:
             substitute: ''
       description: 'Complete replacement: every field and nested slot is required, including explicit false, zero or
         empty values. Display preference does not rewrite normalized measures or historical records.'
+    EnterprisePlanOverview:
+      type: object
+      additionalProperties: false
+      required: [observed_at, plans]
+      properties:
+        observed_at:
+          type: string
+          format: date-time
+        plans:
+          type: array
+          items:
+            type: object
+            additionalProperties: false
+            required: [product, name, revision, state, term_start, term_end, term_current, confirmed_paid, capabilities, limits]
+            properties:
+              product:
+                type: string
+              name:
+                type: string
+              revision:
+                type: string
+                pattern: '^[1-9][0-9]{0,18}$'
+              state:
+                type: string
+                enum: [TRIALING, ACTIVE, PAST_DUE, SUSPENDED, CANCELLING, CANCELLED]
+              term_start:
+                type: string
+                format: date-time
+              term_end:
+                type: string
+                format: date-time
+              term_current:
+                type: boolean
+              confirmed_paid:
+                type: boolean
+              capabilities:
+                type: array
+                items:
+                  type: string
+              limits:
+                type: object
+                additionalProperties: false
+                properties:
+                  active_vehicles:
+                    type: string
+                    pattern: '^(0|[1-9][0-9]{0,18})$'
+                  active_stations:
+                    type: string
+                    pattern: '^(0|[1-9][0-9]{0,18})$'
+                  storage_bytes:
+                    type: string
+                    pattern: '^(0|[1-9][0-9]{0,18})$'
+                  api_calls:
+                    type: string
+                    pattern: '^(0|[1-9][0-9]{0,18})$'
+              pending:
+                type: object
+                additionalProperties: false
+                required: [name, revision, effective_at]
+                properties:
+                  name:
+                    type: string
+                  revision:
+                    type: string
+                    pattern: '^[1-9][0-9]{0,18}$'
+                  effective_at:
+                    type: string
+                    format: date-time
     EnterpriseSettingsReadRequest:
       type: object
       additionalProperties: false

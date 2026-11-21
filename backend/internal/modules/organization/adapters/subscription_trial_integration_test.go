@@ -4,9 +4,12 @@ package adapters_test
 
 import (
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
+	permissions "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/domain"
+	organization "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	billing "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
@@ -102,5 +105,30 @@ VALUES($1,$2,'fleet','synthetic',1,$3,$4,86400,'synthetic-reviewed-eligibility')
  (SELECT count(*) FROM org_role_assignments WHERE org_id=$1)`, org, operator).Scan(&trials, &audited, &paid, &roles); err != nil ||
 		trials != 1 || audited != 1 || paid != 0 || roles != 1 {
 		t.Fatalf("trial changed roles or financial history: trials=%d audit=%d paid=%d roles=%d err=%v", trials, audited, paid, roles, err)
+	}
+
+	// An ended subscription remains discoverable to the current member.
+	// Simulate the retained read after the term and the pilot write switch end.
+	flags, err := fx.flags.State(ctx, fx.scope, "organizations")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := fx.flags.Set(ctx, fx.scope, capability.Actor{AccountID: operator}, capability.Change{
+		OperationID: onboardingID(t), Capability: "organizations", ExpectedRevision: flags.Revision, Enabled: false,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	contexts := contextStore(fx)
+	contexts.Plans = billing.EntitlementStore{Pool: pool, Capabilities: known,
+		Now: func() time.Time { return first.value.Period.End.Add(time.Second) }}
+	actor := organization.CompanyActor{AccountID: operator, SessionID: fx.actor.SessionID}
+	page, err := contexts.ListAccountContexts(ctx, actor, 100, "")
+	if err != nil || len(page.Organizations) != 1 || page.Organizations[0].ID != org {
+		t.Fatalf("company plan history disappeared after writes stopped: %+v %v", page, err)
+	}
+	view, err := contexts.ReadAccountContext(ctx, actor, fx.scope, fx.member)
+	if err != nil || !slices.Contains(view.Permissions, permissions.Permission("subs.plan.read")) ||
+		slices.Contains(view.Permissions, permissions.Permission("idn.employee.manage")) {
+		t.Fatalf("ended subscription offered the wrong company controls: %+v %v", view, err)
 	}
 }

@@ -75,7 +75,7 @@ def ordinary_runtime(dsn):
             "GRANT SELECT,INSERT,UPDATE ON accounts,account_session_families,identity_rate_windows,organizations,org_units,org_employee_identities,org_employee_profiles,org_memberships,org_role_assignments,org_capabilities,org_settings_heads,org_invitations,org_invitation_acceptances TO {}",
             "GRANT SELECT,INSERT ON account_key_credentials,org_onboarding_commands,org_audit_events,org_employee_commands,org_settings_commands,org_settings_versions,org_settings_designations,org_settings_notices,org_invitation_commands,org_invitation_notices,org_invitation_locators,org_invitation_person_commands,org_invitation_acceptance_notices,org_role_commands TO {}",
             "GRANT SELECT,UPDATE ON org_teams,org_team_links,org_ownership_transfers,org_device_enrollments TO {}",
-            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities TO {}",
+            "GRANT SELECT ON schema_migrations,payment_billing_exits,account_contributor_bindings,org_establishments,org_legal_entities,enterprise_plan_catalog,enterprise_billing_offers,org_billing_subscription_events,org_billing_charge_bindings,org_billing_settlement_receipts TO {}",
             "GRANT SELECT,INSERT,UPDATE,DELETE ON account_key_admission_events,company_web_sessions TO {}",
             "GRANT USAGE ON SEQUENCE account_key_admission_events_id_seq TO {}",
         ]
@@ -229,9 +229,9 @@ def browser_checks(origin, dsn):
             page.locator("#account-key").press("Enter")
         assert issued.value.status == 200, "Actual company issuance failed"
         csrf = issued.value.json()["csrf_token"]
+        expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
         directory = context.request.post(origin + "/v1/org-access/contexts/list", data={"limit": 100}, headers={"Origin": origin, "X-CSRF": csrf})
         assert directory.status == 200, "Current context discovery failed: " + str(directory.status) + " " + str(directory.json().get("error", {}).get("code", "unknown"))
-        expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
         expect(page.locator("#account-key")).to_have_value("")
         cookies = context.cookies()
         company = next(c for c in cookies if c["name"] == "__Host-empresas-session")
@@ -728,6 +728,7 @@ def employee_checks(browser, origin, dsn):
     page.locator("#account-key").fill(owner.json()["account_key"])
     with page.expect_response(lambda response: response.url.endswith("/org-access/session/login")) as logged_in:
         page.locator("#login-button").click()
+    expect(page.locator("#page-title")).to_have_text("Nenhuma empresa por aqui ainda")
     csrf = logged_in.value.json()["csrf_token"]
     headers = {"Origin": origin, "X-CSRF": csrf}
     terms_source = (ROOT / "backend/internal/modules/organization/domain/onboarding.go").read_text()
@@ -753,12 +754,36 @@ def employee_checks(browser, origin, dsn):
     other_active = context.request.post(origin + "/v1/orgs/" + other_org + "/organization/activate", headers=headers,
         data={"schema_version": 1, "operation_id": str(uuid.uuid4()), "revision": other.json()["revision"]})
     assert other_active.status == 200, "Second synthetic organization activation failed"
+    with psycopg.connect(dsn) as connection:
+        connection.execute("SELECT set_config('anpfuel.org_id',%s,true)", (org_id,))
+        connection.execute("""
+            INSERT INTO enterprise_plan_catalog
+                (product_code,plan_code,revision,display_name,capabilities,active_vehicles)
+            VALUES ('fleet','browser-plan',1,'Plano sintético do navegador',ARRAY['organizations'],0)
+        """)
+        connection.execute("""
+            INSERT INTO org_billing_subscription_events
+                (org_id,subscription_id,revision,product_code,plan_code,plan_revision,from_state,state,prior_state,
+                 event_kind,event_source,evidence_reference,occurred_at,term_start,term_end)
+            VALUES (%s,%s,1,'fleet','browser-plan',1,'','TRIALING','','START_TRIAL','TRIAL_POLICY',
+                    'synthetic-browser-policy',now(),now(),now()+interval '1 day')
+        """, (org_id, str(uuid.uuid4())))
+    private_plan = context.request.post(origin + "/v1/orgs/" + org_id + "/subscriptions/plan/read", headers=headers, data={})
+    assert private_plan.status == 200 and private_plan.headers["cache-control"] == "no-store"
+    assert private_plan.json()["plans"][0]["confirmed_paid"] is False
+    assert "synthetic-browser-policy" not in private_plan.text(), "Approval evidence escaped through the plan view"
+    assert context.request.post(origin + "/v1/orgs/" + org_id + "/subscriptions/plan/read",
+                                headers=headers, data={"organization_id": other_org}).status == 400
     page.locator("#retry-button").click()
     expect(page.locator("#page-title")).to_have_text("Escolha sua empresa")
     page.locator("#organization-select").select_option(org_id)
     page.locator("#organization-open").click()
     expect(page.locator("#employee-access")).to_be_visible()
     expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
+    expect(page.locator("#subscription-title")).to_have_text("Plano e cobrança")
+    expect(page.locator("#subscription-list")).to_contain_text("Plano sintético do navegador")
+    expect(page.locator("#subscription-list")).to_contain_text("Veículos ativos: 0")
+    expect(page.locator("#subscription-list")).not_to_contain_text("Cobrança liquidada")
     created_employees = []
 
     def add_employee(suffix):
@@ -814,6 +839,8 @@ def employee_checks(browser, origin, dsn):
     expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")
     expect(page.locator("#delivery-code")).to_have_value("")
     assert first_name not in page.locator("#workspace").inner_text(), "Prior organization employee survived the switch"
+    expect(page.locator("#subscription-status")).to_have_text("Nenhum plano empresarial registrado.")
+    expect(page.locator("#subscription-list")).not_to_contain_text("Plano sintético do navegador")
     page.locator("#organization-select").select_option(org_id)
     page.locator("#organization-open").click()
     expect(page.locator("#employee-access")).to_have_attribute("aria-busy", "false")

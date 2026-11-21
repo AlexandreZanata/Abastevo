@@ -57,6 +57,10 @@ permissions, current organization state and operator denial still apply.
 The switch defaults off.
 
 Plan read and management require the current organization's named permissions. Fresh authentication applies where required. Billing authority does not authorize staff actions or private read scopes. Separate sensitive permissions still govern exports, documents and location.
+The company plan and billing panel uses `subs.plan.read` to show exact
+catalog revisions, current term dates and scoped confirmed settlements. It
+keeps the previous company's results out of the screen after a scope change.
+The read remains available when billing writes are disabled.
 
 ## 8. Offline, concurrency, idempotency and corrections
 

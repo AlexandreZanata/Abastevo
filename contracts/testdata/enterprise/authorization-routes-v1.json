@@ -786,10 +786,12 @@
   },
   {
    "permission": "subs.plan.read",
-   "status": "NOT_YET_ROUTED",
-   "representative_route": "",
-   "routes": [],
-   "reason": "Subscription plan and billing routes have not been delivered."
+   "status": "ROUTED",
+   "representative_route": "POST /v1/orgs/{org_id}/subscriptions/plan/read",
+   "routes": [
+    "POST /v1/orgs/{org_id}/subscriptions/plan/read"
+   ],
+   "reason": ""
   },
   {
    "permission": "trip.mission.manage",

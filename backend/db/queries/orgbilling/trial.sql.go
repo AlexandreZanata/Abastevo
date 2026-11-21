@@ -107,12 +107,12 @@ func (q *Queries) NonterminalSubscriptionForProduct(ctx context.Context, arg Non
 	return present, err
 }
 
-const trialClock = `-- name: TrialClock :one
+const organizationBillingClock = `-- name: OrganizationBillingClock :one
 SELECT pg_catalog.clock_timestamp()::timestamptz AS observed_at
 `
 
-func (q *Queries) TrialClock(ctx context.Context) (pgtype.Timestamptz, error) {
-	row := q.db.QueryRow(ctx, trialClock)
+func (q *Queries) OrganizationBillingClock(ctx context.Context) (pgtype.Timestamptz, error) {
+	row := q.db.QueryRow(ctx, organizationBillingClock)
 	var observed_at pgtype.Timestamptz
 	err := row.Scan(&observed_at)
 	return observed_at, err

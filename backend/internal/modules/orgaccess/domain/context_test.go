@@ -28,12 +28,12 @@ func TestContextHintsRetainCurrentScopeFreshnessAndGrantContainment(t *testing.T
 		t.Fatal("current owner hints", p, g, e)
 	}
 	p, g, e = d.ContextHints(s, member, owner, now, false)
-	if e != nil || !slices.Contains(p, d.Permission("idn.employee.read")) || slices.Contains(p, d.Permission("idn.employee.manage")) || slices.Contains(p, d.Permission("idn.invitation.manage")) || len(g) != 0 {
+	if e != nil || !slices.Contains(p, d.Permission("idn.employee.read")) || !slices.Contains(p, d.Permission("subs.plan.read")) || slices.Contains(p, d.Permission("idn.employee.manage")) || slices.Contains(p, d.Permission("idn.invitation.manage")) || len(g) != 0 {
 		t.Fatal("stale proof granted sensitive controls", p, g, e)
 	}
 	for _, assignments := range [][]d.Assignment{{role(d.Owner, d.OrgScope, now)}, {role(d.Admin, d.SelfScope, time.Time{})}, {role(d.Driver, d.SelfScope, time.Time{})}} {
 		p, g, e = d.ContextHints(s, member, assignments, now, true)
-		if e != nil || len(g) != 0 || slices.Contains(p, d.Permission("idn.employee.manage")) || slices.Contains(p, d.Permission("idn.invitation.manage")) {
+		if e != nil || len(g) != 0 || slices.Contains(p, d.Permission("subs.plan.read")) || slices.Contains(p, d.Permission("idn.employee.manage")) || slices.Contains(p, d.Permission("idn.invitation.manage")) {
 			t.Fatal("invalid scope or period granted controls", p, g, e)
 		}
 	}

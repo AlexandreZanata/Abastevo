@@ -52,6 +52,7 @@ import (
 	auditpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/adapters"
 	audit "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaudit/domain"
 	billpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
+	billweb "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters/http"
 	cappg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/adapters"
 	cap "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
 	eventpg "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgevent/adapters"
@@ -241,6 +242,11 @@ func Register(router chi.Router, o Options) error {
 		flags.PlanWrites = plans
 	}
 	authorization := access.Authorization{Source: roles, Capabilities: entitlements, Records: orgweb.SetupRecords{}, Now: time.Now}
+	billingOverview := billpg.OverviewStore{Pool: o.Pool, Capabilities: capabilities,
+		Authority: orgpg.SubscriptionAuthority{Memberships: memberStore, Roles: roles}}
+	if err := billweb.RegisterPlanOverview(router, billingOverview, cookies, gateway, authorization); err != nil {
+		return err
+	}
 	if err := orgweb.Register(router, org.Onboarding{Enabled: true, Repository: store, NewID: jobs.NewUUIDv4}, cookies, gateway, authorization, roots, creationAdmission(o)); err != nil {
 		return err
 	}
@@ -336,6 +342,9 @@ func Register(router chi.Router, o Options) error {
 
 	settings := &orgpg.SettingsStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Audit: auditStore, Capabilities: flags}
 	contexts := &orgpg.AccountContextStore{Pool: o.Pool, Memberships: store.Memberships, Roles: roles, Capabilities: flags, Settings: settings}
+	if o.BillingEnabled {
+		contexts.Plans = plans
+	}
 	if err := orgweb.RegisterAccountContexts(router, true, contexts, cookies); err != nil {
 		return err
 	}

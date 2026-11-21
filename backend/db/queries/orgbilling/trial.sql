@@ -8,7 +8,7 @@ SELECT state::text FROM organizations
 WHERE org_id=CAST(sqlc.arg('org_id')::text AS uuid) AND has_snapshot
 FOR SHARE;
 
--- name: TrialClock :one
+-- name: OrganizationBillingClock :one
 SELECT pg_catalog.clock_timestamp()::timestamptz AS observed_at;
 
 -- name: NonterminalSubscriptionForProduct :one

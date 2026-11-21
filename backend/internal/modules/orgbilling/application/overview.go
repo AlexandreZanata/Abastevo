@@ -1,0 +1,46 @@
+package application
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
+	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
+	organization "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
+	"github.com/jackc/pgx/v5"
+)
+
+var ErrUnavailable = errors.New("orgbilling: plan overview unavailable")
+
+func ReadPlanPolicy() access.Policy {
+	return access.Policy{Permission: "subs.plan.read", Capability: "organizations", Effect: access.Read}
+}
+
+type ReadAuthority interface {
+	CheckPlanReadTx(context.Context, pgx.Tx, kernel.OrgScope, organization.CompanyActor, string) error
+}
+
+type OverviewReader interface {
+	Read(context.Context, kernel.OrgScope, organization.CompanyActor, string) (Overview, error)
+}
+
+type Overview struct {
+	ObservedAt time.Time
+	Plans      []PlanSummary
+}
+
+type PlanSummary struct {
+	Catalog       domain.Plan
+	State         domain.SubscriptionState
+	Term          domain.Period
+	TermCurrent   bool
+	ConfirmedPaid bool
+	Pending       *PendingPlan
+}
+
+type PendingPlan struct {
+	Catalog     domain.Plan
+	EffectiveAt time.Time
+}
