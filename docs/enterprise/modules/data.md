@@ -57,7 +57,9 @@ API requests, key changes and report generation require server confirmation. Sta
 The company usage view keeps a shared entitlement lock through the selected
 plan's allowance, usage and switch reads. A view that waits for a subscription
 change uses the committed plan and the server instant after the wait.
-Source review writes also serialize with readers. API results and their quota
+Source review writes also serialize with readers. Each recorded decision for
+a source digest must be the next consecutive revision, because readers take
+the highest revision as the current decision. API results and their quota
 receipts, watch notices, comparison checks and prepared-series installation
 retain the current decision through their database transaction. A reader
 waiting on withdrawal reevaluates the pinned revisions after the decision
