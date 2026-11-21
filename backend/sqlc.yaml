@@ -75,8 +75,10 @@ sql:
     queries: db/queries/orgdata
     schema:
       - db/migrations/000169_organization_roots.sql
+      - db/migrations/000263_organization_plan_catalog.sql
       - db/migrations/000269_enterprise_data_catalog.sql
       - db/migrations/000270_organization_data_keys.sql
+      - db/migrations/000271_organization_data_usage.sql
     gen:
       go:
         package: orgdata
