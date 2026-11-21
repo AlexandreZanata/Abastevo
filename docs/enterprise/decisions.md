@@ -523,7 +523,7 @@ Not conflicts, but boundaries to respect: the personal vehicle ceiling of three 
 | OQ-05 | Company panel path, session and stack | Panel tasks | Company panel at `/empresas/` accepted on 2026-11-10. |
 | OQ-06 | Android local partition and protection | App enterprise mode | Account, server origin and organization partition accepted on 2026-11-10. |
 | OQ-07 | Scoped Stage D override for the station front | F7 | Yes — F7 only |
-| OQ-08 | Redistribution rights for public source data | Data products | Yes — Data sale only |
+| OQ-08 | Redistribution rights for public source data | Data products | Decided for ANP sources S-ESP-01 to S-ESP-04 by the owner (EDR-394); a Data sale still needs the exact source-digest approvals and M8 |
 | OQ-09 | E-mail and push delivery providers | Invitations by e-mail, external notices | No — in-app path exists |
 | OQ-10 | Panel map option and whether server-side routing is needed | F5 | Resolved on 2026-11-18 (EMP-GOV-007, EDR-369): `MapPort` adapter with offline canvas vector renderer and complete table/list fallback in `business-web`; on-device CoMaps `CAR` routing in Android; server-side routing slot stays empty in F5 |
 | OQ-11 | Billing provider, offer catalog, fiscal treatment and prices for organization plans | F8 | No — pilots use administrative activation |
