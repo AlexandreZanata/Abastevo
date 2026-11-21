@@ -114,6 +114,42 @@ Deployment requires the recorded exact-digest approvals and the M8 gate.
 
 ### Preparing an approved regional revision
 
+After migration 000294, the migration owner applies
+`infra/db/data-rights-role.sql` with `-v data_rights_role=<dedicated-login>`.
+Use that login's DSN from protected operator configuration for rights recording.
+The approval is tied to the verified core export and the exact official
+survey revision. For S-ESP-01, the catalog pins the verified
+`stations.jsonl` projection digest. For S-ESP-02, it pins the ANP artifact
+checksum of the selected official revision.
+
+Set `SNAPSHOT_DIR` and `OFFICIAL_REVISION` to the reviewed values. Choose
+stable per-intent UUIDs `REGISTRY_OPERATION` and `PRICE_OPERATION`, and
+set `REGISTRY_REVIEW` and `PRICE_REVIEW` to the next review revision for
+each digest. A digest with no prior decision starts at 1.
+
+```sh
+manifest="$SNAPSHOT_DIR/manifest.json"
+snapshot_sha256=$(jq -er '.content_sha256' "$manifest")
+registry_digest=$(jq -er '.files[] | select(.name == "stations.jsonl") | .sha256' "$manifest")
+price_digest=$(jq -er --arg revision "$OFFICIAL_REVISION" \
+  '.sources.official[] | select(.revision_id == $revision) | .source_checksum' "$manifest")
+
+ops enterprise data rights record --source S-ESP-01 --digest "$registry_digest" \
+  --revision "$REGISTRY_REVIEW" --status APPROVED --decision-ref EDR-394 \
+  --operation-id "$REGISTRY_OPERATION" --license-ref Decreto-8777-2016 \
+  --snapshot-dir "$SNAPSHOT_DIR" --snapshot-sha256 "$snapshot_sha256"
+ops enterprise data rights record --source S-ESP-02 --digest "$price_digest" \
+  --revision "$PRICE_REVIEW" --status APPROVED --decision-ref EDR-394 \
+  --operation-id "$PRICE_OPERATION" --license-ref Decreto-8777-2016 \
+  --snapshot-dir "$SNAPSHOT_DIR" --snapshot-sha256 "$snapshot_sha256" \
+  --official-revision "$OFFICIAL_REVISION"
+```
+
+Keep the operation IDs for retries. PostgreSQL records the login, decision,
+digest and time in the immutable review. A withdrawal uses a fresh operation
+ID, the exact currently approved digest, its next revision and a withdrawal
+decision reference, with `--status WITHDRAWN` and no approval-only flags.
+
 Under the recorded redistribution approvals, register the exact catalog
 revision and the plan's dataset scope. The companion rate policy records the
 approved request window and maximum for the same plan revision. The plan

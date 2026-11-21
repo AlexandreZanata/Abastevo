@@ -18,6 +18,9 @@ import (
 var errDataPrepareUsage = errors.New("usage: ops enterprise data prepare --dataset <key> --revision <n> --snapshot-dir <path>")
 
 func runEnterpriseData(args []string, out io.Writer) error {
+	if len(args) != 0 && args[0] == "rights" {
+		return runEnterpriseDataRights(args[1:], out)
+	}
 	if len(args) == 0 || args[0] != "prepare" {
 		return errDataPrepareUsage
 	}

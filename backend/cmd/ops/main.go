@@ -87,6 +87,7 @@ const usage = `usage:
   ops enterprise billing bind --org <uuid> --approval-id <uuid> --operation-id <uuid> [--operator <uuid>]
   ops enterprise adjustment post --org <uuid> --approval-id <uuid> --operation-id <uuid> [--operator <uuid>]
   ops enterprise station admit --org <uuid> --approval-id <uuid> --operation-id <uuid> [--operator <uuid>]
+  ops enterprise data rights record --source <code> --digest <sha256> --revision <n> --status <status> --decision-ref <ref> --operation-id <uuid> [approval options]
   ops enterprise data prepare --dataset <key> --revision <n> --snapshot-dir <path>
 
 operator identity: --operator flag or ANPFUEL_OPERATOR_ID environment.

@@ -138,6 +138,18 @@ sql:
         emit_json_tags: true
         omit_unused_structs: true
   - engine: postgresql
+    queries: db/queries/orgdataops
+    schema:
+      - db/migrations/000269_enterprise_data_catalog.sql
+      - db/migrations/000294_enterprise_data_rights_operations.sql
+    gen:
+      go:
+        package: orgdataops
+        out: db/queries/orgdataops
+        sql_package: pgx/v5
+        emit_json_tags: true
+        omit_unused_structs: true
+  - engine: postgresql
     queries: db/queries/organization
     schema:
       - db/migrations/000007_jobs.sql

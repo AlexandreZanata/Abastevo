@@ -21,7 +21,17 @@ import (
 )
 
 func TestDataSourceReviewOrderMigrationRecoversWithCatalogIntact(t *testing.T) {
-	const migration = "000291_enterprise_data_source_review_order.sql"
+	checkDataSourceReviewMigrationRecovery(t, "000291_enterprise_data_source_review_order.sql",
+		"enterprise_data_order_source_review()", "enterprise_data_source_review_order")
+}
+
+func TestDataRightsOperationMigrationRecoversWithCatalogIntact(t *testing.T) {
+	checkDataSourceReviewMigrationRecovery(t, "000294_enterprise_data_rights_operations.sql",
+		"enterprise_data_record_review_actor()", "enterprise_data_source_review_actor")
+}
+
+func checkDataSourceReviewMigrationRecovery(t *testing.T, migration, function, trigger string) {
+	t.Helper()
 	version, _, _ := strings.Cut(migration, "_")
 	entries, err := fs.ReadDir(dbmigrations.Files, ".")
 	if err != nil {
@@ -57,7 +67,7 @@ VALUES ('previous-regional',1,'Previous synthetic catalog','MT',5,'abastevo-metr
 		t.Helper()
 		var value string
 		if err := f.Admin.QueryRow(ctx, `SELECT jsonb_build_array(
- (SELECT jsonb_agg(to_jsonb(r) ORDER BY source_code,source_digest,revision) FROM enterprise_data_source_reviews r),
+ (SELECT jsonb_agg(to_jsonb(r) - ARRAY['operation_id','recorded_by','snapshot_digest','official_revision'] ORDER BY source_code,source_digest,revision) FROM enterprise_data_source_reviews r),
  (SELECT jsonb_agg(to_jsonb(d) ORDER BY dataset_key,revision) FROM enterprise_regional_datasets d))::text`).Scan(&value); err != nil {
 			t.Fatal(err)
 		}
@@ -76,15 +86,15 @@ VALUES ('previous-regional',1,'Previous synthetic catalog','MT',5,'abastevo-metr
 		t.Fatalf("expected injected migration failure: %v", err)
 	}
 	var clean bool
-	if err := f.Admin.QueryRow(ctx, `SELECT to_regprocedure('enterprise_data_order_source_review()') IS NULL
- AND NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname='enterprise_data_source_review_order')
- AND NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version=$1)`, version).Scan(&clean); err != nil || !clean || snapshot() != before {
+	if err := f.Admin.QueryRow(ctx, `SELECT to_regprocedure($1) IS NULL
+ AND NOT EXISTS (SELECT 1 FROM pg_trigger WHERE tgname=$2)
+ AND NOT EXISTS (SELECT 1 FROM schema_migrations WHERE version=$3)`, function, trigger, version).Scan(&clean); err != nil || !clean || snapshot() != before {
 		t.Fatalf("failed trigger upgrade changed catalog, schema or ledger: %v", err)
 	}
 	current := maps.Clone(previous)
 	current[migration] = &fstest.MapFile{Data: raw}
 	if applied, err := migrate.Apply(ctx, f.AdminDSN, current); err != nil || !slices.Equal(applied, []string{version}) {
-		t.Fatalf("retry did not apply source review ordering: %v / %v", applied, err)
+		t.Fatalf("retry did not apply source review migration: %v / %v", applied, err)
 	}
 	if applied, err := migrate.Apply(ctx, f.AdminDSN, current); err != nil || len(applied) != 0 || snapshot() != before {
 		t.Fatalf("retry changed preexisting source decisions or catalog entries: %v / %v", applied, err)
