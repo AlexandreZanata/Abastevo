@@ -19,6 +19,11 @@ var (
 	ErrBillingFutureTerm = errors.New("orgbilling: paid term is not yet effective")
 )
 
+type FutureTermError struct{ EffectiveAt time.Time }
+
+func (FutureTermError) Error() string { return ErrBillingFutureTerm.Error() }
+func (FutureTermError) Unwrap() error { return ErrBillingFutureTerm }
+
 type BillingOffer struct {
 	Plan             PlanKey
 	Channel          payment.Channel
@@ -143,7 +148,7 @@ func (binding BillingBinding) SettlementEvent(notice BillingNotice, fact Canonic
 	effectiveAt := fact.At
 	if effectiveAt.Before(fact.PaidTerm.Start) {
 		if now.Before(fact.PaidTerm.Start) {
-			return LifecycleEvent{}, ErrBillingFutureTerm
+			return LifecycleEvent{}, FutureTermError{EffectiveAt: fact.PaidTerm.Start.UTC()}
 		}
 		effectiveAt = fact.PaidTerm.Start
 	}

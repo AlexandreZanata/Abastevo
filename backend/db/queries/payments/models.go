@@ -188,6 +188,7 @@ type PaymentInbox struct {
 	ProcessedAt    pgtype.Timestamptz `json:"processed_at"`
 	LastError      string             `json:"last_error"`
 	ResourceStatus string             `json:"resource_status"`
+	DeferredUntil  pgtype.Timestamptz `json:"deferred_until"`
 }
 
 type PaymentMandate struct {

@@ -29,6 +29,7 @@ type settlementProbe struct {
 	personal  int
 	marked    string
 	reason    string
+	deferred  time.Time
 }
 
 func (probe *settlementProbe) RecordSettlement(_ context.Context, notice orgbilling.BillingNotice, fact orgbilling.CanonicalBillingFact) (adapters.SettlementReceipt, error) {
@@ -47,6 +48,11 @@ func (probe *settlementProbe) Process(_ context.Context, _ payment.InboxRecord) 
 
 func (probe *settlementProbe) MarkInbox(_ context.Context, _ payment.InboxEvent, state, reason string) error {
 	probe.marked, probe.reason = state, reason
+	return nil
+}
+
+func (probe *settlementProbe) DeferInbox(_ context.Context, _ payment.InboxEvent, until time.Time) error {
+	probe.deferred = until
 	return nil
 }
 
@@ -85,6 +91,7 @@ func TestCompanyStripeSettlementUsesCanonicalInvoice(t *testing.T) {
 		marked                 string
 		recorded, personal     int
 		intentOverride         string
+		scheduled              time.Time
 	}{
 		{name: "settled", marked: "PROCESSED", recorded: 1},
 		{name: "personal", old: `"organization"`, replacement: `"personal"`, personal: 1},
@@ -95,6 +102,8 @@ func TestCompanyStripeSettlementUsesCanonicalInvoice(t *testing.T) {
 		{name: "proration", old: `{"subscription": "sub_company"}`, replacement: `{"subscription": "sub_company", "proration": true}`, marked: "CONFLICT"},
 		{name: "wrong card source", intentOverride: strings.Replace(canonicalIntent, `"card"`, `"pix"`, 1), marked: "CONFLICT"},
 		{name: "partially refunded", intentOverride: strings.Replace(canonicalIntent, `"paid": true`, `"paid": true, "amount_refunded": 1`, 1), marked: "CONFLICT"},
+		{name: "advance renewal", recordErr: orgbilling.FutureTermError{EffectiveAt: time.Unix(1795255200, 0).UTC()},
+			recorded: 1, scheduled: time.Unix(1795255200, 0).UTC()},
 		{name: "foreign price", recordErr: orgbilling.ErrBillingBinding, marked: "CONFLICT", recorded: 1},
 		{name: "temporary dependency failure", recordErr: paydomain.ErrUnavailable, recorded: 1},
 	} {
@@ -135,7 +144,7 @@ func TestCompanyStripeSettlementUsesCanonicalInvoice(t *testing.T) {
 			} else if err != nil {
 				t.Fatal(err)
 			}
-			if probe.marked != tc.marked || probe.recorded != tc.recorded || probe.personal != tc.personal {
+			if probe.marked != tc.marked || probe.recorded != tc.recorded || probe.personal != tc.personal || !probe.deferred.Equal(tc.scheduled) {
 				t.Fatalf("wrong owner or acknowledgement: %+v", probe)
 			}
 			if tc.name == "settled" && (probe.fact.Channel != paydomain.ChannelCard ||

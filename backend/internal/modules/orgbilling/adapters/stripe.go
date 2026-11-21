@@ -27,6 +27,7 @@ type settlementProcessor interface {
 
 type settlementInbox interface {
 	MarkInbox(context.Context, payment.InboxEvent, string, string) error
+	DeferInbox(context.Context, payment.InboxEvent, time.Time) error
 }
 
 // StripeSettlement distinguishes the company subscription from a personal
@@ -70,17 +71,21 @@ func (s StripeSettlement) Process(ctx context.Context, event payment.InboxRecord
 	if err == nil {
 		_, err = s.Record.RecordSettlement(ctx, fact.Notice, fact)
 	}
+	return finishOrganizationSettlement(ctx, s.Inbox, event, err)
+}
+
+func finishOrganizationSettlement(ctx context.Context, inbox settlementInbox, event payment.InboxRecord, err error) error {
+	var future domain.FutureTermError
 	switch {
 	case err == nil:
-		return s.Inbox.MarkInbox(ctx, event.InboxEvent, "PROCESSED", "")
-	case errors.Is(err, domain.ErrBillingFutureTerm):
-		// Reconciliation can retry an early settlement when its reviewed term starts.
-		return s.Inbox.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "organization-term-not-effective")
+		return inbox.MarkInbox(ctx, event.InboxEvent, "PROCESSED", "")
+	case errors.As(err, &future):
+		return inbox.DeferInbox(ctx, event.InboxEvent, future.EffectiveAt)
 	case errors.Is(err, domain.ErrBillingBinding), errors.Is(err, domain.ErrOfferUnapproved),
 		errors.Is(err, domain.ErrBillingUnsettled), errors.Is(err, paydomain.ErrAmountMismatch),
 		errors.Is(err, domain.ErrInvalidTransition), errors.Is(err, domain.ErrUnboundEvidence),
 		errors.Is(err, paydomain.ErrConflict), errors.Is(err, paydomain.ErrInvalid):
-		return s.Inbox.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "organization-settlement-binding")
+		return inbox.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "organization-settlement-binding")
 	default:
 		return err
 	}
