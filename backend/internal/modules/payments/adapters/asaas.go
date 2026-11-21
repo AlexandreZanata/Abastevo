@@ -696,15 +696,21 @@ type asaasCustomerList struct {
 }
 
 type asaasPayment struct {
-	ID                string           `json:"id"`
-	Customer          string           `json:"customer"`
-	Subscription      string           `json:"subscription"`
-	Status            string           `json:"status"`
-	ExternalReference string           `json:"externalReference"`
-	Value             json.Number      `json:"value"`
-	DueDate           string           `json:"dueDate"`
-	PaymentDate       string           `json:"paymentDate"`
-	Chargeback        *asaasChargeback `json:"chargeback"`
+	ID                          string            `json:"id"`
+	Customer                    string            `json:"customer"`
+	Subscription                string            `json:"subscription"`
+	Status                      string            `json:"status"`
+	ExternalReference           string            `json:"externalReference"`
+	Value                       json.Number       `json:"value"`
+	DueDate                     string            `json:"dueDate"`
+	PaymentDate                 string            `json:"paymentDate"`
+	Chargeback                  *asaasChargeback  `json:"chargeback"`
+	BillingType                 string            `json:"billingType"`
+	PixAutomaticAuthorizationID string            `json:"pixAutomaticAuthorizationId"`
+	OriginalValue               json.Number       `json:"originalValue"`
+	InterestValue               json.Number       `json:"interestValue"`
+	Refunds                     []json.RawMessage `json:"refunds"`
+	Deleted                     bool              `json:"deleted"`
 }
 
 type asaasPaymentList struct {

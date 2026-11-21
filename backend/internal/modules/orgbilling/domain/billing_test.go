@@ -37,6 +37,11 @@ func TestVerifiedBillingFactBindsExactApprovedOffer(t *testing.T) {
 				ChargeRef: "synthetic-charge", Outcome: d.BillingSettled, At: at, Gross: offer.Price,
 				PaidTerm: d.Period{Start: at, End: at.AddDate(0, 1, 0)},
 			}
+			if channel.Provider() == payment.ProviderAsaas {
+				binding.AsaasExternalRef = "abv_org:" + orgID + ":" + subsID
+				fact.AsaasExternalRef, fact.ProviderPaidOn = binding.AsaasExternalRef, at.Truncate(24*time.Hour)
+			}
+
 			event, err := binding.SettlementEvent(notice, fact, 4, at)
 			if err != nil || event.Source != d.VerifiedBilling || event.Scope != org || event.SubscriptionID != subsID ||
 				event.Period != fact.PaidTerm || event.ExpectedRevision != 4 || len(event.Reference) != 64 {

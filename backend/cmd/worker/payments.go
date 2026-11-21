@@ -62,21 +62,26 @@ func composePaymentInbox(cfg config.Config, pool *pgxpool.Pool, clock func() tim
 	settlement := &paymentsapp.SettlementService{Store: store, Catalog: catalog}
 	router.Settlement = settlement
 
+	var companyBilling *orgbilling.BillingIntake
+	if cfg.EnterpriseEnabled && cfg.EnterpriseBillingEnabled {
+		capabilities, err := orgcapability.NewCatalog(enterprisesuite.CapabilityCodes())
+		if err == nil {
+			companyBilling = &orgbilling.BillingIntake{
+				Pool: pool, Ledger: orgbilling.SubscriptionLedger{Capabilities: capabilities}, Now: clock,
+			}
+		}
+	}
+
 	if preflight.Stripe.MaintenanceReady {
 		env := payWorkerStripeEnv(payments.Stripe.Mode)
 		stripe := payadapters.NewStripeProvider(payments.Stripe.SecretKey, env, nil)
 		stripe.Merchant = payments.Stripe.MerchantID
 		mux.Stripe = stripe
 		dispute.Stripe = stripe
-		if cfg.EnterpriseEnabled && cfg.EnterpriseBillingEnabled {
-			capabilities, err := orgcapability.NewCatalog(enterprisesuite.CapabilityCodes())
-			if err == nil {
-				router.Settlement = orgbilling.StripeSettlement{
-					Resources: stripe, Personal: settlement, Inbox: store, Merchant: stripe.Merchant, Environment: env,
-					Record: orgbilling.BillingIntake{
-						Pool: pool, Ledger: orgbilling.SubscriptionLedger{Capabilities: capabilities}, Now: clock,
-					},
-				}
+		if companyBilling != nil {
+			router.Settlement = orgbilling.StripeSettlement{
+				Resources: stripe, Personal: settlement, Inbox: store, Merchant: stripe.Merchant, Environment: env,
+				Record: companyBilling,
 			}
 		}
 		router.Lifecycle = &paymentsapp.LifecycleService{Store: store, Verifier: stripe}
@@ -90,6 +95,12 @@ func composePaymentInbox(cfg config.Config, pool *pgxpool.Pool, clock func() tim
 		asaas := payadapters.NewAsaasProvider(payments.Asaas.APIKey, env, nil)
 		mux.Asaas = asaas
 		dispute.Asaas = asaas
+		if companyBilling != nil {
+			router.Settlement = orgbilling.AsaasSettlement{
+				Resources: asaas, Bindings: companyBilling, Record: companyBilling, Personal: router.Settlement, Inbox: store,
+				Merchant: payments.Asaas.MerchantID, Environment: env, AutomaticAllowed: preflight.PixAutomatic.MaintenanceReady,
+			}
+		}
 		router.Cycles = &paymentsapp.PixAutoCycleService{
 			Store: store, Provider: asaas, Settlements: settlement, Clock: clock,
 			Config: paymentsapp.PixAutoConfig{

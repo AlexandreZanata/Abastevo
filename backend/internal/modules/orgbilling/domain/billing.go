@@ -53,6 +53,7 @@ type BillingBinding struct {
 	Offer               BillingOffer
 	ProviderCustomerRef string
 	ProviderContractRef string
+	AsaasExternalRef    string
 	ExpectedTerm        Period
 }
 
@@ -99,6 +100,8 @@ type CanonicalBillingFact struct {
 	CustomerRef      string
 	ContractRef      string
 	ProviderOfferRef string
+	AsaasExternalRef string
+	ProviderPaidOn   time.Time
 	Channel          payment.Channel
 	ResourceRef      string
 	ChargeRef        string
@@ -123,6 +126,15 @@ func (binding BillingBinding) MatchFact(notice BillingNotice, fact CanonicalBill
 		!validProviderRef(binding.ProviderCustomerRef) || fact.CustomerRef != binding.ProviderCustomerRef ||
 		!validProviderRef(binding.ProviderContractRef) || fact.ContractRef != binding.ProviderContractRef ||
 		fact.ResourceRef != notice.ResourceRef || !validProviderRef(fact.ChargeRef) {
+		return ErrBillingBinding
+	}
+	if notice.Provider == payment.ProviderAsaas {
+		scope, err := AsaasReferenceScope(fact.AsaasExternalRef)
+		if err != nil || scope != binding.Scope || fact.AsaasExternalRef != binding.AsaasExternalRef ||
+			fact.ProviderPaidOn.IsZero() || fact.At.Before(fact.ProviderPaidOn) {
+			return ErrBillingBinding
+		}
+	} else if binding.AsaasExternalRef != "" || fact.AsaasExternalRef != "" || !fact.ProviderPaidOn.IsZero() {
 		return ErrBillingBinding
 	}
 	return nil

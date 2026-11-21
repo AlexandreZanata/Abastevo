@@ -12,7 +12,7 @@ import (
 )
 
 const getChargeBinding = `-- name: GetChargeBinding :one
-SELECT b.subscription_id::text AS subscription_id, b.customer_ref, b.contract_ref,
+SELECT b.subscription_id::text AS subscription_id, b.customer_ref, b.contract_ref, b.asaas_external_reference,
        b.term_start, b.term_end, o.product_code, o.plan_code, o.plan_revision,
        o.channel, o.environment, o.merchant, o.provider_offer_ref,
        o.amount_centavos, o.term, o.approval_ref
@@ -32,21 +32,22 @@ type GetChargeBindingParams struct {
 }
 
 type GetChargeBindingRow struct {
-	SubscriptionID   string             `json:"subscription_id"`
-	CustomerRef      string             `json:"customer_ref"`
-	ContractRef      string             `json:"contract_ref"`
-	TermStart        pgtype.Timestamptz `json:"term_start"`
-	TermEnd          pgtype.Timestamptz `json:"term_end"`
-	ProductCode      string             `json:"product_code"`
-	PlanCode         string             `json:"plan_code"`
-	PlanRevision     int64              `json:"plan_revision"`
-	Channel          string             `json:"channel"`
-	Environment      string             `json:"environment"`
-	Merchant         string             `json:"merchant"`
-	ProviderOfferRef string             `json:"provider_offer_ref"`
-	AmountCentavos   int64              `json:"amount_centavos"`
-	Term             string             `json:"term"`
-	ApprovalRef      string             `json:"approval_ref"`
+	SubscriptionID         string             `json:"subscription_id"`
+	CustomerRef            string             `json:"customer_ref"`
+	ContractRef            string             `json:"contract_ref"`
+	AsaasExternalReference string             `json:"asaas_external_reference"`
+	TermStart              pgtype.Timestamptz `json:"term_start"`
+	TermEnd                pgtype.Timestamptz `json:"term_end"`
+	ProductCode            string             `json:"product_code"`
+	PlanCode               string             `json:"plan_code"`
+	PlanRevision           int64              `json:"plan_revision"`
+	Channel                string             `json:"channel"`
+	Environment            string             `json:"environment"`
+	Merchant               string             `json:"merchant"`
+	ProviderOfferRef       string             `json:"provider_offer_ref"`
+	AmountCentavos         int64              `json:"amount_centavos"`
+	Term                   string             `json:"term"`
+	ApprovalRef            string             `json:"approval_ref"`
 }
 
 func (q *Queries) GetChargeBinding(ctx context.Context, arg GetChargeBindingParams) (GetChargeBindingRow, error) {
@@ -62,6 +63,7 @@ func (q *Queries) GetChargeBinding(ctx context.Context, arg GetChargeBindingPara
 		&i.SubscriptionID,
 		&i.CustomerRef,
 		&i.ContractRef,
+		&i.AsaasExternalReference,
 		&i.TermStart,
 		&i.TermEnd,
 		&i.ProductCode,
@@ -80,7 +82,7 @@ func (q *Queries) GetChargeBinding(ctx context.Context, arg GetChargeBindingPara
 
 const getSettlementReceipt = `-- name: GetSettlementReceipt :one
 SELECT event_id, payload_hash, resource_ref, charge_ref, subscription_id::text AS subscription_id,
-       applied_revision, settled_at
+       applied_revision, settled_at, provider_paid_on
 FROM org_billing_settlement_receipts
 WHERE org_id = CAST($1::text AS uuid)
   AND provider = $2 AND environment = $3 AND merchant = $4
@@ -106,6 +108,7 @@ type GetSettlementReceiptRow struct {
 	SubscriptionID  string             `json:"subscription_id"`
 	AppliedRevision int64              `json:"applied_revision"`
 	SettledAt       pgtype.Timestamptz `json:"settled_at"`
+	ProviderPaidOn  pgtype.Date        `json:"provider_paid_on"`
 }
 
 func (q *Queries) GetSettlementReceipt(ctx context.Context, arg GetSettlementReceiptParams) (GetSettlementReceiptRow, error) {
@@ -126,6 +129,7 @@ func (q *Queries) GetSettlementReceipt(ctx context.Context, arg GetSettlementRec
 		&i.SubscriptionID,
 		&i.AppliedRevision,
 		&i.SettledAt,
+		&i.ProviderPaidOn,
 	)
 	return i, err
 }
@@ -142,10 +146,10 @@ func (q *Queries) LockBillingCharge(ctx context.Context, chargeIdentity string) 
 const recordSettlementReceipt = `-- name: RecordSettlementReceipt :execrows
 INSERT INTO org_billing_settlement_receipts
 (org_id, provider, environment, merchant, event_id, payload_hash, resource_ref,
- charge_ref, subscription_id, applied_revision, settled_at)
+ charge_ref, subscription_id, applied_revision, settled_at, provider_paid_on)
 VALUES (CAST($1::text AS uuid), $2, $3, $4,
         $5, $6, $7, $8, CAST($9::text AS uuid),
-        $10, $11)
+        $10, $11, $12::date)
 ON CONFLICT DO NOTHING
 `
 
@@ -161,6 +165,7 @@ type RecordSettlementReceiptParams struct {
 	SubscriptionID  string             `json:"subscription_id"`
 	AppliedRevision int64              `json:"applied_revision"`
 	SettledAt       pgtype.Timestamptz `json:"settled_at"`
+	ProviderPaidOn  pgtype.Date        `json:"provider_paid_on"`
 }
 
 func (q *Queries) RecordSettlementReceipt(ctx context.Context, arg RecordSettlementReceiptParams) (int64, error) {
@@ -176,6 +181,7 @@ func (q *Queries) RecordSettlementReceipt(ctx context.Context, arg RecordSettlem
 		arg.SubscriptionID,
 		arg.AppliedRevision,
 		arg.SettledAt,
+		arg.ProviderPaidOn,
 	)
 	if err != nil {
 		return 0, err

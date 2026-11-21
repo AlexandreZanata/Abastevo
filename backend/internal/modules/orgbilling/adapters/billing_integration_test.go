@@ -166,6 +166,19 @@ VALUES('fleet',$1,1,'Synthetic larger company',ARRAY['organizations'],10)`, prio
 	if receipt, err := intake.RecordSettlement(ctx, redelivery, sameCharge); err != nil || !receipt.Replayed || receipt.Revision != 3 {
 		t.Fatalf("canonical charge was applied twice: %+v %v", receipt, err)
 	}
+	if _, err := f.Admin.Exec(ctx, `INSERT INTO org_billing_charge_bindings
+(org_id,provider,environment,merchant,resource_ref,subscription_id,offer_id,customer_ref,contract_ref,term_start,term_end)
+VALUES($1,'stripe','test','synthetic-merchant','different-invoice',$2,$3,'synthetic-customer',
+ 'synthetic-contract',$4,$5)`, a.ID, a.RecordID, a.ParentID, term.Start, term.End); err != nil {
+		t.Fatal(err)
+	}
+	duplicateTerm := notice
+	duplicateTerm.ResourceRef, duplicateTerm.EventID = "different-invoice", "different-provider-notice"
+	otherCharge := fact
+	otherCharge.Notice, otherCharge.ResourceRef, otherCharge.ChargeRef = duplicateTerm, duplicateTerm.ResourceRef, "different-canonical-charge"
+	if _, err := intake.RecordSettlement(ctx, duplicateTerm, otherCharge); !errors.Is(err, payment.ErrConflict) {
+		t.Fatalf("a different charge produced a second receipt for an already paid term: %v", err)
+	}
 	foreignAmount := sameCharge
 	foreignAmount.Gross = payment.BRL(1722)
 	if _, err := intake.RecordSettlement(ctx, redelivery, foreignAmount); !errors.Is(err, payment.ErrAmountMismatch) {

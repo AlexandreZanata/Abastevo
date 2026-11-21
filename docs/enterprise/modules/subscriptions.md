@@ -83,6 +83,15 @@ charge, compares the reviewed customer, contract, amount, price and term,
 and atomically appends the transition and its audit receipt. Reconciliation
 records conflicts in the inbox without applying an organization transition.
 
+Asaas reconciliation retrieves the existing charge and uses its
+`abv_org:<organization UUID>:<checkout UUID>` reference to locate the
+reviewed binding. Manual Pix uses the one-off charge and automatic Pix
+requires the linked authorization. Received, unadjusted charges must match
+the exact approved BRL amount. The receipt preserves the provider's payment
+day separately from the inbox observation instant. Advance payments on
+either provider wait in the inbox until the approved term begins. A separate
+charge for an already settled term enters reconciliation.
+
 Manual pilot capability activation remains independent from selling plans.
 Notifications carry safe links. Fiscal invoice issuance and accounting
 connections are separate capabilities.
