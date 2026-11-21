@@ -34,9 +34,10 @@ func TestFleetPlanSerializesTheLastVehicleSlot(t *testing.T) {
 		t.Fatal(err)
 	}
 	key := billing.PlanKey{Product: "fleet", Plan: "synthetic", Revision: 1}
+	const ceiling = 10
 	if _, err := fx.f.Admin.Exec(ctx, `INSERT INTO enterprise_plan_catalog
 (product_code,plan_code,revision,display_name,capabilities,active_vehicles)
-VALUES('fleet','synthetic',1,'Synthetic company',ARRAY['organizations'],1)`); err != nil {
+VALUES('fleet','synthetic',1,'Synthetic company',ARRAY['organizations'],$1)`, ceiling); err != nil {
 		t.Fatal(err)
 	}
 	at := lifecycleDBNow(t, fx)
@@ -57,7 +58,8 @@ VALUES('fleet','synthetic',1,'Synthetic company',ARRAY['organizations'],1)`); er
 		t.Fatal(err)
 	}
 	var activate [2]fleetapp.AssetWrite
-	for i := range activate {
+	prior := make([]fleetapp.AssetResult, 0, ceiling-1)
+	for i := range ceiling + 1 {
 		input := fleetCreateInput()
 		input.Profile.Kind, input.Profile.UsageBasis = fleet.Vehicle, fleet.Distance
 		input.Profile.FleetNumber, input.UnitID = fmt.Sprintf("TEST-VEHICLE-%d", i+1), unit
@@ -70,9 +72,18 @@ VALUES('fleet','synthetic',1,'Synthetic company',ARRAY['organizations'],1)`); er
 		if err != nil {
 			t.Fatal(err)
 		}
-		activate[i] = fleetCommand(t, fleetapp.AssetWriteInput{
+		command := fleetCommand(t, fleetapp.AssetWriteInput{
 			Kind: fleetapp.ActivateAsset, AssetID: created.AssetID, ExpectedRevision: meter.AssetRevision,
 		})
+		if i >= ceiling-1 {
+			activate[i-(ceiling-1)] = command
+			continue
+		}
+		saved, _, err := fleetWrite(t, fx, assets, command)
+		if err != nil {
+			t.Fatal(err)
+		}
+		prior = append(prior, saved)
 	}
 	type result struct {
 		index int
@@ -103,6 +114,17 @@ VALUES('fleet','synthetic',1,'Synthetic company',ARRAY['organizations'],1)`); er
 	}
 	if winner.index < 0 || denied.index < 0 {
 		t.Fatal("the final plan slot did not converge")
+	}
+	var activeCount int
+	if err := fx.f.Admin.QueryRow(ctx, `SELECT count(*) FROM org_assets WHERE org_id=$1 AND kind='VEHICLE' AND state='ACTIVE'`,
+		fx.scope.OrgID().String()).Scan(&activeCount); err != nil || activeCount != ceiling {
+		t.Fatalf("eleventh activation changed the covered fleet: active=%d err=%v", activeCount, err)
+	}
+	for _, saved := range prior {
+		row, err := assets.ReadAsset(ctx, fx.scope, fleetActor(fx), fx.member, saved.AssetID)
+		if err != nil || row.State != fleet.Active || row.Revision != saved.Revision {
+			t.Fatalf("pre-existing vehicle changed while resolving the last slot: %v", err)
+		}
 	}
 	if replay, repeated, err := fleetWrite(t, fx, assets, activate[winner.index]); err != nil || !repeated || replay != winner.value {
 		t.Fatalf("activation replay consumed another slot: %+v %v", replay, err)
