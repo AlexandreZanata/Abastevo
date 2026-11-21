@@ -76,3 +76,11 @@ approval under retained locks. A new approval revision can withdraw the
 previous connection's authority without erasing its metadata. Listing
 returns the provider, recorded state and whether its approval is still
 current. It omits the credential and review references.
+
+The vendor-neutral telematics port accepts signed quality observations for
+the reviewed vehicle while its company trip and driver recording are
+current. It keeps one scoped receipt with provider-attributed counts and
+uses the existing company trip lock. The adapter accepts quality categories
+and observation times. Phone fixes and live positions continue through the
+existing device intake. Vendor transport and credential provisioning need
+their recorded external approvals.
