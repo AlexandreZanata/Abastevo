@@ -18,6 +18,10 @@ import (
 const fleetWebhookKind = "org_connector.fleet_webhook"
 const webhookAttempts = 3
 
+// A job attempt that fails before its durable claim spends no delivery
+// attempt, so the job outlives the delivery budget and can record FAILED.
+const webhookJobAttempts = 2 * webhookAttempts
+
 var errWebhookRetry = errors.New("fleet webhook: retryable delivery")
 var errWebhookState = errors.New("fleet webhook: delivery state unavailable")
 
@@ -48,7 +52,7 @@ func (FleetWebhooks) QueueFleetLifecycle(ctx context.Context, tx pgx.Tx, scope k
 			return err
 		}
 		key := fleetWebhookKind + ":" + org + ":" + destination.ConnectionID + ":" + operationID
-		job, err := jobs.Enqueue(ctx, tx, fleetWebhookKind, payload, key, webhookAttempts, time.Time{})
+		job, err := jobs.Enqueue(ctx, tx, fleetWebhookKind, payload, key, webhookJobAttempts, time.Time{})
 		if err != nil {
 			return err
 		}
