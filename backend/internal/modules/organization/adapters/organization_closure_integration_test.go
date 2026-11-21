@@ -15,6 +15,7 @@ import (
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/enterprisesuite"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/jobs"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5"
 )
 
 func TestOrganizationArchiveAndScheduledClosureKeepExportAndLegalHold(t *testing.T) {
@@ -61,6 +62,34 @@ func TestOrganizationArchiveAndScheduledClosureKeepExportAndLegalHold(t *testing
 	end := x.finishOp(t, x.syncFixtureState, tripID, x.declaredNow(t), func(_, payload map[string]any) { payload["run_clock"] = nil })
 	ack, err = x.process(t, x.syncFixtureState, end)
 	x.accepted(t, end, ack, err, 2, 1)
+
+	// A pending proposal can still be accepted by the station, which would
+	// leave an active agreement that blocks the scheduled closure forever.
+	station, proposal := onboardingID(t), onboardingID(t)
+	if _, err := fx.f.Admin.Exec(ctx, "INSERT INTO directory_stations(id,display_name) VALUES($1,'Synthetic closure station')", station); err != nil {
+		t.Fatal(err)
+	}
+	inScope := func(query string, args ...any) {
+		t.Helper()
+		if err := pgx.BeginFunc(ctx, fx.f.Admin, func(tx pgx.Tx) error {
+			if _, err := tx.Exec(ctx, "SELECT set_config('anpfuel.org_id',$1,true)", org); err != nil {
+				return err
+			}
+			_, err := tx.Exec(ctx, query, args...)
+			return err
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	inScope(`INSERT INTO org_station_agreements(org_id,id,station_id,org_label,state,valid_from,valid_until,proposed_by_membership_id)
+VALUES($1,$2,$3,'Synthetic fleet','PROPOSED',clock_timestamp(),clock_timestamp()+interval '30 days',$4)`, org, proposal, station, owner.member)
+	if items := report()["open_items"].(map[string]any); items["agreements"] != float64(1) {
+		t.Fatalf("report omitted the pending agreement proposal: %v", items)
+	}
+	if status := matrixCallStatus(t, fx, router, owner, changePath, command("ARCHIVE", report()["revision"])); status != 409 {
+		t.Fatalf("pending agreement proposal did not prevent archival: %d", status)
+	}
+	inScope(`UPDATE org_station_agreements SET state='ENDED',revision=revision+1 WHERE org_id=$1 AND id=$2`, org, proposal)
 
 	var name string
 	if err := fx.f.Admin.QueryRow(ctx, `SELECT display_name FROM organizations WHERE org_id=$1`, org).Scan(&name); err != nil {
