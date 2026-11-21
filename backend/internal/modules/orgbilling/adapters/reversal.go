@@ -3,6 +3,7 @@ package adapters
 import (
 	"context"
 	"errors"
+	"strings"
 
 	db "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgbilling"
 	qcap "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgcapability"
@@ -27,17 +28,23 @@ func (intake BillingIntake) ObserveCompanyDispute(ctx context.Context, event pay
 	if charge == "" {
 		return false, nil
 	}
-	return intake.observeReversal(ctx, event, charge, fact.ExternalReference, fact.Amount, fact.State == paydomain.DisputeLost, false)
+	handled, err := intake.observeReversal(ctx, event, charge, fact.ExternalReference, fact.Amount, fact.State == paydomain.DisputeLost, false)
+	if errors.Is(err, domain.ErrBillingBinding) {
+		// The dispute service records a conflict only for the payment error.
+		err = errors.Join(paydomain.ErrBinding, err)
+	}
+	return handled, err
 }
 
-func (intake BillingIntake) observeReversal(ctx context.Context, event payment.InboxEvent, charge, externalReference string, amount paydomain.Money, reverse, fullRefund bool) (bool, error) {
-	notice := domain.BillingNotice{Provider: event.Provider, Environment: event.Environment, Merchant: event.Merchant,
-		EventID: event.EventID, PayloadHash: event.PayloadHash, ResourceRef: event.ResourceID}
-	if intake.Pool == nil || intake.Now == nil {
-		return false, paydomain.ErrUnavailable
+// companyCharge reports the organization whose settlement receipt names the
+// canonical charge. A reference no receipt can hold is simply not found.
+func (intake BillingIntake) companyCharge(ctx context.Context, event payment.InboxEvent, charge string) (string, bool, error) {
+	if intake.Pool == nil {
+		return "", false, paydomain.ErrUnavailable
 	}
-	if notice.Validate() != nil || charge == "" || len(charge) > 255 || amount.Positive() != nil || amount.Currency != "BRL" {
-		return false, domain.ErrBillingBinding
+	if event.Provider.Validate() != nil || event.Environment.Validate() != nil || event.Merchant == "" ||
+		charge == "" || len(charge) > 255 || strings.ContainsFunc(charge, func(r rune) bool { return r < '!' || r > '~' }) {
+		return "", false, nil
 	}
 	identity := db.LocateCompanySettlementParams{Provider: string(event.Provider), Environment: string(event.Environment),
 		Merchant: event.Merchant, ChargeRef: charge}
@@ -52,9 +59,24 @@ func (intake BillingIntake) observeReversal(ctx context.Context, event payment.I
 		return err
 	})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return false, nil
+		return "", false, nil
 	}
-	if err != nil {
+	return org, err == nil, err
+}
+
+func (intake BillingIntake) observeReversal(ctx context.Context, event payment.InboxEvent, charge, externalReference string, amount paydomain.Money, reverse, fullRefund bool) (bool, error) {
+	notice := domain.BillingNotice{Provider: event.Provider, Environment: event.Environment, Merchant: event.Merchant,
+		EventID: event.EventID, PayloadHash: event.PayloadHash, ResourceRef: event.ResourceID}
+	if intake.Pool == nil || intake.Now == nil {
+		return false, paydomain.ErrUnavailable
+	}
+	if notice.Validate() != nil || charge == "" || len(charge) > 255 || amount.Positive() != nil || amount.Currency != "BRL" {
+		return false, domain.ErrBillingBinding
+	}
+	identity := db.LocateCompanySettlementParams{Provider: string(event.Provider), Environment: string(event.Environment),
+		Merchant: event.Merchant, ChargeRef: charge}
+	org, found, err := intake.companyCharge(ctx, event, charge)
+	if err != nil || !found {
 		return false, err
 	}
 	if !reverse {
@@ -133,11 +155,30 @@ func (s CompanyRefund) Process(ctx context.Context, event payment.InboxRecord) e
 	case paydomain.ProviderAsaas:
 		verifier = s.Asaas
 	}
-	if verifier == nil || s.Inbox == nil {
+	if s.Inbox == nil {
+		return paydomain.ErrUnavailable
+	}
+	// A refund event names its charge. One that never settled a company term
+	// is acknowledged as before, with no provider read and no company verdict.
+	if _, found, err := s.Intake.companyCharge(ctx, event.InboxEvent, event.ResourceID); err != nil {
+		return err
+	} else if !found {
+		return s.Inbox.MarkInbox(ctx, event.InboxEvent, "PROCESSED", "")
+	}
+	if verifier == nil {
 		return paydomain.ErrUnavailable
 	}
 	fact, err := verifier.VerifyCompanyRefund(ctx, event)
-	if err == nil && fact.Full {
+	switch {
+	case errors.Is(err, paydomain.ErrUnavailable), errors.Is(err, payment.ErrAmbiguous),
+		errors.Is(err, payment.ErrProviderUnauthorized):
+		return err
+	case err != nil:
+		// The router stops at an unclassified error, so every deterministic
+		// provider answer, a missing payment included, ends here.
+		return s.Inbox.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "organization-refund-binding")
+	}
+	if fact.Full {
 		_, err = s.Intake.observeReversal(ctx, event.InboxEvent, fact.ChargeID, fact.ExternalReference, fact.Amount, true, true)
 	}
 	switch {

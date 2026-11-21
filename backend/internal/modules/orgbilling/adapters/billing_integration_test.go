@@ -335,10 +335,68 @@ WHERE from_state='PAST_DUE' AND state='ACTIVE' AND event_source='VERIFIED_BILLIN
 		t.Fatalf("full refund was not acknowledged: %v", err)
 	}
 	assertState(scopeB, "PAST_DUE", 2)
+
+	// A refund names its charge. One that never settled a company term keeps
+	// the outcome it had before company billing existed: acknowledged, with
+	// no provider read and no organization conflict.
+	for _, foreign := range []string{"synthetic-personal-charge", ""} {
+		outside := refundEvent
+		outside.EventID, outside.ResourceID = "synthetic-personal-refund", foreign
+		probe := &settlementProbe{}
+		personal := adapters.CompanyRefund{Intake: intake, Inbox: probe, Stripe: unreadCompanyRefund{t}}
+		if err := personal.Process(ctx, outside); err != nil || probe.marked != "PROCESSED" {
+			t.Fatalf("refund outside company billing was not acknowledged: %v / %q", err, probe.marked)
+		}
+	}
+	otherMerchant := refundEvent
+	otherMerchant.Merchant = "foreign-merchant"
+	probe := &settlementProbe{}
+	if err := (adapters.CompanyRefund{Intake: intake, Inbox: probe, Stripe: unreadCompanyRefund{t}}).Process(ctx, otherMerchant); err != nil || probe.marked != "PROCESSED" {
+		t.Fatalf("another merchant resolved the company charge: %v / %q", err, probe.marked)
+	}
+
+	// A deterministic provider answer about a company charge ends in the
+	// inbox. A returned error would hold every later event of the channel.
+	for _, answer := range []error{payment.ErrNotFound, payment.ErrInvalid, payment.ErrConflict, payment.ErrBinding} {
+		probe := &settlementProbe{}
+		failing := adapters.CompanyRefund{Intake: intake, Inbox: probe, Stripe: failedCompanyRefund{answer}}
+		if err := failing.Process(ctx, refundEvent); err != nil || probe.marked != "CONFLICT" || probe.reason != "organization-refund-binding" {
+			t.Fatalf("%v held the inbox or was acknowledged: %v / %q", answer, err, probe.marked)
+		}
+	}
+	for _, outage := range []error{payment.ErrUnavailable, app.ErrAmbiguous, app.ErrProviderUnauthorized} {
+		probe := &settlementProbe{}
+		failing := adapters.CompanyRefund{Intake: intake, Inbox: probe, Stripe: failedCompanyRefund{outage}}
+		if err := failing.Process(ctx, refundEvent); !errors.Is(err, outage) || probe.marked != "" {
+			t.Fatalf("%v did not stay pending for a retry: %v / %q", outage, err, probe.marked)
+		}
+	}
+	assertState(scopeB, "PAST_DUE", 2)
+
+	// The dispute service records a conflict only for the payment binding
+	// error, so a refused company observation must carry it.
+	unpriced := dispute
+	unpriced.Amount = payment.Money{Currency: "BRL"}
+	if _, err := intake.ObserveCompanyDispute(ctx, event, unpriced); !errors.Is(err, payment.ErrBinding) {
+		t.Fatalf("refused dispute observation would hold the inbox: %v", err)
+	}
 }
 
 type verifiedCompanyRefund app.ChargeRefundFact
 
 func (v verifiedCompanyRefund) VerifyCompanyRefund(_ context.Context, _ app.InboxRecord) (app.ChargeRefundFact, error) {
 	return app.ChargeRefundFact(v), nil
+}
+
+type failedCompanyRefund struct{ err error }
+
+func (f failedCompanyRefund) VerifyCompanyRefund(context.Context, app.InboxRecord) (app.ChargeRefundFact, error) {
+	return app.ChargeRefundFact{}, f.err
+}
+
+type unreadCompanyRefund struct{ t *testing.T }
+
+func (u unreadCompanyRefund) VerifyCompanyRefund(context.Context, app.InboxRecord) (app.ChargeRefundFact, error) {
+	u.t.Error("read the provider for a charge outside company billing")
+	return app.ChargeRefundFact{}, payment.ErrNotFound
 }
