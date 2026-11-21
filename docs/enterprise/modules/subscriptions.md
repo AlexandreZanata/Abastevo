@@ -99,6 +99,13 @@ protected by organization scope. No grant, price or duration is seeded.
 
 ## 9. Events, notifications and integrations
 
+The owner rule recorded on 2026-11-21 marks the current paid company term
+`PAST_DUE` after a canonical full refund or lost chargeback against its
+exact settlement. A partial refund, open or won dispute, or reversal
+of an earlier term leaves current access unchanged. The provider never
+suspends the organization. Suspension requires a separately reviewed
+operator decision.
+
 A canonical paid Stripe renewal which arrives before its scoped charge binding
 remains pending. Its bounded retry delay allows other inbox work to proceed.
 The retry fetches the canonical invoice again and can settle only after the

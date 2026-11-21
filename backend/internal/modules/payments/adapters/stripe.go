@@ -310,7 +310,7 @@ func (p *StripeProvider) VerifyDispute(ctx context.Context, event app.InboxRecor
 	if err != nil {
 		return app.DisputeFact{}, stripeError(err)
 	}
-	if dispute == nil || dispute.ID == "" || dispute.Amount <= 0 ||
+	if dispute == nil || dispute.ID != event.ResourceID || dispute.Amount <= 0 ||
 		string(dispute.Currency) != "brl" ||
 		dispute.Livemode != (p.Environment == domain.EnvironmentProduction) {
 		return app.DisputeFact{}, domain.ErrBinding
@@ -342,9 +342,14 @@ func (p *StripeProvider) VerifyDispute(ctx context.Context, event app.InboxRecor
 	if dispute.Created > 0 {
 		opened = time.Unix(dispute.Created, 0).UTC()
 	}
+	originalCharge := ""
+	if dispute.Charge != nil {
+		originalCharge = dispute.Charge.ID
+	}
 	return app.DisputeFact{
 		Provider: domain.ProviderStripe, Environment: p.Environment, Merchant: event.Merchant,
-		RemoteDisputeID: dispute.ID, RemoteChargeID: chargeID,
+		OriginalChargeID: originalCharge,
+		RemoteDisputeID:  dispute.ID, RemoteChargeID: chargeID,
 		Amount: domain.BRL(dispute.Amount), State: state,
 		OpenedAt: opened, LastEventAt: opened,
 	}, nil

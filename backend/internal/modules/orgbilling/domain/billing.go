@@ -81,7 +81,8 @@ func (notice BillingNotice) Validate() error {
 	return nil
 }
 
-func (notice BillingNotice) reference() string {
+// Reference identifies the verified event without exposing provider identifiers.
+func (notice BillingNotice) Reference() string {
 	key, _ := json.Marshal([4]string{string(notice.Provider), string(notice.Environment), notice.Merchant, notice.EventID})
 	sum := sha256.Sum256(key)
 	return hex.EncodeToString(sum[:])
@@ -173,7 +174,7 @@ func (binding BillingBinding) SettlementEvent(notice BillingNotice, fact Canonic
 	return LifecycleEvent{
 		Scope: binding.Scope, SubscriptionID: binding.SubscriptionID, ExpectedRevision: revision,
 		Kind: ConfirmSettlement, Source: VerifiedBilling, At: effectiveAt.UTC(),
-		Reference: notice.reference(), Period: fact.PaidTerm,
+		Reference: notice.Reference(), Period: fact.PaidTerm,
 	}, nil
 }
 

@@ -3,14 +3,17 @@
 package adapters_test
 
 import (
+	"context"
 	"errors"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/adapters"
 	d "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
 	payment "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/orgtest"
@@ -252,4 +255,86 @@ WHERE from_state='PAST_DUE' AND state='ACTIVE' AND event_source='VERIFIED_BILLIN
 	}); err != nil {
 		t.Fatal(err)
 	}
+
+	// A provider read proves the exact reversal. Open, won, mismatched
+	// merchant and historical reversals cannot change the active term.
+	event := app.InboxEvent{Provider: notice.Provider, Environment: notice.Environment, Merchant: notice.Merchant,
+		EventID: "synthetic-reversal", PayloadHash: strings.Repeat("d", 64), ResourceID: "synthetic-dispute"}
+	dispute := app.DisputeFact{Provider: event.Provider, Environment: event.Environment, Merchant: event.Merchant,
+		OriginalChargeID: fact.ChargeRef, Amount: payment.BRL(1723), State: payment.DisputePending}
+	for _, state := range []payment.DisputeState{payment.DisputePending, payment.DisputeWon} {
+		dispute.State = state
+		if handled, err := intake.ObserveCompanyDispute(ctx, event, dispute); !handled || err != nil {
+			t.Fatalf("nonfinal company dispute was misrouted: %t %v", handled, err)
+		}
+	}
+	assertState := func(scope kernel.OrgScope, want string, revision int64) {
+		t.Helper()
+		if err := database.WithOrgTx(ctx, f.Runtime, scope, func(tx pgx.Tx) error {
+			var state string
+			var got int64
+			if err := tx.QueryRow(ctx, "SELECT state,revision FROM org_billing_subscription_events ORDER BY revision DESC LIMIT 1").Scan(&state, &got); err != nil {
+				return err
+			}
+			if state != want || got != revision {
+				t.Fatalf("company state/revision = %s/%d, want %s/%d", state, got, want, revision)
+			}
+			return nil
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	assertState(scopeA, "ACTIVE", 3)
+	dispute.State, dispute.Amount = payment.DisputeLost, payment.BRL(1724)
+	if handled, err := intake.ObserveCompanyDispute(ctx, event, dispute); !handled || !errors.Is(err, payment.ErrBinding) {
+		t.Fatalf("chargeback above the reviewed charge was admitted: %t %v", handled, err)
+	}
+	dispute.Amount = payment.BRL(1723)
+	dispute.Merchant = "foreign-merchant"
+	foreignEvent := event
+	foreignEvent.Merchant = dispute.Merchant
+	if handled, err := intake.ObserveCompanyDispute(ctx, foreignEvent, dispute); handled || err != nil {
+		t.Fatalf("foreign merchant resolved the company charge: %t %v", handled, err)
+	}
+	dispute.Merchant = event.Merchant
+	assertState(scopeA, "ACTIVE", 3)
+	assertState(scopeB, "ACTIVE", 1)
+
+	for range 2 {
+		go func() {
+			handled, err := intake.ObserveCompanyDispute(ctx, event, dispute)
+			if !handled && err == nil {
+				err = errors.New("company dispute escaped into personal processing")
+			}
+			replies <- result{err: err}
+		}()
+	}
+	for range 2 {
+		if outcome := <-replies; outcome.err != nil {
+			t.Fatal(outcome.err)
+		}
+	}
+	assertState(scopeA, "PAST_DUE", 4)
+	assertState(scopeB, "ACTIVE", 1)
+
+	refundEvent := app.InboxRecord{InboxEvent: event}
+	refundEvent.EventID, refundEvent.ResourceID, refundEvent.EventType = "synthetic-refund-event", secondCompany.ChargeRef, "charge.refunded"
+	refundProbe := &settlementProbe{}
+	refund := adapters.CompanyRefund{Intake: intake, Inbox: refundProbe}
+	refund.Stripe = verifiedCompanyRefund{ChargeID: secondCompany.ChargeRef, Amount: payment.BRL(1723)}
+	if err := refund.Process(ctx, refundEvent); err != nil || refundProbe.marked != "PROCESSED" {
+		t.Fatalf("partial refund was not acknowledged: %v", err)
+	}
+	assertState(scopeB, "ACTIVE", 1)
+	refund.Stripe = verifiedCompanyRefund{ChargeID: secondCompany.ChargeRef, Amount: payment.BRL(1723), Full: true}
+	if err := refund.Process(ctx, refundEvent); err != nil || refundProbe.marked != "PROCESSED" {
+		t.Fatalf("full refund was not acknowledged: %v", err)
+	}
+	assertState(scopeB, "PAST_DUE", 2)
+}
+
+type verifiedCompanyRefund app.ChargeRefundFact
+
+func (v verifiedCompanyRefund) VerifyCompanyRefund(_ context.Context, _ app.InboxRecord) (app.ChargeRefundFact, error) {
+	return app.ChargeRefundFact(v), nil
 }

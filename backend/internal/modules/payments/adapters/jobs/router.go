@@ -55,6 +55,7 @@ type Router struct {
 	Settlement EventProcessor
 	Lifecycle  EventProcessor
 	Dispute    EventProcessor
+	Refund     EventProcessor
 	Cycles     EventProcessor
 	Channels   []Channel
 	Limit      int
@@ -144,6 +145,8 @@ func (r Router) owner(event app.InboxRecord) (EventProcessor, bool) {
 			"invoice.payment_failed", "invoice.payment_action_required",
 			"checkout.session.completed":
 			return r.Lifecycle, true
+		case "charge.refunded":
+			return r.Refund, r.Refund != nil
 		case "charge.dispute.created", "charge.dispute.updated", "charge.dispute.closed":
 			return r.Dispute, true
 		default:
@@ -151,6 +154,8 @@ func (r Router) owner(event app.InboxRecord) (EventProcessor, bool) {
 		}
 	case domain.ProviderAsaas:
 		switch {
+		case r.Refund != nil && (event.EventType == "PAYMENT_REFUNDED" || event.EventType == "PAYMENT_PARTIALLY_REFUNDED"):
+			return r.Refund, true
 		case event.EventType == "PAYMENT_CHARGEBACK_REQUESTED" ||
 			event.EventType == "PAYMENT_CHARGEBACK_DISPUTE" ||
 			event.EventType == "PAYMENT_AWAITING_CHARGEBACK_REVERSAL":
