@@ -152,6 +152,19 @@ func writePricePagesSnapshot(t *testing.T, mutate func(*[]enterpriseexport.Stati
 	return dir
 }
 
+// pricePagesProjection is the analytics projection of the unmodified fixture.
+func pricePagesProjection(t *testing.T) analytics.Projection {
+	t.Helper()
+	stations, revisions, prices := pricePagesFixture()
+	projection, err := analytics.Compute(analytics.Input{
+		ContentSHA256: "sha256:price-pages-fixture", Stations: stations, Revisions: revisions, Prices: prices,
+	}, analytics.Options{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return projection
+}
+
 // generatePricePortal builds the fixture indexable, with the landing on the
 // portal's own origin, as the production worker does.
 func generatePricePortal(t *testing.T, mutate func(*[]enterpriseexport.Station, *[]enterpriseexport.Price)) string {

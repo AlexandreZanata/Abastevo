@@ -345,9 +345,15 @@ type generator struct {
 	cityRoutes map[string]string
 	statePages map[string]bool
 	cityPages  map[string]bool
-	cityState  map[string]string
-	fuelHubs   map[string]fuelHubLink
-	latest     *enterpriseexport.Revision
+	// fuelStatePages holds the planned /precos/{fuel}/{uf}/ pages, keyed by
+	// areaKey(fuel, uf) (B-BR-SEO-11).
+	fuelStatePages map[string]bool
+	// weeks are the snapshot's survey weeks, newest first, for the history
+	// tables of the fuel by area pages.
+	weeks     []surveyWeek
+	cityState map[string]string
+	fuelHubs  map[string]fuelHubLink
+	latest    *enterpriseexport.Revision
 	// previous is the survey before the latest, with its summaries indexed
 	// for the comparison block; nil when the snapshot has one survey.
 	previous          *enterpriseexport.Revision
@@ -561,6 +567,8 @@ func Generate(opts Options) (Result, error) {
 	g.cityState = municipalityState
 	latestSummaries := summariesFor(projection, latest)
 	g.fuelHubs = planFuelHubs(latestSummaries)
+	g.planFuelAreas(latestSummaries)
+	g.weeks = surveyWeeks(snapshot.Revisions, projection)
 	g.latest = latest
 	latestRankings := rankingsFor(projection, latest)
 	previous := previousRevision(snapshot.Revisions, latest)
@@ -609,6 +617,9 @@ func Generate(opts Options) (Result, error) {
 		return Result{}, err
 	}
 	if err := g.generateFuelHubs(latestSummaries, municipalityName); err != nil {
+		return Result{}, err
+	}
+	if err := g.generateFuelStates(latestSummaries, latestRankings, stations); err != nil {
 		return Result{}, err
 	}
 	if err := g.generateStations(snapshot, stations, revisions, official); err != nil {

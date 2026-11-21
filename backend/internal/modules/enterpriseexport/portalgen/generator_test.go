@@ -181,11 +181,12 @@ func TestGenerateFixturePages(t *testing.T) {
 	if searchRelease == "fixture" {
 		t.Fatal("search shards must not reuse the immutable snapshot URL")
 	}
-	// 30 page/asset/download files (including the gasolina-comum and etanol
-	// hubs) + 15 search index files: 10 prefix shards (7 name terms, 3 CNPJ
-	// prefixes), 2 cities, 2 fuels and indice.json.
-	if result.Pages != 20 || result.Files != 45 {
-		t.Fatalf("result = %+v, want 20 pages and 45 files", result)
+	// 33 page/asset/download files (including the gasolina-comum and etanol
+	// hubs and their three fuel by state pages) + 15 search index files: 10
+	// prefix shards (7 name terms, 3 CNPJ prefixes), 2 cities, 2 fuels and
+	// indice.json.
+	if result.Pages != 23 || result.Files != 48 {
+		t.Fatalf("result = %+v, want 23 pages and 48 files", result)
 	}
 	for _, page := range []string{
 		"consultar/index.html", "precos/index.html", "precos/sp/index.html",
@@ -360,7 +361,7 @@ func TestGenerateFixturePages(t *testing.T) {
 		t.Fatal(err)
 	}
 	if manifest.InputContentSHA256 != "sha256:fixture" || manifest.Pages != result.Pages ||
-		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 44 {
+		manifest.ContentSHA256 != result.ContentSHA256 || len(manifest.Files) != 47 {
 		t.Errorf("portal manifest = %+v", manifest)
 	}
 }
@@ -753,10 +754,10 @@ func TestOfficialRecordsPages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 33 page/asset/download files + 16 search index files (the 15 above
+	// 36 page/asset/download files + 16 search index files (the 15 above
 	// plus fiscalizacao.json).
-	if result.Pages != 23 || result.Files != 49 {
-		t.Fatalf("result = %+v, want 23 pages and 49 files", result)
+	if result.Pages != 26 || result.Files != 52 {
+		t.Fatalf("result = %+v, want 26 pages and 52 files", result)
 	}
 	index := readPortal(t, out, "fiscalizacao/index.html")
 	indexLower := strings.ToLower(index)

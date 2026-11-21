@@ -186,6 +186,7 @@ func (g *generator) generateStates(summaries []analytics.Summary, rankings []ana
 	}
 	for _, uf := range sortedKeys(all) {
 		stateSummaries := g.summaryRows(summaries, analytics.LevelState, uf, false)
+		linkFuelRows(stateSummaries, func(code string) string { return g.fuelStateHref(code, uf) })
 		views, err := rankingViews(rankings, analytics.LevelState, uf, stations, true)
 		if err != nil {
 			return err
@@ -312,6 +313,7 @@ func (g *generator) generateMunicipalities(summaries []analytics.Summary, observ
 		}
 		stationList, total := stationRows(city, g.observed, limit)
 		base.Modules = append(g.cityModules(city),
+			g.fuelStateModule(uf, fuels),
 			g.fuelModule("Preço por combustível no Brasil", fuels),
 			g.forumRegionModule(uf, code),
 			g.priceGuides(" em "+name, fuels))

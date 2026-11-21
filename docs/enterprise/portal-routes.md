@@ -15,6 +15,7 @@ labelled synthetic data and is not part of the landing build or `dist/`.
 | `/postos/{uuid}/` | Canonical station detail and dated history | indexable only with an official ANP price in the 8 most recent survey weeks and a complete address (D-SEO-02); otherwise `noindex,follow` | Directory + Official |
 | `/precos/` | National overview and links to fuel, state and municipality summaries | indexable | Official current revisions |
 | `/precos/{fuel-slug}/` | Fuel hub: national summary, table by state, cities with that fuel (SEO-07) | indexable when the current survey has the fuel | Official current revisions |
+| `/precos/{fuel-slug}/{uf}/` | One fuel in one state: summary, comparison with the previous survey, history by survey week, cities and the state ranking for that fuel (B-BR-SEO-11) | indexable; the page exists only when the state has that fuel in the current survey | Official revisions in the export window |
 | `/precos/{uf}/` | State summary and municipalities (lowercase UF, D-SEO-01) | indexable when the state has observations in the current survey; otherwise honest no-data page `noindex,follow` | Official current revisions + Directory geography |
 | `/precos/{uf}/{cidade-slug}/` | Municipality summary and cheapest-in-sample list (D-SEO-01) | indexable when the municipality has observations in the current survey (small samples keep the no-ranking state); otherwise honest no-data page `noindex,follow` | Official current revisions + Directory geography |
 | `/fiscalizacao/` | Source-reported official events, event-level | first page indexable when the official slice is present; pagination self-canonical `noindex,follow`; record pages always `noindex,follow` (D-SEO-03) | FQ-07/FQ-08 frozen export; FQ-06 still gated |
@@ -220,6 +221,18 @@ as follows; tests in `portalgen` prove each rule on fixtures.
   two station samples as the same; otherwise the row says the sample changed
   and shows the previous figures without a variation. A fuel with no summary
   in the previous survey has no row, and a page with no row has no block.
+- **B-BR-SEO-11 Fuel by area pages.** `/precos/{fuel}/{uf}/` exists when the
+  state has a summary for that fuel, in the fuel's canonical unit, in the
+  current survey. A page that fails the rule is not emitted, and an emitted
+  page is indexable under the global switch. Fuel slugs have at least three
+  characters and state codes have two, so the first segment under `/precos/`
+  tells the two families apart. The page shows one fuel only: its summary row
+  and mean (B-BR-SEO-10), the comparison block, one history row per survey
+  week of the snapshot (newest first, from the first observation; a week
+  without an observation is a gap, never a zero), the cities of the state
+  with that fuel and the state ranking. The fuel hub's state table, the state
+  page's summary and each city page link it, so every page has at least the
+  three inbound links B-BR-SEO-07 asks for.
 
 ## Page fields (public allowlist)
 

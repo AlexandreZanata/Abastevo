@@ -112,6 +112,18 @@ func fuelSlug(code string) string {
 	return fuelVocabulary[code].Slug
 }
 
+// isFuelSlug reports whether slug is the hub slug of a known product. Fuel
+// slugs and the two-letter state codes never collide, so the first segment
+// under /precos/ tells a fuel route from a state route.
+func isFuelSlug(slug string) bool {
+	for _, words := range fuelVocabulary {
+		if words.Slug == slug {
+			return true
+		}
+	}
+	return false
+}
+
 func fuelRoute(code string) string {
 	if slug := fuelSlug(code); slug != "" {
 		return "/precos/" + slug + "/"

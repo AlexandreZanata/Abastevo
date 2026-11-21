@@ -129,6 +129,9 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 					continue
 				}
 				row.UF, row.Name, row.Href = summary.Geography.Code, ufName(summary.Geography.Code), stateRoute(summary.Geography.Code)
+				if href := g.fuelStateHref(hub.Code, row.UF); href != "" {
+					row.Href = href
+				}
 				states = append(states, row)
 			case analytics.LevelMunicipality:
 				code := summary.Geography.Code
@@ -184,7 +187,7 @@ func (g *generator) generateFuelHubs(summaries []analytics.Summary, municipality
 		}
 		items := make([]listItem, 0, len(states)+len(cities))
 		for _, row := range states {
-			items = append(items, listItem{Name: "Preços em " + row.Name, Href: row.Href})
+			items = append(items, listItem{Name: "Preço " + fuelAreaPhrase(hub.Code) + " em " + row.Name, Href: row.Href})
 		}
 		for _, row := range cities {
 			items = append(items, listItem{Name: "Preços em " + placeLabel(row.Name, row.UF), Href: row.Href})

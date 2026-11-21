@@ -25,6 +25,7 @@ const (
 	familyFuel          pageFamily = "fuel"
 	familyState         pageFamily = "state"
 	familyCity          pageFamily = "city"
+	familyFuelState     pageFamily = "fuel-state"
 	familyStation       pageFamily = "station"
 	familyForumHub      pageFamily = "forum-hub"
 	familyForumCategory pageFamily = "forum-category"
@@ -52,7 +53,7 @@ func pageIndexable(facts indexFacts) bool {
 	switch facts.Family {
 	case familyHub:
 		return true
-	case familyFiscalHub, familyFuel, familyState, familyCity:
+	case familyFiscalHub, familyFuel, familyState, familyCity, familyFuelState:
 		return facts.HasCurrentData
 	case familyStation:
 		return facts.RecentOfficialPrice && facts.CompleteAddress
