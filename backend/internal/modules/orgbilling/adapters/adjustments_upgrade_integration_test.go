@@ -30,6 +30,11 @@ func TestReversalLocatorMigrationRecoversWithExistingSubscription(t *testing.T) 
 		`NOT EXISTS (SELECT 1 FROM pg_policies WHERE policyname='org_billing_receipt_by_canonical_charge')`)
 }
 
+func TestSuspensionReviewMigrationRecoversWithExistingSubscription(t *testing.T) {
+	checkBillingUpgradePreservesHistory(t, "000297_organization_subscription_suspension_approvals.sql",
+		`to_regclass('public.org_billing_suspension_approvals') IS NULL`)
+}
+
 func checkBillingUpgradePreservesHistory(t *testing.T, filename, missingObject string) {
 	t.Helper()
 	version, _, _ := strings.Cut(filename, "_")

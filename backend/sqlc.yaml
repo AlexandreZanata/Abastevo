@@ -91,6 +91,7 @@ sql:
       - db/migrations/000265_organization_billing_intake.sql
       - db/migrations/000274_organization_asaas_billing.sql
       - db/migrations/000289_organization_billing_charge_approvals.sql
+      - db/migrations/000297_organization_subscription_suspension_approvals.sql
     gen:
       go:
         package: orgbillingops

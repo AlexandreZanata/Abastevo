@@ -106,7 +106,12 @@ The owner rule recorded on 2026-11-21 marks the current paid company term
 exact settlement. A partial refund, open or won dispute, or reversal
 of an earlier term leaves current access unchanged. The provider never
 suspends the organization. Suspension requires a separately reviewed
-operator decision.
+operator decision. Record that approval for the current past-due revision
+and accountable operator in `org_billing_suspension_approvals`. Provision
+the dedicated login with `infra/db/billing-suspension-role.sql`, then use
+`ops enterprise billing suspend --org <uuid> --approval-id <uuid>
+--operation-id <uuid> --operator <uuid>`. Concurrent changes invalidate
+a stale review. An exact retry returns the same audited revision.
 
 A canonical paid Stripe renewal which arrives before its scoped charge binding
 remains pending. Its bounded retry delay allows other inbox work to proceed.

@@ -84,6 +84,7 @@ const usage = `usage:
   ops enterprise capability set --org <uuid> --capability organizations --enabled|--disabled
       --operation-id <uuid> --expected-revision <n> [--operator <uuid>]
   ops enterprise trial start --org <uuid> --grant-id <uuid> --operation-id <uuid> [--operator <uuid>]
+  ops enterprise billing suspend --org <uuid> --approval-id <uuid> --operation-id <uuid> [--operator <uuid>]
   ops enterprise billing bind --org <uuid> --approval-id <uuid> --operation-id <uuid> [--operator <uuid>]
   ops enterprise adjustment post --org <uuid> --approval-id <uuid> --operation-id <uuid> [--operator <uuid>]
   ops enterprise station admit --org <uuid> --approval-id <uuid> --operation-id <uuid> [--operator <uuid>]
