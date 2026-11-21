@@ -12,6 +12,13 @@ export function mountPlanPanel(doc: Document, source: PlanSource, sessionLost: (
   const refresh = element<HTMLButtonElement>('subscription-refresh');
   const date = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'medium', timeStyle: 'short' });
   const number = new Intl.NumberFormat('pt-BR');
+  const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+  const paymentDate = new Intl.DateTimeFormat('pt-BR', { dateStyle: 'short', timeZone: 'UTC' });
+  function formatAmount(raw: string): string {
+    const cents = BigInt(raw);
+    const fraction = String(cents % 100n).padStart(2, '0');
+    return currency.formatToParts(cents / 100n).map(part => part.type === 'fraction' ? fraction : part.value).join('');
+  }
 
   function text(parent: HTMLElement, tag: 'h3' | 'p' | 'li', content: string): void {
     const node = doc.createElement(tag);
@@ -30,7 +37,11 @@ export function mountPlanPanel(doc: Document, source: PlanSource, sessionLost: (
       text(item, 'h3', plan.name);
       text(item, 'p', `${planStateLabel(plan)} · revisão ${number.format(BigInt(plan.revision))}`);
       text(item, 'p', `Vigência de ${date.format(new Date(plan.termStart))} a ${date.format(new Date(plan.termEnd))}`);
-      if (plan.confirmedPaid) text(item, 'p', 'Cobrança liquidada para esse período.');
+      if (plan.receipt) {
+        text(item, 'p', `Cobrança liquidada: ${formatAmount(plan.receipt.amountCentavos)}.`);
+        if (plan.receipt.paymentDate) text(item, 'p', `Data informada pelo provedor: ${paymentDate.format(new Date(plan.receipt.paymentDate))}.`);
+        text(item, 'p', 'Situação fiscal não consultada.');
+      } else if (plan.confirmedPaid) text(item, 'p', 'Cobrança liquidada para esse período.');
       if (plan.state === 'PAST_DUE' && !plan.confirmedPaid) text(item, 'p', 'Aguardando confirmação da cobrança.');
       if (plan.pending) text(item, 'p', `Próximo plano em análise para ${date.format(new Date(plan.pending.effectiveAt))}: ${plan.pending.name}`);
       if (plan.capabilities.length) {

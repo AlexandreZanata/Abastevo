@@ -810,13 +810,36 @@ def employee_checks(browser, origin, dsn):
                 (product_code,plan_code,plan_revision,window_seconds,window_calls,approval_ref)
             VALUES ('data','browser-data-plan',1,60,12,'synthetic-browser-rate')
         """)
+        offer_id, subscription_id = str(uuid.uuid4()), str(uuid.uuid4())
+        connection.execute("""
+            INSERT INTO enterprise_billing_offers
+                (id,product_code,plan_code,plan_revision,channel,environment,merchant,provider_offer_ref,amount_centavos,term,approval_ref)
+            VALUES (%s,'data','browser-data-plan',1,'stripe_card','test','synthetic-provider-merchant',
+                    'synthetic-provider-offer',4567,'P1M','synthetic-provider-approval')
+        """, (offer_id,))
+        connection.execute("""
+            INSERT INTO org_billing_charge_bindings
+                (org_id,provider,environment,merchant,resource_ref,subscription_id,offer_id,customer_ref,contract_ref,term_start,term_end)
+            VALUES (%s,'stripe','test','synthetic-provider-merchant','synthetic-provider-invoice',%s,%s,
+                    'synthetic-provider-customer','synthetic-provider-contract',now(),now()+interval '1 month')
+        """, (org_id, subscription_id, offer_id))
         connection.execute("""
             INSERT INTO org_billing_subscription_events
                 (org_id,subscription_id,revision,product_code,plan_code,plan_revision,from_state,state,prior_state,
                  event_kind,event_source,evidence_reference,occurred_at,term_start,term_end)
-            VALUES (%s,%s,1,'data','browser-data-plan',1,'','TRIALING','','START_TRIAL','TRIAL_POLICY',
-                    'synthetic-browser-data-policy',now(),now(),now()+interval '1 day')
-        """, (org_id, str(uuid.uuid4())))
+            VALUES (%s,%s,1,'data','browser-data-plan',1,'','ACTIVE','','CONFIRM_SETTLEMENT','VERIFIED_BILLING',
+                    'synthetic-browser-data-settlement',now(),now(),now()+interval '1 month')
+        """, (org_id, subscription_id))
+        connection.execute("""
+            INSERT INTO org_billing_settlement_receipts
+                (org_id,provider,environment,merchant,event_id,payload_hash,resource_ref,charge_ref,subscription_id,applied_revision,settled_at)
+            VALUES (%s,'stripe','test','synthetic-provider-merchant','synthetic-provider-event',repeat('a',64),
+                    'synthetic-provider-invoice','synthetic-provider-charge',%s,1,now())
+        """, (org_id, subscription_id))
+    receipt_view = context.request.post(origin + "/v1/orgs/" + org_id + "/subscriptions/plan/read", headers=headers, data={})
+    assert receipt_view.status == 200 and "synthetic-provider-" not in receipt_view.text()
+    receipt = next(plan["receipt"] for plan in receipt_view.json()["plans"] if plan["product"] == "data")
+    assert receipt["amount_centavos"] == "4567" and receipt["fiscal_status"] == "NOT_CONSULTED"
     issued = context.request.post(data_path + "issue", headers=headers, data=issue)
     assert issued.status == 200 and issued.headers["cache-control"] == "no-store", f"Scoped Data key issuance failed: HTTP {issued.status}"
     issued_json = issued.json()
@@ -843,7 +866,11 @@ def employee_checks(browser, origin, dsn):
     expect(page.locator("#subscription-title")).to_have_text("Plano e cobrança")
     expect(page.locator("#subscription-list")).to_contain_text("Plano sintético do navegador")
     expect(page.locator("#subscription-list")).to_contain_text("Veículos ativos: 0")
-    expect(page.locator("#subscription-list")).not_to_contain_text("Cobrança liquidada")
+    trial_item = page.locator("#subscription-list > li").filter(has_text="Plano sintético do navegador")
+    expect(trial_item).not_to_contain_text("Cobrança liquidada")
+    paid_item = page.locator("#subscription-list > li").filter(has_text="Data sintético")
+    expect(paid_item).to_contain_text("45,67")
+    expect(paid_item).to_contain_text("Situação fiscal não consultada.")
     expect(page.locator("#data-panel")).to_have_attribute("aria-busy", "false")
     expect(page.locator("#data-usage")).to_contain_text("0 de 5 chamadas")
     expect(page.locator("#data-usage")).to_contain_text("12 chamadas a cada 60 s")

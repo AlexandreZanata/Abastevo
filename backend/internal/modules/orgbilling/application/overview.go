@@ -9,6 +9,7 @@ import (
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
 	organization "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/organization/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
+	payment "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
 	"github.com/jackc/pgx/v5"
 )
 
@@ -32,15 +33,23 @@ type Overview struct {
 }
 
 type PlanSummary struct {
-	Catalog       domain.Plan
-	State         domain.SubscriptionState
-	Term          domain.Period
-	TermCurrent   bool
-	ConfirmedPaid bool
-	Pending       *PendingPlan
+	Catalog     domain.Plan
+	State       domain.SubscriptionState
+	Term        domain.Period
+	TermCurrent bool
+	Receipt     *TermReceipt
+	Pending     *PendingPlan
 }
 
 type PendingPlan struct {
 	Catalog     domain.Plan
 	EffectiveAt time.Time
+}
+
+// TermReceipt describes the confirmed financial fact. Fiscal status belongs
+// to a separate authorized workflow.
+type TermReceipt struct {
+	Amount    payment.Money
+	SettledAt time.Time
+	PaidOn    string
 }

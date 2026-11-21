@@ -121,7 +121,7 @@ func (intake BillingIntake) recordTx(ctx context.Context, tx pgx.Tx, notice doma
 	if err := qcap.New(tx).LockEntitlementWrite(ctx, org); err != nil {
 		return SettlementReceipt{}, err
 	}
-	paid, err := queries.IsPlanTermSettled(ctx, db.IsPlanTermSettledParams{
+	paid, err := queries.ReadPlanTermReceipts(ctx, db.ReadPlanTermReceiptsParams{
 		OrgID: org, SubscriptionID: binding.SubscriptionID,
 		ProductCode: binding.Offer.Plan.Product, PlanCode: binding.Offer.Plan.Plan, PlanRevision: binding.Offer.Plan.Revision,
 		TermStart: pgtype.Timestamptz{Time: binding.ExpectedTerm.Start, Valid: true},
@@ -130,7 +130,7 @@ func (intake BillingIntake) recordTx(ctx context.Context, tx pgx.Tx, notice doma
 	if err != nil {
 		return SettlementReceipt{}, err
 	}
-	if paid {
+	if len(paid) != 0 {
 		return SettlementReceipt{}, payment.ErrConflict
 	}
 

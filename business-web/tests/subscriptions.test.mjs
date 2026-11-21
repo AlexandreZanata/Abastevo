@@ -33,6 +33,13 @@ test('plan overview keeps exact limits and uses only recorded payment proof', as
   assert.equal(plan.pending.name, 'Próximo plano');
   assert.equal(planStateLabel(plan), 'Ativo');
   assert.equal(planStateLabel({ ...plan, termCurrent: false }), 'Vigência encerrada');
+  const receipt = { amount_centavos: '4567', currency: 'BRL', settled_at: observed, payment_date: '2026-11-21', fiscal_status: 'NOT_CONSULTED' };
+  raw = { ...rawPlan, confirmed_paid: true, receipt };
+  assert.deepEqual((await client.read(uuid(1), abort.signal))[0].receipt, {
+    amountCentavos: '4567', settledAt: observed, fiscalStatus: 'NOT_CONSULTED', paymentDate: '2026-11-21',
+  });
+  raw = { ...rawPlan, confirmed_paid: true, receipt: { ...receipt, fiscal_status: 'AUTHORIZED_AS_OF' } };
+  await assert.rejects(client.read(uuid(1), abort.signal), { kind: 'unavailable' });
   raw = { ...rawPlan, limits: { storage_bytes: 9223372036854775807 } };
   await assert.rejects(client.read(uuid(1), abort.signal), { kind: 'unavailable' });
   raw = { ...rawPlan, limits: [] };

@@ -11,43 +11,6 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const isPlanTermSettled = `-- name: IsPlanTermSettled :one
-SELECT EXISTS (
-    SELECT 1 FROM org_billing_settlement_receipts r
-    JOIN org_billing_subscription_events e
-      ON (e.org_id,e.subscription_id,e.revision) = (r.org_id,r.subscription_id,r.applied_revision)
-    WHERE e.org_id=CAST($1::text AS uuid) AND e.subscription_id=CAST($2::text AS uuid)
-      AND e.product_code=$3::text AND e.plan_code=$4::text
-      AND e.plan_revision=$5::bigint
-      AND e.term_start=$6::timestamptz AND e.term_end=$7::timestamptz
-)::boolean AS settled
-`
-
-type IsPlanTermSettledParams struct {
-	OrgID          string             `json:"org_id"`
-	SubscriptionID string             `json:"subscription_id"`
-	ProductCode    string             `json:"product_code"`
-	PlanCode       string             `json:"plan_code"`
-	PlanRevision   int64              `json:"plan_revision"`
-	TermStart      pgtype.Timestamptz `json:"term_start"`
-	TermEnd        pgtype.Timestamptz `json:"term_end"`
-}
-
-func (q *Queries) IsPlanTermSettled(ctx context.Context, arg IsPlanTermSettledParams) (bool, error) {
-	row := q.db.QueryRow(ctx, isPlanTermSettled,
-		arg.OrgID,
-		arg.SubscriptionID,
-		arg.ProductCode,
-		arg.PlanCode,
-		arg.PlanRevision,
-		arg.TermStart,
-		arg.TermEnd,
-	)
-	var settled bool
-	err := row.Scan(&settled)
-	return settled, err
-}
-
 const listReviewedNextPlans = `-- name: ListReviewedNextPlans :many
 SELECT DISTINCT o.product_code,o.plan_code,o.plan_revision,b.term_start
 FROM org_billing_charge_bindings b
@@ -100,6 +63,68 @@ func (q *Queries) ListReviewedNextPlans(ctx context.Context, arg ListReviewedNex
 			&i.PlanRevision,
 			&i.TermStart,
 		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const readPlanTermReceipts = `-- name: ReadPlanTermReceipts :many
+SELECT o.amount_centavos,r.settled_at,r.provider_paid_on
+FROM org_billing_settlement_receipts r
+JOIN org_billing_subscription_events e
+  ON (e.org_id,e.subscription_id,e.revision)=(r.org_id,r.subscription_id,r.applied_revision)
+JOIN org_billing_charge_bindings b
+  ON (b.org_id,b.provider,b.environment,b.merchant,b.resource_ref,b.subscription_id)=
+     (r.org_id,r.provider,r.environment,r.merchant,r.resource_ref,r.subscription_id)
+JOIN enterprise_billing_offers o ON o.id=b.offer_id
+WHERE e.org_id=CAST($1::text AS uuid) AND e.subscription_id=CAST($2::text AS uuid)
+  AND e.product_code=$3::text AND e.plan_code=$4::text
+  AND e.plan_revision=$5::bigint
+  AND e.term_start=$6::timestamptz AND e.term_end=$7::timestamptz
+  AND (o.product_code,o.plan_code,o.plan_revision)=(e.product_code,e.plan_code,e.plan_revision)
+  AND (b.term_start,b.term_end)=(e.term_start,e.term_end)
+ORDER BY e.revision LIMIT 2
+`
+
+type ReadPlanTermReceiptsParams struct {
+	OrgID          string             `json:"org_id"`
+	SubscriptionID string             `json:"subscription_id"`
+	ProductCode    string             `json:"product_code"`
+	PlanCode       string             `json:"plan_code"`
+	PlanRevision   int64              `json:"plan_revision"`
+	TermStart      pgtype.Timestamptz `json:"term_start"`
+	TermEnd        pgtype.Timestamptz `json:"term_end"`
+}
+
+type ReadPlanTermReceiptsRow struct {
+	AmountCentavos int64              `json:"amount_centavos"`
+	SettledAt      pgtype.Timestamptz `json:"settled_at"`
+	ProviderPaidOn pgtype.Date        `json:"provider_paid_on"`
+}
+
+func (q *Queries) ReadPlanTermReceipts(ctx context.Context, arg ReadPlanTermReceiptsParams) ([]ReadPlanTermReceiptsRow, error) {
+	rows, err := q.db.Query(ctx, readPlanTermReceipts,
+		arg.OrgID,
+		arg.SubscriptionID,
+		arg.ProductCode,
+		arg.PlanCode,
+		arg.PlanRevision,
+		arg.TermStart,
+		arg.TermEnd,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ReadPlanTermReceiptsRow
+	for rows.Next() {
+		var i ReadPlanTermReceiptsRow
+		if err := rows.Scan(&i.AmountCentavos, &i.SettledAt, &i.ProviderPaidOn); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

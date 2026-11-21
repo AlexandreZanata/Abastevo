@@ -48477,6 +48477,27 @@ components:
                 type: boolean
               confirmed_paid:
                 type: boolean
+              receipt:
+                type: object
+                additionalProperties: false
+                required: [amount_centavos, currency, settled_at, fiscal_status]
+                properties:
+                  amount_centavos:
+                    type: string
+                    pattern: '^[1-9][0-9]{0,18}$'
+                  currency:
+                    type: string
+                    enum: [BRL]
+                  settled_at:
+                    type: string
+                    format: date-time
+                  payment_date:
+                    type: string
+                    format: date
+                    description: Date supplied by the provider when available at date precision.
+                  fiscal_status:
+                    type: string
+                    enum: [NOT_CONSULTED]
               capabilities:
                 type: array
                 items:

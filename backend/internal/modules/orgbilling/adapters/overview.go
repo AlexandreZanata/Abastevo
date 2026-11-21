@@ -2,6 +2,7 @@ package adapters
 
 import (
 	"context"
+	"time"
 
 	db "github.com/AlexandreZanata/brazil-fuel-prices/backend/db/queries/orgbilling"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
@@ -9,6 +10,7 @@ import (
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgbilling/domain"
 	capability "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgcapability/domain"
+	payment "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/platform/database"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -63,15 +65,29 @@ func (store OverviewStore) readTx(ctx context.Context, tx pgx.Tx, scope kernel.O
 		}
 		term := domain.Period{Start: current.TermStart.Time.UTC(), End: current.TermEnd.Time.UTC()}
 		state := domain.SubscriptionState(current.State)
-		paid, err := queries.IsPlanTermSettled(ctx, db.IsPlanTermSettledParams{
+		receipts, err := queries.ReadPlanTermReceipts(ctx, db.ReadPlanTermReceiptsParams{
 			OrgID: org, SubscriptionID: current.ID, ProductCode: key.Product, PlanCode: key.Plan, PlanRevision: key.Revision,
 			TermStart: current.TermStart, TermEnd: current.TermEnd,
 		})
 		if err != nil {
 			return app.Overview{}, err
 		}
-		summary := app.PlanSummary{Catalog: plan, State: state, Term: term, ConfirmedPaid: paid,
+		summary := app.PlanSummary{Catalog: plan, State: state, Term: term,
 			TermCurrent: !overview.ObservedAt.Before(term.Start) && overview.ObservedAt.Before(term.End)}
+		if len(receipts) > 1 {
+			return app.Overview{}, app.ErrUnavailable
+		}
+		if len(receipts) == 1 {
+			row := receipts[0]
+			amount := payment.BRL(row.AmountCentavos)
+			if !row.SettledAt.Valid || amount.Positive() != nil {
+				return app.Overview{}, app.ErrUnavailable
+			}
+			summary.Receipt = &app.TermReceipt{Amount: amount, SettledAt: row.SettledAt.Time.UTC()}
+			if row.ProviderPaidOn.Valid {
+				summary.Receipt.PaidOn = row.ProviderPaidOn.Time.Format(time.DateOnly)
+			}
+		}
 		if state != domain.Cancelled && state != domain.Cancelling {
 			pending, err := queries.ListReviewedNextPlans(ctx, db.ListReviewedNextPlansParams{
 				OrgID: org, SubscriptionID: current.ID, ProductCode: key.Product, PlanCode: key.Plan,

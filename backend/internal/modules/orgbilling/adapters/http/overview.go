@@ -8,6 +8,7 @@ import (
 	"time"
 
 	company "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/companysession/adapters/http"
+	document "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/document/domain"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/kernel"
 	guarded "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/adapters/http"
 	access "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/orgaccess/application"
@@ -64,6 +65,14 @@ type pendingView struct {
 	EffectiveAt time.Time `json:"effective_at"`
 }
 
+type termReceiptView struct {
+	AmountCentavos string         `json:"amount_centavos"`
+	Currency       string         `json:"currency"`
+	SettledAt      time.Time      `json:"settled_at"`
+	ProviderPaidOn string         `json:"payment_date,omitempty"`
+	FiscalStatus   document.State `json:"fiscal_status"`
+}
+
 type planView struct {
 	Product       string                   `json:"product"`
 	Name          string                   `json:"name"`
@@ -73,6 +82,7 @@ type planView struct {
 	TermEnd       time.Time                `json:"term_end"`
 	TermCurrent   bool                     `json:"term_current"`
 	ConfirmedPaid bool                     `json:"confirmed_paid"`
+	Receipt       *termReceiptView         `json:"receipt,omitempty"`
 	Capabilities  []string                 `json:"capabilities"`
 	Limits        map[domain.Meter]string  `json:"limits"`
 	Pending       *pendingView             `json:"pending,omitempty"`
@@ -83,11 +93,16 @@ func response(overview billing.Overview) overviewResponse {
 	for _, row := range overview.Plans {
 		p := planView{Product: row.Catalog.Key().Product, Name: row.Catalog.Name(), Revision: strconv.FormatInt(row.Catalog.Key().Revision, 10),
 			State: row.State, TermStart: row.Term.Start, TermEnd: row.Term.End, TermCurrent: row.TermCurrent,
-			ConfirmedPaid: row.ConfirmedPaid, Capabilities: row.Catalog.Capabilities(), Limits: make(map[domain.Meter]string)}
+			ConfirmedPaid: row.Receipt != nil, Capabilities: row.Catalog.Capabilities(), Limits: make(map[domain.Meter]string)}
 		for _, meter := range []domain.Meter{domain.ActiveVehicles, domain.ActiveStations, domain.StorageBytes, domain.APICalls} {
 			if limit, err := row.Catalog.Limit(meter); err == nil {
 				p.Limits[meter] = strconv.FormatInt(limit, 10)
 			}
+		}
+		if row.Receipt != nil {
+			p.Receipt = &termReceiptView{AmountCentavos: strconv.FormatInt(row.Receipt.Amount.Centavos, 10),
+				Currency: string(row.Receipt.Amount.Currency), SettledAt: row.Receipt.SettledAt,
+				ProviderPaidOn: row.Receipt.PaidOn, FiscalStatus: document.NotConsulted}
 		}
 		if row.Pending != nil {
 			p.Pending = &pendingView{Name: row.Pending.Catalog.Name(), Revision: strconv.FormatInt(row.Pending.Catalog.Key().Revision, 10),

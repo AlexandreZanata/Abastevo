@@ -93,8 +93,11 @@ either provider wait in the inbox until the approved term begins. A separate
 charge for an already settled term enters reconciliation.
 
 Manual pilot capability activation remains independent from selling plans.
-Notifications carry safe links. Fiscal invoice issuance and accounting
-connections are separate capabilities.
+Notifications carry safe links. The plan panel reads the receipt for its
+exact term and displays its gross amount in BRL. It reports
+`NOT_CONSULTED` for fiscal status while authorized fiscal consultation is
+pending. Fiscal invoice issuance and accounting connections are separate
+capabilities.
 
 ## 10. Data, formulas and examples
 

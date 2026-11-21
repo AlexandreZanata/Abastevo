@@ -23,6 +23,7 @@ export interface PlanSummary {
   termEnd: string;
   termCurrent: boolean;
   confirmedPaid: boolean;
+  receipt?: { amountCentavos: string; settledAt: string; fiscalStatus: 'NOT_CONSULTED'; paymentDate?: string };
   capabilities: string[];
   limits: Partial<Record<Meter, string>>;
   pending?: { name: string; revision: string; effectiveAt: string };
@@ -67,6 +68,17 @@ function plan(value: unknown): PlanSummary {
     state: raw.state as State, termStart, termEnd, termCurrent: raw.term_current,
     confirmedPaid: raw.confirmed_paid, capabilities: raw.capabilities.map(text), limits,
   };
+  if (raw.receipt !== undefined) {
+    const receipt = record(raw.receipt);
+    if (!result.confirmedPaid || receipt.currency !== 'BRL' || receipt.fiscal_status !== 'NOT_CONSULTED') throw new ApiError('unavailable');
+    result.receipt = { amountCentavos: integer(receipt.amount_centavos, 1n), settledAt: instant(receipt.settled_at),
+      fiscalStatus: receipt.fiscal_status };
+    if (receipt.payment_date !== undefined) {
+      const day = text(receipt.payment_date);
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(day) || !Number.isFinite(Date.parse(day))) throw new ApiError('unavailable');
+      result.receipt.paymentDate = day;
+    }
+  }
   if (raw.pending !== undefined) {
     const pending = record(raw.pending);
     const effectiveAt = instant(pending.effective_at);
