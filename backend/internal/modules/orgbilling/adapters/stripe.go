@@ -54,7 +54,7 @@ func (s StripeSettlement) Process(ctx context.Context, event payment.InboxRecord
 	}
 	invoice, err := s.Resources.RetrieveSettlementInvoice(ctx, event)
 	if err != nil {
-		if errors.Is(err, paydomain.ErrInvalid) {
+		if errors.Is(err, paydomain.ErrInvalid) || errors.Is(err, paydomain.ErrConflict) {
 			return s.Inbox.MarkInbox(ctx, event.InboxEvent, "CONFLICT", "stripe-invoice-reference")
 		}
 		return err

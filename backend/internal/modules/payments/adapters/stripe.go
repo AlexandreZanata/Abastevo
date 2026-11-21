@@ -594,9 +594,9 @@ func stripeError(err error) error {
 			return app.ErrProviderUnauthorized
 		case stripeErr.HTTPStatusCode == 429, stripeErr.HTTPStatusCode >= 500, stripeErr.Type == stripe.ErrorTypeAPI:
 			return app.ErrAmbiguous
-		case stripeErr.Type == stripe.ErrorTypeIdempotency:
+		case stripeErr.HTTPStatusCode == http.StatusConflict || stripeErr.Type == stripe.ErrorTypeIdempotency:
 			return domain.ErrConflict
-		case stripeErr.Type == stripe.ErrorTypeInvalidRequest:
+		case stripeErr.HTTPStatusCode == http.StatusNotFound || stripeErr.Type == stripe.ErrorTypeInvalidRequest:
 			return domain.ErrInvalid
 		case stripeErr.Type == stripe.ErrorTypeCard:
 			return domain.ErrInvalid

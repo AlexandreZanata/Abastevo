@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	app "github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/application"
 	"github.com/AlexandreZanata/brazil-fuel-prices/backend/internal/modules/payments/domain"
@@ -16,6 +17,7 @@ type fakeInboxStore struct {
 	mu         sync.Mutex
 	pending    []app.InboxRecord
 	marked     []string
+	deferred   []string
 	markErr    error
 	pendingErr error
 }
@@ -40,6 +42,11 @@ func (f *fakeInboxStore) MarkInbox(_ context.Context, event app.InboxEvent, stat
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.marked = append(f.marked, event.EventID+":"+state)
+	return nil
+}
+
+func (f *fakeInboxStore) DeferInbox(_ context.Context, event app.InboxEvent, _ time.Time) error {
+	f.deferred = append(f.deferred, event.EventID)
 	return nil
 }
 
@@ -213,5 +220,29 @@ func TestPAY19HandlerValidatesEnvelope(t *testing.T) {
 	}
 	if err := handler.Handle(context.Background(), platform.Job{Payload: []byte(`{"version":1,"event_id":"evt-wakeup"}`)}); !errors.Is(err, domain.ErrUnavailable) {
 		t.Fatalf("nil store err=%v", err)
+	}
+}
+
+func TestAProviderFailureLeavesItsEventPendingAndDoesNotBlockOtherEvents(t *testing.T) {
+	for _, failure := range []error{domain.ErrUnavailable, app.ErrAmbiguous, app.ErrProviderUnauthorized} {
+		t.Run(failure.Error(), func(t *testing.T) {
+			store := &fakeInboxStore{pending: []app.InboxRecord{
+				pay19Event(domain.ProviderStripe, "evt-provider-failure", "invoice.paid"),
+				pay19Event(domain.ProviderStripe, "evt-next-invoice", "invoice.paid"),
+				pay19Event(domain.ProviderAsaas, "evt-other-provider", "PAYMENT_RECEIVED"),
+			}}
+			router, settlement, _, _, _ := pay19Router(store)
+			settlement.after = func(event app.InboxRecord) error {
+				if event.EventID == "evt-provider-failure" {
+					return failure
+				}
+				return nil
+			}
+			count, err := router.Drain(t.Context())
+			if count != 2 || !errors.Is(err, failure) || len(store.marked) != 0 ||
+				len(store.deferred) != 1 || store.deferred[0] != "evt-provider-failure" {
+				t.Fatalf("provider failure affected another receipt: processed=%d marked=%v err=%v", count, store.marked, err)
+			}
+		})
 	}
 }

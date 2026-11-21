@@ -137,6 +137,14 @@ func TestPAY19DrainPreservesPendingThroughOutage(t *testing.T) {
 	if pay19InboxState(t, store, domain.ProviderAsaas, "evt_p19_outage") != "PENDING" {
 		t.Fatal("outage consumed the event")
 	}
+	// The next wake-up occurs once the persisted retry time elapses.
+	if pending, err := store.PendingInbox(t.Context(), domain.ProviderAsaas, domain.EnvironmentTest, "merchant-test", 1); err != nil || len(pending) != 0 {
+		t.Fatalf("provider outage remained at the head of the queue: %d / %v", len(pending), err)
+	}
+	if _, err := store.Pool.Exec(t.Context(), `UPDATE payment_inbox SET deferred_until=clock_timestamp()
+WHERE event_id='evt_p19_outage'`); err != nil {
+		t.Fatal(err)
+	}
 	// Recovery processes the same durable row exactly once.
 	settlement.err = nil
 	settlement.calls = nil

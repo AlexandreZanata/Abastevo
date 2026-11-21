@@ -88,7 +88,8 @@ existing subscriptions.
   converge through the same drain — never per-read provider polling.
 - Unknown authenticated events are retained minimally with no effect;
   conflicting deliveries are marked `CONFLICT`, never reprocessed.
-- Stuck `PENDING` rows: inspect `payment_inbox` (`state`, `attempts`,
+- Temporary provider failures defer the affected verified event and allow
+  other inbox rows to drain. Stuck `PENDING` rows: inspect `payment_inbox` (`state`, `attempts`,
   `last_error`, `received_at`); fix the blocking cause (credentials,
   mode, provider outage), then wait for the next tick. Never mark rows
   processed by hand and never delete them: deletion destroys the
